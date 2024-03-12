@@ -1,0 +1,9 @@
+[workspace]
+members = ["bodhiserver"]
+resolver = "2"
+
+
+[profile.release.package.app]
+codegen-units = 1
+strip = true
+opt-level = 3

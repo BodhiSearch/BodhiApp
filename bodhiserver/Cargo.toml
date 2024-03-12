@@ -1,0 +1,9 @@
+[package]
+name = "bodhiserver"
+version = "0.1.0"
+edition = "2021"
+description = "Run LLMs locally"
+license = "MIT"
+authors = ["Amir Nagri <amir.nagri@gmail.com>"]
+
+[dependencies]
