@@ -3,7 +3,7 @@ members = ["bodhiserver"]
 resolver = "2"
 
 
-[profile.release.package.app]
+[profile.release.package.bodhiserver]
 codegen-units = 1
 strip = true
 opt-level = 3
