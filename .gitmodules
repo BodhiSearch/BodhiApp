@@ -1,0 +1,6 @@
+[submodule "bodhiserver/ai"]
+	path = bodhiserver/ai
+	url = git@github.com:BodhiSearch/ai.git
+[submodule "llama-server-bindings"]
+	path = llama-server-bindings
+	url = git@github.com:BodhiSearch/llama-server-bindings.git
