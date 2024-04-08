@@ -1,34 +1,14 @@
 use anyhow::Context;
+use bodhiserver::cli::{Cli, Command};
 use bodhiserver::{
   build_server_handle, port_from_env_vars, server::ServerHandle, shutdown_signal, ServerArgs,
-  DEFAULT_HOST, DEFAULT_PORT_STR,
+  DEFAULT_HOST,
 };
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use std::path::PathBuf;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 static ENV_BODHISERVER_PORT: &str = "BODHISERVER_PORT";
-
-#[derive(Parser)]
-#[command(version)]
-#[command(about = "Run GenerativeAI LLMs locally and serve them via OpenAI compatible API")]
-struct Cli {
-  #[command(subcommand)]
-  command: Command,
-}
-
-#[derive(Subcommand)]
-enum Command {
-  /// start the server
-  Serve {
-    #[clap(short='H', default_value = DEFAULT_HOST)]
-    host: Option<String>,
-    #[clap(short, default_value = DEFAULT_PORT_STR)]
-    port: Option<u16>,
-    #[clap(short = 'm')]
-    model: PathBuf,
-  },
-}
 
 pub fn main() {
   dotenv::dotenv().ok();
