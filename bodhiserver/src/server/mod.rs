@@ -1,3 +1,4 @@
+mod bodhi_ctx;
 mod routes;
 #[allow(clippy::module_inception)]
 mod server;

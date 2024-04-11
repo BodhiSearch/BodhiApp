@@ -1,11 +1,15 @@
+use crate::server::bodhi_ctx::BodhiContextWrapper;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
+use axum::extract::State;
 use axum::{
   http::StatusCode,
   response::IntoResponse,
   routing::{get, post},
   Json,
 };
-use serde_json::json;
+use std::ffi::{c_char, c_void};
+use std::slice;
+use std::sync::{Arc, Mutex};
 use tower_http::trace::TraceLayer;
 
 // TODO: serialize error in OpenAI format
@@ -29,49 +33,57 @@ impl IntoResponse for ApiError {
 type Result<T> = std::result::Result<T, ApiError>;
 
 #[derive(Clone)]
-struct RouterState {}
+struct RouterState {
+  bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>,
+}
 
 impl RouterState {
-  fn new() -> Self {
-    Self {}
+  fn new(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> Self {
+    Self { bodhi_ctx }
   }
 }
 
-pub(super) fn build_routes() -> axum::Router {
+pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::Router {
   axum::Router::new()
     .route("/ping", get(|| async { "pong" }))
     .route("/v1/chat/completions", post(chat_completions_handler))
     .layer(TraceLayer::new_for_http())
-    .with_state(RouterState::new())
+    .with_state(RouterState::new(bodhi_ctx))
+}
+
+unsafe extern "C" fn server_callback(
+  contents: *const c_char,
+  size: usize,
+  userdata: *mut c_void,
+) -> usize {
+  let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
+  let input_str = match std::str::from_utf8(slice) {
+    Ok(s) => s,
+    Err(_) => return 0,
+  };
+  let user_data_str = unsafe { &mut *(userdata as *mut String) };
+  user_data_str.push_str(input_str);
+  size
 }
 
 async fn chat_completions_handler(
-  Json(_request): Json<CreateChatCompletionRequest>,
+  State(state): State<RouterState>,
+  Json(request): Json<CreateChatCompletionRequest>,
 ) -> Result<Json<CreateChatCompletionResponse>> {
-  let response = json!({
-    "id": "chatcmpl-TESTID",
-    "object": "chat.completion",
-    "created": 1710320000,
-    "model": "tinyllama-15m-q8_0",
-    "choices": [
-      {
-        "index": 0,
-        "message": {
-          "role": "assistant",
-          "content": "Tuesday"
-        },
-        "logprobs": null,
-        "finish_reason": "stop"
-      },
-    ],
-    "usage": {
-      "prompt_tokens": 10,
-      "completion_tokens": 2,
-      "total_tokens": 12
-    },
-    "system_fingerprint": "fp_4f0b692a78"
-  });
-  serde_json::from_value(response)
+  let bodhi_ctx = state.bodhi_ctx.lock().unwrap();
+  let input = serde_json::to_string(&request).unwrap();
+  let userdata = String::with_capacity(2048);
+  bodhi_ctx
+    .ctx
+    .as_ref()
+    .unwrap()
+    .completions(
+      &input,
+      Some(server_callback),
+      &userdata as *const _ as *mut c_void,
+    )
+    .unwrap(); // todo
+  serde_json::from_str(&userdata)
     .map(Json)
     .map_err(ApiError::Json)
 }

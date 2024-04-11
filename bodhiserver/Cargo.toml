@@ -11,6 +11,7 @@ anyhow = "1.0.81"
 async-openai = "0.20.0"
 axum = "0.7.4"
 clap = { version = "4.5.2", features = ["derive"] }
+dirs = "5.0.1"
 dotenv = "0.15.0"
 llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
 serde = { version = "1.0.197", features = ["derive"] }
@@ -25,5 +26,5 @@ fs2 = "0.4.3"
 lazy_static = "1.4.0"
 rand = "0.8.5"
 reqwest = "0.12.3"
-rstest = "0.18.2"
+rstest = "0.19.0"
 tempdir = "0.3.7"

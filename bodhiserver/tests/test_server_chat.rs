@@ -24,7 +24,12 @@ pub async fn test_server_chat(
     .header("Content-Type", "application/json")
     .json(&json!({
       "model": "tinyllama-15m-q8_0",
+      "seed": 42,
       "messages": [
+        {
+          "role": "system",
+          "content": "You are a helpful assistant."
+        },
         {
           "role": "user",
           "content": "What day comes after Monday?"
@@ -47,7 +52,7 @@ pub async fn test_server_chat(
       .content
       .as_ref()
       .unwrap(),
-    "Tuesday"
+    "The day that comes after Monday is Tuesday."
   );
   shutdown
     .send(())

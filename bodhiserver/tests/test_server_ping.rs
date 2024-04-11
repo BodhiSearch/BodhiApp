@@ -1,21 +1,21 @@
 mod utils;
+
 use crate::utils::{test_server, TestServerHandle};
-use anyhow::{Context, Result};
-use bodhiserver::{build_server_handle, ServerArgs, ServerHandle};
+use anyhow::{anyhow, Context, Result};
+use bodhiserver::{build_server_handle, ServerHandle, ServerParams};
+use llama_server_bindings::GptParams;
 use rstest::rstest;
-use std::path::PathBuf;
-use utils::{tiny_llama, LLAMA_BACKEND_LOCK};
+use utils::LLAMA_BACKEND_LOCK;
 
 #[rstest]
 #[tokio::test]
-pub async fn test_server_ping(#[future] tiny_llama: Result<PathBuf>) -> anyhow::Result<()> {
+pub async fn test_server_ping() -> anyhow::Result<()> {
   let _guard = LLAMA_BACKEND_LOCK.lock().await;
   let port = rand::random::<u16>();
   let host = String::from("127.0.0.1");
-  let server_args = ServerArgs {
+  let server_args = ServerParams {
     host: host.clone(),
     port,
-    model: tiny_llama.await?,
     lazy_load_model: true,
   };
   let ServerHandle {
@@ -23,7 +23,16 @@ pub async fn test_server_ping(#[future] tiny_llama: Result<PathBuf>) -> anyhow::
     shutdown,
     ready_rx,
   } = build_server_handle(server_args)?;
-  let join = tokio::spawn(server.start());
+  let model_path = dirs::home_dir()
+    .ok_or_else(|| anyhow!("unable to locate home dir"))?
+    .join(".cache/huggingface/llama-2-7b-chat.Q4_K_M.gguf")
+    .canonicalize()?
+    .to_str()
+    .unwrap()
+    .to_owned();
+  let mut gpt_params = GptParams::default();
+  gpt_params.model = Some(model_path);
+  let join = tokio::spawn(server.start(gpt_params));
   ready_rx.await?;
   let ping_endpoint = format!("http://{}:{}/ping", host, port);
   let response = reqwest::get(&ping_endpoint).await?.text().await?;
