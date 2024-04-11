@@ -5,7 +5,6 @@ use axum::{
   routing::{get, post},
   Json,
 };
-use llama_cpp_2::model::LlamaModel;
 use serde_json::json;
 use tower_http::trace::TraceLayer;
 
@@ -38,7 +37,7 @@ impl RouterState {
   }
 }
 
-pub(super) fn build_routes(_model: Option<LlamaModel>) -> axum::Router {
+pub(super) fn build_routes() -> axum::Router {
   axum::Router::new()
     .route("/ping", get(|| async { "pong" }))
     .route("/v1/chat/completions", post(chat_completions_handler))

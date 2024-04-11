@@ -1,6 +1,4 @@
-use crate::llama_cpp::LlamaCpp;
 use crate::server::routes::build_routes;
-use llama_cpp_2::model::LlamaModel;
 use std::future::Future;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -49,14 +47,8 @@ impl Server {
     }
   }
 
-  pub async fn start(mut self) -> anyhow::Result<()> {
-    let model = if !self.server_args.lazy_load_model {
-      let model = self.init_llama_model().await?;
-      Some(model)
-    } else {
-      None
-    };
-    let app = build_routes(model);
+  pub async fn start(self) -> anyhow::Result<()> {
+    let app = build_routes();
     let addr = format!("{}:{}", &self.server_args.host, &self.server_args.port);
     let listener = TcpListener::bind(&addr).await?;
     tracing::info!(addr = addr, "Server started");
@@ -65,12 +57,6 @@ impl Server {
     self.ready.send(()).unwrap();
     axum_server.await?;
     Ok(())
-  }
-
-  pub async fn init_llama_model(&mut self) -> anyhow::Result<LlamaModel> {
-    let llama_cpp = LlamaCpp::init()?;
-    let llama_model = llama_cpp.load_model(&self.server_args.model)?;
-    Ok(llama_model)
   }
 }
 

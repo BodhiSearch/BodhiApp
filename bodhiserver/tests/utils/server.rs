@@ -1,4 +1,4 @@
-use super::{llama_log_set, null_log_callback, tiny_llama, LLAMA_BACKEND_LOCK};
+use super::{tiny_llama, LLAMA_BACKEND_LOCK};
 use anyhow::Result;
 use bodhiserver::{build_server_handle, ServerArgs, ServerHandle};
 use rstest::fixture;
@@ -15,9 +15,6 @@ pub struct TestServerHandle {
 pub async fn test_server(
   #[future] tiny_llama: Result<PathBuf>,
 ) -> anyhow::Result<TestServerHandle> {
-  unsafe {
-    llama_log_set(null_log_callback, std::ptr::null_mut());
-  }
   let _guard = LLAMA_BACKEND_LOCK.lock().await;
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();
