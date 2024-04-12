@@ -18,15 +18,12 @@
         "open": true
       }
     },
-    "windows": [
-      {
-        "title": "bodhi-app",
-        "width": 800,
-        "height": 600
-      }
-    ],
     "security": {
       "csp": null
+    },
+    "systemTray": {
+      "iconPath": "icons/icon.png",
+      "iconAsTemplate": true
     },
     "bundle": {
       "active": true,
