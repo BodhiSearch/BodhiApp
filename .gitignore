@@ -23,4 +23,4 @@ Cargo.lock
 !.env.sample
 
 .DS_Store
-NOTES.md
+NOTES-*.md
