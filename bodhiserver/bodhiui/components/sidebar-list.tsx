@@ -16,6 +16,7 @@ export function SidebarList({ }: SidebarListProps) {
     const { data: chats } = await getChats();
     setChats(chats);
   };
+
   useEffect(() => {
     refreshChats()
   }, []);
@@ -24,7 +25,7 @@ export function SidebarList({ }: SidebarListProps) {
     let { status } = await clearChats();
     if (status == 200) {
       await refreshChats();
-      await router.push('/');
+      router.push('/');
     }
   }
 
@@ -32,7 +33,7 @@ export function SidebarList({ }: SidebarListProps) {
     let { data, status } = await removeChat(chatId);
     if (status === 200) {
       await refreshChats();
-      await router.push('/');
+      router.push('/');
     } else {
       return data
     }

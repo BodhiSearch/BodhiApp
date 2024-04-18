@@ -5,6 +5,7 @@ import { buttonVariants } from '@/components/ui/button'
 import { useLocalStorage } from '@/lib/hooks/use-local-storage'
 import { type Chat } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { IconMessage } from '@/components/ui/icons'
 
 interface SidebarItemProps {
   index: number
@@ -40,6 +41,9 @@ export function SidebarItem({ index, chat, children }: SidebarItemProps) {
         ease: 'easeIn'
       }}
     >
+      <div className="absolute left-2 top-1 flex size-6 items-center justify-center">
+        <IconMessage className="mr-2 mt-1 text-zinc-500" />
+      </div>
       <Link
         href={chat.path}
         className={cn(

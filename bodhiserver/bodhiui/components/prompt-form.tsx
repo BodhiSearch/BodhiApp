@@ -49,7 +49,7 @@ export function PromptForm({
         <Tooltip>
           <TooltipTrigger asChild>
             <button
-              onClick={e => {
+              onClick={async e => {
                 e.preventDefault()
                 router.refresh()
                 router.push('/')
