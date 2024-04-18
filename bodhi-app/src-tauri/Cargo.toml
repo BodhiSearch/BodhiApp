@@ -9,10 +9,14 @@ edition = "2021"
 tauri-build = { version = "1.5.1", features = [] }
 
 [dependencies]
-tauri = { version = "1.6.1", features = ["shell-open", "system-tray"] }
+anyhow = "1.0.82"
+bodhiserver = { version = "0.1.0", path = "../../bodhiserver" }
+dotenv = "0.15.0"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.115"
-anyhow = "1.0.82"
+tauri = { version = "1.6.1", features = ["shell-open", "system-tray"] }
+tracing = { version = "0.1.40", features = ["async-await", "log"] }
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 webbrowser = "0.8.15"
 
 [features]

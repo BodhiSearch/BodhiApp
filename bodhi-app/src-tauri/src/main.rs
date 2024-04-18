@@ -4,8 +4,22 @@
 use tauri::{
   AppHandle, CustomMenuItem, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu, WindowEvent,
 };
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-fn main() -> anyhow::Result<()> {
+fn main() {
+  dotenv::dotenv().ok();
+  tracing_subscriber::registry()
+    .with(tracing_subscriber::fmt::layer())
+    .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+    .init();
+  let result = main_internal();
+  if let Err(err) = result {
+    tracing::warn!(err = ?err, "application exited with error");
+    std::process::exit(1);
+  }
+}
+
+fn main_internal() -> anyhow::Result<()> {
   let system_tray = SystemTray::new().with_menu(
     SystemTrayMenu::new()
       .add_item(CustomMenuItem::new("homepage", "Open Homepage"))
