@@ -1,7 +1,3 @@
-import Link from 'next/link'
-import {
-  IconNextChat,
-} from '@/components/ui/icons'
 import { Suspense } from 'react'
 import { ChatHistory } from '@/components/chat-history'
 import { SidebarMobile } from '@/components/sidebar-mobile'
