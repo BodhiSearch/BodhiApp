@@ -3,8 +3,6 @@ import { ChatList } from "@/components/chat-list";
 import { EmptyScreen } from "@/components/empty-screen";
 import { ChatPanel } from "@/components/chat-panel";
 import { cn } from "@/lib/utils";
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
 import { useChatHistory } from "@/lib/hooks/use-chat-history";
 
 
@@ -14,16 +12,12 @@ export interface ChatProps {
 }
 
 export function Chat({ id, initialMessages }: ChatProps) {
-  const path = usePathname();
   const { update } = useChatHistory();
   const { messages, input, setInput, isLoading, append, reload } = useChat({
     initialMessages,
     id,
     body: { id },
     onFinish: async () => {
-      if (messages.length >= 2 && !path?.includes('chat')) {
-        window.history.replaceState({}, '', `/chat/?id=${id}`)
-      }
       await update();
     }
   });

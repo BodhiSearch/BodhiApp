@@ -9,7 +9,7 @@ interface SidebarListProps {
 }
 
 export function SidebarList({ }: SidebarListProps) {
-  const { status, chats, removeChat, clearChats } = useChatHistory();
+  const { status, chats } = useChatHistory();
 
   if (status === "loading") {
     return <div className="flex flex-col flex-1 px-4 space-y-4 overflow-auto">
@@ -31,7 +31,7 @@ export function SidebarList({ }: SidebarListProps) {
       <div className="flex-1 overflow-auto">
         {chats.length ? (
           <div className="space-y-2 px-2">
-            <SidebarItems chats={chats} removeChat={removeChat} />
+            <SidebarItems chats={chats} />
           </div>
         ) : (
           <div className="p-8 text-center">
@@ -41,7 +41,7 @@ export function SidebarList({ }: SidebarListProps) {
       </div>
       <div className="flex items-center justify-between p-4">
         <ThemeToggle />
-        <ClearHistory clearChats={clearChats} isEnabled={chats.length > 0} />
+        <ClearHistory isEnabled={chats.length > 0} />
       </div>
     </div>
   )

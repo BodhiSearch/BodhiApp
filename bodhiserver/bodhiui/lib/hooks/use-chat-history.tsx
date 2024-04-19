@@ -9,8 +9,8 @@ interface ChatHistoryContext {
   chats: Chat[]
   refresh: () => Promise<void>
   update: () => Promise<void>
-  clearChats: () => Promise<void>
-  removeChat: (id: string) => Promise<void>
+  clearChats: () => Promise<void | { error: string }>
+  removeChat: (id: string) => Promise<void | { error: string }>
 }
 
 const ChatHistoryContext = createContext<ChatHistoryContext | undefined>(undefined);

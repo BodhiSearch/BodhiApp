@@ -1,5 +1,4 @@
 import { toast } from 'sonner'
-import { type ServerActionResult } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import {
   AlertDialog,
@@ -14,16 +13,16 @@ import {
 } from '@/components/ui/alert-dialog'
 import { IconSpinner } from '@/components/ui/icons'
 import { useState, useTransition } from 'react'
+import { useChatHistory } from '@/lib/hooks/use-chat-history'
 
 interface ClearHistoryProps {
   isEnabled: boolean
-  clearChats: () => ServerActionResult<void>
 }
 
 export function ClearHistory({
   isEnabled = false,
-  clearChats
 }: ClearHistoryProps) {
+  const { clearChats } = useChatHistory()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   return (

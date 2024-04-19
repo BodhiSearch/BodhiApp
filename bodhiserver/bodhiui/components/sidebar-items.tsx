@@ -1,16 +1,12 @@
-'use client'
-
 import { type Chat, type ServerActionResult } from '@/lib/types'
 import { AnimatePresence, motion } from 'framer-motion'
-import { SidebarActions } from '@/components/sidebar-actions'
 import { SidebarItem } from '@/components/sidebar-item'
 
 interface SidebarItemsProps {
   chats: Chat[],
-  removeChat: (id: string) => ServerActionResult<void>;
 }
 
-export function SidebarItems({ chats, removeChat }: SidebarItemsProps) {
+export function SidebarItems({ chats }: SidebarItemsProps) {
   if (!chats.length) return null
   return (
     <AnimatePresence>
@@ -24,12 +20,7 @@ export function SidebarItems({ chats, removeChat }: SidebarItemsProps) {
                 height: 0
               }}
             >
-              <SidebarItem index={index} chat={chat}>
-                <SidebarActions
-                  chat={chat}
-                  removeChat={removeChat}
-                />
-              </SidebarItem>
+              <SidebarItem index={index} chat={chat} />
             </motion.div>
           )
       )}

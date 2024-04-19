@@ -1,23 +1,35 @@
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
 import { type Chat } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { IconMessage } from '@/components/ui/icons'
 import { useLocalStorage } from '@/lib/hooks/use-local-storage'
+import { useRouter } from 'next/router'
+import { SidebarActions } from '@/components/sidebar-actions'
+import { useEffect, useState } from 'react'
 
 interface SidebarItemProps {
   index: number
   chat: Chat
-  children: React.ReactNode
 }
 
-export function SidebarItem({ index, chat, children }: SidebarItemProps) {
-  const query = useSearchParams()
-  const isActive = chat.id === query?.get('id')
+export function SidebarItem({ index, chat }: SidebarItemProps) {
+  const router = useRouter();
+  const [isActive, setActive] = useState(false);
   const [newChatId, setNewChatId] = useLocalStorage('newChatId', null)
   const shouldAnimate = index === 0 && !!newChatId && chat.id === newChatId
+  // mark item as active
+  useEffect(() => {
+    const { id } = router.query;
+    if (!id) {
+      return;
+    }
+    const isItemActive = chat.id === id;
+    if (isActive !== isItemActive) {
+      setActive(isItemActive);
+    }
+  }, [router, chat, setActive]);
 
   if (!chat.id) return null
 
@@ -82,6 +94,10 @@ export function SidebarItem({ index, chat, children }: SidebarItemProps) {
                   onAnimationComplete={() => {
                     if (index === chat.title.length - 1) {
                       setNewChatId(null)
+                      if (!router.pathname.includes('chat')) {
+                        window.history.replaceState({}, '', `/chat?id=${chat.id}`)
+                      }
+                      setActive(true);
                     }
                   }}
                 >
@@ -94,7 +110,10 @@ export function SidebarItem({ index, chat, children }: SidebarItemProps) {
           </span>
         </div>
       </Link>
-      {isActive && <div className="absolute right-2 top-1">{children}</div>}
+      {isActive && <div className="absolute right-2 top-1">
+        <SidebarActions
+          chat={chat}
+        /></div>}
     </motion.div>
   )
 }

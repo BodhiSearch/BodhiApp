@@ -1,5 +1,4 @@
 import * as React from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { type ServerActionResult, type Chat } from '@/lib/types'
 import {
@@ -19,17 +18,16 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@/components/ui/tooltip'
+import { useChatHistory } from '@/lib/hooks/use-chat-history'
 
 interface SidebarActionsProps {
   chat: Chat
-  removeChat: (id: string) => ServerActionResult<void>
 }
 
 export function SidebarActions({
   chat,
-  removeChat,
 }: SidebarActionsProps) {
-  const router = useRouter()
+  const { removeChat } = useChatHistory();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [isRemovePending, startRemoveTransition] = React.useTransition()
 
