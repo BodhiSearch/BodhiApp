@@ -42,6 +42,7 @@ export async function POST(req: Request) {
         score: createdAt,
         member: `chat:${id}`
       })
+      console.log(`added chats to `)
     },
   });
   return new StreamingTextResponse(stream);

@@ -28,6 +28,7 @@
     "next-themes": "^0.3.0",
     "openai": "^4.37.1",
     "react": "^18",
+    "react-async-hook": "^4.0.0",
     "react-dom": "^18",
     "react-markdown": "^8.0.7",
     "react-syntax-highlighter": "^15.5.0",

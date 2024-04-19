@@ -17,7 +17,7 @@ export function Chat({ id, initialMessages }: ChatProps) {
   const { messages, input, setInput, isLoading, append, reload } = useChat({ initialMessages, id });
   // updates the address bar on changes in messages, and updates to one having chat
   useEffect(() => {
-    if (!path?.includes('chat')) {
+    if (messages.length >= 2 && !path?.includes('chat')) {
       window.history.replaceState({}, '', `/chat?id=${id}`)
     }
   }, [id, path, messages]);

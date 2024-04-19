@@ -2,29 +2,23 @@ import { getChats, clearChats, removeChat } from '@/lib/backend'
 import { ClearHistory } from '@/components/clear-history'
 import { SidebarItems } from '@/components/sidebar-items'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import React from 'react'
+import { useAsync } from 'react-async-hook';
+import { Skeleton } from './ui/skeleton'
 
 
 interface SidebarListProps {
 }
 
 export function SidebarList({ }: SidebarListProps) {
-  const [chats, setChats] = useState([]);
+  const chatHistory = useAsync(async () => (await getChats()).data, []);
   const router = useRouter();
-  const refreshChats = async () => {
-    const { data: chats } = await getChats();
-    setChats(chats);
-  };
-
-  useEffect(() => {
-    refreshChats()
-  }, []);
 
   async function clearChatsFn() {
     let { status } = await clearChats();
     if (status == 200) {
-      await refreshChats();
       router.push('/');
     }
   }
@@ -32,13 +26,29 @@ export function SidebarList({ }: SidebarListProps) {
   async function removeChatFn(chatId: string) {
     let { data, status } = await removeChat(chatId);
     if (status === 200) {
-      await refreshChats();
       router.push('/');
     } else {
-      return data
+      console.log(`error deleting chat: ${chatId}`);
     }
   }
 
+  if (chatHistory.loading) {
+    return <div className="flex flex-col flex-1 px-4 space-y-4 overflow-auto">
+      {Array.from({ length: 10 }).map((_, i) => (
+        <Skeleton
+          key={i}
+          className="w-full h-6 rounded-md shrink-0 animate-pulse bg-zinc-200 dark:bg-zinc-800"
+        />
+      ))}
+    </div>
+  }
+
+  if (chatHistory.error) {
+    console.log(`error retrieving chats`);
+    return <div>Error retrieving chats...</div>;
+  }
+
+  const chats = chatHistory.result;
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-auto">
