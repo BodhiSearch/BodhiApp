@@ -23,12 +23,11 @@ export function SidebarItem({ index, chat }: SidebarItemProps) {
   useEffect(() => {
     const { id } = router.query;
     if (!id) {
+      setActive(false);
       return;
     }
     const isItemActive = chat.id === id;
-    if (isActive !== isItemActive) {
-      setActive(isItemActive);
-    }
+    setActive(isItemActive);
   }, [router, chat, setActive]);
 
   if (!chat.id) return null

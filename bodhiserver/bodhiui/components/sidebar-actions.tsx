@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { toast } from 'sonner'
-import { type ServerActionResult, type Chat } from '@/lib/types'
+import { type Chat } from '@/lib/types'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +19,8 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { useChatHistory } from '@/lib/hooks/use-chat-history'
+import { useRouter } from 'next/router'
+import { Root } from '@/lib/utils'
 
 interface SidebarActionsProps {
   chat: Chat
@@ -27,6 +29,7 @@ interface SidebarActionsProps {
 export function SidebarActions({
   chat,
 }: SidebarActionsProps) {
+  const router = useRouter();
   const { removeChat } = useChatHistory();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [isRemovePending, startRemoveTransition] = React.useTransition()
@@ -68,13 +71,14 @@ export function SidebarActions({
                 event.preventDefault()
                 // @ts-ignore
                 startRemoveTransition(async () => {
-                  const result = await removeChat(chat.id)
+                  const result = await removeChat(chat.id);
                   if (result && 'error' in result) {
-                    toast.error(result.error)
+                    toast.error(result.error);
                     return
                   }
-                  setDeleteDialogOpen(false)
-                  toast.success('Chat deleted')
+                  toast.success('Chat deleted');
+                  await router.push(Root);
+                  setDeleteDialogOpen(false);
                 })
               }}
             >

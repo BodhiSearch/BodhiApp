@@ -8,6 +8,6 @@ export default function Home() {
   const initialMessages: Message[] = [];
   const _ = useLocalStorage('newChatId', id)
   return (
-    <Chat id={id} initialMessages={initialMessages} />
+    <Chat id={id} initialMessages={initialMessages} isLoading={false} />
   );
 }

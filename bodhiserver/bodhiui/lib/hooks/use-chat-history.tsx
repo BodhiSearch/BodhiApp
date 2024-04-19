@@ -65,7 +65,7 @@ export function ChatHistoryProvider({ children }: ChatHistoryProviderProps) {
   const removeChat = async (chatId: string) => {
     let { data, status } = await removeChatApi(chatId);
     if (status === 200) {
-      await refresh();
+      await update();
     } else {
       console.log(`error deleting chat: ${chatId}, ${data}`);
     }

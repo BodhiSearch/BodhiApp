@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 export default function ChatPage() {
   const router = useRouter()
   const [messages, setMessages] = useState([])
+  const [isLoading, setLoading] = useState(true);
   const { id } = router.query;
 
   useEffect(() => {
@@ -14,9 +15,11 @@ export default function ChatPage() {
       if (!id) {
         return;
       }
+      setLoading(true);
       let { data, status } = await getChat(id as string);
       if (status === 200) {
         setMessages(data.messages)
+        setLoading(false);
       }
     })()
   }, [id, setMessages]);
@@ -25,6 +28,6 @@ export default function ChatPage() {
     return;
   }
   return (
-    messages.length === 0 ? <>Loading...</> : <Chat id={id as string} initialMessages={messages} />
+    <Chat id={id as string} initialMessages={messages} isLoading={isLoading} />
   );
 }
