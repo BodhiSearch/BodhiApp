@@ -5,6 +5,7 @@ import { ChatPanel } from "@/components/chat-panel";
 import { cn } from "@/lib/utils";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useChatHistory } from "@/lib/hooks/use-chat-history";
 
 
 export interface ChatProps {
@@ -14,14 +15,18 @@ export interface ChatProps {
 
 export function Chat({ id, initialMessages }: ChatProps) {
   const path = usePathname();
-  const { messages, input, setInput, isLoading, append, reload } = useChat({ initialMessages, id });
-  // updates the address bar on changes in messages, and updates to one having chat
-  useEffect(() => {
-    if (messages.length >= 2 && !path?.includes('chat')) {
-      window.history.replaceState({}, '', `/chat?id=${id}`)
+  const { update } = useChatHistory();
+  const { messages, input, setInput, isLoading, append, reload } = useChat({
+    initialMessages,
+    id,
+    body: { id },
+    onFinish: async () => {
+      if (messages.length >= 2 && !path?.includes('chat')) {
+        window.history.replaceState({}, '', `/chat/?id=${id}`)
+      }
+      await update();
     }
-  }, [id, path, messages]);
-
+  });
   return (<div className="group w-full overflow-auto pl-0 peer-[[data-state=open]]:lg:pl-[250px] peer-[[data-state=open]]:xl:pl-[300px]">
     <div className={cn('pb-[200px] pt-4 md:pt-10')}>
       {messages.length ? <ChatList messages={messages} /> : <EmptyScreen />}

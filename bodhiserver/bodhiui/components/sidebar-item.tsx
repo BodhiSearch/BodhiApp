@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
-import { useLocalStorage } from '@/lib/hooks/use-local-storage'
 import { type Chat } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { IconMessage } from '@/components/ui/icons'
+import { useLocalStorage } from '@/lib/hooks/use-local-storage'
 
 interface SidebarItemProps {
   index: number
@@ -17,7 +17,7 @@ export function SidebarItem({ index, chat, children }: SidebarItemProps) {
   const query = useSearchParams()
   const isActive = chat.id === query?.get('id')
   const [newChatId, setNewChatId] = useLocalStorage('newChatId', null)
-  const shouldAnimate = index === 0 && isActive && newChatId
+  const shouldAnimate = index === 0 && !!newChatId && chat.id === newChatId
 
   if (!chat.id) return null
 

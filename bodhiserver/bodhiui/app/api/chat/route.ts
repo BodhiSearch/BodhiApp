@@ -1,14 +1,13 @@
 import OpenAI from 'openai';
 import { OpenAIStream, StreamingTextResponse } from 'ai';
-import { nanoid } from 'nanoid';
 import { kv } from '@vercel/kv'
+import { nanoid } from '@/lib/utils';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
 export async function POST(req: Request) {
-  console.log(`incoming request: ${JSON.stringify(req)}`)
   const json = await req.json();
   const {messages} = json;
   const response = await openai.chat.completions.create({
@@ -42,7 +41,6 @@ export async function POST(req: Request) {
         score: createdAt,
         member: `chat:${id}`
       })
-      console.log(`added chats to `)
     },
   });
   return new StreamingTextResponse(stream);
