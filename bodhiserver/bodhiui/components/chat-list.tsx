@@ -3,18 +3,19 @@ import { Separator } from "@/components/ui/separator";
 import { ChatMessage } from "@/components/chat-message";
 import { EmptyScreen } from "./empty-screen";
 import { Skeleton } from "@/components/ui/skeleton";
-
+import { ChatScrollAnchor } from "@/components/chat-scroll-anchor";
 
 export interface ChatListProps {
-  isLoading: boolean
+  chatLoading: boolean
+  chatStreaming: boolean
   messages: Message[]
 }
 
-export function ChatList({ isLoading, messages }: ChatListProps) {
-  if (!isLoading && messages.length === 0) {
+export function ChatList({ chatLoading, chatStreaming, messages }: ChatListProps) {
+  if (!chatLoading && messages.length === 0) {
     return <EmptyScreen />
   }
-  if (isLoading) {
+  if (chatLoading) {
     return <div className="relative mx-auto max-w-2xl px-4">
       {Array.from({ length: 2 }).map((_, i) => (
         <div key={i}>
@@ -28,13 +29,17 @@ export function ChatList({ isLoading, messages }: ChatListProps) {
     </div>
   }
   return (
-    <div className="relative mx-auto max-w-2xl px-4">
-      {messages.map((message, index) => (
-        <div key={index}>
-          <ChatMessage message={message} />
-          {index < messages.length - 1 && <Separator className="my-4" />}
-        </div>
-      ))}
-    </div>
+    <>
+      <div className="relative mx-auto max-w-2xl px-4">
+        {messages.map((message, index) => (
+          <div key={index}>
+            <ChatMessage message={message} />
+            {index < messages.length - 1 && <Separator className="my-4" />}
+          </div>
+        ))}
+      </div>
+      <ChatScrollAnchor trackVisibility={chatStreaming} />
+    </>
+
   )
 }
