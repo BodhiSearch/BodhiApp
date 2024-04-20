@@ -22,3 +22,8 @@ export async function clearChats() {
   let { data, status } = await client.delete(`${API_BASE_URL}/api/clearChats`) // TODO - change to RESTful
   return { data, status }
 }
+
+export async function getModels() {
+  let { data, status } = await client.get(`${API_BASE_URL}/api/getModels`) // TODO - change to RESTful
+  return { data, status }
+}

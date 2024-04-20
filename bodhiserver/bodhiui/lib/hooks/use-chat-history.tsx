@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction, createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { getChats, clearChats as clearChatApi, removeChat as removeChatApi } from "@/lib/backend";
 import { Chat } from "@/lib/types";
 

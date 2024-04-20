@@ -3,6 +3,7 @@ import { ChatList } from "@/components/chat-list";
 import { ChatPanel } from "@/components/chat-panel";
 import { cn } from "@/lib/utils";
 import { useChatHistory } from "@/lib/hooks/use-chat-history";
+import { useChatSettings } from "@/lib/hooks/use-chat-settings";
 
 
 export interface ChatProps {
@@ -13,10 +14,11 @@ export interface ChatProps {
 
 export function Chat({ id, isLoading: chatLoading, initialMessages }: ChatProps) {
   const { update } = useChatHistory();
+  const { model } = useChatSettings();
   const { messages, input, setInput, isLoading, append, reload } = useChat({
     initialMessages,
     id,
-    body: { id },
+    body: { id, model },
     onFinish: async () => {
       await update();
     }

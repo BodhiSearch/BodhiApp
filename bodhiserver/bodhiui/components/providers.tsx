@@ -4,15 +4,18 @@ import { ThemeProviderProps } from 'next-themes/dist/types'
 import { SidebarProvider } from '@/lib/hooks/use-sidebar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ChatHistoryProvider } from '@/lib/hooks/use-chat-history'
+import { ChatSettingsProvider } from '@/lib/hooks/use-chat-settings'
 
 export function Providers({ children, ...props }: ThemeProviderProps) {
   return (
     <NextThemesProvider {...props}>
-      <ChatHistoryProvider>
-        <SidebarProvider>
-          <TooltipProvider>{children}</TooltipProvider>
-        </SidebarProvider>
-      </ChatHistoryProvider>
+      <ChatSettingsProvider>
+        <ChatHistoryProvider>
+          <SidebarProvider>
+            <TooltipProvider>{children}</TooltipProvider>
+          </SidebarProvider>
+        </ChatHistoryProvider>
+      </ChatSettingsProvider>
     </NextThemesProvider>
   )
 }

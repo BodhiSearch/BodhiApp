@@ -9,11 +9,11 @@ const openai = new OpenAI({
 
 export async function POST(req: Request) {
   const json = await req.json();
-  const {messages} = json;
+  const { messages, model } = json;
   const response = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
+    model,
+    messages,
     stream: true,
-    messages: messages,
   });
   const userId = '29175b6f-44ed-4901-a35b-460c48c1b171'
   const stream = OpenAIStream(response, {
