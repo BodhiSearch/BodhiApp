@@ -5,29 +5,28 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 export default function ChatPage() {
-  const router = useRouter()
-  const [messages, setMessages] = useState([])
+  const router = useRouter();
+  const [messages, setMessages] = useState([]);
   const [isLoading, setLoading] = useState(true);
-  const { id } = router.query;
+  const [id, setId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     (async () => {
+      if (!router.isReady) return;
+      const { id } = router.query;
       if (!id) {
-        return;
+        return await router.push(PageRoot);
       }
       setLoading(true);
       let { data, status } = await getChat(id as string);
       if (status === 200) {
-        setMessages(data.messages)
-        setLoading(false);
+        setId(id as string);
+        setMessages(data.messages);
       }
-    })()
-  }, [id, setMessages]);
-  if (!id) {
-    router.push(PageRoot).then(() => { }).catch((err) => { console.log(`id missing, error routing to home: ${err}`) });
-    return;
-  }
+      setLoading(false);
+    })().then(() => { }).catch((err) => { console.log(`${JSON.stringify(err)}`) });
+  }, [router, setMessages, setId]);
   return (
-    <Chat id={id as string} initialMessages={messages} isLoading={isLoading} />
+    <Chat id={id} initialMessages={messages} isLoading={isLoading} />
   );
 }

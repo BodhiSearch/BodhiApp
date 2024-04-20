@@ -7,7 +7,7 @@ import { useChatSettings } from "@/lib/hooks/use-chat-settings";
 
 
 export interface ChatProps {
-  id: string
+  id?: string
   isLoading: boolean
   initialMessages: Message[]
 }
