@@ -19,7 +19,7 @@ export function ChatList({ chatLoading, chatStreaming, messages }: ChatListProps
     return <div className="relative mx-auto max-w-2xl px-4">
       {Array.from({ length: 2 }).map((_, i) => (
         <div key={i}>
-          <div className="group relative mb-4 flex items-start md:-ml-12">
+          <div className="relative mb-4 flex items-start md:-ml-12">
             <Skeleton className="flex size-8 items-center justify-center rounded-md"></Skeleton>
             <Skeleton className="flex-1 px-1 ml-4 space-y-2 overflow-hidden">&nbsp;</Skeleton>
           </div>

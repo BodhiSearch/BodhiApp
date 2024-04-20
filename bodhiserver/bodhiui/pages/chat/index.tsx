@@ -1,6 +1,6 @@
 import { Chat } from "@/components/chat";
 import { getChat } from "@/lib/backend";
-import { Root } from "@/lib/utils";
+import { PageRoot } from "@/lib/utils";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
@@ -24,7 +24,7 @@ export default function ChatPage() {
     })()
   }, [id, setMessages]);
   if (!id) {
-    router.push(Root).then(() => { }).catch((err) => { console.log(`id missing, error routing to home: ${err}`) });
+    router.push(PageRoot).then(() => { }).catch((err) => { console.log(`id missing, error routing to home: ${err}`) });
     return;
   }
   return (

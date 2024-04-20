@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/tooltip'
 import { useChatHistory } from '@/lib/hooks/use-chat-history'
 import { useRouter } from 'next/router'
-import { Root } from '@/lib/utils'
+import { PageRoot } from '@/lib/utils'
 
 interface SidebarActionsProps {
   chat: Chat
@@ -77,7 +77,7 @@ export function SidebarActions({
                     return
                   }
                   toast.success('Chat deleted');
-                  await router.push(Root);
+                  await router.push(PageRoot);
                   setDeleteDialogOpen(false);
                 })
               }}

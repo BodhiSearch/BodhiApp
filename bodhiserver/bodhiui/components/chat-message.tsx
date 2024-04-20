@@ -13,7 +13,7 @@ export interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   return (<div
-    className={cn('group relative mb-4 flex items-start md:-ml-12')}
+    className={cn('relative mb-4 flex items-start md:-ml-12')}
   >
     <div
       className={cn(
@@ -25,7 +25,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     >
       {message.role === 'user' ? <IconUser /> : <IconOpenAI />}
     </div>
-    <div className="flex-1 px-1 ml-4 space-y-2 overflow-hidden">
+    <div className="group flex-1 px-1 ml-4 space-y-2 overflow-hidden">
       <MemoizedReactMarkdown
         className="prose break-words dark:prose-invert prose-p:leading-relaxed prose-pre:p-0"
         remarkPlugins={[remarkGfm, remarkMath]}
