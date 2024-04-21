@@ -1,3 +1,6 @@
+use super::utils;
+use super::utils::get_chats_dir;
+use super::utils::HomeDirError;
 use axum::body::Body;
 use axum::extract::Path as UrlPath;
 use axum::http::Response;
@@ -16,21 +19,11 @@ use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
 
-use super::utils::BODHI_HOME;
-
 #[derive(Error, Debug)]
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum ChatError {
-  #[error("Failed to get user home directory")]
-  HomeDirErr,
-  #[error("Failed to create app home directory")]
-  HomeDirCreateErr,
-  #[error("Failed to get chats directory")]
-  ChatDirErr,
-  #[error("Chats directory is not a directory")]
-  ChatNotDirErr,
-  #[error("Failed to read directory")]
-  ReadDirErr,
+  #[error(transparent)]
+  HomeDirError(#[from] utils::HomeDirError),
   #[error("Failed to find the chat with given id")]
   ChatNotFoundErr,
   #[error(transparent)]
@@ -42,10 +35,7 @@ pub(crate) enum ChatError {
 impl PartialEq for ChatError {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
-      (ChatError::HomeDirErr, ChatError::HomeDirErr) => true,
-      (ChatError::HomeDirCreateErr, ChatError::HomeDirCreateErr) => true,
-      (ChatError::ChatDirErr, ChatError::ChatDirErr) => true,
-      (ChatError::ReadDirErr, ChatError::ReadDirErr) => true,
+      (ChatError::HomeDirError(e1), ChatError::HomeDirError(e2)) => e1.eq(e2),
       (ChatError::ChatNotFoundErr, ChatError::ChatNotFoundErr) => true,
       (ChatError::IOError(e1), ChatError::IOError(e2)) => e1.kind() == e2.kind(),
       (ChatError::JsonError(e1), ChatError::JsonError(e2)) => {
@@ -115,32 +105,10 @@ pub(crate) async fn ui_chat_delete_handler(
   Ok(Json(chat))
 }
 
-fn get_chats_dir() -> Result<PathBuf, ChatError> {
-  if let Ok(bodhi_home) = std::env::var(BODHI_HOME) {
-    let chats_dir = PathBuf::from(bodhi_home).join("chats");
-    if chats_dir.exists() {
-      if chats_dir.is_dir() {
-        Ok(chats_dir)
-      } else {
-        Err(ChatError::ChatNotDirErr)
-      }
-    } else {
-      Err(ChatError::ChatDirErr)
-    }
-  } else {
-    let home_dir = dirs::home_dir().ok_or(ChatError::HomeDirErr)?;
-    let chats_dir = Path::new(&home_dir).join(".bodhi/chats");
-    if !chats_dir.exists() {
-      fs::create_dir_all(&chats_dir).map_err(|_| ChatError::HomeDirCreateErr)?;
-    }
-    Ok(chats_dir)
-  }
-}
-
 fn _ui_chats_handler() -> Result<Vec<ChatPreview>, ChatError> {
   let chats_dir = get_chats_dir()?;
   let mut files: Vec<_> = fs::read_dir(chats_dir)
-    .map_err(|_| ChatError::ReadDirErr)?
+    .map_err(|_| HomeDirError::ReadDirErr)?
     .filter_map(|entry| {
       let entry = entry.ok()?;
       let path = entry.path();
