@@ -13,10 +13,12 @@ axum = "0.7.4"
 clap = { version = "4.5.2", features = ["derive"] }
 dirs = "5.0.1"
 dotenv = "0.15.0"
+futures-util = "0.3.30"
 llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 tokio = { version = "1.36.0", features = ["full"] }
+tokio-stream = "0.1.15"
 tower-http = { version = "0.5.2", features = ["trace"] }
 tracing = { version = "0.1.40", features = ["async-await", "log"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
@@ -24,6 +26,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 [dev-dependencies]
 fs2 = "0.4.3"
 lazy_static = "1.4.0"
+mousse = "0.1.1"
 rand = "0.8.5"
 reqwest = "0.12.3"
 rstest = "0.19.0"

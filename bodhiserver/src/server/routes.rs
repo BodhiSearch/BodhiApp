@@ -1,15 +1,23 @@
 use crate::server::bodhi_ctx::BodhiContextWrapper;
+use anyhow::{anyhow, Context};
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
+use axum::body::Body;
 use axum::extract::State;
+use axum::response::sse::Event;
+use axum::response::{Response, Sse};
 use axum::{
   http::StatusCode,
   response::IntoResponse,
   routing::{get, post},
   Json,
 };
+use std::convert::Infallible;
 use std::ffi::{c_char, c_void};
 use std::slice;
 use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc::UnboundedSender;
+use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio_stream::StreamExt;
 use tower_http::trace::TraceLayer;
 
 // TODO: serialize error in OpenAI format
@@ -29,8 +37,6 @@ impl IntoResponse for ApiError {
     }
   }
 }
-
-type Result<T> = std::result::Result<T, ApiError>;
 
 #[derive(Clone)]
 struct RouterState {
@@ -66,10 +72,29 @@ unsafe extern "C" fn server_callback(
   size
 }
 
+unsafe extern "C" fn server_callback_stream(
+  contents: *const c_char,
+  size: usize,
+  userdata: *mut c_void,
+) -> usize {
+  let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
+  let input_str = match std::str::from_utf8(slice) {
+    Ok(s) => s,
+    Err(_) => return 0,
+  }
+  .to_owned();
+  let sender = unsafe { &mut *(userdata as *mut Arc<Mutex<UnboundedSender<String>>>) };
+  sender.lock().unwrap().send(input_str).unwrap();
+  size
+}
+
 async fn chat_completions_handler(
   State(state): State<RouterState>,
   Json(request): Json<CreateChatCompletionRequest>,
-) -> Result<Json<CreateChatCompletionResponse>> {
+) -> Response<Body> {
+  if request.stream.unwrap_or(false) {
+    return chat_completions_stream_handler(state, request).await;
+  }
   let bodhi_ctx = state.bodhi_ctx.lock().unwrap();
   let input = serde_json::to_string(&request).unwrap();
   let userdata = String::with_capacity(2048);
@@ -83,7 +108,63 @@ async fn chat_completions_handler(
       &userdata as *const _ as *mut c_void,
     )
     .unwrap(); // todo
-  serde_json::from_str(&userdata)
+  serde_json::from_str::<CreateChatCompletionResponse>(&userdata)
     .map(Json)
     .map_err(ApiError::Json)
+    .into_response()
+}
+
+async fn chat_completions_stream_handler(
+  state: RouterState,
+  request: CreateChatCompletionRequest,
+) -> Response<Body> {
+  let input = serde_json::to_string(&request)
+    .context("converting request to string to pass to bodhi_server")
+    .unwrap();
+  let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+  tokio::spawn(async move {
+    let shared_tx = Arc::new(Mutex::new(tx));
+    let bodhi_ctx = state
+      .bodhi_ctx
+      .lock()
+      .map_err(|e| anyhow!("{:?}", e))
+      .context("unable to get the lock")
+      .unwrap();
+    let result = bodhi_ctx
+      .ctx
+      .as_ref()
+      .ok_or_else(|| anyhow!("bodhi_ctx is not initialized"))
+      .unwrap()
+      .completions(
+        &input,
+        Some(server_callback_stream),
+        &shared_tx as *const _ as *mut c_void,
+      );
+    if let Err(err) = result {
+      tracing::warn!(err = format!("{}", err), "error while streaming completion")
+    }
+  });
+
+  let stream =
+    UnboundedReceiverStream::new(rx).map::<std::result::Result<Event, Infallible>, _>(|msg| {
+      if msg.starts_with("data: ") {
+        let data = msg
+          .strip_prefix("data: ")
+          .unwrap()
+          .strip_suffix("\n\n")
+          .unwrap();
+        Ok(Event::default().data(data))
+      } else if msg.starts_with("error: ") {
+        let data = msg
+          .strip_prefix("error: ")
+          .unwrap()
+          .strip_suffix("\n\n")
+          .unwrap();
+        Ok(Event::default().data(data))
+      } else {
+        tracing::error!(msg, "unknown event type raised from bodhi_server");
+        Ok(Event::default().data(msg))
+      }
+    });
+  Sse::new(stream).into_response()
 }
