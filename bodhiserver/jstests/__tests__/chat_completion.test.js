@@ -1,0 +1,87 @@
+const os = require('os');
+const path = require('path');
+const { spawn } = require('child_process');
+const { OpenAI } = require('openai');
+
+describe('run bodhiserver', () => {
+  let server;
+  let openai;
+  beforeAll(async () => {
+    await new Promise((resolve, reject) => {
+      const buildProcess = spawn('cargo', ['build', '-p', 'bodhiserver']);
+      buildProcess.on('exit', (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error('Failed to build bodhiserver'));
+        }
+      });
+    });
+    await new Promise((resolve, reject) => {
+      let model_path = path.join(os.homedir(), '.cache/huggingface/llama-2-7b-chat.Q4_K_M.gguf');
+      server = spawn('../../target/debug/bodhiserver', ['serve', '-m', model_path]);
+      let timeout = setTimeout(() => {
+        reject(new Error('time out waiting for server to start'));
+      }, 10_000);
+      server.stdout.on('data', (data) => {
+        let output = Buffer.from(data, 'utf-8').toString().trim();
+        if (output.includes('Server started')) {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+    });
+    openai = new OpenAI({
+      apiKey: 'sk-dummy-key',
+      baseURL: 'http://127.0.0.1:7735/v1',
+    });
+  });
+
+  afterAll(async () => {
+    if (server) {
+      server.kill('SIGTERM');
+      await new Promise(resolve => server.on('exit', resolve));
+    }
+  });
+
+  it('should fetch chat completion', async () => {
+    const chatCompletion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      seed: 42,
+      messages: [
+        { role: 'assistant', content: 'you are a helpful assistant' },
+        { role: 'user', content: 'What day comes after Monday?' }
+      ]
+    });
+    expect(chatCompletion.choices[0].message.content).toBe('Tuesday comes after Monday');
+  });
+
+  it('should fetch chat completion stream', async () => {
+    const chatCompletion = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      stream: true,
+      seed: 42,
+      messages: [
+        { role: 'system', content: 'You are a helpful assistant.' },
+        { role: 'user', content: 'List down all the days of the week.' }
+      ]
+    });
+
+    let content = '';
+    for await (const chunk of chatCompletion) {
+      content += chunk.choices[0]?.delta?.content || '';
+    }
+    let expected = `Sure! Here are the 7 days of the week:
+
+1. Monday
+2. Tuesday
+3. Wednesday
+4. Thursday
+5. Friday
+6. Saturday
+7. Sunday
+
+I hope that helps! Let me know if you have any other questions.`;
+    expect(content).toEqual(expected);
+  });
+})
