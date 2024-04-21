@@ -7,7 +7,10 @@ use axum::{
 use std::sync::{Arc, Mutex};
 use tower_http::trace::TraceLayer;
 
-use super::{routes_chat::chat_completions_handler, routes_ui::{ui_chat_delete_handler, ui_chat_handler, ui_chats_handler}};
+use super::{
+  routes_chat::chat_completions_handler,
+  routes_ui::{ui_chat_delete_handler, ui_chat_handler, ui_chats_delete_handler, ui_chats_handler},
+};
 
 // TODO: serialize error in OpenAI format
 #[derive(Debug)]
@@ -43,7 +46,7 @@ pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::
     .route("/ping", get(|| async { "pong" }))
     .route("/v1/chat/completions", post(chat_completions_handler))
     .route("/chats", get(ui_chats_handler))
-    // .route("/chats", delete(ui_chats_delete_handler))
+    .route("/chats", delete(ui_chats_delete_handler))
     .route("/chats/:id", get(ui_chat_handler))
     .route("/chats/:id", delete(ui_chat_delete_handler))
     // .route("/models", delete(ui_models_handler))

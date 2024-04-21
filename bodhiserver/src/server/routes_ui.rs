@@ -27,6 +27,8 @@ pub(crate) enum ChatError {
   HomeDirCreateErr,
   #[error("Failed to get chats directory")]
   ChatDirErr,
+  #[error("Chats directory is not a directory")]
+  ChatNotDirErr,
   #[error("Failed to read directory")]
   ReadDirErr,
   #[error("Failed to find the chat with given id")]
@@ -96,6 +98,11 @@ pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ChatErr
   Ok(Json(chats))
 }
 
+pub(crate) async fn ui_chats_delete_handler() -> Result<Json<()>, ChatError> {
+  let chats = _ui_chats_delete_handler()?;
+  Ok(Json(chats))
+}
+
 pub(crate) async fn ui_chat_handler(UrlPath(id): UrlPath<String>) -> Result<Json<Chat>, ChatError> {
   let chat = _ui_chat_handler(&id)?;
   Ok(Json(chat))
@@ -112,7 +119,11 @@ fn get_chats_dir() -> Result<PathBuf, ChatError> {
   if let Ok(bodhi_home) = std::env::var(BODHI_HOME) {
     let chats_dir = PathBuf::from(bodhi_home).join("chats");
     if chats_dir.exists() {
-      Ok(chats_dir)
+      if chats_dir.is_dir() {
+        Ok(chats_dir)
+      } else {
+        Err(ChatError::ChatNotDirErr)
+      }
     } else {
       Err(ChatError::ChatDirErr)
     }
@@ -158,6 +169,12 @@ fn _ui_chats_handler() -> Result<Vec<ChatPreview>, ChatError> {
   Ok(chats)
 }
 
+fn _ui_chats_delete_handler() -> Result<(), ChatError> {
+  let chats_dir = get_chats_dir()?;
+  remove_dir_contents(&chats_dir)?;
+  Ok(())
+}
+
 fn _ui_chat_handler(id: &str) -> Result<Chat, ChatError> {
   let chats_dir = get_chats_dir()?;
   let file = find_file_by_id(&chats_dir, id).ok_or(ChatError::ChatNotFoundErr)?;
@@ -198,6 +215,19 @@ fn find_file_by_id(directory: &Path, id: &str) -> Option<PathBuf> {
   None
 }
 
+fn remove_dir_contents(dir: &Path) -> Result<(), ChatError> {
+  for entry in fs::read_dir(dir)? {
+    let entry = entry?;
+    let path = entry.path();
+    if path.is_dir() {
+      fs::remove_dir_all(&path)?;
+    } else {
+      fs::remove_file(&path)?;
+    }
+  }
+  Ok(())
+}
+
 #[cfg(test)]
 mod test {
   use chrono::Utc;
@@ -206,7 +236,10 @@ mod test {
 
   use super::_ui_chats_handler;
   use crate::server::{
-    routes_ui::{Chat, ChatError, ChatPreview, Message, _ui_chat_delete_handler, _ui_chat_handler},
+    routes_ui::{
+      Chat, ChatError, ChatPreview, Message, _ui_chat_delete_handler, _ui_chat_handler,
+      _ui_chats_delete_handler,
+    },
     utils::BODHI_HOME,
   };
   use std::{
@@ -278,6 +311,17 @@ mod test {
     let result = _ui_chat_delete_handler(id);
     assert!(result.is_err());
     assert_eq!(ChatError::ChatNotFoundErr, result.unwrap_err());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_delete_chats(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
+    let _bodhi_home = bodhi_home?;
+    _ui_chats_delete_handler()?;
+    let chat_file = PathBuf::from(_bodhi_home.path())
+      .join("chats")
+      .join("20240420105119639_UE6qd0b.json");
+    assert_eq!(false, chat_file.exists());
     Ok(())
   }
 
