@@ -10,6 +10,7 @@ authors = ["Amir Nagri <amir.nagri@gmail.com>"]
 anyhow = "1.0.81"
 async-openai = "0.20.0"
 axum = "0.7.4"
+chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.2", features = ["derive"] }
 dirs = "5.0.1"
 dotenv = "0.15.0"
@@ -17,6 +18,7 @@ futures-util = "0.3.30"
 llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
+thiserror = "1.0.59"
 tokio = { version = "1.36.0", features = ["full"] }
 tokio-stream = "0.1.15"
 tower-http = { version = "0.5.2", features = ["trace"] }
@@ -31,3 +33,4 @@ rand = "0.8.5"
 reqwest = "0.12.3"
 rstest = "0.19.0"
 tempdir = "0.3.7"
+tempfile = "3.10.1"
