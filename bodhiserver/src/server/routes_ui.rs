@@ -46,14 +46,9 @@ impl PartialEq for ChatError {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct ApiError {
-  error: String,
-}
-
 impl IntoResponse for ChatError {
   fn into_response(self) -> Response<Body> {
-    Json(ApiError {
+    Json(super::utils::ApiError {
       error: format!("{}", self),
     })
     .into_response()
