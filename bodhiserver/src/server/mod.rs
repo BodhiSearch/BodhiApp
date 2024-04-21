@@ -1,5 +1,6 @@
 mod bodhi_ctx;
 mod routes;
+mod routes_chat;
 #[allow(clippy::module_inception)]
 mod server;
 mod shutdown;
