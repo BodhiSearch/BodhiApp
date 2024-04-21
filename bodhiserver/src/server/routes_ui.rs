@@ -37,6 +37,23 @@ pub(crate) enum ChatError {
   JsonError(#[from] serde_json::Error),
 }
 
+impl PartialEq for ChatError {
+  fn eq(&self, other: &Self) -> bool {
+    match (self, other) {
+      (ChatError::HomeDirErr, ChatError::HomeDirErr) => true,
+      (ChatError::HomeDirCreateErr, ChatError::HomeDirCreateErr) => true,
+      (ChatError::ChatDirErr, ChatError::ChatDirErr) => true,
+      (ChatError::ReadDirErr, ChatError::ReadDirErr) => true,
+      (ChatError::ChatNotFoundErr, ChatError::ChatNotFoundErr) => true,
+      (ChatError::IOError(e1), ChatError::IOError(e2)) => e1.kind() == e2.kind(),
+      (ChatError::JsonError(e1), ChatError::JsonError(e2)) => {
+        format!("{}", e1) == format!("{}", e2)
+      }
+      _ => false,
+    }
+  }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct ApiError {
   error: String,
@@ -81,6 +98,13 @@ pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ChatErr
 
 pub(crate) async fn ui_chat_handler(UrlPath(id): UrlPath<String>) -> Result<Json<Chat>, ChatError> {
   let chat = _ui_chat_handler(&id)?;
+  Ok(Json(chat))
+}
+
+pub(crate) async fn ui_chat_delete_handler(
+  UrlPath(id): UrlPath<String>,
+) -> Result<Json<()>, ChatError> {
+  let chat = _ui_chat_delete_handler(&id)?;
   Ok(Json(chat))
 }
 
@@ -142,6 +166,17 @@ fn _ui_chat_handler(id: &str) -> Result<Chat, ChatError> {
   Ok(chat)
 }
 
+fn _ui_chat_delete_handler(id: &str) -> Result<(), ChatError> {
+  let chats_dir = get_chats_dir()?;
+  let file = find_file_by_id(&chats_dir, id).ok_or(ChatError::ChatNotFoundErr)?;
+  if file.exists() {
+    fs::remove_file(&file)?;
+    Ok(())
+  } else {
+    Err(ChatError::ChatNotFoundErr)
+  }
+}
+
 fn find_file_by_id(directory: &Path, id: &str) -> Option<PathBuf> {
   let pattern = format!(r"\d{{17}}_({})\.json", regex::escape(id));
   let re = Regex::new(&pattern).expect("Invalid regex");
@@ -171,7 +206,7 @@ mod test {
 
   use super::_ui_chats_handler;
   use crate::server::{
-    routes_ui::{Chat, ChatPreview, Message, _ui_chat_handler},
+    routes_ui::{Chat, ChatError, ChatPreview, Message, _ui_chat_delete_handler, _ui_chat_handler},
     utils::BODHI_HOME,
   };
   use std::{
@@ -225,6 +260,24 @@ mod test {
       ],
     };
     assert_eq!(expected, chat);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_delete_chat(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
+    let _bodhi_home = bodhi_home?;
+    let id = "2sglRnL";
+    _ui_chat_delete_handler(id)?;
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_delete_chat_file_missing(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
+    let _bodhi_home = bodhi_home?;
+    let id = "undefined";
+    let result = _ui_chat_delete_handler(id);
+    assert!(result.is_err());
+    assert_eq!(ChatError::ChatNotFoundErr, result.unwrap_err());
     Ok(())
   }
 
