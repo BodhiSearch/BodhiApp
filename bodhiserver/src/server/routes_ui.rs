@@ -5,9 +5,13 @@ use axum::response::IntoResponse;
 use axum::response::Json;
 use chrono::serde::ts_milliseconds;
 use chrono::Utc;
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
+use std::fs::File;
+use std::io;
+use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -25,6 +29,12 @@ pub(crate) enum ChatError {
   ChatDirErr,
   #[error("Failed to read directory")]
   ReadDirErr,
+  #[error("Failed to find the chat with given id")]
+  ChatNotFoundErr,
+  #[error(transparent)]
+  IOError(#[from] io::Error),
+  #[error(transparent)]
+  JsonError(#[from] serde_json::Error),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -49,16 +59,13 @@ pub(crate) struct ChatPreview {
   created_at: chrono::DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) struct Message {
-  id: String,
   role: String,
   content: String,
-  #[serde(rename = "createdAt", with = "ts_milliseconds")]
-  created_at: chrono::DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) struct Chat {
   id: String,
   title: String,
@@ -72,20 +79,31 @@ pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ChatErr
   Ok(Json(chats))
 }
 
-fn _ui_chats_handler() -> Result<Vec<ChatPreview>, ChatError> {
-  let chats_dir = if let Ok(bodhi_home) = std::env::var(BODHI_HOME) {
-    PathBuf::from(bodhi_home).join("chats")
+pub(crate) async fn ui_chat_handler(UrlPath(id): UrlPath<String>) -> Result<Json<Chat>, ChatError> {
+  let chat = _ui_chat_handler(&id)?;
+  Ok(Json(chat))
+}
+
+fn get_chats_dir() -> Result<PathBuf, ChatError> {
+  if let Ok(bodhi_home) = std::env::var(BODHI_HOME) {
+    let chats_dir = PathBuf::from(bodhi_home).join("chats");
+    if chats_dir.exists() {
+      Ok(chats_dir)
+    } else {
+      Err(ChatError::ChatDirErr)
+    }
   } else {
     let home_dir = dirs::home_dir().ok_or(ChatError::HomeDirErr)?;
-    let bodhi_home = Path::new(&home_dir).join(".bodhi/chats");
-    if !bodhi_home.exists() {
-      fs::create_dir_all(&bodhi_home).map_err(|_| ChatError::HomeDirCreateErr)?;
+    let chats_dir = Path::new(&home_dir).join(".bodhi/chats");
+    if !chats_dir.exists() {
+      fs::create_dir_all(&chats_dir).map_err(|_| ChatError::HomeDirCreateErr)?;
     }
-    bodhi_home
-  };
-  if !chats_dir.exists() {
-    return Err(ChatError::ChatDirErr);
+    Ok(chats_dir)
   }
+}
+
+fn _ui_chats_handler() -> Result<Vec<ChatPreview>, ChatError> {
+  let chats_dir = get_chats_dir()?;
   let mut files: Vec<_> = fs::read_dir(chats_dir)
     .map_err(|_| ChatError::ReadDirErr)?
     .filter_map(|entry| {
@@ -116,6 +134,35 @@ fn _ui_chats_handler() -> Result<Vec<ChatPreview>, ChatError> {
   Ok(chats)
 }
 
+fn _ui_chat_handler(id: &str) -> Result<Chat, ChatError> {
+  let chats_dir = get_chats_dir()?;
+  let file = find_file_by_id(&chats_dir, id).ok_or(ChatError::ChatNotFoundErr)?;
+  let file = File::open(file)?;
+  let chat: Chat = serde_json::from_reader(BufReader::new(file))?;
+  Ok(chat)
+}
+
+fn find_file_by_id(directory: &Path, id: &str) -> Option<PathBuf> {
+  let pattern = format!(r"\d{{17}}_({})\.json", regex::escape(id));
+  let re = Regex::new(&pattern).expect("Invalid regex");
+  if !directory.is_dir() {
+    return None;
+  }
+  if let Ok(entries) = fs::read_dir(directory) {
+    for entry in entries.flatten() {
+      let path = entry.path();
+      if path.is_file() {
+        if let Some(file_name) = path.file_name().and_then(|name| name.to_str()) {
+          if re.is_match(file_name) {
+            return Some(path);
+          }
+        }
+      }
+    }
+  }
+  None
+}
+
 #[cfg(test)]
 mod test {
   use chrono::Utc;
@@ -123,55 +170,15 @@ mod test {
   use tempfile::TempDir;
 
   use super::_ui_chats_handler;
-  use crate::server::{routes_ui::ChatPreview, utils::BODHI_HOME};
+  use crate::server::{
+    routes_ui::{Chat, ChatPreview, Message, _ui_chat_handler},
+    utils::BODHI_HOME,
+  };
   use std::{
     fs,
     io::Write,
     path::{Path, PathBuf},
   };
-
-  #[fixture]
-  fn bodhi_home() -> anyhow::Result<TempDir> {
-    let home_dir = tempfile::tempdir()?;
-    let temp_chats_dir = tempfile::tempdir_in(&home_dir)?;
-    let chats_dir = PathBuf::from(home_dir.path()).join("chats");
-    let chats_dir = chats_dir.as_path();
-    fs::rename(temp_chats_dir, chats_dir)?;
-    let content = r#"{
-      "title": "list down months in a year",
-      "createdAt": 1713590479639,
-      "id": "UE6qd0b",
-      "messages": [
-        {
-          "role": "user",
-          "content": "list down months in a year"
-        },
-        {
-          "content": "1. January\n2. February\n3. March\n4. April\n5. May\n6. June\n7. July\n8. August\n9. September\n10. October\n11. November\n12. December",
-          "role": "assistant"
-        }
-      ]
-    }"#;
-    create_temp_file(content, chats_dir, "20240401122734_UE6qd0b.json")?;
-    let content = r#"{
-      "title": "what day comes after Monday?",
-      "createdAt": 1713582468174,
-      "id": "2sglRnL",
-      "messages": [
-        {
-          "role": "user",
-          "content": "what day comes after Monday?"
-        },
-        {
-          "role": "assistant",
-          "content": "The day that comes after Monday is Tuesday."
-        }
-      ]
-    }"#;
-    create_temp_file(content, chats_dir, "20240402123456_2sglRnL.json")?;
-    std::env::set_var(BODHI_HOME, format!("{}", home_dir.path().display()));
-    Ok(home_dir)
-  }
 
   #[rstest]
   pub fn test_get_chats(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
@@ -195,6 +202,73 @@ mod test {
       chats.get(1).unwrap()
     );
     Ok(())
+  }
+
+  #[rstest]
+  fn test_get_chat(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
+    let _bodhi_home = bodhi_home?;
+    let id = "2sglRnL";
+    let chat = _ui_chat_handler(id)?;
+    let expected = Chat {
+      id: "2sglRnL".to_string(),
+      title: "what day comes after Monday?".to_string(),
+      created_at: chrono::DateTime::<Utc>::from_timestamp_millis(1713582468174).unwrap(),
+      messages: vec![
+        Message {
+          role: "user".to_string(),
+          content: "what day comes after Monday?".to_string(),
+        },
+        Message {
+          role: "assistant".to_string(),
+          content: "The day that comes after Monday is Tuesday.".to_string(),
+        },
+      ],
+    };
+    assert_eq!(expected, chat);
+    Ok(())
+  }
+
+  #[fixture]
+  fn bodhi_home() -> anyhow::Result<TempDir> {
+    let home_dir = tempfile::tempdir()?;
+    let temp_chats_dir = tempfile::tempdir_in(&home_dir)?;
+    let chats_dir = PathBuf::from(home_dir.path()).join("chats");
+    let chats_dir = chats_dir.as_path();
+    fs::rename(temp_chats_dir, chats_dir)?;
+    let content = r#"{
+      "title": "list down months in a year",
+      "createdAt": 1713590479639,
+      "id": "UE6qd0b",
+      "messages": [
+        {
+          "role": "user",
+          "content": "list down months in a year"
+        },
+        {
+          "content": "1. January\n2. February\n3. March\n4. April\n5. May\n6. June\n7. July\n8. August\n9. September\n10. October\n11. November\n12. December",
+          "role": "assistant"
+        }
+      ]
+    }"#;
+    create_temp_file(content, chats_dir, "20240420105119639_UE6qd0b.json")?;
+    let content = r#"{
+      "title": "what day comes after Monday?",
+      "createdAt": 1713582468174,
+      "id": "2sglRnL",
+      "messages": [
+        {
+          "role": "user",
+          "content": "what day comes after Monday?"
+        },
+        {
+          "role": "assistant",
+          "content": "The day that comes after Monday is Tuesday."
+        }
+      ]
+    }"#;
+    create_temp_file(content, chats_dir, "20241011083748174_2sglRnL.json")?;
+    std::env::set_var(BODHI_HOME, format!("{}", home_dir.path().display()));
+    Ok(home_dir)
   }
 
   fn create_temp_file(content: &str, temp_dir: &Path, filename: &str) -> anyhow::Result<()> {

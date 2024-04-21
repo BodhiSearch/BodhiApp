@@ -16,6 +16,7 @@ dirs = "5.0.1"
 dotenv = "0.15.0"
 futures-util = "0.3.30"
 llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
+regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 thiserror = "1.0.59"
