@@ -1,7 +1,7 @@
 import axios from 'axios'
+import { API_BASE_URL } from '@/lib/utils'
 
 export const client = axios.create()
-export const API_BASE_URL = '';
 
 export async function getChats() {
   let { data, status } = await client.get(`${API_BASE_URL}/api/getChats`) // TODO - change to RESTful

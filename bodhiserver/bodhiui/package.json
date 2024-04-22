@@ -17,7 +17,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-tooltip": "^1.0.7",
     "@vercel/kv": "^1.0.1",
-    "ai": "^3.0.23",
+    "ai": "file:../ai/packages/core",
     "axios": "^1.6.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
