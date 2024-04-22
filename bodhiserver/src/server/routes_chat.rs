@@ -9,9 +9,8 @@ use axum::{response::IntoResponse, Json};
 use std::convert::Infallible;
 use std::ffi::{c_char, c_void};
 use std::slice;
-use std::sync::{Arc, Mutex};
-use tokio::sync::mpsc::UnboundedSender;
-use tokio_stream::wrappers::UnboundedReceiverStream;
+use tokio::sync::mpsc::Sender;
+use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::StreamExt;
 
 unsafe extern "C" fn server_callback(
@@ -40,8 +39,9 @@ unsafe extern "C" fn server_callback_stream(
     Err(_) => return 0,
   }
   .to_owned();
-  let sender = unsafe { &mut *(userdata as *mut Arc<Mutex<UnboundedSender<String>>>) };
-  sender.lock().unwrap().send(input_str).unwrap();
+  let sender = unsafe { &mut *(userdata as *mut Sender<String>) }.clone();
+  // TODO: handle closed receiver
+  tokio::spawn(async move { sender.send(input_str).await.unwrap() });
   size
 }
 
@@ -78,9 +78,8 @@ async fn chat_completions_stream_handler(
   let input = serde_json::to_string(&request)
     .context("converting request to string to pass to bodhi_server")
     .unwrap();
-  let (tx, rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+  let (tx, rx) = tokio::sync::mpsc::channel::<String>(100);
   tokio::spawn(async move {
-    let shared_tx = Arc::new(Mutex::new(tx));
     let bodhi_ctx = state
       .bodhi_ctx
       .lock()
@@ -95,33 +94,33 @@ async fn chat_completions_stream_handler(
       .completions(
         &input,
         Some(server_callback_stream),
-        &shared_tx as *const _ as *mut c_void,
+        &tx as *const _ as *mut c_void,
       );
     if let Err(err) = result {
       tracing::warn!(err = format!("{}", err), "error while streaming completion")
     }
+    drop(tx);
   });
 
-  let stream =
-    UnboundedReceiverStream::new(rx).map::<std::result::Result<Event, Infallible>, _>(|msg| {
-      if msg.starts_with("data: ") {
-        let data = msg
-          .strip_prefix("data: ")
-          .unwrap()
-          .strip_suffix("\n\n")
-          .unwrap();
-        Ok(Event::default().data(data))
-      } else if msg.starts_with("error: ") {
-        let data = msg
-          .strip_prefix("error: ")
-          .unwrap()
-          .strip_suffix("\n\n")
-          .unwrap();
-        Ok(Event::default().data(data))
-      } else {
-        tracing::error!(msg, "unknown event type raised from bodhi_server");
-        Ok(Event::default().data(msg))
-      }
-    });
+  let stream = ReceiverStream::new(rx).map::<std::result::Result<Event, Infallible>, _>(|msg| {
+    if msg.starts_with("data: ") {
+      let data = msg
+        .strip_prefix("data: ")
+        .unwrap()
+        .strip_suffix("\n\n")
+        .unwrap();
+      Ok(Event::default().data(data))
+    } else if msg.starts_with("error: ") {
+      let data = msg
+        .strip_prefix("error: ")
+        .unwrap()
+        .strip_suffix("\n\n")
+        .unwrap();
+      Ok(Event::default().data(data))
+    } else {
+      tracing::error!(msg, "unknown event type raised from bodhi_server");
+      Ok(Event::default().data(msg))
+    }
+  });
   Sse::new(stream).into_response()
 }
