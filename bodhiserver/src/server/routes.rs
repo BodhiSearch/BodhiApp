@@ -11,6 +11,7 @@ use axum::{
 };
 use std::sync::{Arc, Mutex};
 use tower_http::trace::TraceLayer;
+use tower_http::cors::{CorsLayer, Any};
 
 // TODO: serialize error in OpenAI format
 #[derive(Debug)]
@@ -50,6 +51,13 @@ pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::
     .route("/chats/:id", get(ui_chat_handler))
     .route("/chats/:id", delete(ui_chat_delete_handler))
     .route("/models", get(ui_models_handler))
+    .layer(
+      CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .allow_credentials(false),
+    )
     .layer(TraceLayer::new_for_http())
     .with_state(RouterState::new(bodhi_ctx))
 }

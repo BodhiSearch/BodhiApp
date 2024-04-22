@@ -29,8 +29,9 @@ impl IntoResponse for ModelError {
   }
 }
 
-pub(crate) async fn ui_models_handler() -> Result<Json<Vec<Model>>, ModelError> {
-  let models = _ui_models_handler()?;
+pub(crate) async fn ui_models_handler() -> Result<Json<Vec<String>>, ModelError> {
+  // let models = _ui_models_handler()?;
+  let models = vec!["llama2-7b".to_string(), "llama2-13b".to_string()];
   Ok(Json(models))
 }
 
