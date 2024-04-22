@@ -1,6 +1,10 @@
 use super::utils;
 use super::utils::get_chats_dir;
 use super::utils::HomeDirError;
+use super::utils::ROLE_ASSISTANT;
+use super::utils::ROLE_USER;
+use async_openai::types::ChatCompletionRequestMessage;
+use async_openai::types::CreateChatCompletionRequest;
 use axum::body::Body;
 use axum::extract::Path as UrlPath;
 use axum::http::Response;
@@ -11,6 +15,7 @@ use chrono::Utc;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
+use std::cmp::min;
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -18,25 +23,28 @@ use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 #[derive(Error, Debug)]
 #[allow(clippy::enum_variant_names)]
 pub(crate) enum ChatError {
   #[error(transparent)]
   HomeDirError(#[from] utils::HomeDirError),
-  #[error("Failed to find the chat with given id")]
-  ChatNotFoundErr,
+  #[error("Failed to find the chat with given id: '${0}'")]
+  ChatNotFoundErr(String),
   #[error(transparent)]
   IOError(#[from] io::Error),
   #[error(transparent)]
   JsonError(#[from] serde_json::Error),
+  #[error("Last chat by user not found in messages")]
+  LastChatNotFoundErr,
 }
 
 impl PartialEq for ChatError {
   fn eq(&self, other: &Self) -> bool {
     match (self, other) {
       (ChatError::HomeDirError(e1), ChatError::HomeDirError(e2)) => e1.eq(e2),
-      (ChatError::ChatNotFoundErr, ChatError::ChatNotFoundErr) => true,
+      (ChatError::ChatNotFoundErr(id1), ChatError::ChatNotFoundErr(id2)) => id1.eq(id2),
       (ChatError::IOError(e1), ChatError::IOError(e2)) => e1.kind() == e2.kind(),
       (ChatError::JsonError(e1), ChatError::JsonError(e2)) => {
         format!("{}", e1) == format!("{}", e2)
@@ -56,52 +64,51 @@ impl IntoResponse for ChatError {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct ChatPreview {
-  id: String,
-  title: String,
+pub struct ChatPreview {
+  pub id: String,
+  pub title: String,
   #[serde(rename = "createdAt", with = "ts_milliseconds")]
-  created_at: chrono::DateTime<Utc>,
+  pub created_at: chrono::DateTime<Utc>,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct Message {
-  role: String,
-  content: String,
+pub struct Message {
+  pub role: String,
+  pub content: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct Chat {
-  id: String,
-  title: String,
-  messages: Vec<Message>,
+pub struct Chat {
+  pub id: String,
+  pub title: String,
+  pub messages: Vec<Message>,
   #[serde(rename = "createdAt", with = "ts_milliseconds")]
-  created_at: chrono::DateTime<Utc>,
+  pub created_at: chrono::DateTime<Utc>,
 }
 
 pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ChatError> {
-  let chats = _ui_chats_handler()?;
+  let chats = _ui_chats_handler(get_chats_dir()?)?;
   Ok(Json(chats))
 }
 
 pub(crate) async fn ui_chats_delete_handler() -> Result<Json<()>, ChatError> {
-  let chats = _ui_chats_delete_handler()?;
-  Ok(Json(chats))
+  _ui_chats_delete_handler(get_chats_dir()?)?;
+  Ok(Json(()))
 }
 
 pub(crate) async fn ui_chat_handler(UrlPath(id): UrlPath<String>) -> Result<Json<Chat>, ChatError> {
-  let chat = _ui_chat_handler(&id)?;
+  let chat = _ui_chat_handler(get_chats_dir()?, &id)?;
   Ok(Json(chat))
 }
 
 pub(crate) async fn ui_chat_delete_handler(
   UrlPath(id): UrlPath<String>,
 ) -> Result<Json<()>, ChatError> {
-  let chat = _ui_chat_delete_handler(&id)?;
-  Ok(Json(chat))
+  _ui_chat_delete_handler(get_chats_dir()?, &id)?;
+  Ok(Json(()))
 }
 
-fn _ui_chats_handler() -> Result<Vec<ChatPreview>, ChatError> {
-  let chats_dir = get_chats_dir()?;
+fn _ui_chats_handler(chats_dir: PathBuf) -> Result<Vec<ChatPreview>, ChatError> {
   let mut files: Vec<_> = fs::read_dir(chats_dir)
     .map_err(|_| HomeDirError::ReadDirErr)?
     .filter_map(|entry| {
@@ -116,54 +123,121 @@ fn _ui_chats_handler() -> Result<Vec<ChatPreview>, ChatError> {
     .collect();
   files.sort_by(|a, b| b.cmp(a));
   let chats = Vec::with_capacity(files.len());
-  let chats = files.into_iter().fold(chats, |mut chats, file| {
-    if let Ok(content) = fs::read_to_string(file) {
-      match serde_json::from_str::<ChatPreview>(&content) {
-        Ok(obj) => {
-          chats.push(obj);
-        }
-        Err(e) => {
-          eprintln!("error parsing:{e}");
-        }
-      }
-    }
-    chats
-  });
+  let chats = files
+    .into_iter()
+    .filter_map(|file| {
+      let content = fs::read_to_string(file).ok()?;
+      serde_json::from_str::<ChatPreview>(&content).ok()
+    })
+    .fold(chats, |mut chats, chat| {
+      chats.push(chat);
+      chats
+    });
   Ok(chats)
 }
 
-fn _ui_chats_delete_handler() -> Result<(), ChatError> {
-  let chats_dir = get_chats_dir()?;
+fn _ui_chats_delete_handler(chats_dir: PathBuf) -> Result<(), ChatError> {
   remove_dir_contents(&chats_dir)?;
   Ok(())
 }
 
-fn _ui_chat_handler(id: &str) -> Result<Chat, ChatError> {
-  let chats_dir = get_chats_dir()?;
-  let file = find_file_by_id(&chats_dir, id).ok_or(ChatError::ChatNotFoundErr)?;
+fn _ui_chat_handler(chats_dir: PathBuf, id: &str) -> Result<Chat, ChatError> {
+  let file =
+    find_file_by_id(&chats_dir, id).ok_or_else(|| ChatError::ChatNotFoundErr(id.to_string()))?;
   let file = File::open(file)?;
   let chat: Chat = serde_json::from_reader(BufReader::new(file))?;
   Ok(chat)
 }
 
-fn _ui_chat_delete_handler(id: &str) -> Result<(), ChatError> {
-  let chats_dir = get_chats_dir()?;
-  let file = find_file_by_id(&chats_dir, id).ok_or(ChatError::ChatNotFoundErr)?;
+fn _ui_chat_delete_handler(chats_dir: PathBuf, id: &str) -> Result<(), ChatError> {
+  let file =
+    find_file_by_id(&chats_dir, id).ok_or_else(|| ChatError::ChatNotFoundErr(id.to_string()))?;
   if file.exists() {
     fs::remove_file(&file)?;
     Ok(())
   } else {
-    Err(ChatError::ChatNotFoundErr)
+    Err(ChatError::ChatNotFoundErr(id.to_string()))
   }
 }
 
-fn find_file_by_id(directory: &Path, id: &str) -> Option<PathBuf> {
+pub(crate) async fn save_stream(
+  id: Option<String>,
+  request: CreateChatCompletionRequest,
+  mut rx: UnboundedReceiver<String>,
+) -> Result<(), ChatError> {
+  if id.is_none() {
+    return Ok(());
+  }
+  let id = id.unwrap();
+  let mut deltas = String::new();
+  while let Some(message) = rx.recv().await {
+    deltas.push_str(&message);
+  }
+  let chats_dir = get_chats_dir()?;
+  save_chat(&chats_dir, id, request, deltas)?;
+  Ok(())
+}
+
+fn save_chat(
+  chats_dir: &Path,
+  id: String,
+  request: CreateChatCompletionRequest,
+  response: String,
+) -> Result<(), ChatError> {
+  let Some(message) = request.messages.last() else {
+    return Err(ChatError::LastChatNotFoundErr);
+  };
+  let user_chat = match message {
+    // TODO bug in serde probably
+    ChatCompletionRequestMessage::System(message) => {
+      let content = message.content.to_owned();
+      Message {
+        role: ROLE_USER.to_string(),
+        content,
+      }
+    }
+    _ => return Err(ChatError::LastChatNotFoundErr),
+  };
+  let assistant_chat = Message {
+    role: ROLE_ASSISTANT.to_string(),
+    content: response,
+  };
+
+  let file = find_file_by_id(chats_dir, &id);
+  match file {
+    Some(file) => {
+      // existing chat
+      let file_handle = File::open(file.clone())?;
+      let mut chat: Chat = serde_json::from_reader(BufReader::new(file_handle))?;
+      chat.messages.push(user_chat);
+      chat.messages.push(assistant_chat);
+      let file_content = serde_json::to_string(&chat)?;
+      fs::write(file, file_content)?;
+    }
+    None => {
+      let epoch_millis = Utc::now().format("%Y%m%d%H%M%S%3f").to_string();
+      let filename = format!("{}_{}.json", epoch_millis, id);
+      let file_path = chats_dir.join(filename);
+      let chat = Chat {
+        id,
+        title: user_chat.content[0..min(user_chat.content.len() - 1, 100)].to_string(),
+        messages: vec![user_chat, assistant_chat],
+        created_at: Utc::now(),
+      };
+      let file_content = serde_json::to_string(&chat)?;
+      fs::write(file_path, file_content)?;
+    }
+  };
+  Ok(())
+}
+
+fn find_file_by_id(chats_dir: &Path, id: &str) -> Option<PathBuf> {
   let pattern = format!(r"\d{{17}}_({})\.json", regex::escape(id));
   let re = Regex::new(&pattern).expect("Invalid regex");
-  if !directory.is_dir() {
+  if !chats_dir.is_dir() {
     return None;
   }
-  if let Ok(entries) = fs::read_dir(directory) {
+  if let Ok(entries) = fs::read_dir(chats_dir) {
     for entry in entries.flatten() {
       let path = entry.path();
       if path.is_file() {
@@ -193,15 +267,17 @@ fn remove_dir_contents(dir: &Path) -> Result<(), ChatError> {
 
 #[cfg(test)]
 mod test {
+  use async_openai::types::CreateChatCompletionRequest;
   use chrono::Utc;
   use rstest::{fixture, rstest};
+  use serde_json::json;
   use tempfile::TempDir;
 
   use super::_ui_chats_handler;
   use crate::server::{
     routes_ui::{
       Chat, ChatError, ChatPreview, Message, _ui_chat_delete_handler, _ui_chat_handler,
-      _ui_chats_delete_handler,
+      _ui_chats_delete_handler, save_chat,
     },
     utils::BODHI_HOME,
   };
@@ -212,9 +288,9 @@ mod test {
   };
 
   #[rstest]
-  pub fn test_get_chats(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
-    let _bodhi_home = bodhi_home?;
-    let chats = _ui_chats_handler()?;
+  pub fn test_get_chats(bodhi_home: TempDir) -> anyhow::Result<()> {
+    let chats_dir = bodhi_home.path().join("chats");
+    let chats = _ui_chats_handler(chats_dir)?;
     assert_eq!(2, chats.len());
     assert_eq!(
       &ChatPreview {
@@ -232,14 +308,15 @@ mod test {
       },
       chats.get(1).unwrap()
     );
+    drop(bodhi_home);
     Ok(())
   }
 
   #[rstest]
-  fn test_get_chat(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
-    let _bodhi_home = bodhi_home?;
+  fn test_get_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
+    let chats_dir = bodhi_home.path().join("chats");
     let id = "2sglRnL";
-    let chat = _ui_chat_handler(id)?;
+    let chat = _ui_chat_handler(chats_dir, id)?;
     let expected = Chat {
       id: "2sglRnL".to_string(),
       title: "what day comes after Monday?".to_string(),
@@ -256,40 +333,104 @@ mod test {
       ],
     };
     assert_eq!(expected, chat);
+    drop(bodhi_home);
     Ok(())
   }
 
   #[rstest]
-  fn test_delete_chat(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
-    let _bodhi_home = bodhi_home?;
+  fn test_delete_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
+    let chats_dir = bodhi_home.path().join("chats");
     let id = "2sglRnL";
-    _ui_chat_delete_handler(id)?;
+    _ui_chat_delete_handler(chats_dir, id)?;
+    drop(bodhi_home);
     Ok(())
   }
 
   #[rstest]
-  fn test_delete_chat_file_missing(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
-    let _bodhi_home = bodhi_home?;
+  fn test_delete_chat_file_missing(bodhi_home: TempDir) -> anyhow::Result<()> {
+    let chats_dir = bodhi_home.path().join("chats");
     let id = "undefined";
-    let result = _ui_chat_delete_handler(id);
+    let result = _ui_chat_delete_handler(chats_dir, id);
     assert!(result.is_err());
-    assert_eq!(ChatError::ChatNotFoundErr, result.unwrap_err());
+    assert_eq!(
+      ChatError::ChatNotFoundErr(id.to_string()),
+      result.unwrap_err()
+    );
+    drop(bodhi_home);
     Ok(())
   }
 
   #[rstest]
-  fn test_delete_chats(bodhi_home: anyhow::Result<TempDir>) -> anyhow::Result<()> {
-    let _bodhi_home = bodhi_home?;
-    _ui_chats_delete_handler()?;
-    let chat_file = PathBuf::from(_bodhi_home.path())
+  fn test_delete_chats(bodhi_home: TempDir) -> anyhow::Result<()> {
+    let chats_dir = bodhi_home.path().join("chats");
+    _ui_chats_delete_handler(chats_dir)?;
+    let chat_file = PathBuf::from(bodhi_home.path())
       .join("chats")
       .join("20240420105119639_UE6qd0b.json");
-    assert_eq!(false, chat_file.exists());
+    assert!(!chat_file.exists());
+    drop(bodhi_home);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_update_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
+    let chats_dir = bodhi_home.path().join("chats");
+    let id = "UE6qd0b".to_string();
+    let request = json! {{"model": "tinyllama", "messages": [{"role": "user", "content": "What day comes after Monday?"}]}};
+    let request: CreateChatCompletionRequest = serde_json::from_value(request)?;
+    save_chat(
+      &chats_dir,
+      id.clone(),
+      request,
+      "The day that comes after Monday is Tuesday.".to_string(),
+    )?;
+    let chat = _ui_chat_handler(chats_dir, &id)?;
+    assert_eq!(4, chat.messages.len());
+    assert_eq!(
+      "What day comes after Monday?",
+      chat.messages.get(2).unwrap().content
+    );
+    assert_eq!(
+      "The day that comes after Monday is Tuesday.",
+      chat.messages.get(3).unwrap().content
+    );
+    drop(bodhi_home);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_create_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
+    let chats_dir = bodhi_home.path().join("chats");
+    let id = "NEWID07".to_string();
+    let request = json! {{"model": "tinyllama", "messages": [{"role": "user", "content": "What day comes after Monday?"}]}};
+    let request: CreateChatCompletionRequest = serde_json::from_value(request)?;
+    save_chat(
+      &chats_dir,
+      id.clone(),
+      request,
+      "The day that comes after Monday is Tuesday.".to_string(),
+    )?;
+    let chat = _ui_chat_handler(chats_dir, &id)?;
+    assert_eq!(2, chat.messages.len());
+    let first = chat.messages.first().unwrap();
+    assert_eq!("What day comes after Monday?", first.content);
+    assert_eq!("user", first.role);
+    let assistant = chat.messages.get(1).unwrap();
+    assert_eq!(
+      "The day that comes after Monday is Tuesday.",
+      assistant.content
+    );
+    assert_eq!("assistant", assistant.role);
+    drop(bodhi_home);
     Ok(())
   }
 
   #[fixture]
-  fn bodhi_home() -> anyhow::Result<TempDir> {
+  pub fn bodhi_home() -> TempDir {
+    _bodhi_home().unwrap()
+  }
+
+  fn _bodhi_home() -> anyhow::Result<TempDir> {
     let home_dir = tempfile::tempdir()?;
     let temp_chats_dir = tempfile::tempdir_in(&home_dir)?;
     let chats_dir = PathBuf::from(home_dir.path()).join("chats");

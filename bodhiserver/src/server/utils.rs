@@ -1,11 +1,14 @@
 use serde::{Deserialize, Serialize};
 use std::{fs, io, path::PathBuf};
 use thiserror::Error;
+
 pub static DEFAULT_PORT: u16 = 7735;
 // TODO: see if can use lazy_static to not duplicate port
 pub static DEFAULT_PORT_STR: &str = "7735";
 pub static DEFAULT_HOST: &str = "127.0.0.1";
 pub static BODHI_HOME: &str = "BODHI_HOME";
+pub static ROLE_USER: &str = "user";
+pub static ROLE_ASSISTANT: &str = "assistant";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct ApiError {
@@ -80,10 +83,11 @@ pub(crate) fn get_bodhi_home_dir() -> Result<PathBuf, HomeDirError> {
     }
   } else {
     let home_dir = dirs::home_dir().ok_or(HomeDirError::HomeDirErr)?;
-    if !home_dir.exists() {
-      fs::create_dir_all(&home_dir).map_err(|_| HomeDirError::HomeDirCreateErr)?;
+    let bodhi_home = home_dir.join("chats");
+    if !bodhi_home.exists() {
+      fs::create_dir_all(&bodhi_home).map_err(|_| HomeDirError::HomeDirCreateErr)?;
     }
-    Ok(home_dir)
+    Ok(bodhi_home)
   }
 }
 

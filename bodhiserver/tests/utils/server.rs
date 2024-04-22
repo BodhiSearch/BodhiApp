@@ -1,8 +1,9 @@
-use anyhow::{Result, anyhow};
-use bodhiserver::{build_server_handle, ServerHandle, ServerParams};
+use anyhow::{anyhow, Result};
+use bodhiserver::{build_server_handle, ServerHandle, ServerParams, BODHI_HOME};
 use lazy_static::lazy_static;
 use llama_server_bindings::GptParams;
 use rstest::fixture;
+use tempdir::TempDir;
 use tokio::sync::Mutex;
 
 lazy_static! {
@@ -14,10 +15,18 @@ pub struct TestServerHandle {
   pub port: u16,
   pub shutdown: tokio::sync::oneshot::Sender<()>,
   pub join: tokio::task::JoinHandle<Result<()>>,
+  pub bodhi_home: TempDir,
 }
 
 #[fixture]
-pub async fn test_server() -> anyhow::Result<TestServerHandle> {
+pub fn bodhi_home() -> TempDir {
+  let bodhi_home = tempdir::TempDir::new("bodhi_home").unwrap();
+  std::env::set_var(BODHI_HOME, format!("{}", bodhi_home.path().display()));
+  bodhi_home
+}
+
+#[fixture]
+pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle> {
   let _guard = LLAMA_BACKEND_LOCK.lock().await;
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();
@@ -47,5 +56,6 @@ pub async fn test_server() -> anyhow::Result<TestServerHandle> {
     port,
     shutdown,
     join,
+    bodhi_home,
   })
 }

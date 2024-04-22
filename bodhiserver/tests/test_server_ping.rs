@@ -59,6 +59,7 @@ pub async fn test_server_ping_with_model_load(
     port,
     shutdown,
     join,
+    bodhi_home,
   } = test_server.await.context("initializing server handle")?;
   let ping_endpoint = format!("http://{}:{}/ping", host, port);
   let response = reqwest::get(&ping_endpoint)
@@ -77,5 +78,6 @@ pub async fn test_server_ping_with_model_load(
   let response = reqwest::get(&ping_endpoint).await;
   assert!(response.is_err());
   assert!(reqwest::Error::is_connect(&response.unwrap_err()));
+  drop(bodhi_home);
   Ok(())
 }

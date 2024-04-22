@@ -17,6 +17,7 @@ pub async fn test_server_chat(
     port,
     shutdown,
     join,
+    bodhi_home,
   } = test_server.await.context("initializing server")?;
   let chat_endpoint = format!("http://{}:{}/v1/chat/completions", host, port);
   let response = reqwest::Client::new()
@@ -38,7 +39,8 @@ pub async fn test_server_chat(
     }))
     .send()
     .await
-    .context("querying chat endpoint")?
+    .context("querying chat endpoint")?;
+  let response = response
     .json::<CreateChatCompletionResponse>()
     .await
     .context("parsing response as json")?;
@@ -60,5 +62,6 @@ pub async fn test_server_chat(
     .context("sending shutdown signal to server")?;
   let result = join.await.context("waiting for server to stop")?;
   assert!(result.is_ok());
+  drop(bodhi_home);
   Ok(())
 }

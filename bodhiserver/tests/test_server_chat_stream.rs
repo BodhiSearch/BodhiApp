@@ -2,7 +2,10 @@ mod utils;
 use crate::utils::TestServerHandle;
 use anyhow::{Context, Result};
 use async_openai::types::CreateChatCompletionStreamResponse;
+use bodhiserver::{Chat, ChatPreview};
 use mousse::Parser;
+use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
 use rstest::rstest;
 use serde_json::json;
 use tokio_stream::StreamExt;
@@ -18,9 +21,16 @@ pub async fn test_server_chat_stream(
     port,
     shutdown,
     join,
+    bodhi_home,
   } = test_server.await.context("initializing server")?;
-  let chat_endpoint = format!("http://{}:{}/v1/chat/completions", host, port);
-  let mut response = reqwest::Client::new()
+  let id: String = thread_rng()
+    .sample_iter(&Alphanumeric)
+    .take(7)
+    .map(char::from)
+    .collect();
+  let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions?id={id}");
+  let client = reqwest::Client::new();
+  let mut response = client
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
     .json(&json!({
@@ -48,6 +58,26 @@ pub async fn test_server_chat_stream(
     let text = std::str::from_utf8(&bytes)?;
     response_str.push_str(text);
   }
+  let chats_api_endpoint = format!("http://{host}:{port}/chats");
+  let saved_chats = client
+    .get(chats_api_endpoint)
+    .header("Content-Type", "application/json")
+    .send()
+    .await
+    .context("query get chats")?
+    .json::<Vec<ChatPreview>>()
+    .await
+    .context("parsing response as chat previews")?;
+  let chat_api_endpoint = format!("http://{host}:{port}/chats/{id}");
+  let saved_chat = client
+    .get(chat_api_endpoint)
+    .header("Content-Type", "application/json")
+    .send()
+    .await
+    .context("query get chat with id")?
+    .json::<Chat>()
+    .await
+    .context("parsing response as chat")?;
   shutdown
     .send(())
     .map_err(|_| anyhow::anyhow!("error sending shutdown signal"))
@@ -83,5 +113,17 @@ pub async fn test_server_chat_stream(
 
 I hope that helps! Let me know if you have any other questions."#;
   assert_eq!(expected, acc);
+  assert_eq!(2, saved_chat.messages.len());
+  let first = saved_chat.messages.first().unwrap();
+  assert_eq!("user", first.role);
+  assert_eq!("List down all the days of the week.", first.content);
+  let second = saved_chat.messages.get(1).unwrap();
+  assert_eq!("assistant", second.role);
+  assert_eq!(expected, second.content);
+  assert_eq!(1, saved_chats.len());
+  let chat_preview = saved_chats.first().unwrap();
+  assert_eq!(id, chat_preview.id);
+  assert_eq!("List down all the days of the week", chat_preview.title);
+  drop(bodhi_home);
   Ok(())
 }
