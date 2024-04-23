@@ -2,21 +2,13 @@ use super::utils;
 use super::utils::get_chats_dir;
 use super::utils::ApiError;
 use super::utils::HomeDirError;
-use super::utils::ROLE_ASSISTANT;
-use super::utils::ROLE_USER;
-use async_openai::types::ChatCompletionRequestMessage;
-use async_openai::types::CreateChatCompletionRequest;
-use axum::body::Body;
-use axum::extract::Query;
-use axum::http::Response;
-use axum::response::IntoResponse;
+use axum::extract::Path as UrlPath;
 use axum::response::Json;
 use chrono::serde::ts_milliseconds;
 use chrono::Utc;
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
-use std::cmp::min;
 use std::fs;
 use std::fs::File;
 use std::io;
@@ -24,7 +16,6 @@ use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
-use tokio::sync::mpsc::UnboundedReceiver;
 
 #[derive(Error, Debug)]
 #[allow(clippy::enum_variant_names)]
@@ -37,8 +28,6 @@ pub(crate) enum ChatError {
   IOError(#[from] io::Error),
   #[error(transparent)]
   JsonError(#[from] serde_json::Error),
-  #[error("Last chat by user not found in messages")]
-  LastChatNotFoundErr,
 }
 
 impl PartialEq for ChatError {
@@ -78,39 +67,32 @@ pub struct Chat {
   pub created_at: chrono::DateTime<Utc>,
 }
 
-#[derive(Serialize, Deserialize)]
-pub(crate) struct WithId {
-  id: Option<String>,
+pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ApiError> {
+  let chats = _ui_chats_handler(get_chats_dir()?)?;
+  Ok(Json(chats))
 }
 
-pub(crate) async fn ui_chats_handler(
-  Query(WithId { id }): Query<WithId>,
-) -> Result<Response<Body>, ApiError> {
-  match id {
-    Some(id) => {
-      let chat = _ui_chat_handler(get_chats_dir()?, &id)?;
-      Ok(Json(chat).into_response())
-    }
-    None => {
-      let chats = _ui_chats_handler(get_chats_dir()?)?;
-      Ok(Json(chats).into_response())
-    }
-  }
+pub(crate) async fn ui_chat_update_handler(
+  UrlPath(id): UrlPath<String>,
+  Json(chat): Json<Chat>,
+) -> Result<Json<()>, ApiError> {
+  let chat = _ui_chat_update_handler(&get_chats_dir()?, &id, &chat)?;
+  Ok(Json(chat))
 }
 
-pub(crate) async fn ui_chats_delete_handler(
-  Query(WithId { id }): Query<WithId>,
-) -> Result<Response<Body>, ApiError> {
-  match id {
-    Some(id) => {
-      let chat = _ui_chat_handler(get_chats_dir()?, &id)?;
-      Ok(Json(chat).into_response())
-    }
-    None => {
-      _ui_chats_delete_handler(get_chats_dir()?)?;
-      Ok(Json(()).into_response())
-    }
-  }
+pub(crate) async fn ui_chat_handler(UrlPath(id): UrlPath<String>) -> Result<Json<Chat>, ApiError> {
+  let chat = _ui_chat_handler(get_chats_dir()?, &id)?;
+  Ok(Json(chat))
+}
+
+pub(crate) async fn ui_chats_delete_handler() -> Result<(), ApiError> {
+  _ui_chats_delete_handler(get_chats_dir()?)?;
+  Ok(())
+}
+
+pub(crate) async fn ui_chat_delete_handler(UrlPath(id): UrlPath<String>) -> Result<(), ApiError> {
+  _ui_chat_delete_handler(get_chats_dir()?, &id)?;
+  Ok(())
 }
 
 fn _ui_chats_handler(chats_dir: PathBuf) -> Result<Vec<ChatPreview>, ChatError> {
@@ -154,6 +136,20 @@ fn _ui_chat_handler(chats_dir: PathBuf, id: &str) -> Result<Chat, ChatError> {
   Ok(chat)
 }
 
+fn _ui_chat_update_handler(chats_dir: &Path, id: &str, chat: &Chat) -> Result<(), ChatError> {
+  let file_content = serde_json::to_string(&chat)?;
+  let path = match find_file_by_id(chats_dir, id) {
+    Some(path) => path,
+    None => {
+      let epoch_millis = Utc::now().format("%Y%m%d%H%M%S%3f").to_string();
+      let filename = format!("{}_{}.json", epoch_millis, id);
+      chats_dir.join(filename)
+    }
+  };
+  fs::write(path, file_content)?;
+  Ok(())
+}
+
 fn _ui_chat_delete_handler(chats_dir: PathBuf, id: &str) -> Result<(), ChatError> {
   let file =
     find_file_by_id(&chats_dir, id).ok_or_else(|| ChatError::ChatNotFoundErr(id.to_string()))?;
@@ -163,77 +159,6 @@ fn _ui_chat_delete_handler(chats_dir: PathBuf, id: &str) -> Result<(), ChatError
   } else {
     Err(ChatError::ChatNotFoundErr(id.to_string()))
   }
-}
-
-pub(crate) async fn save_stream(
-  id: Option<String>,
-  request: CreateChatCompletionRequest,
-  mut rx: UnboundedReceiver<String>,
-) -> Result<(), ChatError> {
-  if id.is_none() {
-    return Ok(());
-  }
-  let id = id.unwrap();
-  let mut deltas = String::new();
-  while let Some(message) = rx.recv().await {
-    deltas.push_str(&message);
-  }
-  let chats_dir = get_chats_dir()?;
-  save_chat(&chats_dir, id, request, deltas)?;
-  Ok(())
-}
-
-fn save_chat(
-  chats_dir: &Path,
-  id: String,
-  request: CreateChatCompletionRequest,
-  response: String,
-) -> Result<(), ChatError> {
-  let Some(message) = request.messages.last() else {
-    return Err(ChatError::LastChatNotFoundErr);
-  };
-  let user_chat = match message {
-    // TODO bug in serde probably
-    ChatCompletionRequestMessage::System(message) => {
-      let content = message.content.to_owned();
-      Message {
-        role: ROLE_USER.to_string(),
-        content,
-      }
-    }
-    _ => return Err(ChatError::LastChatNotFoundErr),
-  };
-  let assistant_chat = Message {
-    role: ROLE_ASSISTANT.to_string(),
-    content: response,
-  };
-
-  let file = find_file_by_id(chats_dir, &id);
-  match file {
-    Some(file) => {
-      // existing chat
-      let file_handle = File::open(file.clone())?;
-      let mut chat: Chat = serde_json::from_reader(BufReader::new(file_handle))?;
-      chat.messages.push(user_chat);
-      chat.messages.push(assistant_chat);
-      let file_content = serde_json::to_string(&chat)?;
-      fs::write(file, file_content)?;
-    }
-    None => {
-      let epoch_millis = Utc::now().format("%Y%m%d%H%M%S%3f").to_string();
-      let filename = format!("{}_{}.json", epoch_millis, id);
-      let file_path = chats_dir.join(filename);
-      let chat = Chat {
-        id,
-        title: user_chat.content[0..min(user_chat.content.len() - 1, 100)].to_string(),
-        messages: vec![user_chat, assistant_chat],
-        created_at: Utc::now(),
-      };
-      let file_content = serde_json::to_string(&chat)?;
-      fs::write(file_path, file_content)?;
-    }
-  };
-  Ok(())
 }
 
 fn find_file_by_id(chats_dir: &Path, id: &str) -> Option<PathBuf> {
@@ -272,17 +197,14 @@ fn remove_dir_contents(dir: &Path) -> Result<(), ChatError> {
 
 #[cfg(test)]
 mod test {
-  use async_openai::types::CreateChatCompletionRequest;
   use chrono::Utc;
   use rstest::{fixture, rstest};
-  use serde_json::json;
   use tempfile::TempDir;
-
   use super::_ui_chats_handler;
   use crate::server::{
     routes_ui::{
       Chat, ChatError, ChatPreview, Message, _ui_chat_delete_handler, _ui_chat_handler,
-      _ui_chats_delete_handler, save_chat,
+      _ui_chat_update_handler, _ui_chats_delete_handler,
     },
     utils::BODHI_HOME,
   };
@@ -378,49 +300,75 @@ mod test {
   }
 
   #[rstest]
-  fn test_update_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
+  fn test_create_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
     let chats_dir = bodhi_home.path().join("chats");
-    let id = "UE6qd0b".to_string();
-    let request = json! {{"model": "tinyllama", "messages": [{"role": "user", "content": "What day comes after Monday?"}]}};
-    let request: CreateChatCompletionRequest = serde_json::from_value(request)?;
-    save_chat(
-      &chats_dir,
-      id.clone(),
-      request,
-      "The day that comes after Monday is Tuesday.".to_string(),
-    )?;
+    let id = "NEWID07".to_string();
+    let content = r#"{
+      "title": "What is the capital of France?",
+      "createdAt": 1713590479639,
+      "id": "NEWID07",
+      "messages": [
+        {
+          "role": "user",
+          "content": "What is the capital of France?"
+        },
+        {
+          "content": "The capital of France is Paris.",
+          "role": "assistant"
+        }
+      ]
+    }"#;
+    let new_chat: Chat = serde_json::from_str(content)?;
+    _ui_chat_update_handler(&chats_dir, &id, &new_chat)?;
+
     let chat = _ui_chat_handler(chats_dir, &id)?;
-    assert_eq!(4, chat.messages.len());
-    assert_eq!(
-      "What day comes after Monday?",
-      chat.messages.get(2).unwrap().content
-    );
-    assert_eq!(
-      "The day that comes after Monday is Tuesday.",
-      chat.messages.get(3).unwrap().content
-    );
+    assert_eq!(2, chat.messages.len());
+    let first = chat.messages.get(0).unwrap();
+    assert_eq!("What is the capital of France?", first.content);
+    assert_eq!("user", first.role);
+    let reply = chat.messages.get(1).unwrap();
+    assert_eq!("The capital of France is Paris.", reply.content);
+    assert_eq!("assistant", reply.role);
     drop(bodhi_home);
     Ok(())
   }
 
   #[rstest]
-  fn test_create_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
+  fn test_update_chat(bodhi_home: TempDir) -> anyhow::Result<()> {
     let chats_dir = bodhi_home.path().join("chats");
-    let id = "NEWID07".to_string();
-    let request = json! {{"model": "tinyllama", "messages": [{"role": "user", "content": "What day comes after Monday?"}]}};
-    let request: CreateChatCompletionRequest = serde_json::from_value(request)?;
-    save_chat(
-      &chats_dir,
-      id.clone(),
-      request,
-      "The day that comes after Monday is Tuesday.".to_string(),
-    )?;
+    let id = "UE6qd0b".to_string();
+    let content = r#"{
+      "title": "list down months in a year",
+      "createdAt": 1713590479639,
+      "id": "UE6qd0b",
+      "messages": [
+        {
+          "role": "user",
+          "content": "list down months in a year"
+        },
+        {
+          "content": "1. January\n2. February\n3. March\n4. April\n5. May\n6. June\n7. July\n8. August\n9. September\n10. October\n11. November\n12. December",
+          "role": "assistant"
+        },
+        {
+          "role": "user",
+          "content": "What day comes after Monday?"
+        },
+        {
+          "content": "The day that comes after Monday is Tuesday.",
+          "role": "assistant"
+        }
+      ]
+    }"#;
+    let updated_chat: Chat = serde_json::from_str(content)?;
+    _ui_chat_update_handler(&chats_dir, &id, &updated_chat)?;
+
     let chat = _ui_chat_handler(chats_dir, &id)?;
-    assert_eq!(2, chat.messages.len());
-    let first = chat.messages.first().unwrap();
-    assert_eq!("What day comes after Monday?", first.content);
-    assert_eq!("user", first.role);
-    let assistant = chat.messages.get(1).unwrap();
+    assert_eq!(4, chat.messages.len());
+    let new_message = chat.messages.get(2).unwrap();
+    assert_eq!("What day comes after Monday?", new_message.content);
+    assert_eq!("user", new_message.role);
+    let assistant = chat.messages.get(3).unwrap();
     assert_eq!(
       "The day that comes after Monday is Tuesday.",
       assistant.content

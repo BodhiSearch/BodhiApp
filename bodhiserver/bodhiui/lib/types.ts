@@ -10,7 +10,7 @@ export type ApiResult<R> = R | { error: string }
 export interface ChatPreview {
   id: string,
   title: string,
-  created_at: Date
+  createdAt: number
 }
 
 export interface Message {

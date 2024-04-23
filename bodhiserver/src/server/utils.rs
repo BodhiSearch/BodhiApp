@@ -13,8 +13,6 @@ pub static DEFAULT_PORT: u16 = 7735;
 pub static DEFAULT_PORT_STR: &str = "7735";
 pub static DEFAULT_HOST: &str = "127.0.0.1";
 pub static BODHI_HOME: &str = "BODHI_HOME";
-pub static ROLE_USER: &str = "user";
-pub static ROLE_ASSISTANT: &str = "assistant";
 
 // TODO - have internal log message, and external user message
 #[derive(Debug, Error)]
@@ -113,7 +111,6 @@ impl From<ChatError> for ApiError {
       ChatError::ChatNotFoundErr(err) => ApiError::NotFound(err.to_string()),
       ChatError::IOError(err) => ApiError::ServerError(format!("{err}")),
       ChatError::JsonError(err) => ApiError::ServerError(format!("{err}")),
-      ChatError::LastChatNotFoundErr => ApiError::ServerError(format!("{value}")),
     }
   }
 }

@@ -1,15 +1,18 @@
 use super::{
   routes_chat::chat_completions_handler,
   routes_models::ui_models_handler,
-  routes_ui::{ui_chats_delete_handler, ui_chats_handler},
+  routes_ui::{ui_chat_delete_handler, ui_chat_handler, ui_chats_delete_handler, ui_chats_handler, ui_chat_update_handler},
 };
-use crate::server::bodhi_ctx::BodhiContextWrapper;
+use crate::{server::bodhi_ctx::BodhiContextWrapper, STATIC_DIR};
 use axum::{
-  http::StatusCode,
+  http::{self, StatusCode, Uri},
   response::IntoResponse,
   routing::{delete, get, post},
 };
-use std::sync::{Arc, Mutex};
+use std::{
+  path::PathBuf,
+  sync::{Arc, Mutex},
+};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -48,7 +51,12 @@ pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::
     .route("/v1/chat/completions", post(chat_completions_handler))
     .route("/api/ui/chats", get(ui_chats_handler))
     .route("/api/ui/chats", delete(ui_chats_delete_handler))
+    .route("/api/ui/chats/:id", get(ui_chat_handler))
+    .route("/api/ui/chats/:id", post(ui_chat_update_handler))
+    .route("/api/ui/chats/:id", delete(ui_chat_delete_handler))
     .route("/api/ui/models", get(ui_models_handler))
+    .route("/", get(static_handler))
+    .route("/*path", get(static_handler))
     .layer(
       CorsLayer::new()
         .allow_origin(Any)
@@ -58,4 +66,33 @@ pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::
     )
     .layer(TraceLayer::new_for_http())
     .with_state(RouterState::new(bodhi_ctx))
+}
+
+async fn static_handler(uri: Uri) -> impl IntoResponse {
+  let mut path = uri.path();
+  // coming from route "/"
+  if path.eq("/") {
+    path = "index.html";
+  }
+  // coming from route "/*path", does not contain leading '/' in path, but may be trailing one
+  if path.starts_with('/') {
+    path = &path[1..];
+  }
+  let path = if path.ends_with('/') {
+    format!("{}index.html", path)
+  } else {
+    path.to_owned()
+  };
+  let path = PathBuf::from(path);
+  if let Some(file) = STATIC_DIR.get_file(&path) {
+    let mime_type = mime_guess::from_path(&path).first_or_octet_stream();
+    (
+      StatusCode::OK,
+      [(http::header::CONTENT_TYPE, mime_type.as_ref())],
+      file.contents(),
+    )
+      .into_response()
+  } else {
+    (StatusCode::NOT_FOUND, "Not Found").into_response()
+  }
 }
