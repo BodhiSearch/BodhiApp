@@ -13,16 +13,15 @@ import {
 } from '@/components/ui/alert-dialog'
 import { IconSpinner } from '@/components/ui/icons'
 import { useState, useTransition } from 'react'
-import { useChatHistory } from '@/lib/hooks/use-chat-history'
 
 interface ClearHistoryProps {
   isEnabled: boolean
+  clearChats: () => Promise<void | { error: string }>
 }
 
 export function ClearHistory({
-  isEnabled = false,
+  isEnabled = false, clearChats
 }: ClearHistoryProps) {
-  const { clearChats } = useChatHistory()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   return (

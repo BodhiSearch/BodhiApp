@@ -4,9 +4,10 @@ import { SidebarItem } from '@/components/sidebar-item'
 
 interface SidebarItemsProps {
   chats: Chat[],
+  removeChat: (id: string) => Promise<void | { error: string }>
 }
 
-export function SidebarItems({ chats }: SidebarItemsProps) {
+export function SidebarItems({ chats, removeChat }: SidebarItemsProps) {
   if (!chats.length) return null
   return (
     <AnimatePresence>
@@ -20,7 +21,7 @@ export function SidebarItems({ chats }: SidebarItemsProps) {
                 height: 0
               }}
             >
-              <SidebarItem index={index} chat={chat} />
+              <SidebarItem index={index} chat={chat} removeChat={removeChat} />
             </motion.div>
           )
       )}

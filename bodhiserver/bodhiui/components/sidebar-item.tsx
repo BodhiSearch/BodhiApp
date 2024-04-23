@@ -12,15 +12,17 @@ import { useEffect, useState } from 'react'
 interface SidebarItemProps {
   index: number
   chat: Chat
+  removeChat: (id: string) => Promise<void | { error: string }>
 }
 
-export function SidebarItem({ index, chat }: SidebarItemProps) {
+export function SidebarItem({ index, chat, removeChat }: SidebarItemProps) {
   const router = useRouter();
   const [isActive, setActive] = useState(false);
   const [newChatId, setNewChatId] = useLocalStorage('newChatId', null)
   const shouldAnimate = index === 0 && !!newChatId && chat.id === newChatId
   // mark item as active
   useEffect(() => {
+    if (!router.isReady) return;
     const { id } = router.query;
     if (!id) {
       setActive(false);
@@ -28,7 +30,7 @@ export function SidebarItem({ index, chat }: SidebarItemProps) {
     }
     const isItemActive = chat.id === id;
     setActive(isItemActive);
-  }, [router, chat, setActive]);
+  }, [router.isReady, router.query, chat, setActive]);
 
   if (!chat.id) return null
 
@@ -92,11 +94,7 @@ export function SidebarItem({ index, chat }: SidebarItemProps) {
                   }}
                   onAnimationComplete={() => {
                     if (index === chat.title.length - 1) {
-                      setNewChatId(null)
-                      if (!router.pathname.includes('chat')) {
-                        window.history.replaceState({}, '', `/chat?id=${chat.id}`)
-                      }
-                      setActive(true);
+                      setNewChatId(null);
                     }
                   }}
                 >
@@ -112,6 +110,7 @@ export function SidebarItem({ index, chat }: SidebarItemProps) {
       {isActive && <div className="absolute right-2 top-1">
         <SidebarActions
           chat={chat}
+          removeChat={removeChat}
         /></div>}
     </motion.div>
   )

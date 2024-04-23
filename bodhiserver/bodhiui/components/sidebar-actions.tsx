@@ -18,19 +18,18 @@ import {
   TooltipContent,
   TooltipTrigger
 } from '@/components/ui/tooltip'
-import { useChatHistory } from '@/lib/hooks/use-chat-history'
 import { useRouter } from 'next/router'
 import { PageRoot } from '@/lib/utils'
 
 interface SidebarActionsProps {
   chat: Chat
+  removeChat: (id: string) => Promise<void | { error: string }>
 }
 
 export function SidebarActions({
-  chat,
+  chat, removeChat
 }: SidebarActionsProps) {
   const router = useRouter();
-  const { removeChat } = useChatHistory();
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false)
   const [isRemovePending, startRemoveTransition] = React.useTransition()
 

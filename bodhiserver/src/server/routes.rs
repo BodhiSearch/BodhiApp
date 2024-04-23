@@ -46,9 +46,9 @@ pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::
   axum::Router::new()
     .route("/ping", get(|| async { "pong" }))
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .route("/ui/chats", get(ui_chats_handler))
-    .route("/ui/chats", delete(ui_chats_delete_handler))
-    .route("/ui/models", get(ui_models_handler))
+    .route("/api/ui/chats", get(ui_chats_handler))
+    .route("/api/ui/chats", delete(ui_chats_delete_handler))
+    .route("/api/ui/models", get(ui_models_handler))
     .layer(
       CorsLayer::new()
         .allow_origin(Any)
