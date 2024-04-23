@@ -1,4 +1,10 @@
-use serde::{Deserialize, Serialize};
+use super::routes_ui::ChatError;
+use axum::{
+  http::StatusCode,
+  response::{IntoResponse, Response},
+  Json,
+};
+use serde::Serialize;
 use std::{fs, io, path::PathBuf};
 use thiserror::Error;
 
@@ -10,9 +16,33 @@ pub static BODHI_HOME: &str = "BODHI_HOME";
 pub static ROLE_USER: &str = "user";
 pub static ROLE_ASSISTANT: &str = "assistant";
 
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct ApiError {
-  pub(crate) error: String,
+// TODO - have internal log message, and external user message
+#[derive(Debug, Error)]
+pub(crate) enum ApiError {
+  #[error("{0}")]
+  ServerError(String),
+  #[error("{0}")]
+  NotFound(String),
+}
+
+#[derive(Serialize)]
+pub(crate) struct ApiErrorResponse {
+  error: String,
+}
+
+impl IntoResponse for ApiError {
+  fn into_response(self) -> Response {
+    match self {
+      ApiError::ServerError(error) => (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ApiErrorResponse { error }),
+      )
+        .into_response(),
+      ApiError::NotFound(error) => {
+        (StatusCode::NOT_FOUND, Json(ApiErrorResponse { error })).into_response()
+      }
+    }
+  }
 }
 
 pub fn port_from_env_vars(port: Result<String, std::env::VarError>) -> u16 {
@@ -69,6 +99,24 @@ impl PartialEq for HomeDirError {
   }
 }
 
+// TODO - change from exposing internal error message, to having internal log message and external user message
+impl From<HomeDirError> for ApiError {
+  fn from(value: HomeDirError) -> Self {
+    ApiError::ServerError(format!("{value}"))
+  }
+}
+
+impl From<ChatError> for ApiError {
+  fn from(value: ChatError) -> Self {
+    match value {
+      ChatError::HomeDirError(err) => ApiError::ServerError(format!("{err}")),
+      ChatError::ChatNotFoundErr(err) => ApiError::NotFound(err.to_string()),
+      ChatError::IOError(err) => ApiError::ServerError(format!("{err}")),
+      ChatError::JsonError(err) => ApiError::ServerError(format!("{err}")),
+      ChatError::LastChatNotFoundErr => ApiError::ServerError(format!("{value}")),
+    }
+  }
+}
 pub(crate) fn get_bodhi_home_dir() -> Result<PathBuf, HomeDirError> {
   if let Ok(bodhi_home) = std::env::var(BODHI_HOME) {
     let home_dir = PathBuf::from(bodhi_home);

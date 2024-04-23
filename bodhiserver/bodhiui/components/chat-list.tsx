@@ -1,4 +1,4 @@
-import { type Message } from "ai/react";
+import { type Message } from "@/lib/types";
 import { Separator } from "@/components/ui/separator";
 import { ChatMessage } from "@/components/chat-message";
 import { EmptyScreen } from "./empty-screen";

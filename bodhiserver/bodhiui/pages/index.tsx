@@ -1,7 +1,7 @@
 import { Chat } from "@/components/chat";
 import { useLocalStorage } from "@/lib/hooks/use-local-storage";
 import { nanoid } from "@/lib/utils";
-import { Message } from "ai/react";
+import { Message } from "@/lib/types";
 
 export default function Home() {
   const id = nanoid();

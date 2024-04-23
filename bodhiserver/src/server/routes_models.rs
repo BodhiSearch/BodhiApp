@@ -1,11 +1,6 @@
-use super::utils;
-use axum::{
-  body::Body,
-  response::{IntoResponse, Response},
-  Json,
-};
+use super::utils::ApiError;
+use axum::Json;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub(crate) struct Model {
@@ -14,28 +9,13 @@ pub(crate) struct Model {
   display_name: String,
 }
 
-#[derive(Debug, Error)]
-pub(crate) enum ModelError {
-  #[error(transparent)]
-  HomeDirError(#[from] utils::HomeDirError),
-}
-
-impl IntoResponse for ModelError {
-  fn into_response(self) -> Response<Body> {
-    Json(super::utils::ApiError {
-      error: format!("{}", self),
-    })
-    .into_response()
-  }
-}
-
-pub(crate) async fn ui_models_handler() -> Result<Json<Vec<String>>, ModelError> {
+pub(crate) async fn ui_models_handler() -> Result<Json<Vec<String>>, ApiError> {
   // let models = _ui_models_handler()?;
   let models = vec!["llama2-7b".to_string(), "llama2-13b".to_string()];
   Ok(Json(models))
 }
 
-fn _ui_models_handler() -> Result<Vec<Model>, ModelError> {
+fn _ui_models_handler() -> Result<Vec<Model>, ApiError> {
   let models = vec![
     Model {
       model: "llama-2-7b-chat.Q4_K_M".to_string(),

@@ -1,7 +1,7 @@
 use super::{
   routes_chat::chat_completions_handler,
   routes_models::ui_models_handler,
-  routes_ui::{ui_chat_delete_handler, ui_chat_handler, ui_chats_delete_handler, ui_chats_handler},
+  routes_ui::{ui_chats_delete_handler, ui_chats_handler},
 };
 use crate::server::bodhi_ctx::BodhiContextWrapper;
 use axum::{
@@ -10,8 +10,8 @@ use axum::{
   routing::{delete, get, post},
 };
 use std::sync::{Arc, Mutex};
+use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-use tower_http::cors::{CorsLayer, Any};
 
 // TODO: serialize error in OpenAI format
 #[derive(Debug)]
@@ -46,11 +46,9 @@ pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::
   axum::Router::new()
     .route("/ping", get(|| async { "pong" }))
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .route("/chats", get(ui_chats_handler))
-    .route("/chats", delete(ui_chats_delete_handler))
-    .route("/chats/:id", get(ui_chat_handler))
-    .route("/chats/:id", delete(ui_chat_delete_handler))
-    .route("/models", get(ui_models_handler))
+    .route("/ui/chats", get(ui_chats_handler))
+    .route("/ui/chats", delete(ui_chats_delete_handler))
+    .route("/ui/models", get(ui_models_handler))
     .layer(
       CorsLayer::new()
         .allow_origin(Any)

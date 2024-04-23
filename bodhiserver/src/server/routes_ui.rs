@@ -1,12 +1,13 @@
 use super::utils;
 use super::utils::get_chats_dir;
+use super::utils::ApiError;
 use super::utils::HomeDirError;
 use super::utils::ROLE_ASSISTANT;
 use super::utils::ROLE_USER;
 use async_openai::types::ChatCompletionRequestMessage;
 use async_openai::types::CreateChatCompletionRequest;
 use axum::body::Body;
-use axum::extract::Path as UrlPath;
+use axum::extract::Query;
 use axum::http::Response;
 use axum::response::IntoResponse;
 use axum::response::Json;
@@ -30,7 +31,7 @@ use tokio::sync::mpsc::UnboundedReceiver;
 pub(crate) enum ChatError {
   #[error(transparent)]
   HomeDirError(#[from] utils::HomeDirError),
-  #[error("Failed to find the chat with given id: '${0}'")]
+  #[error("Failed to find the chat with given id: '{0}'")]
   ChatNotFoundErr(String),
   #[error(transparent)]
   IOError(#[from] io::Error),
@@ -51,15 +52,6 @@ impl PartialEq for ChatError {
       }
       _ => false,
     }
-  }
-}
-
-impl IntoResponse for ChatError {
-  fn into_response(self) -> Response<Body> {
-    Json(super::utils::ApiError {
-      error: format!("{}", self),
-    })
-    .into_response()
   }
 }
 
@@ -86,26 +78,39 @@ pub struct Chat {
   pub created_at: chrono::DateTime<Utc>,
 }
 
-pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ChatError> {
-  let chats = _ui_chats_handler(get_chats_dir()?)?;
-  Ok(Json(chats))
+#[derive(Serialize, Deserialize)]
+pub(crate) struct WithId {
+  id: Option<String>,
 }
 
-pub(crate) async fn ui_chats_delete_handler() -> Result<Json<()>, ChatError> {
-  _ui_chats_delete_handler(get_chats_dir()?)?;
-  Ok(Json(()))
+pub(crate) async fn ui_chats_handler(
+  Query(WithId { id }): Query<WithId>,
+) -> Result<Response<Body>, ApiError> {
+  match id {
+    Some(id) => {
+      let chat = _ui_chat_handler(get_chats_dir()?, &id)?;
+      Ok(Json(chat).into_response())
+    }
+    None => {
+      let chats = _ui_chats_handler(get_chats_dir()?)?;
+      Ok(Json(chats).into_response())
+    }
+  }
 }
 
-pub(crate) async fn ui_chat_handler(UrlPath(id): UrlPath<String>) -> Result<Json<Chat>, ChatError> {
-  let chat = _ui_chat_handler(get_chats_dir()?, &id)?;
-  Ok(Json(chat))
-}
-
-pub(crate) async fn ui_chat_delete_handler(
-  UrlPath(id): UrlPath<String>,
-) -> Result<Json<()>, ChatError> {
-  _ui_chat_delete_handler(get_chats_dir()?, &id)?;
-  Ok(Json(()))
+pub(crate) async fn ui_chats_delete_handler(
+  Query(WithId { id }): Query<WithId>,
+) -> Result<Response<Body>, ApiError> {
+  match id {
+    Some(id) => {
+      let chat = _ui_chat_handler(get_chats_dir()?, &id)?;
+      Ok(Json(chat).into_response())
+    }
+    None => {
+      _ui_chats_delete_handler(get_chats_dir()?)?;
+      Ok(Json(()).into_response())
+    }
+  }
 }
 
 fn _ui_chats_handler(chats_dir: PathBuf) -> Result<Vec<ChatPreview>, ChatError> {

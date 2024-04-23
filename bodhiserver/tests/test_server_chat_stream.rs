@@ -58,7 +58,7 @@ pub async fn test_server_chat_stream(
     let text = std::str::from_utf8(&bytes)?;
     response_str.push_str(text);
   }
-  let chats_api_endpoint = format!("http://{host}:{port}/chats");
+  let chats_api_endpoint = format!("http://{host}:{port}/ui/chats");
   let saved_chats = client
     .get(chats_api_endpoint)
     .header("Content-Type", "application/json")
@@ -68,7 +68,7 @@ pub async fn test_server_chat_stream(
     .json::<Vec<ChatPreview>>()
     .await
     .context("parsing response as chat previews")?;
-  let chat_api_endpoint = format!("http://{host}:{port}/chats/{id}");
+  let chat_api_endpoint = format!("http://{host}:{port}/ui/chats?id={id}");
   let saved_chat = client
     .get(chat_api_endpoint)
     .header("Content-Type", "application/json")

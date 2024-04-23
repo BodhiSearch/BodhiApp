@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { IconCheck, IconCopy } from '@/components/ui/icons'
-import { type Message } from 'ai'
+import { type Message } from '@/lib/types'
 import { useCopyToClipboard } from '@/lib/hooks/use-copy-to-clipboard'
 import React from 'react'
 

@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // output: 'export',
-  // trailingSlash: true,
+  output: 'export',
+  trailingSlash: true,
   transpilePackages: ['geist']
 };
 

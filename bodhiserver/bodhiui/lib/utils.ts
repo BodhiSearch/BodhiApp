@@ -4,6 +4,7 @@ import { twMerge } from "tailwind-merge"
 
 export const PageRoot = '/';
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+export const RouteChat = (id: string) => { return `/chat?id=${id}` }
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

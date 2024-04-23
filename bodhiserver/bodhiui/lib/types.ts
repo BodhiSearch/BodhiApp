@@ -1,5 +1,3 @@
-import { Message } from "ai/react"
-
 export type ServerActionResult<Result> = Promise<
   | Result
   | {
@@ -9,11 +7,17 @@ export type ServerActionResult<Result> = Promise<
 
 export type ApiResult<R> = R | { error: string }
 
-export interface Chat extends Record<string, any> {
-  id: string
-  title: string
-  createdAt: Date
-  userId: string
-  path: string
+export interface ChatPreview {
+  id: string,
+  title: string,
+  created_at: Date
+}
+
+export interface Message {
+  role: 'system' | 'user' | 'assistant' | 'function' | 'data' | 'tool',
+  content: string,
+}
+
+export interface Chat extends ChatPreview {
   messages: Message[]
 }

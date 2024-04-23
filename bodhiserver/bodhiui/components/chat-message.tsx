@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import { CodeBlock } from "@/components/ui/codeblock";
 import { IconUser, IconOpenAI } from '@/components/ui/icons'
 import { MemoizedReactMarkdown } from "@/components/ui/markdown";
-import { type Message } from "ai/react";
+import { type Message } from "@/lib/types";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 

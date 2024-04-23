@@ -1,10 +1,10 @@
-import { type Message, useChat } from "ai/react";
+import { useChat, type Message as AIMessage } from "ai/react";
+import { Message } from "@/lib/types";
 import { ChatList } from "@/components/chat-list";
 import { ChatPanel } from "@/components/chat-panel";
 import { API_BASE_URL, cn } from "@/lib/utils";
 import { useChatHistory } from "@/lib/hooks/use-chat-history";
 import { useChatSettings } from "@/lib/hooks/use-chat-settings";
-
 
 export interface ChatProps {
   id?: string
@@ -12,22 +12,23 @@ export interface ChatProps {
   initialMessages: Message[]
 }
 
-export function Chat({ id, isLoading: chatLoading, initialMessages }: ChatProps) {
+export function Chat({ id, isLoading: chatLoading, initialMessages: apiMessages }: ChatProps) {
   const { update } = useChatHistory();
   const { model } = useChatSettings();
+  let initialMessages = apiMessages as AIMessage[];
   const { messages, input, setInput, isLoading, append, reload } = useChat({
-    api: `${API_BASE_URL}/v1/chat/completions`,
+    api: `${API_BASE_URL}/v1/chat/completions?id=${id}`,
     streamMode: 'sse',
     initialMessages,
     id,
-    body: { id, model, stream: true },
+    body: { model, stream: true },
     onFinish: async () => {
       await update();
     }
   });
   return <div className="group w-full overflow-auto pl-0 peer-[[data-state=open]]:lg:pl-[250px] peer-[[data-state=open]]:xl:pl-[300px]">
     <div className={cn('pb-[200px] pt-4 md:pt-10')}>
-      <ChatList messages={messages} chatLoading={chatLoading} chatStreaming={isLoading} />
+      <ChatList messages={messages as Message[]} chatLoading={chatLoading} chatStreaming={isLoading} />
     </div>
     <ChatPanel
       id={id}

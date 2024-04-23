@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { buttonVariants } from '@/components/ui/button'
 import { type Chat } from '@/lib/types'
-import { cn } from '@/lib/utils'
+import { RouteChat, cn } from '@/lib/utils'
 import { IconMessage } from '@/components/ui/icons'
 import { useLocalStorage } from '@/lib/hooks/use-local-storage'
 import { useRouter } from 'next/router'
@@ -56,7 +56,7 @@ export function SidebarItem({ index, chat }: SidebarItemProps) {
         <IconMessage className="mr-2 mt-1 text-zinc-500" />
       </div>
       <Link
-        href={chat.path}
+        href={RouteChat(chat.id)}
         className={cn(
           buttonVariants({ variant: 'ghost' }),
           'group w-full px-8 transition-colors hover:bg-zinc-200/40 dark:hover:bg-zinc-300/10',
