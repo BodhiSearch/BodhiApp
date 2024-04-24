@@ -35,6 +35,15 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ]
-    }
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "height": 600,
+        "resizable": true,
+        "title": "New Native App",
+        "width": 800
+      }
+    ]
   }
 }
