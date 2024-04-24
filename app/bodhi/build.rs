@@ -8,7 +8,18 @@ use std::{
 };
 
 fn main() -> anyhow::Result<()> {
-  // println!("cargo:rerun-if-changed=../app");
+  if cfg!(feature = "native_app") {
+    tauri_build::build();
+  } else {
+    build_non_native()?;
+  }
+  Ok(())
+}
+
+fn build_non_native() -> anyhow::Result<()> {
+  println!("cargo:rerun-if-changed=../app/components");
+  println!("cargo:rerun-if-changed=../app/lib");
+  println!("cargo:rerun-if-changed=../app/pages");
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
   let bodhiui_dir = fs::canonicalize(PathBuf::from(project_dir).join(".."))
