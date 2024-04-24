@@ -16,7 +16,7 @@ dirs = "5.0.1"
 dotenv = "0.15.0"
 futures-util = "0.3.30"
 include_dir = "0.7.3"
-llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
+llama-server-bindings = { version = "0.1.0", path = "../../llama-server-bindings" }
 mime_guess = "2.0.4"
 regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }

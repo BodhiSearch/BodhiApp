@@ -8,10 +8,10 @@ use std::{
 };
 
 fn main() -> anyhow::Result<()> {
-  println!("cargo:rerun-if-changed=../app");
+  // println!("cargo:rerun-if-changed=../app");
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
-  let bodhiui_dir = fs::canonicalize(PathBuf::from(project_dir).join("..").join("app"))
+  let bodhiui_dir = fs::canonicalize(PathBuf::from(project_dir).join(".."))
     .context("error canocilizing bodhiui path")?;
   exec_command(
     &bodhiui_dir,
