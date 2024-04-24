@@ -2,14 +2,18 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { OpenAI } = require('openai');
-const APP_NAME = "bodhi";
+const MEMBER_NAME = "bodhi";
+const APP_NAME = "bodhicli";
 
 describe(`run ${APP_NAME}`, () => {
   let server;
   let openai;
   beforeAll(async () => {
     await new Promise((resolve, reject) => {
-      const buildProcess = spawn('cargo', ['build', '-p', APP_NAME]);
+      const buildProcess = spawn('cargo', ['build', '-p', MEMBER_NAME, '--bin', APP_NAME]);
+      buildProcess.stderr.on('data', (data) => {
+        console.log(`stderr: ${data}`);
+      });
       buildProcess.on('exit', (code) => {
         if (code === 0) {
           resolve();
@@ -19,8 +23,9 @@ describe(`run ${APP_NAME}`, () => {
       });
     });
     await new Promise((resolve, reject) => {
+      console.log(`starting the server`);
       let model_path = path.join(os.homedir(), '.cache/huggingface/llama-2-7b-chat.Q4_K_M.gguf');
-      server = spawn(`../../target/debug/${APP_NAME}`, ['serve', '-m', model_path]);
+      server = spawn(`../target/debug/${APP_NAME}`, ['serve', '-m', model_path]);
       let timeout = setTimeout(() => {
         reject(new Error('time out waiting for server to start'));
       }, 10_000);
