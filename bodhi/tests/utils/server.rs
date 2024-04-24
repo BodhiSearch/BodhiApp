@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use bodhiserver::{build_server_handle, ServerHandle, ServerParams, BODHI_HOME};
+use bodhi::{build_server_handle, ServerHandle, ServerParams, BODHI_HOME};
 use lazy_static::lazy_static;
 use llama_server_bindings::GptParams;
 use rstest::fixture;

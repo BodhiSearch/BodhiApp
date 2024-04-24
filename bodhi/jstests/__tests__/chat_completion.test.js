@@ -2,24 +2,25 @@ const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
 const { OpenAI } = require('openai');
+const APP_NAME = "bodhi";
 
-describe('run bodhiserver', () => {
+describe(`run ${APP_NAME}`, () => {
   let server;
   let openai;
   beforeAll(async () => {
     await new Promise((resolve, reject) => {
-      const buildProcess = spawn('cargo', ['build', '-p', 'bodhiserver']);
+      const buildProcess = spawn('cargo', ['build', '-p', APP_NAME]);
       buildProcess.on('exit', (code) => {
         if (code === 0) {
           resolve();
         } else {
-          reject(new Error('Failed to build bodhiserver'));
+          reject(new Error('Failed to build app'));
         }
       });
     });
     await new Promise((resolve, reject) => {
       let model_path = path.join(os.homedir(), '.cache/huggingface/llama-2-7b-chat.Q4_K_M.gguf');
-      server = spawn('../../target/debug/bodhiserver', ['serve', '-m', model_path]);
+      server = spawn(`../../target/debug/${APP_NAME}`, ['serve', '-m', model_path]);
       let timeout = setTimeout(() => {
         reject(new Error('time out waiting for server to start'));
       }, 10_000);

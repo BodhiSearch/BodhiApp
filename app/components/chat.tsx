@@ -21,7 +21,7 @@ export function Chat({ id, isLoading: chatLoading, initialMessages: apiMessages 
   const router = useRouter();
   let initialMessages = apiMessages as AIMessage[];
   const { messages, input, setInput, isLoading, append, reload } = useChat({
-    api: `${API_BASE_URL}/v1/chat/completions`,
+    api: `${API_BASE_URL}v1/chat/completions`,
     streamMode: 'sse',
     initialMessages,
     id,

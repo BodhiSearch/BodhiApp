@@ -2,15 +2,17 @@ use anyhow::Context;
 use fs_extra::dir::CopyOptions;
 use std::{
   ffi::OsStr,
+  fs,
   path::{Path, PathBuf},
   process::Command,
 };
 
 fn main() -> anyhow::Result<()> {
-  println!("cargo:rerun-if-changed=bodhiui");
+  println!("cargo:rerun-if-changed=../app");
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
-  let bodhiui_dir = PathBuf::from(project_dir).join("bodhiui");
+  let bodhiui_dir = fs::canonicalize(PathBuf::from(project_dir).join("..").join("app"))
+    .context("error canocilizing bodhiui path")?;
   exec_command(
     &bodhiui_dir,
     "pnpm",

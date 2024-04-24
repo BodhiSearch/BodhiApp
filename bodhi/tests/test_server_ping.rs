@@ -2,7 +2,7 @@ mod utils;
 
 use crate::utils::{test_server, TestServerHandle};
 use anyhow::{anyhow, Context, Result};
-use bodhiserver::{build_server_handle, ServerHandle, ServerParams};
+use bodhi::{build_server_handle, ServerHandle, ServerParams};
 use llama_server_bindings::GptParams;
 use rstest::rstest;
 use utils::LLAMA_BACKEND_LOCK;

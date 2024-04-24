@@ -71,6 +71,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./target/release/bodhiserver
-          asset_name: bodhiserver
+          asset_path: ./target/release/bodhi
+          asset_name: bodhi
           asset_content_type: application/octet-stream

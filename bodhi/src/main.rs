@@ -1,6 +1,6 @@
 use anyhow::Context;
-use bodhiserver::cli::{Cli, Command};
-use bodhiserver::{build_server_handle, server::ServerHandle, shutdown_signal, ServerParams};
+use bodhi::cli::{Cli, Command};
+use bodhi::{build_server_handle, server::ServerHandle, shutdown_signal, ServerParams};
 use clap::Parser;
 use llama_server_bindings::GptParams;
 use tokio::runtime::Builder;
