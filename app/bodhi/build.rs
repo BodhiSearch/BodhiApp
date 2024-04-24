@@ -8,6 +8,7 @@ use std::{
 };
 
 fn main() -> anyhow::Result<()> {
+  println!("cargo:rerun-if-env-changed=BODHI_BUILD");
   if cfg!(feature = "native_app") {
     tauri_build::build();
   } else {

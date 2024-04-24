@@ -1,9 +1,12 @@
 use super::{
   routes_chat::chat_completions_handler,
   routes_models::ui_models_handler,
-  routes_ui::{ui_chat_delete_handler, ui_chat_handler, ui_chats_delete_handler, ui_chats_handler, ui_chat_update_handler},
+  routes_ui::{
+    ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
+    ui_chats_handler,
+  },
 };
-use crate::{server::bodhi_ctx::BodhiContextWrapper, STATIC_DIR};
+use crate::server::bodhi_ctx::BodhiContextWrapper;
 use axum::{
   http::{self, StatusCode, Uri},
   response::IntoResponse,
@@ -15,6 +18,13 @@ use std::{
 };
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
+use include_dir::{Dir, include_dir};
+
+
+#[cfg(feature = "native_app")]
+static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/empty");
+#[cfg(not(feature = "native_app"))]
+static STATIC_DIR: Dir = include_dir!("$OUT_DIR/static");
 
 // TODO: serialize error in OpenAI format
 #[derive(Debug)]
