@@ -12,19 +12,15 @@ use axum::{
   response::IntoResponse,
   routing::{delete, get, post},
 };
+use include_dir::{include_dir, Dir};
 use std::{
   path::PathBuf,
   sync::{Arc, Mutex},
 };
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-use include_dir::{Dir, include_dir};
 
-
-#[cfg(feature = "native_app")]
-static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/empty");
-#[cfg(not(feature = "native_app"))]
-static STATIC_DIR: Dir = include_dir!("$OUT_DIR/static");
+static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
 // TODO: serialize error in OpenAI format
 #[derive(Debug)]

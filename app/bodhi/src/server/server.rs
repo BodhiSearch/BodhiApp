@@ -64,15 +64,23 @@ impl Server {
     let listener = TcpListener::bind(&addr).await?;
     tracing::info!(addr = addr, "Server started");
     let axum_server = axum::serve(listener, app).with_graceful_shutdown(async move {
-      self.shutdown_rx.await.unwrap();
+      if self.shutdown_rx.await.is_err() {
+        tracing::warn!("shutdown sender dropped without sending a stop signal");
+      } else {
+        tracing::warn!("shutting down server");
+      };
       if let Ok(mut wrapper) = wrapper.lock() {
         let result = wrapper.stop();
         if result.is_err() {
           tracing::warn!(err = format!("{result:?}"), "err stopping llama.cpp server");
+        } else {
+          tracing::info!("llama server stopped")
         }
       }
     });
-    self.ready.send(()).unwrap();
+    if self.ready.send(()).is_err() {
+      tracing::warn!("ready receiver dropped before start start notified")
+    };
     axum_server.await?;
     Ok(())
   }
