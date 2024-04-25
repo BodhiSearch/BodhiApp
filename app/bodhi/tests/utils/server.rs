@@ -33,7 +33,6 @@ pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle
   let server_params = ServerParams {
     host: host.clone(),
     port,
-    lazy_load_model: false,
   };
   let ServerHandle {
     server,

@@ -16,7 +16,6 @@ pub async fn test_server_ping() -> anyhow::Result<()> {
   let server_args = ServerParams {
     host: host.clone(),
     port,
-    lazy_load_model: true,
   };
   let ServerHandle {
     server,

@@ -77,7 +77,6 @@ mod test {
     let expected = ServerParams {
       host: String::from("0.0.0.0"),
       port: 8080,
-      lazy_load_model: true,
     };
     assert_eq!(expected, server_params);
     Ok(())
