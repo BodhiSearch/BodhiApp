@@ -1,5 +1,5 @@
 use super::routes::{ApiError, RouterState};
-use anyhow::{anyhow, Context};
+use anyhow::Context;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
 use axum::{
   body::Body,
@@ -54,13 +54,10 @@ pub(crate) async fn chat_completions_handler(
   if request.stream.unwrap_or(false) {
     return chat_completions_stream_handler(state, request).await;
   }
-  let bodhi_ctx = state.bodhi_ctx.lock().unwrap();
   let input = serde_json::to_string(&request).unwrap();
   let userdata = String::with_capacity(2048);
-  bodhi_ctx
+  state
     .ctx
-    .as_ref()
-    .unwrap()
     .completions(
       &input,
       Some(server_callback),
@@ -82,22 +79,11 @@ async fn chat_completions_stream_handler(
     .unwrap();
   let (tx, rx) = tokio::sync::mpsc::channel::<String>(100);
   tokio::spawn(async move {
-    let bodhi_ctx = state
-      .bodhi_ctx
-      .lock()
-      .map_err(|e| anyhow!("{:?}", e))
-      .context("unable to get the lock")
-      .unwrap();
-    let result = bodhi_ctx
-      .ctx
-      .as_ref()
-      .ok_or_else(|| anyhow!("bodhi_ctx is not initialized"))
-      .unwrap()
-      .completions(
-        &input,
-        Some(server_callback_stream),
-        &tx as *const _ as *mut c_void,
-      );
+    let result = state.ctx.completions(
+      &input,
+      Some(server_callback_stream),
+      &tx as *const _ as *mut c_void,
+    );
     if let Err(err) = result {
       tracing::warn!(err = format!("{}", err), "error while streaming completion")
     }

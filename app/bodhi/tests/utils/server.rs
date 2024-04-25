@@ -1,14 +1,10 @@
 use anyhow::{anyhow, Result};
-use bodhi::{build_server_handle, ServerHandle, ServerParams, BODHI_HOME};
-use lazy_static::lazy_static;
+use bodhi::{
+  build_routes, build_server_handle, ServerHandle, ServerParams, SharedContext, BODHI_HOME
+};
 use llama_server_bindings::GptParams;
 use rstest::fixture;
 use tempdir::TempDir;
-use tokio::sync::Mutex;
-
-lazy_static! {
-  pub static ref LLAMA_BACKEND_LOCK: Mutex<()> = Mutex::new(());
-}
 
 pub struct TestServerHandle {
   pub host: String,
@@ -27,7 +23,6 @@ pub fn bodhi_home() -> TempDir {
 
 #[fixture]
 pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle> {
-  let _guard = LLAMA_BACKEND_LOCK.lock().await;
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();
   let server_params = ServerParams {
@@ -46,9 +41,17 @@ pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle
     .to_str()
     .unwrap()
     .to_owned();
-  let mut gpt_params = GptParams::default();
-  gpt_params.model = Some(model_path);
-  let join = tokio::spawn(server.start(gpt_params));
+  let gpt_params = GptParams {
+    model: Some(model_path),
+    ..GptParams::default()
+  };
+  let wrapper = SharedContext::new_shared(&gpt_params)?;
+  let app = build_routes(wrapper.clone());
+  let callback = move || {
+    let mut wrapper = wrapper.lock().unwrap();
+    wrapper.as_mut().unwrap().stop().unwrap();
+  };
+  let join = tokio::spawn(server.start_new(app, Some(callback)));
   ready_rx.await?;
   Ok(TestServerHandle {
     host,

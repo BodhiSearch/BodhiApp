@@ -1,4 +1,4 @@
-use bodhi::{build_server_handle, ServerHandle, ServerParams};
+use bodhi::{build_routes, build_server_handle, Server, ServerHandle, ServerParams, SharedContext};
 use llama_server_bindings::GptParams;
 use std::sync::Mutex;
 use tauri::{
@@ -6,7 +6,7 @@ use tauri::{
   WindowEvent,
 };
 use tokio::{
-  sync::oneshot::{self, Sender},
+  sync::oneshot::{self, Receiver, Sender},
   task::JoinHandle,
 };
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -86,13 +86,23 @@ fn on_system_tray_event(app: &AppHandle, event: SystemTrayEvent) {
           tracing::info!("shutdown channel missing");
         }
         let handle = state.handle.lock().unwrap().take().unwrap();
-        let runtime = tokio::runtime::Handle::current();
-        runtime.block_on(async {
-          if let Err(err) = handle.await {
-            tracing::warn!(err = err.to_string(), "server stopped with error");
+        let app_clone = app.clone();
+        tokio::spawn(async move {
+          match handle.await {
+            Err(err) => {
+              tracing::warn!(err = err.to_string(), "server stopped with error");
+            }
+            Ok(result) => match result {
+              Ok(()) => {
+                tracing::info!("server closed successfully");
+              }
+              Err(err) => {
+                tracing::info!(err=?err,"server stopped with error")
+              }
+            },
           };
+          app_clone.exit(0);
         });
-        app.exit(0);
       }
       _ => {}
     }
@@ -118,18 +128,32 @@ fn main_server(server_params: ServerParams, gpt_params: GptParams) -> anyhow::Re
   let ServerHandle {
     server,
     shutdown,
-    ready_rx: _ready_rx,
+    ready_rx,
   } = build_server_handle(server_params)?;
-  let server_async = tokio::spawn(async move {
-    match server.start(gpt_params).await {
-      Ok(()) => Ok(()),
-      Err(err) => {
-        tracing::error!(err = ?err, "server encountered an error");
-        Err(err)
-      }
-    }
-  });
+  let server_async = tokio::spawn(async move { start_server(server, &gpt_params, ready_rx).await });
   Ok(ServerState::new(server_async, shutdown))
+}
+
+async fn start_server(
+  server: Server,
+  gpt_params: &GptParams,
+  ready_rx: Receiver<()>,
+) -> anyhow::Result<()> {
+  let mut ctx = SharedContext::new_shared(gpt_params)?;
+  let app = build_routes(ctx.clone());
+  let callback = move || {
+    if let Err(err) = ctx.try_stop() {
+      tracing::warn!(err = ?err, "error stopping llama context");
+    }
+  };
+  if let Err(err) = server.start_new(app, Some(callback)).await {
+    tracing::error!(err = ?err, "server startup resulted in an error");
+    return Err(err);
+  }
+  if let Err(err) = ready_rx.await {
+    tracing::warn!(err = ?err, "server ready status received as error");
+  }
+  Ok(())
 }
 
 struct ServerState {

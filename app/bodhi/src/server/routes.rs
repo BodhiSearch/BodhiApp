@@ -5,18 +5,16 @@ use super::{
     ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
     ui_chats_handler,
   },
+  shared::SharedResource,
 };
-use crate::server::bodhi_ctx::BodhiContextWrapper;
 use axum::{
   http::{self, StatusCode, Uri},
   response::IntoResponse,
   routing::{delete, get, post},
 };
 use include_dir::{include_dir, Dir};
-use std::{
-  path::PathBuf,
-  sync::{Arc, Mutex},
-};
+use llama_server_bindings::BodhiServerContext;
+use std::path::PathBuf;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -42,16 +40,16 @@ impl IntoResponse for ApiError {
 
 #[derive(Clone)]
 pub(crate) struct RouterState {
-  pub(crate) bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>,
+  pub(crate) ctx: SharedResource<BodhiServerContext>,
 }
 
 impl RouterState {
-  fn new(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> Self {
-    Self { bodhi_ctx }
+  fn new(ctx: SharedResource<BodhiServerContext>) -> Self {
+    Self { ctx }
   }
 }
 
-pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::Router {
+pub fn build_routes(ctx: SharedResource<BodhiServerContext>) -> axum::Router {
   axum::Router::new()
     .route("/ping", get(|| async { "pong" }))
     .route("/v1/chat/completions", post(chat_completions_handler))
@@ -71,7 +69,7 @@ pub(super) fn build_routes(bodhi_ctx: Arc<Mutex<BodhiContextWrapper>>) -> axum::
         .allow_credentials(false),
     )
     .layer(TraceLayer::new_for_http())
-    .with_state(RouterState::new(bodhi_ctx))
+    .with_state(RouterState::new(ctx))
 }
 
 async fn static_handler(uri: Uri) -> impl IntoResponse {

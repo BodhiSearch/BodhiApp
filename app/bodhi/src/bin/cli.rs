@@ -1,5 +1,6 @@
 use anyhow::Context;
 use bodhi::cli::{Cli, Command};
+use bodhi::{build_routes, SharedContext};
 use bodhi::{build_server_handle, server::ServerHandle, shutdown_signal, ServerParams};
 use clap::Parser;
 use llama_server_bindings::GptParams;
@@ -44,8 +45,15 @@ async fn main_server(server_params: ServerParams, gpt_params: GptParams) -> anyh
     shutdown,
     ready_rx: _ready_rx,
   } = build_server_handle(server_params)?;
+  let mut ctx = SharedContext::new_shared(&gpt_params)?;
+  let app = build_routes(ctx.clone());
   let server_async = tokio::spawn(async move {
-    match server.start(gpt_params).await {
+    let callback = move || {
+      if let Err(err) = ctx.try_stop() {
+        tracing::warn!(err = ?err, "error stopping llama context");
+      }
+    };
+    match server.start_new(app, Some(callback)).await {
       Ok(()) => Ok(()),
       Err(err) => {
         tracing::error!(err = ?err, "server encountered an error");

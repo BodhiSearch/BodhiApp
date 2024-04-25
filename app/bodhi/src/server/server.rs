@@ -1,9 +1,5 @@
-use crate::server::bodhi_ctx::BodhiContextWrapper;
-use crate::server::routes::build_routes;
 use crate::{DEFAULT_HOST, DEFAULT_PORT};
 use axum::Router;
-use llama_server_bindings::GptParams;
-use std::sync::{Arc, Mutex};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::{self, Receiver, Sender};
 
@@ -59,35 +55,6 @@ impl Server {
       ready,
       shutdown_rx,
     }
-  }
-  
-  pub async fn start(self, gpt_params: GptParams) -> anyhow::Result<()> {
-    let wrapper = BodhiContextWrapper::new(&gpt_params)?;
-    let wrapper = Arc::new(Mutex::new(wrapper));
-    let app = build_routes(wrapper.clone());
-    let addr = format!("{}:{}", &self.server_args.host, &self.server_args.port);
-    let listener = TcpListener::bind(&addr).await?;
-    tracing::info!(addr = addr, "Server started");
-    let axum_server = axum::serve(listener, app).with_graceful_shutdown(async move {
-      if self.shutdown_rx.await.is_err() {
-        tracing::warn!("shutdown sender dropped without sending a stop signal");
-      } else {
-        tracing::warn!("shutting down server");
-      };
-      if let Ok(mut wrapper) = wrapper.lock() {
-        let result = wrapper.stop();
-        if result.is_err() {
-          tracing::warn!(err = format!("{result:?}"), "err stopping llama.cpp server");
-        } else {
-          tracing::info!("llama server stopped")
-        }
-      }
-    });
-    if self.ready.send(()).is_err() {
-      tracing::warn!("ready receiver dropped before start start notified")
-    };
-    axum_server.await?;
-    Ok(())
   }
 
   pub async fn start_new<F>(self, app: Router, callback: Option<F>) -> anyhow::Result<()>
