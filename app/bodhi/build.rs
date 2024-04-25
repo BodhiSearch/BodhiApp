@@ -11,6 +11,7 @@ fn main() -> anyhow::Result<()> {
   if cfg!(feature = "native_app") {
     tauri_build::build();
   } else {
+    println!("running build.rs for cli");
     build_non_native()?;
   }
   Ok(())
