@@ -5,6 +5,7 @@ mod routes_ui;
 #[allow(clippy::module_inception)]
 mod server;
 mod shared;
+mod shared_rw;
 mod shutdown;
 mod utils;
 pub use crate::server::routes::build_routes;
