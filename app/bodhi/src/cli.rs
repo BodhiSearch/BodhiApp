@@ -36,6 +36,9 @@ pub enum Command {
     #[clap(short = 'f', long = "force")]
     force: bool,
   },
+  /// List all the models available on this machine
+  List {
+  }
 }
 
 impl Command {

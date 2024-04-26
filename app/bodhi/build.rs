@@ -12,7 +12,7 @@ fn main() -> anyhow::Result<()> {
     tauri_build::build();
   } else {
     println!("running build.rs for cli");
-    build_non_native()?;
+    // build_non_native()?;
   }
   Ok(())
 }

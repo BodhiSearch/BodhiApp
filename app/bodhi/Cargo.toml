@@ -14,7 +14,7 @@ custom-protocol = ["tauri/custom-protocol"]
 
 [[bin]]
 name = "bodhicli"
-path = "src/bin/cli.rs"
+path = "src/bin/cmd.rs"
 
 [dependencies]
 anyhow = "1.0.81"
@@ -26,10 +26,12 @@ dirs = "5.0.1"
 dotenv = "0.15.0"
 futures-util = "0.3.30"
 hf-hub = { version = "0.3.2", features = ["tokio"] }
+humantime = "2.1.0"
 include_dir = "0.7.3"
 lazy_static = "1.4.0"
 llama-server-bindings = { version = "0.1.0", path = "../../llama-server-bindings" }
 mime_guess = "2.0.4"
+prettytable-rs = "0.10.0"
 regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
@@ -43,6 +45,7 @@ tokio-stream = "0.1.15"
 tower-http = { version = "0.5.2", features = ["trace", "cors"] }
 tracing = { version = "0.1.40", features = ["async-await", "log"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+walkdir = "2.5.0"
 webbrowser = { version = "1.0.0", optional = true }
 
 [dev-dependencies]

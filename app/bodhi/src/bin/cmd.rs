@@ -3,7 +3,7 @@ use bodhi::{
   build_routes, build_server_handle,
   cli::{Cli, Command},
   server::ServerHandle,
-  shutdown_signal, ServerParams, SharedContext,
+  shutdown_signal, List, ServerParams, SharedContext,
 };
 use clap::Parser;
 use llama_server_bindings::GptParams;
@@ -35,6 +35,9 @@ fn main_internal() -> anyhow::Result<()> {
     cli_args @ Command::Pull { .. } => {
       let pull_param = cli_args.into_pull_param()?;
       pull_param.download()?;
+    }
+    Command::List {} => {
+      List::execute()?;
     }
   }
   Ok(())
