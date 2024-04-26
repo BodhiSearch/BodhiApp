@@ -1,8 +1,6 @@
 use super::{DEFAULT_HOST, DEFAULT_PORT_STR};
-use crate::{pull::Pull, ServerParams};
-use anyhow::anyhow;
+use crate::pull::Pull;
 use clap::{Parser, Subcommand};
-use llama_server_bindings::GptParams;
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -15,12 +13,15 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-  /// start the server
+  /// start the OpenAI compatible REST API server and Web UI
   Serve {
+    /// Start with the given host, e.g. '0.0.0.0' to allow traffic from any ip on network
     #[clap(short='H', default_value = DEFAULT_HOST)]
-    host: Option<String>,
+    host: String,
+    /// Start on the given port
     #[clap(short, default_value = DEFAULT_PORT_STR)]
-    port: Option<u16>,
+    port: u16,
+    /// Load the GGUF model from the given path
     #[clap(short = 'm')]
     model: Option<PathBuf>,
   },
@@ -37,34 +38,10 @@ pub enum Command {
     force: bool,
   },
   /// List all the models available on this machine
-  List {
-  }
+  List {},
 }
 
 impl Command {
-  pub fn into_serve_params(self) -> anyhow::Result<(ServerParams, GptParams)> {
-    if let Command::Serve { model, host, port } = self {
-      let mut gpt_params = GptParams::default();
-      if let Some(model) = model {
-        let model = model
-          .to_str()
-          .ok_or_else(|| anyhow!("failed to convert path to string"))?
-          .to_owned();
-        gpt_params.model = Some(model);
-      }
-      let mut server_params = ServerParams::default();
-      if let Some(host) = host {
-        server_params.host = host;
-      }
-      if let Some(port) = port {
-        server_params.port = port;
-      }
-      Ok((server_params, gpt_params))
-    } else {
-      panic!("should not be called for non Command::Serve commands")
-    }
-  }
-
   pub fn into_pull_param(self) -> anyhow::Result<Pull> {
     if let Command::Pull { repo, file, force } = self {
       Ok(Pull { repo, file, force })
@@ -77,33 +54,7 @@ impl Command {
 #[cfg(test)]
 mod test {
   use super::Command;
-  use crate::{pull::Pull, ServerParams};
-  use llama_server_bindings::GptParams;
-  use std::path::PathBuf;
-
-  #[test]
-  pub fn test_to_serve_params() -> anyhow::Result<()> {
-    let command = Command::Serve {
-      host: Some(String::from("0.0.0.0")),
-      port: Some(8080),
-      model: Some(PathBuf::from("models/llama-2-7B.gguf")),
-    };
-    let (server_params, gpt_params) = command.into_serve_params()?;
-    let expected = GptParams {
-      seed: None,
-      n_predict: None,
-      n_ctx: None,
-      model: Some("models/llama-2-7B.gguf".to_string()),
-      embedding: None,
-    };
-    assert_eq!(expected, gpt_params);
-    let expected = ServerParams {
-      host: String::from("0.0.0.0"),
-      port: 8080,
-    };
-    assert_eq!(expected, server_params);
-    Ok(())
-  }
+  use crate::pull::Pull;
 
   #[test]
   fn test_into_pull_params() -> anyhow::Result<()> {

@@ -3,10 +3,9 @@ use bodhi::{
   build_routes, build_server_handle,
   cli::{Cli, Command},
   server::ServerHandle,
-  shutdown_signal, List, ServerParams, SharedContext,
+  shutdown_signal, List, Serve, SharedContext,
 };
 use clap::Parser;
-use llama_server_bindings::GptParams;
 use tokio::runtime::Builder;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -28,9 +27,8 @@ pub fn main() {
 fn main_internal() -> anyhow::Result<()> {
   let cli = Cli::parse();
   match cli.command {
-    cli_args @ Command::Serve { .. } => {
-      let (server_params, gpt_params) = cli_args.into_serve_params()?;
-      main_async(server_params, gpt_params)?;
+    Command::Serve { host, port, model } => {
+      main_async(Serve { host, port, model })?;
     }
     cli_args @ Command::Pull { .. } => {
       let pull_param = cli_args.into_pull_param()?;
@@ -43,21 +41,21 @@ fn main_internal() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn main_async(server_params: ServerParams, gpt_params: GptParams) -> anyhow::Result<()> {
+fn main_async(serve: Serve) -> anyhow::Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build();
   match runtime {
-    Ok(runtime) => runtime.block_on(async move { main_server(server_params, gpt_params).await }),
+    Ok(runtime) => runtime.block_on(async move { main_server(serve).await }),
     Err(err) => Err(err.into()),
   }
 }
 
-async fn main_server(server_params: ServerParams, gpt_params: GptParams) -> anyhow::Result<()> {
+async fn main_server(serve: Serve) -> anyhow::Result<()> {
   let ServerHandle {
     server,
     shutdown,
     ready_rx: _ready_rx,
-  } = build_server_handle(server_params)?;
-  let mut ctx = SharedContext::new_shared(&gpt_params)?;
+  } = build_server_handle(serve.clone().into())?;
+  let mut ctx = SharedContext::new_shared(serve.into())?;
   let app = build_routes(ctx.clone());
   let server_async = tokio::spawn(async move {
     let callback = move || {

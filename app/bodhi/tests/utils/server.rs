@@ -45,7 +45,7 @@ pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle
     model: Some(model_path),
     ..GptParams::default()
   };
-  let wrapper = SharedContext::new_shared(&gpt_params)?;
+  let wrapper = SharedContext::new_shared(Some(gpt_params))?;
   let app = build_routes(wrapper.clone());
   let callback = move || {
     let mut wrapper = wrapper.lock().unwrap();

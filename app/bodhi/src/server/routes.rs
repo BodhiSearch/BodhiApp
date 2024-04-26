@@ -17,7 +17,6 @@ use llama_server_bindings::BodhiServerContext;
 use std::path::PathBuf;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-
 static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
 // TODO: serialize error in OpenAI format

@@ -12,7 +12,7 @@ impl<T> Deref for SharedResource<T> {
   type Target = Mutex<Option<T>>;
 
   fn deref(&self) -> &Self::Target {
-    &*self.0
+    &self.0
   }
 }
 
@@ -25,7 +25,7 @@ impl<T> Clone for SharedResource<T> {
 pub type SharedContext = SharedResource<BodhiServerContext>;
 
 impl SharedContext {
-  pub fn new_shared(gpt_params: &GptParams) -> anyhow::Result<Self> {
+  pub fn new_shared(gpt_params: Option<GptParams>) -> anyhow::Result<Self> {
     let mut ctx = Self(Arc::new(Mutex::new(None)));
     ctx.reload(gpt_params)?;
     Ok(ctx)
@@ -45,15 +45,17 @@ impl SharedContext {
     Ok(())
   }
 
-  pub fn reload(&mut self, gpt_params: &GptParams) -> anyhow::Result<()> {
+  pub fn reload(&mut self, gpt_params: Option<GptParams>) -> anyhow::Result<()> {
     self.try_stop()?;
-    let ctx = BodhiServerContext::new(gpt_params)?;
-    let mut guard = self.lock().unwrap();
-    *guard = Some(ctx);
+    if let Some(gpt_params) = gpt_params {
+      let ctx = BodhiServerContext::new(gpt_params)?;
+      let mut guard = self.lock().unwrap();
+      *guard = Some(ctx);
 
-    let ctx = guard.as_mut().unwrap();
-    ctx.init()?;
-    ctx.start_event_loop()?;
+      let ctx = guard.as_mut().unwrap();
+      ctx.init()?;
+      ctx.start_event_loop()?;
+    }
     Ok(())
   }
 
