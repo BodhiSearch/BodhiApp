@@ -1,6 +1,7 @@
 mod utils;
 use anyhow::{Context, Result};
 use async_openai::types::CreateChatCompletionResponse;
+use reqwest::StatusCode;
 use rstest::rstest;
 use serde_json::json;
 use utils::test_server;
@@ -40,10 +41,8 @@ pub async fn test_server_chat(
     .send()
     .await
     .context("querying chat endpoint")?;
-  let response = response
-    .json::<CreateChatCompletionResponse>()
-    .await
-    .context("parsing response as json")?;
+  assert_eq!(response.status(), StatusCode::OK);
+  let response = response.json::<CreateChatCompletionResponse>().await?;
   assert_eq!(response.choices.len(), 1);
   assert_eq!(
     response

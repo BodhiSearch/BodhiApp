@@ -1,9 +1,13 @@
-use super::routes::{ApiError, RouterState};
+use super::{
+  routes::{ApiError, RouterState},
+  utils,
+};
 use anyhow::Context;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
 use axum::{
   body::Body,
   extract::State,
+  http::StatusCode,
   response::{sse::Event, IntoResponse, Response, Sse},
   Json,
 };
@@ -56,8 +60,15 @@ pub(crate) async fn chat_completions_handler(
   }
   let input = serde_json::to_string(&request).unwrap();
   let userdata = String::with_capacity(2048);
-  state
-    .ctx
+  let lock = state.ctx.read().await;
+  let Some(ctx) = lock.as_ref() else {
+    return (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      utils::ApiError::ServerError("context not laoded".to_string()),
+    )
+      .into_response();
+  };
+  ctx
     .completions(
       &input,
       Some(server_callback),
@@ -79,7 +90,12 @@ async fn chat_completions_stream_handler(
     .unwrap();
   let (tx, rx) = tokio::sync::mpsc::channel::<String>(100);
   tokio::spawn(async move {
-    let result = state.ctx.completions(
+    let lock = state.ctx.read().await;
+    let Some(ctx) = lock.as_ref() else {
+      tracing::warn!("context is not laoded");
+      return;
+    };
+    let result = ctx.completions(
       &input,
       Some(server_callback_stream),
       &tx as *const _ as *mut c_void,

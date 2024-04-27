@@ -1,36 +1,36 @@
-use anyhow::{bail, Ok};
-use llama_server_bindings::{BodhiServerContext, Callback, GptParams};
-use std::{ffi::c_void, sync::Arc, time::Duration};
+use anyhow::Ok;
+use llama_server_bindings::{BodhiServerContext, GptParams};
+use std::future::Future;
+use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
 pub type SharedContextRw = Arc<RwLock<Option<BodhiServerContext>>>;
 
 pub trait SharedContextRwExts {
-  async fn new_shared_rw(gpt_params: Option<GptParams>) -> anyhow::Result<Self>
+  fn new_shared_rw(
+    gpt_params: Option<GptParams>,
+  ) -> impl Future<Output = anyhow::Result<Self>> + Send
   where
     Self: Sized;
 
-  async fn reload(&mut self, gpt_params: Option<GptParams>) -> anyhow::Result<()>
+  fn reload(
+    &mut self,
+    gpt_params: Option<GptParams>,
+  ) -> impl Future<Output = anyhow::Result<()>> + Send
   where
     Self: Sized;
 
-  async fn try_stop(&mut self) -> anyhow::Result<()>
+  fn try_stop(&mut self) -> impl Future<Output = anyhow::Result<()>> + Send
   where
     Self: Sized;
 
-  async fn has_model(&self) -> anyhow::Result<bool>
+  fn has_model(&self) -> impl Future<Output = anyhow::Result<bool>> + Send
   where
     Self: Sized;
 
-  async fn get_gpt_params(&self) -> anyhow::Result<Option<GptParams>>
+  fn get_gpt_params(&self) -> impl Future<Output = anyhow::Result<Option<GptParams>>> + Send
   where
     Self: Sized;
-  async fn completions(
-    &self,
-    input: &str,
-    callback: Option<Callback>,
-    userdata: *mut c_void,
-  ) -> anyhow::Result<()>;
 }
 
 impl SharedContextRwExts for SharedContextRw {
@@ -93,20 +93,6 @@ impl SharedContextRwExts for SharedContextRw {
     } else {
       Ok(None)
     }
-  }
-
-  async fn completions(
-    &self,
-    input: &str,
-    callback: Option<Callback>,
-    userdata: *mut c_void,
-  ) -> anyhow::Result<()> {
-    let lock = self.read().await;
-    let Some(ctx) = lock.as_ref() else {
-      bail!("context is not loaded");
-    };
-    ctx.completions(input, callback, userdata)?;
-    Ok(())
   }
 }
 
@@ -238,13 +224,13 @@ mod test {
     };
     let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let userdata = String::with_capacity(1024);
-    ctx
-      .completions(
-        &chat_request,
-        Some(test_callback),
-        &userdata as *const _ as *mut _,
-      )
-      .await?;
+    let lock = ctx.read().await;
+    let inner = lock.as_ref().expect("should have context loaded");
+    inner.completions(
+      &chat_request,
+      Some(test_callback),
+      &userdata as *const _ as *mut _,
+    )?;
     let response: CreateChatCompletionResponse =
       serde_json::from_str(&userdata).expect("parse as chat completion response json");
     assert_eq!(

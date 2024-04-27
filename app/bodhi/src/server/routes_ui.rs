@@ -1,8 +1,10 @@
+use super::routes::RouterState;
 use super::utils;
 use super::utils::get_chats_dir;
 use super::utils::ApiError;
 use super::utils::HomeDirError;
 use axum::extract::Path as UrlPath;
+use axum::extract::State;
 use axum::response::Json;
 use chrono::serde::ts_milliseconds;
 use chrono::Utc;
@@ -67,7 +69,9 @@ pub struct Chat {
   pub created_at: chrono::DateTime<Utc>,
 }
 
-pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ApiError> {
+pub(crate) async fn ui_chats_handler(
+  State(_state): State<RouterState>,
+) -> Result<Json<Vec<ChatPreview>>, ApiError> {
   let chats = _ui_chats_handler(get_chats_dir()?)?;
   Ok(Json(chats))
 }
@@ -197,9 +201,6 @@ fn remove_dir_contents(dir: &Path) -> Result<(), ChatError> {
 
 #[cfg(test)]
 mod test {
-  use chrono::Utc;
-  use rstest::{fixture, rstest};
-  use tempfile::TempDir;
   use super::_ui_chats_handler;
   use crate::server::{
     routes_ui::{
@@ -208,11 +209,14 @@ mod test {
     },
     utils::BODHI_HOME,
   };
+  use chrono::Utc;
+  use rstest::{fixture, rstest};
   use std::{
     fs,
     io::Write,
     path::{Path, PathBuf},
   };
+  use tempfile::TempDir;
 
   #[rstest]
   pub fn test_get_chats(bodhi_home: TempDir) -> anyhow::Result<()> {

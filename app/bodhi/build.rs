@@ -17,6 +17,7 @@ fn main() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[allow(dead_code)]
 fn build_non_native() -> anyhow::Result<()> {
   println!("cargo:rerun-if-changed=../app/components");
   println!("cargo:rerun-if-changed=../app/lib");
@@ -52,6 +53,7 @@ fn build_non_native() -> anyhow::Result<()> {
   Ok(())
 }
 
+#[allow(dead_code)]
 fn exec_command<I, S>(cwd: &Path, cmd: &str, args: I, err_msg: &str) -> anyhow::Result<()>
 where
   I: IntoIterator<Item = S>,

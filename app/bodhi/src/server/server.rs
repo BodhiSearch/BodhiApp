@@ -1,5 +1,6 @@
 use crate::{DEFAULT_HOST, DEFAULT_PORT};
 use axum::Router;
+use std::future::Future;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::{self, Receiver, Sender};
 
@@ -57,9 +58,10 @@ impl Server {
     }
   }
 
-  pub async fn start_new<F>(self, app: Router, callback: Option<F>) -> anyhow::Result<()>
+  pub async fn start_new<F, Fut>(self, app: Router, callback: Option<F>) -> anyhow::Result<()>
   where
-    F: FnOnce() + Send + 'static,
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: Future<Output = ()> + Send + 'static,
   {
     let Server {
       server_args: ServerParams { host, port },
@@ -78,9 +80,10 @@ impl Server {
     Ok(())
   }
 
-  async fn shutdown_handler<F>(shutdown_rx: Receiver<()>, callback: Option<F>)
+  async fn shutdown_handler<F, Fut>(shutdown_rx: Receiver<()>, callback: Option<F>)
   where
-    F: FnOnce(),
+    F: FnOnce() -> Fut,
+    Fut: Future<Output = ()> + Send + 'static,
   {
     match shutdown_rx.await.is_err() {
       true => {
@@ -93,7 +96,7 @@ impl Server {
       }
     };
     if let Some(callback) = callback {
-      callback();
+      callback().await;
     }
   }
 }
@@ -103,6 +106,7 @@ mod test {
   use crate::{build_server_handle, ServerHandle, ServerParams};
   use anyhow::anyhow;
   use axum::{routing::get, Router};
+  use futures_util::{future::BoxFuture, FutureExt};
   use reqwest::StatusCode;
   use std::sync::{Arc, Mutex};
 
@@ -121,14 +125,14 @@ mod test {
     let app = Router::new().route("/ping", get(|| async { (StatusCode::OK, "pong") }));
     let callback_received = Arc::new(Mutex::new(false));
     let callback_clone = callback_received.clone();
-    let start_handle = server.start_new(
-      app,
-      Some(move || {
+    let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
+      async move {
         let mut c = callback_clone.lock().unwrap();
         *c = true;
-      }),
-    );
-    let join_handle = tokio::spawn(start_handle);
+      }
+      .boxed()
+    });
+    let join_handle = tokio::spawn(server.start_new(app, Some(callback)));
     ready_rx.await?;
     let response = reqwest::Client::new()
       .get(format!("http://{host}:{port}/ping"))

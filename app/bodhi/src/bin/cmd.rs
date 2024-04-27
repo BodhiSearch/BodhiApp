@@ -3,9 +3,10 @@ use bodhi::{
   build_routes, build_server_handle,
   cli::{Cli, Command},
   server::ServerHandle,
-  shutdown_signal, List, Serve, SharedContext,
+  shutdown_signal, List, Serve, SharedContextRw, SharedContextRwExts,
 };
 use clap::Parser;
+use futures_util::{future::BoxFuture, FutureExt};
 use tokio::runtime::Builder;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -55,14 +56,17 @@ async fn main_server(serve: Serve) -> anyhow::Result<()> {
     shutdown,
     ready_rx: _ready_rx,
   } = build_server_handle(serve.clone().into())?;
-  let mut ctx = SharedContext::new_shared(serve.into())?;
+  let mut ctx = SharedContextRw::new_shared_rw(serve.into()).await?;
   let app = build_routes(ctx.clone());
   let server_async = tokio::spawn(async move {
-    let callback = move || {
-      if let Err(err) = ctx.try_stop() {
-        tracing::warn!(err = ?err, "error stopping llama context");
+    let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
+      async move {
+        if let Err(err) = ctx.try_stop().await {
+          tracing::warn!(err = ?err, "error stopping llama context");
+        }
       }
-    };
+      .boxed()
+    });
     match server.start_new(app, Some(callback)).await {
       Ok(()) => Ok(()),
       Err(err) => {

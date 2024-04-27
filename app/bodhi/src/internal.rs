@@ -1,4 +1,8 @@
-use bodhi::{build_routes, build_server_handle, Server, ServerHandle, ServerParams, SharedContext};
+use bodhi::{
+  build_routes, build_server_handle, Server, ServerHandle, ServerParams, SharedContextRw,
+  SharedContextRwExts,
+};
+use futures_util::{future::BoxFuture, FutureExt};
 use llama_server_bindings::GptParams;
 use std::sync::Mutex;
 use tauri::{
@@ -44,8 +48,8 @@ fn main_internal() -> anyhow::Result<()> {
       let server_state = result.unwrap();
       app.manage(server_state);
       // Attempt to open the default web browser at localhost:7735
-      if let Err(e) = webbrowser::open("http://localhost:7735/") {
-        eprintln!("Failed to open browser: {}", e);
+      if let Err(err) = webbrowser::open("http://localhost:7735/") {
+        tracing::info!(err=?err, "failed to open browser");
       }
       Ok(())
     })
@@ -130,22 +134,25 @@ fn main_server(server_params: ServerParams, gpt_params: GptParams) -> anyhow::Re
     shutdown,
     ready_rx,
   } = build_server_handle(server_params)?;
-  let server_async = tokio::spawn(async move { start_server(server, &gpt_params, ready_rx).await });
+  let server_async = tokio::spawn(async move { start_server(server, gpt_params, ready_rx).await });
   Ok(ServerState::new(server_async, shutdown))
 }
 
 async fn start_server(
   server: Server,
-  gpt_params: &GptParams,
+  gpt_params: GptParams,
   ready_rx: Receiver<()>,
 ) -> anyhow::Result<()> {
-  let mut ctx = SharedContext::new_shared(gpt_params)?;
+  let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
   let app = build_routes(ctx.clone());
-  let callback = move || {
-    if let Err(err) = ctx.try_stop() {
-      tracing::warn!(err = ?err, "error stopping llama context");
+  let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
+    async move {
+      if let Err(err) = ctx.try_stop().await {
+        tracing::warn!(err = ?err, "error stopping llama context");
+      }
     }
-  };
+    .boxed()
+  });
   if let Err(err) = server.start_new(app, Some(callback)).await {
     tracing::error!(err = ?err, "server startup resulted in an error");
     return Err(err);

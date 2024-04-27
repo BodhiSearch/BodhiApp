@@ -1,7 +1,9 @@
 use anyhow::{anyhow, Result};
 use bodhi::{
-  build_routes, build_server_handle, ServerHandle, ServerParams, SharedContext, BODHI_HOME
+  build_routes, build_server_handle, ServerHandle, ServerParams, SharedContextRw,
+  SharedContextRwExts, BODHI_HOME,
 };
+use futures_util::{future::BoxFuture, FutureExt};
 use llama_server_bindings::GptParams;
 use rstest::fixture;
 use tempdir::TempDir;
@@ -45,12 +47,16 @@ pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle
     model: Some(model_path),
     ..GptParams::default()
   };
-  let wrapper = SharedContext::new_shared(Some(gpt_params))?;
+  let mut wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
   let app = build_routes(wrapper.clone());
-  let callback = move || {
-    let mut wrapper = wrapper.lock().unwrap();
-    wrapper.as_mut().unwrap().stop().unwrap();
-  };
+  let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
+    async move {
+      if let Err(err) = wrapper.try_stop().await {
+        tracing::warn!(err = ?err, "error unloading context");
+      }
+    }
+    .boxed()
+  });
   let join = tokio::spawn(server.start_new(app, Some(callback)));
   ready_rx.await?;
   Ok(TestServerHandle {
