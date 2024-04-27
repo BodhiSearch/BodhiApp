@@ -127,7 +127,7 @@ mod test {
     let user_home = dirs::home_dir()
       .ok_or_else(|| anyhow!("failed to get users home dir"))
       .unwrap();
-    let model_file = user_home.join(".cache/huggingface/llama-2-7b-chat.Q4_K_M.gguf");
+    let model_file = user_home.join(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa/llama-2-7b-chat.Q4_K_M.gguf");
     assert!(model_file.exists());
     model_file.to_string_lossy().into_owned()
   }

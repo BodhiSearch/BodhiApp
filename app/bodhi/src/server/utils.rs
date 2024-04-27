@@ -20,6 +20,8 @@ pub(crate) enum ApiError {
   #[error("{0}")]
   ServerError(String),
   #[error("{0}")]
+  BadRequest(String),
+  #[error("{0}")]
   NotFound(String),
 }
 
@@ -38,6 +40,9 @@ impl IntoResponse for ApiError {
         .into_response(),
       ApiError::NotFound(error) => {
         (StatusCode::NOT_FOUND, Json(ApiErrorResponse { error })).into_response()
+      }
+      ApiError::BadRequest(error) => {
+        (StatusCode::BAD_GATEWAY, Json(ApiErrorResponse { error })).into_response()
       }
     }
   }

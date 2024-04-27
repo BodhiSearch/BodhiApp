@@ -1,4 +1,5 @@
 use super::{
+  context::load_context,
   routes::{ApiError, RouterState},
   utils,
 };
@@ -52,9 +53,12 @@ unsafe extern "C" fn server_callback_stream(
 }
 
 pub(crate) async fn chat_completions_handler(
-  State(state): State<RouterState>,
+  State(mut state): State<RouterState>,
   Json(request): Json<CreateChatCompletionRequest>,
 ) -> Response<Body> {
+  if let Err(err) = load_context(&mut state, &request.model).await {
+    return err;
+  };
   if request.stream.unwrap_or(false) {
     return chat_completions_stream_handler(state, request).await;
   }

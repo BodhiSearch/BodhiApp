@@ -1,8 +1,11 @@
 use super::{
-  routes_chat::chat_completions_handler, routes_models::ui_models_handler, routes_ui::{
+  routes_chat::chat_completions_handler,
+  routes_models::ui_models_handler,
+  routes_ui::{
     ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
     ui_chats_handler,
-  }, shared_rw::SharedContextRw
+  },
+  shared_rw::SharedContextRw,
 };
 use axum::{
   http::{self, StatusCode, Uri},
@@ -45,6 +48,7 @@ impl RouterState {
 }
 
 pub fn build_routes(ctx: SharedContextRw) -> axum::Router {
+  let state = RouterState::new(ctx);
   axum::Router::new()
     .route("/ping", get(|| async { "pong" }))
     .route("/v1/chat/completions", post(chat_completions_handler))
@@ -64,7 +68,7 @@ pub fn build_routes(ctx: SharedContextRw) -> axum::Router {
         .allow_credentials(false),
     )
     .layer(TraceLayer::new_for_http())
-    .with_state(RouterState::new(ctx))
+    .with_state(state)
 }
 
 async fn static_handler(uri: Uri) -> impl IntoResponse {

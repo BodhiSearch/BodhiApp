@@ -7,6 +7,7 @@ mod server;
 mod shared_rw;
 mod shutdown;
 mod utils;
+mod context;
 pub use crate::server::routes::build_routes;
 pub use crate::server::routes_ui::{Chat, ChatPreview, Message};
 pub use crate::server::server::*;

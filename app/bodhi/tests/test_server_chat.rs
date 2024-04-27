@@ -25,7 +25,7 @@ pub async fn test_server_chat(
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
     .json(&json!({
-      "model": "tinyllama-15m-q8_0",
+      "model": "TheBloke/Llama-2-7B-Chat-GGUF:llama-2-7b-chat.Q4_K_M.gguf",
       "seed": 42,
       "messages": [
         {

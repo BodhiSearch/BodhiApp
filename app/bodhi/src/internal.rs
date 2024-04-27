@@ -118,7 +118,7 @@ fn launch_server() -> anyhow::Result<ServerState> {
     model: Some(
       dirs::home_dir()
         .unwrap()
-        .join(".cache/huggingface/llama-2-7b-chat.Q4_K_M.gguf")
+        .join(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa/llama-2-7b-chat.Q4_K_M.gguf")
         .to_str()
         .unwrap()
         .to_owned(),

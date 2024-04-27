@@ -1,5 +1,4 @@
 use crate::hf::{list_models, ModelItem};
-use hf_hub::Cache;
 use prettytable::{
   format::{self},
   row, Cell, Row, Table,
@@ -9,11 +8,9 @@ pub struct List;
 
 impl List {
   pub fn execute() -> anyhow::Result<()> {
-    let cache = Cache::default();
-    let cache = cache.path();
     let mut table = Table::new();
     table.add_row(row!["NAME", "REPO ID", "SHA", "SIZE", "MODIFIED"]);
-    let models = list_models(cache);
+    let models = list_models();
 
     table = models.into_iter().fold(table, |mut table, model| {
       let ModelItem {
