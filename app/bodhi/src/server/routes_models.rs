@@ -1,3 +1,5 @@
+use crate::hf::list_models;
+
 use super::utils::ApiError;
 use axum::Json;
 use serde::{Deserialize, Serialize};
@@ -9,9 +11,14 @@ pub(crate) struct Model {
   display_name: String,
 }
 
-pub(crate) async fn ui_models_handler() -> Result<Json<Vec<String>>, ApiError> {
-  // let models = _ui_models_handler()?;
-  let models = vec!["llama2-7b".to_string(), "llama2-13b".to_string()];
+pub(crate) async fn ui_models_handler() -> Result<Json<Vec<Model>>, ApiError> {
+  let models = list_models()
+    .into_iter()
+    .map(|item| Model {
+      model: item.model_id(),
+      display_name: item.name,
+    })
+    .collect::<Vec<_>>();
   Ok(Json(models))
 }
 

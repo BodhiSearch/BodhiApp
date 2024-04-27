@@ -14,6 +14,11 @@ pub struct ModelItem {
   pub size: Option<u64>,
   pub updated: Option<DateTime<Utc>>,
 }
+impl ModelItem {
+  pub fn model_id(&self) -> String {
+    format!("{}/{}:{}", self.owner, self.repo, self.name)
+  }
+}
 
 pub fn list_models() -> Vec<ModelItem> {
   return _list_models(Cache::default().path());
@@ -67,7 +72,7 @@ pub fn find_model(model_id: &str) -> Option<ModelItem> {
 pub(super) fn _find_model(cache_dir: &Path, model_id: &str) -> Option<ModelItem> {
   let models = _list_models(cache_dir);
   models.into_iter().find(|item| {
-    let current_id = format!("{}/{}:{}", item.owner, item.repo, item.name);
+    let current_id = item.model_id();
     current_id.eq(model_id)
   })
 }

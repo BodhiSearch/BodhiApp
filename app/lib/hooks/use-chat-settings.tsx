@@ -11,7 +11,7 @@ import { getModels } from "../backend";
 
 interface ChatSettingsContext {
   model: string | null
-  models: string[] | null
+  models: Model[] | null
   setModel: (value: string | null) => void
 }
 
@@ -29,9 +29,14 @@ interface ChatSettingsProviderProps {
   children: React.ReactNode
 }
 
+interface Model {
+  model: string,
+  displayName: string,
+}
+
 export function ChatSettingsProvider({ children }: ChatSettingsProviderProps) {
   const [model, setModel] = useLocalStorage<string | null>('model', null);
-  const [models, setModels] = useState<string[] | null>(null);
+  const [models, setModels] = useState<Model[] | null>(null);
 
   const populateModel = async () => {
     let { data, status } = await getModels();

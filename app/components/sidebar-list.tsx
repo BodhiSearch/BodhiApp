@@ -49,7 +49,7 @@ export function SidebarList({ }: SidebarListProps) {
           </SelectTrigger>
           <SelectContent>
             {models && models.map((model, index) => {
-              return <SelectItem key={index} value={model}>{model}</SelectItem>
+              return <SelectItem key={index} value={model.model}>{model.displayName}</SelectItem>
             })}
           </SelectContent>
         </Select>
