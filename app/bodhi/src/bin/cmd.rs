@@ -38,7 +38,7 @@ fn main_internal() -> anyhow::Result<()> {
       force,
     } => {
       let pull_param = Pull::new(id, repo, file, force);
-      pull_param.download()?;
+      pull_param.execute()?;
     }
     Command::List { remote } => {
       List::new(remote).execute()?;

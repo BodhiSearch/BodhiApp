@@ -7,13 +7,13 @@ use regex::Regex;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-struct RemoteModel {
-  display_name: String,
-  family: Option<String>,
-  owner: String,
-  repo: String,
-  files: Vec<String>,
-  default: String,
+pub(super) struct RemoteModel {
+  pub(super) display_name: String,
+  pub(super) family: Option<String>,
+  pub(super) owner: String,
+  pub(super) repo: String,
+  pub(super) files: Vec<String>,
+  pub(super) default: String,
 }
 
 impl RemoteModel {
@@ -38,7 +38,7 @@ impl RemoteModel {
   }
 }
 
-const MODELS_YAML: &str = include_str!("models.yaml");
+pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
 
 pub struct List {
   remote: bool,

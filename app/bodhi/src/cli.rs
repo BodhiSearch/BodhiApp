@@ -29,15 +29,18 @@ pub enum Command {
   Pull {
     /// Download the model using model id.
     /// Run `bodhi list -r` to list all the pre-configured model ids.
-    #[clap()]
+    #[clap(group = "pull")]
     id: Option<String>,
+
     /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
-    #[clap(long, short = 'r', requires = "file")]
+    #[clap(long, short = 'r', requires = "file", group = "pull")]
     repo: Option<String>,
+
     /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
     /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
     #[clap(long, short = 'f', requires = "repo")]
     file: Option<String>,
+
     /// If the file already exists in $HF_HOME, force download it again
     #[clap(long = "force")]
     force: bool,
