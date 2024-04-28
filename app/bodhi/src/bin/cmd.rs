@@ -3,7 +3,7 @@ use bodhi::{
   build_routes, build_server_handle,
   cli::{Cli, Command},
   server::ServerHandle,
-  shutdown_signal, List, Serve, SharedContextRw, SharedContextRwExts,
+  shutdown_signal, List, Pull, Serve, SharedContextRw, SharedContextRwExts,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
@@ -31,12 +31,17 @@ fn main_internal() -> anyhow::Result<()> {
     Command::Serve { host, port, model } => {
       main_async(Serve { host, port, model })?;
     }
-    cli_args @ Command::Pull { .. } => {
-      let pull_param = cli_args.into_pull_param()?;
+    Command::Pull {
+      id,
+      repo,
+      file,
+      force,
+    } => {
+      let pull_param = Pull::new(id, repo, file, force);
       pull_param.download()?;
     }
-    Command::List {} => {
-      List::execute()?;
+    Command::List { remote } => {
+      List::new(remote).execute()?;
     }
   }
   Ok(())

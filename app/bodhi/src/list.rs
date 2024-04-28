@@ -3,11 +3,62 @@ use prettytable::{
   format::{self},
   row, Cell, Row, Table,
 };
+use regex::Regex;
+use serde::Deserialize;
 
-pub struct List;
+#[derive(Debug, Deserialize)]
+struct RemoteModel {
+  display_name: String,
+  family: Option<String>,
+  owner: String,
+  repo: String,
+  files: Vec<String>,
+  default: String,
+}
+
+impl RemoteModel {
+  fn variants(&self) -> Vec<String> {
+    let re = Regex::new(r".*\.(?P<variant>[^\.]*)\.gguf").unwrap();
+    self
+      .files
+      .iter()
+      .map(|f| match re.captures(f) {
+        Some(captures) => captures["variant"].to_string(),
+        None => f.to_string(),
+      })
+      .collect::<Vec<String>>()
+  }
+
+  fn default(&self) -> String {
+    let re = Regex::new(r".*\.(?P<variant>[^\.]*)\.gguf").unwrap();
+    let Some(cap) = re.captures(&self.default) else {
+      return self.default.to_string();
+    };
+    cap["variant"].to_string()
+  }
+}
+
+const MODELS_YAML: &str = include_str!("models.yaml");
+
+pub struct List {
+  remote: bool,
+}
 
 impl List {
-  pub fn execute() -> anyhow::Result<()> {
+  pub fn new(remote: bool) -> Self {
+    Self { remote }
+  }
+
+  pub fn execute(self) -> anyhow::Result<()> {
+    if self.remote {
+      self.list_remote_models()?;
+    } else {
+      self.list_local_models()?;
+    }
+    Ok(())
+  }
+
+  fn list_local_models(self) -> anyhow::Result<()> {
     let mut table = Table::new();
     table.add_row(row!["NAME", "REPO ID", "SHA", "SIZE", "MODIFIED"]);
     let models = list_models();
@@ -49,6 +100,24 @@ impl List {
       ]));
       table
     });
+    table.set_format(format::FormatBuilder::default().padding(2, 2).build());
+    table.printstd();
+    Ok(())
+  }
+
+  fn list_remote_models(self) -> anyhow::Result<()> {
+    let models: Vec<RemoteModel> = serde_yaml::from_str(MODELS_YAML)?;
+    let mut table = Table::new();
+    table.add_row(row!["ID", "REPO ID", "FAMILY", "VARIANTS", "DEFAULT"]);
+    for model in models.into_iter() {
+      table.add_row(Row::from(vec![
+        Cell::new(&model.display_name),
+        Cell::new(&format!("{}/{}", &model.owner, &model.repo)),
+        Cell::new(model.family.as_deref().unwrap_or("")),
+        Cell::new(&model.variants().join(",")),
+        Cell::new(&model.default()),
+      ]));
+    }
     table.set_format(format::FormatBuilder::default().padding(2, 2).build());
     table.printstd();
     Ok(())

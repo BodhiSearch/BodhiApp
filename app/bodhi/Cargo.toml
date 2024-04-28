@@ -35,6 +35,7 @@ prettytable-rs = "0.10.0"
 regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
+serde_yaml = "0.9.34"
 tauri = { version = "1.6.1", features = [
   "api-all",
   "system-tray",

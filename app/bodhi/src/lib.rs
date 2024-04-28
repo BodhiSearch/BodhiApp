@@ -8,3 +8,4 @@ mod serve;
 pub use cli::Command;
 pub use list::List;
 pub use serve::Serve;
+pub use pull::Pull;

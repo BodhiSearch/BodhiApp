@@ -6,10 +6,10 @@ use walkdir::WalkDir;
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct ModelItem {
-  pub path: String,
   pub name: String,
   pub owner: String,
   pub repo: String,
+  pub path: String,
   pub sha: String,
   pub size: Option<u64>,
   pub updated: Option<DateTime<Utc>>,

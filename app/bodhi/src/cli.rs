@@ -1,6 +1,5 @@
 use super::{DEFAULT_HOST, DEFAULT_PORT_STR};
-use crate::pull::Pull;
-use clap::{Parser, Subcommand};
+use clap::{ArgGroup, Parser, Subcommand};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -26,52 +25,28 @@ pub enum Command {
     model: Option<PathBuf>,
   },
   /// Pull a gguf model from huggingface repository
+  #[clap(group = ArgGroup::new("pull").required(true))]
   Pull {
+    /// Download the model using model id.
+    /// Run `bodhi list -r` to list all the pre-configured model ids.
+    #[clap()]
+    id: Option<String>,
     /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
-    #[clap()]
-    repo: String,
-    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`
-    #[clap()]
-    file: String,
+    #[clap(long, short = 'r', requires = "file")]
+    repo: Option<String>,
+    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
+    /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
+    #[clap(long, short = 'f', requires = "repo")]
+    file: Option<String>,
     /// If the file already exists in $HF_HOME, force download it again
-    #[clap(short = 'f', long = "force")]
+    #[clap(long = "force")]
     force: bool,
   },
-  /// List all the models available on this machine
-  List {},
-}
-
-impl Command {
-  pub fn into_pull_param(self) -> anyhow::Result<Pull> {
-    if let Command::Pull { repo, file, force } = self {
-      Ok(Pull { repo, file, force })
-    } else {
-      panic!("should not be called for non Command::Pull commands")
-    }
-  }
-}
-
-#[cfg(test)]
-mod test {
-  use super::Command;
-  use crate::pull::Pull;
-
-  #[test]
-  fn test_into_pull_params() -> anyhow::Result<()> {
-    let command = Command::Pull {
-      repo: "bartowski/Meta-Llama-3-8B-Instruct-GGUF".to_string(),
-      file: "Meta-Llama-3-8B-Instruct-Q8_0.gguf".to_string(),
-      force: false,
-    };
-    let params = command.into_pull_param()?;
-    assert_eq!(
-      Pull {
-        repo: "bartowski/Meta-Llama-3-8B-Instruct-GGUF".to_string(),
-        file: "Meta-Llama-3-8B-Instruct-Q8_0.gguf".to_string(),
-        force: false,
-      },
-      params
-    );
-    Ok(())
-  }
+  /// List all the models downloaded locally,
+  /// and pre-configured models available for download
+  List {
+    /// List pre-configured models available for download from remote
+    #[clap(long, short = 'r')]
+    remote: bool,
+  },
 }
