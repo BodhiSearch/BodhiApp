@@ -36,9 +36,18 @@ impl RemoteModel {
     };
     cap["variant"].to_string()
   }
+
+  pub(crate) fn repo_id(&self) -> String {
+    format!("{}/{}", self.owner, self.repo)
+  }
 }
 
 pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
+
+pub(crate) fn find_remote_model(id: &str) -> Option<RemoteModel> {
+  let models: Vec<RemoteModel> = serde_yaml::from_str(MODELS_YAML).ok()?;
+  models.into_iter().find(|model| model.display_name.eq(id))
+}
 
 pub struct List {
   remote: bool,

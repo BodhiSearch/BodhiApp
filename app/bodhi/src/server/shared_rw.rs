@@ -67,7 +67,7 @@ impl SharedContextRwExts for SharedContextRw {
     };
     ctx.init()?;
     ctx.start_event_loop()?;
-    // if stopping server immediately after starting, gets stuck in
+    // TODO - if stopping server immediately after starting, gets stuck in
     // `waiting for event_thread to complete`
     // sleep for .5 sec to avoid this scenario
     tokio::time::sleep(Duration::from_secs_f32(0.5)).await;

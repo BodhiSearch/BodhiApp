@@ -52,4 +52,22 @@ pub enum Command {
     #[clap(long, short = 'r')]
     remote: bool,
   },
+  /// Run the given model in interactive mode.
+  /// This command also downloads the model if not downloaded already.
+  #[clap(group = ArgGroup::new("run").required(true))]
+  Run {
+    /// Download the model using model id.
+    /// Run `bodhi list -r` to list all the pre-configured model ids.
+    #[clap(group = "run")]
+    id: Option<String>,
+
+    /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
+    #[clap(long, short = 'r', requires = "file", group = "run")]
+    repo: Option<String>,
+
+    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
+    /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
+    #[clap(long, short = 'f', requires = "repo")]
+    file: Option<String>,
+  },
 }

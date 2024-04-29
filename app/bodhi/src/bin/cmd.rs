@@ -1,9 +1,6 @@
 use anyhow::Context;
 use bodhi::{
-  build_routes, build_server_handle,
-  cli::{Cli, Command},
-  server::ServerHandle,
-  shutdown_signal, List, Pull, Serve, SharedContextRw, SharedContextRwExts,
+  build_routes, build_server_handle, cli::{Cli, Command}, server::ServerHandle, shutdown_signal, List, Pull, Run, Serve, SharedContextRw, SharedContextRwExts
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
@@ -42,6 +39,9 @@ fn main_internal() -> anyhow::Result<()> {
     }
     Command::List { remote } => {
       List::new(remote).execute()?;
+    }
+    Command::Run { id, repo, file } => {
+      Run::new(id, repo, file).execute()?;
     }
   }
   Ok(())

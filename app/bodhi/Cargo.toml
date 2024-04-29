@@ -22,12 +22,14 @@ async-openai = "0.20.0"
 axum = "0.7.4"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.2", features = ["derive"] }
+dialoguer = { version = "0.11.0", features = ["history"] }
 dirs = "5.0.1"
 dotenv = "0.15.0"
 futures-util = "0.3.30"
 hf-hub = { version = "0.3.2", features = ["tokio"] }
 humantime = "2.1.0"
 include_dir = "0.7.3"
+indicatif = { version = "0.17.8", features = ["tokio"] }
 lazy_static = "1.4.0"
 llama-server-bindings = { version = "0.1.0", path = "../../llama-server-bindings" }
 mime_guess = "2.0.4"
