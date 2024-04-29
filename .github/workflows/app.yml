@@ -36,7 +36,8 @@ jobs:
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: lts/iron
+          cache: 'pnpm'
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -50,7 +51,7 @@ jobs:
         # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
       - name: install frontend dependencies
-        run: yarn pnpm
+        run: pnpm install
         working-directory: app
       - name: Cache cargo registry
         uses: actions/cache@v2
@@ -67,13 +68,6 @@ jobs:
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
-      - name: Cache pnpm modules
-        uses: actions/cache@v2
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
