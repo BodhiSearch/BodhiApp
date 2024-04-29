@@ -37,8 +37,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+      # https://github.com/pnpm/action-setup
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 9
+          run_install: false
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -51,8 +65,8 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
-      - name: install frontend dependencies
-        run: npm install
+      - name: Install dependencies
+        run: pnpm install
         working-directory: app
       - name: Cache cargo registry
         uses: actions/cache@v2
@@ -72,6 +86,7 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEXT_PUBLIC_API_BASE_URL: "/"
         with:
           projectPath: app
           distPath: app/out
@@ -80,5 +95,4 @@ jobs:
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true
           prerelease: false
-          tauriScript: npm run
-          args: --features="native_app" ${{ matrix.args }}
+          args: ${{ matrix.args }}

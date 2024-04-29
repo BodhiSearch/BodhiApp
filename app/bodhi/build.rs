@@ -9,7 +9,12 @@ use std::{
 
 fn main() -> anyhow::Result<()> {
   if cfg!(feature = "native_app") {
+    println!("running build.rs for app");
     tauri_build::build();
+    let profile = std::env::var("PROFILE").unwrap();
+    if profile == "debug" {
+      build_frontend()?;
+    }
   } else {
     println!("running build.rs for cli");
     // build_non_native()?;
@@ -22,19 +27,24 @@ fn build_non_native() -> anyhow::Result<()> {
   println!("cargo:rerun-if-changed=../app/components");
   println!("cargo:rerun-if-changed=../app/lib");
   println!("cargo:rerun-if-changed=../app/pages");
+  build_frontend()?;
+  Ok(())
+}
+
+fn build_frontend() -> anyhow::Result<()> {
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
   let bodhiui_dir = fs::canonicalize(PathBuf::from(project_dir).join(".."))
     .context("error canocilizing bodhiui path")?;
   exec_command(
     &bodhiui_dir,
-    "npm",
+    "pnpm",
     ["install"],
     "error running `npm install` on bodhiui",
   )?;
   exec_command(
     &bodhiui_dir,
-    "npm",
+    "pnpm",
     ["run", "build"],
     "error running `npm run build` on bodhiui",
   )?;
