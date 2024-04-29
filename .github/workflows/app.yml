@@ -51,7 +51,7 @@ jobs:
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
       - name: install frontend dependencies
         run: yarn pnpm
-
+        working-directory: app
       - name: Cache cargo registry
         uses: actions/cache@v2
         with:
