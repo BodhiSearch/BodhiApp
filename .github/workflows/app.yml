@@ -37,7 +37,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: lts/iron
-          cache: 'pnpm'
+          cache: 'npm'
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -51,7 +51,7 @@ jobs:
         # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
       - name: install frontend dependencies
-        run: pnpm install
+        run: npm install
         working-directory: app
       - name: Cache cargo registry
         uses: actions/cache@v2
