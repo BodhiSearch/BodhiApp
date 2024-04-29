@@ -14,9 +14,18 @@ pub struct ModelItem {
   pub size: Option<u64>,
   pub updated: Option<DateTime<Utc>>,
 }
+
 impl ModelItem {
   pub fn model_id(&self) -> String {
     format!("{}/{}:{}", self.owner, self.repo, self.name)
+  }
+
+  pub fn model_path(&self) -> String {
+    Cache::default()
+      .path()
+      .join(&self.path)
+      .to_string_lossy()
+      .into_owned()
   }
 }
 

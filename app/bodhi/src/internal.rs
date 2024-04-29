@@ -3,7 +3,7 @@ use bodhi::{
   SharedContextRwExts,
 };
 use futures_util::{future::BoxFuture, FutureExt};
-use llama_server_bindings::GptParams;
+use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
 use std::sync::Mutex;
 use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,
@@ -114,36 +114,25 @@ fn on_system_tray_event(app: &AppHandle, event: SystemTrayEvent) {
 }
 
 fn launch_server() -> anyhow::Result<ServerState> {
-  let gpt_params = GptParams {
-    model: Some(
-      dirs::home_dir()
-        .unwrap()
-        .join(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa/llama-2-7b-chat.Q4_K_M.gguf")
-        .to_str()
-        .unwrap()
-        .to_owned(),
-    ),
-    ..Default::default()
-  };
-  main_server(ServerParams::default(), gpt_params)
+  main_server(ServerParams::default())
 }
 
-fn main_server(server_params: ServerParams, gpt_params: GptParams) -> anyhow::Result<ServerState> {
+fn main_server(server_params: ServerParams) -> anyhow::Result<ServerState> {
   let ServerHandle {
     server,
     shutdown,
     ready_rx,
   } = build_server_handle(server_params)?;
-  let server_async = tokio::spawn(async move { start_server(server, gpt_params, ready_rx).await });
+  let server_async = tokio::spawn(async move { start_server(server, ready_rx).await });
   Ok(ServerState::new(server_async, shutdown))
 }
 
-async fn start_server(
-  server: Server,
-  gpt_params: GptParams,
-  ready_rx: Receiver<()>,
-) -> anyhow::Result<()> {
-  let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+async fn start_server(server: Server, ready_rx: Receiver<()>) -> anyhow::Result<()> {
+  disable_llama_log();
+  unsafe {
+    llama_server_disable_logging();
+  }
+  let mut ctx = SharedContextRw::new_shared_rw(None).await?;
   let app = build_routes(ctx.clone());
   let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
     async move {

@@ -24,14 +24,14 @@ describe(`run ${APP_NAME}`, () => {
     });
     await new Promise((resolve, reject) => {
       console.log(`starting the server`);
-      let model_path = path.join(os.homedir(), '.cache/huggingface/llama-2-7b-chat.Q4_K_M.gguf');
+      let model_path = path.join(os.homedir(), '.cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa/llama-2-7b-chat.Q4_K_M.gguf');
       server = spawn(`../target/debug/${APP_NAME}`, ['serve', '-m', model_path]);
       let timeout = setTimeout(() => {
         reject(new Error('time out waiting for server to start'));
       }, 10_000);
       server.stdout.on('data', (data) => {
         let output = Buffer.from(data, 'utf-8').toString().trim();
-        if (output.includes('Server started')) {
+        if (output.includes('server started')) {
           clearTimeout(timeout);
           resolve();
         }
@@ -52,19 +52,19 @@ describe(`run ${APP_NAME}`, () => {
 
   it('should fetch chat completion', async () => {
     const chatCompletion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'TheBloke/Llama-2-7B-Chat-GGUF:llama-2-7b-chat.Q8_0.gguf',
       seed: 42,
       messages: [
         { role: 'assistant', content: 'you are a helpful assistant' },
         { role: 'user', content: 'What day comes after Monday?' }
       ]
     });
-    expect(chatCompletion.choices[0].message.content).toBe('Tuesday comes after Monday');
+    expect(chatCompletion.choices[0].message.content).toBe('Tuesday comes after Monday.');
   });
 
   it('should fetch chat completion stream', async () => {
     const chatCompletion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
+      model: 'TheBloke/Llama-2-7B-Chat-GGUF:llama-2-7b-chat.Q8_0.gguf',
       stream: true,
       seed: 42,
       messages: [

@@ -118,7 +118,7 @@ mod test {
   use crate::server::shared_rw::SharedContextRw;
   use anyhow::anyhow;
   use async_openai::types::CreateChatCompletionResponse;
-  use llama_server_bindings::GptParams;
+  use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log, GptParams};
   use rstest::{fixture, rstest};
   use serde_json::json;
 
@@ -142,6 +142,10 @@ mod test {
   #[rstest]
   #[tokio::test]
   async fn test_shared_rw_new_with_params(model_file: String) -> anyhow::Result<()> {
+    disable_llama_log();
+    unsafe {
+      llama_server_disable_logging();
+    }
     let gpt_params = GptParams {
       model: Some(model_file),
       ..GptParams::default()
@@ -155,6 +159,10 @@ mod test {
   #[rstest]
   #[tokio::test]
   async fn test_shared_rw_reload(model_file: String) -> anyhow::Result<()> {
+    disable_llama_log();
+    unsafe {
+      llama_server_disable_logging();
+    }
     let gpt_params = GptParams {
       model: Some(model_file.clone()),
       ..GptParams::default()
@@ -173,6 +181,10 @@ mod test {
   #[rstest]
   #[tokio::test]
   async fn test_shared_rw_try_stop(model_file: String) -> anyhow::Result<()> {
+    disable_llama_log();
+    unsafe {
+      llama_server_disable_logging();
+    }
     let gpt_params = GptParams {
       model: Some(model_file),
       ..GptParams::default()
@@ -217,6 +229,10 @@ mod test {
     model_file: String,
     chat_request: String,
   ) -> anyhow::Result<()> {
+    disable_llama_log();
+    unsafe {
+      llama_server_disable_logging();
+    }
     let gpt_params = GptParams {
       seed: Some(42),
       model: Some(model_file),

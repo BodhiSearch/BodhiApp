@@ -4,7 +4,7 @@ use bodhi::{
   SharedContextRwExts, BODHI_HOME,
 };
 use futures_util::{future::BoxFuture, FutureExt};
-use llama_server_bindings::GptParams;
+use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log, GptParams};
 use rstest::fixture;
 use tempdir::TempDir;
 
@@ -31,6 +31,10 @@ pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle
     host: host.clone(),
     port,
   };
+  disable_llama_log();
+  unsafe {
+    llama_server_disable_logging();
+  }
   let ServerHandle {
     server,
     shutdown,
