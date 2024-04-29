@@ -28,15 +28,15 @@ fn build_non_native() -> anyhow::Result<()> {
     .context("error canocilizing bodhiui path")?;
   exec_command(
     &bodhiui_dir,
-    "pnpm",
+    "npm",
     ["install"],
-    "error running `pnpm install` on bodhiui",
+    "error running `npm install` on bodhiui",
   )?;
   exec_command(
     &bodhiui_dir,
-    "pnpm",
+    "npm",
     ["run", "build"],
-    "error running `pnpm run build` on bodhiui",
+    "error running `npm run build` on bodhiui",
   )?;
 
   let out_dir = std::env::var("OUT_DIR").context("Failed to get OUT_DIR environment variable")?;
