@@ -1,0 +1,81 @@
+name: setup
+description: sets up the bodhiserver for github actions
+
+inputs:
+  GH_PAT:
+    description: Github token
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v4
+    - name: Rewrite submodule URLs and checkout submodules
+      shell: bash
+      run: |
+        git config --global url.https://gh_pat:${{ inputs.GH_PAT }}@github.com/.insteadOf git@github.com:
+        git submodule sync --recursive
+        git submodule update --init --recursive
+        git config --global --unset url.https://gh_pat:${{ inputs.GH_PAT }}@github.com/.insteadOf
+    # https://github.com/pnpm/action-setup
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 9
+        run_install: |
+          - cwd: vercel-ai
+            recursive: true
+    - name: setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/*
+    # - name: Get pnpm store directory
+    #   shell: bash
+    #   run: |
+    #     echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+    # - uses: actions/cache@v4
+    #   name: Setup pnpm cache
+    #   with:
+    #     path: ${{ env.STORE_PATH }}
+    #     key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+    #     restore-keys: |
+    #       ${{ runner.os }}-pnpm-store-
+    - name: install Rust stable
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+        targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+    - name: install dependencies (ubuntu only)
+      shell: bash
+      if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
+      # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
+    - name: Cache cargo registry
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/registry
+        key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo index
+      uses: actions/cache@v4
+      with:
+        path: ~/.cargo/git
+        key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+    - name: Cache cargo build
+      uses: actions/cache@v4
+      with:
+        path: target
+        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+      working-directory: vercel-ai/packages/core
+    - name: Build Vercel AI
+      shell: bash
+      run: pnpm run build --filter=ai...
+      working-directory: vercel-ai
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install
+      working-directory: app
