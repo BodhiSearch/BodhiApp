@@ -86,8 +86,8 @@ jobs:
         run: pnpm install --frozen-lockfile
         working-directory: vercel-ai/packages/core
       - name: Build Vercel AI
-        run: pnpm run build
-        working-directory: vercel-ai/packages/core
+        run: pnpm run build --filter=ai...
+        working-directory: vercel-ai
       - name: Install dependencies
         run: pnpm install
         working-directory: app
