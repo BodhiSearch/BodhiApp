@@ -44,7 +44,7 @@ jobs:
           cargo build --release --bin bodhicli ${{ matrix.args }}
       - name: rename the executable
         run: |
-          mv target/release/bodhicli target/release/bodhi
+          mv target/aarch64-apple-darwin/release/bodhicli target/release/bodhi
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
