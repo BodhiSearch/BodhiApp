@@ -1,4 +1,4 @@
-name: App Release Flow
+name: Command line Release Flow
 
 on:
   push:
@@ -38,17 +38,17 @@ jobs:
             GITSHA=$(git rev-parse --short=8 HEAD)
             echo "VERSION=0.0.1-${DATE}-${GITSHA}" >> $GITHUB_ENV
           fi
-      - uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NEXT_PUBLIC_API_BASE_URL: "/"
+      - name: build the commandline
+        working-directory: app/bodhi
+        run: |
+          cargo build --release --bin bodhicli ${{ matrix.args }}
+      - name: rename the executable
+        run: |
+          mv target/release/bodhicli target/release/bodhi
+      - name: Release
+        uses: softprops/action-gh-release@v2
         with:
-          projectPath: app
-          distPath: app/out
-          appVersion: ${{ env.VERSION }}
-          tagName: app-v__VERSION__
-          releaseName: "Bodhi App v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
-          releaseDraft: false
+          name: Bodhi CLI Release ${{ env.VERSION }}
+          draft: false
           prerelease: true
-          args: ${{ matrix.args }}
+          files: target/release/bodhi
