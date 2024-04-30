@@ -9,7 +9,6 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/checkout@v4
     - name: Rewrite submodule URLs and checkout submodules
       shell: bash
       run: |
