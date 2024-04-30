@@ -1,4 +1,4 @@
-name: Rust CI
+name: Build App
 
 on:
   push:
@@ -65,9 +65,6 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
         # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
-      - name: Install dependencies
-        run: pnpm install
-        working-directory: app
       - name: Cache cargo registry
         uses: actions/cache@v2
         with:
@@ -83,6 +80,12 @@ jobs:
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install dependencies
+        run: pnpm run build
+        working-directory: vercel-ai/packages/core
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: app
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
