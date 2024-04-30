@@ -87,7 +87,7 @@ jobs:
         working-directory: vercel-ai/packages/core
       - name: Build Vercel AI
         run: pnpm recursive run build
-        working-directory: vercel-ai
+        working-directory: vercel-ai/packages/core
       - name: Install dependencies
         run: pnpm install
         working-directory: app
