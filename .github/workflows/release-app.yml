@@ -1,12 +1,12 @@
-name: Build App
+name: App Release Flow
 
 on:
   push:
-    branches: [main]
     tags:
       - "v*"
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   publish-tauri:
@@ -26,7 +26,7 @@ jobs:
           #   args: ""
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Rewrite submodule URLs and checkout submodules
         run: |
           git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
@@ -68,17 +68,17 @@ jobs:
         # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
         # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
       - name: Cache cargo registry
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo index
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
       - name: Cache cargo build
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: target
           key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
@@ -91,6 +91,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install
         working-directory: app
+      - name: Set VERSION environment variable
+        run: |
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_ENV
+          else
+            DATE=$(date +%Y%m%d)
+            GITSHA=$(git rev-parse --short=8 HEAD)
+            echo "VERSION=0.0.1-${DATE}-${GITSHA}" >> $GITHUB_ENV
+          fi
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -98,9 +107,10 @@ jobs:
         with:
           projectPath: app
           distPath: app/out
-          tagName: bodhi-v__VERSION__
-          releaseName: 'Bodhi App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
+          appVersion: ${{ env.VERSION }}
+          tagName: app-v__VERSION__
+          releaseName: "Bodhi App v__VERSION__"
+          releaseBody: "See the assets to download this version and install."
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
