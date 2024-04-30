@@ -17,7 +17,7 @@ fn main() -> anyhow::Result<()> {
     }
   } else {
     println!("running build.rs for cli");
-    // build_non_native()?;
+    build_non_native()?;
   }
   Ok(())
 }
