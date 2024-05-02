@@ -4,14 +4,16 @@ use crate::{
   server::ServerHandle,
   shutdown_signal, List, Pull, Run, Serve, SharedContextRw, SharedContextRwExts,
 };
-use anyhow::Context;
+use anyhow::{anyhow, Context};
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
+use std::path::PathBuf;
 use tokio::runtime::Builder;
+use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub fn main_internal() -> anyhow::Result<()> {
-  setup_logs()?;
+  let _guard = setup_logs()?;
   let cli = Cli::parse();
   match cli.command {
     Command::Serve { host, port, model } => {
@@ -36,14 +38,24 @@ pub fn main_internal() -> anyhow::Result<()> {
   Ok(())
 }
 
-fn setup_logs() -> anyhow::Result<()> {
+fn setup_logs() -> anyhow::Result<WorkerGuard> {
+  let log_dir = format!(
+    "{}/.bodhi/logs",
+    dirs::home_dir()
+      .ok_or_else(|| { anyhow!("failed to get home directory") })?
+      .display()
+  );
+  std::fs::create_dir_all(&log_dir)?;
+  let log_dir = PathBuf::from(log_dir);
+  let file_appender = tracing_appender::rolling::daily(log_dir, "bodhi.log");
+  let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
   let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
   let filter = filter.add_directive("hf_hub=error".parse().unwrap());
   tracing_subscriber::registry()
     .with(filter)
-    .with(fmt::layer())
+    .with(fmt::layer().with_writer(non_blocking))
     .init();
-  Ok(())
+  Ok(guard)
 }
 
 fn main_async(serve: Serve) -> anyhow::Result<()> {
