@@ -1,6 +1,7 @@
 pub mod server;
 pub use server::*;
 pub mod cli;
+mod app;
 mod hf;
 mod list;
 mod pull;
@@ -12,3 +13,4 @@ pub use list::List;
 pub use serve::Serve;
 pub use pull::Pull;
 pub use run::Run;
+pub use app::main_internal;
