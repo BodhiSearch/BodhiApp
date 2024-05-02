@@ -1,4 +1,4 @@
-use crate::{DEFAULT_HOST, DEFAULT_PORT};
+use crate::server::utils::{DEFAULT_HOST, DEFAULT_PORT};
 use axum::Router;
 use std::future::Future;
 use tokio::net::TcpListener;

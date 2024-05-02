@@ -1,6 +1,5 @@
-use crate::{hf::find_model, server::utils::ApiError, SharedContextRwExts};
-
 use super::routes::RouterState;
+use crate::{hf::find_model, server::utils::ApiError, server::SharedContextRwExts};
 use axum::response::{IntoResponse, Response};
 use llama_server_bindings::GptParams;
 

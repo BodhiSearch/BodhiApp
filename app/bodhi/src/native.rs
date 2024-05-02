@@ -1,4 +1,4 @@
-use bodhi::{
+use crate::server::{
   build_routes, build_server_handle, Server, ServerHandle, ServerParams, SharedContextRw,
   SharedContextRwExts,
 };
@@ -13,28 +13,13 @@ use tokio::{
   sync::oneshot::{self, Receiver, Sender},
   task::JoinHandle,
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-pub(crate) fn main_native() {
-  dotenv::dotenv().ok();
-  tracing_subscriber::registry()
-    .with(tracing_subscriber::fmt::layer())
-    .with(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
-    .init();
-  let result = main_internal();
-  if let Err(err) = result {
-    tracing::warn!(err = ?err, "application exited with error");
-    std::process::exit(1);
-  }
-}
-
-fn main_internal() -> anyhow::Result<()> {
+pub(super) fn main_native() -> anyhow::Result<()> {
   let system_tray = SystemTray::new().with_menu(
     SystemTrayMenu::new()
       .add_item(CustomMenuItem::new("homepage", "Open Homepage"))
       .add_item(CustomMenuItem::new("quit".to_string(), "Quit")),
   );
-
   tauri::Builder::default()
     .setup(|app| {
       #[cfg(target_os = "macos")]

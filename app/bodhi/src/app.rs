@@ -1,19 +1,32 @@
 use crate::{
-  build_routes, build_server_handle,
   cli::{Cli, Command},
+  native::main_native,
   server::ServerHandle,
-  shutdown_signal, List, Pull, Run, Serve, SharedContextRw, SharedContextRwExts,
+  server::{
+    build_routes, build_server_handle, shutdown_signal, SharedContextRw, SharedContextRwExts,
+  },
+  List, Pull, Run, Serve,
 };
 use anyhow::{anyhow, Context};
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 use tokio::runtime::Builder;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub fn main_internal() -> anyhow::Result<()> {
   let _guard = setup_logs()?;
+  let args = env::args().collect::<Vec<_>>();
+  if args.len() == 1
+    && args
+      .first()
+      .ok_or_else(|| anyhow!("already checked the length is 1"))?
+      .contains(".app/Contents/MacOS/")
+  {
+    // launch the native app
+    return main_native();
+  }
   let cli = Cli::parse();
   match cli.command {
     Command::Serve { host, port, model } => {
@@ -45,6 +58,7 @@ fn setup_logs() -> anyhow::Result<WorkerGuard> {
       .ok_or_else(|| { anyhow!("failed to get home directory") })?
       .display()
   );
+
   std::fs::create_dir_all(&log_dir)?;
   let log_dir = PathBuf::from(log_dir);
   let file_appender = tracing_appender::rolling::daily(log_dir, "bodhi.log");

@@ -1,8 +1,6 @@
-use std::path::PathBuf;
-
+use crate::server::ServerParams;
 use llama_server_bindings::GptParams;
-
-use crate::ServerParams;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone)]
 pub struct Serve {
