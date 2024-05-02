@@ -8,17 +8,8 @@ use std::{
 };
 
 fn main() -> anyhow::Result<()> {
-  if cfg!(feature = "native_app") {
-    println!("running build.rs for app");
-    tauri_build::build();
-    let profile = std::env::var("PROFILE").unwrap();
-    if profile == "debug" {
-      build_frontend()?;
-    }
-  } else {
-    println!("running build.rs for cli");
-    build_non_native()?;
-  }
+  tauri_build::build();
+  build_frontend()?;
   Ok(())
 }
 

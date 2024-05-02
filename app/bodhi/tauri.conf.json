@@ -3,8 +3,7 @@
     "beforeDevCommand": "pnpm run dev",
     "beforeBuildCommand": "pnpm install && pnpm run build",
     "devPath": "http://localhost:3000",
-    "distDir": "../out",
-    "features": ["native_app"]
+    "distDir": "../out"
   },
   "package": {
     "productName": "bodhi",

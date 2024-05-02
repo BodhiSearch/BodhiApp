@@ -1,3 +1,6 @@
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use anyhow::Context;
 use bodhi::{
   build_routes, build_server_handle, cli::{Cli, Command}, server::ServerHandle, shutdown_signal, List, Pull, Run, Serve, SharedContextRw, SharedContextRwExts
