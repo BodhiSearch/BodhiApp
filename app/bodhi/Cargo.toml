@@ -5,15 +5,10 @@ edition = "2021"
 description = "Run LLMs locally"
 license = "MIT"
 authors = ["Amir Nagri <amir.nagri@gmail.com>"]
-default-run = "bodhicli"
 
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
-
-[[bin]]
-name = "bodhicli"
-path = "src/bin/cmd.rs"
 
 [dependencies]
 anyhow = "1.0.81"

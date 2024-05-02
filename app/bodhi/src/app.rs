@@ -29,6 +29,9 @@ pub fn main_internal() -> anyhow::Result<()> {
   }
   let cli = Cli::parse();
   match cli.command {
+    Command::App {} => {
+      main_native()?;
+    }
     Command::Serve { host, port, model } => {
       main_async(Serve { host, port, model })?;
     }

@@ -12,6 +12,8 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
+  /// launch as native app
+  App {},
   /// start the OpenAI compatible REST API server and Web UI
   Serve {
     /// Start with the given host, e.g. '0.0.0.0' to allow traffic from any ip on network

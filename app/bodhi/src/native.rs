@@ -10,11 +10,20 @@ use tauri::{
   WindowEvent,
 };
 use tokio::{
+  runtime::Builder,
   sync::oneshot::{self, Receiver, Sender},
   task::JoinHandle,
 };
 
 pub(super) fn main_native() -> anyhow::Result<()> {
+  let runtime = Builder::new_multi_thread().enable_all().build();
+  match runtime {
+    Ok(runtime) => runtime.block_on(async move { _main_native().await }),
+    Err(err) => Err(err.into()),
+  }
+}
+
+async fn _main_native() -> anyhow::Result<()> {
   let system_tray = SystemTray::new().with_menu(
     SystemTrayMenu::new()
       .add_item(CustomMenuItem::new("homepage", "Open Homepage"))
