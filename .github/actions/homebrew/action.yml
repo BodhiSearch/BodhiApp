@@ -11,17 +11,18 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Find DMG artifact path
+    - name: Parse JSON and find DMG artifact path
       shell: bash
+      id: dmg-artifact
       run: |
-        DMG_ARTIFACT=$(jq -r '.[] | select(contains("Bodhi") and endswith(".dmg"))' <<< "${{ inputs.artifact_paths }}")
+        DMG_ARTIFACT=$(jq -r '.[] | select(endswith(".dmg"))' <<< "$INPUT_ARTIFACT_PATHS")
+        echo "DMG_ARTIFACT=${DMG_ARTIFACT}"
         echo "dmg_artifact=$DMG_ARTIFACT" >> $GITHUB_OUTPUT
-
-    - name: Calculate SHA-256 checksum
-      shell: bash
-      run: |
-        DMG_CHECKSUM=$(shasum -a 256 "${{ env.dmg_artifact }}" | awk '{print $1}')
+        DMG_CHECKSUM=$(shasum -a 256 "${DMG_ARTIFACT}" | awk '{print $1}')
+        echo "DMG_CHECKSUM=${DMG_CHECKSUM}"
         echo "dmg_checksum=$DMG_CHECKSUM" >> $GITHUB_OUTPUT
+      env:
+        INPUT_ARTIFACT_PATHS: ${{ inputs.artifact_paths }}
 
     - name: Clone BodhiSearch/homebrew-apps
       shell: bash
@@ -34,14 +35,16 @@ runs:
       shell: bash
       working-directory: homebrew-apps
       run: |
-        sed -i.bak "s|url .*|url \"${{ env.dmg_artifact }}\"|" bodhi.rb
-        sed -i.bak "s|sha256 .*|sha256 \"${{ env.dmg_checksum }}\"|" bodhi.rb
+        sed -i.bak "s|url .*|url \"${{ steps.dmg-artifact.outputs.dmg_artifact }}\"|" bodhi.rb
+        sed -i.bak "s|sha256 .*|sha256 \"${{ steps.dmg-artifact.outputs.dmg_checksum }}\"|" bodhi.rb
         rm bodhi.rb.bak
-
     - name: Commit and push changes
       shell: bash
       working-directory: homebrew-apps
       run: |
+        GITHUB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        git add bodhi.rb
+        git commit -m "[Github Bot][${{ env.VERSION }}][${{ env.TARGET }}] updated the homebrew with artifact\nurl: ${GITHUB_URL}"
         git push origin main
     - name: Clean up
       shell: bash

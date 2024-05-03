@@ -30,6 +30,9 @@ jobs:
           #   args: ""
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: envs
+        run: |
+          echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
       - uses: actions/checkout@v4
       - name: setup
         uses: ./.github/actions/setup
