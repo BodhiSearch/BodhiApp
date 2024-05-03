@@ -1,0 +1,28 @@
+name: llama_cpp
+description: builds the llama_cpp library
+
+inputs:
+  LLAMA_CPP_BUILD_FLAGS:
+    description: build flags for building llama.cpp
+    required: true
+
+
+runs:
+  using: composite
+  steps:
+    - name: brew update
+      shell: bash
+      working-directory: llama-server-bindings/llama.cpp
+      run: brew update
+    - name: Build
+      shell: bash
+      working-directory: llama-server-bindings/llama.cpp
+      id: cmake_build
+      run: |
+        sysctl -a
+        mkdir build
+        cd build
+        # Metal is disabled due to intermittent failures with Github runners not having a GPU:
+        # https://github.com/ggerganov/llama.cpp/actions/runs/8635935781/job/23674807267#step:5:2313
+        cmake ${{ inputs.LLAMA_CPP_BUILD_FLAGS }} -DLLAMA_FATAL_WARNINGS=ON -DLLAMA_CURL=OFF ..
+        cmake --build . --config Release --target server -j $(sysctl -n hw.logicalcpu)

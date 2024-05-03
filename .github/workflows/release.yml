@@ -2,12 +2,17 @@ name: App Release Flow
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
 
+env:
+  CI_BUILD: true
+
 jobs:
-  publish-tauri:
+  publish:
     permissions:
       contents: write
     strategy:
@@ -15,7 +20,8 @@ jobs:
       matrix:
         include:
           - platform: "macos-latest" # for Arm based macs (M1 and above).
-            args: "--target aarch64-apple-darwin"
+            target: aarch64-apple-darwin
+            llama_cpp_build_flags: "-DLLAMA_METAL_EMBED_LIBRARY=ON"
           # - platform: "macos-latest" # for Intel based macs.
           #   args: "--target x86_64-apple-darwin"
           # - platform: "ubuntu-22.04" # for Tauri v1 you could replace this with ubuntu-20.04.
@@ -29,6 +35,17 @@ jobs:
         uses: ./.github/actions/setup
         with:
           GH_PAT: ${{ secrets.GH_PAT }}
+      - name: llama_cpp
+        uses: ./.github/actions/llama_cpp
+        with:
+          LLAMA_CPP_BUILD_FLAGS: ${{ matrix.llama_cpp_build_flags }}
+      - name: clean
+        run: |
+          cargo clean -p llama-server-bindings
+          cargo clean -p bodhi
+      - name: build llama-server-bindings
+        run: |
+          cargo build llama-server-bindings --target ${{ matrix.target }}
       - name: Set VERSION environment variable
         run: |
           if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
@@ -51,4 +68,4 @@ jobs:
           releaseBody: "See the assets to download this version and install."
           releaseDraft: false
           prerelease: true
-          args: ${{ matrix.args }}
+          args: "--target ${{ matrix.target }}"
