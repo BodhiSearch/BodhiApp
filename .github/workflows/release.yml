@@ -45,7 +45,7 @@ jobs:
           cargo clean -p bodhi
       - name: build llama-server-bindings
         run: |
-          cargo build llama-server-bindings --target ${{ matrix.target }}
+          cargo build -p llama-server-bindings --target ${{ matrix.target }}
       - name: Set VERSION environment variable
         run: |
           if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
