@@ -14,6 +14,8 @@ env:
 jobs:
   create-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
       VERSION: ${{ steps.get_version.outputs.version }}
       TAG_BUILD: ${{ steps.get_version.outputs.tag_build }}
