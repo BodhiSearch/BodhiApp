@@ -36,12 +36,12 @@ jobs:
           fi
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: '${{ steps.get_version.outputs.version }}'
-          release_name: 'Bodhi v${{ steps.get_version.outputs.version }}'
+          name: 'Bodhi v${{ steps.get_version.outputs.version }}'
           body: "See the assets to download this version and install."
           draft: false
           prerelease: true
