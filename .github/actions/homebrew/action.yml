@@ -14,7 +14,7 @@ runs:
     - name: Find DMG artifact path
       shell: bash
       run: |
-        DMG_ARTIFACT=$(echo "${{ inputs.artifact_paths }}" | grep -o '.*/Bodhi-.*\.dmg')
+        DMG_ARTIFACT=$(echo "${{ inputs.artifact_paths }}" | grep -o '.*/Bodhi.*\.dmg')
         echo "dmg_artifact=$DMG_ARTIFACT" >> $GITHUB_OUTPUT
 
     - name: Calculate SHA-256 checksum
