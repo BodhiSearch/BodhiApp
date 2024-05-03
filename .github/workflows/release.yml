@@ -12,7 +12,40 @@ env:
   CI: true
 
 jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      VERSION: ${{ steps.get_version.outputs.version }}
+      TAG_BUILD: ${{ steps.get_version.outputs.tag_build }}
+      RELEASE_UPLOAD_ID: ${{ steps.create_release.outputs.id }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set VERSION environment variable
+        id: get_version
+        run: |
+          if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_OUTPUT
+            echo "TAG_BUILD=true" >> $GITHUB_OUTPUT
+          else
+            DATE=$(date +%Y%m%d)
+            GITSHA=$(git rev-parse --short=8 HEAD)
+            echo "VERSION=0.0.0-${DATE}-${GITSHA}" >> $GITHUB_OUTPUT
+            echo "TAG_BUILD=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: '${{ steps.get_version.outputs.version }}'
+          release_name: 'Bodhi v${{ steps.get_version.outputs.version }}'
+          body: "See the assets to download this version and install."
+          draft: false
+          prerelease: true
+
   publish:
+    needs: create-release
     permissions:
       contents: write
     strategy:
@@ -33,6 +66,9 @@ jobs:
       - name: envs
         run: |
           echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
+          echo VERSION=${{ needs.create-release.outputs.VERSION  }} >> $GITHUB_ENV
+          echo TAG_BUILD=${{ needs.create-release.outputs.TAG_BUILD  }} >> $GITHUB_ENV
+          echo RELEASE_UPLOAD_ID=${{ needs.create-release.outputs.RELEASE_UPLOAD_ID  }} >> $GITHUB_ENV
       - uses: actions/checkout@v4
       - name: setup
         uses: ./.github/actions/setup
@@ -49,17 +85,6 @@ jobs:
       - name: build llama-server-bindings
         run: |
           cargo build -p llama-server-bindings --target ${{ matrix.target }}
-      - name: Set VERSION environment variable
-        run: |
-          if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-            echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_ENV
-            echo "TAG_BUILD=true" >> $GITHUB_ENV
-          else
-            DATE=$(date +%Y%m%d)
-            GITSHA=$(git rev-parse --short=8 HEAD)
-            echo "VERSION=0.0.1-${DATE}-${GITSHA}" >> $GITHUB_ENV
-            echo "TAG_BUILD=false" >> $GITHUB_ENV
-          fi
       - name: tauri-action
         id: tauri-action
         uses: tauri-apps/tauri-action@v0
@@ -71,12 +96,7 @@ jobs:
           distPath: app/out
           appName: Bodhi
           appVersion: ${{ env.VERSION }}
-          tagName: app/v__VERSION__
-          releaseName: "Bodhi App v__VERSION__"
-          releaseId: "bodhi-app-${{ env.VERSION }}"
-          releaseBody: "Bodhi App ${{ env.VERSION }} release.\nSee the assets to download this version and install."
-          releaseDraft: false
-          prerelease: true
+          releaseId: ${{ env.RELEASE_UPLOAD_ID }}
           args: "--target ${{ matrix.target }}"
       - name: Update Homebrew Formula
         if: matrix.target == 'aarch64-apple-darwin' && env.TAG_BUILD == 'true'

@@ -21,6 +21,8 @@ runs:
         DMG_CHECKSUM=$(shasum -a 256 "${DMG_ARTIFACT}" | awk '{print $1}')
         echo "DMG_CHECKSUM=${DMG_CHECKSUM}"
         echo "dmg_checksum=$DMG_CHECKSUM" >> $GITHUB_OUTPUT
+        DMG_FILENAME=$(sed 's/.*\///' <<< "$DMG_ARTIFACT")
+        echo "dmg_filename=$DMG_FILENAME" >> $GITHUB_OUTPUT
       env:
         INPUT_ARTIFACT_PATHS: ${{ inputs.artifact_paths }}
 
@@ -35,16 +37,17 @@ runs:
       shell: bash
       working-directory: homebrew-apps
       run: |
-        sed -i.bak "s|url .*|url \"${{ steps.dmg-artifact.outputs.dmg_artifact }}\"|" bodhi.rb
+        ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.VERSION }}/${{ steps.dmg-artifact.outputs.dmg_filename }}"
+        sed -i.bak "s|url .*|url \"${ARTIFACT_URL}\"|" bodhi.rb
         sed -i.bak "s|sha256 .*|sha256 \"${{ steps.dmg-artifact.outputs.dmg_checksum }}\"|" bodhi.rb
         rm bodhi.rb.bak
     - name: Commit and push changes
       shell: bash
       working-directory: homebrew-apps
       run: |
-        GITHUB_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         git add bodhi.rb
-        git commit -m "[Github Bot][${{ env.VERSION }}][${{ env.TARGET }}] updated the homebrew with artifact\nurl: ${GITHUB_URL}"
+        git commit -m "[Github Bot][${{ env.VERSION }}][${{ env.TARGET }}] updated the homebrew with artifact\nurl: ${RUN_URL}"
         git push origin main
     - name: Clean up
       shell: bash
