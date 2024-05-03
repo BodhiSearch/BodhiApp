@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  CI_BUILD: true
+  CI: true
 
 jobs:
   publish:
@@ -50,22 +50,33 @@ jobs:
         run: |
           if [[ "${GITHUB_REF}" =~ ^refs/tags/v([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
             echo "VERSION=${BASH_REMATCH[1]}" >> $GITHUB_ENV
+            echo "TAG_BUILD=true" >> $GITHUB_ENV
           else
             DATE=$(date +%Y%m%d)
             GITSHA=$(git rev-parse --short=8 HEAD)
             echo "VERSION=0.0.1-${DATE}-${GITSHA}" >> $GITHUB_ENV
+            echo "TAG_BUILD=false" >> $GITHUB_ENV
           fi
-      - uses: tauri-apps/tauri-action@v0
+      - name: tauri-action
+        id: tauri-action
+        uses: tauri-apps/tauri-action@v0
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_PUBLIC_API_BASE_URL: "/"
         with:
           projectPath: app
           distPath: app/out
+          appName: Bodhi
           appVersion: ${{ env.VERSION }}
-          tagName: app-v__VERSION__
+          tagName: app/v__VERSION__
           releaseName: "Bodhi App v__VERSION__"
-          releaseBody: "See the assets to download this version and install."
+          releaseId: "bodhi-app-${{ env.VERSION }}"
+          releaseBody: "Bodhi App ${{ env.VERSION }} release.\nSee the assets to download this version and install."
           releaseDraft: false
           prerelease: true
           args: "--target ${{ matrix.target }}"
+      - name: Update Homebrew Formula
+        if: matrix.target == 'aarch64-apple-darwin' && env.TAG_BUILD == 'true'
+        uses: ./.github/actions/homebrew
+        with:
+          access_token: ${{ secrets.GH_PAT }}
+          artifact_paths: ${{ steps.tauri-action.outputs.artifactPaths }}

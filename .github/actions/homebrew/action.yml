@@ -1,0 +1,49 @@
+name: 'Update Homebrew Formula'
+description: 'Updates the Homebrew formula for the Bodhi app'
+inputs:
+  artifact_paths:
+    description: 'The paths of the generated artifacts'
+    required: true
+  access_token:
+    description: 'The GitHub access token to pull and write to the BodhiSearch/homebrew-apps repository'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Find DMG artifact path
+      shell: bash
+      run: |
+        DMG_ARTIFACT=$(echo "${{ inputs.artifact_paths }}" | grep -o '.*/Bodhi-.*\.dmg')
+        echo "dmg_artifact=$DMG_ARTIFACT" >> $GITHUB_OUTPUT
+
+    - name: Calculate SHA-256 checksum
+      shell: bash
+      run: |
+        DMG_CHECKSUM=$(shasum -a 256 "${{ env.dmg_artifact }}" | awk '{print $1}')
+        echo "dmg_checksum=$DMG_CHECKSUM" >> $GITHUB_OUTPUT
+
+    - name: Clone BodhiSearch/homebrew-apps
+      shell: bash
+      run: |
+        git config --global user.name 'GitHub Actions'
+        git config --global user.email 'actions@github.com'
+        git clone https://x-access-token:${{ inputs.access_token }}@github.com/BodhiSearch/homebrew-apps.git
+
+    - name: Update Bodhi formula
+      shell: bash
+      working-directory: homebrew-apps
+      run: |
+        sed -i.bak "s|url .*|url \"${{ env.dmg_artifact }}\"|" bodhi.rb
+        sed -i.bak "s|sha256 .*|sha256 \"${{ env.dmg_checksum }}\"|" bodhi.rb
+        rm bodhi.rb.bak
+
+    - name: Commit and push changes
+      shell: bash
+      working-directory: homebrew-apps
+      run: |
+        git push origin main
+    - name: Clean up
+      shell: bash
+      run: |
+        rm -rf homebrew-apps
