@@ -2,8 +2,8 @@ name: App Release Flow
 
 on:
   push:
-    branches:
-      - main
+    # branches:
+    #   - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -61,6 +61,7 @@ jobs:
         id: tauri-action
         uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NEXT_PUBLIC_API_BASE_URL: "/"
         with:
           projectPath: app
