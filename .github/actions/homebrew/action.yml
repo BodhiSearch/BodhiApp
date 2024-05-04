@@ -40,6 +40,7 @@ runs:
         ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ env.VERSION }}/${{ steps.dmg-artifact.outputs.dmg_filename }}"
         sed -i.bak "s|url .*|url \"${ARTIFACT_URL}\"|" bodhi.rb
         sed -i.bak "s|sha256 .*|sha256 \"${{ steps.dmg-artifact.outputs.dmg_checksum }}\"|" bodhi.rb
+        sed -i.bak "s|version .*|version \"${{ env.VERSION }}\"|" bodhi.rb
         rm bodhi.rb.bak
     - name: Commit and push changes
       shell: bash

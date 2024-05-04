@@ -1,0 +1,8 @@
+#!/bin/bash
+if [ $# -eq 0 ]; then
+  args="--help"
+else
+  args="$@"
+fi
+current_dir=$(dirname "$(realpath "$0")")
+$current_dir/../../MacOS/bodhi $args
