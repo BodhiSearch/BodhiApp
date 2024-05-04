@@ -1,11 +1,11 @@
 {
-  "version": "v0.0.1",
+  "version": "0.0.1",
   "notes": "Automatic updates for Bodhi App",
-  "pub_date": "2024-05-04T20:00:00Z",
+  "pub_date": "2024-05-04T13:43:48.244Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "ab2838dd882d6f2f1563ed0ed85a89d47a9c76203804d487b1e758e0c93b8686",
-      "url": "https://github.com/BodhiSearch/BodhiServer/releases/download/v0.0.3/Bodhi_0.0.3_aarch64.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUNTFIQ0VKMWhIWmdsV2FzdTIzVXVSYzhhcXh5ZXJWMWRsVXVJTTByV29KZlRCMWRQdkxjYnJXL3VHeURGOElaZzZEZHZLb2hMRmRLRjZIMVoydXJDcUl2UFBjYUxMdFFjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzE0ODMwMjIyCWZpbGU6Qm9kaGkuYXBwLnRhci5nego2Nm5UOFZyY2dRTWFKakJGcXdNNFo0STBPbmpuR3JRdURXZjlCVmc3QWUvMlFLbS82aVZpNDhmcGxWMmJ4OHFFaDRxMDNTQ21BaC9VSjgyLzlPQWdBQT09Cg==",
+      "url": "https://github.com/BodhiSearch/BodhiServer/releases/download/v0.0.1/Bodhi_aarch64.app.tar.gz"
     }
   }
 }
