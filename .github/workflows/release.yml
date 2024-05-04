@@ -132,7 +132,8 @@ jobs:
         run: |
           NEXT_VERSION=$(echo ${{ env.VERSION }} | awk -F. '{$2 = $2 + 1; print}' OFS=.)
           NEXT_VERSION="${NEXT_VERSION}-dev"
-          sed -i 's/^version = ".*"/version = "${NEXT_VERSION}"/' Cargo.toml
+          sed -i.bak "s|^version = .*|version = \"${NEXT_VERSION}\"|" Cargo.toml
+          rm Cargo.toml.bak
       - name: Commit and push changes
         if: env.TAG_BUILD == 'true'
         run: |
