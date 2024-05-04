@@ -46,9 +46,8 @@ runs:
       shell: bash
       working-directory: homebrew-apps
       run: |
-        RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         git add Casks/bodhi.rb
-        git commit -m "[Github Bot][${{ env.VERSION }}][${{ env.TARGET }}] updated the homebrew with artifact\nurl: ${RUN_URL}"
+        git commit -m "[Github Bot][${{ env.VERSION }}][${{ env.TARGET }}] updated the homebrew with artifact\nurl: ${{ env.RUN_URL }}"
         git push origin main
     - name: Clean up
       shell: bash
