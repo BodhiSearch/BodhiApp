@@ -105,7 +105,8 @@ jobs:
       - name: Set the Cargo.toml version in app/bodhi
         working-directory: app/bodhi
         run: |
-          sed -i 's/^version = ".*"/version = "${{ env.VERSION }}"/' Cargo.toml
+          sed -i.bak "s|^version = .*|version = \"${{ env.VERSION }}\"|" Cargo.toml
+          rm Cargo.toml.bak
       - name: tauri-action
         id: tauri-action
         uses: tauri-apps/tauri-action@v0
