@@ -138,7 +138,7 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git pull --rebase
           git add app/bodhi/Cargo.toml
           git commit -m "[Github Bot] Bump up minor version to ${VERSION}-dev"
+          git pull --rebase
           git push
