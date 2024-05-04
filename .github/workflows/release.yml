@@ -5,6 +5,23 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    branches:
+      - main
+    inputs:
+      draft:
+        description: is a draft release?
+        type: choice
+        options:
+          - "yes"
+          - "no"
+        default: "yes"
+      prerelease:
+        description: is a prerelease?
+        type: choice
+        options:
+          - "yes"
+          - "no"
+        default: "yes"
 
 env:
   CI: true
@@ -85,6 +102,10 @@ jobs:
       - name: build llama-server-bindings
         run: |
           cargo build -p llama-server-bindings --target ${{ matrix.target }}
+      - name: Set the Cargo.toml version in app/bodhi
+        working-directory: app/bodhi
+        run: |
+          sed -i 's/^version = ".*"/version = "${{ env.VERSION }}"/' Cargo.toml
       - name: tauri-action
         id: tauri-action
         uses: tauri-apps/tauri-action@v0
@@ -103,3 +124,19 @@ jobs:
         with:
           access_token: ${{ secrets.GH_PAT }}
           artifact_paths: ${{ steps.tauri-action.outputs.artifactPaths }}
+      - name: Bump up minor version in app/bodhi/Cargo.toml
+        if: env.TAG_BUILD == 'true'
+        working-directory: app/bodhi
+        run: |
+          NEXT_VERSION=$(echo ${{ env.VERSION }} | awk -F. '{$2 = $2 + 1; print}' OFS=.)
+          NEXT_VERSION="${NEXT_VERSION}-dev"
+          sed -i 's/^version = ".*"/version = "${NEXT_VERSION}"/' Cargo.toml
+      - name: Commit and push changes
+        if: env.TAG_BUILD == 'true'
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git pull --rebase
+          git add app/bodhi/Cargo.toml
+          git commit -m "[Github Bot] Bump up minor version to ${VERSION}-dev"
+          git push
