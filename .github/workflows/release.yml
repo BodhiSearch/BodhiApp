@@ -95,7 +95,6 @@ jobs:
           NEXT_PUBLIC_API_BASE_URL: "/"
         with:
           projectPath: app
-          distPath: app/out
           appName: Bodhi
           appVersion: ${{ env.VERSION }}
           releaseId: ${{ env.RELEASE_UPLOAD_ID }}
