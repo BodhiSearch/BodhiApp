@@ -6,7 +6,8 @@
     "distDir": "../out"
   },
   "package": {
-    "productName": "Bodhi"
+    "productName": "Bodhi",
+    "version": "0.1.40"
   },
   "tauri": {
     "allowlist": {

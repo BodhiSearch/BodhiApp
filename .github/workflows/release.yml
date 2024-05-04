@@ -2,8 +2,6 @@ name: App Release Flow
 
 on:
   push:
-    # branches:
-    #   - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -40,8 +38,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: '${{ steps.get_version.outputs.version }}'
-          name: 'Bodhi v${{ steps.get_version.outputs.version }}'
+          tag_name: "${{ steps.get_version.outputs.version }}"
+          name: "Bodhi v${{ steps.get_version.outputs.version }}"
           body: "See the assets to download this version and install."
           draft: false
           prerelease: true
@@ -96,7 +94,7 @@ jobs:
         with:
           projectPath: app
           appName: Bodhi
-          appVersion: ${{ env.VERSION }}
+          appVersion: "0.1.30"
           releaseId: ${{ env.RELEASE_UPLOAD_ID }}
           args: "--target ${{ matrix.target }}"
       - name: Update Homebrew Formula
