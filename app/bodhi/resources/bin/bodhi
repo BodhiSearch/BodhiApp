@@ -5,4 +5,5 @@ else
   args="$@"
 fi
 current_dir=$(dirname "$(realpath "$0")")
-$current_dir/../../MacOS/bodhi $args
+bodhi_bin=$(realpath $current_dir/../../../MacOS/bodhi)
+$bodhi_bin $args
