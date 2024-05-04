@@ -120,8 +120,7 @@ jobs:
           releaseId: ${{ env.RELEASE_UPLOAD_ID }}
           args: "--target ${{ matrix.target }}"
       - name: Update Homebrew Formula
-        # if: matrix.target == 'aarch64-apple-darwin' && env.TAG_BUILD == 'true'
-        if: false
+        if: matrix.target == 'aarch64-apple-darwin' && env.TAG_BUILD == 'true'
         uses: ./.github/actions/homebrew
         with:
           access_token: ${{ secrets.GH_PAT }}
