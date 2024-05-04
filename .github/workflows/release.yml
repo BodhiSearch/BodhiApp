@@ -167,5 +167,5 @@ jobs:
           # Commit and push the updated update.json file
           git add update.json
           git commit -m "[Github Bot][${{ env.VERSION }}] Update update.json for aarch64-apple-darwin version\nurl: ${{ env.RUN_URL }}"
-          git pull --rebase
+          git pull origin main --rebase
           git push
