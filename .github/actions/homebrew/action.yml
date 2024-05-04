@@ -35,7 +35,7 @@ runs:
 
     - name: Update Bodhi formula
       shell: bash
-      working-directory: homebrew-apps
+      working-directory: homebrew-apps/Casks
       run: |
         ARTIFACT_URL="${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ env.VERSION }}/${{ steps.dmg-artifact.outputs.dmg_filename }}"
         sed -i.bak "s|version .*|version \"${{ env.VERSION }}\"|" bodhi.rb
@@ -47,7 +47,7 @@ runs:
       working-directory: homebrew-apps
       run: |
         RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        git add bodhi.rb
+        git add Casks/bodhi.rb
         git commit -m "[Github Bot][${{ env.VERSION }}][${{ env.TARGET }}] updated the homebrew with artifact\nurl: ${RUN_URL}"
         git push origin main
     - name: Clean up
