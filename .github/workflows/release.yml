@@ -152,22 +152,16 @@ jobs:
       - name: Update update.json for aarch64-apple-darwin
         if: matrix.target == 'aarch64-apple-darwin'
         run: |
-          ARTIFACT_PATHS="${{ steps.tauri-action.outputs.artifactPaths }}"
-          DMG_FILENAME=""
-          SIGNATURE_FILE=""
-          for artifact_path in $ARTIFACT_PATHS; do
-            if [[ "$artifact_path" == *"_v${{ env.VERSION}}_aarch64.tar.gz" ]]; then
-              DMG_FILENAME="$(basename "$artifact_path")"
-              SIGNATURE_FILE="${DMG_FILENAME}.sig"
-            fi
-          done
+          LATEST_JSON=$(cat latest.json)
+          VERSION=$(echo "$LATEST_JSON" | jq -r '.version')
+          PUB_DATE=$(echo "$LATEST_JSON" | jq -r '.pub_date')
+          DARWIN_AARCH64=$(echo "$LATEST_JSON" | jq -r '.platforms."darwin-aarch64"')
 
-          # Update update.json with the latest release information
-          jq --arg VERSION "${{ env.VERSION }}" \
-            --arg PUB_DATE "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-            --arg URL "${{ github.server_url }}/${{ github.repository }}/releases/download/v${{ env.VERSION }}/$DMG_FILENAME" \
-            --arg SIGNATURE "$(cat "$SIGNATURE_FILE")" \
-            '.version = $VERSION | .pub_date = $PUB_DATE | .platforms."darwin-aarch64" = { "url": $URL, "signature": $SIGNATURE }' \
+          # Update update.json with the extracted values
+          jq --arg VERSION "$VERSION" \
+            --arg PUB_DATE "$PUB_DATE" \
+            --argjson DARWIN_AARCH64 "$DARWIN_AARCH64" \
+            '.version = $VERSION | .pub_date = $PUB_DATE | .platforms."darwin-aarch64" = $DARWIN_AARCH64' \
             update.json > tmp.json && mv tmp.json update.json
 
           # Commit and push the updated update.json file
