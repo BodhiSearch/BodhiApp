@@ -32,7 +32,7 @@ regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.34"
-tauri = { version = "1.6.1", features = ["api-all", "system-tray"] }
+tauri = { version = "1.6.1", features = [ "updater", "api-all", "system-tray"] }
 thiserror = "1.0.59"
 tokio = { version = "1.36.0", features = ["full"] }
 tokio-stream = "0.1.15"
