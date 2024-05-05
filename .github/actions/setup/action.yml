@@ -16,11 +16,6 @@ runs:
         git submodule sync --recursive
         git submodule update --init --recursive --depth=1
         git config --global --unset url.https://gh_pat:${{ inputs.GH_PAT }}@github.com/.insteadOf
-    - name: install Rust stable
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
-        targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
     - name: install dependencies (ubuntu only)
       shell: bash
       if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
@@ -44,6 +39,15 @@ runs:
       with:
         path: target
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+    - name: install Rust stable
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+        targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+    - name: install tauri CLI
+      shell: bash
+      run: |
+        cargo install tauri-cli
     # https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v3
       with:
