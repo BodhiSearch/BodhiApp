@@ -1,6 +1,9 @@
 - display_name: meta-llama3-8b-instruct
   family: llama3
   repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
+  chat_template: llama3
+  features:
+    - chat
   files:
     - Meta-Llama-3-8B-Instruct.Q2_K.gguf
     - Meta-Llama-3-8B-Instruct.Q3_K_L.gguf
@@ -20,6 +23,8 @@
 - display_name: meta-llama3-8b
   family: llama3
   repo: QuantFactory/Meta-Llama-3-8B-GGUF
+  features:
+    - generate
   files:
     - Meta-Llama-3-8B.Q2_K.gguf
     - Meta-Llama-3-8B.Q3_K_L.gguf
@@ -36,9 +41,12 @@
     - Meta-Llama-3-8B.Q6_K.gguf
     - Meta-Llama-3-8B.Q8_0.gguf
   default: Meta-Llama-3-8B.Q8_0.gguf
-- display_name: meta-llama3-70b
+- display_name: meta-llama3-70b-instruct
   family: llama3
-  repo: QuantFactory/Meta-Llama-3-8B-GGUF
+  repo: QuantFactory/Meta-Llama-3-70B-Instruct-GGUF
+  chat_template: llama3
+  features:
+    - chat
   files:
     - Meta-Llama-3-70B-Instruct.Q2_K.gguf
     - Meta-Llama-3-70B-Instruct.Q3_K_L.gguf
@@ -57,7 +65,9 @@
   default: Meta-Llama-3-70B-Instruct.Q8_0-*.gguf
 - display_name: meta-llama-guard-2-8b
   family: llama3
-  repo: QuantFactory/Meta-Llama-3-8B-GGUF
+  repo: QuantFactory/Meta-Llama-Guard-2-8B-GGUF
+  features:
+    - generate
   files:
     - Meta-Llama-Guard-2-8B.Q2_K.gguf
     - Meta-Llama-Guard-2-8B.Q3_K_L.gguf
@@ -77,6 +87,9 @@
 - display_name: llama2-7b-chat
   family: llama2
   repo: TheBloke/Llama-2-7B-Chat-GGUF
+  chat_template: llama2
+  features:
+    - chat
   files:
     - llama-2-7b-chat.Q2_K.gguf
     - llama-2-7b-chat.Q3_K_L.gguf
@@ -94,6 +107,9 @@
 - display_name: llama2-13b-chat
   family: llama2
   repo: TheBloke/Llama-2-13B-chat-GGUF
+  chat_template: llama2
+  features:
+    - chat
   files:
     - llama-2-13b-chat.Q2_K.gguf
     - llama-2-13b-chat.Q3_K_L.gguf
@@ -111,6 +127,9 @@
 - display_name: llama2-70b-chat
   family: llama2
   repo: TheBloke/Llama-2-70B-Chat-GGUF
+  chat_template: llama2
+  features:
+    - chat
   files:
     - llama-2-70b-chat.Q2_K.gguf
     - llama-2-70b-chat.Q3_K_L.gguf
@@ -129,6 +148,8 @@
 - display_name: llama2-7b
   family: llama2
   repo: TheBloke/Llama-2-7B-GGUF
+  features:
+    - generate
   files:
     - llama-2-7b.Q2_K.gguf
     - llama-2-7b.Q3_K_L.gguf
@@ -146,6 +167,8 @@
 - display_name: llama2-70b
   family: llama2
   repo: TheBloke/Llama-2-70B-GGUF
+  features:
+    - generate
   files:
     - llama-2-70b.Q2_K.gguf
     - llama-2-70b.Q3_K_L.gguf
@@ -164,6 +187,9 @@
 - display_name: phi3-mini-4k-instruct
   family: phi3
   repo: microsoft/Phi-3-mini-4k-instruct-gguf
+  chat_template: phi3
+  features:
+    - chat
   files:
     - Phi-3-mini-4k-instruct-fp16.gguf
     - Phi-3-mini-4k-instruct-q4.gguf
@@ -171,6 +197,9 @@
 - display_name: mistral-7b
   family: mistral
   repo: TheBloke/CapybaraHermes-2.5-Mistral-7B-GGUF
+  chat_template: chatml
+  features:
+    - chat
   files:
     - capybarahermes-2.5-mistral-7b.Q2_K.gguf
     - capybarahermes-2.5-mistral-7b.Q3_K_L.gguf
@@ -188,6 +217,9 @@
 - display_name: mixtral-8x7b-instruct
   family: mixtral
   repo: TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF
+  chat_template: "[INST] {prompt} [/INST]"
+  features:
+    - chat
   files:
     - mixtral-8x7b-instruct-v0.1.Q2_K.gguf
     - mixtral-8x7b-instruct-v0.1.Q3_K_M.gguf
@@ -201,6 +233,8 @@
 - display_name: mixtral-8x7b
   family: mixtral
   repo: TheBloke/Mixtral-8x7B-v0.1-GGUF
+  features:
+    - generate
   files:
     - mixtral-8x7b-v0.1.Q2_K.gguf
     - mixtral-8x7b-v0.1.Q3_K_M.gguf
@@ -214,17 +248,26 @@
 - display_name: gemma-7b-instruct
   family: gemma
   repo: google/gemma-7b-it-GGUF
+  chat_template: gemma
+  features:
+    - chat
   files:
     - gemma-7b-it.gguf
   default: gemma-7b-it.gguf
 - display_name: gemma-7b
   family: gemma
   repo: google/gemma-7b-GGUF
+  chat_template: gemma
+  features:
+    - chat
   files:
     - gemma-7b.gguf
   default: gemma-7b.gguf
 - display_name: gemma-1.1-2b-instruct
   family: gemma
+  chat_template: gemma
+  features:
+    - chat
   repo: google/gemma-1.1-2b-it-GGUF
   files:
     - 2b_it_v1p1.gguf

@@ -11,6 +11,8 @@ pub(super) struct RemoteModel {
   pub(super) display_name: String,
   pub(super) family: Option<String>,
   pub(super) repo: String,
+  pub(super) chat_template: Option<String>,
+  pub(super) features: Vec<String>,
   pub(super) files: Vec<String>,
   pub(super) default: String,
 }
@@ -35,7 +37,6 @@ impl RemoteModel {
     };
     cap["variant"].to_string()
   }
-
 }
 
 pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
@@ -112,13 +113,40 @@ impl List {
   fn list_remote_models(self) -> anyhow::Result<()> {
     let models: Vec<RemoteModel> = serde_yaml::from_str(MODELS_YAML)?;
     let mut table = Table::new();
-    table.add_row(row!["ID", "REPO ID", "FAMILY", "VARIANTS", "DEFAULT"]);
+    table.add_row(row![
+      "ID",
+      "REPO ID",
+      "FAMILY",
+      "FEATURES",
+      "CHAT TEMPLATE",
+      "VARIANTS",
+      "DEFAULT"
+    ]);
     for model in models.into_iter() {
+      let chat_template = model.chat_template.as_deref().unwrap_or("-");
+      let chat_template = &truncate(chat_template, 16);
+      let variants = model
+        .variants()
+        .into_iter()
+        .fold(vec![String::from("")], |mut fold, item| {
+          if fold.last().unwrap().len() > 24 {
+            fold.push(String::new());
+          }
+          let last = fold.last_mut().unwrap();
+          if !last.is_empty() {
+            last.push_str(", ");
+          }
+          last.push_str(item.as_str());
+          fold
+        })
+        .join(",\n");
       table.add_row(Row::from(vec![
         Cell::new(&model.display_name),
         Cell::new(&model.repo),
         Cell::new(model.family.as_deref().unwrap_or("")),
-        Cell::new(&model.variants().join(",")),
+        Cell::new(&model.features.join(",")),
+        Cell::new(chat_template),
+        Cell::new(&variants),
         Cell::new(&model.default()),
       ]));
     }
@@ -126,4 +154,15 @@ impl List {
     table.printstd();
     Ok(())
   }
+}
+
+fn truncate(s: &str, max_len: usize) -> String {
+  if s.len() <= max_len {
+    return s.to_string();
+  }
+
+  let half_len = (max_len / 2) - 2;
+  let start = &s[0..half_len];
+  let end = &s[(s.len() - half_len)..];
+  format!("{}...{}", start, end)
 }
