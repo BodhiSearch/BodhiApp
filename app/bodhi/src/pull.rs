@@ -60,7 +60,7 @@ impl Pull {
         id
       );
     };
-    download(model.repo_id(), model.default, force)?;
+    download(model.repo, model.default, force)?;
     Ok(())
   }
 }

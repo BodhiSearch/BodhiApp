@@ -7,7 +7,6 @@ use walkdir::WalkDir;
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct ModelItem {
   pub name: String,
-  pub owner: String,
   pub repo: String,
   pub path: String,
   pub sha: String,
@@ -17,7 +16,7 @@ pub struct ModelItem {
 
 impl ModelItem {
   pub fn model_id(&self) -> String {
-    format!("{}/{}:{}", self.owner, self.repo, self.name)
+    format!("{}:{}", self.repo, self.name)
   }
 
   pub fn model_path(&self) -> String {
@@ -63,8 +62,7 @@ pub(super) fn _list_models(cache_dir: &Path) -> Vec<ModelItem> {
       Some(ModelItem {
         path: relative_path.to_string(),
         name: format!("{}.gguf", &caps["model_name"]),
-        owner: String::from(&caps["username"]),
-        repo: String::from(&caps["repo_name"]),
+        repo: format!("{}/{}", &caps["username"], &caps["repo_name"]),
         sha: String::from(&caps["commit"]),
         size,
         updated,
@@ -130,8 +128,7 @@ mod test {
       path: "models--User1--repo-coder/snapshots/9e221e6b41cb/coder-6.7b-instruct.Q8_0.gguf"
         .to_string(),
       name: "coder-6.7b-instruct.Q8_0.gguf".to_string(),
-      owner: "User1".to_string(),
-      repo: "repo-coder".to_string(),
+      repo: "User1/repo-coder".to_string(),
       sha: "9e221e6b41cb".to_string(),
       size: Some(18),
       updated: Some(modified.into()),
@@ -155,8 +152,7 @@ mod test {
         path: "models--TheYoung--AndRestless/snapshots/046744d93031/bigbag-14.2b-theory.Q1_0.gguf"
           .to_string(),
         name: "bigbag-14.2b-theory.Q1_0.gguf".to_string(),
-        owner: "TheYoung".to_string(),
-        repo: "AndRestless".to_string(),
+        repo: "TheYoung/AndRestless".to_string(),
         sha: "046744d93031".to_string(),
         size: Some(18),
         updated: Some(modified.into()),

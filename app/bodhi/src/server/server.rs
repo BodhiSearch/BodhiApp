@@ -103,7 +103,7 @@ impl Server {
 
 #[cfg(test)]
 mod test {
-  use crate::{build_server_handle, ServerHandle, ServerParams};
+  use crate::server::{build_server_handle, ServerHandle, ServerParams};
   use anyhow::anyhow;
   use axum::{routing::get, Router};
   use futures_util::{future::BoxFuture, FutureExt};

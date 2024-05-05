@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use bodhi::{
+use bodhi::server::{
   build_routes, build_server_handle, ServerHandle, ServerParams, SharedContextRw,
   SharedContextRwExts, BODHI_HOME,
 };

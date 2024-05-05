@@ -10,7 +10,6 @@ use serde::Deserialize;
 pub(super) struct RemoteModel {
   pub(super) display_name: String,
   pub(super) family: Option<String>,
-  pub(super) owner: String,
   pub(super) repo: String,
   pub(super) files: Vec<String>,
   pub(super) default: String,
@@ -37,9 +36,6 @@ impl RemoteModel {
     cap["variant"].to_string()
   }
 
-  pub(crate) fn repo_id(&self) -> String {
-    format!("{}/{}", self.owner, self.repo)
-  }
 }
 
 pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
@@ -75,7 +71,6 @@ impl List {
     table = models.into_iter().fold(table, |mut table, model| {
       let ModelItem {
         name,
-        owner,
         repo,
         sha,
         size,
@@ -102,7 +97,7 @@ impl List {
       let humantime = humantime.unwrap_or_else(|| String::from("Unknown"));
       table.add_row(Row::from(vec![
         Cell::new(&name),
-        Cell::new(&format!("{}/{}", owner, repo)),
+        Cell::new(&repo),
         Cell::new(&sha[..8]),
         Cell::new(&human_size),
         Cell::new(&humantime),
@@ -121,7 +116,7 @@ impl List {
     for model in models.into_iter() {
       table.add_row(Row::from(vec![
         Cell::new(&model.display_name),
-        Cell::new(&format!("{}/{}", &model.owner, &model.repo)),
+        Cell::new(&model.repo),
         Cell::new(model.family.as_deref().unwrap_or("")),
         Cell::new(&model.variants().join(",")),
         Cell::new(&model.default()),

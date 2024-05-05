@@ -1,4 +1,4 @@
-pub(crate) mod server;
+pub mod server;
 mod app;
 pub mod cli;
 mod hf;

@@ -24,7 +24,7 @@ impl Run {
             id
           );
         };
-        (model.repo_id(), model.default)
+        (model.repo, model.default)
       }
       None => {
         let repo = repo.ok_or_else(|| anyhow!("required param repo is missing"))?;
@@ -33,9 +33,7 @@ impl Run {
       }
     };
     let model_file = match Cache::default().repo(Repo::model(repo.clone())).get(&file) {
-      None => {
-        download(repo, file, true)?
-      }
+      None => download(repo, file, true)?,
       Some(path) => path,
     };
     launch_interactive(&model_file)?;

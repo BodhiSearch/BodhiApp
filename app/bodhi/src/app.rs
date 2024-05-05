@@ -24,9 +24,11 @@ pub fn main_internal() -> anyhow::Result<()> {
       .ok_or_else(|| anyhow!("already checked the length is 1"))?
       .contains(".app/Contents/MacOS/")
   {
-    // launch the native app
+    // the app was launched using Bodhi.app, launch the native app with system tray
     return main_native();
   }
+  // the app was called from wrapper
+  // or the executable was called from outside the `Bodhi.app` bundle
   let cli = Cli::parse();
   match cli.command {
     Command::App {} => {
@@ -58,7 +60,7 @@ fn setup_logs() -> anyhow::Result<WorkerGuard> {
   let log_dir = format!(
     "{}/.bodhi/logs",
     dirs::home_dir()
-      .ok_or_else(|| { anyhow!("failed to get home directory") })?
+      .ok_or_else(|| { anyhow!("require home directory to save logs") })?
       .display()
   );
 
