@@ -46,4 +46,4 @@ jobs:
       - name: build the app
         working-directory: app/bodhi
         run: |
-          cargo tauri build --target ${{ matrix.target }} --ci --config '{"tauri": {"updater": {"active": false}}}
+          cargo tauri build --target ${{ matrix.target }} --ci --config '{"tauri": {"updater": {"active": false}}}'
