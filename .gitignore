@@ -24,3 +24,7 @@ Cargo.lock
 
 .DS_Store
 NOTES-*.md
+
+# for `cargo tauri dev` to ignore watching files inside llama-server-bindings
+# submodule already added, and tracked by git
+llama-server-bindings/**

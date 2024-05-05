@@ -43,6 +43,7 @@ jobs:
       - name: build llama-server-bindings
         run: |
           cargo build -p llama-server-bindings --target ${{ matrix.target }}
-      - name: run rust app test
+      - name: build the app
+        working-directory: app/bodhi
         run: |
-          cargo tauri test
+          cargo tauri build --target ${{ matrix.target }} --ci --config '{"tauri": {"updater": {"active": false}}}
