@@ -1,7 +1,7 @@
+use crate::{
+  hf::model_file, interactive::launch_interactive, list::find_remote_model, pull::download,
+};
 use anyhow::{anyhow, bail};
-use hf_hub::{Cache, Repo};
-
-use crate::{interactive::launch_interactive, list::find_remote_model, pull::download};
 
 pub struct Run {
   pub id: Option<String>,
@@ -32,7 +32,7 @@ impl Run {
         (repo, file)
       }
     };
-    let model_file = match Cache::default().repo(Repo::model(repo.clone())).get(&file) {
+    let model_file = match model_file(&repo, &file) {
       None => download(repo, file, true)?,
       Some(path) => path,
     };

@@ -1,8 +1,110 @@
 use chrono::{DateTime, Utc};
-use hf_hub::Cache;
+use hf_hub::{Cache, Repo};
 use regex::Regex;
-use std::{borrow::Borrow, fs, path::Path, time::SystemTime};
+use std::{
+  borrow::Borrow,
+  fs,
+  path::{Path, PathBuf},
+  time::SystemTime,
+};
 use walkdir::WalkDir;
+
+#[allow(unused)]
+pub(crate) static HF_HOME: &str = "HF_HOME";
+pub(crate) static HF_API_PROGRESS: &str = "HF_API_PROGRESS";
+pub(crate) static HF_TOKEN: &str = "HF_TOKEN";
+
+pub(crate) fn hf_cache() -> Cache {
+  Cache::default()
+}
+
+pub(crate) fn model_file(repo: &str, filename: &str) -> Option<PathBuf> {
+  hf_cache().repo(Repo::model(repo.to_string())).get(filename)
+}
+
+pub(crate) fn download_url(url: &str, destination: &Path) -> anyhow::Result<PathBuf> {
+  let response = ureq::get(url).call()?;
+  let mut buffer = Vec::new();
+  response.into_reader().read_to_end(&mut buffer)?;
+  std::fs::write(destination, buffer)?;
+  Ok(destination.to_path_buf())
+}
+
+pub(crate) fn download_file(repo: &str, filename: &str) -> anyhow::Result<PathBuf> {
+  let hf_repo = hf_cache().repo(Repo::model(repo.to_string()));
+  let from_cache = hf_repo.get(filename);
+  match from_cache {
+    Some(path) => Ok(path),
+    None => {
+      let path = download_sync(repo.to_string(), filename.to_string())?;
+      Ok(path)
+    }
+  }
+}
+
+pub(crate) async fn download_async(repo: String, file: String) -> anyhow::Result<PathBuf> {
+  use hf_hub::api::tokio::{ApiBuilder, ApiError};
+
+  let progress_bar = std::env::var(HF_API_PROGRESS)
+    .unwrap_or_else(|_| "true".to_string())
+    .parse::<bool>()?;
+  let api = ApiBuilder::new().with_progress(progress_bar).build()?;
+  println!("Downloading from repo {repo}, model file {file}:");
+  let path = match api.model(repo.clone()).download(&file).await {
+    Err(err) => {
+      if let ApiError::RequestError(_) = err {
+        err_msg(&repo);
+      }
+      return Err(err.into());
+    }
+    Ok(path) => path,
+  };
+  Ok(path)
+}
+
+pub(crate) fn download_sync(repo: String, file: String) -> anyhow::Result<PathBuf> {
+  use hf_hub::api::sync::{ApiBuilder, ApiError};
+  let mut api_builder = ApiBuilder::new();
+  if let Some(progress_bar) = std::env::var_os(HF_API_PROGRESS) {
+    api_builder = api_builder.with_progress(
+      progress_bar
+        .to_string_lossy()
+        .into_owned()
+        .parse::<bool>()
+        .unwrap_or(false),
+    );
+  }
+  if let Some(token) = std::env::var_os(HF_TOKEN) {
+    let token = token.to_string_lossy().into_owned();
+    api_builder = if token.is_empty() {
+      api_builder.with_token(None)
+    } else {
+      api_builder.with_token(Some(token))
+    }
+  }
+  let api = api_builder.build()?;
+  tracing::info!("Downloading from repo {repo}, file {file}:");
+  let path = match api.model(repo.clone()).download(&file) {
+    Ok(path) => path,
+    Err(err) => {
+      if let ApiError::RequestError(_) = err {
+        err_msg(&repo);
+      }
+      return Err(err.into());
+    }
+  };
+  Ok(path)
+}
+
+fn err_msg(repo: &str) {
+  eprintln!("Download failed");
+  eprintln!("1. You need to be logged in to huggingface using CLI - `huggingface_cli login`");
+  eprintln!(
+    "2. Accept the T&C of model on its homepage - https://huggingface.co/{}",
+    repo
+  );
+  eprintln!("before you can download and use the model.")
+}
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub struct ModelItem {
@@ -20,7 +122,7 @@ impl ModelItem {
   }
 
   pub fn model_path(&self) -> String {
-    Cache::default()
+    hf_cache()
       .path()
       .join(&self.path)
       .to_string_lossy()
@@ -29,7 +131,7 @@ impl ModelItem {
 }
 
 pub fn list_models() -> Vec<ModelItem> {
-  return _list_models(Cache::default().path());
+  return _list_models(hf_cache().path());
 }
 
 pub(super) fn _list_models(cache_dir: &Path) -> Vec<ModelItem> {
@@ -73,7 +175,7 @@ pub(super) fn _list_models(cache_dir: &Path) -> Vec<ModelItem> {
 
 // TODO: cache the response and load every 5 mins
 pub fn find_model(model_id: &str) -> Option<ModelItem> {
-  _find_model(Cache::default().path(), model_id)
+  _find_model(hf_cache().path(), model_id)
 }
 
 pub(super) fn _find_model(cache_dir: &Path, model_id: &str) -> Option<ModelItem> {

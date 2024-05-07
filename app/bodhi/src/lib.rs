@@ -1,14 +1,16 @@
-pub mod server;
 mod app;
 pub mod cli;
 mod hf;
+mod hf_tokenizer;
+mod home;
 mod interactive;
 mod list;
 mod native;
 mod pull;
 mod run;
 mod serve;
-pub use app::main_internal;
+pub mod server;
+pub use app::{main_internal, setup_logs};
 pub use cli::Command;
 pub use list::List;
 pub use pull::Pull;
