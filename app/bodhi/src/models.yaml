@@ -1,7 +1,8 @@
 - display_name: meta-llama3-8b-instruct
   family: llama3
   repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
-  chat_template: llama3
+  base_model: meta-llama/Meta-Llama-3-8B-Instruct
+  tokenizer_config: base_model
   features:
     - chat
   files:
@@ -23,6 +24,8 @@
 - display_name: meta-llama3-8b
   family: llama3
   repo: QuantFactory/Meta-Llama-3-8B-GGUF
+  base_model: meta-llama/Meta-Llama-3-8B
+  tokenizer_config: base_model
   features:
     - generate
   files:
@@ -44,7 +47,8 @@
 - display_name: meta-llama3-70b-instruct
   family: llama3
   repo: QuantFactory/Meta-Llama-3-70B-Instruct-GGUF
-  chat_template: llama3
+  base_model: meta-llama/Meta-Llama-3-70B-Instruct
+  tokenizer_config: base_model
   features:
     - chat
   files:
@@ -66,6 +70,8 @@
 - display_name: meta-llama-guard-2-8b
   family: llama3
   repo: QuantFactory/Meta-Llama-Guard-2-8B-GGUF
+  base_model: meta-llama/Meta-Llama-Guard-2-8B
+  tokenizer_config: base_model
   features:
     - generate
   files:
@@ -87,7 +93,8 @@
 - display_name: llama2-7b-chat
   family: llama2
   repo: TheBloke/Llama-2-7B-Chat-GGUF
-  chat_template: llama2
+  base_model: meta-llama/Llama-2-7b-chat-hf
+  tokenizer_config: base_model
   features:
     - chat
   files:
@@ -107,7 +114,8 @@
 - display_name: llama2-13b-chat
   family: llama2
   repo: TheBloke/Llama-2-13B-chat-GGUF
-  chat_template: llama2
+  base_model: meta-llama/Llama-2-13b-chat-hf
+  tokenizer_config: base_model
   features:
     - chat
   files:
@@ -127,7 +135,8 @@
 - display_name: llama2-70b-chat
   family: llama2
   repo: TheBloke/Llama-2-70B-Chat-GGUF
-  chat_template: llama2
+  base_model: meta-llama/Llama-2-70b-chat-hf
+  tokenizer_config: base_model
   features:
     - chat
   files:
@@ -148,6 +157,8 @@
 - display_name: llama2-7b
   family: llama2
   repo: TheBloke/Llama-2-7B-GGUF
+  base_model: meta-llama/Llama-2-7b-hf
+  tokenizer_config: base_model
   features:
     - generate
   files:
@@ -167,6 +178,8 @@
 - display_name: llama2-70b
   family: llama2
   repo: TheBloke/Llama-2-70B-GGUF
+  base_model: meta-llama/Llama-2-70b-hf
+  tokenizer_config: base_model
   features:
     - generate
   files:
@@ -187,7 +200,10 @@
 - display_name: phi3-mini-4k-instruct
   family: phi3
   repo: microsoft/Phi-3-mini-4k-instruct-gguf
-  chat_template: phi3
+  tokenizer_config: |
+    {
+      "chat_template": "llama.cpp:phi3"
+    }
   features:
     - chat
   files:
@@ -196,28 +212,30 @@
   default: Phi-3-mini-4k-instruct-fp16.gguf
 - display_name: mistral-7b
   family: mistral
-  repo: TheBloke/CapybaraHermes-2.5-Mistral-7B-GGUF
-  chat_template: chatml
+  repo: TheBloke/Mistral-7B-v0.1-GGUF
+  base_model: mistralai/Mistral-7B-v0.1
+  tokenizer_config: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/raw/main/tokenizer_config.json
   features:
     - chat
   files:
-    - capybarahermes-2.5-mistral-7b.Q2_K.gguf
-    - capybarahermes-2.5-mistral-7b.Q3_K_L.gguf
-    - capybarahermes-2.5-mistral-7b.Q3_K_M.gguf
-    - capybarahermes-2.5-mistral-7b.Q3_K_S.gguf
-    - capybarahermes-2.5-mistral-7b.Q4_0.gguf
-    - capybarahermes-2.5-mistral-7b.Q4_K_M.gguf
-    - capybarahermes-2.5-mistral-7b.Q4_K_S.gguf
-    - capybarahermes-2.5-mistral-7b.Q5_0.gguf
-    - capybarahermes-2.5-mistral-7b.Q5_K_M.gguf
-    - capybarahermes-2.5-mistral-7b.Q5_K_S.gguf
-    - capybarahermes-2.5-mistral-7b.Q6_K.gguf
-    - capybarahermes-2.5-mistral-7b.Q8_0.gguf
+    - mistral-7b.Q2_K.gguf
+    - mistral-7b.Q3_K_L.gguf
+    - mistral-7b.Q3_K_M.gguf
+    - mistral-7b.Q3_K_S.gguf
+    - mistral-7b.Q4_0.gguf
+    - mistral-7b.Q4_K_M.gguf
+    - mistral-7b.Q4_K_S.gguf
+    - mistral-7b.Q5_0.gguf
+    - mistral-7b.Q5_K_M.gguf
+    - mistral-7b.Q5_K_S.gguf
+    - mistral-7b.Q6_K.gguf
+    - mistral-7b.Q8_0.gguf
   default: capybarahermes-2.5-mistral-7b.Q8_0.gguf
 - display_name: mixtral-8x7b-instruct
   family: mixtral
   repo: TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF
-  chat_template: "[INST] {prompt} [/INST]"
+  base_model: mistralai/Mixtral-8x7B-Instruct-v0.1
+  tokenizer_config: base_model
   features:
     - chat
   files:
@@ -233,6 +251,8 @@
 - display_name: mixtral-8x7b
   family: mixtral
   repo: TheBloke/Mixtral-8x7B-v0.1-GGUF
+  base_model: mistralai/Mixtral-8x7B-v0.1
+  tokenizer_config: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/raw/main/tokenizer_config.json
   features:
     - generate
   files:
@@ -248,7 +268,10 @@
 - display_name: gemma-7b-instruct
   family: gemma
   repo: google/gemma-7b-it-GGUF
-  chat_template: gemma
+  tokenizer_config: |
+   {
+    "chat_template": "llama.cpp:gemma"
+   }
   features:
     - chat
   files:
@@ -257,7 +280,10 @@
 - display_name: gemma-7b
   family: gemma
   repo: google/gemma-7b-GGUF
-  chat_template: gemma
+  tokenizer_config: |
+   {
+    "chat_template": "llama.cpp:gemma"
+   }
   features:
     - chat
   files:
@@ -265,7 +291,10 @@
   default: gemma-7b.gguf
 - display_name: gemma-1.1-2b-instruct
   family: gemma
-  chat_template: gemma
+  tokenizer_config: |
+   {
+    "chat_template": "llama.cpp:gemma"
+   }
   features:
     - chat
   repo: google/gemma-1.1-2b-it-GGUF

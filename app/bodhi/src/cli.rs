@@ -43,6 +43,13 @@ pub enum Command {
     #[clap(long, short = 'f', requires = "repo")]
     file: Option<String>,
 
+    /// Configure the downlaoded model using a remote, local or inline tokenizer_config.json
+    /// for remote - `--config https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct/blob/main/tokenizer_config.json`
+    /// for local - `--config '$HF_HOME'/hub/models--meta-llama--Meta-Llama-3-70B-Instruct/tokenizer_config.json`
+    /// for inline - `--config '{"chat_template": "{% for message in messages %}<|{{ message[\'role\'] }}|> {{ message[\'content\'] }}\n{% endfor %}"}'`
+    #[clap(long, short = 'c', requires = "repo")]
+    config: Option<String>,
+
     /// If the file already exists in $HF_HOME, force download it again
     #[clap(long = "force")]
     force: bool,

@@ -41,9 +41,10 @@ pub fn main_internal() -> anyhow::Result<()> {
       id,
       repo,
       file,
+      config,
       force,
     } => {
-      let pull_param = Pull::new(id, repo, file, force);
+      let pull_param = Pull::new(id, repo, file, config, force);
       pull_param.execute()?;
     }
     Command::List { remote } => {

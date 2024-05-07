@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-
 use crate::list::find_remote_model;
 use anyhow::{anyhow, bail};
 use hf_hub::{
@@ -13,15 +12,17 @@ pub struct Pull {
   pub id: Option<String>,
   pub repo: Option<String>,
   pub file: Option<String>,
+  pub config: Option<String>,
   pub force: bool,
 }
 
 impl Pull {
-  pub fn new(id: Option<String>, repo: Option<String>, file: Option<String>, force: bool) -> Self {
+  pub fn new(id: Option<String>, repo: Option<String>, file: Option<String>, config: Option<String>, force: bool) -> Self {
     Pull {
       id,
       repo,
       file,
+      config,
       force,
     }
   }

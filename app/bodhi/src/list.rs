@@ -11,7 +11,8 @@ pub(super) struct RemoteModel {
   pub(super) display_name: String,
   pub(super) family: Option<String>,
   pub(super) repo: String,
-  pub(super) chat_template: Option<String>,
+  pub(super) base_model: Option<String>,
+  pub(super) tokenizer_config: String,
   pub(super) features: Vec<String>,
   pub(super) files: Vec<String>,
   pub(super) default: String,
@@ -114,17 +115,10 @@ impl List {
     let models: Vec<RemoteModel> = serde_yaml::from_str(MODELS_YAML)?;
     let mut table = Table::new();
     table.add_row(row![
-      "ID",
-      "REPO ID",
-      "FAMILY",
-      "FEATURES",
-      "CHAT TEMPLATE",
-      "VARIANTS",
-      "DEFAULT"
+      "ID", "REPO ID", "FAMILY", "BASE", "CONFIG", "FEATURES", "VARIANTS", "DEFAULT"
     ]);
     for model in models.into_iter() {
-      let chat_template = model.chat_template.as_deref().unwrap_or("-");
-      let chat_template = &truncate(chat_template, 16);
+      let tokenizer_config = &truncate(&model.tokenizer_config, 20);
       let variants = model
         .variants()
         .into_iter()
@@ -144,8 +138,9 @@ impl List {
         Cell::new(&model.display_name),
         Cell::new(&model.repo),
         Cell::new(model.family.as_deref().unwrap_or("")),
+        Cell::new(model.base_model.as_deref().unwrap_or("")),
+        Cell::new(tokenizer_config),
         Cell::new(&model.features.join(",")),
-        Cell::new(chat_template),
         Cell::new(&variants),
         Cell::new(&model.default()),
       ]));
@@ -157,12 +152,19 @@ impl List {
 }
 
 fn truncate(s: &str, max_len: usize) -> String {
-  if s.len() <= max_len {
-    return s.to_string();
-  }
-
-  let half_len = (max_len / 2) - 2;
-  let start = &s[0..half_len];
-  let end = &s[(s.len() - half_len)..];
-  format!("{}...{}", start, end)
+  let splits = s.split('\n');
+  splits
+    .into_iter()
+    .map(|split| {
+      if split.len() <= max_len {
+        split.to_string()
+      } else {
+        let half_len = (max_len / 2) - 2;
+        let start = &split[0..half_len];
+        let end = &split[(split.len() - half_len)..];
+        format!("{}...{}", start, end)
+      }
+    })
+    .collect::<Vec<_>>()
+    .join("\n")
 }
