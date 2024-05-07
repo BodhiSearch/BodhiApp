@@ -75,6 +75,7 @@ fn process_input(ctx: &BodhiServerContext, input: &str) -> anyhow::Result<()> {
   });
   ctx.completions(
     &json_request,
+    "",
     Some(callback_stream),
     &tx as *const _ as *mut _,
   )?;

@@ -244,6 +244,7 @@ mod test {
     let inner = lock.as_ref().expect("should have context loaded");
     inner.completions(
       &chat_request,
+      "",
       Some(test_callback),
       &userdata as *const _ as *mut _,
     )?;

@@ -75,6 +75,7 @@ pub(crate) async fn chat_completions_handler(
   ctx
     .completions(
       &input,
+      "",
       Some(server_callback),
       &userdata as *const _ as *mut c_void,
     )
@@ -101,6 +102,7 @@ async fn chat_completions_stream_handler(
     };
     let result = ctx.completions(
       &input,
+      "",
       Some(server_callback_stream),
       &tx as *const _ as *mut c_void,
     );
