@@ -80,8 +80,8 @@ pub(crate) async fn ui_chat_update_handler(
   UrlPath(id): UrlPath<String>,
   Json(chat): Json<Chat>,
 ) -> Result<Json<()>, ApiError> {
-  let chat = _ui_chat_update_handler(&get_chats_dir()?, &id, &chat)?;
-  Ok(Json(chat))
+  _ui_chat_update_handler(&get_chats_dir()?, &id, &chat)?;
+  Ok(Json(()))
 }
 
 pub(crate) async fn ui_chat_handler(UrlPath(id): UrlPath<String>) -> Result<Json<Chat>, ApiError> {
@@ -202,12 +202,9 @@ fn remove_dir_contents(dir: &Path) -> Result<(), ChatError> {
 #[cfg(test)]
 mod test {
   use super::_ui_chats_handler;
-  use crate::server::{
-    routes_ui::{
-      Chat, ChatError, ChatPreview, Message, _ui_chat_delete_handler, _ui_chat_handler,
-      _ui_chat_update_handler, _ui_chats_delete_handler,
-    },
-    utils::BODHI_HOME,
+  use crate::server::routes_ui::{
+    Chat, ChatError, ChatPreview, Message, _ui_chat_delete_handler, _ui_chat_handler,
+    _ui_chat_update_handler, _ui_chats_delete_handler,
   };
   use chrono::Utc;
   use rstest::{fixture, rstest};
@@ -425,7 +422,6 @@ mod test {
       ]
     }"#;
     create_temp_file(content, chats_dir, "20241011083748174_2sglRnL.json")?;
-    std::env::set_var(BODHI_HOME, format!("{}", home_dir.path().display()));
     Ok(home_dir)
   }
 

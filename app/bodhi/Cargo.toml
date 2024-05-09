@@ -32,6 +32,7 @@ regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.34"
+tempfile = "3.10.1"
 tauri = { version = "1.6.1", features = [ "updater", "api-all", "system-tray"] }
 thiserror = "1.0.59"
 tokio = { version = "1.36.0", features = ["full"] }
@@ -52,7 +53,6 @@ rand = "0.8.5"
 reqwest = "0.12.3"
 rstest = "0.19.0"
 serial_test = "3.1.1"
-tempdir = "0.3.7"
 tempfile = "3.10.1"
 
 [build-dependencies]

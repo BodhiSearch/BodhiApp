@@ -119,6 +119,8 @@ impl From<ChatError> for ApiError {
     }
   }
 }
+
+// TODO: use methods in home.rs
 pub(crate) fn get_bodhi_home_dir() -> Result<PathBuf, HomeDirError> {
   if let Ok(bodhi_home) = std::env::var(BODHI_HOME) {
     let home_dir = PathBuf::from(bodhi_home);
@@ -141,6 +143,7 @@ pub(crate) fn get_bodhi_home_dir() -> Result<PathBuf, HomeDirError> {
   }
 }
 
+// TODO: use methods in home.rs
 pub(crate) fn get_chats_dir() -> Result<PathBuf, HomeDirError> {
   let bodhi_home = get_bodhi_home_dir()?;
   let chats_dir = bodhi_home.join("chats");

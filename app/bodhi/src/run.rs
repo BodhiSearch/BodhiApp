@@ -33,7 +33,7 @@ impl Run {
       }
     };
     let model_file = match model_file(&repo, &file) {
-      None => download(repo, file, true)?,
+      None => download(&repo, &file, true)?,
       Some(path) => path,
     };
     launch_interactive(&model_file)?;

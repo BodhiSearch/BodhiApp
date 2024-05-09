@@ -23,6 +23,7 @@ pub(crate) fn model_file(repo: &str, filename: &str) -> Option<PathBuf> {
 }
 
 pub(crate) fn download_url(url: &str, destination: &Path) -> anyhow::Result<PathBuf> {
+  tracing::info!(url, "downloading file");
   let response = ureq::get(url).call()?;
   let mut buffer = Vec::new();
   response.into_reader().read_to_end(&mut buffer)?;
@@ -31,18 +32,20 @@ pub(crate) fn download_url(url: &str, destination: &Path) -> anyhow::Result<Path
 }
 
 pub(crate) fn download_file(repo: &str, filename: &str) -> anyhow::Result<PathBuf> {
-  let hf_repo = hf_cache().repo(Repo::model(repo.to_string()));
+  tracing::info!(repo, filename, "downloading file");
+  let hf_cache = hf_cache();
+  let hf_repo = hf_cache.repo(Repo::model(repo.to_string()));
   let from_cache = hf_repo.get(filename);
   match from_cache {
     Some(path) => Ok(path),
     None => {
-      let path = download_sync(repo.to_string(), filename.to_string())?;
+      let path = download_sync(repo, filename)?;
       Ok(path)
     }
   }
 }
 
-pub(crate) async fn download_async(repo: String, file: String) -> anyhow::Result<PathBuf> {
+pub(crate) async fn download_async(repo: &str, file: &str) -> anyhow::Result<PathBuf> {
   use hf_hub::api::tokio::{ApiBuilder, ApiError};
 
   let progress_bar = std::env::var(HF_API_PROGRESS)
@@ -50,7 +53,7 @@ pub(crate) async fn download_async(repo: String, file: String) -> anyhow::Result
     .parse::<bool>()?;
   let api = ApiBuilder::new().with_progress(progress_bar).build()?;
   println!("Downloading from repo {repo}, model file {file}:");
-  let path = match api.model(repo.clone()).download(&file).await {
+  let path = match api.model(repo.to_string()).download(&file).await {
     Err(err) => {
       if let ApiError::RequestError(_) = err {
         err_msg(&repo);
@@ -62,7 +65,7 @@ pub(crate) async fn download_async(repo: String, file: String) -> anyhow::Result
   Ok(path)
 }
 
-pub(crate) fn download_sync(repo: String, file: String) -> anyhow::Result<PathBuf> {
+pub(crate) fn download_sync(repo: &str, file: &str) -> anyhow::Result<PathBuf> {
   use hf_hub::api::sync::{ApiBuilder, ApiError};
   let mut api_builder = ApiBuilder::new();
   if let Some(progress_bar) = std::env::var_os(HF_API_PROGRESS) {
@@ -84,7 +87,7 @@ pub(crate) fn download_sync(repo: String, file: String) -> anyhow::Result<PathBu
   }
   let api = api_builder.build()?;
   tracing::info!("Downloading from repo {repo}, file {file}:");
-  let path = match api.model(repo.clone()).download(&file) {
+  let path = match api.model(repo.to_string()).download(&file) {
     Ok(path) => path,
     Err(err) => {
       if let ApiError::RequestError(_) = err {
@@ -192,7 +195,7 @@ mod test {
   use rstest::{fixture, rstest};
   use std::fs::{self, File};
   use std::io::Write;
-  use tempdir::TempDir;
+  use tempfile::{Builder, TempDir};
 
   #[fixture]
   fn cache_dir() -> (TempDir, String, String) {
@@ -200,7 +203,7 @@ mod test {
   }
 
   fn _cache_dir() -> anyhow::Result<(TempDir, String, String)> {
-    let cache_dir = tempdir::TempDir::new("hf_hub")?;
+    let cache_dir = Builder::new().prefix("hf_hub").tempdir()?;
     let cache_path = cache_dir.path().to_path_buf();
     let model_dir = cache_path.join("models--User1--repo-coder/snapshots/9e221e6b41cb/");
     fs::create_dir_all(&model_dir)?;

@@ -1,6 +1,10 @@
-use crate::home::configs_dir;
-use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use serde::{
+  de::{self, MapAccess, Visitor},
+  Deserialize, Deserializer, Serialize,
+};
+use std::fmt;
+
+pub(crate) static TOKENIZER_CONFIG_FILENAME: &str = "tokenizer_config.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ChatTemplate {
@@ -8,114 +12,84 @@ pub struct ChatTemplate {
   template: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum ChatTemplateVersions {
-  Single(String),
-  Multiple(Vec<ChatTemplate>),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct HubTokenizerConfig {
-  pub chat_template: Option<ChatTemplateVersions>,
-  pub completion_template: Option<String>,
-  #[serde(deserialize_with = "token_serde::deserialize")]
+  pub chat_template: Option<String>,
+  #[serde(deserialize_with = "deserialize_token", default)]
   pub bos_token: Option<String>,
-  #[serde(deserialize_with = "token_serde::deserialize")]
+  #[serde(deserialize_with = "deserialize_token", default)]
   pub eos_token: Option<String>,
 }
 
-pub(crate) static TOKENIZER_CONFIG_FILENAME: &str = "tokenizer_config.json";
-
 impl HubTokenizerConfig {
-  pub fn from_file<P: AsRef<std::path::Path>>(filename: P) -> Option<Self> {
-    let content = std::fs::read_to_string(filename).ok()?;
-    serde_json::from_str(&content).ok()
+  pub fn from_json_file<P: AsRef<std::path::Path>>(filename: P) -> anyhow::Result<Self> {
+    let content = std::fs::read_to_string(filename)?;
+    HubTokenizerConfig::from_str(&content)
   }
 
-  pub fn save(&self, repo: &str) -> anyhow::Result<PathBuf> {
-    let contents = serde_json::to_string_pretty(&self)?;
-    let configs_dir = configs_dir(repo)?;
-    let config_file = configs_dir.join(TOKENIZER_CONFIG_FILENAME);
-    fs::write(&config_file, contents)?;
-    Ok(config_file)
-  }
-
-  pub fn load(repo: &str) -> anyhow::Result<Self> {
-    let configs_dir = configs_dir(repo)?;
-    let config_file = configs_dir.join(TOKENIZER_CONFIG_FILENAME);
-    let contents = fs::read_to_string(config_file)?;
-    let config: Self = serde_json::from_str(&contents)?;
+  pub fn from_str(content: &str) -> anyhow::Result<Self> {
+    let config = serde_json::from_str::<HubTokenizerConfig>(content)?;
     Ok(config)
   }
 }
 
-mod token_serde {
-  use super::*;
-  use serde::de;
-  use serde::Deserializer;
-  use serde_json::Value;
+fn deserialize_token<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+  D: Deserializer<'de>,
+{
+  struct StringOrMap;
 
-  pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-  where
-    D: Deserializer<'de>,
-  {
-    let value = Value::deserialize(deserializer)?;
+  impl<'de> Visitor<'de> for StringOrMap {
+    type Value = Option<String>;
 
-    match value {
-      Value::String(s) => Ok(Some(s)),
-      Value::Object(map) => {
-        if let Some(content) = map.get("content").and_then(|v| v.as_str()) {
-          Ok(Some(content.to_string()))
-        } else {
-          Err(de::Error::custom(
-            "content key not found in structured token",
-          ))
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+      formatter.write_str("a string or a map with a 'content' key")
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+      E: de::Error,
+    {
+      Ok(Some(v.to_owned()))
+    }
+
+    fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
+    where
+      M: MapAccess<'de>,
+    {
+      let mut content = None;
+      while let Some((key, value)) = map.next_entry::<String, String>()? {
+        if key == "content" {
+          content = Some(value);
         }
       }
-      Value::Null => Ok(None),
-      _ => Err(de::Error::custom("invalid token format")),
+      Ok(content)
     }
   }
+
+  deserializer.deserialize_any(StringOrMap)
 }
 
 #[cfg(test)]
 mod test {
   use super::*;
-  use crate::{hf::HF_TOKEN, server::BODHI_HOME};
-  use serial_test::serial;
 
   #[test]
-  #[serial]
-  fn test_hub_tokenizer_config_save() -> anyhow::Result<()> {
-    std::env::set_var(HF_TOKEN, "");
-    let bodhi_home = tempfile::tempdir().unwrap();
-    std::env::set_var(BODHI_HOME, bodhi_home.path().to_string_lossy().into_owned());
+  fn test_parse_hub_tokenizer_config_load_empty() -> anyhow::Result<()> {
+    let empty = HubTokenizerConfig::from_str("{}")?;
+    assert_eq!(HubTokenizerConfig::default(), empty);
+    Ok(())
+  }
 
+  #[test]
+  fn test_parse_hub_tokenizer_config_load_chat_template() -> anyhow::Result<()> {
     let chat_template =
-      r#"{% for message in messages %}<|{{ message['role'] }}|> {{ message['content'] }}\n"#;
-    let config = HubTokenizerConfig {
-      chat_template: Some(ChatTemplateVersions::Single(chat_template.to_string())),
-      completion_template: Some(chat_template.to_string()),
-      bos_token: Some("<s>".to_string()),
-      eos_token: Some("</s>".to_string()),
+      HubTokenizerConfig::from_str("{\n \"chat_template\": \"llama.cpp:gemma\"\n}\n")?;
+    let expected = HubTokenizerConfig {
+      chat_template: Some("llama.cpp:gemma".to_string()),
+      ..Default::default()
     };
-
-    let repo = "meta-llama/Meta-Llama-3-8B";
-    let config_path = config.save(repo)?;
-    let expected = bodhi_home
-      .path()
-      .to_path_buf()
-      .join("configs--meta-llama--Meta-Llama-3-8B")
-      .join(TOKENIZER_CONFIG_FILENAME)
-      .to_string_lossy()
-      .into_owned();
-    assert_eq!(expected, config_path.to_string_lossy().into_owned());
-    let config = HubTokenizerConfig::load(repo)?;
-    assert_eq!(
-      ChatTemplateVersions::Single(chat_template.to_string()),
-      config.chat_template.unwrap()
-    );
+    assert_eq!(expected, chat_template);
     Ok(())
   }
 }

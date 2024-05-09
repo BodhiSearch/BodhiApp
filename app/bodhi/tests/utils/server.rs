@@ -6,7 +6,7 @@ use bodhi::server::{
 use futures_util::{future::BoxFuture, FutureExt};
 use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log, GptParams};
 use rstest::fixture;
-use tempdir::TempDir;
+use tempfile::TempDir;
 
 pub struct TestServerHandle {
   pub host: String,
@@ -18,7 +18,10 @@ pub struct TestServerHandle {
 
 #[fixture]
 pub fn bodhi_home() -> TempDir {
-  let bodhi_home = tempdir::TempDir::new("bodhi_home").unwrap();
+  let bodhi_home = tempfile::Builder::new()
+    .prefix("bodhi_home")
+    .tempdir()
+    .unwrap();
   std::env::set_var(BODHI_HOME, format!("{}", bodhi_home.path().display()));
   bodhi_home
 }

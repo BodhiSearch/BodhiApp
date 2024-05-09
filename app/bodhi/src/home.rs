@@ -1,7 +1,6 @@
+use crate::server::BODHI_HOME;
 use anyhow::anyhow;
 use std::{env, fs, path::PathBuf};
-
-use crate::server::BODHI_HOME;
 
 pub(crate) fn user_home() -> anyhow::Result<PathBuf> {
   dirs::home_dir().ok_or_else(|| anyhow!("failed to resolve home directory"))

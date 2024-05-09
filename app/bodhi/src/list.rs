@@ -6,6 +6,8 @@ use prettytable::{
 use regex::Regex;
 use serde::Deserialize;
 
+pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
+
 #[derive(Debug, Deserialize)]
 pub(super) struct RemoteModel {
   pub(super) display_name: String,
@@ -39,8 +41,6 @@ impl RemoteModel {
     cap["variant"].to_string()
   }
 }
-
-pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
 
 pub(crate) fn find_remote_model(id: &str) -> Option<RemoteModel> {
   let models: Vec<RemoteModel> = serde_yaml::from_str(MODELS_YAML).ok()?;
@@ -115,10 +115,9 @@ impl List {
     let models: Vec<RemoteModel> = serde_yaml::from_str(MODELS_YAML)?;
     let mut table = Table::new();
     table.add_row(row![
-      "ID", "REPO ID", "FAMILY", "BASE", "CONFIG", "FEATURES", "VARIANTS", "DEFAULT"
+      "ID", "REPO ID", "FAMILY", "FEATURES", "VARIANTS", "DEFAULT"
     ]);
     for model in models.into_iter() {
-      let tokenizer_config = &truncate(&model.tokenizer_config, 20);
       let variants = model
         .variants()
         .into_iter()
@@ -138,8 +137,6 @@ impl List {
         Cell::new(&model.display_name),
         Cell::new(&model.repo),
         Cell::new(model.family.as_deref().unwrap_or("")),
-        Cell::new(model.base_model.as_deref().unwrap_or("")),
-        Cell::new(tokenizer_config),
         Cell::new(&model.features.join(",")),
         Cell::new(&variants),
         Cell::new(&model.default()),
@@ -147,24 +144,8 @@ impl List {
     }
     table.set_format(format::FormatBuilder::default().padding(2, 2).build());
     table.printstd();
+    println!();
+    println!("To download the model, run `bodhi pull <ID>1");
     Ok(())
   }
-}
-
-fn truncate(s: &str, max_len: usize) -> String {
-  let splits = s.split('\n');
-  splits
-    .into_iter()
-    .map(|split| {
-      if split.len() <= max_len {
-        split.to_string()
-      } else {
-        let half_len = (max_len / 2) - 2;
-        let start = &split[0..half_len];
-        let end = &split[(split.len() - half_len)..];
-        format!("{}...{}", start, end)
-      }
-    })
-    .collect::<Vec<_>>()
-    .join("\n")
 }
