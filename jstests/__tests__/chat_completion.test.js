@@ -39,7 +39,7 @@ describe(`run ${APP_NAME}`, () => {
     });
     openai = new OpenAI({
       apiKey: 'sk-dummy-key',
-      baseURL: 'http://127.0.0.1:7735/v1',
+      baseURL: 'http://127.0.0.1:1135/v1',
     });
   });
 

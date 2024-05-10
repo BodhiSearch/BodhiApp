@@ -41,8 +41,8 @@ async fn _main_native() -> anyhow::Result<()> {
       }
       let server_state = result.unwrap();
       app.manage(server_state);
-      // Attempt to open the default web browser at localhost:7735
-      if let Err(err) = webbrowser::open("http://localhost:7735/") {
+      // Attempt to open the default web browser at localhost:1135
+      if let Err(err) = webbrowser::open("http://localhost:1135/") {
         tracing::info!(err=?err, "failed to open browser");
       }
       Ok(())
@@ -68,7 +68,7 @@ fn on_system_tray_event(app: &AppHandle, event: SystemTrayEvent) {
   if let SystemTrayEvent::MenuItemClick { id, .. } = event {
     match id.as_str() {
       "homepage" => {
-        webbrowser::open("http://localhost:7735/").expect("should not fail to open homepage");
+        webbrowser::open("http://localhost:1135/").expect("should not fail to open homepage");
       }
       "quit" => {
         let state = app.state::<ServerState>();
