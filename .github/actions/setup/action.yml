@@ -1,5 +1,5 @@
 name: setup
-description: sets up the bodhiserver for github actions
+description: sets up the repo for github actions
 
 inputs:
   GH_PAT:
