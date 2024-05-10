@@ -1,6 +1,6 @@
 use crate::chat_template::ChatTemplate;
 use crate::hf_tokenizer::HubTokenizerConfig;
-use async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionStreamResponse};
+use async_openai::types::CreateChatCompletionStreamResponse;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -47,7 +47,6 @@ unsafe extern "C" fn callback_stream(
 }
 
 struct Interactive {
-  repo: String,
   model_path: PathBuf,
   chat_template: ChatTemplate,
 }
@@ -57,7 +56,6 @@ impl Interactive {
     let config = HubTokenizerConfig::for_repo(repo).ok().unwrap_or_default();
     let chat_template = ChatTemplate::new(config)?;
     Ok(Self {
-      repo: repo.to_string(),
       model_path: model_path.to_path_buf(),
       chat_template,
     })
@@ -95,8 +93,7 @@ impl Interactive {
 
   fn process_input(&self, ctx: &BodhiServerContext, input: &str) -> anyhow::Result<()> {
     let messages = json! {[{"role": "user", "content": input}]};
-    let messages: Vec<ChatCompletionRequestMessage> = serde_json::from_value(messages)?;
-    let (chat_template, mut request) = self.chat_template.parse(messages)?;
+    let (chat_template, mut request) = self.chat_template.apply(messages)?;
     request["model"] = Value::String("".to_string());
     request["stream"] = Value::Bool(true);
     let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);

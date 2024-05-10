@@ -1,6 +1,5 @@
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use clap::{ArgGroup, Parser, Subcommand};
-use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(version)]
@@ -22,9 +21,6 @@ pub enum Command {
     /// Start on the given port
     #[clap(short, default_value = DEFAULT_PORT_STR)]
     port: u16,
-    /// Load the GGUF model from the given path
-    #[clap(short = 'm')]
-    model: Option<PathBuf>,
   },
   /// Pull a gguf model from huggingface repository
   #[clap(group = ArgGroup::new("pull").required(true))]

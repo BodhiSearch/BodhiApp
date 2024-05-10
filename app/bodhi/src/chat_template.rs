@@ -1,9 +1,7 @@
-use async_openai::types::ChatCompletionRequestMessage;
+use crate::hf_tokenizer::HubTokenizerConfig;
 use minijinja::{Environment, ErrorKind, Template};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-
-use crate::hf_tokenizer::HubTokenizerConfig;
+use serde_json::{json, Value};
 
 // https://github.com/huggingface/text-generation-inference/tree/main/router/src/infer.rs
 /// Raise a exception (custom function) used in the chat templates
@@ -13,7 +11,7 @@ fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
 
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub(crate) struct ChatTemplateInputs<'a> {
-  messages: Vec<ChatCompletionRequestMessage>,
+  messages: Value,
   bos_token: Option<&'a str>,
   eos_token: Option<&'a str>,
   add_generation_prompt: bool,
@@ -51,7 +49,7 @@ impl JinjaTemplate {
     })
   }
 
-  fn apply(&self, messages: Vec<ChatCompletionRequestMessage>) -> anyhow::Result<String> {
+  fn apply(&self, messages: Value) -> anyhow::Result<String> {
     let result = self.template.render(ChatTemplateInputs {
       messages,
       bos_token: self.bos_token.as_deref(),
@@ -85,10 +83,7 @@ impl ChatTemplate {
     }
   }
 
-  pub(crate) fn parse(
-    &self,
-    messages: Vec<ChatCompletionRequestMessage>,
-  ) -> anyhow::Result<(String, serde_json::Value)> {
+  pub(crate) fn apply(&self, messages: Value) -> anyhow::Result<(String, Value)> {
     match self {
       ChatTemplate::Empty => Ok(("".to_string(), json! {{"messages": messages}})),
       ChatTemplate::LlamaCpp { id } => Ok((id.to_string(), json! {{"messages": messages}})),

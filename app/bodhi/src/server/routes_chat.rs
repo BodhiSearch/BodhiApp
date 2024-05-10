@@ -3,6 +3,7 @@ use super::{
   routes::{ApiError, RouterState},
   utils,
 };
+use crate::{chat_template::ChatTemplate, hf::find_model, hf_tokenizer::HubTokenizerConfig};
 use anyhow::Context;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
 use axum::{
@@ -12,6 +13,7 @@ use axum::{
   response::{sse::Event, IntoResponse, Response, Sse},
   Json,
 };
+use serde_json::Value;
 use std::{
   convert::Infallible,
   ffi::{c_char, c_void},
@@ -59,10 +61,27 @@ pub(crate) async fn chat_completions_handler(
   if let Err(err) = load_context(&mut state, &request.model).await {
     return err;
   };
-  if request.stream.unwrap_or(false) {
-    return chat_completions_stream_handler(state, request).await;
+  let mut input = serde_json::to_value(&request)
+    .context("converting request to string to pass to bodhi_server")
+    .unwrap();
+
+  let model = find_model(&request.model).unwrap();
+  let config = HubTokenizerConfig::for_repo(&model.repo).ok().unwrap_or_default();
+  let chat_template = ChatTemplate::new(config).unwrap();
+  let (chat_template, prompt) = chat_template.apply(input["messages"].clone()).unwrap();
+  let prompt = prompt.as_object().unwrap();
+  if prompt.contains_key("prompt") {
+    let base = input.as_object_mut().unwrap();
+    base.insert(
+      "prompt".to_string(),
+      prompt.get("prompt").unwrap().to_string().into(),
+    );
   }
-  let input = serde_json::to_string(&request).unwrap();
+
+  if request.stream.unwrap_or(false) {
+    return chat_completions_stream_handler(state, input, chat_template).await;
+  }
+  let input = serde_json::to_string(&input).unwrap();
   let userdata = String::with_capacity(2048);
   let lock = state.ctx.read().await;
   let Some(ctx) = lock.as_ref() else {
@@ -75,7 +94,7 @@ pub(crate) async fn chat_completions_handler(
   ctx
     .completions(
       &input,
-      "",
+      &chat_template,
       Some(server_callback),
       &userdata as *const _ as *mut c_void,
     )
@@ -88,9 +107,10 @@ pub(crate) async fn chat_completions_handler(
 
 async fn chat_completions_stream_handler(
   state: RouterState,
-  request: CreateChatCompletionRequest,
+  input: Value,
+  chat_template: String,
 ) -> Response<Body> {
-  let input = serde_json::to_string(&request)
+  let input = serde_json::to_string(&input)
     .context("converting request to string to pass to bodhi_server")
     .unwrap();
   let (tx, rx) = tokio::sync::mpsc::channel::<String>(100);
@@ -102,7 +122,7 @@ async fn chat_completions_stream_handler(
     };
     let result = ctx.completions(
       &input,
-      "",
+      &chat_template,
       Some(server_callback_stream),
       &tx as *const _ as *mut c_void,
     );

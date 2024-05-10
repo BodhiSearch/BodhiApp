@@ -34,8 +34,8 @@ pub fn main_internal() -> anyhow::Result<()> {
     Command::App {} => {
       main_native()?;
     }
-    Command::Serve { host, port, model } => {
-      main_async(Serve { host, port, model })?;
+    Command::Serve { host, port } => {
+      main_async(Serve { host, port })?;
     }
     Command::Pull {
       id,
@@ -83,7 +83,7 @@ async fn main_server(serve: Serve) -> anyhow::Result<()> {
     shutdown,
     ready_rx: _ready_rx,
   } = build_server_handle(serve.clone().into())?;
-  let mut ctx = SharedContextRw::new_shared_rw(serve.into()).await?;
+  let mut ctx = SharedContextRw::new_shared_rw(None).await?;
   let app = build_routes(ctx.clone());
   let server_async = tokio::spawn(async move {
     let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
