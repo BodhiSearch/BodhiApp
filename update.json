@@ -1,11 +1,11 @@
 {
-  "version": "0.0.2",
+  "version": "0.0.3",
   "notes": "Automatic updates for Bodhi App",
-  "pub_date": "2024-05-10T09:58:07.387Z",
+  "pub_date": "2024-05-10T10:28:04.574Z",
   "platforms": {
     "darwin-aarch64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUNTFIQ0VKMWhIWmw1QnZEZUJRZWxWZjN0V3NRc1V3OEtyZHlYNVZNRnVWYVFTYnMrM1R5S1cyZTZoOEVsM1hvUU8wbnhpUzR0Wkh6TlR0Nk5RemZNREVOU3V1VFZubGdNPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzE1MzM1MDgxCWZpbGU6Qm9kaGkuYXBwLnRhci5negpOdG85YyswL0ovQWxqZlNkNXB5QWRoN09mM2g1QmpsSjcxcEN0MURDUmQwWmxKclcwdHRON3JXMGZDMkZqbmQwdDlhSVBrUjVmcmV4Zyt6VjNIbkNCZz09Cg==",
-      "url": "https://github.com/BodhiSearch/BodhiApp/releases/download/v0.0.2/Bodhi_aarch64.app.tar.gz"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVUNTFIQ0VKMWhIWmozUjNJOTBsRitXdXBONU01UlJvTWh3MEFMMkVLUEliSlBadUcxNmloWEJCckI4Y1psUlBTTkhzc3cvTTB6SWVyN1BLNGJsa2pXQVZsZG8rdkJpWFFZPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzE1MzM2ODgwCWZpbGU6Qm9kaGkuYXBwLnRhci5negp5YTl5UERlR2xyVjU3cGR4U0d2SEVFR2pmZUZhdDlKOXZOUTc4R012SXA2ZmlCNlR0UEN3N1dOS2k1alRNY2JJTTNYT0lVQkRiOTFydndiWWZPOEtBUT09Cg==",
+      "url": "https://github.com/BodhiSearch/BodhiApp/releases/download/v0.0.3/Bodhi_aarch64.app.tar.gz"
     }
   }
 }
