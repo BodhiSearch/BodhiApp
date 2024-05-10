@@ -2,15 +2,11 @@ use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
-use std::fmt;
+use std::{fmt, fs};
+
+use crate::home::configs_dir;
 
 pub(crate) static TOKENIZER_CONFIG_FILENAME: &str = "tokenizer_config.json";
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ChatTemplate {
-  name: String,
-  template: String,
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct HubTokenizerConfig {
@@ -24,11 +20,18 @@ pub struct HubTokenizerConfig {
 impl HubTokenizerConfig {
   pub fn from_json_file<P: AsRef<std::path::Path>>(filename: P) -> anyhow::Result<Self> {
     let content = std::fs::read_to_string(filename)?;
-    HubTokenizerConfig::from_str(&content)
+    HubTokenizerConfig::from_json_str(&content)
   }
 
-  pub fn from_str(content: &str) -> anyhow::Result<Self> {
+  pub fn from_json_str(content: &str) -> anyhow::Result<Self> {
     let config = serde_json::from_str::<HubTokenizerConfig>(content)?;
+    Ok(config)
+  }
+
+  pub fn for_repo(repo: &str) -> anyhow::Result<Self> {
+    let config_file = configs_dir(repo)?.join("default.yaml");
+    let content = fs::read_to_string(config_file)?;
+    let config = serde_yaml::from_str::<Self>(&content)?;
     Ok(config)
   }
 }
@@ -76,7 +79,7 @@ mod test {
 
   #[test]
   fn test_parse_hub_tokenizer_config_load_empty() -> anyhow::Result<()> {
-    let empty = HubTokenizerConfig::from_str("{}")?;
+    let empty = HubTokenizerConfig::from_json_str("{}")?;
     assert_eq!(HubTokenizerConfig::default(), empty);
     Ok(())
   }
@@ -84,7 +87,7 @@ mod test {
   #[test]
   fn test_parse_hub_tokenizer_config_load_chat_template() -> anyhow::Result<()> {
     let chat_template =
-      HubTokenizerConfig::from_str("{\n \"chat_template\": \"llama.cpp:gemma\"\n}\n")?;
+      HubTokenizerConfig::from_json_str("{\n \"chat_template\": \"llama.cpp:gemma\"\n}\n")?;
     let expected = HubTokenizerConfig {
       chat_template: Some("llama.cpp:gemma".to_string()),
       ..Default::default()

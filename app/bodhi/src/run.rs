@@ -36,7 +36,7 @@ impl Run {
       None => download(&repo, &file, true)?,
       Some(path) => path,
     };
-    launch_interactive(&model_file)?;
+    launch_interactive(&repo, &model_file)?;
     Ok(())
   }
 }

@@ -1,4 +1,5 @@
 mod app;
+mod chat_template;
 pub mod cli;
 mod hf;
 mod hf_tokenizer;

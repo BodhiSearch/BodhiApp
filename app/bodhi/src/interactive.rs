@@ -1,10 +1,13 @@
-use async_openai::types::CreateChatCompletionStreamResponse;
+use crate::chat_template::ChatTemplate;
+use crate::hf_tokenizer::HubTokenizerConfig;
+use async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionStreamResponse};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
 use llama_server_bindings::{disable_llama_log, BodhiServerContext, GptParams};
-use serde_json::json;
+use serde_json::{json, Value};
 use std::io::Write;
+use std::path::PathBuf;
 use std::{
   ffi::{c_char, c_void},
   io::stdout,
@@ -43,72 +46,93 @@ unsafe extern "C" fn callback_stream(
   size
 }
 
-pub(super) fn launch_interactive(model_path: &Path) -> anyhow::Result<()> {
+struct Interactive {
+  repo: String,
+  model_path: PathBuf,
+  chat_template: ChatTemplate,
+}
+
+impl Interactive {
+  fn new(repo: &str, model_path: &Path) -> anyhow::Result<Self> {
+    let config = HubTokenizerConfig::for_repo(repo).ok().unwrap_or_default();
+    let chat_template = ChatTemplate::new(config)?;
+    Ok(Self {
+      repo: repo.to_string(),
+      model_path: model_path.to_path_buf(),
+      chat_template,
+    })
+  }
+
+  async fn execute(&self) -> anyhow::Result<()> {
+    let pb = infinite_loading(String::from("Loading..."));
+    let gpt_params = GptParams {
+      model: Some(self.model_path.to_string_lossy().into_owned()),
+      ..Default::default()
+    };
+    disable_llama_log();
+    let mut ctx = BodhiServerContext::new(gpt_params)?;
+    ctx.init()?;
+    ctx.start_event_loop()?;
+    pb.finish_and_clear();
+    let mut history = BasicHistory::new().max_entries(100).no_duplicates(false);
+    loop {
+      if let Ok(cmd) = Input::<String>::with_theme(&ColorfulTheme::default())
+        .with_prompt(">>> ")
+        .history_with(&mut history)
+        .interact_text()
+      {
+        if cmd == "/bye" {
+          break;
+        }
+        self.process_input(&ctx, &cmd)?;
+      }
+    }
+    let pb = infinite_loading(String::from("Stopping..."));
+    ctx.stop()?;
+    pb.finish_and_clear();
+    Ok(())
+  }
+
+  fn process_input(&self, ctx: &BodhiServerContext, input: &str) -> anyhow::Result<()> {
+    let messages = json! {[{"role": "user", "content": input}]};
+    let messages: Vec<ChatCompletionRequestMessage> = serde_json::from_value(messages)?;
+    let (chat_template, mut request) = self.chat_template.parse(messages)?;
+    request["model"] = Value::String("".to_string());
+    request["stream"] = Value::Bool(true);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
+    let json_request = serde_json::to_string(&request)?;
+    tokio::spawn(async move {
+      while let Some(token) = rx.recv().await {
+        let token = if token.starts_with("data:") {
+          token.strip_prefix("data: ").unwrap().trim()
+        } else {
+          token.as_str()
+        };
+        let token: CreateChatCompletionStreamResponse = serde_json::from_str(token).unwrap();
+        if let Some(delta) = token.choices[0].delta.content.as_ref() {
+          print!("{}", delta);
+          let _ = stdout().flush();
+        }
+      }
+    });
+    ctx.completions(
+      &json_request,
+      &chat_template,
+      Some(callback_stream),
+      &tx as *const _ as *mut _,
+    )?;
+    println!();
+    Ok(())
+  }
+}
+
+pub(super) fn launch_interactive(repo: &str, model_path: &Path) -> anyhow::Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build();
   match runtime {
     Ok(runtime) => {
-      runtime.block_on(async move { _launch_interactive(model_path).await })?;
+      runtime.block_on(async move { Interactive::new(repo, model_path)?.execute().await })?;
       Ok(())
     }
     Err(err) => Err(err.into()),
   }
-}
-
-fn process_input(ctx: &BodhiServerContext, input: &str) -> anyhow::Result<()> {
-  let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
-  let request =
-    json! {{"model": "", "stream": true, "messages": [{"role": "user", "content": input}]}};
-  let json_request = serde_json::to_string(&request)?;
-  tokio::spawn(async move {
-    while let Some(token) = rx.recv().await {
-      let token = if token.starts_with("data:") {
-        token.strip_prefix("data: ").unwrap().trim()
-      } else {
-        token.as_str()
-      };
-      let token: CreateChatCompletionStreamResponse = serde_json::from_str(token).unwrap();
-      if let Some(delta) = token.choices[0].delta.content.as_ref() {
-        print!("{}", delta);
-        let _ = stdout().flush();
-      }
-    }
-  });
-  ctx.completions(
-    &json_request,
-    "",
-    Some(callback_stream),
-    &tx as *const _ as *mut _,
-  )?;
-  println!();
-  Ok(())
-}
-
-async fn _launch_interactive(model_path: &Path) -> anyhow::Result<()> {
-  let pb = infinite_loading(String::from("Loading..."));
-  let gpt_params = GptParams {
-    model: Some(model_path.to_string_lossy().into_owned()),
-    ..Default::default()
-  };
-  disable_llama_log();
-  let mut ctx = BodhiServerContext::new(gpt_params)?;
-  ctx.init()?;
-  ctx.start_event_loop()?;
-  pb.finish_and_clear();
-  let mut history = BasicHistory::new().max_entries(100).no_duplicates(false);
-  loop {
-    if let Ok(cmd) = Input::<String>::with_theme(&ColorfulTheme::default())
-      .with_prompt(">>> ")
-      .history_with(&mut history)
-      .interact_text()
-    {
-      if cmd == "/bye" {
-        break;
-      }
-      process_input(&ctx, &cmd)?;
-    }
-  }
-  let pb = infinite_loading(String::from("Stopping..."));
-  ctx.stop()?;
-  pb.finish_and_clear();
-  Ok(())
 }

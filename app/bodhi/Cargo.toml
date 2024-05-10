@@ -44,6 +44,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 ureq = "2.9.7"
 walkdir = "2.5.0"
 webbrowser = { version = "1.0.0" }
+minijinja = "2.0.1"
 
 [dev-dependencies]
 fs2 = "0.4.3"
