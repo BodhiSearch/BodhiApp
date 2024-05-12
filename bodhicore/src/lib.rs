@@ -1,14 +1,17 @@
-pub fn add(left: usize, right: usize) -> usize {
-  left + right
-}
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn it_works() {
-    let result = add(2, 2);
-    assert_eq!(result, 4);
-  }
-}
+mod chat_template;
+pub mod cli;
+pub mod bindings;
+mod hf;
+mod hf_tokenizer;
+pub mod home;
+mod interactive;
+mod list;
+mod pull;
+mod run;
+mod serve;
+pub mod server;
+pub use cli::Command;
+pub use list::List;
+pub use pull::Pull;
+pub use run::Run;
+pub use serve::Serve;

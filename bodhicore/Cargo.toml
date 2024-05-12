@@ -4,3 +4,41 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = "1.0.81"
+async-openai = "0.20.0"
+axum = "0.7.4"
+chrono = { version = "0.4.38", features = ["serde"] }
+clap = { version = "4.5.2", features = ["derive"] }
+dialoguer = { version = "0.11.0", features = ["history"] }
+dirs = "5.0.1"
+futures-util = "0.3.30"
+hf-hub = { version = "0.3.2", features = ["tokio"] }
+humantime = "2.1.0"
+include_dir = "0.7.3"
+indicatif = { version = "0.17.8", features = ["tokio"] }
+lazy_static = "1.4.0"
+llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
+mime_guess = "2.0.4"
+prettytable-rs = "0.10.0"
+regex = "1.10.4"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+serde_yaml = "0.9.34"
+tempfile = "3.10.1"
+thiserror = "1.0.59"
+tokio = { version = "1.36.0", features = ["full"] }
+tokio-stream = "0.1.15"
+tower-http = { version = "0.5.2", features = ["trace", "cors"] }
+tracing = { version = "0.1.40", features = ["async-await", "log"] }
+ureq = "2.9.7"
+walkdir = "2.5.0"
+minijinja = "2.0.1"
+
+[dev-dependencies]
+lazy_static = "1.4.0"
+mousse = "0.1.1"
+rand = "0.8.5"
+reqwest = "0.12.3"
+rstest = "0.19.0"
+serial_test = "3.1.1"
+tempfile = "3.10.1"

@@ -1,7 +1,7 @@
-use crate::native::main_native;
-use bodhicore::{
+use crate::{
   cli::{Cli, Command},
   home::logs_dir,
+  native::main_native,
   server::{
     build_routes, build_server_handle, shutdown_signal, ServerHandle, SharedContextRw,
     SharedContextRwExts,
@@ -15,9 +15,6 @@ use std::env;
 use tokio::runtime::Builder;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-use include_dir::{include_dir, Dir};
-
-static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
 pub fn main_internal() -> anyhow::Result<()> {
   let args = env::args().collect::<Vec<_>>();

@@ -17,7 +17,7 @@ pub(crate) fn bodhi_home() -> anyhow::Result<PathBuf> {
   Ok(bodhi_home)
 }
 
-pub(crate) fn logs_dir() -> anyhow::Result<PathBuf> {
+pub fn logs_dir() -> anyhow::Result<PathBuf> {
   let bodhi_home = bodhi_home()?;
   let logs_dir = PathBuf::from(format!("{}/logs", bodhi_home.display()));
   if !logs_dir.exists() {

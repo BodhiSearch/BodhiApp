@@ -1,11 +1,9 @@
-use bodhicore::{
-  bindings::{disable_llama_log, llama_server_disable_logging},
-  server::{
-    build_routes, build_server_handle, Server, ServerHandle, ServerParams, SharedContextRw,
-    SharedContextRwExts,
-  },
+use crate::server::{
+  build_routes, build_server_handle, Server, ServerHandle, ServerParams, SharedContextRw,
+  SharedContextRwExts,
 };
 use futures_util::{future::BoxFuture, FutureExt};
+use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
 use std::sync::Mutex;
 use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,
