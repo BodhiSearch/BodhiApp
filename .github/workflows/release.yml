@@ -110,6 +110,7 @@ jobs:
       - name: clean
         run: |
           cargo clean -p llama-server-bindings
+          cargo clean -p bodhicore
           cargo clean -p bodhi
       - name: build llama-server-bindings
         run: |
