@@ -31,6 +31,7 @@ runs:
         targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
     - uses: Swatinem/rust-cache@v2
     - uses: taiki-e/install-action@nextest
+    - uses: taiki-e/install-action@cargo-llvm-cov
     - name: install tauri CLI
       shell: bash
       run: |

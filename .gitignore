@@ -29,3 +29,5 @@ NOTES-*.md
 # submodule already added, and tracked by git
 llama-server-bindings/**
 scratch*
+*.profraw
+lcov.info
