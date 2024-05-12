@@ -30,3 +30,7 @@ bodhi -h
 2. launch `Bodhi.app` from `/Applications` folder, and check the system tray for application icon.
 
 3. Open the homepage using system tray or opening website in the browser - `http://localhost:1135`
+
+# Dev Machine Setup
+
+[Developer Machine Setup](docs/dev-setup.md)

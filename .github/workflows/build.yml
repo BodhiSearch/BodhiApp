@@ -47,3 +47,7 @@ jobs:
         working-directory: app/bodhi
         run: |
           cargo tauri build --target ${{ matrix.target }} --ci --config '{"tauri": {"updater": {"active": false}}}'
+      - name: test
+        working-directory: app/bodhi
+        run: |
+          cargo nextest run
