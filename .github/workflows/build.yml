@@ -36,6 +36,9 @@ jobs:
         uses: ./.github/actions/llama_cpp
         with:
           LLAMA_CPP_BUILD_FLAGS: ${{ matrix.llama_cpp_build_flags }}
+      - name: build llama-server-bindings
+        run: |
+          cargo build -p llama-server-bindings --target ${{ matrix.target }}
       - name: Generate code coverage
         run: |
           rm -f target/debug/resources/bin/bodhi
