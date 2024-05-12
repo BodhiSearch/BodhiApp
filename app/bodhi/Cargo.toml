@@ -45,6 +45,7 @@ ureq = "2.9.7"
 walkdir = "2.5.0"
 webbrowser = { version = "1.0.0" }
 minijinja = "2.0.1"
+bodhicore = { version = "0.1.0", path = "../../bodhicore" }
 
 [dev-dependencies]
 fs2 = "0.4.3"
