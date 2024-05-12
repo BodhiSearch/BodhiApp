@@ -49,12 +49,12 @@ jobs:
           cargo tauri build --target ${{ matrix.target }} --ci --config '{"tauri": {"updater": {"active": false}}}'
       - name: Generate code coverage
         run: |
-          mv target/debug/resources/bin/bodhi target/debug/resources/bin/bodhicli || 0
-          mv app/bodhi/resources/bin/bodhi app/bodhi/resources/bin/bodhicli || 0
+          find target -name bodhi && mv target/debug/resources/bin/bodhi target/debug/resources/bin/bodhicli || true
+          mv app/bodhi/resources/bin/bodhi app/bodhi/resources/bin/bodhicli || true
           cargo llvm-cov clean --workspace
           cargo llvm-cov nextest --all-features --workspace --lcov --output-path lcov.info
-          mv app/bodhi/resources/bin/bodhicli app/bodhi/resources/bin/bodhi || 0
-          mv target/debug/resources/bin/bodhicli target/debug/resources/bin/bodhi || 0
+          mv app/bodhi/resources/bin/bodhicli app/bodhi/resources/bin/bodhi || true
+          mv target/debug/resources/bin/bodhicli target/debug/resources/bin/bodhi || true
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
