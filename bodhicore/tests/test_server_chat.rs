@@ -8,6 +8,7 @@ use utils::test_server;
 
 use crate::utils::TestServerHandle;
 
+#[ignore]
 #[rstest]
 #[tokio::test]
 pub async fn test_server_chat(

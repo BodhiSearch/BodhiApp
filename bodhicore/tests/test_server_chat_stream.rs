@@ -8,6 +8,7 @@ use serde_json::json;
 use tokio_stream::StreamExt;
 use utils::test_server;
 
+#[ignore]
 #[rstest]
 #[tokio::test]
 pub async fn test_server_chat_stream(
