@@ -41,11 +41,12 @@ jobs:
           cargo build -p llama-server-bindings --target ${{ matrix.target }}
       - name: Generate code coverage
         run: |
-          rm -f target/debug/resources/bin/bodhi
+          mv target/debug/resources/bin/bodhi target/debug/resources/bin/bodhicli || 0
           mv app/bodhi/resources/bin/bodhi app/bodhi/resources/bin/bodhicli || 0
           cargo llvm-cov clean --workspace
           cargo llvm-cov nextest --all-features --workspace --lcov --output-path lcov.info
           mv app/bodhi/resources/bin/bodhicli app/bodhi/resources/bin/bodhi || 0
+          mv target/debug/resources/bin/bodhicli target/debug/resources/bin/bodhi || 0
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
