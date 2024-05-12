@@ -36,22 +36,14 @@ jobs:
         uses: ./.github/actions/llama_cpp
         with:
           LLAMA_CPP_BUILD_FLAGS: ${{ matrix.llama_cpp_build_flags }}
+      - name: clean
+        run: |
+          cargo clean -p llama-server-bindings
+          cargo clean -p bodhi
       - name: build llama-server-bindings
         run: |
           cargo build -p llama-server-bindings --target ${{ matrix.target }}
-      - name: Generate code coverage
+      - name: build the app
+        working-directory: app/bodhi
         run: |
-          mv target/debug/resources/bin/bodhi target/debug/resources/bin/bodhicli || 0
-          mv app/bodhi/resources/bin/bodhi app/bodhi/resources/bin/bodhicli || 0
-          cargo llvm-cov clean --workspace
-          cargo llvm-cov nextest --all-features --workspace --lcov --output-path lcov.info
-          mv app/bodhi/resources/bin/bodhicli app/bodhi/resources/bin/bodhi || 0
-          mv target/debug/resources/bin/bodhicli target/debug/resources/bin/bodhi || 0
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: BodhiSearch/BodhiApp
-          files: lcov.info
-          fail_ci_if_error: true
-          flags: ${{ matrix.target }}
+          cargo tauri build --target ${{ matrix.target }} --ci --config '{"tauri": {"updater": {"active": false}}}'
