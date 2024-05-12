@@ -10,6 +10,7 @@ on:
 
 env:
   CI: true
+  RUST_BACKTRACE: 1
 
 jobs:
   build:

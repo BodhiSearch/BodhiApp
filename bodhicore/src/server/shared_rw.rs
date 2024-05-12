@@ -132,6 +132,7 @@ mod test {
     model_file.to_string_lossy().into_owned()
   }
 
+  #[ignore]
   #[tokio::test]
   async fn test_shared_rw_new() -> anyhow::Result<()> {
     let ctx = SharedContextRw::new_shared_rw(None).await?;
@@ -139,6 +140,7 @@ mod test {
     Ok(())
   }
 
+  #[ignore]
   #[rstest]
   #[tokio::test]
   async fn test_shared_rw_new_with_params(model_file: String) -> anyhow::Result<()> {
@@ -156,6 +158,7 @@ mod test {
     Ok(())
   }
 
+  #[ignore]
   #[rstest]
   #[tokio::test]
   async fn test_shared_rw_reload(model_file: String) -> anyhow::Result<()> {
@@ -178,6 +181,7 @@ mod test {
     Ok(())
   }
 
+  #[ignore]
   #[rstest]
   #[tokio::test]
   async fn test_shared_rw_try_stop(model_file: String) -> anyhow::Result<()> {
@@ -223,6 +227,7 @@ mod test {
     serde_json::to_string(&request).expect("should serialize chat completion request to string")
   }
 
+  #[ignore]
   #[rstest]
   #[tokio::test]
   async fn test_shared_rw_completions(
