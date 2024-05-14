@@ -89,6 +89,7 @@ mod test {
   use super::*;
   use crate::test_utils::{config_dirs, ConfigDirs};
   use rstest::rstest;
+  use tempfile::{tempfile_in, NamedTempFile};
 
   #[test]
   fn test_hf_tokenizer_from_json_str_empty() -> anyhow::Result<()> {
@@ -125,6 +126,29 @@ mod test {
       Some("</s>".to_string()),
     );
     assert_eq!(expected, hf_tokenizer);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hf_tokenizer_from_json_file() -> anyhow::Result<()> {
+    let chat_template = "{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}";
+    let tokenizer_json = format!(
+      r#"{{
+      "bos_token": "<s>",
+      "chat_template": "{chat_template}",
+      "eos_token": "</s>"
+    }}"#
+    );
+    let tempdir = tempfile::tempdir()?;
+    let json_file = NamedTempFile::new_in(&tempdir)?;
+    fs::write(&json_file, tokenizer_json)?;
+    let config = HubTokenizerConfig::from_json_file(&json_file)?;
+    let expected = HubTokenizerConfig::new(
+      Some(chat_template.to_string()),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
+    assert_eq!(expected, config);
     Ok(())
   }
 
