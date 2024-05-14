@@ -4,7 +4,7 @@ use tempfile::TempDir;
 
 use crate::server::BODHI_HOME;
 
-static TEST_REPO: &str = "meta-llama/Meta-Llama-3-8B";
+pub static TEST_REPO: &str = "meta-llama/Meta-Llama-3-8B";
 pub static LLAMA2_CHAT_TEMPLATE: &str = r#"{% if messages[0]['role'] == 'system' -%}
   {% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] -%}
 {% else -%}

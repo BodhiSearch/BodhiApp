@@ -192,10 +192,13 @@ pub(super) fn _find_model(cache_dir: &Path, model_id: &str) -> Option<ModelItem>
 #[cfg(test)]
 mod test {
   use super::{ModelItem, _find_model, _list_models};
+  use crate::hf::{download_url, model_file, HF_HOME};
+  use anyhow::anyhow;
   use rstest::{fixture, rstest};
   use std::fs::{self, File};
   use std::io::Write;
-  use tempfile::{Builder, TempDir};
+  use std::path::PathBuf;
+  use tempfile::{tempdir, Builder, TempDir};
 
   #[fixture]
   fn cache_dir() -> (TempDir, String, String) {
@@ -203,17 +206,25 @@ mod test {
   }
 
   fn _cache_dir() -> anyhow::Result<(TempDir, String, String)> {
-    let cache_dir = Builder::new().prefix("hf_hub").tempdir()?;
-    let cache_path = cache_dir.path().to_path_buf();
-    let model_dir = cache_path.join("models--User1--repo-coder/snapshots/9e221e6b41cb/");
+    let cache_dir = Builder::new().prefix("huggingface").tempdir()?;
+    let hub_dir = cache_dir.path().join("hub");
+    fs::create_dir_all(&hub_dir)?;
+    let model_dir = "models--User1--repo-coder";
+    let refs_dir = hub_dir.join(format!("{model_dir}/refs"));
+    fs::create_dir_all(&refs_dir)?;
+    let refs_main = refs_dir.join("main");
+    let snapshot = "9e221e6b41cb";
+    fs::write(refs_main, snapshot)?;
+    let model_dir = hub_dir.join(format!("{model_dir}/snapshots/{snapshot}/"));
     fs::create_dir_all(&model_dir)?;
     let model_file = model_dir.join("coder-6.7b-instruct.Q8_0.gguf");
     writeln!(File::create_new(model_file.clone())?, "sample model file")?;
 
-    let model_dir = cache_path.join("models--TheYoung--AndRestless/snapshots/046744d93031/");
+    let model_dir = hub_dir.join("models--TheYoung--AndRestless/snapshots/046744d93031/");
     fs::create_dir_all(&model_dir)?;
     let model_file2 = model_dir.join("bigbag-14.2b-theory.Q1_0.gguf");
     writeln!(File::create_new(model_file2.clone())?, "sample model file")?;
+    std::env::set_var(HF_HOME, format!("{}", cache_dir.path().display()));
 
     Ok((
       cache_dir,
@@ -223,7 +234,16 @@ mod test {
   }
 
   #[rstest]
-  fn test_list_models(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
+  fn test_hf_model_file(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
+    let (_cache_dir, model_file_1, _) = cache_dir;
+    let file = model_file("User1/repo-coder", "coder-6.7b-instruct.Q8_0.gguf")
+      .ok_or_else(|| anyhow!("should have found model file"))?;
+    assert_eq!(model_file_1, format!("{}", file.display()));
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_list_models(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
     let (cache_dir, model_file1, _) = cache_dir;
     let mut models = _list_models(cache_dir.path());
     models.sort_by(|a, b| b.cmp(a));
@@ -243,7 +263,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_find_model(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
+  fn test_hf_find_model(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
     let (cache_dir, _, model_file2) = cache_dir;
     let model = _find_model(
       cache_dir.path(),
@@ -263,6 +283,21 @@ mod test {
         updated: Some(modified.into()),
       },
       model
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_download_url() -> anyhow::Result<()> {
+    let url = "https://raw.githubusercontent.com/BodhiSearch/BodhiApp/main/bodhicore/tests/data/test_file_download_url.txt";
+    let tempdir = tempfile::tempdir()?;
+    let destination = tempdir.path().join("test_file_download.txt");
+    let result = download_url(url, &destination)?;
+    assert!(result.exists());
+    let content = fs::read_to_string(&result)?;
+    assert_eq!(
+      "test hf.rs/test_hf_download_url downloads this file from github\n",
+      content
     );
     Ok(())
   }
