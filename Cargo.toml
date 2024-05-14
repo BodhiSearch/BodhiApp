@@ -1,5 +1,5 @@
 [workspace]
-members = ["app/bodhi", "bodhicore", "llama-server-bindings"]
+members = ["app/bodhi", "bodhicore", "llama-server-bindings", "xtask"]
 resolver = "2"
 
 [profile.release.package.bodhi]

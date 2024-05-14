@@ -31,3 +31,4 @@ llama-server-bindings/**
 scratch*
 *.profraw
 lcov.info
+coverage/**
