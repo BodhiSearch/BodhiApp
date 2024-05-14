@@ -1,7 +1,7 @@
 use crate::hf_tokenizer::HubTokenizerConfig;
 use minijinja::{Environment, ErrorKind, Template};
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::Value;
 
 // https://github.com/huggingface/text-generation-inference/tree/main/router/src/infer.rs
 /// Raise a exception (custom function) used in the chat templates
@@ -83,13 +83,16 @@ impl ChatTemplate {
     }
   }
 
-  pub(crate) fn apply(&self, messages: Value) -> anyhow::Result<(String, Value)> {
+  pub(crate) fn apply(&self, mut input: Value) -> anyhow::Result<(String, Value)> {
     match self {
-      ChatTemplate::Empty => Ok(("".to_string(), json! {{"messages": messages}})),
-      ChatTemplate::LlamaCpp { id } => Ok((id.to_string(), json! {{"messages": messages}})),
+      ChatTemplate::Empty => Ok(("".to_string(), input)),
+      ChatTemplate::LlamaCpp { id } => Ok((id.to_string(), input)),
       ChatTemplate::Jinja(template) => {
+        let input_obj = input.as_object_mut().unwrap();
+        let messages = input_obj.remove("messages").unwrap();
         let prompt = template.apply(messages)?;
-        Ok(("".to_string(), json! {{"prompt": prompt}}))
+        input_obj.insert("prompt".to_string(), Value::String(prompt));
+        Ok(("".to_string(), input))
       }
     }
   }
@@ -98,19 +101,21 @@ impl ChatTemplate {
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test_utils::LLAMA2_CHAT_TEMPLATE;
+  use serde_json::json;
 
   #[test]
   fn test_chat_template_empty() -> anyhow::Result<()> {
-    let template = ChatTemplate::new(HubTokenizerConfig::from_json_str("{}")?)?;
+    let config = HubTokenizerConfig::new(None, None, None);
+    let template = ChatTemplate::new(config)?;
     assert_eq!(ChatTemplate::Empty, template);
     Ok(())
   }
 
   #[test]
   fn test_chat_template_llama_cpp() -> anyhow::Result<()> {
-    let template = ChatTemplate::new(HubTokenizerConfig::from_json_str(
-      r#"{"chat_template": "llama.cpp:gemma"}"#,
-    )?)?;
+    let config = HubTokenizerConfig::new(Some("llama.cpp:gemma".to_string()), None, None);
+    let template = ChatTemplate::new(config)?;
     assert_eq!(
       ChatTemplate::LlamaCpp {
         id: "gemma".to_string()
@@ -122,12 +127,50 @@ mod test {
 
   #[test]
   fn test_chat_template_jinja() -> anyhow::Result<()> {
-    let template = r#"{% for message in messages %}{{ message['role'] + ':' + message['content'] }}{% endfor %}"#.to_string();
-    let result = ChatTemplate::new(HubTokenizerConfig::from_json_str(&format!(
-      "{{\"chat_template\": \"{template}\"}}"
-    ))?)?;
-    let expected = ChatTemplate::Jinja(JinjaTemplate::new(template, None, None)?);
+    let chat_template = r#"{% for message in messages %}{{ message['role'] + ':' + message['content'] }}{% endfor %}"#.to_string();
+    let config = HubTokenizerConfig::new(Some(chat_template.clone()), None, None);
+    let result = ChatTemplate::new(config)?;
+    let expected = ChatTemplate::Jinja(JinjaTemplate::new(chat_template, None, None)?);
     assert_eq!(expected, result);
+    Ok(())
+  }
+
+  #[test]
+  fn test_chat_template_apply_empty_does_not_change_messages() -> anyhow::Result<()> {
+    let config = HubTokenizerConfig::default();
+    let template = ChatTemplate::new(config)?;
+    let input = json! {{"messsages": [{"role": "system", "content": "you are a helpful ai assistant."}, {"role": "user", "content": "what day comes after Monday?"}]}};
+    let (chat_template, output) = template.apply(input.clone())?;
+    assert_eq!(input, output);
+    assert_eq!("", chat_template);
+    Ok(())
+  }
+
+  #[test]
+  fn test_chat_template_apply_llama_cpp_not_change_messages() -> anyhow::Result<()> {
+    let config = HubTokenizerConfig::new(Some("llama.cpp:gemma".to_string()), None, None);
+    let template = ChatTemplate::new(config)?;
+    let input = json! {{"messsages": [{"role": "system", "content": "you are a helpful ai assistant."}, {"role": "user", "content": "what day comes after Monday?"}]}};
+    let (chat_template, output) = template.apply(input.clone())?;
+    assert_eq!("gemma", chat_template);
+    assert_eq!(input, output);
+    Ok(())
+  }
+
+  #[test]
+  fn test_chat_template_apply_jinja_replaces_messages_with_prompt() -> anyhow::Result<()> {
+    let config = HubTokenizerConfig::new(
+      Some(LLAMA2_CHAT_TEMPLATE.to_string()),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
+    let template = ChatTemplate::new(config)?;
+    let input =
+      json! {{ "messages": [{"role": "user", "content": "What day comes after Monday?"}] }};
+    let (chat_template, output) = template.apply(input)?;
+    assert_eq!("", chat_template);
+    let expected = json! {{ "prompt": "<s>[INST] What day comes after Monday? [/INST]" }};
+    assert_eq!(expected, output);
     Ok(())
   }
 }
