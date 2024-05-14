@@ -89,7 +89,7 @@ mod test {
   use super::*;
   use crate::test_utils::{config_dirs, ConfigDirs};
   use rstest::rstest;
-  use tempfile::{tempfile_in, NamedTempFile};
+  use tempfile::NamedTempFile;
 
   #[test]
   fn test_hf_tokenizer_from_json_str_empty() -> anyhow::Result<()> {
@@ -213,6 +213,16 @@ message['role']: message['content']
       Some("</s>".to_string()),
     );
     assert_eq!(expected, config);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hf_tokenizer_fails_on_invalid_json() -> anyhow::Result<()> {
+    let config = HubTokenizerConfig::from_json_str(r#"{"eos_token": true}"#);
+    assert!(config.is_err());
+    let error = config.unwrap_err();
+    assert!(error.is::<serde_json::Error>());
+    assert_eq!("invalid type: boolean `true`, expected a string or a map with a 'content' key at line 1 column 18", format!("{error}"));
     Ok(())
   }
 }
