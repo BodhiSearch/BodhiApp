@@ -167,6 +167,7 @@ mod test {
   }
 
   #[rstest]
+  #[serial]
   fn test_download_config_remote_using_hf_url(_setup: ()) -> anyhow::Result<()> {
     let config = build_config(
       "https://huggingface.co/HuggingFaceH4/zephyr-7b-beta/raw/main/tokenizer_config.json"

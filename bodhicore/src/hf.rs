@@ -139,7 +139,7 @@ pub fn list_models() -> Vec<ModelItem> {
 
 pub(super) fn _list_models(cache_dir: &Path) -> Vec<ModelItem> {
   let mut cache_path = cache_dir.to_string_lossy().into_owned();
-  cache_path.push('/');
+  cache_path.push_str("/hub/");
   let re = Regex::new(r".*/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<commit>[^/]+)/(?P<model_name>.*)\.gguf$").unwrap();
   WalkDir::new(cache_dir)
     .follow_links(true)
@@ -191,24 +191,38 @@ pub(super) fn _find_model(cache_dir: &Path, model_id: &str) -> Option<ModelItem>
 
 #[cfg(test)]
 mod test {
-  use super::{ModelItem, _find_model, _list_models};
-  use crate::hf::{download_url, model_file, HF_HOME};
+  use super::{ModelItem, _find_model, _list_models, HF_API_PROGRESS, HF_TOKEN};
+  use crate::hf::{download_file, download_url, model_file, HF_HOME};
   use anyhow::anyhow;
   use rstest::{fixture, rstest};
+  use serial_test::serial;
+  use std::env;
   use std::fs::{self, File};
   use std::io::Write;
-  use std::path::PathBuf;
-  use tempfile::{tempdir, Builder, TempDir};
+  use tempfile::{Builder, TempDir};
 
   #[fixture]
-  fn cache_dir() -> (TempDir, String, String) {
+  fn cache_dir() -> TempDir {
     _cache_dir().unwrap()
   }
 
-  fn _cache_dir() -> anyhow::Result<(TempDir, String, String)> {
+  fn _cache_dir() -> anyhow::Result<TempDir> {
     let cache_dir = Builder::new().prefix("huggingface").tempdir()?;
     let hub_dir = cache_dir.path().join("hub");
-    fs::create_dir_all(&hub_dir)?;
+    fs::create_dir_all(hub_dir)?;
+    env::set_var(HF_HOME, format!("{}", cache_dir.path().display()));
+    env::set_var(HF_API_PROGRESS, "false");
+    env::set_var(HF_TOKEN, "");
+    Ok(cache_dir)
+  }
+
+  #[fixture]
+  fn cache_dir_with_models(cache_dir: TempDir) -> (TempDir, String, String) {
+    _cache_dir_with_models(cache_dir).unwrap()
+  }
+
+  fn _cache_dir_with_models(cache_dir: TempDir) -> anyhow::Result<(TempDir, String, String)> {
+    let hub_dir = cache_dir.path().join("hub");
     let model_dir = "models--User1--repo-coder";
     let refs_dir = hub_dir.join(format!("{model_dir}/refs"));
     fs::create_dir_all(&refs_dir)?;
@@ -224,7 +238,6 @@ mod test {
     fs::create_dir_all(&model_dir)?;
     let model_file2 = model_dir.join("bigbag-14.2b-theory.Q1_0.gguf");
     writeln!(File::create_new(model_file2.clone())?, "sample model file")?;
-    std::env::set_var(HF_HOME, format!("{}", cache_dir.path().display()));
 
     Ok((
       cache_dir,
@@ -234,8 +247,9 @@ mod test {
   }
 
   #[rstest]
-  fn test_hf_model_file(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
-    let (_cache_dir, model_file_1, _) = cache_dir;
+  #[serial]
+  fn test_hf_model_file(cache_dir_with_models: (TempDir, String, String)) -> anyhow::Result<()> {
+    let (_cache_dir, model_file_1, _) = cache_dir_with_models;
     let file = model_file("User1/repo-coder", "coder-6.7b-instruct.Q8_0.gguf")
       .ok_or_else(|| anyhow!("should have found model file"))?;
     assert_eq!(model_file_1, format!("{}", file.display()));
@@ -243,8 +257,9 @@ mod test {
   }
 
   #[rstest]
-  fn test_hf_list_models(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
-    let (cache_dir, model_file1, _) = cache_dir;
+  #[serial]
+  fn test_hf_list_models(cache_dir_with_models: (TempDir, String, String)) -> anyhow::Result<()> {
+    let (cache_dir, model_file1, _) = cache_dir_with_models;
     let mut models = _list_models(cache_dir.path());
     models.sort_by(|a, b| b.cmp(a));
     assert_eq!(2, models.len());
@@ -263,8 +278,9 @@ mod test {
   }
 
   #[rstest]
-  fn test_hf_find_model(cache_dir: (TempDir, String, String)) -> anyhow::Result<()> {
-    let (cache_dir, _, model_file2) = cache_dir;
+  #[serial]
+  fn test_hf_find_model(cache_dir_with_models: (TempDir, String, String)) -> anyhow::Result<()> {
+    let (cache_dir, _, model_file2) = cache_dir_with_models;
     let model = _find_model(
       cache_dir.path(),
       "TheYoung/AndRestless:bigbag-14.2b-theory.Q1_0.gguf",
@@ -299,6 +315,19 @@ mod test {
       "test hf.rs/test_hf_download_url downloads this file from github\n",
       content
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[serial]
+  fn test_hf_download_file(cache_dir: TempDir) -> anyhow::Result<()> {
+    let repo = "TheBloke/CapybaraHermes-2.5-Mistral-7B-GGUF";
+    let filename = "config.json";
+    let path = download_file(repo, filename)?;
+    let expected = cache_dir
+      .path()
+      .join("hub/models--TheBloke--CapybaraHermes-2.5-Mistral-7B-GGUF/snapshots/8bea614edd9a2d5d9985a6e6c1ecc166261cacb8/config.json");
+    assert_eq!(expected, path);
     Ok(())
   }
 }
