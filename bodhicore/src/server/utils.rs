@@ -5,7 +5,7 @@ use axum::{
   Json,
 };
 use serde::Serialize;
-use std::{fs, io, path::PathBuf};
+use std::{env, fs, io, path::PathBuf};
 use thiserror::Error;
 
 pub static DEFAULT_PORT: u16 = 1135;
@@ -48,7 +48,7 @@ impl IntoResponse for ApiError {
   }
 }
 
-pub fn port_from_env_vars(port: Result<String, std::env::VarError>) -> u16 {
+pub fn port_from_env_vars(port: Result<String, env::VarError>) -> u16 {
   match port {
     Ok(port) => match port.parse::<u16>() {
       Ok(port) => port,
@@ -122,7 +122,7 @@ impl From<ChatError> for ApiError {
 
 // TODO: use methods in home.rs
 pub(crate) fn get_bodhi_home_dir() -> Result<PathBuf, HomeDirError> {
-  if let Ok(bodhi_home) = std::env::var(BODHI_HOME) {
+  if let Ok(bodhi_home) = env::var(BODHI_HOME) {
     let home_dir = PathBuf::from(bodhi_home);
     if home_dir.exists() {
       if home_dir.is_dir() {

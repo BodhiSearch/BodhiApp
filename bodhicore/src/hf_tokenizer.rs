@@ -1,10 +1,9 @@
+use crate::home::configs_dir;
 use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
 use std::{fmt, fs};
-
-use crate::home::configs_dir;
 
 pub(crate) static TOKENIZER_CONFIG_FILENAME: &str = "tokenizer_config.json";
 
@@ -76,23 +75,75 @@ where
 #[cfg(test)]
 mod test {
   use super::*;
+  use crate::test_utils::{config_dirs, ConfigDirs};
+  use rstest::rstest;
 
   #[test]
-  fn test_parse_hub_tokenizer_config_load_empty() -> anyhow::Result<()> {
+  fn test_hf_tokenizer_from_json_str_empty() -> anyhow::Result<()> {
     let empty = HubTokenizerConfig::from_json_str("{}")?;
     assert_eq!(HubTokenizerConfig::default(), empty);
     Ok(())
   }
 
   #[test]
-  fn test_parse_hub_tokenizer_config_load_chat_template() -> anyhow::Result<()> {
+  fn test_hf_tokenizer_from_json_str_chat_template() -> anyhow::Result<()> {
     let chat_template =
-      HubTokenizerConfig::from_json_str("{\n \"chat_template\": \"llama.cpp:gemma\"\n}\n")?;
+      HubTokenizerConfig::from_json_str(r#"{"chat_template": "llama.cpp:gemma"}"#)?;
     let expected = HubTokenizerConfig {
       chat_template: Some("llama.cpp:gemma".to_string()),
       ..Default::default()
     };
     assert_eq!(expected, chat_template);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hf_tokenizer_from_json_str_bos_eos_token() -> anyhow::Result<()> {
+    let chat_template = r#"{{ bos_token }} {%- for message in messages %} message['role']: {{ message['content'] }} {% endfor %} {{ eos_token }}"#;
+    let hf_tokenizer = HubTokenizerConfig::from_json_str(&format!(
+      r#"{{
+        "chat_template": "{chat_template}",
+        "bos_token": "<s>",
+        "eos_token": "</s>"
+      }}"#
+    ))?;
+    let expected = HubTokenizerConfig {
+      chat_template: Some(chat_template.to_string()),
+      bos_token: Some("<s>".to_string()),
+      eos_token: Some("</s>".to_string()),
+    };
+    assert_eq!(expected, hf_tokenizer);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_tokenizer_for_repo(config_dirs: ConfigDirs) -> anyhow::Result<()> {
+    let ConfigDirs(_home_dir, config_dir, repo) = config_dirs;
+    let default_config_file = config_dir.join("default.yaml");
+    fs::write(
+      default_config_file,
+      r#"
+chat_template: |
+  {{ bos_token }} {% for message in messages -%}
+  message['role']: message['content']
+  {% endfor %} {{ eos_token }}
+bos_token: <s>
+eos_token: </s>
+"#,
+    )?;
+    let expected = HubTokenizerConfig {
+      chat_template: Some(
+        r#"{{ bos_token }} {% for message in messages -%}
+message['role']: message['content']
+{% endfor %} {{ eos_token }}
+"#
+        .to_string(),
+      ),
+      bos_token: Some("<s>".to_string()),
+      eos_token: Some("</s>".to_string()),
+    };
+    let config = HubTokenizerConfig::for_repo(repo)?;
+    assert_eq!(expected, config);
     Ok(())
   }
 }

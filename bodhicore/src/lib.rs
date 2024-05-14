@@ -1,6 +1,6 @@
+pub mod bindings;
 mod chat_template;
 pub mod cli;
-pub mod bindings;
 mod hf;
 mod hf_tokenizer;
 pub mod home;
@@ -15,3 +15,5 @@ pub use list::List;
 pub use pull::Pull;
 pub use run::Run;
 pub use serve::Serve;
+#[cfg(test)]
+mod test_utils;

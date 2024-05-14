@@ -1,3 +1,5 @@
+use std::env;
+
 use anyhow::{anyhow, Result};
 use bodhicore::server::{
   build_routes, build_server_handle, ServerHandle, ServerParams, SharedContextRw,
@@ -22,7 +24,7 @@ pub fn bodhi_home() -> TempDir {
     .prefix("bodhi_home")
     .tempdir()
     .unwrap();
-  std::env::set_var(BODHI_HOME, format!("{}", bodhi_home.path().display()));
+  env::set_var(BODHI_HOME, format!("{}", bodhi_home.path().display()));
   bodhi_home
 }
 
