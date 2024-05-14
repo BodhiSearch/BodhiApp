@@ -3,6 +3,7 @@ use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
+use serde_json::Value;
 use std::{fmt, fs};
 
 pub(crate) static TOKENIZER_CONFIG_FILENAME: &str = "tokenizer_config.json";
@@ -17,6 +18,17 @@ pub struct HubTokenizerConfig {
 }
 
 impl HubTokenizerConfig {
+  pub fn new(
+    chat_template: Option<String>,
+    bos_token: Option<String>,
+    eos_token: Option<String>,
+  ) -> Self {
+    Self {
+      chat_template,
+      bos_token,
+      eos_token,
+    }
+  }
   pub fn from_json_file<P: AsRef<std::path::Path>>(filename: P) -> anyhow::Result<Self> {
     let content = std::fs::read_to_string(filename)?;
     HubTokenizerConfig::from_json_str(&content)
@@ -59,10 +71,10 @@ where
     where
       M: MapAccess<'de>,
     {
-      let mut content = None;
-      while let Some((key, value)) = map.next_entry::<String, String>()? {
+      let mut content: Option<String> = None;
+      while let Some((key, value)) = map.next_entry::<String, Value>()? {
         if key == "content" {
-          content = Some(value);
+          content = value.as_str().map(|str| str.to_string());
         }
       }
       Ok(content)
@@ -107,11 +119,11 @@ mod test {
         "eos_token": "</s>"
       }}"#
     ))?;
-    let expected = HubTokenizerConfig {
-      chat_template: Some(chat_template.to_string()),
-      bos_token: Some("<s>".to_string()),
-      eos_token: Some("</s>".to_string()),
-    };
+    let expected = HubTokenizerConfig::new(
+      Some(chat_template.to_string()),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
     assert_eq!(expected, hf_tokenizer);
     Ok(())
   }
@@ -131,18 +143,51 @@ bos_token: <s>
 eos_token: </s>
 "#,
     )?;
-    let expected = HubTokenizerConfig {
-      chat_template: Some(
+    let expected = HubTokenizerConfig::new(
+      Some(
         r#"{{ bos_token }} {% for message in messages -%}
 message['role']: message['content']
 {% endfor %} {{ eos_token }}
 "#
         .to_string(),
       ),
-      bos_token: Some("<s>".to_string()),
-      eos_token: Some("</s>".to_string()),
-    };
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
     let config = HubTokenizerConfig::for_repo(repo)?;
+    assert_eq!(expected, config);
+    Ok(())
+  }
+
+  #[test]
+  fn test_hf_tokenizer_parses_eos_token_as_obj() -> anyhow::Result<()> {
+    let tokenizer_json = r#"{
+      "bos_token": {
+        "__type": "AddedToken",
+        "content": "<s>",
+        "lstrip": false,
+        "normalized": false,
+        "rstrip": false,
+        "single_word": false
+      },
+      "chat_template": "{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}",
+      "eos_token": {
+        "__type": "AddedToken",
+        "content": "</s>",
+        "lstrip": false,
+        "normalized": false,
+        "rstrip": false,
+        "single_word": false
+      }
+    }
+    "#;
+    let chat_template = "{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}";
+    let config = HubTokenizerConfig::from_json_str(tokenizer_json)?;
+    let expected = HubTokenizerConfig::new(
+      Some(chat_template.to_string()),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
     assert_eq!(expected, config);
     Ok(())
   }
