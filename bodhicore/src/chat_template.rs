@@ -173,4 +173,23 @@ mod test {
     assert_eq!(expected, output);
     Ok(())
   }
+
+  #[test]
+  fn test_chat_template_apply_jinja_raises_exception() -> anyhow::Result<()> {
+    let config = HubTokenizerConfig::new(
+      Some(LLAMA2_CHAT_TEMPLATE.to_string()),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
+    let template = ChatTemplate::new(config)?;
+    let input =
+      json! {{ "messages": [{"role": "assistant", "content": "What day comes after Monday?"}] }};
+    let result = template.apply(input);
+    assert!(result.is_err());
+    let err = result.unwrap_err();
+    assert!(err.to_string().starts_with(
+      "syntax error: Conversation roles must alternate user/assistant/user/assistant/..."
+    ));
+    Ok(())
+  }
 }
