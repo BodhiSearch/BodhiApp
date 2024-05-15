@@ -27,6 +27,8 @@ pub static LLAMA2_CHAT_TEMPLATE: &str = r#"{% if messages[0]['role'] == 'system'
 {% endfor -%}
 "#;
 pub struct ConfigDirs(pub TempDir, pub PathBuf, pub &'static str);
+pub const TEST_MODELS_YAML: &str = include_str!("../tests/data/test_models.yaml");
+
 
 #[fixture]
 pub fn config_dirs(bodhi_home: TempDir) -> ConfigDirs {

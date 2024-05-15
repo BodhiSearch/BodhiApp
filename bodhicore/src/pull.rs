@@ -68,7 +68,7 @@ impl Pull {
         id
       )
     })?;
-    download(&model.repo, &model.default, force)?;
+    download(&model.repo, &model.default_variant, force)?;
     let tokenizer_config = build_config(
       model.tokenizer_config,
       model.repo.as_str(),

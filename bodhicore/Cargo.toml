@@ -33,6 +33,7 @@ tracing = { version = "0.1.40", features = ["async-await", "log"] }
 ureq = "2.9.7"
 walkdir = "2.5.0"
 minijinja = "2.0.1"
+derive-new = "0.6.0"
 
 [dev-dependencies]
 lazy_static = "1.4.0"

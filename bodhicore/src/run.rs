@@ -24,7 +24,7 @@ impl Run {
             id
           );
         };
-        (model.repo, model.default)
+        (model.repo, model.default_variant)
       }
       None => {
         let repo = repo.ok_or_else(|| anyhow!("required param repo is missing"))?;
