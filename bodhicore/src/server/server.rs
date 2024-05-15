@@ -1,11 +1,12 @@
 use crate::server::utils::{DEFAULT_HOST, DEFAULT_PORT};
 use axum::Router;
+use derive_new::new;
 use std::future::Future;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::{self, Receiver, Sender};
 
 /// ServerParams encapsulates the parameters required to start the server
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, new)]
 pub struct ServerParams {
   pub host: String,
   pub port: u16,

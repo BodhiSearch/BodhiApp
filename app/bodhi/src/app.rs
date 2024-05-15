@@ -1,4 +1,5 @@
 use crate::native::main_native;
+use anyhow::{anyhow, Context};
 use bodhicore::{
   cli::{Cli, Command},
   home::logs_dir,
@@ -8,14 +9,13 @@ use bodhicore::{
   },
   List, Pull, Run, Serve,
 };
-use anyhow::{anyhow, Context};
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
+use include_dir::{include_dir, Dir};
 use std::env;
 use tokio::runtime::Builder;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
-use include_dir::{include_dir, Dir};
 
 static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
@@ -54,7 +54,15 @@ pub fn main_internal() -> anyhow::Result<()> {
       List::new(remote).execute()?;
     }
     Command::Run { id, repo, file } => {
-      Run::new(id, repo, file).execute()?;
+      let run = match id {
+        Some(id) => Run::WithId { id },
+        None => {
+          let repo = repo.ok_or_else(|| anyhow!("repo should be present"))?;
+          let file = file.ok_or_else(|| anyhow!("file should be present"))?;
+          Run::WithRepo { repo, file }
+        }
+      };
+      run.execute()?;
     }
   }
   Ok(())
