@@ -64,7 +64,7 @@ impl Interactive {
   async fn execute(&self) -> anyhow::Result<()> {
     let pb = infinite_loading(String::from("Loading..."));
     let gpt_params = GptParams {
-      model: Some(self.model_path.to_string_lossy().into_owned()),
+      model: self.model_path.to_string_lossy().into_owned(),
       ..Default::default()
     };
     disable_llama_log();

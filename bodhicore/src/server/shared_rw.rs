@@ -14,7 +14,7 @@ pub trait SharedContextRwExts {
     Self: Sized;
 
   fn reload(
-    &mut self,
+    &self,
     gpt_params: Option<GptParams>,
   ) -> impl Future<Output = anyhow::Result<()>> + Send
   where
@@ -38,7 +38,7 @@ impl SharedContextRwExts for SharedContextRw {
   where
     Self: Sized,
   {
-    let mut ctx: SharedContextRw = Arc::new(RwLock::new(None));
+    let ctx: SharedContextRw = Arc::new(RwLock::new(None));
     ctx.reload(gpt_params).await?;
     Ok(ctx)
   }
@@ -51,7 +51,7 @@ impl SharedContextRwExts for SharedContextRw {
     Ok(lock.as_ref().is_some())
   }
 
-  async fn reload(&mut self, gpt_params: Option<GptParams>) -> anyhow::Result<()>
+  async fn reload(&self, gpt_params: Option<GptParams>) -> anyhow::Result<()>
   where
     Self: Sized,
   {
@@ -118,7 +118,9 @@ mod test {
   use crate::server::shared_rw::SharedContextRw;
   use anyhow::anyhow;
   use async_openai::types::CreateChatCompletionResponse;
-  use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log, GptParams};
+  use llama_server_bindings::{
+    bindings::llama_server_disable_logging, disable_llama_log, GptParams,
+  };
   use rstest::{fixture, rstest};
   use serde_json::json;
 
@@ -149,7 +151,7 @@ mod test {
       llama_server_disable_logging();
     }
     let gpt_params = GptParams {
-      model: Some(model_file),
+      model: model_file,
       ..GptParams::default()
     };
     let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
@@ -167,17 +169,17 @@ mod test {
       llama_server_disable_logging();
     }
     let gpt_params = GptParams {
-      model: Some(model_file.clone()),
+      model: model_file.clone(),
       ..GptParams::default()
     };
-    let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params.clone())).await?;
+    let ctx = SharedContextRw::new_shared_rw(Some(gpt_params.clone())).await?;
     let model_params = ctx.get_gpt_params().await?.unwrap();
-    assert_eq!(&model_file, model_params.model.as_ref().unwrap());
+    assert_eq!(model_file, model_params.model);
     ctx.reload(None).await?;
     assert!(ctx.get_gpt_params().await?.is_none());
     ctx.reload(Some(gpt_params)).await?;
     let model_params = ctx.get_gpt_params().await?.unwrap();
-    assert_eq!(&model_file, model_params.model.as_ref().unwrap());
+    assert_eq!(model_file, model_params.model);
     Ok(())
   }
 
@@ -190,7 +192,7 @@ mod test {
       llama_server_disable_logging();
     }
     let gpt_params = GptParams {
-      model: Some(model_file),
+      model: model_file,
       ..GptParams::default()
     };
     let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
@@ -240,7 +242,7 @@ mod test {
     }
     let gpt_params = GptParams {
       seed: Some(42),
-      model: Some(model_file),
+      model: model_file,
       ..GptParams::default()
     };
     let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;

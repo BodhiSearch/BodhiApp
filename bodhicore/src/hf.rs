@@ -1,6 +1,7 @@
 use chrono::{DateTime, Utc};
 use hf_hub::{Cache, Repo};
 use regex::Regex;
+use serde::Serialize;
 use std::{
   borrow::Borrow,
   fs,
@@ -53,10 +54,10 @@ pub(crate) async fn download_async(repo: &str, file: &str) -> anyhow::Result<Pat
     .parse::<bool>()?;
   let api = ApiBuilder::new().with_progress(progress_bar).build()?;
   println!("Downloading from repo {repo}, model file {file}:");
-  let path = match api.model(repo.to_string()).download(&file).await {
+  let path = match api.model(repo.to_string()).download(file).await {
     Err(err) => {
       if let ApiError::RequestError(_) = err {
-        err_msg(&repo);
+        err_msg(repo);
       }
       return Err(err.into());
     }
@@ -87,11 +88,11 @@ pub(crate) fn download_sync(repo: &str, file: &str) -> anyhow::Result<PathBuf> {
   }
   let api = api_builder.build()?;
   tracing::info!("Downloading from repo {repo}, file {file}:");
-  let path = match api.model(repo.to_string()).download(&file) {
+  let path = match api.model(repo.to_string()).download(file) {
     Ok(path) => path,
     Err(err) => {
       if let ApiError::RequestError(_) = err {
-        err_msg(&repo);
+        err_msg(repo);
       }
       return Err(err.into());
     }
@@ -109,8 +110,8 @@ fn err_msg(repo: &str) {
   eprintln!("before you can download and use the model.")
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
-pub struct ModelItem {
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize)]
+pub struct LocalModel {
   pub name: String,
   pub repo: String,
   pub path: String,
@@ -119,7 +120,7 @@ pub struct ModelItem {
   pub updated: Option<DateTime<Utc>>,
 }
 
-impl ModelItem {
+impl LocalModel {
   pub fn model_id(&self) -> String {
     format!("{}:{}", self.repo, self.name)
   }
@@ -133,13 +134,13 @@ impl ModelItem {
   }
 }
 
-pub fn list_models() -> Vec<ModelItem> {
+pub fn list_models() -> Vec<LocalModel> {
   return _list_models(hf_cache().path());
 }
 
-pub(super) fn _list_models(cache_dir: &Path) -> Vec<ModelItem> {
+pub(super) fn _list_models(cache_dir: &Path) -> Vec<LocalModel> {
   let mut cache_path = cache_dir.to_string_lossy().into_owned();
-  cache_path.push_str("/hub/");
+  cache_path.push('/');
   let re = Regex::new(r".*/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<commit>[^/]+)/(?P<model_name>.*)\.gguf$").unwrap();
   WalkDir::new(cache_dir)
     .follow_links(true)
@@ -163,8 +164,8 @@ pub(super) fn _list_models(cache_dir: &Path) -> Vec<ModelItem> {
         ),
         Err(_) => (None, None),
       };
-      let relative_path = filepath.strip_prefix(&cache_path).unwrap_or("");
-      Some(ModelItem {
+      let relative_path = filepath.strip_prefix(&cache_path)?;
+      Some(LocalModel {
         path: relative_path.to_string(),
         name: format!("{}.gguf", &caps["model_name"]),
         repo: format!("{}/{}", &caps["username"], &caps["repo_name"]),
@@ -177,11 +178,11 @@ pub(super) fn _list_models(cache_dir: &Path) -> Vec<ModelItem> {
 }
 
 // TODO: cache the response and load every 5 mins
-pub fn find_model(model_id: &str) -> Option<ModelItem> {
+pub fn find_model(model_id: &str) -> Option<LocalModel> {
   _find_model(hf_cache().path(), model_id)
 }
 
-pub(super) fn _find_model(cache_dir: &Path, model_id: &str) -> Option<ModelItem> {
+pub(super) fn _find_model(cache_dir: &Path, model_id: &str) -> Option<LocalModel> {
   let models = _list_models(cache_dir);
   models.into_iter().find(|item| {
     let current_id = item.model_id();
@@ -191,7 +192,7 @@ pub(super) fn _find_model(cache_dir: &Path, model_id: &str) -> Option<ModelItem>
 
 #[cfg(test)]
 mod test {
-  use super::{ModelItem, _find_model, _list_models, HF_API_PROGRESS, HF_TOKEN};
+  use super::{find_model, list_models, LocalModel, HF_API_PROGRESS, HF_TOKEN};
   use crate::hf::{download_file, download_url, model_file, HF_HOME};
   use anyhow::anyhow;
   use rstest::{fixture, rstest};
@@ -259,12 +260,12 @@ mod test {
   #[rstest]
   #[serial]
   fn test_hf_list_models(cache_dir_with_models: (TempDir, String, String)) -> anyhow::Result<()> {
-    let (cache_dir, model_file1, _) = cache_dir_with_models;
-    let mut models = _list_models(cache_dir.path());
+    let (_cache_dir, model_file1, _) = cache_dir_with_models;
+    let mut models = list_models();
     models.sort_by(|a, b| b.cmp(a));
     assert_eq!(2, models.len());
     let modified = fs::metadata(model_file1)?.modified()?;
-    let expected = ModelItem {
+    let expected = LocalModel {
       path: "models--User1--repo-coder/snapshots/9e221e6b41cb/coder-6.7b-instruct.Q8_0.gguf"
         .to_string(),
       name: "coder-6.7b-instruct.Q8_0.gguf".to_string(),
@@ -281,15 +282,12 @@ mod test {
   #[serial]
   fn test_hf_find_model(cache_dir_with_models: (TempDir, String, String)) -> anyhow::Result<()> {
     let (cache_dir, _, model_file2) = cache_dir_with_models;
-    let model = _find_model(
-      cache_dir.path(),
-      "TheYoung/AndRestless:bigbag-14.2b-theory.Q1_0.gguf",
-    );
+    let model = find_model("TheYoung/AndRestless:bigbag-14.2b-theory.Q1_0.gguf");
     assert!(model.is_some());
     let model = model.unwrap();
     let modified = fs::metadata(model_file2)?.modified()?;
     assert_eq!(
-      ModelItem {
+      LocalModel {
         path: "models--TheYoung--AndRestless/snapshots/046744d93031/bigbag-14.2b-theory.Q1_0.gguf"
           .to_string(),
         name: "bigbag-14.2b-theory.Q1_0.gguf".to_string(),

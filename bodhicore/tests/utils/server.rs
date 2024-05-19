@@ -53,7 +53,7 @@ pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle
     .unwrap()
     .to_owned();
   let gpt_params = GptParams {
-    model: Some(model_path),
+    model: model_path,
     ..GptParams::default()
   };
   let mut wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;

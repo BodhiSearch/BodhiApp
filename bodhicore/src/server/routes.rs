@@ -1,20 +1,15 @@
 use super::{
-  routes_chat::chat_completions_handler,
-  routes_models::ui_models_handler,
-  routes_ui::{
+  router_state::RouterState, routes_chat::{llm_router}, routes_models::ui_models_handler, routes_ui::{
     ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
     ui_chats_handler,
-  },
-  shared_rw::SharedContextRw,
+  }, shared_rw::SharedContextRw
 };
 use axum::{
-  body::Body,
-  http::{self, StatusCode, Uri},
-  response::{IntoResponse, Response},
+  http::StatusCode,
+  response::IntoResponse,
   routing::{delete, get, post},
+  Router,
 };
-use include_dir::Dir;
-use std::path::PathBuf;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -36,30 +31,19 @@ impl IntoResponse for ApiError {
   }
 }
 
-#[derive(Clone)]
-pub(crate) struct RouterState {
-  pub(crate) ctx: SharedContextRw,
-}
-
-impl RouterState {
-  fn new(ctx: SharedContextRw) -> Self {
-    Self { ctx }
-  }
-}
-
-pub fn build_routes(ctx: SharedContextRw) -> axum::Router {
+pub fn build_routes(ctx: SharedContextRw) -> Router {
   let state = RouterState::new(ctx);
-  axum::Router::new()
+  let api_router = Router::new()
+    .route("/chats", get(ui_chats_handler))
+    .route("/chats", delete(ui_chats_delete_handler))
+    .route("/chats/:id", get(ui_chat_handler))
+    .route("/chats/:id", post(ui_chat_update_handler))
+    .route("/chats/:id", delete(ui_chat_delete_handler))
+    .route("/models", get(ui_models_handler));
+  Router::new()
     .route("/ping", get(|| async { "pong" }))
-    .route("/v1/chat/completions", post(chat_completions_handler))
-    .route("/api/ui/chats", get(ui_chats_handler))
-    .route("/api/ui/chats", delete(ui_chats_delete_handler))
-    .route("/api/ui/chats/:id", get(ui_chat_handler))
-    .route("/api/ui/chats/:id", post(ui_chat_update_handler))
-    .route("/api/ui/chats/:id", delete(ui_chat_delete_handler))
-    .route("/api/ui/models", get(ui_models_handler))
-    // .route("/", get(static_handler))
-    // .route("/*path", get(static_handler))
+    .nest("/api/ui", api_router)
+    .merge(llm_router())
     .layer(
       CorsLayer::new()
         .allow_origin(Any)
@@ -70,32 +54,3 @@ pub fn build_routes(ctx: SharedContextRw) -> axum::Router {
     .layer(TraceLayer::new_for_http())
     .with_state(state)
 }
-
-// async fn static_handler(uri: Uri) -> impl IntoResponse {
-//   let mut path = uri.path();
-//   // coming from route "/"
-//   if path.eq("/") {
-//     path = "index.html";
-//   }
-//   // coming from route "/*path", does not contain leading '/' in path, but may be trailing one
-//   if path.starts_with('/') {
-//     path = &path[1..];
-//   }
-//   let path = if path.ends_with('/') {
-//     format!("{}index.html", path)
-//   } else {
-//     path.to_owned()
-//   };
-//   let path = PathBuf::from(path);
-//   if let Some(file) = STATIC_DIR.get_file(&path) {
-//     let mime_type = mime_guess::from_path(&path).first_or_octet_stream();
-//     (
-//       StatusCode::OK,
-//       [(http::header::CONTENT_TYPE, mime_type.as_ref())],
-//       file.contents(),
-//     )
-//       .into_response()
-//   } else {
-//     (StatusCode::NOT_FOUND, "Not Found").into_response()
-//   }
-// }

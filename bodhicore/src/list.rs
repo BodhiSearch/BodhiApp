@@ -1,4 +1,4 @@
-use crate::hf::{list_models, ModelItem};
+use crate::hf::{list_models, LocalModel};
 use derive_new::new;
 use prettytable::{
   format::{self},
@@ -74,9 +74,9 @@ impl From<RemoteModel> for Row {
   }
 }
 
-impl From<ModelItem> for Row {
-  fn from(model: ModelItem) -> Self {
-    let ModelItem {
+impl From<LocalModel> for Row {
+  fn from(model: LocalModel) -> Self {
+    let LocalModel {
       name,
       repo,
       sha,
@@ -171,7 +171,7 @@ impl List {
 #[cfg(test)]
 mod test {
   use super::RemoteModel;
-  use crate::{hf::ModelItem, list::_find_remote_model, test_utils::TEST_MODELS_YAML};
+  use crate::{hf::LocalModel, list::_find_remote_model, test_utils::TEST_MODELS_YAML};
   use chrono::Utc;
   use prettytable::{Cell, Row};
 
@@ -229,7 +229,7 @@ mod test {
   #[test]
   fn test_list_model_item_to_row() -> anyhow::Result<()> {
     let three_days_back = Utc::now() - chrono::Duration::days(3) - chrono::Duration::hours(1);
-    let model = ModelItem {
+    let model = LocalModel {
       name: "Meta-Llama-3-8B-Instruct-GGUF".to_string(),
       repo: "QuantFactory".to_string(),
       path: "models--QuantFactory--Meta-Llama-3-8B-Instruct-GGUF".to_string(),

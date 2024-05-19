@@ -1,4 +1,4 @@
-use super::routes::RouterState;
+use super::router_state::RouterState;
 use super::utils;
 use super::utils::get_chats_dir;
 use super::utils::ApiError;
@@ -324,7 +324,7 @@ mod test {
 
     let chat = _ui_chat_handler(chats_dir, &id)?;
     assert_eq!(2, chat.messages.len());
-    let first = chat.messages.get(0).unwrap();
+    let first = chat.messages.first().unwrap();
     assert_eq!("What is the capital of France?", first.content);
     assert_eq!("user", first.role);
     let reply = chat.messages.get(1).unwrap();
