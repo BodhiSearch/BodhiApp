@@ -43,7 +43,7 @@ params_overload = {
   ],
   ids=["stream_simple", "stream_overload"],
 )
-def test_chat_stream(openai_client, bodhi_client, args):
+def test_chat_stream_compare(openai_client, bodhi_client, args):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
   gpt_deltas = []
   for chunk in gpt_response:
