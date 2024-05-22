@@ -50,7 +50,7 @@ params_overload = {
   ],
   ids=["simple", "system", "overload"],
 )
-def test_chat_no_stream(openai_client, bodhi_client, args, expected_gpt_response, expected_diff):
+def test_chat_compare(openai_client, bodhi_client, args, expected_gpt_response, expected_diff):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
   bodhi_response = bodhi_client.chat.completions.create(model=LLAMA3_MODEL, **args)
   assert GPT_MODEL == gpt_response.model
