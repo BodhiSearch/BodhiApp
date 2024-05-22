@@ -71,3 +71,26 @@ def test_chat_stream(openai_client, bodhi_client, args):
   assert {} == diff.pop("values_changed", {})
   # assert {} == diff.pop("type_changes", {}) # TODO: implement
   # assert {} == diff # TODO: implement
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  "args",
+  [
+    (params_overload),
+  ],
+  ids=["stream_usage"],
+)
+def test_chat_stream_usage(openai_client, bodhi_client, args):
+  args = args.copy()
+  args["stream_options"] = {"include_usage": True}
+  gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
+  gpt_deltas = []
+  for chunk in gpt_response:
+    gpt_deltas.append(chunk)
+  assert gpt_deltas[-1].usage is not None
+  bodhi_response = bodhi_client.chat.completions.create(model=OSS_MODEL, **args)
+  bodhi_deltas = []
+  for chunk in bodhi_response:
+    bodhi_deltas.append(chunk)
+  # assert bodhi_deltas[-1].usage is not None # TODO: implement

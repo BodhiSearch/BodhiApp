@@ -1,0 +1,98 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant.
+      Do as directed by the user.", "name": "user"}, {"role": "user", "content": "Answer
+      in one word. What day comes after Monday?", "name": "user"}], "model": "gpt-4o-2024-05-13",
+      "frequency_penalty": 1, "n": 1, "presence_penalty": 1, "seed": 42, "stream":
+      true, "stream_options": {"include_usage": true}, "temperature": 1, "top_p":
+      1, "user": "user-1234"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '425'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: 'data: {"id":"chatcmpl-9RYqaLiZWOVvVs7GFc4jD4jZT5D3h","object":"chat.completion.chunk","created":1716355836,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_927397958d","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}],"usage":null}
+
+
+        data: {"id":"chatcmpl-9RYqaLiZWOVvVs7GFc4jD4jZT5D3h","object":"chat.completion.chunk","created":1716355836,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_927397958d","choices":[{"index":0,"delta":{"content":"Tuesday"},"logprobs":null,"finish_reason":null}],"usage":null}
+
+
+        data: {"id":"chatcmpl-9RYqaLiZWOVvVs7GFc4jD4jZT5D3h","object":"chat.completion.chunk","created":1716355836,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_927397958d","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}],"usage":null}
+
+
+        data: {"id":"chatcmpl-9RYqaLiZWOVvVs7GFc4jD4jZT5D3h","object":"chat.completion.chunk","created":1716355836,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_927397958d","choices":[],"usage":{"prompt_tokens":37,"completion_tokens":1,"total_tokens":38}}
+
+
+        data: [DONE]
+
+
+        '
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 887a6a45fa833971-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - text/event-stream; charset=utf-8
+      Date:
+      - Wed, 22 May 2024 05:30:36 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      openai-processing-ms:
+      - '92'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599956'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 4ms
+      x-request-id:
+      - req_8723686f94f11008d6b742d9ecbcff15
+    status:
+      code: 200
+      message: OK
+version: 1
