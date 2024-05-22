@@ -1,5 +1,7 @@
 GPT_MODEL = "gpt-4o-2024-05-13"
+GPT_EMBEDDINGS_MODEL = "text-embedding-ada-002"
 LLAMA3_MODEL= "llama3:instruct"
+OSS_EMBEDDINGS_MODEL= "nomic-embed-text"
 
 school_1_description = """Stanford University is a private university located in Stanford, California, United States.
 It was founded in 1885 by Leland Stanford and his wife, Jane, in memory of their only child, Leland Stanford Jr.
