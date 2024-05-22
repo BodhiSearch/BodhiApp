@@ -58,14 +58,14 @@ def test_format_compare(openai_client, bodhi_client, args):
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-  ["client_key", "model"],
+  ["client", "model"],
   [
     pytest.param("openai", GPT_MODEL, id="openai"),
     pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
   ],
+  indirect=["client"],
 )
-def test_chat_format_simple(api_clients, client_key, model):
-  client = api_clients[client_key]
+def test_chat_format_simple(client, model):
   args = dict(**input_json_format)
   response = client.chat.completions.create(model=model, **args)
   json_obj = json.loads(response.choices[0].message.content)

@@ -99,14 +99,14 @@ def test_chat_stream_usage(openai_client, bodhi_client, args):
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-  ["client_key", "model"],
+  ["client", "model"],
   [
     pytest.param("openai", GPT_MODEL, id="openai"),
     pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
   ],
+  indirect=["client"],
 )
-def test_chat_stream_run(api_clients, client_key, model):
-  client: OpenAI = api_clients[client_key]
+def test_chat_stream_run(client, model):
   args = dict(**params_overload)
   response = client.chat.completions.create(model=model, **args)
   deltas = []

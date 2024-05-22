@@ -39,15 +39,16 @@ school_1_output = {
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-  ["client_key", "model", "input", "clzz", "output"],
+  ["client", "model", "input", "clzz", "output"],
   [
     pytest.param("openai", GPT_MODEL, student_1_description, Student, student_1_output, id="openai_student"),
     pytest.param("bodhi", LLAMA3_MODEL, student_1_description, Student, student_1_output, id="bodhi_student"),
     pytest.param("openai", GPT_MODEL, school_1_description, University, school_1_output, id="openai_univ"),
     pytest.param("bodhi", LLAMA3_MODEL, school_1_description, University, school_1_output, id="bodhi_univ"),
   ],
+  indirect=["client"],
 )
-def test_instructor_fn(api_clients, client_key, model, input, clzz, output):
+def test_instructor_fn(client, model, input, clzz, output):
   args = {
     "seed": 42,
     "messages": [
@@ -61,7 +62,6 @@ def test_instructor_fn(api_clients, client_key, model, input, clzz, output):
       },
     ],
   }
-  client = api_clients[client_key]
   client = instructor.patch(client, mode=instructor.mode.Mode.JSON)
   gpt_result = client.chat.completions.create(model=model, **args, response_model=clzz, max_retries=3)
   diff = DeepDiff(clzz(**output).model_dump(), gpt_result.model_dump())

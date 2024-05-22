@@ -1,6 +1,6 @@
-from openai import OpenAI
 import pytest
 from deepdiff import DeepDiff
+from openai import OpenAI
 
 from .common import GPT_MODEL, LLAMA3_MODEL
 
@@ -87,14 +87,14 @@ def test_chat_compare(openai_client, bodhi_client, args, expected_gpt_response, 
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-  ["client_key", "model"],
+  ["client", "model"],
   [
     pytest.param("openai", GPT_MODEL, id="openai"),
     pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
   ],
+  indirect=["client"],
 )
-def test_chat_run(api_clients, client_key, model):
-  client: OpenAI = api_clients[client_key]
+def test_chat_run(client, model):
   args = dict(**params_overload)
   response = client.chat.completions.create(model=model, **args)
   content = response.choices[0].message.content

@@ -34,6 +34,11 @@ def api_clients(openai_client, bodhi_client):
   return {"openai": openai_client, "bodhi": bodhi_client}
 
 
+@pytest.fixture(scope="function")
+def client(api_clients, request):
+  return api_clients[request.param]
+
+
 @pytest.fixture(scope="session")
 def vcr_config():
   return {

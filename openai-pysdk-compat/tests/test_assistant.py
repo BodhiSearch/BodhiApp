@@ -5,14 +5,14 @@ from .common import GPT_MODEL, LLAMA3_MODEL
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-  ["client_key", "model"],
+  ["client", "model"],
   [
     pytest.param("openai", GPT_MODEL, id="openai"),
     pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", marks=pytest.mark.skip(reason="Not implemented yet")),
   ],
+  indirect=["client"],
 )
-def test_assistant_create(api_clients, client_key, model):
-  client = api_clients[client_key]
+def test_assistant_create(client, model):
   assistant = client.beta.assistants.create(
     instructions="You are a personal math tutor. When asked a question, write and run Python code to answer the question.",
     name="Math Tutor",
