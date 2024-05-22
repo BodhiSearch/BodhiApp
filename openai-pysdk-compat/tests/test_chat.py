@@ -1,3 +1,4 @@
+from openai import OpenAI
 import pytest
 from deepdiff import DeepDiff
 
@@ -33,7 +34,7 @@ params_overload = {
     (
       {"seed": 42, "messages": [{"role": "user", "content": "Answer in one word. What day comes after Monday?"}]},
       "Tuesday.",
-      {"set_item_removed": ["root.choices[0].model_fields_set['logprobs']"]}, # TODO: implement
+      {"set_item_removed": ["root.choices[0].model_fields_set['logprobs']"]},  # TODO: implement
     ),
     (
       {
@@ -82,3 +83,19 @@ def test_chat_compare(openai_client, bodhi_client, args, expected_gpt_response, 
   # }
   # assert expected_usage_diff == diff.pop("values_changed") # TODO: implement
   assert expected_diff == diff
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client_key", "model"],
+  [
+    pytest.param("openai", GPT_MODEL, id="openai"),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
+  ],
+)
+def test_chat_run(api_clients, client_key, model):
+  client: OpenAI = api_clients[client_key]
+  args = dict(**params_overload)
+  response = client.chat.completions.create(model=model, **args)
+  content = response.choices[0].message.content
+  assert "Tuesday" == content
