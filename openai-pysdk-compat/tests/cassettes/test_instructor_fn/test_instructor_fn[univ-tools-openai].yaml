@@ -1,0 +1,106 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant,
+      specializing in extracting structured information from text."}, {"role": "user",
+      "content": "Stanford University is a private university located in Stanford,
+      California, United States.\nIt was founded in 1885 by Leland Stanford and his
+      wife, Jane, in memory of their only child, Leland Stanford Jr.\nThe university
+      is ranked #5 in the world by QS World University Rankings.\nIt has over 17,000
+      students in total, that includes over 8,000 undergraduates and 9,000 graduates."}],
+      "model": "gpt-4o-2024-05-13", "seed": 42, "tool_choice": {"type": "function",
+      "function": {"name": "University"}}, "tools": [{"type": "function", "function":
+      {"name": "University", "description": "Correctly extracted `University` with
+      all the required parameters with correct types", "parameters": {"properties":
+      {"name": {"description": "Name of the person", "title": "Name", "type": "string"},
+      "ranking": {"description": "QS world ranking of the school.", "title": "Ranking",
+      "type": "integer"}, "country": {"description": "Country of the school.", "title":
+      "Country", "type": "string"}, "no_of_students": {"description": "Number of students
+      enrolled in the school.", "title": "No Of Students", "type": "integer"}}, "required":
+      ["country", "name", "no_of_students", "ranking"], "type": "object"}}}]}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1353'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-9RdRIG0PFOmZ858C4oCGo5747GlSw\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716373488,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": null,\n        \"tool_calls\": [\n          {\n
+        \           \"id\": \"call_ktklFvGDBLAzGawJkw4u2u14\",\n            \"type\":
+        \"function\",\n            \"function\": {\n              \"name\": \"University\",\n
+        \             \"arguments\": \"{\\\"name\\\":\\\"Stanford University\\\",\\\"ranking\\\":5,\\\"country\\\":\\\"United
+        States\\\",\\\"no_of_students\\\":17000}\"\n            }\n          }\n        ]\n
+        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
+        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 215,\n    \"completion_tokens\":
+        23,\n    \"total_tokens\": 238\n  },\n  \"system_fingerprint\": \"fp_927397958d\"\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 887c194018997f78-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 May 2024 10:24:49 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '815'
+      openai-processing-ms:
+      - '593'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599865'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 13ms
+      x-request-id:
+      - req_0cc973d8823e5e1af1702681e2ee90e4
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -53,25 +53,25 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9Rd1ypAkJYltdHcOB47DejwjOMv0o\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716371918,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RdRDbkqN9vIGu29ruENTjPhQMj1f\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716373483,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"Stanford University\\\",\\n
         \ \\\"ranking\\\": 5,\\n  \\\"country\\\": \\\"United States\\\",\\n  \\\"no_of_students\\\":
         17000\\n}\"\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
         \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 339,\n    \"completion_tokens\":
-        36,\n    \"total_tokens\": 375\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+        36,\n    \"total_tokens\": 375\n  },\n  \"system_fingerprint\": \"fp_c45f7d0b45\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887bf2eaf89f17b2-MAA
+      - 887c19185d19a8ff-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 09:58:39 GMT
+      - Wed, 22 May 2024 10:24:44 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,7 +81,7 @@ interactions:
       content-length:
       - '587'
       openai-processing-ms:
-      - '927'
+      - '1505'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -99,7 +99,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 37ms
       x-request-id:
-      - req_61362d25a8a36360c82daf55da99e348
+      - req_c7ea07552f1a891d866307856a43ee60
     status:
       code: 200
       message: OK

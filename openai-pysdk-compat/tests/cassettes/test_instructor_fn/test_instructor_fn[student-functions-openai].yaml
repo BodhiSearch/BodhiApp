@@ -1,0 +1,104 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant,
+      specializing in extracting structured information from text."}, {"role": "user",
+      "content": "David Nguyen is a sophomore majoring in Computer Science at Stanford
+      University.\nHe is Asian American and has a 3.8 GPA.\nDavid is known for his
+      programming skills and is an active member of the university''s Robotics Club.\nHe
+      hopes to pursue a career in artificial intelligence after graduating."}], "model":
+      "gpt-4o-2024-05-13", "function_call": {"name": "Student"}, "functions": [{"name":
+      "Student", "description": "Correctly extracted `Student` with all the required
+      parameters with correct types", "parameters": {"properties": {"name": {"description":
+      "Name of the person", "title": "Name", "type": "string"}, "major": {"description":
+      "Major subject.", "title": "Major", "type": "string"}, "school": {"description":
+      "The university name.", "title": "School", "type": "string"}, "grades": {"description":
+      "GPA of the student.", "title": "Grades", "type": "number"}, "club": {"description":
+      "School club for extracurricular activities. ", "title": "Club", "type": "string"}},
+      "required": ["club", "grades", "major", "name", "school"], "type": "object"}}],
+      "seed": 42}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1238'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-9RdWFH7VVMxnosTriWIPkipoT3Nht\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716373795,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": null,\n        \"function_call\": {\n
+        \         \"name\": \"Student\",\n          \"arguments\": \"{\\\"name\\\":\\\"David
+        Nguyen\\\",\\\"major\\\":\\\"Computer Science\\\",\\\"school\\\":\\\"Stanford
+        University\\\",\\\"grades\\\":3.8,\\\"club\\\":\\\"Robotics Club\\\"}\"\n
+        \       }\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 186,\n    \"completion_tokens\":
+        29,\n    \"total_tokens\": 215\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 887c20be384817b2-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 May 2024 10:29:56 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '692'
+      openai-processing-ms:
+      - '568'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599885'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 11ms
+      x-request-id:
+      - req_508daefcbdfbb288905611a0d328c7dc
+    status:
+      code: 200
+      message: OK
+version: 1

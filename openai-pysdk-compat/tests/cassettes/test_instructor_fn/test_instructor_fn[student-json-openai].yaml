@@ -52,8 +52,8 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9Rd1qiQ7D6OvaKGrHtpoy2Je9j3Z1\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716371910,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RdQyqNbzIbaQHIdsimfDqnSD0rDN\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716373468,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"David Nguyen\\\",\\n
         \ \\\"major\\\": \\\"Computer Science\\\",\\n  \\\"school\\\": \\\"Stanford
@@ -65,13 +65,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887bf2b7dc357fe6-MAA
+      - 887c18c27fe9178f-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 09:58:31 GMT
+      - Wed, 22 May 2024 10:24:29 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,7 +81,7 @@ interactions:
       content-length:
       - '624'
       openai-processing-ms:
-      - '1174'
+      - '734'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -99,7 +99,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 36ms
       x-request-id:
-      - req_7ffa9d95f8d9d1e3b7d5533f2abc4dda
+      - req_3606d637109b414a46401707cfdad910
     status:
       code: 200
       message: OK
