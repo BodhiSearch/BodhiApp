@@ -36,24 +36,24 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9QsCSeyV7etoXHWWxfBX9JBcXiq7y\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716191900,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RYb9AyoDOHp3wrUohNs60DQ7OiiE\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716354879,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"Tuesday\"\n      },\n      \"logprobs\":
         null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
         28,\n    \"completion_tokens\": 1,\n    \"total_tokens\": 29\n  },\n  \"system_fingerprint\":
-        \"fp_729ea513f7\"\n}\n"
+        \"fp_927397958d\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 886ac7f1fffc3c0d-BLR
+      - 887a52ea3d20397d-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 20 May 2024 07:58:20 GMT
+      - Wed, 22 May 2024 05:14:39 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -63,7 +63,7 @@ interactions:
       content-length:
       - '466'
       openai-processing-ms:
-      - '114'
+      - '92'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -81,7 +81,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 3ms
       x-request-id:
-      - req_3fe110cd60bed796a79ca45d5e11b388
+      - req_0891e33d282e6cb0849733f8c3f96b61
     status:
       code: 200
       message: OK

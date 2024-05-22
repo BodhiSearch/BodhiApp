@@ -1,8 +1,8 @@
 interactions:
 - request:
     body: '{"messages": [{"role": "user", "content": "Generate a JSON object representing
-      a person with first name, last name as string, age as integer"}], "model": "gpt-4o-2024-05-13",
-      "response_format": {"type": "json_object"}, "seed": 42}'
+      a person with first name as John, last name as string Doe, age as 30"}], "model":
+      "gpt-4o-2024-05-13", "response_format": {"type": "json_object"}, "seed": 42}'
     headers:
       accept:
       - application/json
@@ -11,7 +11,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '230'
+      - '237'
       content-type:
       - application/json
       host:
@@ -36,25 +36,25 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9QssgRqZyWyGzbP1LCC204exUMip9\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716194518,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RYbBp7U9vAe5A44LCyi6uQn2Sub4\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716354881,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"\\n{\\n  \\\"firstName\\\": \\\"John\\\",\\n
         \ \\\"lastName\\\": \\\"Doe\\\",\\n  \\\"age\\\": 30\\n}\"\n      },\n      \"logprobs\":
         null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        26,\n    \"completion_tokens\": 26,\n    \"total_tokens\": 52\n  },\n  \"system_fingerprint\":
+        30,\n    \"completion_tokens\": 26,\n    \"total_tokens\": 56\n  },\n  \"system_fingerprint\":
         \"fp_927397958d\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 886b07dbd9943c0c-BLR
+      - 887a52f5ad913c12-BLR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 20 May 2024 08:41:59 GMT
+      - Wed, 22 May 2024 05:14:41 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -64,7 +64,7 @@ interactions:
       content-length:
       - '535'
       openai-processing-ms:
-      - '826'
+      - '416'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -76,13 +76,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '4999'
       x-ratelimit-remaining-tokens:
-      - '599958'
+      - '599956'
       x-ratelimit-reset-requests:
       - 12ms
       x-ratelimit-reset-tokens:
       - 4ms
       x-request-id:
-      - req_d3796ab46e24ccaea25ba0badb5dcfc4
+      - req_9653a177011a645ce6cb9da07f9c7827
     status:
       code: 200
       message: OK

@@ -4,11 +4,46 @@ from deepdiff import DeepDiff
 
 from .common import GPT_MODEL, OSS_MODEL
 
+params_overload = {
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a helpful assistant. Do as directed by the user.",
+      "name": "user",
+    },
+    {
+      "role": "user",
+      "content": "Answer in one word. What day comes after Monday?",
+      "name": "user",
+    },
+  ],
+  "stream": True,
+  "frequency_penalty": 1,
+  "n": 1,
+  "presence_penalty": 1,
+  "seed": 42,
+  "temperature": 1,
+  "top_p": 1,
+  "user": "user-1234",
+}
+
 
 @pytest.mark.vcr
-def test_chat_stream_simple(openai_client, bodhi_client):
-  messages = [{"role": "user", "content": "Answer in one word. What day comes after Monday?"}]
-  args = {"stream": True, "seed": 42, "messages": messages}
+@pytest.mark.parametrize(
+  "args",
+  [
+    (
+      {
+        "stream": True,
+        "seed": 42,
+        "messages": [{"role": "user", "content": "Answer in one word. What day comes after Monday?"}],
+      }
+    ),
+    (params_overload),
+  ],
+  ids=["stream_simple", "stream_overload"],
+)
+def test_chat_stream(openai_client, bodhi_client, args):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
   gpt_deltas = []
   for chunk in gpt_response:

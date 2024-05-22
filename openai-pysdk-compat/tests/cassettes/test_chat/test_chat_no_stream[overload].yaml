@@ -1,7 +1,10 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "content": "Answer in one word. What day
-      comes after Monday?"}], "model": "gpt-4o-2024-05-13", "seed": 42}'
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant.
+      Do as directed by the user.", "name": "user"}, {"role": "user", "content": "Answer
+      in one word. What day comes after Monday?", "name": "user"}], "model": "gpt-4o-2024-05-13",
+      "frequency_penalty": 1, "n": 1, "presence_penalty": 1, "seed": 42, "temperature":
+      1, "top_p": 1, "user": "user-1234"}'
     headers:
       accept:
       - application/json
@@ -10,7 +13,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '137'
+      - '366'
       content-type:
       - application/json
       host:
@@ -35,24 +38,24 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9QsCRXMdSSHMnrYSATbknnYRUWHeS\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716191899,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RYbAQkKpaWwzZbypXR1NSxzMLlLq\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716354880,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"Tuesday.\"\n      },\n      \"logprobs\":
+        \"assistant\",\n        \"content\": \"Tuesday\"\n      },\n      \"logprobs\":
         null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        18,\n    \"completion_tokens\": 2,\n    \"total_tokens\": 20\n  },\n  \"system_fingerprint\":
+        37,\n    \"completion_tokens\": 1,\n    \"total_tokens\": 38\n  },\n  \"system_fingerprint\":
         \"fp_927397958d\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 886ac7e9d8783c06-BLR
+      - 887a52f00af03c07-BLR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 20 May 2024 07:58:19 GMT
+      - Wed, 22 May 2024 05:14:40 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -60,9 +63,9 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '467'
+      - '466'
       openai-processing-ms:
-      - '419'
+      - '112'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -74,13 +77,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '4999'
       x-ratelimit-remaining-tokens:
-      - '599970'
+      - '599956'
       x-ratelimit-reset-requests:
       - 12ms
       x-ratelimit-reset-tokens:
-      - 2ms
+      - 4ms
       x-request-id:
-      - req_950434379616eaca04ab26808778d239
+      - req_6730d144bf394ee67fb94ae25496e2fa
     status:
       code: 200
       message: OK

@@ -1,8 +1,7 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant."},
-      {"role": "user", "content": "Answer in one word. What day comes after Monday?"}],
-      "model": "gpt-4o-2024-05-13", "max_tokens": 10, "seed": 42, "temperature": 0.7}'
+    body: '{"messages": [{"role": "user", "content": "Answer in one word. What day
+      comes after Monday?"}], "model": "gpt-4o-2024-05-13", "seed": 42}'
     headers:
       accept:
       - application/json
@@ -11,7 +10,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '238'
+      - '137'
       content-type:
       - application/json
       host:
@@ -36,24 +35,24 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9QsCTKnPqd3WTOplZZPzZ84kIDj1T\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716191901,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RYb8Q8FfXn7whYbFzIpdDgEWzKPQ\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716354878,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"Tuesday\"\n      },\n      \"logprobs\":
+        \"assistant\",\n        \"content\": \"Tuesday.\"\n      },\n      \"logprobs\":
         null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        28,\n    \"completion_tokens\": 1,\n    \"total_tokens\": 29\n  },\n  \"system_fingerprint\":
-        \"fp_927397958d\"\n}\n"
+        18,\n    \"completion_tokens\": 2,\n    \"total_tokens\": 20\n  },\n  \"system_fingerprint\":
+        \"fp_729ea513f7\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 886ac7f808213c00-BLR
+      - 887a52e348383c01-BLR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Mon, 20 May 2024 07:58:21 GMT
+      - Wed, 22 May 2024 05:14:38 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -61,9 +60,9 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '466'
+      - '467'
       openai-processing-ms:
-      - '84'
+      - '124'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -75,13 +74,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '4999'
       x-ratelimit-remaining-tokens:
-      - '599968'
+      - '599970'
       x-ratelimit-reset-requests:
       - 12ms
       x-ratelimit-reset-tokens:
-      - 3ms
+      - 2ms
       x-request-id:
-      - req_c9e8fb971a3210046cf83993f0cf2ef6
+      - req_e24cf032dd2bc7753716b5e14b4490ae
     status:
       code: 200
       message: OK
