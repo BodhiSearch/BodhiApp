@@ -1,5 +1,5 @@
 import pytest
-from openai import AuthenticationError, BadRequestError, OpenAI
+from openai import AuthenticationError, BadRequestError, NotFoundError, OpenAI
 
 from .common import GPT_MODEL, LLAMA3_MODEL
 
@@ -65,4 +65,32 @@ def test_exception_input_error(client: OpenAI, model, input, exception, error):
     client.chat.completions.create(model=model, **input)
   err = e.value
   assert 400 == err.status_code
+  assert error == err.body
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model", "exception", "error"],
+  [
+    pytest.param(
+      "openai",
+      "gpt-4o-foo",
+      NotFoundError,
+      {
+        "code": "model_not_found",
+        "message": "The model 'gpt-4o-foo' does not exist",
+        "param": "model",
+        "type": "invalid_request_error",
+      },
+      id="openai",
+    ),
+    pytest.param("bodhi", "llama3:foo", NotFoundError, {}, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+  ],
+  indirect=["client"],
+)
+def test_exception_not_found(client, model, exception, error):
+  with pytest.raises(exception) as e:
+    client.models.retrieve(model)
+  err = e.value
+  assert 404 == err.status_code
   assert error == err.body
