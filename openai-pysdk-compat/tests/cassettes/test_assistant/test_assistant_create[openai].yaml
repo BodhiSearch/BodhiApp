@@ -1,0 +1,79 @@
+interactions:
+- request:
+    body: '{"model": "gpt-4o-2024-05-13", "instructions": "You are a personal math
+      tutor. When asked a question, write and run Python code to answer the question.",
+      "name": "Math Tutor", "tools": [{"type": "code_interpreter"}]}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '216'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      openai-beta:
+      - assistants=v2
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/assistants
+  response:
+    body:
+      string: "{\n  \"id\": \"asst_zabU1HRRG4Vd2VeSgzSPg7nO\",\n  \"object\": \"assistant\",\n
+        \ \"created_at\": 1716365497,\n  \"name\": \"Math Tutor\",\n  \"description\":
+        null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\": \"You are
+        a personal math tutor. When asked a question, write and run Python code to
+        answer the question.\",\n  \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n
+        \   }\n  ],\n  \"top_p\": 1.0,\n  \"temperature\": 1.0,\n  \"tool_resources\":
+        {\n    \"code_interpreter\": {\n      \"file_ids\": []\n    }\n  },\n  \"metadata\":
+        {},\n  \"response_format\": \"auto\"\n}"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 887b5625be437f5d-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 May 2024 08:11:37 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '528'
+      openai-processing-ms:
+      - '74'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_b72b76c9323627cd7dcb70b182902879
+    status:
+      code: 200
+      message: OK
+version: 1
