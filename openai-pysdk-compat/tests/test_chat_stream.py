@@ -2,7 +2,7 @@ import re
 import pytest
 from deepdiff import DeepDiff
 
-from .common import GPT_MODEL, OSS_MODEL
+from .common import GPT_MODEL, LLAMA3_MODEL
 
 params_overload = {
   "messages": [
@@ -48,7 +48,7 @@ def test_chat_stream(openai_client, bodhi_client, args):
   gpt_deltas = []
   for chunk in gpt_response:
     gpt_deltas.append(chunk)
-  bodhi_response = bodhi_client.chat.completions.create(model=OSS_MODEL, **args)
+  bodhi_response = bodhi_client.chat.completions.create(model=LLAMA3_MODEL, **args)
   bodhi_deltas = []
   for chunk in bodhi_response:
     bodhi_deltas.append(chunk)
@@ -89,7 +89,7 @@ def test_chat_stream_usage(openai_client, bodhi_client, args):
   for chunk in gpt_response:
     gpt_deltas.append(chunk)
   assert gpt_deltas[-1].usage is not None
-  bodhi_response = bodhi_client.chat.completions.create(model=OSS_MODEL, **args)
+  bodhi_response = bodhi_client.chat.completions.create(model=LLAMA3_MODEL, **args)
   bodhi_deltas = []
   for chunk in bodhi_response:
     bodhi_deltas.append(chunk)

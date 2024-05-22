@@ -1,0 +1,106 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant,
+      specializing in extracting structured information from text.\n\n\n                As
+      a genius expert, your task is to understand the content and provide\n                the
+      parsed objects in json that match the following json_schema:\n\n\n                {\n  \"properties\":
+      {\n    \"name\": {\n      \"description\": \"Name of the person\",\n      \"title\":
+      \"Name\",\n      \"type\": \"string\"\n    },\n    \"ranking\": {\n      \"description\":
+      \"QS world ranking of the school.\",\n      \"title\": \"Ranking\",\n      \"type\":
+      \"integer\"\n    },\n    \"country\": {\n      \"description\": \"Country of
+      the school.\",\n      \"title\": \"Country\",\n      \"type\": \"string\"\n    },\n    \"no_of_students\":
+      {\n      \"description\": \"Number of students enrolled in the school.\",\n      \"title\":
+      \"No Of Students\",\n      \"type\": \"integer\"\n    }\n  },\n  \"required\":
+      [\n    \"name\",\n    \"ranking\",\n    \"country\",\n    \"no_of_students\"\n  ],\n  \"title\":
+      \"University\",\n  \"type\": \"object\"\n}\n\n                Make sure to return
+      an instance of the JSON, not the schema itself\n"}, {"role": "user", "content":
+      "Stanford University is a private university located in Stanford, California,
+      United States.\nIt was founded in 1885 by Leland Stanford and his wife, Jane,
+      in memory of their only child, Leland Stanford Jr.\nThe university is ranked
+      #5 in the world by QS World University Rankings.\nIt has over 17,000 students
+      in total, that includes over 8,000 undergraduates and 9,000 graduates."}], "model":
+      "gpt-4o-2024-05-13", "response_format": {"type": "json_object"}, "seed": 42}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1696'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-9RahRYR9vuliZzylcinNTx8Anas4F\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716362957,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"Stanford University\\\",\\n
+        \ \\\"ranking\\\": 5,\\n  \\\"country\\\": \\\"United States\\\",\\n  \\\"no_of_students\\\":
+        17000\\n}\"\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
+        \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 339,\n    \"completion_tokens\":
+        36,\n    \"total_tokens\": 375\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 887b18204ba4a902-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 May 2024 07:29:17 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '587'
+      openai-processing-ms:
+      - '715'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599630'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 37ms
+      x-request-id:
+      - req_9c60baed56365506232beb4cbe582af0
+    status:
+      code: 200
+      message: OK
+version: 1

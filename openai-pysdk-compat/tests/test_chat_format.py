@@ -3,7 +3,7 @@ import json
 import pytest
 from deepdiff import DeepDiff
 
-from .common import GPT_MODEL, OSS_MODEL
+from .common import GPT_MODEL, LLAMA3_MODEL
 
 
 @pytest.mark.vcr
@@ -26,7 +26,7 @@ from .common import GPT_MODEL, OSS_MODEL
 )
 def test_create_with_response_format(openai_client, bodhi_client, args):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
-  bodhi_response = bodhi_client.chat.completions.create(model=OSS_MODEL, **args)
+  bodhi_response = bodhi_client.chat.completions.create(model=LLAMA3_MODEL, **args)
   exclude_paths = [
     "id",
     "created",

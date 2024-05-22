@@ -3,16 +3,8 @@ import json
 import pytest
 from deepdiff import DeepDiff
 
-from .common import GPT_MODEL, LLAMA3_MODEL
+from .common import GPT_MODEL, LLAMA3_MODEL, student_1_description, school_1_description
 
-school_1_description = """Stanford University is a private university located in Stanford, California, United States.
-It was founded in 1885 by Leland Stanford and his wife, Jane, in memory of their only child, Leland Stanford Jr.
-The university is ranked #5 in the world by QS World University Rankings.
-It has over 17,000 students, including about 7,600 undergraduates and 9,500 graduates."""
-student_1_description = """David Nguyen is a sophomore majoring in computer science at Stanford University.
-He is Asian American and has a 3.8 GPA.
-David is known for his programming skills and is an active member of the university's Robotics Club.
-He hopes to pursue a career in artificial intelligence after graduating."""
 tools = [
   {
     "type": "function",
@@ -49,7 +41,7 @@ tools = [
   },
 ]
 
-llm_params = {
+tool_params = {
   "n": 1,
   "seed": 42,
   "tool_choice": "auto",
@@ -84,8 +76,8 @@ llm_params = {
   ],
   ids=["chat_tool_student_1", "chat_tool_univ_1"],
 )
-def test_chat_fn(openai_client, bodhi_client, input, output):
-  args = dict(**llm_params)
+def test_chat_tool(openai_client, bodhi_client, input, output):
+  args = dict(**tool_params)
   args["messages"] = [
     {
       "role": "system",

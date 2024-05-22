@@ -1,0 +1,106 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant,
+      specializing in extracting structured information from text.\n\n\n                As
+      a genius expert, your task is to understand the content and provide\n                the
+      parsed objects in json that match the following json_schema:\n\n\n                {\n  \"properties\":
+      {\n    \"name\": {\n      \"description\": \"Name of the person\",\n      \"title\":
+      \"Name\",\n      \"type\": \"string\"\n    },\n    \"major\": {\n      \"description\":
+      \"Major subject.\",\n      \"title\": \"Major\",\n      \"type\": \"string\"\n    },\n    \"school\":
+      {\n      \"description\": \"The university name.\",\n      \"title\": \"School\",\n      \"type\":
+      \"string\"\n    },\n    \"grades\": {\n      \"description\": \"GPA of the student.\",\n      \"title\":
+      \"Grades\",\n      \"type\": \"number\"\n    },\n    \"club\": {\n      \"description\":
+      \"School club for extracurricular activities. \",\n      \"title\": \"Club\",\n      \"type\":
+      \"string\"\n    }\n  },\n  \"required\": [\n    \"name\",\n    \"major\",\n    \"school\",\n    \"grades\",\n    \"club\"\n  ],\n  \"title\":
+      \"Student\",\n  \"type\": \"object\"\n}\n\n                Make sure to return
+      an instance of the JSON, not the schema itself\n"}, {"role": "user", "content":
+      "David Nguyen is a sophomore majoring in Computer Science at Stanford University.\nHe
+      is Asian American and has a 3.8 GPA.\nDavid is known for his programming skills
+      and is an active member of the university''s Robotics Club.\nHe hopes to pursue
+      a career in artificial intelligence after graduating."}], "model": "gpt-4o-2024-05-13",
+      "response_format": {"type": "json_object"}, "seed": 42}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1703'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: "{\n  \"id\": \"chatcmpl-9RahP5iBJMXUtZBaFZhsQMuxS20Yv\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716362955,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
+        \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"David Nguyen\\\",\\n
+        \ \\\"major\\\": \\\"Computer Science\\\",\\n  \\\"school\\\": \\\"Stanford
+        University\\\",\\n  \\\"grades\\\": 3.8,\\n  \\\"club\\\": \\\"Robotics Club\\\"\\n}\"\n
+        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
+        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 334,\n    \"completion_tokens\":
+        45,\n    \"total_tokens\": 379\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 887b1815df277f9d-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 May 2024 07:29:16 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '624'
+      openai-processing-ms:
+      - '997'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599633'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 36ms
+      x-request-id:
+      - req_9a2cd3d4ef9fd91913619f34f6cf71fe
+    status:
+      code: 200
+      message: OK
+version: 1
