@@ -49,3 +49,19 @@ def test_image_upload(client: OpenAI, model):
   response = client.chat.completions.create(model=model, **args)
   content = response.choices[0].message.content
   assert "ChatGPT" in content
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model"],
+  [
+    pytest.param("async_openai", GPT_MODEL, id="async_openai"),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", marks=pytest.mark.skip("Not implemented yet")),
+  ],
+  indirect=["client"],
+)
+async def test_image_upload_async(client: OpenAI, model):
+  response = await client.chat.completions.create(model=model, **request_image_args())
+  content = response.choices[0].message.content
+  assert "ChatGPT" in content

@@ -50,26 +50,26 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RdWQ1Onj6zJKULORvlvfMYP3PSej\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716373806,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RisYEtCV7e32gaL3X4jmauNryDPe\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716394398,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": null,\n        \"function_call\": {\n
         \         \"name\": \"University\",\n          \"arguments\": \"{\\\"name\\\":\\\"Stanford
         University\\\",\\\"ranking\\\":5,\\\"country\\\":\\\"United States\\\",\\\"no_of_students\\\":17000}\"\n
         \       }\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
         \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 215,\n    \"completion_tokens\":
-        23,\n    \"total_tokens\": 238\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+        23,\n    \"total_tokens\": 238\n  },\n  \"system_fingerprint\": \"fp_c45f7d0b45\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887c20fe892817a8-MAA
+      - 887e17b92fd2179a-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 10:30:06 GMT
+      - Wed, 22 May 2024 16:13:19 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -79,7 +79,7 @@ interactions:
       content-length:
       - '663'
       openai-processing-ms:
-      - '562'
+      - '1851'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -97,7 +97,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 13ms
       x-request-id:
-      - req_e83c45ec68bebf18ddc72b72a9c4abf6
+      - req_b9fbda91716cdfa58198b1afd207748f
     status:
       code: 200
       message: OK

@@ -49,8 +49,8 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RdWFH7VVMxnosTriWIPkipoT3Nht\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716373795,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RisP1YK3ZnCLCJH0vL7AdY1lNuru\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716394389,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": null,\n        \"function_call\": {\n
         \         \"name\": \"Student\",\n          \"arguments\": \"{\\\"name\\\":\\\"David
@@ -63,13 +63,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887c20be384817b2-MAA
+      - 887e17859c3f7fd1-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 10:29:56 GMT
+      - Wed, 22 May 2024 16:13:10 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -79,7 +79,7 @@ interactions:
       content-length:
       - '692'
       openai-processing-ms:
-      - '568'
+      - '694'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -97,7 +97,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 11ms
       x-request-id:
-      - req_508daefcbdfbb288905611a0d328c7dc
+      - req_9cd82c07b7d4056c783dfa955b259a20
     status:
       code: 200
       message: OK

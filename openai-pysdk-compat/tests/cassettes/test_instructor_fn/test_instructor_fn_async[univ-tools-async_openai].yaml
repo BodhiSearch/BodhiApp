@@ -31,11 +31,11 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -50,11 +50,11 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisWCweqfGC6cE9ZlMxyB9w147Ok\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394396,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RispPn4w916BeKogHESYD9gl3FPJ\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716394415,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": null,\n        \"tool_calls\": [\n          {\n
-        \           \"id\": \"call_nPAVwtFCK9EkVes40VZRaKZN\",\n            \"type\":
+        \           \"id\": \"call_Y4x0qSqKlUdLluneQQNEqYlt\",\n            \"type\":
         \"function\",\n            \"function\": {\n              \"name\": \"University\",\n
         \             \"arguments\": \"{\\\"name\\\":\\\"Stanford University\\\",\\\"ranking\\\":5,\\\"country\\\":\\\"United
         States\\\",\\\"no_of_students\\\":17000}\"\n            }\n          }\n        ]\n
@@ -65,13 +65,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e17b229a87fdd-MAA
+      - 887e18284c777f78-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:17 GMT
+      - Wed, 22 May 2024 16:13:36 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,7 +81,7 @@ interactions:
       content-length:
       - '815'
       openai-processing-ms:
-      - '526'
+      - '432'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -99,7 +99,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 13ms
       x-request-id:
-      - req_84b8d42c6229ae2086df53003e4f902c
+      - req_14f68930008309c2d03a118515fd0972
     status:
       code: 200
       message: OK

@@ -1,6 +1,7 @@
 interactions:
 - request:
-    body: ''
+    body: '{"messages": [{"role": "user", "seed": 42, "content": "What day comes after
+      Monday?"}], "model": "gpt-4o-2024-05-13"}'
     headers:
       accept:
       - application/json
@@ -8,16 +9,18 @@ interactions:
       - gzip, deflate
       connection:
       - keep-alive
+      content-length:
+      - '117'
       content-type:
       - application/json
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -28,43 +31,38 @@ interactions:
       - CPython
       x-stainless-runtime-version:
       - 3.11.5
-    method: GET
-    uri: https://api.openai.com/v1/models/gpt-4o-foo
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"error\": {\n    \"message\": \"The model 'gpt-4o-foo' does not
-        exist\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"model\",\n
-        \   \"code\": \"model_not_found\"\n  }\n}\n"
+      string: "{\n    \"error\": {\n        \"message\": \"Incorrect API key provided:
+        sk-foobar. You can find your API key at https://platform.openai.com/account/api-keys.\",\n
+        \       \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\":
+        \"invalid_api_key\"\n    }\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887daf7f4e4d7ff2-MAA
+      - 887daf75cd4e7f95-MAA
       Connection:
       - keep-alive
+      Content-Length:
+      - '259'
       Content-Type:
-      - application/json
+      - application/json; charset=utf-8
       Date:
-      - Wed, 22 May 2024 15:02:08 GMT
+      - Wed, 22 May 2024 15:02:07 GMT
       Server:
       - cloudflare
-      Transfer-Encoding:
-      - chunked
-      access-control-allow-origin:
-      - '*'
       alt-svc:
       - h3=":443"; ma=86400
-      content-length:
-      - '166'
-      openai-processing-ms:
-      - '34'
-      openai-version:
-      - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
+      vary:
+      - Origin
       x-request-id:
-      - req_9e69fd430c529227ede961232db628e2
+      - req_99fb761c8d956ef62e21b45d789e53ab
     status:
-      code: 404
-      message: Not Found
+      code: 401
+      message: Unauthorized
 version: 1

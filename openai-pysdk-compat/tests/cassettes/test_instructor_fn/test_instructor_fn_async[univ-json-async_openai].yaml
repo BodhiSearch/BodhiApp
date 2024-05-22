@@ -34,11 +34,11 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -53,8 +53,8 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisQKSOYx8dqt51gf87W4QBi0q24\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394390,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9RisjvnNdYIoooYyKyQsXxPGOKVi9\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716394409,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"Stanford University\\\",\\n
         \ \\\"ranking\\\": 5,\\n  \\\"country\\\": \\\"United States\\\",\\n  \\\"no_of_students\\\":
@@ -65,13 +65,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e178daab87f8e-MAA
+      - 887e18025c307ffb-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:12 GMT
+      - Wed, 22 May 2024 16:13:30 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,7 +81,7 @@ interactions:
       content-length:
       - '587'
       openai-processing-ms:
-      - '964'
+      - '1031'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -99,7 +99,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 37ms
       x-request-id:
-      - req_b81134582988662ed71304b5a15c8d87
+      - req_310e862b45c017a5956c320de93497c3
     status:
       code: 200
       message: OK

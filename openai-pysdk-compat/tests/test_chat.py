@@ -95,7 +95,22 @@ def test_chat_compare(openai_client, bodhi_client, args, expected_gpt_response, 
   indirect=["client"],
 )
 def test_chat_run(client, model):
-  args = dict(**params_overload)
-  response = client.chat.completions.create(model=model, **args)
+  response = client.chat.completions.create(model=model, **params_overload)
+  content = response.choices[0].message.content
+  assert "Tuesday" == content
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model"],
+  [
+    pytest.param("async_openai", GPT_MODEL, id="async_openai"),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi"),
+  ],
+  indirect=["client"],
+)
+async def test_chat_async_run(client, model):
+  response = await client.chat.completions.create(model=model, **params_overload)
   content = response.choices[0].message.content
   assert "Tuesday" == content

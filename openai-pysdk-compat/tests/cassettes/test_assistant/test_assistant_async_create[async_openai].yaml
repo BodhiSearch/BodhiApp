@@ -19,11 +19,11 @@ interactions:
       openai-beta:
       - assistants=v2
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -38,7 +38,7 @@ interactions:
     uri: https://api.openai.com/v1/assistants
   response:
     body:
-      string: "{\n  \"id\": \"asst_JHTB5Qv0VkfMeZuVfVuzQIV0\",\n  \"object\": \"assistant\",\n
+      string: "{\n  \"id\": \"asst_KPjamnRjQotWVatbmbPmZQFZ\",\n  \"object\": \"assistant\",\n
         \ \"created_at\": 1716389355,\n  \"name\": \"Math Tutor\",\n  \"description\":
         null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\": \"You are
         a personal math tutor. When asked a question, write and run Python code to
@@ -50,7 +50,7 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887d9c9d6b427f6b-MAA
+      - 887d9ca0ceae7f88-MAA
       Connection:
       - keep-alive
       Content-Type:
@@ -66,13 +66,13 @@ interactions:
       content-length:
       - '528'
       openai-processing-ms:
-      - '92'
+      - '65'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_497c4c64eeeacf7eb30f8f5da007e020
+      - req_9364ac33df406d5ebc9506388b020940
     status:
       code: 200
       message: OK

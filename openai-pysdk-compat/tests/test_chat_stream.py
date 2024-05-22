@@ -1,7 +1,8 @@
 import re
-from openai import OpenAI
+
 import pytest
 from deepdiff import DeepDiff
+from openai import OpenAI
 
 from .common import GPT_MODEL, LLAMA3_MODEL
 
@@ -111,6 +112,26 @@ def test_chat_stream_run(client, model):
   response = client.chat.completions.create(model=model, **args)
   deltas = []
   for chunk in response:
+    content = chunk.choices[0].delta.content
+    if content is not None:
+      deltas.append(content)
+  assert "Tuesday" == "".join(deltas)
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model"],
+  [
+    pytest.param("async_openai", GPT_MODEL, id="async_openai"),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi"),
+  ],
+  indirect=["client"],
+)
+async def test_chat_async_stream_run(client, model):
+  response = await client.chat.completions.create(model=model, **params_overload)
+  deltas = []
+  async for chunk in response:
     content = chunk.choices[0].delta.content
     if content is not None:
       deltas.append(content)

@@ -6,16 +6,16 @@ interactions:
       University.\nHe is Asian American and has a 3.8 GPA.\nDavid is known for his
       programming skills and is an active member of the university''s Robotics Club.\nHe
       hopes to pursue a career in artificial intelligence after graduating."}], "model":
-      "gpt-4o-2024-05-13", "seed": 42, "tool_choice": {"type": "function", "function":
-      {"name": "Student"}}, "tools": [{"type": "function", "function": {"name": "Student",
-      "description": "Correctly extracted `Student` with all the required parameters
-      with correct types", "parameters": {"properties": {"name": {"description": "Name
-      of the person", "title": "Name", "type": "string"}, "major": {"description":
+      "gpt-4o-2024-05-13", "function_call": {"name": "Student"}, "functions": [{"name":
+      "Student", "description": "Correctly extracted `Student` with all the required
+      parameters with correct types", "parameters": {"properties": {"name": {"description":
+      "Name of the person", "title": "Name", "type": "string"}, "major": {"description":
       "Major subject.", "title": "Major", "type": "string"}, "school": {"description":
       "The university name.", "title": "School", "type": "string"}, "grades": {"description":
       "GPA of the student.", "title": "Grades", "type": "number"}, "club": {"description":
       "School club for extracurricular activities. ", "title": "Club", "type": "string"}},
-      "required": ["club", "grades", "major", "name", "school"], "type": "object"}}}]}'
+      "required": ["club", "grades", "major", "name", "school"], "type": "object"}}],
+      "seed": 42}'
     headers:
       accept:
       - application/json
@@ -24,17 +24,17 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1300'
+      - '1238'
       content-type:
       - application/json
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -49,29 +49,27 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisOPaImhlfFvqvXVTnOoRUfnRkY\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394388,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9Risi4C9c34qBH0pusy2KT5LfFvFm\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716394408,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": null,\n        \"tool_calls\": [\n          {\n
-        \           \"id\": \"call_2rte4kKQULeEcIKXPiiBrnEA\",\n            \"type\":
-        \"function\",\n            \"function\": {\n              \"name\": \"Student\",\n
-        \             \"arguments\": \"{\\\"name\\\":\\\"David Nguyen\\\",\\\"major\\\":\\\"Computer
-        Science\\\",\\\"school\\\":\\\"Stanford University\\\",\\\"grades\\\":3.8,\\\"club\\\":\\\"Robotics
-        Club\\\"}\"\n            }\n          }\n        ]\n      },\n      \"logprobs\":
-        null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        186,\n    \"completion_tokens\": 29,\n    \"total_tokens\": 215\n  },\n  \"system_fingerprint\":
-        \"fp_729ea513f7\"\n}\n"
+        \"assistant\",\n        \"content\": null,\n        \"function_call\": {\n
+        \         \"name\": \"Student\",\n          \"arguments\": \"{\\\"name\\\":\\\"David
+        Nguyen\\\",\\\"major\\\":\\\"Computer Science\\\",\\\"school\\\":\\\"Stanford
+        University\\\",\\\"grades\\\":3.8,\\\"club\\\":\\\"Robotics Club\\\"}\"\n
+        \       }\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 186,\n    \"completion_tokens\":
+        29,\n    \"total_tokens\": 215\n  },\n  \"system_fingerprint\": \"fp_927397958d\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e177e2de57fe5-MAA
+      - 887e17fa6e29a931-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:09 GMT
+      - Wed, 22 May 2024 16:13:29 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -79,9 +77,9 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '844'
+      - '692'
       openai-processing-ms:
-      - '632'
+      - '623'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -93,13 +91,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '4999'
       x-ratelimit-remaining-tokens:
-      - '599886'
+      - '599885'
       x-ratelimit-reset-requests:
       - 12ms
       x-ratelimit-reset-tokens:
       - 11ms
       x-request-id:
-      - req_d232caf1e965bfead4dc89209fd956ec
+      - req_d09905d3bf64f67035ccc49e3b45b005
     status:
       code: 200
       message: OK

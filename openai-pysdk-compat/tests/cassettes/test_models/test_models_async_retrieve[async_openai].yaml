@@ -13,11 +13,11 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -29,23 +29,22 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/models/gpt-4o-foo
+    uri: https://api.openai.com/v1/models/gpt-4o-2024-05-13
   response:
     body:
-      string: "{\n  \"error\": {\n    \"message\": \"The model 'gpt-4o-foo' does not
-        exist\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"model\",\n
-        \   \"code\": \"model_not_found\"\n  }\n}\n"
+      string: "{\n  \"id\": \"gpt-4o-2024-05-13\",\n  \"object\": \"model\",\n  \"created\":
+        1715368132,\n  \"owned_by\": \"system\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887daf7f4e4d7ff2-MAA
+      - 887e1a164ed31796-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 15:02:08 GMT
+      - Wed, 22 May 2024 16:14:54 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -55,16 +54,16 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '166'
+      - '102'
       openai-processing-ms:
-      - '34'
+      - '28'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_9e69fd430c529227ede961232db628e2
+      - req_1cabff753f14f4ee18b0f73069ba8af7
     status:
-      code: 404
-      message: Not Found
+      code: 200
+      message: OK
 version: 1

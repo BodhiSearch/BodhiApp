@@ -7,16 +7,16 @@ interactions:
       wife, Jane, in memory of their only child, Leland Stanford Jr.\nThe university
       is ranked #5 in the world by QS World University Rankings.\nIt has over 17,000
       students in total, that includes over 8,000 undergraduates and 9,000 graduates."}],
-      "model": "gpt-4o-2024-05-13", "seed": 42, "tool_choice": {"type": "function",
-      "function": {"name": "University"}}, "tools": [{"type": "function", "function":
-      {"name": "University", "description": "Correctly extracted `University` with
+      "model": "gpt-4o-2024-05-13", "function_call": {"name": "University"}, "functions":
+      [{"name": "University", "description": "Correctly extracted `University` with
       all the required parameters with correct types", "parameters": {"properties":
       {"name": {"description": "Name of the person", "title": "Name", "type": "string"},
       "ranking": {"description": "QS world ranking of the school.", "title": "Ranking",
       "type": "integer"}, "country": {"description": "Country of the school.", "title":
       "Country", "type": "string"}, "no_of_students": {"description": "Number of students
       enrolled in the school.", "title": "No Of Students", "type": "integer"}}, "required":
-      ["country", "name", "no_of_students", "ranking"], "type": "object"}}}]}'
+      ["country", "name", "no_of_students", "ranking"], "type": "object"}}], "seed":
+      42}'
     headers:
       accept:
       - application/json
@@ -25,17 +25,17 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '1353'
+      - '1291'
       content-type:
       - application/json
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -50,28 +50,26 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisWCweqfGC6cE9ZlMxyB9w147Ok\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394396,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9Risqc5OemUAsc0LQMOWqlIbJTmpk\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716394416,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": null,\n        \"tool_calls\": [\n          {\n
-        \           \"id\": \"call_nPAVwtFCK9EkVes40VZRaKZN\",\n            \"type\":
-        \"function\",\n            \"function\": {\n              \"name\": \"University\",\n
-        \             \"arguments\": \"{\\\"name\\\":\\\"Stanford University\\\",\\\"ranking\\\":5,\\\"country\\\":\\\"United
-        States\\\",\\\"no_of_students\\\":17000}\"\n            }\n          }\n        ]\n
-        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
-        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 215,\n    \"completion_tokens\":
+        \"assistant\",\n        \"content\": null,\n        \"function_call\": {\n
+        \         \"name\": \"University\",\n          \"arguments\": \"{\\\"name\\\":\\\"Stanford
+        University\\\",\\\"ranking\\\":5,\\\"country\\\":\\\"United States\\\",\\\"no_of_students\\\":17000}\"\n
+        \       }\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
+        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 215,\n    \"completion_tokens\":
         23,\n    \"total_tokens\": 238\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e17b229a87fdd-MAA
+      - 887e182efd4c7f96-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:17 GMT
+      - Wed, 22 May 2024 16:13:37 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -79,9 +77,9 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '815'
+      - '663'
       openai-processing-ms:
-      - '526'
+      - '584'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -99,7 +97,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 13ms
       x-request-id:
-      - req_84b8d42c6229ae2086df53003e4f902c
+      - req_825fd730c53a0e7c4cb59c08fd414500
     status:
       code: 200
       message: OK

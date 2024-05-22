@@ -74,3 +74,45 @@ def test_instructor_fn(client, model, mode, input, clzz, output):
   gpt_result = client.chat.completions.create(model=model, **args, response_model=clzz, max_retries=3)
   diff = DeepDiff(clzz(**output).model_dump(), gpt_result.model_dump())
   assert {} == diff
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model"],
+  [("async_openai", GPT_MODEL), ("async_bodhi", LLAMA3_MODEL)],
+  indirect=["client"],
+  ids=["async_openai", "async_bodhi"],
+)
+@pytest.mark.parametrize(
+  "mode",
+  [Mode.JSON, Mode.TOOLS, Mode.FUNCTIONS],
+  ids=["json", "tools", "functions"],
+)
+@pytest.mark.parametrize(
+  ["input", "clzz", "output"],
+  [
+    pytest.param(student_1_description, Student, student_1_output, id="student"),
+    pytest.param(school_1_description, University, school_1_output, id="univ"),
+  ],
+)
+async def test_instructor_fn_async(client, model, mode, input, clzz, output):
+  if model == LLAMA3_MODEL and mode in [Mode.TOOLS, Mode.FUNCTIONS]:
+    pytest.skip("Not Implemented")
+  args = {
+    "seed": 42,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant, specializing in extracting structured information from text.",
+      },
+      {
+        "role": "user",
+        "content": input,
+      },
+    ],
+  }
+  client = instructor.patch(client, mode=mode)
+  gpt_result = await client.chat.completions.create(model=model, **args, response_model=clzz, max_retries=3)
+  diff = DeepDiff(clzz(**output).model_dump(), gpt_result.model_dump())
+  assert {} == diff

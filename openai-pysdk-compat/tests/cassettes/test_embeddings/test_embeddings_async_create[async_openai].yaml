@@ -16,11 +16,11 @@ interactions:
       host:
       - api.openai.com
       user-agent:
-      - OpenAI/Python 1.30.1
+      - AsyncOpenAI/Python 1.30.1
       x-stainless-arch:
       - arm64
       x-stainless-async:
-      - 'false'
+      - async:asyncio
       x-stainless-lang:
       - python
       x-stainless-os:
@@ -427,13 +427,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887daf68ba107fc9-MAA
+      - 887daf6e3a15397d-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 15:02:05 GMT
+      - Wed, 22 May 2024 15:02:06 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -447,7 +447,7 @@ interactions:
       openai-model:
       - text-embedding-ada-002
       openai-processing-ms:
-      - '24'
+      - '19'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -465,7 +465,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 0s
       x-request-id:
-      - req_b183f14c4ebe38da2fab204337bcaf10
+      - req_c9c5ab1f09dfd027d8339cfbbb8e9419
     status:
       code: 200
       message: OK

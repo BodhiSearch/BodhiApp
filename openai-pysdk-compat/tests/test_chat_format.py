@@ -17,6 +17,8 @@ input_json_format = {
   "response_format": {"type": "json_object"},
 }
 
+expected = {"firstName": "John", "lastName": "Doe", "age": 30}
+
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
@@ -66,7 +68,22 @@ def test_format_compare(openai_client, bodhi_client, args):
   indirect=["client"],
 )
 def test_chat_format_simple(client, model):
-  args = dict(**input_json_format)
-  response = client.chat.completions.create(model=model, **args)
+  response = client.chat.completions.create(model=model, **input_json_format)
   json_obj = json.loads(response.choices[0].message.content)
-  assert {"firstName": "John", "lastName": "Doe", "age": 30} == json_obj
+  assert expected == json_obj
+
+
+@pytest.mark.asyncio
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model"],
+  [
+    pytest.param("async_openai", GPT_MODEL, id="async_openai"),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi"),
+  ],
+  indirect=["client"],
+)
+async def test_chat_async_format_simple(client, model):
+  response = await client.chat.completions.create(model=model, **input_json_format)
+  json_obj = json.loads(response.choices[0].message.content)
+  assert expected == json_obj
