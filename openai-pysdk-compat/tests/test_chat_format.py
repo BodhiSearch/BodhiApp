@@ -24,7 +24,7 @@ from .common import GPT_MODEL, LLAMA3_MODEL
   ],
   ids=["format_json"]
 )
-def test_create_with_response_format(openai_client, bodhi_client, args):
+def test_format_compare(openai_client, bodhi_client, args):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
   bodhi_response = bodhi_client.chat.completions.create(model=LLAMA3_MODEL, **args)
   exclude_paths = [
