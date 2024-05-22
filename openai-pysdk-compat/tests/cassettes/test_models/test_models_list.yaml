@@ -1,0 +1,130 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: GET
+    uri: https://api.openai.com/v1/models
+  response:
+    body:
+      string: "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"id\": \"dall-e-3\",\n
+        \     \"object\": \"model\",\n      \"created\": 1698785189,\n      \"owned_by\":
+        \"system\"\n    },\n    {\n      \"id\": \"gpt-4-1106-preview\",\n      \"object\":
+        \"model\",\n      \"created\": 1698957206,\n      \"owned_by\": \"system\"\n
+        \   },\n    {\n      \"id\": \"whisper-1\",\n      \"object\": \"model\",\n
+        \     \"created\": 1677532384,\n      \"owned_by\": \"openai-internal\"\n
+        \   },\n    {\n      \"id\": \"davinci-002\",\n      \"object\": \"model\",\n
+        \     \"created\": 1692634301,\n      \"owned_by\": \"system\"\n    },\n    {\n
+        \     \"id\": \"gpt-4-turbo-preview\",\n      \"object\": \"model\",\n      \"created\":
+        1706037777,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"gpt-4-0125-preview\",\n      \"object\": \"model\",\n      \"created\":
+        1706037612,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"babbage-002\",\n      \"object\": \"model\",\n      \"created\": 1692634615,\n
+        \     \"owned_by\": \"system\"\n    },\n    {\n      \"id\": \"dall-e-2\",\n
+        \     \"object\": \"model\",\n      \"created\": 1698798177,\n      \"owned_by\":
+        \"system\"\n    },\n    {\n      \"id\": \"gpt-3.5-turbo-16k\",\n      \"object\":
+        \"model\",\n      \"created\": 1683758102,\n      \"owned_by\": \"openai-internal\"\n
+        \   },\n    {\n      \"id\": \"tts-1-hd-1106\",\n      \"object\": \"model\",\n
+        \     \"created\": 1699053533,\n      \"owned_by\": \"system\"\n    },\n    {\n
+        \     \"id\": \"tts-1-hd\",\n      \"object\": \"model\",\n      \"created\":
+        1699046015,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"gpt-4\",\n      \"object\": \"model\",\n      \"created\": 1687882411,\n
+        \     \"owned_by\": \"openai\"\n    },\n    {\n      \"id\": \"gpt-4-0613\",\n
+        \     \"object\": \"model\",\n      \"created\": 1686588896,\n      \"owned_by\":
+        \"openai\"\n    },\n    {\n      \"id\": \"gpt-3.5-turbo-1106\",\n      \"object\":
+        \"model\",\n      \"created\": 1698959748,\n      \"owned_by\": \"system\"\n
+        \   },\n    {\n      \"id\": \"gpt-4-turbo-2024-04-09\",\n      \"object\":
+        \"model\",\n      \"created\": 1712601677,\n      \"owned_by\": \"system\"\n
+        \   },\n    {\n      \"id\": \"gpt-4-turbo\",\n      \"object\": \"model\",\n
+        \     \"created\": 1712361441,\n      \"owned_by\": \"system\"\n    },\n    {\n
+        \     \"id\": \"gpt-3.5-turbo-instruct-0914\",\n      \"object\": \"model\",\n
+        \     \"created\": 1694122472,\n      \"owned_by\": \"system\"\n    },\n    {\n
+        \     \"id\": \"gpt-4o\",\n      \"object\": \"model\",\n      \"created\":
+        1715367049,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"gpt-3.5-turbo-instruct\",\n      \"object\": \"model\",\n      \"created\":
+        1692901427,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"tts-1\",\n      \"object\": \"model\",\n      \"created\": 1681940951,\n
+        \     \"owned_by\": \"openai-internal\"\n    },\n    {\n      \"id\": \"gpt-3.5-turbo-0301\",\n
+        \     \"object\": \"model\",\n      \"created\": 1677649963,\n      \"owned_by\":
+        \"openai\"\n    },\n    {\n      \"id\": \"tts-1-1106\",\n      \"object\":
+        \"model\",\n      \"created\": 1699053241,\n      \"owned_by\": \"system\"\n
+        \   },\n    {\n      \"id\": \"gpt-3.5-turbo-0125\",\n      \"object\": \"model\",\n
+        \     \"created\": 1706048358,\n      \"owned_by\": \"system\"\n    },\n    {\n
+        \     \"id\": \"text-embedding-3-large\",\n      \"object\": \"model\",\n
+        \     \"created\": 1705953180,\n      \"owned_by\": \"system\"\n    },\n    {\n
+        \     \"id\": \"gpt-3.5-turbo\",\n      \"object\": \"model\",\n      \"created\":
+        1677610602,\n      \"owned_by\": \"openai\"\n    },\n    {\n      \"id\":
+        \"text-embedding-3-small\",\n      \"object\": \"model\",\n      \"created\":
+        1705948997,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"gpt-3.5-turbo-0613\",\n      \"object\": \"model\",\n      \"created\":
+        1686587434,\n      \"owned_by\": \"openai\"\n    },\n    {\n      \"id\":
+        \"text-embedding-ada-002\",\n      \"object\": \"model\",\n      \"created\":
+        1671217299,\n      \"owned_by\": \"openai-internal\"\n    },\n    {\n      \"id\":
+        \"gpt-4-1106-vision-preview\",\n      \"object\": \"model\",\n      \"created\":
+        1711473033,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"gpt-4-vision-preview\",\n      \"object\": \"model\",\n      \"created\":
+        1698894917,\n      \"owned_by\": \"system\"\n    },\n    {\n      \"id\":
+        \"gpt-3.5-turbo-16k-0613\",\n      \"object\": \"model\",\n      \"created\":
+        1685474247,\n      \"owned_by\": \"openai\"\n    },\n    {\n      \"id\":
+        \"gpt-4o-2024-05-13\",\n      \"object\": \"model\",\n      \"created\": 1715368132,\n
+        \     \"owned_by\": \"system\"\n    },\n    {\n      \"id\": \"gpt-4o-test-shared\",\n
+        \     \"object\": \"model\",\n      \"created\": 1716228416,\n      \"owned_by\":
+        \"system\"\n    }\n  ]\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 887b354f8d957f85-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Wed, 22 May 2024 07:49:12 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '4216'
+      openai-processing-ms:
+      - '86'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_3a67b80229238a6ea9c950a3edd4ddaf
+    status:
+      code: 200
+      message: OK
+version: 1
