@@ -21,35 +21,33 @@ class University(BaseModel):
   no_of_students: int = Field(..., description="Number of students enrolled in the school.")
 
 
+student_1_output = {
+  "name": "David Nguyen",
+  "major": "Computer Science",
+  "school": "Stanford University",
+  "grades": 3.8,
+  "club": "Robotics Club",
+}
+
+school_1_output = {
+  "name": "Stanford University",
+  "ranking": 5,
+  "country": "United States",
+  "no_of_students": 17000,
+}
+
+
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-  ["input", "model", "output"],
+  ["client_key", "model", "input", "clzz", "output"],
   [
-    (
-      student_1_description,
-      Student,
-      {
-        "name": "David Nguyen",
-        "major": "Computer Science",
-        "school": "Stanford University",
-        "grades": 3.8,
-        "club": "Robotics Club",
-      },
-    ),
-    (
-      school_1_description,
-      University,
-      {
-        "name": "Stanford University",
-        "ranking": 5,
-        "country": "United States",
-        "no_of_students": 17000,
-      },
-    ),
+    pytest.param("openai", GPT_MODEL, student_1_description, Student, student_1_output, id="openai_student"),
+    pytest.param("bodhi", LLAMA3_MODEL, student_1_description, Student, student_1_output, id="bodhi_student"),
+    pytest.param("openai", GPT_MODEL, school_1_description, University, school_1_output, id="openai_univ"),
+    pytest.param("bodhi", LLAMA3_MODEL, school_1_description, University, school_1_output, id="bodhi_univ"),
   ],
-  ids=["chat_tool_student_1", "chat_tool_univ_1"],
 )
-def test_instructor_fn(openai_client, bodhi_client, input, model, output):
+def test_instructor_fn(api_clients, client_key, model, input, clzz, output):
   args = {
     "seed": 42,
     "messages": [
@@ -63,13 +61,8 @@ def test_instructor_fn(openai_client, bodhi_client, input, model, output):
       },
     ],
   }
-
-  openai_client = instructor.patch(openai_client, mode=instructor.mode.Mode.JSON)
-  gpt_result = openai_client.chat.completions.create(model=GPT_MODEL, **args, response_model=model, max_retries=3)
-  diff = DeepDiff(model(**output).model_dump(), gpt_result.model_dump())
-  assert {} == diff
-
-  bodhi_client = instructor.patch(bodhi_client, mode=instructor.mode.Mode.JSON)
-  bodhi_result = bodhi_client.chat.completions.create(model=LLAMA3_MODEL, **args, response_model=model, max_retries=3)
-  diff = DeepDiff(model(**output).model_dump(), bodhi_result.model_dump())
+  client = api_clients[client_key]
+  client = instructor.patch(client, mode=instructor.mode.Mode.JSON)
+  gpt_result = client.chat.completions.create(model=model, **args, response_model=clzz, max_retries=3)
+  diff = DeepDiff(clzz(**output).model_dump(), gpt_result.model_dump())
   assert {} == diff

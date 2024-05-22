@@ -52,26 +52,26 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RahP5iBJMXUtZBaFZhsQMuxS20Yv\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716362955,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9Rd1qiQ7D6OvaKGrHtpoy2Je9j3Z1\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716371910,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"David Nguyen\\\",\\n
         \ \\\"major\\\": \\\"Computer Science\\\",\\n  \\\"school\\\": \\\"Stanford
         University\\\",\\n  \\\"grades\\\": 3.8,\\n  \\\"club\\\": \\\"Robotics Club\\\"\\n}\"\n
         \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
         \ ],\n  \"usage\": {\n    \"prompt_tokens\": 334,\n    \"completion_tokens\":
-        45,\n    \"total_tokens\": 379\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+        45,\n    \"total_tokens\": 379\n  },\n  \"system_fingerprint\": \"fp_927397958d\"\n}\n"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887b1815df277f9d-MAA
+      - 887bf2b7dc357fe6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 07:29:16 GMT
+      - Wed, 22 May 2024 09:58:31 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,7 +81,7 @@ interactions:
       content-length:
       - '624'
       openai-processing-ms:
-      - '997'
+      - '1174'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -99,7 +99,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 36ms
       x-request-id:
-      - req_9a2cd3d4ef9fd91913619f34f6cf71fe
+      - req_7ffa9d95f8d9d1e3b7d5533f2abc4dda
     status:
       code: 200
       message: OK

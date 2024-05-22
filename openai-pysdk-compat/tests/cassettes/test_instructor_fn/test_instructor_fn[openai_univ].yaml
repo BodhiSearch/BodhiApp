@@ -53,8 +53,8 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RahRYR9vuliZzylcinNTx8Anas4F\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716362957,\n  \"model\": \"gpt-4o-2024-05-13\",\n
+      string: "{\n  \"id\": \"chatcmpl-9Rd1ypAkJYltdHcOB47DejwjOMv0o\",\n  \"object\":
+        \"chat.completion\",\n  \"created\": 1716371918,\n  \"model\": \"gpt-4o-2024-05-13\",\n
         \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
         \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"Stanford University\\\",\\n
         \ \\\"ranking\\\": 5,\\n  \\\"country\\\": \\\"United States\\\",\\n  \\\"no_of_students\\\":
@@ -65,13 +65,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887b18204ba4a902-MAA
+      - 887bf2eaf89f17b2-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 07:29:17 GMT
+      - Wed, 22 May 2024 09:58:39 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,7 +81,7 @@ interactions:
       content-length:
       - '587'
       openai-processing-ms:
-      - '715'
+      - '927'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -99,7 +99,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 37ms
       x-request-id:
-      - req_9c60baed56365506232beb4cbe582af0
+      - req_61362d25a8a36360c82daf55da99e348
     status:
       code: 200
       message: OK
