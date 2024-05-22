@@ -1,7 +1,38 @@
 import pytest
-from openai import AuthenticationError, OpenAI
+from openai import AuthenticationError, BadRequestError, OpenAI
 
 from .common import GPT_MODEL, LLAMA3_MODEL
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model", "error"],
+  [
+    pytest.param(
+      "openai",
+      GPT_MODEL,
+      {
+        "code": "invalid_api_key",
+        "message": "Incorrect API key provided: sk-foobar. You can find your API key at "
+        "https://platform.openai.com/account/api-keys.",
+        "param": None,
+        "type": "invalid_request_error",
+      },
+      id="openai",
+    ),
+    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+  ],
+  indirect=["client"],
+)
+def test_exception_auth_error_on_invalid_api_key(client: OpenAI, model, error):
+  client.api_key = "sk-foobar"
+  with pytest.raises(AuthenticationError) as e:
+    client.chat.completions.create(
+      model=model, messages=[{"role": "user", "seed": 42, "content": "What day comes after Monday?"}]
+    )
+  err = e.value
+  assert 401 == err.status_code
+  assert error == err.body
 
 
 @pytest.mark.vcr
@@ -13,9 +44,25 @@ from .common import GPT_MODEL, LLAMA3_MODEL
   ],
   indirect=["client"],
 )
-def test_auth_error_on_invalid_api_key(client: OpenAI, model):
-  client.api_key = "sk-foobar"
-  with pytest.raises(AuthenticationError):
-    client.chat.completions.create(
-      model=model, messages=[{"role": "user", "seed": 42, "content": "What day comes after Monday?"}]
+@pytest.mark.parametrize(
+  ["input", "exception", "error"],
+  [
+    (
+      {"seed": 42, "messages": [{"role": "foobar", "content": "What day comes after Monday?"}]},
+      BadRequestError,
+      {
+        "code": "invalid_value",
+        "message": "Invalid value: 'foobar'. "
+        "Supported values are: 'system', 'assistant', 'user', 'function', and 'tool'.",
+        "param": "messages[0].role",
+        "type": "invalid_request_error",
+      },
     )
+  ],
+)
+def test_exception_input_error(client: OpenAI, model, input, exception, error):
+  with pytest.raises(exception) as e:
+    client.chat.completions.create(model=model, **input)
+  err = e.value
+  assert 400 == err.status_code
+  assert error == err.body

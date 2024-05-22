@@ -1,7 +1,7 @@
 interactions:
 - request:
-    body: '{"messages": [{"role": "user", "seed": 42, "content": "What day comes after
-      Monday?"}], "model": "gpt-4o-2024-05-13"}'
+    body: '{"messages": [{"role": "foobar", "content": "What day comes after Monday?"}],
+      "model": "gpt-4o-2024-05-13", "seed": 42}'
     headers:
       accept:
       - application/json
@@ -10,7 +10,7 @@ interactions:
       connection:
       - keep-alive
       content-length:
-      - '117'
+      - '119'
       content-type:
       - application/json
       host:
@@ -35,34 +35,48 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n    \"error\": {\n        \"message\": \"Incorrect API key provided:
-        sk-foobar. You can find your API key at https://platform.openai.com/account/api-keys.\",\n
-        \       \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\":
-        \"invalid_api_key\"\n    }\n}\n"
+      string: "{\n  \"error\": {\n    \"message\": \"Invalid value: 'foobar'. Supported
+        values are: 'system', 'assistant', 'user', 'function', and 'tool'.\",\n    \"type\":
+        \"invalid_request_error\",\n    \"param\": \"messages[0].role\",\n    \"code\":
+        \"invalid_value\"\n  }\n}"
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887c9a75ab867f69-MAA
+      - 887cfa0bcf127ff5-MAA
       Connection:
       - keep-alive
       Content-Length:
-      - '259'
+      - '238'
       Content-Type:
-      - application/json; charset=utf-8
+      - application/json
       Date:
-      - Wed, 22 May 2024 11:53:01 GMT
+      - Wed, 22 May 2024 12:58:16 GMT
       Server:
       - cloudflare
       alt-svc:
       - h3=":443"; ma=86400
+      openai-processing-ms:
+      - '17'
+      openai-version:
+      - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
-      vary:
-      - Origin
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599976'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 2ms
       x-request-id:
-      - req_6160042fcef8917abba8abcf171e80c5
+      - req_8369ba5522bcf4bc42bde3c005948708
     status:
-      code: 401
-      message: Unauthorized
+      code: 400
+      message: Bad Request
 version: 1
