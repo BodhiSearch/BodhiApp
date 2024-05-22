@@ -1,4 +1,5 @@
 import re
+from openai import OpenAI
 import pytest
 from deepdiff import DeepDiff
 
@@ -94,3 +95,23 @@ def test_chat_stream_usage(openai_client, bodhi_client, args):
   for chunk in bodhi_response:
     bodhi_deltas.append(chunk)
   # assert bodhi_deltas[-1].usage is not None # TODO: implement
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client_key", "model"],
+  [
+    pytest.param("openai", GPT_MODEL, id="openai"),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
+  ],
+)
+def test_chat_stream_run(api_clients, client_key, model):
+  client: OpenAI = api_clients[client_key]
+  args = dict(**params_overload)
+  response = client.chat.completions.create(model=model, **args)
+  deltas = []
+  for chunk in response:
+    content = chunk.choices[0].delta.content
+    if content is not None:
+      deltas.append(content)
+  assert "Tuesday" == "".join(deltas)
