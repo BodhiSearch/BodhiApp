@@ -7,8 +7,8 @@ from .common import GPT_MODEL, LLAMA3_MODEL
 @pytest.mark.parametrize(
   ["client_key", "model"],
   [
-    pytest.param("openai_client", GPT_MODEL, id="openai"),
-    pytest.param("bodhi_client", LLAMA3_MODEL, id="bodhi", marks=pytest.mark.skip(reason="Not implemented yet")),
+    pytest.param("openai", GPT_MODEL, id="openai"),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", marks=pytest.mark.skip(reason="Not implemented yet")),
   ],
 )
 def test_assistant_create(api_clients, client_key, model):

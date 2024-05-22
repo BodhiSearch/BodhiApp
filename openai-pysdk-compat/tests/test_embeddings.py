@@ -4,16 +4,17 @@ from .common import GPT_EMBEDDINGS_MODEL, OSS_EMBEDDINGS_MODEL
 
 
 @pytest.mark.vcr
-def test_embeddings_create(openai_client, bodhi_client):
-  embeds = openai_client.embeddings.create(
+@pytest.mark.parametrize(
+  ["client_key", "model"],
+  [
+    pytest.param("openai", GPT_EMBEDDINGS_MODEL, id="openai"),
+    pytest.param("bodhi", OSS_EMBEDDINGS_MODEL, id="bodhi", marks=pytest.mark.skip(reason="Not implemented yet")),
+  ],
+)
+def test_embeddings_create(api_clients, client_key, model):
+  client = api_clients[client_key]
+  embeds = client.embeddings.create(
     model=GPT_EMBEDDINGS_MODEL, input="What day comes after Monday?", encoding_format="float"
   )
   assert embeds is not None
   assert isinstance(embeds.data[0].embedding[0], float)
-
-  # TODO: implement
-  # embeds = bodhi_client.embeddings.create(
-  #   model=OSS_EMBEDDINGS_MODEL, input="What day comes after Monday?", encoding_format="float"
-  # )
-  # assert embeds is not None
-  # assert isinstance(embeds.data[0].embedding[0], float)

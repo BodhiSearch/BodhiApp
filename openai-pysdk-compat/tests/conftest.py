@@ -31,7 +31,7 @@ def bodhi_client():
 
 @pytest.fixture(scope="function")
 def api_clients(openai_client, bodhi_client):
-  return {"openai_client": openai_client, "bodhi_client": bodhi_client}
+  return {"openai": openai_client, "bodhi": bodhi_client}
 
 
 @pytest.fixture(scope="session")

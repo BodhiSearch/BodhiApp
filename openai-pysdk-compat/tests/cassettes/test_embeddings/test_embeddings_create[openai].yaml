@@ -427,13 +427,13 @@ interactions:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887b3f591b27b2ac-MAA
+      - 887b64b4c9cfb2b1-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 07:56:03 GMT
+      - Wed, 22 May 2024 08:21:33 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -447,7 +447,7 @@ interactions:
       openai-model:
       - text-embedding-ada-002
       openai-processing-ms:
-      - '25'
+      - '18'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
@@ -465,7 +465,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 0s
       x-request-id:
-      - req_830fb53e54f2c7e3ea799857a2bf93ce
+      - req_e85fcb04e8691768b5fe2764f55f97a8
     status:
       code: 200
       message: OK
