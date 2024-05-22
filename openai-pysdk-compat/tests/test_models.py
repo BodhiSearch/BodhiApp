@@ -4,26 +4,34 @@ from .common import LLAMA3_MODEL, GPT_MODEL
 
 
 @pytest.mark.vcr
-def test_models_list(openai_client, bodhi_client):
-  models = list(openai_client.models.list())
+@pytest.mark.parametrize(
+  "client",
+  [
+    pytest.param("openai", id="openai"),
+    pytest.param("bodhi", id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+  ],
+  indirect=["client"],
+)
+def test_models_list(client):
+  models = list(client.models.list())
   assert len(models) > 0
-
-  # TODO: implement
-  # models = list(bodhi_client.models.list())
-  # assert len(models) > 0
 
 
 @pytest.mark.vcr
-def test_models_retrieve(openai_client, bodhi_client):
-  model = openai_client.models.retrieve(GPT_MODEL)
-  expected = openai.types.model.Model(
-    **{"id": "gpt-4o-2024-05-13", "object": "model", "created": 1715368132, "owned_by": "system"}
-  )
+@pytest.mark.parametrize(
+  ["client", "model", "expected"],
+  [
+    pytest.param(
+      "openai",
+      GPT_MODEL,
+      {"id": "gpt-4o-2024-05-13", "object": "model", "created": 1715368132, "owned_by": "system"},
+      id="openai",
+    ),
+    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+  ],
+  indirect=["client"],
+)
+def test_models_retrieve(client, model, expected):
+  model = client.models.retrieve(model)
+  expected = openai.types.model.Model(**expected)
   assert expected == model
-
-  # TODO: implement
-  # model = bodhi_client.models.retrieve(LLAMA3_MODEL)
-  # expected = openai.types.model.Model(
-  #   **{"id": "llama3:instruct", "object": "model", "created": 1715368132, "owned_by": "system"}
-  # )
-  # assert expected == model
