@@ -1,7 +1,10 @@
+import asyncio
+
 import pytest
-from openai import AuthenticationError, BadRequestError, NotFoundError, OpenAI
+from openai import APIConnectionError, AuthenticationError, BadRequestError, NotFoundError, OpenAI
 
 from .common import GPT_MODEL, LLAMA3_MODEL
+import time
 
 
 @pytest.mark.vcr
@@ -94,3 +97,50 @@ def test_exception_not_found(client, model, exception, error):
   err = e.value
   assert 404 == err.status_code
   assert error == err.body
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model"],
+  [
+    pytest.param("openai", GPT_MODEL, id="openai", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+  ],
+  indirect=["client"],
+)
+def test_exception_interrupt_generate(client, model):
+  args = {
+    "seed": 42,
+    "stream": True,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful content writer assistant. "
+        "You write long form professional essays for a large media company. "
+        "Follow user instruction and assist using best of your abilities.",
+      },
+      {
+        "role": "user",
+        "content": "Write a 500 words article on tourism in India. "
+        "Cover the seasonal festivals, places to visit during those festivals, "
+        "and other places with nature and interesting culture.",
+      },
+    ],
+  }
+
+  deltas = []
+
+  response = client.chat.completions.create(model=model, **args)
+  try:
+    for chunk in r:
+      content = chunk.choices[0].delta.content
+      if content is not None:
+        deltas.append(content)
+      if len(deltas) > 5:
+        break
+  except Exception as e:
+    print(f"{e=}")
+  finally:
+    response.close()
+  assert 0 != len(deltas)
+  assert "" != "".join(deltas)
