@@ -5,24 +5,24 @@ from deepdiff import DeepDiff
 
 from .common import GPT_MODEL, LLAMA3_MODEL
 
+input_json_format = {
+  "seed": 42,
+  "messages": [
+    {
+      "role": "user",
+      "content": "Generate a JSON object representing a person with "
+      "first name as John, last name as string Doe, age as 30",
+    }
+  ],
+  "response_format": {"type": "json_object"},
+}
+
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
   "args",
-  [
-    {
-      "seed": 42,
-      "messages": [
-        {
-          "role": "user",
-          "content": "Generate a JSON object representing a person with "
-          "first name as John, last name as string Doe, age as 30",
-        }
-      ],
-      "response_format": {"type": "json_object"},
-    }
-  ],
-  ids=["format_json"]
+  [input_json_format],
+  ids=["format_json"],
 )
 def test_format_compare(openai_client, bodhi_client, args):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
@@ -54,3 +54,19 @@ def test_format_compare(openai_client, bodhi_client, args):
   # assert expected_usage_diff == diff.pop("values_changed") # TODO: implement
   assert ["root.choices[0].model_fields_set['logprobs']"] == diff.pop("set_item_removed")  # TODO: implement
   # assert {} == diff # TODO: implement
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client_key", "model"],
+  [
+    pytest.param("openai", GPT_MODEL, id="openai"),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
+  ],
+)
+def test_chat_format_simple(api_clients, client_key, model):
+  client = api_clients[client_key]
+  args = dict(**input_json_format)
+  response = client.chat.completions.create(model=model, **args)
+  json_obj = json.loads(response.choices[0].message.content)
+  assert {"firstName": "John", "lastName": "Doe", "age": 30} == json_obj
