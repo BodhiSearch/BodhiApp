@@ -1,6 +1,5 @@
 import pytest
 from deepdiff import DeepDiff
-from openai import OpenAI
 
 from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai
 

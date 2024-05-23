@@ -1,8 +1,6 @@
-import asyncio
-import time
 
 import pytest
-from openai import APIConnectionError, AuthenticationError, BadRequestError, NotFoundError, OpenAI
+from openai import AuthenticationError, BadRequestError, NotFoundError, OpenAI
 
 from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi_skip, mark_openai, mark_openai_skip
 
