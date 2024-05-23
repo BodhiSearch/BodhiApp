@@ -1,0 +1,145 @@
+interactions:
+- request:
+    body: '{"name": "test_vs_delete_qtte"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '31'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      openai-beta:
+      - assistants=v2
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/vector_stores
+  response:
+    body:
+      string: "{\n  \"id\": \"vs_Q6rIjN4lmB6NhKofwwEwNi3e\",\n  \"object\": \"vector_store\",\n
+        \ \"name\": \"test_vs_delete_qtte\",\n  \"status\": \"completed\",\n  \"usage_bytes\":
+        0,\n  \"created_at\": 1716440791,\n  \"file_counts\": {\n    \"in_progress\":
+        0,\n    \"completed\": 0,\n    \"failed\": 0,\n    \"cancelled\": 0,\n    \"total\":
+        0\n  },\n  \"metadata\": {},\n  \"expires_after\": null,\n  \"expires_at\":
+        null,\n  \"last_active_at\": 1716440791\n}"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 88828464debd802f-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 05:06:32 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '390'
+      openai-processing-ms:
+      - '71'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_f0a3576ab75c014b505b31f0103d71c8
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=C2WGmB0eFyqf3J9ukAeGdSQmXDzODs_gd6_EWGWlRp8-1716440792-1.0.1.1-j_sIdhafxPnmmvqsBm3sbf6NS9n5AIu2aVQI9cT3hCjRpXWK0izKJi3FF5UXJoK9rUIc2auaoTq_0gGH8jdqqg;
+        _cfuvid=Yjg6m2ywJvXYCBf7F5fZsf_F5zR8hF2_Y4HWLa3fdRE-1716440792143-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      openai-beta:
+      - assistants=v2
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: DELETE
+    uri: https://api.openai.com/v1/vector_stores/vs_Q6rIjN4lmB6NhKofwwEwNi3e
+  response:
+    body:
+      string: "{\n  \"id\": \"vs_Q6rIjN4lmB6NhKofwwEwNi3e\",\n  \"object\": \"vector_store.deleted\",\n
+        \ \"deleted\": true\n}"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8882846799bb802f-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 05:06:39 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '96'
+      openai-processing-ms:
+      - '6981'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_36f4e175d63784f7ad7f546790a4f652
+    status:
+      code: 200
+      message: OK
+version: 1

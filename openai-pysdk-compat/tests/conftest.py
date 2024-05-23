@@ -1,4 +1,6 @@
 import os
+import random
+import string
 from typing import Any, Dict, List, Union
 
 import pytest
@@ -119,3 +121,8 @@ def before_record_response(response):
     if header in response["headers"]:
       del response["headers"][header]
   return response
+
+
+@pytest.fixture(scope="function")
+def random_suffix():
+  return "".join(random.choices(string.ascii_letters + string.digits, k=4))

@@ -1,0 +1,75 @@
+interactions:
+- request:
+    body: '{"name": "test_vector_store_create_j9eq"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '41'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      openai-beta:
+      - assistants=v2
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/vector_stores
+  response:
+    body:
+      string: "{\n  \"id\": \"vs_cUdw3KuFnFkWTsLcwTvoAaEi\",\n  \"object\": \"vector_store\",\n
+        \ \"name\": \"test_vector_store_create_j9eq\",\n  \"status\": \"completed\",\n
+        \ \"usage_bytes\": 0,\n  \"created_at\": 1716440387,\n  \"file_counts\": {\n
+        \   \"in_progress\": 0,\n    \"completed\": 0,\n    \"failed\": 0,\n    \"cancelled\":
+        0,\n    \"total\": 0\n  },\n  \"metadata\": {},\n  \"expires_after\": null,\n
+        \ \"expires_at\": null,\n  \"last_active_at\": 1716440387\n}"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 88827a87781c3c07-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 04:59:48 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '400'
+      openai-processing-ms:
+      - '92'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_15671038eb315f796ef84aa3a0b49b0f
+    status:
+      code: 200
+      message: OK
+version: 1
