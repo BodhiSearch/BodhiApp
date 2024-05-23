@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: GET
+    uri: https://api.openai.com/v1/files/file-utwlH66iyvPBs61N1uIP2ANE
+  response:
+    body:
+      string: "{\n  \"object\": \"file\",\n  \"id\": \"file-utwlH66iyvPBs61N1uIP2ANE\",\n
+        \ \"purpose\": \"assistants\",\n  \"filename\": \"file-to-upload.txt\",\n
+        \ \"bytes\": 3395,\n  \"created_at\": 1716438816,\n  \"status\": \"processed\",\n
+        \ \"status_details\": null\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8882559e2a453c07-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 04:34:36 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '223'
+      openai-processing-ms:
+      - '131'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_179534cc3f53b4843b87d0630e0c8bf1
+    status:
+      code: 200
+      message: OK
+version: 1

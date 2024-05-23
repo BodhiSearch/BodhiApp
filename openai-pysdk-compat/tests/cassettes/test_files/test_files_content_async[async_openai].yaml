@@ -1,0 +1,238 @@
+interactions:
+- request:
+    body: "--379a645a9070703e702dc5b07688d671\r\nContent-Disposition: form-data; name=\"purpose\"\r\n\r\nfine-tune\r\n--379a645a9070703e702dc5b07688d671\r\nContent-Disposition:
+      form-data; name=\"file\"; filename=\"file-to-upload.txt\"\r\nContent-Type: text/plain\r\n\r\nLorem
+      ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse
+      lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras
+      elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod
+      non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non
+      fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque
+      vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat
+      libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo
+      in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit
+      sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+      cubilia Curae; Aliquam nibh. Mauris ac mauris sed pede pellentesque fermentum.
+      Maecenas adipiscing ante non diam sodales hendrerit.\n\nLorem ipsum dolor sit
+      amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor,
+      dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras elementum ultrices
+      diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi. Proin
+      porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam
+      nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque vitae, consequat
+      in, pretium a, enim. Pellentesque congue. Ut in risus volutpat libero pharetra
+      tempor. Cras vestibulum bibendum augue. Praesent egestas leo in pede. Praesent
+      blandit odio eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum
+      ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;
+      Aliquam nibh. Mauris ac mauris sed pede pellentesque fermentum. Maecenas adipiscing
+      ante non diam sodales hendrerit.\n\nLorem ipsum dolor sit amet, consectetur
+      adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet,
+      adipiscing nec, ultricies sed, dolor. Cras elementum ultrices diam. Maecenas
+      ligula massa, varius a, semper congue, euismod non, mi. Proin porttitor, orci
+      nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet
+      erat. Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium
+      a, enim. Pellentesque congue. Ut in risus volutpat libero pharetra tempor. Cras
+      vestibulum bibendum augue. Praesent egestas leo in pede. Praesent blandit odio
+      eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum ante ipsum
+      primis in faucibus orci luctus et ultrices posuere cubilia Curae; Aliquam nibh.
+      Mauris ac mauris sed pede pellentesque fermentum. Maecenas adipiscing ante non
+      diam sodales hendrerit.\n\nLorem ipsum dolor sit amet, consectetur adipiscing
+      elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing
+      nec, ultricies sed, dolor. Cras elementum ultrices diam. Maecenas ligula massa,
+      varius a, semper congue, euismod non, mi. Proin porttitor, orci nec nonummy
+      molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat. Duis
+      semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim. Pellentesque
+      congue. Ut in risus volutpat libero pharetra tempor. Cras vestibulum bibendum
+      augue. Praesent egestas leo in pede. Praesent blandit odio eu enim. Pellentesque
+      sed dui ut augue blandit sodales. Vestibulum ante ipsum primis in faucibus orci
+      luctus et ultrices posuere cubilia Curae; Aliquam nibh. Mauris ac mauris sed
+      pede pellentesque fermentum. Maecenas adipiscing ante non diam sodales hendrerit.\n\r\n--379a645a9070703e702dc5b07688d671--\r\n"
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3672'
+      content-type:
+      - multipart/form-data; boundary=379a645a9070703e702dc5b07688d671
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/files
+  response:
+    body:
+      string: "{\n  \"object\": \"file\",\n  \"id\": \"file-zpkwk6jieCU1PHFgmBfZAWpM\",\n
+        \ \"purpose\": \"fine-tune\",\n  \"filename\": \"file-to-upload.txt\",\n  \"bytes\":
+        3395,\n  \"created_at\": 1716439653,\n  \"status\": \"processed\",\n  \"status_details\":
+        null\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 88826896cb333c07-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 04:47:33 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '222'
+      openai-processing-ms:
+      - '536'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_f81d0aedf877e2005a4efe3b782e5386
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/binary
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=NmbrByuKj6GvWkYjrNAmAC4bLF1DC3UfenKWB4MxtmY-1716439653-1.0.1.1-ZIILaLQobzdGWMw4A8rpuIWqQYciyux90cpRA0SLiu_4Hjaiubu9eSQrDIPom2OWPXzvDqYvC1ex.uCzMZ55yQ;
+        _cfuvid=fpe1gldvlLoBvOPEr0JsnlAxdFWn7yZzzPSEI5kHIG4-1716439653743-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: GET
+    uri: https://api.openai.com/v1/files/file-zpkwk6jieCU1PHFgmBfZAWpM/content
+  response:
+    body:
+      string: 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus.
+        Suspendisse lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed,
+        dolor. Cras elementum ultrices diam. Maecenas ligula massa, varius a, semper
+        congue, euismod non, mi. Proin porttitor, orci nec nonummy molestie, enim
+        est eleifend mi, non fermentum diam nisl sit amet erat. Duis semper. Duis
+        arcu massa, scelerisque vitae, consequat in, pretium a, enim. Pellentesque
+        congue. Ut in risus volutpat libero pharetra tempor. Cras vestibulum bibendum
+        augue. Praesent egestas leo in pede. Praesent blandit odio eu enim. Pellentesque
+        sed dui ut augue blandit sodales. Vestibulum ante ipsum primis in faucibus
+        orci luctus et ultrices posuere cubilia Curae; Aliquam nibh. Mauris ac mauris
+        sed pede pellentesque fermentum. Maecenas adipiscing ante non diam sodales
+        hendrerit.
+
+
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse
+        lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras
+        elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod
+        non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi,
+        non fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque
+        vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat
+        libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo
+        in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit
+        sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices
+        posuere cubilia Curae; Aliquam nibh. Mauris ac mauris sed pede pellentesque
+        fermentum. Maecenas adipiscing ante non diam sodales hendrerit.
+
+
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse
+        lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras
+        elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod
+        non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi,
+        non fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque
+        vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat
+        libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo
+        in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit
+        sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices
+        posuere cubilia Curae; Aliquam nibh. Mauris ac mauris sed pede pellentesque
+        fermentum. Maecenas adipiscing ante non diam sodales hendrerit.
+
+
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse
+        lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras
+        elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod
+        non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi,
+        non fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque
+        vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat
+        libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo
+        in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit
+        sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices
+        posuere cubilia Curae; Aliquam nibh. Mauris ac mauris sed pede pellentesque
+        fermentum. Maecenas adipiscing ante non diam sodales hendrerit.
+
+        '
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8882689c9a1c3c07-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/octet-stream
+      Date:
+      - Thu, 23 May 2024 04:47:34 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-disposition:
+      - attachment; filename="file-to-upload.txt"
+      openai-processing-ms:
+      - '84'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_eb13ca6db531ca05eecca30618233c99
+    status:
+      code: 200
+      message: OK
+version: 1

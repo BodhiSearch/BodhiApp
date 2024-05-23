@@ -4,7 +4,7 @@ import time
 import pytest
 from openai import APIConnectionError, AuthenticationError, BadRequestError, NotFoundError, OpenAI
 
-from .common import GPT_MODEL, LLAMA3_MODEL
+from .common import GPT_MODEL, LLAMA3_MODEL, not_implemented
 
 auth_error = {
   "code": "invalid_api_key",
@@ -38,7 +38,7 @@ args = {"messages": [{"role": "user", "seed": 42, "content": "What day comes aft
       auth_error,
       id="openai",
     ),
-    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -62,7 +62,7 @@ def test_exception_auth_error_on_invalid_api_key(client: OpenAI, model, error):
       auth_error,
       id="async_openai",
     ),
-    pytest.param("async_bodhi", LLAMA3_MODEL, {}, id="async_bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("async_bodhi", LLAMA3_MODEL, {}, id="async_bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -80,7 +80,7 @@ async def test_exception_async_auth_error_on_invalid_api_key(client: OpenAI, mod
   ["client", "model"],
   [
     pytest.param("openai", GPT_MODEL, id="openai"),
-    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -108,7 +108,7 @@ def test_exception_input_error(client: OpenAI, model, input, exception, error):
   ["client", "model"],
   [
     pytest.param("async_openai", GPT_MODEL, id="async_openai"),
-    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -141,7 +141,7 @@ async def test_exception_async_input_error(client: OpenAI, model, input, excepti
       not_found_error,
       id="openai",
     ),
-    pytest.param("bodhi", "llama3:foo", NotFoundError, {}, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("bodhi", "llama3:foo", NotFoundError, {}, id="bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -166,7 +166,7 @@ def test_exception_not_found(client, model, exception, error):
       id="async_openai",
     ),
     pytest.param(
-      "async_bodhi", "llama3:foo", NotFoundError, {}, id="async_bodhi", marks=pytest.mark.skip("Not implemented yet")
+      "async_bodhi", "llama3:foo", NotFoundError, {}, id="async_bodhi", **not_implemented()
     ),
   ],
   indirect=["client"],
@@ -183,8 +183,8 @@ async def test_exception_async_not_found(client, model, exception, error):
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("openai", GPT_MODEL, id="openai", marks=pytest.mark.skip("Not implemented yet")),
-    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("openai", GPT_MODEL, id="openai", **not_implemented()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )

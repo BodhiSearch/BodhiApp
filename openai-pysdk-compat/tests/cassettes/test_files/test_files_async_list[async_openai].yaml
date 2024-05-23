@@ -1,0 +1,109 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: GET
+    uri: https://api.openai.com/v1/files
+  response:
+    body:
+      string: "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"object\":
+        \"file\",\n      \"id\": \"file-i2yNF9TM6TMBYbTErymhNaG1\",\n      \"purpose\":
+        \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n      \"bytes\":
+        3395,\n      \"created_at\": 1716438856,\n      \"status\": \"processed\",\n
+        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
+        \     \"id\": \"file-Qfg6Wbf4IOoQTdyBozgdElzq\",\n      \"purpose\": \"assistants\",\n
+        \     \"filename\": \"file-to-upload.txt\",\n      \"bytes\": 3395,\n      \"created_at\":
+        1716438817,\n      \"status\": \"processed\",\n      \"status_details\": null\n
+        \   },\n    {\n      \"object\": \"file\",\n      \"id\": \"file-utwlH66iyvPBs61N1uIP2ANE\",\n
+        \     \"purpose\": \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n
+        \     \"bytes\": 3395,\n      \"created_at\": 1716438816,\n      \"status\":
+        \"processed\",\n      \"status_details\": null\n    },\n    {\n      \"object\":
+        \"file\",\n      \"id\": \"file-QVseHr79298b92oBWcr0HqDB\",\n      \"purpose\":
+        \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n      \"bytes\":
+        3395,\n      \"created_at\": 1716438412,\n      \"status\": \"processed\",\n
+        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
+        \     \"id\": \"file-Roitvu7Hr99F4RDFq4S43ZZE\",\n      \"purpose\": \"assistants\",\n
+        \     \"filename\": \"file-to-upload.txt\",\n      \"bytes\": 3395,\n      \"created_at\":
+        1716438411,\n      \"status\": \"processed\",\n      \"status_details\": null\n
+        \   },\n    {\n      \"object\": \"file\",\n      \"id\": \"file-NCvNlyzgFu4oX1QFZ9tdkDu6\",\n
+        \     \"purpose\": \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n
+        \     \"bytes\": 3395,\n      \"created_at\": 1716438283,\n      \"status\":
+        \"processed\",\n      \"status_details\": null\n    },\n    {\n      \"object\":
+        \"file\",\n      \"id\": \"file-out8EXJbAQJuHdTDHhupFozS\",\n      \"purpose\":
+        \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n      \"bytes\":
+        3395,\n      \"created_at\": 1716438282,\n      \"status\": \"processed\",\n
+        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
+        \     \"id\": \"file-j1rGpJcCULA1CwiOEyAhAtCB\",\n      \"purpose\": \"assistants\",\n
+        \     \"filename\": \"file-to-upload.txt\",\n      \"bytes\": 3395,\n      \"created_at\":
+        1716438037,\n      \"status\": \"processed\",\n      \"status_details\": null\n
+        \   },\n    {\n      \"object\": \"file\",\n      \"id\": \"file-s90wY4WGi9OwONWCT3AXvCX9\",\n
+        \     \"purpose\": \"assistants\",\n      \"filename\": \"chatgpt-ui.jpeg\",\n
+        \     \"bytes\": 460092,\n      \"created_at\": 1716437790,\n      \"status\":
+        \"processed\",\n      \"status_details\": null\n    },\n    {\n      \"object\":
+        \"file\",\n      \"id\": \"file-fFyWMbMIXaBRmrigIQUIdin7\",\n      \"purpose\":
+        \"assistants\",\n      \"filename\": \"chatgpt-ui.jpeg\",\n      \"bytes\":
+        460092,\n      \"created_at\": 1716437347,\n      \"status\": \"processed\",\n
+        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
+        \     \"id\": \"file-Wnz2xkeVFAc7ieu7K2Kk4PU9\",\n      \"purpose\": \"assistants\",\n
+        \     \"filename\": \"chatgpt-ui.jpeg\",\n      \"bytes\": 460092,\n      \"created_at\":
+        1716436112,\n      \"status\": \"processed\",\n      \"status_details\": null\n
+        \   }\n  ],\n  \"has_more\": false\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 88825528ba063c06-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 04:34:17 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '2961'
+      openai-processing-ms:
+      - '54'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_8fdb43abec77b2a0311484545b25d79f
+    status:
+      code: 200
+      message: OK
+version: 1

@@ -1,0 +1,186 @@
+interactions:
+- request:
+    body: "--ee5e463f425a735925555affa95a118c\r\nContent-Disposition: form-data; name=\"purpose\"\r\n\r\nassistants\r\n--ee5e463f425a735925555affa95a118c\r\nContent-Disposition:
+      form-data; name=\"file\"; filename=\"file-to-upload.txt\"\r\nContent-Type: text/plain\r\n\r\nLorem
+      ipsum dolor sit amet, consectetur adipiscing elit. Sed non risus. Suspendisse
+      lectus tortor, dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras
+      elementum ultrices diam. Maecenas ligula massa, varius a, semper congue, euismod
+      non, mi. Proin porttitor, orci nec nonummy molestie, enim est eleifend mi, non
+      fermentum diam nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque
+      vitae, consequat in, pretium a, enim. Pellentesque congue. Ut in risus volutpat
+      libero pharetra tempor. Cras vestibulum bibendum augue. Praesent egestas leo
+      in pede. Praesent blandit odio eu enim. Pellentesque sed dui ut augue blandit
+      sodales. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere
+      cubilia Curae; Aliquam nibh. Mauris ac mauris sed pede pellentesque fermentum.
+      Maecenas adipiscing ante non diam sodales hendrerit.\n\nLorem ipsum dolor sit
+      amet, consectetur adipiscing elit. Sed non risus. Suspendisse lectus tortor,
+      dignissim sit amet, adipiscing nec, ultricies sed, dolor. Cras elementum ultrices
+      diam. Maecenas ligula massa, varius a, semper congue, euismod non, mi. Proin
+      porttitor, orci nec nonummy molestie, enim est eleifend mi, non fermentum diam
+      nisl sit amet erat. Duis semper. Duis arcu massa, scelerisque vitae, consequat
+      in, pretium a, enim. Pellentesque congue. Ut in risus volutpat libero pharetra
+      tempor. Cras vestibulum bibendum augue. Praesent egestas leo in pede. Praesent
+      blandit odio eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum
+      ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia Curae;
+      Aliquam nibh. Mauris ac mauris sed pede pellentesque fermentum. Maecenas adipiscing
+      ante non diam sodales hendrerit.\n\nLorem ipsum dolor sit amet, consectetur
+      adipiscing elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet,
+      adipiscing nec, ultricies sed, dolor. Cras elementum ultrices diam. Maecenas
+      ligula massa, varius a, semper congue, euismod non, mi. Proin porttitor, orci
+      nec nonummy molestie, enim est eleifend mi, non fermentum diam nisl sit amet
+      erat. Duis semper. Duis arcu massa, scelerisque vitae, consequat in, pretium
+      a, enim. Pellentesque congue. Ut in risus volutpat libero pharetra tempor. Cras
+      vestibulum bibendum augue. Praesent egestas leo in pede. Praesent blandit odio
+      eu enim. Pellentesque sed dui ut augue blandit sodales. Vestibulum ante ipsum
+      primis in faucibus orci luctus et ultrices posuere cubilia Curae; Aliquam nibh.
+      Mauris ac mauris sed pede pellentesque fermentum. Maecenas adipiscing ante non
+      diam sodales hendrerit.\n\nLorem ipsum dolor sit amet, consectetur adipiscing
+      elit. Sed non risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing
+      nec, ultricies sed, dolor. Cras elementum ultrices diam. Maecenas ligula massa,
+      varius a, semper congue, euismod non, mi. Proin porttitor, orci nec nonummy
+      molestie, enim est eleifend mi, non fermentum diam nisl sit amet erat. Duis
+      semper. Duis arcu massa, scelerisque vitae, consequat in, pretium a, enim. Pellentesque
+      congue. Ut in risus volutpat libero pharetra tempor. Cras vestibulum bibendum
+      augue. Praesent egestas leo in pede. Praesent blandit odio eu enim. Pellentesque
+      sed dui ut augue blandit sodales. Vestibulum ante ipsum primis in faucibus orci
+      luctus et ultrices posuere cubilia Curae; Aliquam nibh. Mauris ac mauris sed
+      pede pellentesque fermentum. Maecenas adipiscing ante non diam sodales hendrerit.\n\r\n--ee5e463f425a735925555affa95a118c--\r\n"
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '3673'
+      content-type:
+      - multipart/form-data; boundary=ee5e463f425a735925555affa95a118c
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/files
+  response:
+    body:
+      string: "{\n  \"object\": \"file\",\n  \"id\": \"file-m4oNt9hgK4sN7nUqG6wjUCO4\",\n
+        \ \"purpose\": \"assistants\",\n  \"filename\": \"file-to-upload.txt\",\n
+        \ \"bytes\": 3395,\n  \"created_at\": 1716439354,\n  \"status\": \"processed\",\n
+        \ \"status_details\": null\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 888261498dd183f3-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 04:42:34 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '223'
+      openai-processing-ms:
+      - '737'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_8f5d8b46eb2dbcd4c621fa9dc2463c46
+    status:
+      code: 200
+      message: OK
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      cookie:
+      - __cf_bm=VDsLy9WZHvb2lTvbR7Bz2bggI.ziRQzu72BMxTUgBok-1716439354-1.0.1.1-SPX7De.K8giauWjHIM.8JgapMnuk_wo_CHWU1sfSwmfUPii54XQvNHvzt5mAioRbCE7CAFFaowxEtzooIwXCYA;
+        _cfuvid=W48sAdSBjAyn3rsShd2dy72Gc102tVUK9U6yYtN4Gqc-1716439354853-0.0.1.1-604800000
+      host:
+      - api.openai.com
+      user-agent:
+      - AsyncOpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - async:asyncio
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: DELETE
+    uri: https://api.openai.com/v1/files/file-m4oNt9hgK4sN7nUqG6wjUCO4
+  response:
+    body:
+      string: "{\n  \"object\": \"file\",\n  \"deleted\": true,\n  \"id\": \"file-m4oNt9hgK4sN7nUqG6wjUCO4\"\n}\n"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 888261506e4883f3-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 04:42:35 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      access-control-allow-origin:
+      - '*'
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '83'
+      openai-processing-ms:
+      - '128'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_a2c00ca2ac3bbc507b440813df57d45b
+    status:
+      code: 200
+      message: OK
+version: 1

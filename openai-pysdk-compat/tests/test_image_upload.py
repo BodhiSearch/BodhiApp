@@ -2,7 +2,7 @@ import base64
 import pytest
 from openai import OpenAI
 
-from tests.common import GPT_MODEL, LLAMA3_MODEL
+from tests.common import GPT_MODEL, LLAMA3_MODEL, not_implemented
 
 
 def read_as_base64(path):
@@ -40,7 +40,7 @@ def request_image_args():
   ["client", "model"],
   [
     pytest.param("openai", GPT_MODEL, id="openai"),
-    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -57,7 +57,7 @@ def test_image_upload(client: OpenAI, model):
   ["client", "model"],
   [
     pytest.param("async_openai", GPT_MODEL, id="async_openai"),
-    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )

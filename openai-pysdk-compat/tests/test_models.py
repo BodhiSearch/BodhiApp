@@ -1,6 +1,6 @@
 import openai
 import pytest
-from .common import LLAMA3_MODEL, GPT_MODEL
+from .common import LLAMA3_MODEL, GPT_MODEL, not_implemented
 
 
 @pytest.mark.vcr
@@ -8,7 +8,7 @@ from .common import LLAMA3_MODEL, GPT_MODEL
   "client",
   [
     pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("bodhi", id="bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -23,7 +23,7 @@ def test_models_list(client):
   "client",
   [
     pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -42,7 +42,7 @@ async def test_models_async_list(client):
       {"id": "gpt-4o-2024-05-13", "object": "model", "created": 1715368132, "owned_by": "system"},
       id="openai",
     ),
-    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
@@ -63,7 +63,7 @@ def test_models_retrieve(client, model, expected):
       {"id": "gpt-4o-2024-05-13", "object": "model", "created": 1715368132, "owned_by": "system"},
       id="async_openai",
     ),
-    pytest.param("async_bodhi", LLAMA3_MODEL, {}, id="async_bodhi", marks=pytest.mark.skip("Not implemented yet")),
+    pytest.param("async_bodhi", LLAMA3_MODEL, {}, id="async_bodhi", **not_implemented()),
   ],
   indirect=["client"],
 )
