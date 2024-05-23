@@ -1,0 +1,71 @@
+interactions:
+- request:
+    body: ''
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      openai-beta:
+      - assistants=v2
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: GET
+    uri: https://api.openai.com/v1/vector_stores/vs_z7r2OYHsaMp4MWT025PHctZ4/files/file-G08t1WAY6fkAsVCYNnmSIcIU
+  response:
+    body:
+      string: "{\n  \"id\": \"file-G08t1WAY6fkAsVCYNnmSIcIU\",\n  \"object\": \"vector_store.file\",\n
+        \ \"usage_bytes\": 30049,\n  \"created_at\": 1716471820,\n  \"vector_store_id\":
+        \"vs_z7r2OYHsaMp4MWT025PHctZ4\",\n  \"status\": \"completed\",\n  \"last_error\":
+        null\n}"
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 888580a75cf33c12-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 23 May 2024 13:48:16 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '227'
+      openai-processing-ms:
+      - '34'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=15724800; includeSubDomains
+      x-request-id:
+      - req_066928e16ed54d4a01f096f354685459
+    status:
+      code: 200
+      message: OK
+version: 1
