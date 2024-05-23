@@ -2,7 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 from openai import OpenAI
 
-from .common import GPT_MODEL, LLAMA3_MODEL
+from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai
 
 params_overload = {
   "messages": [
@@ -31,12 +31,14 @@ params_overload = {
 @pytest.mark.parametrize(
   ["args", "expected_gpt_response", "expected_diff"],
   [
-    (
+    pytest.param(
       {"seed": 42, "messages": [{"role": "user", "content": "Answer in one word. What day comes after Monday?"}]},
       "Tuesday.",
       {"set_item_removed": ["root.choices[0].model_fields_set['logprobs']"]},  # TODO: implement
+      id="simple",
+      marks=pytest.mark.unmarked(),
     ),
-    (
+    pytest.param(
       {
         "seed": 42,
         "messages": [
@@ -46,10 +48,17 @@ params_overload = {
       },
       "Tuesday",
       {},
+      id="system",
+      marks=pytest.mark.unmarked(),
     ),
-    (params_overload, "Tuesday", {}),
+    pytest.param(
+      params_overload,
+      "Tuesday",
+      {},
+      id="overload",
+      marks=pytest.mark.unmarked(),
+    ),
   ],
-  ids=["simple", "system", "overload"],
 )
 def test_chat_compare(openai_client, bodhi_client, args, expected_gpt_response, expected_diff):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
@@ -89,8 +98,8 @@ def test_chat_compare(openai_client, bodhi_client, args, expected_gpt_response, 
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("openai", GPT_MODEL, id="openai"),
-    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
+    pytest.param("openai", GPT_MODEL, id="openai", **mark_openai()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **mark_bodhi()),
   ],
   indirect=["client"],
 )
@@ -105,8 +114,8 @@ def test_chat_run(client, model):
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("async_openai", GPT_MODEL, id="async_openai"),
-    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi"),
+    pytest.param("async_openai", GPT_MODEL, id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", **mark_bodhi()),
   ],
   indirect=["client"],
 )

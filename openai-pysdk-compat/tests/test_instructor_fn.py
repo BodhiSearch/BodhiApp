@@ -1,10 +1,10 @@
 import instructor
 import pytest
 from deepdiff import DeepDiff
+from instructor.mode import Mode
 from pydantic import BaseModel, Field
 
-from .common import GPT_MODEL, LLAMA3_MODEL, school_1_description, student_1_description
-from instructor.mode import Mode
+from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai, school_1_description, student_1_description
 
 
 class Student(BaseModel):
@@ -40,7 +40,13 @@ school_1_output = {
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
-  ["client", "model"], [("openai", GPT_MODEL), ("bodhi", LLAMA3_MODEL)], indirect=["client"], ids=["openai", "bodhi"]
+  ["client", "model"],
+  [
+    pytest.param("openai", GPT_MODEL, id="openai", **mark_openai()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **mark_bodhi()),
+  ],
+  indirect=["client"],
+  ids=["openai", "bodhi"],
 )
 @pytest.mark.parametrize(
   "mode",
@@ -80,9 +86,11 @@ def test_instructor_fn(client, model, mode, input, clzz, output):
 @pytest.mark.vcr
 @pytest.mark.parametrize(
   ["client", "model"],
-  [("async_openai", GPT_MODEL), ("async_bodhi", LLAMA3_MODEL)],
+  [
+    pytest.param("async_openai", GPT_MODEL, id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", **mark_bodhi()),
+  ],
   indirect=["client"],
-  ids=["async_openai", "async_bodhi"],
 )
 @pytest.mark.parametrize(
   "mode",

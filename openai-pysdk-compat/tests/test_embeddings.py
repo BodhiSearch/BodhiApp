@@ -1,14 +1,14 @@
 import pytest
 
-from .common import GPT_EMBEDDINGS_MODEL, OSS_EMBEDDINGS_MODEL
+from .common import GPT_EMBEDDINGS_MODEL, OSS_EMBEDDINGS_MODEL, mark_bodhi_skip, mark_openai
 
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("openai", GPT_EMBEDDINGS_MODEL, id="openai"),
-    pytest.param("bodhi", OSS_EMBEDDINGS_MODEL, id="bodhi", marks=pytest.mark.skip(reason="Not implemented yet")),
+    pytest.param("openai", GPT_EMBEDDINGS_MODEL, id="openai", **mark_openai()),
+    pytest.param("bodhi", OSS_EMBEDDINGS_MODEL, id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -23,10 +23,8 @@ def test_embeddings_create(client, model):
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("async_openai", GPT_EMBEDDINGS_MODEL, id="async_openai"),
-    pytest.param(
-      "async_bodhi", OSS_EMBEDDINGS_MODEL, id="async_bodhi", marks=pytest.mark.skip(reason="Not implemented yet")
-    ),
+    pytest.param("async_openai", GPT_EMBEDDINGS_MODEL, id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", OSS_EMBEDDINGS_MODEL, id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )

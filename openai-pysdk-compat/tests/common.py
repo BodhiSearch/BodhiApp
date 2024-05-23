@@ -17,5 +17,23 @@ David is known for his programming skills and is an active member of the univers
 He hopes to pursue a career in artificial intelligence after graduating."""
 
 
-def not_implemented() -> Dict[str, pytest.MarkDecorator]:
+def mark_skip() -> Dict[str, pytest.MarkDecorator]:
   return {"marks": pytest.mark.skip("Not Implemented yet")}
+  # return {}
+
+
+def mark_bodhi() -> Dict[str, pytest.MarkDecorator]:
+  return {"marks": pytest.mark.bodhi()}
+
+
+def mark_bodhi_skip() -> Dict[str, pytest.MarkDecorator]:
+  return {"marks": [pytest.mark.bodhi(), pytest.mark.skip("Not Implemented yet")]}
+  # return mark_bodhi()
+
+
+def mark_openai() -> Dict[str, pytest.MarkDecorator]:
+  return {"marks": pytest.mark.openai()}
+
+
+def mark_openai_skip() -> Dict[str, pytest.MarkDecorator]:
+  return {"marks": [pytest.mark.openai(), pytest.mark.skip("Not Implemented yet")]}

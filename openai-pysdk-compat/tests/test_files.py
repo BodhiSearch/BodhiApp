@@ -2,7 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 from openai import OpenAI
 
-from tests.common import not_implemented
+from tests.common import mark_bodhi_skip, mark_openai
 
 file_to_upload = {
   "bytes": 3395,
@@ -18,8 +18,8 @@ file_to_upload = {
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", **not_implemented()),
+    pytest.param("openai", id="openai", **mark_openai()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -37,8 +37,8 @@ def test_files_upload(client: OpenAI):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -55,8 +55,8 @@ async def test_files_async_upload(client: OpenAI):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", **not_implemented()),
+    pytest.param("openai", id="openai", **mark_openai()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -70,8 +70,8 @@ def test_files_list(client: OpenAI):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -84,8 +84,8 @@ async def test_files_async_list(client: OpenAI):
 @pytest.mark.parametrize(
   ["client", "file_id"],
   [
-    pytest.param("openai", "file-utwlH66iyvPBs61N1uIP2ANE", id="openai"),
-    pytest.param("bodhi", "xyz", id="bodhi", **not_implemented()),
+    pytest.param("openai", "file-utwlH66iyvPBs61N1uIP2ANE", id="openai", **mark_openai()),
+    pytest.param("bodhi", "xyz", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -101,8 +101,8 @@ def test_files_retrieve(client: OpenAI, file_id: str):
 @pytest.mark.parametrize(
   ["client", "file_id"],
   [
-    pytest.param("async_openai", "file-utwlH66iyvPBs61N1uIP2ANE", id="async_openai"),
-    pytest.param("async_bodhi", "xyz", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", "file-utwlH66iyvPBs61N1uIP2ANE", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", "xyz", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -117,8 +117,8 @@ async def test_files_retrieve_async(client: OpenAI, file_id):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", **not_implemented()),
+    pytest.param("openai", id="openai", **mark_openai()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -135,8 +135,8 @@ def test_files_delete(client: OpenAI):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -152,8 +152,8 @@ async def test_files_delete_async(client: OpenAI):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", **not_implemented()),
+    pytest.param("openai", id="openai", **mark_openai()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -169,8 +169,8 @@ def test_files_content(client: OpenAI):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )

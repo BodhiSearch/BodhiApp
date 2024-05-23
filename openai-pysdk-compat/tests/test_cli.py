@@ -3,15 +3,15 @@ import sys
 import pytest
 from openai.cli._cli import _main
 
-from tests.common import GPT_MODEL, LLAMA3_MODEL
+from tests.common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai
 
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
   ["cli_arg", "model"],
   [
-    pytest.param("openai_cli", GPT_MODEL, id="openai_cli"),
-    pytest.param("bodhi_cli", LLAMA3_MODEL, id="bodhi_cli"),
+    pytest.param("openai_cli", GPT_MODEL, id="openai_cli", **mark_openai()),
+    pytest.param("bodhi_cli", LLAMA3_MODEL, id="bodhi_cli", **mark_bodhi()),
   ],
   indirect=["cli_arg"],
 )

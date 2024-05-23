@@ -4,7 +4,7 @@ import time
 import pytest
 from openai import APIConnectionError, AuthenticationError, BadRequestError, NotFoundError, OpenAI
 
-from .common import GPT_MODEL, LLAMA3_MODEL, not_implemented
+from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi_skip, mark_openai, mark_openai_skip
 
 auth_error = {
   "code": "invalid_api_key",
@@ -32,13 +32,8 @@ args = {"messages": [{"role": "user", "seed": 42, "content": "What day comes aft
 @pytest.mark.parametrize(
   ["client", "model", "error"],
   [
-    pytest.param(
-      "openai",
-      GPT_MODEL,
-      auth_error,
-      id="openai",
-    ),
-    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", **not_implemented()),
+    pytest.param("openai", GPT_MODEL, auth_error, id="openai", **mark_openai()),
+    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -56,13 +51,8 @@ def test_exception_auth_error_on_invalid_api_key(client: OpenAI, model, error):
 @pytest.mark.parametrize(
   ["client", "model", "error"],
   [
-    pytest.param(
-      "async_openai",
-      GPT_MODEL,
-      auth_error,
-      id="async_openai",
-    ),
-    pytest.param("async_bodhi", LLAMA3_MODEL, {}, id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", GPT_MODEL, auth_error, id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", LLAMA3_MODEL, {}, id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -79,8 +69,8 @@ async def test_exception_async_auth_error_on_invalid_api_key(client: OpenAI, mod
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("openai", GPT_MODEL, id="openai"),
-    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **not_implemented()),
+    pytest.param("openai", GPT_MODEL, id="openai", **mark_openai()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -107,8 +97,8 @@ def test_exception_input_error(client: OpenAI, model, input, exception, error):
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("async_openai", GPT_MODEL, id="async_openai"),
-    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", GPT_MODEL, id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -134,14 +124,8 @@ async def test_exception_async_input_error(client: OpenAI, model, input, excepti
 @pytest.mark.parametrize(
   ["client", "model", "exception", "error"],
   [
-    pytest.param(
-      "openai",
-      "gpt-4o-foo",
-      NotFoundError,
-      not_found_error,
-      id="openai",
-    ),
-    pytest.param("bodhi", "llama3:foo", NotFoundError, {}, id="bodhi", **not_implemented()),
+    pytest.param("openai", "gpt-4o-foo", NotFoundError, not_found_error, id="openai", **mark_openai()),
+    pytest.param("bodhi", "llama3:foo", NotFoundError, {}, id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -158,16 +142,8 @@ def test_exception_not_found(client, model, exception, error):
 @pytest.mark.parametrize(
   ["client", "model", "exception", "error"],
   [
-    pytest.param(
-      "async_openai",
-      "gpt-4o-foo",
-      NotFoundError,
-      not_found_error,
-      id="async_openai",
-    ),
-    pytest.param(
-      "async_bodhi", "llama3:foo", NotFoundError, {}, id="async_bodhi", **not_implemented()
-    ),
+    pytest.param("async_openai", "gpt-4o-foo", NotFoundError, not_found_error, id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", "llama3:foo", NotFoundError, {}, id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -180,11 +156,12 @@ async def test_exception_async_not_found(client, model, exception, error):
 
 
 @pytest.mark.vcr
+@pytest.mark.skip("Not implemented")
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("openai", GPT_MODEL, id="openai", **not_implemented()),
-    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **not_implemented()),
+    pytest.param("openai", GPT_MODEL, id="openai", **mark_openai_skip()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )

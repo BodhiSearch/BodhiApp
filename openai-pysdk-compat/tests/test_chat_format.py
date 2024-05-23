@@ -3,7 +3,7 @@ import json
 import pytest
 from deepdiff import DeepDiff
 
-from .common import GPT_MODEL, LLAMA3_MODEL
+from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai
 
 input_json_format = {
   "seed": 42,
@@ -23,8 +23,7 @@ expected = {"firstName": "John", "lastName": "Doe", "age": 30}
 @pytest.mark.vcr
 @pytest.mark.parametrize(
   "args",
-  [input_json_format],
-  ids=["format_json"],
+  [pytest.param(input_json_format, id="format_json", marks=pytest.mark.unmarked())],
 )
 def test_format_compare(openai_client, bodhi_client, args):
   gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
@@ -62,8 +61,8 @@ def test_format_compare(openai_client, bodhi_client, args):
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("openai", GPT_MODEL, id="openai"),
-    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi"),
+    pytest.param("openai", GPT_MODEL, id="openai", **mark_openai()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **mark_bodhi()),
   ],
   indirect=["client"],
 )
@@ -78,8 +77,8 @@ def test_chat_format_simple(client, model):
 @pytest.mark.parametrize(
   ["client", "model"],
   [
-    pytest.param("async_openai", GPT_MODEL, id="async_openai"),
-    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi"),
+    pytest.param("async_openai", GPT_MODEL, id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", LLAMA3_MODEL, id="async_bodhi", **mark_bodhi()),
   ],
   indirect=["client"],
 )

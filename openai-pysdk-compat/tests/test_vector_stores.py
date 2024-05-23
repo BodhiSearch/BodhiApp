@@ -2,7 +2,7 @@ import pytest
 from deepdiff import DeepDiff
 from openai import OpenAI
 
-from tests.common import not_implemented
+from tests.common import mark_bodhi_skip, mark_openai
 
 vector_store_meta = {
   "object": "vector_store",
@@ -14,8 +14,8 @@ vector_store_meta = {
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", **not_implemented()),
+    pytest.param("openai", id="openai", **mark_openai()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -31,8 +31,8 @@ def test_vector_store_create(client: OpenAI, random_suffix):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -47,8 +47,8 @@ async def test_vector_store_create_async(client: OpenAI, random_suffix):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", **not_implemented()),
+    pytest.param("openai", id="openai", **mark_openai()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -62,8 +62,8 @@ def test_vector_stores_list(client: OpenAI):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -76,8 +76,8 @@ async def test_vector_stores_async_list(client: OpenAI):
 @pytest.mark.parametrize(
   ["client", "vector_store_id"],
   [
-    pytest.param("openai", "vs_63OsmuEsbAIqopz4APtR0JSp", id="openai"),
-    pytest.param("bodhi", "xyz", id="bodhi", **not_implemented()),
+    pytest.param("openai", "vs_63OsmuEsbAIqopz4APtR0JSp", id="openai", **mark_openai()),
+    pytest.param("bodhi", "xyz", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -93,8 +93,8 @@ def test_vector_stores_retrieve(client: OpenAI, vector_store_id: str):
 @pytest.mark.parametrize(
   ["client", "vector_store_id"],
   [
-    pytest.param("async_openai", "vs_cUdw3KuFnFkWTsLcwTvoAaEi", id="async_openai"),
-    pytest.param("async_bodhi", "xyz", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", "vs_cUdw3KuFnFkWTsLcwTvoAaEi", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", "xyz", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -109,8 +109,8 @@ async def test_vector_stores_retrieve_async(client: OpenAI, vector_store_id):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("openai", id="openai"),
-    pytest.param("bodhi", id="bodhi", **not_implemented()),
+    pytest.param("openai", id="openai", **mark_openai()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )
@@ -128,8 +128,8 @@ def test_vector_stores_delete(client: OpenAI, random_suffix):
 @pytest.mark.parametrize(
   ["client"],
   [
-    pytest.param("async_openai", id="async_openai"),
-    pytest.param("async_bodhi", id="async_bodhi", **not_implemented()),
+    pytest.param("async_openai", id="async_openai", **mark_openai()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
   ],
   indirect=["client"],
 )

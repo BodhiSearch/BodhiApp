@@ -3,7 +3,7 @@ import json
 import pytest
 from deepdiff import DeepDiff
 
-from .common import GPT_MODEL, LLAMA3_MODEL, student_1_description, school_1_description
+from .common import GPT_MODEL, LLAMA3_MODEL, school_1_description, student_1_description
 
 tools = [
   {
@@ -54,7 +54,7 @@ tool_params = {
 @pytest.mark.parametrize(
   ["input", "output"],
   [
-    (
+    pytest.param(
       student_1_description,
       {
         "name": "David Nguyen",
@@ -63,8 +63,10 @@ tool_params = {
         "grades": 3.8,
         "club": "Robotics Club",
       },
+      id="chat_tool_student_1",
+      marks=pytest.mark.unmarked(),
     ),
-    (
+    pytest.param(
       school_1_description,
       {
         "name": "Stanford University",
@@ -72,9 +74,10 @@ tool_params = {
         "country": "United States",
         "no_of_students": 17000,
       },
+      id="chat_tool_univ_1",
+      marks=pytest.mark.unmarked(),
     ),
   ],
-  ids=["chat_tool_student_1", "chat_tool_univ_1"],
 )
 def test_chat_tool(openai_client, bodhi_client, input, output):
   args = dict(**tool_params)
