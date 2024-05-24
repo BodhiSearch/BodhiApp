@@ -7,6 +7,7 @@ from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai
 
 input_json_format = {
   "seed": 42,
+  "stream": False,
   "messages": [
     {
       "role": "user",
@@ -50,7 +51,11 @@ def test_format_compare(openai_client, bodhi_client, args):
       "old_value": 52,
     },
   }
-  json_obj = json.loads(bodhi_response.choices[0].message.content)
+  content = bodhi_response.choices[0].message.content
+  try:
+    json_obj = json.loads(content)
+  except json.JSONDecodeError:
+    pytest.fail(f"Invalid JSON:\n{content}")
   assert {"firstName": "John", "lastName": "Doe", "age": 30} == json_obj
   # assert expected_usage_diff == diff.pop("values_changed") # TODO: implement
   assert ["root.choices[0].model_fields_set['logprobs']"] == diff.pop("set_item_removed")  # TODO: implement
@@ -84,5 +89,9 @@ def test_chat_format_simple(client, model):
 )
 async def test_chat_async_format_simple(client, model):
   response = await client.chat.completions.create(model=model, **input_json_format)
-  json_obj = json.loads(response.choices[0].message.content)
+  content = response.choices[0].message.content
+  try:
+    json_obj = json.loads(content)
+  except json.JSONDecodeError:
+    pytest.fail(f"Invalid JSON:\n{content}")
   assert expected == json_obj
