@@ -1,5 +1,7 @@
 - display_name: meta-llama3-8b-instruct
   family: llama3
+  alias:
+    - llama3:instruct
   repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
   base_model: meta-llama/Meta-Llama-3-8B-Instruct
   tokenizer_config: base_model
@@ -23,6 +25,8 @@
   default: Meta-Llama-3-8B-Instruct.Q8_0.gguf
 - display_name: meta-llama3-8b
   family: llama3
+  alias:
+    - llama3
   repo: QuantFactory/Meta-Llama-3-8B-GGUF
   base_model: meta-llama/Meta-Llama-3-8B
   tokenizer_config: base_model
@@ -46,6 +50,8 @@
   default: Meta-Llama-3-8B.Q8_0.gguf
 - display_name: meta-llama3-70b-instruct
   family: llama3
+  alias:
+    - llama3:70b-instruct
   repo: QuantFactory/Meta-Llama-3-70B-Instruct-GGUF
   base_model: meta-llama/Meta-Llama-3-70B-Instruct
   tokenizer_config: base_model
@@ -92,6 +98,8 @@
   default: Meta-Llama-Guard-2-8B.Q8_0.gguf
 - display_name: llama2-7b-chat
   family: llama2
+  alias:
+    - llama2:7b-chat
   repo: TheBloke/Llama-2-7B-Chat-GGUF
   base_model: meta-llama/Llama-2-7b-chat-hf
   tokenizer_config: base_model
@@ -113,6 +121,8 @@
   default: llama-2-7b-chat.Q8_0.gguf
 - display_name: llama2-13b-chat
   family: llama2
+  alias:
+    - llama2:13b-chat
   repo: TheBloke/Llama-2-13B-chat-GGUF
   base_model: meta-llama/Llama-2-13b-chat-hf
   tokenizer_config: base_model
@@ -134,6 +144,8 @@
   default: llama-2-13b-chat.Q8_0.gguf
 - display_name: llama2-70b-chat
   family: llama2
+  alias:
+    - llama2:70b-chat
   repo: TheBloke/Llama-2-70B-Chat-GGUF
   base_model: meta-llama/Llama-2-70b-chat-hf
   tokenizer_config: base_model
@@ -156,6 +168,8 @@
   default: llama-2-70b-chat.Q4_0.gguf
 - display_name: llama2-7b
   family: llama2
+  alias:
+    - llama2:7b
   repo: TheBloke/Llama-2-7B-GGUF
   base_model: meta-llama/Llama-2-7b-hf
   tokenizer_config: base_model
@@ -177,6 +191,8 @@
   default: llama-2-7b.Q8_0.gguf
 - display_name: llama2-70b
   family: llama2
+  alias:
+    - llama2:70b
   repo: TheBloke/Llama-2-70B-GGUF
   base_model: meta-llama/Llama-2-70b-hf
   tokenizer_config: base_model
@@ -199,6 +215,8 @@
   default: llama-2-70b.Q4_0.gguf
 - display_name: phi3-mini-4k-instruct
   family: phi3
+  alias:
+    - phi3:mini
   repo: microsoft/Phi-3-mini-4k-instruct-gguf
   tokenizer_config: |
     {
@@ -212,6 +230,8 @@
   default: Phi-3-mini-4k-instruct-fp16.gguf
 - display_name: mistral-7b
   family: mistral
+  alias:
+    - mistral
   repo: TheBloke/Mistral-7B-v0.1-GGUF
   base_model: mistralai/Mistral-7B-v0.1
   tokenizer_config: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/raw/main/tokenizer_config.json
@@ -233,6 +253,8 @@
   default: capybarahermes-2.5-mistral-7b.Q8_0.gguf
 - display_name: mixtral-8x7b-instruct
   family: mixtral
+  alias:
+    - mixtral:instruct
   repo: TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF
   base_model: mistralai/Mixtral-8x7B-Instruct-v0.1
   tokenizer_config: base_model
@@ -250,6 +272,8 @@
   default: mixtral-8x7b-instruct-v0.1.Q8_0.gguf
 - display_name: mixtral-8x7b
   family: mixtral
+  alias:
+    - mixtral
   repo: TheBloke/Mixtral-8x7B-v0.1-GGUF
   base_model: mistralai/Mixtral-8x7B-v0.1
   tokenizer_config: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/raw/main/tokenizer_config.json
@@ -267,11 +291,13 @@
   default: mixtral-8x7b-v0.1.Q8_0.gguf
 - display_name: gemma-7b-instruct
   family: gemma
+  alias:
+    - gemma:instruct
   repo: google/gemma-7b-it-GGUF
   tokenizer_config: |
-   {
-    "chat_template": "llama.cpp:gemma"
-   }
+    {
+     "chat_template": "llama.cpp:gemma"
+    }
   features:
     - chat
   files:
@@ -279,11 +305,13 @@
   default: gemma-7b-it.gguf
 - display_name: gemma-7b
   family: gemma
+  alias:
+    - gemma
   repo: google/gemma-7b-GGUF
   tokenizer_config: |
-   {
-    "chat_template": "llama.cpp:gemma"
-   }
+    {
+     "chat_template": "llama.cpp:gemma"
+    }
   features:
     - chat
   files:
@@ -291,10 +319,12 @@
   default: gemma-7b.gguf
 - display_name: gemma-1.1-2b-instruct
   family: gemma
+  alias:
+    - gemma:v1.1
   tokenizer_config: |
-   {
-    "chat_template": "llama.cpp:gemma"
-   }
+    {
+     "chat_template": "llama.cpp:gemma"
+    }
   features:
     - chat
   repo: google/gemma-1.1-2b-it-GGUF
