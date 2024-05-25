@@ -1,0 +1,328 @@
+- meta:
+    llama2_err_role_order: &llama2_err_role_order
+      exception: true
+      message: Conversation roles must alternate user/assistant/user/assistant/...
+    gemma: &gemma_err_system_not_supported
+      exception: true
+      message: System role not supported
+
+- id: simple
+  messages:
+    - role: user
+      content: What day comes after Monday?
+  llama3: |
+    <|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  llama2: |
+    <s>[INST] What day comes after Monday? [/INST]
+  llama2_legacy: |
+    <s>[INST] What day comes after Monday? [/INST]
+  phi3: |
+    <s><|user|>
+    What day comes after Monday?<|end|>
+    <|assistant|>\n
+  gemma: |
+    <bos><start_of_turn>user
+    What day comes after Monday?<end_of_turn>
+    <start_of_turn>model\n
+  zephyr: |
+    <|user|>
+    What day comes after Monday?</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>User: What day comes after Monday?
+
+    Assistant:
+  command-r: |
+    <BOS_TOKEN><|START_OF_TURN_TOKEN|><|USER_TOKEN|>What day comes after Monday?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>
+  openchat: |
+    <|begin_of_text|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  empty: ""
+- id: assistant
+  messages:
+    - role: user
+      content: What day comes after Monday?
+    - role: assistant
+      content: Tuesday
+    - role: user
+      content: And what day comes after that?
+  llama3: |
+    <|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+    Tuesday<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  llama2: |
+    <s>[INST] What day comes after Monday? [/INST] Tuesday </s><s>[INST] And what day comes after that? [/INST]
+  llama2_legacy: |
+    <s>[INST] What day comes after Monday? [/INST]Tuesday</s>[INST] And what day comes after that? [/INST]
+  phi3: |
+    <s><|user|>
+    What day comes after Monday?<|end|>
+    <|assistant|>
+    Tuesday<|end|>
+    <|user|>
+    And what day comes after that?<|end|>
+    <|assistant|>\n
+  gemma: |
+    <bos><start_of_turn>user
+    What day comes after Monday?<end_of_turn>
+    <start_of_turn>model
+    Tuesday<end_of_turn>
+    <start_of_turn>user
+    And what day comes after that?<end_of_turn>
+    <start_of_turn>model\n
+  zephyr: |
+    <|user|>
+    What day comes after Monday?</s>
+    <|assistant|>
+    Tuesday</s>
+    <|user|>
+    And what day comes after that?</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>User: What day comes after Monday?
+
+    Assistant: Tuesday<｜end▁of▁sentence｜>User: And what day comes after that?
+
+    Assistant:
+  command-r: |
+    <BOS_TOKEN><|START_OF_TURN_TOKEN|><|USER_TOKEN|>What day comes after Monday?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>Tuesday<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|USER_TOKEN|>And what day comes after that?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>
+  openchat: |
+    <|begin_of_text|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>
+
+    Tuesday<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  empty: ""
+- id: system
+  messages:
+    - role: system
+      content: You are a helpful assistant.
+    - role: user
+      content: What day comes after Monday?
+  llama3: |
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    You are a helpful assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  llama2: |
+    <s>[INST] <<SYS>>
+    You are a helpful assistant.
+    <</SYS>>
+
+    What day comes after Monday? [/INST]
+  llama2_legacy:
+    exception: true
+    message: Conversation roles must alternate user/assistant/user/assistant/...
+  phi3: |
+    <s><|user|>
+    What day comes after Monday?<|end|>
+    <|assistant|>\n
+  gemma: *gemma_err_system_not_supported
+  zephyr: |
+    <|system|>
+    You are a helpful assistant.</s>
+    <|user|>
+    What day comes after Monday?</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>You are a helpful assistant.
+
+    User: What day comes after Monday?
+
+    Assistant:
+  command-r: |
+    <BOS_TOKEN><|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>You are a helpful assistant.<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|USER_TOKEN|>What day comes after Monday?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>
+  openchat: |
+    <|begin_of_text|><|start_header_id|>System<|end_header_id|>
+
+    You are a helpful assistant.<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  empty: ""
+- id: convo
+  messages:
+    - role: system
+      content: You are a helpful assistant.
+    - role: user
+      content: What day comes after Monday?
+    - role: assistant
+      content: Tuesday
+    - role: user
+      content: And what day comes after that?
+  llama3: |
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    You are a helpful assistant.<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+    Tuesday<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  llama2: |
+    <s>[INST] <<SYS>>
+    You are a helpful assistant.
+    <</SYS>>
+
+    What day comes after Monday? [/INST] Tuesday </s><s>[INST] And what day comes after that? [/INST]
+  llama2_legacy:
+    exception: true
+    message: Conversation roles must alternate user/assistant/user/assistant/...
+  phi3: |
+    <s><|user|>
+    What day comes after Monday?<|end|>
+    <|assistant|>
+    Tuesday<|end|>
+    <|user|>
+    And what day comes after that?<|end|>
+    <|assistant|>\n
+  gemma:
+    exception: true
+    message: System role not supported
+  zephyr: |
+    <|system|>
+    You are a helpful assistant.</s>
+    <|user|>
+    What day comes after Monday?</s>
+    <|assistant|>
+    Tuesday</s>
+    <|user|>
+    And what day comes after that?</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>You are a helpful assistant.
+
+    User: What day comes after Monday?
+
+    Assistant: Tuesday<｜end▁of▁sentence｜>User: And what day comes after that?
+
+    Assistant:
+  command-r: |
+    <BOS_TOKEN><|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>You are a helpful assistant.<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|USER_TOKEN|>What day comes after Monday?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>Tuesday<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|USER_TOKEN|>And what day comes after that?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>
+  openchat: |
+    <|begin_of_text|><|start_header_id|>System<|end_header_id|>
+
+    You are a helpful assistant.<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>
+
+    Tuesday<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  empty: ""
+- id: unknown-role
+  messages:
+    - role: unknown
+      content: should fail
+  llama2: *llama2_err_role_order
+  llama2_legacy: *llama2_err_role_order
+  llama3: |
+    <|begin_of_text|><|start_header_id|>unknown<|end_header_id|>
+
+    should fail<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  phi3: <s>
+  gemma: *llama2_err_role_order
+  zephyr: |
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>Assistant:
+  command-r: *llama2_err_role_order
+  openchat:
+    exception: true
+    message: Only user, assistant and system roles are supported!
+- id: error-user-at-even-no-system
+  messages:
+    - role: assistant
+      content: should not have assistant message as first
+    - role: user
+      content: should not have user message at even
+  llama2: *llama2_err_role_order
+  llama2_legacy: *llama2_err_role_order
+  llama3: |
+    <|begin_of_text|><|start_header_id|>assistant<|end_header_id|>
+
+    should not have assistant message as first<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    should not have user message at even<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  phi3: |
+    <s>should not have assistant message as first<|end|>
+    <|user|>
+    should not have user message at even<|end|>
+    <|assistant|>\n
+  gemma: *llama2_err_role_order
+  zephyr: |
+    <|assistant|>
+    should not have assistant message as first</s>
+    <|user|>
+    should not have user message at even</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>Assistant: should not have assistant message as first<｜end▁of▁sentence｜>User: should not have user message at even
+
+    Assistant:
+  command-r: *llama2_err_role_order
+  openchat: |
+    <|begin_of_text|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>
+
+    should not have assistant message as first<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    should not have user message at even<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  empty: ""
+- id: error-user-at-even-with-system
+  messages:
+    - role: system
+      content: this is system message
+    - role: assistant
+      content: this is incorrect assistant instruction
+    - role: user
+      content: this is user question
+  llama2: *llama2_err_role_order
+  llama2_legacy: *llama2_err_role_order
+  llama3: |
+    <|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+    this is system message<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+    this is incorrect assistant instruction<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    this is user question<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  phi3: |
+    <s>this is incorrect assistant instruction<|end|>
+    <|user|>
+    this is user question<|end|>
+    <|assistant|>\n
+  gemma: *gemma_err_system_not_supported
+  zephyr: |
+    <|system|>
+    this is system message</s>
+    <|assistant|>
+    this is incorrect assistant instruction</s>
+    <|user|>
+    this is user question</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>this is system message
+
+    Assistant: this is incorrect assistant instruction<｜end▁of▁sentence｜>User: this is user question
+
+    Assistant:
+  command-r: *llama2_err_role_order
+  openchat: |
+    <|begin_of_text|><|start_header_id|>System<|end_header_id|>
+
+    this is system message<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>
+
+    this is incorrect assistant instruction<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    this is user question<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  empty: ""
