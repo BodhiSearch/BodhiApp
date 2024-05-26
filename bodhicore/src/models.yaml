@@ -152,7 +152,7 @@
     - mistral-7b.Q5_K_S.gguf
     - mistral-7b.Q6_K.gguf
     - mistral-7b.Q8_0.gguf
-  default: capybarahermes-2.5-mistral-7b.Q8_0.gguf
+  default: mistral-7b.Q8_0.gguf
 - display_name: mixtral-8x7b-instruct
   family: mixtral
   alias:

@@ -235,4 +235,49 @@ For more information, try '--help'.
     assert_eq!(err_msg, cli.unwrap_err().to_string());
     Ok(())
   }
+
+  #[rstest]
+  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None, None, false)]
+  #[case(vec!["bodhi",
+      "pull",
+      "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+      "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
+      "-c", "meta-llama/Meta-Llama-3-8B-Instruct"],
+      None,
+    Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
+        Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
+        Some(String::from("meta-llama/Meta-Llama-3-8B-Instruct")),
+        false
+  )]
+  #[case(vec![
+    "bodhi",
+        "pull",
+        "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+        "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"
+  ],
+      None,
+    Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
+        Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
+        None,
+        false
+  )]
+  fn test_cli_pull_valid(
+    #[case] args: Vec<&str>,
+    #[case] id: Option<String>,
+    #[case] repo: Option<String>,
+    #[case] file: Option<String>,
+    #[case] config: Option<String>,
+    #[case] force: bool,
+  ) -> anyhow::Result<()> {
+    let actual = Cli::try_parse_from(args)?.command;
+    let expected = Command::Pull {
+      id,
+      repo,
+      file,
+      config,
+      force,
+    };
+    assert_eq!(expected, actual);
+    Ok(())
+  }
 }
