@@ -4,7 +4,7 @@
     - llama3:instruct
   repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
   base_model: meta-llama/Meta-Llama-3-8B-Instruct
-  tokenizer_config: base_model
+  tokenizer_config: meta-llama/Meta-Llama-3-8B-Instruct
   features:
     - chat
   files:
@@ -23,38 +23,13 @@
     - Meta-Llama-3-8B-Instruct.Q6_K.gguf
     - Meta-Llama-3-8B-Instruct.Q8_0.gguf
   default: Meta-Llama-3-8B-Instruct.Q8_0.gguf
-- display_name: meta-llama3-8b
-  family: llama3
-  alias:
-    - llama3
-  repo: QuantFactory/Meta-Llama-3-8B-GGUF
-  base_model: meta-llama/Meta-Llama-3-8B
-  tokenizer_config: base_model
-  features:
-    - generate
-  files:
-    - Meta-Llama-3-8B.Q2_K.gguf
-    - Meta-Llama-3-8B.Q3_K_L.gguf
-    - Meta-Llama-3-8B.Q3_K_M.gguf
-    - Meta-Llama-3-8B.Q3_K_S.gguf
-    - Meta-Llama-3-8B.Q4_0.gguf
-    - Meta-Llama-3-8B.Q4_1.gguf
-    - Meta-Llama-3-8B.Q4_K_M.gguf
-    - Meta-Llama-3-8B.Q4_K_S.gguf
-    - Meta-Llama-3-8B.Q5_0.gguf
-    - Meta-Llama-3-8B.Q5_1.gguf
-    - Meta-Llama-3-8B.Q5_K_M.gguf
-    - Meta-Llama-3-8B.Q5_K_S.gguf
-    - Meta-Llama-3-8B.Q6_K.gguf
-    - Meta-Llama-3-8B.Q8_0.gguf
-  default: Meta-Llama-3-8B.Q8_0.gguf
 - display_name: meta-llama3-70b-instruct
   family: llama3
   alias:
     - llama3:70b-instruct
   repo: QuantFactory/Meta-Llama-3-70B-Instruct-GGUF
   base_model: meta-llama/Meta-Llama-3-70B-Instruct
-  tokenizer_config: base_model
+  tokenizer_config: meta-llama/Meta-Llama-3-70B-Instruct
   features:
     - chat
   files:
@@ -73,36 +48,13 @@
     - Meta-Llama-3-70B-Instruct.Q6_K-*.gguf
     - Meta-Llama-3-70B-Instruct.Q8_0-*.gguf
   default: Meta-Llama-3-70B-Instruct.Q8_0-*.gguf
-- display_name: meta-llama-guard-2-8b
-  family: llama3
-  repo: QuantFactory/Meta-Llama-Guard-2-8B-GGUF
-  base_model: meta-llama/Meta-Llama-Guard-2-8B
-  tokenizer_config: base_model
-  features:
-    - generate
-  files:
-    - Meta-Llama-Guard-2-8B.Q2_K.gguf
-    - Meta-Llama-Guard-2-8B.Q3_K_L.gguf
-    - Meta-Llama-Guard-2-8B.Q3_K_M.gguf
-    - Meta-Llama-Guard-2-8B.Q3_K_S.gguf
-    - Meta-Llama-Guard-2-8B.Q4_0.gguf
-    - Meta-Llama-Guard-2-8B.Q4_1.gguf
-    - Meta-Llama-Guard-2-8B.Q4_K_M.gguf
-    - Meta-Llama-Guard-2-8B.Q4_K_S.gguf
-    - Meta-Llama-Guard-2-8B.Q5_0.gguf
-    - Meta-Llama-Guard-2-8B.Q5_1.gguf
-    - Meta-Llama-Guard-2-8B.Q5_K_M.gguf
-    - Meta-Llama-Guard-2-8B.Q5_K_S.gguf
-    - Meta-Llama-Guard-2-8B.Q6_K.gguf
-    - Meta-Llama-Guard-2-8B.Q8_0.gguf
-  default: Meta-Llama-Guard-2-8B.Q8_0.gguf
 - display_name: llama2-7b-chat
   family: llama2
   alias:
     - llama2:7b-chat
   repo: TheBloke/Llama-2-7B-Chat-GGUF
   base_model: meta-llama/Llama-2-7b-chat-hf
-  tokenizer_config: base_model
+  tokenizer_config: meta-llama/Llama-2-7b-chat-hf
   features:
     - chat
   files:
@@ -125,7 +77,7 @@
     - llama2:13b-chat
   repo: TheBloke/Llama-2-13B-chat-GGUF
   base_model: meta-llama/Llama-2-13b-chat-hf
-  tokenizer_config: base_model
+  tokenizer_config: meta-llama/Llama-2-13b-chat-hf
   features:
     - chat
   files:
@@ -148,7 +100,7 @@
     - llama2:70b-chat
   repo: TheBloke/Llama-2-70B-Chat-GGUF
   base_model: meta-llama/Llama-2-70b-chat-hf
-  tokenizer_config: base_model
+  tokenizer_config: meta-llama/Llama-2-70b-chat-hf
   features:
     - chat
   files:
@@ -166,62 +118,12 @@
     # - llama-2-70b-chat.Q8_0.gguf-split-*
   # default: llama-2-70b-chat.Q8_0.gguf-split-*
   default: llama-2-70b-chat.Q4_0.gguf
-- display_name: llama2-7b
-  family: llama2
-  alias:
-    - llama2:7b
-  repo: TheBloke/Llama-2-7B-GGUF
-  base_model: meta-llama/Llama-2-7b-hf
-  tokenizer_config: base_model
-  features:
-    - generate
-  files:
-    - llama-2-7b.Q2_K.gguf
-    - llama-2-7b.Q3_K_L.gguf
-    - llama-2-7b.Q3_K_M.gguf
-    - llama-2-7b.Q3_K_S.gguf
-    - llama-2-7b.Q4_0.gguf
-    - llama-2-7b.Q4_K_M.gguf
-    - llama-2-7b.Q4_K_S.gguf
-    - llama-2-7b.Q5_0.gguf
-    - llama-2-7b.Q5_K_M.gguf
-    - llama-2-7b.Q5_K_S.gguf
-    - llama-2-7b.Q6_K.gguf
-    - llama-2-7b.Q8_0.gguf
-  default: llama-2-7b.Q8_0.gguf
-- display_name: llama2-70b
-  family: llama2
-  alias:
-    - llama2:70b
-  repo: TheBloke/Llama-2-70B-GGUF
-  base_model: meta-llama/Llama-2-70b-hf
-  tokenizer_config: base_model
-  features:
-    - generate
-  files:
-    - llama-2-70b.Q2_K.gguf
-    - llama-2-70b.Q3_K_L.gguf
-    - llama-2-70b.Q3_K_M.gguf
-    - llama-2-70b.Q3_K_S.gguf
-    - llama-2-70b.Q4_0.gguf
-    - llama-2-70b.Q4_K_M.gguf
-    - llama-2-70b.Q4_K_S.gguf
-    - llama-2-70b.Q5_0.gguf
-    - llama-2-70b.Q5_K_M.gguf
-    - llama-2-70b.Q5_K_S.gguf
-    # - llama-2-70b.Q6_K.gguf-split-*
-    # - llama-2-70b.Q8_0.gguf-split-*
-  # default: llama-2-70b.Q8_0.gguf-split-*
-  default: llama-2-70b.Q4_0.gguf
 - display_name: phi3-mini-4k-instruct
   family: phi3
   alias:
     - phi3:mini
   repo: microsoft/Phi-3-mini-4k-instruct-gguf
-  tokenizer_config: |
-    {
-      "chat_template": "llama.cpp:phi3"
-    }
+  tokenizer_config: microsoft/Phi-3-mini-4k-instruct
   features:
     - chat
   files:
@@ -234,7 +136,7 @@
     - mistral
   repo: TheBloke/Mistral-7B-v0.1-GGUF
   base_model: mistralai/Mistral-7B-v0.1
-  tokenizer_config: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/raw/main/tokenizer_config.json
+  tokenizer_config: mistralai/Mistral-7B-v0.1
   features:
     - chat
   files:
@@ -257,7 +159,7 @@
     - mixtral:instruct
   repo: TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF
   base_model: mistralai/Mixtral-8x7B-Instruct-v0.1
-  tokenizer_config: base_model
+  tokenizer_config: mistralai/Mixtral-8x7B-Instruct-v0.1
   features:
     - chat
   files:
@@ -270,64 +172,25 @@
     - mixtral-8x7b-instruct-v0.1.Q6_K.gguf
     - mixtral-8x7b-instruct-v0.1.Q8_0.gguf
   default: mixtral-8x7b-instruct-v0.1.Q8_0.gguf
-- display_name: mixtral-8x7b
-  family: mixtral
-  alias:
-    - mixtral
-  repo: TheBloke/Mixtral-8x7B-v0.1-GGUF
-  base_model: mistralai/Mixtral-8x7B-v0.1
-  tokenizer_config: https://huggingface.co/meta-llama/Llama-2-7b-chat-hf/raw/main/tokenizer_config.json
-  features:
-    - generate
-  files:
-    - mixtral-8x7b-v0.1.Q2_K.gguf
-    - mixtral-8x7b-v0.1.Q3_K_M.gguf
-    - mixtral-8x7b-v0.1.Q4_0.gguf
-    - mixtral-8x7b-v0.1.Q4_K_M.gguf
-    - mixtral-8x7b-v0.1.Q5_0.gguf
-    - mixtral-8x7b-v0.1.Q5_K_M.gguf
-    - mixtral-8x7b-v0.1.Q6_K.gguf
-    - mixtral-8x7b-v0.1.Q8_0.gguf
-  default: mixtral-8x7b-v0.1.Q8_0.gguf
 - display_name: gemma-7b-instruct
   family: gemma
   alias:
     - gemma:instruct
   repo: google/gemma-7b-it-GGUF
-  tokenizer_config: |
-    {
-     "chat_template": "llama.cpp:gemma"
-    }
+  tokenizer_config: google/gemma-7b-it
   features:
     - chat
   files:
     - gemma-7b-it.gguf
   default: gemma-7b-it.gguf
-- display_name: gemma-7b
-  family: gemma
-  alias:
-    - gemma
-  repo: google/gemma-7b-GGUF
-  tokenizer_config: |
-    {
-     "chat_template": "llama.cpp:gemma"
-    }
-  features:
-    - chat
-  files:
-    - gemma-7b.gguf
-  default: gemma-7b.gguf
 - display_name: gemma-1.1-2b-instruct
   family: gemma
   alias:
     - gemma:v1.1
-  tokenizer_config: |
-    {
-     "chat_template": "llama.cpp:gemma"
-    }
   features:
     - chat
   repo: google/gemma-1.1-2b-it-GGUF
+  tokenizer_config: google/gemma-1.1-2b-it
   files:
     - 2b_it_v1p1.gguf
   default: 2b_it_v1p1.gguf

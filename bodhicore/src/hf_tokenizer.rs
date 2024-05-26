@@ -1,16 +1,112 @@
 use crate::home::configs_dir;
+use anyhow::anyhow;
+use async_openai::types::{
+  ChatCompletionRequestMessage,
+  ChatCompletionRequestUserMessageContent::{Array, Text},
+};
+use minijinja::{Environment, ErrorKind};
 use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
-use serde_json::Value;
 use std::{fmt, fs};
 
 pub(crate) static TOKENIZER_CONFIG_FILENAME: &str = "tokenizer_config.json";
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
+  Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
+pub struct ChatMessage {
+  role: Option<String>,
+  content: Option<String>,
+}
+
+impl<'a> From<&'a ChatMessage> for ChatMessage {
+  fn from(value: &'a ChatMessage) -> Self {
+    value.clone()
+  }
+}
+
+impl<'a> From<&'a ChatCompletionRequestMessage> for ChatMessage {
+  fn from(value: &'a ChatCompletionRequestMessage) -> Self {
+    let (role, content) = match value {
+      ChatCompletionRequestMessage::System(m) => (m.role.to_string(), Some(m.content.clone())),
+      ChatCompletionRequestMessage::User(m) => match &m.content {
+        Text(content) => (m.role.to_string(), Some(content.clone())),
+        Array(content) => {
+          let fold = content.clone().into_iter().fold(String::new(), |mut f, i| {
+            match i {
+              async_openai::types::ChatCompletionRequestMessageContentPart::Text(t) => {
+                f.push_str(&t.text);
+              }
+              async_openai::types::ChatCompletionRequestMessageContentPart::Image(_) => {
+                unimplemented!()
+              }
+            };
+            f
+          });
+          (m.role.to_string().clone(), Some(fold))
+        }
+      },
+      ChatCompletionRequestMessage::Assistant(m) => (m.role.to_string().clone(), m.content.clone()),
+      ChatCompletionRequestMessage::Tool(_) => unimplemented!(),
+      ChatCompletionRequestMessage::Function(_) => unimplemented!(),
+    };
+    ChatMessage {
+      role: Some(role),
+      content,
+    }
+  }
+}
+
+impl ChatMessage {
+  pub fn new(role: String, content: String) -> Self {
+    Self {
+      role: Some(role),
+      content: Some(content),
+    }
+  }
+}
+
+#[derive(Clone, Serialize, Deserialize, Default)]
+pub(crate) struct ChatTemplateInputs {
+  messages: Vec<ChatMessage>,
+  bos_token: Option<String>,
+  eos_token: Option<String>,
+  add_generation_prompt: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+pub struct ChatTemplate {
+  name: String,
+  template: String,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum ChatTemplateVersions {
+  Single(String),
+  Multiple(Vec<ChatTemplate>),
+}
+
+impl ChatTemplateVersions {
+  pub fn is_empty(&self) -> bool {
+    match self {
+      ChatTemplateVersions::Single(template) => template.is_empty(),
+      ChatTemplateVersions::Multiple(templates) => templates
+        .iter()
+        .find(|t| t.name == "default")
+        .map(|t| t.template.is_empty())
+        .unwrap_or(true),
+    }
+  }
+}
+
+#[derive(Debug, Clone, Deserialize, Default, PartialEq)]
 pub struct HubTokenizerConfig {
-  pub chat_template: Option<String>,
+  pub chat_template: Option<ChatTemplateVersions>,
   #[serde(deserialize_with = "deserialize_token", default)]
   pub bos_token: Option<String>,
   #[serde(deserialize_with = "deserialize_token", default)]
@@ -24,7 +120,7 @@ impl HubTokenizerConfig {
     eos_token: Option<String>,
   ) -> Self {
     Self {
-      chat_template,
+      chat_template: chat_template.map(|c| ChatTemplateVersions::Single(c)),
       bos_token,
       eos_token,
     }
@@ -44,6 +140,40 @@ impl HubTokenizerConfig {
     let content = fs::read_to_string(config_file)?;
     let config = serde_yaml::from_str::<Self>(&content)?;
     Ok(config)
+  }
+
+  pub fn apply_chat_template<T>(&self, messages: &[T]) -> anyhow::Result<String>
+  where
+    for<'a> &'a T: Into<ChatMessage>,
+  {
+    let chat_template = self
+      .chat_template
+      .clone() // TODO: do not clone
+      .and_then(|t| match t {
+        ChatTemplateVersions::Single(template) => Some(template),
+        ChatTemplateVersions::Multiple(templates) => templates
+          .into_iter()
+          .find(|t| t.name == "default")
+          .map(|t| t.template),
+      })
+      .ok_or(anyhow!("chat_template not found in tokenizer_config.json"))?
+      .replace(".strip()", " | trim")
+      .replace(".title()", " | title");
+    let mut env = Box::new(Environment::new());
+    let template_str = chat_template.into_boxed_str();
+    eprintln!("{template_str}");
+    env.add_function("raise_exception", raise_exception);
+    let template = Box::leak(env).template_from_str(Box::leak(template_str))?;
+    let messages: Vec<ChatMessage> = messages.iter().map(Into::into).collect();
+
+    let inputs = ChatTemplateInputs {
+      messages,
+      bos_token: self.bos_token.clone(),
+      eos_token: self.eos_token.clone(),
+      add_generation_prompt: true,
+    };
+    let result = template.render(inputs)?;
+    Ok(result)
   }
 }
 
@@ -72,7 +202,7 @@ where
       M: MapAccess<'de>,
     {
       let mut content: Option<String> = None;
-      while let Some((key, value)) = map.next_entry::<String, Value>()? {
+      while let Some((key, value)) = map.next_entry::<String, serde_json::Value>()? {
         if key == "content" {
           content = value.as_str().map(|str| str.to_string());
         }
@@ -88,6 +218,8 @@ where
 mod test {
   use super::*;
   use crate::test_utils::{config_dirs, ConfigDirs};
+  use anyhow::anyhow;
+  use anyhow_trace::anyhow_trace;
   use rstest::rstest;
   use tempfile::NamedTempFile;
 
@@ -98,15 +230,75 @@ mod test {
     Ok(())
   }
 
-  #[test]
-  fn test_hf_tokenizer_from_json_str_chat_template() -> anyhow::Result<()> {
-    let chat_template =
-      HubTokenizerConfig::from_json_str(r#"{"chat_template": "llama.cpp:gemma"}"#)?;
-    let expected = HubTokenizerConfig {
-      chat_template: Some("llama.cpp:gemma".to_string()),
-      ..Default::default()
-    };
-    assert_eq!(expected, chat_template);
+  #[anyhow_trace]
+  #[rstest]
+  #[case("llama3", "meta-llama/Meta-Llama-3-8B-Instruct")]
+  #[case("llama2", "meta-llama/Llama-2-13b-chat-hf")]
+  #[case("phi3", "microsoft/Phi-3-mini-4k-instruct")]
+  #[case("llama2_legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1")]
+  #[case("gemma", "google/gemma-7b-it")]
+  // #[case("zephyr", "HuggingFaceH4/zephyr-7b-beta")]
+  #[case("deepseek", "deepseek-ai/deepseek-llm-67b-chat")]
+  #[case("command-r", "CohereForAI/c4ai-command-r-plus")]
+  #[case("openchat", "openchat/openchat-3.6-8b-20240522")]
+  fn test_hf_tokenizer_apply_chat_template(
+    #[case] format: String,
+    #[case] model: String,
+    #[values(
+      "simple",
+      "assistant",
+      "system",
+      "convo",
+      "unknown-role",
+      "error-user-at-even-no-system",
+      "error-user-at-even-with-system"
+    )]
+    case: String,
+  ) -> anyhow::Result<()> {
+    let filename = format!("src/data/configs/{}/tokenizer_config.json", model);
+    let content = std::fs::read_to_string(filename)?;
+    let tokenizer = HubTokenizerConfig::from_json_str(&content)?;
+
+    let inputs = std::fs::read_to_string("chat-template-compat/tests/data/inputs.yaml")?;
+    let inputs: serde_yaml::Value = serde_yaml::from_str(&inputs)?;
+    let input = inputs
+      .as_sequence()
+      .ok_or(anyhow!("should be an array of test cases"))?
+      .iter()
+      .find(|item| item["id"] == case)
+      .ok_or(anyhow!(
+        "test case with id: {case} not found for model: {model}"
+      ))?;
+    let messages: Vec<ChatMessage> = serde_yaml::from_value(input["messages"].clone())?;
+    let expected = &input[&format];
+
+    #[allow(clippy::blocks_in_conditions)]
+    if expected.is_string() {
+      let prompt = tokenizer.apply_chat_template(&messages)?;
+      let expected = expected
+        .as_str()
+        .ok_or(anyhow!(
+          "expected value for key: {format}, for case {case} to be string"
+        ))?
+        .trim_end_matches('\n')
+        .replace("\\n", "\n");
+      assert_eq!(expected, prompt);
+    } else if expected["exception"]
+      .as_bool()
+      .ok_or(anyhow!("exception should be bool"))?
+    {
+      let message = expected["message"]
+        .as_str()
+        .ok_or(anyhow!("error message should be str"))?;
+      let prompt = tokenizer.apply_chat_template(&messages);
+      assert!(prompt.is_err());
+      assert!(prompt
+        .unwrap_err()
+        .to_string()
+        .starts_with(&format!("syntax error: {message} (in <string>:")));
+    } else {
+      unreachable!("expected should be either string, or exception")
+    }
     Ok(())
   }
 

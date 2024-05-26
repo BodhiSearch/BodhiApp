@@ -1,5 +1,5 @@
 use super::{router_state::RouterState, routes::ApiError};
-use crate::{chat_template::ChatTemplate, hf::find_model, hf_tokenizer::HubTokenizerConfig};
+use crate::{hf::find_model, hf_tokenizer::HubTokenizerConfig};
 use anyhow::Context;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
 use axum::{
@@ -58,7 +58,7 @@ pub(crate) async fn chat_completions_handler(
   State(state): State<RouterState>,
   Json(request): Json<CreateChatCompletionRequest>,
 ) -> Response<Body> {
-  let input = serde_json::to_value(&request)
+  let mut input = serde_json::to_value(&request)
     .context("converting request to string to pass to bodhi_server")
     .unwrap();
 
@@ -66,21 +66,15 @@ pub(crate) async fn chat_completions_handler(
   let config = HubTokenizerConfig::for_repo(&model.repo)
     .ok()
     .unwrap_or_default();
-  let chat_template = ChatTemplate::new(config).unwrap();
-  let (chat_template, input) = chat_template.apply(input).unwrap();
+  let prompt = config.apply_chat_template(&request.messages).unwrap();
+  input["prompt"] = Value::String(prompt);
   if request.stream.unwrap_or(false) {
-    return chat_completions_stream_handler(state, input, chat_template).await;
+    return chat_completions_stream_handler(state, input, String::from("")).await;
   }
   let input = serde_json::to_string(&input).unwrap();
   let userdata = String::with_capacity(2048);
   state
-    .completions(
-      &request.model,
-      &input,
-      &chat_template,
-      Some(server_callback),
-      &userdata,
-    )
+    .completions(&request.model, &input, "", Some(server_callback), &userdata)
     .await
     .unwrap(); // todo
   serde_json::from_str::<CreateChatCompletionResponse>(&userdata)

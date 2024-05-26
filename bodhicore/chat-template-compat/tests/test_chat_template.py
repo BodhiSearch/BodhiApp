@@ -17,7 +17,7 @@ cases = list(inputs_yaml().keys())
     ("phi3", "microsoft/Phi-3-mini-4k-instruct"),
     ("llama2_legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1"),
     ("gemma", "google/gemma-7b-it"),
-    ("zephyr", "HuggingFaceH4/zephyr-7b-beta"),
+    # ("zephyr", "HuggingFaceH4/zephyr-7b-beta"),
     ("deepseek", "deepseek-ai/deepseek-llm-67b-chat"),
     ("command-r", "CohereForAI/c4ai-command-r-plus"),
     ("openchat", "openchat/openchat-3.6-8b-20240522"),

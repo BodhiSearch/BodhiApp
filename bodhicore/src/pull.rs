@@ -74,10 +74,10 @@ impl Pull {
       model.repo.as_str(),
       model.base_model,
     )?;
-    let config_path = configs_dir(&model.repo)?.join("default.yaml");
-    tracing::debug!(?config_path, "saving config to file");
-    let config_file = std::fs::File::create(config_path)?;
-    serde_yaml::to_writer(config_file, &tokenizer_config)?;
+    // let config_path = configs_dir(&model.repo)?.join("default.yaml");
+    // tracing::debug!(?config_path, "saving config to file");
+    // let config_file = std::fs::File::create(config_path)?;
+    // serde_yaml::to_writer(config_file, &tokenizer_config)?;
     Ok(())
   }
 }

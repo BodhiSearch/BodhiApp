@@ -1,0 +1,669 @@
+openapi: 3.0.0
+info:
+  contact:
+    name: OpenAI Support
+    url: https://help.openai.com/
+  description:
+    The OpenAI REST API. Please see https://platform.openai.com/docs/api-reference
+    for more details.
+  license:
+    name: MIT
+    url: https://github.com/openai/openai-openapi/blob/master/LICENSE
+  termsOfService: https://openai.com/policies/terms-of-use
+  title: OpenAI API
+  version: 2.0.0
+servers:
+  - url: https://api.openai.com/v1
+tags:
+  - description: Build Assistants that can call models and use tools.
+    name: Assistants
+  - description: Learn how to turn audio into text or text into audio.
+    name: Audio
+  - description:
+      Given a list of messages comprising a conversation, the model will
+      return a response.
+    name: Chat
+  - description:
+      Given a prompt, the model will return one or more predicted completions,
+      and can also return the probabilities of alternative tokens at each position.
+    name: Completions
+  - description:
+      Get a vector representation of a given input that can be easily consumed
+      by machine learning models and algorithms.
+    name: Embeddings
+  - description:
+      Manage fine-tuning jobs to tailor a model to your specific training
+      data.
+    name: Fine-tuning
+  - description: Create large batches of API requests to run asynchronously.
+    name: Batch
+  - description:
+      Files are used to upload documents that can be used with features like
+      Assistants and Fine-tuning.
+    name: Files
+  - description:
+      Given a prompt and/or an input image, the model will generate a new
+      image.
+    name: Images
+  - description: List and describe the various models available in the API.
+    name: Models
+  - description:
+      Given a input text, outputs if the model classifies it as potentially
+      harmful.
+    name: Moderations
+paths:
+  /chat/completions:
+    post:
+      operationId: createChatCompletion
+      tags:
+        - Chat
+      summary: Creates a model response for the given chat conversation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateChatCompletionRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateChatCompletionResponse"
+      x-oaiMeta:
+        name: Create chat completion
+        group: chat
+        returns:
+          "Returns a [chat completion](/docs/api-reference/chat/object) object,
+          or a streamed sequence of [chat completion chunk](/docs/api-reference/chat/streaming)
+          objects if the request is streamed.
+
+          "
+        path: create
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: false
+        param:
+          type: string
+          nullable: true
+        type:
+          type: string
+          nullable: false
+      required:
+        - type
+        - message
+        - param
+        - code
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          $ref: "#/components/schemas/Error"
+      required:
+        - error
+    CreateChatCompletionRequest:
+      type: object
+      properties:
+        messages:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ChatCompletionRequestMessage"
+        model:
+          example: gpt-4-turbo
+          anyOf:
+            - type: string
+            - type: string
+              enum:
+                - gpt-4o
+                - gpt-4o-2024-05-13
+                - gpt-4-turbo
+                - gpt-4-turbo-2024-04-09
+                - gpt-4-0125-preview
+                - gpt-4-turbo-preview
+                - gpt-4-1106-preview
+                - gpt-4-vision-preview
+                - gpt-4
+                - gpt-4-0314
+                - gpt-4-0613
+                - gpt-4-32k
+                - gpt-4-32k-0314
+                - gpt-4-32k-0613
+                - gpt-3.5-turbo
+                - gpt-3.5-turbo-16k
+                - gpt-3.5-turbo-0301
+                - gpt-3.5-turbo-0613
+                - gpt-3.5-turbo-1106
+                - gpt-3.5-turbo-0125
+                - gpt-3.5-turbo-16k-0613
+          x-oaiTypeLabel: string
+        frequency_penalty:
+          type: number
+          default: 0
+          minimum: -2
+          maximum: 2
+          nullable: true
+        logit_bias:
+          type: object
+          x-oaiTypeLabel: map
+          default: null
+          nullable: true
+          additionalProperties:
+            type: integer
+        logprobs:
+          type: boolean
+          default: false
+          nullable: true
+        top_logprobs:
+          type: integer
+          minimum: 0
+          maximum: 20
+          nullable: true
+        max_tokens:
+          type: integer
+          nullable: true
+        n:
+          type: integer
+          minimum: 1
+          maximum: 128
+          default: 1
+          example: 1
+          nullable: true
+        presence_penalty:
+          type: number
+          default: 0
+          minimum: -2
+          maximum: 2
+          nullable: true
+        response_format:
+          type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - text
+                - json_object
+              example: json_object
+              default: text
+        seed:
+          type: integer
+          minimum: -9223372036854775808
+          maximum: 9223372036854775807
+          nullable: true
+          x-oaiMeta:
+            beta: true
+        stop:
+          default: null
+          oneOf:
+            - type: string
+              nullable: true
+            - type: array
+              minItems: 1
+              maxItems: 4
+              items:
+                type: string
+        stream:
+          type: boolean
+          nullable: true
+          default: false
+        stream_options:
+          $ref: "#/components/schemas/ChatCompletionStreamOptions"
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+          default: 1
+          example: 1
+          nullable: true
+        top_p:
+          type: number
+          minimum: 0
+          maximum: 1
+          default: 1
+          example: 1
+          nullable: true
+        tools:
+          type: array
+          items:
+            $ref: "#/components/schemas/ChatCompletionTool"
+        tool_choice:
+          $ref: "#/components/schemas/ChatCompletionToolChoiceOption"
+        user:
+          type: string
+          example: user-1234
+        function_call:
+          deprecated: true
+          oneOf:
+            - type: string
+              enum:
+                - none
+                - auto
+            - $ref: "#/components/schemas/ChatCompletionFunctionCallOption"
+          x-oaiExpandable: true
+        functions:
+          deprecated: true
+          type: array
+          minItems: 1
+          maxItems: 128
+          items:
+            $ref: "#/components/schemas/ChatCompletionFunctions"
+      required:
+        - model
+        - messages
+    ChatCompletionRequestMessage:
+      oneOf:
+        - $ref: "#/components/schemas/ChatCompletionRequestSystemMessage"
+        - $ref: "#/components/schemas/ChatCompletionRequestUserMessage"
+        - $ref: "#/components/schemas/ChatCompletionRequestAssistantMessage"
+        - $ref: "#/components/schemas/ChatCompletionRequestToolMessage"
+        - $ref: "#/components/schemas/ChatCompletionRequestFunctionMessage"
+      x-oaiExpandable: true
+    ChatCompletionRequestSystemMessage:
+      type: object
+      title: System message
+      properties:
+        content:
+          type: string
+        role:
+          type: string
+          enum:
+            - system
+        name:
+          type: string
+      required:
+        - content
+        - role
+    ChatCompletionRequestUserMessage:
+      type: object
+      title: User message
+      properties:
+        content:
+          oneOf:
+            - type: string
+              title: Text content
+            - type: array
+              title: Array of content parts
+              items:
+                $ref: "#/components/schemas/ChatCompletionRequestMessageContentPart"
+              minItems: 1
+          x-oaiExpandable: true
+        role:
+          type: string
+          enum:
+            - user
+        name:
+          type: string
+      required:
+        - content
+        - role
+    ChatCompletionRequestMessageContentPart:
+      oneOf:
+        - $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartText"
+        - $ref: "#/components/schemas/ChatCompletionRequestMessageContentPartImage"
+      x-oaiExpandable: true
+    ChatCompletionRequestMessageContentPartText:
+      type: object
+      title: Text content part
+      properties:
+        type:
+          type: string
+          enum:
+            - text
+        text:
+          type: string
+      required:
+        - type
+        - text
+    ChatCompletionRequestMessageContentPartImage:
+      type: object
+      title: Image content part
+      properties:
+        type:
+          type: string
+          enum:
+            - image_url
+        image_url:
+          type: object
+          properties:
+            url:
+              type: string
+              format: uri
+            detail:
+              type: string
+              enum:
+                - auto
+                - low
+                - high
+              default: auto
+          required:
+            - url
+      required:
+        - type
+        - image_url
+    ChatCompletionRequestAssistantMessage:
+      type: object
+      title: Assistant message
+      properties:
+        content:
+          nullable: true
+          type: string
+        role:
+          type: string
+          enum:
+            - assistant
+        name:
+          type: string
+        tool_calls:
+          $ref: "#/components/schemas/ChatCompletionMessageToolCalls"
+        function_call:
+          type: object
+          deprecated: true
+          properties:
+            arguments:
+              type: string
+            name:
+              type: string
+          required:
+            - arguments
+            - name
+      required:
+        - role
+    ChatCompletionMessageToolCalls:
+      type: array
+      items:
+        $ref: "#/components/schemas/ChatCompletionMessageToolCall"
+    ChatCompletionMessageToolCall:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - function
+        function:
+          type: object
+          properties:
+            name:
+              type: string
+            arguments:
+              type: string
+          required:
+            - name
+            - arguments
+      required:
+        - id
+        - type
+        - function
+    ChatCompletionRequestToolMessage:
+      type: object
+      title: Tool message
+      properties:
+        role:
+          type: string
+          enum:
+            - tool
+        content:
+          type: string
+        tool_call_id:
+          type: string
+      required:
+        - role
+        - content
+        - tool_call_id
+    ChatCompletionRequestFunctionMessage:
+      type: object
+      title: Function message
+      deprecated: true
+      properties:
+        role:
+          type: string
+          enum:
+            - function
+        content:
+          nullable: true
+          type: string
+        name:
+          type: string
+      required:
+        - role
+        - content
+        - name
+    ChatCompletionStreamOptions:
+      type: object
+      nullable: true
+      default: null
+      properties:
+        include_usage:
+          type: boolean
+    ChatCompletionTool:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - function
+        function:
+          $ref: "#/components/schemas/FunctionObject"
+      required:
+        - type
+        - function
+    FunctionObject:
+      type: object
+      properties:
+        name:
+          type: string
+        parameters:
+          $ref: "#/components/schemas/FunctionParameters"
+      required:
+        - name
+    FunctionParameters:
+      type: object
+      additionalProperties: true
+    ChatCompletionToolChoiceOption:
+      oneOf:
+        - type: string
+          enum:
+            - none
+            - auto
+            - required
+        - $ref: "#/components/schemas/ChatCompletionNamedToolChoice"
+      x-oaiExpandable: true
+    ChatCompletionNamedToolChoice:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - function
+        function:
+          type: object
+          properties:
+            name:
+              type: string
+          required:
+            - name
+      required:
+        - type
+        - function
+    ChatCompletionFunctionCallOption:
+      type: object
+      properties:
+        name:
+          type: string
+      required:
+        - name
+    ChatCompletionFunctions:
+      type: object
+      deprecated: true
+      properties:
+        name:
+          type: string
+        parameters:
+          $ref: "#/components/schemas/FunctionParameters"
+      required:
+        - name
+    CreateChatCompletionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        choices:
+          type: array
+          items:
+            type: object
+            required:
+              - finish_reason
+              - index
+              - message
+              - logprobs
+            properties:
+              finish_reason:
+                type: string
+                enum:
+                  - stop
+                  - length
+                  - tool_calls
+                  - content_filter
+                  - function_call
+              index:
+                type: integer
+              message:
+                $ref: "#/components/schemas/ChatCompletionResponseMessage"
+              logprobs:
+                type: object
+                nullable: true
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChatCompletionTokenLogprob"
+                    nullable: true
+                required:
+                  - content
+        created:
+          type: integer
+        model:
+          type: string
+        system_fingerprint:
+          type: string
+        object:
+          type: string
+          enum:
+            - chat.completion
+        usage:
+          $ref: "#/components/schemas/CompletionUsage"
+      required:
+        - choices
+        - created
+        - id
+        - model
+        - object
+      x-oaiMeta:
+        name: The chat completion object
+        group: chat
+        example: |
+          {
+            "id": "chatcmpl-123",
+            "object": "chat.completion",
+            "created": 1677652288,
+            "model": "gpt-3.5-turbo-0125",
+            "system_fingerprint": "fp_44709d6fcb",
+            "choices": [{
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "\n\nHello there, how may I assist you today?",
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }],
+            "usage": {
+              "prompt_tokens": 9,
+              "completion_tokens": 12,
+              "total_tokens": 21
+            }
+          }
+    ChatCompletionResponseMessage:
+      type: object
+      properties:
+        content:
+          type: string
+          nullable: true
+        tool_calls:
+          $ref: "#/components/schemas/ChatCompletionMessageToolCalls"
+        role:
+          type: string
+          enum:
+            - assistant
+        function_call:
+          type: object
+          deprecated: true
+          properties:
+            arguments:
+              type: string
+            name:
+              type: string
+          required:
+            - name
+            - arguments
+      required:
+        - role
+        - content
+    ChatCompletionTokenLogprob:
+      type: object
+      properties:
+        token:
+          type: string
+        logprob:
+          type: number
+        bytes:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        top_logprobs:
+          type: array
+          items:
+            type: object
+            properties:
+              token:
+                type: string
+              logprob:
+                type: number
+              bytes:
+                type: array
+                items:
+                  type: integer
+                nullable: true
+            required:
+              - token
+              - logprob
+              - bytes
+      required:
+        - token
+        - logprob
+        - bytes
+        - top_logprobs
+    CompletionUsage:
+      type: object
+      properties:
+        completion_tokens:
+          type: integer
+        prompt_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+      required:
+        - prompt_tokens
+        - completion_tokens
+        - total_tokens
