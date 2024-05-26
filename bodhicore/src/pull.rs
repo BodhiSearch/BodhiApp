@@ -1,6 +1,7 @@
 use crate::{
+  cli,
   hf::{download_async, download_file, download_sync, download_url, model_file},
-  hf_tokenizer::{HubTokenizerConfig, TOKENIZER_CONFIG_FILENAME},
+  hf_tokenizer::{ChatTemplate, HubTokenizerConfig, TOKENIZER_CONFIG_FILENAME},
   home::configs_dir,
   list::find_remote_model,
 };
@@ -14,7 +15,8 @@ pub struct Pull {
   pub id: Option<String>,
   pub repo: Option<String>,
   pub file: Option<String>,
-  pub config: Option<String>,
+  pub tokenizer_config: Option<String>,
+  pub chat_template: Option<cli::ChatTemplate>,
   pub force: bool,
 }
 
@@ -23,14 +25,16 @@ impl Pull {
     id: Option<String>,
     repo: Option<String>,
     file: Option<String>,
-    config: Option<String>,
+    tokenizer_config: Option<String>,
+    chat_template: Option<cli::ChatTemplate>,
     force: bool,
   ) -> Self {
     Pull {
       id,
       repo,
       file,
-      config,
+      tokenizer_config,
+      chat_template,
       force,
     }
   }
@@ -135,20 +139,7 @@ pub(crate) fn build_config(
       None => bail!("base_model not found to download config file"),
     }
   } else {
-    // config from local path or inline json
-    let tokenizer_file = PathBuf::from(&tokenizer_config);
-    let file_path = if tokenizer_file.exists() {
-      // relative path
-      tokenizer_file
-    } else {
-      // inline json
-      tracing::info!(tokenizer_config, "parsing tokenizer_config as inline json");
-      let file_path = tempdir.path().join("tokenizer_config.json");
-      fs::write(&file_path, tokenizer_config)?;
-      file_path
-    };
-    let hub_tokenizer_config = HubTokenizerConfig::from_json_file(file_path)?;
-    Ok(hub_tokenizer_config)
+    unimplemented!()
   }
 }
 
@@ -207,36 +198,6 @@ mod test {
     assert_eq!("<s>", config.bos_token.unwrap());
     assert_eq!("</s>", config.eos_token.unwrap());
     assert!(!config.chat_template.unwrap().is_empty());
-    Ok(())
-  }
-
-  #[rstest]
-  #[serial]
-  fn test_download_config_using_local_file(_setup: ()) -> anyhow::Result<()> {
-    let tmpdir = tempfile::tempdir()?;
-    let tmpfile = tmpdir.path().to_path_buf().join("tokenizer_config.json");
-    let contents = r#"{"bos_token": "<s>", "eos_token": "</s>"}"#;
-    fs::write(&tmpfile, contents)?;
-
-    let config = build_config(
-      tmpfile.to_string_lossy().into_owned(),
-      "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
-      None,
-    )?;
-    assert_eq!("<s>", config.bos_token.unwrap());
-    assert_eq!("</s>", config.eos_token.unwrap());
-    assert!(config.chat_template.is_none());
-    Ok(())
-  }
-
-  #[rstest]
-  #[serial]
-  fn test_download_config_using_inline_json(_setup: ()) -> anyhow::Result<()> {
-    let contents = r#"{"bos_token": "<s>", "eos_token": "</s>"}"#.to_string();
-    let config = build_config(contents, "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF", None)?;
-    assert_eq!("<s>", config.bos_token.unwrap());
-    assert_eq!("</s>", config.eos_token.unwrap());
-    assert!(config.chat_template.is_none());
     Ok(())
   }
 }

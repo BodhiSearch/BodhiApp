@@ -1,5 +1,6 @@
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use clap::{ArgGroup, Parser, Subcommand};
+use serde::Serialize;
 
 #[derive(Debug, PartialEq, Parser)]
 #[command(version)]
@@ -41,15 +42,19 @@ pub enum Command {
 
     #[clap(
       long,
-      short = 'c',
+      short = 't',
       requires = "repo",
-      help = r#"Configure the downlaoded model using a remote, local or inline tokenizer_config.json
-    - for remote - `--config https://huggingface.co/meta-llama/Meta-Llama-3-70B-Instruct/blob/main/tokenizer_config.json`
-    - for local - `--config '/Users/foobar/Downloads/tokenizer_config.json'` // does not resolve env_vars like $HOME, `~`
-    - for inline - `--config '{"chat_template": "{% for message in messages %}<|{{ message[\'role\'] }}|> {{ message[\'content\'] }}\n{% endfor %}"}'`
+      group = "template",
+      help = r#"Configure the chat template using remote tokenizer_config.json
+  Example: `--tokenizer_config meta-llama/Meta-Llama-3-70B-Instruct`
     "#
     )]
-    config: Option<String>,
+    tokenizer_config: Option<String>,
+
+    /// Chat template to use for converting chat messages to LLM prompt.
+    /// Not required if <ID> is provided.
+    #[clap(long, short = 'c', requires = "repo", group = "template")]
+    chat_template: Option<ChatTemplate>,
 
     /// If the file already exists in $HF_HOME, force download it again
     #[clap(long = "force")]
@@ -82,6 +87,18 @@ pub enum Command {
     #[clap(long, short = 'f')]
     file: Option<String>,
   },
+}
+
+#[derive(clap::ValueEnum, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ChatTemplate {
+  Llama3,
+  Llama2,
+  Phi3,
+  Gemma,
+  Deepseek,
+  CommandR,
+  Openchat,
 }
 
 #[cfg(test)]
@@ -237,16 +254,31 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None, None, false)]
+  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None, None, None, false)]
   #[case(vec!["bodhi",
       "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
       "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-      "-c", "meta-llama/Meta-Llama-3-8B-Instruct"],
+      "-t", "meta-llama/Meta-Llama-3-8B-Instruct"],
       None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
         Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
         Some(String::from("meta-llama/Meta-Llama-3-8B-Instruct")),
+        None,
+        false
+  )]
+  #[case(vec![
+    "bodhi",
+        "pull",
+        "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+        "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
+        "-c", "llama3",
+  ],
+      None,
+    Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
+        Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
+        None,
+        Some(ChatTemplate::Llama3),
         false
   )]
   #[case(vec![
@@ -259,6 +291,7 @@ For more information, try '--help'.
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
         Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
         None,
+        None,
         false
   )]
   fn test_cli_pull_valid(
@@ -266,7 +299,8 @@ For more information, try '--help'.
     #[case] id: Option<String>,
     #[case] repo: Option<String>,
     #[case] file: Option<String>,
-    #[case] config: Option<String>,
+    #[case] tokenizer_config: Option<String>,
+    #[case] chat_template: Option<ChatTemplate>,
     #[case] force: bool,
   ) -> anyhow::Result<()> {
     let actual = Cli::try_parse_from(args)?.command;
@@ -274,10 +308,53 @@ For more information, try '--help'.
       id,
       repo,
       file,
-      config,
+      tokenizer_config,
+      chat_template,
       force,
     };
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(
+    vec!["bodhi", "pull", "llama3:instruct", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
+r#"error: the argument '[ID]' cannot be used with '--repo <REPO>'
+
+Usage: bodhi pull --file <FILE> <ID|--repo <REPO>>
+
+For more information, try '--help'.
+"#)]
+  #[case(
+    vec![
+      "bodhi", "pull",
+      "-r", "meta-llama/Meta-Llama-3-8B",
+      "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
+      "-t", "meta-llama/Meta-Llama-3-8B-Instruct",
+      "-c", "llama3"
+    ],
+r#"error: the argument '--tokenizer-config <TOKENIZER_CONFIG>' cannot be used with '--chat-template <CHAT_TEMPLATE>'
+
+Usage: bodhi pull --file <FILE> --tokenizer-config <TOKENIZER_CONFIG> <ID|--repo <REPO>>
+
+For more information, try '--help'.
+"#)]
+  #[case(
+    vec![
+      "bodhi", "pull",
+    "-r", "meta-llama/Meta-Llama-3-8B",
+    "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
+    "-c", "invalid"
+    ],
+r#"error: invalid value 'invalid' for '--chat-template <CHAT_TEMPLATE>'
+  [possible values: llama3, llama2, phi3, gemma, deepseek, command-r, openchat]
+
+For more information, try '--help'.
+"#)]
+  fn test_cli_pull_invalid(#[case] args: Vec<&str>, #[case] err_msg: &str) -> anyhow::Result<()> {
+    let cli = Cli::try_parse_from(args);
+    assert!(cli.is_err());
+    assert_eq!(err_msg, cli.unwrap_err().to_string());
     Ok(())
   }
 }
