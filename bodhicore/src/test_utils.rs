@@ -177,3 +177,14 @@ pub unsafe extern "C" fn test_callback_stream(
   tokio::spawn(async move { sender.send(input_str).await.unwrap() });
   size
 }
+
+#[fixture]
+pub(crate) fn hf_test_token_allowed() -> Option<String> {
+  dotenv::from_filename(".env.test").ok().unwrap();
+  Some(std::env::var("HF_TEST_TOKEN_ALLOWED").unwrap())
+}
+
+pub(crate) fn hf_test_token_public() -> Option<String> {
+  dotenv::from_filename(".env.test").ok().unwrap();
+  Some(std::env::var("HF_TEST_TOKEN_PUBLIC").unwrap())
+}

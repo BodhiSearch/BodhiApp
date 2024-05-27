@@ -4,7 +4,7 @@ use regex::Regex;
 use serde::Serialize;
 use std::{
   borrow::Borrow,
-  fs,
+  fmt, fs,
   path::{Path, PathBuf},
   time::SystemTime,
 };

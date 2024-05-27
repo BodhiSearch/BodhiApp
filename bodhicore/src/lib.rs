@@ -3,6 +3,7 @@ pub mod cli;
 mod hf;
 mod hf_tokenizer;
 pub mod home;
+mod hub_service;
 mod interactive;
 mod list;
 mod pull;

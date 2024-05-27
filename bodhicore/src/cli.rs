@@ -52,7 +52,7 @@ pub enum Command {
     tokenizer_config: Option<String>,
 
     /// Chat template to use for converting chat messages to LLM prompt.
-    /// Not required if <ID> is provided.
+    /// Ignored/not required if pulling model using <ID>.
     #[clap(long, short = 'c', requires = "repo", group = "template")]
     chat_template: Option<ChatTemplate>,
 

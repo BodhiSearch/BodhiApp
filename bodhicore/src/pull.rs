@@ -64,11 +64,11 @@ impl Pull {
   fn download_with_id(self) -> anyhow::Result<()> {
     let Pull { id, force, .. } = self;
     let Some(id) = id else {
-      bail!("model id is required");
+      bail!("unreachable: id should be present");
     };
     let model = find_remote_model(&id).ok_or_else(|| {
       anyhow!(
-        "model with id '{}' not found in pre-configured remote models.\nCheck pre-configured remote models using `bodhi list -r`.",
+        "id '{}' not found in pre-configured models.\nCheck pre-configured models using `bodhi list -r`.",
         id
       )
     })?;
@@ -149,7 +149,7 @@ mod test {
   use crate::hf::{HF_API_PROGRESS, HF_TOKEN};
   use rstest::{fixture, rstest};
   use serial_test::serial;
-  use std::{env, fs};
+  use std::env;
 
   #[fixture]
   fn setup() {
@@ -159,37 +159,7 @@ mod test {
 
   #[rstest]
   #[serial]
-  fn test_download_config_remote_using_hf_url(_setup: ()) -> anyhow::Result<()> {
-    let config = build_config(
-      "https://huggingface.co/HuggingFaceH4/zephyr-7b-beta/raw/main/tokenizer_config.json"
-        .to_string(),
-      "HuggingFaceH4/zephyr-7b-beta",
-      None,
-    )?;
-    assert_eq!("<s>", config.bos_token.unwrap());
-    assert_eq!("</s>", config.eos_token.unwrap());
-    assert!(!config.chat_template.unwrap().is_empty());
-    Ok(())
-  }
-
-  #[rstest]
-  #[serial]
-  fn test_download_config_remote_using_general_url(_setup: ()) -> anyhow::Result<()> {
-    let config = build_config(
-      "https://gist.githubusercontent.com/anagri/5c37dc446cd43a5c751521e117ac4e45/raw/fd459e780f34cf4c6fa07089202919b64aebb658/tokenizer_config.json"
-        .to_string(),
-      "HuggingFaceH4/zephyr-7b-beta",
-      None,
-    )?;
-    assert_eq!("<s>", config.bos_token.unwrap());
-    assert_eq!("</s>", config.eos_token.unwrap());
-    assert!(!config.chat_template.unwrap().is_empty());
-    Ok(())
-  }
-
-  #[rstest]
-  #[serial]
-  fn test_download_config_using_base_model(_setup: ()) -> anyhow::Result<()> {
+  fn test_download_config_using_repo(_setup: ()) -> anyhow::Result<()> {
     let config = build_config(
       "base_model".to_string(),
       "TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
