@@ -4,7 +4,6 @@ use prettytable::{
   format::{self},
   row, Cell, Row, Table,
 };
-use regex::Regex;
 use serde::Deserialize;
 
 pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
@@ -12,64 +11,23 @@ pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
 #[allow(clippy::too_many_arguments)]
 #[derive(Debug, Deserialize, Default, PartialEq, Clone, new)]
 pub(super) struct RemoteModel {
-  pub(super) display_name: String,
-  pub(super) family: Option<String>,
+  pub(super) alias: String,
+  pub(super) family: String,
   pub(super) repo: String,
-  pub(super) base_model: Option<String>,
-  pub(super) tokenizer_config: String,
+  pub(super) filename: String,
   pub(super) features: Vec<String>,
-  pub(super) files: Vec<String>,
-  #[serde(rename = "default")]
-  pub(super) default_variant: String,
-}
-
-impl RemoteModel {
-  fn variants(&self) -> Vec<String> {
-    let re = Regex::new(r".*\.(?P<variant>[^\.]*)\.gguf").unwrap();
-    self
-      .files
-      .iter()
-      .map(|f| match re.captures(f) {
-        Some(captures) => captures["variant"].to_string(),
-        None => f.to_string(),
-      })
-      .collect::<Vec<String>>()
-  }
-
-  fn default_variant(&self) -> String {
-    let re = Regex::new(r".*\.(?P<variant>[^\.]*)\.gguf").unwrap();
-    let Some(cap) = re.captures(&self.default_variant) else {
-      return self.default_variant.to_string();
-    };
-    cap["variant"].to_string()
-  }
+  pub(super) chat_template: String,
 }
 
 impl From<RemoteModel> for Row {
   fn from(model: RemoteModel) -> Self {
-    let variants = model
-      .variants()
-      .into_iter()
-      .fold(vec![String::from("")], |mut fold, item| {
-        if fold.last().unwrap().len() > 24 {
-          fold.push(String::new());
-        }
-        let last = fold.last_mut().unwrap();
-        if !last.is_empty() {
-          last.push_str(", ");
-        }
-        last.push_str(item.as_str());
-        fold
-      })
-      .join(",\n");
-
     Row::from(vec![
-      &model.display_name,
+      &model.alias,
+      &model.family,
       &model.repo,
-      model.family.as_deref().unwrap_or(""),
+      &model.filename,
       &model.features.join(","),
-      &variants,
-      &model.default_variant(),
+      &model.chat_template,
     ])
   }
 }
@@ -118,25 +76,36 @@ pub(crate) fn find_remote_model(id: &str) -> Option<RemoteModel> {
 }
 
 fn _find_remote_model(models: Vec<RemoteModel>, id: &str) -> Option<RemoteModel> {
-  models.into_iter().find(|model| model.display_name.eq(id))
+  models.into_iter().find(|model| model.alias.eq(id))
 }
 
-pub struct List {
-  remote: bool,
+pub enum List {
+  Local,
+  Remote,
+  Models,
 }
 
 impl List {
-  pub fn new(remote: bool) -> Self {
-    Self { remote }
+  pub fn new(remote: bool, models: bool) -> Self {
+    match (remote, models) {
+      (true, false) => List::Remote,
+      (false, true) => List::Models,
+      (false, false) => List::Local,
+      (true, true) => unreachable!("both remote and models cannot be true"),
+    }
   }
 
   pub fn execute(self) -> anyhow::Result<()> {
-    if self.remote {
-      self.list_remote_models()?;
-    } else {
-      self.list_local_models()?;
+    match self {
+      List::Local => self.list_local_model_alias()?,
+      List::Remote => self.list_remote_models()?,
+      List::Models => self.list_local_models()?,
     }
     Ok(())
+  }
+
+  fn list_local_model_alias(self) -> anyhow::Result<()> {
+    todo!()
   }
 
   fn list_local_models(self) -> anyhow::Result<()> {
@@ -155,7 +124,12 @@ impl List {
     let models: Vec<RemoteModel> = serde_yaml::from_str(MODELS_YAML)?;
     let mut table = Table::new();
     table.add_row(row![
-      "ID", "REPO ID", "FAMILY", "FEATURES", "VARIANTS", "DEFAULT"
+      "ALIAS",
+      "FAMILY",
+      "REPO",
+      "FILENAME",
+      "FEATURES",
+      "CHAT TEMPLATE"
     ]);
     for row in models.into_iter().map(Row::from) {
       table.add_row(row);
@@ -163,7 +137,7 @@ impl List {
     table.set_format(format::FormatBuilder::default().padding(2, 2).build());
     table.printstd();
     println!();
-    println!("To download the model, run `bodhi pull <ID>1");
+    println!("To download and configure the model alias, run `bodhi pull <ALIAS>`");
     Ok(())
   }
 }
@@ -171,39 +145,23 @@ impl List {
 #[cfg(test)]
 mod test {
   use super::RemoteModel;
-  use crate::{hf::LocalModel, list::_find_remote_model, test_utils::TEST_MODELS_YAML};
+  use crate::{hf::LocalModel, list::_find_remote_model, test_utils::TEST_MODELS_YAML, List};
   use chrono::Utc;
   use prettytable::{Cell, Row};
 
   #[test]
-  fn test_list_remote_model_variants_default() -> anyhow::Result<()> {
-    let model = RemoteModel {
-      files: vec![
-        "Meta-Llama-3-8B-Instruct.Q4_0.gguf".to_string(),
-        "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      ],
-      default_variant: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      ..Default::default()
-    };
-    let expected = vec!["Q4_0".to_string(), "Q8_0".to_string()];
-    assert_eq!(expected, model.variants());
-    assert_eq!("Q8_0", model.default_variant());
-    Ok(())
-  }
-
-  #[test]
   fn test_list_find_remote_model_by_id() -> anyhow::Result<()> {
     let llama3_instruct = RemoteModel {
-      display_name: "meta-llama3-8b-instruct".to_string(),
+      alias: "llama3:instruct".to_string(),
       ..Default::default()
     };
-    let llama3 = RemoteModel {
-      display_name: "meta-llama3-8b".to_string(),
+    let llama2_instruct = RemoteModel {
+      alias: "llama2:instruct".to_string(),
       ..Default::default()
     };
-    let models = vec![llama3_instruct, llama3.clone()];
-    let model = _find_remote_model(models, "meta-llama3-8b").unwrap();
-    assert_eq!(llama3, model);
+    let models = vec![llama3_instruct, llama2_instruct.clone()];
+    let model = _find_remote_model(models, "llama2:instruct").unwrap();
+    assert_eq!(llama2_instruct, model);
     Ok(())
   }
 
@@ -215,12 +173,12 @@ mod test {
       .to_owned();
     let row: Row = model.into();
     let expected = Row::from(vec![
-      Cell::new("meta-llama3-8b-instruct"),
-      Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
+      Cell::new("llama3:instruct"),
       Cell::new("llama3"),
+      Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
+      Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
       Cell::new("chat"),
-      Cell::new("Q2_K, Q4_0, Q8_0"),
-      Cell::new("Q8_0"),
+      Cell::new("llama3"),
     ]);
     assert_eq!(expected, row);
     Ok(())
@@ -246,6 +204,12 @@ mod test {
       Cell::new("3days 1h"),
     ]);
     assert_eq!(expected, row);
+    Ok(())
+  }
+
+  #[test]
+  fn test_list_local_model_alias() -> anyhow::Result<()> {
+    List::new(false, false).execute()?;
     Ok(())
   }
 }

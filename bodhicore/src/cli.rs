@@ -23,6 +23,16 @@ pub enum Command {
     #[clap(short, default_value = DEFAULT_PORT_STR, value_parser = clap::value_parser!(u16).range(1..=65535))]
     port: u16,
   },
+  /// Default: list the model aliases configured on local system
+  #[clap(group = ArgGroup::new("variant"))]
+  List {
+    /// List pre-configured model aliases available to download and configure
+    #[clap(long, short = 'r', group = "variant")]
+    remote: bool,
+    /// List the GGUF model files from Huggingface cache folder on local system
+    #[clap(long, short = 'm', group = "variant")]
+    models: bool,
+  },
   /// Pull a gguf model from huggingface repository
   #[clap(group = ArgGroup::new("pull").required(true))]
   Pull {
@@ -60,13 +70,6 @@ pub enum Command {
     #[clap(long = "force")]
     force: bool,
   },
-  /// List all the models downloaded locally,
-  /// and pre-configured models available for download
-  List {
-    /// List pre-configured models available for download from remote
-    #[clap(long, short = 'r')]
-    remote: bool,
-  },
   /// Run the given model in interactive mode.
   /// This command also downloads the model if not downloaded already.
   #[clap(group = ArgGroup::new("run").required(true))]
@@ -94,6 +97,7 @@ pub enum Command {
 pub enum ChatTemplate {
   Llama3,
   Llama2,
+  Llama2Legacy,
   Phi3,
   Gemma,
   Deepseek,
@@ -185,12 +189,31 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "list"], false)]
-  #[case(vec!["bodhi", "list", "-r"], true)]
-  fn test_cli_list(#[case] args: Vec<&str>, #[case] remote: bool) -> anyhow::Result<()> {
+  #[case(vec!["bodhi", "list"], false, false)]
+  #[case(vec!["bodhi", "list", "-r"], true, false)]
+  #[case(vec!["bodhi", "list", "-m"], false, true)]
+  fn test_cli_list(
+    #[case] args: Vec<&str>,
+    #[case] remote: bool,
+    #[case] models: bool,
+  ) -> anyhow::Result<()> {
     let cli = Cli::try_parse_from(args)?;
-    let expected = Command::List { remote };
+    let expected = Command::List { remote, models };
     assert_eq!(expected, cli.command);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(vec!["bodhi", "list", "-r", "-m"], r#"error: the argument '--remote' cannot be used with '--models'
+
+Usage: bodhi list --remote
+
+For more information, try '--help'.
+"#)]
+  fn test_cli_list_invalid(#[case] args: Vec<&str>, #[case] err_msg: String) -> anyhow::Result<()> {
+    let cli = Cli::try_parse_from(args);
+    assert!(cli.is_err());
+    assert_eq!(err_msg, cli.unwrap_err().to_string());
     Ok(())
   }
 
@@ -347,7 +370,7 @@ For more information, try '--help'.
     "-c", "invalid"
     ],
 r#"error: invalid value 'invalid' for '--chat-template <CHAT_TEMPLATE>'
-  [possible values: llama3, llama2, phi3, gemma, deepseek, command-r, openchat]
+  [possible values: llama3, llama2, llama2-legacy, phi3, gemma, deepseek, command-r, openchat]
 
 For more information, try '--help'.
 "#)]

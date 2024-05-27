@@ -16,7 +16,7 @@
     What day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
   llama2: |
     <s>[INST] What day comes after Monday? [/INST]
-  llama2_legacy: |
+  llama2-legacy: |
     <s>[INST] What day comes after Monday? [/INST]
   phi3: |
     <s><|user|>
@@ -59,7 +59,7 @@
     And what day comes after that?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
   llama2: |
     <s>[INST] What day comes after Monday? [/INST] Tuesday </s><s>[INST] And what day comes after that? [/INST]
-  llama2_legacy: |
+  llama2-legacy: |
     <s>[INST] What day comes after Monday? [/INST]Tuesday</s>[INST] And what day comes after that? [/INST]
   phi3: |
     <s><|user|>
@@ -120,7 +120,7 @@
     <</SYS>>
 
     What day comes after Monday? [/INST]
-  llama2_legacy:
+  llama2-legacy:
     exception: true
     message: Conversation roles must alternate user/assistant/user/assistant/...
   phi3: |
@@ -175,7 +175,7 @@
     <</SYS>>
 
     What day comes after Monday? [/INST] Tuesday </s><s>[INST] And what day comes after that? [/INST]
-  llama2_legacy:
+  llama2-legacy:
     exception: true
     message: Conversation roles must alternate user/assistant/user/assistant/...
   phi3: |
@@ -225,7 +225,7 @@
     - role: unknown
       content: should fail
   llama2: *llama2_err_role_order
-  llama2_legacy: *llama2_err_role_order
+  llama2-legacy: *llama2_err_role_order
   llama3: |
     <|begin_of_text|><|start_header_id|>unknown<|end_header_id|>
 
@@ -247,7 +247,7 @@
     - role: user
       content: should not have user message at even
   llama2: *llama2_err_role_order
-  llama2_legacy: *llama2_err_role_order
+  llama2-legacy: *llama2_err_role_order
   llama3: |
     <|begin_of_text|><|start_header_id|>assistant<|end_header_id|>
 
@@ -287,7 +287,7 @@
     - role: user
       content: this is user question
   llama2: *llama2_err_role_order
-  llama2_legacy: *llama2_err_role_order
+  llama2-legacy: *llama2_err_role_order
   llama3: |
     <|begin_of_text|><|start_header_id|>system<|end_header_id|>
 

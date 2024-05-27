@@ -18,7 +18,7 @@ impl Run {
             id
           );
         };
-        (model.repo, model.default_variant)
+        (model.repo, model.filename)
       }
       Run::WithRepo { repo, file } => (repo, file),
     };

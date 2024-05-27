@@ -235,7 +235,7 @@ mod test {
   #[case("llama3", "meta-llama/Meta-Llama-3-8B-Instruct")]
   #[case("llama2", "meta-llama/Llama-2-13b-chat-hf")]
   #[case("phi3", "microsoft/Phi-3-mini-4k-instruct")]
-  #[case("llama2_legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1")]
+  #[case("llama2-legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1")]
   #[case("gemma", "google/gemma-7b-it")]
   // #[case("zephyr", "HuggingFaceH4/zephyr-7b-beta")]
   #[case("deepseek", "deepseek-ai/deepseek-llm-67b-chat")]

@@ -1,36 +1,21 @@
-- display_name: meta-llama3-8b-instruct
+- alias: llama3:instruct
   family: llama3
   repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
-  base_model: meta-llama/Meta-Llama-3-8B-Instruct
-  tokenizer_config: base_model
+  filename: Meta-Llama-3-8B-Instruct.Q8_0.gguf
   features:
     - chat
-  files:
-    - Meta-Llama-3-8B-Instruct.Q2_K.gguf
-    - Meta-Llama-3-8B-Instruct.Q4_0.gguf
-    - Meta-Llama-3-8B-Instruct.Q8_0.gguf
-  default: Meta-Llama-3-8B-Instruct.Q8_0.gguf
-- display_name: meta-llama3-8b
+  chat_template: llama3
+- alias: llama3:70b-instruct
   family: llama3
-  repo: QuantFactory/Meta-Llama-3-8B-GGUF
-  base_model: meta-llama/Meta-Llama-3-8B
-  tokenizer_config: base_model
-  features:
-    - generate
-  files:
-    - Meta-Llama-3-8B.Q2_K.gguf
-    - Meta-Llama-3-8B.Q4_0.gguf
-    - Meta-Llama-3-8B.Q8_0.gguf
-  default: Meta-Llama-3-8B.Q8_0.gguf
-- display_name: gemma-7b
-  family: gemma
-  repo: google/gemma-7b-GGUF
-  tokenizer_config: |
-   {
-    "chat_template": "llama.cpp:gemma"
-   }
+  repo: QuantFactory/Meta-Llama-3-70B-Instruct-GGUF
+  filename: Meta-Llama-3-70B-Instruct.Q4_0.gguf
   features:
     - chat
-  files:
-    - gemma-7b.gguf
-  default: gemma-7b.gguf
+  chat_template: llama3
+- alias: gemma:instruct
+  family: gemma
+  repo: google/gemma-7b-it-GGUF
+  filename: gemma-7b-it.gguf
+  features:
+    - chat
+  chat_template: gemma

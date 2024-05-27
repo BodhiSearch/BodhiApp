@@ -37,6 +37,9 @@ pub fn main_internal() -> anyhow::Result<()> {
     Command::App {} => {
       main_native()?;
     }
+    Command::List { remote, models } => {
+      List::new(remote, models).execute()?;
+    }
     Command::Serve { host, port } => {
       main_async(Serve { host, port })?;
     }
@@ -50,9 +53,6 @@ pub fn main_internal() -> anyhow::Result<()> {
     } => {
       let pull_param = Pull::new(id, repo, file, tokenizer_config, chat_template, force);
       pull_param.execute()?;
-    }
-    Command::List { remote } => {
-      List::new(remote).execute()?;
     }
     Command::Run { id, repo, file } => {
       let run = match id {
