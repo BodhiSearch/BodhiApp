@@ -1,4 +1,4 @@
-use crate::{list::RemoteModel, objs::Alias};
+use crate::{list::RemoteModel, objs::Alias, server::BODHI_HOME};
 use derive_new::new;
 use hf_hub::{api::sync::ApiError, Cache, Repo};
 #[cfg(test)]
@@ -68,16 +68,23 @@ pub trait HubService: Debug {
   fn download(&self, repo: &str, filename: &str, force: bool) -> Result<PathBuf>;
 }
 
-#[derive(Debug, Clone, new)]
+#[derive(Debug, Clone, PartialEq, new)]
 pub struct LocalDataService {
   bodhi_home: PathBuf,
 }
 
 impl Default for LocalDataService {
   fn default() -> Self {
-    Self {
-      bodhi_home: Cache::default().path().clone(),
-    }
+    let bodhi_home = match std::env::var(BODHI_HOME) {
+      Ok(home) => home.into(),
+      Err(_) => {
+        let mut home = dirs::home_dir().expect("$HOME directory cannot be found");
+        home.push(".cache");
+        home.push("bodhi");
+        home
+      }
+    };
+    Self { bodhi_home }
   }
 }
 
@@ -305,6 +312,7 @@ impl AppServiceFn for AppService {}
 mod test {
   use super::HfHubService;
   use crate::objs::Alias;
+  use crate::server::BODHI_HOME;
   use crate::service::{DataService, HubService, LocalDataService};
   use crate::test_utils::{
     bodhi_home, data_service, hf_test_token_allowed, hf_test_token_public, temp_bodhi_home,
@@ -517,6 +525,28 @@ error while serializing from file: '{models_file}'"#
     let expected = r#"directory 'configs' not found in $BODHI_HOME.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#;
     assert_eq!(expected, result.unwrap_err().to_string());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_default_from_bodhi_home() -> anyhow::Result<()> {
+    let bodhi_home = tempdir()?;
+    std::env::set_var(BODHI_HOME, bodhi_home.path());
+    let service = LocalDataService::default();
+    let expected = LocalDataService::new(bodhi_home.path().to_path_buf());
+    assert_eq!(expected, service);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_default_from_home_dir() -> anyhow::Result<()> {
+    let home_dir = tempdir()?;
+    std::env::remove_var(BODHI_HOME);
+    std::env::set_var("HOME", home_dir.path());
+    let service = LocalDataService::default();
+    let expected =
+      LocalDataService::new(home_dir.path().join(".cache").join("bodhi").to_path_buf());
+    assert_eq!(expected, service);
     Ok(())
   }
 }
