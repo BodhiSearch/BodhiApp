@@ -1,6 +1,7 @@
 pub mod bindings;
 pub mod cli;
-mod service;
+mod create;
+mod error;
 mod hf;
 mod hf_tokenizer;
 pub mod home;
@@ -11,11 +12,13 @@ mod pull;
 mod run;
 mod serve;
 pub mod server;
+mod service;
 pub use cli::Command;
-pub use service::AppService;
+pub use create::CreateCommand;
 pub use list::List;
 pub use pull::Pull;
 pub use run::Run;
 pub use serve::Serve;
+pub use service::AppService;
 #[cfg(test)]
 mod test_utils;

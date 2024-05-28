@@ -11,8 +11,6 @@ use serde::{
 };
 use std::{fmt, fs};
 
-pub(crate) static TOKENIZER_CONFIG_FILENAME: &str = "tokenizer_config.json";
-
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
   Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))
 }

@@ -1,6 +1,7 @@
 use crate::{
-  service::AppServiceFn,
   hf::{list_models, LocalModel},
+  objs::RemoteModel,
+  service::AppServiceFn,
 };
 use derive_new::new;
 use prettytable::{
@@ -10,30 +11,6 @@ use prettytable::{
 use serde::Deserialize;
 
 pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
-
-#[allow(clippy::too_many_arguments)]
-#[derive(Debug, Deserialize, Default, PartialEq, Clone, new)]
-pub struct RemoteModel {
-  pub(super) alias: String,
-  pub(super) family: String,
-  pub(super) repo: String,
-  pub(super) filename: String,
-  pub(super) features: Vec<String>,
-  pub(super) chat_template: String,
-}
-
-impl From<RemoteModel> for Row {
-  fn from(model: RemoteModel) -> Self {
-    Row::from(vec![
-      &model.alias,
-      &model.family,
-      &model.repo,
-      &model.filename,
-      &model.features.join(","),
-      &model.chat_template,
-    ])
-  }
-}
 
 impl From<LocalModel> for Row {
   fn from(model: LocalModel) -> Self {
@@ -109,7 +86,14 @@ impl List {
 
   fn list_local_model_alias(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
     let mut table = Table::new();
-    table.add_row(row!["ALIAS", "FAMILY", "REPO", "FILENAME", "FEATURES"]);
+    table.add_row(row![
+      "ALIAS",
+      "FAMILY",
+      "REPO",
+      "FILENAME",
+      "FEATURES",
+      "CHAT TEMPLATE"
+    ]);
     let aliases = service.list_aliases()?;
     for row in aliases.into_iter().map(Row::from) {
       table.add_row(row);
@@ -181,25 +165,6 @@ mod test {
     let models = vec![llama3_instruct, llama2_instruct.clone()];
     let model = _find_remote_model(models, "llama2:instruct").unwrap();
     assert_eq!(llama2_instruct, model);
-    Ok(())
-  }
-
-  #[test]
-  fn test_list_remote_model_to_row() -> anyhow::Result<()> {
-    let model = serde_yaml::from_str::<Vec<RemoteModel>>(TEST_MODELS_YAML)?
-      .first()
-      .unwrap()
-      .to_owned();
-    let row: Row = model.into();
-    let expected = Row::from(vec![
-      Cell::new("llama3:instruct"),
-      Cell::new("llama3"),
-      Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
-      Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-      Cell::new("chat"),
-      Cell::new("llama3"),
-    ]);
-    assert_eq!(expected, row);
     Ok(())
   }
 

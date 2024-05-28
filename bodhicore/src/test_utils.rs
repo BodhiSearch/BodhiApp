@@ -1,6 +1,11 @@
 use crate::{
+  cli::ChatTemplateId,
+  objs::{Alias, ChatTemplate, RemoteModel},
   server::BODHI_HOME,
-  service::{AppService, HfHubService, HubService, LocalDataService},
+  service::{
+    AppService, AppServiceFn, DataService, HfHubService, HubService, LocalDataService,
+    MockDataService, MockHubService,
+  },
 };
 use axum::{
   body::Body,
@@ -255,4 +260,71 @@ pub fn app_service_stub(
   let HubServiceTuple(temp_hf_home, hf_cache, hub_service) = hub_service;
   let service = AppService::new(Box::new(hub_service), Box::new(data_service));
   AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
+}
+
+#[derive(Debug)]
+pub struct MockAppServiceFn {
+  pub hub_service: MockHubService,
+  pub data_service: MockDataService,
+}
+
+impl HubService for MockAppServiceFn {
+  fn download(&self, repo: &str, filename: &str, force: bool) -> crate::service::Result<PathBuf> {
+    self.hub_service.download(repo, filename, force)
+  }
+}
+
+impl DataService for MockAppServiceFn {
+  fn list_aliases(&self) -> crate::service::Result<Vec<Alias>> {
+    self.data_service.list_aliases()
+  }
+
+  fn find_remote_model(&self, alias: &str) -> crate::service::Result<Option<RemoteModel>> {
+    self.data_service.find_remote_model(alias)
+  }
+
+  fn save_alias(&self, alias: Alias) -> crate::service::Result<PathBuf> {
+    self.data_service.save_alias(alias)
+  }
+
+  fn find_alias(&self, alias: &str) -> Option<Alias> {
+    self.data_service.find_alias(alias)
+  }
+}
+
+// Implement AppServiceFn for the combined struct
+impl AppServiceFn for MockAppServiceFn {}
+
+#[fixture]
+pub fn mock_app_service() -> MockAppServiceFn {
+  MockAppServiceFn {
+    hub_service: MockHubService::new(),
+    data_service: MockDataService::new(),
+  }
+}
+
+impl Default for RemoteModel {
+  fn default() -> Self {
+    Self {
+      alias: Default::default(),
+      family: Default::default(),
+      repo: Default::default(),
+      filename: Default::default(),
+      features: Default::default(),
+      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+    }
+  }
+}
+
+impl Default for Alias {
+  fn default() -> Self {
+    Self {
+      alias: Default::default(),
+      family: Default::default(),
+      repo: Default::default(),
+      filename: Default::default(),
+      features: Default::default(),
+      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+    }
+  }
 }

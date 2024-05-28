@@ -1,4 +1,4 @@
-use crate::{list::RemoteModel, objs::Alias, server::BODHI_HOME};
+use crate::{objs::Alias, objs::RemoteModel, server::BODHI_HOME};
 use derive_new::new;
 use hf_hub::{api::sync::ApiError, Cache, Repo};
 #[cfg(test)]
@@ -6,7 +6,7 @@ use mockall::automock;
 use std::{
   fmt::{Debug, Formatter},
   fs, io,
-  path::{Path, PathBuf},
+  path::PathBuf,
 };
 use thiserror::Error;
 
@@ -61,7 +61,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   FileMissing { filename: String, dirname: String },
 }
 
-type Result<T> = std::result::Result<T, DataServiceError>;
+pub type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(test, automock)]
 pub trait HubService: Debug {
@@ -184,11 +184,22 @@ pub trait DataService: Debug {
   fn find_alias(&self, alias: &str) -> Option<Alias>;
 }
 
-#[derive(Default)]
 pub struct HfHubService {
   cache: Cache,
   progress_bar: bool,
   token: Option<String>,
+}
+
+impl Default for HfHubService {
+  fn default() -> Self {
+    let cache = Cache::default();
+    let token = cache.token();
+    Self {
+      cache,
+      progress_bar: Default::default(),
+      token,
+    }
+  }
 }
 
 impl Debug for HfHubService {
@@ -311,7 +322,8 @@ impl AppServiceFn for AppService {}
 #[cfg(test)]
 mod test {
   use super::HfHubService;
-  use crate::objs::Alias;
+  use crate::cli::ChatTemplateId;
+  use crate::objs::{Alias, ChatTemplate, Repo};
   use crate::server::BODHI_HOME;
   use crate::service::{DataService, HubService, LocalDataService};
   use crate::test_utils::{
@@ -475,9 +487,12 @@ error while serializing from file: '{models_file}'"#
     let expected = Alias::new(
       String::from("testalias-exists:instruct"),
       Some(String::from("testalias")),
-      Some(String::from("MyFactory/testalias-exists-instruct-gguf")),
+      Some(Repo::new(String::from(
+        "MyFactory/testalias-exists-instruct-gguf",
+      ))),
       Some(String::from("testalias-exists-instruct.Q8_0.gguf")),
       vec![String::from("chat")],
+      ChatTemplate::Id(ChatTemplateId::Llama3),
     );
     assert_eq!(Some(expected), alias);
     Ok(())
@@ -491,23 +506,32 @@ error while serializing from file: '{models_file}'"#
       Alias::new(
         String::from("llama3:instruct"),
         Some(String::from("llama3")),
-        Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
+        Some(Repo::new(String::from(
+          "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+        ))),
         Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
         vec![String::from("chat")],
+        ChatTemplate::Id(ChatTemplateId::Llama3),
       ),
       Alias::new(
         String::from("testalias-exists:instruct"),
         Some(String::from("testalias")),
-        Some(String::from("MyFactory/testalias-exists-instruct-gguf")),
+        Some(Repo::new(String::from(
+          "MyFactory/testalias-exists-instruct-gguf",
+        ))),
         Some(String::from("testalias-exists-instruct.Q8_0.gguf")),
         vec![String::from("chat")],
+        ChatTemplate::Id(ChatTemplateId::Llama3),
       ),
       Alias::new(
         String::from("testalias-neverdownload:instruct"),
         Some(String::from("testalias")),
-        Some(String::from("MyFactory/testalias-neverdownload-gguf")),
+        Some(Repo::new(String::from(
+          "MyFactory/testalias-neverdownload-gguf",
+        ))),
         Some(String::from("testalias-neverdownload.Q8_0.gguf")),
         vec![String::from("chat")],
+        ChatTemplate::Id(ChatTemplateId::Llama3),
       ),
     ];
     assert_eq!(expected, result);

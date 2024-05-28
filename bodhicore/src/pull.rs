@@ -1,13 +1,4 @@
-use crate::{
-  service::{AppService, AppServiceFn, DataService, DataServiceError, HubService},
-  hf::{download_file, download_url},
-  hf_tokenizer::{HubTokenizerConfig, TOKENIZER_CONFIG_FILENAME},
-  list::find_remote_model,
-  objs::Alias,
-};
-use anyhow::bail;
-use regex::Regex;
-use thiserror::Error;
+use crate::{error::AppError, objs::Alias, service::AppServiceFn};
 
 #[derive(Debug, PartialEq)]
 pub enum Pull {
@@ -21,22 +12,6 @@ pub enum Pull {
     force: bool,
   },
 }
-
-#[derive(Debug, Error)]
-pub enum PullError {
-  #[error(
-    r#"alias '{0}' not found in pre-configured model aliases.
-Run `bodhi list -r` to see list of pre-configured model aliases
-"#
-  )]
-  AliasNotFound(String),
-  #[error("alias '{0}' already exists. Use --force to overwrite the alias config")]
-  AliasExists(String),
-  #[error(transparent)]
-  DataService(#[from] DataServiceError),
-}
-
-type Result<T> = std::result::Result<T, PullError>;
 
 impl Pull {
   pub fn new(
@@ -58,23 +33,17 @@ impl Pull {
     }
   }
 
-  pub fn execute(self, service: &dyn AppServiceFn) -> Result<()> {
+  pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     match self {
       Pull::ByAlias { alias, force } => {
         if !force && service.find_alias(&alias).is_some() {
-          return Err(PullError::AliasExists(alias));
+          return Err(AppError::AliasExists(alias));
         }
         let Some(model) = service.find_remote_model(&alias)? else {
-          return Err(PullError::AliasNotFound(alias));
+          return Err(AppError::AliasNotFound(alias));
         };
         service.download(&model.repo, &model.filename, force)?;
-        let new_alias = Alias::new(
-          alias,
-          Some(model.family),
-          Some(model.repo),
-          Some(model.filename),
-          model.features,
-        );
+        let new_alias: Alias = model.into();
         service.save_alias(new_alias)?;
         Ok(())
       }
@@ -93,9 +62,9 @@ impl Pull {
 #[cfg(test)]
 mod test {
   use crate::{
+    cli::ChatTemplateId,
+    objs::{Alias, ChatTemplate, RemoteModel},
     service::{AppService, MockDataService, MockHubService},
-    list::RemoteModel,
-    objs::Alias,
     test_utils::{app_service_stub, AppServiceTuple},
     Pull,
   };
@@ -133,7 +102,7 @@ mod test {
       String::from("MyFactory/testalias-neverdownload-gguf"),
       String::from("testalias-neverdownload.Q8_0.gguf"),
       vec![String::from("chat")],
-      String::from("llama3"),
+      ChatTemplate::Id(ChatTemplateId::Llama3),
     );
     let remote_clone = remote_model.clone();
     mock_data_service

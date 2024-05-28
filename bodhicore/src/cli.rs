@@ -1,6 +1,9 @@
+use crate::objs::REGEX_REPO;
+
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
-use clap::{ArgGroup, Parser, Subcommand};
-use serde::Serialize;
+use clap::{ArgGroup, Args, Parser, Subcommand};
+use serde::{Deserialize, Serialize};
+use strum::Display;
 
 #[derive(Debug, PartialEq, Parser)]
 #[command(version)]
@@ -11,6 +14,7 @@ pub struct Cli {
 }
 
 #[derive(Debug, PartialEq, Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum Command {
   /// launch as native app
   App {},
@@ -48,13 +52,53 @@ pub enum Command {
     repo: Option<String>,
 
     /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
-    /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
     #[clap(long, short = 'f', requires = "repo")]
     filename: Option<String>,
 
     /// If the file already exists in $HF_HOME, force download it again
     #[clap(long = "force")]
     force: bool,
+  },
+
+  /// Create a new model alias
+  #[clap(group = ArgGroup::new("template").required(true))]
+  Create {
+    /// Unique name of the model alias. E.g. llama3:8b-instruct
+    alias: String,
+
+    /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
+    #[clap(long, short = 'r')]
+    repo: String,
+
+    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
+    #[clap(long, short = 'f')]
+    filename: String,
+
+    /// In-built chat template to use to convert chat messages to LLM prompt
+    #[clap(long, group = "template")]
+    chat_template: Option<ChatTemplateId>,
+
+    /// Tokenizer config to convert chat messages to LLM prompt
+    #[clap(long, group = "template", value_parser = validate_tokenizer_config)]
+    tokenizer_config: Option<String>,
+
+    /// Optional meta information. Family of the model.
+    #[clap(long)]
+    family: Option<String>,
+
+    /// Features supported by the model.
+    // #[clap(long)]
+    // feature: Vec<ModelFeature>,
+
+    /// If the file already exists in $HF_HOME, force download it again
+    #[clap(long)]
+    force: bool,
+
+    #[clap(flatten, next_help_heading = "OpenAI Compatible Request defaults")]
+    oai_request_params: OAIRequestParams,
+
+    #[clap(flatten, next_help_heading = "Model Context defaults")]
+    context_params: GptContextParams,
   },
   /// Run the given model in interactive mode.
   /// This command also downloads the model if not downloaded already.
@@ -77,27 +121,11 @@ pub enum Command {
     filename: Option<String>,
   },
 }
-/*
-    #[clap(
-      long,
-      short = 't',
-      requires = "repo",
-      group = "template",
-      help = r#"Configure the chat template using remote tokenizer_config.json
-  Example: `--tokenizer_config meta-llama/Meta-Llama-3-70B-Instruct`
-    "#
-    )]
-    tokenizer_config: Option<String>,
 
-    /// Chat template to use for converting chat messages to LLM prompt.
-    /// Ignored/not required if pulling model using <ID>.
-    #[clap(long, short = 'c', requires = "repo", group = "template")]
-    chat_template: Option<ChatTemplate>,
-*/
-
-#[derive(clap::ValueEnum, Clone, Debug, Serialize, PartialEq)]
+#[derive(clap::ValueEnum, Clone, Debug, Serialize, Deserialize, PartialEq, Display)]
 #[serde(rename_all = "kebab-case")]
-pub enum ChatTemplate {
+#[strum(serialize_all = "kebab-case")]
+pub enum ChatTemplateId {
   Llama3,
   Llama2,
   Llama2Legacy,
@@ -108,7 +136,122 @@ pub enum ChatTemplate {
   Openchat,
 }
 
+#[derive(clap::ValueEnum, Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+pub enum ModelFeature {
+  Chat
+}
+
+fn validate_range_neg_to_pos_2(s: &str) -> Result<f32, String> {
+  let lower = -2.0;
+  let upper = 2.0;
+  validate_range(s, lower, upper)
+}
+
+fn validate_range_0_to_1(s: &str) -> Result<f32, String> {
+  let lower = 0.0;
+  let upper = 1.0;
+  validate_range(s, lower, upper)
+}
+
+fn validate_range(s: &str, lower: f32, upper: f32) -> Result<f32, String> {
+  match s.parse::<f32>() {
+    Ok(val) if (lower..=upper).contains(&val) => Ok(val),
+    Ok(_) => Err(String::from(
+      "The value must be between -2 and 2 inclusive.",
+    )),
+    Err(_) => Err(String::from(
+      "The value must be a valid floating point number.",
+    )),
+  }
+}
+
+fn validate_tokenizer_config(tokenizer_config: &str) -> Result<String, String> {
+  if REGEX_REPO.is_match(tokenizer_config) {
+    Ok(tokenizer_config.to_string())
+  } else {
+    Err("Invalid tokenizer_config pattern, does not match huggingface `owner/repo` format".to_string())
+  }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, Args)]
+pub struct OAIRequestParams {
+  #[clap(long, value_parser = validate_range_neg_to_pos_2, help=r#"Number between -2.0 and 2.0. 
+Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
+default: 0.0 (disabled)"#)]
+  pub frequency_penalty: Option<f32>,
+
+  #[arg(
+    long,
+    help = r#"The maximum number of tokens that can be generated in the completion.
+The token count of your prompt plus `max_tokens` cannot exceed the model's context length.
+default: -1"#
+  )]
+  pub max_tokens: Option<u32>,
+
+  #[arg(long, value_parser = validate_range_neg_to_pos_2, help=r#"Number between -2.0 and 2.0.
+Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
+default: 0.0 (disabled)"#)]
+  pub presence_penalty: Option<f32>,
+
+  #[arg(
+    long,
+    help = r#"An object specifying the format that the model must output.
+Setting to `json_object` enables JSON mode, which guarantees the message the model generates is valid JSON.
+default: text"#
+  )]
+  pub response_format: Option<ResponseFormat>,
+
+  #[arg(long, value_parser = clap::value_parser!(i64).range(i64::MIN..=i64::MAX),
+  help=r#"If specified, our system will make a best effort to sample deterministically, such that repeated requests with the same `seed` and parameters should return the same result."#)]
+  pub seed: Option<i64>,
+
+  #[arg(long, number_of_values = 4, help=r#"Up to 4 sequences where the API will stop generating further tokens."#)]
+  pub stop: Option<Vec<String>>,
+
+  #[arg(long, value_parser = validate_range_neg_to_pos_2, help=r#"Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
+default: 0.0 (disabled)"#)]
+  pub temperature: Option<f32>,
+
+  #[arg(long, value_parser = validate_range_0_to_1, help=r#"An alternative to sampling with temperature, called nucleus sampling.
+The model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
+Alter this or `temperature` but not both.
+default: 1.0 (disabled)"#)]
+  pub top_p: Option<f32>,
+
+  #[arg(long, help=r#"A unique identifier representing your end-user, which can help to monitor and detect abuse."#)]
+  pub user: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, clap::ValueEnum)]
+pub enum ResponseFormat {
+  Text,
+  #[clap(name = "json_object")]
+  JsonObject,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, Args)]
+pub struct GptContextParams {
+  /// default: num_cpu()
+  #[arg(long, help=r#"number of threads to use during computation
+default: num_cpus()"#)]
+  pub threads: Option<u32>,
+
+  /// default: 1
+  #[arg(long)]
+  pub ctx_size: Option<u32>,
+
+  /// default: 1
+  #[arg(long)]
+  pub parallel: Option<u32>,
+
+  /// default: -1
+  #[arg(long)]
+  pub n_predict: Option<u32>,
+}
+
 #[cfg(test)]
+#[allow(clippy::too_many_arguments)]
 mod test {
   use super::*;
   use clap::CommandFactory;
@@ -344,6 +487,99 @@ For more information, try '--help'.
     let cli = Cli::try_parse_from(args);
     assert!(cli.is_err());
     assert_eq!(err_msg, cli.unwrap_err().to_string());
+    Ok(())
+  }
+    #[rstest]
+  #[case(vec![
+    "bodhi", "create",
+    "testalias:instruct",
+    "--repo", "MyFactory/testalias-gguf",
+    "--filename", "testalias.Q8_0.gguf",
+    "--family", "testalias",
+    "--chat-template", "llama3"
+  ],
+    "testalias:instruct",
+    "MyFactory/testalias-gguf",
+    "testalias.Q8_0.gguf",
+    "testalias",
+    ChatTemplateId::Llama3,
+    OAIRequestParams::default(),
+    GptContextParams::default(),
+  )]
+  #[case(vec![
+    "bodhi", "create",
+    "testalias:instruct",
+    "--repo", "MyFactory/testalias-gguf",
+    "--filename", "testalias.Q8_0.gguf",
+    "--family", "testalias",
+    "--chat-template", "llama3",
+    "--temperature", "0.8",
+    "--threads", "6",
+  ],
+    "testalias:instruct",
+    "MyFactory/testalias-gguf",
+    "testalias.Q8_0.gguf",
+    "testalias",
+    ChatTemplateId::Llama3,
+    OAIRequestParams {temperature: Some(0.8), ..OAIRequestParams::default()},
+    GptContextParams {threads: Some(6), ..GptContextParams::default()},
+  )]
+  fn test_cli_create_valid(
+    #[case] args: Vec<&str>,
+    #[case] alias: String,
+    #[case] repo: String,
+    #[case] filename: String,
+    #[case] family: String,
+    #[case] chat_template: ChatTemplateId,
+    #[case] oai_request_params: OAIRequestParams,
+    #[case] context_params: GptContextParams,
+  ) -> anyhow::Result<()> {
+    let actual = Cli::try_parse_from(args)?.command;
+    let expected = Command::Create {
+      alias, repo, filename,
+      chat_template: Some(chat_template),
+      tokenizer_config: None,
+      family: Some(family),
+      force: false,
+      oai_request_params,
+      context_params
+    };
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(vec![
+    "bodhi", "create",
+    "testalias:instruct",
+    "--repo", "MyFactory/testalias-gguf",
+    "--filename", "testalias.Q8_0.gguf",
+    "--chat-template", "llama3",
+    "--tokenizer-config", "MyFactory/testalias-gguf",
+  ], r#"error: the argument '--chat-template <CHAT_TEMPLATE>' cannot be used with '--tokenizer-config <TOKENIZER_CONFIG>'
+
+Usage: bodhi create --repo <REPO> --filename <FILENAME> <--chat-template <CHAT_TEMPLATE>|--tokenizer-config <TOKENIZER_CONFIG>> <ALIAS>
+
+For more information, try '--help'.
+"#)]
+  #[case(vec![
+    "bodhi", "create",
+    "testalias:instruct",
+    "--repo", "MyFactory/testalias-gguf",
+    "--filename", "testalias.Q8_0.gguf",
+    "--chat-template", "llama3",
+    "--tokenizer-config", "My:Factory/testalias-gguf",
+  ], r#"error: invalid value 'My:Factory/testalias-gguf' for '--tokenizer-config <TOKENIZER_CONFIG>': Invalid tokenizer_config pattern, does not match huggingface `owner/repo` format
+
+For more information, try '--help'.
+"#)]
+  fn test_cli_create_invalid(
+    #[case] args: Vec<&str>,
+    #[case] message: String,
+  ) -> anyhow::Result<()> {
+    let actual = Cli::try_parse_from(args);
+    assert!(actual.is_err());
+    assert_eq!(message, actual.unwrap_err().to_string());
     Ok(())
   }
 }
