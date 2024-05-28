@@ -1,16 +1,14 @@
-use crate::{
-  hf::model_file, interactive::launch_interactive, list::find_remote_model, pull::download,
-};
+use crate::{hf::model_file, interactive::launch_interactive, list::find_remote_model};
 use anyhow::bail;
 
 pub enum Run {
   WithId { id: String },
-  WithRepo { repo: String, file: String },
+  WithRepo { repo: String, filename: String },
 }
 
 impl Run {
   pub fn execute(self) -> anyhow::Result<()> {
-    let (repo, file) = match self {
+    let (repo, filename) = match self {
       Run::WithId { id } => {
         let Some(model) = find_remote_model(&id) else {
           bail!(
@@ -20,10 +18,13 @@ impl Run {
         };
         (model.repo, model.filename)
       }
-      Run::WithRepo { repo, file } => (repo, file),
+      Run::WithRepo { repo, filename } => (repo, filename),
     };
-    let model_file = match model_file(&repo, &file) {
-      None => download(&repo, &file, true)?,
+    let model_file = match model_file(&repo, &filename) {
+      None => {
+        // download(&repo, &filename, true)?
+        todo!()
+      }
       Some(path) => path,
     };
     launch_interactive(&repo, &model_file)?;

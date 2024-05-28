@@ -1,4 +1,7 @@
-use crate::hf::{list_models, LocalModel};
+use crate::{
+  service::AppServiceFn,
+  hf::{list_models, LocalModel},
+};
 use derive_new::new;
 use prettytable::{
   format::{self},
@@ -10,7 +13,7 @@ pub(super) const MODELS_YAML: &str = include_str!("models.yaml");
 
 #[allow(clippy::too_many_arguments)]
 #[derive(Debug, Deserialize, Default, PartialEq, Clone, new)]
-pub(super) struct RemoteModel {
+pub struct RemoteModel {
   pub(super) alias: String,
   pub(super) family: String,
   pub(super) repo: String,
@@ -95,22 +98,32 @@ impl List {
     }
   }
 
-  pub fn execute(self) -> anyhow::Result<()> {
+  pub fn execute(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
     match self {
-      List::Local => self.list_local_model_alias()?,
+      List::Local => self.list_local_model_alias(service)?,
       List::Remote => self.list_remote_models()?,
       List::Models => self.list_local_models()?,
     }
     Ok(())
   }
 
-  fn list_local_model_alias(self) -> anyhow::Result<()> {
-    todo!()
+  fn list_local_model_alias(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
+    let mut table = Table::new();
+    table.add_row(row!["ALIAS", "FAMILY", "REPO", "FILENAME", "FEATURES"]);
+    let aliases = service.list_aliases()?;
+    for row in aliases.into_iter().map(Row::from) {
+      table.add_row(row);
+    }
+    table.set_format(format::FormatBuilder::default().padding(2, 2).build());
+    table.printstd();
+    println!();
+    println!("To run a model alias, run `bodhi run <ALIAS>`");
+    Ok(())
   }
 
   fn list_local_models(self) -> anyhow::Result<()> {
     let mut table = Table::new();
-    table.add_row(row!["NAME", "REPO ID", "SHA", "SIZE", "MODIFIED"]);
+    table.add_row(row!["NAME", "REPO", "SHA", "SIZE", "MODIFIED"]);
     let models = list_models();
     for row in models.into_iter().map(Row::from) {
       table.add_row(row);
@@ -145,9 +158,15 @@ impl List {
 #[cfg(test)]
 mod test {
   use super::RemoteModel;
-  use crate::{hf::LocalModel, list::_find_remote_model, test_utils::TEST_MODELS_YAML, List};
+  use crate::{
+    hf::LocalModel,
+    list::_find_remote_model,
+    test_utils::{app_service_stub, AppServiceTuple, TEST_MODELS_YAML},
+    List,
+  };
   use chrono::Utc;
   use prettytable::{Cell, Row};
+  use rstest::rstest;
 
   #[test]
   fn test_list_find_remote_model_by_id() -> anyhow::Result<()> {
@@ -204,12 +223,6 @@ mod test {
       Cell::new("3days 1h"),
     ]);
     assert_eq!(expected, row);
-    Ok(())
-  }
-
-  #[test]
-  fn test_list_local_model_alias() -> anyhow::Result<()> {
-    List::new(false, false).execute()?;
     Ok(())
   }
 }

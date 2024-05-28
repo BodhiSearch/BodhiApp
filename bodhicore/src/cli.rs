@@ -36,20 +36,46 @@ pub enum Command {
   /// Pull a gguf model from huggingface repository
   #[clap(group = ArgGroup::new("pull").required(true))]
   Pull {
-    /// Download the model using model id.
-    /// Run `bodhi list -r` to list all the pre-configured model ids.
+    /// Download and configure the model using a pre-configured model alias.
+    /// Run `bodhi list -r` to list all the pre-configured model aliases.
     #[clap(group = "pull")]
-    id: Option<String>,
+    alias: Option<String>,
 
     /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
-    #[clap(long, short = 'r', requires = "file", group = "pull")]
+    #[clap(long, short = 'r', requires = "filename", group = "pull")]
     repo: Option<String>,
 
     /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
     /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
     #[clap(long, short = 'f', requires = "repo")]
-    file: Option<String>,
+    filename: Option<String>,
 
+    /// If the file already exists in $HF_HOME, force download it again
+    #[clap(long = "force")]
+    force: bool,
+  },
+  /// Run the given model in interactive mode.
+  /// This command also downloads the model if not downloaded already.
+  #[clap(group = ArgGroup::new("run").required(true))]
+  #[clap(group = ArgGroup::new("using_alias").args(["alias"]).conflicts_with_all(["filename"]))]
+  #[clap(group = ArgGroup::new("using_repo").args(["repo"]).requires_all(["filename"]))]
+  Run {
+    /// Download the model using model id.
+    /// Run `bodhi list -r` to list all the pre-configured model ids.
+    #[clap(group = "run")]
+    alias: Option<String>,
+
+    /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
+    #[clap(long, short = 'r', group = "run")]
+    repo: Option<String>,
+
+    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
+    /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
+    #[clap(long, short = 'f')]
+    filename: Option<String>,
+  },
+}
+/*
     #[clap(
       long,
       short = 't',
@@ -65,32 +91,7 @@ pub enum Command {
     /// Ignored/not required if pulling model using <ID>.
     #[clap(long, short = 'c', requires = "repo", group = "template")]
     chat_template: Option<ChatTemplate>,
-
-    /// If the file already exists in $HF_HOME, force download it again
-    #[clap(long = "force")]
-    force: bool,
-  },
-  /// Run the given model in interactive mode.
-  /// This command also downloads the model if not downloaded already.
-  #[clap(group = ArgGroup::new("run").required(true))]
-  #[clap(group = ArgGroup::new("using_id").args(["id"]).conflicts_with_all(["file"]))]
-  #[clap(group = ArgGroup::new("using_repo").args(["repo"]).requires_all(["file"]))]
-  Run {
-    /// Download the model using model id.
-    /// Run `bodhi list -r` to list all the pre-configured model ids.
-    #[clap(group = "run")]
-    id: Option<String>,
-
-    /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
-    #[clap(long, short = 'r', group = "run")]
-    repo: Option<String>,
-
-    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
-    /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
-    #[clap(long, short = 'f')]
-    file: Option<String>,
-  },
-}
+*/
 
 #[derive(clap::ValueEnum, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -222,12 +223,12 @@ For more information, try '--help'.
   #[case(vec!["bodhi", "run", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"], None, Some(String::from("meta-llama/Meta-Llama-3-8B")), Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")))]
   fn test_cli_run(
     #[case] args: Vec<&str>,
-    #[case] id: Option<String>,
+    #[case] alias: Option<String>,
     #[case] repo: Option<String>,
-    #[case] file: Option<String>,
+    #[case] filename: Option<String>,
   ) -> anyhow::Result<()> {
     let cli = Cli::try_parse_from(args)?;
-    let expected = Command::Run { id, repo, file };
+    let expected = Command::Run { alias, repo, filename };
     assert_eq!(expected, cli.command);
     Ok(())
   }
@@ -235,37 +236,37 @@ For more information, try '--help'.
   #[rstest]
   #[case(
     vec!["bodhi", "run", "llama3", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
-r#"error: the argument '[ID]' cannot be used with:
+r#"error: the argument '[ALIAS]' cannot be used with:
   --repo <REPO>
-  --file <FILE>
+  --filename <FILENAME>
 
-Usage: bodhi run <ID|--repo <REPO>>
+Usage: bodhi run <ALIAS|--repo <REPO>>
 
 For more information, try '--help'.
 "#)]
   #[case(
     vec!["bodhi", "run", "llama3", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
-r#"error: the argument '[ID]' cannot be used with '--file <FILE>'
+r#"error: the argument '[ALIAS]' cannot be used with '--filename <FILENAME>'
 
-Usage: bodhi run <ID|--repo <REPO>>
+Usage: bodhi run <ALIAS|--repo <REPO>>
 
 For more information, try '--help'.
 "#)]
   #[case(
     vec!["bodhi", "run", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
 r#"error: the following required arguments were not provided:
-  <ID|--repo <REPO>>
+  <ALIAS|--repo <REPO>>
 
-Usage: bodhi run --file <FILE> <ID|--repo <REPO>>
+Usage: bodhi run --filename <FILENAME> <ALIAS|--repo <REPO>>
 
 For more information, try '--help'.
 "#)]
   #[case(
     vec!["bodhi", "run", "-r", "meta-llama/Meta-Llama-3-8B"],
 r#"error: the following required arguments were not provided:
-  --file <FILE>
+  --filename <FILENAME>
 
-Usage: bodhi run --file <FILE> <ID|--repo <REPO>>
+Usage: bodhi run --filename <FILENAME> <ALIAS|--repo <REPO>>
 
 For more information, try '--help'.
 "#)]
@@ -277,62 +278,47 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None, None, None, false)]
+  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None, false)]
   #[case(vec!["bodhi",
       "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
       "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-      "-t", "meta-llama/Meta-Llama-3-8B-Instruct"],
-      None,
+    ],
+    None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
-        Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-        Some(String::from("meta-llama/Meta-Llama-3-8B-Instruct")),
-        None,
-        false
+    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
+    false
   )]
-  #[case(vec![
-    "bodhi",
-        "pull",
-        "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
-        "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-        "-c", "llama3",
-  ],
-      None,
+  #[case(vec![ "bodhi", "pull",
+      "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+      "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
+    ],
+    None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
-        Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-        None,
-        Some(ChatTemplate::Llama3),
-        false
+    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
+    false
   )]
-  #[case(vec![
-    "bodhi",
-        "pull",
-        "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
-        "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"
+  #[case(vec![ "bodhi", "pull",
+      "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
+      "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"
   ],
-      None,
+    None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
-        Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-        None,
-        None,
-        false
+    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
+    false
   )]
   fn test_cli_pull_valid(
     #[case] args: Vec<&str>,
-    #[case] id: Option<String>,
+    #[case] alias: Option<String>,
     #[case] repo: Option<String>,
-    #[case] file: Option<String>,
-    #[case] tokenizer_config: Option<String>,
-    #[case] chat_template: Option<ChatTemplate>,
+    #[case] filename: Option<String>,
     #[case] force: bool,
   ) -> anyhow::Result<()> {
     let actual = Cli::try_parse_from(args)?.command;
     let expected = Command::Pull {
-      id,
+      alias,
       repo,
-      file,
-      tokenizer_config,
-      chat_template,
+      filename,
       force,
     };
     assert_eq!(expected, actual);
@@ -342,35 +328,9 @@ For more information, try '--help'.
   #[rstest]
   #[case(
     vec!["bodhi", "pull", "llama3:instruct", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
-r#"error: the argument '[ID]' cannot be used with '--repo <REPO>'
+r#"error: the argument '[ALIAS]' cannot be used with '--repo <REPO>'
 
-Usage: bodhi pull --file <FILE> <ID|--repo <REPO>>
-
-For more information, try '--help'.
-"#)]
-  #[case(
-    vec![
-      "bodhi", "pull",
-      "-r", "meta-llama/Meta-Llama-3-8B",
-      "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-      "-t", "meta-llama/Meta-Llama-3-8B-Instruct",
-      "-c", "llama3"
-    ],
-r#"error: the argument '--tokenizer-config <TOKENIZER_CONFIG>' cannot be used with '--chat-template <CHAT_TEMPLATE>'
-
-Usage: bodhi pull --file <FILE> --tokenizer-config <TOKENIZER_CONFIG> <ID|--repo <REPO>>
-
-For more information, try '--help'.
-"#)]
-  #[case(
-    vec![
-      "bodhi", "pull",
-    "-r", "meta-llama/Meta-Llama-3-8B",
-    "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-    "-c", "invalid"
-    ],
-r#"error: invalid value 'invalid' for '--chat-template <CHAT_TEMPLATE>'
-  [possible values: llama3, llama2, llama2-legacy, phi3, gemma, deepseek, command-r, openchat]
+Usage: bodhi pull --filename <FILENAME> <ALIAS|--repo <REPO>>
 
 For more information, try '--help'.
 "#)]

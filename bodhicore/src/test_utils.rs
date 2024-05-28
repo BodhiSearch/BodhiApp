@@ -1,21 +1,28 @@
-use crate::server::BODHI_HOME;
+use crate::{
+  server::BODHI_HOME,
+  service::{AppService, HfHubService, HubService, LocalDataService},
+};
 use axum::{
   body::Body,
   http::{request::Builder, Request},
   response::Response,
 };
+use dircpy::CopyBuilder;
 use http_body_util::BodyExt;
 use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
 use reqwest::header::CONTENT_TYPE;
 use rstest::fixture;
 use serde::de::DeserializeOwned;
-use std::{env, fs, path::PathBuf};
+use std::{
+  env, fs,
+  path::{Path, PathBuf},
+};
 use std::{
   ffi::{c_char, c_void},
   io::Cursor,
   slice,
 };
-use tempfile::TempDir;
+use tempfile::{tempdir, TempDir};
 use tokio::sync::mpsc::Sender;
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -187,4 +194,65 @@ pub(crate) fn hf_test_token_allowed() -> Option<String> {
 pub(crate) fn hf_test_token_public() -> Option<String> {
   dotenv::from_filename(".env.test").ok().unwrap();
   Some(std::env::var("HF_TEST_TOKEN_PUBLIC").unwrap())
+}
+
+#[fixture]
+pub(crate) fn temp_hf_home() -> TempDir {
+  let temp_dir = tempdir().expect("Failed to create a temporary directory");
+  let dst_path = temp_dir.path().join("huggingface");
+  copy_test_dir("tests/data/huggingface", &dst_path);
+  temp_dir
+}
+
+#[fixture]
+pub(crate) fn temp_bodhi_home() -> TempDir {
+  let temp_dir = tempdir().expect("Failed to create a temporary directory");
+  let dst_path = temp_dir.path().join("bodhi");
+  copy_test_dir("tests/data/bodhi", &dst_path);
+  temp_dir
+}
+
+fn copy_test_dir(src: &str, dst_path: &Path) {
+  let src_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(src);
+  CopyBuilder::new(src_path, dst_path)
+    .overwrite(true)
+    .run()
+    .unwrap();
+}
+
+pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
+
+#[fixture]
+pub fn hub_service(temp_hf_home: TempDir) -> HubServiceTuple {
+  let hf_cache = temp_hf_home.path().join("huggingface/hub");
+  let hub_service = HfHubService::new(hf_cache.clone(), false, None);
+  HubServiceTuple(temp_hf_home, hf_cache, hub_service)
+}
+
+pub struct DataServiceTuple(pub TempDir, pub PathBuf, pub LocalDataService);
+
+#[fixture]
+pub fn data_service(temp_bodhi_home: TempDir) -> DataServiceTuple {
+  let bodhi_home = temp_bodhi_home.path().join("bodhi");
+  let data_service = LocalDataService::new(bodhi_home.clone());
+  DataServiceTuple(temp_bodhi_home, bodhi_home, data_service)
+}
+
+pub struct AppServiceTuple(
+  pub TempDir,
+  pub TempDir,
+  pub PathBuf,
+  pub PathBuf,
+  pub AppService,
+);
+
+#[fixture]
+pub fn app_service_stub(
+  hub_service: HubServiceTuple,
+  data_service: DataServiceTuple,
+) -> AppServiceTuple {
+  let DataServiceTuple(temp_bodhi_home, bodhi_home, data_service) = data_service;
+  let HubServiceTuple(temp_hf_home, hf_cache, hub_service) = hub_service;
+  let service = AppService::new(Box::new(hub_service), Box::new(data_service));
+  AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
 }

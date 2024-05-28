@@ -35,6 +35,7 @@ ureq = "2.9.7"
 walkdir = "2.5.0"
 minijinja = "2.0.1"
 derive-new = "0.6.0"
+mockall = "0.12.1"
 
 [dev-dependencies]
 anyhow_trace = "0.1.3"

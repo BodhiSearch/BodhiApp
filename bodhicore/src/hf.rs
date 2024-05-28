@@ -46,15 +46,15 @@ pub(crate) fn download_file(repo: &str, filename: &str) -> anyhow::Result<PathBu
   }
 }
 
-pub(crate) async fn download_async(repo: &str, file: &str) -> anyhow::Result<PathBuf> {
+pub(crate) async fn download_async(repo: &str, filename: &str) -> anyhow::Result<PathBuf> {
   use hf_hub::api::tokio::{ApiBuilder, ApiError};
 
   let progress_bar = std::env::var(HF_API_PROGRESS)
     .unwrap_or_else(|_| "true".to_string())
     .parse::<bool>()?;
   let api = ApiBuilder::new().with_progress(progress_bar).build()?;
-  println!("Downloading from repo {repo}, model file {file}:");
-  let path = match api.model(repo.to_string()).download(file).await {
+  println!("Downloading from repo {repo}, model file {filename}:");
+  let path = match api.model(repo.to_string()).download(filename).await {
     Err(err) => {
       if let ApiError::RequestError(_) = err {
         err_msg(repo);

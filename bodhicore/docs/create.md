@@ -1,7 +1,7 @@
 # List Model Alias
 
 ```
-bodhi list <?--remote | --models>
+bodhi list ?<--remote | --models>
 ```
 
 This command:

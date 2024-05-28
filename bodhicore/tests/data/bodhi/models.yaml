@@ -1,0 +1,42 @@
+- alias: llama3:instruct
+  family: llama3
+  repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
+  filename: Meta-Llama-3-8B-Instruct.Q8_0.gguf
+  features:
+    - chat
+  chat_template: llama3
+- alias: llama2:chat
+  family: llama2
+  repo: TheBloke/Llama-2-7B-Chat-GGUF
+  filename: llama-2-7b-chat.Q8_0.gguf
+  features:
+    - chat
+  chat_template: llama2
+- alias: phi3:mini
+  family: phi3
+  repo: microsoft/Phi-3-mini-4k-instruct-gguf
+  filename: Phi-3-mini-4k-instruct-fp16.gguf
+  features:
+    - chat
+  chat_template: phi3
+- alias: gemma:7b-instruct-v1.1-q8_0
+  family: gemma
+  repo: google/gemma-1.1-7b-it-GGUF
+  filename: 7b_it_v1p1.gguf
+  features:
+    - chat
+  chat_template: gemma
+- alias: gemma:7b-instruct-v1.1-q8_0
+  family: gemma
+  repo: google/gemma-1.1-7b-it-GGUF
+  filename: 7b_it_v1p1.gguf
+  features:
+    - chat
+  chat_template: gemma
+- alias: testalias-neverdownload:instruct
+  family: testalias
+  repo: MyFactory/testalias-neverdownload-gguf
+  filename: testalias-neverdownload.Q8_0.gguf
+  features:
+    - chat
+  chat_template: llama3

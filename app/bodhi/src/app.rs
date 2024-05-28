@@ -7,7 +7,7 @@ use bodhicore::{
     build_routes, build_server_handle, shutdown_signal, ServerHandle, SharedContextRw,
     SharedContextRwExts,
   },
-  List, Pull, Run, Serve,
+  AppService, List, Pull, Run, Serve,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
@@ -33,34 +33,40 @@ pub fn main_internal() -> anyhow::Result<()> {
   // the app was called from wrapper
   // or the executable was called from outside the `Bodhi.app` bundle
   let cli = Cli::parse();
+  let service = AppService::default();
   match cli.command {
     Command::App {} => {
       main_native()?;
     }
     Command::List { remote, models } => {
-      List::new(remote, models).execute()?;
+      List::new(remote, models).execute(&service)?;
     }
     Command::Serve { host, port } => {
       main_async(Serve { host, port })?;
     }
     Command::Pull {
-      id,
+      alias: id,
       repo,
-      file,
-      tokenizer_config,
-      chat_template,
+      filename: file,
       force,
     } => {
-      let pull_param = Pull::new(id, repo, file, tokenizer_config, chat_template, force);
-      pull_param.execute()?;
+      let pull_param = Pull::new(id, repo, file, force);
+      pull_param.execute(&service)?;
     }
-    Command::Run { id, repo, file } => {
+    Command::Run {
+      alias: id,
+      repo,
+      filename: file,
+    } => {
       let run = match id {
         Some(id) => Run::WithId { id },
         None => {
           let repo = repo.ok_or_else(|| anyhow!("repo should be present"))?;
           let file = file.ok_or_else(|| anyhow!("file should be present"))?;
-          Run::WithRepo { repo, file }
+          Run::WithRepo {
+            repo,
+            filename: file,
+          }
         }
       };
       run.execute()?;
