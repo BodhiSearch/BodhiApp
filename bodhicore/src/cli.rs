@@ -14,6 +14,8 @@ pub struct Cli {
 pub enum Command {
   /// launch as native app
   App {},
+  /// initialize the configs folder
+  Init {},
   /// start the OpenAI compatible REST API server and Web UI
   Serve {
     /// Start with the given host, e.g. '0.0.0.0' to allow traffic from any ip on network
@@ -228,7 +230,11 @@ For more information, try '--help'.
     #[case] filename: Option<String>,
   ) -> anyhow::Result<()> {
     let cli = Cli::try_parse_from(args)?;
-    let expected = Command::Run { alias, repo, filename };
+    let expected = Command::Run {
+      alias,
+      repo,
+      filename,
+    };
     assert_eq!(expected, cli.command);
     Ok(())
   }

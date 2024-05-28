@@ -17,8 +17,6 @@ use tokio::runtime::Builder;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-static STATIC_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/../out");
-
 pub fn main_internal() -> anyhow::Result<()> {
   let args = env::args().collect::<Vec<_>>();
   if args.len() == 1
@@ -37,6 +35,9 @@ pub fn main_internal() -> anyhow::Result<()> {
   match cli.command {
     Command::App {} => {
       main_native()?;
+    }
+    Command::Init {} => {
+      unimplemented!()
     }
     Command::List { remote, models } => {
       List::new(remote, models).execute(&service)?;
