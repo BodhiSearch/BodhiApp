@@ -253,7 +253,7 @@ mod test {
     )]
     case: String,
   ) -> anyhow::Result<()> {
-    let filename = format!("src/data/configs/{}/tokenizer_config.json", model);
+    let filename = format!("tests/data/tokenizers/{}/tokenizer_config.json", model);
     let content = std::fs::read_to_string(filename)?;
     let tokenizer = HubTokenizerConfig::from_json_str(&content)?;
 
