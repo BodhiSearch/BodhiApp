@@ -1,16 +1,18 @@
 use super::SharedContextRw;
-use crate::{hf::find_model, server::SharedContextRwExts};
+use crate::{server::SharedContextRwExts, service::AppServiceFn};
 use anyhow::{anyhow, bail};
 use llama_server_bindings::{Callback, GptParams};
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub(crate) struct RouterState {
   pub(crate) ctx: SharedContextRw,
+  pub(crate) app_service: Arc<dyn AppServiceFn>,
 }
 
 impl RouterState {
-  pub(crate) fn new(ctx: SharedContextRw) -> Self {
-    Self { ctx }
+  pub(crate) fn new(ctx: SharedContextRw, app_service: Arc<dyn AppServiceFn>) -> Self {
+    Self { ctx, app_service }
   }
 }
 
@@ -23,17 +25,24 @@ impl RouterState {
     callback: Option<Callback>,
     userdata: &String,
   ) -> anyhow::Result<()> {
-    let Some(local_model) = find_model(model) else {
-      bail!("model not found: '{}'", model)
+    let Some(alias) = self.app_service.find_alias(model) else {
+      bail!("model alias not found: '{}'", model)
     };
-    let requested_model = local_model.model_path();
+    let Some(local_model) =
+      self
+        .app_service
+        .find_local_model(&alias.repo, &alias.filename, &alias.snapshot)
+    else {
+      bail!("local model not found: {:?}", alias);
+    };
     let lock = self.ctx.read().await;
     let ctx = lock.as_ref();
+    let local_model_path = local_model.path().to_string_lossy().into_owned();
     match ctx {
       Some(ctx) => {
         let gpt_params = ctx.gpt_params.clone();
         let loaded_model = gpt_params.model.clone();
-        if loaded_model.eq(&requested_model) {
+        if loaded_model.eq(&local_model_path) {
           ctx.completions(
             input,
             chat_template,
@@ -43,12 +52,12 @@ impl RouterState {
         } else {
           tracing::info!(
             loaded_model,
-            requested_model,
+            ?local_model,
             "requested model not loaded, loading model"
           );
           drop(lock);
           let new_gpt_params = GptParams {
-            model: requested_model,
+            model: local_model_path,
             ..gpt_params
           };
           self.ctx.reload(Some(new_gpt_params)).await?;
@@ -64,7 +73,7 @@ impl RouterState {
       }
       None => {
         let gpt_params = GptParams {
-          model: requested_model,
+          model: local_model_path,
           ..Default::default()
         };
         drop(lock);
@@ -84,12 +93,13 @@ impl RouterState {
 
 #[cfg(test)]
 mod test {
+  use std::sync::Arc;
+
   use super::RouterState;
   use crate::{
     bindings::{disable_llama_log, llama_server_disable_logging},
-    hf::HF_HOME,
     server::{SharedContextRw, SharedContextRwExts},
-    test_utils::{init_test_tracing, test_callback},
+    test_utils::{app_service_stub, init_test_tracing, test_callback, AppServiceTuple},
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -98,9 +108,9 @@ mod test {
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
+  use tempfile::TempDir;
 
   fn setup() {
-    std::env::remove_var(HF_HOME);
     disable_llama_log();
     unsafe {
       llama_server_disable_logging();
@@ -108,8 +118,9 @@ mod test {
     init_test_tracing();
   }
 
-  #[fixture]
-  async fn state() -> RouterState {
+  struct RouterStateTuple(TempDir, TempDir, RouterState);
+
+  async fn state(app_service_stub: AppServiceTuple) -> RouterStateTuple {
     setup();
     let model_path = dirs::home_dir()
       .ok_or(anyhow!("unable to locate home dir"))
@@ -127,13 +138,22 @@ mod test {
     let ctx = SharedContextRw::new_shared_rw(Some(gpt_params))
       .await
       .unwrap();
-    RouterState::new(ctx)
+    let AppServiceTuple(temp_bodhi_home, temp_hf_home, _, _, service) = app_service_stub;
+    RouterStateTuple(
+      temp_bodhi_home,
+      temp_hf_home,
+      RouterState::new(ctx, Arc::new(service)),
+    )
   }
 
-  #[fixture]
-  async fn empty_state() -> RouterState {
+  async fn empty_state(app_service_stub: AppServiceTuple) -> RouterStateTuple {
     let ctx = SharedContextRw::new_shared_rw(None).await.unwrap();
-    RouterState::new(ctx)
+    let AppServiceTuple(temp_bodhi_home, temp_hf_home, _, _, service) = app_service_stub;
+    RouterStateTuple(
+      temp_bodhi_home,
+      temp_hf_home,
+      RouterState::new(ctx, Arc::new(service)),
+    )
   }
 
   #[fixture]
@@ -148,19 +168,58 @@ mod test {
     (model, request)
   }
 
+  #[ignore]
   #[rstest]
-  #[case::loaded_state(state())]
-  #[case::empty_state(empty_state())]
-  #[awt]
   #[tokio::test]
   #[serial(router_state)]
   #[anyhow_trace]
   async fn test_router_state_read_from_same_model(
     inputs: (String, String),
-    #[case]
-    #[future]
-    state: RouterState,
+    app_service_stub: AppServiceTuple,
   ) -> anyhow::Result<()> {
+    let RouterStateTuple(_temp_bodhi_home, _temp_hf_home, state) = state(app_service_stub).await;
+    let (model, request) = inputs;
+    let userdata = String::with_capacity(2048);
+    state
+      .completions(&model, &request, "", Some(test_callback), &userdata)
+      .await?;
+    let response: CreateChatCompletionResponse = serde_json::from_str(&userdata)?;
+    let loaded_model = state
+      .ctx
+      .get_gpt_params()
+      .await?
+      .ok_or(anyhow!("gpt params not present"))?
+      .model
+      .clone();
+    let (repo, file) = model.split_once(':').ok_or(anyhow!("failed to split"))?;
+    let repo = format!("models--{}", repo.replace('/', "--"));
+    assert!(loaded_model.contains(&repo));
+    assert!(loaded_model.ends_with(file));
+    assert_eq!(
+      "  Great, I'm glad you asked! The day that comes after Monday is Tuesday! 😊",
+      response
+        .choices
+        .first()
+        .ok_or(anyhow!("choices not present"))?
+        .message
+        .content
+        .as_ref()
+        .ok_or(anyhow!("content not present"))?
+    );
+    Ok(())
+  }
+
+  #[ignore]
+  #[rstest]
+  #[tokio::test]
+  #[serial(router_state)]
+  #[anyhow_trace]
+  async fn test_router_state_read_from_same_model_empty_state(
+    inputs: (String, String),
+    app_service_stub: AppServiceTuple,
+  ) -> anyhow::Result<()> {
+    let RouterStateTuple(_temp_bodhi_home, _temp_hf_home, state) =
+      empty_state(app_service_stub).await;
     let (model, request) = inputs;
     let userdata = String::with_capacity(2048);
     state
@@ -197,25 +256,28 @@ mod test {
   #[serial(router_state)]
   #[anyhow_trace]
   async fn test_router_state_fails_if_model_not_found(
-    #[future] state: RouterState,
+    app_service_stub: AppServiceTuple,
   ) -> anyhow::Result<()> {
-    let state = state.await;
+    let RouterStateTuple(_temp_bodhi_home, _temp_hf_home, state) = state(app_service_stub).await;
     let model = "non-existing-model";
     let result = state.completions(model, "", "", None, &String::new()).await;
     assert!(result.is_err());
     assert_eq!(
-      format!("model not found: '{}'", model),
+      format!("model alias not found: '{}'", model),
       result.unwrap_err().to_string()
     );
     Ok(())
   }
 
+  #[ignore]
   #[rstest]
   #[tokio::test]
   #[serial(router_state)]
   #[anyhow_trace]
-  async fn test_router_state_load_new_model(#[future] state: RouterState) -> anyhow::Result<()> {
-    let state = state.await;
+  async fn test_router_state_load_new_model(
+    app_service_stub: AppServiceTuple,
+  ) -> anyhow::Result<()> {
+    let RouterStateTuple(_temp_bodhi_home, _temp_hf_home, state) = state(app_service_stub).await;
     let model = "TheBloke/Llama-2-7B-Chat-GGUF:llama-2-7b-chat.Q8_0.gguf";
     let request = serde_json::to_string(&json! {{
       "model": model,

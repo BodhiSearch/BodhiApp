@@ -1,15 +1,21 @@
 use super::{
-  router_state::RouterState, routes_chat::{llm_router}, routes_models::ui_models_handler, routes_ui::{
+  router_state::RouterState,
+  routes_chat::llm_router,
+  routes_models::ui_models_handler,
+  routes_ui::{
     ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
     ui_chats_handler,
-  }, shared_rw::SharedContextRw
+  },
+  shared_rw::SharedContextRw,
 };
+use crate::service::AppServiceFn;
 use axum::{
   http::StatusCode,
   response::IntoResponse,
   routing::{delete, get, post},
   Router,
 };
+use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
@@ -31,8 +37,8 @@ impl IntoResponse for ApiError {
   }
 }
 
-pub fn build_routes(ctx: SharedContextRw) -> Router {
-  let state = RouterState::new(ctx);
+pub fn build_routes(ctx: SharedContextRw, app_service: Arc<dyn AppServiceFn>) -> Router {
+  let state = RouterState::new(ctx, app_service);
   let api_router = Router::new()
     .route("/chats", get(ui_chats_handler))
     .route("/chats", delete(ui_chats_delete_handler))

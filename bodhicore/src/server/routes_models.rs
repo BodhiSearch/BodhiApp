@@ -1,7 +1,5 @@
-use crate::hf::list_models;
-
-use super::utils::ApiError;
-use axum::Json;
+use super::{router_state::RouterState, utils::ApiError};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -11,12 +9,17 @@ pub(crate) struct Model {
   display_name: String,
 }
 
-pub(crate) async fn ui_models_handler() -> Result<Json<Vec<Model>>, ApiError> {
-  let models = list_models()
+pub(crate) async fn ui_models_handler(
+  State(state): State<RouterState>,
+) -> Result<Json<Vec<Model>>, ApiError> {
+  let models = state
+    .app_service
+    .list_aliases()
+    .unwrap()
     .into_iter()
-    .map(|item| Model {
-      model: item.model_id(),
-      display_name: item.name,
+    .map(|alias| Model {
+      model: alias.alias,
+      display_name: alias.filename,
     })
     .collect::<Vec<_>>();
   Ok(Json(models))

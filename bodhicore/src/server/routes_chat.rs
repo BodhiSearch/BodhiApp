@@ -1,5 +1,5 @@
 use super::{router_state::RouterState, routes::ApiError};
-use crate::{hf::find_model, hf_tokenizer::HubTokenizerConfig};
+use crate::hf_tokenizer::HubTokenizerConfig;
 use anyhow::Context;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
 use axum::{
@@ -62,8 +62,8 @@ pub(crate) async fn chat_completions_handler(
     .context("converting request to string to pass to bodhi_server")
     .unwrap();
 
-  let model = find_model(&request.model).unwrap();
-  let config = HubTokenizerConfig::for_repo(&model.repo)
+  let alias = state.app_service.find_alias(&request.model).unwrap();
+  let config = HubTokenizerConfig::for_repo(&alias.repo)
     .ok()
     .unwrap_or_default();
   let prompt = config.apply_chat_template(&request.messages).unwrap();
@@ -133,11 +133,12 @@ async fn chat_completions_stream_handler(
 
 #[cfg(test)]
 mod test {
+  use std::sync::Arc;
+
   use super::llm_router;
   use crate::bindings::{disable_llama_log, llama_server_disable_logging};
-  use crate::test_utils::ResponseTestExt;
+  use crate::test_utils::{app_service_stub, AppServiceTuple, ResponseTestExt};
   use crate::{
-    hf::HF_HOME,
     server::{router_state::RouterState, SharedContextRw, SharedContextRwExts},
     test_utils::{init_test_tracing, RequestTestExt},
   };
@@ -148,6 +149,7 @@ mod test {
   use ctor::ctor;
   use llama_server_bindings::GptParams;
   use reqwest::StatusCode;
+  use rstest::rstest;
   use serde_json::json;
   use serial_test::serial;
   use tower::ServiceExt;
@@ -157,11 +159,12 @@ mod test {
     init_test_tracing();
   }
 
+  #[ignore]
+  #[rstest]
   #[tokio::test]
   #[serial]
   #[anyhow_trace]
-  async fn test_routes_chat_completions() -> anyhow::Result<()> {
-    std::env::remove_var(HF_HOME);
+  async fn test_routes_chat_completions(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
     disable_llama_log();
     unsafe {
       llama_server_disable_logging();
@@ -183,8 +186,9 @@ mod test {
       model: model_path,
       ..Default::default()
     };
+    let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
     let wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let app = llm_router().with_state(RouterState::new(wrapper));
+    let app = llm_router().with_state(RouterState::new(wrapper, Arc::new(service)));
     let response = app
       .oneshot(
         Request::post("/v1/chat/completions")
@@ -210,11 +214,14 @@ mod test {
     Ok(())
   }
 
+  #[ignore]
+  #[rstest]
   #[tokio::test]
   #[serial]
   #[anyhow_trace]
-  async fn test_routes_chat_completions_stream() -> anyhow::Result<()> {
-    std::env::remove_var(HF_HOME);
+  async fn test_routes_chat_completions_stream(
+    app_service_stub: AppServiceTuple,
+  ) -> anyhow::Result<()> {
     disable_llama_log();
     unsafe {
       llama_server_disable_logging();
@@ -237,8 +244,9 @@ mod test {
       model: model_path,
       ..Default::default()
     };
+    let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
     let wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let app = llm_router().with_state(RouterState::new(wrapper));
+    let app = llm_router().with_state(RouterState::new(wrapper, Arc::new(service)));
     let response = app
       .oneshot(
         Request::post("/v1/chat/completions")

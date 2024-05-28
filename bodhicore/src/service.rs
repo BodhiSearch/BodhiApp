@@ -1,19 +1,29 @@
-use crate::{objs::Alias, objs::RemoteModel, server::BODHI_HOME};
+use crate::{
+  objs::{Alias, LocalModelFile, RemoteModel, Repo},
+  server::BODHI_HOME,
+};
 use derive_new::new;
-use hf_hub::{api::sync::ApiError, Cache, Repo};
+use hf_hub::{api::sync::ApiError, Cache};
 #[cfg(test)]
 use mockall::automock;
+use regex::Regex;
 use std::{
+  borrow::Borrow,
   fmt::{Debug, Formatter},
   fs, io,
   path::PathBuf,
+  sync::Arc,
 };
 use thiserror::Error;
+use validator::ValidationErrors;
+use walkdir::WalkDir;
 
 static MODELS_YAML: &str = "models.yaml";
 
 #[derive(Debug, Error)]
 pub enum DataServiceError {
+  #[error("mutex error: {0}")]
+  MutexPoison(String),
   #[error(transparent)]
   ApiError(#[from] ApiError),
   #[error(
@@ -59,6 +69,10 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
   )]
   FileMissing { filename: String, dirname: String },
+  #[error(transparent)]
+  Validation(#[from] ValidationErrors),
+  #[error(transparent)]
+  Anyhow(#[from] anyhow::Error),
 }
 
 pub type Result<T> = std::result::Result<T, DataServiceError>;
@@ -66,6 +80,15 @@ pub type Result<T> = std::result::Result<T, DataServiceError>;
 #[cfg_attr(test, automock)]
 pub trait HubService: Debug {
   fn download(&self, repo: &str, filename: &str, force: bool) -> Result<PathBuf>;
+
+  fn list_local_models(&self) -> Vec<LocalModelFile>;
+
+  fn find_local_model(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: &Option<String>,
+  ) -> Option<LocalModelFile>;
 }
 
 #[derive(Debug, Clone, PartialEq, new)]
@@ -90,20 +113,7 @@ impl Default for LocalDataService {
 
 impl DataService for LocalDataService {
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
-    let models_file = self.bodhi_home.join(MODELS_YAML);
-    if !models_file.exists() {
-      return Err(DataServiceError::FileMissing {
-        filename: String::from(MODELS_YAML),
-        dirname: String::from(""),
-      });
-    }
-    let content = fs::read_to_string(models_file.clone())?;
-    let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content).map_err(|err| {
-      DataServiceError::SerdeYamlSerialize {
-        source: err,
-        filename: models_file.display().to_string(),
-      }
-    })?;
+    let models = self.list_remote_models()?;
     Ok(models.into_iter().find(|model| model.alias.eq(alias)))
   }
 
@@ -171,19 +181,40 @@ impl DataService for LocalDataService {
       .into_iter()
       .find(|obj| obj.alias.eq(&alias))
   }
+
+  fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
+    let models_file = self.bodhi_home.join(MODELS_YAML);
+    if !models_file.exists() {
+      return Err(DataServiceError::FileMissing {
+        filename: String::from(MODELS_YAML),
+        dirname: "".to_string(),
+      });
+    }
+    let content = fs::read_to_string(models_file.clone())?;
+    let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content).map_err(|err| {
+      DataServiceError::SerdeYamlSerialize {
+        source: err,
+        filename: models_file.display().to_string(),
+      }
+    })?;
+    Ok(models)
+  }
 }
 
 #[cfg_attr(test, automock)]
 pub trait DataService: Debug {
   fn list_aliases(&self) -> Result<Vec<Alias>>;
 
-  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>>;
-
   fn save_alias(&self, alias: Alias) -> Result<PathBuf>;
 
   fn find_alias(&self, alias: &str) -> Option<Alias>;
+
+  fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
+
+  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>>;
 }
 
+#[derive(Clone)]
 pub struct HfHubService {
   cache: Cache,
   progress_bar: bool,
@@ -264,7 +295,7 @@ impl HfHubService {
 
 impl HubService for HfHubService {
   fn download(&self, repo: &str, filename: &str, force: bool) -> Result<PathBuf> {
-    let hf_repo = self.cache.repo(Repo::model(repo.to_string()));
+    let hf_repo = self.cache.repo(hf_hub::Repo::model(repo.to_string()));
     let from_cache = hf_repo.get(filename);
     match from_cache {
       Some(path) if !force => Ok(path),
@@ -274,21 +305,74 @@ impl HubService for HfHubService {
       }
     }
   }
+
+  fn list_local_models(&self) -> Vec<LocalModelFile> {
+    let cache = self.cache.path().as_path();
+    let re = Regex::new(r".*/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<commit>[^/]+)/(?P<model_name>.*)\.gguf$").unwrap();
+    WalkDir::new(cache)
+      .follow_links(true)
+      .into_iter()
+      .filter_map(|e| e.ok())
+      .filter(|entry| entry.path().is_file())
+      .filter_map(|entry| {
+        let path = entry.path();
+        let filepath = path.to_string_lossy();
+        let filepath = filepath.borrow();
+        let caps = re.captures(filepath)?;
+        let size = match fs::metadata(path) {
+          Ok(metadata) => Some(metadata.len()),
+          Err(_) => None,
+        };
+        let repo = Repo::try_new(format!("{}/{}", &caps["username"], &caps["repo_name"])).ok()?;
+        let hf_cache = self.cache.path().to_path_buf();
+        Some(LocalModelFile {
+          hf_cache,
+          repo,
+          filename: format!("{}.gguf", &caps["model_name"]),
+          snapshot: String::from(&caps["commit"]),
+          size,
+        })
+      })
+      .collect::<Vec<_>>()
+  }
+
+  fn find_local_model(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: &Option<String>,
+  ) -> Option<LocalModelFile> {
+    let models = self.list_local_models();
+    models.into_iter().find(|model| {
+      model.repo.eq(repo)
+        && model.filename.eq(filename)
+        && (snapshot.is_none() || model.snapshot.eq(snapshot.as_ref().unwrap()))
+    })
+  }
 }
 
-pub trait AppServiceFn: HubService + DataService {}
+pub trait AppServiceFn: HubService + DataService + Send + Sync {}
 
-#[derive(Debug, new)]
+#[derive(Debug, Clone)]
 pub struct AppService {
-  pub(super) hub_service: Box<dyn HubService>,
-  pub(super) data_service: Box<dyn DataService>,
+  pub(super) hub_service: Arc<dyn HubService + Send + Sync>,
+  pub(super) data_service: Arc<dyn DataService + Send + Sync>,
 }
 
 impl Default for AppService {
   fn default() -> Self {
     Self {
-      hub_service: Box::<HfHubService>::default(),
-      data_service: Box::<LocalDataService>::default(),
+      hub_service: Arc::new(HfHubService::default()),
+      data_service: Arc::new(LocalDataService::default()),
+    }
+  }
+}
+
+impl AppService {
+  pub fn new(hub_service: HfHubService, data_service: LocalDataService) -> Self {
+    Self {
+      hub_service: Arc::new(hub_service),
+      data_service: Arc::new(data_service),
     }
   }
 }
@@ -296,6 +380,19 @@ impl Default for AppService {
 impl HubService for AppService {
   fn download(&self, repo: &str, filename: &str, force: bool) -> Result<PathBuf> {
     self.hub_service.download(repo, filename, force)
+  }
+
+  fn list_local_models(&self) -> Vec<LocalModelFile> {
+    self.hub_service.list_local_models()
+  }
+
+  fn find_local_model(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: &Option<String>,
+  ) -> Option<LocalModelFile> {
+    self.hub_service.find_local_model(repo, filename, snapshot)
   }
 }
 
@@ -315,6 +412,10 @@ impl DataService for AppService {
   fn find_alias(&self, alias: &str) -> Option<Alias> {
     self.data_service.find_alias(alias)
   }
+
+  fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
+    self.data_service.list_remote_models()
+  }
 }
 
 impl AppServiceFn for AppService {}
@@ -322,22 +423,17 @@ impl AppServiceFn for AppService {}
 #[cfg(test)]
 mod test {
   use super::HfHubService;
-  use crate::cli::ChatTemplateId;
-  use crate::objs::{Alias, ChatTemplate, Repo};
+  use crate::objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
   use crate::server::BODHI_HOME;
   use crate::service::{DataService, HubService, LocalDataService};
   use crate::test_utils::{
-    bodhi_home, data_service, hf_test_token_allowed, hf_test_token_public, temp_bodhi_home,
-    temp_hf_home, DataServiceTuple,
+    data_service, hf_test_token_allowed, hf_test_token_public, hub_service, temp_hf_home,
+    DataServiceTuple, HubServiceTuple,
   };
   use anyhow_trace::anyhow_trace;
-  use rstest::{fixture, rstest};
-  use serde_yaml;
+  use rstest::rstest;
   use std::fs;
-  use std::path::Path;
-  use std::path::PathBuf;
   use tempfile::{tempdir, TempDir};
-  use tracing::{event, Level};
 
   #[rstest]
   #[case(None)]
@@ -481,16 +577,41 @@ error while serializing from file: '{models_file}'"#
   }
 
   #[rstest]
+  fn test_data_service_list_remote_models(data_service: DataServiceTuple) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp_dir, _, service) = data_service;
+    let models = service.list_remote_models()?;
+    let expected_1 = RemoteModel::new(
+      "llama3:instruct".to_string(),
+      "llama3".to_string(),
+      Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string())?,
+      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+      vec!["chat".to_string()],
+      ChatTemplate::Id(ChatTemplateId::Llama3),
+    );
+    let expected_2 = RemoteModel::new(
+      "testalias:instruct".to_string(),
+      "testalias".to_string(),
+      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+      "testalias.Q8_0.gguf".to_string(),
+      vec!["chat".to_string()],
+      ChatTemplate::Id(ChatTemplateId::Llama3),
+    );
+    assert_eq!(7, models.len());
+    assert!(models.contains(&expected_1));
+    assert!(models.contains(&expected_2));
+    Ok(())
+  }
+
+  #[rstest]
   fn test_local_data_service_find_alias(data_service: DataServiceTuple) -> anyhow::Result<()> {
     let DataServiceTuple(_temp, _, service) = data_service;
     let alias = service.find_alias("testalias-exists:instruct");
     let expected = Alias::new(
       String::from("testalias-exists:instruct"),
       Some(String::from("testalias")),
-      Some(Repo::new(String::from(
-        "MyFactory/testalias-exists-instruct-gguf",
-      ))),
-      Some(String::from("testalias-exists-instruct.Q8_0.gguf")),
+      Repo::try_new(String::from("MyFactory/testalias-exists-instruct-gguf"))?,
+      String::from("testalias-exists-instruct.Q8_0.gguf"),
+      None,
       vec![String::from("chat")],
       ChatTemplate::Id(ChatTemplateId::Llama3),
     );
@@ -506,30 +627,27 @@ error while serializing from file: '{models_file}'"#
       Alias::new(
         String::from("llama3:instruct"),
         Some(String::from("llama3")),
-        Some(Repo::new(String::from(
-          "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
-        ))),
-        Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
+        Repo::try_new(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"))?,
+        String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
+        None,
         vec![String::from("chat")],
         ChatTemplate::Id(ChatTemplateId::Llama3),
       ),
       Alias::new(
         String::from("testalias-exists:instruct"),
         Some(String::from("testalias")),
-        Some(Repo::new(String::from(
-          "MyFactory/testalias-exists-instruct-gguf",
-        ))),
-        Some(String::from("testalias-exists-instruct.Q8_0.gguf")),
+        Repo::try_new(String::from("MyFactory/testalias-exists-instruct-gguf"))?,
+        String::from("testalias-exists-instruct.Q8_0.gguf"),
+        None,
         vec![String::from("chat")],
         ChatTemplate::Id(ChatTemplateId::Llama3),
       ),
       Alias::new(
         String::from("testalias-neverdownload:instruct"),
         Some(String::from("testalias")),
-        Some(Repo::new(String::from(
-          "MyFactory/testalias-neverdownload-gguf",
-        ))),
-        Some(String::from("testalias-neverdownload.Q8_0.gguf")),
+        Repo::try_new(String::from("MyFactory/testalias-neverdownload-gguf"))?,
+        String::from("testalias-neverdownload.Q8_0.gguf"),
+        None,
         vec![String::from("chat")],
         ChatTemplate::Id(ChatTemplateId::Llama3),
       ),
@@ -571,6 +689,22 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
     let expected =
       LocalDataService::new(home_dir.path().join(".cache").join("bodhi").to_path_buf());
     assert_eq!(expected, service);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_hub_service_list_local_models(hub_service: HubServiceTuple) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp_hf_home, hf_cache, service) = hub_service;
+    let models = service.list_local_models();
+    let expected_1 = LocalModelFile::new(
+      hf_cache,
+      Repo::try_new("google/gemma-1.1-2b-it-GGUF".to_string())?,
+      "2b_it_v1p1.gguf".to_string(),
+      "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
+      Some(21),
+    );
+    assert_eq!(2, models.len());
+    assert_eq!(&expected_1, models.first().unwrap());
     Ok(())
   }
 }

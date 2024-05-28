@@ -1,33 +1,36 @@
-use crate::{hf::model_file, interactive::launch_interactive, list::find_remote_model};
-use anyhow::bail;
+use crate::{error::AppError, service::DataService, AppService, Command};
 
-pub enum Run {
-  WithId { id: String },
-  WithRepo { repo: String, filename: String },
+pub enum RunCommand {
+  WithAlias { alias: String },
 }
 
-impl Run {
-  pub fn execute(self) -> anyhow::Result<()> {
-    let (repo, filename) = match self {
-      Run::WithId { id } => {
-        let Some(model) = find_remote_model(&id) else {
-          bail!(
-            "model with id {} not found in pre-configured remote models",
-            id
-          );
+impl TryFrom<Command> for RunCommand {
+  type Error = AppError;
+
+  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
+    match value {
+      Command::Run {
+        alias,
+      } => {
+        Ok(RunCommand::WithAlias { alias })
+      }
+      _ => Err(AppError::BadRequest(format!(
+        "{value:?} cannot be converted into CreateCommand, only `Command::Create` variant supported."
+      )))
+    }
+  }
+}
+
+impl RunCommand {
+  pub fn execute(self, service: &AppService) -> crate::error::Result<()> {
+    match self {
+      RunCommand::WithAlias { alias } => {
+        let Some(model) = service.find_alias(&alias) else {
+          return Err(AppError::AliasNotFound(alias));
         };
-        (model.repo, model.filename)
+        // launch_interactive(alias)?;
       }
-      Run::WithRepo { repo, filename } => (repo, filename),
     };
-    let model_file = match model_file(&repo, &filename) {
-      None => {
-        // download(&repo, &filename, true)?
-        todo!()
-      }
-      Some(path) => path,
-    };
-    launch_interactive(&repo, &model_file)?;
     Ok(())
   }
 }

@@ -1,9 +1,7 @@
-use crate::objs::REGEX_REPO;
-
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
+use crate::objs::{ChatTemplateId, REGEX_REPO};
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
-use strum::Display;
 
 #[derive(Debug, PartialEq, Parser)]
 #[command(version)]
@@ -100,46 +98,17 @@ pub enum Command {
     #[clap(flatten, next_help_heading = "Model Context defaults")]
     context_params: GptContextParams,
   },
-  /// Run the given model in interactive mode.
-  /// This command also downloads the model if not downloaded already.
-  #[clap(group = ArgGroup::new("run").required(true))]
-  #[clap(group = ArgGroup::new("using_alias").args(["alias"]).conflicts_with_all(["filename"]))]
-  #[clap(group = ArgGroup::new("using_repo").args(["repo"]).requires_all(["filename"]))]
+  /// Run the given model alias in interactive mode.
   Run {
-    /// Download the model using model id.
-    /// Run `bodhi list -r` to list all the pre-configured model ids.
-    #[clap(group = "run")]
-    alias: Option<String>,
-
-    /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
-    #[clap(long, short = 'r', group = "run")]
-    repo: Option<String>,
-
-    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
-    /// or file pattern for sharded models `Meta-Llama-3-70B-Instruct.Q8_0-*.gguf`
-    #[clap(long, short = 'f')]
-    filename: Option<String>,
+    /// Model alias to run. Run `bodhi list` to list the configured model aliases.
+    alias: String,
   },
-}
-
-#[derive(clap::ValueEnum, Clone, Debug, Serialize, Deserialize, PartialEq, Display)]
-#[serde(rename_all = "kebab-case")]
-#[strum(serialize_all = "kebab-case")]
-pub enum ChatTemplateId {
-  Llama3,
-  Llama2,
-  Llama2Legacy,
-  Phi3,
-  Gemma,
-  Deepseek,
-  CommandR,
-  Openchat,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum ModelFeature {
-  Chat
+  Chat,
 }
 
 fn validate_range_neg_to_pos_2(s: &str) -> Result<f32, String> {
@@ -170,7 +139,10 @@ fn validate_tokenizer_config(tokenizer_config: &str) -> Result<String, String> {
   if REGEX_REPO.is_match(tokenizer_config) {
     Ok(tokenizer_config.to_string())
   } else {
-    Err("Invalid tokenizer_config pattern, does not match huggingface `owner/repo` format".to_string())
+    Err(
+      "Invalid tokenizer_config pattern, does not match huggingface `owner/repo` format"
+        .to_string(),
+    )
   }
 }
 
@@ -206,7 +178,11 @@ default: text"#
   help=r#"If specified, our system will make a best effort to sample deterministically, such that repeated requests with the same `seed` and parameters should return the same result."#)]
   pub seed: Option<i64>,
 
-  #[arg(long, number_of_values = 4, help=r#"Up to 4 sequences where the API will stop generating further tokens."#)]
+  #[arg(
+    long,
+    number_of_values = 4,
+    help = r#"Up to 4 sequences where the API will stop generating further tokens."#
+  )]
   pub stop: Option<Vec<String>>,
 
   #[arg(long, value_parser = validate_range_neg_to_pos_2, help=r#"Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
@@ -219,7 +195,10 @@ Alter this or `temperature` but not both.
 default: 1.0 (disabled)"#)]
   pub top_p: Option<f32>,
 
-  #[arg(long, help=r#"A unique identifier representing your end-user, which can help to monitor and detect abuse."#)]
+  #[arg(
+    long,
+    help = r#"A unique identifier representing your end-user, which can help to monitor and detect abuse."#
+  )]
   pub user: Option<String>,
 }
 
@@ -233,8 +212,11 @@ pub enum ResponseFormat {
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, Args)]
 pub struct GptContextParams {
   /// default: num_cpu()
-  #[arg(long, help=r#"number of threads to use during computation
-default: num_cpus()"#)]
+  #[arg(
+    long,
+    help = r#"number of threads to use during computation
+default: num_cpus()"#
+  )]
   pub threads: Option<u32>,
 
   /// default: 1
@@ -364,65 +346,11 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "run", "llama3"], Some(String::from("llama3")), None, None)]
-  #[case(vec!["bodhi", "run", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"], None, Some(String::from("meta-llama/Meta-Llama-3-8B")), Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")))]
-  fn test_cli_run(
-    #[case] args: Vec<&str>,
-    #[case] alias: Option<String>,
-    #[case] repo: Option<String>,
-    #[case] filename: Option<String>,
-  ) -> anyhow::Result<()> {
+  #[case(vec!["bodhi", "run", "llama3:instruct"], "llama3:instruct")]
+  fn test_cli_run(#[case] args: Vec<&str>, #[case] alias: String) -> anyhow::Result<()> {
     let cli = Cli::try_parse_from(args)?;
-    let expected = Command::Run {
-      alias,
-      repo,
-      filename,
-    };
+    let expected = Command::Run { alias };
     assert_eq!(expected, cli.command);
-    Ok(())
-  }
-
-  #[rstest]
-  #[case(
-    vec!["bodhi", "run", "llama3", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
-r#"error: the argument '[ALIAS]' cannot be used with:
-  --repo <REPO>
-  --filename <FILENAME>
-
-Usage: bodhi run <ALIAS|--repo <REPO>>
-
-For more information, try '--help'.
-"#)]
-  #[case(
-    vec!["bodhi", "run", "llama3", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
-r#"error: the argument '[ALIAS]' cannot be used with '--filename <FILENAME>'
-
-Usage: bodhi run <ALIAS|--repo <REPO>>
-
-For more information, try '--help'.
-"#)]
-  #[case(
-    vec!["bodhi", "run", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
-r#"error: the following required arguments were not provided:
-  <ALIAS|--repo <REPO>>
-
-Usage: bodhi run --filename <FILENAME> <ALIAS|--repo <REPO>>
-
-For more information, try '--help'.
-"#)]
-  #[case(
-    vec!["bodhi", "run", "-r", "meta-llama/Meta-Llama-3-8B"],
-r#"error: the following required arguments were not provided:
-  --filename <FILENAME>
-
-Usage: bodhi run --filename <FILENAME> <ALIAS|--repo <REPO>>
-
-For more information, try '--help'.
-"#)]
-  fn test_cli_run_invalid(#[case] args: Vec<&str>, #[case] err_msg: &str) -> anyhow::Result<()> {
-    let cli = Cli::try_parse_from(args);
-    assert!(cli.is_err());
-    assert_eq!(err_msg, cli.unwrap_err().to_string());
     Ok(())
   }
 
@@ -489,7 +417,7 @@ For more information, try '--help'.
     assert_eq!(err_msg, cli.unwrap_err().to_string());
     Ok(())
   }
-    #[rstest]
+  #[rstest]
   #[case(vec![
     "bodhi", "create",
     "testalias:instruct",
@@ -536,13 +464,15 @@ For more information, try '--help'.
   ) -> anyhow::Result<()> {
     let actual = Cli::try_parse_from(args)?.command;
     let expected = Command::Create {
-      alias, repo, filename,
+      alias,
+      repo,
+      filename,
       chat_template: Some(chat_template),
       tokenizer_config: None,
       family: Some(family),
       force: false,
       oai_request_params,
-      context_params
+      context_params,
     };
     assert_eq!(expected, actual);
     Ok(())

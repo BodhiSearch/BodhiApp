@@ -62,10 +62,9 @@ impl Pull {
 #[cfg(test)]
 mod test {
   use crate::{
-    cli::ChatTemplateId,
-    objs::{Alias, ChatTemplate, RemoteModel},
-    service::{AppService, MockDataService, MockHubService},
-    test_utils::{app_service_stub, AppServiceTuple},
+    objs::{Alias, ChatTemplate, ChatTemplateId, RemoteModel, Repo},
+    service::{MockDataService, MockHubService},
+    test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
     Pull,
   };
   use mockall::predicate::eq;
@@ -99,7 +98,7 @@ mod test {
     let remote_model = RemoteModel::new(
       String::from("test_pull_by_alias:instruct"),
       String::from("testalias"),
-      String::from("MyFactory/testalias-neverdownload-gguf"),
+      Repo::try_new(String::from("MyFactory/testalias-neverdownload-gguf"))?,
       String::from("testalias-neverdownload.Q8_0.gguf"),
       vec![String::from("chat")],
       ChatTemplate::Id(ChatTemplateId::Llama3),
@@ -126,7 +125,7 @@ mod test {
       )
       .times(1)
       .returning(|_, _, _| Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))));
-    let service = AppService::new(Box::new(mock_hub_service), Box::new(mock_data_service));
+    let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     let pull = Pull::new(
       Some(String::from("test_pull_by_alias:instruct")),
       None,
@@ -155,7 +154,7 @@ mod test {
       )
       .times(1)
       .returning(|_, _, _| Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))));
-    let service = AppService::new(Box::new(mock_hub_service), Box::new(MockDataService::new()));
+    let service = MockAppServiceFn::new(mock_hub_service, MockDataService::new());
     pull.execute(&service)?;
     Ok(())
   }

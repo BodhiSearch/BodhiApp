@@ -1,5 +1,9 @@
+use crate::error::AppError;
 use crate::hf_tokenizer::{ChatMessage, HubTokenizerConfig};
+use crate::objs::Alias;
+use crate::service::AppServiceFn;
 use async_openai::types::CreateChatCompletionStreamResponse;
+use derive_new::new;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
@@ -45,24 +49,23 @@ unsafe extern "C" fn callback_stream(
   size
 }
 
+#[derive(Debug, new)]
 struct Interactive {
-  model_path: PathBuf,
-  config: HubTokenizerConfig,
+  alias: Alias,
 }
 
 impl Interactive {
-  fn new(repo: &str, model_path: &Path) -> anyhow::Result<Self> {
-    let config = HubTokenizerConfig::for_repo(repo).ok().unwrap_or_default();
-    Ok(Self {
-      model_path: model_path.to_path_buf(),
-      config,
-    })
-  }
-
-  async fn execute(&self) -> anyhow::Result<()> {
+  async fn execute(&self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+    let model = service
+      .find_local_model(&self.alias.repo, &self.alias.filename, &self.alias.snapshot)
+      .ok_or(AppError::AliasModelNotFound {
+        repo: self.alias.repo.to_string(),
+        filename: self.alias.filename.clone(),
+        snapshot: self.alias.snapshot.clone().unwrap_or(String::from("main")),
+      })?;
     let pb = infinite_loading(String::from("Loading..."));
     let gpt_params = GptParams {
-      model: self.model_path.to_string_lossy().into_owned(),
+      model: model.path(),
       ..Default::default()
     };
     disable_llama_log();
@@ -114,7 +117,7 @@ impl Interactive {
     });
     ctx.completions(
       &json_request,
-      &chat_template,
+      chat_template,
       Some(callback_stream),
       &tx as *const _ as *mut _,
     )?;
@@ -123,11 +126,11 @@ impl Interactive {
   }
 }
 
-pub(super) fn launch_interactive(repo: &str, model_path: &Path) -> anyhow::Result<()> {
+pub(super) fn launch_interactive(alias: Alias) -> anyhow::Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build();
   match runtime {
     Ok(runtime) => {
-      runtime.block_on(async move { Interactive::new(repo, model_path)?.execute().await })?;
+      runtime.block_on(async move { Interactive::new(alias)?.execute().await })?;
       Ok(())
     }
     Err(err) => Err(err.into()),

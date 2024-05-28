@@ -4,9 +4,10 @@ use bodhicore::{
     build_routes, build_server_handle, Server, ServerHandle, ServerParams, SharedContextRw,
     SharedContextRwExts,
   },
+  AppService,
 };
 use futures_util::{future::BoxFuture, FutureExt};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,
   WindowEvent,
@@ -129,7 +130,8 @@ async fn start_server(server: Server, ready_rx: Receiver<()>) -> anyhow::Result<
     llama_server_disable_logging();
   }
   let mut ctx = SharedContextRw::new_shared_rw(None).await?;
-  let app = build_routes(ctx.clone());
+  let app_service = AppService::default();
+  let app = build_routes(ctx.clone(), Arc::new(app_service));
   let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
     async move {
       if let Err(err) = ctx.try_stop().await {

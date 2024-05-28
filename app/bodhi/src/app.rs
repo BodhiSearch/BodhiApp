@@ -7,12 +7,11 @@ use bodhicore::{
     build_routes, build_server_handle, shutdown_signal, ServerHandle, SharedContextRw,
     SharedContextRwExts,
   },
-  AppService, CreateCommand, List, Pull, Run, Serve,
+  AppService, CreateCommand, List, Pull, RunCommand, Serve,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
-use include_dir::{include_dir, Dir};
-use std::env;
+use std::{env, sync::Arc};
 use tokio::runtime::Builder;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -58,23 +57,9 @@ pub fn main_internal() -> anyhow::Result<()> {
       let create_command: CreateCommand = create.try_into()?;
       create_command.execute(&service)?;
     }
-    Command::Run {
-      alias: id,
-      repo,
-      filename: file,
-    } => {
-      let run = match id {
-        Some(id) => Run::WithId { id },
-        None => {
-          let repo = repo.ok_or_else(|| anyhow!("repo should be present"))?;
-          let file = file.ok_or_else(|| anyhow!("file should be present"))?;
-          Run::WithRepo {
-            repo,
-            filename: file,
-          }
-        }
-      };
-      run.execute()?;
+    run @ Command::Run { .. } => {
+      let run_command: RunCommand = run.try_into()?;
+      run_command.execute(&service)?;
     }
   }
   Ok(())
@@ -107,7 +92,8 @@ async fn main_server(serve: Serve) -> anyhow::Result<()> {
     ready_rx: _ready_rx,
   } = build_server_handle(serve.clone().into())?;
   let mut ctx = SharedContextRw::new_shared_rw(None).await?;
-  let app = build_routes(ctx.clone());
+  let service = AppService::default();
+  let app = build_routes(ctx.clone(), Arc::new(service));
   let server_async = tokio::spawn(async move {
     let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
       async move {

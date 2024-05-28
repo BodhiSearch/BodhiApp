@@ -1,17 +1,18 @@
 use crate::{
-  cli::ChatTemplateId,
-  objs::{Alias, ChatTemplate, RemoteModel},
+  objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel},
   server::BODHI_HOME,
   service::{
     AppService, AppServiceFn, DataService, HfHubService, HubService, LocalDataService,
     MockDataService, MockHubService,
   },
+  Repo,
 };
 use axum::{
   body::Body,
   http::{request::Builder, Request},
   response::Response,
 };
+use derive_new::new;
 use dircpy::CopyBuilder;
 use http_body_util::BodyExt;
 use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
@@ -32,29 +33,7 @@ use tokio::sync::mpsc::Sender;
 use tracing_subscriber::{fmt, EnvFilter};
 
 pub static TEST_REPO: &str = "meta-llama/Meta-Llama-3-8B";
-pub static LLAMA2_CHAT_TEMPLATE: &str = r#"{% if messages[0]['role'] == 'system' -%}
-  {% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] -%}
-{% else -%}
-  {% set loop_messages = messages %}{% set system_message = false -%}
-{% endif -%}
-{% for message in loop_messages -%}
-  {% if (message['role'] == 'user') != (loop.index0 % 2 == 0) -%}
-    {{ raise_exception("Conversation roles must alternate user/assistant/user/assistant/...") }}
-  {% endif -%}
-  {% if loop.index0 == 0 and system_message != false -%}
-    {% set content = '<<SYS>>\\n' + system_message + '\\n<</SYS>>\\n\\n' + message['content'] -%}
-  {% else -%}
-    {% set content = message['content'] -%}
-  {% endif -%}
-  {% if message['role'] == 'user' -%}
-    {{ bos_token + '[INST] ' + content.strip() + ' [/INST]' -}}
-  {% elif message['role'] == 'assistant' -%}
-    {{ ' '  + content.strip() + ' ' + eos_token -}}
-  {% endif -%}
-{% endfor -%}
-"#;
 pub struct ConfigDirs(pub TempDir, pub PathBuf, pub &'static str);
-pub const TEST_MODELS_YAML: &str = include_str!("../tests/data/test_models.yaml");
 
 #[fixture]
 pub fn config_dirs(bodhi_home: TempDir) -> ConfigDirs {
@@ -258,11 +237,11 @@ pub fn app_service_stub(
 ) -> AppServiceTuple {
   let DataServiceTuple(temp_bodhi_home, bodhi_home, data_service) = data_service;
   let HubServiceTuple(temp_hf_home, hf_cache, hub_service) = hub_service;
-  let service = AppService::new(Box::new(hub_service), Box::new(data_service));
+  let service = AppService::new(hub_service, data_service);
   AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
 }
 
-#[derive(Debug)]
+#[derive(Debug, new)]
 pub struct MockAppServiceFn {
   pub hub_service: MockHubService,
   pub data_service: MockDataService,
@@ -271,6 +250,19 @@ pub struct MockAppServiceFn {
 impl HubService for MockAppServiceFn {
   fn download(&self, repo: &str, filename: &str, force: bool) -> crate::service::Result<PathBuf> {
     self.hub_service.download(repo, filename, force)
+  }
+
+  fn list_local_models(&self) -> Vec<LocalModelFile> {
+    self.hub_service.list_local_models()
+  }
+
+  fn find_local_model(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: &Option<String>,
+  ) -> Option<LocalModelFile> {
+    self.hub_service.find_local_model(repo, filename, snapshot)
   }
 }
 
@@ -290,6 +282,10 @@ impl DataService for MockAppServiceFn {
   fn find_alias(&self, alias: &str) -> Option<Alias> {
     self.data_service.find_alias(alias)
   }
+
+  fn list_remote_models(&self) -> crate::service::Result<Vec<RemoteModel>> {
+    self.data_service.list_remote_models()
+  }
 }
 
 // Implement AppServiceFn for the combined struct
@@ -303,28 +299,8 @@ pub fn mock_app_service() -> MockAppServiceFn {
   }
 }
 
-impl Default for RemoteModel {
+impl Default for ChatTemplate {
   fn default() -> Self {
-    Self {
-      alias: Default::default(),
-      family: Default::default(),
-      repo: Default::default(),
-      filename: Default::default(),
-      features: Default::default(),
-      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
-    }
-  }
-}
-
-impl Default for Alias {
-  fn default() -> Self {
-    Self {
-      alias: Default::default(),
-      family: Default::default(),
-      repo: Default::default(),
-      filename: Default::default(),
-      features: Default::default(),
-      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
-    }
+    ChatTemplate::Id(ChatTemplateId::Llama3)
   }
 }

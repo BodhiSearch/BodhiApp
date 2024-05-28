@@ -118,7 +118,7 @@ impl HubTokenizerConfig {
     eos_token: Option<String>,
   ) -> Self {
     Self {
-      chat_template: chat_template.map(|c| ChatTemplateVersions::Single(c)),
+      chat_template: chat_template.map(ChatTemplateVersions::Single),
       bos_token,
       eos_token,
     }

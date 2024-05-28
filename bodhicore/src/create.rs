@@ -38,12 +38,12 @@ impl TryFrom<Command> for CreateCommand {
             Some(chat_template) => ChatTemplate::Id(chat_template),
             None => match tokenizer_config {
                 Some(tokenizer_config) => {
-                  ChatTemplate::Repo(Repo::new(tokenizer_config))
+                  ChatTemplate::Repo(Repo::try_new(tokenizer_config)?)
                 },
                 None => return Err(AppError::BadRequest("one of chat_template or tokenizer_config is required".to_string())),
             },
         };
-        let result = CreateCommand {alias, repo: Repo::new(repo), filename, chat_template, family, force, oai_request_params, context_params };
+        let result = CreateCommand {alias, repo: Repo::try_new(repo)?, filename, chat_template, family, force, oai_request_params, context_params };
         Ok(result)
       }
       _ => Err(AppError::BadRequest(format!(
@@ -68,8 +68,9 @@ impl From<CreateCommand> for Alias {
     Alias::new(
       alias,
       family,
-      Some(repo),
-      Some(filename),
+      repo,
+      filename,
+      None,
       default_features(),
       chat_template,
     )
@@ -95,8 +96,8 @@ impl CreateCommand {
 mod test {
   use super::CreateCommand;
   use crate::{
-    cli::{ChatTemplateId, Cli, GptContextParams, OAIRequestParams},
-    objs::{Alias, ChatTemplate, Repo},
+    cli::{Cli, GptContextParams, OAIRequestParams},
+    objs::{Alias, ChatTemplate, ChatTemplateId, Repo},
     test_utils::{mock_app_service, MockAppServiceFn},
   };
   use anyhow_trace::anyhow_trace;
@@ -121,7 +122,7 @@ mod test {
     "--filename", "testalias.Q8_0.gguf",
     "--family", "testalias",
     "--tokenizer-config", "MyFactory/testalias",
-  ], ChatTemplate::Repo(Repo::new("MyFactory/testalias".to_string())))]
+  ], ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string()).unwrap()))]
   fn test_create_try_from_valid(
     #[case] args: Vec<&str>,
     #[case] chat_template: ChatTemplate,
@@ -130,7 +131,7 @@ mod test {
     let actual: CreateCommand = command.try_into()?;
     let expected = CreateCommand {
       alias: "testalias:instruct".to_string(),
-      repo: Repo::new("MyFactory/testalias-gguf".to_string()),
+      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       filename: "testalias.Q8_0.gguf".to_string(),
       chat_template,
       family: Some("testalias".to_string()),
@@ -166,7 +167,7 @@ mod test {
     let mut mock = mock_app_service;
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
-      repo: Repo::new("MyFactory/testalias-gguf".to_string()),
+      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       filename: "testalias.Q8_0.gguf".to_string(),
       chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
       family: None,
@@ -199,7 +200,7 @@ mod test {
     let mut mock = mock_app_service;
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
-      repo: Repo::new("MyFactory/testalias-gguf".to_string()),
+      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       filename: "testalias.Q8_0.gguf".to_string(),
       chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
       family: None,
@@ -224,8 +225,9 @@ mod test {
     let alias = Alias::new(
       "testalias:instruct".to_string(),
       None,
-      Some(Repo::new("MyFactory/testalias-gguf".to_string())),
-      Some("testalias.Q8_0.gguf".to_string()),
+      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+      "testalias.Q8_0.gguf".to_string(),
+      None,
       vec!["chat".to_string()],
       ChatTemplate::Id(ChatTemplateId::Llama3),
     );
@@ -245,9 +247,9 @@ mod test {
     let mut mock = mock_app_service;
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
-      repo: Repo::new("MyFactory/testalias-gguf".to_string()),
+      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       filename: "testalias.Q8_0.gguf".to_string(),
-      chat_template: ChatTemplate::Repo(Repo::new("MyFactory/testalias".to_string())),
+      chat_template: ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?),
       family: None,
       force: false,
       oai_request_params: OAIRequestParams::default(),
@@ -279,10 +281,11 @@ mod test {
     let alias = Alias::new(
       "testalias:instruct".to_string(),
       None,
-      Some(Repo::new("MyFactory/testalias-gguf".to_string())),
-      Some("testalias.Q8_0.gguf".to_string()),
+      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+      "testalias.Q8_0.gguf".to_string(),
+      None,
       vec!["chat".to_string()],
-      ChatTemplate::Repo(Repo::new("MyFactory/testalias".to_string())),
+      ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?),
     );
     mock
       .data_service

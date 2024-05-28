@@ -1,9 +1,12 @@
-use std::env;
+use std::{env, sync::Arc};
 
 use anyhow::{anyhow, Result};
-use bodhicore::server::{
-  build_routes, build_server_handle, ServerHandle, ServerParams, SharedContextRw,
-  SharedContextRwExts, BODHI_HOME,
+use bodhicore::{
+  server::{
+    build_routes, build_server_handle, ServerHandle, ServerParams, SharedContextRw,
+    SharedContextRwExts, BODHI_HOME,
+  },
+  AppService,
 };
 use futures_util::{future::BoxFuture, FutureExt};
 use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log, GptParams};
@@ -57,7 +60,7 @@ pub async fn test_server(bodhi_home: TempDir) -> anyhow::Result<TestServerHandle
     ..GptParams::default()
   };
   let mut wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-  let app = build_routes(wrapper.clone());
+  let app = build_routes(wrapper.clone(), Arc::new(AppService::default()));
   let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
     async move {
       if let Err(err) = wrapper.try_stop().await {
