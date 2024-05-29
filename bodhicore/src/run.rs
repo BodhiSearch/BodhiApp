@@ -16,6 +16,7 @@ impl TryFrom<Command> for RunCommand {
 }
 
 impl RunCommand {
+  #[allow(clippy::result_large_err)]
   pub fn execute(self, service: &AppService) -> crate::error::Result<()> {
     match self {
       RunCommand::WithAlias { alias } => {

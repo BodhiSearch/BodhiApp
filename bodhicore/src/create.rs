@@ -87,6 +87,7 @@ impl From<CreateCommand> for Alias {
 }
 
 impl CreateCommand {
+  #[allow(clippy::result_large_err)]
   pub fn execute(self, service: &dyn AppServiceFn) -> Result<()> {
     if !self.force && service.find_alias(&self.alias).is_some() {
       return Err(AppError::AliasExists(self.alias.clone()));
@@ -105,65 +106,55 @@ impl CreateCommand {
 mod test {
   use super::CreateCommand;
   use crate::{
-    cli::{Cli, GptContextParams, OAIRequestParams},
+    cli::{Command, GptContextParams, OAIRequestParams},
     objs::{Alias, ChatTemplate, ChatTemplateId, Repo},
     test_utils::{mock_app_service, MockAppServiceFn},
   };
   use anyhow_trace::anyhow_trace;
-  use clap::Parser;
   use mockall::predicate::eq;
   use rstest::rstest;
   use std::path::PathBuf;
 
   #[rstest]
-  #[case(vec![
-    "bodhi", "create",
-    "testalias:instruct",
-    "--repo", "MyFactory/testalias-gguf",
-    "--filename", "testalias.Q8_0.gguf",
-    "--family", "testalias",
-    "--chat-template", "llama3",
-  ], ChatTemplate::Id(ChatTemplateId::Llama3))]
-  #[case(vec![
-    "bodhi", "create",
-    "testalias:instruct",
-    "--repo", "MyFactory/testalias-gguf",
-    "--filename", "testalias.Q8_0.gguf",
-    "--family", "testalias",
-    "--tokenizer-config", "MyFactory/testalias",
-  ], ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string()).unwrap()))]
+  #[case(
+  Command::Create {
+    alias: "testalias:instruct".to_string(),
+    repo: "MyFactory/testalias-gguf".to_string(),
+    filename: "testalias.Q8_0.gguf".to_string(),
+    chat_template: Some(ChatTemplateId::Llama3),
+    tokenizer_config: None,
+    family: Some("testalias".to_string()),
+    force: false,
+    oai_request_params: OAIRequestParams::default(),
+    context_params: GptContextParams::default(),
+  },
+  CreateCommand {
+    alias: "testalias:instruct".to_string(),
+    repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+    filename: "testalias.Q8_0.gguf".to_string(),
+    chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+    family: Some("testalias".to_string()),
+    force: false,
+    oai_request_params: OAIRequestParams::default(),
+    context_params: GptContextParams::default(),
+  })]
   fn test_create_try_from_valid(
-    #[case] args: Vec<&str>,
-    #[case] chat_template: ChatTemplate,
+    #[case] input: Command,
+    #[case] expected: CreateCommand,
   ) -> anyhow::Result<()> {
-    let command = Cli::try_parse_from(args)?.command;
-    let actual: CreateCommand = command.try_into()?;
-    let expected = CreateCommand {
-      alias: "testalias:instruct".to_string(),
-      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
-      filename: "testalias.Q8_0.gguf".to_string(),
-      chat_template,
-      family: Some("testalias".to_string()),
-      force: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    };
-    assert_eq!(expected, actual);
+    let command = CreateCommand::try_from(input)?;
+    assert_eq!(expected, command);
     Ok(())
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "pull",
-  "--repo", "MyFactory/testalias-gguf",
-  "--filename", "testalias.Q8_0.gguf",
-  ], "Command 'pull' cannot be converted into command 'create'")]
+  #[case(Command::App {}, "Command 'app' cannot be converted into command 'create'")]
   #[anyhow_trace]
   fn test_create_try_from_invalid(
-    #[case] args: Vec<&str>,
+    #[case] input: Command,
     #[case] message: String,
   ) -> anyhow::Result<()> {
-    let command = Cli::try_parse_from(args)?.command;
-    let actual = CreateCommand::try_from(command);
+    let actual = CreateCommand::try_from(input);
     assert!(actual.is_err());
     assert_eq!(message, actual.unwrap_err().to_string());
     Ok(())
@@ -205,7 +196,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_create_execute(mock_app_service: MockAppServiceFn) -> anyhow::Result<()> {
+  fn test_create_execute_downloads_model_saves_alias(mock_app_service: MockAppServiceFn) -> anyhow::Result<()> {
     let mut mock = mock_app_service;
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
@@ -250,7 +241,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_create_execute_with_tokenizer_config(
+  fn test_create_execute_with_tokenizer_config_downloads_tokenizer_saves_alias(
     mock_app_service: MockAppServiceFn,
   ) -> anyhow::Result<()> {
     let mut mock = mock_app_service;
@@ -277,7 +268,7 @@ mod test {
         eq("testalias.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(PathBuf::from(".")));
+      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
     mock
       .hub_service
       .expect_download()
@@ -286,7 +277,7 @@ mod test {
         eq("tokenizer_config.json"),
         eq(true),
       )
-      .return_once(|_, _, _| Ok(PathBuf::from(".")));
+      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
     let alias = Alias::new(
       "testalias:instruct".to_string(),
       None,
@@ -300,7 +291,7 @@ mod test {
       .data_service
       .expect_save_alias()
       .with(eq(alias))
-      .return_once(|_| Ok(PathBuf::from(".")));
+      .return_once(|_| Ok(PathBuf::from("ignored")));
     create.execute(&mock)?;
     Ok(())
   }

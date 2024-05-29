@@ -30,7 +30,8 @@ impl TryFrom<Command> for ListCommand {
 }
 
 impl ListCommand {
-  pub fn execute(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
+  #[allow(clippy::result_large_err)]
+  pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     match self {
       ListCommand::Local => self.list_local_model_alias(service)?,
       ListCommand::Remote => self.list_remote_models(service)?,

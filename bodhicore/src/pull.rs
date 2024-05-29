@@ -45,6 +45,7 @@ impl TryFrom<Command> for PullCommand {
 }
 
 impl PullCommand {
+  #[allow(clippy::result_large_err)]
   pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     match self {
       PullCommand::ByAlias { alias, force } => {
@@ -74,13 +75,11 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    cli::Cli,
     objs::{Alias, ChatTemplate, ChatTemplateId, RemoteModel, Repo},
     service::{MockDataService, MockHubService},
     test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
-    PullCommand,
+    Command, PullCommand,
   };
-  use clap::Parser;
   use mockall::predicate::eq;
   use rstest::rstest;
   use std::path::PathBuf;
@@ -172,18 +171,30 @@ mod test {
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "pull", "llama3:instruct"], PullCommand::ByAlias {
+  #[case(Command::Pull {
+    alias: Some("llama3:instruct".to_string()),
+    repo: None,
+    filename: None,
+    force: false,
+  }, PullCommand::ByAlias {
     alias: "llama3:instruct".to_string(),
     force: false,
   })]
-  #[case(vec!["bodhi", "pull", "--repo", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF", "--filename", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"], 
-  PullCommand::ByRepoFile { repo: Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()).unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), force: false })]
-  fn test_pull_command_into_from_cli_command(
-    #[case] args: Vec<&str>,
+  #[case(Command::Pull {
+    alias: None,
+    repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
+    filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
+    force: false,
+  },
+  PullCommand::ByRepoFile {
+    repo: Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()).unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), 
+    force: false
+  })]
+  fn test_pull_command_try_from_command(
+    #[case] input: Command,
     #[case] expected: PullCommand,
   ) -> anyhow::Result<()> {
-    let command = Cli::try_parse_from(args)?.command;
-    let pull_command: PullCommand = command.try_into()?;
+    let pull_command: PullCommand = PullCommand::try_from(input)?;
     assert_eq!(expected, pull_command);
     Ok(())
   }
