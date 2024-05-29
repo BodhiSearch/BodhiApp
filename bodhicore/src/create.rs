@@ -35,20 +35,29 @@ impl TryFrom<Command> for CreateCommand {
         context_params,
       } => {
         let chat_template = match chat_template {
-            Some(chat_template) => ChatTemplate::Id(chat_template),
-            None => match tokenizer_config {
-                Some(tokenizer_config) => {
-                  ChatTemplate::Repo(Repo::try_new(tokenizer_config)?)
-                },
-                None => return Err(AppError::BadRequest("one of chat_template or tokenizer_config is required".to_string())),
-            },
+          Some(chat_template) => ChatTemplate::Id(chat_template),
+          None => match tokenizer_config {
+            Some(tokenizer_config) => ChatTemplate::Repo(Repo::try_new(tokenizer_config)?),
+            None => {
+              return Err(AppError::BadRequest(format!(
+                "cannot initialize create command with invalid state. chat_template: '{chat_template:?}', tokenizer_config: '{tokenizer_config:?}'"
+              )))
+            }
+          },
         };
-        let result = CreateCommand {alias, repo: Repo::try_new(repo)?, filename, chat_template, family, force, oai_request_params, context_params };
+        let result = CreateCommand {
+          alias,
+          repo: Repo::try_new(repo)?,
+          filename,
+          chat_template,
+          family,
+          force,
+          oai_request_params,
+          context_params,
+        };
         Ok(result)
       }
-      _ => Err(AppError::BadRequest(format!(
-        "{value:?} cannot be converted into CreateCommand, only `Command::Create` variant supported."
-      ))),
+      cmd => Err(AppError::ConvertCommand(cmd, "create".to_string())),
     }
   }
 }
@@ -147,7 +156,7 @@ mod test {
   #[case(vec!["bodhi", "pull",
   "--repo", "MyFactory/testalias-gguf",
   "--filename", "testalias.Q8_0.gguf",
-  ], "Pull { alias: None, repo: Some(\"MyFactory/testalias-gguf\"), filename: Some(\"testalias.Q8_0.gguf\"), force: false } cannot be converted into CreateCommand, only `Command::Create` variant supported.")]
+  ], "Command 'pull' cannot be converted into command 'create'")]
   #[anyhow_trace]
   fn test_create_try_from_invalid(
     #[case] args: Vec<&str>,

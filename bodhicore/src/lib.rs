@@ -14,7 +14,7 @@ pub mod server;
 mod service;
 pub use cli::Command;
 pub use create::CreateCommand;
-pub use list::List;
+pub use list::ListCommand;
 pub use objs::Repo;
 pub use pull::PullCommand;
 pub use run::RunCommand;

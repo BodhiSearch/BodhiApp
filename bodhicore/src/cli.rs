@@ -2,6 +2,7 @@ use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use crate::objs::{ChatTemplateId, GGUF_EXTENSION, REGEX_REPO};
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
+use strum::Display;
 
 #[derive(Debug, PartialEq, Parser)]
 #[command(version)]
@@ -11,7 +12,8 @@ pub struct Cli {
   pub command: Command,
 }
 
-#[derive(Debug, PartialEq, Subcommand)]
+#[derive(Debug, PartialEq, Subcommand, Display)]
+#[strum(serialize_all = "lowercase")]
 #[allow(clippy::large_enum_variant)]
 pub enum Command {
   /// launch as native app
@@ -549,6 +551,29 @@ For more information, try '--help'.
     let actual = Cli::try_parse_from(args);
     assert!(actual.is_err());
     assert_eq!(message, actual.unwrap_err().to_string());
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(Command::App {}, "app")]
+  #[case(Command::Init {}, "init")]
+  #[case(Command::Serve {host: Default::default(), port: 0}, "serve")]
+  #[case(Command::List {remote: false, models: false}, "list")]
+  #[case(Command::Pull { alias: None, repo: None, filename: None, force: false }, "pull")]
+  #[case(Command::Create {
+      alias: Default::default(),
+      repo: Default::default(),
+      filename: Default::default(),
+      chat_template: None,
+      tokenizer_config: None,
+      family: None,
+      force: false,
+      oai_request_params: OAIRequestParams::default(),
+      context_params: GptContextParams::default(),
+    }, "create")]
+  #[case(Command::Run {alias: Default::default()}, "run")]
+  fn test_cli_to_string(#[case] cmd: Command, #[case] expected: String) -> anyhow::Result<()> {
+    assert_eq!(expected, cmd.to_string());
     Ok(())
   }
 }

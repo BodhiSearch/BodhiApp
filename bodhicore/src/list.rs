@@ -1,30 +1,40 @@
-use crate::{objs::RemoteModel, service::AppServiceFn};
+use crate::{error::AppError, objs::RemoteModel, service::AppServiceFn, Command};
 use prettytable::{
   format::{self},
   row, Row, Table,
 };
 
-pub enum List {
+#[derive(Debug, PartialEq)]
+pub enum ListCommand {
   Local,
   Remote,
   Models,
 }
 
-impl List {
-  pub fn new(remote: bool, models: bool) -> Self {
-    match (remote, models) {
-      (true, false) => List::Remote,
-      (false, true) => List::Models,
-      (false, false) => List::Local,
-      (true, true) => unreachable!("both remote and models cannot be true"),
+impl TryFrom<Command> for ListCommand {
+  type Error = AppError;
+
+  fn try_from(value: Command) -> Result<Self, Self::Error> {
+    match value {
+      Command::List { remote, models } => match (remote, models) {
+        (true, false) => Ok(ListCommand::Remote),
+        (false, true) => Ok(ListCommand::Models),
+        (false, false) => Ok(ListCommand::Local),
+        (true, true) => Err(AppError::BadRequest(format!(
+          "cannot initialize list command with invalid state. --remote: {remote}, --models: {models}"
+        ))),
+      },
+      cmd => Err(AppError::ConvertCommand(cmd, "list".to_string())),
     }
   }
+}
 
+impl ListCommand {
   pub fn execute(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
     match self {
-      List::Local => self.list_local_model_alias(service)?,
-      List::Remote => self.list_remote_models(service)?,
-      List::Models => self.list_local_models(service)?,
+      ListCommand::Local => self.list_local_model_alias(service)?,
+      ListCommand::Remote => self.list_remote_models(service)?,
+      ListCommand::Models => self.list_local_models(service)?,
     }
     Ok(())
   }
@@ -80,6 +90,43 @@ impl List {
     table.printstd();
     println!();
     println!("To download and configure the model alias, run `bodhi pull <ALIAS>`");
+    Ok(())
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use crate::{Command, ListCommand};
+  use rstest::rstest;
+
+  #[rstest]
+  #[case(Command::App {}, "Command 'app' cannot be converted into command 'list'")]
+  #[case(Command::List {remote: true, models: true}, "cannot initialize list command with invalid state. --remote: true, --models: true")]
+  fn test_list_invalid_try_from(#[case] input: Command, #[case] expected: String) {
+    let result = ListCommand::try_from(input);
+    assert!(result.is_err());
+    assert_eq!(expected, result.unwrap_err().to_string());
+  }
+
+  #[rstest]
+  #[case(Command::List {
+    remote: false,
+    models: false,
+  }, ListCommand::Local)]
+  #[case(Command::List {
+    remote: true,
+    models: false,
+  }, ListCommand::Remote)]
+  #[case(Command::List {
+    remote: false,
+    models: true,
+  }, ListCommand::Models)]
+  fn test_list_valid_try_from(
+    #[case] input: Command,
+    #[case] expected: ListCommand,
+  ) -> anyhow::Result<()> {
+    let result = ListCommand::try_from(input)?;
+    assert_eq!(expected, result);
     Ok(())
   }
 }

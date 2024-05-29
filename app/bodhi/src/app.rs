@@ -7,7 +7,7 @@ use bodhicore::{
     build_routes, build_server_handle, shutdown_signal, ServerHandle, SharedContextRw,
     SharedContextRwExts,
   },
-  AppService, CreateCommand, List, PullCommand, RunCommand, Serve,
+  AppService, CreateCommand, ListCommand, PullCommand, RunCommand, Serve,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
@@ -38,8 +38,9 @@ pub fn main_internal() -> anyhow::Result<()> {
     Command::Init {} => {
       unimplemented!()
     }
-    Command::List { remote, models } => {
-      List::new(remote, models).execute(&service)?;
+    list @ Command::List { .. } => {
+      let list_command: ListCommand = list.try_into()?;
+      list_command.execute(&service)?;
     }
     Command::Serve { host, port } => {
       main_async(Serve { host, port })?;

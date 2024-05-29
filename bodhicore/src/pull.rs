@@ -39,9 +39,7 @@ impl TryFrom<Command> for PullCommand {
         };
         Ok(pull_command)
       }
-      _ => Err(AppError::BadRequest(format!(
-        "{value:?} cannot be converted into PullCommand, only `Command::Pull` variant supported."
-      ))),
+      cmd => Err(AppError::ConvertCommand(cmd, "pull".to_string())),
     }
   }
 }

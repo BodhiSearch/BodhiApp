@@ -1,7 +1,8 @@
-use crate::service::DataServiceError;
+use crate::{service::DataServiceError, Command};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
+#[allow(clippy::large_enum_variant)]
 pub enum AppError {
   #[error(
     r#"alias '{0}' not found in pre-configured model aliases.
@@ -13,6 +14,8 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   AliasExists(String),
   #[error("{0}")]
   BadRequest(String),
+  #[error("Command '{0}' cannot be converted into command '{1}'")]
+  ConvertCommand(Command, String),
   #[error(transparent)]
   DataService(#[from] DataServiceError),
   #[error(
