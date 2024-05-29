@@ -1,7 +1,7 @@
 use crate::{error::AppError, objs::Alias, service::AppServiceFn, Command, Repo};
 
 #[derive(Debug, PartialEq)]
-pub enum Pull {
+pub enum PullCommand {
   ByAlias {
     alias: String,
     force: bool,
@@ -13,7 +13,7 @@ pub enum Pull {
   },
 }
 
-impl TryFrom<Command> for Pull {
+impl TryFrom<Command> for PullCommand {
   type Error = AppError;
 
   fn try_from(value: Command) -> Result<Self, Self::Error> {
@@ -25,9 +25,9 @@ impl TryFrom<Command> for Pull {
         force,
       } => {
         let pull_command = match alias {
-          Some(alias) => Pull::ByAlias { alias, force },
+          Some(alias) => PullCommand::ByAlias { alias, force },
           None => match (repo, filename) {
-            (Some(repo), Some(filename)) => Pull::ByRepoFile {
+            (Some(repo), Some(filename)) => PullCommand::ByRepoFile {
               repo: Repo::try_new(repo)?,
               filename,
               force,
@@ -46,10 +46,10 @@ impl TryFrom<Command> for Pull {
   }
 }
 
-impl Pull {
+impl PullCommand {
   pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     match self {
-      Pull::ByAlias { alias, force } => {
+      PullCommand::ByAlias { alias, force } => {
         if !force && service.find_alias(&alias).is_some() {
           return Err(AppError::AliasExists(alias));
         }
@@ -61,7 +61,7 @@ impl Pull {
         service.save_alias(new_alias)?;
         Ok(())
       }
-      Pull::ByRepoFile {
+      PullCommand::ByRepoFile {
         repo,
         filename,
         force,
@@ -80,7 +80,7 @@ mod test {
     objs::{Alias, ChatTemplate, ChatTemplateId, RemoteModel, Repo},
     service::{MockDataService, MockHubService},
     test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
-    Pull,
+    PullCommand,
   };
   use clap::Parser;
   use mockall::predicate::eq;
@@ -93,7 +93,7 @@ mod test {
   ) -> anyhow::Result<()> {
     let AppServiceTuple(_bodhi_home, _hf_home, _, _, service) = app_service_stub;
     let alias = String::from("testalias-exists:instruct");
-    let pull = Pull::ByAlias {
+    let pull = PullCommand::ByAlias {
       alias,
       force: false,
     };
@@ -143,7 +143,7 @@ mod test {
       )
       .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
-    let pull = Pull::ByAlias {
+    let pull = PullCommand::ByAlias {
       alias: alias_id.to_string(),
       force: false,
     };
@@ -153,7 +153,7 @@ mod test {
 
   #[rstest]
   fn test_pull_by_repo_file_only_pulls_the_model() -> anyhow::Result<()> {
-    let pull = Pull::ByRepoFile {
+    let pull = PullCommand::ByRepoFile {
       repo: Repo::try_new("google/gemma-7b-it-GGUF".to_string())?,
       filename: "gemma-7b-it.gguf".to_string(),
       force: false,
@@ -174,18 +174,18 @@ mod test {
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "pull", "llama3:instruct"], Pull::ByAlias {
+  #[case(vec!["bodhi", "pull", "llama3:instruct"], PullCommand::ByAlias {
     alias: "llama3:instruct".to_string(),
     force: false,
   })]
   #[case(vec!["bodhi", "pull", "--repo", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF", "--filename", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"], 
-  Pull::ByRepoFile { repo: Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()).unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), force: false })]
+  PullCommand::ByRepoFile { repo: Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()).unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), force: false })]
   fn test_pull_command_into_from_cli_command(
     #[case] args: Vec<&str>,
-    #[case] expected: Pull,
+    #[case] expected: PullCommand,
   ) -> anyhow::Result<()> {
     let command = Cli::try_parse_from(args)?.command;
-    let pull_command: Pull = command.try_into()?;
+    let pull_command: PullCommand = command.try_into()?;
     assert_eq!(expected, pull_command);
     Ok(())
   }

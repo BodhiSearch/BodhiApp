@@ -16,7 +16,7 @@ pub use cli::Command;
 pub use create::CreateCommand;
 pub use list::List;
 pub use objs::Repo;
-pub use pull::Pull;
+pub use pull::PullCommand;
 pub use run::RunCommand;
 pub use serve::Serve;
 pub use service::AppService;

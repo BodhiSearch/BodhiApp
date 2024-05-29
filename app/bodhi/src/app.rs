@@ -7,7 +7,7 @@ use bodhicore::{
     build_routes, build_server_handle, shutdown_signal, ServerHandle, SharedContextRw,
     SharedContextRwExts,
   },
-  AppService, CreateCommand, List, Pull, RunCommand, Serve,
+  AppService, CreateCommand, List, PullCommand, RunCommand, Serve,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
@@ -45,7 +45,7 @@ pub fn main_internal() -> anyhow::Result<()> {
       main_async(Serve { host, port })?;
     }
     pull @ Command::Pull { .. } => {
-      let pull_command: Pull = pull.try_into()?;
+      let pull_command: PullCommand = pull.try_into()?;
       pull_command.execute(&service)?;
     }
     create @ Command::Create { .. } => {

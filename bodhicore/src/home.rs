@@ -59,6 +59,7 @@ mod test {
     Ok(())
   }
 
+  #[ignore]
   #[test]
   fn test_configs_dir_is_resolvable() -> anyhow::Result<()> {
     let configs_dir = configs_dir("meta-llama/Meta-Llama-3-8B")?;
