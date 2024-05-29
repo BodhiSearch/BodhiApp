@@ -3,10 +3,7 @@ use once_cell::sync::Lazy;
 use prettytable::{Cell, Row};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{
-  fmt::Display,
-  ops::Deref, path::PathBuf,
-};
+use std::{fmt::Display, ops::Deref, path::PathBuf};
 use strum::{AsRefStr, Display, EnumIter};
 use validator::Validate;
 
@@ -121,12 +118,6 @@ impl Display for ChatTemplate {
   }
 }
 
-// #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, new)]
-// pub struct LocalModel {
-//   pub repo: Repo,
-//   pub files: Vec<LocalModelFile>,
-// }
-
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, new)]
 pub struct LocalModelFile {
   pub hf_cache: PathBuf,
@@ -144,6 +135,27 @@ impl LocalModelFile {
     path.push(&self.snapshot);
     path.push(&self.filename);
     path
+  }
+}
+
+impl From<LocalModelFile> for Row {
+  fn from(model: LocalModelFile) -> Self {
+    let LocalModelFile {
+      repo,
+      filename,
+      snapshot,
+      size,
+      ..
+    } = model;
+    let human_size = size
+      .map(|size| format!("{:.2} GB", size as f64 / 2_f64.powf(30.0)))
+      .unwrap_or_else(|| String::from("Unknown"));
+    Row::from(vec![
+      Cell::new(&filename),
+      Cell::new(&repo),
+      Cell::new(&snapshot[..8]),
+      Cell::new(&human_size),
+    ])
   }
 }
 
@@ -217,7 +229,9 @@ pub fn default_features() -> Vec<String> {
 
 #[cfg(test)]
 mod test {
-  use super::{ChatTemplate, ChatTemplateId, RemoteModel, Repo};
+  use std::path::PathBuf;
+
+  use super::{ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
   use anyhow_trace::anyhow_trace;
   use prettytable::{Cell, Row};
   use rstest::rstest;
@@ -276,6 +290,26 @@ mod test {
   fn test_chat_template_id_partial_ord() -> anyhow::Result<()> {
     assert!(ChatTemplateId::Llama3.gt(&ChatTemplateId::Llama2));
     assert!(ChatTemplateId::Openchat.gt(&ChatTemplateId::CommandR));
+    Ok(())
+  }
+
+  #[test]
+  fn test_local_model_to_row() -> anyhow::Result<()> {
+    let model = LocalModelFile::new(
+      PathBuf::from("."),
+      Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string())?,
+      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+      "1234567890".to_string(),
+      Some(1024 * 1024 * 1024 * 10),
+    );
+    let row = model.into();
+    let expected = Row::from(vec![
+      Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
+      Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
+      Cell::new("12345678"),
+      Cell::new("10.00 GB"),
+    ]);
+    assert_eq!(expected, row);
     Ok(())
   }
 }

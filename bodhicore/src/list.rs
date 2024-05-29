@@ -1,32 +1,8 @@
-use crate::{
-  objs::{LocalModelFile, RemoteModel},
-  service::AppServiceFn,
-};
+use crate::{objs::RemoteModel, service::AppServiceFn};
 use prettytable::{
   format::{self},
-  row, Cell, Row, Table,
+  row, Row, Table,
 };
-
-impl From<LocalModelFile> for Row {
-  fn from(model: LocalModelFile) -> Self {
-    let LocalModelFile {
-      repo,
-      filename,
-      snapshot,
-      size,
-      ..
-    } = model;
-    let human_size = size
-      .map(|size| format!("{:.2} GB", size as f64 / 2_f64.powf(30.0)))
-      .unwrap_or_else(|| String::from("Unknown"));
-    Row::from(vec![
-      Cell::new(&filename),
-      Cell::new(&repo),
-      Cell::new(&snapshot[..8]),
-      Cell::new(&human_size),
-    ])
-  }
-}
 
 pub enum List {
   Local,
@@ -104,33 +80,6 @@ impl List {
     table.printstd();
     println!();
     println!("To download and configure the model alias, run `bodhi pull <ALIAS>`");
-    Ok(())
-  }
-}
-
-#[cfg(test)]
-mod test {
-  use crate::{objs::LocalModelFile, Repo};
-  use prettytable::{Cell, Row};
-  use std::path::PathBuf;
-
-  #[test]
-  fn test_list_model_item_to_row() -> anyhow::Result<()> {
-    let model = LocalModelFile::new(
-      PathBuf::from("."),
-      Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string())?,
-      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      "1234567890".to_string(),
-      Some(1024 * 1024 * 1024 * 10),
-    );
-    let row = model.into();
-    let expected = Row::from(vec![
-      Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-      Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
-      Cell::new("12345678"),
-      Cell::new("10.00 GB"),
-    ]);
-    assert_eq!(expected, row);
     Ok(())
   }
 }
