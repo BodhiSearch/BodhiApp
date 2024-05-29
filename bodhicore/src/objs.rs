@@ -10,6 +10,7 @@ use validator::Validate;
 pub static REGEX_REPO: Lazy<Regex> =
   Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap());
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
+pub static GGUF_EXTENSION: &str = ".gguf";
 
 #[derive(
   clap::ValueEnum, Clone, Debug, Serialize, Deserialize, PartialEq, EnumIter, AsRefStr, Display,

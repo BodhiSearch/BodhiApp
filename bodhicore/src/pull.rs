@@ -76,11 +76,13 @@ impl Pull {
 #[cfg(test)]
 mod test {
   use crate::{
+    cli::Cli,
     objs::{Alias, ChatTemplate, ChatTemplateId, RemoteModel, Repo},
     service::{MockDataService, MockHubService},
     test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
     Pull,
   };
+  use clap::Parser;
   use mockall::predicate::eq;
   use rstest::rstest;
   use std::path::PathBuf;
@@ -105,15 +107,16 @@ mod test {
   }
 
   #[rstest]
-  fn test_pull_by_alias() -> anyhow::Result<()> {
+  fn test_pull_by_alias_creates_new_alias() -> anyhow::Result<()> {
+    let alias_id = "test_pull_by_alias:instruct";
     let mut mock_data_service = MockDataService::new();
     mock_data_service
       .expect_find_alias()
-      .with(eq("test_pull_by_alias:instruct"))
+      .with(eq(alias_id))
       .times(1)
       .returning(|_| None);
     let remote_model = RemoteModel::new(
-      String::from("test_pull_by_alias:instruct"),
+      String::from(alias_id),
       String::from("testalias"),
       Repo::try_new(String::from("MyFactory/testalias-neverdownload-gguf"))?,
       String::from("testalias-neverdownload.Q8_0.gguf"),
@@ -123,15 +126,13 @@ mod test {
     let remote_clone = remote_model.clone();
     mock_data_service
       .expect_find_remote_model()
-      .with(eq("test_pull_by_alias:instruct"))
-      .times(1)
-      .returning(move |_| Ok(Some(remote_clone.clone())));
+      .with(eq(alias_id))
+      .return_once(move |_| Ok(Some(remote_clone.clone())));
     let alias: Alias = remote_model.into();
     mock_data_service
       .expect_save_alias()
       .with(eq(alias))
-      .times(1)
-      .returning(|_| Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))));
+      .return_once(|_| Ok(PathBuf::from("ignored")));
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_download()
@@ -140,11 +141,10 @@ mod test {
         eq("testalias-neverdownload.Q8_0.gguf"),
         eq(false),
       )
-      .times(1)
-      .returning(|_, _, _| Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))));
+      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     let pull = Pull::ByAlias {
-      alias: "test_pull_by_alias:instruct".to_string(),
+      alias: alias_id.to_string(),
       force: false,
     };
     pull.execute(&service)?;
@@ -152,7 +152,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_pull_by_repo_file() -> anyhow::Result<()> {
+  fn test_pull_by_repo_file_only_pulls_the_model() -> anyhow::Result<()> {
     let pull = Pull::ByRepoFile {
       repo: Repo::try_new("google/gemma-7b-it-GGUF".to_string())?,
       filename: "gemma-7b-it.gguf".to_string(),
@@ -166,10 +166,27 @@ mod test {
         eq("gemma-7b-it.gguf"),
         eq(false),
       )
-      .times(1)
-      .returning(|_, _, _| Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))));
-    let service = MockAppServiceFn::new(mock_hub_service, MockDataService::new());
+      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
+    let mock_data_service = MockDataService::new();
+    let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     pull.execute(&service)?;
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(vec!["bodhi", "pull", "llama3:instruct"], Pull::ByAlias {
+    alias: "llama3:instruct".to_string(),
+    force: false,
+  })]
+  #[case(vec!["bodhi", "pull", "--repo", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF", "--filename", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"], 
+  Pull::ByRepoFile { repo: Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()).unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), force: false })]
+  fn test_pull_command_into_from_cli_command(
+    #[case] args: Vec<&str>,
+    #[case] expected: Pull,
+  ) -> anyhow::Result<()> {
+    let command = Cli::try_parse_from(args)?.command;
+    let pull_command: Pull = command.try_into()?;
+    assert_eq!(expected, pull_command);
     Ok(())
   }
 }

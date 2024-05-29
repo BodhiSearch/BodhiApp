@@ -1,5 +1,5 @@
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
-use crate::objs::{ChatTemplateId, REGEX_REPO};
+use crate::objs::{ChatTemplateId, GGUF_EXTENSION, REGEX_REPO};
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 
@@ -46,11 +46,11 @@ pub enum Command {
     alias: Option<String>,
 
     /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
-    #[clap(long, short = 'r', requires = "filename", group = "pull")]
+    #[clap(long, short = 'r', requires = "filename", group = "pull", value_parser = repo_parser)]
     repo: Option<String>,
 
     /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
-    #[clap(long, short = 'f', requires = "repo")]
+    #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
     filename: Option<String>,
 
     /// If the file already exists in $HF_HOME, force download it again
@@ -65,11 +65,11 @@ pub enum Command {
     alias: String,
 
     /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
-    #[clap(long, short = 'r')]
+    #[clap(long, short = 'r', value_parser = repo_parser)]
     repo: String,
 
     /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
-    #[clap(long, short = 'f')]
+    #[clap(long, short = 'f', value_parser = gguf_filename_parser)]
     filename: String,
 
     /// In-built chat template to use to convert chat messages to LLM prompt
@@ -77,7 +77,7 @@ pub enum Command {
     chat_template: Option<ChatTemplateId>,
 
     /// Tokenizer config to convert chat messages to LLM prompt
-    #[clap(long, group = "template", value_parser = validate_tokenizer_config)]
+    #[clap(long, group = "template", value_parser = repo_parser)]
     tokenizer_config: Option<String>,
 
     /// Optional meta information. Family of the model.
@@ -135,14 +135,19 @@ fn validate_range(s: &str, lower: f32, upper: f32) -> Result<f32, String> {
   }
 }
 
-fn validate_tokenizer_config(tokenizer_config: &str) -> Result<String, String> {
-  if REGEX_REPO.is_match(tokenizer_config) {
-    Ok(tokenizer_config.to_string())
+fn repo_parser(repo: &str) -> Result<String, String> {
+  if REGEX_REPO.is_match(repo) {
+    Ok(repo.to_string())
   } else {
-    Err(
-      "Invalid tokenizer_config pattern, does not match huggingface `owner/repo` format"
-        .to_string(),
-    )
+    Err("does not match huggingface repo format - `owner/repo`".to_string())
+  }
+}
+
+fn gguf_filename_parser(filename: &str) -> Result<String, String> {
+  if filename.ends_with(GGUF_EXTENSION) {
+    Ok(filename.to_string())
+  } else {
+    Err("only GGUF file extension supported".to_string())
   }
 }
 
@@ -411,6 +416,18 @@ Usage: bodhi pull --filename <FILENAME> <ALIAS|--repo <REPO>>
 
 For more information, try '--help'.
 "#)]
+  #[case(
+    vec!["bodhi", "pull", "-r", "meta-llama$Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
+r#"error: invalid value 'meta-llama$Meta-Llama-3-8B' for '--repo <REPO>': does not match huggingface repo format - `owner/repo`
+
+For more information, try '--help'.
+"#)]
+  #[case(
+    vec!["bodhi", "pull", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.safetensor"],
+r#"error: invalid value 'Meta-Llama-3-8B-Instruct.Q8_0.safetensor' for '--filename <FILENAME>': only GGUF file extension supported
+
+For more information, try '--help'.
+"#)]
   fn test_cli_pull_invalid(#[case] args: Vec<&str>, #[case] err_msg: &str) -> anyhow::Result<()> {
     let cli = Cli::try_parse_from(args);
     assert!(cli.is_err());
@@ -499,7 +516,29 @@ For more information, try '--help'.
     "--filename", "testalias.Q8_0.gguf",
     "--chat-template", "llama3",
     "--tokenizer-config", "My:Factory/testalias-gguf",
-  ], r#"error: invalid value 'My:Factory/testalias-gguf' for '--tokenizer-config <TOKENIZER_CONFIG>': Invalid tokenizer_config pattern, does not match huggingface `owner/repo` format
+  ], r#"error: invalid value 'My:Factory/testalias-gguf' for '--tokenizer-config <TOKENIZER_CONFIG>': does not match huggingface repo format - `owner/repo`
+
+For more information, try '--help'.
+"#)]
+  #[case(vec![
+    "bodhi", "create",
+    "testalias:instruct",
+    "--repo", "MyFactory/testalias-gguf",
+    "--filename", "testalias.Q8_0.safetensor",
+    "--chat-template", "llama3",
+    "--tokenizer-config", "MyFactory/testalias-gguf",
+  ], r#"error: invalid value 'testalias.Q8_0.safetensor' for '--filename <FILENAME>': only GGUF file extension supported
+
+For more information, try '--help'.
+"#)]
+  #[case(vec![
+    "bodhi", "create",
+    "testalias:instruct",
+    "--repo", "MyFactory$testalias-gguf",
+    "--filename", "testalias.Q8_0.gguf",
+    "--chat-template", "llama3",
+    "--tokenizer-config", "MyFactory/testalias-gguf",
+  ], r#"error: invalid value 'MyFactory$testalias-gguf' for '--repo <REPO>': does not match huggingface repo format - `owner/repo`
 
 For more information, try '--help'.
 "#)]
