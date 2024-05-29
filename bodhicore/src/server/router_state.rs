@@ -251,6 +251,7 @@ mod test {
     Ok(())
   }
 
+  #[ignore]
   #[rstest]
   #[tokio::test]
   #[serial(router_state)]

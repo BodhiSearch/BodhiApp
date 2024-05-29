@@ -36,7 +36,7 @@ impl PartialOrd for ChatTemplateId {
 #[derive(Debug, Clone, PartialEq, Validate, Default, PartialOrd, Eq, Ord)]
 pub struct Repo {
   #[validate(regex(path = *REGEX_REPO, message = "does not match huggingface repo pattern 'owner/repo'"))]
-  pub value: String,
+  value: String,
 }
 
 impl Repo {
@@ -77,10 +77,7 @@ impl<'de> Deserialize<'de> for Repo {
     D: Deserializer<'de>,
   {
     let s = String::deserialize(deserializer)?;
-    let repo = Repo { value: s };
-    repo
-      .validate()
-      .map_err(|e| serde::de::Error::custom(e.to_string()))?;
+    let repo = Repo::try_new(s).map_err(|err| serde::de::Error::custom(err.to_string()))?;
     Ok(repo)
   }
 }

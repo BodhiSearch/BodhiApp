@@ -32,6 +32,7 @@ scratch*
 *.profraw
 lcov.info
 coverage/**
+coverage.*/**
 
 # python
 .env

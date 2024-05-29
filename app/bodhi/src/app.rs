@@ -44,14 +44,9 @@ pub fn main_internal() -> anyhow::Result<()> {
     Command::Serve { host, port } => {
       main_async(Serve { host, port })?;
     }
-    Command::Pull {
-      alias: id,
-      repo,
-      filename: file,
-      force,
-    } => {
-      let pull_param = Pull::new(id, repo, file, force);
-      pull_param.execute(&service)?;
+    pull @ Command::Pull { .. } => {
+      let pull_command: Pull = pull.try_into()?;
+      pull_command.execute(&service)?;
     }
     create @ Command::Create { .. } => {
       let create_command: CreateCommand = create.try_into()?;

@@ -1,4 +1,4 @@
-use crate::{error::AppError, objs::Alias, service::AppServiceFn};
+use crate::{error::AppError, objs::Alias, service::AppServiceFn, Command, Repo};
 
 #[derive(Debug, PartialEq)]
 pub enum Pull {
@@ -7,32 +7,46 @@ pub enum Pull {
     force: bool,
   },
   ByRepoFile {
-    repo: String,
+    repo: Repo,
     filename: String,
     force: bool,
   },
 }
 
-impl Pull {
-  pub fn new(
-    alias: Option<String>,
-    repo: Option<String>,
-    filename: Option<String>,
-    force: bool,
-  ) -> Self {
-    match alias {
-      Some(alias) => Pull::ByAlias { alias, force },
-      None => match (repo, filename) {
-        (Some(repo), Some(filename)) => Pull::ByRepoFile {
-          repo,
-          filename,
-          force,
-        },
-        _ => todo!(),
-      },
+impl TryFrom<Command> for Pull {
+  type Error = AppError;
+
+  fn try_from(value: Command) -> Result<Self, Self::Error> {
+    match value {
+      Command::Pull {
+        alias,
+        repo,
+        filename,
+        force,
+      } => {
+        let pull_command = match alias {
+          Some(alias) => Pull::ByAlias { alias, force },
+          None => match (repo, filename) {
+            (Some(repo), Some(filename)) => Pull::ByRepoFile {
+              repo: Repo::try_new(repo)?,
+              filename,
+              force,
+            },
+            (repo, filename) => return Err(AppError::BadRequest(format!(
+              "cannot initialize pull command with invalid state: repo={repo:?}, filename={filename:?}"
+            ))),
+          },
+        };
+        Ok(pull_command)
+      }
+      _ => Err(AppError::BadRequest(format!(
+        "{value:?} cannot be converted into PullCommand, only `Command::Pull` variant supported."
+      ))),
     }
   }
+}
 
+impl Pull {
   pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     match self {
       Pull::ByAlias { alias, force } => {
@@ -77,7 +91,10 @@ mod test {
   ) -> anyhow::Result<()> {
     let AppServiceTuple(_bodhi_home, _hf_home, _, _, service) = app_service_stub;
     let alias = String::from("testalias-exists:instruct");
-    let pull = Pull::new(Some(alias.clone()), None, None, false);
+    let pull = Pull::ByAlias {
+      alias,
+      force: false,
+    };
     let result = pull.execute(&service);
     assert!(result.is_err());
     assert_eq!(
@@ -126,24 +143,21 @@ mod test {
       .times(1)
       .returning(|_, _, _| Ok(PathBuf::from(env!("CARGO_MANIFEST_DIR"))));
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
-    let pull = Pull::new(
-      Some(String::from("test_pull_by_alias:instruct")),
-      None,
-      None,
-      false,
-    );
+    let pull = Pull::ByAlias {
+      alias: "test_pull_by_alias:instruct".to_string(),
+      force: false,
+    };
     pull.execute(&service)?;
     Ok(())
   }
 
   #[rstest]
   fn test_pull_by_repo_file() -> anyhow::Result<()> {
-    let pull = Pull::new(
-      None,
-      Some(String::from("google/gemma-7b-it-GGUF")),
-      Some(String::from("gemma-7b-it.gguf")),
-      false,
-    );
+    let pull = Pull::ByRepoFile {
+      repo: Repo::try_new("google/gemma-7b-it-GGUF".to_string())?,
+      filename: "gemma-7b-it.gguf".to_string(),
+      force: false,
+    };
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_download()

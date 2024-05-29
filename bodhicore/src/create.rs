@@ -84,7 +84,7 @@ impl CreateCommand {
     }
     service.download(&self.repo, &self.filename, self.force)?;
     if let ChatTemplate::Repo(repo) = &self.chat_template {
-      service.download(repo.value.as_ref(), TOKENIZER_CONFIG_JSON, true)?;
+      service.download(repo.as_ref(), TOKENIZER_CONFIG_JSON, true)?;
     }
     let alias: Alias = self.into();
     service.save_alias(alias)?;
