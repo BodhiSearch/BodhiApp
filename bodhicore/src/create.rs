@@ -1,7 +1,7 @@
 use crate::{
-  cli::{GptContextParams, OAIRequestParams},
+  cli::GptContextParams,
   error::{AppError, Result},
-  objs::{default_features, Alias, ChatTemplate, Repo, TOKENIZER_CONFIG_JSON},
+  objs::{default_features, Alias, ChatTemplate, OAIRequestParams, Repo, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
   Command,
 };
@@ -70,7 +70,7 @@ impl From<CreateCommand> for Alias {
       filename,
       chat_template,
       family,
-      force,
+      force: _force,
       oai_request_params,
       context_params,
     } = value;
@@ -82,6 +82,7 @@ impl From<CreateCommand> for Alias {
       None,
       default_features(),
       chat_template,
+      // oai_request_params,
     )
   }
 }
@@ -107,8 +108,8 @@ impl CreateCommand {
 mod test {
   use super::CreateCommand;
   use crate::{
-    cli::{Command, GptContextParams, OAIRequestParams},
-    objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, Repo},
+    cli::{Command, GptContextParams},
+    objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, OAIRequestParams, Repo},
     test_utils::{mock_app_service, MockAppServiceFn, SNAPSHOT},
   };
   use anyhow_trace::anyhow_trace;
