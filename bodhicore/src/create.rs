@@ -1,5 +1,3 @@
-use derive_new::new;
-
 use crate::{
   error::{AppError, Result},
   objs::{
@@ -12,6 +10,7 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(test, derive(derive_new::new, derive_builder::Builder))]
+#[allow(clippy::too_many_arguments)]
 pub struct CreateCommand {
   alias: String,
   repo: Repo,
@@ -101,7 +100,7 @@ mod test {
     objs::{
       Alias, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile, OAIRequestParams, Repo,
     },
-    test_utils::{mock_app_service, MockAppServiceFn, SNAPSHOT},
+    test_utils::{mock_app_service, MockAppServiceFn},
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;

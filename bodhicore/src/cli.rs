@@ -1,7 +1,7 @@
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use crate::objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
-use clap::{ArgGroup, Args, Parser, Subcommand};
-use serde::{Deserialize, Serialize};
+use clap::{ArgGroup, Parser, Subcommand};
+use serde::Serialize;
 use strum::Display;
 
 #[derive(Debug, PartialEq, Parser)]

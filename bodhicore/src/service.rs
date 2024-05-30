@@ -1,15 +1,12 @@
 use crate::{
-  objs::{Alias, LocalModelFile, RemoteModel, Repo, REGEX_HF_REPO_FILE},
+  objs::{Alias, LocalModelFile, RemoteModel, Repo},
   server::BODHI_HOME,
 };
 use derive_new::new;
 use hf_hub::{api::sync::ApiError, Cache};
 #[cfg(test)]
 use mockall::automock;
-use once_cell::sync::Lazy;
-use regex::Regex;
 use std::{
-  borrow::Borrow,
   fmt::{Debug, Formatter},
   fs, io,
   path::PathBuf,
@@ -412,14 +409,12 @@ impl AppServiceFn for AppService {}
 #[cfg(test)]
 mod test {
   use super::HfHubService;
-  use crate::objs::{
-    Alias, ChatTemplate, ChatTemplateId, LocalModelFile, OAIRequestParams, RemoteModel, Repo,
-  };
+  use crate::objs::{Alias, LocalModelFile, RemoteModel, Repo};
   use crate::server::BODHI_HOME;
   use crate::service::{DataService, HubService, LocalDataService};
   use crate::test_utils::{
     data_service, hf_test_token_allowed, hf_test_token_public, hub_service, temp_hf_home,
-    DataServiceTuple, HubServiceTuple, SNAPSHOT,
+    DataServiceTuple, HubServiceTuple,
   };
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;

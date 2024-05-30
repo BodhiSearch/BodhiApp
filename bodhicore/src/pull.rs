@@ -1,9 +1,4 @@
-use crate::{
-  error::AppError,
-  objs::{Alias, GptContextParams, OAIRequestParams},
-  service::AppServiceFn,
-  Command, Repo,
-};
+use crate::{error::AppError, objs::Alias, service::AppServiceFn, Command, Repo};
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
@@ -90,11 +85,9 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{
-      Alias, ChatTemplate, ChatTemplateId, LocalModelFile, OAIRequestParams, RemoteModel, Repo,
-    },
+    objs::{Alias, LocalModelFile, RemoteModel, Repo},
     service::{MockDataService, MockHubService},
-    test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn, SNAPSHOT},
+    test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
     Command, PullCommand,
   };
   use mockall::predicate::eq;
