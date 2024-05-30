@@ -55,8 +55,9 @@ impl PullCommand {
         let Some(model) = service.find_remote_model(&alias)? else {
           return Err(AppError::AliasNotFound(alias));
         };
-        service.download(&model.repo, &model.filename, force)?;
-        let new_alias: Alias = model.into();
+        let local_model_file = service.download(&model.repo, &model.filename, force)?;
+        let mut new_alias: Alias = model.into();
+        new_alias.snapshot = Some(local_model_file.snapshot.clone());
         service.save_alias(new_alias)?;
         Ok(())
       }
@@ -77,7 +78,7 @@ mod test {
   use crate::{
     objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo},
     service::{MockDataService, MockHubService},
-    test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
+    test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn, SNAPSHOT},
     Command, PullCommand,
   };
   use mockall::predicate::eq;
@@ -125,11 +126,7 @@ mod test {
       .expect_find_remote_model()
       .with(eq(alias_id))
       .return_once(move |_| Ok(Some(remote_clone.clone())));
-    let alias: Alias = remote_model.into();
-    mock_data_service
-      .expect_save_alias()
-      .with(eq(alias))
-      .return_once(|_| Ok(PathBuf::from("ignored")));
+
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_download()
@@ -138,7 +135,21 @@ mod test {
         eq("testalias-neverdownload.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
+      .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
+
+    let alias = Alias {
+      alias: "test_pull_by_alias:instruct".to_string(),
+      family: Some("testalias".to_string()),
+      repo: Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string())?,
+      filename: "testalias-neverdownload.Q8_0.gguf".to_string(),
+      snapshot: Some(SNAPSHOT.to_string()),
+      features: vec!["chat".to_string()],
+      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+    };
+    mock_data_service
+      .expect_save_alias()
+      .with(eq(alias))
+      .return_once(|_| Ok(PathBuf::from("ignored")));
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     let pull = PullCommand::ByAlias {
       alias: alias_id.to_string(),
@@ -163,7 +174,7 @@ mod test {
         eq("gemma-7b-it.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
+      .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
     let mock_data_service = MockDataService::new();
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     pull.execute(&service)?;
@@ -219,7 +230,7 @@ mod test {
 family: testalias
 repo: MyFactory/testalias-neverdownload-gguf
 filename: testalias-neverdownload.Q8_0.gguf
-snapshot: null
+snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213
 features:
 - chat
 chat_template: llama3

@@ -92,11 +92,12 @@ impl CreateCommand {
     if !self.force && service.find_alias(&self.alias).is_some() {
       return Err(AppError::AliasExists(self.alias.clone()));
     }
-    service.download(&self.repo, &self.filename, self.force)?;
+    let local_model_file = service.download(&self.repo, &self.filename, self.force)?;
     if let ChatTemplate::Repo(repo) = &self.chat_template {
       service.download(repo.as_ref(), TOKENIZER_CONFIG_JSON, true)?;
     }
-    let alias: Alias = self.into();
+    let mut alias: Alias = self.into();
+    alias.snapshot = Some(local_model_file.snapshot.clone());
     service.save_alias(alias)?;
     Ok(())
   }
@@ -108,9 +109,7 @@ mod test {
   use crate::{
     cli::{Command, GptContextParams, OAIRequestParams},
     objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, Repo},
-    test_utils::{
-      app_service_stub, bodhi_home, mock_app_service, AppServiceTuple, MockAppServiceFn,
-    },
+    test_utils::{mock_app_service, MockAppServiceFn, SNAPSHOT},
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
@@ -225,15 +224,13 @@ mod test {
         eq("testalias.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| {
-        Ok(LocalModelFile::ignored())
-      });
+      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
     let alias = Alias::new(
       "testalias:instruct".to_string(),
       None,
       Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       "testalias.Q8_0.gguf".to_string(),
-      None,
+      Some(SNAPSHOT.to_string()),
       vec!["chat".to_string()],
       ChatTemplate::Id(ChatTemplateId::Llama3),
     );
@@ -274,7 +271,16 @@ mod test {
         eq("testalias.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
+      .return_once(|_, _, _| {
+        let local_model_file = LocalModelFile::new(
+          PathBuf::from("/tmp/huggingface/hub/"),
+          Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
+          "testalias.Q8_0.gguf".to_string(),
+          SNAPSHOT.to_string(),
+          Some(22),
+        );
+        Ok(local_model_file)
+      });
     mock
       .hub_service
       .expect_download()
@@ -283,13 +289,13 @@ mod test {
         eq("tokenizer_config.json"),
         eq(true),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
+      .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
     let alias = Alias::new(
       "testalias:instruct".to_string(),
       None,
       Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       "testalias.Q8_0.gguf".to_string(),
-      None,
+      Some(SNAPSHOT.to_string()),
       vec!["chat".to_string()],
       ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?),
     );

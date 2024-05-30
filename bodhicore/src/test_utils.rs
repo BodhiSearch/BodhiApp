@@ -34,6 +34,7 @@ use tracing_subscriber::{fmt, EnvFilter};
 
 pub static TEST_REPO: &str = "meta-llama/Meta-Llama-3-8B";
 pub struct ConfigDirs(pub TempDir, pub PathBuf, pub &'static str);
+pub static SNAPSHOT: &str = "5007652f7a641fe7170e0bad4f63839419bd9213";
 
 #[fixture]
 pub fn config_dirs(bodhi_home: TempDir) -> ConfigDirs {
@@ -311,13 +312,23 @@ impl Default for ChatTemplate {
 }
 
 impl LocalModelFile {
-  pub fn ignored() -> LocalModelFile {
+  pub fn never_download() -> LocalModelFile {
+    LocalModelFile::new(
+      PathBuf::from("/tmp/ignored/huggingface/hub"),
+      Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string()).unwrap(),
+      "testalias-neverdownload.Q8_0.gguf".to_string(),
+      SNAPSHOT.to_string(),
+      Some(22),
+    )
+  }
+
+  pub fn testalias() -> LocalModelFile {
     LocalModelFile::new(
       PathBuf::from("/tmp/ignored/huggingface/hub"),
       Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
       "testalias.Q8_0.gguf".to_string(),
-      "abcd".to_string(),
-      None,
+      SNAPSHOT.to_string(),
+      Some(22),
     )
   }
 }
