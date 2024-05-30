@@ -2,7 +2,7 @@ pub mod bindings;
 pub mod cli;
 mod create;
 mod error;
-mod hf_tokenizer;
+mod tokenizer_config;
 pub mod home;
 mod interactive;
 mod list;

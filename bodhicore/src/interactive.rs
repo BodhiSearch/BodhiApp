@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::hf_tokenizer::{ChatMessage, HubTokenizerConfig};
+use crate::tokenizer_config::{ChatMessage, TokenizerConfig};
 use crate::objs::Alias;
 use crate::service::AppServiceFn;
 use async_openai::types::CreateChatCompletionStreamResponse;

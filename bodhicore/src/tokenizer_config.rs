@@ -103,7 +103,7 @@ impl ChatTemplateVersions {
 }
 
 #[derive(Debug, Clone, Deserialize, Default, PartialEq)]
-pub struct HubTokenizerConfig {
+pub struct TokenizerConfig {
   pub chat_template: Option<ChatTemplateVersions>,
   #[serde(deserialize_with = "deserialize_token", default)]
   pub bos_token: Option<String>,
@@ -111,7 +111,7 @@ pub struct HubTokenizerConfig {
   pub eos_token: Option<String>,
 }
 
-impl HubTokenizerConfig {
+impl TokenizerConfig {
   pub fn new(
     chat_template: Option<String>,
     bos_token: Option<String>,
@@ -125,11 +125,11 @@ impl HubTokenizerConfig {
   }
   pub fn from_json_file<P: AsRef<std::path::Path>>(filename: P) -> anyhow::Result<Self> {
     let content = std::fs::read_to_string(filename)?;
-    HubTokenizerConfig::from_json_str(&content)
+    TokenizerConfig::from_json_str(&content)
   }
 
   pub fn from_json_str(content: &str) -> anyhow::Result<Self> {
-    let config = serde_json::from_str::<HubTokenizerConfig>(content)?;
+    let config = serde_json::from_str::<TokenizerConfig>(content)?;
     Ok(config)
   }
 
@@ -222,9 +222,9 @@ mod test {
   use tempfile::NamedTempFile;
 
   #[test]
-  fn test_hf_tokenizer_from_json_str_empty() -> anyhow::Result<()> {
-    let empty = HubTokenizerConfig::from_json_str("{}")?;
-    assert_eq!(HubTokenizerConfig::default(), empty);
+  fn test_tokenizer_config_from_json_str_empty() -> anyhow::Result<()> {
+    let empty = TokenizerConfig::from_json_str("{}")?;
+    assert_eq!(TokenizerConfig::default(), empty);
     Ok(())
   }
 
@@ -239,7 +239,7 @@ mod test {
   #[case("deepseek", "deepseek-ai/deepseek-llm-67b-chat")]
   #[case("command-r", "CohereForAI/c4ai-command-r-plus")]
   #[case("openchat", "openchat/openchat-3.6-8b-20240522")]
-  fn test_hf_tokenizer_apply_chat_template(
+  fn test_tokenizer_config_apply_chat_template(
     #[case] format: String,
     #[case] model: String,
     #[values(
@@ -255,7 +255,7 @@ mod test {
   ) -> anyhow::Result<()> {
     let filename = format!("tests/data/tokenizers/{}/tokenizer_config.json", model);
     let content = std::fs::read_to_string(filename)?;
-    let tokenizer = HubTokenizerConfig::from_json_str(&content)?;
+    let tokenizer = TokenizerConfig::from_json_str(&content)?;
 
     let inputs = std::fs::read_to_string("chat-template-compat/tests/data/inputs.yaml")?;
     let inputs: serde_yaml::Value = serde_yaml::from_str(&inputs)?;
@@ -301,16 +301,16 @@ mod test {
   }
 
   #[test]
-  fn test_hf_tokenizer_from_json_str_bos_eos_token() -> anyhow::Result<()> {
+  fn test_tokenizer_config_from_json_str_bos_eos_token() -> anyhow::Result<()> {
     let chat_template = r#"{{ bos_token }} {%- for message in messages %} message['role']: {{ message['content'] }} {% endfor %} {{ eos_token }}"#;
-    let hf_tokenizer = HubTokenizerConfig::from_json_str(&format!(
+    let hf_tokenizer = TokenizerConfig::from_json_str(&format!(
       r#"{{
         "chat_template": "{chat_template}",
         "bos_token": "<s>",
         "eos_token": "</s>"
       }}"#
     ))?;
-    let expected = HubTokenizerConfig::new(
+    let expected = TokenizerConfig::new(
       Some(chat_template.to_string()),
       Some("<s>".to_string()),
       Some("</s>".to_string()),
@@ -320,7 +320,7 @@ mod test {
   }
 
   #[test]
-  fn test_hf_tokenizer_from_json_file() -> anyhow::Result<()> {
+  fn test_tokenizer_config_from_json_file() -> anyhow::Result<()> {
     let chat_template = "{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}";
     let tokenizer_json = format!(
       r#"{{
@@ -332,8 +332,8 @@ mod test {
     let tempdir = tempfile::tempdir()?;
     let json_file = NamedTempFile::new_in(&tempdir)?;
     fs::write(&json_file, tokenizer_json)?;
-    let config = HubTokenizerConfig::from_json_file(&json_file)?;
-    let expected = HubTokenizerConfig::new(
+    let config = TokenizerConfig::from_json_file(&json_file)?;
+    let expected = TokenizerConfig::new(
       Some(chat_template.to_string()),
       Some("<s>".to_string()),
       Some("</s>".to_string()),
@@ -343,7 +343,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_hf_tokenizer_for_repo(config_dirs: ConfigDirs) -> anyhow::Result<()> {
+  fn test_tokenizer_config_for_repo(config_dirs: ConfigDirs) -> anyhow::Result<()> {
     let ConfigDirs(_home_dir, config_dir, repo) = config_dirs;
     let default_config_file = config_dir.join("default.yaml");
     fs::write(
@@ -357,7 +357,7 @@ bos_token: <s>
 eos_token: </s>
 "#,
     )?;
-    let expected = HubTokenizerConfig::new(
+    let expected = TokenizerConfig::new(
       Some(
         r#"{{ bos_token }} {% for message in messages -%}
 message['role']: message['content']
@@ -368,13 +368,13 @@ message['role']: message['content']
       Some("<s>".to_string()),
       Some("</s>".to_string()),
     );
-    let config = HubTokenizerConfig::for_repo(repo)?;
+    let config = TokenizerConfig::for_repo(repo)?;
     assert_eq!(expected, config);
     Ok(())
   }
 
   #[test]
-  fn test_hf_tokenizer_parses_eos_token_as_obj() -> anyhow::Result<()> {
+  fn test_tokenizer_config_parses_eos_token_as_obj() -> anyhow::Result<()> {
     let tokenizer_json = r#"{
       "bos_token": {
         "__type": "AddedToken",
@@ -396,8 +396,8 @@ message['role']: message['content']
     }
     "#;
     let chat_template = "{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}";
-    let config = HubTokenizerConfig::from_json_str(tokenizer_json)?;
-    let expected = HubTokenizerConfig::new(
+    let config = TokenizerConfig::from_json_str(tokenizer_json)?;
+    let expected = TokenizerConfig::new(
       Some(chat_template.to_string()),
       Some("<s>".to_string()),
       Some("</s>".to_string()),
@@ -407,8 +407,8 @@ message['role']: message['content']
   }
 
   #[test]
-  fn test_hf_tokenizer_fails_on_invalid_json() -> anyhow::Result<()> {
-    let config = HubTokenizerConfig::from_json_str(r#"{"eos_token": true}"#);
+  fn test_tokenizer_config_fails_on_invalid_json() -> anyhow::Result<()> {
+    let config = TokenizerConfig::from_json_str(r#"{"eos_token": true}"#);
     assert!(config.is_err());
     let error = config.unwrap_err();
     assert!(error.is::<serde_json::Error>());

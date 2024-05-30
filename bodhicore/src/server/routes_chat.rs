@@ -1,5 +1,5 @@
 use super::{router_state::RouterState, routes::ApiError};
-use crate::hf_tokenizer::HubTokenizerConfig;
+use crate::tokenizer_config::TokenizerConfig;
 use anyhow::Context;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
 use axum::{
@@ -63,7 +63,7 @@ pub(crate) async fn chat_completions_handler(
     .unwrap();
 
   let alias = state.app_service.find_alias(&request.model).unwrap();
-  let config = HubTokenizerConfig::for_repo(&alias.repo)
+  let config = TokenizerConfig::for_repo(&alias.repo)
     .ok()
     .unwrap_or_default();
   let prompt = config.apply_chat_template(&request.messages).unwrap();
