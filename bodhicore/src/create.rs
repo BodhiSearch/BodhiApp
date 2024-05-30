@@ -62,31 +62,6 @@ impl TryFrom<Command> for CreateCommand {
   }
 }
 
-impl From<CreateCommand> for Alias {
-  fn from(value: CreateCommand) -> Self {
-    let CreateCommand {
-      alias,
-      repo,
-      filename,
-      chat_template,
-      family,
-      force: _force,
-      oai_request_params,
-      context_params,
-    } = value;
-    Alias::new(
-      alias,
-      family,
-      repo,
-      filename,
-      None,
-      default_features(),
-      chat_template,
-      // oai_request_params,
-    )
-  }
-}
-
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: &dyn AppServiceFn) -> Result<()> {
@@ -97,8 +72,16 @@ impl CreateCommand {
     if let ChatTemplate::Repo(repo) = &self.chat_template {
       service.download(repo.as_ref(), TOKENIZER_CONFIG_JSON, true)?;
     }
-    let mut alias: Alias = self.into();
-    alias.snapshot = Some(local_model_file.snapshot.clone());
+    let alias: Alias = Alias::new(
+      self.alias,
+      self.family,
+      self.repo,
+      self.filename,
+      local_model_file.snapshot.clone(),
+      default_features(),
+      self.chat_template,
+      self.oai_request_params,
+    );
     service.save_alias(alias)?;
     Ok(())
   }
@@ -231,9 +214,10 @@ mod test {
       None,
       Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       "testalias.Q8_0.gguf".to_string(),
-      Some(SNAPSHOT.to_string()),
+      SNAPSHOT.to_string(),
       vec!["chat".to_string()],
       ChatTemplate::Id(ChatTemplateId::Llama3),
+      OAIRequestParams::default(),
     );
     mock
       .data_service
@@ -296,9 +280,10 @@ mod test {
       None,
       Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       "testalias.Q8_0.gguf".to_string(),
-      Some(SNAPSHOT.to_string()),
+      SNAPSHOT.to_string(),
       vec!["chat".to_string()],
       ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?),
+      OAIRequestParams::default(),
     );
     mock
       .data_service

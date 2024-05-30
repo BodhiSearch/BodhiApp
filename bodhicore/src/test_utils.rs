@@ -266,7 +266,7 @@ impl HubService for MockAppServiceFn {
     &self,
     repo: &Repo,
     filename: &str,
-    snapshot: &Option<String>,
+    snapshot: &str,
   ) -> Option<LocalModelFile> {
     self.hub_service.find_local_model(repo, filename, snapshot)
   }

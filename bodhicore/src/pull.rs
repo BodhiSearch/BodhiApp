@@ -1,4 +1,9 @@
-use crate::{error::AppError, objs::Alias, service::AppServiceFn, Command, Repo};
+use crate::{
+  error::AppError,
+  objs::{Alias, OAIRequestParams},
+  service::AppServiceFn,
+  Command, Repo,
+};
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
@@ -56,9 +61,17 @@ impl PullCommand {
           return Err(AppError::AliasNotFound(alias));
         };
         let local_model_file = service.download(&model.repo, &model.filename, force)?;
-        let mut new_alias: Alias = model.into();
-        new_alias.snapshot = Some(local_model_file.snapshot.clone());
-        service.save_alias(new_alias)?;
+        let alias = Alias::new(
+          model.alias,
+          Some(model.family),
+          model.repo,
+          model.filename,
+          local_model_file.snapshot.clone(),
+          model.features,
+          model.chat_template,
+          OAIRequestParams::default(),
+        );
+        service.save_alias(alias)?;
         Ok(())
       }
       PullCommand::ByRepoFile {
@@ -76,7 +89,9 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo},
+    objs::{
+      Alias, ChatTemplate, ChatTemplateId, LocalModelFile, OAIRequestParams, RemoteModel, Repo,
+    },
     service::{MockDataService, MockHubService},
     test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn, SNAPSHOT},
     Command, PullCommand,
@@ -142,9 +157,10 @@ mod test {
       family: Some("testalias".to_string()),
       repo: Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string())?,
       filename: "testalias-neverdownload.Q8_0.gguf".to_string(),
-      snapshot: Some(SNAPSHOT.to_string()),
+      snapshot: SNAPSHOT.to_string(),
       features: vec!["chat".to_string()],
       chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+      request_params: OAIRequestParams::default(),
     };
     mock_data_service
       .expect_save_alias()
@@ -234,6 +250,7 @@ snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213
 features:
 - chat
 chat_template: llama3
+request_params: {}
 "#,
       content
     );

@@ -210,17 +210,20 @@ impl From<RemoteModel> for Row {
   }
 }
 
+#[allow(clippy::too_many_arguments)]
 #[derive(Debug, Serialize, Deserialize, PartialEq, new)]
 #[cfg_attr(test, derive(Default))]
 pub struct Alias {
   pub alias: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub family: Option<String>,
   pub repo: Repo,
   pub filename: String,
-  pub snapshot: Option<String>,
+  pub snapshot: String,
   pub features: Vec<String>,
   pub chat_template: ChatTemplate,
-  // pub request_params: OAIRequestParams,
+  #[serde(default)]
+  pub request_params: OAIRequestParams,
 }
 
 impl Alias {
@@ -228,20 +231,6 @@ impl Alias {
     let filename = self.alias.replace(':', "--");
     let filename = to_safe_filename(&filename);
     format!("{}.yaml", filename)
-  }
-}
-
-impl From<RemoteModel> for Alias {
-  fn from(value: RemoteModel) -> Self {
-    Alias::new(
-      value.alias,
-      Some(value.family),
-      value.repo,
-      value.filename,
-      None,
-      value.features,
-      value.chat_template,
-    )
   }
 }
 
@@ -267,6 +256,7 @@ pub struct OAIRequestParams {
   #[clap(long, value_parser = validate_range_neg_to_pos_2, help=r#"Number between -2.0 and 2.0. 
 Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
 default: 0.0 (disabled)"#)]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub frequency_penalty: Option<f32>,
 
   #[arg(
@@ -275,11 +265,13 @@ default: 0.0 (disabled)"#)]
 The token count of your prompt plus `max_tokens` cannot exceed the model's context length.
 default: -1"#
   )]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub max_tokens: Option<u32>,
 
   #[arg(long, value_parser = validate_range_neg_to_pos_2, help=r#"Number between -2.0 and 2.0.
 Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
 default: 0.0 (disabled)"#)]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub presence_penalty: Option<f32>,
 
   #[arg(
@@ -288,10 +280,12 @@ default: 0.0 (disabled)"#)]
 Setting to `json_object` enables JSON mode, which guarantees the message the model generates is valid JSON.
 default: text"#
   )]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub response_format: Option<ResponseFormat>,
 
   #[arg(long, value_parser = clap::value_parser!(i64).range(i64::MIN..=i64::MAX),
   help=r#"If specified, our system will make a best effort to sample deterministically, such that repeated requests with the same `seed` and parameters should return the same result."#)]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub seed: Option<i64>,
 
   #[arg(
@@ -299,22 +293,26 @@ default: text"#
     number_of_values = 4,
     help = r#"Up to 4 sequences where the API will stop generating further tokens."#
   )]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub stop: Option<Vec<String>>,
 
   #[arg(long, value_parser = validate_range_neg_to_pos_2, help=r#"Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
 default: 0.0 (disabled)"#)]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub temperature: Option<f32>,
 
   #[arg(long, value_parser = validate_range_0_to_1, help=r#"An alternative to sampling with temperature, called nucleus sampling.
 The model considers the results of the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
 Alter this or `temperature` but not both.
 default: 1.0 (disabled)"#)]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub top_p: Option<f32>,
 
   #[arg(
     long,
     help = r#"A unique identifier representing your end-user, which can help to monitor and detect abuse."#
   )]
+  #[serde(skip_serializing_if = "Option::is_none")]
   pub user: Option<String>,
 }
 
@@ -351,17 +349,12 @@ fn validate_range(s: &str, lower: f32, upper: f32) -> Result<f32, String> {
 
 #[cfg(test)]
 mod test {
-  use std::path::PathBuf;
-
-  use crate::{
-    service::HubService,
-    test_utils::{hub_service, temp_hf_home, HubServiceTuple},
-  };
-
   use super::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
+  use crate::test_utils::temp_hf_home;
   use anyhow_trace::anyhow_trace;
   use prettytable::{Cell, Row};
   use rstest::rstest;
+  use std::path::PathBuf;
   use tempfile::TempDir;
   use validator::Validate;
 
@@ -474,6 +467,24 @@ mod test {
       ..Default::default()
     };
     assert_eq!(expected, alias.config_filename());
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(
+    Alias::default(),
+    r#"alias: ''
+repo: ''
+filename: ''
+snapshot: ''
+features: []
+chat_template: llama3
+request_params: {}
+"#
+  )]
+  fn test_alias_serialize(#[case] alias: Alias, #[case] expected: String) -> anyhow::Result<()> {
+    let actual = serde_yaml::to_string(&alias)?;
+    assert_eq!(expected, actual);
     Ok(())
   }
 }

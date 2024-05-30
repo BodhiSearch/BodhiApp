@@ -86,12 +86,8 @@ pub trait HubService: Debug {
 
   fn list_local_models(&self) -> Vec<LocalModelFile>;
 
-  fn find_local_model(
-    &self,
-    repo: &Repo,
-    filename: &str,
-    snapshot: &Option<String>,
-  ) -> Option<LocalModelFile>;
+  fn find_local_model(&self, repo: &Repo, filename: &str, snapshot: &str)
+    -> Option<LocalModelFile>;
 }
 
 #[derive(Debug, Clone, PartialEq, new)]
@@ -335,13 +331,11 @@ impl HubService for HfHubService {
     &self,
     repo: &Repo,
     filename: &str,
-    snapshot: &Option<String>,
+    snapshot: &str,
   ) -> Option<LocalModelFile> {
     let models = self.list_local_models();
     models.into_iter().find(|model| {
-      model.repo.eq(repo)
-        && model.filename.eq(filename)
-        && (snapshot.is_none() || model.snapshot.eq(snapshot.as_ref().unwrap()))
+      model.repo.eq(repo) && model.filename.eq(filename) && model.snapshot.eq(snapshot)
     })
   }
 }
@@ -385,7 +379,7 @@ impl HubService for AppService {
     &self,
     repo: &Repo,
     filename: &str,
-    snapshot: &Option<String>,
+    snapshot: &str,
   ) -> Option<LocalModelFile> {
     self.hub_service.find_local_model(repo, filename, snapshot)
   }
@@ -418,12 +412,14 @@ impl AppServiceFn for AppService {}
 #[cfg(test)]
 mod test {
   use super::HfHubService;
-  use crate::objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
+  use crate::objs::{
+    Alias, ChatTemplate, ChatTemplateId, LocalModelFile, OAIRequestParams, RemoteModel, Repo,
+  };
   use crate::server::BODHI_HOME;
   use crate::service::{DataService, HubService, LocalDataService};
   use crate::test_utils::{
     data_service, hf_test_token_allowed, hf_test_token_public, hub_service, temp_hf_home,
-    DataServiceTuple, HubServiceTuple,
+    DataServiceTuple, HubServiceTuple, SNAPSHOT,
   };
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
@@ -616,9 +612,10 @@ error while serializing from file: '{models_file}'"#
       Some(String::from("testalias")),
       Repo::try_new(String::from("MyFactory/testalias-exists-instruct-gguf"))?,
       String::from("testalias-exists-instruct.Q8_0.gguf"),
-      None,
+      SNAPSHOT.to_string(),
       vec![String::from("chat")],
       ChatTemplate::Id(ChatTemplateId::Llama3),
+      OAIRequestParams::default(),
     );
     assert_eq!(Some(expected), alias);
     Ok(())
@@ -634,18 +631,20 @@ error while serializing from file: '{models_file}'"#
         Some(String::from("llama3")),
         Repo::try_new(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"))?,
         String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-        None,
+        SNAPSHOT.to_string(),
         vec![String::from("chat")],
         ChatTemplate::Id(ChatTemplateId::Llama3),
+        OAIRequestParams::default(),
       ),
       Alias::new(
         String::from("testalias-exists:instruct"),
         Some(String::from("testalias")),
         Repo::try_new(String::from("MyFactory/testalias-exists-instruct-gguf"))?,
         String::from("testalias-exists-instruct.Q8_0.gguf"),
-        None,
+        SNAPSHOT.to_string(),
         vec![String::from("chat")],
         ChatTemplate::Id(ChatTemplateId::Llama3),
+        OAIRequestParams::default(),
       ),
     ];
     assert_eq!(expected, result);
