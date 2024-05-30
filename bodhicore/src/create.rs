@@ -190,7 +190,7 @@ mod test {
   fn test_create_execute_downloads_model_saves_alias(
     #[from(mock_app_service)] mut mock: MockAppServiceFn,
   ) -> anyhow::Result<()> {
-    let create = CreateCommand::testalias_builder().build().unwrap();
+    let create = CreateCommand::testalias();
     mock
       .data_service
       .expect_find_alias()
@@ -205,7 +205,7 @@ mod test {
         eq(false),
       )
       .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
-    let alias = Alias::test_alias_instruct();
+    let alias = Alias::test_alias();
     mock
       .data_service
       .expect_save_alias()

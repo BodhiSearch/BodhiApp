@@ -399,7 +399,7 @@ impl CreateCommand {
       .repo(Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap())
       .filename("testalias.Q8_0.gguf".to_string())
       .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
-      .family(None)
+      .family(Some("testalias".to_string()))
       .force(false)
       .oai_request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
@@ -408,14 +408,14 @@ impl CreateCommand {
 }
 
 impl Alias {
-  pub fn test_alias_instruct() -> Alias {
+  pub fn test_alias() -> Alias {
     Alias::test_alias_instruct_builder().build().unwrap()
   }
 
   pub fn test_alias_instruct_builder() -> AliasBuilder {
     AliasBuilder::default()
       .alias("testalias:instruct".to_string())
-      .family(None)
+      .family(Some("testalias".to_string()))
       .repo(Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap())
       .filename("testalias.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())

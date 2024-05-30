@@ -129,12 +129,11 @@ fn gguf_filename_parser(filename: &str) -> Result<String, String> {
   }
 }
 
-#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 mod test {
-  use crate::objs::{OAIRequestParams, ResponseFormat};
-
   use super::*;
+  use crate::objs::{OAIRequestParams, ResponseFormat};
   use clap::CommandFactory;
   use rstest::rstest;
 
