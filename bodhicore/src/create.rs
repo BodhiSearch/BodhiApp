@@ -180,7 +180,7 @@ mod test {
     let result = create.execute(&mock);
     assert!(result.is_err());
     assert_eq!(
-      "alias 'testalias:instruct' already exists. Use --force to overwrite the alias config",
+      "model alias 'testalias:instruct' already exists. Use --force to overwrite the model alias config",
       result.unwrap_err().to_string()
     );
     Ok(())

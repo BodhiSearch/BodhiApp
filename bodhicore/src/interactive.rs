@@ -50,22 +50,28 @@ unsafe extern "C" fn callback_stream(
 }
 
 #[derive(Debug, new)]
-struct Interactive {
+pub(crate) struct Interactive {
   alias: Alias,
 }
 
 impl Interactive {
-  async fn execute(&self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  pub(crate) async fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+    let alias = self.alias.clone();
     let model = service
-      .find_local_model(&self.alias.repo, &self.alias.filename, &self.alias.snapshot)
-      .ok_or(AppError::AliasModelNotFound {
-        repo: self.alias.repo.to_string(),
-        filename: self.alias.filename.clone(),
-        snapshot: self.alias.snapshot.clone().unwrap_or(String::from("main")),
+      .find_local_model(&alias.repo, &alias.filename, &alias.snapshot)
+      .ok_or_else(move || {
+        let filepath = service
+          .model_file_path(&alias.repo, &alias.filename, &alias.snapshot)
+          .display()
+          .to_string();
+        AppError::AliasModelFilesNotFound {
+          alias: alias.alias.to_string(),
+          filepath,
+        }
       })?;
     let pb = infinite_loading(String::from("Loading..."));
     let gpt_params = GptParams {
-      model: model.path(),
+      model: model.path().to_string_lossy().into_owned(),
       ..Default::default()
     };
     disable_llama_log();
@@ -83,7 +89,7 @@ impl Interactive {
         if cmd == "/bye" {
           break;
         }
-        self.process_input(&ctx, &cmd)?;
+        // self.process_input(&ctx, &cmd)?;
       }
     }
     let pb = infinite_loading(String::from("Stopping..."));
@@ -92,47 +98,92 @@ impl Interactive {
     Ok(())
   }
 
-  fn process_input(&self, ctx: &BodhiServerContext, input: &str) -> anyhow::Result<()> {
-    let messages = vec![ChatMessage::new(String::from("user"), String::from(input))];
-    let chat_template = "";
-    let prompt = self.config.apply_chat_template(&messages)?;
-    let mut request: Value = json! {{"prompt": prompt}};
-    request["model"] = Value::String("".to_string());
-    request["stream"] = Value::Bool(true);
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
-    let json_request = serde_json::to_string(&request)?;
-    tokio::spawn(async move {
-      while let Some(token) = rx.recv().await {
-        let token = if token.starts_with("data:") {
-          token.strip_prefix("data: ").unwrap().trim()
-        } else {
-          token.as_str()
-        };
-        let token: CreateChatCompletionStreamResponse = serde_json::from_str(token).unwrap();
-        if let Some(delta) = token.choices[0].delta.content.as_ref() {
-          print!("{}", delta);
-          let _ = stdout().flush();
-        }
-      }
-    });
-    ctx.completions(
-      &json_request,
-      chat_template,
-      Some(callback_stream),
-      &tx as *const _ as *mut _,
-    )?;
-    println!();
-    Ok(())
-  }
+  // fn process_input(&self, ctx: &BodhiServerContext, input: &str) -> anyhow::Result<()> {
+  //   let messages = vec![ChatMessage::new(String::from("user"), String::from(input))];
+  //   let chat_template = "";
+  //   let prompt = self.config.apply_chat_template(&messages)?;
+  //   let mut request: Value = json! {{"prompt": prompt}};
+  //   request["model"] = Value::String("".to_string());
+  //   request["stream"] = Value::Bool(true);
+  //   let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
+  //   let json_request = serde_json::to_string(&request)?;
+  //   tokio::spawn(async move {
+  //     while let Some(token) = rx.recv().await {
+  //       let token = if token.starts_with("data:") {
+  //         token.strip_prefix("data: ").unwrap().trim()
+  //       } else {
+  //         token.as_str()
+  //       };
+  //       let token: CreateChatCompletionStreamResponse = serde_json::from_str(token).unwrap();
+  //       if let Some(delta) = token.choices[0].delta.content.as_ref() {
+  //         print!("{}", delta);
+  //         let _ = stdout().flush();
+  //       }
+  //     }
+  //   });
+  //   ctx.completions(
+  //     &json_request,
+  //     chat_template,
+  //     Some(callback_stream),
+  //     &tx as *const _ as *mut _,
+  //   )?;
+  //   println!();
+  //   Ok(())
+  // }
 }
 
-pub(super) fn launch_interactive(alias: Alias) -> anyhow::Result<()> {
+pub(super) fn launch_interactive(alias: Alias, service: &dyn AppServiceFn) -> anyhow::Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build();
   match runtime {
     Ok(runtime) => {
-      runtime.block_on(async move { Interactive::new(alias)?.execute().await })?;
+      runtime.block_on(async move { Interactive::new(alias).execute(service).await })?;
       Ok(())
     }
     Err(err) => Err(err.into()),
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use std::path::PathBuf;
+
+  use super::Interactive;
+  use crate::{
+    objs::Alias,
+    test_utils::{mock_app_service, MockAppServiceFn},
+  };
+  use mockall::predicate::eq;
+  use rstest::rstest;
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_interactive_local_model_not_found_raises_error(
+    #[from(mock_app_service)] mut mock: MockAppServiceFn,
+  ) -> anyhow::Result<()> {
+    let alias = Alias::test_alias();
+    let alias_clone = alias.clone();
+    mock
+      .hub_service
+      .expect_find_local_model()
+      .with(
+        eq(alias.repo.clone()),
+        eq(alias.filename.clone()),
+        eq(alias.snapshot.clone()),
+      )
+      .return_once(|_, _, _| None);
+    mock
+      .hub_service
+      .expect_model_file_path()
+      .with(eq(alias.repo), eq(alias.filename), eq(alias.snapshot))
+      .return_once(|_, _, _| PathBuf::from("/tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf"));
+    let result = Interactive::new(alias_clone).execute(&mock).await;
+    assert!(result.is_err());
+    assert_eq!(
+      r#"model files for model alias 'testalias:instruct' not found in huggingface cache directory. Check if file in the expected filepath exists.
+filepath: /tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf
+"#,
+      result.unwrap_err().to_string()
+    );
+    Ok(())
   }
 }

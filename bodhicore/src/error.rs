@@ -5,12 +5,12 @@ use thiserror::Error;
 #[allow(clippy::large_enum_variant)]
 pub enum AppError {
   #[error(
-    r#"alias '{0}' not found in pre-configured model aliases.
+    r#"model alias '{0}' not found in pre-configured model aliases.
 Run `bodhi list -r` to see list of pre-configured model aliases
 "#
   )]
   AliasNotFound(String),
-  #[error("alias '{0}' already exists. Use --force to overwrite the alias config")]
+  #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
   AliasExists(String),
   #[error("{0}")]
   BadRequest(String),
@@ -19,14 +19,11 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   #[error(transparent)]
   DataService(#[from] DataServiceError),
   #[error(
-    r#"alias model files not found in local huggingface hub cache directory.
-Ensure repo: {repo}, contains GGUF model file: {filename}, snapshot: {snapshot}"#
+    r#"model files for model alias '{alias}' not found in huggingface cache directory. Check if file in the expected filepath exists.
+filepath: {filepath}
+"#
   )]
-  AliasModelNotFound {
-    repo: String,
-    filename: String,
-    snapshot: String,
-  },
+  AliasModelFilesNotFound { alias: String, filepath: String },
   #[error(transparent)]
   Anyhow(#[from] anyhow::Error),
 }

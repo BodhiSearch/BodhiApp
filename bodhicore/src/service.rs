@@ -3,7 +3,7 @@ use crate::{
   server::BODHI_HOME,
 };
 use derive_new::new;
-use hf_hub::{api::sync::ApiError, Cache};
+use hf_hub::{api::sync::ApiError, Cache, RepoType};
 #[cfg(test)]
 use mockall::automock;
 use std::{
@@ -85,6 +85,10 @@ pub trait HubService: Debug {
 
   fn find_local_model(&self, repo: &Repo, filename: &str, snapshot: &str)
     -> Option<LocalModelFile>;
+
+  fn hf_home(&self) -> PathBuf;
+
+  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf;
 }
 
 #[derive(Debug, Clone, PartialEq, new)]
@@ -335,6 +339,21 @@ impl HubService for HfHubService {
       model.repo.eq(repo) && model.filename.eq(filename) && model.snapshot.eq(snapshot)
     })
   }
+
+  fn hf_home(&self) -> PathBuf {
+    self.cache.path().to_path_buf()
+  }
+
+  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
+    let model_repo = hf_hub::Repo::model(repo.to_string());
+    let filepath = self
+      .hf_home()
+      .join(model_repo.folder_name())
+      .join("snapshots")
+      .join(snapshot)
+      .join(filename);
+    filepath
+  }
 }
 
 pub trait AppServiceFn: HubService + DataService + Send + Sync {}
@@ -379,6 +398,14 @@ impl HubService for AppService {
     snapshot: &str,
   ) -> Option<LocalModelFile> {
     self.hub_service.find_local_model(repo, filename, snapshot)
+  }
+
+  fn hf_home(&self) -> PathBuf {
+    self.hub_service.hf_home()
+  }
+
+  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
+    self.hub_service.model_file_path(repo, filename, snapshot)
   }
 }
 

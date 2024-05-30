@@ -4,7 +4,7 @@ mod create;
 mod error;
 mod hf_tokenizer;
 pub mod home;
-// mod interactive;
+mod interactive;
 mod list;
 mod objs;
 mod pull;

@@ -107,7 +107,7 @@ mod test {
     let result = pull.execute(&service);
     assert!(result.is_err());
     assert_eq!(
-      "alias 'testalias-exists:instruct' already exists. Use --force to overwrite the alias config",
+      "model alias 'testalias-exists:instruct' already exists. Use --force to overwrite the model alias config",
       result.unwrap_err().to_string()
     );
     Ok(())

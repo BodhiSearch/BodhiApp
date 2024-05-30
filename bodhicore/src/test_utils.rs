@@ -274,6 +274,14 @@ impl HubService for MockAppServiceFn {
   ) -> Option<LocalModelFile> {
     self.hub_service.find_local_model(repo, filename, snapshot)
   }
+
+  fn hf_home(&self) -> PathBuf {
+    self.hub_service.hf_home()
+  }
+
+  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
+    self.hub_service.model_file_path(repo, filename, snapshot)
+  }
 }
 
 impl DataService for MockAppServiceFn {

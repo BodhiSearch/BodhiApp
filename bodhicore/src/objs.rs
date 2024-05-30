@@ -221,7 +221,7 @@ impl From<RemoteModel> for Row {
 }
 
 #[allow(clippy::too_many_arguments)]
-#[derive(Debug, Serialize, Deserialize, PartialEq, new)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, new)]
 #[cfg_attr(test, derive(Default, derive_builder::Builder))]
 pub struct Alias {
   pub alias: String,
