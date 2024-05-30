@@ -157,6 +157,7 @@ impl Display for ChatTemplate {
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, new)]
+#[cfg_attr(test, derive(derive_builder::Builder))]
 pub struct LocalModelFile {
   pub hf_cache: PathBuf,
   pub repo: Repo,
@@ -217,6 +218,16 @@ impl From<LocalModelFile> for Row {
       Cell::new(&snapshot[..8]),
       Cell::new(&human_size),
     ])
+  }
+}
+
+impl TryFrom<LocalModelFile> for TokenizerConfig {
+  type Error = DataServiceError;
+
+  fn try_from(value: LocalModelFile) -> Result<Self, Self::Error> {
+    let content = std::fs::read_to_string(value.path())?;
+    let tokenizer_config: TokenizerConfig = serde_json::from_str(&content)?;
+    Ok(tokenizer_config)
   }
 }
 

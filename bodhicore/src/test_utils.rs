@@ -2,7 +2,7 @@ use crate::{
   create::CreateCommandBuilder,
   objs::{
     Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile,
-    OAIRequestParams, RemoteModel,
+    LocalModelFileBuilder, OAIRequestParams, RemoteModel, TOKENIZER_CONFIG_JSON,
   },
   server::BODHI_HOME,
   service::{
@@ -194,6 +194,16 @@ pub(crate) fn temp_hf_home() -> TempDir {
 }
 
 #[fixture]
+pub(crate) fn hf_cache(temp_hf_home: TempDir) -> (TempDir, PathBuf) {
+  let hf_cache = temp_hf_home
+    .path()
+    .to_path_buf()
+    .join("huggingface")
+    .join("hub");
+  (temp_hf_home, hf_cache)
+}
+
+#[fixture]
 pub(crate) fn temp_bodhi_home() -> TempDir {
   let temp_dir = tempdir().expect("Failed to create a temporary directory");
   let dst_path = temp_dir.path().join("bodhi");
@@ -325,13 +335,27 @@ impl Default for ChatTemplate {
 
 impl LocalModelFile {
   pub fn never_download() -> LocalModelFile {
-    LocalModelFile::new(
-      PathBuf::from("/tmp/ignored/huggingface/hub"),
-      Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string()).unwrap(),
-      "testalias-neverdownload.Q8_0.gguf".to_string(),
-      SNAPSHOT.to_string(),
-      Some(22),
-    )
+    LocalModelFile::never_download_builder().build().unwrap()
+  }
+
+  pub fn never_download_builder() -> LocalModelFileBuilder {
+    LocalModelFileBuilder::default()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .repo(Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string()).unwrap())
+      .filename("testalias-neverdownload.Q8_0.gguf".to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(22))
+      .to_owned()
+  }
+
+  pub fn never_download_tokenizer_builder() -> LocalModelFileBuilder {
+    LocalModelFileBuilder::default()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .repo(Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string()).unwrap())
+      .filename(TOKENIZER_CONFIG_JSON.to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(22))
+      .to_owned()
   }
 
   pub fn testalias() -> LocalModelFile {

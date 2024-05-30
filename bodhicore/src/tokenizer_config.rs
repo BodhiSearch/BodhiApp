@@ -214,12 +214,17 @@ where
 
 #[cfg(test)]
 mod test {
+  use std::path::PathBuf;
+
   use super::*;
-  use crate::test_utils::{config_dirs, ConfigDirs};
+  use crate::{
+    objs::{LocalModelFile, TOKENIZER_CONFIG_JSON},
+    test_utils::{app_service_stub, config_dirs, hf_cache, AppServiceTuple, ConfigDirs},
+  };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
-  use tempfile::NamedTempFile;
+  use tempfile::{NamedTempFile, TempDir};
 
   #[test]
   fn test_tokenizer_config_from_json_str_empty() -> anyhow::Result<()> {
@@ -413,6 +418,25 @@ message['role']: message['content']
     let error = config.unwrap_err();
     assert!(error.is::<serde_json::Error>());
     assert_eq!("invalid type: boolean `true`, expected a string or a map with a 'content' key at line 1 column 18", format!("{error}"));
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_tokenizer_config_from_local_model_file(
+    hf_cache: (TempDir, PathBuf),
+  ) -> anyhow::Result<()> {
+    let (_temp_bodhi, hf_cache) = hf_cache;
+    let tokenizer_file = LocalModelFile::never_download_tokenizer_builder()
+      .hf_cache(hf_cache)
+      .build()
+      .unwrap();
+    let tokenizer_config = TokenizerConfig::try_from(tokenizer_file)?;
+    let expected = TokenizerConfig::new(
+      Some("{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + content %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}".to_string()),
+      Some("<|begin_of_text|>".to_string()),
+      Some("<|eot_id|>".to_string()),
+    );
+    assert_eq!(expected, tokenizer_config);
     Ok(())
   }
 }

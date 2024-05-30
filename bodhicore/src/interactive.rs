@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::objs::Alias;
+use crate::objs::{Alias, TOKENIZER_CONFIG_JSON};
 use crate::service::AppServiceFn;
 use crate::tokenizer_config::{ChatMessage, TokenizerConfig};
 use crate::Repo;
@@ -71,7 +71,8 @@ impl Interactive {
         }
       })?;
     let repo: Repo = self.alias.chat_template.clone().try_into()?;
-    // let tokenizer_file = service.download(repo, filename, force)?;
+    let tokenizer_file = service.download(&repo, TOKENIZER_CONFIG_JSON, false)?;
+    // let tokenizer: TokenizerConfig = tokenizer_file.into();
     let pb = infinite_loading(String::from("Loading..."));
     let gpt_params = GptParams {
       model: model.path().to_string_lossy().into_owned(),

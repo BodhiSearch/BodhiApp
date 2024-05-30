@@ -57,6 +57,8 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   },
   #[error(transparent)]
   SerdeYamlDeserialize(#[from] serde_yaml::Error),
+  #[error(transparent)]
+  SerdeJsonDeserialize(#[from] serde_json::Error),
   #[error(
     r#"directory '{dirname}' not found in $BODHI_HOME.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
@@ -495,8 +497,11 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let service = HfHubService::new(hf_cache, false, token);
-    let local_model_file =
-      service.download(&Repo::try_new("amir36/test-gated-repo".to_string())?, "tokenizer_config.json", false);
+    let local_model_file = service.download(
+      &Repo::try_new("amir36/test-gated-repo".to_string())?,
+      "tokenizer_config.json",
+      false,
+    );
     assert!(local_model_file.is_err());
     assert_eq!(expected, local_model_file.unwrap_err().to_string());
     Ok(())
@@ -510,8 +515,11 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let service = HfHubService::new(hf_cache, false, token);
-    let local_model_file =
-      service.download(&Repo::try_new("amir36/test-gated-repo".to_string())?, "tokenizer_config.json", false)?;
+    let local_model_file = service.download(
+      &Repo::try_new("amir36/test-gated-repo".to_string())?,
+      "tokenizer_config.json",
+      false,
+    )?;
     let path = local_model_file.path();
     assert!(path.exists());
     let expected = temp_hf_home.path().join("huggingface/hub/models--amir36--test-gated-repo/snapshots/6ac8c08e39d0f68114b63ea98900632abcfb6758/tokenizer_config.json").display().to_string();
@@ -538,7 +546,11 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let service = HfHubService::new(hf_cache, false, token);
-    let local_model_file = service.download(&Repo::try_new("amir36/not-exists".to_string())?, "tokenizer_config.json", false);
+    let local_model_file = service.download(
+      &Repo::try_new("amir36/not-exists".to_string())?,
+      "tokenizer_config.json",
+      false,
+    );
     assert!(local_model_file.is_err());
     assert_eq!(error, local_model_file.unwrap_err().to_string());
     Ok(())
