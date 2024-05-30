@@ -248,7 +248,12 @@ pub struct MockAppServiceFn {
 }
 
 impl HubService for MockAppServiceFn {
-  fn download(&self, repo: &str, filename: &str, force: bool) -> crate::service::Result<PathBuf> {
+  fn download(
+    &self,
+    repo: &str,
+    filename: &str,
+    force: bool,
+  ) -> crate::service::Result<LocalModelFile> {
     self.hub_service.download(repo, filename, force)
   }
 
@@ -302,5 +307,17 @@ pub fn mock_app_service() -> MockAppServiceFn {
 impl Default for ChatTemplate {
   fn default() -> Self {
     ChatTemplate::Id(ChatTemplateId::Llama3)
+  }
+}
+
+impl LocalModelFile {
+  pub fn ignored() -> LocalModelFile {
+    LocalModelFile::new(
+      PathBuf::from("/tmp/ignored/huggingface/hub"),
+      Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
+      "testalias.Q8_0.gguf".to_string(),
+      "abcd".to_string(),
+      None,
+    )
   }
 }

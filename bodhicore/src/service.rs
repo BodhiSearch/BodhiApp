@@ -1,11 +1,12 @@
 use crate::{
-  objs::{Alias, LocalModelFile, RemoteModel, Repo},
+  objs::{Alias, LocalModelFile, RemoteModel, Repo, REGEX_HF_REPO_FILE},
   server::BODHI_HOME,
 };
 use derive_new::new;
 use hf_hub::{api::sync::ApiError, Cache};
 #[cfg(test)]
 use mockall::automock;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::{
   borrow::Borrow,
@@ -71,6 +72,8 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   FileMissing { filename: String, dirname: String },
   #[error(transparent)]
   Validation(#[from] ValidationErrors),
+  #[error("{0}")]
+  BadRequest(String),
   #[error(transparent)]
   Anyhow(#[from] anyhow::Error),
 }
@@ -79,7 +82,7 @@ pub type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(test, automock)]
 pub trait HubService: Debug {
-  fn download(&self, repo: &str, filename: &str, force: bool) -> Result<PathBuf>;
+  fn download(&self, repo: &str, filename: &str, force: bool) -> Result<LocalModelFile>;
 
   fn list_local_models(&self) -> Vec<LocalModelFile>;
 
@@ -119,11 +122,10 @@ impl DataService for LocalDataService {
 
   fn save_alias(&self, alias: Alias) -> Result<PathBuf> {
     let contents = serde_yaml::to_string(&alias)?;
-    let alias_name = &alias.alias;
     let filename = self
       .bodhi_home
       .join("configs")
-      .join(format!("{alias_name}.yaml"));
+      .join(alias.config_filename());
     fs::write(filename.clone(), contents)?;
     Ok(filename)
   }
@@ -294,44 +296,37 @@ impl HfHubService {
 }
 
 impl HubService for HfHubService {
-  fn download(&self, repo: &str, filename: &str, force: bool) -> Result<PathBuf> {
+  fn download(&self, repo: &str, filename: &str, force: bool) -> Result<LocalModelFile> {
     let hf_repo = self.cache.repo(hf_hub::Repo::model(repo.to_string()));
     let from_cache = hf_repo.get(filename);
-    match from_cache {
-      Some(path) if !force => Ok(path),
-      Some(_) | None => {
-        let path = self.download_sync(repo, filename)?;
-        Ok(path)
-      }
-    }
+    let path = match from_cache {
+      Some(path) if !force => path,
+      Some(_) | None => self.download_sync(repo, filename)?,
+    };
+    Ok(path.try_into()?)
   }
 
   fn list_local_models(&self) -> Vec<LocalModelFile> {
     let cache = self.cache.path().as_path();
-    let re = Regex::new(r".*/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<commit>[^/]+)/(?P<model_name>.*)\.gguf$").unwrap();
     WalkDir::new(cache)
       .follow_links(true)
       .into_iter()
       .filter_map(|e| e.ok())
       .filter(|entry| entry.path().is_file())
       .filter_map(|entry| {
-        let path = entry.path();
-        let filepath = path.to_string_lossy();
-        let filepath = filepath.borrow();
-        let caps = re.captures(filepath)?;
-        let size = match fs::metadata(path) {
-          Ok(metadata) => Some(metadata.len()),
-          Err(_) => None,
+        let path = entry.path().to_path_buf();
+        let local_model_file = match LocalModelFile::try_from(path.clone()) {
+          Ok(local_model_file) => local_model_file,
+          Err(err) => {
+            tracing::info!(?err, ?path, "error converting Path to LocalModelFile");
+            return None;
+          }
         };
-        let repo = Repo::try_new(format!("{}/{}", &caps["username"], &caps["repo_name"])).ok()?;
-        let hf_cache = self.cache.path().to_path_buf();
-        Some(LocalModelFile {
-          hf_cache,
-          repo,
-          filename: format!("{}.gguf", &caps["model_name"]),
-          snapshot: String::from(&caps["commit"]),
-          size,
-        })
+        if local_model_file.filename.ends_with(".gguf") {
+          Some(local_model_file)
+        } else {
+          None
+        }
       })
       .collect::<Vec<_>>()
   }
@@ -378,7 +373,7 @@ impl AppService {
 }
 
 impl HubService for AppService {
-  fn download(&self, repo: &str, filename: &str, force: bool) -> Result<PathBuf> {
+  fn download(&self, repo: &str, filename: &str, force: bool) -> Result<LocalModelFile> {
     self.hub_service.download(repo, filename, force)
   }
 
@@ -443,15 +438,22 @@ mod test {
     #[case] token: Option<String>,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let service = HfHubService::new(hf_cache, false, token);
-    let dest_file = service.download("amir36/test-model-repo", "tokenizer_config.json", false)?;
-    assert!(dest_file.exists());
-    let expected = temp_hf_home.path().join("huggingface/hub/models--amir36--test-model-repo/snapshots/f7d5db77208ab98318b45cba4a48fc33a47fe4f6/tokenizer_config.json").display().to_string();
-    assert_eq!(expected, dest_file.display().to_string());
+    let service = HfHubService::new(hf_cache.clone(), false, token);
+    let local_model_file =
+      service.download("amir36/test-model-repo", "tokenizer_config.json", false)?;
+    assert!(local_model_file.path().exists());
+    let expected = LocalModelFile::new(
+      hf_cache,
+      Repo::try_new("amir36/test-model-repo".to_string())?,
+      "tokenizer_config.json".to_string(),
+      "f7d5db77208ab98318b45cba4a48fc33a47fe4f6".to_string(),
+      Some(22),
+    );
+    assert_eq!(expected, local_model_file);
     let expected = r#"{
   "hello": "world"
 }"#;
-    assert_eq!(expected, fs::read_to_string(dest_file)?);
+    assert_eq!(expected, fs::read_to_string(local_model_file.path())?);
     Ok(())
   }
 
@@ -472,9 +474,10 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let service = HfHubService::new(hf_cache, false, token);
-    let dest_file = service.download("amir36/test-gated-repo", "tokenizer_config.json", false);
-    assert!(dest_file.is_err());
-    assert_eq!(expected, dest_file.unwrap_err().to_string());
+    let local_model_file =
+      service.download("amir36/test-gated-repo", "tokenizer_config.json", false);
+    assert!(local_model_file.is_err());
+    assert_eq!(expected, local_model_file.unwrap_err().to_string());
     Ok(())
   }
 
@@ -486,14 +489,16 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let service = HfHubService::new(hf_cache, false, token);
-    let dest_file = service.download("amir36/test-gated-repo", "tokenizer_config.json", false)?;
-    assert!(dest_file.exists());
+    let local_model_file =
+      service.download("amir36/test-gated-repo", "tokenizer_config.json", false)?;
+    let path = local_model_file.path();
+    assert!(path.exists());
     let expected = temp_hf_home.path().join("huggingface/hub/models--amir36--test-gated-repo/snapshots/6ac8c08e39d0f68114b63ea98900632abcfb6758/tokenizer_config.json").display().to_string();
-    assert_eq!(expected, dest_file.display().to_string());
+    assert_eq!(expected, path.display().to_string());
     let expected = r#"{
   "hello": "world"
 }"#;
-    assert_eq!(expected, fs::read_to_string(dest_file)?);
+    assert_eq!(expected, fs::read_to_string(path)?);
     Ok(())
   }
 
@@ -512,9 +517,9 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let service = HfHubService::new(hf_cache, false, token);
-    let dest_file = service.download("amir36/not-exists", "tokenizer_config.json", false);
-    assert!(dest_file.is_err());
-    assert_eq!(error, dest_file.unwrap_err().to_string());
+    let local_model_file = service.download("amir36/not-exists", "tokenizer_config.json", false);
+    assert!(local_model_file.is_err());
+    assert_eq!(error, local_model_file.unwrap_err().to_string());
     Ok(())
   }
 
@@ -642,15 +647,6 @@ error while serializing from file: '{models_file}'"#
         vec![String::from("chat")],
         ChatTemplate::Id(ChatTemplateId::Llama3),
       ),
-      Alias::new(
-        String::from("testalias-neverdownload:instruct"),
-        Some(String::from("testalias")),
-        Repo::try_new(String::from("MyFactory/testalias-neverdownload-gguf"))?,
-        String::from("testalias-neverdownload.Q8_0.gguf"),
-        None,
-        vec![String::from("chat")],
-        ChatTemplate::Id(ChatTemplateId::Llama3),
-      ),
     ];
     assert_eq!(expected, result);
     Ok(())
@@ -703,7 +699,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       Some(21),
     );
-    assert_eq!(2, models.len());
+    assert_eq!(3, models.len());
     assert_eq!(&expected_1, models.first().unwrap());
     Ok(())
   }

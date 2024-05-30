@@ -75,14 +75,14 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{Alias, ChatTemplate, ChatTemplateId, RemoteModel, Repo},
+    objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo},
     service::{MockDataService, MockHubService},
     test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
     Command, PullCommand,
   };
   use mockall::predicate::eq;
   use rstest::rstest;
-  use std::path::PathBuf;
+  use std::{fs, path::PathBuf};
 
   #[rstest]
   fn test_pull_by_alias_fails_if_alias_exists_no_force(
@@ -138,7 +138,7 @@ mod test {
         eq("testalias-neverdownload.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
+      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     let pull = PullCommand::ByAlias {
       alias: alias_id.to_string(),
@@ -163,7 +163,7 @@ mod test {
         eq("gemma-7b-it.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
+      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
     let mock_data_service = MockDataService::new();
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     pull.execute(&service)?;
@@ -196,6 +196,36 @@ mod test {
   ) -> anyhow::Result<()> {
     let pull_command: PullCommand = PullCommand::try_from(input)?;
     assert_eq!(expected, pull_command);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file(
+    app_service_stub: AppServiceTuple,
+  ) -> anyhow::Result<()> {
+    let AppServiceTuple(_temp_bodhi, _temp_hf, bodhi_home, _, service) = app_service_stub;
+    let command = PullCommand::ByAlias {
+      alias: "testalias-neverdownload:instruct".to_string(),
+      force: false,
+    };
+    command.execute(&service)?;
+    let alias = bodhi_home
+      .join("configs")
+      .join("testalias-neverdownload--instruct.yaml");
+    assert!(alias.exists());
+    let content = fs::read_to_string(alias)?;
+    assert_eq!(
+      r#"alias: testalias-neverdownload:instruct
+family: testalias
+repo: MyFactory/testalias-neverdownload-gguf
+filename: testalias-neverdownload.Q8_0.gguf
+snapshot: null
+features:
+- chat
+chat_template: llama3
+"#,
+      content
+    );
     Ok(())
   }
 }

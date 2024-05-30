@@ -1,9 +1,10 @@
+use crate::{service::DataServiceError, utils::to_safe_filename};
 use derive_new::new;
 use once_cell::sync::Lazy;
 use prettytable::{Cell, Row};
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt::Display, ops::Deref, path::PathBuf};
+use std::{fmt::Display, fs, ops::Deref, path::PathBuf};
 use strum::{AsRefStr, Display, EnumIter};
 use validator::Validate;
 
@@ -11,6 +12,9 @@ pub static REGEX_REPO: Lazy<Regex> =
   Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap());
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
 pub static GGUF_EXTENSION: &str = ".gguf";
+pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
+  Regex::new(r"^(?P<hf_cache>.+)/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<snapshot>[^/]+)/(?P<filename>.*)$").unwrap()
+});
 
 #[derive(
   clap::ValueEnum, Clone, Debug, Serialize, Deserialize, PartialEq, EnumIter, AsRefStr, Display,
@@ -136,6 +140,29 @@ impl LocalModelFile {
   }
 }
 
+impl TryFrom<PathBuf> for LocalModelFile {
+  type Error = DataServiceError;
+
+  fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+    let path = value.to_string_lossy().into_owned();
+    let caps = REGEX_HF_REPO_FILE.captures(&path).ok_or(anyhow::anyhow!(
+      "'{path}' does not match huggingface hub cache filepath pattern"
+    ))?;
+    let size = match fs::metadata(&value) {
+      Ok(metadata) => Some(metadata.len()),
+      Err(_) => None,
+    };
+    let repo = Repo::try_new(format!("{}/{}", &caps["username"], &caps["repo_name"]))?;
+    Ok(LocalModelFile {
+      hf_cache: PathBuf::from(caps["hf_cache"].to_string()),
+      repo,
+      filename: caps["filename"].to_string(),
+      snapshot: caps["snapshot"].to_string(),
+      size,
+    })
+  }
+}
+
 impl From<LocalModelFile> for Row {
   fn from(model: LocalModelFile) -> Self {
     let LocalModelFile {
@@ -194,6 +221,14 @@ pub struct Alias {
   pub chat_template: ChatTemplate,
 }
 
+impl Alias {
+  pub fn config_filename(&self) -> String {
+    let filename = self.alias.replace(':', "--");
+    let filename = to_safe_filename(&filename);
+    format!("{}.yaml", filename)
+  }
+}
+
 impl From<RemoteModel> for Alias {
   fn from(value: RemoteModel) -> Self {
     Alias::new(
@@ -229,10 +264,16 @@ pub fn default_features() -> Vec<String> {
 mod test {
   use std::path::PathBuf;
 
-  use super::{ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
+  use crate::{
+    service::HubService,
+    test_utils::{hub_service, temp_hf_home, HubServiceTuple},
+  };
+
+  use super::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
   use anyhow_trace::anyhow_trace;
   use prettytable::{Cell, Row};
   use rstest::rstest;
+  use tempfile::TempDir;
   use validator::Validate;
 
   #[rstest]
@@ -308,6 +349,42 @@ mod test {
       Cell::new("10.00 GB"),
     ]);
     assert_eq!(expected, row);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_model_file_from_pathbuf(temp_hf_home: TempDir) -> anyhow::Result<()> {
+    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
+    let filepath = hf_cache
+      .clone()
+      .join("models--MyFactory--testalias-neverdownload-gguf")
+      .join("snapshots")
+      .join("5007652f7a641fe7170e0bad4f63839419bd9213")
+      .join("testalias-neverdownload.Q8_0.gguf");
+    let local_model: LocalModelFile = filepath.try_into()?;
+    let expected = LocalModelFile::new(
+      hf_cache,
+      Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string())?,
+      "testalias-neverdownload.Q8_0.gguf".to_string(),
+      "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
+      Some(21),
+    );
+    assert_eq!(expected, local_model);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("llama3:instruct", "llama3--instruct.yaml")]
+  #[case("llama3/instruct", "llama3--instruct.yaml")]
+  fn test_alias_config_filename(
+    #[case] input: String,
+    #[case] expected: String,
+  ) -> anyhow::Result<()> {
+    let alias = Alias {
+      alias: input,
+      ..Default::default()
+    };
+    assert_eq!(expected, alias.config_filename());
     Ok(())
   }
 }

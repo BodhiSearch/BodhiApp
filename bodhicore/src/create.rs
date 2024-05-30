@@ -107,8 +107,10 @@ mod test {
   use super::CreateCommand;
   use crate::{
     cli::{Command, GptContextParams, OAIRequestParams},
-    objs::{Alias, ChatTemplate, ChatTemplateId, Repo},
-    test_utils::{mock_app_service, MockAppServiceFn},
+    objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, Repo},
+    test_utils::{
+      app_service_stub, bodhi_home, mock_app_service, AppServiceTuple, MockAppServiceFn,
+    },
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
@@ -196,7 +198,9 @@ mod test {
   }
 
   #[rstest]
-  fn test_create_execute_downloads_model_saves_alias(mock_app_service: MockAppServiceFn) -> anyhow::Result<()> {
+  fn test_create_execute_downloads_model_saves_alias(
+    mock_app_service: MockAppServiceFn,
+  ) -> anyhow::Result<()> {
     let mut mock = mock_app_service;
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
@@ -221,7 +225,9 @@ mod test {
         eq("testalias.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(PathBuf::from(".")));
+      .return_once(|_, _, _| {
+        Ok(LocalModelFile::ignored())
+      });
     let alias = Alias::new(
       "testalias:instruct".to_string(),
       None,
@@ -268,7 +274,7 @@ mod test {
         eq("testalias.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
+      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
     mock
       .hub_service
       .expect_download()
@@ -277,7 +283,7 @@ mod test {
         eq("tokenizer_config.json"),
         eq(true),
       )
-      .return_once(|_, _, _| Ok(PathBuf::from("ignored")));
+      .return_once(|_, _, _| Ok(LocalModelFile::ignored()));
     let alias = Alias::new(
       "testalias:instruct".to_string(),
       None,

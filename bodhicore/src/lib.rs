@@ -10,6 +10,7 @@ mod objs;
 mod pull;
 mod run;
 mod serve;
+mod utils;
 pub mod server;
 mod service;
 pub use cli::Command;

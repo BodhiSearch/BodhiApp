@@ -1,7 +1,0 @@
-alias: testalias-neverdownload:instruct
-family: testalias
-repo: MyFactory/testalias-neverdownload-gguf
-filename: testalias-neverdownload.Q8_0.gguf
-features:
-  - chat
-chat_template: llama3
