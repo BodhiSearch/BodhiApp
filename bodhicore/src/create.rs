@@ -1,12 +1,17 @@
+use derive_new::new;
+
 use crate::{
-  cli::GptContextParams,
   error::{AppError, Result},
-  objs::{default_features, Alias, ChatTemplate, OAIRequestParams, Repo, TOKENIZER_CONFIG_JSON},
+  objs::{
+    default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo,
+    TOKENIZER_CONFIG_JSON,
+  },
   service::AppServiceFn,
   Command,
 };
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(test, derive(derive_new::new, derive_builder::Builder))]
 pub struct CreateCommand {
   alias: String,
   repo: Repo,
@@ -81,6 +86,7 @@ impl CreateCommand {
       default_features(),
       self.chat_template,
       self.oai_request_params,
+      self.context_params,
     );
     service.save_alias(alias)?;
     Ok(())
@@ -91,8 +97,10 @@ impl CreateCommand {
 mod test {
   use super::CreateCommand;
   use crate::{
-    cli::{Command, GptContextParams},
-    objs::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, OAIRequestParams, Repo},
+    cli::Command,
+    objs::{
+      Alias, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile, OAIRequestParams, Repo,
+    },
     test_utils::{mock_app_service, MockAppServiceFn, SNAPSHOT},
   };
   use anyhow_trace::anyhow_trace;
@@ -147,9 +155,8 @@ mod test {
 
   #[rstest]
   fn test_create_execute_fails_if_exists_force_false(
-    mock_app_service: MockAppServiceFn,
+    #[from(mock_app_service)] mut mock: MockAppServiceFn,
   ) -> anyhow::Result<()> {
-    let mut mock = mock_app_service;
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
       repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
@@ -182,19 +189,9 @@ mod test {
 
   #[rstest]
   fn test_create_execute_downloads_model_saves_alias(
-    mock_app_service: MockAppServiceFn,
+    #[from(mock_app_service)] mut mock: MockAppServiceFn,
   ) -> anyhow::Result<()> {
-    let mut mock = mock_app_service;
-    let create = CreateCommand {
-      alias: "testalias:instruct".to_string(),
-      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
-      filename: "testalias.Q8_0.gguf".to_string(),
-      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
-      family: None,
-      force: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    };
+    let create = CreateCommand::testalias_builder().build().unwrap();
     mock
       .data_service
       .expect_find_alias()
@@ -209,16 +206,7 @@ mod test {
         eq(false),
       )
       .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
-    let alias = Alias::new(
-      "testalias:instruct".to_string(),
-      None,
-      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
-      "testalias.Q8_0.gguf".to_string(),
-      SNAPSHOT.to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-      OAIRequestParams::default(),
-    );
+    let alias = Alias::test_alias_instruct();
     mock
       .data_service
       .expect_save_alias()
@@ -230,19 +218,13 @@ mod test {
 
   #[rstest]
   fn test_create_execute_with_tokenizer_config_downloads_tokenizer_saves_alias(
-    mock_app_service: MockAppServiceFn,
+    #[from(mock_app_service)] mut mock: MockAppServiceFn,
   ) -> anyhow::Result<()> {
-    let mut mock = mock_app_service;
-    let create = CreateCommand {
-      alias: "testalias:instruct".to_string(),
-      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
-      filename: "testalias.Q8_0.gguf".to_string(),
-      chat_template: ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?),
-      family: None,
-      force: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    };
+    let chat_template = ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?);
+    let create = CreateCommand::testalias_builder()
+      .chat_template(chat_template.clone())
+      .build()
+      .unwrap();
     mock
       .data_service
       .expect_find_alias()
@@ -256,16 +238,7 @@ mod test {
         eq("testalias.Q8_0.gguf"),
         eq(false),
       )
-      .return_once(|_, _, _| {
-        let local_model_file = LocalModelFile::new(
-          PathBuf::from("/tmp/huggingface/hub/"),
-          Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
-          "testalias.Q8_0.gguf".to_string(),
-          SNAPSHOT.to_string(),
-          Some(22),
-        );
-        Ok(local_model_file)
-      });
+      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
     mock
       .hub_service
       .expect_download()
@@ -274,17 +247,11 @@ mod test {
         eq("tokenizer_config.json"),
         eq(true),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
-    let alias = Alias::new(
-      "testalias:instruct".to_string(),
-      None,
-      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
-      "testalias.Q8_0.gguf".to_string(),
-      SNAPSHOT.to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?),
-      OAIRequestParams::default(),
-    );
+      .return_once(|_, _, _| Ok(LocalModelFile::testalias_tokenizer()));
+    let alias = Alias::test_alias_instruct_builder()
+      .chat_template(chat_template.clone())
+      .build()
+      .unwrap();
     mock
       .data_service
       .expect_save_alias()

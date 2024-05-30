@@ -77,6 +77,12 @@ impl Repo {
   }
 }
 
+impl Display for Repo {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    self.value.fmt(f)
+  }
+}
+
 impl<'de> Deserialize<'de> for Repo {
   fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
   where
@@ -195,6 +201,10 @@ pub struct RemoteModel {
   pub(super) filename: String,
   pub(super) features: Vec<String>,
   pub(super) chat_template: ChatTemplate,
+  #[serde(default)]
+  pub(super) request_params: OAIRequestParams,
+  #[serde(default)]
+  pub(super) context_params: GptContextParams,
 }
 
 impl From<RemoteModel> for Row {
@@ -212,7 +222,7 @@ impl From<RemoteModel> for Row {
 
 #[allow(clippy::too_many_arguments)]
 #[derive(Debug, Serialize, Deserialize, PartialEq, new)]
-#[cfg_attr(test, derive(Default))]
+#[cfg_attr(test, derive(Default, derive_builder::Builder))]
 pub struct Alias {
   pub alias: String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -222,8 +232,10 @@ pub struct Alias {
   pub snapshot: String,
   pub features: Vec<String>,
   pub chat_template: ChatTemplate,
-  #[serde(default)]
+  #[serde(default, skip_serializing_if = "is_default")]
   pub request_params: OAIRequestParams,
+  #[serde(default, skip_serializing_if = "is_default")]
+  pub context_params: GptContextParams,
 }
 
 impl Alias {
@@ -232,6 +244,10 @@ impl Alias {
     let filename = to_safe_filename(&filename);
     format!("{}.yaml", filename)
   }
+}
+
+fn is_default<T: Default + PartialEq>(t: &T) -> bool {
+  t == &T::default()
 }
 
 impl From<Alias> for Row {
@@ -251,7 +267,7 @@ pub fn default_features() -> Vec<String> {
   vec!["chat".to_string()]
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, Args)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args)]
 pub struct OAIRequestParams {
   #[clap(long, value_parser = validate_range_neg_to_pos_2, help=r#"Number between -2.0 and 2.0. 
 Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
@@ -290,11 +306,11 @@ default: text"#
 
   #[arg(
     long,
-    number_of_values = 4,
+    number_of_values = 1,
     help = r#"Up to 4 sequences where the API will stop generating further tokens."#
   )]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub stop: Option<Vec<String>>,
+  #[serde(skip_serializing_if = "Vec::is_empty")]
+  pub stop: Vec<String>,
 
   #[arg(long, value_parser = validate_range_neg_to_pos_2, help=r#"Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic.
 default: 0.0 (disabled)"#)]
@@ -316,7 +332,7 @@ default: 1.0 (disabled)"#)]
   pub user: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, PartialOrd, clap::ValueEnum)]
 pub enum ResponseFormat {
   Text,
   #[clap(name = "json_object")]
@@ -338,13 +354,51 @@ fn validate_range_0_to_1(s: &str) -> Result<f32, String> {
 fn validate_range(s: &str, lower: f32, upper: f32) -> Result<f32, String> {
   match s.parse::<f32>() {
     Ok(val) if (lower..=upper).contains(&val) => Ok(val),
-    Ok(_) => Err(String::from(
-      "The value must be between -2 and 2 inclusive.",
+    Ok(_) => Err(format!(
+      "The value must be between {lower} and {upper} inclusive."
     )),
     Err(_) => Err(String::from(
       "The value must be a valid floating point number.",
     )),
   }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args)]
+pub struct GptContextParams {
+  /// default: num_cpu()
+  #[arg(
+    long,
+    help = r#"number of threads to use during computation
+default: num_cpus()"#
+  )]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub n_threads: Option<u32>,
+
+  /// default: 1
+  #[arg(
+    long,
+    help = r#"size of the prompt context
+default: 512"#
+  )]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub n_ctx: Option<u32>,
+
+  /// default: 1
+  #[arg(
+    long,
+    help = r#"number of parallel sequences to decode
+default: 1"#
+  )]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub n_parallel: Option<u32>,
+
+  #[arg(
+    long,
+    help = r#"new tokens to predict
+default: -1 (unbounded)"#
+  )]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  pub n_predict: Option<u32>,
 }
 
 #[cfg(test)]
@@ -386,14 +440,7 @@ mod test {
 
   #[test]
   fn test_list_remote_model_to_row() -> anyhow::Result<()> {
-    let model = RemoteModel::new(
-      "llama3:instruct".to_string(),
-      "llama3".to_string(),
-      Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string())?,
-      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-    );
+    let model = RemoteModel::llama3();
     let row: Row = model.into();
     let expected = Row::from(vec![
       Cell::new("llama3:instruct"),
@@ -479,7 +526,6 @@ filename: ''
 snapshot: ''
 features: []
 chat_template: llama3
-request_params: {}
 "#
   )]
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: String) -> anyhow::Result<()> {

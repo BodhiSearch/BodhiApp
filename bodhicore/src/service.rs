@@ -581,22 +581,8 @@ error while serializing from file: '{models_file}'"#
   fn test_data_service_list_remote_models(data_service: DataServiceTuple) -> anyhow::Result<()> {
     let DataServiceTuple(_temp_dir, _, service) = data_service;
     let models = service.list_remote_models()?;
-    let expected_1 = RemoteModel::new(
-      "llama3:instruct".to_string(),
-      "llama3".to_string(),
-      Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string())?,
-      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-    );
-    let expected_2 = RemoteModel::new(
-      "testalias:instruct".to_string(),
-      "testalias".to_string(),
-      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
-      "testalias.Q8_0.gguf".to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-    );
+    let expected_1 = RemoteModel::llama3();
+    let expected_2 = RemoteModel::test_alias();
     assert_eq!(7, models.len());
     assert!(models.contains(&expected_1));
     assert!(models.contains(&expected_2));
@@ -607,16 +593,7 @@ error while serializing from file: '{models_file}'"#
   fn test_local_data_service_find_alias(data_service: DataServiceTuple) -> anyhow::Result<()> {
     let DataServiceTuple(_temp, _, service) = data_service;
     let alias = service.find_alias("testalias-exists:instruct");
-    let expected = Alias::new(
-      String::from("testalias-exists:instruct"),
-      Some(String::from("testalias")),
-      Repo::try_new(String::from("MyFactory/testalias-exists-instruct-gguf"))?,
-      String::from("testalias-exists-instruct.Q8_0.gguf"),
-      SNAPSHOT.to_string(),
-      vec![String::from("chat")],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-      OAIRequestParams::default(),
-    );
+    let expected = Alias::test_alias_exists();
     assert_eq!(Some(expected), alias);
     Ok(())
   }
@@ -625,28 +602,7 @@ error while serializing from file: '{models_file}'"#
   fn test_local_data_service_list_aliases(data_service: DataServiceTuple) -> anyhow::Result<()> {
     let DataServiceTuple(_temp, _, service) = data_service;
     let result = service.list_aliases()?;
-    let expected = vec![
-      Alias::new(
-        String::from("llama3:instruct"),
-        Some(String::from("llama3")),
-        Repo::try_new(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"))?,
-        String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-        SNAPSHOT.to_string(),
-        vec![String::from("chat")],
-        ChatTemplate::Id(ChatTemplateId::Llama3),
-        OAIRequestParams::default(),
-      ),
-      Alias::new(
-        String::from("testalias-exists:instruct"),
-        Some(String::from("testalias")),
-        Repo::try_new(String::from("MyFactory/testalias-exists-instruct-gguf"))?,
-        String::from("testalias-exists-instruct.Q8_0.gguf"),
-        SNAPSHOT.to_string(),
-        vec![String::from("chat")],
-        ChatTemplate::Id(ChatTemplateId::Llama3),
-        OAIRequestParams::default(),
-      ),
-    ];
+    let expected = vec![Alias::llama3(), Alias::test_alias_exists()];
     assert_eq!(expected, result);
     Ok(())
   }

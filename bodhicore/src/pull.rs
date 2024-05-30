@@ -1,6 +1,6 @@
 use crate::{
   error::AppError,
-  objs::{Alias, OAIRequestParams},
+  objs::{Alias, GptContextParams, OAIRequestParams},
   service::AppServiceFn,
   Command, Repo,
 };
@@ -69,7 +69,8 @@ impl PullCommand {
           local_model_file.snapshot.clone(),
           model.features,
           model.chat_template,
-          OAIRequestParams::default(),
+          model.request_params,
+          model.context_params,
         );
         service.save_alias(alias)?;
         Ok(())
@@ -121,54 +122,35 @@ mod test {
 
   #[rstest]
   fn test_pull_by_alias_creates_new_alias() -> anyhow::Result<()> {
-    let alias_id = "test_pull_by_alias:instruct";
+    let remote_model = RemoteModel::never_download();
     let mut mock_data_service = MockDataService::new();
     mock_data_service
       .expect_find_alias()
-      .with(eq(alias_id))
+      .with(eq(remote_model.alias.clone()))
       .times(1)
       .returning(|_| None);
-    let remote_model = RemoteModel::new(
-      String::from(alias_id),
-      String::from("testalias"),
-      Repo::try_new(String::from("MyFactory/testalias-neverdownload-gguf"))?,
-      String::from("testalias-neverdownload.Q8_0.gguf"),
-      vec![String::from("chat")],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-    );
     let remote_clone = remote_model.clone();
     mock_data_service
       .expect_find_remote_model()
-      .with(eq(alias_id))
+      .with(eq(remote_model.alias.clone()))
       .return_once(move |_| Ok(Some(remote_clone.clone())));
-
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_download()
       .with(
-        eq("MyFactory/testalias-neverdownload-gguf"),
-        eq("testalias-neverdownload.Q8_0.gguf"),
+        eq(remote_model.repo.to_string()),
+        eq(remote_model.filename.clone()),
         eq(false),
       )
       .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
-
-    let alias = Alias {
-      alias: "test_pull_by_alias:instruct".to_string(),
-      family: Some("testalias".to_string()),
-      repo: Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string())?,
-      filename: "testalias-neverdownload.Q8_0.gguf".to_string(),
-      snapshot: SNAPSHOT.to_string(),
-      features: vec!["chat".to_string()],
-      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
-      request_params: OAIRequestParams::default(),
-    };
+    let alias = Alias::never_download();
     mock_data_service
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from("ignored")));
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     let pull = PullCommand::ByAlias {
-      alias: alias_id.to_string(),
+      alias: remote_model.alias,
       force: false,
     };
     pull.execute(&service)?;
@@ -250,7 +232,6 @@ snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213
 features:
 - chat
 chat_template: llama3
-request_params: {}
 "#,
       content
     );

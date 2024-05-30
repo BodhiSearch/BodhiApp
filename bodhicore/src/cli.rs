@@ -1,5 +1,5 @@
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
-use crate::objs::{ChatTemplateId, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
+use crate::objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
 use clap::{ArgGroup, Args, Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use strum::Display;
@@ -129,35 +129,12 @@ fn gguf_filename_parser(filename: &str) -> Result<String, String> {
   }
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, Args)]
-pub struct GptContextParams {
-  /// default: num_cpu()
-  #[arg(
-    long,
-    help = r#"number of threads to use during computation
-default: num_cpus()"#
-  )]
-  pub threads: Option<u32>,
-
-  /// default: 1
-  #[arg(long)]
-  pub ctx_size: Option<u32>,
-
-  /// default: 1
-  #[arg(long)]
-  pub parallel: Option<u32>,
-
-  /// default: -1
-  #[arg(long)]
-  pub n_predict: Option<u32>,
-}
-
 #[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 mod test {
-  use crate::objs::OAIRequestParams;
+  use crate::objs::{OAIRequestParams, ResponseFormat};
 
-use super::*;
+  use super::*;
   use clap::CommandFactory;
   use rstest::rstest;
 
@@ -351,6 +328,7 @@ For more information, try '--help'.
     assert_eq!(err_msg, cli.unwrap_err().to_string());
     Ok(())
   }
+
   #[rstest]
   #[case(vec![
     "bodhi", "create",
@@ -375,16 +353,44 @@ For more information, try '--help'.
     "--filename", "testalias.Q8_0.gguf",
     "--family", "testalias",
     "--chat-template", "llama3",
+    "--frequency-penalty", "0.8",
+    "--max-tokens", "512",
+    "--presence-penalty", "1.1",
+    "--response-format", "json_object",
+    "--seed", "42",
+    "--stop", "\n",
+    "--stop", "\n\n",
     "--temperature", "0.8",
-    "--threads", "6",
+    "--top-p", "0.9",
+    "--user", "testuser",
+    "--n-threads", "6",
+    "--n-ctx", "1024",
+    "--n-parallel", "4",
+    "--n-predict", "512",
   ],
-    "testalias:instruct",
-    "MyFactory/testalias-gguf",
-    "testalias.Q8_0.gguf",
-    "testalias",
+    "testalias:instruct".to_string(),
+    "MyFactory/testalias-gguf".to_string(),
+    "testalias.Q8_0.gguf".to_string(),
+    "testalias".to_string(),
     ChatTemplateId::Llama3,
-    OAIRequestParams {temperature: Some(0.8), ..OAIRequestParams::default()},
-    GptContextParams {threads: Some(6), ..GptContextParams::default()},
+    OAIRequestParams {
+      frequency_penalty: Some(0.8),
+      max_tokens: Some(512),
+      presence_penalty: Some(1.1),
+      response_format: Some(ResponseFormat::JsonObject),
+      seed: Some(42),
+      stop: vec!["\n".to_string(), "\n\n".to_string()],
+      temperature: Some(0.8),
+      top_p: Some(0.9),
+      user: Some("testuser".to_string())
+    },
+    GptContextParams {
+      n_threads:Some(6),
+      n_ctx: Some(1024),
+      n_parallel: Some(4),
+      n_predict: Some(512)
+    }
+  ,
   )]
   fn test_cli_create_valid(
     #[case] args: Vec<&str>,
