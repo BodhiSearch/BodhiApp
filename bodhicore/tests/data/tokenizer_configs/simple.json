@@ -1,0 +1,5 @@
+{
+  "chat_template": "{{ bos_token }} {%- for message in messages %} message['role']: {{ message['content'] }} {% endfor %} {{ eos_token }}",
+  "bos_token": "<s>",
+  "eos_token": "</s>"
+}

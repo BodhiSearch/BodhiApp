@@ -1,7 +1,7 @@
 use crate::error::AppError;
 use crate::objs::{Alias, TOKENIZER_CONFIG_JSON};
 use crate::service::AppServiceFn;
-use crate::tokenizer_config::{ChatMessage, TokenizerConfig};
+use crate::tokenizer_config::{self, ChatMessage, TokenizerConfig};
 use crate::Repo;
 use async_openai::types::CreateChatCompletionStreamResponse;
 use derive_new::new;
@@ -72,7 +72,7 @@ impl Interactive {
       })?;
     let repo: Repo = self.alias.chat_template.clone().try_into()?;
     let tokenizer_file = service.download(&repo, TOKENIZER_CONFIG_JSON, false)?;
-    // let tokenizer: TokenizerConfig = tokenizer_file.into();
+    let tokenizer_config: TokenizerConfig = tokenizer_file.try_into()?;
     let pb = infinite_loading(String::from("Loading..."));
     let gpt_params = GptParams {
       model: model.path().to_string_lossy().into_owned(),
@@ -93,7 +93,7 @@ impl Interactive {
         if cmd == "/bye" {
           break;
         }
-        // self.process_input(&ctx, &cmd)?;
+        self.process_input(&ctx, &cmd, &tokenizer_config)?;
       }
     }
     let pb = infinite_loading(String::from("Stopping..."));
@@ -102,38 +102,43 @@ impl Interactive {
     Ok(())
   }
 
-  // fn process_input(&self, ctx: &BodhiServerContext, input: &str) -> anyhow::Result<()> {
-  //   let messages = vec![ChatMessage::new(String::from("user"), String::from(input))];
-  //   let chat_template = "";
-  //   let prompt = self.config.apply_chat_template(&messages)?;
-  //   let mut request: Value = json! {{"prompt": prompt}};
-  //   request["model"] = Value::String("".to_string());
-  //   request["stream"] = Value::Bool(true);
-  //   let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
-  //   let json_request = serde_json::to_string(&request)?;
-  //   tokio::spawn(async move {
-  //     while let Some(token) = rx.recv().await {
-  //       let token = if token.starts_with("data:") {
-  //         token.strip_prefix("data: ").unwrap().trim()
-  //       } else {
-  //         token.as_str()
-  //       };
-  //       let token: CreateChatCompletionStreamResponse = serde_json::from_str(token).unwrap();
-  //       if let Some(delta) = token.choices[0].delta.content.as_ref() {
-  //         print!("{}", delta);
-  //         let _ = stdout().flush();
-  //       }
-  //     }
-  //   });
-  //   ctx.completions(
-  //     &json_request,
-  //     chat_template,
-  //     Some(callback_stream),
-  //     &tx as *const _ as *mut _,
-  //   )?;
-  //   println!();
-  //   Ok(())
-  // }
+  fn process_input(
+    &self,
+    ctx: &BodhiServerContext,
+    input: &str,
+    tokenizer_config: &TokenizerConfig,
+  ) -> anyhow::Result<()> {
+    let messages = vec![ChatMessage::new(String::from("user"), String::from(input))];
+    let chat_template = "";
+    let prompt = tokenizer_config.apply_chat_template(&messages)?;
+    let mut request: Value = json! {{"prompt": prompt}};
+    request["model"] = Value::String("".to_string());
+    request["stream"] = Value::Bool(true);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
+    let json_request = serde_json::to_string(&request)?;
+    tokio::spawn(async move {
+      while let Some(token) = rx.recv().await {
+        let token = if token.starts_with("data:") {
+          token.strip_prefix("data: ").unwrap().trim()
+        } else {
+          token.as_str()
+        };
+        let token: CreateChatCompletionStreamResponse = serde_json::from_str(token).unwrap();
+        if let Some(delta) = token.choices[0].delta.content.as_ref() {
+          print!("{}", delta);
+          let _ = stdout().flush();
+        }
+      }
+    });
+    ctx.completions(
+      &json_request,
+      chat_template,
+      Some(callback_stream),
+      &tx as *const _ as *mut _,
+    )?;
+    println!();
+    Ok(())
+  }
 }
 
 pub(super) fn launch_interactive(alias: Alias, service: &dyn AppServiceFn) -> anyhow::Result<()> {

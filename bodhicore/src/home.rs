@@ -26,14 +26,6 @@ pub fn logs_dir() -> anyhow::Result<PathBuf> {
   Ok(logs_dir)
 }
 
-pub(crate) fn configs_dir(repo: &str) -> anyhow::Result<PathBuf> {
-  let config_dir = bodhi_home()?.join(format!("configs--{}", repo.replace('/', "--")));
-  if !config_dir.exists() {
-    fs::create_dir_all(&config_dir)?;
-  }
-  Ok(config_dir)
-}
-
 #[cfg(test)]
 mod test {
   use super::*;
@@ -56,14 +48,6 @@ mod test {
   fn test_logs_dir_is_resolvable() -> anyhow::Result<()> {
     let logs_dir = logs_dir()?;
     assert_ne!("", logs_dir.as_os_str().to_string_lossy().into_owned());
-    Ok(())
-  }
-
-  #[ignore]
-  #[test]
-  fn test_configs_dir_is_resolvable() -> anyhow::Result<()> {
-    let configs_dir = configs_dir("meta-llama/Meta-Llama-3-8B")?;
-    assert!(configs_dir.ends_with("configs--meta-llama--Meta-Llama-3-8B"));
     Ok(())
   }
 }

@@ -63,9 +63,10 @@ pub(crate) async fn chat_completions_handler(
     .unwrap();
 
   let alias = state.app_service.find_alias(&request.model).unwrap();
-  let config = TokenizerConfig::for_repo(&alias.repo)
-    .ok()
-    .unwrap_or_default();
+  // let config = TokenizerConfig::for_repo(&alias.repo)
+  //   .ok()
+  //   .unwrap_or_default();
+  let config = TokenizerConfig::default();
   let prompt = config.apply_chat_template(&request.messages).unwrap();
   input["prompt"] = Value::String(prompt);
   if request.stream.unwrap_or(false) {
