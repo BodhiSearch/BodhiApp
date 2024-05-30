@@ -31,7 +31,7 @@ impl RouterState {
     let Some(local_model) =
       self
         .app_service
-        .find_local_model(&alias.repo, &alias.filename, &alias.snapshot)
+        .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
     else {
       bail!("local model not found: {:?}", alias);
     };

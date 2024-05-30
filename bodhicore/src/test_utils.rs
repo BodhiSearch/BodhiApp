@@ -276,13 +276,13 @@ impl HubService for MockAppServiceFn {
     self.hub_service.list_local_models()
   }
 
-  fn find_local_model(
+  fn find_local_file(
     &self,
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> Option<LocalModelFile> {
-    self.hub_service.find_local_model(repo, filename, snapshot)
+  ) -> crate::service::Result<Option<LocalModelFile>> {
+    self.hub_service.find_local_file(repo, filename, snapshot)
   }
 
   fn hf_home(&self) -> PathBuf {

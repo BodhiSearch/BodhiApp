@@ -1,5 +1,5 @@
 use crate::error::AppError;
-use crate::objs::{Alias, TOKENIZER_CONFIG_JSON};
+use crate::objs::{Alias, REFS_MAIN, TOKENIZER_CONFIG_JSON};
 use crate::service::AppServiceFn;
 use crate::tokenizer_config::{self, ChatMessage, TokenizerConfig};
 use crate::Repo;
@@ -59,7 +59,7 @@ impl Interactive {
   pub(crate) async fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     let alias = self.alias.clone();
     let model = service
-      .find_local_model(&alias.repo, &alias.filename, &alias.snapshot)
+      .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
       .ok_or_else(move || {
         let filepath = service
           .model_file_path(&alias.repo, &alias.filename, &alias.snapshot)
@@ -70,8 +70,20 @@ impl Interactive {
           filepath,
         }
       })?;
-    let repo: Repo = self.alias.chat_template.clone().try_into()?;
-    let tokenizer_file = service.download(&repo, TOKENIZER_CONFIG_JSON, false)?;
+    let alias = self.alias.clone();
+    let chat_repo: Repo = alias.chat_template.try_into()?;
+    let tokenizer_file = service
+      .find_local_file(&chat_repo, TOKENIZER_CONFIG_JSON, REFS_MAIN)?
+      .ok_or_else(move || {
+        let filepath = service
+          .model_file_path(&chat_repo, TOKENIZER_CONFIG_JSON, REFS_MAIN)
+          .display()
+          .to_string();
+        AppError::AliasModelFilesNotFound {
+          alias: alias.alias.clone(),
+          filepath,
+        }
+      })?;
     let tokenizer_config: TokenizerConfig = tokenizer_file.try_into()?;
     let pb = infinite_loading(String::from("Loading..."));
     let gpt_params = GptParams {
@@ -154,15 +166,16 @@ pub(super) fn launch_interactive(alias: Alias, service: &dyn AppServiceFn) -> an
 
 #[cfg(test)]
 mod test {
-  use std::path::PathBuf;
-
   use super::Interactive;
   use crate::{
-    objs::Alias,
+    objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
+    service::HubService,
     test_utils::{mock_app_service, MockAppServiceFn},
+    Repo,
   };
   use mockall::predicate::eq;
   use rstest::rstest;
+  use std::path::PathBuf;
 
   #[rstest]
   #[tokio::test]
@@ -173,13 +186,13 @@ mod test {
     let alias_clone = alias.clone();
     mock
       .hub_service
-      .expect_find_local_model()
+      .expect_find_local_file()
       .with(
         eq(alias.repo.clone()),
         eq(alias.filename.clone()),
         eq(alias.snapshot.clone()),
       )
-      .return_once(|_, _, _| None);
+      .return_once(|_, _, _| Ok(None));
     mock
       .hub_service
       .expect_model_file_path()
@@ -190,6 +203,47 @@ mod test {
     assert_eq!(
       r#"model files for model alias 'testalias:instruct' not found in huggingface cache directory. Check if file in the expected filepath exists.
 filepath: /tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf
+"#,
+      result.unwrap_err().to_string()
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_interactive_chat_template_not_found(
+    #[from(mock_app_service)] mut mock: MockAppServiceFn,
+  ) -> anyhow::Result<()> {
+    let alias = Alias::test_alias();
+    mock
+      .hub_service
+      .expect_find_local_file()
+      .with(
+        eq(alias.repo.clone()),
+        eq(alias.filename.clone()),
+        eq(alias.snapshot.clone()),
+      )
+      .return_once(|_, _, _| Ok(Some(LocalModelFile::testalias())));
+    let llama3 = Repo::try_new("meta-llama/Meta-Llama-3-8B-Instruct".to_string())?;
+    mock
+      .hub_service
+      .expect_find_local_file()
+      .with(eq(llama3.clone()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(None));
+    mock
+      .hub_service
+      .expect_model_file_path()
+      .with(eq(llama3), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| {
+        PathBuf::from(
+          "/tmp/huggingface/hub/models--meta-llama-repo/snapshots/xyz/tokenizer_config.json",
+        )
+      });
+    let result = Interactive::new(alias).execute(&mock).await;
+    assert!(result.is_err());
+    assert_eq!(
+      r#"model files for model alias 'testalias:instruct' not found in huggingface cache directory. Check if file in the expected filepath exists.
+filepath: /tmp/huggingface/hub/models--meta-llama-repo/snapshots/xyz/tokenizer_config.json
 "#,
       result.unwrap_err().to_string()
     );

@@ -14,10 +14,12 @@ use std::{fmt::Display, fs, ops::Deref, path::PathBuf};
 use strum::{AsRefStr, Display, EnumIter};
 use validator::Validate;
 
-pub static REGEX_REPO: Lazy<Regex> =
-  Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap());
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
 pub static GGUF_EXTENSION: &str = ".gguf";
+pub static REFS: &str = "refs";
+pub static REFS_MAIN: &str = "refs/main";
+pub static REGEX_REPO: Lazy<Regex> =
+  Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap());
 pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
   Regex::new(r"^(?P<hf_cache>.+)/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<snapshot>[^/]+)/(?P<filename>.*)$").unwrap()
 });
@@ -58,7 +60,7 @@ impl Repo {
   }
 
   pub fn path(&self) -> String {
-    format!("models--{}--{}", self.owner(), self.name())
+    hf_hub::Repo::model(self.value.clone()).folder_name()
   }
 
   pub fn split(&self) -> (String, String) {

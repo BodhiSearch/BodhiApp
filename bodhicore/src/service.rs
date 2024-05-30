@@ -1,5 +1,5 @@
 use crate::{
-  objs::{Alias, LocalModelFile, RemoteModel, Repo},
+  objs::{Alias, LocalModelFile, RemoteModel, Repo, REFS, REFS_MAIN},
   server::BODHI_HOME,
 };
 use derive_new::new;
@@ -75,6 +75,8 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   BadRequest(String),
   #[error(transparent)]
   Anyhow(#[from] anyhow::Error),
+  #[error("only files from refs/main supported")]
+  OnlyRefsMainSupported,
 }
 
 pub type Result<T> = std::result::Result<T, DataServiceError>;
@@ -85,8 +87,12 @@ pub trait HubService: Debug {
 
   fn list_local_models(&self) -> Vec<LocalModelFile>;
 
-  fn find_local_model(&self, repo: &Repo, filename: &str, snapshot: &str)
-    -> Option<LocalModelFile>;
+  fn find_local_file(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: &str,
+  ) -> Result<Option<LocalModelFile>>;
 
   fn hf_home(&self) -> PathBuf;
 
@@ -302,7 +308,7 @@ impl HubService for HfHubService {
       Some(path) if !force => path,
       Some(_) | None => self.download_sync(repo, filename)?,
     };
-    Ok(path.try_into()?)
+    path.try_into()
   }
 
   fn list_local_models(&self) -> Vec<LocalModelFile> {
@@ -330,16 +336,50 @@ impl HubService for HfHubService {
       .collect::<Vec<_>>()
   }
 
-  fn find_local_model(
+  fn find_local_file(
     &self,
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> Option<LocalModelFile> {
-    let models = self.list_local_models();
-    models.into_iter().find(|model| {
-      model.repo.eq(repo) && model.filename.eq(filename) && model.snapshot.eq(snapshot)
-    })
+  ) -> Result<Option<LocalModelFile>> {
+    let snapshot = if snapshot.starts_with(REFS) {
+      if !snapshot.eq(REFS_MAIN) {
+        return Err(DataServiceError::OnlyRefsMainSupported);
+      }
+      let refs_file = self
+        .cache
+        .path()
+        .to_path_buf()
+        .join(repo.path())
+        .join(snapshot);
+      std::fs::read_to_string(refs_file.clone()).map_err(|err| {
+        let dirname = refs_file
+          .parent()
+          .map(|f| f.display().to_string())
+          .unwrap_or(String::from("<unknown>"));
+        let filename = refs_file
+          .file_name()
+          .map(|f| f.to_string_lossy().into_owned())
+          .unwrap_or(String::from("<unknown>"));
+        DataServiceError::FileMissing { filename, dirname }
+      })?
+    } else {
+      snapshot.to_owned()
+    };
+    let filepath = self
+      .cache
+      .path()
+      .to_path_buf()
+      .join(repo.path())
+      .join("snapshots")
+      .join(snapshot)
+      .join(filename);
+    if filepath.exists() {
+      let local_model_file = filepath.try_into()?;
+      Ok(Some(local_model_file))
+    } else {
+      Ok(None)
+    }
   }
 
   fn hf_home(&self) -> PathBuf {
@@ -348,13 +388,12 @@ impl HubService for HfHubService {
 
   fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
     let model_repo = hf_hub::Repo::model(repo.to_string());
-    let filepath = self
+    self
       .hf_home()
       .join(model_repo.folder_name())
       .join("snapshots")
       .join(snapshot)
-      .join(filename);
-    filepath
+      .join(filename)
   }
 }
 
@@ -393,13 +432,13 @@ impl HubService for AppService {
     self.hub_service.list_local_models()
   }
 
-  fn find_local_model(
+  fn find_local_file(
     &self,
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> Option<LocalModelFile> {
-    self.hub_service.find_local_model(repo, filename, snapshot)
+  ) -> Result<Option<LocalModelFile>> {
+    self.hub_service.find_local_file(repo, filename, snapshot)
   }
 
   fn hf_home(&self) -> PathBuf {
@@ -528,6 +567,52 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   "hello": "world"
 }"#;
     assert_eq!(expected, fs::read_to_string(path)?);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("9ff8b00464fc439a64bb374769dec3dd627be1c2", "this is version 1\n")]
+  #[case("e9149a12809580e8602995856f8098ce973d1080", "this is version 2\n")]
+  #[case("refs/main", "this is version 2\n")]
+  fn test_hub_service_find_local_file(
+    hub_service: HubServiceTuple,
+    #[case] snapshot: String,
+    #[case] expected: String,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp, _, service) = hub_service;
+    let repo = Repo::try_new("meta-llama/Llama-2-70b-chat-hf".to_string())?;
+    let filename = "tokenizer_config.json";
+    let local_model_file = service
+      .find_local_file(&repo, filename, &snapshot)?
+      .unwrap();
+    let content = fs::read_to_string(local_model_file.path())?;
+    assert_eq!(expected, content);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hub_service_find_local_model_not_present(
+    hub_service: HubServiceTuple,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp, _, service) = hub_service;
+    let repo = Repo::try_new("meta-llama/Llama-2-70b-chat-hf".to_string())?;
+    let filename = "tokenizer_config.json";
+    let local_model_file =
+      service.find_local_file(&repo, filename, "cfe96d938c52db7c6d936f99370c0801b24233c4")?;
+    assert!(local_model_file.is_none());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hub_service_find_local_model_err_on_non_main_refs(
+    hub_service: HubServiceTuple,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp, _, service) = hub_service;
+    let repo = Repo::try_new("meta-llama/Llama-2-70b-chat-hf".to_string())?;
+    let filename = "tokenizer_config.json";
+    let result = service.find_local_file(&repo, filename, "refs/custom");
+    assert!(result.is_err());
+    assert_eq!("only files from refs/main supported", result.unwrap_err().to_string());
     Ok(())
   }
 
