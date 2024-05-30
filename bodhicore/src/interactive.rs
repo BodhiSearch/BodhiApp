@@ -1,7 +1,8 @@
 use crate::error::AppError;
-use crate::tokenizer_config::{ChatMessage, TokenizerConfig};
 use crate::objs::Alias;
 use crate::service::AppServiceFn;
+use crate::tokenizer_config::{ChatMessage, TokenizerConfig};
+use crate::Repo;
 use async_openai::types::CreateChatCompletionStreamResponse;
 use derive_new::new;
 use dialoguer::theme::ColorfulTheme;
@@ -69,6 +70,8 @@ impl Interactive {
           filepath,
         }
       })?;
+    let repo: Repo = self.alias.chat_template.clone().try_into()?;
+    // let tokenizer_file = service.download(repo, filename, force)?;
     let pb = infinite_loading(String::from("Loading..."));
     let gpt_params = GptParams {
       model: model.path().to_string_lossy().into_owned(),

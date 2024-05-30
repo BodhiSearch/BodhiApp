@@ -255,7 +255,7 @@ pub struct MockAppServiceFn {
 impl HubService for MockAppServiceFn {
   fn download(
     &self,
-    repo: &str,
+    repo: &Repo,
     filename: &str,
     force: bool,
   ) -> crate::service::Result<LocalModelFile> {

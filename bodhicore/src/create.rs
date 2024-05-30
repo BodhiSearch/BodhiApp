@@ -74,7 +74,7 @@ impl CreateCommand {
     }
     let local_model_file = service.download(&self.repo, &self.filename, self.force)?;
     if let ChatTemplate::Repo(repo) = &self.chat_template {
-      service.download(repo.as_ref(), TOKENIZER_CONFIG_JSON, true)?;
+      service.download(repo, TOKENIZER_CONFIG_JSON, true)?;
     }
     let alias: Alias = Alias::new(
       self.alias,
@@ -98,7 +98,8 @@ mod test {
   use crate::{
     cli::Command,
     objs::{
-      Alias, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile, OAIRequestParams, Repo,
+      Alias, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile, OAIRequestParams,
+      Repo, TOKENIZER_CONFIG_JSON,
     },
     test_utils::{mock_app_service, MockAppServiceFn},
   };
@@ -194,14 +195,14 @@ mod test {
     mock
       .data_service
       .expect_find_alias()
-      .with(eq("testalias:instruct"))
+      .with(eq(create.alias.clone()))
       .return_once(|_| None);
     mock
       .hub_service
       .expect_download()
       .with(
-        eq("MyFactory/testalias-gguf"),
-        eq("testalias.Q8_0.gguf"),
+        eq(create.repo.clone()),
+        eq(create.filename.clone()),
         eq(false),
       )
       .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
@@ -219,7 +220,8 @@ mod test {
   fn test_create_execute_with_tokenizer_config_downloads_tokenizer_saves_alias(
     #[from(mock_app_service)] mut mock: MockAppServiceFn,
   ) -> anyhow::Result<()> {
-    let chat_template = ChatTemplate::Repo(Repo::try_new("MyFactory/testalias".to_string())?);
+    let tokenizer_repo = Repo::try_new("MyFactory/testalias".to_string())?;
+    let chat_template = ChatTemplate::Repo(tokenizer_repo.clone());
     let create = CreateCommand::testalias_builder()
       .chat_template(chat_template.clone())
       .build()
@@ -227,25 +229,21 @@ mod test {
     mock
       .data_service
       .expect_find_alias()
-      .with(eq("testalias:instruct"))
+      .with(eq(create.alias.clone()))
       .return_once(|_| None);
     mock
       .hub_service
       .expect_download()
       .with(
-        eq("MyFactory/testalias-gguf"),
-        eq("testalias.Q8_0.gguf"),
+        eq(create.repo.clone()),
+        eq(create.filename.clone()),
         eq(false),
       )
       .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
     mock
       .hub_service
       .expect_download()
-      .with(
-        eq("MyFactory/testalias"),
-        eq("tokenizer_config.json"),
-        eq(true),
-      )
+      .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON), eq(true))
       .return_once(|_, _, _| Ok(LocalModelFile::testalias_tokenizer()));
     let alias = Alias::test_alias_instruct_builder()
       .chat_template(chat_template.clone())

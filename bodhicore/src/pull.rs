@@ -131,7 +131,7 @@ mod test {
     mock_hub_service
       .expect_download()
       .with(
-        eq(remote_model.repo.to_string()),
+        eq(remote_model.repo),
         eq(remote_model.filename.clone()),
         eq(false),
       )
@@ -152,19 +152,16 @@ mod test {
 
   #[rstest]
   fn test_pull_by_repo_file_only_pulls_the_model() -> anyhow::Result<()> {
+    let repo = Repo::try_new("google/gemma-7b-it-GGUF".to_string())?;
     let pull = PullCommand::ByRepoFile {
-      repo: Repo::try_new("google/gemma-7b-it-GGUF".to_string())?,
+      repo: repo.clone(),
       filename: "gemma-7b-it.gguf".to_string(),
       force: false,
     };
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_download()
-      .with(
-        eq("google/gemma-7b-it-GGUF"),
-        eq("gemma-7b-it.gguf"),
-        eq(false),
-      )
+      .with(eq(repo), eq("gemma-7b-it.gguf"), eq(false))
       .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
     let mock_data_service = MockDataService::new();
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);

@@ -1,4 +1,9 @@
-use crate::{service::DataServiceError, utils::to_safe_filename};
+use crate::{
+  error::AppError,
+  service::{AppServiceFn, DataServiceError},
+  tokenizer_config::TokenizerConfig,
+  utils::to_safe_filename,
+};
 use clap::Args;
 use derive_new::new;
 use once_cell::sync::Lazy;
@@ -116,6 +121,30 @@ impl Deref for Repo {
 pub enum ChatTemplate {
   Id(ChatTemplateId),
   Repo(Repo),
+}
+
+impl TryFrom<ChatTemplate> for Repo {
+  type Error = DataServiceError;
+
+  fn try_from(value: ChatTemplate) -> Result<Self, Self::Error> {
+    let repo = match value {
+      ChatTemplate::Id(id) => {
+        let repo = match id {
+          ChatTemplateId::Llama3 => "meta-llama/Meta-Llama-3-8B-Instruct",
+          ChatTemplateId::Llama2 => "meta-llama/Llama-2-13b-chat-hf",
+          ChatTemplateId::Llama2Legacy => "mistralai/Mixtral-8x7B-Instruct-v0.1",
+          ChatTemplateId::Phi3 => "microsoft/Phi-3-mini-4k-instruct",
+          ChatTemplateId::Gemma => "google/gemma-7b-it",
+          ChatTemplateId::Deepseek => "deepseek-ai/deepseek-llm-67b-chat",
+          ChatTemplateId::CommandR => "CohereForAI/c4ai-command-r-plus",
+          ChatTemplateId::Openchat => "openchat/openchat-3.6-8b-20240522",
+        };
+        Repo::try_new(repo.to_string())?
+      }
+      ChatTemplate::Repo(repo) => repo,
+    };
+    Ok(repo)
+  }
 }
 
 impl Display for ChatTemplate {
@@ -403,8 +432,8 @@ default: -1 (unbounded)"#
 
 #[cfg(test)]
 mod test {
-  use super::{Alias, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
-  use crate::test_utils::temp_hf_home;
+  use super::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
+  use crate::test_utils::{mock_app_service, temp_hf_home, MockAppServiceFn};
   use anyhow_trace::anyhow_trace;
   use prettytable::{Cell, Row};
   use rstest::rstest;
@@ -531,6 +560,57 @@ chat_template: llama3
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: String) -> anyhow::Result<()> {
     let actual = serde_yaml::to_string(&alias)?;
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(
+    ChatTemplate::Id(ChatTemplateId::Llama3),
+    "meta-llama/Meta-Llama-3-8B-Instruct"
+  )]
+  #[rstest]
+  #[case(
+    ChatTemplate::Id(ChatTemplateId::Llama2),
+    "meta-llama/Llama-2-13b-chat-hf"
+  )]
+  #[rstest]
+  #[case(
+    ChatTemplate::Id(ChatTemplateId::Llama2Legacy),
+    "mistralai/Mixtral-8x7B-Instruct-v0.1"
+  )]
+  #[rstest]
+  #[case(
+    ChatTemplate::Id(ChatTemplateId::Phi3),
+    "microsoft/Phi-3-mini-4k-instruct"
+  )]
+  #[rstest]
+  #[case(ChatTemplate::Id(ChatTemplateId::Gemma), "google/gemma-7b-it")]
+  #[rstest]
+  #[case(
+    ChatTemplate::Id(ChatTemplateId::Deepseek),
+    "deepseek-ai/deepseek-llm-67b-chat"
+  )]
+  #[rstest]
+  #[case(
+    ChatTemplate::Id(ChatTemplateId::CommandR),
+    "CohereForAI/c4ai-command-r-plus"
+  )]
+  #[rstest]
+  #[case(
+    ChatTemplate::Id(ChatTemplateId::Openchat),
+    "openchat/openchat-3.6-8b-20240522"
+  )]
+  #[rstest]
+  #[case(
+    ChatTemplate::Repo(Repo::try_new("foo/bar".to_string()).unwrap()),
+    "foo/bar"
+  )]
+  fn test_chat_template_to_repo_for_chat_template(
+    #[case] input: ChatTemplate,
+    #[case] expected: String,
+  ) -> anyhow::Result<()> {
+    let repo: Repo = Repo::try_from(input)?;
+    assert_eq!(expected, repo.to_string());
     Ok(())
   }
 }
