@@ -1,4 +1,9 @@
-use crate::{error::AppError, interactive::{launch_interactive, Interactive}, service::AppServiceFn, Command};
+use crate::{
+  error::AppError,
+  interactive::{launch_interactive, Interactive},
+  service::AppServiceFn,
+  Command,
+};
 
 pub enum RunCommand {
   WithAlias { alias: String },
@@ -33,23 +38,17 @@ impl RunCommand {
 
 #[cfg(test)]
 mod test {
+  use crate::{test_utils::MockAppService, RunCommand};
   use mockall::predicate::eq;
   use rstest::rstest;
 
-  use crate::{
-    test_utils::{mock_app_service, MockAppServiceFn},
-    RunCommand,
-  };
-
   #[rstest]
-  fn test_run_with_alias_return_error_if_alias_not_found(
-    #[from(mock_app_service)] mut mock: MockAppServiceFn,
-  ) -> anyhow::Result<()> {
+  fn test_run_with_alias_return_error_if_alias_not_found() -> anyhow::Result<()> {
     let run_command = RunCommand::WithAlias {
       alias: "testalias".to_string(),
     };
+    let mut mock = MockAppService::default();
     mock
-      .data_service
       .expect_find_alias()
       .with(eq("testalias".to_string()))
       .return_once(|_| None);

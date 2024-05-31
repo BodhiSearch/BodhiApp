@@ -318,12 +318,47 @@ impl DataService for MockAppServiceFn {
 // Implement AppServiceFn for the combined struct
 impl AppServiceFn for MockAppServiceFn {}
 
-#[fixture]
-pub fn mock_app_service() -> MockAppServiceFn {
-  MockAppServiceFn {
-    hub_service: MockHubService::new(),
-    data_service: MockDataService::new(),
+mockall::mock! {
+  pub AppService {}
+
+  impl std::fmt::Debug for AppService {
+    fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
   }
+
+  unsafe impl Send for AppService { }
+
+  unsafe impl Sync for AppService { }
+
+  impl HubService for AppService {
+    fn download(&self, repo: &Repo, filename: &str, force: bool) -> crate::service::Result<LocalModelFile>;
+
+    fn list_local_models(&self) -> Vec<LocalModelFile>;
+
+    fn find_local_file(
+      &self,
+      repo: &Repo,
+      filename: &str,
+      snapshot: &str,
+    ) -> crate::service::Result<Option<LocalModelFile>>;
+
+    fn hf_home(&self) -> PathBuf;
+
+    fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf;
+  }
+
+  impl DataService for AppService {
+    fn list_aliases(&self) -> crate::service::Result<Vec<Alias>>;
+
+    fn save_alias(&self, alias: Alias) -> crate::service::Result<PathBuf>;
+
+    fn find_alias(&self, alias: &str) -> Option<Alias>;
+
+    fn list_remote_models(&self) -> crate::service::Result<Vec<RemoteModel>>;
+
+    fn find_remote_model(&self, alias: &str) -> crate::service::Result<Option<RemoteModel>>;
+  }
+
+  impl AppServiceFn for AppService { }
 }
 
 impl Default for ChatTemplate {

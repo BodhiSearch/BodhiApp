@@ -446,7 +446,7 @@ default: -1 (unbounded)"#
 #[cfg(test)]
 mod test {
   use super::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
-  use crate::test_utils::{mock_app_service, temp_hf_home, MockAppServiceFn};
+  use crate::test_utils::temp_hf_home;
   use anyhow_trace::anyhow_trace;
   use prettytable::{Cell, Row};
   use rstest::rstest;

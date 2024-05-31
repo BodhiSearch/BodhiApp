@@ -169,8 +169,7 @@ mod test {
   use super::Interactive;
   use crate::{
     objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
-    service::HubService,
-    test_utils::{app_service_stub, mock_app_service, AppServiceTuple, MockAppServiceFn},
+    test_utils::{app_service_stub, AppServiceTuple, MockAppService},
     Repo,
   };
   use mockall::predicate::eq;
@@ -179,13 +178,11 @@ mod test {
 
   #[rstest]
   #[tokio::test]
-  async fn test_interactive_local_model_not_found_raises_error(
-    #[from(mock_app_service)] mut mock: MockAppServiceFn,
-  ) -> anyhow::Result<()> {
+  async fn test_interactive_local_model_not_found_raises_error() -> anyhow::Result<()> {
     let alias = Alias::test_alias();
     let alias_clone = alias.clone();
+    let mut mock = MockAppService::default();
     mock
-      .hub_service
       .expect_find_local_file()
       .with(
         eq(alias.repo.clone()),
@@ -194,7 +191,6 @@ mod test {
       )
       .return_once(|_, _, _| Ok(None));
     mock
-      .hub_service
       .expect_model_file_path()
       .with(eq(alias.repo), eq(alias.filename), eq(alias.snapshot))
       .return_once(|_, _, _| PathBuf::from("/tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf"));
@@ -211,12 +207,10 @@ filepath: /tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/50076
 
   #[rstest]
   #[tokio::test]
-  async fn test_interactive_chat_template_not_found(
-    #[from(mock_app_service)] mut mock: MockAppServiceFn,
-  ) -> anyhow::Result<()> {
+  async fn test_interactive_chat_template_not_found() -> anyhow::Result<()> {
     let alias = Alias::test_alias();
+    let mut mock = MockAppService::default();
     mock
-      .hub_service
       .expect_find_local_file()
       .with(
         eq(alias.repo.clone()),
@@ -226,12 +220,10 @@ filepath: /tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/50076
       .return_once(|_, _, _| Ok(Some(LocalModelFile::testalias())));
     let llama3 = Repo::try_new("meta-llama/Meta-Llama-3-8B-Instruct".to_string())?;
     mock
-      .hub_service
       .expect_find_local_file()
       .with(eq(llama3.clone()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
       .return_once(|_, _, _| Ok(None));
     mock
-      .hub_service
       .expect_model_file_path()
       .with(eq(llama3), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
       .return_once(|_, _, _| {
