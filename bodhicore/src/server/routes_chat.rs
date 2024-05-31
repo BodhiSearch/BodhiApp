@@ -94,7 +94,7 @@ async fn chat_completions_stream_handler(
     .unwrap();
   let (tx, rx) = tokio::sync::mpsc::channel::<String>(100);
   tokio::spawn(async move {
-    let lock = state.ctx.read().await;
+    let lock = state.ctx.ctx.read().await;
     let Some(ctx) = lock.as_ref() else {
       tracing::warn!("context is not laoded");
       return;
@@ -140,7 +140,7 @@ mod test {
   use crate::{
     server::router_state::RouterState,
     test_utils::{init_test_tracing, RequestTestExt},
-    SharedContextRw, SharedContextRwExts,
+    SharedContextRw, SharedContextRwFn,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;

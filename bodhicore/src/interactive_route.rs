@@ -8,7 +8,6 @@ fn build_routes() -> Router {
 mod test {
   use super::build_routes;
   use crate::{
-    shared_rw::MockSharedContextRwExts,
     test_utils::{RequestTestExt, ResponseTestExt},
   };
   use anyhow::anyhow;
@@ -23,7 +22,6 @@ mod test {
   #[rstest]
   #[tokio::test]
   async fn test_interactive_routes_chat() -> anyhow::Result<()> {
-    MockSharedContextRwExts::default();
     let user_message = ChatCompletionRequestUserMessageArgs::default()
       .content("What day comes after Monday?")
       .build()

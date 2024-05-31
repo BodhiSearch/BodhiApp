@@ -9,7 +9,7 @@ use crate::{
     AppService, AppServiceFn, DataService, HfHubService, HubService, LocalDataService,
     MockDataService, MockHubService,
   },
-  CreateCommand, Repo, SharedContextRw,
+  CreateCommand, Repo, SharedContextRw, SharedContextRwFn,
 };
 use axum::{
   body::Body,
@@ -18,8 +18,9 @@ use axum::{
 };
 use derive_new::new;
 use dircpy::CopyBuilder;
+use futures_util::Future;
 use http_body_util::BodyExt;
-use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
+use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log, GptParams};
 use reqwest::header::CONTENT_TYPE;
 use rstest::fixture;
 use serde::de::DeserializeOwned;
@@ -521,4 +522,41 @@ pub fn tinyllama() -> Alias {
 #[fixture]
 pub fn shared_context_rw(tinyllama: Alias) -> SharedContextRw {
   todo!()
+}
+
+mockall::mock! {
+  pub SharedContext {}
+
+  impl Clone for SharedContext {
+    fn clone(&self) -> Self;
+  }
+
+  impl std::fmt::Debug for SharedContext {
+    fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
+  }
+
+  unsafe impl Sync for SharedContext {}
+
+  unsafe impl Send for SharedContext {}
+
+  impl SharedContextRwFn for SharedContext {
+    fn reload(
+      &self,
+      gpt_params: Option<GptParams>,
+    ) -> impl Future<Output = anyhow::Result<()>> + Send
+    where
+      Self: Sized;
+
+    fn try_stop(&mut self) -> impl Future<Output = anyhow::Result<()>> + Send
+    where
+      Self: Sized;
+
+    fn has_model(&self) -> impl Future<Output = anyhow::Result<bool>> + Send
+    where
+      Self: Sized;
+
+    fn get_gpt_params(&self) -> impl Future<Output = anyhow::Result<Option<GptParams>>> + Send
+    where
+      Self: Sized;
+  }
 }

@@ -23,6 +23,6 @@ pub use pull::PullCommand;
 pub use run::RunCommand;
 pub use serve::Serve;
 pub use service::AppService;
-pub use shared_rw::{SharedContextRw, SharedContextRwExts};
+pub use shared_rw::{SharedContextRw, SharedContextRwFn};
 #[cfg(test)]
 mod test_utils;

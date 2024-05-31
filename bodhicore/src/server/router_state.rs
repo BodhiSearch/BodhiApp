@@ -1,8 +1,9 @@
 use crate::{
   service::AppServiceFn,
-  shared_rw::{SharedContextRw, SharedContextRwExts},
+  shared_rw::{SharedContextRw, SharedContextRwFn},
 };
 use anyhow::{anyhow, bail};
+use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{Callback, GptParams};
 use std::sync::Arc;
 
@@ -19,6 +20,77 @@ impl RouterState {
 }
 
 impl RouterState {
+  // pub async fn chat_completions(
+  //   &self,
+  //   request: CreateChatCompletionRequest,
+  //   callback: Option<Callback>,
+  //   userdata: &String,
+  // ) -> anyhow::Result<()> {
+  //   let Some(alias) = self.app_service.find_alias(&request.model) else {
+  //     bail!("model alias not found: '{}'", request.model)
+  //   };
+  //   let Some(local_model) =
+  //     self
+  //       .app_service
+  //       .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
+  //   else {
+  //     bail!("local model not found: {:?}", alias);
+  //   };
+  //   let lock = self.ctx.read().await;
+  //   let ctx = lock.as_ref();
+  //   let local_model_path = local_model.path().to_string_lossy().into_owned();
+  //   match ctx {
+  //     Some(ctx) => {
+  //       let gpt_params = ctx.gpt_params.clone();
+  //       let loaded_model = gpt_params.model.clone();
+  //       if loaded_model.eq(&local_model_path) {
+  //         ctx.completions(
+  //           input,
+  //           chat_template,
+  //           callback,
+  //           userdata as *const _ as *mut _,
+  //         )
+  //       } else {
+  //         tracing::info!(
+  //           loaded_model,
+  //           ?local_model,
+  //           "requested model not loaded, loading model"
+  //         );
+  //         drop(lock);
+  //         let new_gpt_params = GptParams {
+  //           model: local_model_path,
+  //           ..gpt_params
+  //         };
+  //         self.ctx.reload(Some(new_gpt_params)).await?;
+  //         let lock = self.ctx.read().await;
+  //         let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
+  //         ctx.completions(
+  //           input,
+  //           chat_template,
+  //           callback,
+  //           userdata as *const _ as *mut _,
+  //         )
+  //       }
+  //     }
+  //     None => {
+  //       let gpt_params = GptParams {
+  //         model: local_model_path,
+  //         ..Default::default()
+  //       };
+  //       drop(lock);
+  //       self.ctx.reload(Some(gpt_params)).await?;
+  //       let lock = self.ctx.read().await;
+  //       let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
+  //       ctx.completions(
+  //         input,
+  //         chat_template,
+  //         callback,
+  //         userdata as *const _ as *mut _,
+  //       )
+  //     }
+  //   }
+  // }
+
   pub async fn completions(
     &self,
     model: &str,
@@ -37,7 +109,7 @@ impl RouterState {
     else {
       bail!("local model not found: {:?}", alias);
     };
-    let lock = self.ctx.read().await;
+    let lock = self.ctx.ctx.read().await;
     let ctx = lock.as_ref();
     let local_model_path = local_model.path().to_string_lossy().into_owned();
     match ctx {
@@ -63,7 +135,7 @@ impl RouterState {
             ..gpt_params
           };
           self.ctx.reload(Some(new_gpt_params)).await?;
-          let lock = self.ctx.read().await;
+          let lock = self.ctx.ctx.read().await;
           let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
           ctx.completions(
             input,
@@ -80,7 +152,7 @@ impl RouterState {
         };
         drop(lock);
         self.ctx.reload(Some(gpt_params)).await?;
-        let lock = self.ctx.read().await;
+        let lock = self.ctx.ctx.read().await;
         let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
         ctx.completions(
           input,
@@ -101,7 +173,7 @@ mod test {
   use crate::{
     bindings::{disable_llama_log, llama_server_disable_logging},
     test_utils::{app_service_stub, init_test_tracing, test_callback, AppServiceTuple},
-    SharedContextRw, SharedContextRwExts,
+    SharedContextRw, SharedContextRwFn,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -316,6 +388,11 @@ mod test {
         .as_ref()
         .ok_or(anyhow!("content not present"))?
     );
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_router_state_chat_completions() -> anyhow::Result<()> {
     Ok(())
   }
 }

@@ -5,7 +5,7 @@ use bodhicore::{
   home::logs_dir,
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle},
   AppService, CreateCommand, ListCommand, PullCommand, RunCommand, Serve, SharedContextRw,
-  SharedContextRwExts,
+  SharedContextRwFn,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};

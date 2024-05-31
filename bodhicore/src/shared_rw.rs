@@ -5,16 +5,13 @@ use std::future::Future;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
-pub type SharedContextRw = Arc<RwLock<Option<BodhiServerContext>>>;
+#[derive(Debug, Clone)]
+pub struct SharedContextRw {
+  // TODO: remove pub access
+  pub ctx: Arc<RwLock<Option<BodhiServerContext>>>,
+}
 
-#[cfg_attr(test, automock)]
-pub trait SharedContextRwExts {
-  fn new_shared_rw(
-    gpt_params: Option<GptParams>,
-  ) -> impl Future<Output = anyhow::Result<Self>> + Send
-  where
-    Self: Sized;
-
+pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
   fn reload(
     &self,
     gpt_params: Option<GptParams>,
@@ -35,21 +32,25 @@ pub trait SharedContextRwExts {
     Self: Sized;
 }
 
-impl SharedContextRwExts for SharedContextRw {
-  async fn new_shared_rw(gpt_params: Option<GptParams>) -> anyhow::Result<Self>
+impl SharedContextRw {
+  pub async fn new_shared_rw(gpt_params: Option<GptParams>) -> anyhow::Result<Self>
   where
     Self: Sized,
   {
-    let ctx: SharedContextRw = Arc::new(RwLock::new(None));
+    let ctx = SharedContextRw {
+      ctx: Arc::new(RwLock::new(None)),
+    };
     ctx.reload(gpt_params).await?;
     Ok(ctx)
   }
+}
 
+impl SharedContextRwFn for SharedContextRw {
   async fn has_model(&self) -> anyhow::Result<bool>
   where
     Self: Sized,
   {
-    let lock = RwLock::read(self).await;
+    let lock = self.ctx.read().await;
     Ok(lock.as_ref().is_some())
   }
 
@@ -57,7 +58,7 @@ impl SharedContextRwExts for SharedContextRw {
   where
     Self: Sized,
   {
-    let mut lock = RwLock::write(self).await;
+    let mut lock = self.ctx.write().await;
     try_stop_with(&mut lock)?;
     let Some(gpt_params) = gpt_params else {
       return Ok(());
@@ -80,7 +81,7 @@ impl SharedContextRwExts for SharedContextRw {
   where
     Self: Sized,
   {
-    let mut lock = RwLock::write(self).await;
+    let mut lock = self.ctx.write().await;
     try_stop_with(&mut lock)?;
     Ok(())
   }
@@ -89,7 +90,7 @@ impl SharedContextRwExts for SharedContextRw {
   where
     Self: Sized,
   {
-    let lock = self.read().await;
+    let lock = self.ctx.read().await;
     if let Some(opt) = lock.as_ref() {
       Ok(Some(opt.gpt_params.clone()))
     } else {
@@ -111,7 +112,7 @@ fn try_stop_with(
 
 #[cfg(test)]
 mod test {
-  use crate::shared_rw::{SharedContextRw, SharedContextRwExts};
+  use crate::shared_rw::{SharedContextRw, SharedContextRwFn};
   use anyhow::anyhow;
   use async_openai::types::CreateChatCompletionResponse;
   use llama_server_bindings::{
@@ -247,7 +248,7 @@ mod test {
     };
     let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let userdata = String::with_capacity(1024);
-    let lock = ctx.read().await;
+    let lock = ctx.ctx.read().await;
     let inner = lock.as_ref().expect("should have context loaded");
     inner.completions(
       &chat_request,
