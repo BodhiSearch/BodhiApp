@@ -9,7 +9,7 @@ use crate::{
     AppService, AppServiceFn, DataService, HfHubService, HubService, LocalDataService,
     MockDataService, MockHubService,
   },
-  CreateCommand, Repo,
+  CreateCommand, Repo, SharedContextRw,
 };
 use axum::{
   body::Body,
@@ -110,19 +110,17 @@ impl ResponseTestExt for Response {
 }
 
 pub trait RequestTestExt {
-  fn content_type_json(self) -> Self;
-
-  fn json(self, value: serde_json::Value) -> Result<Request<Body>, anyhow::Error>;
+  fn json<T: serde::Serialize>(self, value: T) -> Result<Request<Body>, anyhow::Error>;
 }
 
 impl RequestTestExt for Builder {
-  fn content_type_json(self) -> Self {
-    self.header(CONTENT_TYPE, "application/json")
-  }
-
-  fn json(self, value: serde_json::Value) -> std::result::Result<Request<Body>, anyhow::Error> {
+  fn json<T: serde::Serialize>(
+    self,
+    value: T,
+  ) -> std::result::Result<Request<Body>, anyhow::Error> {
+    let this = self.header(CONTENT_TYPE, "application/json");
     let content = serde_json::to_string(&value)?;
-    let result = self.body(Body::from(content))?;
+    let result = this.body(Body::from(content))?;
     Ok(result)
   }
 }
@@ -499,4 +497,28 @@ impl Alias {
       GptContextParams::default(),
     )
   }
+
+  pub fn tinyllama() -> Alias {
+    Alias::new(
+      "tinyllama:instruct".to_string(),
+      None,
+      Repo::try_new("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string()).unwrap(),
+      "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
+      "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
+      vec!["chat".to_string()],
+      ChatTemplate::Repo(Repo::try_new("TinyLlama/TinyLlama-1.1B-Chat-v1.0".to_string()).unwrap()),
+      OAIRequestParams::default(),
+      GptContextParams::default(),
+    )
+  }
+}
+
+#[fixture]
+pub fn tinyllama() -> Alias {
+  Alias::tinyllama()
+}
+
+#[fixture]
+pub fn shared_context_rw(tinyllama: Alias) -> SharedContextRw {
+  todo!()
 }

@@ -170,7 +170,7 @@ mod test {
   use crate::{
     objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     service::HubService,
-    test_utils::{mock_app_service, MockAppServiceFn},
+    test_utils::{app_service_stub, mock_app_service, AppServiceTuple, MockAppServiceFn},
     Repo,
   };
   use mockall::predicate::eq;
@@ -248,5 +248,18 @@ filepath: /tmp/huggingface/hub/models--meta-llama-repo/snapshots/xyz/tokenizer_c
       result.unwrap_err().to_string()
     );
     Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_interactive_chat_with_llama3(
+    app_service_stub: AppServiceTuple,
+  ) -> anyhow::Result<()> {
+    let AppServiceTuple(_temp_bodhi, _temp_hf, _bodhi_home, _hf_cache, service) = app_service_stub;
+    let handle = tokio::spawn(async move {
+      let alias = Alias::tinyllama();
+      Interactive::new(alias).execute(&service).await
+    });
+    todo!()
   }
 }

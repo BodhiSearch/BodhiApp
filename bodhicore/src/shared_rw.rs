@@ -1,11 +1,13 @@
 use anyhow::Ok;
 use llama_server_bindings::{BodhiServerContext, GptParams};
+use mockall::automock;
 use std::future::Future;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::RwLock;
 
 pub type SharedContextRw = Arc<RwLock<Option<BodhiServerContext>>>;
 
+#[cfg_attr(test, automock)]
 pub trait SharedContextRwExts {
   fn new_shared_rw(
     gpt_params: Option<GptParams>,
@@ -109,13 +111,7 @@ fn try_stop_with(
 
 #[cfg(test)]
 mod test {
-  use std::{
-    ffi::{c_char, c_void},
-    slice,
-  };
-
-  use super::SharedContextRwExts;
-  use crate::server::shared_rw::SharedContextRw;
+  use crate::shared_rw::{SharedContextRw, SharedContextRwExts};
   use anyhow::anyhow;
   use async_openai::types::CreateChatCompletionResponse;
   use llama_server_bindings::{
@@ -123,6 +119,10 @@ mod test {
   };
   use rstest::{fixture, rstest};
   use serde_json::json;
+  use std::{
+    ffi::{c_char, c_void},
+    slice,
+  };
 
   #[fixture]
   fn model_file() -> String {

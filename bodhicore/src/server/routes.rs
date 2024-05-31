@@ -6,9 +6,8 @@ use super::{
     ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
     ui_chats_handler,
   },
-  shared_rw::SharedContextRw,
 };
-use crate::service::AppServiceFn;
+use crate::{service::AppServiceFn, shared_rw::SharedContextRw};
 use axum::{
   http::StatusCode,
   response::IntoResponse,

@@ -3,7 +3,7 @@ use crate::{
   server::BODHI_HOME,
 };
 use derive_new::new;
-use hf_hub::{api::sync::ApiError, Cache, RepoType};
+use hf_hub::{api::sync::ApiError, Cache};
 #[cfg(test)]
 use mockall::automock;
 use std::{
@@ -612,7 +612,10 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
     let filename = "tokenizer_config.json";
     let result = service.find_local_file(&repo, filename, "refs/custom");
     assert!(result.is_err());
-    assert_eq!("only files from refs/main supported", result.unwrap_err().to_string());
+    assert_eq!(
+      "only files from refs/main supported",
+      result.unwrap_err().to_string()
+    );
     Ok(())
   }
 
@@ -724,8 +727,9 @@ error while serializing from file: '{models_file}'"#
   fn test_local_data_service_list_aliases(data_service: DataServiceTuple) -> anyhow::Result<()> {
     let DataServiceTuple(_temp, _, service) = data_service;
     let result = service.list_aliases()?;
-    let expected = vec![Alias::llama3(), Alias::test_alias_exists()];
-    assert_eq!(expected, result);
+    assert_eq!(3, result.len());
+    assert!(result.contains(&Alias::llama3()));
+    assert!(result.contains(&Alias::test_alias_exists()));
     Ok(())
   }
 

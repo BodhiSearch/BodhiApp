@@ -1,5 +1,7 @@
-use super::SharedContextRw;
-use crate::{server::SharedContextRwExts, service::AppServiceFn};
+use crate::{
+  service::AppServiceFn,
+  shared_rw::{SharedContextRw, SharedContextRwExts},
+};
 use anyhow::{anyhow, bail};
 use llama_server_bindings::{Callback, GptParams};
 use std::sync::Arc;
@@ -98,8 +100,8 @@ mod test {
   use super::RouterState;
   use crate::{
     bindings::{disable_llama_log, llama_server_disable_logging},
-    server::{SharedContextRw, SharedContextRwExts},
     test_utils::{app_service_stub, init_test_tracing, test_callback, AppServiceTuple},
+    SharedContextRw, SharedContextRwExts,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;

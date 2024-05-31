@@ -134,14 +134,13 @@ async fn chat_completions_stream_handler(
 
 #[cfg(test)]
 mod test {
-  use std::sync::Arc;
-
   use super::llm_router;
   use crate::bindings::{disable_llama_log, llama_server_disable_logging};
   use crate::test_utils::{app_service_stub, AppServiceTuple, ResponseTestExt};
   use crate::{
-    server::{router_state::RouterState, SharedContextRw, SharedContextRwExts},
+    server::router_state::RouterState,
     test_utils::{init_test_tracing, RequestTestExt},
+    SharedContextRw, SharedContextRwExts,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -153,6 +152,7 @@ mod test {
   use rstest::rstest;
   use serde_json::json;
   use serial_test::serial;
+  use std::sync::Arc;
   use tower::ServiceExt;
 
   #[ctor]
@@ -191,12 +191,7 @@ mod test {
     let wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let app = llm_router().with_state(RouterState::new(wrapper, Arc::new(service)));
     let response = app
-      .oneshot(
-        Request::post("/v1/chat/completions")
-          .content_type_json()
-          .body(Body::from(request))
-          .unwrap(),
-      )
+      .oneshot(Request::post("/v1/chat/completions").json(request).unwrap())
       .await
       .unwrap();
     assert_eq!(StatusCode::OK, response.status());
@@ -249,12 +244,7 @@ mod test {
     let wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let app = llm_router().with_state(RouterState::new(wrapper, Arc::new(service)));
     let response = app
-      .oneshot(
-        Request::post("/v1/chat/completions")
-          .content_type_json()
-          .body(Body::from(request))
-          .unwrap(),
-      )
+      .oneshot(Request::post("/v1/chat/completions").json(request).unwrap())
       .await
       .unwrap();
     assert_eq!(StatusCode::OK, response.status());

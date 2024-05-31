@@ -3,11 +3,9 @@ use anyhow::{anyhow, Context};
 use bodhicore::{
   cli::{Cli, Command},
   home::logs_dir,
-  server::{
-    build_routes, build_server_handle, shutdown_signal, ServerHandle, SharedContextRw,
-    SharedContextRwExts,
-  },
-  AppService, CreateCommand, ListCommand, PullCommand, RunCommand, Serve,
+  server::{build_routes, build_server_handle, shutdown_signal, ServerHandle},
+  AppService, CreateCommand, ListCommand, PullCommand, RunCommand, Serve, SharedContextRw,
+  SharedContextRwExts,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
