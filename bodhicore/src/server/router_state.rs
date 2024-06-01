@@ -42,8 +42,7 @@ impl RouterState {
     let Some(model_file) = model_file else {
       return Err(OpenAIApiError::InternalServer(format!(
         "file required by LLM model not found in huggingface cache: filename: '{}', repo: '{}'",
-        alias.filename,
-        alias.repo.to_string()
+        alias.filename, alias.repo
       )));
     };
     let tokenizer_repo = Repo::try_from(alias.chat_template.clone())
@@ -55,20 +54,12 @@ impl RouterState {
     let Some(tokenizer_file) = tokenizer_file else {
       return Err(OpenAIApiError::InternalServer(format!(
         "file required by LLM model not found in huggingface cache: filename: '{}', repo: '{}'",
-        TOKENIZER_CONFIG_JSON,
-        tokenizer_repo.to_string()
+        TOKENIZER_CONFIG_JSON, tokenizer_repo
       )));
     };
     self
       .ctx
-      .chat_completions(
-        request,
-        alias,
-        model_file,
-        tokenizer_file,
-        callback,
-        userdata,
-      )
+      .chat_completions(request, model_file, tokenizer_file, callback, userdata)
       .await
       .map_err(OpenAIApiError::ContextError)?;
     Ok(())
@@ -510,13 +501,12 @@ mod test {
       .expect_chat_completions()
       .with(
         eq(request.clone()),
-        eq(Alias::test_alias()),
         eq(LocalModelFile::testalias()),
         eq(LocalModelFile::llama3_tokenizer()),
         eq(None),
         eq(String::new()),
       )
-      .return_once(|_, _, _, _, _, _| Ok(()));
+      .return_once(|_, _, _, _, _| Ok(()));
     let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
     state
       .chat_completions(request, None, &String::new())
@@ -556,13 +546,12 @@ mod test {
       .expect_chat_completions()
       .with(
         eq(request.clone()),
-        eq(Alias::test_alias()),
         eq(LocalModelFile::testalias()),
         eq(LocalModelFile::llama3_tokenizer()),
         eq(None),
         eq(String::new()),
       )
-      .return_once(|_, _, _, _, _, _| Err(ContextError::LlamaCpp(anyhow!("context error"))));
+      .return_once(|_, _, _, _, _| Err(ContextError::LlamaCpp(anyhow!("context error"))));
     let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
     let result = state.chat_completions(request, None, &String::new()).await;
     assert!(result.is_err());

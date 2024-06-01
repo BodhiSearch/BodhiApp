@@ -26,6 +26,8 @@ filepath: {filepath}
   AliasModelFilesNotFound { alias: String, filepath: String },
   #[error(transparent)]
   Anyhow(#[from] anyhow::Error),
+  #[error(transparent)]
+  Minijina(#[from] minijinja::Error),
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;

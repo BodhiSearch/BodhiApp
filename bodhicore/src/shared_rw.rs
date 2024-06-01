@@ -1,13 +1,15 @@
-use async_openai::types::CreateChatCompletionRequest;
-use llama_server_bindings::{BodhiServerContext, Callback, GptParams};
-use mockall::automock;
-use std::future::Future;
-use std::{sync::Arc, time::Duration};
-use thiserror::Error;
-use tokio::sync::watch::error;
-use tokio::sync::RwLock;
-
 use crate::objs::{Alias, LocalModelFile};
+use crate::service::DataServiceError;
+#[cfg(test)]
+use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
+use crate::tokenizer_config::TokenizerConfig;
+use async_openai::types::CreateChatCompletionRequest;
+#[cfg(not(test))]
+use llama_server_bindings::BodhiServerContext;
+use llama_server_bindings::{Callback, GptParams};
+use std::time::Duration;
+use thiserror::Error;
+use tokio::sync::RwLock;
 
 #[derive(Debug)]
 pub struct SharedContextRw {
@@ -19,6 +21,14 @@ pub struct SharedContextRw {
 pub enum ContextError {
   #[error("{0}")]
   LlamaCpp(#[from] anyhow::Error),
+  #[error(transparent)]
+  DataServiceError(#[from] DataServiceError),
+  #[error("{0}")]
+  Unreachable(String),
+  #[error(transparent)]
+  SerdeJson(#[from] serde_json::Error),
+  #[error(transparent)]
+  AppError(#[from] crate::error::AppError),
 }
 
 pub type Result<T> = std::result::Result<T, ContextError>;
@@ -37,7 +47,6 @@ pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    alias: Alias,
     model_file: LocalModelFile,
     tokenizer_file: LocalModelFile,
     callback: Option<Callback>,
@@ -55,6 +64,14 @@ impl SharedContextRw {
     };
     ctx.reload(gpt_params).await?;
     Ok(ctx)
+  }
+
+  #[cfg(test)]
+  pub fn new(bodhi_ctx: BodhiServerContext) -> Self {
+    let ctx = SharedContextRw {
+      ctx: RwLock::new(Some(bodhi_ctx)),
+    };
+    ctx
   }
 }
 
@@ -94,7 +111,7 @@ impl SharedContextRwFn for SharedContextRw {
   async fn get_gpt_params(&self) -> crate::shared_rw::Result<Option<GptParams>> {
     let lock = self.ctx.read().await;
     if let Some(opt) = lock.as_ref() {
-      Ok(Some(opt.gpt_params.clone()))
+      Ok(Some(opt.get_gpt_params()))
     } else {
       Ok(None)
     }
@@ -103,13 +120,35 @@ impl SharedContextRwFn for SharedContextRw {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    alias: Alias,
     model_file: LocalModelFile,
     tokenizer_file: LocalModelFile,
     callback: Option<Callback>,
     userdata: &String,
   ) -> crate::shared_rw::Result<()> {
-    todo!()
+    let lock = self.ctx.read().await;
+    let ctx = lock.as_ref();
+    let loaded_model = ctx.map(|ctx| ctx.get_gpt_params().model.clone());
+    let request_model = model_file.path().display().to_string();
+    let chat_template: TokenizerConfig = TokenizerConfig::try_from(tokenizer_file)?;
+    let prompt = chat_template.apply_chat_template(&request.messages)?;
+    let mut input_value = serde_json::to_value(request)?;
+    input_value["prompt"] = serde_json::Value::String(prompt);
+    let input = serde_json::to_string(&input_value)?;
+    match ModelLoadStrategy::choose(&loaded_model, &request_model) {
+      ModelLoadStrategy::Continue => {
+        ctx
+          .ok_or(ContextError::Unreachable(
+            "context should not be None".to_string(),
+          ))?
+          .completions(&input, "", callback, userdata as *const _ as *mut _)?;
+        Ok(())
+      }
+      ModelLoadStrategy::DropAndLoad => {
+        drop(lock);
+        todo!()
+      }
+      ModelLoadStrategy::Load => todo!(),
+    }
   }
 }
 
@@ -126,14 +165,41 @@ fn try_stop_with(
   Ok(())
 }
 
+#[derive(Debug, PartialEq)]
+enum ModelLoadStrategy {
+  Continue,
+  DropAndLoad,
+  Load,
+}
+
+impl ModelLoadStrategy {
+  fn choose(loaded_model: &Option<String>, request_model: &str) -> ModelLoadStrategy {
+    if let Some(loaded_model) = loaded_model {
+      if loaded_model.eq(request_model) {
+        ModelLoadStrategy::Continue
+      } else {
+        ModelLoadStrategy::DropAndLoad
+      }
+    } else {
+      ModelLoadStrategy::Load
+    }
+  }
+}
+
 #[cfg(test)]
 mod test {
-  use crate::shared_rw::{SharedContextRw, SharedContextRwFn};
+  use crate::{
+    objs::LocalModelFile,
+    shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
+    test_utils::MockBodhiServerContext,
+  };
   use anyhow::anyhow;
-  use async_openai::types::CreateChatCompletionResponse;
+  use anyhow_trace::anyhow_trace;
+  use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
   use llama_server_bindings::{
     bindings::llama_server_disable_logging, disable_llama_log, GptParams,
   };
+  use mockall::predicate::{always, eq};
   use rstest::{fixture, rstest};
   use serde_json::json;
   use std::{
@@ -286,7 +352,57 @@ mod test {
   }
 
   #[rstest]
-  fn test_shared_rw_loaded_model_same_as_alias() -> anyhow::Result<()> {
-    todo!()
+  fn test_model_load_strategy_continue_if_request_and_model_file_same() -> anyhow::Result<()> {
+    let loaded_model = "/path/to/loaded_model.gguf".to_string();
+    let request_model = loaded_model.clone();
+    let result = ModelLoadStrategy::choose(&Some(loaded_model), &request_model);
+    assert_eq!(result, ModelLoadStrategy::Continue);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_model_load_strategy_drop_and_load_if_loaded_model_different_from_request_model(
+  ) -> anyhow::Result<()> {
+    let loaded_model = "/path/to/loaded_model.gguf".to_string();
+    let request_model = "/path/to/request_model.gguf";
+    let result = ModelLoadStrategy::choose(&Some(loaded_model), request_model);
+    assert_eq!(result, ModelLoadStrategy::DropAndLoad);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_model_load_strategy_load_if_no_model_loaded() -> anyhow::Result<()> {
+    let request_model = "/path/to/request_model.gguf";
+    let result = ModelLoadStrategy::choose(&None, request_model);
+    assert_eq!(result, ModelLoadStrategy::Load);
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_chat_completions_continue_strategy() -> anyhow::Result<()> {
+    let model_file = LocalModelFile::testalias();
+    let model_filepath = model_file.path().display().to_string();
+    let mut mock = MockBodhiServerContext::default();
+    mock
+      .expect_completions()
+      .with(eq(""), eq(""), eq(None), always())
+      .return_once(|_, _, _, _| Ok(()));
+    mock.expect_get_gpt_params().return_once(move || GptParams {
+      model: model_filepath,
+      ..Default::default()
+    });
+    let shared_ctx = SharedContextRw::new(mock);
+    let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
+      "model": "testalias",
+      "messages": [{"role": "user", "content": "What day comes after Monday?"}]
+    }})?;
+    let tokenizer_file = LocalModelFile::testalias_tokenizer();
+    let userdata = String::new();
+    shared_ctx
+      .chat_completions(request, model_file, tokenizer_file, None, &userdata)
+      .await?;
+    Ok(())
   }
 }

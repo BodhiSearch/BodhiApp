@@ -99,7 +99,8 @@ pub struct TokenizerConfig {
 }
 
 impl TokenizerConfig {
-  pub fn apply_chat_template<T>(&self, messages: &[T]) -> anyhow::Result<String>
+  #[allow(clippy::result_large_err)]
+  pub fn apply_chat_template<T>(&self, messages: &[T]) -> crate::error::Result<String>
   where
     for<'a> &'a T: Into<ChatMessage>,
   {
