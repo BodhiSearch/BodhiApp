@@ -201,7 +201,7 @@ mod test {
         eq(false),
       )
       .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
-    let alias = Alias::test_alias();
+    let alias = Alias::testalias();
     mock
       .expect_save_alias()
       .with(eq(alias))

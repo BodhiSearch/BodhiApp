@@ -722,7 +722,7 @@ error while serializing from file: '{models_file}'"#
     let DataServiceTuple(_temp_dir, _, service) = data_service;
     let models = service.list_remote_models()?;
     let expected_1 = RemoteModel::llama3();
-    let expected_2 = RemoteModel::test_alias();
+    let expected_2 = RemoteModel::testalias();
     assert_eq!(6, models.len());
     assert!(models.contains(&expected_1));
     assert!(models.contains(&expected_2));

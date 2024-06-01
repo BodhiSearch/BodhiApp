@@ -27,30 +27,6 @@ impl Repo {
 }
 
 impl LocalModelFile {
-  pub fn never_download() -> LocalModelFile {
-    LocalModelFile::never_download_builder().build().unwrap()
-  }
-
-  pub fn never_download_builder() -> LocalModelFileBuilder {
-    LocalModelFileBuilder::default()
-      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
-      .repo(Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap())
-      .filename("testalias.Q8_0.gguf".to_string())
-      .snapshot(SNAPSHOT.to_string())
-      .size(Some(22))
-      .to_owned()
-  }
-
-  pub fn never_download_tokenizer_builder() -> LocalModelFileBuilder {
-    LocalModelFileBuilder::default()
-      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
-      .repo(Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap())
-      .filename(TOKENIZER_CONFIG_JSON.to_string())
-      .snapshot(SNAPSHOT.to_string())
-      .size(Some(22))
-      .to_owned()
-  }
-
   pub fn testalias_builder() -> LocalModelFileBuilder {
     LocalModelFileBuilder::default()
       .repo(Repo::testalias())
@@ -107,20 +83,7 @@ impl RemoteModel {
     )
   }
 
-  pub fn test_alias() -> RemoteModel {
-    RemoteModel::new(
-      "testalias:instruct".to_string(),
-      "testalias".to_string(),
-      Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
-      "testalias.Q8_0.gguf".to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-      OAIRequestParams::default(),
-      GptContextParams::default(),
-    )
-  }
-
-  pub fn never_download() -> RemoteModel {
+  pub fn testalias() -> RemoteModel {
     RemoteModel::new(
       String::from("testalias:instruct"),
       String::from("testalias"),
@@ -154,7 +117,7 @@ impl CreateCommand {
 }
 
 impl Alias {
-  pub fn test_alias() -> Alias {
+  pub fn testalias() -> Alias {
     Alias::test_alias_instruct_builder().build().unwrap()
   }
 
@@ -162,7 +125,7 @@ impl Alias {
     AliasBuilder::default()
       .alias("testalias:instruct".to_string())
       .family(Some("testalias".to_string()))
-      .repo(Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap())
+      .repo(Repo::testalias())
       .filename("testalias.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())
       .features(vec!["chat".to_string()])
@@ -170,20 +133,6 @@ impl Alias {
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .to_owned()
-  }
-
-  pub fn never_download() -> Alias {
-    Alias::new(
-      "testalias:instruct".to_string(),
-      Some("testalias".to_string()),
-      Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
-      "testalias.Q8_0.gguf".to_string(),
-      SNAPSHOT.to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-      OAIRequestParams::default(),
-      GptContextParams::default(),
-    )
   }
 
   pub fn test_alias_exists() -> Alias {

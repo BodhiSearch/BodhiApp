@@ -115,7 +115,7 @@ mod test {
 
   #[rstest]
   fn test_pull_by_alias_creates_new_alias() -> anyhow::Result<()> {
-    let remote_model = RemoteModel::never_download();
+    let remote_model = RemoteModel::testalias();
     let mut mock_data_service = MockDataService::new();
     mock_data_service
       .expect_find_alias()
@@ -135,8 +135,8 @@ mod test {
         eq(remote_model.filename.clone()),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
-    let alias = Alias::never_download();
+      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
+    let alias = Alias::testalias();
     mock_data_service
       .expect_save_alias()
       .with(eq(alias))
@@ -162,7 +162,7 @@ mod test {
     mock_hub_service
       .expect_download()
       .with(eq(repo), eq("gemma-7b-it.gguf"), eq(false))
-      .return_once(|_, _, _| Ok(LocalModelFile::never_download()));
+      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
     let mock_data_service = MockDataService::new();
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     pull.execute(&service)?;

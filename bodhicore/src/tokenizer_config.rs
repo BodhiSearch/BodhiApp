@@ -295,7 +295,7 @@ mod test {
     hf_cache: (TempDir, PathBuf),
   ) -> anyhow::Result<()> {
     let (_temp_bodhi, hf_cache) = hf_cache;
-    let tokenizer_file = LocalModelFile::never_download_tokenizer_builder()
+    let tokenizer_file = LocalModelFile::testalias_tokenizer_builder()
       .hf_cache(hf_cache)
       .build()
       .unwrap();

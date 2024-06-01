@@ -179,7 +179,7 @@ mod test {
   #[rstest]
   #[tokio::test]
   async fn test_interactive_local_model_not_found_raises_error() -> anyhow::Result<()> {
-    let alias = Alias::test_alias();
+    let alias = Alias::testalias();
     let alias_clone = alias.clone();
     let mut mock = MockAppService::default();
     mock
@@ -208,7 +208,7 @@ filepath: /tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/50076
   #[rstest]
   #[tokio::test]
   async fn test_interactive_chat_template_not_found() -> anyhow::Result<()> {
-    let alias = Alias::test_alias();
+    let alias = Alias::testalias();
     let mut mock = MockAppService::default();
     mock
       .expect_find_local_file()

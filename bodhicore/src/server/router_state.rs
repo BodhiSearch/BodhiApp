@@ -476,8 +476,8 @@ mod test {
     mock_app_service
       .expect_find_alias()
       .with(eq("testalias:instruct"))
-      .return_once(|_| Some(Alias::test_alias()));
-    let testalias = Alias::test_alias();
+      .return_once(|_| Some(Alias::testalias()));
+    let testalias = Alias::testalias();
     mock_app_service
       .expect_find_local_file()
       .with(
@@ -521,8 +521,8 @@ mod test {
     mock_app_service
       .expect_find_alias()
       .with(eq("testalias:instruct"))
-      .return_once(|_| Some(Alias::test_alias()));
-    let testalias = Alias::test_alias();
+      .return_once(|_| Some(Alias::testalias()));
+    let testalias = Alias::testalias();
     mock_app_service
       .expect_find_local_file()
       .with(
