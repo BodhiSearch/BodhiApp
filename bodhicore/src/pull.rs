@@ -204,20 +204,20 @@ mod test {
   ) -> anyhow::Result<()> {
     let AppServiceTuple(_temp_bodhi, _temp_hf, bodhi_home, _, service) = app_service_stub;
     let command = PullCommand::ByAlias {
-      alias: "testalias-neverdownload:instruct".to_string(),
+      alias: "testalias:instruct".to_string(),
       force: false,
     };
     command.execute(&service)?;
     let alias = bodhi_home
       .join("configs")
-      .join("testalias-neverdownload--instruct.yaml");
+      .join("testalias--instruct.yaml");
     assert!(alias.exists());
     let content = fs::read_to_string(alias)?;
     assert_eq!(
-      r#"alias: testalias-neverdownload:instruct
+      r#"alias: testalias:instruct
 family: testalias
-repo: MyFactory/testalias-neverdownload-gguf
-filename: testalias-neverdownload.Q8_0.gguf
+repo: MyFactory/testalias-gguf
+filename: testalias.Q8_0.gguf
 snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213
 features:
 - chat

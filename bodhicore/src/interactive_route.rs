@@ -6,10 +6,9 @@ fn build_routes() -> Router {
 
 #[cfg(test)]
 mod test {
-  use super::build_routes;
-  use crate::{
-    test_utils::{RequestTestExt, ResponseTestExt},
-  };
+  use crate::test_utils::{RequestTestExt, ResponseTestExt};
+
+use super::build_routes;
   use anyhow::anyhow;
   use async_openai::types::{
     ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,

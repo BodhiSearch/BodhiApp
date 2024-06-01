@@ -68,10 +68,9 @@ impl SharedContextRw {
 
   #[cfg(test)]
   pub fn new(bodhi_ctx: BodhiServerContext) -> Self {
-    let ctx = SharedContextRw {
+    SharedContextRw {
       ctx: RwLock::new(Some(bodhi_ctx)),
-    };
-    ctx
+    }
   }
 }
 
@@ -144,7 +143,6 @@ impl SharedContextRwFn for SharedContextRw {
         Ok(())
       }
       ModelLoadStrategy::DropAndLoad => {
-        drop(lock);
         todo!()
       }
       ModelLoadStrategy::Load => todo!(),
@@ -191,7 +189,7 @@ mod test {
   use crate::{
     objs::LocalModelFile,
     shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
-    test_utils::MockBodhiServerContext,
+    test_utils::{hf_cache, MockBodhiServerContext},
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -204,8 +202,10 @@ mod test {
   use serde_json::json;
   use std::{
     ffi::{c_char, c_void},
+    path::PathBuf,
     slice,
   };
+  use tempfile::TempDir;
 
   #[fixture]
   fn model_file() -> String {
@@ -381,13 +381,24 @@ mod test {
   #[rstest]
   #[tokio::test]
   #[anyhow_trace]
-  async fn test_chat_completions_continue_strategy() -> anyhow::Result<()> {
-    let model_file = LocalModelFile::testalias();
+  async fn test_chat_completions_continue_strategy(
+    hf_cache: (TempDir, PathBuf),
+  ) -> anyhow::Result<()> {
+    let model_file = LocalModelFile::testalias_builder()
+      .hf_cache(hf_cache.1.clone())
+      .build()
+      .unwrap();
     let model_filepath = model_file.path().display().to_string();
+    let tokenizer_file = LocalModelFile::testalias_tokenizer_builder()
+      .hf_cache(hf_cache.1.clone())
+      .build()
+      .unwrap();
     let mut mock = MockBodhiServerContext::default();
+    let expected_input = 
+      "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"testalias:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
     mock
       .expect_completions()
-      .with(eq(""), eq(""), eq(None), always())
+      .with(eq(expected_input), eq(""), eq(None), always())
       .return_once(|_, _, _, _| Ok(()));
     mock.expect_get_gpt_params().return_once(move || GptParams {
       model: model_filepath,
@@ -395,10 +406,9 @@ mod test {
     });
     let shared_ctx = SharedContextRw::new(mock);
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
-      "model": "testalias",
+      "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
-    let tokenizer_file = LocalModelFile::testalias_tokenizer();
     let userdata = String::new();
     shared_ctx
       .chat_completions(request, model_file, tokenizer_file, None, &userdata)

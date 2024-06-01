@@ -183,7 +183,7 @@ impl TryFrom<PathBuf> for LocalModelFile {
   type Error = DataServiceError;
 
   fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-    let path = value.to_string_lossy().into_owned();
+    let path = value.display().to_string();
     let caps = REGEX_HF_REPO_FILE.captures(&path).ok_or(anyhow::anyhow!(
       "'{path}' does not match huggingface hub cache filepath pattern"
     ))?;
@@ -227,7 +227,9 @@ impl TryFrom<LocalModelFile> for TokenizerConfig {
   type Error = DataServiceError;
 
   fn try_from(value: LocalModelFile) -> Result<Self, Self::Error> {
-    let content = std::fs::read_to_string(value.path())?;
+    let path = value.path();
+    let content = std::fs::read_to_string(path.clone())
+      .map_err(move |source| DataServiceError::IoWithDetail { source, path })?;
     let tokenizer_config: TokenizerConfig = serde_json::from_str(&content)?;
     Ok(tokenizer_config)
   }
@@ -446,7 +448,7 @@ default: -1 (unbounded)"#
 #[cfg(test)]
 mod test {
   use super::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
-  use crate::test_utils::temp_hf_home;
+  use crate::test_utils::{hf_cache, temp_hf_home};
   use anyhow_trace::anyhow_trace;
   use prettytable::{Cell, Row};
   use rstest::rstest;
@@ -524,19 +526,19 @@ mod test {
   }
 
   #[rstest]
-  fn test_local_model_file_from_pathbuf(temp_hf_home: TempDir) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
+  fn test_local_model_file_from_pathbuf(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {
+    let (_temp, hf_cache) = hf_cache;
     let filepath = hf_cache
       .clone()
-      .join("models--MyFactory--testalias-neverdownload-gguf")
+      .join("models--MyFactory--testalias-gguf")
       .join("snapshots")
       .join("5007652f7a641fe7170e0bad4f63839419bd9213")
-      .join("testalias-neverdownload.Q8_0.gguf");
-    let local_model: LocalModelFile = filepath.try_into()?;
+      .join("testalias.Q8_0.gguf");
+    let local_model = LocalModelFile::try_from(filepath)?;
     let expected = LocalModelFile::new(
       hf_cache,
-      Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string())?,
-      "testalias-neverdownload.Q8_0.gguf".to_string(),
+      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+      "testalias.Q8_0.gguf".to_string(),
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       Some(21),
     );

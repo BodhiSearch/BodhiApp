@@ -49,6 +49,12 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   },
   #[error(transparent)]
   Io(#[from] io::Error),
+  #[error("{source}\npath: {path}")]
+  IoWithDetail {
+    #[source]
+    source: io::Error,
+    path: PathBuf,
+  },
   #[error("{source}\nerror while serializing from file: '{filename}'")]
   SerdeYamlSerialize {
     #[source]
@@ -659,7 +665,7 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
   ) -> anyhow::Result<()> {
     let DataServiceTuple(_temp_bodhi_home, bodhi_home, service) = data_service;
     fs::remove_file(bodhi_home.join("models.yaml"))?;
-    let result = service.find_remote_model("testalias-neverdownload:instruct");
+    let result = service.find_remote_model("testalias:instruct");
     assert!(result.is_err());
     let expected = r#"file 'models.yaml' not found in $BODHI_HOME/.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#;
@@ -679,14 +685,14 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
       r#"
 # alias is missing
 - family: testalias
-repo: MyFactory/testalias-neverdownload-gguf
-filename: testalias-neverdownload.Q8_0.gguf
+repo: MyFactory/testalias-gguf
+filename: testalias.Q8_0.gguf
 features:
   - chat
 chat_template: llama3
 "#,
     )?;
-    let result = service.find_remote_model("testalias-neverdownload:instruct");
+    let result = service.find_remote_model("testalias:instruct");
     assert!(result.is_err());
     let models_file = models_file.display().to_string();
     let expected = format!(
@@ -698,7 +704,7 @@ error while serializing from file: '{models_file}'"#
   }
 
   #[rstest]
-  #[case("testalias-neverdownload:instruct", true)]
+  #[case("testalias:instruct", true)]
   #[case("testalias-notexists", false)]
   fn test_local_data_service_find_remote_model(
     data_service: DataServiceTuple,
@@ -717,7 +723,7 @@ error while serializing from file: '{models_file}'"#
     let models = service.list_remote_models()?;
     let expected_1 = RemoteModel::llama3();
     let expected_2 = RemoteModel::test_alias();
-    assert_eq!(7, models.len());
+    assert_eq!(6, models.len());
     assert!(models.contains(&expected_1));
     assert!(models.contains(&expected_2));
     Ok(())

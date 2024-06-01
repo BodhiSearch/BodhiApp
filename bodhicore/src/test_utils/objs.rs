@@ -16,6 +16,16 @@ impl Default for ChatTemplate {
   }
 }
 
+impl Repo {
+  pub fn llama3() -> Repo {
+    Repo::try_new("meta-llama/Meta-Llama-3-8B-Instruct".to_string()).unwrap()
+  }
+
+  pub fn testalias() -> Repo {
+    Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap()
+  }
+}
+
 impl LocalModelFile {
   pub fn never_download() -> LocalModelFile {
     LocalModelFile::never_download_builder().build().unwrap()
@@ -24,8 +34,8 @@ impl LocalModelFile {
   pub fn never_download_builder() -> LocalModelFileBuilder {
     LocalModelFileBuilder::default()
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
-      .repo(Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string()).unwrap())
-      .filename("testalias-neverdownload.Q8_0.gguf".to_string())
+      .repo(Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap())
+      .filename("testalias.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())
       .size(Some(22))
       .to_owned()
@@ -34,31 +44,42 @@ impl LocalModelFile {
   pub fn never_download_tokenizer_builder() -> LocalModelFileBuilder {
     LocalModelFileBuilder::default()
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
-      .repo(Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string()).unwrap())
+      .repo(Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap())
       .filename(TOKENIZER_CONFIG_JSON.to_string())
       .snapshot(SNAPSHOT.to_string())
       .size(Some(22))
       .to_owned()
   }
 
+  pub fn testalias_builder() -> LocalModelFileBuilder {
+    LocalModelFileBuilder::default()
+      .repo(Repo::testalias())
+      .filename("testalias.Q8_0.gguf".to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(22))
+      .to_owned()
+  }
   pub fn testalias() -> LocalModelFile {
-    LocalModelFile::new(
-      PathBuf::from("/tmp/ignored/huggingface/hub"),
-      Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
-      "testalias.Q8_0.gguf".to_string(),
-      SNAPSHOT.to_string(),
-      Some(22),
-    )
+    LocalModelFile::testalias_builder()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .build()
+      .unwrap()
+  }
+
+  pub fn testalias_tokenizer_builder() -> LocalModelFileBuilder {
+    LocalModelFileBuilder::default()
+      .repo(Repo::testalias())
+      .filename(TOKENIZER_CONFIG_JSON.to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(22))
+      .to_owned()
   }
 
   pub fn testalias_tokenizer() -> LocalModelFile {
-    LocalModelFile::new(
-      PathBuf::from("/tmp/ignored/huggingface/hub"),
-      Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
-      "tokenizer_config.json".to_string(),
-      SNAPSHOT.to_string(),
-      Some(22),
-    )
+    LocalModelFile::testalias_tokenizer_builder()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .build()
+      .unwrap()
   }
 
   pub fn llama3_tokenizer() -> LocalModelFile {
@@ -101,10 +122,10 @@ impl RemoteModel {
 
   pub fn never_download() -> RemoteModel {
     RemoteModel::new(
-      String::from("testalias-neverdownload:instruct"),
+      String::from("testalias:instruct"),
       String::from("testalias"),
-      Repo::try_new(String::from("MyFactory/testalias-neverdownload-gguf")).unwrap(),
-      String::from("testalias-neverdownload.Q8_0.gguf"),
+      Repo::try_new(String::from("MyFactory/testalias-gguf")).unwrap(),
+      String::from("testalias.Q8_0.gguf"),
       vec![String::from("chat")],
       ChatTemplate::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
@@ -153,10 +174,10 @@ impl Alias {
 
   pub fn never_download() -> Alias {
     Alias::new(
-      "testalias-neverdownload:instruct".to_string(),
+      "testalias:instruct".to_string(),
       Some("testalias".to_string()),
-      Repo::try_new("MyFactory/testalias-neverdownload-gguf".to_string()).unwrap(),
-      "testalias-neverdownload.Q8_0.gguf".to_string(),
+      Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap(),
+      "testalias.Q8_0.gguf".to_string(),
       SNAPSHOT.to_string(),
       vec!["chat".to_string()],
       ChatTemplate::Id(ChatTemplateId::Llama3),
@@ -211,8 +232,4 @@ impl Alias {
 #[fixture]
 pub fn tinyllama() -> Alias {
   Alias::tinyllama()
-}
-
-pub fn llama3() -> Repo {
-  Repo::try_new("meta-llama/Meta-Llama-3-8B-Instruct".to_string()).unwrap()
 }
