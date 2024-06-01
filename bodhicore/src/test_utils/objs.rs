@@ -24,6 +24,10 @@ impl Repo {
   pub fn testalias() -> Repo {
     Repo::try_new("MyFactory/testalias-gguf".to_string()).unwrap()
   }
+
+  pub fn fakemodel() -> Repo {
+    Repo::try_new("FakeFactory/fakemodel-gguf".to_string()).unwrap()
+  }
 }
 
 impl LocalModelFile {
@@ -35,6 +39,16 @@ impl LocalModelFile {
       .size(Some(22))
       .to_owned()
   }
+
+  pub fn fakemodel_builder() -> LocalModelFileBuilder {
+    LocalModelFileBuilder::default()
+      .repo(Repo::fakemodel())
+      .filename("fakemodel.Q4_0.gguf".to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(22))
+      .to_owned()
+  }
+
   pub fn testalias() -> LocalModelFile {
     LocalModelFile::testalias_builder()
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
@@ -56,6 +70,15 @@ impl LocalModelFile {
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
+  }
+
+  pub fn fakemodel_tokenizer_builder() -> LocalModelFileBuilder {
+    LocalModelFileBuilder::default()
+      .repo(Repo::fakemodel())
+      .filename(TOKENIZER_CONFIG_JSON.to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(22))
+      .to_owned()
   }
 
   pub fn llama3_tokenizer() -> LocalModelFile {

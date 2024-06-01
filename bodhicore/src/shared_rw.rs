@@ -138,11 +138,19 @@ impl SharedContextRwFn for SharedContextRw {
         Ok(())
       }
       ModelLoadStrategy::DropAndLoad => {
-        todo!()
+        drop(lock);
+        let new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
+        self.reload(Some(new_gpt_params)).await?;
+        let lock = self.ctx.read().await;
+        let ctx = lock.as_ref();
+        ctx.ok_or(ContextError::Unreachable(
+          "context should not be None".to_string(),
+        ))?
+        .completions(&input, "", callback, userdata as *const _ as *mut _)?;
+        Ok(())
       }
       ModelLoadStrategy::Load => {
         // TODO: take context params from alias
-        // TODO: fix GptParamsBuilder for Option default fields
         // TODO: reload keeping lock and doing completions operation
         let new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
         drop(lock);
@@ -474,4 +482,61 @@ mod test {
       .await?;
     Ok(())
   }
-}
+
+  #[rstest]
+  #[tokio::test]
+  #[serial(BodhiServerContext)]
+  #[anyhow_trace]
+  async fn test_chat_completions_drop_and_load_strategy(
+    hf_cache: (TempDir, PathBuf),
+  ) -> anyhow::Result<()> {
+    let (_temp, hf_cache) = hf_cache;
+    let loaded_model = LocalModelFile::testalias_builder()
+      .hf_cache(hf_cache.clone())
+      .build()
+      .unwrap();
+    let loaded_model_filepath = loaded_model.path().display().to_string();
+    let mut loaded_ctx = MockBodhiServerContext::default();
+    loaded_ctx.expect_init().with().return_once(|| Ok(()));
+    loaded_ctx.expect_start_event_loop().with().return_once(|| Ok(()));
+    let loaded_params = GptParamsBuilder::default().model(loaded_model_filepath).build()?;
+    let loaded_params_cl = loaded_params.clone();
+    loaded_ctx.expect_get_gpt_params().return_once(move || loaded_params_cl);
+    loaded_ctx.expect_stop().with().return_once(|| Ok(()));
+    let expected_input =
+      "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"fakemodel:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
+    loaded_ctx
+      .expect_completions()
+      .with(eq(expected_input), eq(""), eq(None), always())
+      .return_once(|_, _, _, _| Ok(()));
+    let ctx = MockBodhiServerContext::new_context();
+    ctx.expect().with(eq(loaded_params.clone())).return_once(move |_| Ok(loaded_ctx));
+
+    let mut request_context = MockBodhiServerContext::default();
+    request_context.expect_init().with().return_once(|| Ok(()));
+    request_context.expect_start_event_loop().with().return_once(|| Ok(()));
+
+    let request_model = LocalModelFile::fakemodel_builder().hf_cache(hf_cache.clone()).build()?;
+    let request_model_filepath = request_model.path().display().to_string();
+    let request_params = GptParamsBuilder::default().model(request_model_filepath).build()?;
+    let request_params_cl = request_params.clone();
+    request_context.expect_get_gpt_params().return_once(move || request_params_cl);
+    let request_ctx = MockBodhiServerContext::new_context();
+    request_ctx.expect().with(eq(request_params)).return_once(move |_| Ok(request_context));
+
+    let tokenizer_file = LocalModelFile::testalias_tokenizer_builder()
+      .hf_cache(hf_cache.clone())
+      .build()
+      .unwrap();
+
+    let shared_ctx = SharedContextRw::new_shared_rw(Some(loaded_params)).await?;
+    let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
+      "model": "fakemodel:instruct",
+      "messages": [{"role": "user", "content": "What day comes after Monday?"}]
+    }})?;
+    let userdata = String::new();
+    shared_ctx
+      .chat_completions(request, loaded_model, tokenizer_file, None, &userdata)
+      .await?;
+    Ok(())
+  }}
