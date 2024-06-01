@@ -7,7 +7,7 @@ use super::{
     ui_chats_handler,
   },
 };
-use crate::{service::AppServiceFn, shared_rw::SharedContextRw};
+use crate::{service::AppServiceFn, shared_rw::SharedContextRw, SharedContextRwFn};
 use axum::{
   http::StatusCode,
   response::IntoResponse,
@@ -36,7 +36,7 @@ impl IntoResponse for ApiError {
   }
 }
 
-pub fn build_routes(ctx: SharedContextRw, app_service: Arc<dyn AppServiceFn>) -> Router {
+pub fn build_routes(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppServiceFn>) -> Router {
   let state = RouterState::new(ctx, app_service);
   let api_router = Router::new()
     .route("/chats", get(ui_chats_handler))

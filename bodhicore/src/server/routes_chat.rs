@@ -93,43 +93,44 @@ async fn chat_completions_stream_handler(
     .context("converting request to string to pass to bodhi_server")
     .unwrap();
   let (tx, rx) = tokio::sync::mpsc::channel::<String>(100);
-  tokio::spawn(async move {
-    let lock = state.ctx.ctx.read().await;
-    let Some(ctx) = lock.as_ref() else {
-      tracing::warn!("context is not laoded");
-      return;
-    };
-    let result = ctx.completions(
-      &input,
-      &chat_template,
-      Some(server_callback_stream),
-      &tx as *const _ as *mut c_void,
-    );
-    if let Err(err) = result {
-      tracing::warn!(err = format!("{}", err), "error while streaming completion")
-    }
-    drop(tx);
-  });
-  let stream = ReceiverStream::new(rx).map::<Result<Event, Infallible>, _>(move |msg| {
-    let data = if msg.starts_with("data: ") {
-      msg
-        .strip_prefix("data: ")
-        .unwrap()
-        .strip_suffix("\n\n")
-        .unwrap()
-    } else if msg.starts_with("error: ") {
-      msg
-        .strip_prefix("error: ")
-        .unwrap()
-        .strip_suffix("\n\n")
-        .unwrap()
-    } else {
-      tracing::error!(msg, "unknown event type raised from bodhi_server");
-      &msg
-    };
-    Ok(Event::default().data(data))
-  });
-  Sse::new(stream).into_response()
+  // tokio::spawn(async move {
+  //   let lock = state.ctx.ctx.read().await;
+  //   let Some(ctx) = lock.as_ref() else {
+  //     tracing::warn!("context is not laoded");
+  //     return;
+  //   };
+  //   let result = ctx.completions(
+  //     &input,
+  //     &chat_template,
+  //     Some(server_callback_stream),
+  //     &tx as *const _ as *mut c_void,
+  //   );
+  //   if let Err(err) = result {
+  //     tracing::warn!(err = format!("{}", err), "error while streaming completion")
+  //   }
+  //   drop(tx);
+  // });
+  // let stream = ReceiverStream::new(rx).map::<Result<Event, Infallible>, _>(move |msg| {
+  //   let data = if msg.starts_with("data: ") {
+  //     msg
+  //       .strip_prefix("data: ")
+  //       .unwrap()
+  //       .strip_suffix("\n\n")
+  //       .unwrap()
+  //   } else if msg.starts_with("error: ") {
+  //     msg
+  //       .strip_prefix("error: ")
+  //       .unwrap()
+  //       .strip_suffix("\n\n")
+  //       .unwrap()
+  //   } else {
+  //     tracing::error!(msg, "unknown event type raised from bodhi_server");
+  //     &msg
+  //   };
+  //   Ok(Event::default().data(data))
+  // });
+  // Sse::new(stream).into_response()
+  todo!()
 }
 
 #[cfg(test)]
@@ -189,7 +190,7 @@ mod test {
     };
     let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
     let wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let app = llm_router().with_state(RouterState::new(wrapper, Arc::new(service)));
+    let app = llm_router().with_state(RouterState::new(Arc::new(wrapper), Arc::new(service)));
     let response = app
       .oneshot(Request::post("/v1/chat/completions").json(request).unwrap())
       .await
@@ -242,7 +243,7 @@ mod test {
     };
     let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
     let wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let app = llm_router().with_state(RouterState::new(wrapper, Arc::new(service)));
+    let app = llm_router().with_state(RouterState::new(Arc::new(wrapper), Arc::new(service)));
     let response = app
       .oneshot(Request::post("/v1/chat/completions").json(request).unwrap())
       .await

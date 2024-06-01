@@ -1,31 +1,78 @@
 use crate::{
+  oai::OpenAIApiError,
+  objs::{REFS_MAIN, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
   shared_rw::{SharedContextRw, SharedContextRwFn},
+  Repo,
 };
 use anyhow::{anyhow, bail};
 use async_openai::types::CreateChatCompletionRequest;
+use futures_util::TryFutureExt;
 use llama_server_bindings::{Callback, GptParams};
 use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub(crate) struct RouterState {
-  pub(crate) ctx: SharedContextRw,
+  pub(crate) ctx: Arc<dyn SharedContextRwFn>,
   pub(crate) app_service: Arc<dyn AppServiceFn>,
 }
 
 impl RouterState {
-  pub(crate) fn new(ctx: SharedContextRw, app_service: Arc<dyn AppServiceFn>) -> Self {
+  pub(crate) fn new(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppServiceFn>) -> Self {
     Self { ctx, app_service }
   }
 }
 
 impl RouterState {
-  // pub async fn chat_completions(
-  //   &self,
-  //   request: CreateChatCompletionRequest,
-  //   callback: Option<Callback>,
-  //   userdata: &String,
-  // ) -> anyhow::Result<()> {
+  pub async fn chat_completions(
+    &self,
+    request: CreateChatCompletionRequest,
+    callback: Option<Callback>,
+    userdata: &String,
+  ) -> crate::oai::Result<()> {
+    let Some(alias) = self.app_service.find_alias(&request.model) else {
+      return Err(crate::oai::OpenAIApiError::ModelNotFound(
+        request.model.clone(),
+      ));
+    };
+    let model_file = self
+      .app_service
+      .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)
+      .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
+    let Some(model_file) = model_file else {
+      return Err(OpenAIApiError::InternalServer(format!(
+        "file required by LLM model not found in huggingface cache: filename: '{}', repo: '{}'",
+        alias.filename,
+        alias.repo.to_string()
+      )));
+    };
+    let tokenizer_repo = Repo::try_from(alias.chat_template.clone())
+      .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
+    let tokenizer_file = self
+      .app_service
+      .find_local_file(&tokenizer_repo, TOKENIZER_CONFIG_JSON, REFS_MAIN)
+      .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
+    let Some(tokenizer_file) = tokenizer_file else {
+      return Err(OpenAIApiError::InternalServer(format!(
+        "file required by LLM model not found in huggingface cache: filename: '{}', repo: '{}'",
+        TOKENIZER_CONFIG_JSON,
+        tokenizer_repo.to_string()
+      )));
+    };
+    self
+      .ctx
+      .chat_completions(
+        request,
+        alias,
+        model_file,
+        tokenizer_file,
+        callback,
+        userdata,
+      )
+      .await
+      .map_err(OpenAIApiError::ContextError)?;
+    Ok(())
+  }
   //   let Some(alias) = self.app_service.find_alias(&request.model) else {
   //     bail!("model alias not found: '{}'", request.model)
   //   };
@@ -109,79 +156,87 @@ impl RouterState {
     else {
       bail!("local model not found: {:?}", alias);
     };
-    let lock = self.ctx.ctx.read().await;
-    let ctx = lock.as_ref();
-    let local_model_path = local_model.path().to_string_lossy().into_owned();
-    match ctx {
-      Some(ctx) => {
-        let gpt_params = ctx.gpt_params.clone();
-        let loaded_model = gpt_params.model.clone();
-        if loaded_model.eq(&local_model_path) {
-          ctx.completions(
-            input,
-            chat_template,
-            callback,
-            userdata as *const _ as *mut _,
-          )
-        } else {
-          tracing::info!(
-            loaded_model,
-            ?local_model,
-            "requested model not loaded, loading model"
-          );
-          drop(lock);
-          let new_gpt_params = GptParams {
-            model: local_model_path,
-            ..gpt_params
-          };
-          self.ctx.reload(Some(new_gpt_params)).await?;
-          let lock = self.ctx.ctx.read().await;
-          let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
-          ctx.completions(
-            input,
-            chat_template,
-            callback,
-            userdata as *const _ as *mut _,
-          )
-        }
-      }
-      None => {
-        let gpt_params = GptParams {
-          model: local_model_path,
-          ..Default::default()
-        };
-        drop(lock);
-        self.ctx.reload(Some(gpt_params)).await?;
-        let lock = self.ctx.ctx.read().await;
-        let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
-        ctx.completions(
-          input,
-          chat_template,
-          callback,
-          userdata as *const _ as *mut _,
-        )
-      }
-    }
+    todo!()
+    // let lock = self.ctx.read().await;
+    // let ctx = lock.as_ref();
+    // let local_model_path = local_model.path().to_string_lossy().into_owned();
+    // match ctx {
+    //   Some(ctx) => {
+    //     let gpt_params = ctx.gpt_params.clone();
+    //     let loaded_model = gpt_params.model.clone();
+    //     if loaded_model.eq(&local_model_path) {
+    //       ctx.completions(
+    //         input,
+    //         chat_template,
+    //         callback,
+    //         userdata as *const _ as *mut _,
+    //       )
+    //     } else {
+    //       tracing::info!(
+    //         loaded_model,
+    //         ?local_model,
+    //         "requested model not loaded, loading model"
+    //       );
+    //       drop(lock);
+    //       let new_gpt_params = GptParams {
+    //         model: local_model_path,
+    //         ..gpt_params
+    //       };
+    //       self.ctx.reload(Some(new_gpt_params)).await?;
+    //       let lock = self.ctx.ctx.read().await;
+    //       let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
+    //       ctx.completions(
+    //         input,
+    //         chat_template,
+    //         callback,
+    //         userdata as *const _ as *mut _,
+    //       )
+    //     }
+    //   }
+    //   None => {
+    //     let gpt_params = GptParams {
+    //       model: local_model_path,
+    //       ..Default::default()
+    //     };
+    //     drop(lock);
+    //     self.ctx.reload(Some(gpt_params)).await?;
+    //     let lock = self.ctx.ctx.read().await;
+    //     let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
+    //     ctx.completions(
+    //       input,
+    //       chat_template,
+    //       callback,
+    //       userdata as *const _ as *mut _,
+    //     )
+    // }
   }
 }
 
 #[cfg(test)]
 mod test {
-  use std::sync::Arc;
-
   use super::RouterState;
   use crate::{
     bindings::{disable_llama_log, llama_server_disable_logging},
-    test_utils::{app_service_stub, init_test_tracing, test_callback, AppServiceTuple},
-    SharedContextRw, SharedContextRwFn,
+    oai::ApiError,
+    objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
+    shared_rw::ContextError,
+    test_utils::{
+      app_service_stub, init_test_tracing, test_callback, AppServiceTuple, MockAppService,
+      MockSharedContext, ResponseTestExt,
+    },
+    Repo, SharedContextRw, SharedContextRwFn,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
-  use async_openai::types::CreateChatCompletionResponse;
+  use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
+  use axum::http::StatusCode;
+  use axum::response::{IntoResponse, Response};
   use llama_server_bindings::GptParams;
+  use mockall::predicate::eq;
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
+  use std::sync::Arc;
   use tempfile::TempDir;
 
   fn setup() {
@@ -216,7 +271,7 @@ mod test {
     RouterStateTuple(
       temp_bodhi_home,
       temp_hf_home,
-      RouterState::new(ctx, Arc::new(service)),
+      RouterState::new(Arc::new(ctx), Arc::new(service)),
     )
   }
 
@@ -226,7 +281,7 @@ mod test {
     RouterStateTuple(
       temp_bodhi_home,
       temp_hf_home,
-      RouterState::new(ctx, Arc::new(service)),
+      RouterState::new(Arc::new(ctx), Arc::new(service)),
     )
   }
 
@@ -392,7 +447,136 @@ mod test {
   }
 
   #[rstest]
-  fn test_router_state_chat_completions() -> anyhow::Result<()> {
+  #[tokio::test]
+  async fn test_router_state_chat_completions_model_not_found() -> anyhow::Result<()> {
+    let mut mock_app_service = MockAppService::default();
+    mock_app_service
+      .expect_find_alias()
+      .with(eq("not-found"))
+      .return_once(|_| None);
+    let mock_ctx = MockSharedContext::default();
+    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
+    let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
+      "model": "not-found",
+      "messages": [
+        {"role": "user", "content": "What day comes after Monday?"}
+      ]
+    }})?;
+    let result = state.chat_completions(request, None, &String::new()).await;
+    assert!(result.is_err());
+    let response: Response = result.unwrap_err().into_response();
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
+    let response: ApiError = response.json_obj().await?;
+    let expected = ApiError {
+      message: "The model 'not-found' does not exist".to_string(),
+      r#type: "model_not_found".to_string(),
+      param: Some("model".to_string()),
+      code: "model_not_found".to_string(),
+    };
+    assert_eq!(expected, response);
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_router_state_chat_completions_delegate_to_context_with_alias() -> anyhow::Result<()>
+  {
+    let mut mock_app_service = MockAppService::default();
+    mock_app_service
+      .expect_find_alias()
+      .with(eq("testalias:instruct"))
+      .return_once(|_| Some(Alias::test_alias()));
+    let testalias = Alias::test_alias();
+    mock_app_service
+      .expect_find_local_file()
+      .with(
+        eq(testalias.repo),
+        eq(testalias.filename),
+        eq(testalias.snapshot),
+      )
+      .return_once(|_, _, _| Ok(Some(LocalModelFile::testalias())));
+    mock_app_service
+      .expect_find_local_file()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(Some(LocalModelFile::llama3_tokenizer())));
+    let mut mock_ctx = MockSharedContext::default();
+    let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
+      "model": "testalias:instruct",
+      "messages": [
+        {"role": "user", "content": "What day comes after Monday?"}
+      ]
+    }})?;
+    mock_ctx
+      .expect_chat_completions()
+      .with(
+        eq(request.clone()),
+        eq(Alias::test_alias()),
+        eq(LocalModelFile::testalias()),
+        eq(LocalModelFile::llama3_tokenizer()),
+        eq(None),
+        eq(String::new()),
+      )
+      .return_once(|_, _, _, _, _, _| Ok(()));
+    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
+    state
+      .chat_completions(request, None, &String::new())
+      .await?;
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_router_state_chat_completions_returns_context_err() -> anyhow::Result<()> {
+    let mut mock_app_service = MockAppService::default();
+    mock_app_service
+      .expect_find_alias()
+      .with(eq("testalias:instruct"))
+      .return_once(|_| Some(Alias::test_alias()));
+    let testalias = Alias::test_alias();
+    mock_app_service
+      .expect_find_local_file()
+      .with(
+        eq(testalias.repo),
+        eq(testalias.filename),
+        eq(testalias.snapshot),
+      )
+      .return_once(|_, _, _| Ok(Some(LocalModelFile::testalias())));
+    mock_app_service
+      .expect_find_local_file()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(Some(LocalModelFile::llama3_tokenizer())));
+    let mut mock_ctx = MockSharedContext::default();
+    let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
+      "model": "testalias:instruct",
+      "messages": [
+        {"role": "user", "content": "What day comes after Monday?"}
+      ]
+    }})?;
+    mock_ctx
+      .expect_chat_completions()
+      .with(
+        eq(request.clone()),
+        eq(Alias::test_alias()),
+        eq(LocalModelFile::testalias()),
+        eq(LocalModelFile::llama3_tokenizer()),
+        eq(None),
+        eq(String::new()),
+      )
+      .return_once(|_, _, _, _, _, _| Err(ContextError::LlamaCpp(anyhow!("context error"))));
+    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
+    let result = state.chat_completions(request, None, &String::new()).await;
+    assert!(result.is_err());
+    let response = result.unwrap_err().into_response();
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+    assert_eq!(
+      ApiError {
+        message: "context error".to_string(),
+        r#type: "internal_server_error".to_string(),
+        param: None,
+        code: "internal_server_error".to_string()
+      },
+      response.json::<ApiError>().await?
+    );
     Ok(())
   }
 }

@@ -15,6 +15,7 @@ mod service;
 mod shared_rw;
 mod tokenizer_config;
 mod utils;
+mod oai;
 pub use cli::Command;
 pub use create::CreateCommand;
 pub use list::ListCommand;

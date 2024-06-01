@@ -126,7 +126,8 @@ async fn start_server(server: Server, ready_rx: Receiver<()>) -> anyhow::Result<
   unsafe {
     llama_server_disable_logging();
   }
-  let mut ctx = SharedContextRw::new_shared_rw(None).await?;
+  let ctx = SharedContextRw::new_shared_rw(None).await?;
+  let ctx = Arc::new(ctx);
   let app_service = AppService::default();
   let app = build_routes(ctx.clone(), Arc::new(app_service));
   let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {

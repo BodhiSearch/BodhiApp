@@ -2,7 +2,7 @@ use crate::{
   create::CreateCommandBuilder,
   objs::{
     Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile,
-    LocalModelFileBuilder, OAIRequestParams, RemoteModel, TOKENIZER_CONFIG_JSON,
+    LocalModelFileBuilder, OAIRequestParams, RemoteModel, REFS_MAIN, TOKENIZER_CONFIG_JSON,
   },
   server::BODHI_HOME,
   service::{
@@ -11,6 +11,7 @@ use crate::{
   },
   CreateCommand, Repo, SharedContextRw, SharedContextRwFn,
 };
+use async_openai::types::CreateChatCompletionRequest;
 use axum::{
   body::Body,
   http::{request::Builder, Request},
@@ -20,10 +21,11 @@ use derive_new::new;
 use dircpy::CopyBuilder;
 use futures_util::Future;
 use http_body_util::BodyExt;
+use llama_server_bindings::Callback;
 use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log, GptParams};
 use reqwest::header::CONTENT_TYPE;
 use rstest::fixture;
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize};
 use std::{
   env, fs,
   path::{Path, PathBuf},
@@ -65,6 +67,10 @@ pub trait ResponseTestExt {
   where
     T: DeserializeOwned;
 
+  async fn json_obj<T>(self) -> anyhow::Result<T>
+  where
+    T: for<'a> Deserialize<'a>;
+
   async fn text(self) -> anyhow::Result<String>;
 
   async fn sse<T>(self) -> anyhow::Result<Vec<T>>
@@ -81,6 +87,16 @@ impl ResponseTestExt for Response {
     let str = String::from_utf8_lossy(&bytes);
     let reader = Cursor::new(str.into_owned());
     let result = serde_json::from_reader::<_, T>(reader)?;
+    Ok(result)
+  }
+
+  async fn json_obj<T>(self) -> anyhow::Result<T>
+  where
+    T: for<'de> Deserialize<'de>,
+  {
+    let bytes = self.into_body().collect().await.unwrap().to_bytes();
+    let str = String::from_utf8_lossy(&bytes).into_owned();
+    let result = serde_json::from_str(&str)?;
     Ok(result)
   }
 
@@ -411,6 +427,16 @@ impl LocalModelFile {
       Some(22),
     )
   }
+
+  pub fn llama3_tokenizer() -> LocalModelFile {
+    LocalModelFile::new(
+      PathBuf::from("/tmp/ignored/huggingface/hub"),
+      Repo::llama3(),
+      TOKENIZER_CONFIG_JSON.to_string(),
+      SNAPSHOT.to_string(),
+      Some(33),
+    )
+  }
 }
 
 impl RemoteModel {
@@ -574,24 +600,30 @@ mockall::mock! {
 
   unsafe impl Send for SharedContext {}
 
+  #[async_trait::async_trait]
   impl SharedContextRwFn for SharedContext {
-    fn reload(
+    async fn reload(&self, gpt_params: Option<GptParams>) -> crate::shared_rw::Result<()>;
+
+    async fn try_stop(&self) -> crate::shared_rw::Result<()>;
+
+    async fn has_model(&self) -> bool;
+
+    async fn get_gpt_params(&self) -> crate::shared_rw::Result<Option<GptParams>>;
+
+    async fn chat_completions(
       &self,
-      gpt_params: Option<GptParams>,
-    ) -> impl Future<Output = anyhow::Result<()>> + Send
-    where
-      Self: Sized;
+      request: CreateChatCompletionRequest,
+      alias: Alias,
+      model_file: LocalModelFile,
+      tokenizer_file: LocalModelFile,
+      callback: Option<Callback>,
+      userdata: &String,
+    ) -> crate::shared_rw::Result<()>;
+  }
+}
 
-    fn try_stop(&mut self) -> impl Future<Output = anyhow::Result<()>> + Send
-    where
-      Self: Sized;
-
-    fn has_model(&self) -> impl Future<Output = anyhow::Result<bool>> + Send
-    where
-      Self: Sized;
-
-    fn get_gpt_params(&self) -> impl Future<Output = anyhow::Result<Option<GptParams>>> + Send
-    where
-      Self: Sized;
+impl Repo {
+  pub fn llama3() -> Repo {
+    Repo::try_new("meta-llama/Meta-Llama-3-8B-Instruct".to_string()).unwrap()
   }
 }

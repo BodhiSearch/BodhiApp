@@ -361,21 +361,30 @@ impl HubService for HfHubService {
           .file_name()
           .map(|f| f.to_string_lossy().into_owned())
           .unwrap_or(String::from("<unknown>"));
+        // TODO FileMissing instead of IoErr, not using err field
         DataServiceError::FileMissing { filename, dirname }
       })?
     } else {
       snapshot.to_owned()
     };
     let filepath = self
-      .cache
-      .path()
-      .to_path_buf()
+      .hf_home()
       .join(repo.path())
       .join("snapshots")
-      .join(snapshot)
+      .join(snapshot.clone())
       .join(filename);
     if filepath.exists() {
-      let local_model_file = filepath.try_into()?;
+      let size = match fs::metadata(&filepath) {
+        Ok(metadata) => Some(metadata.len()),
+        Err(_) => None,
+      };
+      let local_model_file = LocalModelFile::new(
+        self.hf_home(),
+        repo.clone(),
+        filename.to_string(),
+        snapshot.to_string(),
+        size,
+      );
       Ok(Some(local_model_file))
     } else {
       Ok(None)

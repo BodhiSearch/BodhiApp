@@ -85,7 +85,8 @@ async fn main_server(serve: Serve) -> anyhow::Result<()> {
     shutdown,
     ready_rx: _ready_rx,
   } = build_server_handle(serve.clone().into())?;
-  let mut ctx = SharedContextRw::new_shared_rw(None).await?;
+  let ctx = SharedContextRw::new_shared_rw(None).await?;
+  let ctx = Arc::new(ctx);
   let service = AppService::default();
   let app = build_routes(ctx.clone(), Arc::new(service));
   let server_async = tokio::spawn(async move {

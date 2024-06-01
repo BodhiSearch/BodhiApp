@@ -1,63 +1,71 @@
-use anyhow::Ok;
-use llama_server_bindings::{BodhiServerContext, GptParams};
+use async_openai::types::CreateChatCompletionRequest;
+use llama_server_bindings::{BodhiServerContext, Callback, GptParams};
 use mockall::automock;
 use std::future::Future;
 use std::{sync::Arc, time::Duration};
+use thiserror::Error;
+use tokio::sync::watch::error;
 use tokio::sync::RwLock;
 
-#[derive(Debug, Clone)]
+use crate::objs::{Alias, LocalModelFile};
+
+#[derive(Debug)]
 pub struct SharedContextRw {
   // TODO: remove pub access
-  pub ctx: Arc<RwLock<Option<BodhiServerContext>>>,
+  pub ctx: RwLock<Option<BodhiServerContext>>,
 }
 
+#[derive(Debug, Error)]
+pub enum ContextError {
+  #[error("{0}")]
+  LlamaCpp(#[from] anyhow::Error),
+}
+
+pub type Result<T> = std::result::Result<T, ContextError>;
+
+#[async_trait::async_trait]
 pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
-  fn reload(
+  async fn reload(&self, gpt_params: Option<GptParams>) -> Result<()>;
+
+  async fn try_stop(&self) -> Result<()>;
+
+  async fn has_model(&self) -> bool;
+
+  async fn get_gpt_params(&self) -> Result<Option<GptParams>>;
+
+  #[allow(clippy::ptr_arg)]
+  async fn chat_completions(
     &self,
-    gpt_params: Option<GptParams>,
-  ) -> impl Future<Output = anyhow::Result<()>> + Send
-  where
-    Self: Sized;
-
-  fn try_stop(&mut self) -> impl Future<Output = anyhow::Result<()>> + Send
-  where
-    Self: Sized;
-
-  fn has_model(&self) -> impl Future<Output = anyhow::Result<bool>> + Send
-  where
-    Self: Sized;
-
-  fn get_gpt_params(&self) -> impl Future<Output = anyhow::Result<Option<GptParams>>> + Send
-  where
-    Self: Sized;
+    request: CreateChatCompletionRequest,
+    alias: Alias,
+    model_file: LocalModelFile,
+    tokenizer_file: LocalModelFile,
+    callback: Option<Callback>,
+    userdata: &String,
+  ) -> Result<()>;
 }
 
 impl SharedContextRw {
-  pub async fn new_shared_rw(gpt_params: Option<GptParams>) -> anyhow::Result<Self>
+  pub async fn new_shared_rw(gpt_params: Option<GptParams>) -> Result<Self>
   where
     Self: Sized,
   {
     let ctx = SharedContextRw {
-      ctx: Arc::new(RwLock::new(None)),
+      ctx: RwLock::new(None),
     };
     ctx.reload(gpt_params).await?;
     Ok(ctx)
   }
 }
 
+#[async_trait::async_trait]
 impl SharedContextRwFn for SharedContextRw {
-  async fn has_model(&self) -> anyhow::Result<bool>
-  where
-    Self: Sized,
-  {
+  async fn has_model(&self) -> bool {
     let lock = self.ctx.read().await;
-    Ok(lock.as_ref().is_some())
+    lock.as_ref().is_some()
   }
 
-  async fn reload(&self, gpt_params: Option<GptParams>) -> anyhow::Result<()>
-  where
-    Self: Sized,
-  {
+  async fn reload(&self, gpt_params: Option<GptParams>) -> crate::shared_rw::Result<()> {
     let mut lock = self.ctx.write().await;
     try_stop_with(&mut lock)?;
     let Some(gpt_params) = gpt_params else {
@@ -77,19 +85,13 @@ impl SharedContextRwFn for SharedContextRw {
     Ok(())
   }
 
-  async fn try_stop(&mut self) -> anyhow::Result<()>
-  where
-    Self: Sized,
-  {
+  async fn try_stop(&self) -> crate::shared_rw::Result<()> {
     let mut lock = self.ctx.write().await;
     try_stop_with(&mut lock)?;
     Ok(())
   }
 
-  async fn get_gpt_params(&self) -> anyhow::Result<Option<GptParams>>
-  where
-    Self: Sized,
-  {
+  async fn get_gpt_params(&self) -> crate::shared_rw::Result<Option<GptParams>> {
     let lock = self.ctx.read().await;
     if let Some(opt) = lock.as_ref() {
       Ok(Some(opt.gpt_params.clone()))
@@ -97,14 +99,28 @@ impl SharedContextRwFn for SharedContextRw {
       Ok(None)
     }
   }
+
+  async fn chat_completions(
+    &self,
+    request: CreateChatCompletionRequest,
+    alias: Alias,
+    model_file: LocalModelFile,
+    tokenizer_file: LocalModelFile,
+    callback: Option<Callback>,
+    userdata: &String,
+  ) -> crate::shared_rw::Result<()> {
+    todo!()
+  }
 }
 
 fn try_stop_with(
   lock: &mut tokio::sync::RwLockWriteGuard<'_, Option<BodhiServerContext>>,
-) -> Result<(), anyhow::Error> {
+) -> Result<()> {
   let opt = lock.take();
   if let Some(mut ctx) = opt {
-    ctx.stop()?;
+    ctx
+      .stop()
+      .map_err(|err: anyhow::Error| ContextError::LlamaCpp(err))?;
     drop(ctx);
   };
   Ok(())
@@ -139,7 +155,7 @@ mod test {
   #[tokio::test]
   async fn test_shared_rw_new() -> anyhow::Result<()> {
     let ctx = SharedContextRw::new_shared_rw(None).await?;
-    assert!(!ctx.has_model().await?);
+    assert!(!ctx.has_model().await);
     Ok(())
   }
 
@@ -155,8 +171,8 @@ mod test {
       model: model_file,
       ..GptParams::default()
     };
-    let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    assert!(ctx.has_model().await?);
+    let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    assert!(ctx.has_model().await);
     ctx.try_stop().await?;
     Ok(())
   }
@@ -198,7 +214,7 @@ mod test {
     };
     let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     ctx.try_stop().await?;
-    assert!(!ctx.has_model().await?);
+    assert!(!ctx.has_model().await);
     Ok(())
   }
 
@@ -267,5 +283,10 @@ mod test {
         .expect("content does not exists")
     );
     Ok(())
+  }
+
+  #[rstest]
+  fn test_shared_rw_loaded_model_same_as_alias() -> anyhow::Result<()> {
+    todo!()
   }
 }
