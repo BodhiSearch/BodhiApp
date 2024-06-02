@@ -8,9 +8,20 @@ use crate::{
 };
 use anyhow::bail;
 use async_openai::types::CreateChatCompletionRequest;
+use axum::async_trait;
 use llama_server_bindings::Callback;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
+
+#[cfg_attr(test, mockall::automock)]
+#[async_trait]
+pub trait RouterStateFn: Send + Sync {
+  async fn chat_completions(
+    &self,
+    request: CreateChatCompletionRequest,
+    userdata: Sender<String>,
+  ) -> crate::oai::Result<()>;
+}
 
 #[derive(Debug, Clone)]
 pub struct RouterState {
@@ -24,18 +35,9 @@ impl RouterState {
   }
 }
 
-impl RouterState {
-  pub async fn try_stop(&self) -> crate::error::Result<()> {
-    self
-      .ctx
-      .try_stop()
-      .await
-      // TODO: fix the error hierarchy
-      .map_err(|err| AppError::Anyhow(anyhow::anyhow!(err.to_string())))?;
-    Ok(())
-  }
-
-  pub async fn chat_completions(
+#[async_trait]
+impl RouterStateFn for RouterState {
+  async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
     userdata: Sender<String>,
@@ -72,6 +74,18 @@ impl RouterState {
       .chat_completions(request, model_file, tokenizer_file, userdata)
       .await
       .map_err(OpenAIApiError::ContextError)?;
+    Ok(())
+  }
+}
+
+impl RouterState {
+  pub async fn try_stop(&self) -> crate::error::Result<()> {
+    self
+      .ctx
+      .try_stop()
+      .await
+      // TODO: fix the error hierarchy
+      .map_err(|err| AppError::Anyhow(anyhow::anyhow!(err.to_string())))?;
     Ok(())
   }
 
@@ -153,15 +167,10 @@ impl RouterState {
 mod test {
   use super::RouterState;
   use crate::{
-    bindings::{disable_llama_log, llama_server_disable_logging},
-    oai::ApiError,
-    objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
-    shared_rw::ContextError,
-    test_utils::{
+    bindings::{disable_llama_log, llama_server_disable_logging}, oai::ApiError, objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON}, server::RouterStateFn, shared_rw::ContextError, test_utils::{
       app_service_stub, init_test_tracing, test_callback, test_channel, AppServiceTuple,
       MockAppService, MockSharedContext, ResponseTestExt,
-    },
-    Repo, SharedContextRw, SharedContextRwFn,
+    }, Repo, SharedContextRw, SharedContextRwFn
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;

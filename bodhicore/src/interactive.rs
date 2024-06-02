@@ -1,6 +1,6 @@
 use crate::error::AppError;
 use crate::objs::Alias;
-use crate::server::RouterState;
+use crate::server::{RouterState, RouterStateFn};
 use crate::service::AppServiceFn;
 use crate::{AppService, SharedContextRw};
 use async_openai::types::{

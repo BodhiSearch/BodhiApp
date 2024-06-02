@@ -1,6 +1,6 @@
 use super::{
   router_state::RouterState,
-  routes_chat::llm_router,
+  routes_chat::chat_completions_handler,
   routes_models::ui_models_handler,
   routes_ui::{
     ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
@@ -48,7 +48,7 @@ pub fn build_routes(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppSer
   Router::new()
     .route("/ping", get(|| async { "pong" }))
     .nest("/api/ui", api_router)
-    .merge(llm_router())
+    .route("/v1/chat/completions", post(chat_completions_handler))
     .layer(
       CorsLayer::new()
         .allow_origin(Any)
@@ -57,5 +57,5 @@ pub fn build_routes(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppSer
         .allow_credentials(false),
     )
     .layer(TraceLayer::new_for_http())
-    .with_state(state)
+    .with_state(Arc::new(state))
 }

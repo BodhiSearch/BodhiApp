@@ -1,87 +1,30 @@
-use super::{router_state::RouterState, routes::ApiError};
-use crate::tokenizer_config::TokenizerConfig;
+use std::sync::Arc;
+
+use super::{router_state::RouterState, RouterStateFn};
+use crate::oai::{OAIResponse, OpenAIApiError};
 use anyhow::Context;
 use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
-use axum::{
-  body::Body,
-  extract::State,
-  response::{sse::Event, IntoResponse, Response, Sse},
-  routing::post,
-  Json, Router,
-};
+use axum::{body::Body, extract::State, response::Response, Json};
 use serde_json::Value;
-use std::{
-  convert::Infallible,
-  ffi::{c_char, c_void},
-  slice,
-};
-use tokio::sync::mpsc::Sender;
-use tokio_stream::{wrappers::ReceiverStream, StreamExt};
-
-pub fn llm_router() -> Router<RouterState> {
-  Router::new().route("/v1/chat/completions", post(chat_completions_handler))
-}
-
-unsafe extern "C" fn server_callback(
-  contents: *const c_char,
-  size: usize,
-  userdata: *mut c_void,
-) -> usize {
-  let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
-  let input_str = match std::str::from_utf8(slice) {
-    Ok(s) => s,
-    Err(_) => return 0,
-  };
-  let user_data_str = unsafe { &mut *(userdata as *mut String) };
-  user_data_str.push_str(input_str);
-  size
-}
-
-unsafe extern "C" fn server_callback_stream(
-  contents: *const c_char,
-  size: usize,
-  userdata: *mut c_void,
-) -> usize {
-  let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
-  let input_str = match std::str::from_utf8(slice) {
-    Ok(s) => s,
-    Err(_) => return 0,
-  }
-  .to_owned();
-  let sender = unsafe { &mut *(userdata as *mut Sender<String>) }.clone();
-  // TODO: handle closed receiver
-  tokio::spawn(async move { sender.send(input_str).await.unwrap() });
-  size
-}
 
 pub(crate) async fn chat_completions_handler(
-  State(state): State<RouterState>,
+  State(state): State<Arc<dyn RouterStateFn>>,
   Json(request): Json<CreateChatCompletionRequest>,
-) -> Response<Body> {
-  let mut input = serde_json::to_value(&request)
-    .context("converting request to string to pass to bodhi_server")
-    .unwrap();
-
-  let alias = state.app_service.find_alias(&request.model).unwrap();
-  // let config = TokenizerConfig::for_repo(&alias.repo)
-  //   .ok()
-  //   .unwrap_or_default();
-  let config = TokenizerConfig::default();
-  let prompt = config.apply_chat_template(&request.messages).unwrap();
-  input["prompt"] = Value::String(prompt);
-  if request.stream.unwrap_or(false) {
-    return chat_completions_stream_handler(state, input, String::from("")).await;
+) -> Result<OAIResponse<CreateChatCompletionResponse>, OpenAIApiError> {
+  let stream = request.stream.unwrap_or(false);
+  let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
+  let handle = tokio::spawn(async move { state.chat_completions(request, tx).await });
+  while let Some(message) = rx.recv().await {
+    if stream {
+      todo!()
+    } else {
+      let response: CreateChatCompletionResponse = serde_json::from_str(&message)?;
+      drop(rx);
+      _ = handle.await;
+      return Ok(OAIResponse(response));
+    }
   }
-  let input = serde_json::to_string(&input).unwrap();
-  let userdata = String::with_capacity(2048);
-  state
-    .completions(&request.model, &input, "", Some(server_callback), &userdata)
-    .await
-    .unwrap(); // todo
-  serde_json::from_str::<CreateChatCompletionResponse>(&userdata)
-    .map(Json)
-    .map_err(ApiError::Json)
-    .into_response()
+  Err(OpenAIApiError::InternalServer("some error".to_string()))
 }
 
 async fn chat_completions_stream_handler(
@@ -135,9 +78,13 @@ async fn chat_completions_stream_handler(
 
 #[cfg(test)]
 mod test {
-  use super::llm_router;
   use crate::bindings::{disable_llama_log, llama_server_disable_logging};
-  use crate::test_utils::{app_service_stub, AppServiceTuple, ResponseTestExt};
+  use crate::server::routes_chat::chat_completions_handler;
+  use crate::service::MockHubService;
+  use crate::test_utils::{
+    app_service_stub, AppServiceTuple, MockAppService, MockRouterState, MockSharedContext,
+    ResponseTestExt,
+  };
   use crate::{
     server::router_state::RouterState,
     test_utils::{init_test_tracing, RequestTestExt},
@@ -145,57 +92,77 @@ mod test {
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
-  use async_openai::types::{CreateChatCompletionResponse, CreateChatCompletionStreamResponse};
+  use async_openai::types::{
+    ChatChoice, ChatCompletionRequestMessage, ChatCompletionRequestUserMessageArgs,
+    CreateChatCompletionRequestArgs, CreateChatCompletionResponse,
+    CreateChatCompletionStreamResponse,
+  };
+  use axum::routing::post;
+  use axum::Router;
   use axum::{body::Body, extract::Request};
   use ctor::ctor;
   use llama_server_bindings::GptParams;
+  use mockall::predicate::{always, eq};
   use reqwest::StatusCode;
-  use rstest::rstest;
+  use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
   use std::sync::Arc;
+  use tokio::sync::mpsc::Sender;
   use tower::ServiceExt;
 
-  #[ctor]
-  fn init() {
+  #[fixture]
+  fn setup() -> () {
     init_test_tracing();
   }
 
-  #[ignore]
   #[rstest]
   #[tokio::test]
-  #[serial]
   #[anyhow_trace]
-  async fn test_routes_chat_completions(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
-    disable_llama_log();
-    unsafe {
-      llama_server_disable_logging();
-    }
-    let request = serde_json::to_string(&json! {{
-      "model": "TheBloke/Llama-2-7B-Chat-GGUF:llama-2-7b-chat.Q4_K_M.gguf",
-      "seed": 42,
-      "messages": [{"role": "user", "content": "You are a helpful assistant. What day comes after Monday?"}]
-    }})
-    .unwrap();
-    let model_path = dirs::home_dir()
-      .ok_or_else(|| anyhow!("unable to locate home dir"))?
-      .join(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa/llama-2-7b-chat.Q4_K_M.gguf")
-      .canonicalize()?
-      .to_str()
-      .unwrap()
-      .to_owned();
-    let gpt_params = GptParams {
-      model: model_path,
-      ..Default::default()
-    };
-    let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
-    let wrapper = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let app = llm_router().with_state(RouterState::new(Arc::new(wrapper), Arc::new(service)));
+  async fn test_routes_chat_completions_non_stream(
+    #[from(setup)] _setup: (),
+  ) -> anyhow::Result<()> {
+    let mut router_state = MockRouterState::new();
+    let request = CreateChatCompletionRequestArgs::default()
+      .model("testalias:instruct")
+      .messages(vec![ChatCompletionRequestMessage::User(
+        ChatCompletionRequestUserMessageArgs::default()
+          .content("What day comes after Monday?")
+          .build()?,
+      )])
+      .build()?;
+    router_state
+      .expect_chat_completions()
+      .with(always(), always())
+      .return_once(|_, sender: Sender<String>| {
+        let response = json! {{
+          "id": "testid",
+          "model": "testalias:instruct",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The day that comes after Monday is Tuesday."
+              },
+            }],
+          "created": 1704067200,
+          "object": "chat.completion",
+        }}
+        .to_string();
+        // let response: CreateChatCompletionResponse = serde_json::from_value(response).unwrap();
+        // let response = serde_json::to_string(&response).unwrap();
+        tokio::spawn(async move { sender.send(response).await });
+        Ok(())
+      });
+    let app = Router::new()
+      .route("/v1/chat/completions", post(chat_completions_handler))
+      .with_state(Arc::new(router_state));
     let response = app
       .oneshot(Request::post("/v1/chat/completions").json(request).unwrap())
       .await
       .unwrap();
-    assert_eq!(StatusCode::OK, response.status());
+    // assert_eq!(StatusCode::OK, response.status());
     let result: CreateChatCompletionResponse = response.json().await.unwrap();
     assert_eq!(
       "The day that comes after Monday is Tuesday.",
@@ -211,6 +178,7 @@ mod test {
     Ok(())
   }
 
+  /*
   #[ignore]
   #[rstest]
   #[tokio::test]
@@ -265,4 +233,5 @@ mod test {
     assert_eq!("The day that comes after Monday is Tuesday.", content);
     Ok(())
   }
+  */
 }

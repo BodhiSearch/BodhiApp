@@ -10,7 +10,9 @@ pub enum OpenAIApiError {
   #[error("{0}")]
   InternalServer(String),
   #[error(transparent)]
-  ContextError(ContextError),
+  ContextError(#[from] ContextError),
+  #[error(transparent)]
+  SerdeJson(#[from] serde_json::Error),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -42,6 +44,7 @@ impl From<&OpenAIApiError> for ApiError {
       },
       OpenAIApiError::ContextError(err) => ApiError::internal_server(err.to_string()),
       OpenAIApiError::InternalServer(err) => ApiError::internal_server(err.to_string()),
+      OpenAIApiError::SerdeJson(err) => ApiError::internal_server(err.to_string()),
     }
   }
 }
@@ -50,9 +53,9 @@ impl From<&OpenAIApiError> for StatusCode {
   fn from(value: &OpenAIApiError) -> Self {
     match value {
       OpenAIApiError::ModelNotFound(_) => StatusCode::NOT_FOUND,
-      OpenAIApiError::ContextError(_) | OpenAIApiError::InternalServer(_) => {
-        StatusCode::INTERNAL_SERVER_ERROR
-      }
+      OpenAIApiError::ContextError(_)
+      | OpenAIApiError::InternalServer(_)
+      | OpenAIApiError::SerdeJson(_) => StatusCode::INTERNAL_SERVER_ERROR,
     }
   }
 }
@@ -64,3 +67,16 @@ impl IntoResponse for OpenAIApiError {
 }
 
 pub type Result<T> = std::result::Result<T, OpenAIApiError>;
+
+pub struct OAIResponse<T>(pub T)
+where
+  T: serde::Serialize;
+
+impl<T> IntoResponse for OAIResponse<T>
+where
+  T: serde::Serialize,
+{
+  fn into_response(self) -> axum::response::Response {
+    (StatusCode::OK, Json(self.0)).into_response()
+  }
+}

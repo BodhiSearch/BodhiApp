@@ -69,9 +69,7 @@ pub struct Chat {
   pub created_at: chrono::DateTime<Utc>,
 }
 
-pub(crate) async fn ui_chats_handler(
-  State(_state): State<RouterState>,
-) -> Result<Json<Vec<ChatPreview>>, ApiError> {
+pub(crate) async fn ui_chats_handler() -> Result<Json<Vec<ChatPreview>>, ApiError> {
   let chats = _ui_chats_handler(get_chats_dir()?)?;
   Ok(Json(chats))
 }
