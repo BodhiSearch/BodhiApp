@@ -18,7 +18,7 @@ use std::{
 use tokio::sync::mpsc::Sender;
 use tokio_stream::{wrappers::ReceiverStream, StreamExt};
 
-pub(crate) fn llm_router() -> Router<RouterState> {
+pub fn llm_router() -> Router<RouterState> {
   Router::new().route("/v1/chat/completions", post(chat_completions_handler))
 }
 

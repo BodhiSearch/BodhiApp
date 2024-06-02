@@ -1,18 +1,19 @@
 use crate::{
+  error::AppError,
   oai::OpenAIApiError,
   objs::{REFS_MAIN, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
-  shared_rw::{SharedContextRw, SharedContextRwFn},
+  shared_rw::SharedContextRwFn,
   Repo,
 };
-use anyhow::{anyhow, bail};
+use anyhow::bail;
 use async_openai::types::CreateChatCompletionRequest;
-use futures_util::TryFutureExt;
-use llama_server_bindings::{Callback, GptParams};
+use llama_server_bindings::Callback;
 use std::sync::Arc;
+use tokio::sync::mpsc::Sender;
 
 #[derive(Debug, Clone)]
-pub(crate) struct RouterState {
+pub struct RouterState {
   pub(crate) ctx: Arc<dyn SharedContextRwFn>,
   pub(crate) app_service: Arc<dyn AppServiceFn>,
 }
@@ -24,11 +25,20 @@ impl RouterState {
 }
 
 impl RouterState {
+  pub async fn try_stop(&self) -> crate::error::Result<()> {
+    self
+      .ctx
+      .try_stop()
+      .await
+      // TODO: fix the error hierarchy
+      .map_err(|err| AppError::Anyhow(anyhow::anyhow!(err.to_string())))?;
+    Ok(())
+  }
+
   pub async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    callback: Option<Callback>,
-    userdata: &String,
+    userdata: Sender<String>,
   ) -> crate::oai::Result<()> {
     let Some(alias) = self.app_service.find_alias(&request.model) else {
       return Err(crate::oai::OpenAIApiError::ModelNotFound(
@@ -59,75 +69,11 @@ impl RouterState {
     };
     self
       .ctx
-      .chat_completions(request, model_file, tokenizer_file, callback, userdata)
+      .chat_completions(request, model_file, tokenizer_file, userdata)
       .await
       .map_err(OpenAIApiError::ContextError)?;
     Ok(())
   }
-  //   let Some(alias) = self.app_service.find_alias(&request.model) else {
-  //     bail!("model alias not found: '{}'", request.model)
-  //   };
-  //   let Some(local_model) =
-  //     self
-  //       .app_service
-  //       .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
-  //   else {
-  //     bail!("local model not found: {:?}", alias);
-  //   };
-  //   let lock = self.ctx.read().await;
-  //   let ctx = lock.as_ref();
-  //   let local_model_path = local_model.path().to_string_lossy().into_owned();
-  //   match ctx {
-  //     Some(ctx) => {
-  //       let gpt_params = ctx.gpt_params.clone();
-  //       let loaded_model = gpt_params.model.clone();
-  //       if loaded_model.eq(&local_model_path) {
-  //         ctx.completions(
-  //           input,
-  //           chat_template,
-  //           callback,
-  //           userdata as *const _ as *mut _,
-  //         )
-  //       } else {
-  //         tracing::info!(
-  //           loaded_model,
-  //           ?local_model,
-  //           "requested model not loaded, loading model"
-  //         );
-  //         drop(lock);
-  //         let new_gpt_params = GptParams {
-  //           model: local_model_path,
-  //           ..gpt_params
-  //         };
-  //         self.ctx.reload(Some(new_gpt_params)).await?;
-  //         let lock = self.ctx.read().await;
-  //         let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
-  //         ctx.completions(
-  //           input,
-  //           chat_template,
-  //           callback,
-  //           userdata as *const _ as *mut _,
-  //         )
-  //       }
-  //     }
-  //     None => {
-  //       let gpt_params = GptParams {
-  //         model: local_model_path,
-  //         ..Default::default()
-  //       };
-  //       drop(lock);
-  //       self.ctx.reload(Some(gpt_params)).await?;
-  //       let lock = self.ctx.read().await;
-  //       let ctx = lock.as_ref().ok_or(anyhow!("context not present"))?;
-  //       ctx.completions(
-  //         input,
-  //         chat_template,
-  //         callback,
-  //         userdata as *const _ as *mut _,
-  //       )
-  //     }
-  //   }
-  // }
 
   pub async fn completions(
     &self,
@@ -212,8 +158,8 @@ mod test {
     objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     shared_rw::ContextError,
     test_utils::{
-      app_service_stub, init_test_tracing, test_callback, AppServiceTuple, MockAppService,
-      MockSharedContext, ResponseTestExt,
+      app_service_stub, init_test_tracing, test_callback, test_channel, AppServiceTuple,
+      MockAppService, MockSharedContext, ResponseTestExt,
     },
     Repo, SharedContextRw, SharedContextRwFn,
   };
@@ -223,7 +169,7 @@ mod test {
   use axum::http::StatusCode;
   use axum::response::{IntoResponse, Response};
   use llama_server_bindings::GptParams;
-  use mockall::predicate::eq;
+  use mockall::predicate::{always, eq};
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
@@ -453,7 +399,8 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let result = state.chat_completions(request, None, &String::new()).await;
+    let (tx, _rx) = test_channel();
+    let result = state.chat_completions(request, tx).await;
     assert!(result.is_err());
     let response: Response = result.unwrap_err().into_response();
     assert_eq!(StatusCode::NOT_FOUND, response.status());
@@ -503,14 +450,12 @@ mod test {
         eq(request.clone()),
         eq(LocalModelFile::testalias()),
         eq(LocalModelFile::llama3_tokenizer()),
-        eq(None),
-        eq(String::new()),
+        always(),
       )
-      .return_once(|_, _, _, _, _| Ok(()));
+      .return_once(|_, _, _, _| Ok(()));
     let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
-    state
-      .chat_completions(request, None, &String::new())
-      .await?;
+    let (tx, rs) = test_channel();
+    state.chat_completions(request, tx).await?;
     Ok(())
   }
 
@@ -542,18 +487,18 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
+    let (tx, _rx) = test_channel();
     mock_ctx
       .expect_chat_completions()
       .with(
         eq(request.clone()),
         eq(LocalModelFile::testalias()),
         eq(LocalModelFile::llama3_tokenizer()),
-        eq(None),
-        eq(String::new()),
+        always(),
       )
-      .return_once(|_, _, _, _, _| Err(ContextError::LlamaCpp(anyhow!("context error"))));
+      .return_once(|_, _, _, _| Err(ContextError::LlamaCpp(anyhow!("context error"))));
     let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
-    let result = state.chat_completions(request, None, &String::new()).await;
+    let result = state.chat_completions(request, tx).await;
     assert!(result.is_err());
     let response = result.unwrap_err().into_response();
     assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());

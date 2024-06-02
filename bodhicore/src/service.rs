@@ -795,7 +795,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       Some(21),
     );
-    assert_eq!(3, models.len());
+    assert_eq!(4, models.len());
     assert_eq!(&expected_1, models.first().unwrap());
     Ok(())
   }

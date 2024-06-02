@@ -1,6 +1,8 @@
 use super::routes_ui::ChatError;
+use axum::http::header::CONTENT_TYPE;
 use axum::{
-  http::StatusCode,
+  body::Body,
+  http::{request::Builder, Request, StatusCode},
   response::{IntoResponse, Response},
   Json,
 };
@@ -13,6 +15,22 @@ pub static DEFAULT_PORT: u16 = 1135;
 pub static DEFAULT_PORT_STR: &str = "1135";
 pub static DEFAULT_HOST: &str = "127.0.0.1";
 pub static BODHI_HOME: &str = "BODHI_HOME";
+
+pub trait AxumRequestExt {
+  fn json<T: serde::Serialize>(self, value: T) -> Result<Request<Body>, anyhow::Error>;
+}
+
+impl AxumRequestExt for Builder {
+  fn json<T: serde::Serialize>(
+    self,
+    value: T,
+  ) -> std::result::Result<Request<Body>, anyhow::Error> {
+    let this = self.header(CONTENT_TYPE, "application/json");
+    let content = serde_json::to_string(&value)?;
+    let result = this.body(Body::from(content))?;
+    Ok(result)
+  }
+}
 
 // TODO - have internal log message, and external user message
 #[derive(Debug, Error)]

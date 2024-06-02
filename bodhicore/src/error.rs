@@ -1,4 +1,4 @@
-use crate::{service::DataServiceError, Command};
+use crate::{service::DataServiceError, shared_rw::ContextError, Command};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -28,6 +28,10 @@ filepath: {filepath}
   Anyhow(#[from] anyhow::Error),
   #[error(transparent)]
   Minijina(#[from] minijinja::Error),
+  #[error(transparent)]
+  SerdeJson(#[from] serde_json::Error),
+  // #[error(transparent)]
+  // ContextError(#[from] ContextError),
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;

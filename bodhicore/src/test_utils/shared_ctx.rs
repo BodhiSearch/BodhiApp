@@ -7,6 +7,7 @@ use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{Callback, GptParams};
 use rstest::fixture;
 use std::ffi::c_void;
+use tokio::sync::mpsc::Sender;
 
 #[fixture]
 pub fn shared_context_rw(tinyllama: Alias) -> SharedContextRw {
@@ -43,8 +44,7 @@ mockall::mock! {
       request: CreateChatCompletionRequest,
       model_file: LocalModelFile,
       tokenizer_file: LocalModelFile,
-      callback: Option<Callback>,
-      userdata: &String,
+      userdata: Sender<String>,
     ) -> crate::shared_rw::Result<()>;
   }
 }

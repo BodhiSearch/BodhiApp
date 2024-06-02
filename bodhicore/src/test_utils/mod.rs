@@ -1,5 +1,6 @@
 mod bindings;
 mod bodhi;
+mod common;
 mod envs;
 mod hf;
 mod home;
@@ -12,6 +13,7 @@ mod tracing_test_utils;
 mod unused;
 pub use bindings::*;
 pub use bodhi::*;
+pub use common::*;
 pub use envs::*;
 pub use hf::*;
 pub use home::*;

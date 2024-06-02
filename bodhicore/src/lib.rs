@@ -4,7 +4,6 @@ mod create;
 mod error;
 pub mod home;
 mod interactive;
-mod interactive_route;
 mod list;
 mod objs;
 mod pull;

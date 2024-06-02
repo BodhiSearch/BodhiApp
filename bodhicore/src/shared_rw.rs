@@ -1,12 +1,16 @@
-use crate::objs::{Alias, LocalModelFile};
-use crate::service::DataServiceError;
 #[cfg(not(test))]
 use llama_server_bindings::BodhiServerContext;
 #[cfg(test)]
 use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
+
+use crate::objs::LocalModelFile;
+use crate::service::DataServiceError;
+use tokio::sync::mpsc::Sender;
 use crate::tokenizer_config::TokenizerConfig;
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_bindings::{Callback, GptParams, GptParamsBuilder, GptParamsBuilderError};
+use llama_server_bindings::{GptParams, GptParamsBuilder, GptParamsBuilderError};
+use std::ffi::{c_char, c_void};
+use std::slice;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -34,6 +38,22 @@ pub enum ContextError {
 }
 
 pub type Result<T> = std::result::Result<T, ContextError>;
+unsafe extern "C" fn callback_stream(
+  contents: *const c_char,
+  size: usize,
+  userdata: *mut c_void,
+) -> usize {
+  let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
+  let input_str = match std::str::from_utf8(slice) {
+    Ok(s) => s,
+    Err(_) => return 0,
+  }
+  .to_owned();
+  let sender = unsafe { &mut *(userdata as *mut Sender<String>) }.clone();
+  // TODO: handle closed receiver
+  tokio::spawn(async move { sender.send(input_str).await.unwrap() });
+  size
+}
 
 #[async_trait::async_trait]
 pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
@@ -51,8 +71,7 @@ pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
     request: CreateChatCompletionRequest,
     model_file: LocalModelFile,
     tokenizer_file: LocalModelFile,
-    callback: Option<Callback>,
-    userdata: &String,
+    userdata: Sender<String>,
   ) -> Result<()>;
 }
 
@@ -116,8 +135,7 @@ impl SharedContextRwFn for SharedContextRw {
     request: CreateChatCompletionRequest,
     model_file: LocalModelFile,
     tokenizer_file: LocalModelFile,
-    callback: Option<Callback>,
-    userdata: &String,
+    userdata: Sender<String>,
   ) -> crate::shared_rw::Result<()> {
     let lock = self.ctx.read().await;
     let ctx = lock.as_ref();
@@ -134,7 +152,7 @@ impl SharedContextRwFn for SharedContextRw {
           .ok_or(ContextError::Unreachable(
             "context should not be None".to_string(),
           ))?
-          .completions(&input, "", callback, userdata as *const _ as *mut _)?;
+          .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
         Ok(())
       }
       ModelLoadStrategy::DropAndLoad => {
@@ -146,7 +164,7 @@ impl SharedContextRwFn for SharedContextRw {
         ctx.ok_or(ContextError::Unreachable(
           "context should not be None".to_string(),
         ))?
-        .completions(&input, "", callback, userdata as *const _ as *mut _)?;
+        .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
         Ok(())
       }
       ModelLoadStrategy::Load => {
@@ -160,7 +178,7 @@ impl SharedContextRwFn for SharedContextRw {
         ctx.ok_or(ContextError::Unreachable(
           "context should not be None".to_string(),
         ))?
-        .completions(&input, "", callback, userdata as *const _ as *mut _)?;
+        .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
         Ok(())
       },
     }
@@ -206,7 +224,7 @@ mod test {
   use crate::{
     objs::LocalModelFile,
     shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
-    test_utils::{hf_cache, MockBodhiServerContext},
+    test_utils::{test_channel, hf_cache, MockBodhiServerContext},
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -219,8 +237,7 @@ mod test {
   use serde_json::json;
   use std::{
     ffi::{c_char, c_void},
-    path::PathBuf,
-    slice,
+    path::PathBuf, slice,
   };
   use tempfile::TempDir;
   use serial_test::serial;
@@ -420,7 +437,7 @@ mod test {
     mock.expect_start_event_loop().with().return_once(|| Ok(()));
     mock
       .expect_completions()
-      .with(eq(expected_input), eq(""), eq(None), always())
+      .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
     let gpt_params = GptParamsBuilder::default().model(model_filepath).build()?;
     let gpt_params_cl = gpt_params.clone();
@@ -434,9 +451,9 @@ mod test {
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
-    let userdata = String::new();
+    let (tx, _rx) = test_channel();
     shared_ctx
-      .chat_completions(request, model_file, tokenizer_file, None, &userdata)
+      .chat_completions(request, model_file, tokenizer_file, tx)
       .await?;
     Ok(())
   }
@@ -465,7 +482,7 @@ mod test {
     mock.expect_start_event_loop().with().return_once(|| Ok(()));
     mock
       .expect_completions()
-      .with(eq(expected_input), eq(""), eq(None), always())
+      .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
 
     let ctx = MockBodhiServerContext::new_context();
@@ -476,9 +493,9 @@ mod test {
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
-    let userdata = String::new();
+    let (tx, _rx) = test_channel();
     shared_ctx
-      .chat_completions(request, model_file, tokenizer_file, None, &userdata)
+      .chat_completions(request, model_file, tokenizer_file, tx)
       .await?;
     Ok(())
   }
@@ -507,7 +524,7 @@ mod test {
       "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"fakemodel:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
     loaded_ctx
       .expect_completions()
-      .with(eq(expected_input), eq(""), eq(None), always())
+      .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
     let ctx = MockBodhiServerContext::new_context();
     ctx.expect().with(eq(loaded_params.clone())).return_once(move |_| Ok(loaded_ctx));
@@ -534,9 +551,9 @@ mod test {
       "model": "fakemodel:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
-    let userdata = String::new();
+    let (tx, _rx) = test_channel();
     shared_ctx
-      .chat_completions(request, loaded_model, tokenizer_file, None, &userdata)
+      .chat_completions(request, loaded_model, tokenizer_file, tx)
       .await?;
     Ok(())
   }}
