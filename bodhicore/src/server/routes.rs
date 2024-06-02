@@ -7,34 +7,14 @@ use super::{
     ui_chats_handler,
   },
 };
-use crate::{service::AppServiceFn, shared_rw::SharedContextRw, SharedContextRwFn};
+use crate::{service::AppServiceFn, SharedContextRwFn};
 use axum::{
-  http::StatusCode,
-  response::IntoResponse,
   routing::{delete, get, post},
   Router,
 };
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-
-// TODO: serialize error in OpenAI format
-#[derive(Debug)]
-pub(crate) enum ApiError {
-  Json(serde_json::Error),
-}
-
-impl IntoResponse for ApiError {
-  fn into_response(self) -> axum::response::Response {
-    match self {
-      ApiError::Json(e) => (
-        StatusCode::INTERNAL_SERVER_ERROR,
-        format!("Error while marshalling response: {e}"),
-      )
-        .into_response(),
-    }
-  }
-}
 
 pub fn build_routes(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppServiceFn>) -> Router {
   let state = RouterState::new(ctx, app_service);

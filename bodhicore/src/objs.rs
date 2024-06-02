@@ -1,8 +1,5 @@
 use crate::{
-  error::AppError,
-  service::{AppServiceFn, DataServiceError},
-  tokenizer_config::TokenizerConfig,
-  utils::to_safe_filename,
+  service::DataServiceError, tokenizer_config::TokenizerConfig, utils::to_safe_filename,
 };
 use clap::Args;
 use derive_new::new;
@@ -448,7 +445,7 @@ default: -1 (unbounded)"#
 #[cfg(test)]
 mod test {
   use super::{Alias, ChatTemplate, ChatTemplateId, LocalModelFile, RemoteModel, Repo};
-  use crate::test_utils::{hf_cache, temp_hf_home};
+  use crate::test_utils::hf_cache;
   use anyhow_trace::anyhow_trace;
   use prettytable::{Cell, Row};
   use rstest::rstest;

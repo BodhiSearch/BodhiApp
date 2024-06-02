@@ -1,18 +1,8 @@
-use super::tinyllama;
-use crate::{
-  objs::{Alias, *},
-  SharedContextRw, SharedContextRwFn,
-};
+use crate::{objs::*, SharedContextRwFn};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{Callback, GptParams};
-use rstest::fixture;
 use std::ffi::c_void;
 use tokio::sync::mpsc::Sender;
-
-#[fixture]
-pub fn shared_context_rw(tinyllama: Alias) -> SharedContextRw {
-  todo!()
-}
 
 mockall::mock! {
   pub SharedContext {}

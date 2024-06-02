@@ -1,6 +1,7 @@
+use crate::{server::RouterStateFn, service::AppServiceFn};
 use async_openai::types::CreateChatCompletionRequest;
+use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
-use crate::server::RouterStateFn;
 
 mockall::mock! {
   pub RouterState {
@@ -8,6 +9,8 @@ mockall::mock! {
 
   #[async_trait::async_trait]
   impl RouterStateFn for RouterState {
+    fn app_service(&self) -> Arc<dyn AppServiceFn> ;
+
     async fn chat_completions(
       &self,
       request: CreateChatCompletionRequest,

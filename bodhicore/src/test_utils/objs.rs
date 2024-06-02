@@ -7,7 +7,6 @@ use crate::{
   },
   CreateCommand,
 };
-use rstest::fixture;
 use std::path::PathBuf;
 
 impl Default for ChatTemplate {
@@ -199,9 +198,4 @@ impl Alias {
       GptContextParams::default(),
     )
   }
-}
-
-#[fixture]
-pub fn tinyllama() -> Alias {
-  Alias::tinyllama()
 }

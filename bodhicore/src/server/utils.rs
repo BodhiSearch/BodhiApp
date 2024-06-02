@@ -38,8 +38,6 @@ pub(crate) enum ApiError {
   #[error("{0}")]
   ServerError(String),
   #[error("{0}")]
-  BadRequest(String),
-  #[error("{0}")]
   NotFound(String),
 }
 
@@ -59,13 +57,11 @@ impl IntoResponse for ApiError {
       ApiError::NotFound(error) => {
         (StatusCode::NOT_FOUND, Json(ApiErrorResponse { error })).into_response()
       }
-      ApiError::BadRequest(error) => {
-        (StatusCode::BAD_GATEWAY, Json(ApiErrorResponse { error })).into_response()
-      }
     }
   }
 }
 
+#[allow(unused)]
 pub fn port_from_env_vars(port: Result<String, env::VarError>) -> u16 {
   match port {
     Ok(port) => match port.parse::<u16>() {

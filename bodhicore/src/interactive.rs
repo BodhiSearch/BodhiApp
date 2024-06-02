@@ -118,7 +118,7 @@ impl Interactive {
         } else {
           message.as_ref()
         };
-        let result = serde_json::from_str::<CreateChatCompletionStreamResponse>(&message)?;
+        let result = serde_json::from_str::<CreateChatCompletionStreamResponse>(message)?;
         let delta = result.choices[0]
           .delta
           .content

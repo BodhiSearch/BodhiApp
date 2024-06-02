@@ -67,16 +67,3 @@ impl IntoResponse for OpenAIApiError {
 }
 
 pub type Result<T> = std::result::Result<T, OpenAIApiError>;
-
-pub struct OAIResponse<T>(pub T)
-where
-  T: serde::Serialize;
-
-impl<T> IntoResponse for OAIResponse<T>
-where
-  T: serde::Serialize,
-{
-  fn into_response(self) -> axum::response::Response {
-    (StatusCode::OK, Json(self.0)).into_response()
-  }
-}

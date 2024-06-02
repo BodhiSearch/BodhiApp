@@ -1,22 +1,13 @@
-use super::router_state::RouterState;
-use super::utils;
-use super::utils::get_chats_dir;
-use super::utils::ApiError;
-use super::utils::HomeDirError;
-use axum::extract::Path as UrlPath;
-use axum::extract::State;
-use axum::response::Json;
-use chrono::serde::ts_milliseconds;
-use chrono::Utc;
+use super::utils::{self, get_chats_dir, ApiError, HomeDirError};
+use axum::{extract::Path as UrlPath, response::Json};
+use chrono::{serde::ts_milliseconds, Utc};
 use regex::Regex;
-use serde::Deserialize;
-use serde::Serialize;
-use std::fs;
-use std::fs::File;
-use std::io;
-use std::io::BufReader;
-use std::path::Path;
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use std::{
+  fs::{self, File},
+  io::{self, BufReader},
+  path::{Path, PathBuf},
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]

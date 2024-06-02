@@ -358,7 +358,7 @@ impl HubService for HfHubService {
         .to_path_buf()
         .join(repo.path())
         .join(snapshot);
-      std::fs::read_to_string(refs_file.clone()).map_err(|err| {
+      std::fs::read_to_string(refs_file.clone()).map_err(|_err| {
         let dirname = refs_file
           .parent()
           .map(|f| f.display().to_string())

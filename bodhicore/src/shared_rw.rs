@@ -313,7 +313,7 @@ mod test {
       model: model_file,
       ..GptParams::default()
     };
-    let mut ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     ctx.try_stop().await?;
     assert!(!ctx.has_model().await);
     Ok(())

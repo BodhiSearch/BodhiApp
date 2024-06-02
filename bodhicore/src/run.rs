@@ -1,9 +1,4 @@
-use crate::{
-  error::AppError,
-  interactive::{launch_interactive, Interactive},
-  service::AppServiceFn,
-  Command,
-};
+use crate::{error::AppError, interactive::launch_interactive, service::AppServiceFn, Command};
 
 pub enum RunCommand {
   WithAlias { alias: String },

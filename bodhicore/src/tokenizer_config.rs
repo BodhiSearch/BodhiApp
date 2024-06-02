@@ -59,15 +59,6 @@ impl<'a> From<&'a ChatCompletionRequestMessage> for ChatMessage {
   }
 }
 
-impl ChatMessage {
-  pub fn new(role: String, content: String) -> Self {
-    Self {
-      role: Some(role),
-      content: Some(content),
-    }
-  }
-}
-
 #[derive(Clone, Serialize, Deserialize, Default)]
 pub(crate) struct ChatTemplateInputs {
   messages: Vec<ChatMessage>,
