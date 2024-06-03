@@ -1,8 +1,7 @@
+use super::{gpt_params::GptContextParams, ChatTemplate, OAIRequestParams, Repo};
 use derive_new::new;
 use prettytable::Row;
 use serde::Deserialize;
-
-use super::{gpt_params::GptContextParams, ChatTemplate, OAIRequestParams, Repo};
 
 #[allow(clippy::too_many_arguments)]
 #[derive(Debug, Deserialize, PartialEq, Clone, PartialOrd, new)]

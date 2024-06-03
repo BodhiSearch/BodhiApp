@@ -1,5 +1,4 @@
-use super::Repo;
-use crate::service::DataServiceError;
+use super::{ObjError, Repo};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use strum::{AsRefStr, EnumIter};
@@ -42,7 +41,7 @@ pub enum ChatTemplate {
 }
 
 impl TryFrom<ChatTemplate> for Repo {
-  type Error = DataServiceError;
+  type Error = ObjError;
 
   fn try_from(value: ChatTemplate) -> Result<Self, Self::Error> {
     let repo = match value {

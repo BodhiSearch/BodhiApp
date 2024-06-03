@@ -18,7 +18,7 @@ pub struct Repo {
 }
 
 impl Repo {
-  pub fn try_new(value: String) -> crate::service::Result<Self> {
+  pub fn try_new(value: String) -> super::Result<Self> {
     let repo = Repo { value };
     repo.validate()?;
     Ok(repo)

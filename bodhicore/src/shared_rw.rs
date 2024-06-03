@@ -3,7 +3,7 @@ use llama_server_bindings::BodhiServerContext;
 #[cfg(test)]
 use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
 
-use crate::objs::HubFile;
+use crate::objs::{HubFile, ObjError};
 use crate::service::DataServiceError;
 use tokio::sync::mpsc::Sender;
 use crate::tokenizer_config::TokenizerConfig;
@@ -35,6 +35,8 @@ pub enum ContextError {
   AppError(#[from] crate::error::AppError),
   #[error(transparent)]
   BuilderError(#[from] GptParamsBuilderError),
+  #[error(transparent)]
+  ObjError(#[from] ObjError),
 }
 
 pub type Result<T> = std::result::Result<T, ContextError>;

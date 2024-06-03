@@ -1,5 +1,5 @@
 use crate::{
-  objs::{Alias, HubFile, RemoteModel, Repo, REFS, REFS_MAIN},
+  objs::{Alias, HubFile, ObjError, RemoteModel, Repo, REFS, REFS_MAIN},
   server::BODHI_HOME,
 };
 use derive_new::new;
@@ -83,6 +83,8 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   Anyhow(#[from] anyhow::Error),
   #[error("only files from refs/main supported")]
   OnlyRefsMainSupported,
+  #[error(transparent)]
+  ObjError(#[from] ObjError),
 }
 
 pub type Result<T> = std::result::Result<T, DataServiceError>;
@@ -93,12 +95,8 @@ pub trait HubService: Debug {
 
   fn list_local_models(&self) -> Vec<HubFile>;
 
-  fn find_local_file(
-    &self,
-    repo: &Repo,
-    filename: &str,
-    snapshot: &str,
-  ) -> Result<Option<HubFile>>;
+  fn find_local_file(&self, repo: &Repo, filename: &str, snapshot: &str)
+    -> Result<Option<HubFile>>;
 
   fn hf_home(&self) -> PathBuf;
 
@@ -314,7 +312,8 @@ impl HubService for HfHubService {
       Some(path) if !force => path,
       Some(_) | None => self.download_sync(repo, filename)?,
     };
-    path.try_into()
+    let result = HubFile::try_from(path)?;
+    Ok(result)
   }
 
   fn list_local_models(&self) -> Vec<HubFile> {

@@ -5,6 +5,7 @@ mod hub_file;
 mod oai;
 mod remote_file;
 mod repo;
+mod error;
 
 pub use alias::*;
 pub use chat_template::{ChatTemplate, ChatTemplateId};
@@ -13,3 +14,4 @@ pub use hub_file::*;
 pub use oai::*;
 pub use remote_file::*;
 pub use repo::*;
+pub use error::*;

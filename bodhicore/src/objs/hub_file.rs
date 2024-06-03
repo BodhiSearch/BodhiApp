@@ -1,5 +1,5 @@
-use super::Repo;
-use crate::{service::DataServiceError, tokenizer_config::TokenizerConfig};
+use super::{ObjError, Repo};
+use crate::tokenizer_config::TokenizerConfig;
 use derive_new::new;
 use once_cell::sync::Lazy;
 use prettytable::{Cell, Row};
@@ -33,13 +33,17 @@ impl HubFile {
 }
 
 impl TryFrom<PathBuf> for HubFile {
-  type Error = DataServiceError;
+  type Error = ObjError;
 
   fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
     let path = value.display().to_string();
-    let caps = REGEX_HF_REPO_FILE.captures(&path).ok_or(anyhow::anyhow!(
-      "'{path}' does not match huggingface hub cache filepath pattern"
-    ))?;
+    let caps = REGEX_HF_REPO_FILE
+      .captures(&path)
+      .ok_or(ObjError::Conversion {
+        from: "PathBuf".to_string(),
+        to: "HubFile".to_string(),
+        error: format!("'{path}' does not match huggingface hub cache filepath pattern"),
+      })?;
     let size = match fs::metadata(&value) {
       Ok(metadata) => Some(metadata.len()),
       Err(_) => None,
@@ -77,12 +81,12 @@ impl From<HubFile> for Row {
 }
 
 impl TryFrom<HubFile> for TokenizerConfig {
-  type Error = DataServiceError;
+  type Error = ObjError;
 
   fn try_from(value: HubFile) -> Result<Self, Self::Error> {
     let path = value.path();
     let content = std::fs::read_to_string(path.clone())
-      .map_err(move |source| DataServiceError::IoWithDetail { source, path })?;
+      .map_err(move |source| ObjError::IoWithDetail { source, path })?;
     let tokenizer_config: TokenizerConfig = serde_json::from_str(&content)?;
     Ok(tokenizer_config)
   }

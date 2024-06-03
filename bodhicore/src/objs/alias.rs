@@ -47,6 +47,7 @@ impl From<Alias> for Row {
   }
 }
 
+// TODO: hard coding for time being
 pub fn default_features() -> Vec<String> {
   vec!["chat".to_string()]
 }
