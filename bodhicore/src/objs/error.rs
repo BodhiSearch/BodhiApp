@@ -23,4 +23,5 @@ pub enum ObjError {
   SerdeJson(#[from] serde_json::Error),
 }
 
+#[allow(unused)]
 pub type Result<T> = std::result::Result<T, ObjError>;

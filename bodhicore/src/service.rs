@@ -13,15 +13,12 @@ use std::{
   sync::Arc,
 };
 use thiserror::Error;
-use validator::ValidationErrors;
 use walkdir::WalkDir;
 
 static MODELS_YAML: &str = "models.yaml";
 
 #[derive(Debug, Error)]
 pub enum DataServiceError {
-  #[error("mutex error: {0}")]
-  MutexPoison(String),
   #[error(transparent)]
   ApiError(#[from] ApiError),
   #[error(
@@ -49,12 +46,6 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   },
   #[error(transparent)]
   Io(#[from] io::Error),
-  #[error("{source}\npath: {path}")]
-  IoWithDetail {
-    #[source]
-    source: io::Error,
-    path: PathBuf,
-  },
   #[error("{source}\nerror while serializing from file: '{filename}'")]
   SerdeYamlSerialize {
     #[source]
@@ -63,8 +54,6 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   },
   #[error(transparent)]
   SerdeYamlDeserialize(#[from] serde_yaml::Error),
-  #[error(transparent)]
-  SerdeJsonDeserialize(#[from] serde_json::Error),
   #[error(
     r#"directory '{dirname}' not found in $BODHI_HOME.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
@@ -75,12 +64,6 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
   )]
   FileMissing { filename: String, dirname: String },
-  #[error(transparent)]
-  Validation(#[from] ValidationErrors),
-  #[error("{0}")]
-  BadRequest(String),
-  #[error(transparent)]
-  Anyhow(#[from] anyhow::Error),
   #[error("only files from refs/main supported")]
   OnlyRefsMainSupported,
   #[error(transparent)]
