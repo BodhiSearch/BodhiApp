@@ -98,7 +98,7 @@ mod test {
   use crate::{
     cli::Command,
     objs::{
-      Alias, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile, OAIRequestParams,
+      Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams,
       Repo, TOKENIZER_CONFIG_JSON,
     },
     test_utils::MockAppService,
@@ -200,7 +200,7 @@ mod test {
         eq(create.filename.clone()),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     let alias = Alias::testalias();
     mock
       .expect_save_alias()
@@ -231,11 +231,11 @@ mod test {
         eq(create.filename.clone()),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock
       .expect_download()
       .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON), eq(true))
-      .return_once(|_, _, _| Ok(LocalModelFile::testalias_tokenizer()));
+      .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
     let alias = Alias::test_alias_instruct_builder()
       .chat_template(chat_template.clone())
       .build()

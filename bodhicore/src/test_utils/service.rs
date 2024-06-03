@@ -1,6 +1,6 @@
 use super::{temp_bodhi_home, temp_hf_home};
 use crate::{
-  objs::{Alias, LocalModelFile, RemoteModel},
+  objs::{Alias, HubFile, RemoteModel},
   service::{
     AppService, AppServiceFn, DataService, HfHubService, HubService, LocalDataService,
     MockDataService, MockHubService,
@@ -61,11 +61,11 @@ impl HubService for MockAppServiceFn {
     repo: &Repo,
     filename: &str,
     force: bool,
-  ) -> crate::service::Result<LocalModelFile> {
+  ) -> crate::service::Result<HubFile> {
     self.hub_service.download(repo, filename, force)
   }
 
-  fn list_local_models(&self) -> Vec<LocalModelFile> {
+  fn list_local_models(&self) -> Vec<HubFile> {
     self.hub_service.list_local_models()
   }
 
@@ -74,7 +74,7 @@ impl HubService for MockAppServiceFn {
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> crate::service::Result<Option<LocalModelFile>> {
+  ) -> crate::service::Result<Option<HubFile>> {
     self.hub_service.find_local_file(repo, filename, snapshot)
   }
 
@@ -124,16 +124,16 @@ mockall::mock! {
   unsafe impl Sync for AppService { }
 
   impl HubService for AppService {
-    fn download(&self, repo: &Repo, filename: &str, force: bool) -> crate::service::Result<LocalModelFile>;
+    fn download(&self, repo: &Repo, filename: &str, force: bool) -> crate::service::Result<HubFile>;
 
-    fn list_local_models(&self) -> Vec<LocalModelFile>;
+    fn list_local_models(&self) -> Vec<HubFile>;
 
     fn find_local_file(
       &self,
       repo: &Repo,
       filename: &str,
       snapshot: &str,
-    ) -> crate::service::Result<Option<LocalModelFile>>;
+    ) -> crate::service::Result<Option<HubFile>>;
 
     fn hf_home(&self) -> PathBuf;
 

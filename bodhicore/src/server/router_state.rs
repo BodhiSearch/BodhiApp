@@ -99,7 +99,7 @@ mod test {
   use super::RouterState;
   use crate::{
     oai::ApiError,
-    objs::{Alias, LocalModelFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
+    objs::{Alias, HubFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     server::RouterStateFn,
     shared_rw::ContextError,
     test_utils::{test_channel, MockAppService, MockSharedContext, ResponseTestExt},
@@ -163,11 +163,11 @@ mod test {
         eq(testalias.filename),
         eq(testalias.snapshot),
       )
-      .return_once(|_, _, _| Ok(Some(LocalModelFile::testalias())));
+      .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
     mock_app_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
-      .return_once(|_, _, _| Ok(Some(LocalModelFile::llama3_tokenizer())));
+      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let mut mock_ctx = MockSharedContext::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
@@ -179,8 +179,8 @@ mod test {
       .expect_chat_completions()
       .with(
         eq(request.clone()),
-        eq(LocalModelFile::testalias()),
-        eq(LocalModelFile::llama3_tokenizer()),
+        eq(HubFile::testalias()),
+        eq(HubFile::llama3_tokenizer()),
         always(),
       )
       .return_once(|_, _, _, _| Ok(()));
@@ -206,11 +206,11 @@ mod test {
         eq(testalias.filename),
         eq(testalias.snapshot),
       )
-      .return_once(|_, _, _| Ok(Some(LocalModelFile::testalias())));
+      .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
     mock_app_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
-      .return_once(|_, _, _| Ok(Some(LocalModelFile::llama3_tokenizer())));
+      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let mut mock_ctx = MockSharedContext::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
@@ -223,8 +223,8 @@ mod test {
       .expect_chat_completions()
       .with(
         eq(request.clone()),
-        eq(LocalModelFile::testalias()),
-        eq(LocalModelFile::llama3_tokenizer()),
+        eq(HubFile::testalias()),
+        eq(HubFile::llama3_tokenizer()),
         always(),
       )
       .return_once(|_, _, _, _| Err(ContextError::LlamaCpp(anyhow!("context error"))));

@@ -1,5 +1,5 @@
 use crate::{
-  objs::{Alias, LocalModelFile, RemoteModel, Repo, REFS, REFS_MAIN},
+  objs::{Alias, HubFile, RemoteModel, Repo, REFS, REFS_MAIN},
   server::BODHI_HOME,
 };
 use derive_new::new;
@@ -89,16 +89,16 @@ pub type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(test, automock)]
 pub trait HubService: Debug {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<LocalModelFile>;
+  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile>;
 
-  fn list_local_models(&self) -> Vec<LocalModelFile>;
+  fn list_local_models(&self) -> Vec<HubFile>;
 
   fn find_local_file(
     &self,
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> Result<Option<LocalModelFile>>;
+  ) -> Result<Option<HubFile>>;
 
   fn hf_home(&self) -> PathBuf;
 
@@ -307,7 +307,7 @@ impl HfHubService {
 }
 
 impl HubService for HfHubService {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<LocalModelFile> {
+  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile> {
     let hf_repo = self.cache.repo(hf_hub::Repo::model(repo.to_string()));
     let from_cache = hf_repo.get(filename);
     let path = match from_cache {
@@ -317,7 +317,7 @@ impl HubService for HfHubService {
     path.try_into()
   }
 
-  fn list_local_models(&self) -> Vec<LocalModelFile> {
+  fn list_local_models(&self) -> Vec<HubFile> {
     let cache = self.cache.path().as_path();
     WalkDir::new(cache)
       .follow_links(true)
@@ -326,7 +326,7 @@ impl HubService for HfHubService {
       .filter(|entry| entry.path().is_file())
       .filter_map(|entry| {
         let path = entry.path().to_path_buf();
-        let local_model_file = match LocalModelFile::try_from(path.clone()) {
+        let local_model_file = match HubFile::try_from(path.clone()) {
           Ok(local_model_file) => local_model_file,
           Err(err) => {
             tracing::info!(?err, ?path, "error converting Path to LocalModelFile");
@@ -347,7 +347,7 @@ impl HubService for HfHubService {
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> Result<Option<LocalModelFile>> {
+  ) -> Result<Option<HubFile>> {
     let snapshot = if snapshot.starts_with(REFS) {
       if !snapshot.eq(REFS_MAIN) {
         return Err(DataServiceError::OnlyRefsMainSupported);
@@ -384,7 +384,7 @@ impl HubService for HfHubService {
         Ok(metadata) => Some(metadata.len()),
         Err(_) => None,
       };
-      let local_model_file = LocalModelFile::new(
+      let local_model_file = HubFile::new(
         self.hf_home(),
         repo.clone(),
         filename.to_string(),
@@ -439,11 +439,11 @@ impl AppService {
 }
 
 impl HubService for AppService {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<LocalModelFile> {
+  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile> {
     self.hub_service.download(repo, filename, force)
   }
 
-  fn list_local_models(&self) -> Vec<LocalModelFile> {
+  fn list_local_models(&self) -> Vec<HubFile> {
     self.hub_service.list_local_models()
   }
 
@@ -452,7 +452,7 @@ impl HubService for AppService {
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> Result<Option<LocalModelFile>> {
+  ) -> Result<Option<HubFile>> {
     self.hub_service.find_local_file(repo, filename, snapshot)
   }
 
@@ -492,7 +492,7 @@ impl AppServiceFn for AppService {}
 #[cfg(test)]
 mod test {
   use super::HfHubService;
-  use crate::objs::{Alias, LocalModelFile, RemoteModel, Repo};
+  use crate::objs::{Alias, HubFile, RemoteModel, Repo};
   use crate::server::BODHI_HOME;
   use crate::service::{DataService, HubService, LocalDataService};
   use crate::test_utils::{
@@ -519,7 +519,7 @@ mod test {
       false,
     )?;
     assert!(local_model_file.path().exists());
-    let expected = LocalModelFile::new(
+    let expected = HubFile::new(
       hf_cache,
       Repo::try_new("amir36/test-model-repo".to_string())?,
       "tokenizer_config.json".to_string(),
@@ -788,7 +788,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   fn test_hf_hub_service_list_local_models(hub_service: HubServiceTuple) -> anyhow::Result<()> {
     let HubServiceTuple(_temp_hf_home, hf_cache, service) = hub_service;
     let models = service.list_local_models();
-    let expected_1 = LocalModelFile::new(
+    let expected_1 = HubFile::new(
       hf_cache,
       Repo::try_new("google/gemma-1.1-2b-it-GGUF".to_string())?,
       "2b_it_v1p1.gguf".to_string(),

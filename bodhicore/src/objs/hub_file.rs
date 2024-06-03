@@ -13,7 +13,7 @@ pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, new)]
 #[cfg_attr(test, derive(derive_builder::Builder))]
-pub struct LocalModelFile {
+pub struct HubFile {
   pub hf_cache: PathBuf,
   pub repo: Repo,
   pub filename: String,
@@ -21,7 +21,7 @@ pub struct LocalModelFile {
   pub size: Option<u64>,
 }
 
-impl LocalModelFile {
+impl HubFile {
   pub fn path(&self) -> PathBuf {
     let mut path = self.hf_cache.clone();
     path.push(self.repo.path());
@@ -32,7 +32,7 @@ impl LocalModelFile {
   }
 }
 
-impl TryFrom<PathBuf> for LocalModelFile {
+impl TryFrom<PathBuf> for HubFile {
   type Error = DataServiceError;
 
   fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
@@ -45,7 +45,7 @@ impl TryFrom<PathBuf> for LocalModelFile {
       Err(_) => None,
     };
     let repo = Repo::try_new(format!("{}/{}", &caps["username"], &caps["repo_name"]))?;
-    Ok(LocalModelFile {
+    Ok(HubFile {
       hf_cache: PathBuf::from(caps["hf_cache"].to_string()),
       repo,
       filename: caps["filename"].to_string(),
@@ -55,9 +55,9 @@ impl TryFrom<PathBuf> for LocalModelFile {
   }
 }
 
-impl From<LocalModelFile> for Row {
-  fn from(model: LocalModelFile) -> Self {
-    let LocalModelFile {
+impl From<HubFile> for Row {
+  fn from(model: HubFile) -> Self {
+    let HubFile {
       repo,
       filename,
       snapshot,
@@ -76,10 +76,10 @@ impl From<LocalModelFile> for Row {
   }
 }
 
-impl TryFrom<LocalModelFile> for TokenizerConfig {
+impl TryFrom<HubFile> for TokenizerConfig {
   type Error = DataServiceError;
 
-  fn try_from(value: LocalModelFile) -> Result<Self, Self::Error> {
+  fn try_from(value: HubFile) -> Result<Self, Self::Error> {
     let path = value.path();
     let content = std::fs::read_to_string(path.clone())
       .map_err(move |source| DataServiceError::IoWithDetail { source, path })?;
@@ -90,7 +90,7 @@ impl TryFrom<LocalModelFile> for TokenizerConfig {
 
 #[cfg(test)]
 mod test {
-  use super::{LocalModelFile, Repo};
+  use super::{HubFile, Repo};
   use crate::test_utils::hf_cache;
   use prettytable::{Cell, Row};
   use rstest::rstest;
@@ -99,7 +99,7 @@ mod test {
 
   #[test]
   fn test_local_model_to_row() -> anyhow::Result<()> {
-    let model = LocalModelFile::new(
+    let model = HubFile::new(
       PathBuf::from("."),
       Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string())?,
       "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
@@ -126,8 +126,8 @@ mod test {
       .join("snapshots")
       .join("5007652f7a641fe7170e0bad4f63839419bd9213")
       .join("testalias.Q8_0.gguf");
-    let local_model = LocalModelFile::try_from(filepath)?;
-    let expected = LocalModelFile::new(
+    let local_model = HubFile::try_from(filepath)?;
+    let expected = HubFile::new(
       hf_cache,
       Repo::try_new("MyFactory/testalias-gguf".to_string())?,
       "testalias.Q8_0.gguf".to_string(),

@@ -85,7 +85,7 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{Alias, LocalModelFile, RemoteModel, Repo},
+    objs::{Alias, HubFile, RemoteModel, Repo},
     service::{MockDataService, MockHubService},
     test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
     Command, PullCommand,
@@ -135,7 +135,7 @@ mod test {
         eq(remote_model.filename.clone()),
         eq(false),
       )
-      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     let alias = Alias::testalias();
     mock_data_service
       .expect_save_alias()
@@ -162,7 +162,7 @@ mod test {
     mock_hub_service
       .expect_download()
       .with(eq(repo), eq("gemma-7b-it.gguf"), eq(false))
-      .return_once(|_, _, _| Ok(LocalModelFile::testalias()));
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
     pull.execute(&service)?;

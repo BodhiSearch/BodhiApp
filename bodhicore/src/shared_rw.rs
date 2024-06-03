@@ -3,7 +3,7 @@ use llama_server_bindings::BodhiServerContext;
 #[cfg(test)]
 use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
 
-use crate::objs::LocalModelFile;
+use crate::objs::HubFile;
 use crate::service::DataServiceError;
 use tokio::sync::mpsc::Sender;
 use crate::tokenizer_config::TokenizerConfig;
@@ -69,8 +69,8 @@ pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    model_file: LocalModelFile,
-    tokenizer_file: LocalModelFile,
+    model_file: HubFile,
+    tokenizer_file: HubFile,
     userdata: Sender<String>,
   ) -> Result<()>;
 }
@@ -133,8 +133,8 @@ impl SharedContextRwFn for SharedContextRw {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    model_file: LocalModelFile,
-    tokenizer_file: LocalModelFile,
+    model_file: HubFile,
+    tokenizer_file: HubFile,
     userdata: Sender<String>,
   ) -> crate::shared_rw::Result<()> {
     let lock = self.ctx.read().await;
@@ -222,7 +222,7 @@ impl ModelLoadStrategy {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::LocalModelFile,
+    objs::HubFile,
     shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
     test_utils::{test_channel, hf_cache, MockBodhiServerContext},
   };
@@ -421,12 +421,12 @@ mod test {
     hf_cache: (TempDir, PathBuf),
   ) -> anyhow::Result<()> {
     let (_temp, hf_cache) = hf_cache;
-    let model_file = LocalModelFile::testalias_builder()
+    let model_file = HubFile::testalias_builder()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
     let model_filepath = model_file.path().display().to_string();
-    let tokenizer_file = LocalModelFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFile::testalias_tokenizer_builder()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
@@ -466,12 +466,12 @@ mod test {
     hf_cache: (TempDir, PathBuf),
   ) -> anyhow::Result<()> {
     let (_temp, hf_cache) = hf_cache;
-    let model_file = LocalModelFile::testalias_builder()
+    let model_file = HubFile::testalias_builder()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
     let model_filepath = model_file.path().display().to_string();
-    let tokenizer_file = LocalModelFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFile::testalias_tokenizer_builder()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
@@ -508,7 +508,7 @@ mod test {
     hf_cache: (TempDir, PathBuf),
   ) -> anyhow::Result<()> {
     let (_temp, hf_cache) = hf_cache;
-    let loaded_model = LocalModelFile::testalias_builder()
+    let loaded_model = HubFile::testalias_builder()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
@@ -533,7 +533,7 @@ mod test {
     request_context.expect_init().with().return_once(|| Ok(()));
     request_context.expect_start_event_loop().with().return_once(|| Ok(()));
 
-    let request_model = LocalModelFile::fakemodel_builder().hf_cache(hf_cache.clone()).build()?;
+    let request_model = HubFile::fakemodel_builder().hf_cache(hf_cache.clone()).build()?;
     let request_model_filepath = request_model.path().display().to_string();
     let request_params = GptParamsBuilder::default().model(request_model_filepath).build()?;
     let request_params_cl = request_params.clone();
@@ -541,7 +541,7 @@ mod test {
     let request_ctx = MockBodhiServerContext::new_context();
     request_ctx.expect().with(eq(request_params)).return_once(move |_| Ok(request_context));
 
-    let tokenizer_file = LocalModelFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFile::testalias_tokenizer_builder()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();

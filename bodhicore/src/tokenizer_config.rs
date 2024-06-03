@@ -165,7 +165,7 @@ where
 #[cfg(test)]
 mod test {
   use super::*;
-  use crate::objs::LocalModelFile;
+  use crate::objs::HubFile;
   use crate::test_utils::hf_cache;
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -286,7 +286,7 @@ mod test {
     hf_cache: (TempDir, PathBuf),
   ) -> anyhow::Result<()> {
     let (_temp_bodhi, hf_cache) = hf_cache;
-    let tokenizer_file = LocalModelFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFile::testalias_tokenizer_builder()
       .hf_cache(hf_cache)
       .build()
       .unwrap();

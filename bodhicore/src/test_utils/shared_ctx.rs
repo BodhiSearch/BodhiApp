@@ -32,8 +32,8 @@ mockall::mock! {
     async fn chat_completions(
       &self,
       request: CreateChatCompletionRequest,
-      model_file: LocalModelFile,
-      tokenizer_file: LocalModelFile,
+      model_file: HubFile,
+      tokenizer_file: HubFile,
       userdata: Sender<String>,
     ) -> crate::shared_rw::Result<()>;
   }

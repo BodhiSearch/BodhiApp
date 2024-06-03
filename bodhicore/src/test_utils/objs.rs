@@ -2,8 +2,8 @@ use super::SNAPSHOT;
 use crate::{
   create::CreateCommandBuilder,
   objs::{
-    Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, LocalModelFile,
-    LocalModelFileBuilder, OAIRequestParams, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
+    Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, HubFile,
+    HubFileBuilder, OAIRequestParams, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
   },
   CreateCommand,
 };
@@ -29,9 +29,9 @@ impl Repo {
   }
 }
 
-impl LocalModelFile {
-  pub fn testalias_builder() -> LocalModelFileBuilder {
-    LocalModelFileBuilder::default()
+impl HubFile {
+  pub fn testalias_builder() -> HubFileBuilder {
+    HubFileBuilder::default()
       .repo(Repo::testalias())
       .filename("testalias.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())
@@ -39,8 +39,8 @@ impl LocalModelFile {
       .to_owned()
   }
 
-  pub fn fakemodel_builder() -> LocalModelFileBuilder {
-    LocalModelFileBuilder::default()
+  pub fn fakemodel_builder() -> HubFileBuilder {
+    HubFileBuilder::default()
       .repo(Repo::fakemodel())
       .filename("fakemodel.Q4_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())
@@ -48,15 +48,15 @@ impl LocalModelFile {
       .to_owned()
   }
 
-  pub fn testalias() -> LocalModelFile {
-    LocalModelFile::testalias_builder()
+  pub fn testalias() -> HubFile {
+    HubFile::testalias_builder()
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
   }
 
-  pub fn testalias_tokenizer_builder() -> LocalModelFileBuilder {
-    LocalModelFileBuilder::default()
+  pub fn testalias_tokenizer_builder() -> HubFileBuilder {
+    HubFileBuilder::default()
       .repo(Repo::testalias())
       .filename(TOKENIZER_CONFIG_JSON.to_string())
       .snapshot(SNAPSHOT.to_string())
@@ -64,15 +64,15 @@ impl LocalModelFile {
       .to_owned()
   }
 
-  pub fn testalias_tokenizer() -> LocalModelFile {
-    LocalModelFile::testalias_tokenizer_builder()
+  pub fn testalias_tokenizer() -> HubFile {
+    HubFile::testalias_tokenizer_builder()
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
   }
 
-  pub fn fakemodel_tokenizer_builder() -> LocalModelFileBuilder {
-    LocalModelFileBuilder::default()
+  pub fn fakemodel_tokenizer_builder() -> HubFileBuilder {
+    HubFileBuilder::default()
       .repo(Repo::fakemodel())
       .filename(TOKENIZER_CONFIG_JSON.to_string())
       .snapshot(SNAPSHOT.to_string())
@@ -80,8 +80,8 @@ impl LocalModelFile {
       .to_owned()
   }
 
-  pub fn llama3_tokenizer() -> LocalModelFile {
-    LocalModelFile::new(
+  pub fn llama3_tokenizer() -> HubFile {
+    HubFile::new(
       PathBuf::from("/tmp/ignored/huggingface/hub"),
       Repo::llama3(),
       TOKENIZER_CONFIG_JSON.to_string(),
