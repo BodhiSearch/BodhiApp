@@ -48,7 +48,7 @@ impl TryFrom<PathBuf> for HubFile {
       Ok(metadata) => Some(metadata.len()),
       Err(_) => None,
     };
-    let repo = Repo::try_new(format!("{}/{}", &caps["username"], &caps["repo_name"]))?;
+    let repo = Repo::try_from(format!("{}/{}", &caps["username"], &caps["repo_name"]))?;
     Ok(HubFile {
       hf_cache: PathBuf::from(caps["hf_cache"].to_string()),
       repo,
@@ -105,7 +105,7 @@ mod test {
   fn test_local_model_to_row() -> anyhow::Result<()> {
     let model = HubFile::new(
       PathBuf::from("."),
-      Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string())?,
+      Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")?,
       "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
       "1234567890".to_string(),
       Some(1024 * 1024 * 1024 * 10),
@@ -133,7 +133,7 @@ mod test {
     let local_model = HubFile::try_from(filepath)?;
     let expected = HubFile::new(
       hf_cache,
-      Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+      Repo::try_from("MyFactory/testalias-gguf")?,
       "testalias.Q8_0.gguf".to_string(),
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       Some(21),

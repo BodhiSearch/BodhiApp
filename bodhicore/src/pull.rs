@@ -28,7 +28,7 @@ impl TryFrom<Command> for PullCommand {
           Some(alias) => PullCommand::ByAlias { alias, force },
           None => match (repo, filename) {
             (Some(repo), Some(filename)) => PullCommand::ByRepoFile {
-              repo: Repo::try_new(repo)?,
+              repo: Repo::try_from(repo)?,
               filename,
               force,
             },
@@ -152,7 +152,7 @@ mod test {
 
   #[rstest]
   fn test_pull_by_repo_file_only_pulls_the_model() -> anyhow::Result<()> {
-    let repo = Repo::try_new("google/gemma-7b-it-GGUF".to_string())?;
+    let repo = Repo::try_from("google/gemma-7b-it-GGUF")?;
     let pull = PullCommand::ByRepoFile {
       repo: repo.clone(),
       filename: "gemma-7b-it.gguf".to_string(),
@@ -186,7 +186,7 @@ mod test {
     force: false,
   },
   PullCommand::ByRepoFile {
-    repo: Repo::try_new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()).unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), 
+    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), 
     force: false
   })]
   fn test_pull_command_try_from_command(

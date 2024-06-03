@@ -4,6 +4,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, ops::Deref};
 use validator::Validate;
 
+use super::ObjError;
+
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
 pub static GGUF_EXTENSION: &str = ".gguf";
 pub static REFS: &str = "refs";
@@ -17,13 +19,29 @@ pub struct Repo {
   value: String,
 }
 
-impl Repo {
-  pub fn try_new(value: String) -> super::Result<Self> {
+impl TryFrom<String> for Repo {
+  type Error = ObjError;
+
+  fn try_from(value: String) -> Result<Self, Self::Error> {
     let repo = Repo { value };
     repo.validate()?;
     Ok(repo)
   }
+}
 
+impl TryFrom<&str> for Repo {
+  type Error = ObjError;
+
+  fn try_from(value: &str) -> Result<Self, Self::Error> {
+    let repo = Repo {
+      value: String::from(value),
+    };
+    repo.validate()?;
+    Ok(repo)
+  }
+}
+
+impl Repo {
   pub fn path(&self) -> String {
     hf_hub::Repo::model(self.value.clone()).folder_name()
   }
@@ -61,7 +79,7 @@ impl<'de> Deserialize<'de> for Repo {
     D: Deserializer<'de>,
   {
     let s = String::deserialize(deserializer)?;
-    let repo = Repo::try_new(s).map_err(|err| serde::de::Error::custom(err.to_string()))?;
+    let repo = Repo::try_from(s).map_err(|err| serde::de::Error::custom(err.to_string()))?;
     Ok(repo)
   }
 }
@@ -95,7 +113,7 @@ mod test {
   #[case("QuantFactory/Meta-Llama-3-70B-Instruct-GGUF")]
   #[case("Qua-nt.Fac_tory/Meta.Llama-3_70B-Instruct-GGUF")]
   fn test_repo_valid(#[case] repo: String) -> anyhow::Result<()> {
-    Repo::try_new(repo)?.validate()?;
+    Repo::try_from(repo)?.validate()?;
     Ok(())
   }
 
@@ -107,7 +125,7 @@ mod test {
   #[case("simple/repo/file")]
   #[anyhow_trace]
   fn test_repo_invalid(#[case] repo: String) -> anyhow::Result<()> {
-    let result = Repo::try_new(repo);
+    let result = Repo::try_from(repo);
     assert!(result.is_err());
     assert_eq!(
       "value: does not match huggingface repo pattern 'owner/repo'",

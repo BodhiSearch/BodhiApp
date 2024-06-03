@@ -41,7 +41,7 @@ impl TryFrom<Command> for CreateCommand {
         let chat_template = match chat_template {
           Some(chat_template) => ChatTemplate::Id(chat_template),
           None => match tokenizer_config {
-            Some(tokenizer_config) => ChatTemplate::Repo(Repo::try_new(tokenizer_config)?),
+            Some(tokenizer_config) => ChatTemplate::Repo(Repo::try_from(tokenizer_config)?),
             None => {
               return Err(AppError::BadRequest(format!(
                 "cannot initialize create command with invalid state. chat_template: '{chat_template:?}', tokenizer_config: '{tokenizer_config:?}'"
@@ -51,7 +51,7 @@ impl TryFrom<Command> for CreateCommand {
         };
         let result = CreateCommand {
           alias,
-          repo: Repo::try_new(repo)?,
+          repo: Repo::try_from(repo)?,
           filename,
           chat_template,
           family,
@@ -123,7 +123,7 @@ mod test {
   },
   CreateCommand {
     alias: "testalias:instruct".to_string(),
-    repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+    repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
     filename: "testalias.Q8_0.gguf".to_string(),
     chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
     family: Some("testalias".to_string()),
@@ -157,7 +157,7 @@ mod test {
   fn test_create_execute_fails_if_exists_force_false() -> anyhow::Result<()> {
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
-      repo: Repo::try_new("MyFactory/testalias-gguf".to_string())?,
+      repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
       filename: "testalias.Q8_0.gguf".to_string(),
       chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
       family: None,
@@ -213,7 +213,7 @@ mod test {
   #[rstest]
   fn test_create_execute_with_tokenizer_config_downloads_tokenizer_saves_alias(
   ) -> anyhow::Result<()> {
-    let tokenizer_repo = Repo::try_new("MyFactory/testalias".to_string())?;
+    let tokenizer_repo = Repo::try_from("MyFactory/testalias")?;
     let chat_template = ChatTemplate::Repo(tokenizer_repo.clone());
     let create = CreateCommand::testalias_builder()
       .chat_template(chat_template.clone())

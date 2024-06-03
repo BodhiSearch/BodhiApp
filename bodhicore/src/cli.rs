@@ -1,7 +1,6 @@
 use super::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use crate::objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
 use clap::{ArgGroup, Parser, Subcommand};
-use serde::Serialize;
 use strum::Display;
 
 #[derive(Debug, PartialEq, Parser)]
@@ -105,12 +104,6 @@ pub enum Command {
     /// Model alias to run. Run `bodhi list` to list the configured model aliases.
     alias: String,
   },
-}
-
-#[derive(clap::ValueEnum, Clone, Debug, Serialize, PartialEq)]
-#[serde(rename_all = "kebab-case")]
-pub enum ModelFeature {
-  Chat,
 }
 
 fn repo_parser(repo: &str) -> Result<String, String> {

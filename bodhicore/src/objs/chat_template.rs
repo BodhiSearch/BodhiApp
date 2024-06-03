@@ -56,7 +56,7 @@ impl TryFrom<ChatTemplate> for Repo {
           ChatTemplateId::CommandR => "CohereForAI/c4ai-command-r-plus",
           ChatTemplateId::Openchat => "openchat/openchat-3.6-8b-20240522",
         };
-        Repo::try_new(repo.to_string())?
+        Repo::try_from(repo)?
       }
       ChatTemplate::Repo(repo) => repo,
     };
@@ -79,10 +79,9 @@ mod test {
   use rstest::rstest;
 
   #[rstest]
-  fn test_chat_template_id_partial_ord() -> anyhow::Result<()> {
+  fn test_chat_template_id_partial_ord() {
     assert!(ChatTemplateId::Llama3.gt(&ChatTemplateId::Llama2));
     assert!(ChatTemplateId::Openchat.gt(&ChatTemplateId::CommandR));
-    Ok(())
   }
 
   #[rstest]
@@ -124,7 +123,7 @@ mod test {
   )]
   #[rstest]
   #[case(
-    ChatTemplate::Repo(Repo::try_new("foo/bar".to_string()).unwrap()),
+    ChatTemplate::Repo(Repo::try_from("foo/bar").unwrap()),
     "foo/bar"
   )]
   fn test_chat_template_to_repo_for_chat_template(

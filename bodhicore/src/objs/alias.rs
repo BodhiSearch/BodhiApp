@@ -60,16 +60,12 @@ mod test {
   #[rstest]
   #[case("llama3:instruct", "llama3--instruct.yaml")]
   #[case("llama3/instruct", "llama3--instruct.yaml")]
-  fn test_alias_config_filename(
-    #[case] input: String,
-    #[case] expected: String,
-  ) -> anyhow::Result<()> {
+  fn test_alias_config_filename(#[case] input: String, #[case] expected: String) {
     let alias = Alias {
       alias: input,
       ..Default::default()
     };
     assert_eq!(expected, alias.config_filename());
-    Ok(())
   }
 
   #[rstest]
