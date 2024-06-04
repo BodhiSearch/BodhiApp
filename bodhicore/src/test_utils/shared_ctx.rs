@@ -41,13 +41,13 @@ mockall::mock! {
 
 mockall::mock! {
   pub BodhiServerContext {
-    pub fn new(gpt_params: GptParams) -> anyhow::Result<Self>;
+    pub fn new(gpt_params: GptParams) -> llama_server_bindings::Result<Self>;
 
-    pub fn init(&self) -> anyhow::Result<()>;
+    pub fn init(&self) -> llama_server_bindings::Result<()>;
 
     pub fn get_gpt_params(&self) -> GptParams;
 
-    pub fn start_event_loop(&self) -> anyhow::Result<()>;
+    pub fn start_event_loop(&self) -> llama_server_bindings::Result<()>;
 
     pub fn completions(
       &self,
@@ -55,9 +55,9 @@ mockall::mock! {
       chat_template: &str,
       callback: Option<Callback>,
       userdata: *mut c_void,
-    ) -> anyhow::Result<()>;
+    ) -> llama_server_bindings::Result<()>;
 
-    pub fn stop(&mut self) -> anyhow::Result<()>;
+    pub fn stop(&mut self) -> llama_server_bindings::Result<()>;
   }
 
   impl std::fmt::Debug for BodhiServerContext {

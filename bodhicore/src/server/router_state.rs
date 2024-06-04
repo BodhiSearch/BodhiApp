@@ -105,10 +105,10 @@ mod test {
     test_utils::{test_channel, MockAppService, MockSharedContext, ResponseTestExt},
     Repo,
   };
-  use anyhow::anyhow;
   use async_openai::types::CreateChatCompletionRequest;
   use axum::http::StatusCode;
   use axum::response::{IntoResponse, Response};
+  use llama_server_bindings::BodhiError;
   use mockall::predicate::{always, eq};
   use rstest::rstest;
   use serde_json::json;
@@ -227,7 +227,11 @@ mod test {
         eq(HubFile::llama3_tokenizer()),
         always(),
       )
-      .return_once(|_, _, _, _| Err(ContextError::LlamaCpp(anyhow!("context error"))));
+      .return_once(|_, _, _, _| {
+        Err(ContextError::BodhiError(
+          BodhiError::BodhiServerChatCompletion("test error".to_string()),
+        ))
+      });
     let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
     let result = state.chat_completions(request, tx).await;
     assert!(result.is_err());
@@ -235,7 +239,7 @@ mod test {
     assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
     assert_eq!(
       ApiError {
-        message: "context error".to_string(),
+        message: "bodhi_server_chat_completion: test error".to_string(),
         r#type: "internal_server_error".to_string(),
         param: None,
         code: "internal_server_error".to_string()
