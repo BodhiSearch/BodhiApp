@@ -1,6 +1,5 @@
-use super::error::DataServiceError;
-use crate::objs::{HubFile, Repo, REFS, REFS_MAIN};
-use hf_hub::Cache;
+use crate::objs::{HubFile, ObjError, Repo, REFS, REFS_MAIN};
+use hf_hub::{api::sync::ApiError, Cache};
 #[cfg(test)]
 use mockall::automock;
 use std::{
@@ -10,18 +9,54 @@ use std::{
 };
 use walkdir::WalkDir;
 
+#[derive(Debug, thiserror::Error)]
+pub enum HubServiceError {
+  #[error(transparent)]
+  ApiError(#[from] ApiError),
+  #[error(
+    r#"{source}
+huggingface repo '{repo}' is requires requesting for access from website.
+Go to https://huggingface.co/{repo} to request access to the model and try again.
+"#
+  )]
+  GatedAccess {
+    #[source]
+    source: ApiError,
+    repo: String,
+  },
+  #[error(
+    r#"{source}
+You are not logged in to huggingface using CLI `huggingface-cli login`.
+So either the huggingface repo '{repo}' does not exists, or is private, or requires request access.
+Go to https://huggingface.co/{repo} to request access, login via CLI, and then try again.
+"#
+  )]
+  MayBeNotExists {
+    #[source]
+    source: ApiError,
+    repo: String,
+  },
+  #[error("only files from refs/main supported")]
+  OnlyRefsMainSupported,
+  #[error(transparent)]
+  ObjError(#[from] ObjError),
+  #[error(
+    r#"file '{filename}' not found in $HF_HOME/{dirname}.
+Check Huggingface Home is set correctly using environment variable $HF_HOME or using command-line or settings file."#
+  )]
+  FileMissing { filename: String, dirname: String },
+}
+
+type Result<T> = std::result::Result<T, HubServiceError>;
+
 #[cfg_attr(test, automock)]
 pub trait HubService: Debug {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> super::error::Result<HubFile>;
+  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile>;
 
   fn list_local_models(&self) -> Vec<HubFile>;
 
-  fn find_local_file(
-    &self,
-    repo: &Repo,
-    filename: &str,
-    snapshot: &str,
-  ) -> super::error::Result<Option<HubFile>>;
+  fn find_local_file(&self, repo: &Repo, filename: &str, snapshot: &str)
+    -> Result<Option<HubFile>>;
 
   fn hf_home(&self) -> PathBuf;
 
@@ -29,7 +64,7 @@ pub trait HubService: Debug {
 }
 
 impl HubService for HfHubService {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> super::error::Result<HubFile> {
+  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile> {
     let hf_repo = self.cache.repo(hf_hub::Repo::model(repo.to_string()));
     let from_cache = hf_repo.get(filename);
     let path = match from_cache {
@@ -70,10 +105,10 @@ impl HubService for HfHubService {
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> super::error::Result<Option<HubFile>> {
+  ) -> Result<Option<HubFile>> {
     let snapshot = if snapshot.starts_with(REFS) {
       if !snapshot.eq(REFS_MAIN) {
-        return Err(DataServiceError::OnlyRefsMainSupported);
+        return Err(HubServiceError::OnlyRefsMainSupported);
       }
       let refs_file = self
         .cache
@@ -91,7 +126,7 @@ impl HubService for HfHubService {
           .map(|f| f.to_string_lossy().into_owned())
           .unwrap_or(String::from("<unknown>"));
         // TODO FileMissing instead of IoErr, not using err field
-        DataServiceError::FileMissing { filename, dirname }
+        HubServiceError::FileMissing { filename, dirname }
       })?
     } else {
       snapshot.to_owned()
@@ -178,7 +213,7 @@ impl HfHubService {
     }
   }
 
-  fn download_sync(&self, repo: &str, filename: &str) -> super::error::Result<PathBuf> {
+  fn download_sync(&self, repo: &str, filename: &str) -> Result<PathBuf> {
     use hf_hub::api::sync::{ApiBuilder, ApiError};
 
     let api = ApiBuilder::from_cache(self.cache.clone())
@@ -192,13 +227,13 @@ impl HfHubService {
         let err = match err {
           ApiError::RequestError(ureq_err) => match *ureq_err {
             ureq::Error::Status(status, response) if status == 403 => {
-              DataServiceError::GatedAccess {
+              HubServiceError::GatedAccess {
                 source: ApiError::RequestError(Box::new(ureq::Error::Status(status, response))),
                 repo: repo.to_string(),
               }
             }
             ureq::Error::Status(status, response) if self.token.is_none() && status == 401 => {
-              DataServiceError::MayBeNotExists {
+              HubServiceError::MayBeNotExists {
                 source: ApiError::RequestError(Box::new(ureq::Error::Status(status, response))),
                 repo: repo.to_string(),
               }

@@ -1,5 +1,5 @@
-use super::error::DataServiceError;
 use crate::{
+  error::Common,
   objs::{Alias, RemoteModel},
   server::BODHI_HOME,
 };
@@ -10,17 +10,35 @@ use std::{fmt::Debug, fs, path::PathBuf};
 
 static MODELS_YAML: &str = "models.yaml";
 
+#[derive(Debug, thiserror::Error)]
+pub enum DataServiceError {
+  #[error(
+    r#"directory '{dirname}' not found in $BODHI_HOME.
+$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
+  )]
+  DirMissing { dirname: String },
+  #[error(
+    r#"file '{filename}' not found in $BODHI_HOME/{dirname}.
+$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
+  )]
+  FileMissing { filename: String, dirname: String },
+  #[error(transparent)]
+  Common(#[from] Common),
+}
+
+type Result<T> = std::result::Result<T, DataServiceError>;
+
 #[cfg_attr(test, automock)]
 pub trait DataService: Debug {
-  fn list_aliases(&self) -> super::error::Result<Vec<Alias>>;
+  fn list_aliases(&self) -> Result<Vec<Alias>>;
 
-  fn save_alias(&self, alias: Alias) -> super::error::Result<PathBuf>;
+  fn save_alias(&self, alias: Alias) -> Result<PathBuf>;
 
   fn find_alias(&self, alias: &str) -> Option<Alias>;
 
-  fn list_remote_models(&self) -> super::error::Result<Vec<RemoteModel>>;
+  fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
 
-  fn find_remote_model(&self, alias: &str) -> super::error::Result<Option<RemoteModel>>;
+  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>>;
 }
 
 #[derive(Debug, Clone, PartialEq, new)]
@@ -44,29 +62,36 @@ impl Default for LocalDataService {
 }
 
 impl DataService for LocalDataService {
-  fn find_remote_model(&self, alias: &str) -> super::error::Result<Option<RemoteModel>> {
+  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
     let models = self.list_remote_models()?;
     Ok(models.into_iter().find(|model| model.alias.eq(alias)))
   }
 
-  fn save_alias(&self, alias: Alias) -> super::error::Result<PathBuf> {
-    let contents = serde_yaml::to_string(&alias)?;
+  fn save_alias(&self, alias: Alias) -> Result<PathBuf> {
+    let contents = serde_yaml::to_string(&alias).map_err(Common::SerdeYamlDeserialize)?;
     let filename = self
       .bodhi_home
       .join("configs")
       .join(alias.config_filename());
-    fs::write(filename.clone(), contents)?;
+    fs::write(filename.clone(), contents).map_err(|err| Common::Io {
+      source: err,
+      path: (&alias.config_filename()).clone(),
+    })?;
     Ok(filename)
   }
 
-  fn list_aliases(&self) -> super::error::Result<Vec<Alias>> {
+  fn list_aliases(&self) -> Result<Vec<Alias>> {
     let config = self.bodhi_home.join("configs");
     if !config.exists() {
       return Err(DataServiceError::DirMissing {
         dirname: String::from("configs"),
       });
     }
-    let yaml_files = fs::read_dir(config)?
+    let yaml_files = fs::read_dir(config.clone())
+      .map_err(|err| Common::Io {
+        source: err,
+        path: (&config).display().to_string(),
+      })?
       .filter_map(|entry| {
         let file_path = entry.ok()?.path();
         if let Some(extension) = file_path.extension() {
@@ -88,14 +113,17 @@ impl DataService for LocalDataService {
           Ok(content) => match serde_yaml::from_str::<Alias>(&content) {
             Ok(alias) => Some(alias),
             Err(err) => {
-              let err = DataServiceError::SerdeYamlDeserialize(err);
+              let err = Common::SerdeYamlDeserialize(err);
               tracing::warn!(filename, ?err, "Error deserializing model alias YAML file",);
               None
             }
           },
           Err(err) => {
-            let err = DataServiceError::Io(err);
-            tracing::warn!(filename, ?err, "Error reading model alias YAML file");
+            let err = Common::Io {
+              source: err,
+              path: filename,
+            };
+            tracing::warn!(?err, "Error reading model alias YAML file");
             None
           }
         }
@@ -113,7 +141,7 @@ impl DataService for LocalDataService {
       .find(|obj| obj.alias.eq(&alias))
   }
 
-  fn list_remote_models(&self) -> super::error::Result<Vec<RemoteModel>> {
+  fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
     let models_file = self.bodhi_home.join(MODELS_YAML);
     if !models_file.exists() {
       return Err(DataServiceError::FileMissing {
@@ -121,9 +149,12 @@ impl DataService for LocalDataService {
         dirname: "".to_string(),
       });
     }
-    let content = fs::read_to_string(models_file.clone())?;
+    let content = fs::read_to_string(models_file.clone()).map_err(|err| Common::Io {
+      source: err,
+      path: (&models_file).display().to_string(),
+    })?;
     let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content).map_err(|err| {
-      DataServiceError::SerdeYamlSerialize {
+      Common::SerdeYamlSerialize {
         source: err,
         filename: models_file.display().to_string(),
       }
@@ -182,8 +213,8 @@ chat_template: llama3
     assert!(result.is_err());
     let models_file = models_file.display().to_string();
     let expected = format!(
-      r#".[0]: missing field `alias` at line 3 column 3
-error while serializing from file: '{models_file}'"#
+      r#"serde_yaml_serialize: .[0]: missing field `alias` at line 3 column 3
+filename='{models_file}'"#
     );
     assert_eq!(expected, result.unwrap_err().to_string());
     Ok(())

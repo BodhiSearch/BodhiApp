@@ -1,6 +1,7 @@
 use super::{
   data_service::{DataService, LocalDataService},
   hub_service::{HfHubService, HubService},
+  DataServiceError, HubServiceError,
 };
 use crate::objs::{Alias, HubFile, RemoteModel, Repo};
 use std::{fmt::Debug, path::PathBuf, sync::Arc};
@@ -32,7 +33,7 @@ impl AppService {
 }
 
 impl HubService for AppService {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> super::error::Result<HubFile> {
+  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile, HubServiceError> {
     self.hub_service.download(repo, filename, force)
   }
 
@@ -45,7 +46,7 @@ impl HubService for AppService {
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> super::error::Result<Option<HubFile>> {
+  ) -> Result<Option<HubFile>, HubServiceError> {
     self.hub_service.find_local_file(repo, filename, snapshot)
   }
 
@@ -59,15 +60,15 @@ impl HubService for AppService {
 }
 
 impl DataService for AppService {
-  fn find_remote_model(&self, alias: &str) -> super::error::Result<Option<RemoteModel>> {
+  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>, DataServiceError> {
     self.data_service.find_remote_model(alias)
   }
 
-  fn save_alias(&self, alias: Alias) -> super::error::Result<PathBuf> {
+  fn save_alias(&self, alias: Alias) -> Result<PathBuf, DataServiceError> {
     self.data_service.save_alias(alias)
   }
 
-  fn list_aliases(&self) -> super::error::Result<Vec<Alias>> {
+  fn list_aliases(&self) -> Result<Vec<Alias>, DataServiceError> {
     self.data_service.list_aliases()
   }
 
@@ -75,7 +76,7 @@ impl DataService for AppService {
     self.data_service.find_alias(alias)
   }
 
-  fn list_remote_models(&self) -> super::error::Result<Vec<RemoteModel>> {
+  fn list_remote_models(&self) -> Result<Vec<RemoteModel>, DataServiceError> {
     self.data_service.list_remote_models()
   }
 }

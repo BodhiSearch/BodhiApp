@@ -2,8 +2,8 @@ use super::{temp_bodhi_home, temp_hf_home};
 use crate::{
   objs::{Alias, HubFile, RemoteModel},
   service::{
-    AppService, AppServiceFn, DataService, HfHubService, HubService, LocalDataService,
-    MockDataService, MockHubService,
+    AppService, AppServiceFn, DataService, DataServiceError, HfHubService, HubService,
+    HubServiceError, LocalDataService, MockDataService, MockHubService,
   },
   Repo,
 };
@@ -56,12 +56,7 @@ pub struct MockAppServiceFn {
 }
 
 impl HubService for MockAppServiceFn {
-  fn download(
-    &self,
-    repo: &Repo,
-    filename: &str,
-    force: bool,
-  ) -> crate::service::Result<HubFile> {
+  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile, HubServiceError> {
     self.hub_service.download(repo, filename, force)
   }
 
@@ -74,7 +69,7 @@ impl HubService for MockAppServiceFn {
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-  ) -> crate::service::Result<Option<HubFile>> {
+  ) -> Result<Option<HubFile>, HubServiceError> {
     self.hub_service.find_local_file(repo, filename, snapshot)
   }
 
@@ -88,15 +83,15 @@ impl HubService for MockAppServiceFn {
 }
 
 impl DataService for MockAppServiceFn {
-  fn list_aliases(&self) -> crate::service::Result<Vec<Alias>> {
+  fn list_aliases(&self) -> Result<Vec<Alias>, DataServiceError> {
     self.data_service.list_aliases()
   }
 
-  fn find_remote_model(&self, alias: &str) -> crate::service::Result<Option<RemoteModel>> {
+  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>, DataServiceError> {
     self.data_service.find_remote_model(alias)
   }
 
-  fn save_alias(&self, alias: Alias) -> crate::service::Result<PathBuf> {
+  fn save_alias(&self, alias: Alias) -> Result<PathBuf, DataServiceError> {
     self.data_service.save_alias(alias)
   }
 
@@ -104,7 +99,7 @@ impl DataService for MockAppServiceFn {
     self.data_service.find_alias(alias)
   }
 
-  fn list_remote_models(&self) -> crate::service::Result<Vec<RemoteModel>> {
+  fn list_remote_models(&self) -> Result<Vec<RemoteModel>, DataServiceError> {
     self.data_service.list_remote_models()
   }
 }
@@ -124,7 +119,7 @@ mockall::mock! {
   unsafe impl Sync for AppService { }
 
   impl HubService for AppService {
-    fn download(&self, repo: &Repo, filename: &str, force: bool) -> crate::service::Result<HubFile>;
+    fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile, HubServiceError>;
 
     fn list_local_models(&self) -> Vec<HubFile>;
 
@@ -133,7 +128,7 @@ mockall::mock! {
       repo: &Repo,
       filename: &str,
       snapshot: &str,
-    ) -> crate::service::Result<Option<HubFile>>;
+    ) -> Result<Option<HubFile>, HubServiceError>;
 
     fn hf_home(&self) -> PathBuf;
 
@@ -141,15 +136,15 @@ mockall::mock! {
   }
 
   impl DataService for AppService {
-    fn list_aliases(&self) -> crate::service::Result<Vec<Alias>>;
+    fn list_aliases(&self) -> Result<Vec<Alias>, DataServiceError>;
 
-    fn save_alias(&self, alias: Alias) -> crate::service::Result<PathBuf>;
+    fn save_alias(&self, alias: Alias) -> Result<PathBuf, DataServiceError>;
 
     fn find_alias(&self, alias: &str) -> Option<Alias>;
 
-    fn list_remote_models(&self) -> crate::service::Result<Vec<RemoteModel>>;
+    fn list_remote_models(&self) -> Result<Vec<RemoteModel>, DataServiceError>;
 
-    fn find_remote_model(&self, alias: &str) -> crate::service::Result<Option<RemoteModel>>;
+    fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>, DataServiceError>;
   }
 
   impl AppServiceFn for AppService { }

@@ -1,4 +1,9 @@
-use crate::{objs::ObjError, service::DataServiceError, Command};
+use crate::{
+  objs::ObjError,
+  service::{DataServiceError, HubServiceError},
+  Command,
+};
+use std::io;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -16,8 +21,6 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   BadRequest(String),
   #[error("Command '{0}' cannot be converted into command '{1}'")]
   ConvertCommand(Command, String),
-  #[error(transparent)]
-  DataService(#[from] DataServiceError),
   #[error(
     r#"model files for model alias '{alias}' not found in huggingface cache directory. Check if file in the expected filepath exists.
 filepath: {filepath}
@@ -32,6 +35,28 @@ filepath: {filepath}
   SerdeJson(#[from] serde_json::Error),
   #[error(transparent)]
   ObjError(#[from] ObjError),
+  #[error(transparent)]
+  DataService(#[from] DataServiceError),
+  #[error(transparent)]
+  HubServiceError(#[from] HubServiceError),
 }
 
 pub type Result<T> = std::result::Result<T, AppError>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Common {
+  #[error("io_error: {source}\npath='{path}'")]
+  Io {
+    #[source]
+    source: io::Error,
+    path: String,
+  },
+  #[error(transparent)]
+  SerdeYamlDeserialize(#[from] serde_yaml::Error),
+  #[error("serde_yaml_serialize: {source}\nfilename='{filename}'")]
+  SerdeYamlSerialize {
+    #[source]
+    source: serde_yaml::Error,
+    filename: String,
+  },
+}
