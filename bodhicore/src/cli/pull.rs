@@ -1,3 +1,4 @@
+use super::CliError;
 use crate::{error::BodhiError, objs::Alias, service::AppServiceFn, Command, Repo};
 
 #[derive(Debug, PartialEq)]
@@ -14,7 +15,7 @@ pub enum PullCommand {
 }
 
 impl TryFrom<Command> for PullCommand {
-  type Error = BodhiError;
+  type Error = CliError;
 
   fn try_from(value: Command) -> Result<Self, Self::Error> {
     match value {
@@ -32,14 +33,14 @@ impl TryFrom<Command> for PullCommand {
               filename,
               force,
             },
-            (repo, filename) => return Err(BodhiError::BadRequest(format!(
+            (repo, filename) => return Err(CliError::BadRequest(format!(
               "cannot initialize pull command with invalid state: repo={repo:?}, filename={filename:?}"
             ))),
           },
         };
         Ok(pull_command)
       }
-      cmd => Err(BodhiError::ConvertCommand(cmd, "pull".to_string())),
+      cmd => Err(CliError::ConvertCommand(cmd, "pull".to_string())),
     }
   }
 }
@@ -208,9 +209,7 @@ mod test {
       force: false,
     };
     command.execute(&service)?;
-    let alias = bodhi_home
-      .join("configs")
-      .join("testalias--instruct.yaml");
+    let alias = bodhi_home.join("configs").join("testalias--instruct.yaml");
     assert!(alias.exists());
     let content = fs::read_to_string(alias)?;
     assert_eq!(

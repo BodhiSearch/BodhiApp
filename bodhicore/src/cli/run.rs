@@ -1,3 +1,4 @@
+use super::CliError;
 use crate::{error::BodhiError, interactive::launch_interactive, service::AppServiceFn, Command};
 
 pub enum RunCommand {
@@ -5,12 +6,12 @@ pub enum RunCommand {
 }
 
 impl TryFrom<Command> for RunCommand {
-  type Error = BodhiError;
+  type Error = CliError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
       Command::Run { alias } => Ok(RunCommand::WithAlias { alias }),
-      cmd => Err(BodhiError::ConvertCommand(cmd, "run".to_string())),
+      cmd => Err(CliError::ConvertCommand(cmd, "run".to_string())),
     }
   }
 }

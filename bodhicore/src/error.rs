@@ -3,7 +3,6 @@ use crate::{
   objs::ObjError,
   service::{DataServiceError, HubServiceError},
   shared_rw::ContextError,
-  Command,
 };
 use async_openai::error::OpenAIError;
 use std::{io, sync::Arc};
@@ -21,10 +20,6 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   AliasNotFound(String),
   #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
   AliasExists(String),
-  #[error("{0}")]
-  BadRequest(String),
-  #[error("Command '{0}' cannot be converted into command '{1}'")]
-  ConvertCommand(Command, String),
 
   #[error("$HOME directory not found, set home directory using $HOME")]
   HomeDirectory,

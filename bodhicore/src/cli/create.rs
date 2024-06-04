@@ -1,4 +1,4 @@
-use super::Command;
+use super::{CliError, Command};
 use crate::{
   error::{BodhiError, Result},
   objs::{
@@ -23,7 +23,7 @@ pub struct CreateCommand {
 }
 
 impl TryFrom<Command> for CreateCommand {
-  type Error = BodhiError;
+  type Error = CliError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
@@ -43,7 +43,7 @@ impl TryFrom<Command> for CreateCommand {
           None => match tokenizer_config {
             Some(tokenizer_config) => ChatTemplate::Repo(Repo::try_from(tokenizer_config)?),
             None => {
-              return Err(BodhiError::BadRequest(format!(
+              return Err(CliError::BadRequest(format!(
                 "cannot initialize create command with invalid state. chat_template: '{chat_template:?}', tokenizer_config: '{tokenizer_config:?}'"
               )))
             }
@@ -61,7 +61,7 @@ impl TryFrom<Command> for CreateCommand {
         };
         Ok(result)
       }
-      cmd => Err(BodhiError::ConvertCommand(cmd, "create".to_string())),
+      cmd => Err(CliError::ConvertCommand(cmd, "create".to_string())),
     }
   }
 }
