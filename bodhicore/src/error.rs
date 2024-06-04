@@ -10,7 +10,6 @@ use thiserror::Error;
 use validator::ValidationErrors;
 
 #[derive(Debug, Error)]
-#[allow(clippy::large_enum_variant)]
 pub enum BodhiError {
   #[error(
     r#"model alias '{0}' not found in pre-configured model aliases.
@@ -20,7 +19,6 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   AliasNotFound(String),
   #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
   AliasExists(String),
-
   #[error("$HOME directory not found, set home directory using $HOME")]
   HomeDirectory,
 

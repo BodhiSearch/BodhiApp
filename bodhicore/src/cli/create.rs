@@ -61,7 +61,7 @@ impl TryFrom<Command> for CreateCommand {
         };
         Ok(result)
       }
-      cmd => Err(CliError::ConvertCommand(cmd, "create".to_string())),
+      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "create".to_string())),
     }
   }
 }

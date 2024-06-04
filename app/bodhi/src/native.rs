@@ -1,7 +1,7 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   server::{build_routes, build_server_handle, Server, ServerHandle, ServerParams},
-  AppService, SharedContextRw, SharedContextRwFn,
+  AppService, BodhiError, SharedContextRw, SharedContextRwFn,
 };
 use futures_util::{future::BoxFuture, FutureExt};
 use std::sync::{Arc, Mutex};
@@ -15,15 +15,12 @@ use tokio::{
   task::JoinHandle,
 };
 
-pub(super) fn main_native() -> anyhow::Result<()> {
-  let runtime = Builder::new_multi_thread().enable_all().build();
-  match runtime {
-    Ok(runtime) => runtime.block_on(async move { _main_native().await }),
-    Err(err) => Err(err.into()),
-  }
+pub(super) fn main_native() -> super::Result<()> {
+  let runtime = Builder::new_multi_thread().enable_all().build()?;
+  runtime.block_on(async move { _main_native().await })
 }
 
-async fn _main_native() -> anyhow::Result<()> {
+async fn _main_native() -> super::Result<()> {
   let system_tray = SystemTray::new().with_menu(
     SystemTrayMenu::new()
       .add_item(CustomMenuItem::new("homepage", "Open Homepage"))
@@ -107,11 +104,11 @@ fn on_system_tray_event(app: &AppHandle, event: SystemTrayEvent) {
   }
 }
 
-fn launch_server() -> anyhow::Result<ServerState> {
+fn launch_server() -> super::Result<ServerState> {
   main_server(ServerParams::default())
 }
 
-fn main_server(server_params: ServerParams) -> anyhow::Result<ServerState> {
+fn main_server(server_params: ServerParams) -> super::Result<ServerState> {
   let ServerHandle {
     server,
     shutdown,
@@ -121,12 +118,14 @@ fn main_server(server_params: ServerParams) -> anyhow::Result<ServerState> {
   Ok(ServerState::new(server_async, shutdown))
 }
 
-async fn start_server(server: Server, ready_rx: Receiver<()>) -> anyhow::Result<()> {
+async fn start_server(server: Server, ready_rx: Receiver<()>) -> super::Result<()> {
   disable_llama_log();
   unsafe {
     llama_server_disable_logging();
   }
-  let ctx = SharedContextRw::new_shared_rw(None).await?;
+  let ctx = SharedContextRw::new_shared_rw(None)
+    .await
+    .map_err(BodhiError::from)?;
   let ctx = Arc::new(ctx);
   let app_service = AppService::default();
   let app = build_routes(ctx.clone(), Arc::new(app_service));
@@ -140,7 +139,7 @@ async fn start_server(server: Server, ready_rx: Receiver<()>) -> anyhow::Result<
   });
   if let Err(err) = server.start_new(app, Some(callback)).await {
     tracing::error!(err = ?err, "server startup resulted in an error");
-    return Err(err);
+    return Err(err)?;
   }
   if let Err(err) = ready_rx.await {
     tracing::warn!(err = ?err, "server ready status received as error");
@@ -149,12 +148,12 @@ async fn start_server(server: Server, ready_rx: Receiver<()>) -> anyhow::Result<
 }
 
 struct ServerState {
-  handle: Mutex<Option<JoinHandle<Result<(), anyhow::Error>>>>,
+  handle: Mutex<Option<JoinHandle<Result<(), super::AppError>>>>,
   shutdown: Mutex<Option<Sender<()>>>,
 }
 
 impl ServerState {
-  fn new(handle: JoinHandle<Result<(), anyhow::Error>>, shutdown: Sender<()>) -> Self {
+  fn new(handle: JoinHandle<Result<(), super::AppError>>, shutdown: Sender<()>) -> Self {
     ServerState {
       handle: Mutex::new(Some(handle)),
       shutdown: Mutex::new(Some(shutdown)),

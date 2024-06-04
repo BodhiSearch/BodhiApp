@@ -40,7 +40,7 @@ impl TryFrom<Command> for PullCommand {
         };
         Ok(pull_command)
       }
-      cmd => Err(CliError::ConvertCommand(cmd, "pull".to_string())),
+      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "pull".to_string())),
     }
   }
 }

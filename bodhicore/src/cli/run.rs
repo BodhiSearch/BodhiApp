@@ -11,7 +11,7 @@ impl TryFrom<Command> for RunCommand {
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
       Command::Run { alias } => Ok(RunCommand::WithAlias { alias }),
-      cmd => Err(CliError::ConvertCommand(cmd, "run".to_string())),
+      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "run".to_string())),
     }
   }
 }

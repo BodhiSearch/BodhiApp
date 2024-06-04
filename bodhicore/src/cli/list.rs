@@ -25,7 +25,7 @@ impl TryFrom<Command> for ListCommand {
           "cannot initialize list command with invalid state. --remote: {remote}, --models: {models}"
         ))),
       },
-      cmd => Err(CliError::ConvertCommand(cmd, "list".to_string())),
+      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "list".to_string())),
     }
   }
 }

@@ -11,6 +11,7 @@ mod shared_rw;
 mod tokenizer_config;
 mod utils;
 pub use cli::*;
+pub use error::BodhiError;
 pub use objs::Repo;
 pub use service::AppService;
 pub use shared_rw::{SharedContextRw, SharedContextRwFn};
