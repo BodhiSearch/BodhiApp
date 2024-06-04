@@ -19,8 +19,7 @@ use tokio::sync::RwLock;
 
 #[derive(Debug)]
 pub struct SharedContextRw {
-  // TODO: remove pub access
-  pub ctx: RwLock<Option<BodhiServerContext>>,
+  ctx: RwLock<Option<BodhiServerContext>>,
 }
 
 #[derive(Debug, Error)]
