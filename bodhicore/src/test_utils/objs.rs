@@ -1,6 +1,6 @@
 use super::SNAPSHOT;
 use crate::{
-  create::CreateCommandBuilder,
+  cli::create::CreateCommandBuilder,
   objs::{
     Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, HubFile,
     HubFileBuilder, OAIRequestParams, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,

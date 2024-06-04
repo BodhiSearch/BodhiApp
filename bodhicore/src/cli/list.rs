@@ -97,7 +97,7 @@ impl ListCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{Command, ListCommand};
+  use super::{Command, ListCommand};
   use rstest::rstest;
 
   #[rstest]

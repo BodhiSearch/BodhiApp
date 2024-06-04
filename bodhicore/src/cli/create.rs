@@ -1,3 +1,4 @@
+use super::Command;
 use crate::{
   error::{AppError, Result},
   objs::{
@@ -5,7 +6,6 @@ use crate::{
     TOKENIZER_CONFIG_JSON,
   },
   service::AppServiceFn,
-  Command,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -98,8 +98,8 @@ mod test {
   use crate::{
     cli::Command,
     objs::{
-      Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams,
-      Repo, TOKENIZER_CONFIG_JSON,
+      Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
+      TOKENIZER_CONFIG_JSON,
     },
     test_utils::MockAppService,
   };
