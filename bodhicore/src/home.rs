@@ -1,27 +1,35 @@
-use crate::server::BODHI_HOME;
-use anyhow::anyhow;
+use crate::{
+  error::{AppError, Common},
+  server::BODHI_HOME,
+};
 use std::{env, fs, path::PathBuf};
 
-pub(crate) fn user_home() -> anyhow::Result<PathBuf> {
-  dirs::home_dir().ok_or_else(|| anyhow!("failed to resolve home directory"))
+pub(crate) fn user_home() -> Result<PathBuf, AppError> {
+  dirs::home_dir().ok_or_else(|| AppError::HomeDirectory)
 }
 
-pub(crate) fn bodhi_home() -> anyhow::Result<PathBuf> {
+pub(crate) fn bodhi_home() -> Result<PathBuf, AppError> {
   let bodhi_home = match env::var(BODHI_HOME) {
     Ok(bodhi_home) => PathBuf::from(bodhi_home),
-    Err(_) => user_home()?.join(".bodhi"),
+    Err(_) => user_home()?.join(".cache").join(".bodhi"),
   };
   if !bodhi_home.exists() {
-    fs::create_dir_all(&bodhi_home)?;
+    fs::create_dir_all(&bodhi_home).map_err(|source| Common::IoDir {
+      source,
+      path: bodhi_home.display().to_string(),
+    })?;
   }
   Ok(bodhi_home)
 }
 
-pub fn logs_dir() -> anyhow::Result<PathBuf> {
+pub fn logs_dir() -> Result<PathBuf, AppError> {
   let bodhi_home = bodhi_home()?;
   let logs_dir = PathBuf::from(format!("{}/logs", bodhi_home.display()));
   if !logs_dir.exists() {
-    std::fs::create_dir_all(&logs_dir)?;
+    std::fs::create_dir_all(&logs_dir).map_err(|source| Common::IoDir {
+      source,
+      path: logs_dir.display().to_string(),
+    })?;
   }
   Ok(logs_dir)
 }

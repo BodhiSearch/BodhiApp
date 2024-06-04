@@ -1,4 +1,5 @@
 use super::routes_ui::ChatError;
+use crate::error::{AppError, Common};
 use axum::http::header::CONTENT_TYPE;
 use axum::{
   body::Body,
@@ -17,16 +18,14 @@ pub static DEFAULT_HOST: &str = "127.0.0.1";
 pub static BODHI_HOME: &str = "BODHI_HOME";
 
 pub trait AxumRequestExt {
-  fn json<T: serde::Serialize>(self, value: T) -> Result<Request<Body>, anyhow::Error>;
+  #[allow(clippy::result_large_err)]
+  fn json<T: serde::Serialize>(self, value: T) -> Result<Request<Body>, AppError>;
 }
 
 impl AxumRequestExt for Builder {
-  fn json<T: serde::Serialize>(
-    self,
-    value: T,
-  ) -> std::result::Result<Request<Body>, anyhow::Error> {
+  fn json<T: serde::Serialize>(self, value: T) -> std::result::Result<Request<Body>, AppError> {
     let this = self.header(CONTENT_TYPE, "application/json");
-    let content = serde_json::to_string(&value)?;
+    let content = serde_json::to_string(&value).map_err(Common::SerdeJsonDeserialize)?;
     let result = this.body(Body::from(content))?;
     Ok(result)
   }

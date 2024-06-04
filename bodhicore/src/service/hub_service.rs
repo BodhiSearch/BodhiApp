@@ -41,10 +41,13 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   #[error(transparent)]
   ObjError(#[from] ObjError),
   #[error(
-    r#"file '{filename}' not found in $HF_HOME/{dirname}.
+    r#"file '{filename}' not found in $HF_HOME{dirname}.
 Check Huggingface Home is set correctly using environment variable $HF_HOME or using command-line or settings file."#
   )]
   FileMissing { filename: String, dirname: String },
+
+  #[error("chat_template not found in tokenizer_config.json")]
+  ChatTemplate,
 }
 
 type Result<T> = std::result::Result<T, HubServiceError>;

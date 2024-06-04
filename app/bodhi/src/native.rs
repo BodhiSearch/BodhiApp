@@ -116,7 +116,7 @@ fn main_server(server_params: ServerParams) -> anyhow::Result<ServerState> {
     server,
     shutdown,
     ready_rx,
-  } = build_server_handle(server_params)?;
+  } = build_server_handle(server_params);
   let server_async = tokio::spawn(async move { start_server(server, ready_rx).await });
   Ok(ServerState::new(server_async, shutdown))
 }

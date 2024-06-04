@@ -1,5 +1,4 @@
 use crate::{
-  error::AppError,
   oai::OpenAIApiError,
   objs::{REFS_MAIN, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
@@ -84,12 +83,7 @@ impl RouterStateFn for RouterState {
 
 impl RouterState {
   pub async fn try_stop(&self) -> crate::error::Result<()> {
-    self
-      .ctx
-      .try_stop()
-      .await
-      // TODO: fix the error hierarchy
-      .map_err(|err| AppError::Anyhow(anyhow::anyhow!(err.to_string())))?;
+    self.ctx.try_stop().await?;
     Ok(())
   }
 }

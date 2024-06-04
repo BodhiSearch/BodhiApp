@@ -73,7 +73,7 @@ impl DataService for LocalDataService {
       .bodhi_home
       .join("configs")
       .join(alias.config_filename());
-    fs::write(filename.clone(), contents).map_err(|err| Common::Io {
+    fs::write(filename.clone(), contents).map_err(|err| Common::IoFile {
       source: err,
       path: (&alias.config_filename()).clone(),
     })?;
@@ -88,7 +88,7 @@ impl DataService for LocalDataService {
       });
     }
     let yaml_files = fs::read_dir(config.clone())
-      .map_err(|err| Common::Io {
+      .map_err(|err| Common::IoFile {
         source: err,
         path: (&config).display().to_string(),
       })?
@@ -119,7 +119,7 @@ impl DataService for LocalDataService {
             }
           },
           Err(err) => {
-            let err = Common::Io {
+            let err = Common::IoFile {
               source: err,
               path: filename,
             };
@@ -149,7 +149,7 @@ impl DataService for LocalDataService {
         dirname: "".to_string(),
       });
     }
-    let content = fs::read_to_string(models_file.clone()).map_err(|err| Common::Io {
+    let content = fs::read_to_string(models_file.clone()).map_err(|err| Common::IoFile {
       source: err,
       path: (&models_file).display().to_string(),
     })?;

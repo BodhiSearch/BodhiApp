@@ -40,7 +40,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_model_alias(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
+  fn list_local_model_alias(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     let mut table = Table::new();
     table.add_row(row![
       "ALIAS",
@@ -61,7 +61,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_models(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
+  fn list_local_models(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     let mut table = Table::new();
     table.add_row(row!["FILENAME", "REPO", "SNAPSHOT", "SIZE"]);
     let models = service.list_local_models();
@@ -73,7 +73,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_remote_models(self, service: &dyn AppServiceFn) -> anyhow::Result<()> {
+  fn list_remote_models(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
     let models: Vec<RemoteModel> = service.list_remote_models()?;
     let mut table = Table::new();
     table.add_row(row![

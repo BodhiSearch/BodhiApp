@@ -1,5 +1,7 @@
 #[cfg(not(test))]
 use llama_server_bindings::BodhiServerContext;
+use validator::{Validate, ValidationErrors};
+use crate::error::Common;
 #[cfg(test)]
 use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
 
@@ -27,19 +29,22 @@ pub enum ContextError {
   BodhiError(#[from] BodhiError),
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
-  #[error("{0}")]
-  Unreachable(String),
   #[error(transparent)]
-  SerdeJson(#[from] serde_json::Error),
-  #[error(transparent)]
-  AppError(#[from] crate::error::AppError),
+  Common(#[from] Common),
   #[error(transparent)]
   BuilderError(#[from] GptParamsBuilderError),
   #[error(transparent)]
   ObjError(#[from] ObjError),
+  #[error(transparent)]
+  Validation(#[from] ValidationErrors),
+  #[error(transparent)]
+  Minijina(#[from] minijinja::Error),
+  #[error("{0}")]
+  Unreachable(String),
 }
 
 pub type Result<T> = std::result::Result<T, ContextError>;
+
 unsafe extern "C" fn callback_stream(
   contents: *const c_char,
   size: usize,
@@ -144,10 +149,11 @@ impl SharedContextRwFn for SharedContextRw {
     let loaded_model = ctx.map(|ctx| ctx.get_gpt_params().model.clone());
     let request_model = model_file.path().display().to_string();
     let chat_template: TokenizerConfig = TokenizerConfig::try_from(tokenizer_file)?;
+    chat_template.validate()?;
     let prompt = chat_template.apply_chat_template(&request.messages)?;
-    let mut input_value = serde_json::to_value(request)?;
+    let mut input_value = serde_json::to_value(request).map_err(Common::SerdeJsonDeserialize)?;
     input_value["prompt"] = serde_json::Value::String(prompt);
-    let input = serde_json::to_string(&input_value)?;
+    let input = serde_json::to_string(&input_value).map_err(Common::SerdeJsonDeserialize)?;
     match ModelLoadStrategy::choose(&loaded_model, &request_model) {
       ModelLoadStrategy::Continue => {
         ctx

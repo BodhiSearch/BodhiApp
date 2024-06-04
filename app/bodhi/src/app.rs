@@ -84,7 +84,7 @@ async fn main_server(serve: Serve) -> anyhow::Result<()> {
     server,
     shutdown,
     ready_rx: _ready_rx,
-  } = build_server_handle(serve.clone().into())?;
+  } = build_server_handle(serve.clone().into());
   let ctx = SharedContextRw::new_shared_rw(None).await?;
   let ctx = Arc::new(ctx);
   let service = AppService::default();

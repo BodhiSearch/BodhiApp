@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use async_openai::types::{
   ChatCompletionRequestMessage,
   ChatCompletionRequestUserMessageContent::{Array, Text},
@@ -9,7 +8,10 @@ use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
-use std::fmt;
+use std::{fmt, ops::Deref};
+use validator::{Validate, ValidationError};
+
+use crate::objs::validation_errors;
 
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
   Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))
@@ -67,45 +69,64 @@ pub(crate) struct ChatTemplateInputs {
   add_generation_prompt: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ChatTemplate {
   name: String,
   template: String,
 }
 
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum ChatTemplateVersions {
   Single(String),
   Multiple(Vec<ChatTemplate>),
 }
 
-#[derive(Debug, Clone, Deserialize, Default, PartialEq, new)]
+impl ChatTemplateVersions {
+  pub fn chat_template(&self) -> Option<String> {
+    match self {
+      ChatTemplateVersions::Single(template) => Some(template.clone()),
+      ChatTemplateVersions::Multiple(templates) => templates
+        .deref()
+        .iter()
+        .find(|t| t.name == "default")
+        .map(|t| t.template.clone()),
+    }
+  }
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, new, Validate)]
 pub struct TokenizerConfig {
-  pub chat_template: Option<ChatTemplateVersions>,
+  #[validate(custom(function = "validate_chat_template"))]
+  pub chat_template: ChatTemplateVersions,
   #[serde(deserialize_with = "deserialize_token", default)]
   pub bos_token: Option<String>,
   #[serde(deserialize_with = "deserialize_token", default)]
   pub eos_token: Option<String>,
 }
 
+fn validate_chat_template(chat_template: &ChatTemplateVersions) -> Result<(), ValidationError> {
+  match chat_template.chat_template() {
+    Some(_) => Ok(()),
+    None => Err(ValidationError::new(
+      "chat_template missing in tokenizer_config.json",
+    )),
+  }
+}
+
 impl TokenizerConfig {
   #[allow(clippy::result_large_err)]
-  pub fn apply_chat_template<T>(&self, messages: &[T]) -> crate::error::Result<String>
+  pub fn apply_chat_template<T>(&self, messages: &[T]) -> crate::shared_rw::Result<String>
   where
     for<'a> &'a T: Into<ChatMessage>,
   {
     let chat_template = self
       .chat_template
-      .clone() // TODO: do not clone
-      .and_then(|t| match t {
-        ChatTemplateVersions::Single(template) => Some(template),
-        ChatTemplateVersions::Multiple(templates) => templates
-          .into_iter()
-          .find(|t| t.name == "default")
-          .map(|t| t.template),
-      })
-      .ok_or(anyhow!("chat_template not found in tokenizer_config.json"))?
+      .chat_template()
+      .ok_or_else(|| {
+        let error = ValidationError::new("chat_template missing in tokenizer_config.json");
+        validation_errors("chat_template", error)
+      })?
       .replace(".strip()", " | trim")
       .replace(".title()", " | title");
     let mut env = Box::new(Environment::new());
@@ -246,15 +267,14 @@ mod test {
   }
 
   #[rstest]
-  #[case("empty.json", TokenizerConfig::default())]
   #[case("simple.json", 
   TokenizerConfig::new(
-    Some(ChatTemplateVersions::Single("{{ bos_token }} {%- for message in messages %} message['role']: {{ message['content'] }} {% endfor %} {{ eos_token }}".to_string())),
+    ChatTemplateVersions::Single("{{ bos_token }} {%- for message in messages %} message['role']: {{ message['content'] }} {% endfor %} {{ eos_token }}".to_string()),
     Some("<s>".to_string()),
     Some("</s>".to_string()),
   ))]
   #[case("bos_eos_objs.json", TokenizerConfig::new(
-    Some(ChatTemplateVersions::Single("{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}".to_string())),
+    ChatTemplateVersions::Single("{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}".to_string()),
     Some("<s>".to_string()),
     Some("</s>".to_string()),
   ))]
@@ -292,7 +312,7 @@ mod test {
       .unwrap();
     let tokenizer_config = TokenizerConfig::try_from(tokenizer_file)?;
     let expected = TokenizerConfig::new(
-      Some(ChatTemplateVersions::Single("{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + content %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}".to_string())),
+      ChatTemplateVersions::Single("{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + content %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}".to_string()),
       Some("<|begin_of_text|>".to_string()),
       Some("<|eot_id|>".to_string()),
     );

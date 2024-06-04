@@ -1,7 +1,6 @@
 use std::{io, path::PathBuf};
-
 use thiserror::Error;
-use validator::ValidationErrors;
+use validator::{ValidationError, ValidationErrors};
 
 #[derive(Debug, Error)]
 pub enum ObjError {
@@ -25,3 +24,9 @@ pub enum ObjError {
 
 #[allow(unused)]
 pub type Result<T> = std::result::Result<T, ObjError>;
+
+pub fn validation_errors(field: &'static str, error: ValidationError) -> ValidationErrors {
+  let mut errs = ValidationErrors::new();
+  errs.add(field, error);
+  errs
+}

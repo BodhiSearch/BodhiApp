@@ -1,3 +1,4 @@
+use crate::error::Common;
 use crate::server::utils::{DEFAULT_HOST, DEFAULT_PORT};
 use axum::Router;
 use derive_new::new;
@@ -38,7 +39,7 @@ pub struct ServerHandle {
   pub ready_rx: oneshot::Receiver<()>,
 }
 
-pub fn build_server_handle(server_params: ServerParams) -> anyhow::Result<ServerHandle> {
+pub fn build_server_handle(server_params: ServerParams) -> ServerHandle {
   let (shutdown, shutdown_rx) = oneshot::channel::<()>();
   let (ready, ready_rx) = oneshot::channel::<()>();
   let server = Server::new(server_params, ready, shutdown_rx);
@@ -47,7 +48,7 @@ pub fn build_server_handle(server_params: ServerParams) -> anyhow::Result<Server
     shutdown,
     ready_rx,
   };
-  Ok(result)
+  result
 }
 
 impl Server {
@@ -59,7 +60,7 @@ impl Server {
     }
   }
 
-  pub async fn start_new<F, Fut>(self, app: Router, callback: Option<F>) -> anyhow::Result<()>
+  pub async fn start_new<F, Fut>(self, app: Router, callback: Option<F>) -> crate::error::Result<()>
   where
     F: FnOnce() -> Fut + Send + 'static,
     Fut: Future<Output = ()> + Send + 'static,
@@ -70,14 +71,14 @@ impl Server {
       shutdown_rx,
     } = self;
     let addr = format!("{}:{}", host, port);
-    let listener = TcpListener::bind(&addr).await?;
+    let listener = TcpListener::bind(&addr).await.map_err(Common::Io)?;
     tracing::info!(addr = addr, "server started");
     let axum_server = axum::serve(listener, app)
       .with_graceful_shutdown(Server::shutdown_handler(shutdown_rx, callback));
     if ready.send(()).is_err() {
       tracing::warn!("ready receiver dropped before start start notified")
     };
-    axum_server.await?;
+    axum_server.await.map_err(Common::Io)?;
     Ok(())
   }
 
@@ -123,7 +124,7 @@ mod test {
     } = build_server_handle(ServerParams {
       host: host.clone(),
       port,
-    })?;
+    });
     let app = Router::new().route("/ping", get(|| async { (StatusCode::OK, "pong") }));
     let callback_received = Arc::new(Mutex::new(false));
     let callback_clone = callback_received.clone();
