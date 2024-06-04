@@ -102,7 +102,7 @@ mod test {
   use async_openai::types::CreateChatCompletionRequest;
   use axum::http::StatusCode;
   use axum::response::{IntoResponse, Response};
-  use llama_server_bindings::BodhiError;
+  use llama_server_bindings::LlamaCppError;
   use mockall::predicate::{always, eq};
   use rstest::rstest;
   use serde_json::json;
@@ -223,7 +223,7 @@ mod test {
       )
       .return_once(|_, _, _, _| {
         Err(ContextError::BodhiError(
-          BodhiError::BodhiServerChatCompletion("test error".to_string()),
+          LlamaCppError::BodhiServerChatCompletion("test error".to_string()),
         ))
       });
     let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));

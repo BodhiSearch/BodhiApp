@@ -1,6 +1,6 @@
 use super::Command;
 use crate::{
-  error::{AppError, Result},
+  error::{BodhiError, Result},
   objs::{
     default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo,
     TOKENIZER_CONFIG_JSON,
@@ -23,7 +23,7 @@ pub struct CreateCommand {
 }
 
 impl TryFrom<Command> for CreateCommand {
-  type Error = AppError;
+  type Error = BodhiError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
@@ -43,7 +43,7 @@ impl TryFrom<Command> for CreateCommand {
           None => match tokenizer_config {
             Some(tokenizer_config) => ChatTemplate::Repo(Repo::try_from(tokenizer_config)?),
             None => {
-              return Err(AppError::BadRequest(format!(
+              return Err(BodhiError::BadRequest(format!(
                 "cannot initialize create command with invalid state. chat_template: '{chat_template:?}', tokenizer_config: '{tokenizer_config:?}'"
               )))
             }
@@ -61,7 +61,7 @@ impl TryFrom<Command> for CreateCommand {
         };
         Ok(result)
       }
-      cmd => Err(AppError::ConvertCommand(cmd, "create".to_string())),
+      cmd => Err(BodhiError::ConvertCommand(cmd, "create".to_string())),
     }
   }
 }
@@ -70,7 +70,7 @@ impl CreateCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: &dyn AppServiceFn) -> Result<()> {
     if !self.force && service.find_alias(&self.alias).is_some() {
-      return Err(AppError::AliasExists(self.alias.clone()));
+      return Err(BodhiError::AliasExists(self.alias.clone()));
     }
     let local_model_file = service.download(&self.repo, &self.filename, self.force)?;
     if let ChatTemplate::Repo(repo) = &self.chat_template {

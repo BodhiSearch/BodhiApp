@@ -1,4 +1,4 @@
-use crate::{error::AppError, objs::Alias, service::AppServiceFn, Command, Repo};
+use crate::{error::BodhiError, objs::Alias, service::AppServiceFn, Command, Repo};
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
@@ -14,7 +14,7 @@ pub enum PullCommand {
 }
 
 impl TryFrom<Command> for PullCommand {
-  type Error = AppError;
+  type Error = BodhiError;
 
   fn try_from(value: Command) -> Result<Self, Self::Error> {
     match value {
@@ -32,14 +32,14 @@ impl TryFrom<Command> for PullCommand {
               filename,
               force,
             },
-            (repo, filename) => return Err(AppError::BadRequest(format!(
+            (repo, filename) => return Err(BodhiError::BadRequest(format!(
               "cannot initialize pull command with invalid state: repo={repo:?}, filename={filename:?}"
             ))),
           },
         };
         Ok(pull_command)
       }
-      cmd => Err(AppError::ConvertCommand(cmd, "pull".to_string())),
+      cmd => Err(BodhiError::ConvertCommand(cmd, "pull".to_string())),
     }
   }
 }
@@ -50,10 +50,10 @@ impl PullCommand {
     match self {
       PullCommand::ByAlias { alias, force } => {
         if !force && service.find_alias(&alias).is_some() {
-          return Err(AppError::AliasExists(alias));
+          return Err(BodhiError::AliasExists(alias));
         }
         let Some(model) = service.find_remote_model(&alias)? else {
-          return Err(AppError::AliasNotFound(alias));
+          return Err(BodhiError::AliasNotFound(alias));
         };
         let local_model_file = service.download(&model.repo, &model.filename, force)?;
         let alias = Alias::new(

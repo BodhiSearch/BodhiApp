@@ -1,14 +1,14 @@
 use crate::{
-  error::{AppError, Common},
+  error::{BodhiError, Common},
   server::BODHI_HOME,
 };
 use std::{env, fs, path::PathBuf};
 
-pub(crate) fn user_home() -> Result<PathBuf, AppError> {
-  dirs::home_dir().ok_or_else(|| AppError::HomeDirectory)
+pub(crate) fn user_home() -> Result<PathBuf, BodhiError> {
+  dirs::home_dir().ok_or_else(|| BodhiError::HomeDirectory)
 }
 
-pub(crate) fn bodhi_home() -> Result<PathBuf, AppError> {
+pub(crate) fn bodhi_home() -> Result<PathBuf, BodhiError> {
   let bodhi_home = match env::var(BODHI_HOME) {
     Ok(bodhi_home) => PathBuf::from(bodhi_home),
     Err(_) => user_home()?.join(".cache").join(".bodhi"),
@@ -22,7 +22,7 @@ pub(crate) fn bodhi_home() -> Result<PathBuf, AppError> {
   Ok(bodhi_home)
 }
 
-pub fn logs_dir() -> Result<PathBuf, AppError> {
+pub fn logs_dir() -> Result<PathBuf, BodhiError> {
   let bodhi_home = bodhi_home()?;
   let logs_dir = PathBuf::from(format!("{}/logs", bodhi_home.display()));
   if !logs_dir.exists() {

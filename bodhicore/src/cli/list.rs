@@ -1,4 +1,4 @@
-use crate::{error::AppError, objs::RemoteModel, service::AppServiceFn, Command};
+use crate::{error::BodhiError, objs::RemoteModel, service::AppServiceFn, Command};
 use prettytable::{
   format::{self},
   row, Row, Table,
@@ -12,7 +12,7 @@ pub enum ListCommand {
 }
 
 impl TryFrom<Command> for ListCommand {
-  type Error = AppError;
+  type Error = BodhiError;
 
   fn try_from(value: Command) -> Result<Self, Self::Error> {
     match value {
@@ -20,11 +20,11 @@ impl TryFrom<Command> for ListCommand {
         (true, false) => Ok(ListCommand::Remote),
         (false, true) => Ok(ListCommand::Models),
         (false, false) => Ok(ListCommand::Local),
-        (true, true) => Err(AppError::BadRequest(format!(
+        (true, true) => Err(BodhiError::BadRequest(format!(
           "cannot initialize list command with invalid state. --remote: {remote}, --models: {models}"
         ))),
       },
-      cmd => Err(AppError::ConvertCommand(cmd, "list".to_string())),
+      cmd => Err(BodhiError::ConvertCommand(cmd, "list".to_string())),
     }
   }
 }

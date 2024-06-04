@@ -10,7 +10,7 @@ use crate::service::DataServiceError;
 use tokio::sync::mpsc::Sender;
 use crate::tokenizer_config::TokenizerConfig;
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_bindings::{BodhiError, GptParams, GptParamsBuilder, GptParamsBuilderError};
+use llama_server_bindings::{LlamaCppError, GptParams, GptParamsBuilder, GptParamsBuilderError};
 use std::ffi::{c_char, c_void};
 use std::slice;
 use std::time::Duration;
@@ -25,7 +25,7 @@ pub struct SharedContextRw {
 #[derive(Debug, Error)]
 pub enum ContextError {
   #[error(transparent)]
-  BodhiError(#[from] BodhiError),
+  BodhiError(#[from] LlamaCppError),
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
   #[error(transparent)]

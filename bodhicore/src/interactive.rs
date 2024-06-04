@@ -1,4 +1,4 @@
-use crate::error::{AppError, Common};
+use crate::error::{BodhiError, Common};
 use crate::objs::Alias;
 use crate::server::{RouterState, RouterStateFn};
 use crate::service::{AppServiceFn, HubServiceError};
@@ -114,7 +114,7 @@ impl Interactive {
       .stream(true)
       .messages(msgs_clone)
       .build()
-      .map_err(AppError::BuildError)?;
+      .map_err(BodhiError::BuildError)?;
     let (tx, mut rx) = channel::<String>(100);
     let handle: JoinHandle<crate::error::Result<()>> =
       tokio::spawn(async move {

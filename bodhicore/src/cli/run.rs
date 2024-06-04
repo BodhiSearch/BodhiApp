@@ -1,16 +1,16 @@
-use crate::{error::AppError, interactive::launch_interactive, service::AppServiceFn, Command};
+use crate::{error::BodhiError, interactive::launch_interactive, service::AppServiceFn, Command};
 
 pub enum RunCommand {
   WithAlias { alias: String },
 }
 
 impl TryFrom<Command> for RunCommand {
-  type Error = AppError;
+  type Error = BodhiError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
       Command::Run { alias } => Ok(RunCommand::WithAlias { alias }),
-      cmd => Err(AppError::ConvertCommand(cmd, "run".to_string())),
+      cmd => Err(BodhiError::ConvertCommand(cmd, "run".to_string())),
     }
   }
 }
@@ -21,7 +21,7 @@ impl RunCommand {
     match self {
       RunCommand::WithAlias { alias } => {
         let Some(alias) = service.find_alias(&alias) else {
-          return Err(AppError::AliasNotFound(alias));
+          return Err(BodhiError::AliasNotFound(alias));
         };
         // TODO: after removing anyhow::Error from launch_interactive, replace with direct call
         launch_interactive(alias, service)?;

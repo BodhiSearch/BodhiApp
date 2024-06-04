@@ -12,7 +12,7 @@ use validator::ValidationErrors;
 
 #[derive(Debug, Error)]
 #[allow(clippy::large_enum_variant)]
-pub enum AppError {
+pub enum BodhiError {
   #[error(
     r#"model alias '{0}' not found in pre-configured model aliases.
 Run `bodhi list -r` to see list of pre-configured model aliases
@@ -48,7 +48,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   AxumHttp(#[from] axum::http::Error),
 }
 
-pub type Result<T> = std::result::Result<T, AppError>;
+pub type Result<T> = std::result::Result<T, BodhiError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Common {
