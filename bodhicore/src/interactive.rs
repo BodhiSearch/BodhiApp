@@ -1,3 +1,4 @@
+use crate::db::DbService;
 use crate::error::{BodhiError, Common};
 use crate::objs::Alias;
 use crate::server::{RouterState, RouterStateFn};
@@ -68,7 +69,11 @@ impl Interactive {
     disable_llama_log();
     let app_service = AppService::default();
     let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let router_state = RouterState::new(Arc::new(shared_rw), Arc::new(app_service));
+    let router_state = RouterState::new(
+      Arc::new(shared_rw),
+      Arc::new(app_service),
+      Arc::new(DbService::no_op()),
+    );
     pb.finish_and_clear();
     let mut shell_history = BasicHistory::new().max_entries(100).no_duplicates(false);
     let chat_history = Arc::new(Mutex::new(Vec::<ChatCompletionRequestMessage>::new()));

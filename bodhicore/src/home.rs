@@ -4,14 +4,14 @@ use crate::{
 };
 use std::{env, fs, path::PathBuf};
 
-pub(crate) fn user_home() -> Result<PathBuf, BodhiError> {
+pub fn user_home() -> Result<PathBuf, BodhiError> {
   dirs::home_dir().ok_or_else(|| BodhiError::HomeDirectory)
 }
 
-pub(crate) fn bodhi_home() -> Result<PathBuf, BodhiError> {
+pub fn bodhi_home() -> Result<PathBuf, BodhiError> {
   let bodhi_home = match env::var(BODHI_HOME) {
     Ok(bodhi_home) => PathBuf::from(bodhi_home),
-    Err(_) => user_home()?.join(".cache").join(".bodhi"),
+    Err(_) => user_home()?.join(".cache").join("bodhi"),
   };
   if !bodhi_home.exists() {
     fs::create_dir_all(&bodhi_home).map_err(|source| Common::IoDir {

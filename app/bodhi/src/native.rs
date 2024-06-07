@@ -1,10 +1,16 @@
+use crate::PROD_DB;
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
+  db::{DbPool, DbService, TimeService},
+  home::bodhi_home,
   server::{build_routes, build_server_handle, Server, ServerHandle, ServerParams},
   AppService, BodhiError, SharedContextRw, SharedContextRwFn,
 };
 use futures_util::{future::BoxFuture, FutureExt};
-use std::sync::{Arc, Mutex};
+use std::{
+  fs::File,
+  sync::{Arc, Mutex},
+};
 use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,
   WindowEvent,
@@ -128,7 +134,13 @@ async fn start_server(server: Server, ready_rx: Receiver<()>) -> super::Result<(
     .map_err(BodhiError::from)?;
   let ctx = Arc::new(ctx);
   let app_service = AppService::default();
-  let app = build_routes(ctx.clone(), Arc::new(app_service));
+
+  let dbpath = bodhi_home()?.join(PROD_DB);
+  _ = File::create_new(&dbpath);
+  let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
+  let db_service = DbService::new(pool, Arc::new(TimeService::default()));
+
+  let app = build_routes(ctx.clone(), Arc::new(app_service), Arc::new(db_service));
   let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
     async move {
       if let Err(err) = ctx.try_stop().await {

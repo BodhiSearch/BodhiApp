@@ -1,4 +1,4 @@
-use super::{ChatTemplate, GptContextParams, OAIRequestParams, Repo};
+use super::{is_default, ChatTemplate, GptContextParams, OAIRequestParams, Repo};
 use crate::utils::to_safe_filename;
 use derive_new::new;
 use prettytable::{Cell, Row};
@@ -28,10 +28,6 @@ impl Alias {
     let filename = to_safe_filename(&filename);
     format!("{}.yaml", filename)
   }
-}
-
-fn is_default<T: Default + PartialEq>(t: &T) -> bool {
-  t == &T::default()
 }
 
 impl From<Alias> for Row {

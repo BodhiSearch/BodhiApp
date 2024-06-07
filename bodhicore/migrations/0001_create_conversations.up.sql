@@ -17,6 +17,5 @@ CREATE TABLE messages (
     name TEXT,
     content TEXT,
     created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL,
     FOREIGN KEY (conversation_id) REFERENCES conversations(id)
 );

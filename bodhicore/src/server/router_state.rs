@@ -1,4 +1,5 @@
 use crate::{
+  db::DbServiceFn,
   oai::OpenAIApiError,
   objs::{REFS_MAIN, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
@@ -10,10 +11,11 @@ use axum::async_trait;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
-#[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait RouterStateFn: Send + Sync {
   fn app_service(&self) -> Arc<dyn AppServiceFn>;
+
+  fn db_service(&self) -> Arc<dyn DbServiceFn>;
 
   async fn chat_completions(
     &self,
@@ -26,11 +28,20 @@ pub trait RouterStateFn: Send + Sync {
 pub struct RouterState {
   pub(crate) ctx: Arc<dyn SharedContextRwFn>,
   pub(crate) app_service: Arc<dyn AppServiceFn>,
+  pub(crate) db_service: Arc<dyn DbServiceFn>,
 }
 
 impl RouterState {
-  pub(crate) fn new(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppServiceFn>) -> Self {
-    Self { ctx, app_service }
+  pub(crate) fn new(
+    ctx: Arc<dyn SharedContextRwFn>,
+    app_service: Arc<dyn AppServiceFn>,
+    db_service: Arc<dyn DbServiceFn>,
+  ) -> Self {
+    Self {
+      ctx,
+      app_service,
+      db_service,
+    }
   }
 }
 
@@ -38,6 +49,10 @@ impl RouterState {
 impl RouterStateFn for RouterState {
   fn app_service(&self) -> Arc<dyn AppServiceFn> {
     self.app_service.clone()
+  }
+
+  fn db_service(&self) -> Arc<dyn DbServiceFn> {
+    self.db_service.clone()
   }
 
   async fn chat_completions(
@@ -96,7 +111,7 @@ mod test {
     objs::{Alias, HubFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     server::RouterStateFn,
     shared_rw::ContextError,
-    test_utils::{test_channel, MockAppService, MockSharedContext, ResponseTestExt},
+    test_utils::{test_channel, MockAppService, MockDbService, MockSharedContext, ResponseTestExt},
     Repo,
   };
   use async_openai::types::CreateChatCompletionRequest;
@@ -117,7 +132,11 @@ mod test {
       .with(eq("not-found"))
       .return_once(|_| None);
     let mock_ctx = MockSharedContext::default();
-    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
+    let state = RouterState::new(
+      Arc::new(mock_ctx),
+      Arc::new(mock_app_service),
+      Arc::new(MockDbService::new()),
+    );
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "not-found",
       "messages": [
@@ -178,7 +197,11 @@ mod test {
         always(),
       )
       .return_once(|_, _, _, _| Ok(()));
-    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
+    let state = RouterState::new(
+      Arc::new(mock_ctx),
+      Arc::new(mock_app_service),
+      Arc::new(MockDbService::new()),
+    );
     let (tx, _rx) = test_channel();
     state.chat_completions(request, tx).await?;
     Ok(())
@@ -226,7 +249,11 @@ mod test {
           LlamaCppError::BodhiServerChatCompletion("test error".to_string()),
         ))
       });
-    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(mock_app_service));
+    let state = RouterState::new(
+      Arc::new(mock_ctx),
+      Arc::new(mock_app_service),
+      Arc::new(MockDbService::new()),
+    );
     let result = state.chat_completions(request, tx).await;
     assert!(result.is_err());
     let response = result.unwrap_err().into_response();

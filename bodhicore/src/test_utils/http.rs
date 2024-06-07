@@ -74,6 +74,8 @@ impl ResponseTestExt for Response {
 
 pub trait RequestTestExt {
   fn json<T: serde::Serialize>(self, value: T) -> Result<Request<Body>, anyhow::Error>;
+
+  fn json_str(self, value: &str) -> Result<Request<Body>, anyhow::Error>;
 }
 
 impl RequestTestExt for Builder {
@@ -84,6 +86,12 @@ impl RequestTestExt for Builder {
     let this = self.header(CONTENT_TYPE, "application/json");
     let content = serde_json::to_string(&value)?;
     let result = this.body(Body::from(content))?;
+    Ok(result)
+  }
+
+  fn json_str(self, value: &str) -> Result<Request<Body>, anyhow::Error> {
+    let this = self.header(CONTENT_TYPE, "application/json");
+    let result = this.body(Body::from(value.to_string()))?;
     Ok(result)
   }
 }

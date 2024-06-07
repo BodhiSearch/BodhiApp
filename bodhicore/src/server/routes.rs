@@ -1,34 +1,30 @@
 use super::{
+  super::{db::DbServiceFn, service::AppServiceFn, SharedContextRwFn},
   router_state::RouterState,
   routes_chat::chat_completions_handler,
   routes_models::ui_models_handler,
-  routes_ui::{
-    ui_chat_delete_handler, ui_chat_handler, ui_chat_update_handler, ui_chats_delete_handler,
-    ui_chats_handler,
-  },
+  routes_ui::chats_router,
 };
-use crate::{service::AppServiceFn, SharedContextRwFn};
 use axum::{
-  routing::{delete, get, post},
+  routing::{get, post},
   Router,
 };
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
-pub fn build_routes(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppServiceFn>) -> Router {
-  let state = RouterState::new(ctx, app_service);
-  let api_router = Router::new()
-    .route("/chats", get(ui_chats_handler))
-    .route("/chats", delete(ui_chats_delete_handler))
-    .route("/chats/:id", get(ui_chat_handler))
-    .route("/chats/:id", post(ui_chat_update_handler))
-    .route("/chats/:id", delete(ui_chat_delete_handler))
-    .route("/models", get(ui_models_handler));
+pub fn build_routes(
+  ctx: Arc<dyn SharedContextRwFn>,
+  app_service: Arc<dyn AppServiceFn>,
+  db_service: Arc<dyn DbServiceFn>,
+) -> Router {
+  let state = RouterState::new(ctx, app_service, db_service);
+  let api_router = Router::new().route("/models", get(ui_models_handler));
   Router::new()
     .route("/ping", get(|| async { "pong" }))
     .nest("/api/ui", api_router)
     .route("/v1/chat/completions", post(chat_completions_handler))
+    .merge(chats_router())
     .layer(
       CorsLayer::new()
         .allow_origin(Any)

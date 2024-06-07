@@ -1,4 +1,4 @@
-use bodhicore::CliError;
+use bodhicore::{db::DbError, CliError};
 use std::io;
 
 #[derive(Debug, thiserror::Error)]
@@ -15,6 +15,8 @@ pub enum AppError {
   Tauri(#[from] tauri::Error),
   #[error(transparent)]
   Cli(#[from] CliError),
+  #[error(transparent)]
+  Db(#[from] DbError),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, AppError>;

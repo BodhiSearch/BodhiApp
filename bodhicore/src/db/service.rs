@@ -1,8 +1,15 @@
-use super::objs::{Conversation, Message};
+use super::{
+  no_op::NoOpDbService,
+  objs::{Conversation, Message},
+};
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
 use sqlx::SqlitePool;
 use std::sync::Arc;
+use uuid::Uuid;
+
+pub static CONVERSATIONS: &str = "conversations";
+pub static MESSAGES: &str = "messages";
 
 pub trait TimeServiceFn: std::fmt::Debug + Send + Sync {
   fn utc_now(&self) -> DateTime<Utc>;
@@ -20,12 +27,22 @@ impl TimeServiceFn for TimeService {
 
 #[derive(Debug, thiserror::Error)]
 pub enum DbError {
-  #[error(transparent)]
-  Sqlx(#[from] sqlx::Error),
+  #[error("sqlx_query: {source}\ntable: {table}")]
+  Sqlx {
+    #[source]
+    source: sqlx::Error,
+    table: String,
+  },
+  #[error("sqlx_connect: {source}\nurl: {url}")]
+  SqlxConnect {
+    #[source]
+    source: sqlx::Error,
+    url: String,
+  },
 }
 
 #[async_trait::async_trait]
-pub trait DbServiceFn {
+pub trait DbServiceFn: std::fmt::Debug + Send + Sync {
   async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError>;
 
   async fn save_message(&self, message: &mut Message) -> Result<(), DbError>;
@@ -45,9 +62,20 @@ pub struct DbService {
   time_service: Arc<dyn TimeServiceFn>,
 }
 
+impl DbService {
+  pub fn no_op() -> impl DbServiceFn {
+    NoOpDbService::new()
+  }
+}
+
 #[async_trait::async_trait]
 impl DbServiceFn for DbService {
   async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError> {
+    if conversation.id.is_empty() {
+      conversation.id = Uuid::new_v4().to_string()
+    } else {
+      self.delete_conversations(&conversation.id).await?;
+    }
     conversation.updated_at = self.time_service.utc_now();
     sqlx::query(
       "INSERT INTO conversations
@@ -67,12 +95,24 @@ impl DbServiceFn for DbService {
     .bind(&conversation.title)
     .bind(conversation.updated_at.timestamp())
     .execute(&self.pool)
-    .await?;
+    .await
+    .map_err(|source| DbError::Sqlx {
+      source,
+      table: CONVERSATIONS.to_string(),
+    })?;
+    for message in &mut conversation.messages {
+      if message.conversation_id.is_empty() {
+        message.conversation_id.clone_from(&conversation.id);
+      }
+      self.save_message(message).await?;
+    }
     Ok(())
   }
 
   async fn save_message(&self, message: &mut Message) -> Result<(), DbError> {
-    message.updated_at = self.time_service.utc_now();
+    if message.id.is_empty() {
+      message.id = Uuid::new_v4().to_string();
+    }
     sqlx::query(
       "INSERT INTO messages
         (
@@ -81,11 +121,10 @@ impl DbServiceFn for DbService {
           role,
           name,
           content,
-          created_at,
-          updated_at
+          created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET role = ?, name = ?, content = ?, updated_at = ?",
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET conversation_id = ?, role = ?, name = ?, content = ?, created_at = ?",
     )
     .bind(&message.id)
     .bind(&message.conversation_id)
@@ -93,13 +132,17 @@ impl DbServiceFn for DbService {
     .bind(&message.name)
     .bind(&message.content)
     .bind(message.created_at.timestamp())
-    .bind(message.updated_at.timestamp())
+    .bind(&message.conversation_id)
     .bind(&message.role)
     .bind(&message.name)
     .bind(&message.content)
-    .bind(message.updated_at.timestamp())
+    .bind(message.created_at.timestamp())
     .execute(&self.pool)
-    .await?;
+    .await
+    .map_err(|source| DbError::Sqlx {
+      source,
+      table: MESSAGES.to_string(),
+    })?;
     Ok(())
   }
 
@@ -108,7 +151,11 @@ impl DbServiceFn for DbService {
       "SELECT id, title, created_at, updated_at FROM conversations ORDER BY created_at DESC",
     )
     .fetch_all(&self.pool)
-    .await?;
+    .await
+    .map_err(|source| DbError::Sqlx {
+      source,
+      table: CONVERSATIONS.to_string(),
+    })?;
 
     let mut result = Vec::new();
     for (id, title, created_at, updated_at) in conversations {
@@ -126,18 +173,22 @@ impl DbServiceFn for DbService {
 
   async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError> {
     let messages = sqlx::query_as::<_, Message>(
-      "SELECT id, conversation_id, role, name, content, created_at, updated_at FROM messages WHERE conversation_id = ?"
+      "SELECT id, conversation_id, role, name, content, created_at FROM messages WHERE conversation_id = ?"
     )
-    .bind(&id)
+    .bind(id)
     .fetch_all(&self.pool)
-    .await?;
+    .await.map_err(|source| DbError::Sqlx { source, table: MESSAGES.to_string() })?;
 
     let row = sqlx::query_as::<_, (String, String, i64, i64)>(
       "SELECT id, title, created_at, updated_at FROM conversations WHERE id = ?",
     )
-    .bind(&id)
+    .bind(id)
     .fetch_one(&self.pool)
-    .await?;
+    .await
+    .map_err(|source| DbError::Sqlx {
+      source,
+      table: CONVERSATIONS.to_string(),
+    })?;
 
     let conversation = Conversation {
       id: row.0.clone(),
@@ -154,28 +205,44 @@ impl DbServiceFn for DbService {
     sqlx::query("DELETE FROM messages where conversation_id=?")
       .bind(id)
       .execute(&self.pool)
-      .await?;
+      .await
+      .map_err(|source| DbError::Sqlx {
+        source,
+        table: MESSAGES.to_string(),
+      })?;
     sqlx::query("DELETE FROM conversations where id=?")
       .bind(id)
       .execute(&self.pool)
-      .await?;
+      .await
+      .map_err(|source| DbError::Sqlx {
+        source,
+        table: CONVERSATIONS.to_string(),
+      })?;
     Ok(())
   }
 
   async fn delete_all_conversations(&self) -> Result<(), DbError> {
     sqlx::query("DELETE FROM messages")
       .execute(&self.pool)
-      .await?;
+      .await
+      .map_err(|source| DbError::Sqlx {
+        source,
+        table: MESSAGES.to_string(),
+      })?;
     sqlx::query("DELETE FROM conversations")
       .execute(&self.pool)
-      .await?;
+      .await
+      .map_err(|source| DbError::Sqlx {
+        source,
+        table: CONVERSATIONS.to_string(),
+      })?;
     Ok(())
   }
 }
 
 #[cfg(test)]
 mod test {
-  use super::DbService;
+  use super::{DbService, TimeService, TimeServiceFn};
   use crate::{
     db::{
       objs::{ConversationBuilder, MessageBuilder},
@@ -313,7 +380,7 @@ mod test {
       .await;
     assert!(convos.is_err());
     assert_eq!(
-      "no rows returned by a query that expected to return at least one row",
+      "sqlx_query: no rows returned by a query that expected to return at least one row\ntable: conversations",
       convos.unwrap_err().to_string()
     );
     Ok(())
@@ -337,6 +404,14 @@ mod test {
     service.delete_all_conversations().await?;
     let convos = service.list_conversations().await?;
     assert!(convos.is_empty());
+    Ok(())
+  }
+
+  #[test]
+  fn test_time_service_utc_now() -> anyhow::Result<()> {
+    let now = TimeService.utc_now();
+    let now_chrono = chrono::Utc::now();
+    assert!(now.timestamp() - now_chrono.timestamp() < 1);
     Ok(())
   }
 }

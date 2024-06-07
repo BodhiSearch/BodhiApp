@@ -1,4 +1,7 @@
-use crate::{DbService, TimeServiceFn};
+use crate::db::{
+  objs::{Conversation, Message},
+  DbError, DbService, DbServiceFn, TimeServiceFn,
+};
 use chrono::{DateTime, Timelike, Utc};
 use rstest::fixture;
 use sqlx::SqlitePool;
@@ -23,6 +26,32 @@ mockall::mock! {
   unsafe impl Send for TimeService {}
 
   unsafe impl Sync for TimeService {}
+}
+
+mockall::mock! {
+  pub DbService {}
+
+  #[async_trait::async_trait]
+  impl DbServiceFn for DbService {
+    async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError>;
+
+    async fn save_message(&self, message: &mut Message) -> Result<(), DbError>;
+
+    async fn list_conversations(&self) -> Result<Vec<Conversation>, DbError>;
+
+    async fn delete_conversations(&self, id: &str) -> Result<(), DbError>;
+
+    async fn delete_all_conversations(&self) -> Result<(), DbError>;
+
+    async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError>;
+  }
+
+  impl std::fmt::Debug for DbService {
+    fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
+  }
+
+  unsafe impl Send for DbService {}
+  unsafe impl Sync for DbService {}
 }
 
 #[fixture]

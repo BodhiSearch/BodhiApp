@@ -1,14 +1,15 @@
-use crate::{native::main_native, AppError};
+use crate::{native::main_native, AppError, PROD_DB};
 use bodhicore::{
   cli::{Cli, Command},
-  home::logs_dir,
+  db::{DbPool, DbService, TimeService},
+  home::{bodhi_home, logs_dir},
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle},
   AppService, BodhiError, CreateCommand, ListCommand, PullCommand, RunCommand, Serve,
   SharedContextRw, SharedContextRwFn,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
-use std::{env, sync::Arc};
+use std::{env, fs::File, sync::Arc};
 use tokio::runtime::Builder;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -89,7 +90,13 @@ async fn main_server(serve: Serve) -> super::Result<()> {
     .map_err(BodhiError::from)?;
   let ctx = Arc::new(ctx);
   let service = AppService::default();
-  let app = build_routes(ctx.clone(), Arc::new(service));
+
+  let dbpath = bodhi_home()?.join(PROD_DB);
+  _ = File::create_new(&dbpath);
+  let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
+  let db_service = DbService::new(pool, Arc::new(TimeService));
+
+  let app = build_routes(ctx.clone(), Arc::new(service), Arc::new(db_service));
   let server_async = tokio::spawn(async move {
     let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
       async move {
