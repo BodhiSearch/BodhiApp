@@ -51,6 +51,7 @@ pub fn default_features() -> Vec<String> {
 #[cfg(test)]
 mod test {
   use super::Alias;
+  use prettytable::{Cell, Row};
   use rstest::rstest;
 
   #[rstest]
@@ -78,6 +79,22 @@ chat_template: llama3
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: String) -> anyhow::Result<()> {
     let actual = serde_yaml::to_string(&alias)?;
     assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[test]
+  fn test_alias_to_row() -> anyhow::Result<()> {
+    let alias = Alias::testalias();
+    let row = Row::from(alias);
+    assert_eq!(Row::from(
+      vec![
+        Cell::new("testalias:instruct"),
+        Cell::new("testalias"),
+        Cell::new("MyFactory/testalias-gguf"),
+        Cell::new("testalias.Q8_0.gguf"),
+        Cell::new("chat"),
+        Cell::new("llama3"),
+      ]), row);
     Ok(())
   }
 }

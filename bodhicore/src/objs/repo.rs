@@ -45,26 +45,6 @@ impl Repo {
   pub fn path(&self) -> String {
     hf_hub::Repo::model(self.value.clone()).folder_name()
   }
-
-  pub fn split(&self) -> (String, String) {
-    match self.value.split_once('/') {
-      Some((owner, repo)) => (owner.to_string(), repo.to_string()),
-      None => unreachable!(
-        "should not be able to create Repo with invalid repo format, value is '{}'",
-        self.value
-      ),
-    }
-  }
-
-  pub fn owner(&self) -> String {
-    let (owner, _) = self.split();
-    owner
-  }
-
-  pub fn name(&self) -> String {
-    let (_, name) = self.split();
-    name
-  }
 }
 
 impl Display for Repo {
