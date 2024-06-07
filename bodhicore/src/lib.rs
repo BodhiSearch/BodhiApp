@@ -1,5 +1,6 @@
 pub mod bindings;
 pub mod cli;
+mod db;
 mod error;
 pub mod home;
 mod interactive;
@@ -11,6 +12,7 @@ mod shared_rw;
 mod tokenizer_config;
 mod utils;
 pub use cli::*;
+pub use db::*;
 pub use error::BodhiError;
 pub use objs::Repo;
 pub use service::AppService;
