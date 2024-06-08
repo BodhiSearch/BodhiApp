@@ -4,8 +4,8 @@ use bodhicore::{
   db::{DbPool, DbService, TimeService},
   home::{bodhi_home, logs_dir},
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle},
-  AppService, BodhiError, CreateCommand, ListCommand, PullCommand, RunCommand, Serve,
-  SharedContextRw, SharedContextRwFn,
+  service::{AppService, HfHubService, LocalDataService},
+  CreateCommand, ListCommand, PullCommand, RunCommand, Serve, SharedContextRw, SharedContextRwFn,
 };
 use clap::Parser;
 use futures_util::{future::BoxFuture, FutureExt};
@@ -28,7 +28,6 @@ pub fn main_internal() -> super::Result<()> {
   // the app was called from wrapper
   // or the executable was called from outside the `Bodhi.app` bundle
   let cli = Cli::parse();
-  let service = AppService::default();
   match cli.command {
     Command::App {} => {
       main_native()?;
@@ -38,22 +37,25 @@ pub fn main_internal() -> super::Result<()> {
     }
     list @ Command::List { .. } => {
       let list_command = ListCommand::try_from(list)?;
-      list_command.execute(&service)?;
+      list_command.execute(&AppService::default())?;
     }
     Command::Serve { host, port } => {
       main_async(Serve { host, port })?;
     }
     pull @ Command::Pull { .. } => {
       let pull_command = PullCommand::try_from(pull)?;
-      pull_command.execute(&service)?;
+      pull_command.execute(&AppService::default())?;
     }
     create @ Command::Create { .. } => {
       let create_command = CreateCommand::try_from(create)?;
+      let mut hub_service = HfHubService::default();
+      hub_service.progress_bar(true);
+      let service = AppService::new(hub_service, LocalDataService::default());
       create_command.execute(&service)?;
     }
     run @ Command::Run { .. } => {
       let run_command = RunCommand::try_from(run)?;
-      run_command.execute(&service)?;
+      run_command.execute(&AppService::default())?;
     }
   }
   Ok(())
@@ -85,9 +87,7 @@ async fn main_server(serve: Serve) -> super::Result<()> {
     shutdown,
     ready_rx: _ready_rx,
   } = build_server_handle(serve.clone().into());
-  let ctx = SharedContextRw::new_shared_rw(None)
-    .await
-    .map_err(BodhiError::from)?;
+  let ctx = SharedContextRw::new_shared_rw(None).await?;
   let ctx = Arc::new(ctx);
   let service = AppService::default();
 

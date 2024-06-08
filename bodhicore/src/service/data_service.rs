@@ -75,7 +75,7 @@ impl DataService for LocalDataService {
       .join(alias.config_filename());
     fs::write(filename.clone(), contents).map_err(|err| Common::IoFile {
       source: err,
-      path: (&alias.config_filename()).clone(),
+      path: alias.config_filename().clone(),
     })?;
     Ok(filename)
   }
@@ -90,8 +90,9 @@ impl DataService for LocalDataService {
     let yaml_files = fs::read_dir(config.clone())
       .map_err(|err| Common::IoFile {
         source: err,
-        path: (&config).display().to_string(),
-      })?
+        path: config.display().to_string(),
+      })?;
+    let yaml_files = yaml_files
       .filter_map(|entry| {
         let file_path = entry.ok()?.path();
         if let Some(extension) = file_path.extension() {
@@ -151,7 +152,7 @@ impl DataService for LocalDataService {
     }
     let content = fs::read_to_string(models_file.clone()).map_err(|err| Common::IoFile {
       source: err,
-      path: (&models_file).display().to_string(),
+      path: models_file.display().to_string(),
     })?;
     let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content).map_err(|err| {
       Common::SerdeYamlSerialize {

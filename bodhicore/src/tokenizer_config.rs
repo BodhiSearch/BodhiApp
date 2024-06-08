@@ -70,7 +70,7 @@ pub(crate) struct ChatTemplateInputs {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ChatTemplate {
+pub struct ChatTemplateEntry {
   name: String,
   template: String,
 }
@@ -79,7 +79,7 @@ pub struct ChatTemplate {
 #[serde(untagged)]
 pub enum ChatTemplateVersions {
   Single(String),
-  Multiple(Vec<ChatTemplate>),
+  Multiple(Vec<ChatTemplateEntry>),
 }
 
 impl ChatTemplateVersions {
@@ -227,10 +227,10 @@ mod test {
     let inputs: serde_yaml::Value = serde_yaml::from_str(&inputs)?;
     let input = inputs
       .as_sequence()
-      .ok_or(anyhow!("should be an array of test cases"))?
+      .ok_or_else(||anyhow!("should be an array of test cases"))?
       .iter()
       .find(|item| item["id"] == case)
-      .ok_or(anyhow!(
+      .ok_or_else(||anyhow!(
         "test case with id: {case} not found for model: {model}"
       ))?;
     let messages: Vec<ChatMessage> = serde_yaml::from_value(input["messages"].clone())?;
@@ -241,7 +241,7 @@ mod test {
       let prompt = config.apply_chat_template(&messages)?;
       let expected = expected
         .as_str()
-        .ok_or(anyhow!(
+        .ok_or_else(||anyhow!(
           "expected value for key: {format}, for case {case} to be string"
         ))?
         .trim_end_matches('\n')
@@ -249,11 +249,11 @@ mod test {
       assert_eq!(expected, prompt);
     } else if expected["exception"]
       .as_bool()
-      .ok_or(anyhow!("exception should be bool"))?
+      .ok_or_else(||anyhow!("exception should be bool"))?
     {
       let message = expected["message"]
         .as_str()
-        .ok_or(anyhow!("error message should be str"))?;
+        .ok_or_else(||anyhow!("error message should be str"))?;
       let prompt = config.apply_chat_template(&messages);
       assert!(prompt.is_err());
       assert!(prompt

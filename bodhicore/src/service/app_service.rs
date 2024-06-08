@@ -10,8 +10,8 @@ pub trait AppServiceFn: HubService + DataService + Send + Sync {}
 
 #[derive(Debug, Clone)]
 pub struct AppService {
-  pub(super) hub_service: Arc<dyn HubService + Send + Sync>,
-  pub(super) data_service: Arc<dyn DataService + Send + Sync>,
+  hub_service: Arc<dyn HubService + Send + Sync>,
+  data_service: Arc<dyn DataService + Send + Sync>,
 }
 
 impl Default for AppService {

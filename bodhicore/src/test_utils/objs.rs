@@ -146,7 +146,7 @@ impl Alias {
   pub fn test_alias_instruct_builder() -> AliasBuilder {
     AliasBuilder::default()
       .alias("testalias:instruct".to_string())
-      .family(Some("testalias".to_string()))
+      .family("testalias")
       .repo(Repo::testalias())
       .filename("testalias.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())

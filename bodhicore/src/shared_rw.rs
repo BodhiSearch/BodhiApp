@@ -156,7 +156,7 @@ impl SharedContextRwFn for SharedContextRw {
     match ModelLoadStrategy::choose(&loaded_model, &request_model) {
       ModelLoadStrategy::Continue => {
         ctx
-          .ok_or(ContextError::Unreachable(
+          .ok_or_else(||ContextError::Unreachable(
             "context should not be None".to_string(),
           ))?
           .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
@@ -168,7 +168,7 @@ impl SharedContextRwFn for SharedContextRw {
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
-        ctx.ok_or(ContextError::Unreachable(
+        ctx.ok_or_else(||ContextError::Unreachable(
           "context should not be None".to_string(),
         ))?
         .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
@@ -182,7 +182,7 @@ impl SharedContextRwFn for SharedContextRw {
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
-        ctx.ok_or(ContextError::Unreachable(
+        ctx.ok_or_else(||ContextError::Unreachable(
           "context should not be None".to_string(),
         ))?
         .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;

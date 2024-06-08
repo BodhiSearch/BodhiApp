@@ -7,14 +7,13 @@ mod interactive;
 mod oai;
 mod objs;
 pub mod server;
-mod service;
+pub mod service;
 mod shared_rw;
 mod tokenizer_config;
 mod utils;
 pub use cli::*;
 pub use error::BodhiError;
 pub use objs::Repo;
-pub use service::AppService;
-pub use shared_rw::{SharedContextRw, SharedContextRwFn};
+pub use shared_rw::{ContextError, SharedContextRw, SharedContextRwFn};
 #[cfg(test)]
 mod test_utils;

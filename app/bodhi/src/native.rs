@@ -4,7 +4,8 @@ use bodhicore::{
   db::{DbPool, DbService, TimeService},
   home::bodhi_home,
   server::{build_routes, build_server_handle, Server, ServerHandle, ServerParams},
-  AppService, BodhiError, SharedContextRw, SharedContextRwFn,
+  service::AppService,
+  BodhiError, SharedContextRw, SharedContextRwFn,
 };
 use futures_util::{future::BoxFuture, FutureExt};
 use std::{

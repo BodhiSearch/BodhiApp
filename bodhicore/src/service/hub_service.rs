@@ -216,6 +216,10 @@ impl HfHubService {
     }
   }
 
+  pub fn progress_bar(&mut self, progress_bar: bool) {
+    self.progress_bar = progress_bar;
+  }
+
   fn download_sync(&self, repo: &str, filename: &str) -> Result<PathBuf> {
     use hf_hub::api::sync::{ApiBuilder, ApiError};
 

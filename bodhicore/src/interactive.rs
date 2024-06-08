@@ -1,9 +1,11 @@
-use crate::db::DbService;
-use crate::error::{BodhiError, Common};
-use crate::objs::Alias;
-use crate::server::{RouterState, RouterStateFn};
-use crate::service::{AppServiceFn, HubServiceError};
-use crate::{AppService, SharedContextRw};
+use crate::{
+  db::DbService,
+  error::{BodhiError, Common},
+  objs::Alias,
+  server::{RouterState, RouterStateFn},
+  service::{AppService, AppServiceFn, HubServiceError},
+  SharedContextRw,
+};
 use async_openai::types::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
   ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,

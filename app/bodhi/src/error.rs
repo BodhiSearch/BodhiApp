@@ -1,4 +1,4 @@
-use bodhicore::{db::DbError, CliError};
+use bodhicore::{db::DbError, CliError, ContextError};
 use std::io;
 
 #[derive(Debug, thiserror::Error)]
@@ -9,6 +9,8 @@ pub enum AppError {
   Any(String),
   #[error(transparent)]
   BodhiError(#[from] bodhicore::BodhiError),
+  #[error(transparent)]
+  Context(#[from] ContextError),
   #[error(transparent)]
   Io(#[from] io::Error),
   #[error(transparent)]
