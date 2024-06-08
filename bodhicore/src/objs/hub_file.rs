@@ -39,7 +39,7 @@ impl TryFrom<PathBuf> for HubFile {
     let path = value.display().to_string();
     let caps = REGEX_HF_REPO_FILE
       .captures(&path)
-      .ok_or(ObjError::Conversion {
+      .ok_or_else(|| ObjError::Conversion {
         from: "PathBuf".to_string(),
         to: "HubFile".to_string(),
         error: format!("'{path}' does not match huggingface hub cache filepath pattern"),

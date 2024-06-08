@@ -1,4 +1,6 @@
 use super::{is_default, ChatTemplate, GptContextParams, OAIRequestParams, Repo};
+#[allow(unused_imports)]
+use crate::objs::BuilderError;
 use crate::utils::to_safe_filename;
 use derive_new::new;
 use prettytable::{Cell, Row};
@@ -7,6 +9,11 @@ use serde::{Deserialize, Serialize};
 #[allow(clippy::too_many_arguments)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, new)]
 #[cfg_attr(test, derive(Default, derive_builder::Builder))]
+#[cfg_attr(test,
+  builder(
+    default,
+    setter(into, strip_option),
+    build_fn(error = BuilderError)))]
 pub struct Alias {
   pub alias: String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -51,8 +58,60 @@ pub fn default_features() -> Vec<String> {
 #[cfg(test)]
 mod test {
   use super::Alias;
+  use crate::{
+    objs::{AliasBuilder, ChatTemplate, GptContextParamsBuilder, OAIRequestParamsBuilder},
+    Repo,
+  };
   use prettytable::{Cell, Row};
   use rstest::rstest;
+
+  fn tinyllama() -> Alias {
+    AliasBuilder::default()
+      .alias("tinyllama:instruct")
+      .repo(Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF").unwrap())
+      .filename("tinyllama-1.1b-chat-v1.0.Q4_0.gguf")
+      .snapshot("52e7645ba7c309695bec7ac98f4f005b139cf465")
+      .features(vec!["chat".to_string()])
+      .chat_template(ChatTemplate::Repo(
+        Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
+      ))
+      .request_params(
+        OAIRequestParamsBuilder::default()
+          .temperature(0.7)
+          .top_p(0.95)
+          .build()
+          .unwrap(),
+      )
+      .context_params(
+        GptContextParamsBuilder::default()
+          .n_ctx(2048u32)
+          .n_parallel(4u8)
+          .n_predict(256u32)
+          .build()
+          .unwrap(),
+      )
+      .build()
+      .unwrap()
+  }
+
+  fn tinyllama_serialized() -> String {
+    r#"alias: tinyllama:instruct
+repo: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
+filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
+snapshot: 52e7645ba7c309695bec7ac98f4f005b139cf465
+features:
+- chat
+chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+request_params:
+  temperature: 0.7
+  top_p: 0.95
+context_params:
+  n_ctx: 2048
+  n_parallel: 4
+  n_predict: 256
+"#
+    .to_string()
+  }
 
   #[rstest]
   #[case("llama3:instruct", "llama3--instruct.yaml")]
@@ -76,8 +135,20 @@ features: []
 chat_template: llama3
 "#
   )]
+  #[case(tinyllama(), tinyllama_serialized())]
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: String) -> anyhow::Result<()> {
     let actual = serde_yaml::to_string(&alias)?;
+    assert_eq!(expected, actual);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(tinyllama_serialized(), tinyllama())]
+  fn test_alias_deserialized(
+    #[case] serialized: String,
+    #[case] expected: Alias,
+  ) -> anyhow::Result<()> {
+    let actual = serde_yaml::from_str(&serialized)?;
     assert_eq!(expected, actual);
     Ok(())
   }
@@ -86,15 +157,17 @@ chat_template: llama3
   fn test_alias_to_row() -> anyhow::Result<()> {
     let alias = Alias::testalias();
     let row = Row::from(alias);
-    assert_eq!(Row::from(
-      vec![
+    assert_eq!(
+      Row::from(vec![
         Cell::new("testalias:instruct"),
         Cell::new("testalias"),
         Cell::new("MyFactory/testalias-gguf"),
         Cell::new("testalias.Q8_0.gguf"),
         Cell::new("chat"),
         Cell::new("llama3"),
-      ]), row);
+      ]),
+      row
+    );
     Ok(())
   }
 }

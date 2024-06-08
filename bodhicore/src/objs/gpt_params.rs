@@ -1,14 +1,22 @@
+#[allow(unused_imports)]
+use crate::objs::BuilderError;
 use clap::Args;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args)]
+#[cfg_attr(test, derive(derive_builder::Builder))]
+#[cfg_attr(test,
+  builder(
+    default,
+    setter(into, strip_option),
+    build_fn(error = BuilderError)))]
 pub struct GptContextParams {
   #[arg(
     long,
     help = r#"number of threads to use during computation
 default: num_cpus()"#
   )]
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub n_threads: Option<u32>,
 
   #[arg(
@@ -16,7 +24,7 @@ default: num_cpus()"#
     help = r#"size of the prompt context
 default: 512"#
   )]
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub n_ctx: Option<u32>,
 
   #[arg(
@@ -24,14 +32,14 @@ default: 512"#
     help = r#"number of parallel sequences to decode
 default: 1"#
   )]
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub n_parallel: Option<u32>,
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub n_parallel: Option<u8>,
 
   #[arg(
     long,
     help = r#"new tokens to predict
 default: -1 (unbounded)"#
   )]
-  #[serde(skip_serializing_if = "Option::is_none")]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
   pub n_predict: Option<u32>,
 }
