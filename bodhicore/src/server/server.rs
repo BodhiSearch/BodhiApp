@@ -43,12 +43,11 @@ pub fn build_server_handle(server_params: ServerParams) -> ServerHandle {
   let (shutdown, shutdown_rx) = oneshot::channel::<()>();
   let (ready, ready_rx) = oneshot::channel::<()>();
   let server = Server::new(server_params, ready, shutdown_rx);
-  let result = ServerHandle {
+  ServerHandle {
     server,
     shutdown,
     ready_rx,
-  };
-  result
+  }
 }
 
 impl Server {

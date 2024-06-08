@@ -1,5 +1,4 @@
 use super::{ObjError, Repo};
-use crate::tokenizer_config::TokenizerConfig;
 use derive_new::new;
 use once_cell::sync::Lazy;
 use prettytable::{Cell, Row};
@@ -77,18 +76,6 @@ impl From<HubFile> for Row {
       Cell::new(&snapshot[..8]),
       Cell::new(&human_size),
     ])
-  }
-}
-
-impl TryFrom<HubFile> for TokenizerConfig {
-  type Error = ObjError;
-
-  fn try_from(value: HubFile) -> Result<Self, Self::Error> {
-    let path = value.path();
-    let content = std::fs::read_to_string(path.clone())
-      .map_err(move |source| ObjError::IoWithDetail { source, path })?;
-    let tokenizer_config: TokenizerConfig = serde_json::from_str(&content)?;
-    Ok(tokenizer_config)
   }
 }
 

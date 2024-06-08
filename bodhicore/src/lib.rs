@@ -5,7 +5,7 @@ mod error;
 pub mod home;
 mod interactive;
 mod oai;
-mod objs;
+pub mod objs;
 pub mod server;
 pub mod service;
 mod shared_rw;

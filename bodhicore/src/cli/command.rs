@@ -1,5 +1,5 @@
-use crate::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use crate::objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
+use crate::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use clap::{ArgGroup, Parser, Subcommand};
 use strum::Display;
 
@@ -376,6 +376,7 @@ For more information, try '--help'.
       user: Some("testuser".to_string())
     },
     GptContextParams {
+      n_seed: None,
       n_threads:Some(6),
       n_ctx: Some(1024),
       n_parallel: Some(4),

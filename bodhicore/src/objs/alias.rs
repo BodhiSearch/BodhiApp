@@ -1,6 +1,6 @@
-use super::{is_default, ChatTemplate, GptContextParams, OAIRequestParams, Repo};
 #[allow(unused_imports)]
-use crate::objs::BuilderError;
+use super::{is_default, BuilderError};
+use super::{ChatTemplate, GptContextParams, OAIRequestParams, Repo};
 use crate::utils::to_safe_filename;
 use derive_new::new;
 use prettytable::{Cell, Row};
@@ -84,9 +84,9 @@ mod test {
       )
       .context_params(
         GptContextParamsBuilder::default()
-          .n_ctx(2048u32)
+          .n_ctx(2048)
           .n_parallel(4u8)
-          .n_predict(256u32)
+          .n_predict(256)
           .build()
           .unwrap(),
       )

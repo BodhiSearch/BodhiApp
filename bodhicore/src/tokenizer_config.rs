@@ -11,7 +11,7 @@ use serde::{
 use std::{fmt, ops::Deref};
 use validator::{Validate, ValidationError};
 
-use crate::objs::validation_errors;
+use crate::objs::{validation_errors, HubFile, ObjError};
 
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
   Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))
@@ -183,6 +183,18 @@ where
   deserializer.deserialize_any(StringOrMap)
 }
 
+impl TryFrom<HubFile> for TokenizerConfig {
+  type Error = ObjError;
+
+  fn try_from(value: HubFile) -> Result<Self, Self::Error> {
+    let path = value.path();
+    let content = std::fs::read_to_string(path.clone())
+      .map_err(move |source| ObjError::IoWithDetail { source, path })?;
+    let tokenizer_config: TokenizerConfig = serde_json::from_str(&content)?;
+    Ok(tokenizer_config)
+  }
+}
+
 #[cfg(test)]
 mod test {
   use super::*;
@@ -201,10 +213,11 @@ mod test {
   #[case("phi3", "microsoft/Phi-3-mini-4k-instruct")]
   #[case("llama2-legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1")]
   #[case("gemma", "google/gemma-7b-it")]
-  // #[case("zephyr", "HuggingFaceH4/zephyr-7b-beta")]
   #[case("deepseek", "deepseek-ai/deepseek-llm-67b-chat")]
   #[case("command-r", "CohereForAI/c4ai-command-r-plus")]
   #[case("openchat", "openchat/openchat-3.6-8b-20240522")]
+  #[case("tinyllama", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")]
+  // #[case("zephyr", "HuggingFaceH4/zephyr-7b-beta")]
   fn test_tokenizer_config_apply_chat_template(
     #[case] format: String,
     #[case] model: String,
@@ -227,12 +240,10 @@ mod test {
     let inputs: serde_yaml::Value = serde_yaml::from_str(&inputs)?;
     let input = inputs
       .as_sequence()
-      .ok_or_else(||anyhow!("should be an array of test cases"))?
+      .ok_or_else(|| anyhow!("should be an array of test cases"))?
       .iter()
       .find(|item| item["id"] == case)
-      .ok_or_else(||anyhow!(
-        "test case with id: {case} not found for model: {model}"
-      ))?;
+      .ok_or_else(|| anyhow!("test case with id: {case} not found for model: {model}"))?;
     let messages: Vec<ChatMessage> = serde_yaml::from_value(input["messages"].clone())?;
     let expected = &input[&format];
 
@@ -241,19 +252,17 @@ mod test {
       let prompt = config.apply_chat_template(&messages)?;
       let expected = expected
         .as_str()
-        .ok_or_else(||anyhow!(
-          "expected value for key: {format}, for case {case} to be string"
-        ))?
+        .ok_or_else(|| anyhow!("expected value for key: {format}, for case {case} to be string"))?
         .trim_end_matches('\n')
         .replace("\\n", "\n");
       assert_eq!(expected, prompt);
     } else if expected["exception"]
       .as_bool()
-      .ok_or_else(||anyhow!("exception should be bool"))?
+      .ok_or_else(|| anyhow!("exception should be bool"))?
     {
       let message = expected["message"]
         .as_str()
-        .ok_or_else(||anyhow!("error message should be str"))?;
+        .ok_or_else(|| anyhow!("error message should be str"))?;
       let prompt = config.apply_chat_template(&messages);
       assert!(prompt.is_err());
       assert!(prompt
@@ -302,7 +311,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_tokenizer_config_from_local_model_file(
+  fn test_tokenizer_config_from_hub_file(
     hf_cache: (TempDir, PathBuf),
   ) -> anyhow::Result<()> {
     let (_temp_bodhi, hf_cache) = hf_cache;

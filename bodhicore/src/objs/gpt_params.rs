@@ -1,6 +1,7 @@
 #[allow(unused_imports)]
 use crate::objs::BuilderError;
 use clap::Args;
+use llama_server_bindings::GptParams;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args)]
@@ -11,6 +12,14 @@ use serde::{Deserialize, Serialize};
     setter(into, strip_option),
     build_fn(error = BuilderError)))]
 pub struct GptContextParams {
+  #[arg(
+    long,
+    help = r#"seed to initialize the llamacpp context.
+default: 0xFFFFFFFF"#
+  )]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub n_seed: Option<u32>,
+
   #[arg(
     long,
     help = r#"number of threads to use during computation
@@ -25,7 +34,7 @@ default: num_cpus()"#
 default: 512"#
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub n_ctx: Option<u32>,
+  pub n_ctx: Option<i32>,
 
   #[arg(
     long,
@@ -33,7 +42,7 @@ default: 512"#
 default: 1"#
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub n_parallel: Option<u8>,
+  pub n_parallel: Option<i32>,
 
   #[arg(
     long,
@@ -41,5 +50,15 @@ default: 1"#
 default: -1 (unbounded)"#
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub n_predict: Option<u32>,
+  pub n_predict: Option<i32>,
+}
+
+impl GptContextParams {
+  pub fn update(&self, gpt_params: &mut GptParams) {
+    // gpt_params.n_threads = self.n_threads;
+    gpt_params.seed = self.n_seed;
+    gpt_params.n_ctx = self.n_ctx;
+    // gpt_params.n_parallel = self.n_parallel;
+    gpt_params.n_predict = self.n_predict;
+  }
 }

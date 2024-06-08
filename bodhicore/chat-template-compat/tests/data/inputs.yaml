@@ -40,6 +40,12 @@
     <|begin_of_text|><|start_header_id|>GPT4 Correct User<|end_header_id|>
 
     What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|user|>
+    What day comes after Monday?</s>
+
+
+    <|assistant|>\n\n
   empty: ""
 - id: assistant
   messages:
@@ -101,6 +107,24 @@
     Tuesday<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
 
     And what day comes after that?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|user|>
+    What day comes after Monday?</s>
+
+
+
+
+    <|assistant|>
+    Tuesday</s>
+
+
+
+
+    <|user|>
+    And what day comes after that?</s>
+
+
+    <|assistant|>\n\n
   empty: ""
 - id: system
   messages:
@@ -148,6 +172,18 @@
     You are a helpful assistant.<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
 
     What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|system|>
+    You are a helpful assistant.</s>
+
+
+
+
+    <|user|>
+    What day comes after Monday?</s>
+
+
+    <|assistant|>\n\n
   empty: ""
 - id: convo
   messages:
@@ -219,6 +255,30 @@
     Tuesday<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
 
     And what day comes after that?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|system|>
+    You are a helpful assistant.</s>
+
+
+
+
+    <|user|>
+    What day comes after Monday?</s>
+
+
+
+
+    <|assistant|>
+    Tuesday</s>
+
+
+
+
+    <|user|>
+    And what day comes after that?</s>
+
+
+    <|assistant|>\n\n
   empty: ""
 - id: unknown-role
   messages:
@@ -240,6 +300,8 @@
   openchat:
     exception: true
     message: Only user, assistant and system roles are supported!
+  tinyllama: |
+    \n\n\n<|assistant|>\n\n
 - id: error-user-at-even-no-system
   messages:
     - role: assistant
@@ -277,6 +339,18 @@
     should not have assistant message as first<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
 
     should not have user message at even<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|assistant|>
+    should not have assistant message as first</s>
+
+
+
+
+    <|user|>
+    should not have user message at even</s>
+
+
+    <|assistant|>\n\n
   empty: ""
 - id: error-user-at-even-with-system
   messages:
@@ -325,4 +399,22 @@
     this is incorrect assistant instruction<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
 
     this is user question<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|system|>
+    this is system message</s>
+
+
+
+
+    <|assistant|>
+    this is incorrect assistant instruction</s>
+
+
+
+
+    <|user|>
+    this is user question</s>
+
+
+    <|assistant|>\n\n
   empty: ""
