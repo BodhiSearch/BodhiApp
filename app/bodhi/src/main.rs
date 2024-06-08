@@ -12,7 +12,7 @@ pub fn main() {
   let result = main_internal();
   if let Err(err) = result {
     tracing::warn!(err = ?err, "application exited with error");
-    eprintln!("application encountered an error: {:?}\nexiting...", err);
+    eprintln!("application encountered an error: {}\nexiting...", err);
     std::process::exit(1);
   } else {
     tracing::info!("application exited with success");

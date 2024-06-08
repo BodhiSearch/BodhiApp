@@ -3,7 +3,7 @@ pub mod cli;
 pub mod db;
 mod error;
 pub mod home;
-mod interactive;
+pub(crate) mod interactive;
 mod oai;
 pub mod objs;
 pub mod server;

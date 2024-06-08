@@ -27,6 +27,9 @@ pub fn main_internal() -> super::Result<()> {
   }
   // the app was called from wrapper
   // or the executable was called from outside the `Bodhi.app` bundle
+  let mut hub_service = HfHubService::default();
+  hub_service.progress_bar(true);
+  let service = AppService::new(hub_service, LocalDataService::default());
   let cli = Cli::parse();
   match cli.command {
     Command::App {} => {
@@ -37,25 +40,22 @@ pub fn main_internal() -> super::Result<()> {
     }
     list @ Command::List { .. } => {
       let list_command = ListCommand::try_from(list)?;
-      list_command.execute(&AppService::default())?;
+      list_command.execute(&service)?;
     }
     Command::Serve { host, port } => {
       main_async(Serve { host, port })?;
     }
     pull @ Command::Pull { .. } => {
       let pull_command = PullCommand::try_from(pull)?;
-      pull_command.execute(&AppService::default())?;
+      pull_command.execute(&service)?;
     }
     create @ Command::Create { .. } => {
       let create_command = CreateCommand::try_from(create)?;
-      let mut hub_service = HfHubService::default();
-      hub_service.progress_bar(true);
-      let service = AppService::new(hub_service, LocalDataService::default());
       create_command.execute(&service)?;
     }
     run @ Command::Run { .. } => {
       let run_command = RunCommand::try_from(run)?;
-      run_command.execute(&AppService::default())?;
+      run_command.execute(&service)?;
     }
   }
   Ok(())

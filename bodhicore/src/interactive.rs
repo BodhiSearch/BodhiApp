@@ -167,16 +167,24 @@ impl Interactive {
   }
 }
 
-pub(super) fn launch_interactive(
-  alias: Alias,
-  service: &dyn AppServiceFn,
-) -> crate::error::Result<()> {
-  let runtime = Builder::new_multi_thread()
-    .enable_all()
-    .build()
-    .map_err(Common::Io)?;
-  runtime.block_on(async move { Interactive::new(alias).execute(service).await })?;
-  Ok(())
+#[allow(unused)]
+pub struct InteractiveRuntime {}
+
+impl InteractiveRuntime {
+  #[allow(unused)]
+  pub fn new() -> Self {
+    InteractiveRuntime {}
+  }
+
+  #[allow(unused)]
+  pub fn execute(&self, alias: Alias, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+    let runtime = Builder::new_multi_thread()
+      .enable_all()
+      .build()
+      .map_err(Common::Io)?;
+    runtime.block_on(async move { Interactive::new(alias).execute(service).await })?;
+    Ok(())
+  }
 }
 
 #[cfg(test)]

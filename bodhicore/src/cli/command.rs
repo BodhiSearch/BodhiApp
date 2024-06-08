@@ -13,6 +13,7 @@ pub struct Cli {
 
 #[derive(Debug, PartialEq, Subcommand, Display)]
 #[strum(serialize_all = "lowercase")]
+#[allow(clippy::large_enum_variant)]
 pub enum Command {
   /// launch as native app
   App {},
