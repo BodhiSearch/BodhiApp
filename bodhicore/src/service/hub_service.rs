@@ -180,18 +180,6 @@ pub struct HfHubService {
   token: Option<String>,
 }
 
-impl Default for HfHubService {
-  fn default() -> Self {
-    let cache = Cache::default();
-    let token = cache.token();
-    Self {
-      cache,
-      progress_bar: Default::default(),
-      token,
-    }
-  }
-}
-
 impl Debug for HfHubService {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     let token_display = self
@@ -211,6 +199,15 @@ impl HfHubService {
   pub fn new(hf_cache: PathBuf, progress_bar: bool, token: Option<String>) -> Self {
     Self {
       cache: Cache::new(hf_cache),
+      progress_bar,
+      token,
+    }
+  }
+
+  pub fn new_from_cache(cache: Cache, progress_bar: bool) -> Self {
+    let token = cache.token();
+    Self {
+      cache,
       progress_bar,
       token,
     }

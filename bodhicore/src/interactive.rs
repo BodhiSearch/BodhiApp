@@ -3,7 +3,9 @@ use crate::{
   error::{BodhiError, Common},
   objs::Alias,
   server::{RouterState, RouterStateFn},
-  service::{AppService, AppServiceFn, HubServiceError},
+  service::{
+    AppService, AppServiceFn, HfHubService, HubServiceError, InitService, LocalDataService,
+  },
   SharedContextRw,
 };
 use async_openai::types::{
@@ -14,6 +16,7 @@ use async_openai::types::{
 use derive_new::new;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{BasicHistory, Input};
+use hf_hub::Cache;
 use indicatif::{ProgressBar, ProgressStyle};
 use llama_server_bindings::{disable_llama_log, GptParams};
 use std::sync::Arc;
@@ -69,7 +72,14 @@ impl Interactive {
       ..Default::default()
     };
     disable_llama_log();
-    let app_service = AppService::default();
+
+    let init_service = InitService::new();
+    let bodhi_home = init_service.bodhi_home()?;
+    let hf_cache = init_service.hf_cache()?;
+    let data_service = LocalDataService::new(bodhi_home);
+    let hub_service = HfHubService::new_from_cache(Cache::new(hf_cache), false);
+    let app_service = AppService::new(hub_service, data_service);
+
     let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let router_state = RouterState::new(
       Arc::new(shared_rw),

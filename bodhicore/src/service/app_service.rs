@@ -14,15 +14,6 @@ pub struct AppService {
   data_service: Arc<dyn DataService + Send + Sync>,
 }
 
-impl Default for AppService {
-  fn default() -> Self {
-    Self {
-      hub_service: Arc::new(HfHubService::default()),
-      data_service: Arc::new(LocalDataService::default()),
-    }
-  }
-}
-
 impl AppService {
   pub fn new(hub_service: HfHubService, data_service: LocalDataService) -> Self {
     Self {

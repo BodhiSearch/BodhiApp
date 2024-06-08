@@ -4,7 +4,7 @@ use bodhicore::{
   db::{DbPool, DbService, TimeService},
   home::{bodhi_home, logs_dir},
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle},
-  service::{AppService, HfHubService, LocalDataService},
+  service::{AppService, HfHubService, InitService, LocalDataService},
   CreateCommand, ListCommand, PullCommand, RunCommand, Serve, SharedContextRw, SharedContextRwFn,
 };
 use clap::Parser;
@@ -27,9 +27,11 @@ pub fn main_internal() -> super::Result<()> {
   }
   // the app was called from wrapper
   // or the executable was called from outside the `Bodhi.app` bundle
+  let bodhi_home = InitService::new().bodhi_home()?;
   let mut hub_service = HfHubService::default();
   hub_service.progress_bar(true);
-  let service = AppService::new(hub_service, LocalDataService::default());
+  let local_data_service = LocalDataService::new(bodhi_home);
+  let service = AppService::new(hub_service, local_data_service);
   let cli = Cli::parse();
   match cli.command {
     Command::App {} => {

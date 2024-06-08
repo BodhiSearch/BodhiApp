@@ -1,7 +1,6 @@
 use crate::{
   error::Common,
   objs::{Alias, RemoteModel},
-  server::BODHI_HOME,
 };
 use derive_new::new;
 #[cfg(test)]
@@ -32,6 +31,8 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   },
   #[error("bodhi_home_err: failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
   BodhiHome,
+  #[error("hf_home_err: failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
+  HfHome,
 }
 
 type Result<T> = std::result::Result<T, DataServiceError>;
@@ -52,21 +53,6 @@ pub trait DataService: Debug {
 #[derive(Debug, Clone, PartialEq, new)]
 pub struct LocalDataService {
   bodhi_home: PathBuf,
-}
-
-impl Default for LocalDataService {
-  fn default() -> Self {
-    let bodhi_home = match std::env::var(BODHI_HOME) {
-      Ok(home) => home.into(),
-      Err(_) => {
-        let mut home = dirs::home_dir().expect("$HOME directory cannot be found");
-        home.push(".cache");
-        home.push("bodhi");
-        home
-      }
-    };
-    Self { bodhi_home }
-  }
 }
 
 impl DataService for LocalDataService {
@@ -173,16 +159,14 @@ impl DataService for LocalDataService {
 
 #[cfg(test)]
 mod test {
-  use super::{DataService, LocalDataService};
+  use super::DataService;
   use crate::{
     objs::{Alias, RemoteModel},
-    server::BODHI_HOME,
     test_utils::{data_service, DataServiceTuple},
   };
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
   use std::fs;
-  use tempfile::tempdir;
 
   #[rstest]
   fn test_local_data_service_models_file_missing(
@@ -286,28 +270,6 @@ filename='{models_file}'"#
     let expected = r#"directory 'configs' not found in $BODHI_HOME.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#;
     assert_eq!(expected, result.unwrap_err().to_string());
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_local_data_service_default_from_bodhi_home() -> anyhow::Result<()> {
-    let bodhi_home = tempdir()?;
-    std::env::set_var(BODHI_HOME, bodhi_home.path());
-    let service = LocalDataService::default();
-    let expected = LocalDataService::new(bodhi_home.path().to_path_buf());
-    assert_eq!(expected, service);
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_local_data_service_default_from_home_dir() -> anyhow::Result<()> {
-    let home_dir = tempdir()?;
-    std::env::remove_var(BODHI_HOME);
-    std::env::set_var("HOME", home_dir.path());
-    let service = LocalDataService::default();
-    let expected =
-      LocalDataService::new(home_dir.path().join(".cache").join("bodhi").to_path_buf());
-    assert_eq!(expected, service);
     Ok(())
   }
 }
