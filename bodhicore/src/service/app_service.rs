@@ -4,7 +4,7 @@ use super::{
   DataServiceError, HubServiceError,
 };
 use crate::objs::{Alias, HubFile, RemoteModel, Repo};
-use std::{fmt::Debug, path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 
 pub trait AppServiceFn: HubService + DataService + Send + Sync {}
 

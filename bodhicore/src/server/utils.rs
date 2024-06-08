@@ -17,6 +17,7 @@ pub static DEFAULT_PORT: u16 = 1135;
 pub static DEFAULT_PORT_STR: &str = "1135";
 pub static DEFAULT_HOST: &str = "127.0.0.1";
 pub static BODHI_HOME: &str = "BODHI_HOME";
+pub static HF_HOME: &str = "HF_HOME";
 
 pub trait AxumRequestExt {
   #[allow(clippy::result_large_err)]

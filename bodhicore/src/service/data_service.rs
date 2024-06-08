@@ -6,7 +6,7 @@ use crate::{
 use derive_new::new;
 #[cfg(test)]
 use mockall::automock;
-use std::{fmt::Debug, fs, path::PathBuf};
+use std::{fmt::Debug, fs, io, path::PathBuf};
 
 static MODELS_YAML: &str = "models.yaml";
 
@@ -24,6 +24,14 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   FileMissing { filename: String, dirname: String },
   #[error(transparent)]
   Common(#[from] Common),
+  #[error("source: {source}\npath:{path}\nfailed to create directory")]
+  DirCreate {
+    #[source]
+    source: io::Error,
+    path: String,
+  },
+  #[error("bodhi_home_err: failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
+  BodhiHome,
 }
 
 type Result<T> = std::result::Result<T, DataServiceError>;
@@ -87,11 +95,10 @@ impl DataService for LocalDataService {
         dirname: String::from("configs"),
       });
     }
-    let yaml_files = fs::read_dir(config.clone())
-      .map_err(|err| Common::IoFile {
-        source: err,
-        path: config.display().to_string(),
-      })?;
+    let yaml_files = fs::read_dir(config.clone()).map_err(|err| Common::IoFile {
+      source: err,
+      path: config.display().to_string(),
+    })?;
     let yaml_files = yaml_files
       .filter_map(|entry| {
         let file_path = entry.ok()?.path();
