@@ -15,7 +15,6 @@ dotenv = "0.15.0"
 bodhicore = { version = "0.1.0", path = "../../bodhicore" }
 clap = { version = "4.5.2", features = ["derive"] }
 futures-util = "0.3.30"
-include_dir = "0.7.3"
 tauri = { version = "1.6.1", features = ["updater", "api-all", "system-tray"] }
 tokio = { version = "1.36.0", features = ["full"] }
 tracing = { version = "0.1.40", features = ["async-await", "log"] }

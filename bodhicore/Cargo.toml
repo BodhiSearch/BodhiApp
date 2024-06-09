@@ -10,14 +10,11 @@ axum = "0.7.4"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.2", features = ["derive"] }
 derive_builder = "0.20.0"
-dotenv = "0.15.0"
 derive-new = "0.6.0"
 dialoguer = { version = "0.11.0", features = ["history"] }
 dirs = "5.0.1"
 futures-util = "0.3.30"
 hf-hub = { version = "0.3.2", features = ["tokio"] }
-humantime = "2.1.0"
-include_dir = "0.7.3"
 indicatif = { version = "0.17.8", features = ["tokio"] }
 lazy_static = "1.4.0"
 llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
@@ -30,7 +27,13 @@ regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.34"
-sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite", "macros", "migrate", "chrono"] }
+sqlx = { version = "0.7.4", features = [
+  "runtime-tokio",
+  "sqlite",
+  "macros",
+  "migrate",
+  "chrono",
+] }
 strum = { version = "0.26.2", features = ["derive"] }
 thiserror = "1.0.59"
 tokio = { version = "1.36.0", features = ["full"] }
@@ -38,17 +41,17 @@ tokio-stream = "0.1.15"
 tower = "0.4.13"
 tower-http = { version = "0.5.2", features = ["trace", "cors"] }
 tracing = { version = "0.1.40", features = ["async-await", "log"] }
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 ureq = "2.9.7"
+uuid = { version = "1.8.0", features = ["v4"] }
 validator = { version = "0.18.1", features = ["derive"] }
 walkdir = "2.5.0"
-uuid = { version = "1.8.0", features = ["v4"] }
 
 [dev-dependencies]
 anyhow = "1.0.81"
 anyhow_trace = "0.1.3"
 ctor = "0.2.8"
 dircpy = "0.3.16"
+dotenv = "0.15.0"
 http-body-util = "0.1.0"
 lazy_static = "1.4.0"
 mockall = "0.12.1"
@@ -58,3 +61,4 @@ reqwest = "0.12.3"
 rstest = "0.19.0"
 serial_test = "3.1.1"
 tempfile = "3.10.1"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
