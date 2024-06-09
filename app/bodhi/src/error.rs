@@ -5,8 +5,6 @@ use std::io;
 pub enum AppError {
   #[error("{0}")]
   Unreachable(String),
-  #[error("{0}")]
-  Any(String),
   #[error(transparent)]
   BodhiError(#[from] bodhicore::BodhiError),
   #[error(transparent)]
