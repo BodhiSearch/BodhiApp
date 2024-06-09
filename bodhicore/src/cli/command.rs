@@ -1,5 +1,5 @@
 use crate::objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
-use crate::server::{DEFAULT_HOST, DEFAULT_PORT_STR};
+use crate::service::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use clap::{ArgGroup, Parser, Subcommand};
 use strum::Display;
 

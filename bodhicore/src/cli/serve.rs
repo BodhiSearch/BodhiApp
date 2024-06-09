@@ -43,6 +43,21 @@ impl ServeCommand {
     Ok(())
   }
 
+  pub async fn aexecute(
+    &self,
+    service: Arc<dyn AppServiceFn>,
+    bodhi_home: PathBuf,
+  ) -> crate::error::Result<()> {
+    match self {
+      ServeCommand::ByParams { host, port } => {
+        self
+          .aexecute_by_params(host, *port, service, bodhi_home)
+          .await?;
+      }
+    }
+    Ok(())
+  }
+
   fn execute_by_params(
     &self,
     host: &str,
