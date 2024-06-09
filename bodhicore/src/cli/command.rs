@@ -17,8 +17,6 @@ pub struct Cli {
 pub enum Command {
   /// launch as native app
   App {},
-  /// initialize the configs folder
-  Init {},
   /// start the OpenAI compatible REST API server and Web UI
   Serve {
     /// Start with the given host, e.g. '0.0.0.0' to allow traffic from any ip on network
@@ -28,7 +26,7 @@ pub enum Command {
     #[clap(short, default_value = DEFAULT_PORT_STR, value_parser = clap::value_parser!(u16).range(1..=65535))]
     port: u16,
   },
-  /// Default: list the model aliases configured on local system
+  /// list the model aliases on local
   #[clap(group = ArgGroup::new("variant"))]
   List {
     /// List pre-configured model aliases available to download and configure
@@ -470,7 +468,6 @@ For more information, try '--help'.
 
   #[rstest]
   #[case(Command::App {}, "app")]
-  #[case(Command::Init {}, "init")]
   #[case(Command::Serve {host: Default::default(), port: 0}, "serve")]
   #[case(Command::List {remote: false, models: false}, "list")]
   #[case(Command::Pull { alias: None, repo: None, filename: None, force: false }, "pull")]

@@ -3,9 +3,7 @@ use crate::{
   error::{BodhiError, Common},
   objs::Alias,
   server::{RouterState, RouterStateFn},
-  service::{
-    AppService, AppServiceFn, HfHubService, HubServiceError, InitService, LocalDataService,
-  },
+  service::{AppServiceFn, HubServiceError},
   SharedContextRw,
 };
 use async_openai::types::{
@@ -14,17 +12,15 @@ use async_openai::types::{
   CreateChatCompletionRequestArgs, CreateChatCompletionStreamResponse, Role,
 };
 use derive_new::new;
-use dialoguer::theme::ColorfulTheme;
-use dialoguer::{BasicHistory, Input};
-use hf_hub::Cache;
+use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
 use llama_server_bindings::{disable_llama_log, GptParams};
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::runtime::Builder;
-use tokio::sync::mpsc::channel;
-use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
+use std::{sync::Arc, time::Duration};
+use tokio::{
+  runtime::Builder,
+  sync::{mpsc::channel, Mutex},
+  task::JoinHandle,
+};
 
 fn infinite_loading(msg: String) -> ProgressBar {
   let spinner_style = ProgressStyle::with_template("{spinner:.green} {wide_msg}")
@@ -44,12 +40,12 @@ pub(crate) struct Interactive {
 }
 
 impl Interactive {
-  pub(crate) async fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  pub(crate) async fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let alias = self.alias.clone();
     let model = service
       .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
-      .ok_or_else(move || {
-        let filepath = service
+      .ok_or_else(|| {
+        let filepath = &service
           .model_file_path(&alias.repo, &alias.filename, &alias.snapshot)
           .display()
           .to_string();
@@ -73,19 +69,8 @@ impl Interactive {
     };
     disable_llama_log();
 
-    let init_service = InitService::new();
-    let bodhi_home = init_service.bodhi_home()?;
-    let hf_cache = init_service.hf_cache()?;
-    let data_service = LocalDataService::new(bodhi_home);
-    let hub_service = HfHubService::new_from_cache(Cache::new(hf_cache), false);
-    let app_service = AppService::new(hub_service, data_service);
-
     let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let router_state = RouterState::new(
-      Arc::new(shared_rw),
-      Arc::new(app_service),
-      Arc::new(DbService::no_op()),
-    );
+    let router_state = RouterState::new(Arc::new(shared_rw), service, Arc::new(DbService::no_op()));
     pb.finish_and_clear();
     let mut shell_history = BasicHistory::new().max_entries(100).no_duplicates(false);
     let chat_history = Arc::new(Mutex::new(Vec::<ChatCompletionRequestMessage>::new()));
@@ -187,7 +172,7 @@ impl InteractiveRuntime {
   }
 
   #[allow(unused)]
-  pub fn execute(&self, alias: Alias, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  pub fn execute(&self, alias: Alias, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let runtime = Builder::new_multi_thread()
       .enable_all()
       .build()
@@ -203,7 +188,7 @@ mod test {
   use crate::{objs::Alias, test_utils::MockAppService};
   use mockall::predicate::eq;
   use rstest::rstest;
-  use std::path::PathBuf;
+  use std::{path::PathBuf, sync::Arc};
 
   #[rstest]
   #[tokio::test]
@@ -227,7 +212,7 @@ mod test {
       .expect_model_file_path()
       .with(eq(alias.repo), eq(alias.filename), eq(alias.snapshot))
       .return_once(|_, _, _| PathBuf::from("/tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf"));
-    let result = Interactive::new(alias_clone).execute(&mock).await;
+    let result = Interactive::new(alias_clone).execute(Arc::new(mock)).await;
     assert!(result.is_err());
     assert_eq!(
       r#"file 'testalias.Q8_0.gguf' not found in $HF_HOME/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213.

@@ -1,5 +1,6 @@
 use super::CliError;
 use crate::{error::BodhiError, objs::Alias, service::AppServiceFn, Command, Repo};
+use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
@@ -40,14 +41,17 @@ impl TryFrom<Command> for PullCommand {
         };
         Ok(pull_command)
       }
-      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "pull".to_string())),
+      cmd => Err(CliError::ConvertCommand(
+        cmd.to_string(),
+        "pull".to_string(),
+      )),
     }
   }
 }
 
 impl PullCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     match self {
       PullCommand::ByAlias { alias, force } => {
         if !force && service.find_alias(&alias).is_some() {
@@ -93,7 +97,7 @@ mod test {
   };
   use mockall::predicate::eq;
   use rstest::rstest;
-  use std::{fs, path::PathBuf};
+  use std::{fs, path::PathBuf, sync::Arc};
 
   #[rstest]
   fn test_pull_by_alias_fails_if_alias_exists_no_force(
@@ -105,7 +109,7 @@ mod test {
       alias,
       force: false,
     };
-    let result = pull.execute(&service);
+    let result = pull.execute(Arc::new(service));
     assert!(result.is_err());
     assert_eq!(
       "model alias 'testalias-exists:instruct' already exists. Use --force to overwrite the model alias config",
@@ -147,7 +151,7 @@ mod test {
       alias: remote_model.alias,
       force: false,
     };
-    pull.execute(&service)?;
+    pull.execute(Arc::new(service))?;
     Ok(())
   }
 
@@ -166,7 +170,7 @@ mod test {
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
     let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
-    pull.execute(&service)?;
+    pull.execute(Arc::new(service))?;
     Ok(())
   }
 
@@ -208,7 +212,7 @@ mod test {
       alias: "testalias:instruct".to_string(),
       force: false,
     };
-    command.execute(&service)?;
+    command.execute(Arc::new(service))?;
     let alias = bodhi_home.join("configs").join("testalias--instruct.yaml");
     assert!(alias.exists());
     let content = fs::read_to_string(alias)?;

@@ -7,6 +7,7 @@ use crate::{
   },
   service::AppServiceFn,
 };
+use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(test, derive(derive_new::new, derive_builder::Builder))]
@@ -61,14 +62,17 @@ impl TryFrom<Command> for CreateCommand {
         };
         Ok(result)
       }
-      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "create".to_string())),
+      cmd => Err(CliError::ConvertCommand(
+        cmd.to_string(),
+        "create".to_string(),
+      )),
     }
   }
 }
 
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: &dyn AppServiceFn) -> Result<()> {
+  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     if !self.force && service.find_alias(&self.alias).is_some() {
       return Err(BodhiError::AliasExists(self.alias.clone()));
     }
@@ -106,7 +110,7 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
   use rstest::rstest;
-  use std::path::PathBuf;
+  use std::{path::PathBuf, sync::Arc};
 
   #[rstest]
   #[case(
@@ -176,7 +180,7 @@ mod test {
         };
         Some(alias)
       });
-    let result = create.execute(&mock);
+    let result = create.execute(Arc::new(mock));
     assert!(result.is_err());
     assert_eq!(
       "model alias 'testalias:instruct' already exists. Use --force to overwrite the model alias config",
@@ -206,7 +210,7 @@ mod test {
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from(".")));
-    create.execute(&mock)?;
+    create.execute(Arc::new(mock))?;
     Ok(())
   }
 
@@ -244,7 +248,7 @@ mod test {
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from("ignored")));
-    create.execute(&mock)?;
+    create.execute(Arc::new(mock))?;
     Ok(())
   }
 }

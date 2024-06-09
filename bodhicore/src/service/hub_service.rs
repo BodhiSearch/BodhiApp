@@ -213,6 +213,16 @@ impl HfHubService {
     }
   }
 
+  pub fn new_from_hf_cache(hf_cache: PathBuf, progress_bar: bool) -> Self {
+    let cache = Cache::new(hf_cache);
+    let token = cache.token();
+    Self {
+      cache,
+      progress_bar,
+      token,
+    }
+  }
+
   pub fn progress_bar(&mut self, progress_bar: bool) {
     self.progress_bar = progress_bar;
   }

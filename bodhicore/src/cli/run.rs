@@ -4,6 +4,7 @@ use crate::interactive::InteractiveRuntime;
 #[cfg(test)]
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
 use crate::{error::BodhiError, service::AppServiceFn, Command, PullCommand};
+use std::sync::Arc;
 pub enum RunCommand {
   WithAlias { alias: String },
 }
@@ -21,7 +22,7 @@ impl TryFrom<Command> for RunCommand {
 
 impl RunCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     match self {
       RunCommand::WithAlias { alias } => {
         let alias = match service.find_alias(&alias) {
@@ -32,7 +33,7 @@ impl RunCommand {
                 alias: remote_model.alias.clone(),
                 force: false,
               };
-              command.execute(service)?;
+              command.execute(service.clone())?;
               match service.find_alias(&alias) {
                 Some(alias_obj) => alias_obj,
                 None => return Err(BodhiError::AliasNotFound(alias)),
@@ -58,7 +59,7 @@ mod test {
   };
   use mockall::predicate::{always, eq};
   use rstest::rstest;
-  use std::path::PathBuf;
+  use std::{path::PathBuf, sync::Arc};
 
   #[rstest]
   fn test_run_with_alias_return_error_if_alias_not_found() -> anyhow::Result<()> {
@@ -74,7 +75,7 @@ mod test {
       .expect_find_remote_model()
       .with(eq("testalias:instruct"))
       .return_once(|_| Ok(None));
-    let result = run_command.execute(&mock);
+    let result = run_command.execute(Arc::new(mock));
     assert!(result.is_err());
     assert_eq!(
       r#"model alias 'testalias:instruct' not found in pre-configured model aliases.
@@ -128,7 +129,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .returning(|f| f.debug_struct("MockAppService").finish());
     let ctx = MockInteractiveRuntime::new_context();
     ctx.expect().return_once(move || mock_interactive);
-    run_command.execute(&mock)?;
+    run_command.execute(Arc::new(mock))?;
     Ok(())
   }
 }

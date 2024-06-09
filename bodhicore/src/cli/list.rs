@@ -4,6 +4,7 @@ use prettytable::{
   format::{self},
   row, Row, Table,
 };
+use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
 pub enum ListCommand {
@@ -32,7 +33,7 @@ impl TryFrom<Command> for ListCommand {
 
 impl ListCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     match self {
       ListCommand::Local => self.list_local_model_alias(service)?,
       ListCommand::Remote => self.list_remote_models(service)?,
@@ -41,7 +42,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_model_alias(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  fn list_local_model_alias(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let mut table = Table::new();
     table.add_row(row![
       "ALIAS",
@@ -62,7 +63,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_models(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  fn list_local_models(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let mut table = Table::new();
     table.add_row(row!["FILENAME", "REPO", "SNAPSHOT", "SIZE"]);
     let models = service.list_local_models();
@@ -74,7 +75,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_remote_models(self, service: &dyn AppServiceFn) -> crate::error::Result<()> {
+  fn list_remote_models(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let models: Vec<RemoteModel> = service.list_remote_models()?;
     let mut table = Table::new();
     table.add_row(row![

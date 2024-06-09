@@ -2,7 +2,6 @@ pub mod bindings;
 pub mod cli;
 pub mod db;
 mod error;
-pub mod home;
 pub(crate) mod interactive;
 mod oai;
 pub mod objs;

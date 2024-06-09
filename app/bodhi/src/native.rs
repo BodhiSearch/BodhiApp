@@ -2,14 +2,14 @@ use crate::PROD_DB;
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   db::{DbPool, DbService, TimeService},
-  home::bodhi_home,
   server::{build_routes, build_server_handle, Server, ServerHandle, ServerParams},
-  service::AppService,
+  service::{AppService, HfHubService, LocalDataService},
   BodhiError, SharedContextRw, SharedContextRwFn,
 };
 use futures_util::{future::BoxFuture, FutureExt};
 use std::{
   fs::File,
+  path::PathBuf,
   sync::{Arc, Mutex},
 };
 use tauri::{
@@ -22,12 +22,12 @@ use tokio::{
   task::JoinHandle,
 };
 
-pub(super) fn main_native() -> super::Result<()> {
+pub(super) fn main_native(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build()?;
-  runtime.block_on(async move { _main_native().await })
+  runtime.block_on(async move { _main_native(bodhi_home, hf_cache).await })
 }
 
-async fn _main_native() -> super::Result<()> {
+async fn _main_native(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()> {
   let system_tray = SystemTray::new().with_menu(
     SystemTrayMenu::new()
       .add_item(CustomMenuItem::new("homepage", "Open Homepage"))
@@ -38,7 +38,7 @@ async fn _main_native() -> super::Result<()> {
       #[cfg(target_os = "macos")]
       app.set_activation_policy(tauri::ActivationPolicy::Accessory);
       // launch the web server
-      let result = launch_server();
+      let result = launch_server(bodhi_home, hf_cache);
       if let Err(err) = result {
         tracing::error!(err = format!("{err}"), "failed to start the webserver");
         std::process::exit(1);
@@ -111,21 +111,24 @@ fn on_system_tray_event(app: &AppHandle, event: SystemTrayEvent) {
   }
 }
 
-fn launch_server() -> super::Result<ServerState> {
-  main_server(ServerParams::default())
-}
-
-fn main_server(server_params: ServerParams) -> super::Result<ServerState> {
+fn launch_server(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<ServerState> {
+  let server_params = ServerParams::default();
   let ServerHandle {
     server,
     shutdown,
     ready_rx,
   } = build_server_handle(server_params);
-  let server_async = tokio::spawn(async move { start_server(server, ready_rx).await });
+  let server_async =
+    tokio::spawn(async move { start_server(bodhi_home, hf_cache, server, ready_rx).await });
   Ok(ServerState::new(server_async, shutdown))
 }
 
-async fn start_server(server: Server, ready_rx: Receiver<()>) -> super::Result<()> {
+async fn start_server(
+  bodhi_home: PathBuf,
+  hf_cache: PathBuf,
+  server: Server,
+  ready_rx: Receiver<()>,
+) -> super::Result<()> {
   disable_llama_log();
   unsafe {
     llama_server_disable_logging();
@@ -134,14 +137,16 @@ async fn start_server(server: Server, ready_rx: Receiver<()>) -> super::Result<(
     .await
     .map_err(BodhiError::from)?;
   let ctx = Arc::new(ctx);
-  let app_service = AppService::default();
 
-  let dbpath = bodhi_home()?.join(PROD_DB);
+  let data_service = LocalDataService::new(bodhi_home.clone());
+  let hub_service = HfHubService::new_from_hf_cache(hf_cache, false);
+  let service = AppService::new(hub_service, data_service);
+  let dbpath = bodhi_home.join(PROD_DB);
   _ = File::create_new(&dbpath);
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
-  let db_service = DbService::new(pool, Arc::new(TimeService::default()));
+  let db_service = DbService::new(pool, Arc::new(TimeService));
 
-  let app = build_routes(ctx.clone(), Arc::new(app_service), Arc::new(db_service));
+  let app = build_routes(ctx.clone(), Arc::new(service), Arc::new(db_service));
   let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
     async move {
       if let Err(err) = ctx.try_stop().await {
