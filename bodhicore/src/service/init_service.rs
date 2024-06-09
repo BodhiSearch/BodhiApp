@@ -8,6 +8,8 @@ use super::DataServiceError;
 use crate::server::{BODHI_HOME, HF_HOME};
 use std::{fs, path::PathBuf};
 
+pub static PROD_DB: &str = "bodhi.sqlite";
+
 pub struct EnvService {
   env_wrapper: EnvWrapper,
 }

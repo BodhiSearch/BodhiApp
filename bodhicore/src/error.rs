@@ -1,4 +1,5 @@
 use crate::{
+  db::DbError,
   oai::OpenAIApiError,
   objs::ObjError,
   service::{DataServiceError, HubServiceError},
@@ -7,6 +8,7 @@ use crate::{
 use async_openai::error::OpenAIError;
 use std::{io, sync::Arc};
 use thiserror::Error;
+use tokio::task::JoinError;
 use validator::ValidationErrors;
 
 #[derive(Debug, Error)]
@@ -39,6 +41,8 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   OpenAIApiError(#[from] OpenAIApiError),
   #[error(transparent)]
   AxumHttp(#[from] axum::http::Error),
+  #[error(transparent)]
+  Db(#[from] DbError),
 }
 
 pub type Result<T> = std::result::Result<T, BodhiError>;
@@ -79,4 +83,8 @@ pub enum Common {
   Validation(#[from] ValidationErrors),
   #[error("stderr: {0}")]
   Stdlib(#[from] Arc<dyn std::error::Error + Send + Sync>),
+  #[error("sender_err: error sending signal using channel for '{0}'")]
+  Sender(String),
+  #[error(transparent)]
+  Join(JoinError),
 }

@@ -1,33 +1,16 @@
 use crate::error::Common;
-use crate::server::utils::{DEFAULT_HOST, DEFAULT_PORT};
 use axum::Router;
-use derive_new::new;
 use std::future::Future;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot::{self, Receiver, Sender};
-
-/// ServerParams encapsulates the parameters required to start the server
-#[derive(Debug, Clone, PartialEq, new)]
-pub struct ServerParams {
-  pub host: String,
-  pub port: u16,
-}
-
-impl Default for ServerParams {
-  fn default() -> Self {
-    Self {
-      host: String::from(DEFAULT_HOST),
-      port: DEFAULT_PORT,
-    }
-  }
-}
 
 /// Server encapsulates the parameters to start, broadcast ready lifecycle, and receive shutdown request for a server
 /// It contains the parameters to start the server on given host, port etc. and
 /// contains a ready sender channel to notify the requester when the server is ready to receive connection and
 /// contains the shutdown receiver channel to listen to shutdown request from requester
 pub struct Server {
-  server_params: ServerParams,
+  host: String,
+  port: u16,
   ready: Sender<()>,
   shutdown_rx: Receiver<()>,
 }
@@ -39,10 +22,10 @@ pub struct ServerHandle {
   pub ready_rx: oneshot::Receiver<()>,
 }
 
-pub fn build_server_handle(server_params: ServerParams) -> ServerHandle {
+pub fn build_server_handle(host: &str, port: u16) -> ServerHandle {
   let (shutdown, shutdown_rx) = oneshot::channel::<()>();
   let (ready, ready_rx) = oneshot::channel::<()>();
-  let server = Server::new(server_params, ready, shutdown_rx);
+  let server = Server::new(host, port, ready, shutdown_rx);
   ServerHandle {
     server,
     shutdown,
@@ -51,9 +34,10 @@ pub fn build_server_handle(server_params: ServerParams) -> ServerHandle {
 }
 
 impl Server {
-  fn new(server_params: ServerParams, ready: Sender<()>, shutdown_rx: Receiver<()>) -> Self {
+  fn new(host: &str, port: u16, ready: Sender<()>, shutdown_rx: Receiver<()>) -> Self {
     Self {
-      server_params,
+      host: host.to_string(),
+      port,
       ready,
       shutdown_rx,
     }
@@ -65,7 +49,8 @@ impl Server {
     Fut: Future<Output = ()> + Send + 'static,
   {
     let Server {
-      server_params: ServerParams { host, port },
+      host,
+      port,
       ready,
       shutdown_rx,
     } = self;
@@ -104,7 +89,7 @@ impl Server {
 
 #[cfg(test)]
 mod test {
-  use crate::server::{build_server_handle, ServerHandle, ServerParams};
+  use crate::server::{build_server_handle, ServerHandle};
   use anyhow::anyhow;
   use axum::{routing::get, Router};
   use futures_util::{future::BoxFuture, FutureExt};
@@ -120,10 +105,7 @@ mod test {
       server,
       shutdown,
       ready_rx,
-    } = build_server_handle(ServerParams {
-      host: host.clone(),
-      port,
-    });
+    } = build_server_handle(&host, port);
     let app = Router::new().route("/ping", get(|| async { (StatusCode::OK, "pong") }));
     let callback_received = Arc::new(Mutex::new(false));
     let callback_clone = callback_received.clone();

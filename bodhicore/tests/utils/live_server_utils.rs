@@ -1,7 +1,7 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   db::{DbPool, DbService, TimeService},
-  server::{build_routes, build_server_handle, ServerHandle, ServerParams},
+  server::{build_routes, build_server_handle, ServerHandle},
   service::{AppService, AppServiceFn, HfHubService, LocalDataService},
   BodhiError, SharedContextRw, SharedContextRwFn,
 };
@@ -71,15 +71,11 @@ pub async fn live_server(
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();
-  let server_params = ServerParams {
-    host: host.clone(),
-    port,
-  };
   let ServerHandle {
     server,
     shutdown,
     ready_rx,
-  } = build_server_handle(server_params);
+  } = build_server_handle(&host, port);
   let (_, app_service) = tinyllama;
 
   let alias = app_service.find_alias("tinyllama:instruct").unwrap();
