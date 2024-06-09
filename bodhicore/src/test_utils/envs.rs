@@ -11,11 +11,13 @@ pub fn hf_test_token_public() -> Option<String> {
 }
 
 mockall::mock! {
-  pub EnvService {
+  pub EnvWrapper {
     pub fn new() -> Self;
 
     pub fn var(&self, key: &str) -> Result<String, VarError>;
 
     pub fn home_dir(&self) -> Option<PathBuf>;
+
+    pub fn load_dotenv(&self);
   }
 }

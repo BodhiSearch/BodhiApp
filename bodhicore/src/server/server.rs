@@ -27,7 +27,7 @@ impl Default for ServerParams {
 /// contains a ready sender channel to notify the requester when the server is ready to receive connection and
 /// contains the shutdown receiver channel to listen to shutdown request from requester
 pub struct Server {
-  server_args: ServerParams,
+  server_params: ServerParams,
   ready: Sender<()>,
   shutdown_rx: Receiver<()>,
 }
@@ -51,9 +51,9 @@ pub fn build_server_handle(server_params: ServerParams) -> ServerHandle {
 }
 
 impl Server {
-  fn new(server_args: ServerParams, ready: Sender<()>, shutdown_rx: Receiver<()>) -> Self {
+  fn new(server_params: ServerParams, ready: Sender<()>, shutdown_rx: Receiver<()>) -> Self {
     Self {
-      server_args,
+      server_params,
       ready,
       shutdown_rx,
     }
@@ -65,7 +65,7 @@ impl Server {
     Fut: Future<Output = ()> + Send + 'static,
   {
     let Server {
-      server_args: ServerParams { host, port },
+      server_params: ServerParams { host, port },
       ready,
       shutdown_rx,
     } = self;

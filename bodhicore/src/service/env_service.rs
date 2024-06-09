@@ -1,12 +1,12 @@
 use std::{env::VarError, path::PathBuf};
 
 #[allow(unused)]
-pub(crate) struct EnvService {}
+pub(crate) struct EnvWrapper {}
 
 #[allow(unused)]
-impl EnvService {
+impl EnvWrapper {
   pub fn new() -> Self {
-    EnvService {}
+    EnvWrapper {}
   }
 
   pub fn var(&self, key: &str) -> Result<String, VarError> {

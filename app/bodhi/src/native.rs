@@ -3,7 +3,7 @@ use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   db::{DbPool, DbService, TimeService},
   server::{build_routes, build_server_handle, Server, ServerHandle, ServerParams},
-  service::{AppService, HfHubService, LocalDataService},
+  service::{AppService, EnvService, HfHubService, LocalDataService},
   BodhiError, SharedContextRw, SharedContextRwFn,
 };
 use futures_util::{future::BoxFuture, FutureExt};
