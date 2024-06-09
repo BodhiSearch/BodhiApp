@@ -14,7 +14,7 @@ use async_openai::types::{
 use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
-use llama_server_bindings::{disable_llama_log, GptParams, GptParamsBuilder};
+use llama_server_bindings::{disable_llama_log, GptParamsBuilder};
 use std::{
   io::{self, Write},
   sync::Arc,

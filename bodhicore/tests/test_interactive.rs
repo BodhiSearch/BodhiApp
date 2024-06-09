@@ -1,4 +1,5 @@
 /*
+// TODO: replace test
 #[rstest]
 #[tokio::test]
 async fn test_interactive_chat_template_not_found() -> anyhow::Result<()> {
