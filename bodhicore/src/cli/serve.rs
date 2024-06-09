@@ -2,13 +2,12 @@ use super::{CliError, Command};
 use crate::{
   db::{DbPool, DbService, TimeService},
   error::Common,
-  server::{build_routes, build_server_handle, shutdown_signal, ServerHandle},
+  server::{build_routes, build_server_handle, shutdown_signal, ServerHandle, ShutdownCallback},
   service::{AppServiceFn, PROD_DB},
   BodhiError, SharedContextRw, SharedContextRwFn,
 };
-use futures_util::{future::BoxFuture, FutureExt};
 use std::{fs::File, path::PathBuf, sync::Arc};
-use tokio::runtime::Builder;
+use tokio::{runtime::Builder, sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ServeCommand {
@@ -29,6 +28,41 @@ impl TryFrom<Command> for ServeCommand {
   }
 }
 
+pub struct ShutdownContextCallback {
+  ctx: Arc<dyn SharedContextRwFn>,
+}
+
+#[async_trait::async_trait]
+impl ShutdownCallback for ShutdownContextCallback {
+  async fn shutdown(&self) {
+    if let Err(err) = self.ctx.try_stop().await {
+      tracing::warn!(err = ?err, "error stopping llama context");
+    }
+  }
+}
+
+pub struct ServerShutdownHandle {
+  join_handle: JoinHandle<Result<(), BodhiError>>,
+  shutdown: Sender<()>,
+}
+
+impl ServerShutdownHandle {
+  pub async fn shutdown_on_ctrlc(self) -> crate::error::Result<()> {
+    shutdown_signal().await;
+    self.shutdown().await?;
+    Ok(())
+  }
+
+  pub async fn shutdown(self) -> crate::error::Result<()> {
+    match self.shutdown.send(()) {
+      Ok(()) => {}
+      Err(err) => tracing::warn!(?err, "error sending shutdown signal on shutdown channel"),
+    };
+    (self.join_handle.await.map_err(Common::Join)?)?;
+    Ok(())
+  }
+}
+
 impl ServeCommand {
   pub fn execute(
     &self,
@@ -38,24 +72,24 @@ impl ServeCommand {
     match self {
       ServeCommand::ByParams { host, port } => {
         self.execute_by_params(host, *port, service, bodhi_home)?;
+        Ok(())
       }
     }
-    Ok(())
   }
 
   pub async fn aexecute(
     &self,
     service: Arc<dyn AppServiceFn>,
     bodhi_home: PathBuf,
-  ) -> crate::error::Result<()> {
+  ) -> crate::error::Result<ServerShutdownHandle> {
     match self {
       ServeCommand::ByParams { host, port } => {
-        self
+        let handle = self
           .aexecute_by_params(host, *port, service, bodhi_home)
           .await?;
+        Ok(handle)
       }
     }
-    Ok(())
   }
 
   fn execute_by_params(
@@ -70,9 +104,10 @@ impl ServeCommand {
       .build()
       .map_err(Common::from)?;
     runtime.block_on(async move {
-      self
+      let handle = self
         .aexecute_by_params(host, port, service, bodhi_home)
         .await?;
+      handle.shutdown_on_ctrlc().await?;
       Ok::<(), BodhiError>(())
     })?;
     Ok(())
@@ -84,7 +119,7 @@ impl ServeCommand {
     port: u16,
     service: Arc<dyn AppServiceFn>,
     bodhi_home: PathBuf,
-  ) -> crate::error::Result<()> {
+  ) -> crate::error::Result<ServerShutdownHandle> {
     let dbpath = bodhi_home.join(PROD_DB);
     _ = File::create_new(&dbpath);
     let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
@@ -93,23 +128,15 @@ impl ServeCommand {
     let ServerHandle {
       server,
       shutdown,
-      ready_rx: _ready_rx,
+      ready_rx,
     } = build_server_handle(host, port);
 
     let ctx = SharedContextRw::new_shared_rw(None).await?;
     let ctx: Arc<dyn SharedContextRwFn> = Arc::new(ctx);
-
     let app = build_routes(ctx.clone(), service, Arc::new(db_service));
 
-    let server_async = tokio::spawn(async move {
-      let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
-        async move {
-          if let Err(err) = ctx.try_stop().await {
-            tracing::warn!(err = ?err, "error stopping llama context");
-          }
-        }
-        .boxed()
-      });
+    let join_handle = tokio::spawn(async move {
+      let callback = Box::new(ShutdownContextCallback { ctx });
       match server.start_new(app, Some(callback)).await {
         Ok(()) => Ok(()),
         Err(err) => {
@@ -118,15 +145,14 @@ impl ServeCommand {
         }
       }
     });
-    tokio::spawn(async move {
-      shutdown_signal().await;
-      shutdown
-        .send(())
-        .map_err(|_| Common::Sender("shutdown".to_string()))
-        .unwrap();
-    });
-    (server_async.await.map_err(Common::Join)?)?;
-    Ok(())
+    match ready_rx.await {
+      Ok(()) => {}
+      Err(err) => tracing::warn!(?err, "ready channel closed before could receive signal"),
+    }
+    Ok(ServerShutdownHandle {
+      join_handle,
+      shutdown,
+    })
   }
 }
 

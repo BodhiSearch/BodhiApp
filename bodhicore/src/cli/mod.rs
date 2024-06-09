@@ -15,4 +15,4 @@ pub use error::CliError;
 pub use list::ListCommand;
 pub use pull::PullCommand;
 pub use run::RunCommand;
-pub use serve::ServeCommand;
+pub use serve::*;

@@ -1,17 +1,12 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
-  db::{DbPool, DbService, TimeService},
-  server::{build_routes, build_server_handle, ServerHandle},
   service::{AppService, AppServiceFn, HfHubService, LocalDataService},
-  BodhiError, SharedContextRw, SharedContextRwFn,
+  ServeCommand, ServerShutdownHandle,
 };
 use dircpy::CopyBuilder;
-use futures_util::{future::BoxFuture, FutureExt};
-use llama_server_bindings::GptParamsBuilder;
 use rstest::fixture;
-use std::{fs::File, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 use tempfile::TempDir;
-use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
 pub fn copy_test_dir(src: &str, dst_path: &Path) {
   let src_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(src);
@@ -19,19 +14,6 @@ pub fn copy_test_dir(src: &str, dst_path: &Path) {
     .overwrite(true)
     .run()
     .unwrap();
-}
-
-#[fixture]
-pub async fn db_service() -> (TempDir, DbService) {
-  let tempdir = tempfile::tempdir().unwrap();
-  let db_path = tempdir.path().join("test_live_db.sqlite");
-  File::create_new(&db_path).unwrap();
-  let pool = DbPool::connect(&format!("sqlite:{}", db_path.display()))
-    .await
-    .unwrap();
-  sqlx::migrate!("./migrations").run(&pool).await.unwrap();
-  let db_service = DbService::new(pool, Arc::new(TimeService));
-  (tempdir, db_service)
 }
 
 #[fixture]
@@ -66,56 +48,24 @@ pub fn setup(#[from(setup_logs)] _setup_logs: ()) {}
 #[awt]
 pub async fn live_server(
   #[from(setup)] _setup: (),
-  #[future] db_service: (TempDir, DbService),
   tinyllama: &(TempDir, Arc<dyn AppServiceFn>),
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();
-  let ServerHandle {
-    server,
-    shutdown,
-    ready_rx,
-  } = build_server_handle(&host, port);
-  let (_, app_service) = tinyllama;
-
-  let alias = app_service.find_alias("tinyllama:instruct").unwrap();
-  let local_file = app_service
-    .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
-    .unwrap();
-
-  let mut gpt_params = GptParamsBuilder::default()
-    .model(local_file.path().display().to_string())
-    .seed(42u32)
-    .build()?;
-  alias.context_params.update(&mut gpt_params);
-  let shared_ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-  let (temp_db_home, db_service) = db_service;
-  let ctx = Arc::new(shared_ctx);
-  let router = build_routes(ctx.clone(), app_service.clone(), Arc::new(db_service));
-
-  let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
-    async move {
-      if let Err(err) = ctx.try_stop().await {
-        tracing::warn!(err = ?err, "error unloading context");
-      }
-    }
-    .boxed()
-  });
-  let join = tokio::spawn(server.start_new(router, Some(callback)));
-  ready_rx.await?;
-  Ok(TestServerHandle {
-    host,
+  let (temp_cache_dir, app_service) = tinyllama;
+  let serve_command = ServeCommand::ByParams {
+    host: host.clone(),
     port,
-    shutdown,
-    join,
-    temp_db_home,
-  })
+  };
+  let bodhi_home = temp_cache_dir.path().join(".cache").join("bodhi");
+  let handle = serve_command
+    .aexecute(app_service.clone(), bodhi_home)
+    .await?;
+  Ok(TestServerHandle { host, port, handle })
 }
 
 pub struct TestServerHandle {
   pub host: String,
   pub port: u16,
-  pub shutdown: Sender<()>,
-  pub join: JoinHandle<Result<(), BodhiError>>,
-  pub temp_db_home: TempDir,
+  pub handle: ServerShutdownHandle,
 }

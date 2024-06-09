@@ -10,13 +10,7 @@ use serde_json::Value;
 async fn test_live_chat_completions(
   #[future] live_server: anyhow::Result<TestServerHandle>,
 ) -> anyhow::Result<()> {
-  let TestServerHandle {
-    host,
-    port,
-    shutdown,
-    join,
-    temp_db_home: _temp_db_home,
-  } = live_server?;
+  let TestServerHandle { host, port, handle } = live_server?;
   let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions");
   let client = reqwest::Client::new();
   let response = client
@@ -49,8 +43,7 @@ async fn test_live_chat_completions(
   )?;
   assert_eq!(expected, response["choices"]);
   assert_eq!("tinyllama:instruct", response["model"]);
-  shutdown.send(()).unwrap();
-  (join.await?)?;
+  handle.shutdown().await?;
   Ok(())
 }
 
@@ -62,13 +55,7 @@ async fn test_live_chat_completions(
 async fn test_live_chat_completions_stream(
   #[future] live_server: anyhow::Result<TestServerHandle>,
 ) -> anyhow::Result<()> {
-  let TestServerHandle {
-    host,
-    port,
-    shutdown,
-    join,
-    temp_db_home: _temp_db_home,
-  } = live_server?;
+  let TestServerHandle { host, port, handle } = live_server?;
   let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions");
   let client = reqwest::Client::new();
   let response = client
@@ -116,9 +103,6 @@ async fn test_live_chat_completions_stream(
   }
   let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
   assert_eq!(expected, streams.get(5).unwrap()["choices"]);
-  shutdown
-    .send(())
-    .map_err(|_| anyhow::anyhow!("send error"))?;
-  (join.await?)?;
+  handle.shutdown().await?;
   Ok(())
 }

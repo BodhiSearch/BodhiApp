@@ -10,6 +10,7 @@ pub mod service;
 mod shared_rw;
 mod tokenizer_config;
 mod utils;
+// TODO: remove exposing of cli methods, rename cli to command package
 pub use cli::*;
 pub use error::BodhiError;
 pub use objs::Repo;

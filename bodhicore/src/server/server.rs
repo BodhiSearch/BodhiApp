@@ -1,8 +1,9 @@
 use crate::error::Common;
 use axum::Router;
-use std::future::Future;
-use tokio::net::TcpListener;
-use tokio::sync::oneshot::{self, Receiver, Sender};
+use tokio::{
+  net::TcpListener,
+  sync::oneshot::{self, Receiver, Sender},
+};
 
 /// Server encapsulates the parameters to start, broadcast ready lifecycle, and receive shutdown request for a server
 /// It contains the parameters to start the server on given host, port etc. and
@@ -13,6 +14,11 @@ pub struct Server {
   port: u16,
   ready: Sender<()>,
   shutdown_rx: Receiver<()>,
+}
+
+#[async_trait::async_trait]
+pub trait ShutdownCallback: Send + Sync {
+  async fn shutdown(&self);
 }
 
 /// ServerHandle encapuslates the handles to start, listen to when server is ready, and request shutdown for a running server
@@ -43,11 +49,11 @@ impl Server {
     }
   }
 
-  pub async fn start_new<F, Fut>(self, app: Router, callback: Option<F>) -> crate::error::Result<()>
-  where
-    F: FnOnce() -> Fut + Send + 'static,
-    Fut: Future<Output = ()> + Send + 'static,
-  {
+  pub async fn start_new(
+    self,
+    app: Router,
+    callback: Option<Box<dyn ShutdownCallback>>,
+  ) -> crate::error::Result<()> {
     let Server {
       host,
       port,
@@ -57,44 +63,49 @@ impl Server {
     let addr = format!("{}:{}", host, port);
     let listener = TcpListener::bind(&addr).await.map_err(Common::Io)?;
     tracing::info!(addr = addr, "server started");
-    let axum_server = axum::serve(listener, app)
-      .with_graceful_shutdown(Server::shutdown_handler(shutdown_rx, callback));
+    let axum_server = axum::serve(listener, app).with_graceful_shutdown(async move {
+      match shutdown_rx.await {
+        Ok(()) => {
+          tracing::info!("received signal to shutdown the server");
+        }
+        Err(err) => {
+          tracing::warn!(
+            ?err,
+            "shutdown sender dropped without sending shutdown signal"
+          );
+        }
+      };
+      if let Some(callback) = callback {
+        (*callback).shutdown().await;
+      }
+    });
     if ready.send(()).is_err() {
-      tracing::warn!("ready receiver dropped before start start notified")
+      tracing::warn!("ready receiver dropped before start signal notified")
     };
     axum_server.await.map_err(Common::Io)?;
     Ok(())
-  }
-
-  async fn shutdown_handler<F, Fut>(shutdown_rx: Receiver<()>, callback: Option<F>)
-  where
-    F: FnOnce() -> Fut,
-    Fut: Future<Output = ()> + Send + 'static,
-  {
-    match shutdown_rx.await.is_err() {
-      true => {
-        tracing::warn!(
-          "shutdown sender dropped without sending a stop signal, will stop the server"
-        );
-      }
-      false => {
-        tracing::warn!("shutdown request received, starting server shutdown");
-      }
-    };
-    if let Some(callback) = callback {
-      callback().await;
-    }
   }
 }
 
 #[cfg(test)]
 mod test {
-  use crate::server::{build_server_handle, ServerHandle};
+  use super::{build_server_handle, ServerHandle, ShutdownCallback};
   use anyhow::anyhow;
   use axum::{routing::get, Router};
-  use futures_util::{future::BoxFuture, FutureExt};
   use reqwest::StatusCode;
   use std::sync::{Arc, Mutex};
+
+  struct ShutdownTestCallback {
+    callback: Arc<Mutex<bool>>,
+  }
+
+  #[async_trait::async_trait]
+  impl ShutdownCallback for ShutdownTestCallback {
+    async fn shutdown(&self) {
+      let mut c = self.callback.lock().unwrap();
+      *c = true;
+    }
+  }
 
   // TODO: unstable test, use ctrlc crate
   #[tokio::test]
@@ -108,15 +119,10 @@ mod test {
     } = build_server_handle(&host, port);
     let app = Router::new().route("/ping", get(|| async { (StatusCode::OK, "pong") }));
     let callback_received = Arc::new(Mutex::new(false));
-    let callback_clone = callback_received.clone();
-    let callback: Box<dyn FnOnce() -> BoxFuture<'static, ()> + Send + 'static> = Box::new(|| {
-      async move {
-        let mut c = callback_clone.lock().unwrap();
-        *c = true;
-      }
-      .boxed()
-    });
-    let join_handle = tokio::spawn(server.start_new(app, Some(callback)));
+    let callback = ShutdownTestCallback {
+      callback: callback_received.clone(),
+    };
+    let join_handle = tokio::spawn(server.start_new(app, Some(Box::new(callback))));
     ready_rx.await?;
     let response = reqwest::Client::new()
       .get(format!("http://{host}:{port}/ping"))
