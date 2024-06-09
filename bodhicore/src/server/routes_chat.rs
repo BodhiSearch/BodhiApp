@@ -12,6 +12,7 @@ use futures_util::StreamExt;
 use std::{convert::Infallible, sync::Arc};
 use tokio_stream::wrappers::ReceiverStream;
 
+// TODO: custom Json extractor to dispatch OpenAIError response for bad request
 pub(crate) async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
   Json(request): Json<CreateChatCompletionRequest>,
@@ -38,6 +39,7 @@ pub(crate) async fn chat_completions_handler(
       ))
     }
   } else {
+    // TODO: not open up the response, but proxy it directly
     let stream = ReceiverStream::new(rx).map::<Result<Event, Infallible>, _>(move |msg| {
       let data = if msg.starts_with("data: ") {
         msg

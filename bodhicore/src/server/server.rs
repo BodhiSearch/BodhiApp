@@ -111,7 +111,7 @@ mod test {
   use reqwest::StatusCode;
   use std::sync::{Arc, Mutex};
 
-  // TODO: unstable test
+  // TODO: unstable test, use ctrlc crate
   #[tokio::test]
   pub async fn test_server_start_stop_with_callback() -> anyhow::Result<()> {
     let host = "localhost".to_string();

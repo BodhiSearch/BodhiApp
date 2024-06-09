@@ -42,7 +42,6 @@ impl RunCommand {
             None => return Err(BodhiError::AliasNotFound(alias)),
           },
         };
-        // TODO: after removing anyhow::Error from launch_interactive, replace with direct call
         InteractiveRuntime::new().execute(alias, service)?;
         Ok(())
       }

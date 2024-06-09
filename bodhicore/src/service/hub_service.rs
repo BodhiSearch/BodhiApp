@@ -128,7 +128,6 @@ impl HubService for HfHubService {
           .file_name()
           .map(|f| f.to_string_lossy().into_owned())
           .unwrap_or(String::from("<unknown>"));
-        // TODO FileMissing instead of IoErr, not using err field
         HubServiceError::FileMissing { filename, dirname }
       })?
     } else {

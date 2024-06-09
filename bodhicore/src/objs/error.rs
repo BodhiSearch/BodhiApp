@@ -1,6 +1,9 @@
+use llama_server_bindings::GptParamsBuilderError;
 use std::{io, path::PathBuf};
 use thiserror::Error;
 use validator::{ValidationError, ValidationErrors};
+
+use super::BuilderError;
 
 #[derive(Debug, Error)]
 pub enum ObjError {
@@ -20,6 +23,10 @@ pub enum ObjError {
   },
   #[error(transparent)]
   SerdeJson(#[from] serde_json::Error),
+  #[error(transparent)]
+  Builder(#[from] BuilderError),
+  #[error(transparent)]
+  GptBuilder(#[from] GptParamsBuilderError),
 }
 
 #[allow(unused)]

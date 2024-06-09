@@ -1,7 +1,7 @@
 use crate::{
   db::DbService,
   error::{BodhiError, Common},
-  objs::Alias,
+  objs::{Alias, ObjError},
   server::{RouterState, RouterStateFn},
   service::{AppServiceFn, HubServiceError},
   SharedContextRw,
@@ -14,8 +14,12 @@ use async_openai::types::{
 use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
-use llama_server_bindings::{disable_llama_log, GptParams};
-use std::{sync::Arc, time::Duration};
+use llama_server_bindings::{disable_llama_log, GptParams, GptParamsBuilder};
+use std::{
+  io::{self, Write},
+  sync::Arc,
+  time::Duration,
+};
 use tokio::{
   runtime::Builder,
   sync::{mpsc::channel, Mutex},
@@ -63,10 +67,11 @@ impl Interactive {
         }
       })?;
     let pb = infinite_loading(String::from("Loading..."));
-    let gpt_params = GptParams {
-      model: model.path().display().to_string(),
-      ..Default::default()
-    };
+    let mut gpt_params = GptParamsBuilder::default()
+      .model(model.path().display().to_string())
+      .build()
+      .map_err(ObjError::from)?;
+    alias.context_params.update(&mut gpt_params);
     disable_llama_log();
 
     let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
@@ -127,7 +132,6 @@ impl Interactive {
           } else {
             message.as_ref()
           };
-          // TODO: handle error response
           let result = serde_json::from_str::<CreateChatCompletionStreamResponse>(message)
             .map_err(|err| Common::SerdeJsonSerialize {
               source: err,
@@ -141,6 +145,7 @@ impl Interactive {
             .to_string();
           deltas.push_str(&delta);
           print!("{delta}");
+          _ = io::stdout().flush();
         }
         let mut msgs = chat_history.lock().await;
         (*msgs).push(ChatCompletionRequestMessage::Assistant(
