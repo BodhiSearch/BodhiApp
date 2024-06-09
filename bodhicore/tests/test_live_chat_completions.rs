@@ -2,6 +2,7 @@ mod utils;
 use crate::utils::{live_server, TestServerHandle};
 use serde_json::Value;
 
+#[cfg(not(ci))]
 #[rstest::rstest]
 #[awt]
 #[serial_test::serial(live_server)]
@@ -53,6 +54,7 @@ async fn test_live_chat_completions(
   Ok(())
 }
 
+#[cfg(not(ci))]
 #[rstest::rstest]
 #[awt]
 #[serial_test::serial(live_server)]
