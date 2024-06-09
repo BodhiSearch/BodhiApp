@@ -33,6 +33,8 @@ mockall::mock! {
 
   #[async_trait::async_trait]
   impl DbServiceFn for DbService {
+    async fn migrate(&self) -> Result<(), DbError>;
+
     async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError>;
 
     async fn save_message(&self, message: &mut Message) -> Result<(), DbError>;

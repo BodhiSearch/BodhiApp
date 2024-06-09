@@ -1,17 +1,22 @@
 use crate::{native::NativeCommand, AppError};
+use axum::Router;
 use bodhicore::{
   cli::{Cli, Command, ServeCommand},
   service::{AppService, HfHubService, LocalDataService},
   CreateCommand, ListCommand, PullCommand, RunCommand,
 };
 use clap::Parser;
+use include_dir::{include_dir, Dir};
 use std::{
   env,
   path::{Path, PathBuf},
   sync::Arc,
 };
+use tower_serve_static::ServeDir;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
 pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()> {
   let data_service = LocalDataService::new(bodhi_home.clone());
@@ -26,7 +31,7 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
       .contains(".app/Contents/MacOS/")
   {
     // the app was launched using Bodhi.app, launch the native app with system tray
-    NativeCommand::new(service, bodhi_home).execute()?;
+    NativeCommand::new(service, bodhi_home).execute(Some(static_router()))?;
     return Ok(());
   }
 
@@ -35,7 +40,7 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
   let cli = Cli::parse();
   match cli.command {
     Command::App {} => {
-      NativeCommand::new(service, bodhi_home).execute()?;
+      NativeCommand::new(service, bodhi_home).execute(Some(static_router()))?;
     }
     list @ Command::List { .. } => {
       let list_command = ListCommand::try_from(list)?;
@@ -73,4 +78,9 @@ pub fn setup_logs(bodhi_home: &Path) -> super::Result<WorkerGuard> {
     .with(fmt::layer().with_writer(non_blocking))
     .init();
   Ok(guard)
+}
+
+fn static_router() -> Router {
+  let static_service = ServeDir::new(&ASSETS).append_index_html_on_directories(true);
+  Router::new().fallback_service(static_service)
 }

@@ -48,6 +48,7 @@ impl From<DbError> for ApiError {
       DbError::SqlxConnect { source, url } => ApiError::ServerError(format!(
         "not able to connect to database at {url}, error: {source}",
       )),
+      DbError::Migrate(err) => ApiError::ServerError(err.to_string()),
     }
   }
 }

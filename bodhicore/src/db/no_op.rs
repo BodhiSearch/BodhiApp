@@ -15,6 +15,10 @@ impl NoOpDbService {
 
 #[async_trait::async_trait]
 impl DbServiceFn for NoOpDbService {
+  async fn migrate(&self) -> Result<(), DbError> {
+    Ok(())
+  }
+
   async fn save_conversation(&self, _conversation: &mut Conversation) -> Result<(), DbError> {
     Ok(())
   }

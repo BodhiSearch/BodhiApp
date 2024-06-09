@@ -17,14 +17,16 @@ pub fn build_routes(
   ctx: Arc<dyn SharedContextRwFn>,
   app_service: Arc<dyn AppServiceFn>,
   db_service: Arc<dyn DbServiceFn>,
+  static_router: Option<Router>,
 ) -> Router {
   let state = RouterState::new(ctx, app_service, db_service);
-  let api_router = Router::new().route("/models", get(ui_models_handler));
-  Router::new()
+  let api_router = Router::new()
+    .route("/models", get(ui_models_handler))
+    .merge(chats_router());
+  let router = Router::new()
     .route("/ping", get(|| async { "pong" }))
     .nest("/api/ui", api_router)
     .route("/v1/chat/completions", post(chat_completions_handler))
-    .merge(chats_router())
     .layer(
       CorsLayer::new()
         .allow_origin(Any)
@@ -33,5 +35,11 @@ pub fn build_routes(
         .allow_credentials(false),
     )
     .layer(TraceLayer::new_for_http())
-    .with_state(Arc::new(state))
+    .with_state(Arc::new(state));
+  let router = if let Some(static_router) = static_router {
+    router.merge(static_router)
+  } else {
+    router
+  };
+  router
 }

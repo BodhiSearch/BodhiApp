@@ -30,8 +30,7 @@ interface ChatSettingsProviderProps {
 }
 
 interface Model {
-  model: string,
-  displayName: string,
+  alias: string,
 }
 
 export function ChatSettingsProvider({ children }: ChatSettingsProviderProps) {

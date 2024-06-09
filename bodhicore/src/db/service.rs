@@ -4,7 +4,7 @@ use super::{
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
-use sqlx::SqlitePool;
+use sqlx::{migrate::MigrateError, SqlitePool};
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -39,10 +39,14 @@ pub enum DbError {
     source: sqlx::Error,
     url: String,
   },
+  #[error("sqlx_migrate: {0}")]
+  Migrate(#[from] MigrateError),
 }
 
 #[async_trait::async_trait]
 pub trait DbServiceFn: std::fmt::Debug + Send + Sync {
+  async fn migrate(&self) -> Result<(), DbError>;
+
   async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError>;
 
   async fn save_message(&self, message: &mut Message) -> Result<(), DbError>;
@@ -70,6 +74,11 @@ impl DbService {
 
 #[async_trait::async_trait]
 impl DbServiceFn for DbService {
+  async fn migrate(&self) -> Result<(), DbError> {
+    sqlx::migrate!("./migrations").run(&self.pool).await?;
+    Ok(())
+  }
+
   async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError> {
     if conversation.id.is_empty() {
       conversation.id = Uuid::new_v4().to_string()

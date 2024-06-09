@@ -59,7 +59,7 @@ pub async fn live_server(
   };
   let bodhi_home = temp_cache_dir.path().join(".cache").join("bodhi");
   let handle = serve_command
-    .aexecute(app_service.clone(), bodhi_home)
+    .aexecute(app_service.clone(), bodhi_home, None)
     .await?;
   Ok(TestServerHandle { host, port, handle })
 }

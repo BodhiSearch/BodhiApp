@@ -1,3 +1,4 @@
+use axum::Router;
 use bodhicore::{
   service::{AppServiceFn, EnvService},
   ServeCommand, ServerShutdownHandle,
@@ -27,12 +28,12 @@ impl NativeCommand {
     }
   }
 
-  pub fn execute(&self) -> crate::error::Result<()> {
+  pub fn execute(&self, static_router: Option<Router>) -> crate::error::Result<()> {
     let runtime = Builder::new_multi_thread().enable_all().build()?;
-    runtime.block_on(async move { self.aexecute().await })
+    runtime.block_on(async move { self.aexecute(static_router).await })
   }
 
-  async fn aexecute(&self) -> crate::error::Result<()> {
+  async fn aexecute(&self, static_router: Option<Router>) -> crate::error::Result<()> {
     let env_service = EnvService::new();
     let host = env_service.host();
     let port = env_service.port();
@@ -40,7 +41,7 @@ impl NativeCommand {
     let addr_clone = addr.clone();
     let cmd = ServeCommand::ByParams { host, port };
     let server_handle = cmd
-      .aexecute(self.service.clone(), self.bodhi_home.clone())
+      .aexecute(self.service.clone(), self.bodhi_home.clone(), static_router)
       .await?;
 
     let system_tray = SystemTray::new().with_menu(
