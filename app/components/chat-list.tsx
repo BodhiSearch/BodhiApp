@@ -16,7 +16,7 @@ export function ChatList({ chatLoading, chatStreaming, messages }: ChatListProps
     return <EmptyScreen />
   }
   if (chatLoading) {
-    return <div className="relative mx-auto max-w-2xl px-4">
+    return <div className="chat_list_tsx relative mx-auto max-w-2xl px-4">
       {Array.from({ length: 2 }).map((_, i) => (
         <div key={i}>
           <div className="relative mb-4 flex items-start md:-ml-12">
@@ -30,7 +30,7 @@ export function ChatList({ chatLoading, chatStreaming, messages }: ChatListProps
   }
   return (
     <>
-      <div className="relative mx-auto max-w-2xl px-4">
+      <div className="chat_list_tsx relative mx-auto max-w-2xl px-4">
         {messages.map((message, index) => (
           <div key={index}>
             <ChatMessage message={message} />

@@ -41,7 +41,7 @@ export function Chat({ id, isLoading: chatLoading, initialMessages: apiMessages 
       }
     }
   });
-  return <div className="group w-full overflow-auto pl-0 peer-[[data-state=open]]:lg:pl-[250px] peer-[[data-state=open]]:xl:pl-[300px]">
+  return <div className="chat_tsx group w-full overflow-auto pl-0 peer-[[data-state=open]]:lg:pl-[250px] peer-[[data-state=open]]:xl:pl-[300px]">
     <div className={cn('pb-[200px] pt-4 md:pt-10')}>
       <ChatList messages={messages as Message[]} chatLoading={chatLoading} chatStreaming={isLoading} />
     </div>
