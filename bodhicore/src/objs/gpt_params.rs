@@ -51,6 +51,14 @@ default: -1 (unbounded)"#
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub n_predict: Option<i32>,
+
+  #[arg(
+    long,
+    help = r#"number of tokens to keep from the initial prompt
+default: 0"#
+  )]
+  #[serde(default, skip_serializing_if = "Option::is_none")]
+  pub n_keep: Option<i32>,
 }
 
 impl GptContextParams {
@@ -58,7 +66,8 @@ impl GptContextParams {
     // gpt_params.n_threads = self.n_threads;
     gpt_params.seed = self.n_seed;
     gpt_params.n_ctx = self.n_ctx;
-    // gpt_params.n_parallel = self.n_parallel;
     gpt_params.n_predict = self.n_predict;
+    gpt_params.n_parallel = self.n_parallel;
+    gpt_params.n_keep = self.n_keep;
   }
 }

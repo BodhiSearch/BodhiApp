@@ -356,6 +356,7 @@ For more information, try '--help'.
     "--n-ctx", "1024",
     "--n-parallel", "4",
     "--n-predict", "512",
+    "--n-keep", "4",
   ],
     "testalias:instruct".to_string(),
     "MyFactory/testalias-gguf".to_string(),
@@ -377,7 +378,8 @@ For more information, try '--help'.
       n_threads:Some(6),
       n_ctx: Some(1024),
       n_parallel: Some(4),
-      n_predict: Some(512)
+      n_predict: Some(512),
+      n_keep: Some(4),
     }
   ,
   )]
