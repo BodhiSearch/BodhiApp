@@ -39,6 +39,8 @@ type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(test, automock)]
 pub trait DataService: Debug {
+  fn bodhi_home(&self) -> PathBuf;
+
   fn list_aliases(&self) -> Result<Vec<Alias>>;
 
   fn save_alias(&self, alias: Alias) -> Result<PathBuf>;
@@ -56,6 +58,10 @@ pub struct LocalDataService {
 }
 
 impl DataService for LocalDataService {
+  fn bodhi_home(&self) -> PathBuf {
+    self.bodhi_home.clone()
+  }
+
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
     let models = self.list_remote_models()?;
     Ok(models.into_iter().find(|model| model.alias.eq(alias)))

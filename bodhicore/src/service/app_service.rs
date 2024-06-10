@@ -51,6 +51,10 @@ impl HubService for AppService {
 }
 
 impl DataService for AppService {
+  fn bodhi_home(&self) -> PathBuf {
+    self.data_service.bodhi_home()
+  }
+
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>, DataServiceError> {
     self.data_service.find_remote_model(alias)
   }

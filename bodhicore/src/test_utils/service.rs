@@ -83,6 +83,10 @@ impl HubService for MockAppServiceFn {
 }
 
 impl DataService for MockAppServiceFn {
+  fn bodhi_home(&self) -> PathBuf {
+    self.data_service.bodhi_home()
+  }
+
   fn list_aliases(&self) -> Result<Vec<Alias>, DataServiceError> {
     self.data_service.list_aliases()
   }
@@ -136,6 +140,8 @@ mockall::mock! {
   }
 
   impl DataService for AppService {
+    fn bodhi_home(&self) -> PathBuf;
+
     fn list_aliases(&self) -> Result<Vec<Alias>, DataServiceError>;
 
     fn save_alias(&self, alias: Alias) -> Result<PathBuf, DataServiceError>;

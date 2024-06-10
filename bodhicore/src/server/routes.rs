@@ -2,7 +2,7 @@ use super::{
   super::{db::DbServiceFn, service::AppServiceFn, SharedContextRwFn},
   router_state::RouterState,
   routes_chat::chat_completions_handler,
-  routes_models::ui_models_handler,
+  routes_models::{oai_model_handler, oai_models_handler},
   routes_ui::chats_router,
 };
 use axum::{
@@ -20,12 +20,12 @@ pub fn build_routes(
   static_router: Option<Router>,
 ) -> Router {
   let state = RouterState::new(ctx, app_service, db_service);
-  let api_router = Router::new()
-    .route("/models", get(ui_models_handler))
-    .merge(chats_router());
+  let api_router = Router::new().merge(chats_router());
   let router = Router::new()
     .route("/ping", get(|| async { "pong" }))
     .nest("/api/ui", api_router)
+    .route("/v1/models", get(oai_models_handler))
+    .route("/v1/models/:id", get(oai_model_handler))
     .route("/v1/chat/completions", post(chat_completions_handler))
     .layer(
       CorsLayer::new()

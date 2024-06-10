@@ -4,6 +4,7 @@ import string
 from typing import Any, Dict, List, Union
 
 import pytest
+import yaml
 from openai import AsyncOpenAI, OpenAI
 
 FILTER_RESPONSE_HEADERS = ["Set-Cookie", "openai-organization"]
@@ -11,6 +12,28 @@ OPENAI_API_KEY = "OPENAI_API_KEY"
 OPENAI_BASE_URL = "OPENAI_BASE_URL"
 BODHI_BASE_URL = "BODHI_BASE_URL"
 BODHI_API_KEY = "BODHI_API_KEY"
+
+
+class MultilineDumper(yaml.Dumper):
+  def ignore_aliases(self, data):
+    return True
+
+
+def str_presenter(dumper, data):
+  if len(data.splitlines()) > 1:
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+  return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+MultilineDumper.add_representer(str, str_presenter)
+
+
+class MultlilineSerializer:
+  def serialize(self, cassette_dict):
+    return yaml.dump(cassette_dict, Dumper=MultilineDumper)
+
+  def deserialize(self, cassette_string):
+    return yaml.safe_load(cassette_string)
 
 
 def pytest_collection_modifyitems(config, items):
@@ -113,7 +136,12 @@ def vcr_config() -> Dict[str, Any]:
     "decode_compressed_response": True,
     "ignore_localhost": True,
     "before_record_response": before_record_response,
+    "serializer": "yaml",
   }
+
+
+def pytest_recording_configure(config, vcr):
+  vcr.register_serializer("yaml", MultlilineSerializer())
 
 
 def before_record_response(response):

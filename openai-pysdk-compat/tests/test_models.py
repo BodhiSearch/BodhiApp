@@ -1,5 +1,6 @@
 import openai
 import pytest
+from deepdiff import DeepDiff
 
 from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi_skip, mark_openai
 
@@ -44,14 +45,21 @@ async def test_models_async_list(client):
       id="openai",
       **mark_openai(),
     ),
-    pytest.param("bodhi", LLAMA3_MODEL, {}, id="bodhi", **mark_bodhi_skip()),
+    pytest.param(
+      "bodhi",
+      LLAMA3_MODEL,
+      {"id": LLAMA3_MODEL, "object": "model", "created": 0, "owned_by": "system"},
+      id="bodhi",
+      **mark_bodhi_skip(),
+    ),
   ],
   indirect=["client"],
 )
 def test_models_retrieve(client, model, expected):
   model = client.models.retrieve(model)
   expected = openai.types.model.Model(**expected)
-  assert expected == model
+  diff = DeepDiff(model.to_dict(), expected.to_dict(), exclude_paths=["created"])
+  assert {} == diff
 
 
 @pytest.mark.asyncio
@@ -66,11 +74,18 @@ def test_models_retrieve(client, model, expected):
       id="async_openai",
       **mark_openai(),
     ),
-    pytest.param("async_bodhi", LLAMA3_MODEL, {}, id="async_bodhi", **mark_bodhi_skip()),
+    pytest.param(
+      "async_bodhi",
+      LLAMA3_MODEL,
+      {"id": LLAMA3_MODEL, "object": "model", "created": 0, "owned_by": "system"},
+      id="async_bodhi",
+      **mark_bodhi_skip(),
+    ),
   ],
   indirect=["client"],
 )
 async def test_models_async_retrieve(client, model, expected):
   model = await client.models.retrieve(model)
   expected = openai.types.model.Model(**expected)
-  assert expected == model
+  diff = DeepDiff(model.to_dict(), expected.to_dict(), exclude_paths=["created"])
+  assert {} == diff

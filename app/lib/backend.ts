@@ -31,6 +31,6 @@ export async function clearChats() {
 
 // TODO - check openai api to get models
 export async function getModels() {
-  let { data, status } = await client.get(`${API_BASE_URL}api/ui/models`)
+  let { data, status } = await client.get(`${API_BASE_URL}v1/models`)
   return { data, status }
 }

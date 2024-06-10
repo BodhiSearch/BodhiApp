@@ -30,7 +30,7 @@ interface ChatSettingsProviderProps {
 }
 
 interface Model {
-  alias: string,
+  id: string,
 }
 
 export function ChatSettingsProvider({ children }: ChatSettingsProviderProps) {
@@ -40,7 +40,7 @@ export function ChatSettingsProvider({ children }: ChatSettingsProviderProps) {
   const populateModel = async () => {
     let { data, status } = await getModels();
     if (status === 200) {
-      setModels(data)
+      setModels(data.data)
     } else {
       console.log(`error fetching models: [${status}]: ${data}`);
     }
