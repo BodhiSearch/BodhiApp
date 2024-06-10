@@ -104,7 +104,7 @@ export function PromptForm({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Model Not Selected</AlertDialogTitle>
-            <AlertDialogDescription>You haven't selected the LLM Model to run your query against.<br />Select the model from bottom left dropdown, <br /> or download new models using cli command `bodhi pull &lt;alias&gt;`.</AlertDialogDescription>
+            <AlertDialogDescription>You haven&apos;t selected the LLM Model to run your query against.<br />Select the model from bottom left dropdown, <br /> or download new models using cli command `bodhi pull &lt;alias&gt;`.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction onClick={event => {
