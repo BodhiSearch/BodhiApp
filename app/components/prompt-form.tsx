@@ -9,8 +9,10 @@ import {
   TooltipTrigger
 } from '@/components/ui/tooltip'
 import { IconArrowElbow, IconPlus } from '@/components/ui/icons'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
+import { useChatSettings } from '@/lib/hooks/use-chat-settings'
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog'
 
 export interface PromptProps
   extends Pick<UseChatHelpers, 'input' | 'setInput'> {
@@ -27,6 +29,9 @@ export function PromptForm({
   const { formRef, onKeyDown } = useEnterSubmit()
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const router = useRouter()
+  const { model } = useChatSettings();
+  const [modelNotSelectedDialog, setModelNotSelectedDialog] = useState(false);
+
   useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus()
@@ -38,6 +43,10 @@ export function PromptForm({
       onSubmit={async e => {
         e.preventDefault()
         if (!input?.trim()) {
+          return
+        }
+        if (model === null || model === "") {
+          setModelNotSelectedDialog(true)
           return
         }
         setInput('')
@@ -91,6 +100,21 @@ export function PromptForm({
           </Tooltip>
         </div>
       </div>
+      <AlertDialog open={modelNotSelectedDialog} onOpenChange={setModelNotSelectedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Model Not Selected</AlertDialogTitle>
+            <AlertDialogDescription>You haven't selected the LLM Model to run your query against.<br />Select the model from bottom left dropdown, <br /> or download new models using cli command `bodhi pull &lt;alias&gt;`.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={event => {
+              event.preventDefault();
+              setModelNotSelectedDialog(false);
+            }}>OK</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+
+      </AlertDialog>
     </form>
   )
 }
