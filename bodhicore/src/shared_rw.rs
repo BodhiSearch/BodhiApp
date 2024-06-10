@@ -5,7 +5,7 @@ use crate::error::Common;
 #[cfg(test)]
 use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
 
-use crate::objs::{HubFile, ObjError};
+use crate::objs::{Alias, HubFile, ObjError};
 use crate::service::DataServiceError;
 use tokio::sync::mpsc::Sender;
 use crate::tokenizer_config::TokenizerConfig;
@@ -87,7 +87,8 @@ pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
   #[allow(clippy::ptr_arg)]
   async fn chat_completions(
     &self,
-    request: CreateChatCompletionRequest,
+    mut request: CreateChatCompletionRequest,
+    alias: Alias,
     model_file: HubFile,
     tokenizer_file: HubFile,
     userdata: Sender<String>,
@@ -151,7 +152,8 @@ impl SharedContextRwFn for SharedContextRw {
 
   async fn chat_completions(
     &self,
-    request: CreateChatCompletionRequest,
+    mut request: CreateChatCompletionRequest,
+    alias: Alias,
     model_file: HubFile,
     tokenizer_file: HubFile,
     userdata: Sender<String>,
@@ -162,6 +164,7 @@ impl SharedContextRwFn for SharedContextRw {
     let request_model = model_file.path().display().to_string();
     let chat_template: TokenizerConfig = TokenizerConfig::try_from(tokenizer_file)?;
     chat_template.validate()?;
+    alias.request_params.update(&mut request);
     let prompt = chat_template.apply_chat_template(&request.messages)?;
     let mut input_value = serde_json::to_value(request).map_err(Common::SerdeJsonDeserialize)?;
     input_value["prompt"] = serde_json::Value::String(prompt);
@@ -178,7 +181,8 @@ impl SharedContextRwFn for SharedContextRw {
       }
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
-        let new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
+        let mut new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
+        alias.context_params.update(&mut new_gpt_params);
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
@@ -191,7 +195,8 @@ impl SharedContextRwFn for SharedContextRw {
       ModelLoadStrategy::Load => {
         // TODO: take context params from alias
         // TODO: reload keeping lock and doing completions operation
-        let new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
+        let mut new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
+        alias.context_params.update(&mut new_gpt_params);
         drop(lock);
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
@@ -243,9 +248,9 @@ impl ModelLoadStrategy {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::HubFile,
+    objs::{Alias, HubFile},
     shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
-    test_utils::{test_channel, hf_cache, MockBodhiServerContext},
+    test_utils::{hf_cache, test_channel, MockBodhiServerContext},
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -474,7 +479,7 @@ mod test {
     }})?;
     let (tx, _rx) = test_channel();
     shared_ctx
-      .chat_completions(request, model_file, tokenizer_file, tx)
+      .chat_completions(request, Alias::testalias(), model_file, tokenizer_file, tx)
       .await?;
     Ok(())
   }
@@ -516,7 +521,7 @@ mod test {
     }})?;
     let (tx, _rx) = test_channel();
     shared_ctx
-      .chat_completions(request, model_file, tokenizer_file, tx)
+      .chat_completions(request, Alias::testalias(), model_file, tokenizer_file, tx)
       .await?;
     Ok(())
   }
@@ -574,7 +579,7 @@ mod test {
     }})?;
     let (tx, _rx) = test_channel();
     shared_ctx
-      .chat_completions(request, loaded_model, tokenizer_file, tx)
+      .chat_completions(request, Alias::testalias(), loaded_model, tokenizer_file, tx)
       .await?;
     Ok(())
   }}

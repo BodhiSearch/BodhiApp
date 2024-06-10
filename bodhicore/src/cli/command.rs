@@ -124,7 +124,7 @@ fn gguf_filename_parser(filename: &str) -> Result<String, String> {
 #[cfg(test)]
 mod test {
   use super::*;
-  use crate::objs::{OAIRequestParams, ResponseFormat};
+  use crate::objs::OAIRequestParams;
   use clap::CommandFactory;
   use rstest::rstest;
 
@@ -346,7 +346,6 @@ For more information, try '--help'.
     "--frequency-penalty", "0.8",
     "--max-tokens", "512",
     "--presence-penalty", "1.1",
-    "--response-format", "json_object",
     "--seed", "42",
     "--stop", "\n",
     "--stop", "\n\n",
@@ -367,7 +366,6 @@ For more information, try '--help'.
       frequency_penalty: Some(0.8),
       max_tokens: Some(512),
       presence_penalty: Some(1.1),
-      response_format: Some(ResponseFormat::JsonObject),
       seed: Some(42),
       stop: vec!["\n".to_string(), "\n\n".to_string()],
       temperature: Some(0.8),

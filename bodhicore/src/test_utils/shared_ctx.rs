@@ -31,7 +31,8 @@ mockall::mock! {
 
     async fn chat_completions(
       &self,
-      request: CreateChatCompletionRequest,
+      mut request: CreateChatCompletionRequest,
+      alias: Alias,
       model_file: HubFile,
       tokenizer_file: HubFile,
       userdata: Sender<String>,

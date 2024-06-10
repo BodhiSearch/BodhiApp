@@ -35,11 +35,11 @@ async fn test_live_chat_completions(
     .json::<Value>()
     .await?;
   assert_eq!(
-    "Answer: Tuesday",
+    "One word: Tuesday.",
     response["choices"][0]["message"]["content"]
   );
   let expected: Value = serde_json::from_str(
-    r#"[{"finish_reason":"stop","index":0,"message":{"content":"Answer: Tuesday","role":"assistant"}}]"#,
+    r#"[{"finish_reason":"stop","index":0,"message":{"content":"One word: Tuesday.","role":"assistant"}}]"#,
   )?;
   assert_eq!(expected, response["choices"]);
   assert_eq!("tinyllama:instruct", response["model"]);
@@ -93,7 +93,10 @@ async fn test_live_chat_completions_stream(
       }
     })
     .collect::<Vec<_>>();
-  for (index, content) in ["Answer", ":", " T", "ues", "day"].iter().enumerate() {
+  for (index, content) in ["One", " word", ":", " T", "ues", "day", "."]
+    .iter()
+    .enumerate()
+  {
     // TODO: have index 0, 1, 2 ... from llama.cpp
     let expected: Value = serde_json::from_str(&format!(
       r#"[{{"delta":{{"content":"{}"}},"finish_reason":null,"index":0}}]"#,
@@ -102,7 +105,7 @@ async fn test_live_chat_completions_stream(
     assert_eq!(expected, streams.get(index).unwrap()["choices"]);
   }
   let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
-  assert_eq!(expected, streams.get(5).unwrap()["choices"]);
+  assert_eq!(expected, streams.get(7).unwrap()["choices"]);
   handle.shutdown().await?;
   Ok(())
 }

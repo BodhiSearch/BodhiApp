@@ -62,7 +62,7 @@ impl RouterStateFn for RouterState {
   ) -> crate::oai::Result<()> {
     let Some(alias) = self.app_service.find_alias(&request.model) else {
       return Err(crate::oai::OpenAIApiError::ModelNotFound(
-        request.model.clone(),
+        request.model,
       ));
     };
     let model_file = self
@@ -89,7 +89,7 @@ impl RouterStateFn for RouterState {
     };
     self
       .ctx
-      .chat_completions(request, model_file, tokenizer_file, userdata)
+      .chat_completions(request, alias, model_file, tokenizer_file, userdata)
       .await
       .map_err(OpenAIApiError::ContextError)?;
     Ok(())
@@ -192,11 +192,12 @@ mod test {
       .expect_chat_completions()
       .with(
         eq(request.clone()),
+        eq(Alias::testalias()),
         eq(HubFile::testalias()),
         eq(HubFile::llama3_tokenizer()),
         always(),
       )
-      .return_once(|_, _, _, _| Ok(()));
+      .return_once(|_, _, _, _, _| Ok(()));
     let state = RouterState::new(
       Arc::new(mock_ctx),
       Arc::new(mock_app_service),
@@ -240,11 +241,12 @@ mod test {
       .expect_chat_completions()
       .with(
         eq(request.clone()),
+        eq(Alias::testalias()),
         eq(HubFile::testalias()),
         eq(HubFile::llama3_tokenizer()),
         always(),
       )
-      .return_once(|_, _, _, _| {
+      .return_once(|_, _, _, _, _| {
         Err(ContextError::BodhiError(
           LlamaCppError::BodhiServerChatCompletion("test error".to_string()),
         ))
