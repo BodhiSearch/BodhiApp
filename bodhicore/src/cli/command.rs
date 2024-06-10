@@ -16,7 +16,11 @@ pub struct Cli {
 #[allow(clippy::large_enum_variant)]
 pub enum Command {
   /// launch as native app
-  App {},
+  App {
+    /// open the browser with chat interface
+    #[clap(long)]
+    ui: bool,
+  },
   /// start the OpenAI compatible REST API server and Web UI
   Serve {
     /// Start with the given host, e.g. '0.0.0.0' to allow traffic from any ip on network
@@ -146,7 +150,7 @@ mod test {
   fn test_cli_app() -> anyhow::Result<()> {
     let args = vec!["bodhi", "app"];
     let cli = Cli::try_parse_from(args)?;
-    let expected = Command::App {};
+    let expected = Command::App { ui: false };
     assert_eq!(expected, cli.command);
     Ok(())
   }
@@ -159,7 +163,7 @@ mod test {
     assert_eq!(
       r#"error: unexpected argument '--extra' found
 
-Usage: bodhi app
+Usage: bodhi app [OPTIONS]
 
 For more information, try '--help'.
 "#,
@@ -467,7 +471,7 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(Command::App {}, "app")]
+  #[case(Command::App {ui: false}, "app")]
   #[case(Command::Serve {host: Default::default(), port: 0}, "serve")]
   #[case(Command::List {remote: false, models: false}, "list")]
   #[case(Command::Pull { alias: None, repo: None, filename: None, force: false }, "pull")]

@@ -31,7 +31,7 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
       .contains(".app/Contents/MacOS/")
   {
     // the app was launched using Bodhi.app, launch the native app with system tray
-    NativeCommand::new(service, bodhi_home).execute(Some(static_router()))?;
+    NativeCommand::new(service, bodhi_home, true).execute(Some(static_router()))?;
     return Ok(());
   }
 
@@ -39,8 +39,8 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
   // or the executable was called from outside the `Bodhi.app` bundle
   let cli = Cli::parse();
   match cli.command {
-    Command::App {} => {
-      NativeCommand::new(service, bodhi_home).execute(Some(static_router()))?;
+    Command::App { ui } => {
+      NativeCommand::new(service, bodhi_home, ui).execute(Some(static_router()))?;
     }
     list @ Command::List { .. } => {
       let list_command = ListCommand::try_from(list)?;

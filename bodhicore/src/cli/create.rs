@@ -145,7 +145,7 @@ mod test {
   }
 
   #[rstest]
-  #[case(Command::App {}, "Command 'app' cannot be converted into command 'create'")]
+  #[case(Command::App {ui: false}, "Command 'app' cannot be converted into command 'create'")]
   #[anyhow_trace]
   fn test_create_try_from_invalid(
     #[case] input: Command,

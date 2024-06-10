@@ -103,7 +103,7 @@ mod test {
   use rstest::rstest;
 
   #[rstest]
-  #[case(Command::App {}, "Command 'app' cannot be converted into command 'list'")]
+  #[case(Command::App {ui: false}, "Command 'app' cannot be converted into command 'list'")]
   #[case(Command::List {remote: true, models: true}, "cannot initialize list command with invalid state. --remote: true, --models: true")]
   fn test_list_invalid_try_from(#[case] input: Command, #[case] expected: String) {
     let result = ListCommand::try_from(input);

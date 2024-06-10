@@ -16,15 +16,17 @@ use tokio::runtime::Builder;
 pub struct NativeCommand {
   service: Arc<dyn AppServiceFn>,
   bodhi_home: PathBuf,
+  ui: bool,
 }
 
 type ServerHandleState = Arc<Mutex<Option<ServerShutdownHandle>>>;
 
 impl NativeCommand {
-  pub fn new(service: Arc<dyn AppServiceFn>, bodhi_home: PathBuf) -> Self {
+  pub fn new(service: Arc<dyn AppServiceFn>, bodhi_home: PathBuf, ui: bool) -> Self {
     Self {
       bodhi_home,
       service,
+      ui,
     }
   }
 
@@ -43,6 +45,7 @@ impl NativeCommand {
     let server_handle = cmd
       .aexecute(self.service.clone(), self.bodhi_home.clone(), static_router)
       .await?;
+    let ui = self.ui;
 
     let system_tray = SystemTray::new().with_menu(
       SystemTrayMenu::new()
@@ -56,8 +59,10 @@ impl NativeCommand {
 
         app.manage(Arc::new(Mutex::new(Some(server_handle))));
         // Attempt to open the default web browser
-        if let Err(err) = webbrowser::open(&addr) {
-          tracing::info!(?err, "failed to open browser");
+        if ui {
+          if let Err(err) = webbrowser::open(&addr) {
+            tracing::info!(?err, "failed to open browser");
+          }
         }
         Ok(())
       })
