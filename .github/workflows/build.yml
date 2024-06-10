@@ -29,8 +29,9 @@ jobs:
           echo RUN_URL=${RUN_URL} >> $GITHUB_ENV
           echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
       - uses: actions/checkout@v4
-        with:
-          lfs: true
+        # with:
+        #   lfs: true
+        # not running integration test on CI, disabling lfs
       - name: setup
         uses: ./.github/actions/setup
         with:
