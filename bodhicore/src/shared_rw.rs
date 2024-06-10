@@ -13,6 +13,8 @@ use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{LlamaCppError, GptParams, GptParamsBuilder, GptParamsBuilderError};
 use std::ffi::{c_char, c_void};
 use std::slice;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
 use tokio::sync::RwLock;
@@ -47,7 +49,7 @@ pub type Result<T> = std::result::Result<T, ContextError>;
 unsafe extern "C" fn callback_stream(
   contents: *const c_char,
   size: usize,
-  userdata: *mut c_void,
+  callback_userdata: *mut c_void,
 ) -> usize {
   let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
   let input_str = match std::str::from_utf8(slice) {
@@ -55,9 +57,20 @@ unsafe extern "C" fn callback_stream(
     Err(_) => return 0,
   }
   .to_owned();
-  let sender = unsafe { &mut *(userdata as *mut Sender<String>) }.clone();
-  // TODO: handle closed receiver
-  tokio::spawn(async move { sender.send(input_str).await.unwrap() });
+  let userdata = &mut *(callback_userdata as *mut (Sender<String>, Arc<AtomicBool>));
+  let sender = userdata.0.clone();
+  let receiver_status = userdata.1.clone();
+
+  if !receiver_status.load(Ordering::SeqCst) {
+      return 0;
+  }
+
+  tokio::spawn(async move {
+    if sender.send(input_str).await.is_err() {
+      tracing::warn!("error sending generated token using callback, receiver closed, closing sender");
+      receiver_status.store(false, Ordering::SeqCst);
+    }
+  });
   size
 }
 
@@ -153,13 +166,14 @@ impl SharedContextRwFn for SharedContextRw {
     let mut input_value = serde_json::to_value(request).map_err(Common::SerdeJsonDeserialize)?;
     input_value["prompt"] = serde_json::Value::String(prompt);
     let input = serde_json::to_string(&input_value).map_err(Common::SerdeJsonDeserialize)?;
+    let callback_userdata = (userdata, Arc::new(AtomicBool::new(true)));
     match ModelLoadStrategy::choose(&loaded_model, &request_model) {
       ModelLoadStrategy::Continue => {
         ctx
           .ok_or_else(||ContextError::Unreachable(
             "context should not be None".to_string(),
           ))?
-          .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
+          .completions(&input, "", Some(callback_stream), &callback_userdata as *const _ as *mut _)?;
         Ok(())
       }
       ModelLoadStrategy::DropAndLoad => {
@@ -171,7 +185,7 @@ impl SharedContextRwFn for SharedContextRw {
         ctx.ok_or_else(||ContextError::Unreachable(
           "context should not be None".to_string(),
         ))?
-        .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
+        .completions(&input, "", Some(callback_stream), &callback_userdata as *const _ as *mut _)?;
         Ok(())
       }
       ModelLoadStrategy::Load => {
@@ -185,7 +199,7 @@ impl SharedContextRwFn for SharedContextRw {
         ctx.ok_or_else(||ContextError::Unreachable(
           "context should not be None".to_string(),
         ))?
-        .completions(&input, "", Some(callback_stream), &userdata as *const _ as *mut _)?;
+        .completions(&input, "", Some(callback_stream), &callback_userdata as *const _ as *mut _)?;
         Ok(())
       },
     }
