@@ -80,7 +80,8 @@ mod test {
       DbService, DbServiceFn,
     },
     server::RouterState,
-    test_utils::{db_service, MockAppService, MockSharedContext, RequestTestExt, ResponseTestExt},
+    service::MockAppServiceFn,
+    test_utils::{db_service, MockSharedContext, RequestTestExt, ResponseTestExt},
   };
   use axum::{
     body::Body,
@@ -116,7 +117,7 @@ mod test {
     db_service.save_conversation(&mut convo_2).await?;
     let router_state = RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppService::new()),
+      Arc::new(MockAppServiceFn::new()),
       Arc::new(db_service),
     );
     let router = chats_router().with_state(Arc::new(router_state));
@@ -162,7 +163,7 @@ mod test {
     db_service.save_conversation(&mut convo).await?;
     let router_state = RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppService::new()),
+      Arc::new(MockAppServiceFn::new()),
       Arc::new(db_service),
     );
     let router = chats_router().with_state(Arc::new(router_state));
@@ -203,7 +204,7 @@ mod test {
     db_service.save_conversation(&mut convo).await?;
     let router_state = RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppService::new()),
+      Arc::new(MockAppServiceFn::new()),
       Arc::new(db_service),
     );
     let router = chats_router().with_state(Arc::new(router_state));
@@ -247,7 +248,7 @@ mod test {
     let db_service = Arc::new(db_service);
     let router_state = RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppService::new()),
+      Arc::new(MockAppServiceFn::new()),
       db_service.clone(),
     );
     let router = chats_router().with_state(Arc::new(router_state));
@@ -270,7 +271,7 @@ mod test {
     let (_temp, _now, db_service) = db_service;
     let router_state = RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppService::new()),
+      Arc::new(MockAppServiceFn::new()),
       Arc::new(db_service),
     );
     let router = chats_router().with_state(Arc::new(router_state));
@@ -300,7 +301,7 @@ mod test {
     let db_service = Arc::new(db_service);
     let router_state = RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppService::new()),
+      Arc::new(MockAppServiceFn::new()),
       db_service.clone(),
     );
     let router = chats_router().with_state(Arc::new(router_state));
@@ -360,7 +361,7 @@ mod test {
     let db_service = Arc::new(db_service);
     let router_state = RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppService::new()),
+      Arc::new(MockAppServiceFn::new()),
       db_service.clone(),
     );
     let router = chats_router().with_state(Arc::new(router_state));

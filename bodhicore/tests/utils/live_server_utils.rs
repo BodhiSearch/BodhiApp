@@ -1,6 +1,8 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
-  service::{AppService, AppServiceFn, HfHubService, LocalDataService},
+  service::{
+    env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService, LocalDataService,
+  },
   ServeCommand, ServerShutdownHandle,
 };
 use dircpy::CopyBuilder;
@@ -26,10 +28,13 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   copy_test_dir("tests/data/live", &cache_dir);
 
   let bodhi_home = cache_dir.join("bodhi");
-  let hf_cache = cache_dir.join("huggingface").join("hub");
-  let data_service = LocalDataService::new(bodhi_home);
+  let hf_home = cache_dir.join("huggingface");
+  let hf_cache = hf_home.join("hub");
+  let env_service = EnvService::new_with_args(EnvWrapper::default(), bodhi_home.clone(), hf_home);
+  env_service.create_home_dirs(&bodhi_home).unwrap();
+  let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new(hf_cache, false, None);
-  let app_service = AppService::new(hub_service, data_service);
+  let app_service = AppService::new(Arc::new(env_service), hub_service, data_service);
   (temp_dir, Arc::new(app_service))
 }
 
@@ -52,15 +57,12 @@ pub async fn live_server(
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();
-  let (temp_cache_dir, app_service) = tinyllama;
+  let (_temp_cache_dir, app_service) = tinyllama;
   let serve_command = ServeCommand::ByParams {
     host: host.clone(),
     port,
   };
-  let bodhi_home = temp_cache_dir.path().join(".cache").join("bodhi");
-  let handle = serve_command
-    .aexecute(app_service.clone(), bodhi_home, None)
-    .await?;
+  let handle = serve_command.aexecute(app_service.clone(), None).await?;
   Ok(TestServerHandle { host, port, handle })
 }
 

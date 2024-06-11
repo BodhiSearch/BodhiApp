@@ -23,7 +23,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   FileMissing { filename: String, dirname: String },
   #[error(transparent)]
   Common(#[from] Common),
-  #[error("source: {source}\npath:{path}\nfailed to create directory")]
+  #[error("source: {source}\npath:{path}\nfailed to create file/directory")]
   DirCreate {
     #[source]
     source: io::Error,
@@ -38,9 +38,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
 type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(test, automock)]
-pub trait DataService: Debug {
-  fn bodhi_home(&self) -> PathBuf;
-
+pub trait DataService: std::fmt::Debug {
   fn list_aliases(&self) -> Result<Vec<Alias>>;
 
   fn save_alias(&self, alias: Alias) -> Result<PathBuf>;
@@ -58,10 +56,6 @@ pub struct LocalDataService {
 }
 
 impl DataService for LocalDataService {
-  fn bodhi_home(&self) -> PathBuf {
-    self.bodhi_home.clone()
-  }
-
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
     let models = self.list_remote_models()?;
     Ok(models.into_iter().find(|model| model.alias.eq(alias)))

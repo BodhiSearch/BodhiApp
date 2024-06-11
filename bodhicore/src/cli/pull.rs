@@ -54,13 +54,16 @@ impl PullCommand {
   pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     match self {
       PullCommand::ByAlias { alias, force } => {
-        if !force && service.find_alias(&alias).is_some() {
+        if !force && service.data_service().find_alias(&alias).is_some() {
           return Err(BodhiError::AliasExists(alias));
         }
-        let Some(model) = service.find_remote_model(&alias)? else {
+        let Some(model) = service.data_service().find_remote_model(&alias)? else {
           return Err(BodhiError::AliasNotFound(alias));
         };
-        let local_model_file = service.download(&model.repo, &model.filename, force)?;
+        let local_model_file =
+          service
+            .hub_service()
+            .download(&model.repo, &model.filename, force)?;
         let alias = Alias::new(
           model.alias,
           Some(model.family),
@@ -72,7 +75,7 @@ impl PullCommand {
           model.request_params,
           model.context_params,
         );
-        service.save_alias(alias)?;
+        service.data_service().save_alias(alias)?;
         Ok(())
       }
       PullCommand::ByRepoFile {
@@ -80,7 +83,7 @@ impl PullCommand {
         filename,
         force,
       } => {
-        service.download(&repo, &filename, force)?;
+        service.hub_service().download(&repo, &filename, force)?;
         Ok(())
       }
     }
@@ -91,8 +94,8 @@ impl PullCommand {
 mod test {
   use crate::{
     objs::{Alias, HubFile, RemoteModel, Repo},
-    service::{MockDataService, MockHubService},
-    test_utils::{app_service_stub, AppServiceTuple, MockAppServiceFn},
+    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    test_utils::{app_service_stub, AppServiceStubMock, AppServiceTuple},
     Command, PullCommand,
   };
   use mockall::predicate::eq;
@@ -146,7 +149,8 @@ mod test {
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from("ignored")));
-    let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
+    let service =
+      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
     let pull = PullCommand::ByAlias {
       alias: remote_model.alias,
       force: false,
@@ -169,7 +173,8 @@ mod test {
       .with(eq(repo), eq("gemma-7b-it.gguf"), eq(false))
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
-    let service = MockAppServiceFn::new(mock_hub_service, mock_data_service);
+    let service =
+      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
     pull.execute(Arc::new(service))?;
     Ok(())
   }

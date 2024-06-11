@@ -1,12 +1,6 @@
 use axum::Router;
-use bodhicore::{
-  service::{AppServiceFn, EnvService},
-  ServeCommand, ServerShutdownHandle,
-};
-use std::{
-  path::PathBuf,
-  sync::{Arc, Mutex},
-};
+use bodhicore::{service::AppServiceFn, ServeCommand, ServerShutdownHandle};
+use std::sync::{Arc, Mutex};
 use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,
   WindowEvent,
@@ -15,19 +9,14 @@ use tokio::runtime::Builder;
 
 pub struct NativeCommand {
   service: Arc<dyn AppServiceFn>,
-  bodhi_home: PathBuf,
   ui: bool,
 }
 
 type ServerHandleState = Arc<Mutex<Option<ServerShutdownHandle>>>;
 
 impl NativeCommand {
-  pub fn new(service: Arc<dyn AppServiceFn>, bodhi_home: PathBuf, ui: bool) -> Self {
-    Self {
-      bodhi_home,
-      service,
-      ui,
-    }
+  pub fn new(service: Arc<dyn AppServiceFn>, ui: bool) -> Self {
+    Self { service, ui }
   }
 
   pub fn execute(&self, static_router: Option<Router>) -> crate::error::Result<()> {
@@ -36,15 +25,12 @@ impl NativeCommand {
   }
 
   async fn aexecute(&self, static_router: Option<Router>) -> crate::error::Result<()> {
-    let env_service = EnvService::new();
-    let host = env_service.host();
-    let port = env_service.port();
+    let host = self.service.env_service().host();
+    let port = self.service.env_service().port();
     let addr = format!("http://{host}:{port}/");
     let addr_clone = addr.clone();
     let cmd = ServeCommand::ByParams { host, port };
-    let server_handle = cmd
-      .aexecute(self.service.clone(), self.bodhi_home.clone(), static_router)
-      .await?;
+    let server_handle = cmd.aexecute(self.service.clone(), static_router).await?;
     let ui = self.ui;
 
     let system_tray = SystemTray::new().with_menu(

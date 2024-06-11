@@ -1,7 +1,5 @@
 use crate::objs::{HubFile, ObjError, Repo, REFS, REFS_MAIN};
 use hf_hub::{api::sync::ApiError, Cache};
-#[cfg(test)]
-use mockall::automock;
 use std::{
   fmt::{Debug, Formatter},
   fs,
@@ -52,8 +50,8 @@ Check Huggingface Home is set correctly using environment variable $HF_HOME or u
 
 type Result<T> = std::result::Result<T, HubServiceError>;
 
-#[cfg_attr(test, automock)]
-pub trait HubService: Debug {
+#[cfg_attr(test, mockall::automock)]
+pub trait HubService: std::fmt::Debug {
   fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile>;
 
   fn list_local_models(&self) -> Vec<HubFile>;
@@ -61,9 +59,13 @@ pub trait HubService: Debug {
   fn find_local_file(&self, repo: &Repo, filename: &str, snapshot: &str)
     -> Result<Option<HubFile>>;
 
-  fn hf_home(&self) -> PathBuf;
-
   fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf;
+}
+
+impl HfHubService {
+  fn hf_cache(&self) -> PathBuf {
+    self.cache.path().to_path_buf()
+  }
 }
 
 impl HubService for HfHubService {
@@ -79,7 +81,7 @@ impl HubService for HfHubService {
   }
 
   fn list_local_models(&self) -> Vec<HubFile> {
-    let cache = self.cache.path().as_path();
+    let cache = self.hf_cache();
     WalkDir::new(cache)
       .follow_links(true)
       .into_iter()
@@ -114,9 +116,7 @@ impl HubService for HfHubService {
         return Err(HubServiceError::OnlyRefsMainSupported);
       }
       let refs_file = self
-        .cache
-        .path()
-        .to_path_buf()
+        .hf_cache()
         .join(repo.path())
         .join(snapshot);
       std::fs::read_to_string(refs_file.clone()).map_err(|_err| {
@@ -134,7 +134,7 @@ impl HubService for HfHubService {
       snapshot.to_owned()
     };
     let filepath = self
-      .hf_home()
+      .hf_cache()
       .join(repo.path())
       .join("snapshots")
       .join(snapshot.clone())
@@ -145,7 +145,7 @@ impl HubService for HfHubService {
         Err(_) => None,
       };
       let local_model_file = HubFile::new(
-        self.hf_home(),
+        self.hf_cache(),
         repo.clone(),
         filename.to_string(),
         snapshot.to_string(),
@@ -157,14 +157,10 @@ impl HubService for HfHubService {
     }
   }
 
-  fn hf_home(&self) -> PathBuf {
-    self.cache.path().to_path_buf()
-  }
-
   fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
     let model_repo = hf_hub::Repo::model(repo.to_string());
     self
-      .hf_home()
+      .hf_cache()
       .join(model_repo.folder_name())
       .join("snapshots")
       .join(snapshot)

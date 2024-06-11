@@ -1,4 +1,4 @@
-use std::{env::VarError, path::PathBuf};
+use std::{env::VarError, fmt, path::PathBuf};
 
 pub fn hf_test_token_allowed() -> Option<String> {
   dotenv::from_filename(".env.test").ok();
@@ -19,5 +19,13 @@ mockall::mock! {
     pub fn home_dir(&self) -> Option<PathBuf>;
 
     pub fn load_dotenv(&self);
+  }
+
+  impl std::fmt::Debug for EnvWrapper {
+    fn fmt<'a>(&self, f: &mut fmt::Formatter<'a>) -> fmt::Result;
+  }
+
+  impl Clone for EnvWrapper {
+    fn clone(&self) -> Self;
   }
 }

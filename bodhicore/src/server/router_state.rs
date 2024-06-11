@@ -60,13 +60,12 @@ impl RouterStateFn for RouterState {
     request: CreateChatCompletionRequest,
     userdata: Sender<String>,
   ) -> crate::oai::Result<()> {
-    let Some(alias) = self.app_service.find_alias(&request.model) else {
-      return Err(crate::oai::OpenAIApiError::ModelNotFound(
-        request.model,
-      ));
+    let Some(alias) = self.app_service.data_service().find_alias(&request.model) else {
+      return Err(crate::oai::OpenAIApiError::ModelNotFound(request.model));
     };
     let model_file = self
       .app_service
+      .hub_service()
       .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)
       .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
     let Some(model_file) = model_file else {
@@ -79,6 +78,7 @@ impl RouterStateFn for RouterState {
       .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
     let tokenizer_file = self
       .app_service
+      .hub_service()
       .find_local_file(&tokenizer_repo, TOKENIZER_CONFIG_JSON, REFS_MAIN)
       .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
     let Some(tokenizer_file) = tokenizer_file else {
@@ -110,8 +110,11 @@ mod test {
     oai::ApiError,
     objs::{Alias, HubFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     server::RouterStateFn,
+    service::{MockDataService, MockEnvServiceFn, MockHubService},
     shared_rw::ContextError,
-    test_utils::{test_channel, MockAppService, MockDbService, MockSharedContext, ResponseTestExt},
+    test_utils::{
+      test_channel, AppServiceStubMock, MockDbService, MockSharedContext, ResponseTestExt,
+    },
     Repo,
   };
   use async_openai::types::CreateChatCompletionRequest;
@@ -126,15 +129,20 @@ mod test {
   #[rstest]
   #[tokio::test]
   async fn test_router_state_chat_completions_model_not_found() -> anyhow::Result<()> {
-    let mut mock_app_service = MockAppService::default();
-    mock_app_service
+    let mut mock_data_service = MockDataService::default();
+    mock_data_service
       .expect_find_alias()
       .with(eq("not-found"))
       .return_once(|_| None);
     let mock_ctx = MockSharedContext::default();
+    let service = AppServiceStubMock::new(
+      MockEnvServiceFn::new(),
+      MockHubService::new(),
+      mock_data_service,
+    );
     let state = RouterState::new(
       Arc::new(mock_ctx),
-      Arc::new(mock_app_service),
+      Arc::new(service),
       Arc::new(MockDbService::new()),
     );
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
@@ -163,13 +171,14 @@ mod test {
   #[tokio::test]
   async fn test_router_state_chat_completions_delegate_to_context_with_alias() -> anyhow::Result<()>
   {
-    let mut mock_app_service = MockAppService::default();
-    mock_app_service
+    let mut mock_data_service = MockDataService::default();
+    mock_data_service
       .expect_find_alias()
       .with(eq("testalias:instruct"))
       .return_once(|_| Some(Alias::testalias()));
     let testalias = Alias::testalias();
-    mock_app_service
+    let mut mock_hub_service = MockHubService::new();
+    mock_hub_service
       .expect_find_local_file()
       .with(
         eq(testalias.repo),
@@ -177,7 +186,7 @@ mod test {
         eq(testalias.snapshot),
       )
       .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
-    mock_app_service
+    mock_hub_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
@@ -198,9 +207,11 @@ mod test {
         always(),
       )
       .return_once(|_, _, _, _, _| Ok(()));
+    let service =
+      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
     let state = RouterState::new(
       Arc::new(mock_ctx),
-      Arc::new(mock_app_service),
+      Arc::new(service),
       Arc::new(MockDbService::new()),
     );
     let (tx, _rx) = test_channel();
@@ -211,13 +222,14 @@ mod test {
   #[rstest]
   #[tokio::test]
   async fn test_router_state_chat_completions_returns_context_err() -> anyhow::Result<()> {
-    let mut mock_app_service = MockAppService::default();
-    mock_app_service
+    let mut mock_data_service = MockDataService::new();
+    mock_data_service
       .expect_find_alias()
       .with(eq("testalias:instruct"))
       .return_once(|_| Some(Alias::testalias()));
     let testalias = Alias::testalias();
-    mock_app_service
+    let mut mock_hub_service = MockHubService::new();
+    mock_hub_service
       .expect_find_local_file()
       .with(
         eq(testalias.repo),
@@ -225,7 +237,7 @@ mod test {
         eq(testalias.snapshot),
       )
       .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
-    mock_app_service
+    mock_hub_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
@@ -251,9 +263,11 @@ mod test {
           LlamaCppError::BodhiServerChatCompletion("test error".to_string()),
         ))
       });
+    let service =
+      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
     let state = RouterState::new(
       Arc::new(mock_ctx),
-      Arc::new(mock_app_service),
+      Arc::new(service),
       Arc::new(MockDbService::new()),
     );
     let result = state.chat_completions(request, tx).await;

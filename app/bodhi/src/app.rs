@@ -2,26 +2,24 @@ use crate::{native::NativeCommand, AppError};
 use axum::Router;
 use bodhicore::{
   cli::{Cli, Command, ServeCommand},
-  service::{AppService, HfHubService, LocalDataService},
+  service::{AppService, EnvService, EnvServiceFn, HfHubService, LocalDataService},
   CreateCommand, ListCommand, PullCommand, RunCommand,
 };
 use clap::Parser;
 use include_dir::{include_dir, Dir};
-use std::{
-  env,
-  path::{Path, PathBuf},
-  sync::Arc,
-};
+use std::{env, path::Path, sync::Arc};
 use tower_serve_static::ServeDir;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
-pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()> {
-  let data_service = LocalDataService::new(bodhi_home.clone());
-  let hub_service = HfHubService::new_from_hf_cache(hf_cache.clone(), true);
-  let service = Arc::new(AppService::new(hub_service, data_service));
+pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
+  let bodhi_home = env_service.bodhi_home();
+  let hf_cache = env_service.hf_cache();
+  let data_service = LocalDataService::new(bodhi_home);
+  let hub_service = HfHubService::new_from_hf_cache(hf_cache, true);
+  let service = Arc::new(AppService::new(env_service, hub_service, data_service));
 
   let args = env::args().collect::<Vec<_>>();
   if args.len() == 1
@@ -31,7 +29,7 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
       .contains(".app/Contents/MacOS/")
   {
     // the app was launched using Bodhi.app, launch the native app with system tray
-    NativeCommand::new(service, bodhi_home, true).execute(Some(static_router()))?;
+    NativeCommand::new(service, true).execute(Some(static_router()))?;
     return Ok(());
   }
 
@@ -40,7 +38,7 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
   let cli = Cli::parse();
   match cli.command {
     Command::App { ui } => {
-      NativeCommand::new(service, bodhi_home, ui).execute(Some(static_router()))?;
+      NativeCommand::new(service, ui).execute(Some(static_router()))?;
     }
     list @ Command::List { .. } => {
       let list_command = ListCommand::try_from(list)?;
@@ -48,7 +46,7 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
     }
     serve @ Command::Serve { .. } => {
       let serve_command = ServeCommand::try_from(serve)?;
-      serve_command.execute(service, bodhi_home)?;
+      serve_command.execute(service)?;
     }
     pull @ Command::Pull { .. } => {
       let pull_command = PullCommand::try_from(pull)?;
@@ -66,9 +64,7 @@ pub fn main_internal(bodhi_home: PathBuf, hf_cache: PathBuf) -> super::Result<()
   Ok(())
 }
 
-pub fn setup_logs(bodhi_home: &Path) -> super::Result<WorkerGuard> {
-  let logs_dir = bodhi_home.join("logs");
-  std::fs::create_dir_all(&logs_dir)?;
+pub fn setup_logs(logs_dir: &Path) -> super::Result<WorkerGuard> {
   let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
   let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
   let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));

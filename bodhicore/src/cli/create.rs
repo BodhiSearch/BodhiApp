@@ -73,12 +73,17 @@ impl TryFrom<Command> for CreateCommand {
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
-    if !self.force && service.find_alias(&self.alias).is_some() {
+    if !self.force && service.data_service().find_alias(&self.alias).is_some() {
       return Err(BodhiError::AliasExists(self.alias.clone()));
     }
-    let local_model_file = service.download(&self.repo, &self.filename, self.force)?;
+    let local_model_file =
+      service
+        .hub_service()
+        .download(&self.repo, &self.filename, self.force)?;
     if let ChatTemplate::Repo(repo) = &self.chat_template {
-      service.download(repo, TOKENIZER_CONFIG_JSON, true)?;
+      service
+        .hub_service()
+        .download(repo, TOKENIZER_CONFIG_JSON, true)?;
     }
     let alias: Alias = Alias::new(
       self.alias,
@@ -91,7 +96,7 @@ impl CreateCommand {
       self.oai_request_params,
       self.context_params,
     );
-    service.save_alias(alias)?;
+    service.data_service().save_alias(alias)?;
     Ok(())
   }
 }
@@ -105,7 +110,8 @@ mod test {
       Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
       TOKENIZER_CONFIG_JSON,
     },
-    test_utils::MockAppService,
+    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    test_utils::AppServiceStubMock,
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
@@ -169,7 +175,7 @@ mod test {
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     };
-    let mut mock = MockAppService::default();
+    let mut mock = MockDataService::default();
     mock
       .expect_find_alias()
       .with(eq("testalias:instruct"))
@@ -180,7 +186,8 @@ mod test {
         };
         Some(alias)
       });
-    let result = create.execute(Arc::new(mock));
+    let service = AppServiceStubMock::new(MockEnvServiceFn::new(), MockHubService::new(), mock);
+    let result = create.execute(Arc::new(service));
     assert!(result.is_err());
     assert_eq!(
       "model alias 'testalias:instruct' already exists. Use --force to overwrite the model alias config",
@@ -192,12 +199,13 @@ mod test {
   #[rstest]
   fn test_create_execute_downloads_model_saves_alias() -> anyhow::Result<()> {
     let create = CreateCommand::testalias();
-    let mut mock = MockAppService::default();
-    mock
+    let mut mock_data_service = MockDataService::default();
+    mock_data_service
       .expect_find_alias()
       .with(eq(create.alias.clone()))
       .return_once(|_| None);
-    mock
+    let mut mock_hub_service = MockHubService::default();
+    mock_hub_service
       .expect_download()
       .with(
         eq(create.repo.clone()),
@@ -206,11 +214,13 @@ mod test {
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     let alias = Alias::testalias();
-    mock
+    mock_data_service
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from(".")));
-    create.execute(Arc::new(mock))?;
+    let service =
+      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    create.execute(Arc::new(service))?;
     Ok(())
   }
 
@@ -223,12 +233,13 @@ mod test {
       .chat_template(chat_template.clone())
       .build()
       .unwrap();
-    let mut mock = MockAppService::default();
-    mock
+    let mut mock_data_service = MockDataService::default();
+    mock_data_service
       .expect_find_alias()
       .with(eq(create.alias.clone()))
       .return_once(|_| None);
-    mock
+    let mut mock_hub_service = MockHubService::new();
+    mock_hub_service
       .expect_download()
       .with(
         eq(create.repo.clone()),
@@ -236,7 +247,7 @@ mod test {
         eq(false),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    mock
+    mock_hub_service
       .expect_download()
       .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON), eq(true))
       .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
@@ -244,11 +255,13 @@ mod test {
       .chat_template(chat_template.clone())
       .build()
       .unwrap();
-    mock
+    mock_data_service
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from("ignored")));
-    create.execute(Arc::new(mock))?;
+    let service =
+      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    create.execute(Arc::new(service))?;
     Ok(())
   }
 }

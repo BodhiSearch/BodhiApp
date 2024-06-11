@@ -1,15 +1,10 @@
-use super::{temp_bodhi_home, temp_hf_home};
-use crate::{
-  objs::{Alias, HubFile, RemoteModel},
-  service::{
-    AppService, AppServiceFn, DataService, DataServiceError, HfHubService, HubService,
-    HubServiceError, LocalDataService, MockDataService, MockHubService,
-  },
-  Repo,
+use super::{temp_bodhi_home, temp_hf_home, MockEnvWrapper};
+use crate::service::{
+  AppService, AppServiceFn, DataService, EnvService, EnvServiceFn, HfHubService, HubService,
+  LocalDataService, MockDataService, MockEnvServiceFn, MockHubService,
 };
-use derive_new::new;
 use rstest::fixture;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 
 pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
@@ -45,113 +40,44 @@ pub fn app_service_stub(
 ) -> AppServiceTuple {
   let DataServiceTuple(temp_bodhi_home, bodhi_home, data_service) = data_service;
   let HubServiceTuple(temp_hf_home, hf_cache, hub_service) = hub_service;
-  let service = AppService::new(hub_service, data_service);
+  let mock = MockEnvWrapper::default();
+  let env_service = EnvService::new_with_args(mock, bodhi_home.clone(), hf_cache.join(".."));
+  let service = AppService::new(Arc::new(env_service), hub_service, data_service);
   AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
 }
 
-#[derive(Debug, new)]
-pub struct MockAppServiceFn {
-  pub hub_service: MockHubService,
-  pub data_service: MockDataService,
+#[derive(Debug)]
+pub struct AppServiceStubMock {
+  pub env_service: Arc<MockEnvServiceFn>,
+  pub hub_service: Arc<MockHubService>,
+  pub data_service: Arc<MockDataService>,
 }
 
-impl HubService for MockAppServiceFn {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile, HubServiceError> {
-    self.hub_service.download(repo, filename, force)
-  }
-
-  fn list_local_models(&self) -> Vec<HubFile> {
-    self.hub_service.list_local_models()
-  }
-
-  fn find_local_file(
-    &self,
-    repo: &Repo,
-    filename: &str,
-    snapshot: &str,
-  ) -> Result<Option<HubFile>, HubServiceError> {
-    self.hub_service.find_local_file(repo, filename, snapshot)
-  }
-
-  fn hf_home(&self) -> PathBuf {
-    self.hub_service.hf_home()
-  }
-
-  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
-    self.hub_service.model_file_path(repo, filename, snapshot)
-  }
-}
-
-impl DataService for MockAppServiceFn {
-  fn bodhi_home(&self) -> PathBuf {
-    self.data_service.bodhi_home()
-  }
-
-  fn list_aliases(&self) -> Result<Vec<Alias>, DataServiceError> {
-    self.data_service.list_aliases()
-  }
-
-  fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>, DataServiceError> {
-    self.data_service.find_remote_model(alias)
-  }
-
-  fn save_alias(&self, alias: Alias) -> Result<PathBuf, DataServiceError> {
-    self.data_service.save_alias(alias)
-  }
-
-  fn find_alias(&self, alias: &str) -> Option<Alias> {
-    self.data_service.find_alias(alias)
-  }
-
-  fn list_remote_models(&self) -> Result<Vec<RemoteModel>, DataServiceError> {
-    self.data_service.list_remote_models()
+impl AppServiceStubMock {
+  pub fn new(
+    env_service: MockEnvServiceFn,
+    hub_service: MockHubService,
+    data_service: MockDataService,
+  ) -> Self {
+    Self {
+      env_service: Arc::new(env_service),
+      hub_service: Arc::new(hub_service),
+      data_service: Arc::new(data_service),
+    }
   }
 }
 
 // Implement AppServiceFn for the combined struct
-impl AppServiceFn for MockAppServiceFn {}
-
-mockall::mock! {
-  pub AppService {}
-
-  impl std::fmt::Debug for AppService {
-    fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
+impl AppServiceFn for AppServiceStubMock {
+  fn env_service(&self) -> Arc<dyn EnvServiceFn> {
+    self.env_service.clone()
   }
 
-  unsafe impl Send for AppService { }
-
-  unsafe impl Sync for AppService { }
-
-  impl HubService for AppService {
-    fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile, HubServiceError>;
-
-    fn list_local_models(&self) -> Vec<HubFile>;
-
-    fn find_local_file(
-      &self,
-      repo: &Repo,
-      filename: &str,
-      snapshot: &str,
-    ) -> Result<Option<HubFile>, HubServiceError>;
-
-    fn hf_home(&self) -> PathBuf;
-
-    fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf;
+  fn data_service(&self) -> Arc<dyn DataService> {
+    self.data_service.clone()
   }
 
-  impl DataService for AppService {
-    fn bodhi_home(&self) -> PathBuf;
-
-    fn list_aliases(&self) -> Result<Vec<Alias>, DataServiceError>;
-
-    fn save_alias(&self, alias: Alias) -> Result<PathBuf, DataServiceError>;
-
-    fn find_alias(&self, alias: &str) -> Option<Alias>;
-
-    fn list_remote_models(&self) -> Result<Vec<RemoteModel>, DataServiceError>;
-
-    fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>, DataServiceError>;
+  fn hub_service(&self) -> Arc<dyn HubService> {
+    self.hub_service.clone()
   }
-
-  impl AppServiceFn for AppService { }
 }

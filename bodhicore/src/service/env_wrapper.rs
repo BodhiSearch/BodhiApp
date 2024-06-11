@@ -1,14 +1,9 @@
 use std::{env::VarError, path::PathBuf};
 
-#[allow(unused)]
-pub(crate) struct EnvWrapper {}
+#[derive(Debug, Clone, Default)]
+pub struct EnvWrapper {}
 
-#[allow(unused)]
 impl EnvWrapper {
-  pub fn new() -> Self {
-    EnvWrapper {}
-  }
-
   pub fn var(&self, key: &str) -> Result<String, VarError> {
     std::env::var(key)
   }

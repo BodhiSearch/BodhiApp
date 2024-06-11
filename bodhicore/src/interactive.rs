@@ -47,9 +47,11 @@ impl Interactive {
   pub(crate) async fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let alias = self.alias.clone();
     let model = service
+      .hub_service()
       .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
       .ok_or_else(|| {
         let filepath = &service
+          .hub_service()
           .model_file_path(&alias.repo, &alias.filename, &alias.snapshot)
           .display()
           .to_string();
@@ -58,7 +60,7 @@ impl Interactive {
           None => ("".to_string(), filepath.to_string()),
         };
         let relative_dir = dirname
-          .strip_prefix(&service.hf_home().display().to_string())
+          .strip_prefix(&service.env_service().hf_home().display().to_string())
           .unwrap_or(&dirname)
           .to_string();
         HubServiceError::FileMissing {
@@ -168,15 +170,16 @@ impl Interactive {
 }
 
 #[allow(unused)]
+// MockInteractiveRuntime used in cfg(test)
 pub struct InteractiveRuntime {}
 
+#[allow(unused)]
+// MockInteractiveRuntime used in cfg(test)
 impl InteractiveRuntime {
-  #[allow(unused)]
   pub fn new() -> Self {
     InteractiveRuntime {}
   }
 
-  #[allow(unused)]
   pub fn execute(&self, alias: Alias, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let runtime = Builder::new_multi_thread()
       .enable_all()
@@ -190,7 +193,11 @@ impl InteractiveRuntime {
 #[cfg(test)]
 mod test {
   use super::Interactive;
-  use crate::{objs::Alias, test_utils::MockAppService};
+  use crate::{
+    objs::Alias,
+    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    test_utils::AppServiceStubMock,
+  };
   use mockall::predicate::eq;
   use rstest::rstest;
   use std::{path::PathBuf, sync::Arc};
@@ -200,7 +207,7 @@ mod test {
   async fn test_interactive_local_model_not_found_raises_error() -> anyhow::Result<()> {
     let alias = Alias::testalias();
     let alias_clone = alias.clone();
-    let mut mock = MockAppService::default();
+    let mut mock = MockHubService::default();
     mock
       .expect_find_local_file()
       .with(
@@ -210,14 +217,19 @@ mod test {
       )
       .return_once(|_, _, _| Ok(None));
     mock
-      .expect_hf_home()
-      .with()
-      .return_once(|| PathBuf::from("/tmp/huggingface/hub"));
-    mock
       .expect_model_file_path()
       .with(eq(alias.repo), eq(alias.filename), eq(alias.snapshot))
       .return_once(|_, _, _| PathBuf::from("/tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf"));
-    let result = Interactive::new(alias_clone).execute(Arc::new(mock)).await;
+    let mut mock_env_service = MockEnvServiceFn::default();
+    mock_env_service
+      .expect_hf_home()
+      .with()
+      .return_once(|| PathBuf::from("/tmp/huggingface/hub"));
+
+    let service = AppServiceStubMock::new(mock_env_service, mock, MockDataService::new());
+    let result = Interactive::new(alias_clone)
+      .execute(Arc::new(service))
+      .await;
     assert!(result.is_err());
     assert_eq!(
       r#"file 'testalias.Q8_0.gguf' not found in $HF_HOME/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213.

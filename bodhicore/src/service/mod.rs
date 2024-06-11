@@ -1,6 +1,6 @@
 mod app_service;
 mod data_service;
-mod env_wrapper;
+pub mod env_wrapper;
 mod hub_service;
 mod env_service;
 

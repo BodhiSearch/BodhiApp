@@ -12,6 +12,7 @@ pub(crate) async fn oai_models_handler(
 ) -> Result<Json<ListModelResponse>, OpenAIApiError> {
   let models = state
     .app_service()
+    .data_service()
     .list_aliases()
     .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?
     .into_iter()
@@ -29,6 +30,7 @@ pub(crate) async fn oai_model_handler(
 ) -> Result<Json<Model>, OpenAIApiError> {
   let alias = state
     .app_service()
+    .data_service()
     .find_alias(&id)
     .ok_or_else(|| OpenAIApiError::ModelNotFound(id.to_string()))?;
   let model = to_oai_model(state, alias);
@@ -36,7 +38,7 @@ pub(crate) async fn oai_model_handler(
 }
 
 fn to_oai_model(state: Arc<dyn RouterStateFn>, alias: Alias) -> Model {
-  let bodhi_home = &state.app_service().bodhi_home();
+  let bodhi_home = &state.app_service().env_service().bodhi_home();
   let path = bodhi_home.join("configs").join(alias.config_filename());
   let created = fs::metadata(path)
     .map_err(|e| e.to_string())

@@ -25,16 +25,16 @@ impl RunCommand {
   pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     match self {
       RunCommand::WithAlias { alias } => {
-        let alias = match service.find_alias(&alias) {
+        let alias = match service.data_service().find_alias(&alias) {
           Some(alias_obj) => alias_obj,
-          None => match service.find_remote_model(&alias)? {
+          None => match service.data_service().find_remote_model(&alias)? {
             Some(remote_model) => {
               let command = PullCommand::ByAlias {
                 alias: remote_model.alias.clone(),
                 force: false,
               };
               command.execute(service.clone())?;
-              match service.find_alias(&alias) {
+              match service.data_service().find_alias(&alias) {
                 Some(alias_obj) => alias_obj,
                 None => return Err(BodhiError::AliasNotFound(alias)),
               }
@@ -53,7 +53,8 @@ impl RunCommand {
 mod test {
   use crate::{
     objs::{Alias, HubFile, RemoteModel},
-    test_utils::{MockAppService, MockInteractiveRuntime},
+    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    test_utils::{AppServiceStubMock, MockInteractiveRuntime},
     Repo, RunCommand,
   };
   use mockall::predicate::{always, eq};
@@ -65,16 +66,21 @@ mod test {
     let run_command = RunCommand::WithAlias {
       alias: "testalias:instruct".to_string(),
     };
-    let mut mock = MockAppService::default();
-    mock
+    let mut mock_data_service = MockDataService::new();
+    mock_data_service
       .expect_find_alias()
       .with(eq("testalias:instruct"))
       .return_once(|_| None);
-    mock
+    mock_data_service
       .expect_find_remote_model()
       .with(eq("testalias:instruct"))
       .return_once(|_| Ok(None));
-    let result = run_command.execute(Arc::new(mock));
+    let service = AppServiceStubMock::new(
+      MockEnvServiceFn::new(),
+      MockHubService::new(),
+      mock_data_service,
+    );
+    let result = run_command.execute(Arc::new(service));
     assert!(result.is_err());
     assert_eq!(
       r#"model alias 'testalias:instruct' not found in pre-configured model aliases.
@@ -90,18 +96,19 @@ Run `bodhi list -r` to see list of pre-configured model aliases
     let run_command = RunCommand::WithAlias {
       alias: "testalias:instruct".to_string(),
     };
-    let mut mock = MockAppService::default();
-    mock
+    let mut mock_data_service = MockDataService::default();
+    mock_data_service
       .expect_find_alias()
       .with(eq("testalias:instruct"))
       .times(2)
       .returning(|_| None);
-    mock
+    mock_data_service
       .expect_find_remote_model()
       .with(eq("testalias:instruct"))
       .times(2)
       .returning(|_| Ok(Some(RemoteModel::testalias())));
-    mock
+    let mut mock_hub_service = MockHubService::new();
+    mock_hub_service
       .expect_download()
       .with(
         eq(Repo::try_from("MyFactory/testalias-gguf")?),
@@ -109,11 +116,11 @@ Run `bodhi list -r` to see list of pre-configured model aliases
         eq(false),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    mock
+    mock_data_service
       .expect_save_alias()
       .with(eq(Alias::testalias()))
       .return_once(|_| Ok(PathBuf::from("ignore")));
-    mock
+    mock_data_service
       .expect_find_alias()
       .with(eq("testalias:instruct"))
       .return_once(|_| Some(Alias::testalias()));
@@ -122,13 +129,11 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .expect_execute()
       .with(eq(Alias::testalias()), always())
       .return_once(|_, _| Ok(()));
-    mock
-      .expect_fmt()
-      .with(always())
-      .returning(|f| f.debug_struct("MockAppService").finish());
+    let service =
+      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
     let ctx = MockInteractiveRuntime::new_context();
     ctx.expect().return_once(move || mock_interactive);
-    run_command.execute(Arc::new(mock))?;
+    run_command.execute(Arc::new(service))?;
     Ok(())
   }
 }

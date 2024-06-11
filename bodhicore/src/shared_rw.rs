@@ -84,7 +84,6 @@ pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
 
   async fn get_gpt_params(&self) -> Result<Option<GptParams>>;
 
-  #[allow(clippy::ptr_arg)]
   async fn chat_completions(
     &self,
     mut request: CreateChatCompletionRequest,

@@ -3,11 +3,11 @@ use crate::{
   db::{DbPool, DbService, DbServiceFn, TimeService},
   error::Common,
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle, ShutdownCallback},
-  service::{AppServiceFn, PROD_DB},
+  service::AppServiceFn,
   BodhiError, SharedContextRw, SharedContextRwFn,
 };
 use axum::Router;
-use std::{fs::File, path::PathBuf, sync::Arc};
+use std::sync::Arc;
 use tokio::{runtime::Builder, sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -65,14 +65,10 @@ impl ServerShutdownHandle {
 }
 
 impl ServeCommand {
-  pub fn execute(
-    &self,
-    service: Arc<dyn AppServiceFn>,
-    bodhi_home: PathBuf,
-  ) -> crate::error::Result<()> {
+  pub fn execute(&self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     match self {
       ServeCommand::ByParams { host, port } => {
-        self.execute_by_params(host, *port, service, bodhi_home, None)?;
+        self.execute_by_params(host, *port, service, None)?;
         Ok(())
       }
     }
@@ -81,13 +77,12 @@ impl ServeCommand {
   pub async fn aexecute(
     &self,
     service: Arc<dyn AppServiceFn>,
-    bodhi_home: PathBuf,
     static_router: Option<Router>,
   ) -> crate::error::Result<ServerShutdownHandle> {
     match self {
       ServeCommand::ByParams { host, port } => {
         let handle = self
-          .aexecute_by_params(host, *port, service, bodhi_home, static_router)
+          .aexecute_by_params(host, *port, service, static_router)
           .await?;
         Ok(handle)
       }
@@ -99,7 +94,6 @@ impl ServeCommand {
     host: &str,
     port: u16,
     service: Arc<dyn AppServiceFn>,
-    bodhi_home: PathBuf,
     static_router: Option<Router>,
   ) -> crate::error::Result<()> {
     let runtime = Builder::new_multi_thread()
@@ -108,7 +102,7 @@ impl ServeCommand {
       .map_err(Common::from)?;
     runtime.block_on(async move {
       let handle = self
-        .aexecute_by_params(host, port, service, bodhi_home, static_router)
+        .aexecute_by_params(host, port, service, static_router)
         .await?;
       handle.shutdown_on_ctrlc().await?;
       Ok::<(), BodhiError>(())
@@ -121,11 +115,9 @@ impl ServeCommand {
     host: &str,
     port: u16,
     service: Arc<dyn AppServiceFn>,
-    bodhi_home: PathBuf,
     static_router: Option<Router>,
   ) -> crate::error::Result<ServerShutdownHandle> {
-    let dbpath = bodhi_home.join(PROD_DB);
-    _ = File::create_new(&dbpath);
+    let dbpath = service.env_service().db_path();
     let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
     let db_service = DbService::new(pool, Arc::new(TimeService));
     db_service.migrate().await?;

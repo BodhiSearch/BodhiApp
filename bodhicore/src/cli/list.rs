@@ -52,7 +52,7 @@ impl ListCommand {
       "FEATURES",
       "CHAT TEMPLATE"
     ]);
-    let aliases = service.list_aliases()?;
+    let aliases = service.data_service().list_aliases()?;
     for row in aliases.into_iter().map(Row::from) {
       table.add_row(row);
     }
@@ -66,7 +66,7 @@ impl ListCommand {
   fn list_local_models(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let mut table = Table::new();
     table.add_row(row!["FILENAME", "REPO", "SNAPSHOT", "SIZE"]);
-    let models = service.list_local_models();
+    let models = service.hub_service().list_local_models();
     for row in models.into_iter().map(Row::from) {
       table.add_row(row);
     }
@@ -76,7 +76,7 @@ impl ListCommand {
   }
 
   fn list_remote_models(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
-    let models: Vec<RemoteModel> = service.list_remote_models()?;
+    let models: Vec<RemoteModel> = service.data_service().list_remote_models()?;
     let mut table = Table::new();
     table.add_row(row![
       "ALIAS",
