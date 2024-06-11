@@ -5,6 +5,14 @@
   features:
     - chat
   chat_template: llama3
+  request_params:
+    stop:
+      - <|start_header_id|>
+      - <|end_header_id|>
+      - <|eot_id|>
+  context_params:
+    n_parallel: 4
+    n_keep: 24
 - alias: llama3:70b-instruct
   family: llama3
   repo: QuantFactory/Meta-Llama-3-70B-Instruct-GGUF
@@ -12,6 +20,14 @@
   features:
     - chat
   chat_template: llama3
+  context_params:
+    n_parallel: 1
+    n_keep: 24
+  request_params:
+    stop:
+      - <|start_header_id|>
+      - <|end_header_id|>
+      - <|eot_id|>
 - alias: llama2:chat
   family: llama2
   repo: TheBloke/Llama-2-7B-Chat-GGUF
@@ -19,6 +35,14 @@
   features:
     - chat
   chat_template: llama2
+  context_params:
+    n_parallel: 4
+  request_params:
+    stop:
+      - "[INST]"
+      - "[/INST]"
+      - "<<SYS>>"
+      - "<</SYS>>"
 - alias: llama2:13b-chat
   family: llama2
   repo: TheBloke/Llama-2-13B-chat-GGUF
@@ -26,6 +50,14 @@
   features:
     - chat
   chat_template: llama2
+  context_params:
+    n_parallel: 4
+  request_params:
+    stop:
+      - "[INST]"
+      - "[/INST]"
+      - "<<SYS>>"
+      - "<</SYS>>"
 - alias: llama2:70b-chat
   family: llama2
   repo: TheBloke/Llama-2-70B-Chat-GGUF
@@ -33,6 +65,14 @@
   features:
     - chat
   chat_template: llama2
+  context_params:
+    n_parallel: 1
+  request_params:
+    stop:
+      - "[INST]"
+      - "[/INST]"
+      - "<<SYS>>"
+      - "<</SYS>>"
 - alias: phi3:mini
   family: phi3
   repo: microsoft/Phi-3-mini-4k-instruct-gguf
@@ -40,6 +80,13 @@
   features:
     - chat
   chat_template: phi3
+  context_params:
+    n_parallel: 4
+  request_params:
+    stop:
+      - <|end|>
+      - <|user|>
+      - <|assistant|>
 - alias: mistral:instruct
   family: mistral
   repo: MaziyarPanahi/Mistral-7B-Instruct-v0.3-GGUF
@@ -47,6 +94,12 @@
   features:
     - chat
   chat_template: llama2-legacy
+  context_params:
+    n_parallel: 4
+  request_params:
+    stop:
+      - "[INST]"
+      - "[/INST]"
 - alias: mixtral:instruct
   family: mixtral
   repo: TheBloke/Mixtral-8x7B-Instruct-v0.1-GGUF
@@ -54,6 +107,12 @@
   features:
     - chat
   chat_template: llama2-legacy
+  context_params:
+    n_parallel: 1
+  request_params:
+    stop:
+      - "[INST]"
+      - "[/INST]"
 - alias: gemma:instruct
   family: gemma
   repo: google/gemma-7b-it-GGUF
@@ -61,6 +120,8 @@
   features:
     - chat
   chat_template: gemma
+  context_params:
+    n_parallel: 4
 - alias: gemma:7b-instruct-v1.1-q8_0
   family: gemma
   repo: google/gemma-1.1-7b-it-GGUF
@@ -68,6 +129,8 @@
   features:
     - chat
   chat_template: gemma
+  context_params:
+    n_parallel: 4
 - alias: tinyllama:instruct
   family: tinyllama
   repo: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
@@ -75,3 +138,20 @@
   features:
     - chat
   chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  request_params:
+    frequency_penalty: 0.0
+    max_tokens: 256
+    presence_penalty: 0.0
+    stop:
+      - <|system|>
+      - <|user|>
+      - <|assistant|>
+      - </s>
+    temperature: 0.7
+    top_p: 0.95
+  context_params:
+    n_seed: 42
+    n_ctx: 2048
+    n_parallel: 4
+    n_predict: 256
+    n_keep: 4
