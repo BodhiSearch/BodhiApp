@@ -2,7 +2,7 @@ use super::{CliError, Command};
 use crate::{
   error::{BodhiError, Result},
   objs::{
-    default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo,
+    default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo, REFS_MAIN,
     TOKENIZER_CONFIG_JSON,
   },
   service::AppServiceFn,
@@ -79,11 +79,41 @@ impl CreateCommand {
     let local_model_file =
       service
         .hub_service()
-        .download(&self.repo, &self.filename, self.force)?;
-    if let ChatTemplate::Repo(repo) = &self.chat_template {
-      service
+        .find_local_file(&self.repo, &self.filename, REFS_MAIN)?;
+    let local_model_file = match local_model_file {
+      Some(local_model_file) => {
+        println!(
+          "repo: '{}', filename: '{}' already exists in $HF_HOME",
+          &self.repo, &self.filename
+        );
+        local_model_file
+      }
+      None => service
         .hub_service()
-        .download(repo, TOKENIZER_CONFIG_JSON, true)?;
+        .download(&self.repo, &self.filename, self.force)?,
+    };
+    let chat_template_repo = Repo::try_from(self.chat_template.clone())?;
+    let tokenizer_file = service.hub_service().find_local_file(
+      &chat_template_repo,
+      TOKENIZER_CONFIG_JSON,
+      REFS_MAIN,
+    )?;
+    match tokenizer_file {
+      Some(_) if !self.force => {
+        println!(
+          "tokenizer from repo: '{}', filename: '{}' already exists in $HF_HOME",
+          &self.repo, &self.filename
+        );
+      }
+      _ => {
+        service
+          .hub_service()
+          .download(&chat_template_repo, TOKENIZER_CONFIG_JSON, self.force)?;
+        println!(
+          "tokenizer from repo: '{}', filename: '{}' downloaded into $HF_HOME",
+          &self.repo, &self.filename
+        );
+      }
     }
     let alias: Alias = Alias::new(
       self.alias,
@@ -96,7 +126,11 @@ impl CreateCommand {
       self.oai_request_params,
       self.context_params,
     );
-    service.data_service().save_alias(alias)?;
+    service.data_service().save_alias(&alias)?;
+    println!(
+      "model alias: '{}' saved to $BODHI_HOME/aliases",
+      alias.alias
+    );
     Ok(())
   }
 }
@@ -108,7 +142,7 @@ mod test {
     cli::Command,
     objs::{
       Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
-      TOKENIZER_CONFIG_JSON,
+      REFS_MAIN, TOKENIZER_CONFIG_JSON,
     },
     service::{MockDataService, MockEnvServiceFn, MockHubService},
     test_utils::AppServiceStubMock,
@@ -206,6 +240,14 @@ mod test {
       .return_once(|_| None);
     let mut mock_hub_service = MockHubService::default();
     mock_hub_service
+      .expect_find_local_file()
+      .with(
+        eq(create.repo.clone()),
+        eq(create.filename.clone()),
+        eq(REFS_MAIN),
+      )
+      .return_once(|_, _, _| Ok(None));
+    mock_hub_service
       .expect_download()
       .with(
         eq(create.repo.clone()),
@@ -213,6 +255,10 @@ mod test {
         eq(false),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
+    mock_hub_service
+      .expect_find_local_file()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let alias = Alias::testalias();
     mock_data_service
       .expect_save_alias()
@@ -240,6 +286,14 @@ mod test {
       .return_once(|_| None);
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
+      .expect_find_local_file()
+      .with(
+        eq(create.repo.clone()),
+        eq(create.filename.clone()),
+        eq(REFS_MAIN),
+      )
+      .return_once(|_, _, _| Ok(None));
+    mock_hub_service
       .expect_download()
       .with(
         eq(create.repo.clone()),
@@ -248,8 +302,12 @@ mod test {
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
+      .expect_find_local_file()
+      .with(eq(tokenizer_repo.clone()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(None));
+    mock_hub_service
       .expect_download()
-      .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON), eq(true))
+      .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON), eq(false))
       .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
     let alias = Alias::test_alias_instruct_builder()
       .chat_template(chat_template.clone())

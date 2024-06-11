@@ -68,7 +68,27 @@ impl PullCommand {
         let local_model_file =
           service
             .hub_service()
-            .download(&model.repo, &model.filename, force)?;
+            .find_local_file(&model.repo, &model.filename, REFS_MAIN)?;
+        let local_model_file = match local_model_file {
+          Some(local_model_file) if !force => {
+            println!(
+              "repo: '{}', filename: '{}' already exists in $HF_HOME",
+              &model.repo, &model.filename
+            );
+            local_model_file
+          }
+          _ => {
+            let local_model_file =
+              service
+                .hub_service()
+                .download(&model.repo, &model.filename, force)?;
+            println!(
+              "repo: '{}', filename: '{}' downloaded into $HF_HOME",
+              &model.repo, &model.filename
+            );
+            local_model_file
+          }
+        };
         let alias = Alias::new(
           model.alias,
           Some(model.family),
@@ -80,7 +100,11 @@ impl PullCommand {
           model.request_params,
           model.context_params,
         );
-        service.data_service().save_alias(alias)?;
+        service.data_service().save_alias(&alias)?;
+        println!(
+          "model alias: '{}' saved to $BODHI_HOME/aliases",
+          alias.alias
+        );
         Ok(())
       }
       PullCommand::ByRepoFile {
@@ -88,19 +112,19 @@ impl PullCommand {
         filename,
         force,
       } => {
-        if let Ok(file) = service
+        let local_model_file = service
           .hub_service()
-          .find_local_file(&repo, &filename, REFS_MAIN)
-        {
-          match file {
-            Some(_) if !force => {
-              println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
-              return Ok(());
-            }
-            _ => {}
+          .find_local_file(&repo, &filename, REFS_MAIN)?;
+        match local_model_file {
+          Some(_) if !force => {
+            println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
+            return Ok(());
+          }
+          _ => {
+            service.hub_service().download(&repo, &filename, force)?;
+            println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
           }
         }
-        service.hub_service().download(&repo, &filename, force)?;
         Ok(())
       }
     }
@@ -110,7 +134,7 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{Alias, HubFile, RemoteModel, Repo},
+    objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     service::{MockDataService, MockEnvServiceFn, MockHubService, ALIASES_DIR},
     test_utils::{app_service_stub, AppServiceStubMock, AppServiceTuple},
     Command, PullCommand,
@@ -154,6 +178,14 @@ mod test {
       .return_once(move |_| Ok(Some(remote_clone.clone())));
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
+      .expect_find_local_file()
+      .with(
+        eq(remote_model.repo.clone()),
+        eq(remote_model.filename.clone()),
+        eq(REFS_MAIN),
+      )
+      .return_once(|_, _, _| Ok(None));
+    mock_hub_service
       .expect_download()
       .with(
         eq(remote_model.repo),
@@ -161,6 +193,10 @@ mod test {
         eq(false),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
+    mock_hub_service
+      .expect_find_local_file()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let alias = Alias::testalias();
     mock_data_service
       .expect_save_alias()
@@ -179,15 +215,20 @@ mod test {
   #[rstest]
   fn test_pull_by_repo_file_only_pulls_the_model() -> anyhow::Result<()> {
     let repo = Repo::try_from("google/gemma-7b-it-GGUF")?;
+    let filename = "gemma-7b-it.gguf";
     let pull = PullCommand::ByRepoFile {
       repo: repo.clone(),
-      filename: "gemma-7b-it.gguf".to_string(),
+      filename: filename.to_string(),
       force: false,
     };
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
+      .expect_find_local_file()
+      .with(eq(repo.clone()), eq(filename), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(None));
+    mock_hub_service
       .expect_download()
-      .with(eq(repo), eq("gemma-7b-it.gguf"), eq(false))
+      .with(eq(repo), eq(filename), eq(false))
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
     let service =

@@ -52,7 +52,7 @@ impl RunCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{Alias, HubFile, RemoteModel},
+    objs::{Alias, HubFile, RemoteModel, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     service::{MockDataService, MockEnvServiceFn, MockHubService},
     test_utils::{AppServiceStubMock, MockInteractiveRuntime},
     Repo, RunCommand,
@@ -109,6 +109,14 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .returning(|_| Ok(Some(RemoteModel::testalias())));
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
+      .expect_find_local_file()
+      .with(
+        eq(Repo::try_from("MyFactory/testalias-gguf")?),
+        eq("testalias.Q8_0.gguf"),
+        eq(REFS_MAIN),
+      )
+      .return_once(|_, _, _| Ok(None));
+    mock_hub_service
       .expect_download()
       .with(
         eq(Repo::try_from("MyFactory/testalias-gguf")?),
@@ -116,6 +124,15 @@ Run `bodhi list -r` to see list of pre-configured model aliases
         eq(false),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
+
+    mock_hub_service
+      .expect_find_local_file()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .return_once(|_, _, _| Ok(None));
+    mock_hub_service
+      .expect_download()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(false))
+      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     mock_data_service
       .expect_save_alias()
       .with(eq(Alias::testalias()))

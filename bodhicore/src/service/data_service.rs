@@ -38,7 +38,7 @@ type Result<T> = std::result::Result<T, DataServiceError>;
 pub trait DataService: std::fmt::Debug {
   fn list_aliases(&self) -> Result<Vec<Alias>>;
 
-  fn save_alias(&self, alias: Alias) -> Result<PathBuf>;
+  fn save_alias(&self, alias: &Alias) -> Result<PathBuf>;
 
   fn find_alias(&self, alias: &str) -> Option<Alias>;
 
@@ -68,8 +68,8 @@ impl DataService for LocalDataService {
     Ok(models.into_iter().find(|model| model.alias.eq(alias)))
   }
 
-  fn save_alias(&self, alias: Alias) -> Result<PathBuf> {
-    let contents = serde_yaml::to_string(&alias).map_err(Common::SerdeYamlDeserialize)?;
+  fn save_alias(&self, alias: &Alias) -> Result<PathBuf> {
+    let contents = serde_yaml::to_string(alias).map_err(Common::SerdeYamlDeserialize)?;
     let filename = self.aliases_dir().join(alias.config_filename());
     fs::write(filename.clone(), contents).map_err(|err| Common::IoFile {
       source: err,
