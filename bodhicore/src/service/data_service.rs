@@ -1,13 +1,10 @@
+use super::{ALIASES_DIR, MODELS_YAML};
 use crate::{
   error::Common,
   objs::{Alias, RemoteModel},
 };
 use derive_new::new;
-#[cfg(test)]
-use mockall::automock;
 use std::{fmt::Debug, fs, io, path::PathBuf};
-
-static MODELS_YAML: &str = "models.yaml";
 
 #[derive(Debug, thiserror::Error)]
 pub enum DataServiceError {
@@ -37,7 +34,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
 
 type Result<T> = std::result::Result<T, DataServiceError>;
 
-#[cfg_attr(test, automock)]
+#[cfg_attr(test, mockall::automock)]
 pub trait DataService: std::fmt::Debug {
   fn list_aliases(&self) -> Result<Vec<Alias>>;
 
@@ -55,6 +52,16 @@ pub struct LocalDataService {
   bodhi_home: PathBuf,
 }
 
+impl LocalDataService {
+  fn aliases_dir(&self) -> PathBuf {
+    self.bodhi_home.join(ALIASES_DIR)
+  }
+
+  fn models_yaml(&self) -> PathBuf {
+    self.bodhi_home.join(MODELS_YAML)
+  }
+}
+
 impl DataService for LocalDataService {
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
     let models = self.list_remote_models()?;
@@ -63,10 +70,7 @@ impl DataService for LocalDataService {
 
   fn save_alias(&self, alias: Alias) -> Result<PathBuf> {
     let contents = serde_yaml::to_string(&alias).map_err(Common::SerdeYamlDeserialize)?;
-    let filename = self
-      .bodhi_home
-      .join("configs")
-      .join(alias.config_filename());
+    let filename = self.aliases_dir().join(alias.config_filename());
     fs::write(filename.clone(), contents).map_err(|err| Common::IoFile {
       source: err,
       path: alias.config_filename().clone(),
@@ -75,15 +79,10 @@ impl DataService for LocalDataService {
   }
 
   fn list_aliases(&self) -> Result<Vec<Alias>> {
-    let config = self.bodhi_home.join("configs");
-    if !config.exists() {
-      return Err(DataServiceError::DirMissing {
-        dirname: String::from("configs"),
-      });
-    }
-    let yaml_files = fs::read_dir(config.clone()).map_err(|err| Common::IoFile {
+    let aliases_dir = self.aliases_dir();
+    let yaml_files = fs::read_dir(&aliases_dir).map_err(|err| Common::IoFile {
       source: err,
-      path: config.display().to_string(),
+      path: aliases_dir.display().to_string(),
     })?;
     let yaml_files = yaml_files
       .filter_map(|entry| {
@@ -136,7 +135,7 @@ impl DataService for LocalDataService {
   }
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
-    let models_file = self.bodhi_home.join(MODELS_YAML);
+    let models_file = self.models_yaml();
     if !models_file.exists() {
       return Err(DataServiceError::FileMissing {
         filename: String::from(MODELS_YAML),
@@ -256,20 +255,6 @@ filename='{models_file}'"#
     assert_eq!(3, result.len());
     assert!(result.contains(&Alias::llama3()));
     assert!(result.contains(&Alias::test_alias_exists()));
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_local_data_service_list_alias_dir_missing_error(
-    data_service: DataServiceTuple,
-  ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
-    fs::remove_dir_all(bodhi_home.join("configs"))?;
-    let result = service.list_aliases();
-    assert!(result.is_err());
-    let expected = r#"directory 'configs' not found in $BODHI_HOME.
-$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#;
-    assert_eq!(expected, result.unwrap_err().to_string());
     Ok(())
   }
 }

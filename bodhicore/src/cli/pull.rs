@@ -94,7 +94,7 @@ impl PullCommand {
 mod test {
   use crate::{
     objs::{Alias, HubFile, RemoteModel, Repo},
-    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    service::{MockDataService, MockEnvServiceFn, MockHubService, ALIASES_DIR},
     test_utils::{app_service_stub, AppServiceStubMock, AppServiceTuple},
     Command, PullCommand,
   };
@@ -218,7 +218,7 @@ mod test {
       force: false,
     };
     command.execute(Arc::new(service))?;
-    let alias = bodhi_home.join("configs").join("testalias--instruct.yaml");
+    let alias = bodhi_home.join(ALIASES_DIR).join("testalias--instruct.yaml");
     assert!(alias.exists());
     let content = fs::read_to_string(alias)?;
     assert_eq!(

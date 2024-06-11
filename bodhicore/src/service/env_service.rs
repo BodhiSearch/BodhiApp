@@ -12,6 +12,8 @@ use std::{
 
 pub static PROD_DB: &str = "bodhi.sqlite";
 pub static ALIASES_DIR: &str = "aliases";
+pub static MODELS_YAML: &str = "models.yaml";
+
 pub static LOGS_DIR: &str = "logs";
 pub static DEFAULT_PORT: u16 = 1135;
 pub static DEFAULT_PORT_STR: &str = "1135";
@@ -163,28 +165,40 @@ impl EnvService {
         }
       }
     };
-    if !bodhi_home.exists() {
-      self.create_home_dirs(&bodhi_home)?;
-    }
+    self.create_home_dirs(&bodhi_home)?;
     self.bodhi_home = Some(bodhi_home.clone());
     Ok(bodhi_home)
   }
 
   pub fn create_home_dirs(&self, bodhi_home: &Path) -> Result<(), DataServiceError> {
-    fs::create_dir_all(bodhi_home).map_err(|err| DataServiceError::DirCreate {
-      source: err,
-      path: bodhi_home.display().to_string(),
-    })?;
+    if !bodhi_home.exists() {
+      fs::create_dir_all(bodhi_home).map_err(|err| DataServiceError::DirCreate {
+        source: err,
+        path: bodhi_home.display().to_string(),
+      })?;
+    }
+
     let alias_home = bodhi_home.join(ALIASES_DIR);
-    fs::create_dir_all(&alias_home).map_err(|err| DataServiceError::DirCreate {
-      source: err,
-      path: alias_home.display().to_string(),
-    })?;
+    if !alias_home.exists() {
+      fs::create_dir_all(&alias_home).map_err(|err| DataServiceError::DirCreate {
+        source: err,
+        path: alias_home.display().to_string(),
+      })?;
+    }
     let db_path = bodhi_home.join(PROD_DB);
-    File::create_new(&db_path).map_err(|err| DataServiceError::DirCreate {
-      source: err,
-      path: db_path.display().to_string(),
-    })?;
+    if !db_path.exists() {
+      File::create_new(&db_path).map_err(|err| DataServiceError::DirCreate {
+        source: err,
+        path: db_path.display().to_string(),
+      })?;
+    }
+    let models_file = bodhi_home.join(MODELS_YAML);
+    if !models_file.exists() {
+      let contents = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/models.yaml"));
+      if let Err(err) = fs::write(models_file, contents) {
+        eprintln!("failed to copy models.yaml to $BODHI_HOME. err: {err}");
+      };
+    }
     Ok(())
   }
 
