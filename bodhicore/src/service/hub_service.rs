@@ -115,10 +115,7 @@ impl HubService for HfHubService {
       if !snapshot.eq(REFS_MAIN) {
         return Err(HubServiceError::OnlyRefsMainSupported);
       }
-      let refs_file = self
-        .hf_cache()
-        .join(repo.path())
-        .join(snapshot);
+      let refs_file = self.hf_cache().join(repo.path()).join(snapshot);
       std::fs::read_to_string(refs_file.clone()).map_err(|_err| {
         let dirname = refs_file
           .parent()

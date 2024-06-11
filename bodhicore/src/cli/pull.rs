@@ -1,5 +1,10 @@
 use super::CliError;
-use crate::{error::BodhiError, objs::Alias, service::AppServiceFn, Command, Repo};
+use crate::{
+  error::BodhiError,
+  objs::{Alias, REFS_MAIN},
+  service::AppServiceFn,
+  Command, Repo,
+};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
@@ -83,6 +88,18 @@ impl PullCommand {
         filename,
         force,
       } => {
+        if let Ok(file) = service
+          .hub_service()
+          .find_local_file(&repo, &filename, REFS_MAIN)
+        {
+          match file {
+            Some(_) if !force => {
+              println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
+              return Ok(());
+            }
+            _ => {}
+          }
+        }
         service.hub_service().download(&repo, &filename, force)?;
         Ok(())
       }
@@ -218,7 +235,9 @@ mod test {
       force: false,
     };
     command.execute(Arc::new(service))?;
-    let alias = bodhi_home.join(ALIASES_DIR).join("testalias--instruct.yaml");
+    let alias = bodhi_home
+      .join(ALIASES_DIR)
+      .join("testalias--instruct.yaml");
     assert!(alias.exists());
     let content = fs::read_to_string(alias)?;
     assert_eq!(
