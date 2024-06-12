@@ -34,3 +34,7 @@ bodhi -h
 # Dev Machine Setup
 
 [Developer Machine Setup](docs/dev-setup.md)
+
+# Quick Start
+
+`bodhi run llama3:instruct`
