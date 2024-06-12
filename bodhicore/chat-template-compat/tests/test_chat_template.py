@@ -22,6 +22,7 @@ cases = list(inputs_yaml().keys())
     ("deepseek", "deepseek-ai/deepseek-llm-67b-chat"),
     ("command-r", "CohereForAI/c4ai-command-r-plus"),
     ("openchat", "openchat/openchat-3.6-8b-20240522"),
+    ("tinyllama", "TinyLlama/TinyLlama-1.1B-Chat-v1.0"),
   ],
 )
 @pytest.mark.parametrize(

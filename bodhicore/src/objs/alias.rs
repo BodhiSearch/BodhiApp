@@ -59,22 +59,21 @@ pub fn default_features() -> Vec<String> {
 mod test {
   use super::Alias;
   use crate::{
-    objs::{AliasBuilder, ChatTemplate, GptContextParamsBuilder, OAIRequestParamsBuilder},
+    objs::{
+      AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParamsBuilder, OAIRequestParamsBuilder,
+    },
     Repo,
   };
   use prettytable::{Cell, Row};
   use rstest::rstest;
 
-  fn tinyllama() -> Alias {
+  fn tinyllama_builder() -> AliasBuilder {
     AliasBuilder::default()
       .alias("tinyllama:instruct")
       .repo(Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF").unwrap())
       .filename("tinyllama-1.1b-chat-v1.0.Q4_0.gguf")
       .snapshot("52e7645ba7c309695bec7ac98f4f005b139cf465")
       .features(vec!["chat".to_string()])
-      .chat_template(ChatTemplate::Repo(
-        Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
-      ))
       .request_params(
         OAIRequestParamsBuilder::default()
           .temperature(0.7)
@@ -90,18 +89,33 @@ mod test {
           .build()
           .unwrap(),
       )
+      .to_owned()
+  }
+
+  fn tinyllama_chat_template_repo() -> Alias {
+    tinyllama_builder()
+      .chat_template(ChatTemplate::Repo(
+        Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
+      ))
       .build()
       .unwrap()
   }
 
-  fn tinyllama_serialized() -> String {
-    r#"alias: tinyllama:instruct
+  fn tinyllama_chat_template_id() -> Alias {
+    tinyllama_builder()
+      .chat_template(ChatTemplate::Id(ChatTemplateId::Tinyllama))
+      .build()
+      .unwrap()
+  }
+
+  fn tiny_llama_serialized() -> String {
+    let result = r#"alias: tinyllama:instruct
 repo: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
 filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
 snapshot: 52e7645ba7c309695bec7ac98f4f005b139cf465
 features:
 - chat
-chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+chat_template: {chat_template}
 request_params:
   temperature: 0.7
   top_p: 0.95
@@ -109,8 +123,16 @@ context_params:
   n_ctx: 2048
   n_parallel: 4
   n_predict: 256
-"#
-    .to_string()
+"#;
+    result.to_string()
+  }
+
+  fn tinyllama_chat_template_repo_serialized() -> String {
+    tiny_llama_serialized().replace("{chat_template}", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")
+  }
+
+  fn tinyllama_chat_template_id_serialized() -> String {
+    tiny_llama_serialized().replace("{chat_template}", "tinyllama")
   }
 
   #[rstest]
@@ -135,7 +157,11 @@ features: []
 chat_template: llama3
 "#
   )]
-  #[case(tinyllama(), tinyllama_serialized())]
+  #[case(
+    tinyllama_chat_template_repo(),
+    tinyllama_chat_template_repo_serialized()
+  )]
+  #[case(tinyllama_chat_template_id(), tinyllama_chat_template_id_serialized())]
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: String) -> anyhow::Result<()> {
     let actual = serde_yaml::to_string(&alias)?;
     assert_eq!(expected, actual);
@@ -143,7 +169,11 @@ chat_template: llama3
   }
 
   #[rstest]
-  #[case(tinyllama_serialized(), tinyllama())]
+  #[case(
+    tinyllama_chat_template_repo_serialized(),
+    tinyllama_chat_template_repo()
+  )]
+  #[case(tinyllama_chat_template_id_serialized(), tinyllama_chat_template_id())]
   fn test_alias_deserialized(
     #[case] serialized: String,
     #[case] expected: Alias,

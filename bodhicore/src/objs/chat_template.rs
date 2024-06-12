@@ -16,6 +16,8 @@ use strum::{AsRefStr, EnumIter};
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
+// TODO: have other, so can take input from command line as pre-defined chat template ids, or the repo
+// easier for user to provide input as --chat-template llama3 or --chat-template meta-llama/llama3
 pub enum ChatTemplateId {
   Llama3,
   Llama2,
@@ -25,6 +27,7 @@ pub enum ChatTemplateId {
   Deepseek,
   CommandR,
   Openchat,
+  Tinyllama,
 }
 
 impl PartialOrd for ChatTemplateId {
@@ -55,6 +58,7 @@ impl TryFrom<ChatTemplate> for Repo {
           ChatTemplateId::Deepseek => "deepseek-ai/deepseek-llm-67b-chat",
           ChatTemplateId::CommandR => "CohereForAI/c4ai-command-r-plus",
           ChatTemplateId::Openchat => "openchat/openchat-3.6-8b-20240522",
+          ChatTemplateId::Tinyllama => "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
         };
         Repo::try_from(repo)?
       }

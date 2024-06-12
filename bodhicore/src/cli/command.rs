@@ -79,7 +79,7 @@ pub enum Command {
     #[clap(long, group = "template")]
     chat_template: Option<ChatTemplateId>,
 
-    /// Tokenizer config to convert chat messages to LLM prompt
+    /// Repo containing tokenizer_config.json file to convert chat messages to LLM prompt. e.g. `TinyLlama/TinyLlama-1.1B-Chat-v1.0`
     #[clap(long, group = "template", value_parser = repo_parser)]
     tokenizer_config: Option<String>,
 
