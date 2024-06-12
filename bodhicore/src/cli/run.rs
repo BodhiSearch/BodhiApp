@@ -33,6 +33,7 @@ impl RunCommand {
                 alias: remote_model.alias.clone(),
                 force: false,
               };
+              println!("downloading files to run model alias '{}'", remote_model.alias);
               command.execute(service.clone())?;
               match service.data_service().find_alias(&alias) {
                 Some(alias_obj) => alias_obj,
@@ -111,7 +112,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
     mock_hub_service
       .expect_find_local_file()
       .with(
-        eq(Repo::try_from("MyFactory/testalias-gguf")?),
+        eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf"),
         eq(REFS_MAIN),
       )
@@ -119,7 +120,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
     mock_hub_service
       .expect_download()
       .with(
-        eq(Repo::try_from("MyFactory/testalias-gguf")?),
+        eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf"),
         eq(false),
       )

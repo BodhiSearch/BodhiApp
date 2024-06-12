@@ -1,7 +1,7 @@
 use super::CliError;
 use crate::{
   error::BodhiError,
-  objs::{Alias, REFS_MAIN},
+  objs::{Alias, HubFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
   Command, Repo,
 };
@@ -65,30 +65,20 @@ impl PullCommand {
         let Some(model) = service.data_service().find_remote_model(&alias)? else {
           return Err(BodhiError::AliasNotFound(alias));
         };
-        let local_model_file =
-          service
-            .hub_service()
-            .find_local_file(&model.repo, &model.filename, REFS_MAIN)?;
-        let local_model_file = match local_model_file {
-          Some(local_model_file) if !force => {
-            println!(
-              "repo: '{}', filename: '{}' already exists in $HF_HOME",
-              &model.repo, &model.filename
-            );
-            local_model_file
-          }
-          _ => {
-            let local_model_file =
-              service
-                .hub_service()
-                .download(&model.repo, &model.filename, force)?;
-            println!(
-              "repo: '{}', filename: '{}' downloaded into $HF_HOME",
-              &model.repo, &model.filename
-            );
-            local_model_file
-          }
-        };
+        let local_model_file = PullCommand::download_file_if_missing(
+          service.clone(),
+          &model.repo,
+          &model.filename,
+          REFS_MAIN,
+          force,
+        )?;
+        _ = PullCommand::download_file_if_missing(
+          service.clone(),
+          &Repo::try_from(model.chat_template.clone())?,
+          TOKENIZER_CONFIG_JSON,
+          REFS_MAIN,
+          force,
+        )?;
         let alias = Alias::new(
           model.alias,
           Some(model.family),
@@ -126,6 +116,35 @@ impl PullCommand {
           }
         }
         Ok(())
+      }
+    }
+  }
+
+  fn download_file_if_missing(
+    service: Arc<dyn AppServiceFn>,
+    repo: &Repo,
+    filename: &str,
+    snapshot: &str,
+    force: bool,
+  ) -> crate::error::Result<HubFile> {
+    let local_model_file = service
+      .hub_service()
+      .find_local_file(repo, filename, snapshot)?;
+    match local_model_file {
+      Some(local_model_file) if !force => {
+        println!(
+          "repo: '{}', filename: '{}' already exists in $HF_HOME",
+          &repo, &filename
+        );
+        Ok(local_model_file)
+      }
+      _ => {
+        let local_model_file = service.hub_service().download(repo, filename, force)?;
+        println!(
+          "repo: '{}', filename: '{}' downloaded into $HF_HOME",
+          repo, filename
+        );
+        Ok(local_model_file)
       }
     }
   }

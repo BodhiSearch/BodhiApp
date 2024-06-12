@@ -66,6 +66,15 @@ impl HfHubService {
   fn hf_cache(&self) -> PathBuf {
     self.cache.path().to_path_buf()
   }
+
+  fn hf_home(&self) -> PathBuf {
+    self
+      .cache
+      .path()
+      .join("..")
+      .canonicalize()
+      .unwrap_or_else(|_| self.hf_cache().join(".."))
+  }
 }
 
 impl HubService for HfHubService {
@@ -116,6 +125,9 @@ impl HubService for HfHubService {
         return Err(HubServiceError::OnlyRefsMainSupported);
       }
       let refs_file = self.hf_cache().join(repo.path()).join(snapshot);
+      if !refs_file.exists() {
+        return Ok(None);
+      }
       std::fs::read_to_string(refs_file.clone()).map_err(|_err| {
         let dirname = refs_file
           .parent()
@@ -125,7 +137,15 @@ impl HubService for HfHubService {
           .file_name()
           .map(|f| f.to_string_lossy().into_owned())
           .unwrap_or(String::from("<unknown>"));
-        HubServiceError::FileMissing { filename, dirname }
+        let hf_home = self.hf_home().display().to_string();
+        let relative = dirname
+          .strip_prefix(&hf_home)
+          .unwrap_or_else(|| &dirname)
+          .to_string();
+        HubServiceError::FileMissing {
+          filename,
+          dirname: relative,
+        }
       })?
     } else {
       snapshot.to_owned()
@@ -259,7 +279,7 @@ impl HfHubService {
 mod test {
   use super::{HfHubService, HubService};
   use crate::{
-    objs::{HubFile, Repo},
+    objs::{HubFile, Repo, REFS_MAIN},
     test_utils::{
       hf_test_token_allowed, hf_test_token_public, hub_service, temp_hf_home, HubServiceTuple,
     },
@@ -420,6 +440,20 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
     );
     assert!(local_model_file.is_err());
     assert_eq!(error, local_model_file.unwrap_err().to_string());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_hub_service_find_local_file_returns_not_found_if_refs_main_not_present(
+    hub_service: HubServiceTuple,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
+    let result = service.find_local_file(
+      &Repo::try_from("TheBloke/NotDownloaded")?,
+      "some-model-file.gguf",
+      REFS_MAIN,
+    )?;
+    assert!(result.is_none());
     Ok(())
   }
 

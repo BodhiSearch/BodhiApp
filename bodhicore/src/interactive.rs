@@ -217,7 +217,8 @@ mod test {
 
   #[rstest]
   #[tokio::test]
-  async fn test_interactive_local_model_not_found_raises_error() -> anyhow::Result<()> {
+  async fn test_interactive_non_remote_model_alias_local_model_not_found_raises_error(
+  ) -> anyhow::Result<()> {
     let alias = Alias::testalias();
     let alias_clone = alias.clone();
     let mut mock = MockHubService::default();
