@@ -2,9 +2,9 @@
 
 Run LLMs locally.
 
-Bodhi App runs LLMs and other GenerativeAI inference locally. It also exposes these features as authenticated services.
+Bodhi App runs Open Source LLMs locally. It exposes these LLM inference capabilities as OpenAI API compatible REST APIs.
 
-This allows GenAI based native applications, chrome extensions, or web pages use the local user's GPU/CPU to run inference and provide GenAI features without any paid API calls.
+This allows GenAI based native/local applications use the user's GPU/CPU to run inference and provide LLM features without any paid remote API calls.
 
 # Installation
 
