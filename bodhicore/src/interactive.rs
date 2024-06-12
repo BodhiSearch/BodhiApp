@@ -87,8 +87,21 @@ impl Interactive {
         .history_with(&mut shell_history)
         .interact_text()
       {
-        if user_prompt == "/bye" {
-          break;
+        if user_prompt.starts_with('/') {
+          match user_prompt.as_str() {
+            "/?" => {
+              println!("/bye: exit the interactive mode");
+              println!("/?: show help");
+              continue;
+            }
+            "/bye" => {
+              break;
+            }
+            _ => {
+              println!("unknown command `{user_prompt}`. type `/?` for list of commands.");
+              continue;
+            }
+          }
         }
         self
           .process_input(&router_state, &user_prompt, chat_history.clone())
