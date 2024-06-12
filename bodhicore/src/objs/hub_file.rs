@@ -71,8 +71,8 @@ impl From<HubFile> for Row {
       .map(|size| format!("{:.2} GB", size as f64 / 2_f64.powf(30.0)))
       .unwrap_or_else(|| String::from("Unknown"));
     Row::from(vec![
-      Cell::new(&filename),
       Cell::new(&repo),
+      Cell::new(&filename),
       Cell::new(&snapshot[..8]),
       Cell::new(&human_size),
     ])
@@ -99,8 +99,8 @@ mod test {
     );
     let row = model.into();
     let expected = Row::from(vec![
-      Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
       Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
+      Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
       Cell::new("12345678"),
       Cell::new("10.00 GB"),
     ]);

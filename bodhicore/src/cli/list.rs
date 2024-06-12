@@ -65,8 +65,9 @@ impl ListCommand {
 
   fn list_local_models(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let mut table = Table::new();
-    table.add_row(row!["FILENAME", "REPO", "SNAPSHOT", "SIZE"]);
-    let models = service.hub_service().list_local_models();
+    table.add_row(row!["REPO", "FILENAME", "SNAPSHOT", "SIZE"]);
+    let mut models = service.hub_service().list_local_models();
+    models.sort_by(|a, b| a.repo.cmp(&b.repo));
     for row in models.into_iter().map(Row::from) {
       table.add_row(row);
     }
