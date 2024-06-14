@@ -1,7 +1,10 @@
 use crate::{native::NativeCommand, AppError};
 use axum::Router;
 use bodhicore::{
-  cli::{Cli, Command, ServeCommand}, service::{AppService, EnvService, EnvServiceFn, HfHubService, LocalDataService}, CreateCommand, EnvCommand, ListCommand, PullCommand, RunCommand
+  cli::{Cli, Command, ServeCommand},
+  service::{AppService, EnvService, EnvServiceFn, HfHubService, LocalDataService},
+  CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
+  RunCommand,
 };
 use clap::Parser;
 use include_dir::{include_dir, Dir};
@@ -37,7 +40,7 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
   match cli.command {
     Command::Envs {} => {
       EnvCommand::new(service).execute()?;
-    },
+    }
     Command::App { ui } => {
       NativeCommand::new(service, ui).execute(Some(static_router()))?;
     }
@@ -60,6 +63,22 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
     run @ Command::Run { .. } => {
       let run_command = RunCommand::try_from(run)?;
       run_command.execute(service)?;
+    }
+    show @ Command::Show { .. } => {
+      let show = ManageAliasCommand::try_from(show)?;
+      show.execute(service, &mut DefaultStdoutWriter::default())?;
+    }
+    cp @ Command::Cp { .. } => {
+      let cp = ManageAliasCommand::try_from(cp)?;
+      cp.execute(service, &mut DefaultStdoutWriter::default())?;
+    }
+    edit @ Command::Edit { .. } => {
+      let edit = ManageAliasCommand::try_from(edit)?;
+      edit.execute(service, &mut DefaultStdoutWriter::default())?;
+    }
+    rm @ Command::Rm { .. } => {
+      let rm = ManageAliasCommand::try_from(rm)?;
+      rm.execute(service, &mut DefaultStdoutWriter::default())?;
     }
   }
   Ok(())

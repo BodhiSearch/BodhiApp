@@ -4,7 +4,7 @@ use crate::{
   objs::{Alias, RemoteModel},
 };
 use derive_new::new;
-use std::{fmt::Debug, fs, io, path::PathBuf};
+use std::{collections::HashMap, fmt::Debug, fs, io, path::PathBuf};
 
 #[derive(Debug, thiserror::Error)]
 pub enum DataServiceError {
@@ -30,6 +30,10 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   BodhiHome,
   #[error("hf_home_err: failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
   HfHome,
+  #[error("alias '{0}' not found in $BODHI_HOME/aliases")]
+  AliasNotExists(String),
+  #[error("alias '{0}' already exists in $BODHI_HOME/aliases")]
+  AliasExists(String),
 }
 
 type Result<T> = std::result::Result<T, DataServiceError>;
@@ -45,6 +49,12 @@ pub trait DataService: std::fmt::Debug {
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
 
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>>;
+
+  fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()>;
+
+  fn delete_alias(&self, alias: &str) -> Result<()>;
+
+  fn alias_filename(&self, alias: &str) -> Result<PathBuf>;
 }
 
 #[derive(Debug, Clone, PartialEq, new)]
@@ -79,51 +89,10 @@ impl DataService for LocalDataService {
   }
 
   fn list_aliases(&self) -> Result<Vec<Alias>> {
-    let aliases_dir = self.aliases_dir();
-    let yaml_files = fs::read_dir(&aliases_dir).map_err(|err| Common::IoFile {
-      source: err,
-      path: aliases_dir.display().to_string(),
-    })?;
-    let yaml_files = yaml_files
-      .filter_map(|entry| {
-        let file_path = entry.ok()?.path();
-        if let Some(extension) = file_path.extension() {
-          if extension == "yaml" || extension == "yml" {
-            Some(file_path)
-          } else {
-            None
-          }
-        } else {
-          None
-        }
-      })
-      .collect::<Vec<_>>();
-    let mut aliases = yaml_files
-      .into_iter()
-      .filter_map(|yaml_file| {
-        let filename = yaml_file.clone().display().to_string();
-        match fs::read_to_string(yaml_file) {
-          Ok(content) => match serde_yaml::from_str::<Alias>(&content) {
-            Ok(alias) => Some(alias),
-            Err(err) => {
-              let err = Common::SerdeYamlDeserialize(err);
-              tracing::warn!(filename, ?err, "Error deserializing model alias YAML file",);
-              None
-            }
-          },
-          Err(err) => {
-            let err = Common::IoFile {
-              source: err,
-              path: filename,
-            };
-            tracing::warn!(?err, "Error reading model alias YAML file");
-            None
-          }
-        }
-      })
-      .collect::<Vec<_>>();
-    aliases.sort_by(|a, b| a.alias.cmp(&b.alias));
-    Ok(aliases)
+    let hashamp = self._list_aliases()?;
+    let mut result = hashamp.into_values().collect::<Vec<_>>();
+    result.sort_by(|a, b| a.alias.cmp(&b.alias));
+    Ok(result)
   }
 
   fn find_alias(&self, alias: &str) -> Option<Alias> {
@@ -153,6 +122,94 @@ impl DataService for LocalDataService {
       }
     })?;
     Ok(models)
+  }
+
+  fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
+    let mut alias = self
+      .find_alias(alias)
+      .ok_or_else(|| DataServiceError::AliasNotExists(alias.to_string()))?;
+    if self.find_alias(new_alias).is_some() {
+      return Err(DataServiceError::AliasExists(new_alias.to_string()));
+    }
+    alias.alias = new_alias.to_string();
+    self.save_alias(&alias)?;
+    Ok(())
+  }
+
+  fn delete_alias(&self, alias: &str) -> Result<()> {
+    let (filename, _) = self
+      ._list_aliases()?
+      .into_iter()
+      .find(|(_, item)| item.alias.eq(alias))
+      .ok_or_else(|| DataServiceError::AliasNotExists(alias.to_string()))?;
+    fs::remove_file(filename).map_err(Common::from)?;
+    Ok(())
+  }
+
+  fn alias_filename(&self, alias: &str) -> Result<PathBuf> {
+    let (filename, _) = self
+      ._list_aliases()?
+      .into_iter()
+      .find(|(_, item)| item.alias.eq(alias))
+      .ok_or_else(|| DataServiceError::AliasNotExists(alias.to_string()))?;
+    let result = PathBuf::from(filename);
+    assert!(
+      result.exists(),
+      "file should exists at path {}",
+      result.display()
+    );
+    Ok(result)
+  }
+}
+
+impl LocalDataService {
+  fn _list_aliases(&self) -> Result<HashMap<String, Alias>> {
+    {
+      let aliases_dir = self.aliases_dir();
+      let yaml_files = fs::read_dir(&aliases_dir).map_err(|err| Common::IoFile {
+        source: err,
+        path: aliases_dir.display().to_string(),
+      })?;
+      let yaml_files = yaml_files
+        .filter_map(|entry| {
+          let file_path = entry.ok()?.path();
+          if let Some(extension) = file_path.extension() {
+            if extension == "yaml" || extension == "yml" {
+              Some(file_path)
+            } else {
+              None
+            }
+          } else {
+            None
+          }
+        })
+        .collect::<Vec<_>>();
+      let aliases = yaml_files
+        .into_iter()
+        .filter_map(|yaml_file| {
+          let filename = yaml_file.clone().display().to_string();
+          match fs::read_to_string(yaml_file) {
+            Ok(content) => match serde_yaml::from_str::<Alias>(&content) {
+              Ok(alias) => Some((filename, alias)),
+              Err(err) => {
+                let err = Common::SerdeYamlDeserialize(err);
+                tracing::warn!(filename, ?err, "Error deserializing model alias YAML file",);
+                None
+              }
+            },
+            Err(err) => {
+              let err = Common::IoFile {
+                source: err,
+                path: filename,
+              };
+              tracing::warn!(?err, "Error reading model alias YAML file");
+              None
+            }
+          }
+        })
+        .collect::<HashMap<_, _>>();
+      Ok(aliases)
+    }
   }
 }
 
@@ -255,6 +312,50 @@ filename='{models_file}'"#
     assert_eq!(3, result.len());
     assert!(result.contains(&Alias::llama3()));
     assert!(result.contains(&Alias::test_alias_exists()));
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_delete_alias(data_service: DataServiceTuple) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
+    let exists = bodhi_home
+      .join("aliases")
+      .join("tinyllama--instruct.yaml")
+      .exists();
+    assert!(exists);
+    service.delete_alias("tinyllama:instruct")?;
+    let exists = bodhi_home
+      .join("aliases")
+      .join("tinyllama--instruct.yaml")
+      .exists();
+    assert!(!exists);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_delete_alias_not_found(
+    data_service: DataServiceTuple,
+  ) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp, _, service) = data_service;
+    let result = service.delete_alias("notexists--instruct.yaml");
+    assert!(result.is_err());
+    assert_eq!(
+      "alias 'notexists--instruct.yaml' not found in $BODHI_HOME/aliases",
+      result.unwrap_err().to_string()
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_copy_alias(data_service: DataServiceTuple) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp, _, service) = data_service;
+    service.copy_alias("tinyllama:instruct", "tinyllama:mymodel")?;
+    let new_alias = service
+      .find_alias("tinyllama:mymodel")
+      .expect("should have created new_alias");
+    let mut expected = Alias::tinyllama();
+    expected.alias = "tinyllama:mymodel".to_string();
+    assert_eq!(expected, new_alias);
     Ok(())
   }
 }

@@ -108,6 +108,14 @@ pub enum Command {
     /// Model alias to run. Run `bodhi list` to list the configured model aliases.
     alias: String,
   },
+  /// Display the given alias configuration
+  Show { alias: String },
+  /// Make a copy of given ALIAS using the NEW-ALIAS id
+  Cp { alias: String, new_alias: String },
+  /// Edit the given alias yaml in external editor $EDITOR
+  Edit { alias: String },
+  /// Delete the given alias configuration
+  Rm { alias: String },
 }
 
 fn repo_parser(repo: &str) -> Result<String, String> {
