@@ -15,7 +15,7 @@ pub struct Cli {
 #[strum(serialize_all = "lowercase")]
 #[allow(clippy::large_enum_variant)]
 pub enum Command {
-  /// list down the current environment variables
+  /// list down the environment variables for current runtime
   Envs {},
   /// launch as native app
   App {
@@ -35,30 +35,30 @@ pub enum Command {
   /// list the model aliases on local
   #[clap(group = ArgGroup::new("variant"))]
   List {
-    /// List pre-configured model aliases available to download and configure
+    /// List pre-configured model aliases available to download and configure in a single quickstart command
     #[clap(long, short = 'r', group = "variant")]
     remote: bool,
-    /// List the GGUF model files from Huggingface cache folder on local system
+    /// List the compatible GGUF model files from $HF_HOME folder on local system
     #[clap(long, short = 'm', group = "variant")]
     models: bool,
   },
-  /// Pull a gguf model from huggingface repository
+  /// Pull a compatible GGUF model from huggingface.co repository
   #[clap(group = ArgGroup::new("pull").required(true))]
   Pull {
-    /// Download and configure the model using a pre-configured model alias.
-    /// Run `bodhi list -r` to list all the pre-configured model aliases.
+    /// Download and configure the model using a pre-configured model alias,
+    /// run `bodhi list -r` to list all the pre-configured model aliases
     #[clap(group = "pull")]
     alias: Option<String>,
 
-    /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
+    /// The hugging face repo to pull the model from, e.g. `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`
     #[clap(long, short = 'r', requires = "filename", group = "pull", value_parser = repo_parser)]
     repo: Option<String>,
 
-    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
+    /// The GGUF model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
     #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
     filename: Option<String>,
 
-    /// If the file already exists in $HF_HOME, force download it again
+    /// If the file already exists in $HF_HOME, force download and overwrite it
     #[clap(long = "force")]
     force: bool,
   },
@@ -66,18 +66,19 @@ pub enum Command {
   /// Create a new model alias
   #[clap(group = ArgGroup::new("template").required(true))]
   Create {
-    /// Unique name of the model alias. E.g. llama3:8b-instruct
+    /// Unique name of the model alias. E.g. llama3:8b-instruct, model alias should not be present, 
+    /// run `bodhi list` to list the existing model aliases
     alias: String,
 
-    /// The hugging face repo to pull the model from, e.g. `bartowski/Meta-Llama-3-8B-Instruct-GGUF`
+    /// The hugging face repo to pull the model from, e.g. `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`
     #[clap(long, short = 'r', value_parser = repo_parser)]
     repo: String,
 
-    /// The gguf model file to pull from the repo, e.g. `Meta-Llama-3-8B-Instruct-Q8_0.gguf`,
+    /// The gguf model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
     #[clap(long, short = 'f', value_parser = gguf_filename_parser)]
     filename: String,
 
-    /// In-built chat template to use to convert chat messages to LLM prompt
+    /// In-built chat template mapping to use to convert chat messages to LLM prompt
     #[clap(long, group = "template")]
     chat_template: Option<ChatTemplateId>,
 
@@ -85,15 +86,11 @@ pub enum Command {
     #[clap(long, group = "template", value_parser = repo_parser)]
     tokenizer_config: Option<String>,
 
-    /// Optional meta information. Family of the model.
+    /// Optional meta information, family of the model
     #[clap(long)]
     family: Option<String>,
 
-    /// Features supported by the model.
-    // #[clap(long)]
-    // feature: Vec<ModelFeature>,
-
-    /// If the file already exists in $HF_HOME, force download it again
+    /// If the file already exists in $HF_HOME, force download and overwrite it
     #[clap(long)]
     force: bool,
 
@@ -105,17 +102,31 @@ pub enum Command {
   },
   /// Run the given model alias in interactive mode.
   Run {
-    /// Model alias to run. Run `bodhi list` to list the configured model aliases.
+    /// Model alias to run, run `bodhi list` to list the existing model aliases
     alias: String,
   },
   /// Display the given alias configuration
-  Show { alias: String },
+  Show {
+    /// Model alias to show, run `bodhi list` to list the existing model aliases
+    alias: String,
+  },
   /// Make a copy of given ALIAS using the NEW-ALIAS id
-  Cp { alias: String, new_alias: String },
+  Cp {
+    /// Source alias to copy from, run `bodhi list` to list the existing model aliases
+    alias: String,
+    /// New destination alias name, should not be already present
+    new_alias: String,
+  },
   /// Edit the given alias yaml in external editor $EDITOR
-  Edit { alias: String },
+  Edit {
+    /// Model alias to edit, run `bodhi list` to list the existing model aliases
+    alias: String,
+  },
   /// Delete the given alias configuration
-  Rm { alias: String },
+  Rm {
+    /// Model alias to delete, run `bodhi list` to list the existing model aliases
+    alias: String,
+  },
 }
 
 fn repo_parser(repo: &str) -> Result<String, String> {

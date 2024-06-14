@@ -38,7 +38,7 @@ default: 512"#
 
   #[arg(
     long,
-    help = r#"number of parallel sequences to decode
+    help = r#"number of parallel sequences to decode/number of parallel requests served concurrently
 default: 1"#
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
