@@ -143,7 +143,9 @@ impl ServeCommand {
       }
     });
     match ready_rx.await {
-      Ok(()) => {}
+      Ok(()) => {
+        println!("server started on http://{host}:{port}");
+      }
       Err(err) => tracing::warn!(?err, "ready channel closed before could receive signal"),
     }
     Ok(ServerShutdownHandle {
