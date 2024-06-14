@@ -115,6 +115,11 @@ jobs:
       - name: build llama-server-bindings
         run: |
           cargo build -p llama-server-bindings --target ${{ matrix.target }}
+      - name: Set the Cargo.toml version in bodhicore
+        working-directory: bodhicore
+        run: |
+          sed -i.bak "s|^version = .*|version = \"${{ env.VERSION }}\"|" Cargo.toml
+          rm Cargo.toml.bak
       - name: Set the Cargo.toml version in app/bodhi
         working-directory: app/bodhi
         run: |
@@ -144,21 +149,32 @@ jobs:
         with:
           access_token: ${{ secrets.GH_PAT }}
           artifact_paths: ${{ steps.tauri-action.outputs.artifactPaths }}
-      - name: Bump up minor version in app/bodhi/Cargo.toml
+      - name: Find the next version
         if: env.TAG_BUILD == 'false'
         working-directory: app/bodhi
         run: |
           NEXT_VERSION=$(echo ${{ env.VERSION }} | awk -F. '{$3 = $3 + 1; print}' OFS=.)
           NEXT_VERSION="${NEXT_VERSION}-dev"
-          sed -i.bak "s|^version = .*|version = \"${NEXT_VERSION}\"|" Cargo.toml
+          echo NEXT_VERSION=${NEXT_VERSION} >> $GITHUB_ENV
+      - name: Bump up minor version in app/bodhi/Cargo.toml
+        if: env.TAG_BUILD == 'false'
+        working-directory: app/bodhi
+        run: |
+          sed -i.bak "s|^version = .*|version = \"${{ env.NEXT_VERSION }}\"|" Cargo.toml
+          rm Cargo.toml.bak
+      - name: Bump up minor version in bodhicore/Cargo.toml
+        if: env.TAG_BUILD == 'false'
+        working-directory: bodhicore
+        run: |
+          sed -i.bak "s|^version = .*|version = \"${{ env.NEXT_VERSION }}\"|" Cargo.toml
           rm Cargo.toml.bak
       - name: Commit and push changes
         if: env.TAG_BUILD == 'false'
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add app/bodhi/Cargo.toml
-          git commit -m "[Github Bot] Bump up minor version to ${VERSION}-dev\nurl: ${{ env.RUN_URL }}"
+          git add app/bodhi/Cargo.toml bodhicore/Cargo.toml
+          git commit -m "[Github Bot] Bump up minor version to ${VERSION}-dev, url: ${{ env.RUN_URL }}"
       - name: Update update.json for aarch64-apple-darwin
         if: matrix.target == 'aarch64-apple-darwin' && env.TAG_BUILD == 'false'
         run: |
@@ -176,7 +192,7 @@ jobs:
 
           # Commit and push the updated update.json file
           git add update.json
-          git commit -m "[Github Bot][${{ env.VERSION }}] Update update.json for aarch64-apple-darwin version\nurl: ${{ env.RUN_URL }}"
+          git commit -m "[Github Bot][${{ env.VERSION }}] Update update.json for aarch64-apple-darwin version, url: ${{ env.RUN_URL }}"
       - name: Push the changes
         if: env.TAG_BUILD == 'false'
         run: |
