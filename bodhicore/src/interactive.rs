@@ -39,12 +39,12 @@ fn infinite_loading(msg: String) -> ProgressBar {
 }
 
 #[derive(Debug, new)]
-pub(crate) struct Interactive {
+pub struct Interactive {
   alias: Alias,
 }
 
 impl Interactive {
-  pub(crate) async fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  pub async fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     let alias = self.alias.clone();
     let model = service
       .hub_service()
@@ -189,6 +189,8 @@ pub struct InteractiveRuntime {}
 #[allow(unused)]
 // MockInteractiveRuntime used in cfg(test)
 impl InteractiveRuntime {
+  #[allow(clippy::new_without_default)]
+  // MockInteractiveRuntime used in cfg(test)
   pub fn new() -> Self {
     InteractiveRuntime {}
   }
