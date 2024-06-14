@@ -15,6 +15,8 @@ pub struct Cli {
 #[strum(serialize_all = "lowercase")]
 #[allow(clippy::large_enum_variant)]
 pub enum Command {
+  /// list down the current environment variables
+  Envs {},
   /// launch as native app
   App {
     /// open the browser with chat interface

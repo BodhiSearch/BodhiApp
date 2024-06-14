@@ -6,6 +6,7 @@ use crate::test_utils::MockEnvWrapper as EnvWrapper;
 
 use super::DataServiceError;
 use std::{
+  collections::HashMap,
   fs::{self, File},
   path::{Path, PathBuf},
 };
@@ -42,6 +43,8 @@ pub trait EnvServiceFn: std::fmt::Debug {
   fn port(&self) -> u16;
 
   fn db_path(&self) -> PathBuf;
+
+  fn list(&self) -> HashMap<String, String>;
 }
 
 #[derive(Debug, Clone)]
@@ -110,6 +113,22 @@ impl EnvServiceFn for EnvService {
 
   fn db_path(&self) -> PathBuf {
     self.bodhi_home().join(PROD_DB)
+  }
+
+  fn list(&self) -> HashMap<String, String> {
+    let mut result = HashMap::<String, String>::new();
+    result.insert(
+      BODHI_HOME.to_string(),
+      self.bodhi_home().display().to_string(),
+    );
+    result.insert(HF_HOME.to_string(), self.hf_home().display().to_string());
+    result.insert(
+      BODHI_LOGS.to_string(),
+      self.logs_dir().display().to_string(),
+    );
+    result.insert(BODHI_HOST.to_string(), self.host());
+    result.insert(BODHI_PORT.to_string(), self.port().to_string());
+    result
   }
 }
 
@@ -436,6 +455,39 @@ mod test {
       .return_once(move |_| Err(VarError::NotPresent));
     let result = EnvService::new(mock).port();
     assert_eq!(1135, result);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_env_service_list() -> anyhow::Result<()> {
+    let mut mock = MockEnvWrapper::default();
+    mock
+      .expect_var()
+      .with(eq(BODHI_HOST))
+      .return_once(move |_| Ok("0.0.0.0".to_string()));
+    mock
+      .expect_var()
+      .with(eq(BODHI_PORT))
+      .return_once(move |_| Ok("8080".to_string()));
+    let result = EnvService::new_with_args(
+      mock,
+      PathBuf::from("/tmp/bodhi_home"),
+      PathBuf::from("/tmp/hf_home"),
+    );
+    let actual = result.list();
+    let mut expected = HashMap::<String, String>::new();
+    expected.insert("BODHI_HOME".to_string(), "/tmp/bodhi_home".to_string());
+    expected.insert("HF_HOME".to_string(), "/tmp/hf_home".to_string());
+    expected.insert("BODHI_LOGS".to_string(), "/tmp/hf_home/logs".to_string());
+    expected.insert("BODHI_HOST".to_string(), "0.0.0.0".to_string());
+    expected.insert("BODHI_PORT".to_string(), "8080".to_string());
+    assert_eq!(expected.len(), actual.len());
+    for key in expected.keys() {
+      assert_eq!(
+        expected.get(key).expect(&format!("{} to be present", &key)),
+        actual.get(key).expect(&format!("{} to be present", &key))
+      );
+    }
     Ok(())
   }
 }

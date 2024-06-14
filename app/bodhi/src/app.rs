@@ -1,9 +1,7 @@
 use crate::{native::NativeCommand, AppError};
 use axum::Router;
 use bodhicore::{
-  cli::{Cli, Command, ServeCommand},
-  service::{AppService, EnvService, EnvServiceFn, HfHubService, LocalDataService},
-  CreateCommand, ListCommand, PullCommand, RunCommand,
+  cli::{Cli, Command, ServeCommand}, service::{AppService, EnvService, EnvServiceFn, HfHubService, LocalDataService}, CreateCommand, EnvCommand, ListCommand, PullCommand, RunCommand
 };
 use clap::Parser;
 use include_dir::{include_dir, Dir};
@@ -37,6 +35,9 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
   // or the executable was called from outside the `Bodhi.app` bundle
   let cli = Cli::parse();
   match cli.command {
+    Command::Envs {} => {
+      EnvCommand::new(service).execute()?;
+    },
     Command::App { ui } => {
       NativeCommand::new(service, ui).execute(Some(static_router()))?;
     }

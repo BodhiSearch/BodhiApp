@@ -3,6 +3,7 @@ mod command;
 mod create;
 #[cfg(test)]
 pub mod create;
+mod envs;
 mod error;
 mod list;
 mod pull;
@@ -11,6 +12,7 @@ mod serve;
 
 pub use command::*;
 pub use create::CreateCommand;
+pub use envs::EnvCommand;
 pub use error::CliError;
 pub use list::ListCommand;
 pub use pull::PullCommand;
