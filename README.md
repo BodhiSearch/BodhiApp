@@ -100,6 +100,10 @@ Once the alias is created, you can run the above model in interactive mode using
 
 `bodhi run tinyllama:mymodel`
 
+# Convert Huggingface model to GGUF format
+
+You can convert a Huggingface model to GGUF format using Python library [GGUF](https://pypi.org/project/gguf/).
+
 # CLI
 
 ## `bodhi --help`
