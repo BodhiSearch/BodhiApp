@@ -66,8 +66,8 @@ So for chat completion, you need to use a RLHF/Instruct fine-tuned models rather
 | llama3 8B      | 8B         | 4.7 GB  | `bodhi run llama3:instruct`             |
 | llama3 70B     | 70B        | 40.0 GB | `bodhi run llama3:70b-instruct`         |
 | llama2         |            |         | `bodhi run llama2:chat`                 |
-| llama2 13B     |            |         | `bodhi run llama2-13b:chat`             |
-| llama2 70B     |            |         | `bodhi run llama2-70b:chat`             |
+| llama2 13B     |            |         | `bodhi run llama2:13b-chat`             |
+| llama2 70B     |            |         | `bodhi run llama2:70b-chat`             |
 | phi3 mini      |            |         | `bodhi run phi3:mini`                   |
 | mistral 7B     |            |         | `bodhi run mistral:instruct`            |
 | gemma 7b       |            |         | `bodhi run gemma:instruct`              |
