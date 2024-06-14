@@ -70,7 +70,6 @@ So for chat completion, you need to use a RLHF/Instruct fine-tuned models rather
 | llama2 70B     |            |         | `bodhi run llama2-70b:chat`             |
 | phi3 mini      |            |         | `bodhi run phi3:mini`                   |
 | mistral 7B     |            |         | `bodhi run mistral:instruct`            |
-| mixtral 8x7B   |            |         | `bodhi run mixtral:instruct`            |
 | gemma 7b       |            |         | `bodhi run gemma:instruct`              |
 | gemma 7b 1.1   |            |         | `bodhi run gemma:7b-instruct-v1.1-q8_0` |
 | tinyllama 1.1B |            |         | `bodhi run tinyllama:instruct`          |
