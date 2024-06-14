@@ -4,6 +4,7 @@ use clap::{ArgGroup, Parser, Subcommand};
 use strum::Display;
 
 #[derive(Debug, PartialEq, Parser)]
+#[command(name = "bodhi")]
 #[command(version)]
 #[command(about = "Run GenerativeAI LLMs locally and serve them via OpenAI compatible API")]
 pub struct Cli {
