@@ -1,6 +1,6 @@
 [package]
 name = "bodhi"
-version = "0.0.10-dev"
+version = "0.0.11-dev"
 edition = "2021"
 description = "Run LLMs locally"
 license = "MIT"
