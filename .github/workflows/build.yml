@@ -5,8 +5,6 @@ on:
     branches:
       - main
   workflow_dispatch:
-    branches:
-      - main
 
 env:
   CI: true
@@ -20,7 +18,7 @@ jobs:
         include:
           - platform: "macos-latest"
             target: aarch64-apple-darwin
-            llama_cpp_build_flags: "-DLLAMA_METAL_EMBED_LIBRARY=ON"
+            llama_cpp_build_flags: "-DGGML_METAL_EMBED_LIBRARY=ON -DGGML_OPENMP=OFF"
     runs-on: ${{ matrix.platform }}
     steps:
       - name: envs
