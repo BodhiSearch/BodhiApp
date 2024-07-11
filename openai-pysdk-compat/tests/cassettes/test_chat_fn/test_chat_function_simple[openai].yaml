@@ -1,0 +1,112 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "user", "content": "What''s the weather like in
+      Boston today?"}], "model": "gpt-4o-2024-05-13", "functions": [{"name": "get_current_weather",
+      "description": "Get the current weather in a given location", "parameters":
+      {"type": "object", "properties": {"location": {"type": "string", "description":
+      "The city and state, e.g. San Francisco, CA"}, "unit": {"type": "string", "enum":
+      ["celsius", "fahrenheit"]}}, "required": ["location"]}}]}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '459'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: |
+        {
+          "id": "chatcmpl-9jlamhu2vnPr6D84bOzUsudxU6lDY",
+          "object": "chat.completion",
+          "created": 1720694732,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "get_current_weather",
+                  "arguments": "{\"location\":\"Boston, MA\"}"
+                }
+              },
+              "logprobs": null,
+              "finish_reason": "function_call"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 80,
+            "completion_tokens": 17,
+            "total_tokens": 97
+          },
+          "system_fingerprint": "fp_d33f7b429e"
+        }
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8a18345a798f913f-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 11 Jul 2024 10:45:33 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '605'
+      openai-processing-ms:
+      - '671'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599973'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 2ms
+      x-request-id:
+      - req_5105789679e44b45e42d1ada0a5a1839
+    status:
+      code: 200
+      message: OK
+version: 1
