@@ -49,29 +49,51 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisOPaImhlfFvqvXVTnOoRUfnRkY\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394388,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": null,\n        \"tool_calls\": [\n          {\n
-        \           \"id\": \"call_2rte4kKQULeEcIKXPiiBrnEA\",\n            \"type\":
-        \"function\",\n            \"function\": {\n              \"name\": \"Student\",\n
-        \             \"arguments\": \"{\\\"name\\\":\\\"David Nguyen\\\",\\\"major\\\":\\\"Computer
-        Science\\\",\\\"school\\\":\\\"Stanford University\\\",\\\"grades\\\":3.8,\\\"club\\\":\\\"Robotics
-        Club\\\"}\"\n            }\n          }\n        ]\n      },\n      \"logprobs\":
-        null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        186,\n    \"completion_tokens\": 29,\n    \"total_tokens\": 215\n  },\n  \"system_fingerprint\":
-        \"fp_729ea513f7\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhjwUrainOWzHVd04BvSVZ1wD6t1",
+          "object": "chat.completion",
+          "created": 1720679924,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_3DO6OAPxuY8Jbx7kHPjPY326",
+                    "type": "function",
+                    "function": {
+                      "name": "Student",
+                      "arguments": "{\"name\":\"David Nguyen\",\"major\":\"Computer Science\",\"school\":\"Stanford University\",\"grades\":3.8,\"club\":\"Robotics Club\"}"
+                    }
+                  }
+                ]
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 186,
+            "completion_tokens": 29,
+            "total_tokens": 215
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e177e2de57fe5-MAA
+      - 8a16cad79b37913f-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:09 GMT
+      - Thu, 11 Jul 2024 06:38:45 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,11 +103,11 @@ interactions:
       content-length:
       - '844'
       openai-processing-ms:
-      - '632'
+      - '983'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -99,7 +121,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 11ms
       x-request-id:
-      - req_d232caf1e965bfead4dc89209fd956ec
+      - req_3db66cd380dd76da517c28e9d27cf5c0
     status:
       code: 200
       message: OK

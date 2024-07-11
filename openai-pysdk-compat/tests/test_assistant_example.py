@@ -70,4 +70,4 @@ def test_assistant_example_with_file(client: OpenAI, model):
     assistant_id=assistant.id,
   )
   messages = client.beta.threads.messages.list(thread_id=thread.id)
-  assert "specific action taken by an Assistant" in messages.data[0].content[0].text.value
+  assert "list of actions that an Assistant takes" in messages.data[0].content[0].text.value

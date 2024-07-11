@@ -32,19 +32,24 @@ interactions:
     uri: https://api.openai.com/v1/models/gpt-4o-2024-05-13
   response:
     body:
-      string: "{\n  \"id\": \"gpt-4o-2024-05-13\",\n  \"object\": \"model\",\n  \"created\":
-        1715368132,\n  \"owned_by\": \"system\"\n}\n"
+      string: |
+        {
+          "id": "gpt-4o-2024-05-13",
+          "object": "model",
+          "created": 1715368132,
+          "owned_by": "system"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e1a1359be8031-MAA
+      - 8a16cb3d0f3017b3-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:14:54 GMT
+      - Thu, 11 Jul 2024 06:39:00 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -56,13 +61,13 @@ interactions:
       content-length:
       - '102'
       openai-processing-ms:
-      - '40'
+      - '30'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_8055e8b68e1be0bea9bc18f6a78caa0c
+      - req_1857900373f24f67511939a9d878d3f9
     status:
       code: 200
       message: OK

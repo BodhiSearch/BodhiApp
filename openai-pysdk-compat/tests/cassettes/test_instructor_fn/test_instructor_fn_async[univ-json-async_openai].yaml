@@ -53,25 +53,41 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisjvnNdYIoooYyKyQsXxPGOKVi9\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394409,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"Stanford University\\\",\\n
-        \ \\\"ranking\\\": 5,\\n  \\\"country\\\": \\\"United States\\\",\\n  \\\"no_of_students\\\":
-        17000\\n}\"\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
-        \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 339,\n    \"completion_tokens\":
-        36,\n    \"total_tokens\": 375\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhk7Z4XI59BFrNKypKY7PjI4Dt3M",
+          "object": "chat.completion",
+          "created": 1720679935,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "{\n  \"name\": \"Stanford University\",\n  \"ranking\": 5,\n  \"country\": \"United States\",\n  \"no_of_students\": 17000\n}"
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 339,
+            "completion_tokens": 36,
+            "total_tokens": 375
+          },
+          "system_fingerprint": "fp_d33f7b429e"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e18025c307ffb-MAA
+      - 8a16cb1c89f817aa-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:30 GMT
+      - Thu, 11 Jul 2024 06:38:56 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,11 +97,11 @@ interactions:
       content-length:
       - '587'
       openai-processing-ms:
-      - '1031'
+      - '761'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -99,7 +115,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 37ms
       x-request-id:
-      - req_310e862b45c017a5956c320de93497c3
+      - req_c0690c87c3c4293467b3e8b21b27b29f
     status:
       code: 200
       message: OK

@@ -35,15 +35,20 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n    \"error\": {\n        \"message\": \"Incorrect API key provided:
-        sk-foobar. You can find your API key at https://platform.openai.com/account/api-keys.\",\n
-        \       \"type\": \"invalid_request_error\",\n        \"param\": null,\n        \"code\":
-        \"invalid_api_key\"\n    }\n}\n"
+      string: |
+        {
+            "error": {
+                "message": "Incorrect API key provided: sk-foobar. You can find your API key at https://platform.openai.com/account/api-keys.",
+                "type": "invalid_request_error",
+                "param": null,
+                "code": "invalid_api_key"
+            }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887daf727bb27f6e-MAA
+      - 8a16c9ed9840179a-MAA
       Connection:
       - keep-alive
       Content-Length:
@@ -51,17 +56,17 @@ interactions:
       Content-Type:
       - application/json; charset=utf-8
       Date:
-      - Wed, 22 May 2024 15:02:06 GMT
+      - Thu, 11 Jul 2024 06:38:07 GMT
       Server:
       - cloudflare
       alt-svc:
       - h3=":443"; ma=86400
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       vary:
       - Origin
       x-request-id:
-      - req_885bfe3eb5714dd5568d25ce04cdf3e1
+      - req_ee921a816fd137069b94ad489248b192
     status:
       code: 401
       message: Unauthorized

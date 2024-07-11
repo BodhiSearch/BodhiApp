@@ -32,59 +32,264 @@ interactions:
     uri: https://api.openai.com/v1/files
   response:
     body:
-      string: "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"object\":
-        \"file\",\n      \"id\": \"file-i2yNF9TM6TMBYbTErymhNaG1\",\n      \"purpose\":
-        \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n      \"bytes\":
-        3395,\n      \"created_at\": 1716438856,\n      \"status\": \"processed\",\n
-        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
-        \     \"id\": \"file-Qfg6Wbf4IOoQTdyBozgdElzq\",\n      \"purpose\": \"assistants\",\n
-        \     \"filename\": \"file-to-upload.txt\",\n      \"bytes\": 3395,\n      \"created_at\":
-        1716438817,\n      \"status\": \"processed\",\n      \"status_details\": null\n
-        \   },\n    {\n      \"object\": \"file\",\n      \"id\": \"file-utwlH66iyvPBs61N1uIP2ANE\",\n
-        \     \"purpose\": \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n
-        \     \"bytes\": 3395,\n      \"created_at\": 1716438816,\n      \"status\":
-        \"processed\",\n      \"status_details\": null\n    },\n    {\n      \"object\":
-        \"file\",\n      \"id\": \"file-QVseHr79298b92oBWcr0HqDB\",\n      \"purpose\":
-        \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n      \"bytes\":
-        3395,\n      \"created_at\": 1716438412,\n      \"status\": \"processed\",\n
-        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
-        \     \"id\": \"file-Roitvu7Hr99F4RDFq4S43ZZE\",\n      \"purpose\": \"assistants\",\n
-        \     \"filename\": \"file-to-upload.txt\",\n      \"bytes\": 3395,\n      \"created_at\":
-        1716438411,\n      \"status\": \"processed\",\n      \"status_details\": null\n
-        \   },\n    {\n      \"object\": \"file\",\n      \"id\": \"file-NCvNlyzgFu4oX1QFZ9tdkDu6\",\n
-        \     \"purpose\": \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n
-        \     \"bytes\": 3395,\n      \"created_at\": 1716438283,\n      \"status\":
-        \"processed\",\n      \"status_details\": null\n    },\n    {\n      \"object\":
-        \"file\",\n      \"id\": \"file-out8EXJbAQJuHdTDHhupFozS\",\n      \"purpose\":
-        \"assistants\",\n      \"filename\": \"file-to-upload.txt\",\n      \"bytes\":
-        3395,\n      \"created_at\": 1716438282,\n      \"status\": \"processed\",\n
-        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
-        \     \"id\": \"file-j1rGpJcCULA1CwiOEyAhAtCB\",\n      \"purpose\": \"assistants\",\n
-        \     \"filename\": \"file-to-upload.txt\",\n      \"bytes\": 3395,\n      \"created_at\":
-        1716438037,\n      \"status\": \"processed\",\n      \"status_details\": null\n
-        \   },\n    {\n      \"object\": \"file\",\n      \"id\": \"file-s90wY4WGi9OwONWCT3AXvCX9\",\n
-        \     \"purpose\": \"assistants\",\n      \"filename\": \"chatgpt-ui.jpeg\",\n
-        \     \"bytes\": 460092,\n      \"created_at\": 1716437790,\n      \"status\":
-        \"processed\",\n      \"status_details\": null\n    },\n    {\n      \"object\":
-        \"file\",\n      \"id\": \"file-fFyWMbMIXaBRmrigIQUIdin7\",\n      \"purpose\":
-        \"assistants\",\n      \"filename\": \"chatgpt-ui.jpeg\",\n      \"bytes\":
-        460092,\n      \"created_at\": 1716437347,\n      \"status\": \"processed\",\n
-        \     \"status_details\": null\n    },\n    {\n      \"object\": \"file\",\n
-        \     \"id\": \"file-Wnz2xkeVFAc7ieu7K2Kk4PU9\",\n      \"purpose\": \"assistants\",\n
-        \     \"filename\": \"chatgpt-ui.jpeg\",\n      \"bytes\": 460092,\n      \"created_at\":
-        1716436112,\n      \"status\": \"processed\",\n      \"status_details\": null\n
-        \   }\n  ],\n  \"has_more\": false\n}\n"
+      string: |
+        {
+          "object": "list",
+          "data": [
+            {
+              "object": "file",
+              "id": "file-uJMocn2iwSvNhhNYaoBTKobG",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1720679891,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-uyJYSbPySXQIgtjMcH3p9kMM",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1720679890,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-5RRM4jk8wR7Q47QmnQsuS3E7",
+              "purpose": "assistants",
+              "filename": "assistants-guide.md",
+              "bytes": 19836,
+              "created_at": 1720679871,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-G08t1WAY6fkAsVCYNnmSIcIU",
+              "purpose": "assistants",
+              "filename": "assistants-guide.md",
+              "bytes": 19836,
+              "created_at": 1716471819,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-W3CRS9jgv6dujYahe7Ps10ri",
+              "purpose": "assistants",
+              "filename": "assistants-guide.md",
+              "bytes": 19836,
+              "created_at": 1716471475,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-Q5ga16Rb6QqgU8NBLaMeyJQA",
+              "purpose": "assistants",
+              "filename": "assistants-guide.md",
+              "bytes": 19836,
+              "created_at": 1716470166,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-gQHz6jVmAWBy1Cexwp5koFJQ",
+              "purpose": "assistants",
+              "filename": "assistants-guide.md",
+              "bytes": 19836,
+              "created_at": 1716469585,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-RM29UM5t00PDdiGf8QWxkGaW",
+              "purpose": "assistants",
+              "filename": "London.png",
+              "bytes": 633373,
+              "created_at": 1716446408,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-JZroHyMe0dqxA6MzGP5C1c54",
+              "purpose": "assistants",
+              "filename": "London.png",
+              "bytes": 633373,
+              "created_at": 1716446033,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-QvqI5qqPluVU3LMb0zcRx7CD",
+              "purpose": "assistants",
+              "filename": "London.png",
+              "bytes": 633373,
+              "created_at": 1716445981,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-zpkwk6jieCU1PHFgmBfZAWpM",
+              "purpose": "fine-tune",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716439653,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-kz3K4QGRda5ia6h1sOro3ZOJ",
+              "purpose": "fine-tune",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716439521,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-0WRTuUnhQBrGXA0KNyh6FzBH",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716439445,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-i2yNF9TM6TMBYbTErymhNaG1",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438856,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-Qfg6Wbf4IOoQTdyBozgdElzq",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438817,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-utwlH66iyvPBs61N1uIP2ANE",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438816,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-QVseHr79298b92oBWcr0HqDB",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438412,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-Roitvu7Hr99F4RDFq4S43ZZE",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438411,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-NCvNlyzgFu4oX1QFZ9tdkDu6",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438283,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-out8EXJbAQJuHdTDHhupFozS",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438282,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-j1rGpJcCULA1CwiOEyAhAtCB",
+              "purpose": "assistants",
+              "filename": "file-to-upload.txt",
+              "bytes": 3395,
+              "created_at": 1716438037,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-s90wY4WGi9OwONWCT3AXvCX9",
+              "purpose": "assistants",
+              "filename": "chatgpt-ui.jpeg",
+              "bytes": 460092,
+              "created_at": 1716437790,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-fFyWMbMIXaBRmrigIQUIdin7",
+              "purpose": "assistants",
+              "filename": "chatgpt-ui.jpeg",
+              "bytes": 460092,
+              "created_at": 1716437347,
+              "status": "processed",
+              "status_details": null
+            },
+            {
+              "object": "file",
+              "id": "file-Wnz2xkeVFAc7ieu7K2Kk4PU9",
+              "purpose": "assistants",
+              "filename": "chatgpt-ui.jpeg",
+              "bytes": 460092,
+              "created_at": 1716436112,
+              "status": "processed",
+              "status_details": null
+            }
+          ],
+          "has_more": false
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 88825528ba063c06-BLR
+      - 8a16ca0ead9b396c-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 04:34:17 GMT
+      - Thu, 11 Jul 2024 06:38:12 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -94,15 +299,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '2961'
+      - '6383'
       openai-processing-ms:
-      - '54'
+      - '62'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_8fdb43abec77b2a0311484545b25d79f
+      - req_e5ea326d9cbc69b0e59f36c7d697e38a
     status:
       code: 200
       message: OK

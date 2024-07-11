@@ -39,48 +39,41 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9ReWZAPSZKThQ11jd55SNPcFodV4f\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716377659,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"The uploaded image shows the user interface
-        of ChatGPT, a web-based chatbot. Here is a detailed breakdown of the interface
-        elements:\\n\\n1. **Browser Tabs and Address Bar**: \\n   - At the top of
-        the screen, you can see the typical browser elements including tabs and an
-        address bar.\\n   - The active tab is showing the title \\\"ChatGPT\\\" and
-        the URL is \\\"chatgpt.com/?oai=dm=1\\\".\\n\\n2. **Main Interface Header**:\\n
-        \  - The top part of the window has a dark green header with the ChatGPT logo
-        (an interlocking hexagon symbol) and the label \\\"ChatGPT 4.0\\\".\\n   -
-        There are also icons for user settings and other options in the upper right
-        corner, with a green circle containing the initials \\\"AM\\\".\\n\\n3. **Central
-        Section**:\\n   - The main section of the interface has a dark background
-        with five elements.\\n   - In the center, there is the ChatGPT logo prominently
-        displayed.\\n   - Below the logo are four box icons with text descriptions:\\n
-        \    - \\\"Fun fact about the Roman Empire\\\" with a gift box icon.\\n     -
-        \\\"Study vocabulary\\\" with a graduation cap icon.\\n     - \\\"Text inviting
-        neighbors to barbecue\\\" with an envelope icon.\\n     - \\\"Activities to
-        make friends in new city\\\" with a location pin icon.\\n\\n4. **Message Input
-        Area**:\\n   - At the bottom of the interface is the message input section.\\n
-        \  - There is a text input box labeled \\\"Message ChatGPT\\\".\\n   - To
-        the right of the input box, there is a send button (represented by a paper
-        airplane icon).\\n   - Below the input box, there's a gray bar with the text
-        \\\"ChatGPT can make mistakes. Check important info.\\\"\\n\\n5. **Background**:\\n
-        \  - The overall background beyond the main dark interface has an image of
-        a scenic landscape with mountains and a cloudy sky.\\n\\nThis interface is
-        designed to provide a sleek, dark-themed environment for users to interact
-        with the ChatGPT chatbot.\"\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
-        \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 1145,\n    \"completion_tokens\":
-        409,\n    \"total_tokens\": 1554\n  },\n  \"system_fingerprint\": \"fp_927397958d\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhjbzyXpcKQLNNfh9ke995ZxYJ4N",
+          "object": "chat.completion",
+          "created": 1720679903,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The uploaded image shows the user interface of the ChatGPT application, specifically the ChatGPT-4 model, as indicated in the URL \"chatgpt.com/?oai=dm=1\" and the header \"ChatGPT 4.0\".\n\nHere's a detailed breakdown of the interface:\n\n### Header Section:\n1. **URL Bar:** Displays the URL \"chatgpt.com/?oai=dm=1\".\n2. **Browser Tab:** The tab is titled \"ChatGPT\".\n3. **Icons:** Common browser window icons on the top right, including browser extension icons, user profile icon (with initials \"AM\"), and window controls (minimize, maximize/restore, and close).\n\n### Main Body:\n1. **Sidebar (Left):**\n   - A **menu icon** (three horizontal lines).\n   - A **document icon** with a plus sign, likely to start a new conversation or document.\n   - The text \"ChatGPT 4.0\" with a dropdown arrow, suggesting the selection or display of the current model (ChatGPT-4).\n   \n2. **Central Area:**\n   - **ChatGPT Logo:** At the center.\n   - **Suggestions:** Four clickable suggestion tiles are displayed, each with an icon and text indicating different suggested actions:\n     - \"Fun fact about the Roman Empire\"\n     - \"Study vocabulary\"\n     - \"Text inviting neighbors to barbecue\"\n     - \"Activities to make friends in new city\"\n     \n3. **Bottom Bar:**\n   - **Message Input Box:** Contains the placeholder text \"Message ChatGPT\".\n   - **Attachment Icon:** Represented by a paperclip.\n   - **Send Button:** Located to the right of the input box, represented by an airplane paper icon.\n   - **Disclaimer Text:** Reads \"ChatGPT can make mistakes. Check important info.\"\n   - **Info/Help Icon:** A question mark inside a circle on the bottom right, likely for help or additional information.\n\n### Overall Theme:\n- The interface uses a dark mode theme with a dark background and white text.\n- The user interface is clean and minimalistic, focusing on functionality with helpful suggested actions.\n\n### Background:\n- The background appears to display a blurred landscape image with trees and mountain ridges.\n\nThe interface is designed to be user-friendly, providing easy access to starting a conversation with ChatGPT and offering suggested prompts for quick interactions."
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 1145,
+            "completion_tokens": 483,
+            "total_tokens": 1628
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887c7efe0c367f91-MAA
+      - 8a16ca3ffdb8b2a5-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 11:34:27 GMT
+      - Thu, 11 Jul 2024 06:38:31 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -88,13 +81,13 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '2317'
+      - '2677'
       openai-processing-ms:
-      - '10800'
+      - '9982'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -108,7 +101,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 82ms
       x-request-id:
-      - req_4ced131faedf5c257ed99af19af925b7
+      - req_fc79de4b6858e3a3405e04941e2f356b
     status:
       code: 200
       message: OK

@@ -50,26 +50,45 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9Risqc5OemUAsc0LQMOWqlIbJTmpk\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394416,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": null,\n        \"function_call\": {\n
-        \         \"name\": \"University\",\n          \"arguments\": \"{\\\"name\\\":\\\"Stanford
-        University\\\",\\\"ranking\\\":5,\\\"country\\\":\\\"United States\\\",\\\"no_of_students\\\":17000}\"\n
-        \       }\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
-        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 215,\n    \"completion_tokens\":
-        23,\n    \"total_tokens\": 238\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhkApEUoFsHdzuEReEO8rN29UZk6",
+          "object": "chat.completion",
+          "created": 1720679938,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "University",
+                  "arguments": "{\"name\":\"Stanford University\",\"ranking\":5,\"country\":\"United States\",\"no_of_students\":17000}"
+                }
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 215,
+            "completion_tokens": 23,
+            "total_tokens": 238
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e182efd4c7f96-MAA
+      - 8a16cb2c19a39147-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:37 GMT
+      - Thu, 11 Jul 2024 06:38:59 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -79,11 +98,11 @@ interactions:
       content-length:
       - '663'
       openai-processing-ms:
-      - '584'
+      - '790'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -97,7 +116,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 13ms
       x-request-id:
-      - req_825fd730c53a0e7c4cb59c08fd414500
+      - req_325dce5b3813369db1975d9cc842564d
     status:
       code: 200
       message: OK

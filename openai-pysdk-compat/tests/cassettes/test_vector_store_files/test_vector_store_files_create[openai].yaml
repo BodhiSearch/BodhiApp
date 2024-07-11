@@ -36,23 +36,37 @@ interactions:
     uri: https://api.openai.com/v1/vector_stores
   response:
     body:
-      string: "{\n  \"id\": \"vs_z7r2OYHsaMp4MWT025PHctZ4\",\n  \"object\": \"vector_store\",\n
-        \ \"name\": \"test-vector-store-files\",\n  \"status\": \"completed\",\n  \"usage_bytes\":
-        0,\n  \"created_at\": 1716471819,\n  \"file_counts\": {\n    \"in_progress\":
-        0,\n    \"completed\": 0,\n    \"failed\": 0,\n    \"cancelled\": 0,\n    \"total\":
-        0\n  },\n  \"metadata\": {},\n  \"expires_after\": null,\n  \"expires_at\":
-        null,\n  \"last_active_at\": 1716471819\n}"
+      string: |-
+        {
+          "id": "vs_tp1G1QA9UuoctOetsWsrawUT",
+          "object": "vector_store",
+          "name": "test-vector-store-files",
+          "status": "completed",
+          "usage_bytes": 0,
+          "created_at": 1720679941,
+          "file_counts": {
+            "in_progress": 0,
+            "completed": 0,
+            "failed": 0,
+            "cancelled": 0,
+            "total": 0
+          },
+          "metadata": {},
+          "expires_after": null,
+          "expires_at": null,
+          "last_active_at": 1720679941
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888579e42fb23c00-BLR
+      - 8a16cb41ee11a92c-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 13:43:39 GMT
+      - Thu, 11 Jul 2024 06:39:01 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -62,251 +76,260 @@ interactions:
       content-length:
       - '394'
       openai-processing-ms:
-      - '61'
+      - '96'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_2848efb282b20ea38ffe31dff4ae77f8
+      - req_71696253cd317b7beef7ced60d46d8e8
     status:
       code: 200
       message: OK
 - request:
-    body: "--d641d248684654a1c5a28f3972df487d\r\nContent-Disposition: form-data; name=\"purpose\"\r\n\r\nassistants\r\n--d641d248684654a1c5a28f3972df487d\r\nContent-Disposition:
-      form-data; name=\"file\"; filename=\"assistants-guide.md\"\r\nContent-Type:
-      application/octet-stream\r\n\r\nThe Assistants API is designed to help developers
-      build powerful AI assistants capable of performing a variety of tasks.\n\nThe
-      Assistants API is in **beta** and we are actively working on adding more functionality.
-      Share your feedback in our [Developer Forum](https://community.openai.com/)!\n\n1.
-      \ Assistants can call OpenAI\u2019s **[models](https://platform.openai.com/docs/models)**
-      with specific instructions to tune their personality and capabilities.\n2.  Assistants
-      can access **multiple tools in parallel**. These can be both OpenAI-hosted tools
-      \u2014\_like [code\\_interpreter](https://platform.openai.com/docs/assistants/tools/code-interpreter)
-      and [file\\_search](https://platform.openai.com/docs/assistants/tools/file-search)
-      \u2014 or tools you build / host (via [function calling](https://platform.openai.com/docs/assistants/tools/function-calling)).\n3.
-      \ Assistants can access **persistent Threads**. Threads simplify AI application
-      development by storing message history and truncating it when the conversation
-      gets too long for the model\u2019s context length. You create a Thread once,
-      and simply append Messages to it as your users reply.\n4.  Assistants can access
-      files in several formats \u2014 either as part of their creation or as part
-      of Threads between Assistants and users. When using tools, Assistants can also
-      create files (e.g., images, spreadsheets, etc) and cite files they reference
-      in the Messages they create.\n\n\n## [Objects](https://platform.openai.com/docs/assistants/how-it-works/objects)\n\n![Assistants
-      object architecture diagram](https://cdn.openai.com/API/docs/images/diagram-assistant.webp)\n\n|
-      Object | What it represents |\n| --- | --- |\n| Assistant | Purpose-built AI
-      that uses OpenAI\u2019s [models](https://platform.openai.com/docs/models) and
-      calls [tools](https://platform.openai.com/docs/assistants/tools) |\n| Thread
-      | A conversation session between an Assistant and a user. Threads store Messages
-      and automatically handle truncation to fit content into a model\u2019s context.
-      |\n| Message | A message created by an Assistant or a user. Messages can include
-      text, images, and other files. Messages stored as a list on the Thread. |\n|
-      Run | An invocation of an Assistant on a Thread. The Assistant uses its configuration
-      and the Thread\u2019s Messages to perform tasks by calling models and tools.
-      As part of a Run, the Assistant appends Messages to the Thread. |\n| Run Step
-      | A detailed list of steps the Assistant took as part of a Run. An Assistant
-      can call tools or create Messages during its run. Examining Run Steps allows
-      you to introspect how the Assistant is getting to its final results. |\n\n\n##
-      [Creating Assistants](https://platform.openai.com/docs/assistants/how-it-works/creating-assistants)\n\nWe
-      recommend using OpenAI\u2019s [latest models](https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo)
-      with the Assistants API for best results and maximum compatibility with tools.\n\nTo
-      get started, creating an Assistant only requires specifying the `model` to use.
-      But you can further customize the behavior of the Assistant:\n\n1.  Use the
-      `instructions` parameter to guide the personality of the Assistant and define
-      its goals. Instructions are similar to system messages in the Chat Completions
-      API.\n2.  Use the `tools` parameter to give the Assistant access to up to tools.
-      You can give it access to OpenAI-hosted tools like `code_interpreter` and `file_search`,
-      or call a third-party tools via a `function` calling.\n3.  Use the `tool_resources`
-      parameter to give the tools like `code_interpreter` and `file_search` access
-      to files. Files are uploaded using the `File` [upload endpoint](https://platform.openai.com/docs/api-reference/files/create)
-      and must have the `purpose` set to `assistants` to be used with this API.\n\nFor
-      example, to create an Assistant that can create data visualization based on
-      a `.csv` file, first upload a file.\n\n```python\nfile = client.files.create(
-      file=open(\"revenue-forecast.csv\", \"rb\"), purpose='assistants' )\n```\n\nThen,
-      create the Assistant with the `code_interpreter` tool enabled and provide the
-      file as a resource to the tool.\n\n```python\nassistant = client.beta.assistants.create(
-      name=\"Data visualizer\", description=\"You are great at creating beautiful
-      data visualizations. You analyze data present in .csv files, understand trends,
-      and come up with data visualizations relevant to those trends. You also share
-      a brief text summary of the trends observed.\", model=\"gpt-4o\", tools=[{\"type\":
-      \"code_interpreter\"}], tool_resources={ \"code_interpreter\": { \"file_ids\":
-      [file.id] } } )\n```\n\nYou can attach a maximum of files to `code_interpreter`
-      and 10,files to `file_search` (using `vector_store` [objects](https://platform.openai.com/docs/api-reference/vector-stores/object)).\n\nEach
-      file can be at most MB in size and have a maximum of 5,000,tokens. By default,
-      the size of all the files uploaded by your organization cannot exceed GB, but
-      you can reach out to our support team to increase this limit.\n\n\n## [Managing
-      Threads and Messages](https://platform.openai.com/docs/assistants/how-it-works/managing-threads-and-messages)\n\nThreads
-      and Messages represent a conversation session between an Assistant and a user.
-      There is no limit to the number of Messages you can store in a Thread. Once
-      the size of the Messages exceeds the context window of the model, the Thread
-      will attempt to smartly truncate messages, before fully dropping the ones it
-      considers the least important.\n\nYou can create a Thread with an initial list
-      of Messages like this:\n\n```python\nthread = client.beta.threads.create( messages=[
-      { \"role\": \"user\", \"content\": \"Create data visualizations based on the
-      trends in this file.\", \"attachments\": [ { \"file_id\": file.id, \"tools\":
-      [{\"type\": \"code_interpreter\"}] } ] } ] )\n```\n\nMessages can contain text,
-      images, or file attachment. Message `attachments` are helper methods that add
-      files to a thread's `tool_resources`. You can also choose to add files to the
-      `thread.tool_resources` directly.\n\n\n### [Creating image input content](https://platform.openai.com/docs/assistants/how-it-works/creating-image-input-content)\n\nMessage
-      content can contain either external image URLs or File IDs uploaded via the
-      [File API](https://platform.openai.com/docs/api-reference/files/create). Only
-      [models](https://platform.openai.com/docs/models) with Vision support can accept
-      image input. Supported image content types include png, jpg, gif, and webp.
-      When creating image files, pass `purpose=\"vision\"` to allow you to later download
-      and display the input content. Currently, there is a 100GB limit per organization
-      and 10GB for user in organization. Please contact us to request a limit increase.\n\nTools
-      cannot access image content unless specified. To pass image files to Code Interpreter,
-      add the file ID in the message `attachments` list to allow the tool to read
-      and analyze the input. Image URLs cannot be downloaded in Code Interpreter today.\n\n```python\nfile
-      = client.files.create( file=open(\"myimage.png\", \"rb\"), purpose=\"vision\"
-      ) thread = client.beta.threads.create( messages=[ { \"role\": \"user\", \"content\":
-      [ { \"type\": \"text\", \"text\": \"What is the difference between these images?\"
-      }, { \"type\": \"image_url\", \"image_url\": {\"url\": \"https://example.com/image.png\"}
-      }, { \"type\": \"image_file\", \"image_file\": (\"file_id\": file.id) }, ],
-      } ] )\n```\n\n\n#### [Low or high fidelity image understanding](https://platform.openai.com/docs/assistants/how-it-works/low-or-high-fidelity-image-understanding)\n\nBy
-      controlling the `detail` parameter, which has three options, `low`, `high`,
-      or `auto`, you have control over how the model processes the image and generates
-      its textual understanding.\n\n-   `low` will enable the \"low res\" mode. The
-      model will receive a low-res 512px x 512px version of the image, and represent
-      the image with a budget of tokens. This allows the API to return faster responses
-      and consume fewer input tokens for use cases that do not require high detail.\n-
-      \  `high` will enable \"high res\" mode, which first allows the model to see
-      the low res image and then creates detailed crops of input images based on the
-      input image size. Use the [pricing calculator](https://openai.com/api/pricing/)
-      to see token counts for various image sizes.\n\n```python\nthread = client.beta.threads.create(
-      messages=[ { \"role\": \"user\", \"content\": [ { \"type\": \"text\", \"text\":
-      \"What is this an image of?\" }, { \"type\": \"image_url\", \"image_url\": {
-      \"url\": \"https://example.com/image.png\" \"detail\": \"high\" } }, ], } ]
-      )\n```\n\n\n### [Context window management](https://platform.openai.com/docs/assistants/how-it-works/context-window-management)\n\nThe
-      Assistants API automatically manages the truncation to ensure it stays within
-      the model's maximum context length. You can customize this behavior by specifying
-      the maximum tokens you'd like a run to utilize and/or the maximum number of
-      recent messages you'd like to include in a run.\n\n\n#### [Max Completion and
-      Max Prompt Tokens](https://platform.openai.com/docs/assistants/how-it-works/max-completion-and-max-prompt-tokens)\n\nTo
-      control the token usage in a single Run, set `max_prompt_tokens` and `max_completion_tokens`
-      when creating the Run. These limits apply to the total number of tokens used
-      in all completions throughout the Run's lifecycle.\n\nFor example, initiating
-      a Run with `max_prompt_tokens` set to and `max_completion_tokens` set to means
-      the first completion will truncate the thread to tokens and cap the output at
-      tokens. If only prompt tokens and completion tokens are used in the first completion,
-      the second completion will have available limits of prompt tokens and completion
-      tokens.\n\nIf a completion reaches the `max_completion_tokens` limit, the Run
-      will terminate with a status of `incomplete`, and details will be provided in
-      the `incomplete_details` field of the Run object.\n\nWhen using the File Search
-      tool, we recommend setting the max\\_prompt\\_tokens to no less than 20,000.
-      For longer conversations or multiple interactions with File Search, consider
-      increasing this limit to 50,000, or ideally, removing the max\\_prompt\\_tokens
-      limits altogether to get the highest quality results.\n\n\n#### [Truncation
-      Strategy](https://platform.openai.com/docs/assistants/how-it-works/truncation-strategy)\n\nYou
-      may also specify a truncation strategy to control how your thread should be
-      rendered into the model's context window. Using a truncation strategy of type
-      `auto` will use OpenAI's default truncation strategy. Using a truncation strategy
-      of type `last_messages` will allow you to specify the number of the most recent
-      messages to include in the context window.\n\n\n### [Message annotations](https://platform.openai.com/docs/assistants/how-it-works/message-annotations)\n\nMessages
-      created by Assistants may contain [`annotations`](https://platform.openai.com/docs/api-reference/messages/object#messages/object-content)
-      within the `content` array of the object. Annotations provide information around
-      how you should annotate the text in the Message.\n\nThere are two types of Annotations:\n\n1.
-      \ `file_citation`: File citations are created by the [`file_search`](https://platform.openai.com/docs/assistants/tools/file-search)
-      tool and define references to a specific file that was uploaded and used by
-      the Assistant to generate the response.\n2.  `file_path`: File path annotations
-      are created by the [`code_interpreter`](https://platform.openai.com/docs/assistants/tools/code-interpreter)
-      tool and contain references to the files generated by the tool.\n\nWhen annotations
-      are present in the Message object, you'll see illegible model-generated substrings
-      in the text that you should replace with the annotations. These strings may
-      look something like `\u301013\u2020source\u3011` or `sandbox:/mnt/data/file.csv`.
-      Here\u2019s an example python code snippet that replaces these strings with
-      information present in the annotations.\n\n```python\n# Retrieve the message
-      object\nmessage = client.beta.threads.messages.retrieve(\n  thread_id=\"...\",\n
-      \ message_id=\"...\"\n)\n# Extract the message content\nmessage_content = message.content[0].text\nannotations
-      = message_content.annotations\ncitations = []\n# Iterate over the annotations
-      and add footnotes\nfor index, annotation in enumerate(annotations):\n    # Replace
-      the text with a footnote\n    message_content.value = message_content.value.replace(annotation.text,
-      f' [{index}]')\n    # Gather citations based on annotation attributes\n    if
-      (file_citation := getattr(annotation, 'file_citation', None)):\n        cited_file
-      = client.files.retrieve(file_citation.file_id)\n        citations.append(f'[{index}]
-      {file_citation.quote} from {cited_file.filename}')\n    elif (file_path := getattr(annotation,
-      'file_path', None)):\n        cited_file = client.files.retrieve(file_path.file_id)\n
-      \       citations.append(f'[{index}] Click <here> to download {cited_file.filename}')\n
-      \       # Note: File download functionality not implemented above for brevity\n#
-      Add footnotes to the end of the message before displaying to user\nmessage_content.value
-      += '\\n' + '\\n'.join(citations)\n```\n\n## [Runs and Run Steps](https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps)\n\nWhen
-      you have all the context you need from your user in the Thread, you can run
-      the Thread with an Assistant of your choice.\n\n```python\nrun = client.beta.threads.runs.create(thread_id=thread.id,
-      assistant_id=assistant.id)\n```\n\nBy default, a Run will use the `model` and
-      `tools` configuration specified in Assistant object, but you can override most
-      of these when creating the Run for added flexibility:\n\n```python\nrun = client.beta.threads.runs.create(\n
-      \ thread_id=thread.id,\n  assistant_id=assistant.id,\n  model=\"gpt-4o\",\n
-      \ instructions=\"New instructions that override the Assistant instructions\",\n
-      \ tools=[{\"type\": \"code_interpreter\"}, {\"type\": \"file_search\"}]\n)\n```\n\nNote:
-      `tool_resources` associated with the Assistant cannot be overridden during Run
-      creation. You must use the [modify Assistant](https://platform.openai.com/docs/api-reference/assistants/modifyAssistant)
-      endpoint to do this.\n\n\n#### [Run lifecycle](https://platform.openai.com/docs/assistants/how-it-works/run-lifecycle)\n\nRun
-      objects can have multiple statuses.\n\n![Run lifecycle - diagram showing possible
-      status transitions](https://cdn.openai.com/API/docs/images/diagram-run-statuses-v2.png)\n\n|
-      Status | Definition |\n| --- | --- |\n| `queued` | When Runs are first created
-      or when you complete the `required_action`, they are moved to a queued status.
-      They should almost immediately move to `in_progress`. |\n| `in_progress` | While
-      in\\_progress, the Assistant uses the model and tools to perform steps. You
-      can view progress being made by the Run by examining the [Run Steps](https://platform.openai.com/docs/api-reference/runs/step-object).
-      |\n| `completed` | The Run successfully completed! You can now view all Messages
-      the Assistant added to the Thread, and all the steps the Run took. You can also
-      continue the conversation by adding more user Messages to the Thread and creating
-      another Run. |\n| `requires_action` | When using the [Function calling](https://platform.openai.com/docs/assistants/tools/function-calling)
-      tool, the Run will move to a `required_action` state once the model determines
-      the names and arguments of the functions to be called. You must then run those
-      functions and [submit the outputs](https://platform.openai.com/docs/api-reference/runs/submitToolOutputs)
-      before the run proceeds. If the outputs are not provided before the `expires_at`
-      timestamp passes (roughly mins past creation), the run will move to an expired
-      status. |\n| `expired` | This happens when the function calling outputs were
-      not submitted before `expires_at` and the run expires. Additionally, if the
-      runs take too long to execute and go beyond the time stated in `expires_at`,
-      our systems will expire the run. |\n| `cancelling` | You can attempt to cancel
-      an `in_progress` run using the [Cancel Run](https://platform.openai.com/docs/api-reference/runs/cancelRun)
-      endpoint. Once the attempt to cancel succeeds, status of the Run moves to `cancelled`.
-      Cancellation is attempted but not guaranteed. |\n| `cancelled` | Run was successfully
-      cancelled. |\n| `failed` | You can view the reason for the failure by looking
-      at the `last_error` object in the Run. The timestamp for the failure will be
-      recorded under `failed_at`. |\n| `incomplete` | Run ended due to `max_prompt_tokens`
-      or `max_completion_tokens` reached. You can view the specific reason by looking
-      at the `incomplete_details` object in the Run. |\n\n\n#### [Polling for updates](https://platform.openai.com/docs/assistants/how-it-works/polling-for-updates)\n\nIf
-      you are not using [streaming](https://platform.openai.com/docs/assistants/overview/step-4-create-a-run?context=with-streaming),
-      in order to keep the status of your run up to date, you will have to periodically
-      [retrieve the Run](https://platform.openai.com/docs/api-reference/runs/getRun)
-      object. You can check the status of the run each time you retrieve the object
-      to determine what your application should do next.\n\nYou can optionally use
-      Polling Helpers in our [Node](https://github.com/openai/openai-node?tab=readme-ov-file#polling-helpers)
-      and [Python](https://github.com/openai/openai-python?tab=readme-ov-file#polling-helpers)
-      SDKs to help you with this. These helpers will automatically poll the Run object
-      for you and return the Run object when it's in a terminal state.\n\n\n#### [Thread
-      locks](https://platform.openai.com/docs/assistants/how-it-works/thread-locks)\n\nWhen
-      a Run is `in_progress` and not in a terminal state, the Thread is locked. This
-      means that:\n\n-   New Messages cannot be added to the Thread.\n-   New Runs
-      cannot be created on the Thread.\n\n\n#### [Run steps](https://platform.openai.com/docs/assistants/how-it-works/run-steps)\n\n![Run
-      steps lifecycle - diagram showing possible status transitions](https://cdn.openai.com/API/docs/images/diagram-2.png)\n\nRun
-      step statuses have the same meaning as Run statuses.\n\nMost of the interesting
-      detail in the Run Step object lives in the `step_details` field. There can be
-      two types of step details:\n\n1.  `message_creation`: This Run Step is created
-      when the Assistant creates a Message on the Thread.\n2.  `tool_calls`: This
-      Run Step is created when the Assistant calls a tool. Details around this are
-      covered in the relevant sections of the [Tools](https://platform.openai.com/docs/assistants/tools)
-      guide.\n\n\n## [Data access guidance](https://platform.openai.com/docs/assistants/how-it-works/data-access-guidance)\n\nCurrently,
-      Assistants, Threads, Messages, and Vector Stores created via the API are scoped
-      to the Project they're created in. As such, any person with API key access to
-      that Project is able to read or write Assistants, Threads, Messages, and Runs
-      in the Project.\n\nWe strongly recommend the following data access controls:\n\n-
-      \  _Implement authorization._ Before performing reads or writes on Assistants,
-      Threads, Messages, and Vector Stores, ensure that the end-user is authorized
-      to do so. For example, store in your database the object IDs that the end-user
-      has access to, and check it before fetching the object ID with the API.\n-   _Restrict
-      API key access._ Carefully consider who in your organization should have API
-      keys and be part of a Project. Periodically audit this list. API keys enable
-      a wide range of operations including reading and modifying sensitive information,
-      such as Messages and Files.\n-   _Create separate accounts._ Consider creating
-      separate Projects for different applications in order to isolate data across
-      multiple applications.\n\n\n## [Next](https://platform.openai.com/docs/assistants/how-it-works/next)\n\nNow
-      that you have explored how Assistants work, the next step is to explore [Assistant
-      Tools](https://platform.openai.com/docs/assistants/tools) which covers topics
-      like Function calling, File Search, and Code Interpreter.\r\n--d641d248684654a1c5a28f3972df487d--\r\n"
+    body: "--7684bfa2cc28fa67a288f5f15cb67349\r\nContent-Disposition: form-data; name=\"\
+      purpose\"\r\n\r\nassistants\r\n--7684bfa2cc28fa67a288f5f15cb67349\r\nContent-Disposition:\
+      \ form-data; name=\"file\"; filename=\"assistants-guide.md\"\r\nContent-Type:\
+      \ application/octet-stream\r\n\r\nThe Assistants API is designed to help developers\
+      \ build powerful AI assistants capable of performing a variety of tasks.\n\n\
+      The Assistants API is in **beta** and we are actively working on adding more\
+      \ functionality. Share your feedback in our [Developer Forum](https://community.openai.com/)!\n\
+      \n1.  Assistants can call OpenAI\u2019s **[models](https://platform.openai.com/docs/models)**\
+      \ with specific instructions to tune their personality and capabilities.\n2.\
+      \  Assistants can access **multiple tools in parallel**. These can be both OpenAI-hosted\
+      \ tools \u2014\_like [code\\_interpreter](https://platform.openai.com/docs/assistants/tools/code-interpreter)\
+      \ and [file\\_search](https://platform.openai.com/docs/assistants/tools/file-search)\
+      \ \u2014 or tools you build / host (via [function calling](https://platform.openai.com/docs/assistants/tools/function-calling)).\n\
+      3.  Assistants can access **persistent Threads**. Threads simplify AI application\
+      \ development by storing message history and truncating it when the conversation\
+      \ gets too long for the model\u2019s context length. You create a Thread once,\
+      \ and simply append Messages to it as your users reply.\n4.  Assistants can\
+      \ access files in several formats \u2014 either as part of their creation or\
+      \ as part of Threads between Assistants and users. When using tools, Assistants\
+      \ can also create files (e.g., images, spreadsheets, etc) and cite files they\
+      \ reference in the Messages they create.\n\n\n## [Objects](https://platform.openai.com/docs/assistants/how-it-works/objects)\n\
+      \n![Assistants object architecture diagram](https://cdn.openai.com/API/docs/images/diagram-assistant.webp)\n\
+      \n| Object | What it represents |\n| --- | --- |\n| Assistant | Purpose-built\
+      \ AI that uses OpenAI\u2019s [models](https://platform.openai.com/docs/models)\
+      \ and calls [tools](https://platform.openai.com/docs/assistants/tools) |\n|\
+      \ Thread | A conversation session between an Assistant and a user. Threads store\
+      \ Messages and automatically handle truncation to fit content into a model\u2019\
+      s context. |\n| Message | A message created by an Assistant or a user. Messages\
+      \ can include text, images, and other files. Messages stored as a list on the\
+      \ Thread. |\n| Run | An invocation of an Assistant on a Thread. The Assistant\
+      \ uses its configuration and the Thread\u2019s Messages to perform tasks by\
+      \ calling models and tools. As part of a Run, the Assistant appends Messages\
+      \ to the Thread. |\n| Run Step | A detailed list of steps the Assistant took\
+      \ as part of a Run. An Assistant can call tools or create Messages during its\
+      \ run. Examining Run Steps allows you to introspect how the Assistant is getting\
+      \ to its final results. |\n\n\n## [Creating Assistants](https://platform.openai.com/docs/assistants/how-it-works/creating-assistants)\n\
+      \nWe recommend using OpenAI\u2019s [latest models](https://platform.openai.com/docs/models/gpt-4-and-gpt-4-turbo)\
+      \ with the Assistants API for best results and maximum compatibility with tools.\n\
+      \nTo get started, creating an Assistant only requires specifying the `model`\
+      \ to use. But you can further customize the behavior of the Assistant:\n\n1.\
+      \  Use the `instructions` parameter to guide the personality of the Assistant\
+      \ and define its goals. Instructions are similar to system messages in the Chat\
+      \ Completions API.\n2.  Use the `tools` parameter to give the Assistant access\
+      \ to up to tools. You can give it access to OpenAI-hosted tools like `code_interpreter`\
+      \ and `file_search`, or call a third-party tools via a `function` calling.\n\
+      3.  Use the `tool_resources` parameter to give the tools like `code_interpreter`\
+      \ and `file_search` access to files. Files are uploaded using the `File` [upload\
+      \ endpoint](https://platform.openai.com/docs/api-reference/files/create) and\
+      \ must have the `purpose` set to `assistants` to be used with this API.\n\n\
+      For example, to create an Assistant that can create data visualization based\
+      \ on a `.csv` file, first upload a file.\n\n```python\nfile = client.files.create(\
+      \ file=open(\"revenue-forecast.csv\", \"rb\"), purpose='assistants' )\n```\n\
+      \nThen, create the Assistant with the `code_interpreter` tool enabled and provide\
+      \ the file as a resource to the tool.\n\n```python\nassistant = client.beta.assistants.create(\
+      \ name=\"Data visualizer\", description=\"You are great at creating beautiful\
+      \ data visualizations. You analyze data present in .csv files, understand trends,\
+      \ and come up with data visualizations relevant to those trends. You also share\
+      \ a brief text summary of the trends observed.\", model=\"gpt-4o\", tools=[{\"\
+      type\": \"code_interpreter\"}], tool_resources={ \"code_interpreter\": { \"\
+      file_ids\": [file.id] } } )\n```\n\nYou can attach a maximum of files to `code_interpreter`\
+      \ and 10,files to `file_search` (using `vector_store` [objects](https://platform.openai.com/docs/api-reference/vector-stores/object)).\n\
+      \nEach file can be at most MB in size and have a maximum of 5,000,tokens. By\
+      \ default, the size of all the files uploaded by your organization cannot exceed\
+      \ GB, but you can reach out to our support team to increase this limit.\n\n\n\
+      ## [Managing Threads and Messages](https://platform.openai.com/docs/assistants/how-it-works/managing-threads-and-messages)\n\
+      \nThreads and Messages represent a conversation session between an Assistant\
+      \ and a user. There is no limit to the number of Messages you can store in a\
+      \ Thread. Once the size of the Messages exceeds the context window of the model,\
+      \ the Thread will attempt to smartly truncate messages, before fully dropping\
+      \ the ones it considers the least important.\n\nYou can create a Thread with\
+      \ an initial list of Messages like this:\n\n```python\nthread = client.beta.threads.create(\
+      \ messages=[ { \"role\": \"user\", \"content\": \"Create data visualizations\
+      \ based on the trends in this file.\", \"attachments\": [ { \"file_id\": file.id,\
+      \ \"tools\": [{\"type\": \"code_interpreter\"}] } ] } ] )\n```\n\nMessages can\
+      \ contain text, images, or file attachment. Message `attachments` are helper\
+      \ methods that add files to a thread's `tool_resources`. You can also choose\
+      \ to add files to the `thread.tool_resources` directly.\n\n\n### [Creating image\
+      \ input content](https://platform.openai.com/docs/assistants/how-it-works/creating-image-input-content)\n\
+      \nMessage content can contain either external image URLs or File IDs uploaded\
+      \ via the [File API](https://platform.openai.com/docs/api-reference/files/create).\
+      \ Only [models](https://platform.openai.com/docs/models) with Vision support\
+      \ can accept image input. Supported image content types include png, jpg, gif,\
+      \ and webp. When creating image files, pass `purpose=\"vision\"` to allow you\
+      \ to later download and display the input content. Currently, there is a 100GB\
+      \ limit per organization and 10GB for user in organization. Please contact us\
+      \ to request a limit increase.\n\nTools cannot access image content unless specified.\
+      \ To pass image files to Code Interpreter, add the file ID in the message `attachments`\
+      \ list to allow the tool to read and analyze the input. Image URLs cannot be\
+      \ downloaded in Code Interpreter today.\n\n```python\nfile = client.files.create(\
+      \ file=open(\"myimage.png\", \"rb\"), purpose=\"vision\" ) thread = client.beta.threads.create(\
+      \ messages=[ { \"role\": \"user\", \"content\": [ { \"type\": \"text\", \"text\"\
+      : \"What is the difference between these images?\" }, { \"type\": \"image_url\"\
+      , \"image_url\": {\"url\": \"https://example.com/image.png\"} }, { \"type\"\
+      : \"image_file\", \"image_file\": (\"file_id\": file.id) }, ], } ] )\n```\n\n\
+      \n#### [Low or high fidelity image understanding](https://platform.openai.com/docs/assistants/how-it-works/low-or-high-fidelity-image-understanding)\n\
+      \nBy controlling the `detail` parameter, which has three options, `low`, `high`,\
+      \ or `auto`, you have control over how the model processes the image and generates\
+      \ its textual understanding.\n\n-   `low` will enable the \"low res\" mode.\
+      \ The model will receive a low-res 512px x 512px version of the image, and represent\
+      \ the image with a budget of tokens. This allows the API to return faster responses\
+      \ and consume fewer input tokens for use cases that do not require high detail.\n\
+      -   `high` will enable \"high res\" mode, which first allows the model to see\
+      \ the low res image and then creates detailed crops of input images based on\
+      \ the input image size. Use the [pricing calculator](https://openai.com/api/pricing/)\
+      \ to see token counts for various image sizes.\n\n```python\nthread = client.beta.threads.create(\
+      \ messages=[ { \"role\": \"user\", \"content\": [ { \"type\": \"text\", \"text\"\
+      : \"What is this an image of?\" }, { \"type\": \"image_url\", \"image_url\"\
+      : { \"url\": \"https://example.com/image.png\" \"detail\": \"high\" } }, ],\
+      \ } ] )\n```\n\n\n### [Context window management](https://platform.openai.com/docs/assistants/how-it-works/context-window-management)\n\
+      \nThe Assistants API automatically manages the truncation to ensure it stays\
+      \ within the model's maximum context length. You can customize this behavior\
+      \ by specifying the maximum tokens you'd like a run to utilize and/or the maximum\
+      \ number of recent messages you'd like to include in a run.\n\n\n#### [Max Completion\
+      \ and Max Prompt Tokens](https://platform.openai.com/docs/assistants/how-it-works/max-completion-and-max-prompt-tokens)\n\
+      \nTo control the token usage in a single Run, set `max_prompt_tokens` and `max_completion_tokens`\
+      \ when creating the Run. These limits apply to the total number of tokens used\
+      \ in all completions throughout the Run's lifecycle.\n\nFor example, initiating\
+      \ a Run with `max_prompt_tokens` set to and `max_completion_tokens` set to means\
+      \ the first completion will truncate the thread to tokens and cap the output\
+      \ at tokens. If only prompt tokens and completion tokens are used in the first\
+      \ completion, the second completion will have available limits of prompt tokens\
+      \ and completion tokens.\n\nIf a completion reaches the `max_completion_tokens`\
+      \ limit, the Run will terminate with a status of `incomplete`, and details will\
+      \ be provided in the `incomplete_details` field of the Run object.\n\nWhen using\
+      \ the File Search tool, we recommend setting the max\\_prompt\\_tokens to no\
+      \ less than 20,000. For longer conversations or multiple interactions with File\
+      \ Search, consider increasing this limit to 50,000, or ideally, removing the\
+      \ max\\_prompt\\_tokens limits altogether to get the highest quality results.\n\
+      \n\n#### [Truncation Strategy](https://platform.openai.com/docs/assistants/how-it-works/truncation-strategy)\n\
+      \nYou may also specify a truncation strategy to control how your thread should\
+      \ be rendered into the model's context window. Using a truncation strategy of\
+      \ type `auto` will use OpenAI's default truncation strategy. Using a truncation\
+      \ strategy of type `last_messages` will allow you to specify the number of the\
+      \ most recent messages to include in the context window.\n\n\n### [Message annotations](https://platform.openai.com/docs/assistants/how-it-works/message-annotations)\n\
+      \nMessages created by Assistants may contain [`annotations`](https://platform.openai.com/docs/api-reference/messages/object#messages/object-content)\
+      \ within the `content` array of the object. Annotations provide information\
+      \ around how you should annotate the text in the Message.\n\nThere are two types\
+      \ of Annotations:\n\n1.  `file_citation`: File citations are created by the\
+      \ [`file_search`](https://platform.openai.com/docs/assistants/tools/file-search)\
+      \ tool and define references to a specific file that was uploaded and used by\
+      \ the Assistant to generate the response.\n2.  `file_path`: File path annotations\
+      \ are created by the [`code_interpreter`](https://platform.openai.com/docs/assistants/tools/code-interpreter)\
+      \ tool and contain references to the files generated by the tool.\n\nWhen annotations\
+      \ are present in the Message object, you'll see illegible model-generated substrings\
+      \ in the text that you should replace with the annotations. These strings may\
+      \ look something like `\u301013\u2020source\u3011` or `sandbox:/mnt/data/file.csv`.\
+      \ Here\u2019s an example python code snippet that replaces these strings with\
+      \ information present in the annotations.\n\n```python\n# Retrieve the message\
+      \ object\nmessage = client.beta.threads.messages.retrieve(\n  thread_id=\"...\"\
+      ,\n  message_id=\"...\"\n)\n# Extract the message content\nmessage_content =\
+      \ message.content[0].text\nannotations = message_content.annotations\ncitations\
+      \ = []\n# Iterate over the annotations and add footnotes\nfor index, annotation\
+      \ in enumerate(annotations):\n    # Replace the text with a footnote\n    message_content.value\
+      \ = message_content.value.replace(annotation.text, f' [{index}]')\n    # Gather\
+      \ citations based on annotation attributes\n    if (file_citation := getattr(annotation,\
+      \ 'file_citation', None)):\n        cited_file = client.files.retrieve(file_citation.file_id)\n\
+      \        citations.append(f'[{index}] {file_citation.quote} from {cited_file.filename}')\n\
+      \    elif (file_path := getattr(annotation, 'file_path', None)):\n        cited_file\
+      \ = client.files.retrieve(file_path.file_id)\n        citations.append(f'[{index}]\
+      \ Click <here> to download {cited_file.filename}')\n        # Note: File download\
+      \ functionality not implemented above for brevity\n# Add footnotes to the end\
+      \ of the message before displaying to user\nmessage_content.value += '\\n' +\
+      \ '\\n'.join(citations)\n```\n\n## [Runs and Run Steps](https://platform.openai.com/docs/assistants/how-it-works/runs-and-run-steps)\n\
+      \nWhen you have all the context you need from your user in the Thread, you can\
+      \ run the Thread with an Assistant of your choice.\n\n```python\nrun = client.beta.threads.runs.create(thread_id=thread.id,\
+      \ assistant_id=assistant.id)\n```\n\nBy default, a Run will use the `model`\
+      \ and `tools` configuration specified in Assistant object, but you can override\
+      \ most of these when creating the Run for added flexibility:\n\n```python\n\
+      run = client.beta.threads.runs.create(\n  thread_id=thread.id,\n  assistant_id=assistant.id,\n\
+      \  model=\"gpt-4o\",\n  instructions=\"New instructions that override the Assistant\
+      \ instructions\",\n  tools=[{\"type\": \"code_interpreter\"}, {\"type\": \"\
+      file_search\"}]\n)\n```\n\nNote: `tool_resources` associated with the Assistant\
+      \ cannot be overridden during Run creation. You must use the [modify Assistant](https://platform.openai.com/docs/api-reference/assistants/modifyAssistant)\
+      \ endpoint to do this.\n\n\n#### [Run lifecycle](https://platform.openai.com/docs/assistants/how-it-works/run-lifecycle)\n\
+      \nRun objects can have multiple statuses.\n\n![Run lifecycle - diagram showing\
+      \ possible status transitions](https://cdn.openai.com/API/docs/images/diagram-run-statuses-v2.png)\n\
+      \n| Status | Definition |\n| --- | --- |\n| `queued` | When Runs are first created\
+      \ or when you complete the `required_action`, they are moved to a queued status.\
+      \ They should almost immediately move to `in_progress`. |\n| `in_progress` |\
+      \ While in\\_progress, the Assistant uses the model and tools to perform steps.\
+      \ You can view progress being made by the Run by examining the [Run Steps](https://platform.openai.com/docs/api-reference/runs/step-object).\
+      \ |\n| `completed` | The Run successfully completed! You can now view all Messages\
+      \ the Assistant added to the Thread, and all the steps the Run took. You can\
+      \ also continue the conversation by adding more user Messages to the Thread\
+      \ and creating another Run. |\n| `requires_action` | When using the [Function\
+      \ calling](https://platform.openai.com/docs/assistants/tools/function-calling)\
+      \ tool, the Run will move to a `required_action` state once the model determines\
+      \ the names and arguments of the functions to be called. You must then run those\
+      \ functions and [submit the outputs](https://platform.openai.com/docs/api-reference/runs/submitToolOutputs)\
+      \ before the run proceeds. If the outputs are not provided before the `expires_at`\
+      \ timestamp passes (roughly mins past creation), the run will move to an expired\
+      \ status. |\n| `expired` | This happens when the function calling outputs were\
+      \ not submitted before `expires_at` and the run expires. Additionally, if the\
+      \ runs take too long to execute and go beyond the time stated in `expires_at`,\
+      \ our systems will expire the run. |\n| `cancelling` | You can attempt to cancel\
+      \ an `in_progress` run using the [Cancel Run](https://platform.openai.com/docs/api-reference/runs/cancelRun)\
+      \ endpoint. Once the attempt to cancel succeeds, status of the Run moves to\
+      \ `cancelled`. Cancellation is attempted but not guaranteed. |\n| `cancelled`\
+      \ | Run was successfully cancelled. |\n| `failed` | You can view the reason\
+      \ for the failure by looking at the `last_error` object in the Run. The timestamp\
+      \ for the failure will be recorded under `failed_at`. |\n| `incomplete` | Run\
+      \ ended due to `max_prompt_tokens` or `max_completion_tokens` reached. You can\
+      \ view the specific reason by looking at the `incomplete_details` object in\
+      \ the Run. |\n\n\n#### [Polling for updates](https://platform.openai.com/docs/assistants/how-it-works/polling-for-updates)\n\
+      \nIf you are not using [streaming](https://platform.openai.com/docs/assistants/overview/step-4-create-a-run?context=with-streaming),\
+      \ in order to keep the status of your run up to date, you will have to periodically\
+      \ [retrieve the Run](https://platform.openai.com/docs/api-reference/runs/getRun)\
+      \ object. You can check the status of the run each time you retrieve the object\
+      \ to determine what your application should do next.\n\nYou can optionally use\
+      \ Polling Helpers in our [Node](https://github.com/openai/openai-node?tab=readme-ov-file#polling-helpers)\
+      \ and [Python](https://github.com/openai/openai-python?tab=readme-ov-file#polling-helpers)\
+      \ SDKs to help you with this. These helpers will automatically poll the Run\
+      \ object for you and return the Run object when it's in a terminal state.\n\n\
+      \n#### [Thread locks](https://platform.openai.com/docs/assistants/how-it-works/thread-locks)\n\
+      \nWhen a Run is `in_progress` and not in a terminal state, the Thread is locked.\
+      \ This means that:\n\n-   New Messages cannot be added to the Thread.\n-   New\
+      \ Runs cannot be created on the Thread.\n\n\n#### [Run steps](https://platform.openai.com/docs/assistants/how-it-works/run-steps)\n\
+      \n![Run steps lifecycle - diagram showing possible status transitions](https://cdn.openai.com/API/docs/images/diagram-2.png)\n\
+      \nRun step statuses have the same meaning as Run statuses.\n\nMost of the interesting\
+      \ detail in the Run Step object lives in the `step_details` field. There can\
+      \ be two types of step details:\n\n1.  `message_creation`: This Run Step is\
+      \ created when the Assistant creates a Message on the Thread.\n2.  `tool_calls`:\
+      \ This Run Step is created when the Assistant calls a tool. Details around this\
+      \ are covered in the relevant sections of the [Tools](https://platform.openai.com/docs/assistants/tools)\
+      \ guide.\n\n\n## [Data access guidance](https://platform.openai.com/docs/assistants/how-it-works/data-access-guidance)\n\
+      \nCurrently, Assistants, Threads, Messages, and Vector Stores created via the\
+      \ API are scoped to the Project they're created in. As such, any person with\
+      \ API key access to that Project is able to read or write Assistants, Threads,\
+      \ Messages, and Runs in the Project.\n\nWe strongly recommend the following\
+      \ data access controls:\n\n-   _Implement authorization._ Before performing\
+      \ reads or writes on Assistants, Threads, Messages, and Vector Stores, ensure\
+      \ that the end-user is authorized to do so. For example, store in your database\
+      \ the object IDs that the end-user has access to, and check it before fetching\
+      \ the object ID with the API.\n-   _Restrict API key access._ Carefully consider\
+      \ who in your organization should have API keys and be part of a Project. Periodically\
+      \ audit this list. API keys enable a wide range of operations including reading\
+      \ and modifying sensitive information, such as Messages and Files.\n-   _Create\
+      \ separate accounts._ Consider creating separate Projects for different applications\
+      \ in order to isolate data across multiple applications.\n\n\n## [Next](https://platform.openai.com/docs/assistants/how-it-works/next)\n\
+      \nNow that you have explored how Assistants work, the next step is to explore\
+      \ [Assistant Tools](https://platform.openai.com/docs/assistants/tools) which\
+      \ covers topics like Function calling, File Search, and Code Interpreter.\r\n\
+      --7684bfa2cc28fa67a288f5f15cb67349--\r\n"
     headers:
       accept:
       - application/json
@@ -317,10 +340,10 @@ interactions:
       content-length:
       - '20129'
       content-type:
-      - multipart/form-data; boundary=d641d248684654a1c5a28f3972df487d
+      - multipart/form-data; boundary=7684bfa2cc28fa67a288f5f15cb67349
       cookie:
-      - __cf_bm=VYLjKqwSeFyNf0TC7rnkMb0.NuoU_4CZH3axTG33KH0-1716471819-1.0.1.1-UnDXul9xRqY9xNDAaVNxNQgJXonWELg_Mi8bbls3jYHHPzqqwMxFCMI5XJ5NmVQm5cdqz_.tAWwKu1Dae1zdWQ;
-        _cfuvid=ZrJDQ6EhtbzBkSjtaOkoz6y_D_4K7OAaoD4OaVdSQ0U-1716471819227-0.0.1.1-604800000
+      - __cf_bm=vbgUsC9Winjl8roVnLFIITVOCboqM55If7_8D0UwypI-1720679941-1.0.1.1-RU1vaBSLzD_kbioXFvKkDTr1h5yu1Xjmko3wA8b7CCvOve_6BOvpksHlxNR2PSbH_NiU45C.nkIdatehih6nHg;
+        _cfuvid=S602OtYdip1v48HsdI0OLT0mOhRT7edujQgpcq9kG_g-1720679941792-0.0.1.1-604800000
       host:
       - api.openai.com
       user-agent:
@@ -343,21 +366,28 @@ interactions:
     uri: https://api.openai.com/v1/files
   response:
     body:
-      string: "{\n  \"object\": \"file\",\n  \"id\": \"file-G08t1WAY6fkAsVCYNnmSIcIU\",\n
-        \ \"purpose\": \"assistants\",\n  \"filename\": \"assistants-guide.md\",\n
-        \ \"bytes\": 19836,\n  \"created_at\": 1716471819,\n  \"status\": \"processed\",\n
-        \ \"status_details\": null\n}\n"
+      string: |
+        {
+          "object": "file",
+          "id": "file-U7EO8JnE28gB6cpd0RRs6KAf",
+          "purpose": "assistants",
+          "filename": "assistants-guide.md",
+          "bytes": 19836,
+          "created_at": 1720679942,
+          "status": "processed",
+          "status_details": null
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888579e6dab83c00-BLR
+      - 8a16cb44598ba92c-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 13:43:40 GMT
+      - Thu, 11 Jul 2024 06:39:02 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -369,18 +399,18 @@ interactions:
       content-length:
       - '225'
       openai-processing-ms:
-      - '439'
+      - '404'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_43c57b0a6426f70dc3d394fd21fb426c
+      - req_c4d8d3d735fd304d84813e577dccd21f
     status:
       code: 200
       message: OK
 - request:
-    body: '{"file_id": "file-G08t1WAY6fkAsVCYNnmSIcIU"}'
+    body: '{"file_id": "file-U7EO8JnE28gB6cpd0RRs6KAf"}'
     headers:
       accept:
       - application/json
@@ -393,8 +423,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=VYLjKqwSeFyNf0TC7rnkMb0.NuoU_4CZH3axTG33KH0-1716471819-1.0.1.1-UnDXul9xRqY9xNDAaVNxNQgJXonWELg_Mi8bbls3jYHHPzqqwMxFCMI5XJ5NmVQm5cdqz_.tAWwKu1Dae1zdWQ;
-        _cfuvid=ZrJDQ6EhtbzBkSjtaOkoz6y_D_4K7OAaoD4OaVdSQ0U-1716471819227-0.0.1.1-604800000
+      - __cf_bm=vbgUsC9Winjl8roVnLFIITVOCboqM55If7_8D0UwypI-1720679941-1.0.1.1-RU1vaBSLzD_kbioXFvKkDTr1h5yu1Xjmko3wA8b7CCvOve_6BOvpksHlxNR2PSbH_NiU45C.nkIdatehih6nHg;
+        _cfuvid=S602OtYdip1v48HsdI0OLT0mOhRT7edujQgpcq9kG_g-1720679941792-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -416,24 +446,37 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: POST
-    uri: https://api.openai.com/v1/vector_stores/vs_z7r2OYHsaMp4MWT025PHctZ4/files
+    uri: https://api.openai.com/v1/vector_stores/vs_tp1G1QA9UuoctOetsWsrawUT/files
   response:
     body:
-      string: "{\n  \"id\": \"file-G08t1WAY6fkAsVCYNnmSIcIU\",\n  \"object\": \"vector_store.file\",\n
-        \ \"usage_bytes\": 0,\n  \"created_at\": 1716471820,\n  \"vector_store_id\":
-        \"vs_z7r2OYHsaMp4MWT025PHctZ4\",\n  \"status\": \"in_progress\",\n  \"last_error\":
-        null\n}"
+      string: |-
+        {
+          "id": "file-U7EO8JnE28gB6cpd0RRs6KAf",
+          "object": "vector_store.file",
+          "usage_bytes": 0,
+          "created_at": 1720679943,
+          "vector_store_id": "vs_tp1G1QA9UuoctOetsWsrawUT",
+          "status": "in_progress",
+          "last_error": null,
+          "chunking_strategy": {
+            "type": "static",
+            "static": {
+              "max_chunk_size_tokens": 800,
+              "chunk_overlap_tokens": 400
+            }
+          }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888579eb5fc73c00-BLR
+      - 8a16cb490820a92c-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 13:43:40 GMT
+      - Thu, 11 Jul 2024 06:39:03 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -441,15 +484,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '225'
+      - '369'
       openai-processing-ms:
-      - '255'
+      - '375'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_cd03135e0ce0ee31869d46feb000e132
+      - req_d67ddd9f07e0392938bc0be2ccf4da2d
     status:
       code: 200
       message: OK
@@ -465,8 +508,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=VYLjKqwSeFyNf0TC7rnkMb0.NuoU_4CZH3axTG33KH0-1716471819-1.0.1.1-UnDXul9xRqY9xNDAaVNxNQgJXonWELg_Mi8bbls3jYHHPzqqwMxFCMI5XJ5NmVQm5cdqz_.tAWwKu1Dae1zdWQ;
-        _cfuvid=ZrJDQ6EhtbzBkSjtaOkoz6y_D_4K7OAaoD4OaVdSQ0U-1716471819227-0.0.1.1-604800000
+      - __cf_bm=vbgUsC9Winjl8roVnLFIITVOCboqM55If7_8D0UwypI-1720679941-1.0.1.1-RU1vaBSLzD_kbioXFvKkDTr1h5yu1Xjmko3wA8b7CCvOve_6BOvpksHlxNR2PSbH_NiU45C.nkIdatehih6nHg;
+        _cfuvid=S602OtYdip1v48HsdI0OLT0mOhRT7edujQgpcq9kG_g-1720679941792-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -492,24 +535,37 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/vector_stores/vs_z7r2OYHsaMp4MWT025PHctZ4/files/file-G08t1WAY6fkAsVCYNnmSIcIU
+    uri: https://api.openai.com/v1/vector_stores/vs_tp1G1QA9UuoctOetsWsrawUT/files/file-U7EO8JnE28gB6cpd0RRs6KAf
   response:
     body:
-      string: "{\n  \"id\": \"file-G08t1WAY6fkAsVCYNnmSIcIU\",\n  \"object\": \"vector_store.file\",\n
-        \ \"usage_bytes\": 0,\n  \"created_at\": 1716471820,\n  \"vector_store_id\":
-        \"vs_z7r2OYHsaMp4MWT025PHctZ4\",\n  \"status\": \"in_progress\",\n  \"last_error\":
-        null\n}"
+      string: |-
+        {
+          "id": "file-U7EO8JnE28gB6cpd0RRs6KAf",
+          "object": "vector_store.file",
+          "usage_bytes": 0,
+          "created_at": 1720679943,
+          "vector_store_id": "vs_tp1G1QA9UuoctOetsWsrawUT",
+          "status": "in_progress",
+          "last_error": null,
+          "chunking_strategy": {
+            "type": "static",
+            "static": {
+              "max_chunk_size_tokens": 800,
+              "chunk_overlap_tokens": 400
+            }
+          }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888579ef2b6c3c00-BLR
+      - 8a16cb4d3d92a92c-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 13:43:40 GMT
+      - Thu, 11 Jul 2024 06:39:03 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -517,15 +573,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '225'
+      - '369'
       openai-processing-ms:
-      - '35'
+      - '30'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_476610b586bbc2237c917c10864479b0
+      - req_616995a3e45f5d0059da5b8eef237d61
     status:
       code: 200
       message: OK
@@ -541,8 +597,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=VYLjKqwSeFyNf0TC7rnkMb0.NuoU_4CZH3axTG33KH0-1716471819-1.0.1.1-UnDXul9xRqY9xNDAaVNxNQgJXonWELg_Mi8bbls3jYHHPzqqwMxFCMI5XJ5NmVQm5cdqz_.tAWwKu1Dae1zdWQ;
-        _cfuvid=ZrJDQ6EhtbzBkSjtaOkoz6y_D_4K7OAaoD4OaVdSQ0U-1716471819227-0.0.1.1-604800000
+      - __cf_bm=vbgUsC9Winjl8roVnLFIITVOCboqM55If7_8D0UwypI-1720679941-1.0.1.1-RU1vaBSLzD_kbioXFvKkDTr1h5yu1Xjmko3wA8b7CCvOve_6BOvpksHlxNR2PSbH_NiU45C.nkIdatehih6nHg;
+        _cfuvid=S602OtYdip1v48HsdI0OLT0mOhRT7edujQgpcq9kG_g-1720679941792-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -568,24 +624,37 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/vector_stores/vs_z7r2OYHsaMp4MWT025PHctZ4/files/file-G08t1WAY6fkAsVCYNnmSIcIU
+    uri: https://api.openai.com/v1/vector_stores/vs_tp1G1QA9UuoctOetsWsrawUT/files/file-U7EO8JnE28gB6cpd0RRs6KAf
   response:
     body:
-      string: "{\n  \"id\": \"file-G08t1WAY6fkAsVCYNnmSIcIU\",\n  \"object\": \"vector_store.file\",\n
-        \ \"usage_bytes\": 30049,\n  \"created_at\": 1716471820,\n  \"vector_store_id\":
-        \"vs_z7r2OYHsaMp4MWT025PHctZ4\",\n  \"status\": \"completed\",\n  \"last_error\":
-        null\n}"
+      string: |-
+        {
+          "id": "file-U7EO8JnE28gB6cpd0RRs6KAf",
+          "object": "vector_store.file",
+          "usage_bytes": 30049,
+          "created_at": 1720679943,
+          "vector_store_id": "vs_tp1G1QA9UuoctOetsWsrawUT",
+          "status": "completed",
+          "last_error": null,
+          "chunking_strategy": {
+            "type": "static",
+            "static": {
+              "max_chunk_size_tokens": 800,
+              "chunk_overlap_tokens": 400
+            }
+          }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888579f7fd243c00-BLR
+      - 8a16cb55893ca92c-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 13:43:42 GMT
+      - Thu, 11 Jul 2024 06:39:04 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -593,15 +662,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '227'
+      - '371'
       openai-processing-ms:
-      - '135'
+      - '28'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_42e3a3d3b1710b61080057abfe3a1584
+      - req_1785cc8da78ed0a54c85f688d4da6dbe
     status:
       code: 200
       message: OK

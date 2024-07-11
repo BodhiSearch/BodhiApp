@@ -1,6 +1,6 @@
 interactions:
 - request:
-    body: '{"name": "test_vector_store_create_j9eq"}'
+    body: '{"name": "test_vector_store_create_5ouT"}'
     headers:
       accept:
       - application/json
@@ -36,23 +36,37 @@ interactions:
     uri: https://api.openai.com/v1/vector_stores
   response:
     body:
-      string: "{\n  \"id\": \"vs_cUdw3KuFnFkWTsLcwTvoAaEi\",\n  \"object\": \"vector_store\",\n
-        \ \"name\": \"test_vector_store_create_j9eq\",\n  \"status\": \"completed\",\n
-        \ \"usage_bytes\": 0,\n  \"created_at\": 1716440387,\n  \"file_counts\": {\n
-        \   \"in_progress\": 0,\n    \"completed\": 0,\n    \"failed\": 0,\n    \"cancelled\":
-        0,\n    \"total\": 0\n  },\n  \"metadata\": {},\n  \"expires_after\": null,\n
-        \ \"expires_at\": null,\n  \"last_active_at\": 1716440387\n}"
+      string: |-
+        {
+          "id": "vs_i9AvX3aC5SRA862dKqegqBZP",
+          "object": "vector_store",
+          "name": "test_vector_store_create_5ouT",
+          "status": "completed",
+          "usage_bytes": 0,
+          "created_at": 1720679946,
+          "file_counts": {
+            "in_progress": 0,
+            "completed": 0,
+            "failed": 0,
+            "cancelled": 0,
+            "total": 0
+          },
+          "metadata": {},
+          "expires_after": null,
+          "expires_at": null,
+          "last_active_at": 1720679946
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 88827a87781c3c07-BLR
+      - 8a16cb6229119145-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 04:59:48 GMT
+      - Thu, 11 Jul 2024 06:39:07 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -62,13 +76,13 @@ interactions:
       content-length:
       - '400'
       openai-processing-ms:
-      - '92'
+      - '124'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_15671038eb315f796ef84aa3a0b49b0f
+      - req_b4d3aad11e30745136ea32756efa8ed8
     status:
       code: 200
       message: OK

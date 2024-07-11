@@ -38,25 +38,41 @@ interactions:
     uri: https://api.openai.com/v1/assistants
   response:
     body:
-      string: "{\n  \"id\": \"asst_KPjamnRjQotWVatbmbPmZQFZ\",\n  \"object\": \"assistant\",\n
-        \ \"created_at\": 1716389355,\n  \"name\": \"Math Tutor\",\n  \"description\":
-        null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\": \"You are
-        a personal math tutor. When asked a question, write and run Python code to
-        answer the question.\",\n  \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n
-        \   }\n  ],\n  \"top_p\": 1.0,\n  \"temperature\": 1.0,\n  \"tool_resources\":
-        {\n    \"code_interpreter\": {\n      \"file_ids\": []\n    }\n  },\n  \"metadata\":
-        {},\n  \"response_format\": \"auto\"\n}"
+      string: |-
+        {
+          "id": "asst_TC5nDUsqRNYAFMaE12Ed40Y3",
+          "object": "assistant",
+          "created_at": 1720679861,
+          "name": "Math Tutor",
+          "description": null,
+          "model": "gpt-4o-2024-05-13",
+          "instructions": "You are a personal math tutor. When asked a question, write and run Python code to answer the question.",
+          "tools": [
+            {
+              "type": "code_interpreter"
+            }
+          ],
+          "top_p": 1.0,
+          "temperature": 1.0,
+          "tool_resources": {
+            "code_interpreter": {
+              "file_ids": []
+            }
+          },
+          "metadata": {},
+          "response_format": "auto"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887d9ca0ceae7f88-MAA
+      - 8a16c94c2e3d9146-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 14:49:15 GMT
+      - Thu, 11 Jul 2024 06:37:41 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -66,13 +82,13 @@ interactions:
       content-length:
       - '528'
       openai-processing-ms:
-      - '65'
+      - '63'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_9364ac33df406d5ebc9506388b020940
+      - req_6680973df455ae748bf58f4f927621e9
     status:
       code: 200
       message: OK

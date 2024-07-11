@@ -35,15 +35,20 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"error\": {\n    \"message\": \"Invalid value: 'foobar'. Supported
-        values are: 'system', 'assistant', 'user', 'function', and 'tool'.\",\n    \"type\":
-        \"invalid_request_error\",\n    \"param\": \"messages[0].role\",\n    \"code\":
-        \"invalid_value\"\n  }\n}"
+      string: |-
+        {
+          "error": {
+            "message": "Invalid value: 'foobar'. Supported values are: 'system', 'assistant', 'user', 'function', and 'tool'.",
+            "type": "invalid_request_error",
+            "param": "messages[0].role",
+            "code": "invalid_value"
+          }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887daf7c1e3417a0-MAA
+      - 8a16c9f649a0914b-MAA
       Connection:
       - keep-alive
       Content-Length:
@@ -51,17 +56,17 @@ interactions:
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 15:02:08 GMT
+      - Thu, 11 Jul 2024 06:38:08 GMT
       Server:
       - cloudflare
       alt-svc:
       - h3=":443"; ma=86400
       openai-processing-ms:
-      - '20'
+      - '25'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -75,7 +80,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 2ms
       x-request-id:
-      - req_fd4d8db609093da323d75d6f4d12cbce
+      - req_5db1fb3cd32a6a37c56ac09e3cf1c4f0
     status:
       code: 400
       message: Bad Request

@@ -1,6 +1,6 @@
 interactions:
 - request:
-    body: '{"name": "test_vs_delete_z7ku"}'
+    body: '{"name": "test_vs_delete_quzQ"}'
     headers:
       accept:
       - application/json
@@ -36,23 +36,37 @@ interactions:
     uri: https://api.openai.com/v1/vector_stores
   response:
     body:
-      string: "{\n  \"id\": \"vs_XMEIO1uRwXNUXeJVGETigbWj\",\n  \"object\": \"vector_store\",\n
-        \ \"name\": \"test_vs_delete_z7ku\",\n  \"status\": \"completed\",\n  \"usage_bytes\":
-        0,\n  \"created_at\": 1716440730,\n  \"file_counts\": {\n    \"in_progress\":
-        0,\n    \"completed\": 0,\n    \"failed\": 0,\n    \"cancelled\": 0,\n    \"total\":
-        0\n  },\n  \"metadata\": {},\n  \"expires_after\": null,\n  \"expires_at\":
-        null,\n  \"last_active_at\": 1716440730\n}"
+      string: |-
+        {
+          "id": "vs_nc8l8x4M5MYbYSvGHh7ahrsd",
+          "object": "vector_store",
+          "name": "test_vs_delete_quzQ",
+          "status": "completed",
+          "usage_bytes": 0,
+          "created_at": 1720679957,
+          "file_counts": {
+            "in_progress": 0,
+            "completed": 0,
+            "failed": 0,
+            "cancelled": 0,
+            "total": 0
+          },
+          "metadata": {},
+          "expires_after": null,
+          "expires_at": null,
+          "last_active_at": 1720679957
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888282e67ec03c0c-BLR
+      - 8a16cba3c8393c07-BLR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 05:05:30 GMT
+      - Thu, 11 Jul 2024 06:39:17 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -62,13 +76,13 @@ interactions:
       content-length:
       - '390'
       openai-processing-ms:
-      - '54'
+      - '58'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_50254c7446f0bcdf93ebd1fc0ed94be6
+      - req_90ab989199cc31a3a9cdaa53e99ea858
     status:
       code: 200
       message: OK
@@ -84,8 +98,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=r7lA7TbTWUle2FRLSx30McfNI26b9mTUK1D2VdP9.7Y-1716440730-1.0.1.1-RecTCQdcnveWbtpfaC4s_rj.fb2aGrxa1XWFSTn5oMdi_pOW5ppZyKLMTzhLJqmKTIocLVP0r24kWWEs_x8eeA;
-        _cfuvid=6pO94uCfLnXCCRKcNbvZy6AOcSVsbIyLdhNEt4FPYYU-1716440730941-0.0.1.1-604800000
+      - __cf_bm=WOG9vrcrj3rLhC8V8DOL9Hithz_L6bBWSLVG5v8QePw-1720679957-1.0.1.1-FCGhNgOuyEONQKt9CjcZxkEfSK25i9AH9jiMjICWcOaBXFyV0eCi2lo54kO3zDZNyiXR4v3YxpiUOKXpMYvb8A;
+        _cfuvid=wWyOX06RaPj2xsXSvZ3zPyvFAyrkSck1UEe_MxDhGQs-1720679957890-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -107,22 +121,26 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: DELETE
-    uri: https://api.openai.com/v1/vector_stores/vs_XMEIO1uRwXNUXeJVGETigbWj
+    uri: https://api.openai.com/v1/vector_stores/vs_nc8l8x4M5MYbYSvGHh7ahrsd
   response:
     body:
-      string: "{\n  \"id\": \"vs_XMEIO1uRwXNUXeJVGETigbWj\",\n  \"object\": \"vector_store.deleted\",\n
-        \ \"deleted\": true\n}"
+      string: |-
+        {
+          "id": "vs_nc8l8x4M5MYbYSvGHh7ahrsd",
+          "object": "vector_store.deleted",
+          "deleted": true
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888282e8e9953c0c-BLR
+      - 8a16cba8ed713c07-BLR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 05:05:31 GMT
+      - Thu, 11 Jul 2024 06:39:18 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -132,13 +150,13 @@ interactions:
       content-length:
       - '96'
       openai-processing-ms:
-      - '669'
+      - '677'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_9175525c45458c5dbfbc939345f28583
+      - req_cd94dbf964b5415619a3b4180aa56296
     status:
       code: 200
       message: OK

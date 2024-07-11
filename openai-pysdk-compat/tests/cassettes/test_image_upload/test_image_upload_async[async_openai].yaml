@@ -39,49 +39,41 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RhmxnKebQ2tSQ7Q8kduQgvXodgvf\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716390207,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"The uploaded image shows the user interface
-        of ChatGPT, a web-based chatbot. Here is a detailed breakdown of the interface
-        elements:\\n\\n1. **Browser Tabs and Address Bar**: \\n   - At the top of
-        the screen, you can see the typical browser elements including tabs, an address
-        bar, and some control buttons.\\n   - The address bar shows the URL: `chat.openai.com/?oai-dm=1`\\n\\n2.
-        **Top Navigation Bar**:\\n   - Below the browser address bar, there is a dark
-        navigation bar with the ChatGPT logo on the left.\\n   - To the right side
-        of the navigation bar, there are some icons, including browser extensions
-        and user profile icons.\\n\\n3. **Main Interface**:\\n   - The central area
-        has a dark background.\\n   - At the top left corner, there is a hamburger
-        menu icon which likely provides additional options or navigation.\\n   - Next
-        to the hamburger menu, there is an \u201CEdit\u201D icon represented by a
-        pencil, and the text \u201CChatGPT 4.0\u201D followed by a dropdown arrow.\\n\\n4.
-        **Suggestions Cards**:\\n   - In the middle of the screen, there are four
-        suggestion cards:\\n     1. \\\"Fun fact about the Roman Empire\\\" with an
-        icon of a gift box.\\n     2. \\\"Study vocabulary\\\" with an icon of a graduation
-        cap.\\n     3. \\\"Text inviting neighbors to barbecue\\\" with an icon of
-        a paper plane.\\n     4. \\\"Activities to make friends in new city\\\" with
-        an icon of a location marker.\\n\\n5. **Input Area**:\\n   - Towards the bottom
-        of the screen, there is a text input field labeled \u201CMessage ChatGPT\u201D.
-        To the left of this input field, there is a clip icon indicating an attachment
-        option.\\n   - At the bottom-right corner of this input area, there is a send
-        button represented by an upward arrow.\\n\\n6. **Footer**:\\n   - Below the
-        input area, there is a footer with the message: \u201CChatGPT can make mistakes.
-        Check important info.\u201D\\n\\nOverall, the user interface is clean and
-        straightforward, centered around providing a clear user experience for interacting
-        with ChatGPT.\"\n      },\n      \"logprobs\": null,\n      \"finish_reason\":
-        \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 1145,\n    \"completion_tokens\":
-        440,\n    \"total_tokens\": 1585\n  },\n  \"system_fingerprint\": \"fp_c45f7d0b45\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhjnJOtagmWmcOaIWVkr8UV5Sa9o",
+          "object": "chat.completion",
+          "created": 1720679915,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "The uploaded image shows the user interface of ChatGPT, a web-based chatbot. Here is a detailed breakdown of the interface elements:\n\n1. **Browser Tabs and Address Bar**: \n   - At the top of the screen, you can see the typical browser elements including tabs, an address bar, and some control buttons.\n   - The address bar shows the URL: `chat.openai.com/?oai-dm=1`\n\n2. **Top Navigation Bar**:\n   - Below the browser address bar, there is a dark navigation bar with the ChatGPT logo on the left.\n   - To the right side of the navigation bar, there are some icons, which typically represent features like settings, help, and a user profile indicator (in this case, with initials \"AM\").\n\n3. **Main Chat Interface**:\n   - The main area is predominantly dark (black background) with minimalistic design.\n   - There's the text `ChatGPT 4.0` top left within this area, indicating the version of ChatGPT being used.\n   - In the center, there's the ChatGPT logo.\n\n4. **Suggested Prompts**:\n   - Below the logo, there are four clickable prompts/icons, each with a short description:\n     - \"Fun fact about the Roman Empire\" with a gift icon.\n     - \"Study vocabulary\" with a graduation cap icon.\n     - \"Text inviting neighbors to barbecue\" with a pencil icon.\n     - \"Activities to make friends in new city\" with a map pin icon.\n\n5. **Input Area**:\n   - At the bottom of the interface, there's an input area where users can type messages. This area has a text input box labeled \"Message ChatGPT\".\n   - To the left of the input box is an attachment icon (clip) and to the right, a send button (looks like an upward arrow).\n\n6. **Footer**:\n   - Below the input box, there is a footer with a disclaimer text: \"ChatGPT can make mistakes. Check important info.\"\n\nOverall, the interface is clean, user-friendly, and centers the user's attention on interacting with the chatbot."
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 1145,
+            "completion_tokens": 432,
+            "total_tokens": 1577
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887db152beda3978-MAA
+      - 8a16ca885dbb3c0c-BLR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 15:03:41 GMT
+      - Thu, 11 Jul 2024 06:38:42 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -89,13 +81,13 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '2421'
+      - '2371'
       openai-processing-ms:
-      - '17336'
+      - '9516'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -109,7 +101,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 82ms
       x-request-id:
-      - req_2bb46615ef7df2f56207a7c16b10b987
+      - req_c60c807c81d730bf35b43ddf5462a2ce
     status:
       code: 200
       message: OK

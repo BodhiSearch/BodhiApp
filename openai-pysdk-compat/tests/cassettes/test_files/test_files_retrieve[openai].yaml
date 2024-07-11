@@ -32,21 +32,28 @@ interactions:
     uri: https://api.openai.com/v1/files/file-utwlH66iyvPBs61N1uIP2ANE
   response:
     body:
-      string: "{\n  \"object\": \"file\",\n  \"id\": \"file-utwlH66iyvPBs61N1uIP2ANE\",\n
-        \ \"purpose\": \"assistants\",\n  \"filename\": \"file-to-upload.txt\",\n
-        \ \"bytes\": 3395,\n  \"created_at\": 1716438816,\n  \"status\": \"processed\",\n
-        \ \"status_details\": null\n}\n"
+      string: |
+        {
+          "object": "file",
+          "id": "file-utwlH66iyvPBs61N1uIP2ANE",
+          "purpose": "assistants",
+          "filename": "file-to-upload.txt",
+          "bytes": 3395,
+          "created_at": 1716438816,
+          "status": "processed",
+          "status_details": null
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 8882559b1fe43c00-BLR
+      - 8a16ca115a19397d-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 04:34:35 GMT
+      - Thu, 11 Jul 2024 06:38:13 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -58,13 +65,13 @@ interactions:
       content-length:
       - '223'
       openai-processing-ms:
-      - '52'
+      - '180'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_cc1977598def66e751d8780af3e3a88e
+      - req_fab7796b7ed6704fc87b8ffe74dff986
     status:
       code: 200
       message: OK

@@ -38,24 +38,41 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RhcjXlVVSJDhDvhQszm9jR16YtbL\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716389573,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"Tuesday\"\n      },\n      \"logprobs\":
-        null,\n      \"finish_reason\": \"stop\"\n    }\n  ],\n  \"usage\": {\n    \"prompt_tokens\":
-        37,\n    \"completion_tokens\": 1,\n    \"total_tokens\": 38\n  },\n  \"system_fingerprint\":
-        \"fp_927397958d\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhjEqWxYAXr8rAuN2nqAwjbZqRQt",
+          "object": "chat.completion",
+          "created": 1720679880,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "Tuesday"
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 37,
+            "completion_tokens": 1,
+            "total_tokens": 38
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887da1f1efab7fdb-MAA
+      - 8a16c9bfde233c13-BLR
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 14:52:53 GMT
+      - Thu, 11 Jul 2024 06:38:00 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -65,11 +82,11 @@ interactions:
       content-length:
       - '466'
       openai-processing-ms:
-      - '147'
+      - '342'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -77,13 +94,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '4999'
       x-ratelimit-remaining-tokens:
-      - '599956'
+      - '599955'
       x-ratelimit-reset-requests:
       - 12ms
       x-ratelimit-reset-tokens:
       - 4ms
       x-request-id:
-      - req_48fc658f9716d6707777e4c7fdd11d66
+      - req_18cea2de9643cfec7565c888574ad078
     status:
       code: 200
       message: OK

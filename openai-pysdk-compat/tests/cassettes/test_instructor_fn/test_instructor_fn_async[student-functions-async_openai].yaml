@@ -49,27 +49,45 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9Risi4C9c34qBH0pusy2KT5LfFvFm\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394408,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": null,\n        \"function_call\": {\n
-        \         \"name\": \"Student\",\n          \"arguments\": \"{\\\"name\\\":\\\"David
-        Nguyen\\\",\\\"major\\\":\\\"Computer Science\\\",\\\"school\\\":\\\"Stanford
-        University\\\",\\\"grades\\\":3.8,\\\"club\\\":\\\"Robotics Club\\\"}\"\n
-        \       }\n      },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n
-        \   }\n  ],\n  \"usage\": {\n    \"prompt_tokens\": 186,\n    \"completion_tokens\":
-        29,\n    \"total_tokens\": 215\n  },\n  \"system_fingerprint\": \"fp_927397958d\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhk6H3zPEmrrfHKBn2XPuLjcMd0R",
+          "object": "chat.completion",
+          "created": 1720679934,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "function_call": {
+                  "name": "Student",
+                  "arguments": "{\"name\":\"David Nguyen\",\"major\":\"Computer Science\",\"school\":\"Stanford University\",\"grades\":3.8,\"club\":\"Robotics Club\"}"
+                }
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 186,
+            "completion_tokens": 29,
+            "total_tokens": 215
+          },
+          "system_fingerprint": "fp_d33f7b429e"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e17fa6e29a931-MAA
+      - 8a16cb140b25178d-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:29 GMT
+      - Thu, 11 Jul 2024 06:38:55 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -79,11 +97,11 @@ interactions:
       content-length:
       - '692'
       openai-processing-ms:
-      - '623'
+      - '750'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -91,13 +109,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '4999'
       x-ratelimit-remaining-tokens:
-      - '599885'
+      - '599886'
       x-ratelimit-reset-requests:
       - 12ms
       x-ratelimit-reset-tokens:
       - 11ms
       x-request-id:
-      - req_d09905d3bf64f67035ccc49e3b45b005
+      - req_b8f87c22f6fa03c6f97d334cc1f3b99b
     status:
       code: 200
       message: OK

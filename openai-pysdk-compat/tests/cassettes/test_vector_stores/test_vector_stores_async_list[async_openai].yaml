@@ -34,32 +34,235 @@ interactions:
     uri: https://api.openai.com/v1/vector_stores
   response:
     body:
-      string: "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"id\": \"vs_cUdw3KuFnFkWTsLcwTvoAaEi\",\n
-        \     \"object\": \"vector_store\",\n      \"name\": \"test_vector_store_create_j9eq\",\n
-        \     \"status\": \"completed\",\n      \"usage_bytes\": 0,\n      \"created_at\":
-        1716440387,\n      \"file_counts\": {\n        \"in_progress\": 0,\n        \"completed\":
-        0,\n        \"failed\": 0,\n        \"cancelled\": 0,\n        \"total\":
-        0\n      },\n      \"metadata\": {},\n      \"expires_after\": null,\n      \"expires_at\":
-        null,\n      \"last_active_at\": 1716440387\n    },\n    {\n      \"id\":
-        \"vs_63OsmuEsbAIqopz4APtR0JSp\",\n      \"object\": \"vector_store\",\n      \"name\":
-        \"test_vector_store_create_t2fB\",\n      \"status\": \"completed\",\n      \"usage_bytes\":
-        0,\n      \"created_at\": 1716440226,\n      \"file_counts\": {\n        \"in_progress\":
-        0,\n        \"completed\": 0,\n        \"failed\": 0,\n        \"cancelled\":
-        0,\n        \"total\": 0\n      },\n      \"metadata\": {},\n      \"expires_after\":
-        null,\n      \"expires_at\": null,\n      \"last_active_at\": 1716440226\n
-        \   }\n  ],\n  \"first_id\": \"vs_cUdw3KuFnFkWTsLcwTvoAaEi\",\n  \"last_id\":
-        \"vs_63OsmuEsbAIqopz4APtR0JSp\",\n  \"has_more\": false\n}"
+      string: |-
+        {
+          "object": "list",
+          "data": [
+            {
+              "id": "vs_i9AvX3aC5SRA862dKqegqBZP",
+              "object": "vector_store",
+              "name": "test_vector_store_create_5ouT",
+              "status": "completed",
+              "usage_bytes": 0,
+              "created_at": 1720679946,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 0
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1720679946
+            },
+            {
+              "id": "vs_MML1lbHJv9HiVVsaeD6b7nyg",
+              "object": "vector_store",
+              "name": "test_vector_store_create_dEcL",
+              "status": "completed",
+              "usage_bytes": 0,
+              "created_at": 1720679946,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 0
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1720679946
+            },
+            {
+              "id": "vs_tp1G1QA9UuoctOetsWsrawUT",
+              "object": "vector_store",
+              "name": "test-vector-store-files",
+              "status": "completed",
+              "usage_bytes": 30049,
+              "created_at": 1720679941,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 1,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1720679942
+            },
+            {
+              "id": "vs_2Pi8QwSNDOa3uCzuFyZGtzZe",
+              "object": "vector_store",
+              "name": "[Test] OpenAI API Resources",
+              "status": "completed",
+              "usage_bytes": 30049,
+              "created_at": 1720679870,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 1,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1720679874
+            },
+            {
+              "id": "vs_z7r2OYHsaMp4MWT025PHctZ4",
+              "object": "vector_store",
+              "name": "test-vector-store-files",
+              "status": "completed",
+              "usage_bytes": 30049,
+              "created_at": 1716471819,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 1,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1716471820
+            },
+            {
+              "id": "vs_XUDulH0y6eSY2TZyytGfZ0Gd",
+              "object": "vector_store",
+              "name": "[Test] OpenAI API Resources",
+              "status": "completed",
+              "usage_bytes": 30049,
+              "created_at": 1716471475,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 1,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1716471480
+            },
+            {
+              "id": "vs_n0tNyOAbn9xl28uol2rAc4ik",
+              "object": "vector_store",
+              "name": "[Test] OpenAI API Resources",
+              "status": "completed",
+              "usage_bytes": 0,
+              "created_at": 1716471444,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 0
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1716471444
+            },
+            {
+              "id": "vs_aRrmLqwwy73B2opMGX9rRMmk",
+              "object": "vector_store",
+              "name": "test-assistant-nb",
+              "status": "completed",
+              "usage_bytes": 30049,
+              "created_at": 1716470086,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 1,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1716470798
+            },
+            {
+              "id": "vs_rCQtEsQZR2ODDdJforY78rek",
+              "object": "vector_store",
+              "name": "Vector store for OpenAI API Expert",
+              "status": "completed",
+              "usage_bytes": 30049,
+              "created_at": 1716469592,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 1,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 1
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1716469629
+            },
+            {
+              "id": "vs_cUdw3KuFnFkWTsLcwTvoAaEi",
+              "object": "vector_store",
+              "name": "test_vector_store_create_j9eq",
+              "status": "completed",
+              "usage_bytes": 0,
+              "created_at": 1716440387,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 0
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1716440387
+            },
+            {
+              "id": "vs_63OsmuEsbAIqopz4APtR0JSp",
+              "object": "vector_store",
+              "name": "test_vector_store_create_t2fB",
+              "status": "completed",
+              "usage_bytes": 0,
+              "created_at": 1716440226,
+              "file_counts": {
+                "in_progress": 0,
+                "completed": 0,
+                "failed": 0,
+                "cancelled": 0,
+                "total": 0
+              },
+              "metadata": {},
+              "expires_after": null,
+              "expires_at": null,
+              "last_active_at": 1716440226
+            }
+          ],
+          "first_id": "vs_i9AvX3aC5SRA862dKqegqBZP",
+          "last_id": "vs_63OsmuEsbAIqopz4APtR0JSp",
+          "has_more": false
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 88827c52a95d83f3-BLR
+      - 8a16cb8a3e311798-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 05:01:09 GMT
+      - Thu, 11 Jul 2024 06:39:16 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -67,15 +270,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '1104'
+      - '5405'
       openai-processing-ms:
-      - '7903'
+      - '2746'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_56153de374f391a5eabf6527937ce3bf
+      - req_ad3857ee5c2768e178c261587e454f95
     status:
       code: 200
       message: OK

@@ -34,23 +34,37 @@ interactions:
     uri: https://api.openai.com/v1/vector_stores/vs_cUdw3KuFnFkWTsLcwTvoAaEi
   response:
     body:
-      string: "{\n  \"id\": \"vs_cUdw3KuFnFkWTsLcwTvoAaEi\",\n  \"object\": \"vector_store\",\n
-        \ \"name\": \"test_vector_store_create_j9eq\",\n  \"status\": \"completed\",\n
-        \ \"usage_bytes\": 0,\n  \"created_at\": 1716440387,\n  \"file_counts\": {\n
-        \   \"in_progress\": 0,\n    \"completed\": 0,\n    \"failed\": 0,\n    \"cancelled\":
-        0,\n    \"total\": 0\n  },\n  \"metadata\": {},\n  \"expires_after\": null,\n
-        \ \"expires_at\": null,\n  \"last_active_at\": 1716440387\n}"
+      string: |-
+        {
+          "id": "vs_cUdw3KuFnFkWTsLcwTvoAaEi",
+          "object": "vector_store",
+          "name": "test_vector_store_create_j9eq",
+          "status": "completed",
+          "usage_bytes": 0,
+          "created_at": 1716440387,
+          "file_counts": {
+            "in_progress": 0,
+            "completed": 0,
+            "failed": 0,
+            "cancelled": 0,
+            "total": 0
+          },
+          "metadata": {},
+          "expires_after": null,
+          "expires_at": null,
+          "last_active_at": 1716440387
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 88828022e8363c06-BLR
+      - 8a16cba17a680694-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 05:03:37 GMT
+      - Thu, 11 Jul 2024 06:39:17 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -60,13 +74,13 @@ interactions:
       content-length:
       - '400'
       openai-processing-ms:
-      - '33'
+      - '53'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_2644a7544bca0105444d5d115dcbb809
+      - req_628591551a3797ce492c308e356cdf89
     status:
       code: 200
       message: OK

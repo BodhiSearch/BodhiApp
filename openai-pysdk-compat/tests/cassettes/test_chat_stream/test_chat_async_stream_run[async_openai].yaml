@@ -38,30 +38,26 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: 'data: {"id":"chatcmpl-9Rhb07EqTaUnYU3HWmcSU1fdvAimu","object":"chat.completion.chunk","created":1716389466,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_927397958d","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}]}
+      string: |+
+        data: {"id":"chatcmpl-9jhjIQo9BJo0mwBRoBMhoU1NTKoYe","object":"chat.completion.chunk","created":1720679884,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_298125635f","choices":[{"index":0,"delta":{"role":"assistant","content":""},"logprobs":null,"finish_reason":null}]}
 
+        data: {"id":"chatcmpl-9jhjIQo9BJo0mwBRoBMhoU1NTKoYe","object":"chat.completion.chunk","created":1720679884,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_298125635f","choices":[{"index":0,"delta":{"content":"Tuesday"},"logprobs":null,"finish_reason":null}]}
 
-        data: {"id":"chatcmpl-9Rhb07EqTaUnYU3HWmcSU1fdvAimu","object":"chat.completion.chunk","created":1716389466,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_927397958d","choices":[{"index":0,"delta":{"content":"Tuesday"},"logprobs":null,"finish_reason":null}]}
-
-
-        data: {"id":"chatcmpl-9Rhb07EqTaUnYU3HWmcSU1fdvAimu","object":"chat.completion.chunk","created":1716389466,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_927397958d","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}]}
-
+        data: {"id":"chatcmpl-9jhjIQo9BJo0mwBRoBMhoU1NTKoYe","object":"chat.completion.chunk","created":1720679884,"model":"gpt-4o-2024-05-13","system_fingerprint":"fp_298125635f","choices":[{"index":0,"delta":{},"logprobs":null,"finish_reason":"stop"}]}
 
         data: [DONE]
 
-
-        '
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887d9f50db307f5e-MAA
+      - 8a16c9dbd98117a0-MAA
       Connection:
       - keep-alive
       Content-Type:
       - text/event-stream; charset=utf-8
       Date:
-      - Wed, 22 May 2024 14:51:06 GMT
+      - Thu, 11 Jul 2024 06:38:04 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -69,11 +65,11 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       openai-processing-ms:
-      - '204'
+      - '87'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -81,13 +77,13 @@ interactions:
       x-ratelimit-remaining-requests:
       - '4999'
       x-ratelimit-remaining-tokens:
-      - '599955'
+      - '599956'
       x-ratelimit-reset-requests:
       - 12ms
       x-ratelimit-reset-tokens:
       - 4ms
       x-request-id:
-      - req_63723deace3ec5c690285c9571c4dd7e
+      - req_92a14a00ccbe71542600cf245bb83f60
     status:
       code: 200
       message: OK

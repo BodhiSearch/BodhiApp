@@ -50,28 +50,51 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisWCweqfGC6cE9ZlMxyB9w147Ok\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394396,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": null,\n        \"tool_calls\": [\n          {\n
-        \           \"id\": \"call_nPAVwtFCK9EkVes40VZRaKZN\",\n            \"type\":
-        \"function\",\n            \"function\": {\n              \"name\": \"University\",\n
-        \             \"arguments\": \"{\\\"name\\\":\\\"Stanford University\\\",\\\"ranking\\\":5,\\\"country\\\":\\\"United
-        States\\\",\\\"no_of_students\\\":17000}\"\n            }\n          }\n        ]\n
-        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
-        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 215,\n    \"completion_tokens\":
-        23,\n    \"total_tokens\": 238\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhk1ESpsH2IEgmsLYcF6600Cuzl2",
+          "object": "chat.completion",
+          "created": 1720679929,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_8B7rL0FfoeIUUrw84PTR2ULS",
+                    "type": "function",
+                    "function": {
+                      "name": "University",
+                      "arguments": "{\"name\":\"Stanford University\",\"ranking\":5,\"country\":\"United States\",\"no_of_students\":17000}"
+                    }
+                  }
+                ]
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 215,
+            "completion_tokens": 23,
+            "total_tokens": 238
+          },
+          "system_fingerprint": "fp_ce0793330f"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e17b229a87fdd-MAA
+      - 8a16caf2ac5217ab-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:17 GMT
+      - Thu, 11 Jul 2024 06:38:50 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,11 +104,11 @@ interactions:
       content-length:
       - '815'
       openai-processing-ms:
-      - '526'
+      - '561'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -99,7 +122,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 13ms
       x-request-id:
-      - req_84b8d42c6229ae2086df53003e4f902c
+      - req_b8f2a65fdaa1bdc3d983123d78907fb0
     status:
       code: 200
       message: OK

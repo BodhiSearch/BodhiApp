@@ -52,26 +52,41 @@ interactions:
     uri: https://api.openai.com/v1/chat/completions
   response:
     body:
-      string: "{\n  \"id\": \"chatcmpl-9RisaRKjiPodwxF8stKLNAlwMSVYD\",\n  \"object\":
-        \"chat.completion\",\n  \"created\": 1716394400,\n  \"model\": \"gpt-4o-2024-05-13\",\n
-        \ \"choices\": [\n    {\n      \"index\": 0,\n      \"message\": {\n        \"role\":
-        \"assistant\",\n        \"content\": \"{\\n  \\\"name\\\": \\\"David Nguyen\\\",\\n
-        \ \\\"major\\\": \\\"Computer Science\\\",\\n  \\\"school\\\": \\\"Stanford
-        University\\\",\\n  \\\"grades\\\": 3.8,\\n  \\\"club\\\": \\\"Robotics Club\\\"\\n}\"\n
-        \     },\n      \"logprobs\": null,\n      \"finish_reason\": \"stop\"\n    }\n
-        \ ],\n  \"usage\": {\n    \"prompt_tokens\": 334,\n    \"completion_tokens\":
-        45,\n    \"total_tokens\": 379\n  },\n  \"system_fingerprint\": \"fp_729ea513f7\"\n}\n"
+      string: |
+        {
+          "id": "chatcmpl-9jhk3UulV7nssYBEvoCTr3DgMCsbv",
+          "object": "chat.completion",
+          "created": 1720679931,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "{\n  \"name\": \"David Nguyen\",\n  \"major\": \"Computer Science\",\n  \"school\": \"Stanford University\",\n  \"grades\": 3.8,\n  \"club\": \"Robotics Club\"\n}"
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 334,
+            "completion_tokens": 45,
+            "total_tokens": 379
+          },
+          "system_fingerprint": "fp_d33f7b429e"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887e17c88ff3a8fb-MAA
+      - 8a16cb0318a806a0-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 16:13:21 GMT
+      - Thu, 11 Jul 2024 06:38:52 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -81,11 +96,11 @@ interactions:
       content-length:
       - '624'
       openai-processing-ms:
-      - '796'
+      - '896'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
-      - max-age=15724800; includeSubDomains
+      - max-age=31536000; includeSubDomains
       x-ratelimit-limit-requests:
       - '5000'
       x-ratelimit-limit-tokens:
@@ -99,7 +114,7 @@ interactions:
       x-ratelimit-reset-tokens:
       - 36ms
       x-request-id:
-      - req_4477f43a1d1e1a83d830619991dfe00a
+      - req_652c4ba9b2c5eadc49b439a416bd4d04
     status:
       code: 200
       message: OK

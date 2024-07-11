@@ -38,25 +38,41 @@ interactions:
     uri: https://api.openai.com/v1/assistants
   response:
     body:
-      string: "{\n  \"id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n  \"object\": \"assistant\",\n
-        \ \"created_at\": 1716469150,\n  \"name\": \"Math Tutor\",\n  \"description\":
-        null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\": \"You are
-        a personal math tutor. Write and run code to answer math questions.\",\n  \"tools\":
-        [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n  \"top_p\":
-        1.0,\n  \"temperature\": 1.0,\n  \"tool_resources\": {\n    \"code_interpreter\":
-        {\n      \"file_ids\": []\n    }\n  },\n  \"metadata\": {},\n  \"response_format\":
-        \"auto\"\n}"
+      string: |-
+        {
+          "id": "asst_khMSTED2IY0p5DuDE7WeZCZb",
+          "object": "assistant",
+          "created_at": 1720679861,
+          "name": "Math Tutor",
+          "description": null,
+          "model": "gpt-4o-2024-05-13",
+          "instructions": "You are a personal math tutor. Write and run code to answer math questions.",
+          "tools": [
+            {
+              "type": "code_interpreter"
+            }
+          ],
+          "top_p": 1.0,
+          "temperature": 1.0,
+          "tool_resources": {
+            "code_interpreter": {
+              "file_ids": []
+            }
+          },
+          "metadata": {},
+          "response_format": "auto"
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538be29173c00-BLR
+      - 8a16c94eed2cb2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:10 GMT
+      - Thu, 11 Jul 2024 06:37:41 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -66,13 +82,13 @@ interactions:
       content-length:
       - '500'
       openai-processing-ms:
-      - '64'
+      - '75'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_4423f3b505d981d24ea43008895a6279
+      - req_d9aba0e25d6745c95232973e16faf7ba
     status:
       code: 200
       message: OK
@@ -90,8 +106,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -116,20 +132,25 @@ interactions:
     uri: https://api.openai.com/v1/threads
   response:
     body:
-      string: "{\n  \"id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"object\": \"thread\",\n
-        \ \"created_at\": 1716469150,\n  \"metadata\": {},\n  \"tool_resources\":
-        {}\n}"
+      string: |-
+        {
+          "id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+          "object": "thread",
+          "created_at": 1720679862,
+          "metadata": {},
+          "tool_resources": {}
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538c0cb9c3c00-BLR
+      - 8a16c9515848b2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:11 GMT
+      - Thu, 11 Jul 2024 06:37:42 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -139,13 +160,13 @@ interactions:
       content-length:
       - '137'
       openai-processing-ms:
-      - '22'
+      - '107'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_3447e0866420572479a03a5cd155336d
+      - req_017707df97efcddf433089ff008744e9
     status:
       code: 200
       message: OK
@@ -164,8 +185,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -187,26 +208,41 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: POST
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/messages
+    uri: https://api.openai.com/v1/threads/thread_gtVYveUPRaHGgtVdz6gTweh7/messages
   response:
     body:
-      string: "{\n  \"id\": \"msg_7biWPRFR3m0o3PcPU4dxccFF\",\n  \"object\": \"thread.message\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": null,\n  \"thread_id\":
-        \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"run_id\": null,\n  \"role\": \"user\",\n
-        \ \"content\": [\n    {\n      \"type\": \"text\",\n      \"text\": {\n        \"value\":
-        \"I need to solve the equation `3x + 11 = 14`. Can you help me?\",\n        \"annotations\":
-        []\n      }\n    }\n  ],\n  \"attachments\": [],\n  \"metadata\": {}\n}"
+      string: |-
+        {
+          "id": "msg_paXzP0GiiOsaIoEKPPQ6ME0e",
+          "object": "thread.message",
+          "created_at": 1720679862,
+          "assistant_id": null,
+          "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+          "run_id": null,
+          "role": "user",
+          "content": [
+            {
+              "type": "text",
+              "text": {
+                "value": "I need to solve the equation `3x + 11 = 14`. Can you help me?",
+                "annotations": []
+              }
+            }
+          ],
+          "attachments": [],
+          "metadata": {}
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538c2adf43c00-BLR
+      - 8a16c953fb6ab2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:11 GMT
+      - Thu, 11 Jul 2024 06:37:42 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -216,18 +252,18 @@ interactions:
       content-length:
       - '435'
       openai-processing-ms:
-      - '59'
+      - '139'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_d1f7eaa628de404572d4a511ba5dc7e2
+      - req_f5a5dbfd32c807fbfc8f2d92b678f8e3
     status:
       code: 200
       message: OK
 - request:
-    body: '{"assistant_id": "asst_MMqoGwXmpllzzR1ERbuhpW2o", "instructions": "Please
+    body: '{"assistant_id": "asst_khMSTED2IY0p5DuDE7WeZCZb", "instructions": "Please
       address the user as Jane Doe. The user has a premium account.", "stream": false}'
     headers:
       accept:
@@ -241,8 +277,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -264,33 +300,58 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: POST
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs
+    uri: https://api.openai.com/v1/threads/thread_gtVYveUPRaHGgtVdz6gTweh7/runs
   response:
     body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"queued\",\n
-        \ \"started_at\": null,\n  \"expires_at\": 1716469751,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": null,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": null,\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
+      string: |-
+        {
+          "id": "run_Hys3X1y8oSgnIQuyQGFn4jhc",
+          "object": "thread.run",
+          "created_at": 1720679863,
+          "assistant_id": "asst_khMSTED2IY0p5DuDE7WeZCZb",
+          "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+          "status": "queued",
+          "started_at": null,
+          "expires_at": 1720680463,
+          "cancelled_at": null,
+          "failed_at": null,
+          "completed_at": null,
+          "required_action": null,
+          "last_error": null,
+          "model": "gpt-4o-2024-05-13",
+          "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+          "tools": [
+            {
+              "type": "code_interpreter"
+            }
+          ],
+          "tool_resources": {},
+          "metadata": {},
+          "temperature": 1.0,
+          "top_p": 1.0,
+          "max_completion_tokens": null,
+          "max_prompt_tokens": null,
+          "truncation_strategy": {
+            "type": "auto",
+            "last_messages": null
+          },
+          "incomplete_details": null,
+          "usage": null,
+          "response_format": "auto",
+          "tool_choice": "auto",
+          "parallel_tool_calls": true
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538c548543c00-BLR
+      - 8a16c9572fb1b2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:12 GMT
+      - Thu, 11 Jul 2024 06:37:44 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -298,15 +359,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '893'
+      - '924'
       openai-processing-ms:
-      - '231'
+      - '1797'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_c4109b6f8bd131d8bc38eee90ac4da09
+      - req_b70b671a8a12f978039e6beacd814b26
     status:
       code: 200
       message: OK
@@ -322,8 +383,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -349,33 +410,58 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs/run_qN4ZxPUzboUfD2f8AkgjPDbi
+    uri: https://api.openai.com/v1/threads/thread_gtVYveUPRaHGgtVdz6gTweh7/runs/run_Hys3X1y8oSgnIQuyQGFn4jhc
   response:
     body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"in_progress\",\n
-        \ \"started_at\": 1716469152,\n  \"expires_at\": 1716469751,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": null,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": null,\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
+      string: |-
+        {
+          "id": "run_Hys3X1y8oSgnIQuyQGFn4jhc",
+          "object": "thread.run",
+          "created_at": 1720679863,
+          "assistant_id": "asst_khMSTED2IY0p5DuDE7WeZCZb",
+          "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+          "status": "in_progress",
+          "started_at": 1720679864,
+          "expires_at": 1720680463,
+          "cancelled_at": null,
+          "failed_at": null,
+          "completed_at": null,
+          "required_action": null,
+          "last_error": null,
+          "model": "gpt-4o-2024-05-13",
+          "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+          "tools": [
+            {
+              "type": "code_interpreter"
+            }
+          ],
+          "tool_resources": {},
+          "metadata": {},
+          "temperature": 1.0,
+          "top_p": 1.0,
+          "max_completion_tokens": null,
+          "max_prompt_tokens": null,
+          "truncation_strategy": {
+            "type": "auto",
+            "last_messages": null
+          },
+          "incomplete_details": null,
+          "usage": null,
+          "response_format": "auto",
+          "tool_choice": "auto",
+          "parallel_tool_calls": true
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538c91c643c00-BLR
+      - 8a16c9649851b2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:12 GMT
+      - Thu, 11 Jul 2024 06:37:45 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -383,15 +469,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '904'
+      - '935'
       openai-processing-ms:
-      - '64'
+      - '160'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_a16e8720f58f88db92c91eb25f71ce6e
+      - req_74a4c246b8f2978dc14ee7eb26e1776d
     status:
       code: 200
       message: OK
@@ -407,8 +493,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -434,33 +520,58 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs/run_qN4ZxPUzboUfD2f8AkgjPDbi
+    uri: https://api.openai.com/v1/threads/thread_gtVYveUPRaHGgtVdz6gTweh7/runs/run_Hys3X1y8oSgnIQuyQGFn4jhc
   response:
     body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"in_progress\",\n
-        \ \"started_at\": 1716469152,\n  \"expires_at\": 1716469751,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": null,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": null,\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
+      string: |-
+        {
+          "id": "run_Hys3X1y8oSgnIQuyQGFn4jhc",
+          "object": "thread.run",
+          "created_at": 1720679863,
+          "assistant_id": "asst_khMSTED2IY0p5DuDE7WeZCZb",
+          "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+          "status": "in_progress",
+          "started_at": 1720679864,
+          "expires_at": 1720680463,
+          "cancelled_at": null,
+          "failed_at": null,
+          "completed_at": null,
+          "required_action": null,
+          "last_error": null,
+          "model": "gpt-4o-2024-05-13",
+          "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+          "tools": [
+            {
+              "type": "code_interpreter"
+            }
+          ],
+          "tool_resources": {},
+          "metadata": {},
+          "temperature": 1.0,
+          "top_p": 1.0,
+          "max_completion_tokens": null,
+          "max_prompt_tokens": null,
+          "truncation_strategy": {
+            "type": "auto",
+            "last_messages": null
+          },
+          "incomplete_details": null,
+          "usage": null,
+          "response_format": "auto",
+          "tool_choice": "auto",
+          "parallel_tool_calls": true
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538d1ed353c00-BLR
+      - 8a16c96dcbacb2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:13 GMT
+      - Thu, 11 Jul 2024 06:37:46 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -468,15 +579,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '904'
+      - '935'
       openai-processing-ms:
-      - '44'
+      - '50'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_2cdbe16a3d5aaffa604b5d6e01454cd9
+      - req_155eca7aa1c24ed8d50d31d95c8720ff
     status:
       code: 200
       message: OK
@@ -492,8 +603,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -519,33 +630,58 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs/run_qN4ZxPUzboUfD2f8AkgjPDbi
+    uri: https://api.openai.com/v1/threads/thread_gtVYveUPRaHGgtVdz6gTweh7/runs/run_Hys3X1y8oSgnIQuyQGFn4jhc
   response:
     body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"in_progress\",\n
-        \ \"started_at\": 1716469152,\n  \"expires_at\": 1716469751,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": null,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": null,\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
+      string: |-
+        {
+          "id": "run_Hys3X1y8oSgnIQuyQGFn4jhc",
+          "object": "thread.run",
+          "created_at": 1720679863,
+          "assistant_id": "asst_khMSTED2IY0p5DuDE7WeZCZb",
+          "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+          "status": "in_progress",
+          "started_at": 1720679864,
+          "expires_at": 1720680463,
+          "cancelled_at": null,
+          "failed_at": null,
+          "completed_at": null,
+          "required_action": null,
+          "last_error": null,
+          "model": "gpt-4o-2024-05-13",
+          "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+          "tools": [
+            {
+              "type": "code_interpreter"
+            }
+          ],
+          "tool_resources": {},
+          "metadata": {},
+          "temperature": 1.0,
+          "top_p": 1.0,
+          "max_completion_tokens": null,
+          "max_prompt_tokens": null,
+          "truncation_strategy": {
+            "type": "auto",
+            "last_messages": null
+          },
+          "incomplete_details": null,
+          "usage": null,
+          "response_format": "auto",
+          "tool_choice": "auto",
+          "parallel_tool_calls": true
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538da4d603c00-BLR
+      - 8a16c9766e2eb2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:15 GMT
+      - Thu, 11 Jul 2024 06:37:48 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -553,15 +689,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '904'
+      - '935'
       openai-processing-ms:
-      - '44'
+      - '89'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_ffcd8cb15d4560bb51b60d1e4f79dca1
+      - req_1a0b60e181f1e0fa65bd04c6299140d4
     status:
       code: 200
       message: OK
@@ -577,8 +713,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -604,33 +740,62 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs/run_qN4ZxPUzboUfD2f8AkgjPDbi
+    uri: https://api.openai.com/v1/threads/thread_gtVYveUPRaHGgtVdz6gTweh7/runs/run_Hys3X1y8oSgnIQuyQGFn4jhc
   response:
     body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"in_progress\",\n
-        \ \"started_at\": 1716469152,\n  \"expires_at\": 1716469751,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": null,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": null,\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
+      string: |-
+        {
+          "id": "run_Hys3X1y8oSgnIQuyQGFn4jhc",
+          "object": "thread.run",
+          "created_at": 1720679863,
+          "assistant_id": "asst_khMSTED2IY0p5DuDE7WeZCZb",
+          "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+          "status": "completed",
+          "started_at": 1720679864,
+          "expires_at": null,
+          "cancelled_at": null,
+          "failed_at": null,
+          "completed_at": 1720679868,
+          "required_action": null,
+          "last_error": null,
+          "model": "gpt-4o-2024-05-13",
+          "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+          "tools": [
+            {
+              "type": "code_interpreter"
+            }
+          ],
+          "tool_resources": {},
+          "metadata": {},
+          "temperature": 1.0,
+          "top_p": 1.0,
+          "max_completion_tokens": null,
+          "max_prompt_tokens": null,
+          "truncation_strategy": {
+            "type": "auto",
+            "last_messages": null
+          },
+          "incomplete_details": null,
+          "usage": {
+            "prompt_tokens": 151,
+            "completion_tokens": 177,
+            "total_tokens": 328
+          },
+          "response_format": "auto",
+          "tool_choice": "auto",
+          "parallel_tool_calls": true
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538e28dd03c00-BLR
+      - 8a16c97f692eb2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:16 GMT
+      - Thu, 11 Jul 2024 06:37:49 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -638,15 +803,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '904'
+      - '1014'
       openai-processing-ms:
-      - '43'
+      - '77'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_73ba3f37d09690cfb9a41beec3e6a072
+      - req_56b51b77f36a2a10cfee4e236bdb57ce
     status:
       code: 200
       message: OK
@@ -662,264 +827,8 @@ interactions:
       content-type:
       - application/json
       cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
-      host:
-      - api.openai.com
-      openai-beta:
-      - assistants=v2
-      user-agent:
-      - OpenAI/Python 1.30.1
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - 'false'
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 1.30.1
-      x-stainless-poll-helper:
-      - 'true'
-      x-stainless-raw-response:
-      - 'true'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.11.5
-    method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs/run_qN4ZxPUzboUfD2f8AkgjPDbi
-  response:
-    body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"in_progress\",\n
-        \ \"started_at\": 1716469152,\n  \"expires_at\": 1716469751,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": null,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": null,\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
-    headers:
-      CF-Cache-Status:
-      - DYNAMIC
-      CF-RAY:
-      - 888538eaee7e3c00-BLR
-      Connection:
-      - keep-alive
-      Content-Type:
-      - application/json
-      Date:
-      - Thu, 23 May 2024 12:59:17 GMT
-      Server:
-      - cloudflare
-      Transfer-Encoding:
-      - chunked
-      alt-svc:
-      - h3=":443"; ma=86400
-      content-length:
-      - '904'
-      openai-processing-ms:
-      - '45'
-      openai-version:
-      - '2020-10-01'
-      strict-transport-security:
-      - max-age=15724800; includeSubDomains
-      x-request-id:
-      - req_a50b90881049708a31b7fb8390dfb99e
-    status:
-      code: 200
-      message: OK
-- request:
-    body: ''
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-type:
-      - application/json
-      cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
-      host:
-      - api.openai.com
-      openai-beta:
-      - assistants=v2
-      user-agent:
-      - OpenAI/Python 1.30.1
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - 'false'
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 1.30.1
-      x-stainless-poll-helper:
-      - 'true'
-      x-stainless-raw-response:
-      - 'true'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.11.5
-    method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs/run_qN4ZxPUzboUfD2f8AkgjPDbi
-  response:
-    body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"in_progress\",\n
-        \ \"started_at\": 1716469152,\n  \"expires_at\": 1716469751,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": null,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": null,\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
-    headers:
-      CF-Cache-Status:
-      - DYNAMIC
-      CF-RAY:
-      - 888538f33e9d3c00-BLR
-      Connection:
-      - keep-alive
-      Content-Type:
-      - application/json
-      Date:
-      - Thu, 23 May 2024 12:59:19 GMT
-      Server:
-      - cloudflare
-      Transfer-Encoding:
-      - chunked
-      alt-svc:
-      - h3=":443"; ma=86400
-      content-length:
-      - '904'
-      openai-processing-ms:
-      - '59'
-      openai-version:
-      - '2020-10-01'
-      strict-transport-security:
-      - max-age=15724800; includeSubDomains
-      x-request-id:
-      - req_ce884c2fe963ba2338e824da2a960c34
-    status:
-      code: 200
-      message: OK
-- request:
-    body: ''
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-type:
-      - application/json
-      cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
-      host:
-      - api.openai.com
-      openai-beta:
-      - assistants=v2
-      user-agent:
-      - OpenAI/Python 1.30.1
-      x-stainless-arch:
-      - arm64
-      x-stainless-async:
-      - 'false'
-      x-stainless-lang:
-      - python
-      x-stainless-os:
-      - MacOS
-      x-stainless-package-version:
-      - 1.30.1
-      x-stainless-poll-helper:
-      - 'true'
-      x-stainless-raw-response:
-      - 'true'
-      x-stainless-runtime:
-      - CPython
-      x-stainless-runtime-version:
-      - 3.11.5
-    method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/runs/run_qN4ZxPUzboUfD2f8AkgjPDbi
-  response:
-    body:
-      string: "{\n  \"id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n  \"object\": \"thread.run\",\n
-        \ \"created_at\": 1716469151,\n  \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n
-        \ \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n  \"status\": \"completed\",\n
-        \ \"started_at\": 1716469152,\n  \"expires_at\": null,\n  \"cancelled_at\":
-        null,\n  \"failed_at\": null,\n  \"completed_at\": 1716469159,\n  \"required_action\":
-        null,\n  \"last_error\": null,\n  \"model\": \"gpt-4o-2024-05-13\",\n  \"instructions\":
-        \"Please address the user as Jane Doe. The user has a premium account.\",\n
-        \ \"tools\": [\n    {\n      \"type\": \"code_interpreter\"\n    }\n  ],\n
-        \ \"tool_resources\": {},\n  \"metadata\": {},\n  \"temperature\": 1.0,\n
-        \ \"top_p\": 1.0,\n  \"max_completion_tokens\": null,\n  \"max_prompt_tokens\":
-        null,\n  \"truncation_strategy\": {\n    \"type\": \"auto\",\n    \"last_messages\":
-        null\n  },\n  \"incomplete_details\": null,\n  \"usage\": {\n    \"prompt_tokens\":
-        151,\n    \"completion_tokens\": 149,\n    \"total_tokens\": 300\n  },\n  \"response_format\":
-        \"auto\",\n  \"tool_choice\": \"auto\"\n}"
-    headers:
-      CF-Cache-Status:
-      - DYNAMIC
-      CF-RAY:
-      - 888538fc2fcc3c00-BLR
-      Connection:
-      - keep-alive
-      Content-Type:
-      - application/json
-      Date:
-      - Thu, 23 May 2024 12:59:20 GMT
-      Server:
-      - cloudflare
-      Transfer-Encoding:
-      - chunked
-      alt-svc:
-      - h3=":443"; ma=86400
-      content-length:
-      - '983'
-      openai-processing-ms:
-      - '52'
-      openai-version:
-      - '2020-10-01'
-      strict-transport-security:
-      - max-age=15724800; includeSubDomains
-      x-request-id:
-      - req_d4972470f24f82eb9fcb2794f9b70f3a
-    status:
-      code: 200
-      message: OK
-- request:
-    body: ''
-    headers:
-      accept:
-      - application/json
-      accept-encoding:
-      - gzip, deflate
-      connection:
-      - keep-alive
-      content-type:
-      - application/json
-      cookie:
-      - __cf_bm=Sb3fXKUJPr7RtONEjr0w7zAujhQ8ODglQLIK60Bx.5k-1716469150-1.0.1.1-hOr9iFh62D2qjDeVF3XLUqnExqGz6AYfSnSX8CCNZIjwZEfnce8pYLB8KsscXt68w1ul_7m6UuNE5IGzFgXnSA;
-        _cfuvid=OWxaI_m9oZ_vHwxYvq_uKRLV8mjY4EWj.zY9Oi4b.fs-1716469150756-0.0.1.1-604800000
+      - __cf_bm=n0UZ7Bubnfd993s_VbKx8GUz.A6NvwdVCGrC68PMGVE-1720679861-1.0.1.1-bLrNIX0YMGU1JjjVaPtvQ0jbXBBBjsMYKD84zLdssCmcJ3aYAZ7cx38EL1vH0UzpmOC5afm9mKRk1JdREgRx0Q;
+        _cfuvid=6HILL1tWKdOg1mkfKc4FMiG3h6ZU0topsg3fJEovuyw-1720679861944-0.0.1.1-604800000
       host:
       - api.openai.com
       openai-beta:
@@ -941,43 +850,69 @@ interactions:
       x-stainless-runtime-version:
       - 3.11.5
     method: GET
-    uri: https://api.openai.com/v1/threads/thread_zdj4Cbn1gHDl8KK5fugX7cuc/messages
+    uri: https://api.openai.com/v1/threads/thread_gtVYveUPRaHGgtVdz6gTweh7/messages
   response:
     body:
-      string: "{\n  \"object\": \"list\",\n  \"data\": [\n    {\n      \"id\": \"msg_Q96wcaJuzkzqkkQs5gf1V8NH\",\n
-        \     \"object\": \"thread.message\",\n      \"created_at\": 1716469154,\n
-        \     \"assistant_id\": \"asst_MMqoGwXmpllzzR1ERbuhpW2o\",\n      \"thread_id\":
-        \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n      \"run_id\": \"run_qN4ZxPUzboUfD2f8AkgjPDbi\",\n
-        \     \"role\": \"assistant\",\n      \"content\": [\n        {\n          \"type\":
-        \"text\",\n          \"text\": {\n            \"value\": \"Absolutely, Jane
-        Doe! Let's solve the equation \\\\(3x + 11 = 14\\\\).\\n\\nHere\u2019s a step-by-step
-        solution:\\n\\n1. Subtract 11 from both sides of the equation to isolate the
-        term with \\\\(x\\\\):\\n   \\\\[\\n   3x + 11 - 11 = 14 - 11\\n   \\\\]\\n
-        \  Simplifying this gives:\\n   \\\\[\\n   3x = 3\\n   \\\\]\\n\\n2. Divide
-        both sides by 3 to solve for \\\\(x\\\\):\\n   \\\\[\\n   x = \\\\frac{3}{3}\\n
-        \  \\\\]\\n\\nTherefore, the solution is:\\n\\\\[\\nx = 1\\n\\\\]\\n\\nWould
-        you like me to verify this solution?\",\n            \"annotations\": []\n
-        \         }\n        }\n      ],\n      \"attachments\": [],\n      \"metadata\":
-        {}\n    },\n    {\n      \"id\": \"msg_7biWPRFR3m0o3PcPU4dxccFF\",\n      \"object\":
-        \"thread.message\",\n      \"created_at\": 1716469151,\n      \"assistant_id\":
-        null,\n      \"thread_id\": \"thread_zdj4Cbn1gHDl8KK5fugX7cuc\",\n      \"run_id\":
-        null,\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\":
-        \"text\",\n          \"text\": {\n            \"value\": \"I need to solve
-        the equation `3x + 11 = 14`. Can you help me?\",\n            \"annotations\":
-        []\n          }\n        }\n      ],\n      \"attachments\": [],\n      \"metadata\":
-        {}\n    }\n  ],\n  \"first_id\": \"msg_Q96wcaJuzkzqkkQs5gf1V8NH\",\n  \"last_id\":
-        \"msg_7biWPRFR3m0o3PcPU4dxccFF\",\n  \"has_more\": false\n}"
+      string: |-
+        {
+          "object": "list",
+          "data": [
+            {
+              "id": "msg_ZsGNVbHWcRqaes24jACcTN09",
+              "object": "thread.message",
+              "created_at": 1720679866,
+              "assistant_id": "asst_khMSTED2IY0p5DuDE7WeZCZb",
+              "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+              "run_id": "run_Hys3X1y8oSgnIQuyQGFn4jhc",
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "text",
+                  "text": {
+                    "value": "Certainly, Jane Doe! To solve the equation \\(3x + 11 = 14\\), let's follow these steps:\n\n1. **Isolate the term with the variable \\(x\\)**:\n   \\[\n   3x + 11 = 14 \n   \\]\n   Subtract 11 from both sides of the equation:\n   \\[\n   3x + 11 - 11 = 14 - 11 \n   \\]\n   \\[\n   3x = 3 \n   \\]\n\n2. **Solve for \\(x\\)** by dividing both sides by 3:\n   \\[\n   \\frac{3x}{3} = \\frac{3}{3} \n   \\]\n   \\[\n   x = 1\n   \\]\n\nSo, \\(x = 1\\) is the solution to the equation.",
+                    "annotations": []
+                  }
+                }
+              ],
+              "attachments": [],
+              "metadata": {}
+            },
+            {
+              "id": "msg_paXzP0GiiOsaIoEKPPQ6ME0e",
+              "object": "thread.message",
+              "created_at": 1720679862,
+              "assistant_id": null,
+              "thread_id": "thread_gtVYveUPRaHGgtVdz6gTweh7",
+              "run_id": null,
+              "role": "user",
+              "content": [
+                {
+                  "type": "text",
+                  "text": {
+                    "value": "I need to solve the equation `3x + 11 = 14`. Can you help me?",
+                    "annotations": []
+                  }
+                }
+              ],
+              "attachments": [],
+              "metadata": {}
+            }
+          ],
+          "first_id": "msg_ZsGNVbHWcRqaes24jACcTN09",
+          "last_id": "msg_paXzP0GiiOsaIoEKPPQ6ME0e",
+          "has_more": false
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888538feda8c3c00-BLR
+      - 8a16c981bc0eb2a6-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 12:59:21 GMT
+      - Thu, 11 Jul 2024 06:37:50 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -985,15 +920,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '1648'
+      - '1663'
       openai-processing-ms:
-      - '46'
+      - '213'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_23f9ba4e9f94dee7648f2c6c9dbee5a1
+      - req_ba61cdea2ba5d84c61c0ffeba070cad1
     status:
       code: 200
       message: OK

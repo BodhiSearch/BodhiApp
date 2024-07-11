@@ -34,21 +34,34 @@ interactions:
     uri: https://api.openai.com/v1/vector_stores/vs_z7r2OYHsaMp4MWT025PHctZ4/files/file-G08t1WAY6fkAsVCYNnmSIcIU
   response:
     body:
-      string: "{\n  \"id\": \"file-G08t1WAY6fkAsVCYNnmSIcIU\",\n  \"object\": \"vector_store.file\",\n
-        \ \"usage_bytes\": 30049,\n  \"created_at\": 1716471820,\n  \"vector_store_id\":
-        \"vs_z7r2OYHsaMp4MWT025PHctZ4\",\n  \"status\": \"completed\",\n  \"last_error\":
-        null\n}"
+      string: |-
+        {
+          "id": "file-G08t1WAY6fkAsVCYNnmSIcIU",
+          "object": "vector_store.file",
+          "usage_bytes": 30049,
+          "created_at": 1716471820,
+          "vector_store_id": "vs_z7r2OYHsaMp4MWT025PHctZ4",
+          "status": "completed",
+          "last_error": null,
+          "chunking_strategy": {
+            "type": "static",
+            "static": {
+              "max_chunk_size_tokens": 800,
+              "chunk_overlap_tokens": 400
+            }
+          }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 888580a75cf33c12-BLR
+      - 8a16cb5d1e1a17ac-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Thu, 23 May 2024 13:48:16 GMT
+      - Thu, 11 Jul 2024 06:39:06 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -56,15 +69,15 @@ interactions:
       alt-svc:
       - h3=":443"; ma=86400
       content-length:
-      - '227'
+      - '371'
       openai-processing-ms:
-      - '34'
+      - '47'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_066928e16ed54d4a01f096f354685459
+      - req_61c45b95341f1bf98337e3e88f83ae9c
     status:
       code: 200
       message: OK

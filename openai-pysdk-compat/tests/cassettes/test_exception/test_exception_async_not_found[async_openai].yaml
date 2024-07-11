@@ -32,20 +32,26 @@ interactions:
     uri: https://api.openai.com/v1/models/gpt-4o-foo
   response:
     body:
-      string: "{\n  \"error\": {\n    \"message\": \"The model 'gpt-4o-foo' does not
-        exist\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"model\",\n
-        \   \"code\": \"model_not_found\"\n  }\n}\n"
+      string: |
+        {
+          "error": {
+            "message": "The model 'gpt-4o-foo' does not exist",
+            "type": "invalid_request_error",
+            "param": "model",
+            "code": "model_not_found"
+          }
+        }
     headers:
       CF-Cache-Status:
       - DYNAMIC
       CF-RAY:
-      - 887daf81ce9e7f84-MAA
+      - 8a16c9fd493817a2-MAA
       Connection:
       - keep-alive
       Content-Type:
       - application/json
       Date:
-      - Wed, 22 May 2024 15:02:09 GMT
+      - Thu, 11 Jul 2024 06:38:09 GMT
       Server:
       - cloudflare
       Transfer-Encoding:
@@ -57,13 +63,13 @@ interactions:
       content-length:
       - '166'
       openai-processing-ms:
-      - '36'
+      - '30'
       openai-version:
       - '2020-10-01'
       strict-transport-security:
       - max-age=15724800; includeSubDomains
       x-request-id:
-      - req_8e2f2d769db9b3c419e22a20b2c7998b
+      - req_11757115775014d962c9d2dcb0ed50ad
     status:
       code: 404
       message: Not Found
