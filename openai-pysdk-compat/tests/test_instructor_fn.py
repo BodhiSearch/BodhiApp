@@ -61,8 +61,8 @@ school_1_output = {
   ],
 )
 def test_instructor_fn(client, model, mode, input, clzz, output):
-  if model == LLAMA3_MODEL and mode in [Mode.TOOLS, Mode.FUNCTIONS]:
-    pytest.skip("Not Implemented")
+  # if model == LLAMA3_MODEL and mode in [Mode.TOOLS, Mode.FUNCTIONS]:
+  #   pytest.skip("Not Implemented")
   args = {
     "seed": 42,
     "messages": [
@@ -105,8 +105,8 @@ def test_instructor_fn(client, model, mode, input, clzz, output):
   ],
 )
 async def test_instructor_fn_async(client, model, mode, input, clzz, output):
-  if model == LLAMA3_MODEL and mode in [Mode.TOOLS, Mode.FUNCTIONS]:
-    pytest.skip("Not Implemented")
+  # if model == LLAMA3_MODEL and mode in [Mode.TOOLS, Mode.FUNCTIONS]:
+  #   pytest.skip("Not Implemented")
   args = {
     "seed": 42,
     "messages": [
