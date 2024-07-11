@@ -24,7 +24,6 @@ pub(crate) async fn chat_completions_handler(
   if !stream {
     if let Some(message) = rx.recv().await {
       drop(rx);
-      _ = handle.await;
       let response = Response::builder()
         .status(StatusCode::OK)
         .header(
@@ -34,6 +33,9 @@ pub(crate) async fn chat_completions_handler(
         .body(Body::from(message))
         .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
       Ok(response)
+    } else if let Ok(Err(e)) = handle.await {
+      tracing::warn!(?e, "error while processing reqeust");
+      Err(e)
     } else {
       Err(OpenAIApiError::InternalServer(
         "receiver stream abruptly closed".to_string(),
