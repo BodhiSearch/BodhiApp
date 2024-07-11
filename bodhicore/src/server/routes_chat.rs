@@ -8,6 +8,7 @@ use axum::{
   response::{sse::Event, IntoResponse, Response, Sse},
   Json,
 };
+use axum_extra::extract::WithRejection;
 use futures_util::StreamExt;
 use std::{convert::Infallible, sync::Arc};
 use tokio_stream::wrappers::ReceiverStream;
@@ -15,7 +16,7 @@ use tokio_stream::wrappers::ReceiverStream;
 // TODO: custom Json extractor to dispatch OpenAIError response for bad request
 pub(crate) async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
-  Json(request): Json<CreateChatCompletionRequest>,
+  WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, OpenAIApiError>,
 ) -> Result<Response, OpenAIApiError> {
   let stream = request.stream.unwrap_or(false);
   let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);

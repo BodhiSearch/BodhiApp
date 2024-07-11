@@ -159,7 +159,7 @@ mod test {
     let response: ApiError = response.json_obj().await?;
     let expected = ApiError {
       message: "The model 'not-found' does not exist".to_string(),
-      r#type: "model_not_found".to_string(),
+      r#type: "invalid_request_error".to_string(),
       param: Some("model".to_string()),
       code: "model_not_found".to_string(),
     };

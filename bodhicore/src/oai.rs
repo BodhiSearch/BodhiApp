@@ -1,5 +1,5 @@
 use crate::shared_rw::ContextError;
-use axum::{http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -11,6 +11,8 @@ pub enum OpenAIApiError {
   InternalServer(String),
   #[error(transparent)]
   ContextError(#[from] ContextError),
+  #[error(transparent)]
+  JsonRejection(#[from] JsonRejection),
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -29,6 +31,15 @@ impl ApiError {
       code: "internal_server_error".to_string(),
     }
   }
+
+  fn bad_request(err: &JsonRejection) -> ApiError {
+    ApiError {
+      message: err.to_string(),
+      r#type: "invalid_request_error".to_string(),
+      param: None,
+      code: "invalid_value".to_string(),
+    }
+  }
 }
 
 impl From<&OpenAIApiError> for ApiError {
@@ -36,12 +47,13 @@ impl From<&OpenAIApiError> for ApiError {
     match value {
       OpenAIApiError::ModelNotFound(model) => ApiError {
         message: format!("The model '{}' does not exist", model),
-        r#type: "model_not_found".to_string(),
+        r#type: "invalid_request_error".to_string(),
         param: Some("model".to_string()),
         code: "model_not_found".to_string(),
       },
       OpenAIApiError::ContextError(err) => ApiError::internal_server(err.to_string()),
       OpenAIApiError::InternalServer(err) => ApiError::internal_server(err.to_string()),
+      OpenAIApiError::JsonRejection(err) => ApiError::bad_request(err),
     }
   }
 }
@@ -53,6 +65,7 @@ impl From<&OpenAIApiError> for StatusCode {
       OpenAIApiError::ContextError(_) | OpenAIApiError::InternalServer(_) => {
         StatusCode::INTERNAL_SERVER_ERROR
       }
+      OpenAIApiError::JsonRejection(_) => StatusCode::BAD_REQUEST,
     }
   }
 }

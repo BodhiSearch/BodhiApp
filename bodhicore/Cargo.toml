@@ -7,6 +7,7 @@ edition = "2021"
 async-openai = "0.20.0"
 async-trait = "0.1.80"
 axum = "0.7.4"
+axum-extra = "0.9.3"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.2", features = ["derive"] }
 derive_builder = "0.20.0"
