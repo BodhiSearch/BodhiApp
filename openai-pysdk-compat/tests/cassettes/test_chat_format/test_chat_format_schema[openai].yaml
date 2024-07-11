@@ -1,0 +1,116 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant
+      that generates the output in the given json schema format"}, {"role": "user",
+      "content": "provide list of wimblendon men''s single winners from 2002 to 2004.\nYou
+      respond in JSON format with each entry using the following schema:\n```\n{\n  \"$defs\":
+      {\n    \"Champion\": {\n      \"properties\": {\n        \"yr\": {\n          \"title\":
+      \"Yr\",\n          \"type\": \"integer\"\n        },\n        \"first_name\":
+      {\n          \"title\": \"First Name\",\n          \"type\": \"string\"\n        },\n        \"last_name\":
+      {\n          \"title\": \"Last Name\",\n          \"type\": \"string\"\n        }\n      },\n      \"required\":
+      [\n        \"yr\",\n        \"first_name\",\n        \"last_name\"\n      ],\n      \"title\":
+      \"Champion\",\n      \"type\": \"object\"\n    }\n  },\n  \"properties\": {\n    \"champions\":
+      {\n      \"items\": {\n        \"$ref\": \"#/$defs/Champion\"\n      },\n      \"title\":
+      \"Champions\",\n      \"type\": \"array\"\n    }\n  },\n  \"required\": [\n    \"champions\"\n  ],\n  \"title\":
+      \"Champions\",\n  \"type\": \"object\"\n}\n```\n"}], "model": "gpt-4o-2024-05-13",
+      "response_format": {"type": "json_object"}}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1232'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: |
+        {
+          "id": "chatcmpl-9jnTeLWRTC3K7daIkLJk1XjdYeZU9",
+          "object": "chat.completion",
+          "created": 1720701978,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "{\n  \"champions\": [\n    {\n      \"yr\": 2002,\n      \"first_name\": \"Lleyton\",\n      \"last_name\": \"Hewitt\"\n    },\n    {\n      \"yr\": 2003,\n      \"first_name\": \"Roger\",\n      \"last_name\": \"Federer\"\n    },\n    {\n      \"yr\": 2004,\n      \"first_name\": \"Roger\",\n      \"last_name\": \"Federer\"\n    }\n  ]\n}"
+              },
+              "logprobs": null,
+              "finish_reason": "stop"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 261,
+            "completion_tokens": 100,
+            "total_tokens": 361
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8a18e540e9f79148-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 11 Jul 2024 12:46:20 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '804'
+      openai-processing-ms:
+      - '2633'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599744'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 25ms
+      x-request-id:
+      - req_24518a3f3929c19a6a36645d9d731d5b
+    status:
+      code: 200
+      message: OK
+version: 1
