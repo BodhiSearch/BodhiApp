@@ -1,0 +1,133 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant,
+      specializing in extracting structured information from text."}, {"role": "user",
+      "content": "David Nguyen is a sophomore majoring in Computer Science at Stanford
+      University.\nHe is Asian American and has a 3.8 GPA.\nDavid is known for his
+      programming skills and is an active member of the university''s Robotics Club.\nHe
+      hopes to pursue a career in artificial intelligence after graduating."}], "model":
+      "gpt-4o-2024-05-13", "n": 1, "seed": 42, "tool_choice": "auto", "tools": [{"type":
+      "function", "function": {"name": "extract_student_info", "description": "Get
+      the student information from the body of the input text", "parameters": {"type":
+      "object", "properties": {"name": {"type": "string", "description": "Name of
+      the person"}, "major": {"type": "string", "description": "Major subject."},
+      "school": {"type": "string", "description": "The university name."}, "grades":
+      {"type": "integer", "description": "GPA of the student."}, "club": {"type":
+      "string", "description": "School club for extracurricular activities. "}}}}},
+      {"type": "function", "function": {"name": "extract_school_info", "description":
+      "Get the school information from the body of the input text", "parameters":
+      {"type": "object", "properties": {"name": {"type": "string", "description":
+      "Name of the school."}, "ranking": {"type": "integer", "description": "QS world
+      ranking of the school."}, "country": {"type": "string", "description": "Country
+      of the school."}, "no_of_students": {"type": "integer", "description": "Number
+      of students enrolled in the school."}}}}}], "user": "user-1234"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1639'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: |
+        {
+          "id": "chatcmpl-9jlGooCh9aobXh1LebOBosFPw5lQE",
+          "object": "chat.completion",
+          "created": 1720693494,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_GjYAXUDaKodKySROTh6FunRG",
+                    "type": "function",
+                    "function": {
+                      "name": "extract_student_info",
+                      "arguments": "{\"name\":\"David Nguyen\",\"major\":\"Computer Science\",\"school\":\"Stanford University\",\"grades\":3.8,\"club\":\"Robotics Club\"}"
+                    }
+                  }
+                ]
+              },
+              "logprobs": null,
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 229,
+            "completion_tokens": 39,
+            "total_tokens": 268
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8a181622ea259144-MAA
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 11 Jul 2024 10:24:56 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '863'
+      openai-processing-ms:
+      - '1684'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599885'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 11ms
+      x-request-id:
+      - req_436b567371a76e48cb0677cfe06793b7
+    status:
+      code: 200
+      message: OK
+version: 1

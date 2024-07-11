@@ -3,7 +3,7 @@ import json
 import pytest
 from deepdiff import DeepDiff
 
-from .common import GPT_MODEL, LLAMA3_MODEL, school_1_description, student_1_description
+from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai, school_1_description, student_1_description
 
 tools = [
   {
@@ -52,13 +52,21 @@ tool_params = {
 
 @pytest.mark.vcr
 @pytest.mark.parametrize(
+  ["client", "model"],
+  [
+    pytest.param("openai", GPT_MODEL, id="openai", **mark_openai()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **mark_bodhi()),
+  ],
+  indirect=["client"],
+)
+@pytest.mark.parametrize(
   ["input", "output"],
   [
     pytest.param(
       student_1_description,
       {
         "name": "David Nguyen",
-        "major": "computer science",
+        "major": "Computer Science",
         "school": "Stanford University",
         "grades": 3.8,
         "club": "Robotics Club",
@@ -79,7 +87,7 @@ tool_params = {
     ),
   ],
 )
-def test_chat_tool(openai_client, bodhi_client, input, output):
+def test_chat_tool(client, model, input, output):
   args = dict(**tool_params)
   args["messages"] = [
     {
@@ -91,20 +99,52 @@ def test_chat_tool(openai_client, bodhi_client, input, output):
       "content": input,
     },
   ]
-  gpt_response = openai_client.chat.completions.create(model=GPT_MODEL, **args)
-  gpt_result = json.loads(gpt_response.choices[0].message.tool_calls[0].function.arguments)
-  diff = DeepDiff(output, gpt_result)
+  response = client.chat.completions.create(model=model, **args)
+  result = json.loads(response.choices[0].message.tool_calls[0].function.arguments)
+  diff = DeepDiff(output, result)
   assert {} == diff
 
-  # TODO: implement
-  # Somehow making it work with response_format json_object
-  args["response_format"] = {"type": "json_object"}
-  bodhi_response = bodhi_client.chat.completions.create(model=LLAMA3_MODEL, **args)
-  bodhi_json = json.loads(bodhi_response.choices[0].message.content)
-  # not following tools definition
-  common_keys = {"name", "major", "ranking"}.intersection(output.keys())
-  diff = DeepDiff(output, bodhi_json, include_paths=common_keys, ignore_string_case=True)
-  # assert {} == diff # TODO: implement
-  # bodhi_result = json.loads(bodhi_response.choices[0].message.tool_calls[0].function.arguments)
-  # diff = DeepDiff(output, bodhi_result)
-  # assert {} == diff
+weather_tools = [
+  {
+    "type": "function",
+    "function": {
+      "name": "get_current_weather",
+      "description": "Get the current weather in a given location",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "The city and state, e.g. San Francisco, CA",
+          },
+          "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+        },
+        "required": ["location"],
+      },
+    },
+  }
+]
+
+
+@pytest.mark.vcr
+@pytest.mark.parametrize(
+  ["client", "model"],
+  [
+    pytest.param("openai", GPT_MODEL, id="openai", **mark_openai()),
+    pytest.param("bodhi", LLAMA3_MODEL, id="bodhi", **mark_bodhi()),
+  ],
+  indirect=["client"],
+)
+def test_chat_tool_simple(client, model):
+  response = client.chat.completions.create(
+    model=model,
+    messages=[{"role": "user", "content": "What's the weather like in Boston today?"}],
+    tools=weather_tools,
+    tool_choice="auto",
+  )
+  choice = response.choices[0]
+  assert choice.finish_reason == "tool_calls"
+  assert choice.message.content is None
+  function = choice.message.tool_calls[0].function
+  assert json.loads(function.arguments) == {"location": "Boston, MA"}
+  assert function.name == "get_current_weather"

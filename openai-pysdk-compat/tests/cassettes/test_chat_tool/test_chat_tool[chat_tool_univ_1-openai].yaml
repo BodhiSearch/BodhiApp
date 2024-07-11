@@ -1,0 +1,134 @@
+interactions:
+- request:
+    body: '{"messages": [{"role": "system", "content": "You are a helpful assistant,
+      specializing in extracting structured information from text."}, {"role": "user",
+      "content": "Stanford University is a private university located in Stanford,
+      California, United States.\nIt was founded in 1885 by Leland Stanford and his
+      wife, Jane, in memory of their only child, Leland Stanford Jr.\nThe university
+      is ranked #5 in the world by QS World University Rankings.\nIt has over 17,000
+      students in total, that includes over 8,000 undergraduates and 9,000 graduates."}],
+      "model": "gpt-4o-2024-05-13", "n": 1, "seed": 42, "tool_choice": "auto", "tools":
+      [{"type": "function", "function": {"name": "extract_student_info", "description":
+      "Get the student information from the body of the input text", "parameters":
+      {"type": "object", "properties": {"name": {"type": "string", "description":
+      "Name of the person"}, "major": {"type": "string", "description": "Major subject."},
+      "school": {"type": "string", "description": "The university name."}, "grades":
+      {"type": "integer", "description": "GPA of the student."}, "club": {"type":
+      "string", "description": "School club for extracurricular activities. "}}}}},
+      {"type": "function", "function": {"name": "extract_school_info", "description":
+      "Get the school information from the body of the input text", "parameters":
+      {"type": "object", "properties": {"name": {"type": "string", "description":
+      "Name of the school."}, "ranking": {"type": "integer", "description": "QS world
+      ranking of the school."}, "country": {"type": "string", "description": "Country
+      of the school."}, "no_of_students": {"type": "integer", "description": "Number
+      of students enrolled in the school."}}}}}], "user": "user-1234"}'
+    headers:
+      accept:
+      - application/json
+      accept-encoding:
+      - gzip, deflate
+      connection:
+      - keep-alive
+      content-length:
+      - '1722'
+      content-type:
+      - application/json
+      host:
+      - api.openai.com
+      user-agent:
+      - OpenAI/Python 1.30.1
+      x-stainless-arch:
+      - arm64
+      x-stainless-async:
+      - 'false'
+      x-stainless-lang:
+      - python
+      x-stainless-os:
+      - MacOS
+      x-stainless-package-version:
+      - 1.30.1
+      x-stainless-runtime:
+      - CPython
+      x-stainless-runtime-version:
+      - 3.11.5
+    method: POST
+    uri: https://api.openai.com/v1/chat/completions
+  response:
+    body:
+      string: |
+        {
+          "id": "chatcmpl-9jlGrydPtO3eGtfvTsH3pduUUOcEN",
+          "object": "chat.completion",
+          "created": 1720693497,
+          "model": "gpt-4o-2024-05-13",
+          "choices": [
+            {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": null,
+                "tool_calls": [
+                  {
+                    "id": "call_uTqMd9hXBCnIAc1MDx49XjAE",
+                    "type": "function",
+                    "function": {
+                      "name": "extract_school_info",
+                      "arguments": "{\"name\":\"Stanford University\",\"ranking\":5,\"country\":\"United States\",\"no_of_students\":17000}"
+                    }
+                  }
+                ]
+              },
+              "logprobs": null,
+              "finish_reason": "tool_calls"
+            }
+          ],
+          "usage": {
+            "prompt_tokens": 258,
+            "completion_tokens": 33,
+            "total_tokens": 291
+          },
+          "system_fingerprint": "fp_298125635f"
+        }
+    headers:
+      CF-Cache-Status:
+      - DYNAMIC
+      CF-RAY:
+      - 8a18163109b63c07-BLR
+      Connection:
+      - keep-alive
+      Content-Type:
+      - application/json
+      Date:
+      - Thu, 11 Jul 2024 10:24:59 GMT
+      Server:
+      - cloudflare
+      Transfer-Encoding:
+      - chunked
+      alt-svc:
+      - h3=":443"; ma=86400
+      content-length:
+      - '830'
+      openai-processing-ms:
+      - '2346'
+      openai-version:
+      - '2020-10-01'
+      strict-transport-security:
+      - max-age=31536000; includeSubDomains
+      x-ratelimit-limit-requests:
+      - '5000'
+      x-ratelimit-limit-tokens:
+      - '600000'
+      x-ratelimit-remaining-requests:
+      - '4999'
+      x-ratelimit-remaining-tokens:
+      - '599865'
+      x-ratelimit-reset-requests:
+      - 12ms
+      x-ratelimit-reset-tokens:
+      - 13ms
+      x-request-id:
+      - req_37bdaf03e5a12d3018ac8ba72720f697
+    status:
+      code: 200
+      message: OK
+version: 1
