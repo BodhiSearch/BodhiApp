@@ -41,6 +41,10 @@ bodhi -h
 
 3. Open the homepage using system tray or opening website in the browser - `http://localhost:1135`
 
+# YouTube Tutorial
+
+Checkout the YouTube walkthrough of the Bodhi App [here](https://bit.ly/bodhiapp-yt).
+
 # Quick Start
 
 `bodhi run llama3:instruct`
