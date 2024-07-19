@@ -197,9 +197,18 @@ curl -X POST --location 'http://localhost:1135/v1/chat/completions' \
 
 # Community
 
+## Web & Desktop
+
+### [Open WebUI](https://github.com/open-webui/open-webui)
+![](docs/openwebui.png){width=600px}
+
+
 (Open up a pull request on README.md to includ the community integrations)
+
+
 
 # Powered By
 
 [llama.cpp](https://github.com/ggerganov/ggml/)
+
 [huggingface.co](https://huggingface.co/)
