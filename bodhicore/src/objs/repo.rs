@@ -7,6 +7,7 @@ use validator::Validate;
 use super::ObjError;
 
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
+pub static GGUF: &str = "gguf";
 pub static GGUF_EXTENSION: &str = ".gguf";
 pub static REFS: &str = "refs";
 pub static REFS_MAIN: &str = "refs/main";

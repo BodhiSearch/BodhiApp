@@ -1,9 +1,5 @@
 use super::{
-  super::{db::DbServiceFn, service::AppServiceFn, SharedContextRwFn},
-  router_state::RouterState,
-  routes_chat::chat_completions_handler,
-  routes_models::{oai_model_handler, oai_models_handler},
-  routes_ui::chats_router,
+  super::{db::DbServiceFn, service::AppServiceFn, SharedContextRwFn}, router_state::RouterState, routes_chat::chat_completions_handler, routes_models::{oai_model_handler, oai_models_handler}, routes_ollama::ollama_models_handler, routes_ui::chats_router
 };
 use axum::{
   routing::{get, post},
@@ -23,10 +19,12 @@ pub fn build_routes(
   let api_router = Router::new().merge(chats_router());
   let router = Router::new()
     .route("/ping", get(|| async { "pong" }))
+    .route("/api/tags", get(ollama_models_handler))
     .nest("/api/ui", api_router)
     .route("/v1/models", get(oai_models_handler))
     .route("/v1/models/:id", get(oai_model_handler))
     .route("/v1/chat/completions", post(chat_completions_handler))
+    // TODO: check CORS
     .layer(
       CorsLayer::new()
         .allow_origin(Any)

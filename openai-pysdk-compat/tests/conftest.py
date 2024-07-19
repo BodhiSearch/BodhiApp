@@ -5,13 +5,17 @@ from typing import Any, Dict, List, Union
 
 import pytest
 import yaml
+from ollama import Client
 from openai import AsyncOpenAI, OpenAI
 
 FILTER_RESPONSE_HEADERS = ["Set-Cookie", "openai-organization"]
 OPENAI_API_KEY = "OPENAI_API_KEY"
 OPENAI_BASE_URL = "OPENAI_BASE_URL"
 BODHI_BASE_URL = "BODHI_BASE_URL"
+BODHI_HOST = "BODHI_HOST"
 BODHI_API_KEY = "BODHI_API_KEY"
+OLLAMA_BASE_URL = "OLLAMA_BASE_URL"
+OLLAMA_API_KEY = "OLLAMA_API_KEY"
 
 
 class MultilineDumper(yaml.Dumper):
@@ -73,19 +77,33 @@ def async_bodhi_client() -> AsyncOpenAI:
 
 
 @pytest.fixture(scope="function")
+def ollama_client() -> Client:
+  client = Client(host=os.environ.get(OLLAMA_BASE_URL))
+  return client
+
+
+@pytest.fixture(scope="function")
+def ollama_bodhi_client() -> Client:
+  client = Client(host=os.environ.get(BODHI_HOST))
+  return client
+
+
+@pytest.fixture(scope="function")
 def api_clients(
-  openai_client, async_openai_client, bodhi_client, async_bodhi_client
+  openai_client, async_openai_client, bodhi_client, async_bodhi_client, ollama_client, ollama_bodhi_client
 ) -> Dict[str, Union[OpenAI, AsyncOpenAI]]:
   return {
     "openai": openai_client,
     "async_openai": async_openai_client,
     "bodhi": bodhi_client,
     "async_bodhi": async_bodhi_client,
+    "ollama": ollama_client,
+    "ollama_bodhi": ollama_bodhi_client,
   }
 
 
 @pytest.fixture(scope="function")
-def client(api_clients, request) -> Union[OpenAI, AsyncOpenAI]:
+def client(api_clients, request) -> Union[OpenAI, AsyncOpenAI, Client]:
   return api_clients[request.param]
 
 
