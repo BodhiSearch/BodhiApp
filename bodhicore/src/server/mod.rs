@@ -2,6 +2,7 @@ mod router_state;
 mod routes;
 mod routes_chat;
 mod routes_models;
+mod routes_ollama;
 mod routes_ui;
 #[allow(clippy::module_inception)]
 mod server;

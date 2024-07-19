@@ -39,7 +39,7 @@ pub(crate) async fn oai_model_handler(
 
 fn to_oai_model(state: Arc<dyn RouterStateFn>, alias: Alias) -> Model {
   let bodhi_home = &state.app_service().env_service().bodhi_home();
-  let path = bodhi_home.join("configs").join(alias.config_filename());
+  let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = fs::metadata(path)
     .map_err(|e| e.to_string())
     .and_then(|m| m.created().map_err(|e| e.to_string()))

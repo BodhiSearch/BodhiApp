@@ -25,6 +25,9 @@ def mark_skip() -> Dict[str, pytest.MarkDecorator]:
 def mark_bodhi() -> Dict[str, pytest.MarkDecorator]:
   return {"marks": pytest.mark.bodhi()}
 
+def mark_ollama() -> Dict[str, pytest.MarkDecorator]:
+  return {"marks": pytest.mark.bodhi()}
+
 
 def mark_bodhi_skip() -> Dict[str, pytest.MarkDecorator]:
   # return {"marks": [pytest.mark.bodhi(), pytest.mark.skip("Not Implemented yet")]}
