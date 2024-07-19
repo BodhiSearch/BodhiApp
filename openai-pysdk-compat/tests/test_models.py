@@ -2,7 +2,7 @@ import openai
 import pytest
 from deepdiff import DeepDiff
 
-from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi_skip, mark_openai
+from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi, mark_openai
 
 
 @pytest.mark.vcr
@@ -10,7 +10,7 @@ from .common import GPT_MODEL, LLAMA3_MODEL, mark_bodhi_skip, mark_openai
   "client",
   [
     pytest.param("openai", id="openai", **mark_openai()),
-    pytest.param("bodhi", id="bodhi", **mark_bodhi_skip()),
+    pytest.param("bodhi", id="bodhi", **mark_bodhi()),
   ],
   indirect=["client"],
 )
@@ -25,7 +25,7 @@ def test_models_list(client):
   "client",
   [
     pytest.param("async_openai", id="async_openai", **mark_openai()),
-    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi_skip()),
+    pytest.param("async_bodhi", id="async_bodhi", **mark_bodhi()),
   ],
   indirect=["client"],
 )
@@ -50,7 +50,7 @@ async def test_models_async_list(client):
       LLAMA3_MODEL,
       {"id": LLAMA3_MODEL, "object": "model", "created": 0, "owned_by": "system"},
       id="bodhi",
-      **mark_bodhi_skip(),
+      **mark_bodhi(),
     ),
   ],
   indirect=["client"],
@@ -79,7 +79,7 @@ def test_models_retrieve(client, model, expected):
       LLAMA3_MODEL,
       {"id": LLAMA3_MODEL, "object": "model", "created": 0, "owned_by": "system"},
       id="async_bodhi",
-      **mark_bodhi_skip(),
+      **mark_bodhi(),
     ),
   ],
   indirect=["client"],
