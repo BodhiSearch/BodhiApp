@@ -22,6 +22,8 @@ pub trait ResponseTestExt {
   async fn sse<T>(self) -> anyhow::Result<Vec<T>>
   where
     T: DeserializeOwned;
+
+  async fn direct_sse(self) -> anyhow::Result<Vec<String>>;
 }
 
 impl ResponseTestExt for Response {
@@ -67,6 +69,16 @@ impl ResponseTestExt for Response {
       let value = value.trim();
       let value = serde_json::from_reader::<_, T>(Cursor::new(value.to_owned()))?;
       result.push(value);
+    }
+    Ok(result)
+  }
+
+  async fn direct_sse(self) -> anyhow::Result<Vec<String>> {
+    let text = self.text().await?;
+    let lines = text.lines().peekable();
+    let mut result = Vec::<String>::new();
+    for line in lines {
+      result.push(line.to_string());
     }
     Ok(result)
   }

@@ -6,3 +6,10 @@ features:
   - chat
 chat_template: llama3
 snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213
+context_params:
+  n_keep: 24
+request_params:
+  stop:
+    - <|start_header_id|>
+    - <|end_header_id|>
+    - <|eot_id|>

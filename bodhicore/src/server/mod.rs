@@ -1,3 +1,4 @@
+mod direct_sse;
 mod router_state;
 mod routes;
 mod routes_chat;
