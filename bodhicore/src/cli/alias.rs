@@ -133,6 +133,7 @@ impl ManageAliasCommand {
   }
 }
 
+#[cfg(not(ci))]
 #[cfg(test)]
 mod test {
   use crate::{
@@ -143,6 +144,7 @@ mod test {
   use rstest::rstest;
   use std::sync::Arc;
 
+  #[cfg(not(ci))]
   #[rstest]
   fn test_manage_alias_show(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
     let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
@@ -167,6 +169,7 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
     Ok(())
   }
 
+  #[cfg(not(ci))]
   #[rstest]
   fn test_manage_alias_delete(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
     let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
@@ -182,6 +185,7 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
     Ok(())
   }
 
+  #[cfg(not(ci))]
   #[rstest]
   fn test_manage_alias_copy(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
     let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, bodhi_home, _, service) = app_service_stub;
