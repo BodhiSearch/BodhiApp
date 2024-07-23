@@ -50,7 +50,7 @@ jobs:
         working-directory: bodhicore
         run: |
           cargo llvm-cov clean
-          cargo llvm-cov --all-features --lcov --output-path lcov.info
+          cargo llvm-cov nextest --all-features --lcov --output-path lcov.info
         env:
           HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
           HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
