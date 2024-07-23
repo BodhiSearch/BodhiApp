@@ -47,6 +47,11 @@ ureq = "2.9.7"
 uuid = { version = "1.8.0", features = ["v4"] }
 validator = { version = "0.18.1", features = ["derive"] }
 walkdir = "2.5.0"
+futures-core = "0.3.30"
+pin-project-lite = "0.2.14"
+bytes = "1.6.1"
+http-body = "1.0.1"
+sync_wrapper = "1.0.1"
 
 [dev-dependencies]
 anyhow = "1.0.81"

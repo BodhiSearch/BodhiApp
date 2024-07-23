@@ -2,8 +2,9 @@ use super::SNAPSHOT;
 use crate::{
   cli::create::CreateCommandBuilder,
   objs::{
-    Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, HubFile,
-    HubFileBuilder, OAIRequestParams, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
+    Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, GptContextParamsBuilder,
+    HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder, RemoteModel, Repo,
+    TOKENIZER_CONFIG_JSON,
   },
   CreateCommand,
 };
@@ -172,6 +173,18 @@ impl Alias {
   }
 
   pub fn llama3() -> Alias {
+    let request_params = OAIRequestParamsBuilder::default()
+      .stop(vec![
+        "<|start_header_id|>".to_string(),
+        "<|end_header_id|>".to_string(),
+        "<|eot_id|>".to_string(),
+      ])
+      .build()
+      .unwrap();
+    let gpt_params = GptContextParamsBuilder::default()
+      .n_keep(24)
+      .build()
+      .unwrap();
     Alias::new(
       String::from("llama3:instruct"),
       Some(String::from("llama3")),
@@ -180,8 +193,8 @@ impl Alias {
       SNAPSHOT.to_string(),
       vec![String::from("chat")],
       ChatTemplate::Id(ChatTemplateId::Llama3),
-      OAIRequestParams::default(),
-      GptContextParams::default(),
+      request_params,
+      gpt_params,
     )
   }
 

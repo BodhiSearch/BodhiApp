@@ -1,5 +1,10 @@
 use super::{
-  super::{db::DbServiceFn, service::AppServiceFn, SharedContextRwFn}, router_state::RouterState, routes_chat::chat_completions_handler, routes_models::{oai_model_handler, oai_models_handler}, routes_ollama::ollama_models_handler, routes_ui::chats_router
+  super::{db::DbServiceFn, service::AppServiceFn, SharedContextRwFn},
+  router_state::RouterState,
+  routes_chat::chat_completions_handler,
+  routes_models::{oai_model_handler, oai_models_handler},
+  routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler},
+  routes_ui::chats_router,
 };
 use axum::{
   routing::{get, post},
@@ -20,6 +25,8 @@ pub fn build_routes(
   let router = Router::new()
     .route("/ping", get(|| async { "pong" }))
     .route("/api/tags", get(ollama_models_handler))
+    .route("/api/show", post(ollama_model_show_handler))
+    .route("/api/chat", post(ollama_model_chat_handler))
     .nest("/api/ui", api_router)
     .route("/v1/models", get(oai_models_handler))
     .route("/v1/models/:id", get(oai_model_handler))
