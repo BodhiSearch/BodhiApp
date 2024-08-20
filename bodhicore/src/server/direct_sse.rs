@@ -1,3 +1,4 @@
+#![allow(dead_code)] // TODO: remove this
 use axum::{
   body::Body,
   http::header,

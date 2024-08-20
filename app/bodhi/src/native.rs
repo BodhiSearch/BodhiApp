@@ -5,7 +5,6 @@ use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,
   WindowEvent,
 };
-use tokio::runtime::Builder;
 
 pub struct NativeCommand {
   service: Arc<dyn AppServiceFn>,
@@ -19,12 +18,7 @@ impl NativeCommand {
     Self { service, ui }
   }
 
-  pub fn execute(&self, static_router: Option<Router>) -> crate::error::Result<()> {
-    let runtime = Builder::new_multi_thread().enable_all().build()?;
-    runtime.block_on(async move { self.aexecute(static_router).await })
-  }
-
-  async fn aexecute(&self, static_router: Option<Router>) -> crate::error::Result<()> {
+  pub async fn aexecute(&self, static_router: Option<Router>) -> crate::error::Result<()> {
     let host = self.service.env_service().host();
     let port = self.service.env_service().port();
     let addr = format!("http://{host}:{port}/");

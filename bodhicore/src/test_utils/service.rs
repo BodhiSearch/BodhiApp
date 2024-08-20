@@ -26,6 +26,8 @@ pub fn data_service(temp_bodhi_home: TempDir) -> DataServiceTuple {
   DataServiceTuple(temp_bodhi_home, bodhi_home, data_service)
 }
 
+
+#[allow(dead_code)]
 pub struct AppServiceTuple(
   pub TempDir,
   pub TempDir,
@@ -72,22 +74,6 @@ pub struct AppServiceStubMock {
 impl AppServiceStubMock {
   pub fn builder() -> AppServiceStubMockBuilder {
     AppServiceStubMockBuilder::default()
-  }
-}
-
-impl AppServiceStubMock {
-  pub fn new(
-    env_service: MockEnvServiceFn,
-    hub_service: MockHubService,
-    data_service: MockDataService,
-    auth_service: MockAuthService,
-  ) -> Self {
-    Self {
-      env_service: Arc::new(env_service),
-      hub_service: Arc::new(hub_service),
-      data_service: Arc::new(data_service),
-      auth_service: Arc::new(auth_service),
-    }
   }
 }
 

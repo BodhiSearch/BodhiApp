@@ -8,7 +8,7 @@ use crate::{
 };
 use axum::Router;
 use std::sync::Arc;
-use tokio::{runtime::Builder, sync::oneshot::Sender, task::JoinHandle};
+use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum ServeCommand {
@@ -65,15 +65,6 @@ impl ServerShutdownHandle {
 }
 
 impl ServeCommand {
-  pub fn execute(&self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
-    match self {
-      ServeCommand::ByParams { host, port } => {
-        self.execute_by_params(host, *port, service, None)?;
-        Ok(())
-      }
-    }
-  }
-
   pub async fn aexecute(
     &self,
     service: Arc<dyn AppServiceFn>,
@@ -87,27 +78,6 @@ impl ServeCommand {
         Ok(handle)
       }
     }
-  }
-
-  fn execute_by_params(
-    &self,
-    host: &str,
-    port: u16,
-    service: Arc<dyn AppServiceFn>,
-    static_router: Option<Router>,
-  ) -> crate::error::Result<()> {
-    let runtime = Builder::new_multi_thread()
-      .enable_all()
-      .build()
-      .map_err(Common::from)?;
-    runtime.block_on(async move {
-      let handle = self
-        .aexecute_by_params(host, port, service, static_router)
-        .await?;
-      handle.shutdown_on_ctrlc().await?;
-      Ok::<(), BodhiError>(())
-    })?;
-    Ok(())
   }
 
   async fn aexecute_by_params(
