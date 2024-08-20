@@ -2,7 +2,7 @@ use crate::{
   db::DbError,
   oai::OpenAIApiError,
   objs::ObjError,
-  service::{DataServiceError, HubServiceError},
+  service::{AuthServiceError, DataServiceError, HubServiceError},
   shared_rw::ContextError,
 };
 use async_openai::error::OpenAIError;
@@ -41,6 +41,8 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   OpenAIApiError(#[from] OpenAIApiError),
   #[error(transparent)]
   AxumHttp(#[from] axum::http::Error),
+  #[error(transparent)]
+  OAuthError(#[from] AuthServiceError),
   #[error(transparent)]
   Db(#[from] DbError),
 }
