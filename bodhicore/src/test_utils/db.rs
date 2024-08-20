@@ -1,6 +1,6 @@
 use crate::db::{
   objs::{Conversation, Message},
-  DbError, DbService, DbServiceFn, TimeServiceFn,
+  DbError, SqliteDbService, DbService, TimeServiceFn,
 };
 use chrono::{DateTime, Timelike, Utc};
 use rstest::fixture;
@@ -32,7 +32,7 @@ mockall::mock! {
   pub DbService {}
 
   #[async_trait::async_trait]
-  impl DbServiceFn for DbService {
+  impl DbService for DbService {
     async fn migrate(&self) -> Result<(), DbError>;
 
     async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError>;
@@ -77,11 +77,11 @@ pub async fn testdb() -> (TempDir, SqlitePool) {
 #[awt]
 pub async fn db_service(
   #[future] testdb: (TempDir, SqlitePool),
-) -> (TempDir, DateTime<Utc>, DbService) {
+) -> (TempDir, DateTime<Utc>, SqliteDbService) {
   let (_tempdir, pool) = testdb;
   let now = chrono::Utc::now().with_nanosecond(0).unwrap();
   let mut mock_time_service = MockTimeService::new();
   mock_time_service.expect_utc_now().returning(move || now);
-  let service = DbService::new(pool, Arc::new(mock_time_service));
+  let service = SqliteDbService::new(pool, Arc::new(mock_time_service));
   (_tempdir, now, service)
 }

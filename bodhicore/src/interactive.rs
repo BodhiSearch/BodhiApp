@@ -1,5 +1,5 @@
 use crate::{
-  db::DbService,
+  db::SqliteDbService,
   error::{BodhiError, Common},
   objs::{Alias, ObjError},
   server::{RouterState, RouterStateFn},
@@ -76,7 +76,7 @@ impl Interactive {
     disable_llama_log();
 
     let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let router_state = RouterState::new(Arc::new(shared_rw), service, Arc::new(DbService::no_op()));
+    let router_state = RouterState::new(Arc::new(shared_rw), service, Arc::new(SqliteDbService::no_op()));
     pb.finish_and_clear();
     let mut shell_history = BasicHistory::new().max_entries(100).no_duplicates(false);
     let chat_history = Arc::new(Mutex::new(Vec::<ChatCompletionRequestMessage>::new()));
