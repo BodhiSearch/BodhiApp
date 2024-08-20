@@ -1,4 +1,6 @@
-use bodhicore::{db::DbError, service::DataServiceError, CliError, ContextError};
+use bodhicore::{
+  db::DbError, objs::BuilderError, service::DataServiceError, CliError, ContextError,
+};
 use std::io;
 
 #[derive(Debug, thiserror::Error)]
@@ -19,6 +21,8 @@ pub enum AppError {
   Cli(#[from] CliError),
   #[error(transparent)]
   Db(#[from] DbError),
+  #[error(transparent)]
+  BuilderError(#[from] BuilderError),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, AppError>;

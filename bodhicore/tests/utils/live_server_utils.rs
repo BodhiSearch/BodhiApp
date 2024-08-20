@@ -1,7 +1,7 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   service::{
-    env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, LocalDataService
+    env_wrapper::EnvWrapper, AppService, AppServiceBuilder, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, LocalDataService
   },
   ServeCommand, ServerShutdownHandle,
 };
@@ -36,13 +36,14 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new(hf_cache, false, None);
   let auth_service = KeycloakAuthService::default();
-  let app_service = AppService::new(
-    Arc::new(env_service),
-    hub_service,
-    data_service,
-    auth_service,
-  );
-  (temp_dir, Arc::new(app_service))
+  let service = AppServiceBuilder::default()
+    .env_service(Arc::new(env_service))
+    .hub_service(Arc::new(hub_service))
+    .data_service(Arc::new(data_service))
+    .auth_service(Arc::new(auth_service))
+    .build()
+    .unwrap();
+  (temp_dir, Arc::new(service))
 }
 
 #[fixture]
