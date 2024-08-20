@@ -2,7 +2,10 @@ use crate::{native::NativeCommand, AppError};
 use axum::Router;
 use bodhicore::{
   cli::{Cli, Command, ServeCommand},
-  service::{AppServiceBuilder, EnvService, EnvServiceFn, HfHubService, LocalDataService},
+  db::{DbPool, DbService, SqliteDbService, TimeService},
+  service::{
+    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, LocalDataService,
+  },
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
 };
@@ -26,12 +29,19 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   let hf_cache = env_service.hf_cache();
   let data_service = LocalDataService::new(bodhi_home);
   let hub_service = HfHubService::new_from_hf_cache(hf_cache, true);
-  // new(env_service, hub_service, data_service, auth_service);
-  let app_service = AppServiceBuilder::default()
-    .env_service(env_service)
-    .hub_service(Arc::new(hub_service))
-    .data_service(Arc::new(data_service))
-    .build()?;
+
+  let dbpath = env_service.db_path();
+  let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
+  let db_service = SqliteDbService::new(pool, Arc::new(TimeService));
+  db_service.migrate().await?;
+
+  let app_service = AppService::new(
+    env_service,
+    Arc::new(hub_service),
+    Arc::new(data_service),
+    Arc::new(KeycloakAuthService::new()),
+    Arc::new(db_service),
+  );
   let service = Arc::new(app_service);
 
   let args = env::args().collect::<Vec<_>>();
@@ -42,7 +52,9 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
       .contains(".app/Contents/MacOS/")
   {
     // the app was launched using Bodhi.app, launch the native app with system tray
-    NativeCommand::new(service, true).aexecute(Some(static_router())).await?;
+    NativeCommand::new(service, true)
+      .aexecute(Some(static_router()))
+      .await?;
     return Ok(());
   }
 
@@ -54,7 +66,9 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
       EnvCommand::new(service).execute()?;
     }
     Command::App { ui } => {
-      NativeCommand::new(service, ui).aexecute(Some(static_router())).await?;
+      NativeCommand::new(service, ui)
+        .aexecute(Some(static_router()))
+        .await?;
     }
     list @ Command::List { .. } => {
       let list_command = ListCommand::try_from(list)?;

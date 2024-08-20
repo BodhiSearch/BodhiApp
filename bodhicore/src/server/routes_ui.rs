@@ -22,7 +22,11 @@ pub fn chats_router() -> Router<Arc<dyn RouterStateFn>> {
 async fn ui_chats_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
 ) -> Result<Json<Vec<Conversation>>, ApiError> {
-  let convos = state.db_service().list_conversations().await?;
+  let convos = state
+    .app_service()
+    .db_service()
+    .list_conversations()
+    .await?;
   Ok(Json(convos))
 }
 
@@ -31,6 +35,7 @@ async fn ui_chat_handler(
   UrlPath(id): UrlPath<String>,
 ) -> Result<Json<Conversation>, ApiError> {
   let convo = state
+    .app_service()
     .db_service()
     .get_conversation_with_messages(&id)
     .await?;
@@ -46,6 +51,7 @@ async fn ui_chat_new_handler(
     conversation.id = id;
   }
   state
+    .app_service()
     .db_service()
     .save_conversation(&mut conversation)
     .await?;
@@ -59,7 +65,11 @@ async fn ui_chat_new_handler(
 async fn ui_chats_delete_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
 ) -> Result<(), ApiError> {
-  state.db_service().delete_all_conversations().await?;
+  state
+    .app_service()
+    .db_service()
+    .delete_all_conversations()
+    .await?;
   Ok(())
 }
 
@@ -67,7 +77,11 @@ async fn ui_chat_delete_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
   UrlPath(id): UrlPath<String>,
 ) -> Result<(), ApiError> {
-  state.db_service().delete_conversations(&id).await?;
+  state
+    .app_service()
+    .db_service()
+    .delete_conversations(&id)
+    .await?;
   Ok(())
 }
 
@@ -77,11 +91,12 @@ mod test {
   use crate::{
     db::{
       objs::{Conversation, ConversationBuilder, MessageBuilder},
-      SqliteDbService, DbService,
+      DbService, SqliteDbService,
     },
     server::RouterState,
-    service::MockAppServiceFn,
-    test_utils::{db_service, MockSharedContext, RequestTestExt, ResponseTestExt},
+    test_utils::{
+      db_service, AppServiceStubBuilder, MockSharedContext, RequestTestExt, ResponseTestExt,
+    },
   };
   use axum::{
     body::Body,
@@ -115,11 +130,10 @@ mod test {
       .build()?;
     db_service.save_conversation(&mut convo_1).await?;
     db_service.save_conversation(&mut convo_2).await?;
-    let router_state = RouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppServiceFn::new()),
-      Arc::new(db_service),
-    );
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(Arc::new(db_service))
+      .build()?;
+    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .oneshot(Request::get("/chats").body(Body::empty()).unwrap())
@@ -161,11 +175,10 @@ mod test {
     convo.messages.push(message_1);
     convo.messages.push(message_2);
     db_service.save_conversation(&mut convo).await?;
-    let router_state = RouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppServiceFn::new()),
-      Arc::new(db_service),
-    );
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(Arc::new(db_service))
+      .build()?;
+    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .oneshot(
@@ -202,11 +215,10 @@ mod test {
     convo.messages.push(message_1);
     convo.messages.push(message_2);
     db_service.save_conversation(&mut convo).await?;
-    let router_state = RouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppServiceFn::new()),
-      Arc::new(db_service),
-    );
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(Arc::new(db_service))
+      .build()?;
+    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .clone()
@@ -246,11 +258,12 @@ mod test {
     convo.messages.push(message_2);
     db_service.save_conversation(&mut convo).await?;
     let db_service = Arc::new(db_service);
-    let router_state = RouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppServiceFn::new()),
-      db_service.clone(),
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(db_service.clone())
+        .build()?,
     );
+    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .clone()
@@ -269,11 +282,12 @@ mod test {
     #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
-    let router_state = RouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppServiceFn::new()),
-      Arc::new(db_service),
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(Arc::new(db_service))
+        .build()?,
     );
+    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .clone()
@@ -299,11 +313,12 @@ mod test {
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let db_service = Arc::new(db_service);
-    let router_state = RouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppServiceFn::new()),
-      db_service.clone(),
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(db_service.clone())
+        .build()?,
     );
+    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let content = r#"{
 "title": "What is the capital of France?",
@@ -359,11 +374,12 @@ mod test {
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let db_service = Arc::new(db_service);
-    let router_state = RouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(MockAppServiceFn::new()),
-      db_service.clone(),
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .db_service(db_service.clone())
+        .build()?,
     );
+    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let content = r#"{
       "title": "What is the capital of France?",

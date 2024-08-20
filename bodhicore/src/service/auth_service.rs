@@ -1,5 +1,6 @@
 #![allow(unused_variables)] // TODO: remove this
 use async_trait::async_trait;
+use derive_new::new;
 use oauth2::{AccessToken, RefreshToken};
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +31,7 @@ pub trait AuthService: std::fmt::Debug {
   ) -> Result<(AccessToken, RefreshToken)>;
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, new)]
 pub struct KeycloakAuthService {}
 
 impl KeycloakAuthService {
