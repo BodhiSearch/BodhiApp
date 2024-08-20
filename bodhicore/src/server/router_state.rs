@@ -1,5 +1,4 @@
 use crate::{
-  db::DbService,
   oai::OpenAIApiError,
   objs::{REFS_MAIN, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
@@ -15,8 +14,6 @@ use tokio::sync::mpsc::Sender;
 pub trait RouterStateFn: Send + Sync {
   fn app_service(&self) -> Arc<dyn AppServiceFn>;
 
-  fn db_service(&self) -> Arc<dyn DbService>;
-
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
@@ -27,21 +24,13 @@ pub trait RouterStateFn: Send + Sync {
 #[derive(Debug, Clone)]
 pub struct RouterState {
   pub(crate) ctx: Arc<dyn SharedContextRwFn>,
+
   pub(crate) app_service: Arc<dyn AppServiceFn>,
-  pub(crate) db_service: Arc<dyn DbService>,
 }
 
 impl RouterState {
-  pub(crate) fn new(
-    ctx: Arc<dyn SharedContextRwFn>,
-    app_service: Arc<dyn AppServiceFn>,
-    db_service: Arc<dyn DbService>,
-  ) -> Self {
-    Self {
-      ctx,
-      app_service,
-      db_service,
-    }
+  pub(crate) fn new(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppServiceFn>) -> Self {
+    Self { ctx, app_service }
   }
 }
 
@@ -49,10 +38,6 @@ impl RouterState {
 impl RouterStateFn for RouterState {
   fn app_service(&self) -> Arc<dyn AppServiceFn> {
     self.app_service.clone()
-  }
-
-  fn db_service(&self) -> Arc<dyn DbService> {
-    self.db_service.clone()
   }
 
   async fn chat_completions(
@@ -113,7 +98,7 @@ mod test {
     service::{MockDataService, MockHubService},
     shared_rw::ContextError,
     test_utils::{
-      test_channel, AppServiceStubMock, MockDbService, MockSharedContext, ResponseTestExt,
+      test_channel, AppServiceStubMock, MockSharedContext, ResponseTestExt,
     },
     Repo,
   };
@@ -138,11 +123,7 @@ mod test {
     let service = AppServiceStubMock::builder()
       .data_service(mock_data_service)
       .build()?;
-    let state = RouterState::new(
-      Arc::new(mock_ctx),
-      Arc::new(service),
-      Arc::new(MockDbService::new()),
-    );
+    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "not-found",
       "messages": [
@@ -209,11 +190,7 @@ mod test {
       .hub_service(mock_hub_service)
       .data_service(mock_data_service)
       .build()?;
-    let state = RouterState::new(
-      Arc::new(mock_ctx),
-      Arc::new(service),
-      Arc::new(MockDbService::new()),
-    );
+    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let (tx, _rx) = test_channel();
     state.chat_completions(request, tx).await?;
     Ok(())
@@ -267,11 +244,7 @@ mod test {
       .hub_service(mock_hub_service)
       .data_service(mock_data_service)
       .build()?;
-    let state = RouterState::new(
-      Arc::new(mock_ctx),
-      Arc::new(service),
-      Arc::new(MockDbService::new()),
-    );
+    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let result = state.chat_completions(request, tx).await;
     assert!(result.is_err());
     let response = result.unwrap_err().into_response();

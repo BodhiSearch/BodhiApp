@@ -1,5 +1,5 @@
 use super::{
-  super::{db::DbService, service::AppServiceFn, SharedContextRwFn},
+  super::{service::AppServiceFn, SharedContextRwFn},
   router_state::RouterState,
   routes_chat::chat_completions_handler,
   routes_models::{oai_model_handler, oai_models_handler},
@@ -17,10 +17,9 @@ use tower_http::trace::TraceLayer;
 pub fn build_routes(
   ctx: Arc<dyn SharedContextRwFn>,
   app_service: Arc<dyn AppServiceFn>,
-  db_service: Arc<dyn DbService>,
   static_router: Option<Router>,
 ) -> Router {
-  let state = RouterState::new(ctx, app_service, db_service);
+  let state = RouterState::new(ctx, app_service);
   let api_router = Router::new().merge(chats_router());
   let router = Router::new()
     .route("/ping", get(|| async { "pong" }))

@@ -1,6 +1,5 @@
 use super::{CliError, Command};
 use crate::{
-  db::{DbPool, SqliteDbService, DbService, TimeService},
   error::Common,
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle, ShutdownCallback},
   service::AppServiceFn,
@@ -87,11 +86,6 @@ impl ServeCommand {
     service: Arc<dyn AppServiceFn>,
     static_router: Option<Router>,
   ) -> crate::error::Result<ServerShutdownHandle> {
-    let dbpath = service.env_service().db_path();
-    let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
-    let db_service = SqliteDbService::new(pool, Arc::new(TimeService));
-    db_service.migrate().await?;
-
     let ServerHandle {
       server,
       shutdown,
@@ -100,7 +94,7 @@ impl ServeCommand {
 
     let ctx = SharedContextRw::new_shared_rw(None).await?;
     let ctx: Arc<dyn SharedContextRwFn> = Arc::new(ctx);
-    let app = build_routes(ctx.clone(), service, Arc::new(db_service), static_router);
+    let app = build_routes(ctx.clone(), service, static_router);
 
     let join_handle = tokio::spawn(async move {
       let callback = Box::new(ShutdownContextCallback { ctx });

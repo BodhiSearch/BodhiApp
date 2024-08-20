@@ -1,9 +1,13 @@
-use super::{temp_bodhi_home, temp_hf_home, MockEnvWrapper};
-use crate::service::{
-  AppService, AppServiceBuilder, AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn,
-  HfHubService, HubService, KeycloakAuthService, LocalDataService, MockAuthService,
-  MockDataService, MockEnvServiceFn, MockHubService,
+use super::{temp_bodhi_home, temp_hf_home, MockDbService, MockEnvWrapper};
+use crate::{
+  db::{DbService, SqliteDbService},
+  service::{
+    AppService, AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService,
+    HubService, KeycloakAuthService, LocalDataService, MockAuthService, MockDataService,
+    MockEnvServiceFn, MockHubService,
+  },
 };
+use derive_builder::Builder;
 use rstest::fixture;
 use std::{path::PathBuf, sync::Arc};
 use tempfile::TempDir;
@@ -26,7 +30,6 @@ pub fn data_service(temp_bodhi_home: TempDir) -> DataServiceTuple {
   DataServiceTuple(temp_bodhi_home, bodhi_home, data_service)
 }
 
-
 #[allow(dead_code)]
 pub struct AppServiceTuple(
   pub TempDir,
@@ -45,30 +48,30 @@ pub fn app_service_stub(
   let HubServiceTuple(temp_hf_home, hf_cache, hub_service) = hub_service;
   let mock = MockEnvWrapper::default();
   let env_service = EnvService::new_with_args(mock, bodhi_home.clone(), hf_cache.join(".."));
-  let auth_service = KeycloakAuthService::default();
-  let service = AppServiceBuilder::default()
-    .env_service(Arc::new(env_service))
-    .hub_service(Arc::new(hub_service))
-    .data_service(Arc::new(data_service))
-    .auth_service(Arc::new(auth_service))
-    .build()
-    .unwrap();
+  let service = AppService::new(
+    Arc::new(env_service),
+    Arc::new(hub_service),
+    Arc::new(data_service),
+    Arc::new(KeycloakAuthService::default()),
+    Arc::new(SqliteDbService::no_op()),
+  );
   AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
 }
 
-use derive_builder::Builder;
-
-#[derive(Debug, Default, Builder)]
-#[builder(default)]
+#[derive(Default, Builder)]
+#[builder(default, setter(into))]
 pub struct AppServiceStubMock {
-  #[builder(setter(into))]
   pub env_service: Arc<MockEnvServiceFn>,
-  #[builder(setter(into))]
   pub hub_service: Arc<MockHubService>,
-  #[builder(setter(into))]
   pub data_service: Arc<MockDataService>,
-  #[builder(setter(into))]
   pub auth_service: Arc<MockAuthService>,
+  pub db_service: Arc<MockDbService>,
+}
+
+impl std::fmt::Debug for AppServiceStubMock {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "AppServiceStubMock")
+  }
 }
 
 impl AppServiceStubMock {
@@ -93,5 +96,41 @@ impl AppServiceFn for AppServiceStubMock {
 
   fn auth_service(&self) -> Arc<dyn AuthService> {
     self.auth_service.clone()
+  }
+
+  fn db_service(&self) -> Arc<dyn DbService> {
+    self.db_service.clone()
+  }
+}
+
+#[derive(Debug, Default, Builder)]
+#[builder(default, setter(strip_option))]
+pub struct AppServiceStub {
+  pub env_service: Option<Arc<dyn EnvServiceFn + Send + Sync>>,
+  pub hub_service: Option<Arc<dyn HubService + Send + Sync>>,
+  pub data_service: Option<Arc<dyn DataService + Send + Sync>>,
+  pub auth_service: Option<Arc<dyn AuthService + Send + Sync>>,
+  pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
+}
+
+impl AppServiceFn for AppServiceStub {
+  fn env_service(&self) -> Arc<dyn EnvServiceFn> {
+    self.env_service.clone().unwrap()
+  }
+
+  fn data_service(&self) -> Arc<dyn DataService> {
+    self.data_service.clone().unwrap()
+  }
+
+  fn hub_service(&self) -> Arc<dyn HubService> {
+    self.hub_service.clone().unwrap()
+  }
+
+  fn auth_service(&self) -> Arc<dyn AuthService> {
+    self.auth_service.clone().unwrap()
+  }
+
+  fn db_service(&self) -> Arc<dyn DbService> {
+    self.db_service.clone().unwrap()
   }
 }

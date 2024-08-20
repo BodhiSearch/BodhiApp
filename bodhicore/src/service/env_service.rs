@@ -27,7 +27,7 @@ pub static BODHI_LOGS: &str = "BODHI_LOGS";
 pub static HF_HOME: &str = "HF_HOME";
 
 #[cfg_attr(test, mockall::automock)]
-pub trait EnvServiceFn: std::fmt::Debug {
+pub trait EnvServiceFn: Send + Sync + std::fmt::Debug {
   fn bodhi_home(&self) -> PathBuf;
 
   fn hf_cache(&self) -> PathBuf;
