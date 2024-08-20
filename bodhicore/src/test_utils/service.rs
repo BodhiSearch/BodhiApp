@@ -1,7 +1,8 @@
 use super::{temp_bodhi_home, temp_hf_home, MockEnvWrapper};
 use crate::service::{
-  AppService, AppServiceFn, DataService, EnvService, EnvServiceFn, HfHubService, HubService,
-  LocalDataService, MockDataService, MockEnvServiceFn, MockHubService,
+  AppService, AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService,
+  HubService, KeycloakAuthService, LocalDataService, MockAuthService, MockDataService,
+  MockEnvServiceFn, MockHubService,
 };
 use rstest::fixture;
 use std::{path::PathBuf, sync::Arc};
@@ -42,15 +43,35 @@ pub fn app_service_stub(
   let HubServiceTuple(temp_hf_home, hf_cache, hub_service) = hub_service;
   let mock = MockEnvWrapper::default();
   let env_service = EnvService::new_with_args(mock, bodhi_home.clone(), hf_cache.join(".."));
-  let service = AppService::new(Arc::new(env_service), hub_service, data_service);
+  let auth_service = KeycloakAuthService::default();
+  let service = AppService::new(
+    Arc::new(env_service),
+    hub_service,
+    data_service,
+    auth_service,
+  );
   AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
 }
 
-#[derive(Debug)]
+use derive_builder::Builder;
+
+#[derive(Debug, Default, Builder)]
+#[builder(default)]
 pub struct AppServiceStubMock {
+  #[builder(setter(into))]
   pub env_service: Arc<MockEnvServiceFn>,
+  #[builder(setter(into))]
   pub hub_service: Arc<MockHubService>,
+  #[builder(setter(into))]
   pub data_service: Arc<MockDataService>,
+  #[builder(setter(into))]
+  pub auth_service: Arc<MockAuthService>,
+}
+
+impl AppServiceStubMock {
+  pub fn builder() -> AppServiceStubMockBuilder {
+    AppServiceStubMockBuilder::default()
+  }
 }
 
 impl AppServiceStubMock {
@@ -58,11 +79,13 @@ impl AppServiceStubMock {
     env_service: MockEnvServiceFn,
     hub_service: MockHubService,
     data_service: MockDataService,
+    auth_service: MockAuthService,
   ) -> Self {
     Self {
       env_service: Arc::new(env_service),
       hub_service: Arc::new(hub_service),
       data_service: Arc::new(data_service),
+      auth_service: Arc::new(auth_service),
     }
   }
 }
@@ -79,5 +102,9 @@ impl AppServiceFn for AppServiceStubMock {
 
   fn hub_service(&self) -> Arc<dyn HubService> {
     self.hub_service.clone()
+  }
+
+  fn auth_service(&self) -> Arc<dyn AuthService> {
+    self.auth_service.clone()
   }
 }

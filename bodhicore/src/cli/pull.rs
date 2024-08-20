@@ -154,7 +154,7 @@ impl PullCommand {
 mod test {
   use crate::{
     objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON},
-    service::{MockDataService, MockEnvServiceFn, MockHubService, ALIASES_DIR},
+    service::{MockDataService, MockHubService, ALIASES_DIR},
     test_utils::{app_service_stub, AppServiceStubMock, AppServiceTuple},
     Command, PullCommand,
   };
@@ -221,8 +221,10 @@ mod test {
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from("ignored")));
-    let service =
-      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    let service = AppServiceStubMock::builder()
+      .hub_service(mock_hub_service)
+      .data_service(mock_data_service)
+      .build()?;
     let pull = PullCommand::ByAlias {
       alias: remote_model.alias,
       force: false,
@@ -250,8 +252,10 @@ mod test {
       .with(eq(repo), eq(filename), eq(false))
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
-    let service =
-      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    let service = AppServiceStubMock::builder()
+      .hub_service(mock_hub_service)
+      .data_service(mock_data_service)
+      .build()?;
     pull.execute(Arc::new(service))?;
     Ok(())
   }

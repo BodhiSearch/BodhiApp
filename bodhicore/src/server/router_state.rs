@@ -110,7 +110,7 @@ mod test {
     oai::ApiError,
     objs::{Alias, HubFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     server::RouterStateFn,
-    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    service::{MockDataService, MockHubService},
     shared_rw::ContextError,
     test_utils::{
       test_channel, AppServiceStubMock, MockDbService, MockSharedContext, ResponseTestExt,
@@ -135,11 +135,9 @@ mod test {
       .with(eq("not-found"))
       .return_once(|_| None);
     let mock_ctx = MockSharedContext::default();
-    let service = AppServiceStubMock::new(
-      MockEnvServiceFn::new(),
-      MockHubService::new(),
-      mock_data_service,
-    );
+    let service = AppServiceStubMock::builder()
+      .data_service(mock_data_service)
+      .build()?;
     let state = RouterState::new(
       Arc::new(mock_ctx),
       Arc::new(service),
@@ -207,8 +205,10 @@ mod test {
         always(),
       )
       .return_once(|_, _, _, _, _| Ok(()));
-    let service =
-      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    let service = AppServiceStubMock::builder()
+      .hub_service(mock_hub_service)
+      .data_service(mock_data_service)
+      .build()?;
     let state = RouterState::new(
       Arc::new(mock_ctx),
       Arc::new(service),
@@ -263,8 +263,10 @@ mod test {
           LlamaCppError::BodhiServerChatCompletion("test error".to_string()),
         ))
       });
-    let service =
-      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    let service = AppServiceStubMock::builder()
+      .hub_service(mock_hub_service)
+      .data_service(mock_data_service)
+      .build()?;
     let state = RouterState::new(
       Arc::new(mock_ctx),
       Arc::new(service),

@@ -210,7 +210,7 @@ mod test {
   use super::Interactive;
   use crate::{
     objs::Alias,
-    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    service::{MockEnvServiceFn, MockHubService},
     test_utils::AppServiceStubMock,
   };
   use mockall::predicate::eq;
@@ -242,7 +242,10 @@ mod test {
       .with()
       .return_once(|| PathBuf::from("/tmp/huggingface/hub"));
 
-    let service = AppServiceStubMock::new(mock_env_service, mock, MockDataService::new());
+    let service = AppServiceStubMock::builder()
+      .env_service(mock_env_service)
+      .hub_service(mock)
+      .build()?;
     let result = Interactive::new(alias_clone)
       .execute(Arc::new(service))
       .await;

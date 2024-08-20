@@ -20,7 +20,8 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
   let hf_cache = env_service.hf_cache();
   let data_service = LocalDataService::new(bodhi_home);
   let hub_service = HfHubService::new_from_hf_cache(hf_cache, true);
-  let service = Arc::new(AppService::new(env_service, hub_service, data_service));
+  let auth_service = KeycloakAuthService::new();
+  let service = Arc::new(AppService::new(env_service, hub_service, data_service, auth_service));
 
   let args = env::args().collect::<Vec<_>>();
   if args.len() == 1

@@ -144,8 +144,8 @@ mod test {
       Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
       REFS_MAIN, TOKENIZER_CONFIG_JSON,
     },
-    service::{MockDataService, MockEnvServiceFn, MockHubService},
-    test_utils::AppServiceStubMock,
+    service::{MockDataService, MockHubService},
+    test_utils::{AppServiceStubMock, AppServiceStubMockBuilder},
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
@@ -220,7 +220,9 @@ mod test {
         };
         Some(alias)
       });
-    let service = AppServiceStubMock::new(MockEnvServiceFn::new(), MockHubService::new(), mock);
+    let service = AppServiceStubMockBuilder::default()
+      .data_service(mock)
+      .build()?;
     let result = create.execute(Arc::new(service));
     assert!(result.is_err());
     assert_eq!(
@@ -264,8 +266,10 @@ mod test {
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from(".")));
-    let service =
-      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    let service = AppServiceStubMockBuilder::default()
+      .hub_service(mock_hub_service)
+      .data_service(mock_data_service)
+      .build()?;
     create.execute(Arc::new(service))?;
     Ok(())
   }
@@ -303,7 +307,11 @@ mod test {
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
-      .with(eq(tokenizer_repo.clone()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .with(
+        eq(tokenizer_repo.clone()),
+        eq(TOKENIZER_CONFIG_JSON),
+        eq(REFS_MAIN),
+      )
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
@@ -317,8 +325,10 @@ mod test {
       .expect_save_alias()
       .with(eq(alias))
       .return_once(|_| Ok(PathBuf::from("ignored")));
-    let service =
-      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    let service = AppServiceStubMock::builder()
+      .hub_service(mock_hub_service)
+      .data_service(mock_data_service)
+      .build()?;
     create.execute(Arc::new(service))?;
     Ok(())
   }

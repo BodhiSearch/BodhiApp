@@ -29,8 +29,11 @@ pub trait AuthService: std::fmt::Debug {
   ) -> Result<(AccessToken, RefreshToken)>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct KeycloakAuthService {}
+
+impl KeycloakAuthService {
+}
 
 #[async_trait]
 impl AuthService for KeycloakAuthService {
