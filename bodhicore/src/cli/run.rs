@@ -33,7 +33,10 @@ impl RunCommand {
                 alias: remote_model.alias.clone(),
                 force: false,
               };
-              println!("downloading files to run model alias '{}'", remote_model.alias);
+              println!(
+                "downloading files to run model alias '{}'",
+                remote_model.alias
+              );
               command.execute(service.clone())?;
               match service.data_service().find_alias(&alias) {
                 Some(alias_obj) => alias_obj,
@@ -54,7 +57,7 @@ impl RunCommand {
 mod test {
   use crate::{
     objs::{Alias, HubFile, RemoteModel, REFS_MAIN, TOKENIZER_CONFIG_JSON},
-    service::{MockDataService, MockEnvServiceFn, MockHubService},
+    service::{MockDataService, MockHubService},
     test_utils::{AppServiceStubMock, MockInteractiveRuntime},
     Repo, RunCommand,
   };
@@ -76,11 +79,9 @@ mod test {
       .expect_find_remote_model()
       .with(eq("testalias:instruct"))
       .return_once(|_| Ok(None));
-    let service = AppServiceStubMock::new(
-      MockEnvServiceFn::new(),
-      MockHubService::new(),
-      mock_data_service,
-    );
+    let service = AppServiceStubMock::builder()
+      .data_service(mock_data_service)
+      .build()?;
     let result = run_command.execute(Arc::new(service));
     assert!(result.is_err());
     assert_eq!(
@@ -119,11 +120,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(
-        eq(Repo::testalias()),
-        eq("testalias.Q8_0.gguf"),
-        eq(false),
-      )
+      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf"), eq(false))
       .return_once(|_, _, _| Ok(HubFile::testalias()));
 
     mock_hub_service
@@ -147,8 +144,10 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .expect_execute()
       .with(eq(Alias::testalias()), always())
       .return_once(|_, _| Ok(()));
-    let service =
-      AppServiceStubMock::new(MockEnvServiceFn::new(), mock_hub_service, mock_data_service);
+    let service = AppServiceStubMock::builder()
+      .hub_service(mock_hub_service)
+      .data_service(mock_data_service)
+      .build()?;
     let ctx = MockInteractiveRuntime::new_context();
     ctx.expect().return_once(move || mock_interactive);
     run_command.execute(Arc::new(service))?;
