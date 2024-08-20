@@ -1,4 +1,4 @@
-use crate::{db::DbServiceFn, server::RouterStateFn, service::AppServiceFn};
+use crate::{db::DbService, server::RouterStateFn, service::AppServiceFn};
 use async_openai::types::CreateChatCompletionRequest;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -11,7 +11,7 @@ mockall::mock! {
   impl RouterStateFn for RouterState {
     fn app_service(&self) -> Arc<dyn AppServiceFn> ;
 
-    fn db_service(&self) -> Arc<dyn DbServiceFn> ;
+    fn db_service(&self) -> Arc<dyn DbService> ;
 
     async fn chat_completions(
       &self,

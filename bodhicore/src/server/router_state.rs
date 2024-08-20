@@ -1,5 +1,5 @@
 use crate::{
-  db::DbServiceFn,
+  db::DbService,
   oai::OpenAIApiError,
   objs::{REFS_MAIN, TOKENIZER_CONFIG_JSON},
   service::AppServiceFn,
@@ -15,7 +15,7 @@ use tokio::sync::mpsc::Sender;
 pub trait RouterStateFn: Send + Sync {
   fn app_service(&self) -> Arc<dyn AppServiceFn>;
 
-  fn db_service(&self) -> Arc<dyn DbServiceFn>;
+  fn db_service(&self) -> Arc<dyn DbService>;
 
   async fn chat_completions(
     &self,
@@ -28,14 +28,14 @@ pub trait RouterStateFn: Send + Sync {
 pub struct RouterState {
   pub(crate) ctx: Arc<dyn SharedContextRwFn>,
   pub(crate) app_service: Arc<dyn AppServiceFn>,
-  pub(crate) db_service: Arc<dyn DbServiceFn>,
+  pub(crate) db_service: Arc<dyn DbService>,
 }
 
 impl RouterState {
   pub(crate) fn new(
     ctx: Arc<dyn SharedContextRwFn>,
     app_service: Arc<dyn AppServiceFn>,
-    db_service: Arc<dyn DbServiceFn>,
+    db_service: Arc<dyn DbService>,
   ) -> Self {
     Self {
       ctx,
@@ -51,7 +51,7 @@ impl RouterStateFn for RouterState {
     self.app_service.clone()
   }
 
-  fn db_service(&self) -> Arc<dyn DbServiceFn> {
+  fn db_service(&self) -> Arc<dyn DbService> {
     self.db_service.clone()
   }
 

@@ -1,7 +1,7 @@
 use super::{
   objs::{Conversation, Message},
   service::CONVERSATIONS,
-  DbError, DbServiceFn,
+  DbError, DbService,
 };
 
 #[derive(Debug, PartialEq)]
@@ -14,7 +14,7 @@ impl NoOpDbService {
 }
 
 #[async_trait::async_trait]
-impl DbServiceFn for NoOpDbService {
+impl DbService for NoOpDbService {
   async fn migrate(&self) -> Result<(), DbError> {
     Ok(())
   }
@@ -55,7 +55,7 @@ mod test {
   use super::{
     super::{
       objs::{Conversation, Message},
-      DbServiceFn,
+      DbService,
     },
     NoOpDbService,
   };

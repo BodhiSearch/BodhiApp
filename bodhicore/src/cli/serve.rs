@@ -1,6 +1,6 @@
 use super::{CliError, Command};
 use crate::{
-  db::{DbPool, DbService, DbServiceFn, TimeService},
+  db::{DbPool, SqliteDbService, DbService, TimeService},
   error::Common,
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle, ShutdownCallback},
   service::AppServiceFn,
@@ -89,7 +89,7 @@ impl ServeCommand {
   ) -> crate::error::Result<ServerShutdownHandle> {
     let dbpath = service.env_service().db_path();
     let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
-    let db_service = DbService::new(pool, Arc::new(TimeService));
+    let db_service = SqliteDbService::new(pool, Arc::new(TimeService));
     db_service.migrate().await?;
 
     let ServerHandle {

@@ -1,5 +1,5 @@
 use super::{
-  super::{db::DbServiceFn, service::AppServiceFn, SharedContextRwFn},
+  super::{db::DbService, service::AppServiceFn, SharedContextRwFn},
   router_state::RouterState,
   routes_chat::chat_completions_handler,
   routes_models::{oai_model_handler, oai_models_handler},
@@ -17,7 +17,7 @@ use tower_http::trace::TraceLayer;
 pub fn build_routes(
   ctx: Arc<dyn SharedContextRwFn>,
   app_service: Arc<dyn AppServiceFn>,
-  db_service: Arc<dyn DbServiceFn>,
+  db_service: Arc<dyn DbService>,
   static_router: Option<Router>,
 ) -> Router {
   let state = RouterState::new(ctx, app_service, db_service);

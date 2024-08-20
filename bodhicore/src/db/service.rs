@@ -44,7 +44,7 @@ pub enum DbError {
 }
 
 #[async_trait::async_trait]
-pub trait DbServiceFn: std::fmt::Debug + Send + Sync {
+pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn migrate(&self) -> Result<(), DbError>;
 
   async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError>;
@@ -61,19 +61,19 @@ pub trait DbServiceFn: std::fmt::Debug + Send + Sync {
 }
 
 #[derive(Debug, Clone, new)]
-pub struct DbService {
+pub struct SqliteDbService {
   pool: SqlitePool,
   time_service: Arc<dyn TimeServiceFn>,
 }
 
-impl DbService {
-  pub fn no_op() -> impl DbServiceFn {
+impl SqliteDbService {
+  pub fn no_op() -> impl DbService {
     NoOpDbService::new()
   }
 }
 
 #[async_trait::async_trait]
-impl DbServiceFn for DbService {
+impl DbService for SqliteDbService {
   async fn migrate(&self) -> Result<(), DbError> {
     sqlx::migrate!("./migrations").run(&self.pool).await?;
     Ok(())
@@ -251,11 +251,11 @@ impl DbServiceFn for DbService {
 
 #[cfg(test)]
 mod test {
-  use super::{DbService, TimeService, TimeServiceFn};
+  use super::{SqliteDbService, TimeService, TimeServiceFn};
   use crate::{
     db::{
       objs::{ConversationBuilder, MessageBuilder},
-      service::DbServiceFn,
+      service::DbService,
     },
     test_utils::db_service,
   };
@@ -268,7 +268,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_conversations_create(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_tempdir, now, service) = db_service;
     let created = chrono::Utc::now()
@@ -294,7 +294,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_conversations_update(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_tempdir, _now, service) = db_service;
     let created = chrono::Utc::now()
@@ -322,7 +322,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_list_conversation(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_tempdir, _now, service) = db_service;
     service
@@ -340,7 +340,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_save_message(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_tempdir, _now, service) = db_service;
     let mut conversation = ConversationBuilder::default()
@@ -367,7 +367,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_delete_conversation(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_tempdir, _now, service) = db_service;
     let mut conversation = ConversationBuilder::default()
@@ -399,7 +399,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_delete_all_conversation(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_tempdir, _now, service) = db_service;
     let mut conversation = ConversationBuilder::default().build().unwrap();

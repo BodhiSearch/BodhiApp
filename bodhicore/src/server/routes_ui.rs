@@ -77,7 +77,7 @@ mod test {
   use crate::{
     db::{
       objs::{Conversation, ConversationBuilder, MessageBuilder},
-      DbService, DbServiceFn,
+      SqliteDbService, DbService,
     },
     server::RouterState,
     service::MockAppServiceFn,
@@ -100,7 +100,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_index(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let mut convo_1 = ConversationBuilder::default()
@@ -144,7 +144,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_get(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let mut convo = ConversationBuilder::default().title("test title").build()?;
@@ -189,7 +189,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_delete(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let mut convo = ConversationBuilder::default().id(Uuid::new_v4()).build()?;
@@ -232,7 +232,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_delete_chats(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let mut convo = ConversationBuilder::default().build()?;
@@ -266,7 +266,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_get_not_found(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let router_state = RouterState::new(
@@ -295,7 +295,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_new_chat(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let db_service = Arc::new(db_service);
@@ -355,7 +355,7 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_update_chat(
-    #[future] db_service: (TempDir, DateTime<Utc>, DbService),
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
   ) -> anyhow::Result<()> {
     let (_temp, _now, db_service) = db_service;
     let db_service = Arc::new(db_service);
