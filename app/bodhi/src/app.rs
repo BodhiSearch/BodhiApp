@@ -2,15 +2,14 @@ use crate::{native::NativeCommand, AppError};
 use axum::Router;
 use bodhicore::{
   cli::{Cli, Command, ServeCommand},
-  service::{
-    AppService, AppServiceBuilder, EnvService, EnvServiceFn, HfHubService, LocalDataService,
-  },
+  service::{AppServiceBuilder, EnvService, EnvServiceFn, HfHubService, LocalDataService},
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
 };
 use clap::Parser;
 use include_dir::{include_dir, Dir};
 use std::{env, path::Path, sync::Arc};
+use tokio::runtime::Builder;
 use tower_serve_static::ServeDir;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
@@ -18,6 +17,11 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
 pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
+  let runtime = Builder::new_multi_thread().enable_all().build()?;
+  runtime.block_on(async move { aexecute(env_service).await })
+}
+
+async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   let bodhi_home = env_service.bodhi_home();
   let hf_cache = env_service.hf_cache();
   let data_service = LocalDataService::new(bodhi_home);
@@ -38,7 +42,7 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
       .contains(".app/Contents/MacOS/")
   {
     // the app was launched using Bodhi.app, launch the native app with system tray
-    NativeCommand::new(service, true).execute(Some(static_router()))?;
+    NativeCommand::new(service, true).aexecute(Some(static_router())).await?;
     return Ok(());
   }
 
@@ -50,7 +54,7 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
       EnvCommand::new(service).execute()?;
     }
     Command::App { ui } => {
-      NativeCommand::new(service, ui).execute(Some(static_router()))?;
+      NativeCommand::new(service, ui).aexecute(Some(static_router())).await?;
     }
     list @ Command::List { .. } => {
       let list_command = ListCommand::try_from(list)?;
@@ -58,7 +62,7 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
     }
     serve @ Command::Serve { .. } => {
       let serve_command = ServeCommand::try_from(serve)?;
-      serve_command.execute(service)?;
+      serve_command.aexecute(service, None).await?;
     }
     pull @ Command::Pull { .. } => {
       let pull_command = PullCommand::try_from(pull)?;
@@ -70,7 +74,7 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
     }
     run @ Command::Run { .. } => {
       let run_command = RunCommand::try_from(run)?;
-      run_command.execute(service)?;
+      run_command.aexecute(service).await?;
     }
     show @ Command::Show { .. } => {
       let show = ManageAliasCommand::try_from(show)?;

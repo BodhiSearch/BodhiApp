@@ -1,7 +1,7 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   service::{
-    env_wrapper::EnvWrapper, AppService, AppServiceBuilder, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, LocalDataService
+    env_wrapper::EnvWrapper, AppServiceBuilder, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, LocalDataService
   },
   ServeCommand, ServerShutdownHandle,
 };

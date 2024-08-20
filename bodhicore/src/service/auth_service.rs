@@ -1,3 +1,4 @@
+#![allow(unused_variables)] // TODO: remove this
 use async_trait::async_trait;
 use oauth2::{AccessToken, RefreshToken};
 use serde::{Deserialize, Serialize};

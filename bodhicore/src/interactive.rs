@@ -21,7 +21,6 @@ use std::{
   time::Duration,
 };
 use tokio::{
-  runtime::Builder,
   sync::{mpsc::channel, Mutex},
   task::JoinHandle,
 };
@@ -195,13 +194,8 @@ impl InteractiveRuntime {
     InteractiveRuntime {}
   }
 
-  pub fn execute(&self, alias: Alias, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
-    let runtime = Builder::new_multi_thread()
-      .enable_all()
-      .build()
-      .map_err(Common::Io)?;
-    runtime.block_on(async move { Interactive::new(alias).execute(service).await })?;
-    Ok(())
+  pub async fn execute(&self, alias: Alias, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+    Interactive::new(alias).execute(service).await
   }
 }
 

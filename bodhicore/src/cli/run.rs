@@ -22,7 +22,7 @@ impl TryFrom<Command> for RunCommand {
 
 impl RunCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  pub async fn aexecute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
     match self {
       RunCommand::WithAlias { alias } => {
         let alias = match service.data_service().find_alias(&alias) {
@@ -46,7 +46,7 @@ impl RunCommand {
             None => return Err(BodhiError::AliasNotFound(alias)),
           },
         };
-        InteractiveRuntime::new().execute(alias, service)?;
+        InteractiveRuntime::new().execute(alias, service).await?;
         Ok(())
       }
     }
@@ -66,7 +66,8 @@ mod test {
   use std::{path::PathBuf, sync::Arc};
 
   #[rstest]
-  fn test_run_with_alias_return_error_if_alias_not_found() -> anyhow::Result<()> {
+  #[tokio::test]
+  async fn test_run_with_alias_return_error_if_alias_not_found() -> anyhow::Result<()> {
     let run_command = RunCommand::WithAlias {
       alias: "testalias:instruct".to_string(),
     };
@@ -82,7 +83,7 @@ mod test {
     let service = AppServiceStubMock::builder()
       .data_service(mock_data_service)
       .build()?;
-    let result = run_command.execute(Arc::new(service));
+    let result = run_command.aexecute(Arc::new(service)).await;
     assert!(result.is_err());
     assert_eq!(
       r#"model alias 'testalias:instruct' not found in pre-configured model aliases.
@@ -94,7 +95,8 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   }
 
   #[rstest]
-  fn test_run_with_alias_downloads_a_known_alias_if_not_configured() -> anyhow::Result<()> {
+  #[tokio::test]
+  async fn test_run_with_alias_downloads_a_known_alias_if_not_configured() -> anyhow::Result<()> {
     let run_command = RunCommand::WithAlias {
       alias: "testalias:instruct".to_string(),
     };
@@ -150,7 +152,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .build()?;
     let ctx = MockInteractiveRuntime::new_context();
     ctx.expect().return_once(move || mock_interactive);
-    run_command.execute(Arc::new(service))?;
+    run_command.aexecute(Arc::new(service)).await?;
     Ok(())
   }
 }
