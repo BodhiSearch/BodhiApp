@@ -2,7 +2,9 @@ use crate::{native::NativeCommand, AppError};
 use axum::Router;
 use bodhicore::{
   cli::{Cli, Command, ServeCommand},
-  service::{AppService, EnvService, EnvServiceFn, HfHubService, LocalDataService},
+  service::{
+    AppService, AppServiceBuilder, EnvService, EnvServiceFn, HfHubService, LocalDataService,
+  },
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
 };
@@ -20,8 +22,13 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
   let hf_cache = env_service.hf_cache();
   let data_service = LocalDataService::new(bodhi_home);
   let hub_service = HfHubService::new_from_hf_cache(hf_cache, true);
-  let auth_service = KeycloakAuthService::new();
-  let service = Arc::new(AppService::new(env_service, hub_service, data_service, auth_service));
+  // new(env_service, hub_service, data_service, auth_service);
+  let app_service = AppServiceBuilder::default()
+    .env_service(env_service)
+    .hub_service(Arc::new(hub_service))
+    .data_service(Arc::new(data_service))
+    .build()?;
+  let service = Arc::new(app_service);
 
   let args = env::args().collect::<Vec<_>>();
   if args.len() == 1

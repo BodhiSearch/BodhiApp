@@ -1,8 +1,8 @@
 use super::{temp_bodhi_home, temp_hf_home, MockEnvWrapper};
 use crate::service::{
-  AppService, AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService,
-  HubService, KeycloakAuthService, LocalDataService, MockAuthService, MockDataService,
-  MockEnvServiceFn, MockHubService,
+  AppService, AppServiceBuilder, AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn,
+  HfHubService, HubService, KeycloakAuthService, LocalDataService, MockAuthService,
+  MockDataService, MockEnvServiceFn, MockHubService,
 };
 use rstest::fixture;
 use std::{path::PathBuf, sync::Arc};
@@ -44,12 +44,13 @@ pub fn app_service_stub(
   let mock = MockEnvWrapper::default();
   let env_service = EnvService::new_with_args(mock, bodhi_home.clone(), hf_cache.join(".."));
   let auth_service = KeycloakAuthService::default();
-  let service = AppService::new(
-    Arc::new(env_service),
-    hub_service,
-    data_service,
-    auth_service,
-  );
+  let service = AppServiceBuilder::default()
+    .env_service(Arc::new(env_service))
+    .hub_service(Arc::new(hub_service))
+    .data_service(Arc::new(data_service))
+    .auth_service(Arc::new(auth_service))
+    .build()
+    .unwrap();
   AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
 }
 
