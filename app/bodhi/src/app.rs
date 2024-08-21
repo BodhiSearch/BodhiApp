@@ -5,6 +5,7 @@ use bodhicore::{
   db::{DbPool, DbService, SqliteDbService, TimeService},
   service::{
     AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, LocalDataService,
+    SqliteSessionService,
   },
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
@@ -32,8 +33,10 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
 
   let dbpath = env_service.db_path();
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
-  let db_service = SqliteDbService::new(pool, Arc::new(TimeService));
+  let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
   db_service.migrate().await?;
+  let session_service = SqliteSessionService::new(pool);
+  session_service.migrate().await?;
 
   let app_service = AppService::new(
     env_service,
@@ -41,6 +44,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
     Arc::new(data_service),
     Arc::new(KeycloakAuthService::new()),
     Arc::new(db_service),
+    Arc::new(session_service),
   );
   let service = Arc::new(app_service);
 

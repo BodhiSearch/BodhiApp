@@ -1,10 +1,11 @@
 use super::DbError;
 use sqlx::SqlitePool;
+use std::result::Result;
 
 pub struct DbPool {}
 
 impl DbPool {
-  pub async fn connect(url: &str) -> std::result::Result<SqlitePool, DbError> {
+  pub async fn connect(url: &str) -> Result<SqlitePool, DbError> {
     let pool = SqlitePool::connect(url)
       .await
       .map_err(|source| DbError::SqlxConnect {

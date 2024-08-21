@@ -1,4 +1,6 @@
-use super::{data_service::DataService, hub_service::HubService, AuthService, EnvServiceFn};
+use super::{
+  data_service::DataService, hub_service::HubService, AuthService, EnvServiceFn, SessionService,
+};
 use crate::db::DbService;
 use derive_new::new;
 use std::sync::Arc;
@@ -14,6 +16,8 @@ pub trait AppServiceFn: std::fmt::Debug + Send + Sync {
   fn auth_service(&self) -> Arc<dyn AuthService>;
 
   fn db_service(&self) -> Arc<dyn DbService>;
+
+  fn session_service(&self) -> Arc<dyn SessionService>;
 }
 
 #[derive(Clone, Debug, new)]
@@ -23,6 +27,7 @@ pub struct AppService {
   data_service: Arc<dyn DataService + Send + Sync>,
   auth_service: Arc<dyn AuthService + Send + Sync>,
   db_service: Arc<dyn DbService + Send + Sync>,
+  session_service: Arc<dyn SessionService + Send + Sync>,
 }
 
 impl AppServiceFn for AppService {
@@ -44,5 +49,9 @@ impl AppServiceFn for AppService {
 
   fn db_service(&self) -> Arc<dyn DbService> {
     self.db_service.clone()
+  }
+
+  fn session_service(&self) -> Arc<dyn SessionService> {
+    self.session_service.clone()
   }
 }

@@ -1,5 +1,5 @@
 use bodhicore::{
-  db::DbError, objs::BuilderError, service::DataServiceError, CliError, ContextError,
+  db::DbError, objs::BuilderError, service::{DataServiceError, SessionServiceError}, CliError, ContextError,
 };
 use std::io;
 
@@ -23,6 +23,8 @@ pub enum AppError {
   Db(#[from] DbError),
   #[error(transparent)]
   BuilderError(#[from] BuilderError),
+  #[error(transparent)]
+  SessionServiceError(#[from] SessionServiceError),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, AppError>;

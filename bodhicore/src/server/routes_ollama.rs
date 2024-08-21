@@ -464,7 +464,7 @@ pub(crate) async fn ollama_model_chat_handler(
 mod test {
   use super::{ollama_model_show_handler, ollama_models_handler};
   use crate::test_utils::{
-    app_service_stub, AppServiceTuple, MockRouterState, RequestTestExt, ResponseTestExt,
+    AppServiceStubBuilder, MockRouterState, RequestTestExt, ResponseTestExt,
   };
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -481,8 +481,10 @@ mod test {
 
   #[rstest]
   #[tokio::test]
-  async fn test_ollama_routes_models_list(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
-    let AppServiceTuple(_bodhi_home, _hf_home, _, _, service) = app_service_stub;
+  async fn test_ollama_routes_models_list() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .build()?;
     let service = Arc::new(service);
     let mut router_state = MockRouterState::new();
     router_state
@@ -510,8 +512,10 @@ mod test {
   #[rstest]
   #[anyhow_trace]
   #[tokio::test]
-  async fn test_ollama_model_show(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
-    let AppServiceTuple(_bodhi_home, _hf_home, _, _, service) = app_service_stub;
+  async fn test_ollama_model_show() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .build()?;
     let service = Arc::new(service);
     let mut router_state = MockRouterState::new();
     router_state
