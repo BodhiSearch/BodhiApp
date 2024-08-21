@@ -11,8 +11,9 @@ pub enum SessionServiceError {
 type Result<T> = std::result::Result<T, SessionServiceError>;
 
 #[cfg_attr(test, mockall::automock)]
-#[async_trait::async_trait]
-pub trait SessionService: std::fmt::Debug {}
+pub trait SessionService: std::fmt::Debug {
+  fn session_layer(&self) -> SessionManagerLayer<SqliteStore>;
+}
 
 #[derive(Debug)]
 pub struct SqliteSessionService {
@@ -29,12 +30,12 @@ impl SqliteSessionService {
     self.session_store.migrate().await?;
     Ok(())
   }
+}
 
-  pub async fn build_layer(&self) -> SessionManagerLayer<SqliteStore> {
+impl SessionService for SqliteSessionService {
+  fn session_layer(&self) -> SessionManagerLayer<SqliteStore> {
     SessionManagerLayer::new(self.session_store.clone())
       .with_secure(true)
       .with_name("bodhiapp_session_id")
   }
 }
-
-impl SessionService for SqliteSessionService {}

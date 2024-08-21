@@ -19,7 +19,7 @@ pub fn build_routes(
   app_service: Arc<dyn AppServiceFn>,
   static_router: Option<Router>,
 ) -> Router {
-  let state = RouterState::new(ctx, app_service);
+  let state = RouterState::new(ctx, app_service.clone());
   let api_router = Router::new().merge(chats_router());
   let router = Router::new()
     .route("/ping", get(|| async { "pong" }))
@@ -38,6 +38,7 @@ pub fn build_routes(
         .allow_headers(Any)
         .allow_credentials(false),
     )
+    .layer(app_service.session_service().session_layer())
     .layer(TraceLayer::new_for_http())
     .with_state(Arc::new(state));
   let router = if let Some(static_router) = static_router {
