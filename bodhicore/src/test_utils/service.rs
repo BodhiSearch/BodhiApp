@@ -4,9 +4,9 @@ use super::{
 use crate::{
   db::DbService,
   service::{
-    AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService,
-    HubService, LocalDataService, MockAuthService, MockDataService,
-    MockEnvServiceFn, MockHubService, MockSessionService, SessionService,
+    AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService, HubService,
+    LocalDataService, MockAuthService, MockDataService, MockEnvServiceFn, MockHubService,
+    MockSecretService, MockSessionService, SecretService, SessionService,
   },
 };
 use derive_builder::Builder;
@@ -41,6 +41,7 @@ pub struct AppServiceStubMock {
   pub auth_service: Arc<MockAuthService>,
   pub db_service: Arc<MockDbService>,
   pub session_service: Arc<MockSessionService>,
+  pub secret_service: Arc<MockSecretService>,
 }
 
 impl std::fmt::Debug for AppServiceStubMock {
@@ -80,6 +81,10 @@ impl AppServiceFn for AppServiceStubMock {
   fn session_service(&self) -> Arc<dyn SessionService> {
     self.session_service.clone()
   }
+
+  fn secret_service(&self) -> Arc<dyn SecretService> {
+    self.secret_service.clone()
+  }
 }
 
 #[derive(Debug, Default, Builder)]
@@ -92,6 +97,7 @@ pub struct AppServiceStub {
   pub auth_service: Option<Arc<dyn AuthService + Send + Sync>>,
   pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
   pub session_service: Option<Arc<dyn SessionService + Send + Sync>>,
+  pub secret_service: Option<Arc<dyn SecretService + Send + Sync>>,
 }
 
 impl AppServiceStub {
@@ -123,6 +129,10 @@ impl AppServiceFn for AppServiceStub {
 
   fn session_service(&self) -> Arc<dyn SessionService> {
     self.session_service.clone().unwrap()
+  }
+
+  fn secret_service(&self) -> Arc<dyn SecretService> {
+    self.secret_service.clone().unwrap()
   }
 }
 

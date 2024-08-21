@@ -1,5 +1,6 @@
 use super::{
   data_service::DataService, hub_service::HubService, AuthService, EnvServiceFn, SessionService,
+  secret_service::SecretService,
 };
 use crate::db::DbService;
 use derive_new::new;
@@ -18,6 +19,8 @@ pub trait AppServiceFn: std::fmt::Debug + Send + Sync {
   fn db_service(&self) -> Arc<dyn DbService>;
 
   fn session_service(&self) -> Arc<dyn SessionService>;
+
+  fn secret_service(&self) -> Arc<dyn SecretService>;
 }
 
 #[derive(Clone, Debug, new)]
@@ -28,6 +31,7 @@ pub struct AppService {
   auth_service: Arc<dyn AuthService + Send + Sync>,
   db_service: Arc<dyn DbService + Send + Sync>,
   session_service: Arc<dyn SessionService + Send + Sync>,
+  secret_service: Arc<dyn SecretService + Send + Sync>,
 }
 
 impl AppServiceFn for AppService {
@@ -53,5 +57,9 @@ impl AppServiceFn for AppService {
 
   fn session_service(&self) -> Arc<dyn SessionService> {
     self.session_service.clone()
+  }
+
+  fn secret_service(&self) -> Arc<dyn SecretService> {
+    self.secret_service.clone()
   }
 }

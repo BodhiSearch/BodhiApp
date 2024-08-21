@@ -2,8 +2,7 @@ use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   db::{SqliteDbService, TimeService},
   service::{
-    env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService,
-    KeycloakAuthService, LocalDataService, SqliteSessionService,
+    env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, KeyringSecretService, LocalDataService, SqliteSessionService
   },
   ServeCommand, ServerShutdownHandle,
 };
@@ -41,6 +40,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   let auth_service = KeycloakAuthService::default();
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
   let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
+  let secret_service = KeyringSecretService::new("bodhi_test".to_string());
   let session_service = SqliteSessionService::new(pool);
   let service = AppService::new(
     Arc::new(env_service),
@@ -49,6 +49,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
     Arc::new(auth_service),
     Arc::new(db_service),
     Arc::new(session_service),
+    Arc::new(secret_service),
   );
   (temp_dir, Arc::new(service))
 }
