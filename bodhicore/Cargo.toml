@@ -8,6 +8,7 @@ async-openai = "0.20.0"
 async-trait = "0.1.80"
 axum = "0.7.4"
 axum-extra = "0.9.3"
+bytes = "1.6.1"
 chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.2", features = ["derive"] }
 derive_builder = "0.20.0"
@@ -15,21 +16,25 @@ derive-new = "0.6.0"
 dialoguer = { version = "0.11.0", features = ["history"] }
 dirs = "5.0.1"
 dotenv = "0.15.0"
+futures-core = "0.3.30"
 futures-util = "0.3.30"
 hf-hub = { version = "0.3.2", features = ["tokio"] }
+http-body = "1.0.1"
 indicatif = { version = "0.17.8", features = ["tokio"] }
 lazy_static = "1.4.0"
 llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
 mime = "0.3.17"
 mime_guess = "2.0.4"
 minijinja = "2.0.1"
+oauth2 = "4.4.2"
 once_cell = "1.19.0"
+pin-project-lite = "0.2.14"
 prettytable-rs = "0.10.0"
 regex = "1.10.4"
 serde = { version = "1.0.197", features = ["derive"] }
 serde_json = "1.0.114"
 serde_yaml = "0.9.34"
-sqlx = { version = "0.7.4", features = [
+sqlx = { version = "0.8.0", features = [
   "runtime-tokio",
   "sqlite",
   "macros",
@@ -37,22 +42,20 @@ sqlx = { version = "0.7.4", features = [
   "chrono",
 ] }
 strum = { version = "0.26.2", features = ["derive"] }
+sync_wrapper = "1.0.1"
 thiserror = "1.0.59"
+time = "0.3.36"
 tokio = { version = "1.36.0", features = ["full"] }
 tokio-stream = "0.1.15"
 tower = "0.4.13"
 tower-http = { version = "0.5.2", features = ["trace", "cors"] }
+tower-sessions = "0.12.3"
+tower-sessions-sqlx-store = { version = "0.13.0", features = ["sqlite"] }
 tracing = { version = "0.1.40", features = ["async-await", "log"] }
 ureq = "2.9.7"
 uuid = { version = "1.8.0", features = ["v4"] }
 validator = { version = "0.18.1", features = ["derive"] }
 walkdir = "2.5.0"
-futures-core = "0.3.30"
-pin-project-lite = "0.2.14"
-bytes = "1.6.1"
-http-body = "1.0.1"
-sync_wrapper = "1.0.1"
-oauth2 = "4.4.2"
 
 [dev-dependencies]
 anyhow = "1.0.81"
