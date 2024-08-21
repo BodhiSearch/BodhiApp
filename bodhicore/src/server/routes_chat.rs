@@ -1,17 +1,15 @@
-use super::RouterStateFn;
+use super::{fwd_sse::fwd_sse, RouterStateFn};
 use crate::oai::OpenAIApiError;
 use async_openai::types::CreateChatCompletionRequest;
 use axum::{
   body::Body,
   extract::State,
   http::{header, HeaderValue, StatusCode},
-  response::{sse::Event, IntoResponse, Response, Sse},
+  response::Response,
   Json,
 };
 use axum_extra::extract::WithRejection;
-use futures_util::StreamExt;
-use std::{convert::Infallible, sync::Arc};
-use tokio_stream::wrappers::ReceiverStream;
+use std::sync::Arc;
 
 // TODO: custom Json extractor to dispatch OpenAIError response for bad request
 pub(crate) async fn chat_completions_handler(
@@ -42,27 +40,7 @@ pub(crate) async fn chat_completions_handler(
       ))
     }
   } else {
-    // TODO: not open up the response, but proxy it directly
-    let stream = ReceiverStream::new(rx).map::<Result<Event, Infallible>, _>(move |msg| {
-      let data = if msg.starts_with("data: ") {
-        msg
-          .strip_prefix("data: ")
-          .unwrap()
-          .strip_suffix("\n\n")
-          .unwrap()
-      } else if msg.starts_with("error: ") {
-        msg
-          .strip_prefix("error: ")
-          .unwrap()
-          .strip_suffix("\n\n")
-          .unwrap()
-      } else {
-        tracing::error!(msg, "unknown event type raised from bodhi_server");
-        &msg
-      };
-      Ok(Event::default().data(data))
-    });
-    Ok(Sse::new(stream).into_response())
+    Ok(fwd_sse(rx))
   }
 }
 

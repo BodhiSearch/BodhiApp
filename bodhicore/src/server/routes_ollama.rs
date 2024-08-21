@@ -206,7 +206,7 @@ impl From<ChatRequest> for CreateChatCompletionRequest {
       presence_penalty: options.presence_penalty,
       response_format: response_format(val.format),
       seed: options.seed,
-      stop: options.stop.map(|s| Stop::StringArray(s)),
+      stop: options.stop.map(Stop::StringArray),
       stream: val.stream,
       temperature: options.temperature,
       top_p: options.top_p,
