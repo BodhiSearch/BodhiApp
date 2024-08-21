@@ -4,8 +4,8 @@ use bodhicore::{
   cli::{Cli, Command, ServeCommand},
   db::{DbPool, DbService, SqliteDbService, TimeService},
   service::{
-    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, LocalDataService,
-    SqliteSessionService,
+    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService,
+    LocalDataService, SecretService, SqliteSessionService,
   },
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
@@ -28,8 +28,10 @@ pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
 async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   let bodhi_home = env_service.bodhi_home();
   let hf_cache = env_service.hf_cache();
-  let data_service = LocalDataService::new(bodhi_home);
+  let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new_from_hf_cache(hf_cache, true);
+  // TODO - have env identify test and prod, and use that to name the secret service
+  let secret_service = KeyringSecretService::new("bodhi_app".to_string());
 
   let dbpath = env_service.db_path();
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
@@ -45,6 +47,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
     Arc::new(KeycloakAuthService::new()),
     Arc::new(db_service),
     Arc::new(session_service),
+    Arc::new(secret_service),
   );
   let service = Arc::new(app_service);
 
