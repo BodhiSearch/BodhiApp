@@ -1,14 +1,15 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
-  db::SqliteDbService,
+  db::{SqliteDbService, TimeService},
   service::{
     env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService,
-    KeycloakAuthService, LocalDataService,
+    KeycloakAuthService, LocalDataService, SqliteSessionService,
   },
   ServeCommand, ServerShutdownHandle,
 };
 use dircpy::CopyBuilder;
 use rstest::fixture;
+use sqlx::SqlitePool;
 use std::{path::Path, sync::Arc};
 use tempfile::TempDir;
 
@@ -38,13 +39,16 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new(hf_cache, false, None);
   let auth_service = KeycloakAuthService::default();
-  let db_service = SqliteDbService::no_op();
+  let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
+  let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
+  let session_service = SqliteSessionService::new(pool);
   let service = AppService::new(
     Arc::new(env_service),
     Arc::new(hub_service),
     Arc::new(data_service),
     Arc::new(auth_service),
     Arc::new(db_service),
+    Arc::new(session_service),
   );
   (temp_dir, Arc::new(service))
 }

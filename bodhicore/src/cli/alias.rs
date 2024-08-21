@@ -135,17 +135,16 @@ impl ManageAliasCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{
-    test_utils::{app_service_stub, AppServiceTuple},
-    Command, ManageAliasCommand, MockStdoutWriter,
-  };
+  use crate::{test_utils::AppServiceStubBuilder, Command, ManageAliasCommand, MockStdoutWriter};
   use mockall::predicate::eq;
   use rstest::rstest;
   use std::sync::Arc;
 
   #[rstest]
-  fn test_manage_alias_show(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
-    let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
+  fn test_manage_alias_show() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .build()?;
     let show = ManageAliasCommand::try_from(Command::Show {
       alias: "tinyllama:instruct".to_string(),
     })?;
@@ -168,8 +167,10 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
   }
 
   #[rstest]
-  fn test_manage_alias_delete(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
-    let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, _, _, service) = app_service_stub;
+  fn test_manage_alias_delete() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .build()?;
     let delete = ManageAliasCommand::try_from(Command::Rm {
       alias: "tinyllama:instruct".to_string(),
     })?;
@@ -183,8 +184,11 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
   }
 
   #[rstest]
-  fn test_manage_alias_copy(app_service_stub: AppServiceTuple) -> anyhow::Result<()> {
-    let AppServiceTuple(_temp_bodhi_home, _temp_hf_home, bodhi_home, _, service) = app_service_stub;
+  fn test_manage_alias_copy() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .build()?;
+    let service = Arc::new(service);
     let copy = ManageAliasCommand::try_from(Command::Cp {
       alias: "tinyllama:instruct".to_string(),
       new_alias: "tinyllama:myconfig".to_string(),
@@ -196,8 +200,9 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
         "created new alias 'tinyllama:myconfig' from 'tinyllama:instruct'.\n",
       ))
       .return_once(|input| Ok(input.len()));
-    copy.execute(Arc::new(service), &mut mock)?;
-    assert!(bodhi_home
+    copy.execute(service.clone(), &mut mock)?;
+    assert!(service
+      .bodhi_home()
       .join("aliases")
       .join("tinyllama--myconfig.yaml")
       .exists());

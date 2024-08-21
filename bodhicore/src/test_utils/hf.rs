@@ -4,11 +4,16 @@ use std::path::PathBuf;
 use tempfile::{tempdir, TempDir};
 
 #[fixture]
-pub fn temp_hf_home() -> TempDir {
+pub fn temp_home() -> TempDir {
   let temp_dir = tempdir().expect("Failed to create a temporary directory");
-  let dst_path = temp_dir.path().join("huggingface");
-  copy_test_dir("tests/data/huggingface", &dst_path);
   temp_dir
+}
+
+#[fixture]
+pub fn temp_hf_home(temp_home: TempDir) -> TempDir {
+  let dst_path = temp_home.path().join("huggingface");
+  copy_test_dir("tests/data/huggingface", &dst_path);
+  temp_home
 }
 
 #[fixture]

@@ -155,7 +155,7 @@ mod test {
   use crate::{
     objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     service::{MockDataService, MockHubService, ALIASES_DIR},
-    test_utils::{app_service_stub, AppServiceStubMock, AppServiceTuple},
+    test_utils::{AppServiceStubBuilder, AppServiceStubMock},
     Command, PullCommand,
   };
   use mockall::predicate::eq;
@@ -163,10 +163,10 @@ mod test {
   use std::{fs, path::PathBuf, sync::Arc};
 
   #[rstest]
-  fn test_pull_by_alias_fails_if_alias_exists_no_force(
-    app_service_stub: AppServiceTuple,
-  ) -> anyhow::Result<()> {
-    let AppServiceTuple(_bodhi_home, _hf_home, _, _, service) = app_service_stub;
+  fn test_pull_by_alias_fails_if_alias_exists_no_force() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .build()?;
     let alias = String::from("testalias-exists:instruct");
     let pull = PullCommand::ByAlias {
       alias,
@@ -290,16 +290,19 @@ mod test {
   }
 
   #[rstest]
-  fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file(
-    app_service_stub: AppServiceTuple,
-  ) -> anyhow::Result<()> {
-    let AppServiceTuple(_temp_bodhi, _temp_hf, bodhi_home, _, service) = app_service_stub;
+  fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file() -> anyhow::Result<()> {
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .with_hub_service()
+      .build()?;
+    let service = Arc::new(service);
     let command = PullCommand::ByAlias {
       alias: "testalias:instruct".to_string(),
       force: false,
     };
-    command.execute(Arc::new(service))?;
-    let alias = bodhi_home
+    command.execute(service.clone())?;
+    let alias = service
+      .bodhi_home()
       .join(ALIASES_DIR)
       .join("testalias--instruct.yaml");
     assert!(alias.exists());

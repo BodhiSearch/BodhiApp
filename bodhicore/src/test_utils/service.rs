@@ -1,10 +1,12 @@
-use super::{temp_bodhi_home, temp_hf_home, MockDbService, MockEnvWrapper};
+use super::{
+  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home, MockDbService, MockEnvWrapper,
+};
 use crate::{
-  db::{DbService, SqliteDbService},
+  db::DbService,
   service::{
-    AppService, AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService,
-    HubService, KeycloakAuthService, LocalDataService, MockAuthService, MockDataService,
-    MockEnvServiceFn, MockHubService,
+    AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService,
+    HubService, LocalDataService, MockAuthService, MockDataService,
+    MockEnvServiceFn, MockHubService, MockSessionService, SessionService,
   },
 };
 use derive_builder::Builder;
@@ -30,34 +32,6 @@ pub fn data_service(temp_bodhi_home: TempDir) -> DataServiceTuple {
   DataServiceTuple(temp_bodhi_home, bodhi_home, data_service)
 }
 
-#[allow(dead_code)]
-pub struct AppServiceTuple(
-  pub TempDir,
-  pub TempDir,
-  pub PathBuf,
-  pub PathBuf,
-  pub AppService,
-);
-
-#[fixture]
-pub fn app_service_stub(
-  hub_service: HubServiceTuple,
-  data_service: DataServiceTuple,
-) -> AppServiceTuple {
-  let DataServiceTuple(temp_bodhi_home, bodhi_home, data_service) = data_service;
-  let HubServiceTuple(temp_hf_home, hf_cache, hub_service) = hub_service;
-  let mock = MockEnvWrapper::default();
-  let env_service = EnvService::new_with_args(mock, bodhi_home.clone(), hf_cache.join(".."));
-  let service = AppService::new(
-    Arc::new(env_service),
-    Arc::new(hub_service),
-    Arc::new(data_service),
-    Arc::new(KeycloakAuthService::default()),
-    Arc::new(SqliteDbService::no_op()),
-  );
-  AppServiceTuple(temp_bodhi_home, temp_hf_home, bodhi_home, hf_cache, service)
-}
-
 #[derive(Default, Builder)]
 #[builder(default, setter(into))]
 pub struct AppServiceStubMock {
@@ -66,6 +40,7 @@ pub struct AppServiceStubMock {
   pub data_service: Arc<MockDataService>,
   pub auth_service: Arc<MockAuthService>,
   pub db_service: Arc<MockDbService>,
+  pub session_service: Arc<MockSessionService>,
 }
 
 impl std::fmt::Debug for AppServiceStubMock {
@@ -101,6 +76,10 @@ impl AppServiceFn for AppServiceStubMock {
   fn db_service(&self) -> Arc<dyn DbService> {
     self.db_service.clone()
   }
+
+  fn session_service(&self) -> Arc<dyn SessionService> {
+    self.session_service.clone()
+  }
 }
 
 #[derive(Debug, Default, Builder)]
@@ -108,9 +87,17 @@ impl AppServiceFn for AppServiceStubMock {
 pub struct AppServiceStub {
   pub env_service: Option<Arc<dyn EnvServiceFn + Send + Sync>>,
   pub hub_service: Option<Arc<dyn HubService + Send + Sync>>,
+  pub temp_home: Option<Arc<TempDir>>,
   pub data_service: Option<Arc<dyn DataService + Send + Sync>>,
   pub auth_service: Option<Arc<dyn AuthService + Send + Sync>>,
   pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
+  pub session_service: Option<Arc<dyn SessionService + Send + Sync>>,
+}
+
+impl AppServiceStub {
+  pub fn bodhi_home(&self) -> PathBuf {
+    self.temp_home.clone().unwrap().path().join("bodhi")
+  }
 }
 
 impl AppServiceFn for AppServiceStub {
@@ -132,5 +119,47 @@ impl AppServiceFn for AppServiceStub {
 
   fn db_service(&self) -> Arc<dyn DbService> {
     self.db_service.clone().unwrap()
+  }
+
+  fn session_service(&self) -> Arc<dyn SessionService> {
+    self.session_service.clone().unwrap()
+  }
+}
+
+impl AppServiceStubBuilder {
+  pub fn with_hub_service(&mut self) -> &mut Self {
+    let temp_home = self.with_temp_home();
+    let hf_home = temp_home.path().join("huggingface");
+    copy_test_dir("tests/data/huggingface", &hf_home);
+    let hf_cache = hf_home.join("hub");
+    let hub_service = HfHubService::new(hf_cache, false, None);
+    self.hub_service = Some(Some(Arc::new(hub_service)));
+    self
+  }
+
+  pub fn with_data_service(&mut self) -> &mut Self {
+    let temp_home = self.with_temp_home();
+    let bodhi_home = temp_home.path().join("bodhi");
+    copy_test_dir("tests/data/bodhi", &bodhi_home);
+    let data_service = LocalDataService::new(bodhi_home);
+    self.data_service = Some(Some(Arc::new(data_service)));
+    self
+  }
+
+  pub fn with_temp_home(&mut self) -> Arc<TempDir> {
+    match &self.temp_home {
+      Some(Some(temp_home)) => temp_home.clone(),
+      None | Some(None) => {
+        let temp_home = Arc::new(temp_home());
+        self.temp_home = Some(Some(temp_home.clone()));
+        let env_service = EnvService::new_with_args(
+          MockEnvWrapper::default(),
+          temp_home.path().join("bodhi"),
+          temp_home.path().join("huggingface"),
+        );
+        self.env_service = Some(Some(Arc::new(env_service)));
+        temp_home
+      }
+    }
   }
 }
