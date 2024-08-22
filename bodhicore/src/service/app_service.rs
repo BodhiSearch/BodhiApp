@@ -25,6 +25,7 @@ pub trait AppServiceFn: std::fmt::Debug + Send + Sync {
   fn cache_service(&self) -> Arc<dyn CacheService>;
 }
 
+#[allow(clippy::too_many_arguments)]
 #[derive(Clone, Debug, new)]
 pub struct AppService {
   env_service: Arc<dyn EnvServiceFn + Send + Sync>,
