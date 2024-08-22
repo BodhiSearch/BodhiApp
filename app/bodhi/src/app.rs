@@ -4,15 +4,14 @@ use bodhicore::{
   cli::{Cli, Command, ServeCommand},
   db::{DbPool, DbService, SqliteDbService, TimeService},
   service::{
-    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService,
-    LocalDataService, SecretService, SqliteSessionService,
+    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService, LocalDataService, MokaCacheService, SqliteSessionService
   },
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
 };
 use clap::Parser;
 use include_dir::{include_dir, Dir};
-use std::{env, path::Path, sync::Arc};
+use std::{env, path::Path, sync::Arc, time::Duration};
 use tokio::runtime::Builder;
 use tower_serve_static::ServeDir;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -39,6 +38,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   db_service.migrate().await?;
   let session_service = SqliteSessionService::new(pool);
   session_service.migrate().await?;
+  let cache_service = MokaCacheService::new(100, Duration::from_secs(30 * 24 * 60 * 60));
 
   let app_service = AppService::new(
     env_service,
@@ -48,6 +48,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
     Arc::new(db_service),
     Arc::new(session_service),
     Arc::new(secret_service),
+    Arc::new(cache_service),
   );
   let service = Arc::new(app_service);
 

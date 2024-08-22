@@ -4,14 +4,15 @@ use super::{
 use crate::{
   db::DbService,
   service::{
-    AppServiceFn, AuthService, DataService, EnvService, EnvServiceFn, HfHubService, HubService,
-    LocalDataService, MockAuthService, MockDataService, MockEnvServiceFn, MockHubService,
-    MockSecretService, MockSessionService, SecretService, SessionService,
+    AppServiceFn, AuthService, CacheService, DataService, EnvService, EnvServiceFn, HfHubService,
+    HubService, LocalDataService, MockAuthService, MockCacheService, MockDataService,
+    MockEnvServiceFn, MockHubService, MockSecretService, MockSessionService, MokaCacheService,
+    SecretService, SessionService,
   },
 };
 use derive_builder::Builder;
 use rstest::fixture;
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
 pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
@@ -42,6 +43,7 @@ pub struct AppServiceStubMock {
   pub db_service: Arc<MockDbService>,
   pub session_service: Arc<MockSessionService>,
   pub secret_service: Arc<MockSecretService>,
+  pub cache_service: Arc<MockCacheService>,
 }
 
 impl std::fmt::Debug for AppServiceStubMock {
@@ -85,6 +87,10 @@ impl AppServiceFn for AppServiceStubMock {
   fn secret_service(&self) -> Arc<dyn SecretService> {
     self.secret_service.clone()
   }
+
+  fn cache_service(&self) -> Arc<dyn CacheService> {
+    self.cache_service.clone()
+  }
 }
 
 #[derive(Debug, Default, Builder)]
@@ -98,6 +104,17 @@ pub struct AppServiceStub {
   pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
   pub session_service: Option<Arc<dyn SessionService + Send + Sync>>,
   pub secret_service: Option<Arc<dyn SecretService + Send + Sync>>,
+  #[builder(default = "self.default_cache_service()")]
+  pub cache_service: Option<Arc<dyn CacheService + Send + Sync>>,
+}
+
+impl AppServiceStubBuilder {
+  fn default_cache_service(&self) -> Option<Arc<dyn CacheService + Send + Sync>> {
+    Some(Arc::new(MokaCacheService::new(
+      100,
+      Duration::from_secs(30 * 24 * 60 * 60),
+    )))
+  }
 }
 
 impl AppServiceStub {
@@ -133,6 +150,10 @@ impl AppServiceFn for AppServiceStub {
 
   fn secret_service(&self) -> Arc<dyn SecretService> {
     self.secret_service.clone().unwrap()
+  }
+
+  fn cache_service(&self) -> Arc<dyn CacheService> {
+    self.cache_service.clone().unwrap()
   }
 }
 

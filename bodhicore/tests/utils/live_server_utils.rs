@@ -2,14 +2,16 @@ use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
   db::{SqliteDbService, TimeService},
   service::{
-    env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, KeyringSecretService, LocalDataService, SqliteSessionService
+    env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService,
+    KeycloakAuthService, KeyringSecretService, LocalDataService, MokaCacheService,
+    SqliteSessionService,
   },
   ServeCommand, ServerShutdownHandle,
 };
 use dircpy::CopyBuilder;
 use rstest::fixture;
 use sqlx::SqlitePool;
-use std::{path::Path, sync::Arc};
+use std::{path::Path, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
 pub fn copy_test_dir(src: &str, dst_path: &Path) {
@@ -42,6 +44,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
   let secret_service = KeyringSecretService::new("bodhi_test".to_string());
   let session_service = SqliteSessionService::new(pool);
+  let cache_service = MokaCacheService::new(100, Duration::from_secs(30 * 24 * 60 * 60));
   let service = AppService::new(
     Arc::new(env_service),
     Arc::new(hub_service),
@@ -50,6 +53,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
     Arc::new(db_service),
     Arc::new(session_service),
     Arc::new(secret_service),
+    Arc::new(cache_service),
   );
   (temp_dir, Arc::new(service))
 }
