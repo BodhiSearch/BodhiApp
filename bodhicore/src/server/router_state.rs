@@ -97,9 +97,7 @@ mod test {
     server::RouterStateFn,
     service::{MockDataService, MockHubService},
     shared_rw::ContextError,
-    test_utils::{
-      test_channel, AppServiceStubMock, MockSharedContext, ResponseTestExt,
-    },
+    test_utils::{test_channel, AppServiceStubMock, MockSharedContext, ResponseTestExt},
     Repo,
   };
   use async_openai::types::CreateChatCompletionRequest;

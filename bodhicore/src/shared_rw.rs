@@ -1,23 +1,23 @@
-#[cfg(not(test))]
-use llama_server_bindings::BodhiServerContext;
 #[cfg(test)]
 use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
+#[cfg(not(test))]
+use llama_server_bindings::BodhiServerContext;
 
-use validator::{Validate, ValidationErrors};
 use crate::error::Common;
 use crate::objs::{Alias, HubFile, ObjError};
 use crate::service::DataServiceError;
-use tokio::sync::mpsc::Sender;
 use crate::tokenizer_config::TokenizerConfig;
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_bindings::{LlamaCppError, GptParams, GptParamsBuilder, GptParamsBuilderError};
+use llama_server_bindings::{GptParams, GptParamsBuilder, GptParamsBuilderError, LlamaCppError};
 use std::ffi::{c_char, c_void};
 use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use thiserror::Error;
+use tokio::sync::mpsc::Sender;
 use tokio::sync::RwLock;
+use validator::{Validate, ValidationErrors};
 
 #[derive(Debug)]
 pub struct SharedContextRw {
@@ -62,12 +62,14 @@ unsafe extern "C" fn callback_stream(
   let receiver_status = userdata.1.clone();
 
   if !receiver_status.load(Ordering::SeqCst) {
-      return 0;
+    return 0;
   }
 
   tokio::spawn(async move {
     if sender.send(input_str).await.is_err() {
-      tracing::warn!("error sending generated token using callback, receiver closed, closing sender");
+      tracing::warn!(
+        "error sending generated token using callback, receiver closed, closing sender"
+      );
       receiver_status.store(false, Ordering::SeqCst);
     }
   });
@@ -172,10 +174,13 @@ impl SharedContextRwFn for SharedContextRw {
     match ModelLoadStrategy::choose(&loaded_model, &request_model) {
       ModelLoadStrategy::Continue => {
         ctx
-          .ok_or_else(||ContextError::Unreachable(
-            "context should not be None".to_string(),
-          ))?
-          .completions(&input, "", Some(callback_stream), &callback_userdata as *const _ as *mut _)?;
+          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
+          .completions(
+            &input,
+            "",
+            Some(callback_stream),
+            &callback_userdata as *const _ as *mut _,
+          )?;
         Ok(())
       }
       ModelLoadStrategy::DropAndLoad => {
@@ -185,10 +190,14 @@ impl SharedContextRwFn for SharedContextRw {
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
-        ctx.ok_or_else(||ContextError::Unreachable(
-          "context should not be None".to_string(),
-        ))?
-        .completions(&input, "", Some(callback_stream), &callback_userdata as *const _ as *mut _)?;
+        ctx
+          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
+          .completions(
+            &input,
+            "",
+            Some(callback_stream),
+            &callback_userdata as *const _ as *mut _,
+          )?;
         Ok(())
       }
       ModelLoadStrategy::Load => {
@@ -200,12 +209,16 @@ impl SharedContextRwFn for SharedContextRw {
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
-        ctx.ok_or_else(||ContextError::Unreachable(
-          "context should not be None".to_string(),
-        ))?
-        .completions(&input, "", Some(callback_stream), &callback_userdata as *const _ as *mut _)?;
+        ctx
+          .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
+          .completions(
+            &input,
+            "",
+            Some(callback_stream),
+            &callback_userdata as *const _ as *mut _,
+          )?;
         Ok(())
-      },
+      }
     }
   }
 }
@@ -215,9 +228,7 @@ fn try_stop_with(
 ) -> Result<()> {
   let opt = lock.take();
   if let Some(mut ctx) = opt {
-    ctx
-      .stop()
-      .map_err(ContextError::BodhiError)?;
+    ctx.stop().map_err(ContextError::BodhiError)?;
     drop(ctx);
   };
   Ok(())
@@ -260,12 +271,13 @@ mod test {
   use mockall::predicate::{always, eq};
   use rstest::{fixture, rstest};
   use serde_json::json;
+  use serial_test::serial;
   use std::{
     ffi::{c_char, c_void},
-    path::PathBuf, slice,
+    path::PathBuf,
+    slice,
   };
   use tempfile::TempDir;
-  use serial_test::serial;
 
   #[fixture]
   fn model_file() -> String {
@@ -466,10 +478,15 @@ mod test {
       .return_once(|_, _, _, _| Ok(()));
     let gpt_params = GptParamsBuilder::default().model(model_filepath).build()?;
     let gpt_params_cl = gpt_params.clone();
-    mock.expect_get_gpt_params().return_once(move || gpt_params_cl);
+    mock
+      .expect_get_gpt_params()
+      .return_once(move || gpt_params_cl);
 
     let ctx = MockBodhiServerContext::new_context();
-    ctx.expect().with(eq(gpt_params.clone())).return_once(move |_| Ok(mock));
+    ctx
+      .expect()
+      .with(eq(gpt_params.clone()))
+      .return_once(move |_| Ok(mock));
 
     let shared_ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
@@ -487,9 +504,7 @@ mod test {
   #[tokio::test]
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
-  async fn test_chat_completions_load_strategy(
-    hf_cache: (TempDir, PathBuf),
-  ) -> anyhow::Result<()> {
+  async fn test_chat_completions_load_strategy(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {
     let (_temp, hf_cache) = hf_cache;
     let model_file = HubFile::testalias_builder()
       .hf_cache(hf_cache.clone())
@@ -511,7 +526,13 @@ mod test {
       .return_once(|_, _, _, _| Ok(()));
 
     let ctx = MockBodhiServerContext::new_context();
-    ctx.expect().with(eq(GptParams{model: model_filepath, ..Default::default()})).return_once(move |_| Ok(mock));
+    ctx
+      .expect()
+      .with(eq(GptParams {
+        model: model_filepath,
+        ..Default::default()
+      }))
+      .return_once(move |_| Ok(mock));
 
     let shared_ctx = SharedContextRw::new_shared_rw(None).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
@@ -540,10 +561,17 @@ mod test {
     let loaded_model_filepath = loaded_model.path().display().to_string();
     let mut loaded_ctx = MockBodhiServerContext::default();
     loaded_ctx.expect_init().with().return_once(|| Ok(()));
-    loaded_ctx.expect_start_event_loop().with().return_once(|| Ok(()));
-    let loaded_params = GptParamsBuilder::default().model(loaded_model_filepath).build()?;
+    loaded_ctx
+      .expect_start_event_loop()
+      .with()
+      .return_once(|| Ok(()));
+    let loaded_params = GptParamsBuilder::default()
+      .model(loaded_model_filepath)
+      .build()?;
     let loaded_params_cl = loaded_params.clone();
-    loaded_ctx.expect_get_gpt_params().return_once(move || loaded_params_cl);
+    loaded_ctx
+      .expect_get_gpt_params()
+      .return_once(move || loaded_params_cl);
     loaded_ctx.expect_stop().with().return_once(|| Ok(()));
     let expected_input =
       "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"fakemodel:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
@@ -552,19 +580,34 @@ mod test {
       .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
     let ctx = MockBodhiServerContext::new_context();
-    ctx.expect().with(eq(loaded_params.clone())).return_once(move |_| Ok(loaded_ctx));
+    ctx
+      .expect()
+      .with(eq(loaded_params.clone()))
+      .return_once(move |_| Ok(loaded_ctx));
 
     let mut request_context = MockBodhiServerContext::default();
     request_context.expect_init().with().return_once(|| Ok(()));
-    request_context.expect_start_event_loop().with().return_once(|| Ok(()));
+    request_context
+      .expect_start_event_loop()
+      .with()
+      .return_once(|| Ok(()));
 
-    let request_model = HubFile::fakemodel_builder().hf_cache(hf_cache.clone()).build()?;
+    let request_model = HubFile::fakemodel_builder()
+      .hf_cache(hf_cache.clone())
+      .build()?;
     let request_model_filepath = request_model.path().display().to_string();
-    let request_params = GptParamsBuilder::default().model(request_model_filepath).build()?;
+    let request_params = GptParamsBuilder::default()
+      .model(request_model_filepath)
+      .build()?;
     let request_params_cl = request_params.clone();
-    request_context.expect_get_gpt_params().return_once(move || request_params_cl);
+    request_context
+      .expect_get_gpt_params()
+      .return_once(move || request_params_cl);
     let request_ctx = MockBodhiServerContext::new_context();
-    request_ctx.expect().with(eq(request_params)).return_once(move |_| Ok(request_context));
+    request_ctx
+      .expect()
+      .with(eq(request_params))
+      .return_once(move |_| Ok(request_context));
 
     let tokenizer_file = HubFile::testalias_tokenizer_builder()
       .hf_cache(hf_cache.clone())
@@ -578,7 +621,14 @@ mod test {
     }})?;
     let (tx, _rx) = test_channel();
     shared_ctx
-      .chat_completions(request, Alias::testalias(), loaded_model, tokenizer_file, tx)
+      .chat_completions(
+        request,
+        Alias::testalias(),
+        loaded_model,
+        tokenizer_file,
+        tx,
+      )
       .await?;
     Ok(())
-  }}
+  }
+}

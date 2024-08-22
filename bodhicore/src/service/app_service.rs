@@ -1,6 +1,6 @@
 use super::{
-  data_service::DataService, hub_service::HubService, AuthService, EnvServiceFn, SessionService,
-  secret_service::SecretService, cache_service::CacheService,
+  cache_service::CacheService, data_service::DataService, hub_service::HubService,
+  secret_service::SecretService, AuthService, EnvServiceFn, SessionService,
 };
 use crate::db::DbService;
 use derive_new::new;
