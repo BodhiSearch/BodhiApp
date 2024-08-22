@@ -6,6 +6,7 @@ pub mod env_wrapper;
 mod hub_service;
 mod secret_service;
 mod session_service;
+mod cache_service;
 
 pub use app_service::*;
 pub use auth_service::*;
@@ -14,3 +15,4 @@ pub use env_service::*;
 pub use hub_service::*;
 pub use secret_service::*;
 pub use session_service::*;
+pub use cache_service::*;
