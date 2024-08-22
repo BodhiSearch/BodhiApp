@@ -5,8 +5,8 @@ use tempfile::{tempdir, TempDir};
 
 #[fixture]
 pub fn temp_home() -> TempDir {
-  let temp_dir = tempdir().expect("Failed to create a temporary directory");
-  temp_dir
+  
+  tempdir().expect("Failed to create a temporary directory")
 }
 
 #[fixture]

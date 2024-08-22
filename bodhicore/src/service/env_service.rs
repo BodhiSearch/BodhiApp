@@ -484,8 +484,8 @@ mod test {
     assert_eq!(expected.len(), actual.len());
     for key in expected.keys() {
       assert_eq!(
-        expected.get(key).expect(&format!("{} to be present", &key)),
-        actual.get(key).expect(&format!("{} to be present", &key))
+        expected.get(key).unwrap_or_else(|| panic!("{} to be present", &key)),
+        actual.get(key).unwrap_or_else(|| panic!("{} to be present", &key))
       );
     }
     Ok(())
