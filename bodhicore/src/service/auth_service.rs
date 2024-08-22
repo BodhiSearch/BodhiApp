@@ -34,8 +34,7 @@ pub trait AuthService: std::fmt::Debug {
 #[derive(Debug, Default, new)]
 pub struct KeycloakAuthService {}
 
-impl KeycloakAuthService {
-}
+impl KeycloakAuthService {}
 
 #[async_trait]
 impl AuthService for KeycloakAuthService {

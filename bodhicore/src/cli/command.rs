@@ -67,7 +67,7 @@ pub enum Command {
   /// Create a new model alias
   #[clap(group = ArgGroup::new("template").required(true))]
   Create {
-    /// Unique name of the model alias. E.g. llama3:8b-instruct, model alias should not be present, 
+    /// Unique name of the model alias. E.g. llama3:8b-instruct, model alias should not be present,
     /// run `bodhi list` to list the existing model aliases
     alias: String,
 

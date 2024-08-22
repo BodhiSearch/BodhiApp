@@ -1,3 +1,4 @@
+mod alias;
 mod command;
 #[cfg(not(test))]
 mod create;
@@ -10,8 +11,8 @@ mod out_writer;
 mod pull;
 mod run;
 mod serve;
-mod alias;
 
+pub use alias::ManageAliasCommand;
 pub use command::*;
 pub use create::CreateCommand;
 pub use envs::EnvCommand;
@@ -21,4 +22,3 @@ pub use out_writer::*;
 pub use pull::PullCommand;
 pub use run::RunCommand;
 pub use serve::*;
-pub use alias::ManageAliasCommand;

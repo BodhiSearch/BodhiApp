@@ -1,6 +1,6 @@
 use crate::db::{
   objs::{Conversation, Message},
-  DbError, SqliteDbService, DbService, TimeServiceFn,
+  DbError, DbService, SqliteDbService, TimeServiceFn,
 };
 use chrono::{DateTime, Timelike, Utc};
 use rstest::fixture;

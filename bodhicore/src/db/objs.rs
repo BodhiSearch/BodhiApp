@@ -58,7 +58,7 @@ pub struct Message {
 
 #[cfg(test)]
 mod test {
-  use super::{Conversation, Message, ConversationBuilder, MessageBuilder};
+  use super::{Conversation, ConversationBuilder, Message, MessageBuilder};
   use chrono::{DateTime, Utc};
   use rstest::rstest;
 
@@ -128,7 +128,10 @@ mod test {
     .build()
     .unwrap(), 
     r#"{"id":"","title":"","messages":[{"role":"user","content":"test content"}]}"#)]
-  fn test_db_objs_skip_serialize_if_default(#[case] obj: Conversation, #[case] expected: String) -> anyhow::Result<()> {
+  fn test_db_objs_skip_serialize_if_default(
+    #[case] obj: Conversation,
+    #[case] expected: String,
+  ) -> anyhow::Result<()> {
     let content = serde_json::to_string(&obj).unwrap();
     assert_eq!(expected, content);
     Ok(())

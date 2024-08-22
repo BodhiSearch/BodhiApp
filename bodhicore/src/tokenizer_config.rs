@@ -311,9 +311,7 @@ mod test {
   }
 
   #[rstest]
-  fn test_tokenizer_config_from_hub_file(
-    hf_cache: (TempDir, PathBuf),
-  ) -> anyhow::Result<()> {
+  fn test_tokenizer_config_from_hub_file(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {
     let (_temp_bodhi, hf_cache) = hf_cache;
     let tokenizer_file = HubFile::testalias_tokenizer_builder()
       .hf_cache(hf_cache)
