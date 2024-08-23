@@ -138,7 +138,7 @@ mod test {
       message: "The model 'not-found' does not exist".to_string(),
       r#type: "invalid_request_error".to_string(),
       param: Some("model".to_string()),
-      code: "model_not_found".to_string(),
+      code: Some("model_not_found".to_string()),
     };
     assert_eq!(expected, response);
     Ok(())
@@ -252,7 +252,7 @@ mod test {
         message: "bodhi_server_chat_completion: test error".to_string(),
         r#type: "internal_server_error".to_string(),
         param: None,
-        code: "internal_server_error".to_string()
+        code: Some("internal_server_error".to_string())
       },
       response.json::<ApiError>().await?
     );

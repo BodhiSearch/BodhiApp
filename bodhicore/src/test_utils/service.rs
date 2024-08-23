@@ -1,5 +1,6 @@
 use super::{
-  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home, MockDbService, MockEnvWrapper,
+  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home,
+  MockDbService, MockEnvWrapper,
 };
 use crate::{
   db::DbService,
@@ -111,8 +112,8 @@ pub struct AppServiceStub {
 impl AppServiceStubBuilder {
   fn default_cache_service(&self) -> Option<Arc<dyn CacheService + Send + Sync>> {
     Some(Arc::new(MokaCacheService::new(
-      100,
-      Duration::from_secs(30 * 24 * 60 * 60),
+      Some(100),
+      Some(Duration::from_secs(30 * 24 * 60 * 60)),
     )))
   }
 }

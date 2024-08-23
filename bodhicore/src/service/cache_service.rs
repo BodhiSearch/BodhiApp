@@ -16,12 +16,16 @@ pub struct MokaCacheService {
 }
 
 impl MokaCacheService {
-  pub fn new(max_capacity: u64, time_to_live: Duration) -> Self {
+  pub fn new(max_capacity: Option<u64>, time_to_live: Option<Duration>) -> Self {
+    let mut builder = Cache::builder();
+    if let Some(max_capacity) = max_capacity {
+      builder = builder.max_capacity(max_capacity);
+    }
+    if let Some(time_to_live) = time_to_live {
+      builder = builder.time_to_live(time_to_live);
+    }
     Self {
-      cache: Cache::builder()
-        .max_capacity(max_capacity)
-        .time_to_live(time_to_live)
-        .build(),
+      cache: builder.build(),
     }
   }
 }
@@ -47,7 +51,7 @@ mod tests {
 
   #[test]
   fn test_cache_service() {
-    let cache_service = MokaCacheService::new(100, Duration::from_secs(1));
+    let cache_service = MokaCacheService::new(Some(100), Some(Duration::from_secs(1)));
 
     cache_service.set("key1", "value1");
     assert_eq!(cache_service.get("key1"), Some("value1".to_string()));
