@@ -11,22 +11,22 @@ authors = ["Amir Nagri <amir.nagri@gmail.com>"]
 custom-protocol = ["tauri/custom-protocol"]
 
 [dependencies]
-axum = "0.7.5"
+axum = { workspace = true }
 bodhicore = { path = "../../bodhicore" }
-clap = { version = "4.5.2", features = ["derive"] }
-dotenv = "0.15.0"
-futures-util = "0.3.30"
-include_dir = "0.7.3"
-tauri = { version = "1.6.1", features = ["updater", "api-all", "system-tray"] }
-thiserror = "1.0.61"
-tokio = { version = "1.36.0", features = ["full"] }
-tower-serve-static = "0.1.1"
-tracing = { version = "0.1.40", features = ["async-await", "log"] }
-tracing-appender = "0.2.3"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-webbrowser = { version = "1.0.0" }
+clap = { workspace = true }
+dotenv = { workspace = true }
+futures-util = { workspace = true }
+include_dir = { workspace = true }
+tauri = { workspace = true, features = ["updater", "api-all", "system-tray"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+tower-serve-static = { workspace = true }
+tracing = { workspace = true }
+tracing-appender = { workspace = true }
+tracing-subscriber = { workspace = true }
+webbrowser = { workspace = true }
 
 [build-dependencies]
-anyhow = "1.0.81"
-fs_extra = "1.3.0"
-tauri-build = { version = "1.5.1", features = [] }
+anyhow = { workspace = true }
+fs_extra = { workspace = true }
+tauri-build = { workspace = true, features = [] }
