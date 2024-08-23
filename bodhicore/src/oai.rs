@@ -1,5 +1,6 @@
-use crate::shared_rw::ContextError;
+use crate::{objs::BuilderError, shared_rw::ContextError};
 use axum::{extract::rejection::JsonRejection, http::StatusCode, response::IntoResponse, Json};
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -15,29 +16,57 @@ pub enum OpenAIApiError {
   JsonRejection(#[from] JsonRejection),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Builder)]
+#[builder(setter(strip_option), build_fn(error = BuilderError))]
 pub struct ApiError {
   pub message: String,
   pub r#type: String,
+  #[builder(default)]
   pub param: Option<String>,
-  pub code: String,
+  #[builder(default)]
+  pub code: Option<String>,
 }
+
+impl ApiErrorBuilder {
+  pub fn internal_server_error(&mut self, message: String) -> &mut Self {
+    self.r#type("internal_server_error".to_string());
+    self.message(message);
+    self
+  }
+
+  pub fn invalid_request_error(&mut self, message: String) -> &mut Self {
+    self.r#type("invalid_request_error".to_string());
+    self.message(message);
+    self.code("invalid_value".to_string());
+    self
+  }
+}
+
 impl ApiError {
-  fn internal_server(message: String) -> ApiError {
+  pub fn internal_server(message: String) -> ApiError {
     ApiError {
       message,
       r#type: "internal_server_error".to_string(),
       param: None,
-      code: "internal_server_error".to_string(),
+      code: Some("internal_server_error".to_string()),
     }
   }
 
-  fn bad_request(err: &JsonRejection) -> ApiError {
+  pub fn bad_request(err: &JsonRejection) -> ApiError {
     ApiError {
       message: err.to_string(),
       r#type: "invalid_request_error".to_string(),
       param: None,
-      code: "invalid_value".to_string(),
+      code: Some("invalid_value".to_string()),
+    }
+  }
+
+  pub fn unauthorized(message: String, code: Option<String>) -> ApiError {
+    ApiError {
+      message,
+      r#type: "invalid_request_error".to_string(),
+      param: None,
+      code,
     }
   }
 }
@@ -49,7 +78,7 @@ impl From<&OpenAIApiError> for ApiError {
         message: format!("The model '{}' does not exist", model),
         r#type: "invalid_request_error".to_string(),
         param: Some("model".to_string()),
-        code: "model_not_found".to_string(),
+        code: Some("model_not_found".to_string()),
       },
       OpenAIApiError::ContextError(err) => ApiError::internal_server(err.to_string()),
       OpenAIApiError::InternalServer(err) => ApiError::internal_server(err.to_string()),

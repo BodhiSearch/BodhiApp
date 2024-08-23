@@ -1,0 +1,518 @@
+use super::SecretService;
+use crate::server::{RouterState, RouterStateFn};
+use crate::service::AppServiceFn;
+use axum::extract::Request;
+use axum::{
+  body::Body,
+  extract::State,
+  http::StatusCode,
+  middleware::Next,
+  response::{IntoResponse, Redirect, Response},
+};
+use jsonwebtoken::{DecodingKey, TokenData, Validation};
+use oauth2::AccessToken;
+use serde_json::Value;
+use std::sync::Arc;
+
+const APP_STATUS: &str = "app_status";
+const CLIENT_ID: &str = "client_id";
+const APP_AUTHZ: &str = "app_authz_status";
+const PUBLIC_KEY: &str = "public_key";
+const APP_STATUS_SETUP: &str = "setup";
+const APP_STATUS_READY: &str = "ready";
+const ACCESS_TOKEN: &str = "access_token";
+
+pub async fn auth_middleware(
+  State(state): State<Arc<RouterState>>,
+  mut req: Request,
+  next: Next,
+) -> Result<Response, Response> {
+  let app_service = state.app_service();
+  let secret_service = app_service.secret_service();
+
+  if is_public_resource(&req) {
+    return Ok(next.run(req).await);
+  }
+
+  let app_status = get_app_status(secret_service.clone()).map_err(|e| e.into_response())?;
+  match app_status.as_str() {
+    APP_STATUS_SETUP => return Err(Redirect::to("/ui/setup").into_response()),
+    APP_STATUS_READY => {}
+    _ => {
+      return Err(
+        Redirect::to(&format!(
+          "/ui/setup?error_code=unrecognized_app_status&value={app_status}"
+        ))
+        .into_response(),
+      )
+    }
+  }
+  let app_authz = get_app_authz(secret_service.clone());
+  if app_authz == "false" {
+    return Ok(next.run(req).await);
+  }
+
+  let bearer_token = extract_bearer_token(&req).map_err(|e| e.into_response())?;
+  let public_key = get_public_key(secret_service.clone()).map_err(|e| e.into_response())?;
+  let token_data =
+    decode_and_validate_token(&bearer_token, &public_key).map_err(|e| e.into_response())?;
+
+  let client_id = get_client_id(secret_service.clone())
+    .await
+    .map_err(|e| e.into_response())?;
+  let audience = token_data
+    .claims
+    .get("aud")
+    .unwrap_or(&Value::Null)
+    .as_str()
+    .unwrap_or("");
+  if client_id.eq(audience) {
+    req
+      .headers_mut()
+      .insert("X-Resource-Token", bearer_token.parse().unwrap());
+    return Ok(next.run(req).await);
+  }
+  let resource_token = get_resource_token(app_service.clone(), &token_data)
+    .await
+    .map_err(|e| e.into_response())?;
+  req
+    .headers_mut()
+    .insert("X-Resource-Token", resource_token.parse().unwrap());
+  Ok(next.run(req).await)
+}
+
+pub fn is_public_resource<B>(req: &Request<B>) -> bool {
+  let public_paths = vec!["/ui/", "/ping", "/app/info"];
+  let request_path = req.uri().path();
+  req.method() == axum::http::Method::GET
+    && public_paths
+      .iter()
+      .any(|path| request_path.starts_with(path))
+}
+
+fn get_app_status(secret_service: Arc<dyn SecretService>) -> Result<String, StatusCode> {
+  let app_status = secret_service
+    .get_secret(APP_STATUS)
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .unwrap_or_else(|| APP_STATUS_SETUP.to_string());
+  Ok(app_status)
+}
+
+fn get_app_authz(secret_service: Arc<dyn SecretService>) -> String {
+  secret_service
+    .get_secret(APP_AUTHZ)
+    .unwrap_or_else(|_| Some("true".to_string()))
+    .unwrap_or_else(|| "true".to_string())
+}
+
+async fn get_client_id(secret_service: Arc<dyn SecretService>) -> Result<String, StatusCode> {
+  secret_service
+    .get_secret(CLIENT_ID)
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+fn extract_bearer_token<B>(req: &Request<B>) -> Result<String, StatusCode> {
+  req
+    .headers()
+    .get("Authorization")
+    .and_then(|header| header.to_str().ok())
+    .and_then(|auth_header| auth_header.strip_prefix("Bearer "))
+    .ok_or(StatusCode::UNAUTHORIZED)
+    .map(|token| token.to_string())
+}
+
+fn get_public_key(secret_service: Arc<dyn SecretService>) -> Result<String, StatusCode> {
+  secret_service
+    .get_secret(PUBLIC_KEY)
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .ok_or(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+fn decode_and_validate_token(
+  token: &str,
+  public_key: &str,
+) -> Result<TokenData<Value>, StatusCode> {
+  let validation = Validation::new(jsonwebtoken::Algorithm::RS256);
+  let key = DecodingKey::from_rsa_pem(public_key.as_bytes())
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+  jsonwebtoken::decode::<Value>(token, &key, &validation).map_err(|_| StatusCode::UNAUTHORIZED)
+}
+
+async fn get_resource_token(
+  app_service: Arc<dyn AppServiceFn>,
+  token_data: &TokenData<Value>,
+) -> Result<String, StatusCode> {
+  let jti = token_data.claims.get("jti").unwrap().as_str().unwrap();
+  let cache_key = format!("access-token-{}", jti);
+
+  if let Some(token) = app_service.cache_service().get(&cache_key) {
+    return Ok(token);
+  }
+
+  let access_token = token_data
+    .claims
+    .get(ACCESS_TOKEN)
+    .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?
+    .as_str()
+    .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+  let access_token = AccessToken::new(access_token.to_string());
+  let (access_token, refresh_token) = app_service
+    .auth_service()
+    .exchange_for_resource_token(&access_token)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+  app_service
+    .secret_service()
+    .set_secret(&cache_key, access_token.secret())
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+  app_service
+    .secret_service()
+    .set_secret(&format!("refresh-token-{}", jti), refresh_token.secret())
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+  Ok(access_token.secret().to_owned())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::auth_middleware;
+  use crate::server::RouterState;
+  use crate::test_utils::{AppServiceStubBuilder, AppServiceStubMock};
+  use crate::test_utils::{MockSharedContext, ResponseTestExt};
+  use anyhow_trace::anyhow_trace;
+  use axum::body::Body;
+  use axum::extract::State;
+  use axum::http::{Request, StatusCode};
+  use axum::middleware::Next;
+  use axum::response::Response;
+  use axum::routing::get;
+  use axum::Router;
+  use jsonwebtoken::{encode, EncodingKey, Header};
+  use mockall::predicate::*;
+  use oauth2::AccessToken;
+  use rstest::rstest;
+  use serde_json::json;
+  use std::sync::Arc;
+  use tower::ServiceExt;
+
+  #[rstest]
+  #[case("/ui/setup", true)]
+  #[case("/ping", true)]
+  #[case("/app/info", true)]
+  #[case("/api/private", false)]
+  #[anyhow_trace]
+  #[tokio::test]
+  async fn test_is_public_resource(
+    #[case] path: &str,
+    #[case] expected: bool,
+  ) -> anyhow::Result<()> {
+    let req = Request::builder().uri(path).body(Body::empty()).unwrap();
+    let app_service = AppServiceStubBuilder::default().build().unwrap();
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      Arc::new(app_service),
+    ));
+    let router = Router::new()
+      .route("/*path", get(|| async { "hello world".to_string() }))
+      .with_state(state);
+    let result = router.oneshot(req).await?;
+    assert_eq!(200, result.status());
+    assert_eq!("hello world", result.text().await?);
+    Ok(())
+  }
+
+  // #[rstest]
+  // #[tokio::test]
+  // async fn test_app_status_setup() {
+  //   let mut app_service = AppServiceStubBuilder::default().build().unwrap();
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_status"))
+  //     .return_const(Ok("setup".to_string()));
+
+  //   let state = Arc::new(RouterState::new(Arc::new(app_service)));
+  //   let req = Request::builder()
+  //     .uri("/api/private")
+  //     .body(Body::empty())
+  //     .unwrap();
+  //   let next =
+  //     Next::new(|_req: Request<Body>| async { Ok::<_, StatusCode>(Response::new(Body::empty())) });
+
+  //   let result = auth_middleware(State(state), req, next).await;
+  //   assert!(result.is_ok());
+  //   let response = result.unwrap();
+  //   assert_eq!(response.status(), StatusCode::FOUND);
+  //   assert_eq!(response.headers().get("Location").unwrap(), "/ui/setup");
+  // }
+
+  // #[rstest]
+  // #[tokio::test]
+  // async fn test_app_authz_false() {
+  //   let mut app_service = AppServiceStubMock::default();
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_status"))
+  //     .return_const(Ok("ready".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_authz"))
+  //     .return_const(Ok("false".to_string()));
+
+  //   let state = Arc::new(RouterState::new(Arc::new(app_service)));
+  //   let req = Request::builder()
+  //     .uri("/api/private")
+  //     .body(Body::empty())
+  //     .unwrap();
+  //   let next =
+  //     Next::new(|_req: Request<Body>| async { Ok::<_, StatusCode>(Response::new(Body::empty())) });
+
+  //   let result = auth_middleware(State(state), req, next).await;
+  //   assert!(result.is_ok());
+  // }
+
+  // #[rstest]
+  // #[tokio::test]
+  // async fn test_missing_authorization_header() {
+  //   let app_service = AppServiceStubBuilder::default().build().unwrap();
+
+  //   let state = Arc::new(RouterState::new(Arc::new(app_service)));
+  //   let req = Request::builder()
+  //     .uri("/api/private")
+  //     .body(Body::empty())
+  //     .unwrap();
+  //   let next =
+  //     Next::new(|_req: Request<Body>| async { Ok::<_, StatusCode>(Response::new(Body::empty())) });
+
+  //   let result = auth_middleware(State(state), req, next).await;
+  //   assert!(result.is_err());
+  //   assert_eq!(result.unwrap_err(), StatusCode::UNAUTHORIZED);
+  // }
+
+  // #[rstest]
+  // #[tokio::test]
+  // async fn test_invalid_token() {
+  //   let mut app_service = AppServiceStubMock::default();
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_status"))
+  //     .return_const(Ok("ready".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_authz"))
+  //     .return_const(Ok("true".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("public_key"))
+  //     .return_const(Ok("invalid_key".to_string()));
+
+  //   let state = Arc::new(RouterState::new(Arc::new(app_service)));
+  //   let req = Request::builder()
+  //     .uri("/api/private")
+  //     .header("Authorization", "Bearer invalid_token")
+  //     .body(Body::empty())
+  //     .unwrap();
+  //   let next =
+  //     Next::new(|_req: Request<Body>| async { Ok::<_, StatusCode>(Response::new(Body::empty())) });
+
+  //   let result = auth_middleware(State(state), req, next).await;
+  //   assert!(result.is_err());
+  //   assert_eq!(result.unwrap_err(), StatusCode::UNAUTHORIZED);
+  // }
+
+  // #[rstest]
+  // #[tokio::test]
+  // async fn test_valid_token_for_resource() {
+  //   let client_id = "test_client";
+  //   let claims = json!({
+  //       "sub": "1234567890",
+  //       "aud": client_id,
+  //       "exp": chrono::Utc::now().timestamp() + 3600,
+  //   });
+  //   let token = encode(
+  //     &Header::default(),
+  //     &claims,
+  //     &EncodingKey::from_secret("test_secret".as_ref()),
+  //   )
+  //   .unwrap();
+
+  //   let mut app_service = AppServiceStubMock::default();
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_status"))
+  //     .return_const(Ok("ready".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_authz"))
+  //     .return_const(Ok("true".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("public_key"))
+  //     .return_const(Ok("test_secret".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("client_id"))
+  //     .return_const(Ok(client_id.to_string()));
+
+  //   let state = Arc::new(RouterState::new(Arc::new(app_service)));
+  //   let req = Request::builder()
+  //     .uri("/api/private")
+  //     .header("Authorization", format!("Bearer {}", token))
+  //     .body(Body::empty())
+  //     .unwrap();
+  //   let next =
+  //     Next::new(|_req: Request<Body>| async { Ok::<_, StatusCode>(Response::new(Body::empty())) });
+
+  //   let result = auth_middleware(State(state), req, next).await;
+  //   assert!(result.is_ok());
+  // }
+
+  // #[rstest]
+  // #[tokio::test]
+  // async fn test_token_exchange_and_caching() {
+  //   let client_id = "test_client";
+  //   let claims = json!({
+  //       "sub": "1234567890",
+  //       "aud": "other_client",
+  //       "jti": "unique_id",
+  //       "exp": chrono::Utc::now().timestamp() + 3600,
+  //   });
+  //   let token = encode(
+  //     &Header::default(),
+  //     &claims,
+  //     &EncodingKey::from_secret("test_secret".as_ref()),
+  //   )
+  //   .unwrap();
+
+  //   let mut app_service = AppServiceStubMock::default();
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_status"))
+  //     .return_const(Ok("ready".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_authz"))
+  //     .return_const(Ok("true".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("public_key"))
+  //     .return_const(Ok("test_secret".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("client_id"))
+  //     .return_const(Ok(client_id.to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("access-token-unique_id"))
+  //     .return_const(Err(()));
+  //   app_service
+  //     .auth_service
+  //     .expect_exchange_for_resource_token()
+  //     .return_once(|_| {
+  //       Ok((
+  //         AccessToken::new("resource_token".to_string()),
+  //         AccessToken::new("refresh_token".to_string()),
+  //       ))
+  //     });
+  //   app_service
+  //     .secret_service
+  //     .expect_set_secret()
+  //     .with(eq("access-token-unique_id"), eq("resource_token"))
+  //     .return_const(Ok(()));
+  //   app_service
+  //     .secret_service
+  //     .expect_set_secret()
+  //     .with(eq("refresh-token-unique_id"), eq("refresh_token"))
+  //     .return_const(Ok(()));
+
+  //   let state = Arc::new(RouterState::new(Arc::new(app_service)));
+  //   let req = Request::builder()
+  //     .uri("/api/private")
+  //     .header("Authorization", format!("Bearer {}", token))
+  //     .body(Body::empty())
+  //     .unwrap();
+  //   let next =
+  //     Next::new(|_req: Request<Body>| async { Ok::<_, StatusCode>(Response::new(Body::empty())) });
+
+  //   let result = auth_middleware(State(state), req, next).await;
+  //   assert!(result.is_ok());
+  // }
+
+  // #[rstest]
+  // #[tokio::test]
+  // async fn test_cached_resource_token() {
+  //   let client_id = "test_client";
+  //   let claims = json!({
+  //       "sub": "1234567890",
+  //       "aud": "other_client",
+  //       "jti": "unique_id",
+  //       "exp": chrono::Utc::now().timestamp() + 3600,
+  //   });
+  //   let token = encode(
+  //     &Header::default(),
+  //     &claims,
+  //     &EncodingKey::from_secret("test_secret".as_ref()),
+  //   )
+  //   .unwrap();
+
+  //   let mut app_service = AppServiceStubMock::default();
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_status"))
+  //     .return_const(Ok("ready".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("app_authz"))
+  //     .return_const(Ok("true".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("public_key"))
+  //     .return_const(Ok("test_secret".to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("client_id"))
+  //     .return_const(Ok(client_id.to_string()));
+  //   app_service
+  //     .secret_service
+  //     .expect_get_secret()
+  //     .with(eq("access-token-unique_id"))
+  //     .return_const(Ok("cached_resource_token".to_string()));
+
+  //   let state = Arc::new(RouterState::new(Arc::new(app_service)));
+  //   let req = Request::builder()
+  //     .uri("/api/private")
+  //     .header("Authorization", format!("Bearer {}", token))
+  //     .body(Body::empty())
+  //     .unwrap();
+  //   let next =
+  //     Next::new(|_req: Request<Body>| async { Ok::<_, StatusCode>(Response::new(Body::empty())) });
+
+  //   let result = auth_middleware(State(state), req, next).await;
+  //   assert!(result.is_ok());
+  //   let response = result.unwrap();
+  //   assert_eq!(
+  //     response.headers().get("X-Resource-Token").unwrap(),
+  //     "cached_resource_token"
+  //   );
+  // }
+}

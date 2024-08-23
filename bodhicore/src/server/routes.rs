@@ -1,4 +1,4 @@
-use super::{
+  use super::{
   super::{service::AppServiceFn, SharedContextRwFn},
   router_state::RouterState,
   routes_chat::chat_completions_handler,

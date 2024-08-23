@@ -4,7 +4,8 @@ use bodhicore::{
   cli::{Cli, Command, ServeCommand},
   db::{DbPool, DbService, SqliteDbService, TimeService},
   service::{
-    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService, LocalDataService, MokaCacheService, SqliteSessionService
+    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService,
+    LocalDataService, MokaCacheService, SqliteSessionService,
   },
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
@@ -38,7 +39,8 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   db_service.migrate().await?;
   let session_service = SqliteSessionService::new(pool);
   session_service.migrate().await?;
-  let cache_service = MokaCacheService::new(100, Duration::from_secs(30 * 24 * 60 * 60));
+  let cache_service =
+    MokaCacheService::new(Some(100), Some(Duration::from_secs(30 * 24 * 60 * 60)));
 
   let app_service = AppService::new(
     env_service,

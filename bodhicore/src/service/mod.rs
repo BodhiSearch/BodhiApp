@@ -1,4 +1,5 @@
 mod app_service;
+mod auth_middleware;
 mod auth_service;
 mod cache_service;
 mod data_service;
