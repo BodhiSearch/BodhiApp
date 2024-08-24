@@ -14,6 +14,8 @@ mod service;
 mod shared_ctx;
 mod state;
 mod tracing_test_utils;
+
+pub use auth::*;
 pub use bodhi::*;
 pub use common::*;
 pub use db::*;
