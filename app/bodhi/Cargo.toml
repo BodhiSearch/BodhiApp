@@ -13,20 +13,20 @@ custom-protocol = ["tauri/custom-protocol"]
 [dependencies]
 axum = { workspace = true }
 bodhicore = { path = "../../bodhicore" }
-clap = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 dotenv = { workspace = true }
 futures-util = { workspace = true }
 include_dir = { workspace = true }
-tauri = { workspace = true, features = ["updater", "api-all", "system-tray"] }
+tauri = { version = "1.6.1", features = ["updater", "api-all", "system-tray"] }
 thiserror = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 tower-serve-static = { workspace = true }
-tracing = { workspace = true }
+tracing = { workspace = true, features = ["async-await", "log"] }
 tracing-appender = { workspace = true }
-tracing-subscriber = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 webbrowser = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }
 fs_extra = { workspace = true }
-tauri-build = { workspace = true, features = [] }
+tauri-build = { version = "1.5.1", features = [] }

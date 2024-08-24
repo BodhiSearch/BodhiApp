@@ -10,21 +10,21 @@ axum = { workspace = true }
 axum-extra = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
-chrono = { workspace = true }
-clap = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
-dialoguer = { workspace = true }
+dialoguer = { workspace = true, features = ["history"] }
 dirs = { workspace = true }
 dotenv = { workspace = true }
 futures = { workspace = true }
 futures-core = { workspace = true }
 futures-util = { workspace = true }
-hf-hub = { workspace = true }
+hf-hub = { workspace = true, features = ["tokio"] }
 http-body = { workspace = true }
-indicatif = { workspace = true }
+indicatif = { workspace = true, features = ["tokio"] }
 jsonwebtoken = { workspace = true }
-keyring = { workspace = true }
+keyring = { workspace = true, default-features = false }
 lazy_static = { workspace = true }
 llama-server-bindings = { version = "0.1.0", path = "../llama-server-bindings" }
 mime = { workspace = true }
@@ -36,24 +36,30 @@ once_cell = { workspace = true }
 pin-project-lite = { workspace = true }
 prettytable-rs = { workspace = true }
 regex = { workspace = true }
-serde = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
-sqlx = { workspace = true }
-strum = { workspace = true }
+sqlx = { workspace = true, features = [
+  "runtime-tokio",
+  "sqlite",
+  "macros",
+  "migrate",
+  "chrono",
+] }
+strum = { workspace = true, features = ["derive"] }
 sync_wrapper = { workspace = true }
 thiserror = { workspace = true }
 time = { workspace = true }
-tokio = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true }
 tower = { workspace = true }
-tower-http = { workspace = true }
+tower-http = { workspace = true, features = ["trace", "cors"] }
 tower-sessions = { workspace = true }
-tower-sessions-sqlx-store = { workspace = true }
-tracing = { workspace = true }
+tower-sessions-sqlx-store = { workspace = true, features = ["sqlite"] }
+tracing = { workspace = true, features = ["async-await", "log"] }
 ureq = { workspace = true }
-uuid = { workspace = true }
-validator = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+validator = { workspace = true, features = ["derive"] }
 walkdir = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -81,8 +87,8 @@ rsa = { workspace = true }
 rstest = { workspace = true }
 serial_test = { workspace = true }
 tempfile = { workspace = true }
-tokio = { workspace = true }
-tracing-subscriber = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(ci)'] }

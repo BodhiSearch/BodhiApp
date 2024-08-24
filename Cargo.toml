@@ -11,12 +11,12 @@ axum = "0.7.5"
 axum-extra = "0.9.3"
 base64 = "0.22.1"
 bytes = "1.6.1"
-chrono = { version = "0.4.38", features = ["serde"] }
-clap = { version = "4.5.2", features = ["derive"] }
+chrono = "0.4.38"
+clap = "4.5.2"
 ctor = "0.2.8"
 derive_builder = "0.20.0"
 derive-new = "0.6.0"
-dialoguer = { version = "0.11.0", features = ["history"] }
+dialoguer = "0.11.0"
 dircpy = "0.3.16"
 dirs = "5.0.1"
 dotenv = "0.15.0"
@@ -24,13 +24,13 @@ fs_extra = "1.3.0"
 futures = "0.3.30"
 futures-core = "0.3.30"
 futures-util = "0.3.30"
-hf-hub = { version = "0.3.2", features = ["tokio"] }
+hf-hub = "0.3.2"
 http-body = "1.0.1"
 http-body-util = "0.1.0"
 include_dir = "0.7.3"
-indicatif = { version = "0.17.8", features = ["tokio"] }
+indicatif = "0.17.8"
 jsonwebtoken = "9.3.0"
-keyring = { version = "3.2.0", default-features = false }
+keyring = "3.2.0"
 lazy_static = "1.4.0"
 maplit = "1.0.2"
 mime = "0.3.17"
@@ -48,31 +48,29 @@ regex = "1.10.4"
 reqwest = "0.12.3"
 rsa = "0.9.6"
 rstest = "0.19.0"
-serde = { version = "1.0.197", features = ["derive"] }
+serde = "1.0.197"
 serde_json = "1.0.114"
 serde_yaml = "0.9.34"
 serial_test = "3.1.1"
-sqlx = { version = "0.8.0", features = ["runtime-tokio", "sqlite", "macros", "migrate", "chrono"] }
-strum = { version = "0.26.2", features = ["derive"] }
+sqlx = "0.8.0"
+strum = "0.26.2"
 sync_wrapper = "1.0.1"
-tauri = { version = "1.6.1", features = ["updater", "api-all", "system-tray"] }
-tauri-build = { version = "1.5.1", features = [] }
 tempfile = "3.10.1"
 thiserror = "1.0.61"
 time = "0.3.36"
-tokio = { version = "1.36.0", features = ["full"] }
+tokio = "1.36.0"
 tokio-stream = "0.1.15"
 tower = "0.4.13"
-tower-http = { version = "0.5.2", features = ["trace", "cors"] }
+tower-http = "0.5.2"
 tower-serve-static = "0.1.1"
 tower-sessions = "0.12.3"
-tower-sessions-sqlx-store = { version = "0.13.0", features = ["sqlite"] }
-tracing = { version = "0.1.40", features = ["async-await", "log"] }
+tower-sessions-sqlx-store = "0.13.0"
+tracing = "0.1.40"
 tracing-appender = "0.2.3"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+tracing-subscriber = "0.3.18"
 ureq = "2.9.7"
-uuid = { version = "1.8.0", features = ["v4"] }
-validator = { version = "0.18.1", features = ["derive"] }
+uuid = "1.8.0"
+validator = "0.18.1"
 walkdir = "2.5.0"
 webbrowser = "1.0.0"
 
