@@ -1,6 +1,6 @@
 [package]
 name = "bodhicore"
-version = "0.0.14-dev"
+version = "0.0.15-dev"
 edition = "2021"
 
 [dependencies]
