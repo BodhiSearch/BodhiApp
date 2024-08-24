@@ -3,16 +3,18 @@ use bodhicore::{
   db::{SqliteDbService, TimeService},
   service::{
     env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService,
-    KeycloakAuthService, KeyringSecretService, LocalDataService, MokaCacheService,
-    SqliteSessionService,
+    KeycloakAuthService, LocalDataService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ, KEY_APP_STATUS,
   },
   ServeCommand, ServerShutdownHandle,
 };
 use dircpy::CopyBuilder;
+use mockall::predicate::eq;
 use rstest::fixture;
 use sqlx::SqlitePool;
 use std::{path::Path, sync::Arc, time::Duration};
 use tempfile::TempDir;
+
+use super::mocks::MockSecretService;
 
 pub fn copy_test_dir(src: &str, dst_path: &Path) {
   let src_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(src);
@@ -42,7 +44,15 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   let auth_service = KeycloakAuthService::default();
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
   let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
-  let secret_service = KeyringSecretService::new("bodhi_test".to_string());
+  let mut secret_service = MockSecretService::default();
+  secret_service
+    .expect_get_secret_string()
+    .with(eq(KEY_APP_AUTHZ))
+    .returning(|_| Ok(Some("false".to_string())));
+  secret_service
+    .expect_get_secret_string()
+    .with(eq(KEY_APP_STATUS))
+    .returning(|_| Ok(Some("ready".to_string())));
   let session_service = SqliteSessionService::new(pool);
   let cache_service =
     MokaCacheService::new(Some(100), Some(Duration::from_secs(30 * 24 * 60 * 60)));
