@@ -9,8 +9,7 @@ use axum::{
   response::{IntoResponse, Redirect, Response},
   Json,
 };
-use base64::{engine::general_purpose::STANDARD, Engine};
-use jsonwebtoken::{DecodingKey, Validation};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -94,6 +93,8 @@ pub struct Claims {
 #[cfg_attr(test, derive(derive_builder::Builder))]
 pub struct AppRegInfo {
   pub public_key: String,
+  pub alg: Algorithm,
+  pub kid: String,
   pub issuer: String,
   pub client_id: String,
   pub client_secret: String,
@@ -140,7 +141,6 @@ pub async fn auth_middleware(
       "authorization header is malformed".to_string(),
     ));
   }
-
   let app_reg_info: AppRegInfo =
     get_secret(secret_service, KEY_APP_REG_INFO)?.ok_or_else(|| {
       AuthError::InternalServerError("app registration info is missing".to_string())
@@ -148,16 +148,27 @@ pub async fn auth_middleware(
 
   let header = jsonwebtoken::decode_header(&token)
     .map_err(|e| AuthError::InvalidToken(format!("error decoding token header: {e}")))?;
-  let decoded_pem = STANDARD
-    .decode(&app_reg_info.public_key)
-    .map_err(|e| AuthError::InternalServerError(format!("error decoding base64: {e}")))?;
-  let pem_str = String::from_utf8(decoded_pem).map_err(|e| {
-    AuthError::InternalServerError(format!(
-      "error converting base64 public key to utf-8 string: {e}"
-    ))
-  })?;
-  let key = DecodingKey::from_rsa_pem(pem_str.as_bytes())
-    .map_err(|e| AuthError::InternalServerError(format!("error creating decoding key: {e}")))?;
+
+  // TODO: fetch the latest key from auth server
+  if header.kid != Some(app_reg_info.kid.clone()) {
+    return Err(AuthError::InvalidToken(format!(
+      "unknown key id: '{}', supported: '{}'",
+      header.kid.unwrap_or_default(),
+      app_reg_info.kid
+    )));
+  }
+  if header.alg != app_reg_info.alg {
+    return Err(AuthError::InvalidToken(format!(
+      "unknown algorithm: {:?}, supported: {:?}",
+      header.alg, app_reg_info.alg
+    )));
+  }
+  let key_pem = format!(
+    "-----BEGIN RSA PUBLIC KEY-----\n{}\n-----END RSA PUBLIC KEY-----",
+    app_reg_info.public_key
+  );
+  let key = DecodingKey::from_rsa_pem(key_pem.as_bytes())
+    .map_err(|e| AuthError::InternalServerError(format!("error parsing public key: {e}")))?;
   let mut validation = Validation::new(header.alg);
   validation.set_issuer(&[app_reg_info.issuer]);
   validation.validate_aud = false;
@@ -204,7 +215,9 @@ mod tests {
       auth_middleware::AppRegInfoBuilder, CacheService, MockAuthService, MokaCacheService,
       APP_STATUS_READY, APP_STATUS_SETUP, KEY_RESOURCE_TOKEN,
     },
-    test_utils::{AppServiceStubBuilder, MockSharedContext, ResponseTestExt, SecretServiceStub},
+    test_utils::{
+      token, AppServiceStubBuilder, MockSharedContext, ResponseTestExt, SecretServiceStub,
+    },
   };
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -216,21 +229,14 @@ mod tests {
     routing::get,
     Json, Router,
   };
-  use base64::{engine::general_purpose::STANDARD, Engine};
-  use chrono::{Duration, Utc};
-  use jsonwebtoken::{encode, EncodingKey, Header};
+  use jsonwebtoken::Algorithm;
   use mockall::predicate::eq;
   use oauth2::{AccessToken, RefreshToken};
-  use rsa::{
-    pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey},
-    RsaPrivateKey,
-  };
-  use rstest::{fixture, rstest};
+  use rstest::rstest;
   use serde::{Deserialize, Serialize};
-  use serde_json::{json, Value};
+  use serde_json::Value;
   use std::{collections::HashMap, sync::Arc};
   use tower::ServiceExt;
-  use uuid::Uuid;
 
   #[derive(Debug, Serialize, Deserialize)]
   struct TestResponse {
@@ -337,12 +343,8 @@ mod tests {
     #[case] expected_status: StatusCode,
     #[case] expected_message: &str,
   ) -> anyhow::Result<()> {
-    let mut secret_service = SecretServiceStub::new();
-    secret_service
-      .with_app_status_ready()
-      .with_app_authz_enabled();
     let app_service = AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .secret_service(Arc::new(SecretServiceStub::default()))
       .build()?;
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -366,13 +368,81 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_auth_middleware_public_key_missing() -> anyhow::Result<()> {
-    let mut secret_service = SecretServiceStub::new();
-    secret_service
-      .with_app_status_ready()
-      .with_app_authz_enabled();
+  async fn test_auth_middleware_algorithm_mismatch(
+    token: anyhow::Result<(String, String, String)>,
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = token?;
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(
+      &AppRegInfoBuilder::test_default()
+        .alg(Algorithm::HS256)
+        .build()?,
+    );
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
+      .build()?;
+    let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+    let req = Request::get("/some-path")
+      .header("Authorization", format!("Bearer {}", token))
+      .body(Body::empty())?;
+    let router = test_router()
+      .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .with_state(state);
+    let response = router.oneshot(req).await?;
+    let status = response.status();
+    let value: Value = response.json_obj().await?;
+    assert_eq!(StatusCode::UNAUTHORIZED, status);
+    assert_eq!(
+      "unknown algorithm: RS256, supported: HS256",
+      value["message"].as_str().unwrap()
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_kid_mismatch(
+    token: anyhow::Result<(String, String, String)>,
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = token?;
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(
+      &AppRegInfoBuilder::test_default()
+        .kid("other-kid".to_string())
+        .build()?,
+    );
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .build()?;
+    let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+    let req = Request::get("/some-path")
+      .header("Authorization", format!("Bearer {}", token))
+      .body(Body::empty())?;
+    let router = test_router()
+      .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .with_state(state);
+    let response = router.oneshot(req).await?;
+    let status = response.status();
+    let value: Value = response.json_obj().await?;
+    assert_eq!(StatusCode::UNAUTHORIZED, status);
+    assert_eq!(
+      "unknown key id: 'test-kid', supported: 'other-kid'",
+      value["message"].as_str().unwrap()
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_public_key_missing() -> anyhow::Result<()> {
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(SecretServiceStub::default()))
       .build()?;
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
@@ -395,65 +465,20 @@ mod tests {
     Ok(())
   }
 
-  #[fixture]
-  pub fn token() -> anyhow::Result<(String, String, String)> {
-    let mut rng = rand::thread_rng();
-    let private_key = RsaPrivateKey::new(&mut rng, 2048)?;
-    let public_key = private_key.to_public_key();
-    let jti = Uuid::new_v4().to_string();
-    let claims = json!({
-        "exp": (Utc::now() + Duration::hours(1)).timestamp(),
-        "jti": jti,
-        "iss": "https://id.mydomain.com/realms/myapp".to_string(),
-        "sub": Uuid::new_v4().to_string(),
-        "typ": "Bearer",
-        "azp": "test-client",
-        "session_state": Uuid::new_v4().to_string(),
-        "scope": "openid scope_user profile email scope_power_user",
-        "sid": Uuid::new_v4().to_string(),
-        "email_verified": true,
-        "name": "Test User",
-        "preferred_username": "testuser@email.com",
-        "given_name": "Test",
-        "family_name": "User",
-        "email": "testuser@email.com"
-    });
-
-    let header = Header {
-      kid: Some(Uuid::new_v4().to_string()),
-      alg: jsonwebtoken::Algorithm::RS256,
-      ..Default::default()
-    };
-
-    let pem_file = private_key.to_pkcs1_pem(rsa::pkcs8::LineEnding::CRLF)?;
-    let token = encode(
-      &header,
-      &claims,
-      &EncodingKey::from_rsa_pem(pem_file.as_bytes())?,
-    )?;
-
-    let public_key_base64 = public_key.to_pkcs1_pem(rsa::pkcs8::LineEnding::CRLF)?;
-    let output = STANDARD.encode(public_key_base64);
-    Ok((jti, token, output))
-  }
-
   #[rstest]
   #[anyhow_trace]
   #[tokio::test]
-  async fn test_auth_middleware_token_audience_error(
+  async fn test_auth_middleware_token_issuer_error(
     token: anyhow::Result<(String, String, String)>,
   ) -> anyhow::Result<()> {
     let (_, token, public_key) = token?;
-    let mut secret_service = SecretServiceStub::new();
-    secret_service
-      .with_app_status_ready()
-      .with_app_authz_enabled()
-      .with_app_reg_info(
-        &AppRegInfoBuilder::test_default()
-          .public_key(public_key)
-          .issuer("https://id.other-domain.com/realms/other-app".to_string())
-          .build()?,
-      );
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(
+      &AppRegInfoBuilder::test_default()
+        .public_key(public_key)
+        .issuer("https://id.other-domain.com/realms/other-app".to_string())
+        .build()?,
+    );
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .build()?;
@@ -471,13 +496,13 @@ mod tests {
       .with_state(state);
 
     let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-
-    let error: Value = response.json_obj().await?;
-    assert_eq!("invalid_api_key", error["code"].as_str().unwrap());
+    let status = response.status();
+    let value: Value = response.json_obj().await?;
+    assert_eq!(StatusCode::UNAUTHORIZED, status);
+    assert_eq!("invalid_api_key", value["code"].as_str().unwrap());
     assert_eq!(
       "error decoding/validating token: InvalidIssuer",
-      error["message"].as_str().unwrap()
+      value["message"].as_str().unwrap()
     );
     Ok(())
   }
@@ -498,15 +523,12 @@ mod tests {
       &format!("exchange-access-token-{}", jti),
       "token-from-cache",
     );
-    let mut secret_service = SecretServiceStub::new();
-    secret_service
-      .with_app_status_ready()
-      .with_app_authz_enabled()
-      .with_app_reg_info(
-        &AppRegInfoBuilder::test_default()
-          .public_key(public_key)
-          .build()?,
-      );
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(
+      &AppRegInfoBuilder::test_default()
+        .public_key(public_key)
+        .build()?,
+    );
     let app_service = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
@@ -526,8 +548,10 @@ mod tests {
       .with_state(state);
 
     let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
+    let status = response.status();
     let value: Value = response.json_obj().await?;
+    assert_eq!(value.get("message"), None);
+    assert_eq!(StatusCode::IM_A_TEAPOT, status);
     assert_eq!(
       "token-from-cache",
       value["x_resource_token"].as_str().unwrap()
@@ -557,15 +581,12 @@ mod tests {
           RefreshToken::new("refresh-token-from-exchange".to_string()),
         ))
       });
-    let mut secret_service = SecretServiceStub::new();
-    secret_service
-      .with_app_status_ready()
-      .with_app_authz_enabled()
-      .with_app_reg_info(
-        &AppRegInfoBuilder::test_default()
-          .public_key(public_key)
-          .build()?,
-      );
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(
+      &AppRegInfoBuilder::test_default()
+        .public_key(public_key)
+        .build()?,
+    );
     let app_service = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
@@ -585,8 +606,10 @@ mod tests {
       .with_state(state);
 
     let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
+    let status = response.status();
     let value: Value = response.json_obj().await?;
+    assert_eq!(value.get("message"), None);
+    assert_eq!(StatusCode::IM_A_TEAPOT, status);
     assert_eq!(
       "token-from-exchange",
       value["x_resource_token"].as_str().unwrap()

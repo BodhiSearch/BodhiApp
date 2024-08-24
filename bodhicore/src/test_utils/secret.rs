@@ -1,6 +1,6 @@
 use crate::service::{
   AppRegInfo, ISecretService, SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE,
-  APP_STATUS_READY, APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
+  APP_STATUS_READY, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
 };
 use std::{collections::HashMap, sync::Mutex};
 
@@ -23,14 +23,18 @@ impl SecretServiceStub {
   }
 }
 
+impl Default for SecretServiceStub {
+  fn default() -> Self {
+    let mut slf = Self::new();
+    slf.with_app_status_ready();
+    slf.with_app_authz_enabled();
+    slf
+  }
+}
+
 impl SecretServiceStub {
   pub fn with_app_status_ready(&mut self) -> &mut Self {
     self.with(KEY_APP_STATUS.to_string(), APP_STATUS_READY.to_string());
-    self
-  }
-
-  pub fn with_app_status_setup(&mut self) -> &mut Self {
-    self.with(KEY_APP_STATUS.to_string(), APP_STATUS_SETUP.to_string());
     self
   }
 
