@@ -1,7 +1,10 @@
-use crate::service::cache_service::{CacheService, MokaCacheService};
+use crate::{
+  asref_impl,
+  service::cache_service::{CacheService, MokaCacheService},
+};
 use keyring::Entry;
+use serde::de::DeserializeOwned;
 use std::sync::Arc;
-use thiserror::Error;
 
 pub const KEY_APP_STATUS: &str = "app_status";
 pub const APP_STATUS_READY: &str = "ready";
@@ -9,28 +12,56 @@ pub const APP_STATUS_SETUP: &str = "setup";
 pub const KEY_APP_AUTHZ: &str = "app_authz";
 pub const APP_AUTHZ_TRUE: &str = "true";
 pub const APP_AUTHZ_FALSE: &str = "false";
-pub const KEY_PUBLIC_KEY: &str = "public_key";
-pub const KEY_ISSUER: &str = "issuer";
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
+pub const KEY_APP_REG_INFO: &str = "app_reg_info";
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum SecretServiceError {
   #[error("secret_service error: {0}")]
   KeyringError(#[from] keyring::Error),
   #[error("Secret not found")]
   SecretNotFound,
+  #[error(transparent)]
+  SerdeJsonError(#[from] serde_json::Error),
 }
 
 pub type Result<T> = std::result::Result<T, SecretServiceError>;
 
 #[cfg_attr(test, mockall::automock)]
-pub trait SecretService: Send + Sync + std::fmt::Debug {
-  fn set_secret(&mut self, key: &str, value: &str) -> Result<()>;
+pub trait ISecretService: Send + Sync + std::fmt::Debug {
+  // TODO: make it async so can have async mutex
+  fn set_secret_string(&self, key: &str, value: &str) -> Result<()>;
 
-  fn get_secret(&self, key: &str) -> Result<Option<String>>;
+  fn get_secret_string(&self, key: &str) -> Result<Option<String>>;
 
-  fn delete_secret(&mut self, key: &str) -> Result<()>;
+  // TODO: make it async so can have async mutex
+  fn delete_secret(&self, key: &str) -> Result<()>;
 }
+
+pub fn set_secret<S, T>(slf: S, key: &str, value: T) -> Result<()>
+where
+  T: serde::Serialize,
+  S: AsRef<dyn ISecretService>,
+{
+  let value_str = serde_json::to_string(&value)?;
+  slf.as_ref().set_secret_string(key, &value_str)
+}
+
+pub fn get_secret<S, T>(slf: S, key: &str) -> Result<Option<T>>
+where
+  T: DeserializeOwned,
+  S: AsRef<dyn ISecretService>,
+{
+  match slf.as_ref().get_secret_string(key)? {
+    Some(value) => {
+      let result = serde_json::from_str::<T>(&value)?;
+      Ok(Some(result))
+    }
+    None => Ok(None),
+  }
+}
+
+asref_impl!(ISecretService, KeyringSecretService);
 
 #[derive(Debug)]
 pub struct KeyringSecretService {
@@ -60,14 +91,14 @@ impl KeyringSecretService {
   }
 }
 
-impl SecretService for KeyringSecretService {
-  fn set_secret(&mut self, key: &str, value: &str) -> Result<()> {
+impl ISecretService for KeyringSecretService {
+  fn set_secret_string(&self, key: &str, value: &str) -> Result<()> {
     self.entry(key)?.set_password(value)?;
     self.cache.set(key, value);
     Ok(())
   }
 
-  fn get_secret(&self, key: &str) -> Result<Option<String>> {
+  fn get_secret_string(&self, key: &str) -> Result<Option<String>> {
     if let Some(cached_value) = self.cache.get(key) {
       return Ok(Some(cached_value));
     }
@@ -82,7 +113,7 @@ impl SecretService for KeyringSecretService {
     }
   }
 
-  fn delete_secret(&mut self, key: &str) -> Result<()> {
+  fn delete_secret(&self, key: &str) -> Result<()> {
     self.entry(key)?.delete_credential()?;
     self.cache.remove(key);
     Ok(())
@@ -93,6 +124,7 @@ impl SecretService for KeyringSecretService {
 mod tests {
   use super::*;
   use crate::service::cache_service::MokaCacheService;
+  use serde::{Deserialize, Serialize};
   use std::time::Duration;
 
   #[test]
@@ -101,23 +133,49 @@ mod tests {
       Some(100),
       Some(Duration::from_secs(60)),
     ));
-    let mut service = KeyringSecretService::with_cache("bodhi_test".to_string(), cache.clone());
-
-    // Set and get from keyring
-    service.set_secret("test_key", "test_value").unwrap();
-    let value = service.get_secret("test_key").unwrap();
+    let service = KeyringSecretService::with_cache("bodhi_test".to_string(), cache.clone());
+    service.set_secret_string("test_key", "test_value").unwrap();
+    let value = service.get_secret_string("test_key").unwrap();
     assert_eq!(value, Some("test_value".to_string()));
-
-    // Verify it's in the cache
     assert_eq!(cache.get("test_key"), Some("test_value".to_string()));
-
-    // Get from cache
-    let cached_value = service.get_secret("test_key").unwrap();
+    let cached_value = service.get_secret_string("test_key").unwrap();
     assert_eq!(cached_value, Some("test_value".to_string()));
-
-    // Delete and verify it's removed from both keyring and cache
     service.delete_secret("test_key").unwrap();
-    assert!(matches!(service.get_secret("test_key"), Ok(None)));
+    assert!(matches!(service.get_secret_string("test_key"), Ok(None)));
     assert_eq!(cache.as_ref().get("test_key"), None);
+  }
+
+  #[test]
+  fn test_secret_service_with_serialized_object() -> anyhow::Result<()> {
+    let cache = Arc::new(MokaCacheService::new(
+      Some(100),
+      Some(Duration::from_secs(60)),
+    ));
+    let mut service = Arc::new(KeyringSecretService::with_cache(
+      "bodhi_test".to_string(),
+      cache,
+    ));
+    // Create a test struct
+    #[derive(Debug, Serialize, Deserialize, PartialEq)]
+    struct TestObject {
+      name: String,
+      age: u32,
+    }
+
+    let test_object = TestObject {
+      name: "Alice".to_string(),
+      age: 30,
+    };
+
+    set_secret(&mut service, "test_object", &test_object)?;
+    let retrieved_object: Option<TestObject> = get_secret(&service, "test_object").unwrap();
+
+    assert_eq!(retrieved_object, Some(test_object));
+
+    service.delete_secret("test_object").unwrap();
+    let deleted_object: Option<TestObject> = get_secret(&service, "test_object").unwrap();
+
+    assert_eq!(deleted_object, None);
+    Ok(())
   }
 }

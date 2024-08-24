@@ -10,6 +10,7 @@ mod secret_service;
 mod session_service;
 
 pub use app_service::*;
+pub use auth_middleware::*;
 pub use auth_service::*;
 pub use cache_service::*;
 pub use data_service::*;

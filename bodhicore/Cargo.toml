@@ -72,6 +72,7 @@ ctor = { workspace = true }
 dircpy = { workspace = true }
 http-body-util = { workspace = true }
 lazy_static = { workspace = true }
+maplit = { workspace = true }
 mockall = { workspace = true }
 mousse = { workspace = true }
 rand = { workspace = true }

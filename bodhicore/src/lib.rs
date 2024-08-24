@@ -3,6 +3,7 @@ pub mod cli;
 pub mod db;
 mod error;
 pub mod interactive;
+mod macros;
 mod oai;
 pub mod objs;
 pub mod server;
