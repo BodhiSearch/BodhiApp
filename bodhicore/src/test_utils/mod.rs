@@ -1,3 +1,4 @@
+mod auth;
 mod bindings;
 mod bodhi;
 mod common;

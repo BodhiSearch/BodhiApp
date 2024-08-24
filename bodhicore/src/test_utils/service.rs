@@ -1,14 +1,13 @@
 use super::{
-  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home,
-  MockDbService, MockEnvWrapper,
+  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home, MockDbService, MockEnvWrapper,
 };
 use crate::{
   db::DbService,
   service::{
     AppServiceFn, AuthService, CacheService, DataService, EnvService, EnvServiceFn, HfHubService,
-    HubService, LocalDataService, MockAuthService, MockCacheService, MockDataService,
-    MockEnvServiceFn, MockHubService, MockSecretService, MockSessionService, MokaCacheService,
-    SecretService, SessionService,
+    HubService, ISecretService, LocalDataService, MockAuthService, MockCacheService,
+    MockDataService, MockEnvServiceFn, MockHubService, MockISecretService, MockSessionService,
+    MokaCacheService, SessionService,
   },
 };
 use derive_builder::Builder;
@@ -43,7 +42,7 @@ pub struct AppServiceStubMock {
   pub auth_service: Arc<MockAuthService>,
   pub db_service: Arc<MockDbService>,
   pub session_service: Arc<MockSessionService>,
-  pub secret_service: Arc<MockSecretService>,
+  pub secret_service: Arc<MockISecretService>,
   pub cache_service: Arc<MockCacheService>,
 }
 
@@ -85,7 +84,7 @@ impl AppServiceFn for AppServiceStubMock {
     self.session_service.clone()
   }
 
-  fn secret_service(&self) -> Arc<dyn SecretService> {
+  fn secret_service(&self) -> Arc<dyn ISecretService> {
     self.secret_service.clone()
   }
 
@@ -104,7 +103,7 @@ pub struct AppServiceStub {
   pub auth_service: Option<Arc<dyn AuthService + Send + Sync>>,
   pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
   pub session_service: Option<Arc<dyn SessionService + Send + Sync>>,
-  pub secret_service: Option<Arc<dyn SecretService + Send + Sync>>,
+  pub secret_service: Option<Arc<dyn ISecretService + Send + Sync>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService + Send + Sync>>,
 }
@@ -149,7 +148,7 @@ impl AppServiceFn for AppServiceStub {
     self.session_service.clone().unwrap()
   }
 
-  fn secret_service(&self) -> Arc<dyn SecretService> {
+  fn secret_service(&self) -> Arc<dyn ISecretService> {
     self.secret_service.clone().unwrap()
   }
 

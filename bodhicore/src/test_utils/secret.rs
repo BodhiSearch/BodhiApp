@@ -1,75 +1,76 @@
 use crate::service::{
-  SecretService, SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_READY,
-  APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_STATUS, KEY_PUBLIC_KEY,
+  AppRegInfo, ISecretService, SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE,
+  APP_STATUS_READY, APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
 };
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Mutex};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct SecretServiceStub {
-  store: HashMap<String, String>,
+  store: Mutex<HashMap<String, String>>,
 }
 
 impl SecretServiceStub {
   pub fn new() -> Self {
     Self {
-      store: HashMap::new(),
+      store: Mutex::new(HashMap::new()),
+    }
+  }
+
+  pub fn with_map(map: HashMap<String, String>) -> Self {
+    Self {
+      store: Mutex::new(map),
     }
   }
 }
 
 impl SecretServiceStub {
   pub fn with_app_status_ready(&mut self) -> &mut Self {
-    self
-      .store
-      .insert(KEY_APP_STATUS.to_string(), APP_STATUS_READY.to_string());
+    self.with(KEY_APP_STATUS.to_string(), APP_STATUS_READY.to_string());
     self
   }
 
   pub fn with_app_status_setup(&mut self) -> &mut Self {
-    self
-      .store
-      .insert(KEY_APP_STATUS.to_string(), APP_STATUS_SETUP.to_string());
+    self.with(KEY_APP_STATUS.to_string(), APP_STATUS_SETUP.to_string());
     self
   }
 
   pub fn with_app_authz_disabled(&mut self) -> &mut Self {
-    self
-      .store
-      .insert(KEY_APP_AUTHZ.to_string(), APP_AUTHZ_FALSE.to_string());
+    self.with(KEY_APP_AUTHZ.to_string(), APP_AUTHZ_FALSE.to_string());
     self
   }
 
   pub fn with_app_authz_enabled(&mut self) -> &mut Self {
-    self
-      .store
-      .insert(KEY_APP_AUTHZ.to_string(), APP_AUTHZ_TRUE.to_string());
+    self.with(KEY_APP_AUTHZ.to_string(), APP_AUTHZ_TRUE.to_string());
     self
   }
 
-  pub fn with_public_key(&mut self, public_key: String) -> &mut Self {
-    self.store.insert(KEY_PUBLIC_KEY.to_string(), public_key);
+  pub fn with_app_reg_info(&mut self, app_reg_info: &AppRegInfo) -> &mut Self {
+    let value = serde_json::to_string(app_reg_info).unwrap();
+    self.with(KEY_APP_REG_INFO.to_string(), value);
     self
   }
 
   pub fn with(&mut self, key: String, value: String) -> &mut Self {
-    self.store.insert(key, value);
+    self.store.lock().unwrap().insert(key, value);
     self
   }
 }
 
-impl SecretService for SecretServiceStub {
-  fn set_secret(&mut self, key: &str, value: &str) -> Result<(), SecretServiceError> {
-    self.store.insert(key.to_string(), value.to_string());
+impl ISecretService for SecretServiceStub {
+  fn set_secret_string(&self, key: &str, value: &str) -> Result<(), SecretServiceError> {
+    let mut store = self.store.lock().unwrap();
+    store.insert(key.to_string(), value.to_string());
     Ok(())
   }
 
-  fn get_secret(&self, key: &str) -> Result<Option<String>, SecretServiceError> {
-    let value = self.store.get(key).map(|v| v.to_string());
+  fn get_secret_string(&self, key: &str) -> Result<Option<String>, SecretServiceError> {
+    let value = self.store.lock().unwrap().get(key).map(|v| v.to_string());
     Ok(value)
   }
 
-  fn delete_secret(&mut self, key: &str) -> Result<(), SecretServiceError> {
-    self.store.remove(key);
+  fn delete_secret(&self, key: &str) -> Result<(), SecretServiceError> {
+    let mut store = self.store.lock().unwrap();
+    store.remove(key);
     Ok(())
   }
 }
