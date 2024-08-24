@@ -1,5 +1,5 @@
-use super::{CliError, Command};
 use crate::{
+  cli::{CliError, Command},
   error::Common,
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle, ShutdownCallback},
   service::AppServiceFn,
