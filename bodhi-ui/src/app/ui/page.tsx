@@ -1,10 +1,11 @@
-import { Button } from '@/components/ui/button';
+'use client'
 
-export default function UIPage() {
+import AppInitializer from '@/components/AppInitializer';
+
+export default function Home() {
   return (
-    <div>
-      <h1>UI Page</h1>
-      <Button>Click me</Button>
-    </div>
+    <main>
+      <AppInitializer />
+    </main>
   );
 }
