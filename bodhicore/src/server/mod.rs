@@ -3,6 +3,7 @@ mod fwd_sse;
 mod router_state;
 mod routes;
 mod routes_chat;
+mod routes_info;
 mod routes_models;
 mod routes_ollama;
 mod routes_ui;

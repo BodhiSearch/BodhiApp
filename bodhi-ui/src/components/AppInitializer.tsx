@@ -26,7 +26,7 @@ const AppInitializer = () => {
           setError('Unexpected response from server');
         }
       } catch (error) {
-        setError(`Unable to connect to backend: '${bodhi_url}'`);
+        setError(`Unable to connect to backend: '${bodhi_url}', error: ${error}`);
       }
     };
 
