@@ -1,6 +1,6 @@
 import { expect, vi, test } from 'vitest';
 import { redirect } from 'next/navigation';
-import Home from '../page';
+import Home from '@/app/page';
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
