@@ -93,7 +93,7 @@ pub async fn live_server(
     host: host.clone(),
     port,
   };
-  let handle = serve_command.aexecute(app_service.clone(), None).await?;
+  let handle = serve_command.get_server_handle(app_service.clone(), None).await?;
   Ok(TestServerHandle { host, port, handle })
 }
 

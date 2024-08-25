@@ -68,29 +68,24 @@ impl ServeCommand {
     &self,
     service: Arc<dyn AppServiceFn>,
     static_router: Option<Router>,
-  ) -> crate::error::Result<ServerShutdownHandle> {
-    match self {
-      ServeCommand::ByParams { host, port } => {
-        let handle = self
-          .aexecute_by_params(host, *port, service, static_router)
-          .await?;
-        Ok(handle)
-      }
-    }
+  ) -> crate::error::Result<()> {
+    let handle = self.get_server_handle(service, static_router).await?;
+    handle.shutdown_on_ctrlc().await?;
+    Ok::<(), BodhiError>(())
   }
 
-  async fn aexecute_by_params(
+  // TODO: move this to another module that returns a handle when passed server components
+  pub async fn get_server_handle(
     &self,
-    host: &str,
-    port: u16,
     service: Arc<dyn AppServiceFn>,
     static_router: Option<Router>,
   ) -> crate::error::Result<ServerShutdownHandle> {
+    let ServeCommand::ByParams { host, port } = self;
     let ServerHandle {
       server,
       shutdown,
       ready_rx,
-    } = build_server_handle(host, port);
+    } = build_server_handle(host, *port);
 
     let ctx = SharedContextRw::new_shared_rw(None).await?;
     let ctx: Arc<dyn SharedContextRwFn> = Arc::new(ctx);
