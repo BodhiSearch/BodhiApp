@@ -16,6 +16,9 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   transpilePackages: ['geist'],
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default withPWA(nextConfig);
