@@ -9,7 +9,8 @@
     "lint": "next lint",
     "test": "vitest",
     "eslint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "husky"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.8",
@@ -29,19 +30,30 @@
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@typescript-eslint/eslint-plugin": "^7.2.0",
+    "@typescript-eslint/parser": "^7.2.0",
     "@vitejs/plugin-react": "^4.3.1",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.2.6",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
+    "husky": "^9.1.5",
     "jsdom": "^25.0.0",
+    "lint-staged": "^15.2.9",
     "next-router-mock": "^0.9.13",
     "postcss": "^8",
     "prettier": "^3.3.3",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",
-    "vitest": "^2.0.5",
-    "@typescript-eslint/eslint-plugin": "^7.2.0",
-    "@typescript-eslint/parser": "^7.2.0"
+    "vitest": "^2.0.5"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }
