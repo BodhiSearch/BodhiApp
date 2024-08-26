@@ -50,23 +50,64 @@ pub struct HttpError {
 }
 
 impl HttpErrorBuilder {
-  pub fn message(&mut self, message: String) -> &mut Self {
-    self.body.get_or_insert_with(ErrorBody::default).message = message;
+  pub fn message(&mut self, msg: &str) -> &mut Self {
+    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
     self
   }
 
-  pub fn r#type(&mut self, r#type: String) -> &mut Self {
-    self.body.get_or_insert_with(ErrorBody::default).r#type = r#type;
+  pub fn r#type(&mut self, r#type: &str) -> &mut Self {
+    self.body.get_or_insert_with(ErrorBody::default).r#type = r#type.to_string();
     self
   }
 
-  pub fn param(&mut self, param: String) -> &mut Self {
-    self.body.get_or_insert_with(ErrorBody::default).param = Some(param);
+  pub fn param(&mut self, param: &str) -> &mut Self {
+    self.body.get_or_insert_with(ErrorBody::default).param = Some(param.to_string());
     self
   }
 
-  pub fn code(&mut self, code: String) -> &mut Self {
-    self.body.get_or_insert_with(ErrorBody::default).code = Some(code);
+  pub fn code(&mut self, code: &str) -> &mut Self {
+    self.body.get_or_insert_with(ErrorBody::default).code = Some(code.to_string());
+    self
+  }
+
+  pub fn invalid_request(&mut self) -> &mut Self {
+    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
+    self
+  }
+
+  pub fn forbidden(&mut self, msg: &str) -> &mut Self {
+    self.status_code = Some(StatusCode::FORBIDDEN);
+    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
+    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
+    self
+  }
+
+  pub fn unauthorized(&mut self, msg: &str, code: Option<&str>) -> &mut Self {
+    self.status_code = Some(StatusCode::UNAUTHORIZED);
+    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
+    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
+    if let Some(code) = code {
+      self.body.get_or_insert_with(ErrorBody::default).code = Some(code.to_string());
+    }
+    self
+  }
+
+  pub fn internal_server(&mut self, msg: Option<&str>) -> &mut Self {
+    self.status_code = Some(StatusCode::INTERNAL_SERVER_ERROR);
+    self.body.get_or_insert_with(ErrorBody::default).r#type = "internal_server_error".to_string();
+    self.body.get_or_insert_with(ErrorBody::default).code =
+      Some("internal_server_error".to_string());
+    if let Some(msg) = msg {
+      self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
+    }
+    self
+  }
+
+  pub fn bad_request(&mut self, msg: &str) -> &mut Self {
+    self.status_code = Some(StatusCode::BAD_REQUEST);
+    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
+    self.body.get_or_insert_with(ErrorBody::default).code = Some("invalid_value".to_string());
+    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
     self
   }
 }
@@ -95,10 +136,10 @@ mod tests {
   fn test_http_error_builder() -> anyhow::Result<()> {
     let error = HttpErrorBuilder::default()
       .status_code(StatusCode::BAD_REQUEST)
-      .message("Invalid input".to_string())
-      .r#type("validation_error".to_string())
-      .param("username".to_string())
-      .code("invalid_characters".to_string())
+      .message("Invalid input")
+      .r#type("validation_error")
+      .param("username")
+      .code("invalid_characters")
       .build()?;
 
     let expected = HttpError {
@@ -118,8 +159,8 @@ mod tests {
   fn test_http_error_builder_partial() -> anyhow::Result<()> {
     let error = HttpErrorBuilder::default()
       .status_code(StatusCode::NOT_FOUND)
-      .message("Resource not found".to_string())
-      .r#type("not_found_error".to_string())
+      .message("Resource not found")
+      .r#type("not_found_error")
       .build()?;
     let expected = HttpError {
       status_code: StatusCode::NOT_FOUND,
@@ -158,8 +199,8 @@ mod tests {
   fn test_http_error_serialization() -> anyhow::Result<()> {
     let error = HttpErrorBuilder::default()
       .status_code(StatusCode::BAD_REQUEST)
-      .message("Invalid input".to_string())
-      .r#type("validation_error".to_string())
+      .message("Invalid input")
+      .r#type("validation_error")
       .build()?;
     let serialized = serde_json::to_string(&error)?;
     let deserialized: HttpError = serde_json::from_str(&serialized)?;
@@ -173,10 +214,10 @@ mod tests {
     async fn error_handler() -> Result<(), HttpError> {
       let err = HttpErrorBuilder::default()
         .status_code(StatusCode::BAD_REQUEST)
-        .message("Invalid input".to_string())
-        .r#type("validation_error".to_string())
-        .param("username".to_string())
-        .code("invalid_characters".to_string())
+        .message("Invalid input")
+        .r#type("validation_error")
+        .param("username")
+        .code("invalid_characters")
         .build()
         .unwrap();
       Err(err)

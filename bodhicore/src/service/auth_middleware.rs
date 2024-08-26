@@ -1,24 +1,20 @@
-use crate::{
-  oai::{ApiError, ApiErrorBuilder},
-  server::RouterStateFn,
+use super::{
+  get_secret, AuthServiceError, HttpError, HttpErrorBuilder, SecretServiceError, APP_AUTHZ_FALSE,
+  APP_AUTHZ_TRUE, APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
+  KEY_RESOURCE_TOKEN,
 };
+use crate::server::RouterStateFn;
 use axum::{
   extract::{Request, State},
-  http::{header::AUTHORIZATION, HeaderMap, StatusCode},
+  http::{header::AUTHORIZATION, HeaderMap},
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
-  Json,
 };
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use super::{
-  get_secret, AuthServiceError, SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE,
-  APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
-};
-
-#[derive(Debug, strum::Display, thiserror::Error)]
+#[derive(Debug, Clone, strum::Display, thiserror::Error)]
 pub enum AuthError {
   TokenNotFound,
   InvalidToken(String),
@@ -31,56 +27,41 @@ pub enum AuthError {
   SecretServiceError(#[from] SecretServiceError),
 }
 
-impl From<&AuthError> for ApiError {
-  fn from(value: &AuthError) -> Self {
-    match value {
-      AuthError::TokenNotFound => {
-        ApiError::unauthorized("you didn't provide an API key".to_string(), None)
-      }
-      AuthError::InvalidToken(msg) => {
-        ApiError::unauthorized(msg.clone(), Some("invalid_api_key".to_string()))
-      }
-      AuthError::InsufficientPermission => ApiError::unauthorized(
-        "you have insufficient permissions for this operation".to_string(),
-        None,
-      ),
-      AuthError::BadRequest(msg) => ApiErrorBuilder::default()
-        .invalid_request_error(msg.to_owned())
+impl From<AuthError> for HttpError {
+  fn from(error: AuthError) -> Self {
+    match error {
+      AuthError::TokenNotFound => HttpErrorBuilder::default()
+        .unauthorized("you didn't provide an API key", None)
         .build()
         .unwrap(),
-      AuthError::InternalServerError(msg) => ApiErrorBuilder::default()
-        .internal_server_error(msg.to_owned())
+      AuthError::InvalidToken(msg) => HttpErrorBuilder::default()
+        .unauthorized(&msg, Some("invalid_api_key"))
         .build()
         .unwrap(),
-      AuthError::ExchangeError(err) => ApiErrorBuilder::default()
-        .internal_server_error(err.to_string())
+      AuthError::InsufficientPermission => HttpErrorBuilder::default()
+        .forbidden("you have insufficient permissions for this operation")
         .build()
         .unwrap(),
-      AuthError::SecretServiceError(err) => ApiErrorBuilder::default()
-        .internal_server_error(err.to_string())
+      AuthError::BadRequest(msg) => HttpErrorBuilder::default()
+        .bad_request(&msg)
         .build()
         .unwrap(),
-    }
-  }
-}
-
-impl From<&AuthError> for StatusCode {
-  fn from(val: &AuthError) -> Self {
-    match val {
-      AuthError::TokenNotFound => StatusCode::UNAUTHORIZED,
-      AuthError::InvalidToken(_) => StatusCode::UNAUTHORIZED,
-      AuthError::InsufficientPermission => StatusCode::FORBIDDEN,
-      AuthError::BadRequest(_) => StatusCode::BAD_REQUEST,
-      AuthError::InternalServerError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-      AuthError::ExchangeError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-      AuthError::SecretServiceError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+      AuthError::InternalServerError(msg) => HttpErrorBuilder::default()
+        .internal_server(Some(&msg))
+        .build()
+        .unwrap(),
+      AuthError::ExchangeError(err) => HttpErrorBuilder::default()
+        .internal_server(Some(&err.to_string()))
+        .build()
+        .unwrap(),
+      AuthError::SecretServiceError(err) => err.into(),
     }
   }
 }
 
 impl IntoResponse for AuthError {
-  fn into_response(self) -> Response {
-    (StatusCode::from(&self), Json(ApiError::from(&self))).into_response()
+  fn into_response(self) -> axum::response::Response {
+    HttpError::from(self).into_response()
   }
 }
 
@@ -208,12 +189,13 @@ pub async fn auth_middleware(
 
 #[cfg(test)]
 mod tests {
-  use super::auth_middleware;
+  use super::{auth_middleware, AuthError};
   use crate::{
     server::{RouterState, RouterStateFn},
     service::{
-      auth_middleware::AppRegInfoBuilder, CacheService, MockAuthService, MokaCacheService,
-      APP_STATUS_READY, APP_STATUS_SETUP, KEY_RESOURCE_TOKEN,
+      auth_middleware::AppRegInfoBuilder, AuthServiceError, CacheService, HttpError,
+      MockAuthService, MokaCacheService, SecretServiceError, APP_STATUS_READY, APP_STATUS_SETUP,
+      KEY_RESOURCE_TOKEN,
     },
     test_utils::{
       token, AppServiceStubBuilder, MockSharedContext, ResponseTestExt, SecretServiceStub,
@@ -222,7 +204,7 @@ mod tests {
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
-    extract::Path,
+    extract::{Path, State},
     http::{HeaderMap, HeaderValue, Request, StatusCode},
     middleware::from_fn_with_state,
     response::{IntoResponse, Response},
@@ -234,7 +216,7 @@ mod tests {
   use oauth2::{AccessToken, RefreshToken};
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
-  use serde_json::Value;
+  use serde_json::{json, Value};
   use std::{collections::HashMap, sync::Arc};
   use tower::ServiceExt;
 
@@ -619,6 +601,123 @@ mod tests {
       value["authorization_header"].as_str().unwrap()
     );
     assert_eq!("some-path", value["path"].as_str().unwrap());
+    Ok(())
+  }
+
+  async fn error_handler(State(error): State<AuthError>) -> Result<(), HttpError> {
+    Err(error)?
+  }
+
+  fn test_error_router(error: AuthError) -> Router {
+    Router::new()
+      .route("/test-error", get(error_handler))
+      .with_state(error)
+  }
+
+  #[rstest]
+  #[case::token_not_found(
+    AuthError::TokenNotFound,
+    StatusCode::UNAUTHORIZED,
+    json!({
+      "message": "you didn't provide an API key",
+      "type": "invalid_request_error",
+      "param": null,
+      "code": null
+    })
+  )]
+  #[case::invalid_token(
+    AuthError::InvalidToken("Invalid token".to_string()),
+    StatusCode::UNAUTHORIZED,
+    json!({
+      "message": "Invalid token",
+      "type": "invalid_request_error",
+      "param": null,
+      "code": "invalid_api_key"
+    })
+  )]
+  #[case::insufficient_permission(
+    AuthError::InsufficientPermission,
+    StatusCode::FORBIDDEN,
+    json!({
+      "message": "you have insufficient permissions for this operation",
+      "type": "invalid_request_error",
+      "param": null,
+      "code": null
+    })
+  )]
+  #[case::bad_request(
+    AuthError::BadRequest("Bad request".to_string()),
+    StatusCode::BAD_REQUEST,
+    json!({
+      "message": "Bad request",
+      "type": "invalid_request_error",
+      "param": null,
+      "code": "invalid_value"
+    })
+  )]
+  #[case::internal_server_error(
+    AuthError::InternalServerError("Internal error".to_string()),
+    StatusCode::INTERNAL_SERVER_ERROR,
+    json!({
+      "message": "Internal error",
+      "type": "internal_server_error",
+      "param": null,
+      "code": "internal_server_error",
+    })
+  )]
+  #[tokio::test]
+  async fn test_auth_error_conversion_and_response(
+    #[case] error: AuthError,
+    #[case] expected_status: StatusCode,
+    #[case] expected_body: serde_json::Value,
+  ) -> anyhow::Result<()> {
+    let app = test_error_router(error);
+
+    let request = Request::builder()
+      .uri("/test-error")
+      .method("GET")
+      .body(Body::empty())?;
+
+    let response = app.oneshot(request).await?;
+    assert_eq!(response.status(), expected_status);
+    let body: Value = response.json().await?;
+    assert_eq!(body, expected_body);
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::exchange_error(
+    AuthError::ExchangeError(AuthServiceError::RegisterClient),
+    StatusCode::INTERNAL_SERVER_ERROR,
+    "register client error"
+  )]
+  #[case::secret_service_error(
+    AuthError::SecretServiceError(SecretServiceError::SecretNotFound),
+    StatusCode::INTERNAL_SERVER_ERROR,
+    "Secret not found"
+  )]
+  #[tokio::test]
+  async fn test_auth_error_conversion_for_wrapped_errors(
+    #[case] error: AuthError,
+    #[case] expected_status: StatusCode,
+    #[case] expected_message: &str,
+  ) -> anyhow::Result<()> {
+    let app = test_error_router(error);
+
+    let request = Request::builder()
+      .uri("/test-error")
+      .method("GET")
+      .body(Body::empty())?;
+
+    let response = app.oneshot(request).await?;
+
+    assert_eq!(response.status(), expected_status);
+
+    let body: Value = response.json().await?;
+
+    assert_eq!(body["type"], "internal_server_error");
+    assert_eq!(body["message"], expected_message);
+
     Ok(())
   }
 }

@@ -5,7 +5,10 @@ use oauth2::{AccessToken, RefreshToken};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, thiserror::Error)]
-pub enum AuthServiceError {}
+pub enum AuthServiceError {
+  #[error("register client error")]
+  RegisterClient,
+}
 
 type Result<T> = std::result::Result<T, AuthServiceError>;
 

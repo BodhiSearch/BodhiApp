@@ -92,7 +92,6 @@ impl RouterState {
 mod test {
   use super::RouterState;
   use crate::{
-    oai::ApiError,
     objs::{Alias, HubFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     server::RouterStateFn,
     service::{MockDataService, MockHubService},
@@ -106,7 +105,7 @@ mod test {
   use llama_server_bindings::LlamaCppError;
   use mockall::predicate::{always, eq};
   use rstest::rstest;
-  use serde_json::json;
+  use serde_json::{json, Value};
   use std::sync::Arc;
 
   #[rstest]
@@ -133,13 +132,13 @@ mod test {
     assert!(result.is_err());
     let response: Response = result.unwrap_err().into_response();
     assert_eq!(StatusCode::NOT_FOUND, response.status());
-    let response: ApiError = response.json_obj().await?;
-    let expected = ApiError {
-      message: "The model 'not-found' does not exist".to_string(),
-      r#type: "invalid_request_error".to_string(),
-      param: Some("model".to_string()),
-      code: Some("model_not_found".to_string()),
-    };
+    let response: Value = response.json().await?;
+    let expected = json! {{
+      "message": "The model 'not-found' does not exist",
+      "type": "invalid_request_error",
+      "param": "model",
+      "code": "model_not_found",
+    }};
     assert_eq!(expected, response);
     Ok(())
   }
@@ -248,13 +247,13 @@ mod test {
     let response = result.unwrap_err().into_response();
     assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
     assert_eq!(
-      ApiError {
-        message: "bodhi_server_chat_completion: test error".to_string(),
-        r#type: "internal_server_error".to_string(),
-        param: None,
-        code: Some("internal_server_error".to_string())
-      },
-      response.json::<ApiError>().await?
+      json! {{
+        "message": "bodhi_server_chat_completion: test error",
+        "type": "internal_server_error",
+        "param": null,
+        "code": "internal_server_error"
+      }},
+      response.json::<Value>().await?
     );
     Ok(())
   }
