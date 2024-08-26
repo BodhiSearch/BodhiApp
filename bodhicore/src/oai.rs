@@ -27,21 +27,6 @@ pub struct ApiError {
   pub code: Option<String>,
 }
 
-impl ApiErrorBuilder {
-  pub fn internal_server_error(&mut self, message: String) -> &mut Self {
-    self.r#type("internal_server_error".to_string());
-    self.message(message);
-    self
-  }
-
-  pub fn invalid_request_error(&mut self, message: String) -> &mut Self {
-    self.r#type("invalid_request_error".to_string());
-    self.message(message);
-    self.code("invalid_value".to_string());
-    self
-  }
-}
-
 impl ApiError {
   pub fn internal_server(message: String) -> ApiError {
     ApiError {
@@ -58,15 +43,6 @@ impl ApiError {
       r#type: "invalid_request_error".to_string(),
       param: None,
       code: Some("invalid_value".to_string()),
-    }
-  }
-
-  pub fn unauthorized(message: String, code: Option<String>) -> ApiError {
-    ApiError {
-      message,
-      r#type: "invalid_request_error".to_string(),
-      param: None,
-      code,
     }
   }
 }

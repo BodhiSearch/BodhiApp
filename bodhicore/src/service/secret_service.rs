@@ -6,6 +6,8 @@ use keyring::Entry;
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
+use super::{HttpError, HttpErrorBuilder};
+
 pub const KEY_APP_STATUS: &str = "app_status";
 pub const APP_STATUS_READY: &str = "ready";
 pub const APP_STATUS_SETUP: &str = "setup";
@@ -15,14 +17,35 @@ pub const APP_AUTHZ_FALSE: &str = "false";
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 pub const KEY_APP_REG_INFO: &str = "app_reg_info";
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum SecretServiceError {
-  #[error("secret_service error: {0}")]
-  KeyringError(#[from] keyring::Error),
+  #[error("{0}")]
+  KeyringError(String),
   #[error("Secret not found")]
   SecretNotFound,
-  #[error(transparent)]
-  SerdeJsonError(#[from] serde_json::Error),
+  #[error("{0}")]
+  SerdeJsonError(String),
+}
+
+impl From<serde_json::Error> for SecretServiceError {
+  fn from(err: serde_json::Error) -> Self {
+    SecretServiceError::SerdeJsonError(format!("{:?}", err))
+  }
+}
+
+impl From<keyring::Error> for SecretServiceError {
+  fn from(err: keyring::Error) -> Self {
+    SecretServiceError::KeyringError(format!("{:?}", err))
+  }
+}
+
+impl From<SecretServiceError> for HttpError {
+  fn from(err: SecretServiceError) -> Self {
+    HttpErrorBuilder::default()
+      .internal_server(Some(&err.to_string()))
+      .build()
+      .unwrap()
+  }
 }
 
 pub type Result<T> = std::result::Result<T, SecretServiceError>;
@@ -109,7 +132,7 @@ impl ISecretService for KeyringSecretService {
         Ok(Some(value))
       }
       Err(keyring::Error::NoEntry) => Ok(None),
-      Err(e) => Err(SecretServiceError::KeyringError(e)),
+      Err(e) => Err(SecretServiceError::KeyringError(e.to_string())),
     }
   }
 
