@@ -30,7 +30,7 @@ http-body-util = "0.1.0"
 include_dir = "0.7.3"
 indicatif = "0.17.8"
 jsonwebtoken = "9.3.0"
-keyring = "3.2.0"
+keyring = { version = "3.2.0", default-features = false }
 lazy_static = "1.4.0"
 maplit = "1.0.2"
 mime = "0.3.17"
