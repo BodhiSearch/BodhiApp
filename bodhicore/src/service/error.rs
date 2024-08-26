@@ -75,10 +75,11 @@ impl HttpErrorBuilder {
     self
   }
 
-  pub fn forbidden(&mut self, msg: &str) -> &mut Self {
-    self.status_code = Some(StatusCode::FORBIDDEN);
-    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
+  pub fn bad_request(&mut self, msg: &str) -> &mut Self {
+    self.status_code = Some(StatusCode::BAD_REQUEST);
     self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
+    self.body.get_or_insert_with(ErrorBody::default).code = Some("invalid_value".to_string());
+    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
     self
   }
 
@@ -92,6 +93,20 @@ impl HttpErrorBuilder {
     self
   }
 
+  pub fn forbidden(&mut self, msg: &str) -> &mut Self {
+    self.status_code = Some(StatusCode::FORBIDDEN);
+    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
+    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
+    self
+  }
+
+  pub fn not_found(&mut self, msg: &str) -> &mut Self {
+    self.status_code = Some(StatusCode::NOT_FOUND);
+    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
+    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
+    self
+  }
+
   pub fn internal_server(&mut self, msg: Option<&str>) -> &mut Self {
     self.status_code = Some(StatusCode::INTERNAL_SERVER_ERROR);
     self.body.get_or_insert_with(ErrorBody::default).r#type = "internal_server_error".to_string();
@@ -100,14 +115,6 @@ impl HttpErrorBuilder {
     if let Some(msg) = msg {
       self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
     }
-    self
-  }
-
-  pub fn bad_request(&mut self, msg: &str) -> &mut Self {
-    self.status_code = Some(StatusCode::BAD_REQUEST);
-    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
-    self.body.get_or_insert_with(ErrorBody::default).code = Some("invalid_value".to_string());
-    self.body.get_or_insert_with(ErrorBody::default).message = msg.to_string();
     self
   }
 }
