@@ -687,9 +687,9 @@ mod tests {
 
   #[rstest]
   #[case::exchange_error(
-    AuthError::ExchangeError(AuthServiceError::RegisterClient),
+    AuthError::ExchangeError(AuthServiceError::RequestFailed),
     StatusCode::INTERNAL_SERVER_ERROR,
-    "register client error"
+    "failed to register as resource server"
   )]
   #[case::secret_service_error(
     AuthError::SecretServiceError(SecretServiceError::SecretNotFound),
@@ -702,6 +702,8 @@ mod tests {
     #[case] expected_status: StatusCode,
     #[case] expected_message: &str,
   ) -> anyhow::Result<()> {
+    use crate::service::ErrorBody;
+
     let app = test_error_router(error);
 
     let request = Request::builder()
@@ -713,11 +715,16 @@ mod tests {
 
     assert_eq!(response.status(), expected_status);
 
-    let body: Value = response.json().await?;
-
-    assert_eq!(body["type"], "internal_server_error");
-    assert_eq!(body["message"], expected_message);
-
+    let body: ErrorBody = response.json().await?;
+    assert_eq!(
+      ErrorBody {
+        message: expected_message.to_string(),
+        r#type: "internal_server_error".to_string(),
+        param: None,
+        code: Some("internal_server_error".to_string())
+      },
+      body
+    );
     Ok(())
   }
 }

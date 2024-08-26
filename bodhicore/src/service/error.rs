@@ -1,5 +1,6 @@
 use crate::objs::BuilderError;
 use axum::{
+  extract::rejection::JsonRejection,
   http::StatusCode,
   response::{IntoResponse, Response},
   Json,
@@ -70,11 +71,6 @@ impl HttpErrorBuilder {
     self
   }
 
-  pub fn invalid_request(&mut self) -> &mut Self {
-    self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
-    self
-  }
-
   pub fn bad_request(&mut self, msg: &str) -> &mut Self {
     self.status_code = Some(StatusCode::BAD_REQUEST);
     self.body.get_or_insert_with(ErrorBody::default).r#type = "invalid_request_error".to_string();
@@ -125,6 +121,38 @@ impl IntoResponse for HttpError {
   }
 }
 
+pub struct BadRequestError(String);
+
+impl From<JsonRejection> for BadRequestError {
+  fn from(value: JsonRejection) -> Self {
+    match value {
+      JsonRejection::JsonDataError(e) => BadRequestError(format!("JSONDataError: {e}")),
+      JsonRejection::JsonSyntaxError(e) => BadRequestError(format!("JSONSyntaxError: {e}")),
+      JsonRejection::MissingJsonContentType(e) => {
+        BadRequestError(format!("MissingContentType: {e}"))
+      }
+      JsonRejection::BytesRejection(e) => BadRequestError(format!("BytesRejection: {e}")),
+      err => BadRequestError(format!("{err:?}")),
+    }
+  }
+}
+
+impl IntoResponse for BadRequestError {
+  fn into_response(self) -> Response {
+    (
+      StatusCode::BAD_REQUEST,
+      HttpErrorBuilder::default()
+        .bad_request(&format!(
+          "We could not parse the JSON body of your request: {}",
+          self.0
+        ))
+        .build()
+        .unwrap(),
+    )
+      .into_response()
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -132,9 +160,10 @@ mod tests {
   use axum::{
     body::Body,
     http::{Request, StatusCode},
-    routing::get,
+    routing::{get, post},
     Router,
   };
+  use axum_extra::extract::WithRejection;
   use rstest::rstest;
   use serde_json::Value;
   use tower::ServiceExt;
@@ -241,6 +270,75 @@ mod tests {
         "code": "invalid_characters"
     });
     assert_eq!(expected_body, body);
+    Ok(())
+  }
+
+  #[derive(Deserialize)]
+  struct TestRequest {
+    field1: String,
+    field2: i32,
+  }
+
+  async fn test_handler(
+    WithRejection(Json(payload), _): WithRejection<Json<TestRequest>, BadRequestError>,
+  ) -> Result<String, BadRequestError> {
+    Ok(format!("Received: {}, {}", payload.field1, payload.field2))
+  }
+
+  fn create_test_app() -> Router {
+    Router::new().route("/test", post(test_handler))
+  }
+
+  #[rstest]
+  #[case::json_data_error(
+    r#"{"field1": "test", "field2": "not_a_number"}"#,
+    Some("application/json"),
+    "JSONDataError: Failed to deserialize the JSON body into the target type"
+  )]
+  #[case::json_syntax_error(
+    r#"{"field1": "test", "field2": 42,}"#,
+    Some("application/json"),
+    "JSONSyntaxError: Failed to parse the request body as JSON"
+  )]
+  #[case::missing_content_type(
+    r#"{"field1": "test", "field2": 42}"#,
+    None,
+    "MissingContentType: Expected request with `Content-Type: application/json`"
+  )]
+  #[case::empty_body(
+    "",
+    Some("application/json"),
+    "JSONSyntaxError: Failed to parse the request body as JSON"
+  )]
+  #[tokio::test]
+  async fn test_json_errors(
+    #[case] body: &str,
+    #[case] content_type: Option<&str>,
+    #[case] expected_error_message: &str,
+  ) -> anyhow::Result<()> {
+    let app = create_test_app();
+    let mut builder = Request::builder().method("POST").uri("/test");
+    if let Some(ct) = content_type {
+      builder = builder.header("content-type", ct);
+    }
+
+    let response = app
+      .oneshot(builder.body(Body::from(body.to_string())).unwrap())
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let error: ErrorBody = response.json().await.unwrap();
+    assert_eq!(
+      ErrorBody {
+        message: format!(
+          "We could not parse the JSON body of your request: {expected_error_message}"
+        ),
+        r#type: "invalid_request_error".to_string(),
+        param: None,
+        code: Some("invalid_value".to_string())
+      },
+      error
+    );
     Ok(())
   }
 }
