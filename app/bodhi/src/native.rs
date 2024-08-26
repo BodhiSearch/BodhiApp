@@ -24,7 +24,9 @@ impl NativeCommand {
     let addr = format!("http://{host}:{port}/");
     let addr_clone = addr.clone();
     let cmd = ServeCommand::ByParams { host, port };
-    let server_handle = cmd.aexecute(self.service.clone(), static_router).await?;
+    let server_handle = cmd
+      .get_server_handle(self.service.clone(), static_router)
+      .await?;
     let ui = self.ui;
 
     let system_tray = SystemTray::new().with_menu(
