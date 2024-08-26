@@ -1,8 +1,5 @@
 use super::RouterStateFn;
-use crate::{
-  oai::OpenAIApiError,
-  service::{KEY_APP_AUTHZ, KEY_APP_STATUS},
-};
+use crate::service::{HttpError, KEY_APP_AUTHZ, KEY_APP_STATUS};
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -16,7 +13,7 @@ pub(crate) struct AppInfo {
 
 pub(crate) async fn app_info_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
-) -> Result<Json<AppInfo>, OpenAIApiError> {
+) -> Result<Json<AppInfo>, HttpError> {
   let secret_service = &state.app_service().secret_service();
   let authz = secret_service
     .get_secret_string(KEY_APP_AUTHZ)

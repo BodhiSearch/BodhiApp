@@ -1,5 +1,8 @@
 use super::RouterStateFn;
-use crate::{oai::OpenAIApiError, objs::Alias};
+use crate::{
+  objs::Alias,
+  service::{HttpError, HttpErrorBuilder},
+};
 use async_openai::types::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},
@@ -9,12 +12,17 @@ use std::{fs, sync::Arc, time::UNIX_EPOCH};
 
 pub(crate) async fn oai_models_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
-) -> Result<Json<ListModelResponse>, OpenAIApiError> {
+) -> Result<Json<ListModelResponse>, HttpError> {
   let models = state
     .app_service()
     .data_service()
     .list_aliases()
-    .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?
+    .map_err(|err| {
+      HttpErrorBuilder::default()
+        .internal_server(Some(&err.to_string()))
+        .build()
+        .unwrap()
+    })?
     .into_iter()
     .map(|alias| to_oai_model(state.clone(), alias))
     .collect::<Vec<_>>();
@@ -27,12 +35,19 @@ pub(crate) async fn oai_models_handler(
 pub(crate) async fn oai_model_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
   Path(id): Path<String>,
-) -> Result<Json<Model>, OpenAIApiError> {
+) -> Result<Json<Model>, HttpError> {
   let alias = state
     .app_service()
     .data_service()
     .find_alias(&id)
-    .ok_or_else(|| OpenAIApiError::ModelNotFound(id.to_string()))?;
+    .ok_or_else(|| {
+      HttpErrorBuilder::default()
+        .not_found(&format!("The model '{id}' does not exist"))
+        .code("model_not_found")
+        .param("model")
+        .build()
+        .unwrap()
+    })?;
   let model = to_oai_model(state, alias);
   Ok(Json(model))
 }
