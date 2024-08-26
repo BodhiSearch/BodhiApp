@@ -76,7 +76,7 @@ impl RouterStateFn for RouterState {
       .ctx
       .chat_completions(request, alias, model_file, tokenizer_file, userdata)
       .await
-      .map_err(OpenAIApiError::ContextError)?;
+      .map_err(|e| OpenAIApiError::ContextError(e.to_string()))?;
     Ok(())
   }
 }

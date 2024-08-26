@@ -11,7 +11,6 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use std::sync::Arc;
 
-// TODO: custom Json extractor to dispatch OpenAIError response for bad request
 pub(crate) async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
   WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, OpenAIApiError>,

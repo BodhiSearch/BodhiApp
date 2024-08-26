@@ -5,7 +5,7 @@ mod cache_service;
 mod data_service;
 mod env_service;
 pub mod env_wrapper;
-mod error;
+pub mod error;
 mod hub_service;
 mod secret_service;
 mod session_service;
