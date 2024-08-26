@@ -1,5 +1,5 @@
 use super::{
-  router_state::RouterState, routes_chat::chat_completions_handler, routes_info::app_info_handler, routes_models::{oai_model_handler, oai_models_handler}, routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler}, routes_ui::chats_router, RouterStateFn
+  router_state::RouterState, routes_chat::chat_completions_handler, routes_info::{app_info_handler, setup_handler}, routes_models::{oai_model_handler, oai_models_handler}, routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler}, routes_ui::chats_router, RouterStateFn
 };
 use crate::{
   service::{auth_middleware, AppServiceFn},
@@ -22,7 +22,8 @@ pub fn build_routes(
   let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(ctx, app_service.clone()));
   let public_apis = Router::new()
     .route("/ping", get(|| async { "pong" }))
-    .route("/app/info", get(app_info_handler));
+    .route("/app/info", get(app_info_handler))
+    .route("/app/setup", post(setup_handler));
   let api_router = Router::new().merge(chats_router());
   let protected_apis = Router::new()
     .route("/api/tags", get(ollama_models_handler))

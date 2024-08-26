@@ -1,5 +1,6 @@
 use super::{
   copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home, MockDbService, MockEnvWrapper,
+  SecretServiceStub,
 };
 use crate::{
   db::DbService,
@@ -100,9 +101,11 @@ pub struct AppServiceStub {
   pub hub_service: Option<Arc<dyn HubService + Send + Sync>>,
   pub temp_home: Option<Arc<TempDir>>,
   pub data_service: Option<Arc<dyn DataService + Send + Sync>>,
+  #[builder(default = "self.default_auth_service()")]
   pub auth_service: Option<Arc<dyn AuthService + Send + Sync>>,
   pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
   pub session_service: Option<Arc<dyn SessionService + Send + Sync>>,
+  #[builder(default = "self.default_secret_service()")]
   pub secret_service: Option<Arc<dyn ISecretService + Send + Sync>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService + Send + Sync>>,
@@ -114,6 +117,14 @@ impl AppServiceStubBuilder {
       Some(100),
       Some(Duration::from_secs(30 * 24 * 60 * 60)),
     )))
+  }
+
+  fn default_auth_service(&self) -> Option<Arc<dyn AuthService + Send + Sync>> {
+    Some(Arc::new(MockAuthService::default()))
+  }
+
+  fn default_secret_service(&self) -> Option<Arc<dyn ISecretService + Send + Sync>> {
+    Some(Arc::new(SecretServiceStub::default()))
   }
 }
 

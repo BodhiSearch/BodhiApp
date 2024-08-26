@@ -1,27 +1,32 @@
 #![allow(unused_variables)] // TODO: remove this
+use super::{AppRegInfo, HttpError, HttpErrorBuilder};
 use async_trait::async_trait;
 use derive_new::new;
 use oauth2::{AccessToken, RefreshToken};
-use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum AuthServiceError {
-  #[error("register client error")]
-  RegisterClient,
+  #[error("failed to register as resource server")]
+  RequestFailed,
+}
+
+impl From<AuthServiceError> for HttpError {
+  fn from(value: AuthServiceError) -> Self {
+    match value {
+      AuthServiceError::RequestFailed => HttpErrorBuilder::default()
+        .internal_server(Some(&value.to_string()))
+        .build()
+        .unwrap(),
+    }
+  }
 }
 
 type Result<T> = std::result::Result<T, AuthServiceError>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RegisterClientResponse {
-  pub client_id: String,
-  pub client_secret: String,
-}
-
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait AuthService: Send + Sync + std::fmt::Debug {
-  async fn register_client(&self) -> Result<RegisterClientResponse>;
+  async fn register_client(&self) -> Result<AppRegInfo>;
 
   async fn get_auth_url(&self, code_verifier: &str) -> Result<String>;
 
@@ -49,7 +54,7 @@ impl KeycloakAuthService {}
 
 #[async_trait]
 impl AuthService for KeycloakAuthService {
-  async fn register_client(&self) -> Result<RegisterClientResponse> {
+  async fn register_client(&self) -> Result<AppRegInfo> {
     todo!()
   }
 
