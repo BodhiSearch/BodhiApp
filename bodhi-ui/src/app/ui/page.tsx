@@ -2,9 +2,9 @@
 
 import AppInitializer from '@/components/AppInitializer';
 
-export default function Home() {
+export default function UiPage() {
   return (
-    <main>
+    <main className="min-h-screen flex items-center justify-center">
       <AppInitializer />
     </main>
   );

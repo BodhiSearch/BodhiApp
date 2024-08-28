@@ -1,29 +1,45 @@
 'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
+import { BodhiBackend } from '@/services/BodhiBackend';
 
-const AppInitializer = () => {
+interface AppInitializerProps {
+  allowedStatus?: 'setup' | 'ready' | 'resource-admin';
+  children?: React.ReactNode;
+}
+
+const AppInitializer: React.FC<AppInitializerProps> = ({ allowedStatus, children }) => {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL;
+  const searchParams = useSearchParams();
+  const [error, setError] = useState<string | null>(searchParams.get('error'));
+  const [isInitialized, setIsInitialized] = useState(false);
+  const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || '';
+  const bodhiBackend = new BodhiBackend(bodhi_url);
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        const response = await fetch(`${bodhi_url}/app/info`);
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
+        const data = await bodhiBackend.getAppInfo();
 
-        if (data.status === 'setup') {
-          router.push('/ui/setup');
-        } else if (data.status === 'ready') {
-          router.push('/ui/home');
+        if (!allowedStatus || data.status !== allowedStatus) {
+          switch (data.status) {
+            case 'setup':
+              router.push('/ui/setup');
+              break;
+            case 'ready':
+              router.push('/ui/home');
+              break;
+            case 'resource-admin':
+              router.push('/ui/setup/resource-admin');
+              break;
+            default:
+              setError('Unexpected response from server');
+          }
         } else {
-          setError('Unexpected response from server');
+          setIsInitialized(true);
         }
       } catch (error) {
         setError(`Unable to connect to backend: '${bodhi_url}', error: ${error}`);
@@ -31,7 +47,7 @@ const AppInitializer = () => {
     };
 
     initializeApp();
-  }, [router, bodhi_url]);
+  }, [router, bodhi_url, allowedStatus, bodhiBackend]);
 
   if (error) {
     return (
@@ -42,11 +58,16 @@ const AppInitializer = () => {
     );
   }
 
-  return (
-    <div className="flex justify-center items-center h-screen">
-      <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-gray-900"></div>
-    </div>
-  );
+  if (!isInitialized) {
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
+        <p className="mt-4 text-gray-600">Initializing app...</p>
+      </div>
+    );
+  }
+
+  return children ? <>{children}</> : null;
 };
 
 export default AppInitializer;
