@@ -3,7 +3,8 @@ use bodhicore::{
   db::{SqliteDbService, TimeService},
   service::{
     env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService,
-    KeycloakAuthService, LocalDataService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ, KEY_APP_STATUS,
+    KeycloakAuthService, LocalDataService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
+    KEY_APP_STATUS,
   },
   ServeCommand, ServerShutdownHandle,
 };
@@ -41,7 +42,10 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   env_service.create_home_dirs(&bodhi_home).unwrap();
   let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new(hf_cache, false, None);
-  let auth_service = KeycloakAuthService::default();
+  let auth_service = KeycloakAuthService::new(
+    String::from("http://id.localhost:8080"),
+    String::from("bodhi"),
+  );
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
   let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
   let mut secret_service = MockSecretService::default();
@@ -93,7 +97,9 @@ pub async fn live_server(
     host: host.clone(),
     port,
   };
-  let handle = serve_command.get_server_handle(app_service.clone(), None).await?;
+  let handle = serve_command
+    .get_server_handle(app_service.clone(), None)
+    .await?;
   Ok(TestServerHandle { host, port, handle })
 }
 

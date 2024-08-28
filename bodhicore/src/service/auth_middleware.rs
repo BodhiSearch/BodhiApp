@@ -70,7 +70,7 @@ pub struct Claims {
   jti: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(test, derive(derive_builder::Builder))]
 pub struct AppRegInfo {
   pub public_key: String,
@@ -687,7 +687,7 @@ mod tests {
 
   #[rstest]
   #[case::exchange_error(
-    AuthError::ExchangeError(AuthServiceError::RequestFailed),
+    AuthError::ExchangeError(AuthServiceError::Reqwest("failed to register as resource server".to_string())),
     StatusCode::INTERNAL_SERVER_ERROR,
     "failed to register as resource server"
   )]

@@ -62,8 +62,9 @@ pub(crate) async fn app_info_handler(
     .get_secret_string(KEY_APP_STATUS)
     .unwrap_or(Some("setup".to_string()))
     .unwrap_or("setup".to_string());
+  let env_service = &state.app_service().env_service();
   Ok(Json(AppInfo {
-    version: env!("CARGO_PKG_VERSION").to_string(),
+    version: env_service.version(),
     status,
     authz: authz == "true",
   }))
@@ -103,7 +104,7 @@ pub async fn setup_handler(
     let app_reg_info = auth_service.register_client().await?;
     set_secret(secret_service, KEY_APP_REG_INFO, &app_reg_info)?;
     secret_service.set_secret_string(KEY_APP_AUTHZ, "true")?;
-    secret_service.set_secret_string(KEY_APP_STATUS, "ready")?;
+    secret_service.set_secret_string(KEY_APP_STATUS, "resoure-admin")?;
     Ok(SetupResponse {})
   } else {
     secret_service.set_secret_string(KEY_APP_AUTHZ, "false")?;
@@ -135,7 +136,7 @@ mod tests {
   #[case(
     SecretServiceStub::new(),
     AppInfo {
-      version: env!("CARGO_PKG_VERSION").to_string(),
+      version: "0.0.0".to_string(),
       status: "setup".to_string(),
       authz: true,
     }
@@ -146,7 +147,7 @@ mod tests {
       KEY_APP_AUTHZ.to_string() => "true".to_string(),
     }),
     AppInfo {
-      version: env!("CARGO_PKG_VERSION").to_string(),
+      version: "0.0.0".to_string(),
       status: "setup".to_string(),
       authz: true,
     }
@@ -157,7 +158,7 @@ mod tests {
       KEY_APP_AUTHZ.to_string() => "false".to_string(),
     }),
     AppInfo {
-      version: env!("CARGO_PKG_VERSION").to_string(),
+      version: "0.0.0".to_string(),
       status: "setup".to_string(),
       authz: false,
     }
@@ -249,27 +250,32 @@ mod tests {
   #[case(
       SecretServiceStub::new(),
       SetupRequest { authz: false },
+      "ready",
   )]
   #[case(
       SecretServiceStub::new(),
       SetupRequest { authz: true },
+      "resoure-admin",
   )]
   #[case(
       SecretServiceStub::with_map(maplit::hashmap! {
           KEY_APP_STATUS.to_string() => "setup".to_string(),
       }),
       SetupRequest { authz: false },
+      "ready",
   )]
   #[case(
       SecretServiceStub::with_map(maplit::hashmap! {
           KEY_APP_STATUS.to_string() => "setup".to_string(),
       }),
       SetupRequest { authz: true },
+      "resoure-admin",
   )]
   #[tokio::test]
   async fn test_setup_handler_success(
     #[case] secret_service: SecretServiceStub,
     #[case] request: SetupRequest,
+    #[case] expected_status: &str,
   ) -> anyhow::Result<()> {
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service.expect_register_client().returning(|| {
@@ -307,8 +313,8 @@ mod tests {
     assert_eq!(StatusCode::OK, response.status());
     let secret_service = app_service.secret_service();
     assert_eq!(
+      Some(expected_status.to_string()),
       secret_service.get_secret_string(KEY_APP_STATUS).unwrap(),
-      Some("ready".to_string())
     );
     assert_eq!(
       secret_service.get_secret_string(KEY_APP_AUTHZ).unwrap(),
@@ -329,7 +335,11 @@ mod tests {
     mock_auth_service
       .expect_register_client()
       .once()
-      .returning(|| Err(AuthServiceError::RequestFailed));
+      .returning(|| {
+        Err(AuthServiceError::Reqwest(
+          "failed to register as resource server".to_string(),
+        ))
+      });
     let app_service = Arc::new(
       AppServiceStubBuilder::default()
         .secret_service(Arc::new(secret_service))

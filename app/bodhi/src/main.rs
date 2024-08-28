@@ -1,10 +1,9 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Arc;
-
 use bodhi::{main_internal, setup_logs, AppError};
 use bodhicore::service::{env_wrapper::EnvWrapper, EnvService};
+use std::sync::Arc;
 use tracing_appender::non_blocking::WorkerGuard;
 
 pub fn main() {
