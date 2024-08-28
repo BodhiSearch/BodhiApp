@@ -1,6 +1,6 @@
 use super::{
-  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home, MockDbService, MockEnvWrapper,
-  SecretServiceStub,
+  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home, EnvServiceStub, MockDbService,
+  MockEnvWrapper, SecretServiceStub,
 };
 use crate::{
   db::DbService,
@@ -97,6 +97,7 @@ impl AppServiceFn for AppServiceStubMock {
 #[derive(Debug, Default, Builder)]
 #[builder(default, setter(strip_option))]
 pub struct AppServiceStub {
+  #[builder(default = "self.default_env_service()")]
   pub env_service: Option<Arc<dyn EnvServiceFn + Send + Sync>>,
   pub hub_service: Option<Arc<dyn HubService + Send + Sync>>,
   pub temp_home: Option<Arc<TempDir>>,
@@ -112,6 +113,10 @@ pub struct AppServiceStub {
 }
 
 impl AppServiceStubBuilder {
+  fn default_env_service(&self) -> Option<Arc<dyn EnvServiceFn + Send + Sync>> {
+    Some(Arc::new(EnvServiceStub::default()))
+  }
+
   fn default_cache_service(&self) -> Option<Arc<dyn CacheService + Send + Sync>> {
     Some(Arc::new(MokaCacheService::new(
       Some(100),

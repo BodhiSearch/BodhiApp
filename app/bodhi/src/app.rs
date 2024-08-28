@@ -42,11 +42,15 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   let cache_service =
     MokaCacheService::new(Some(100), Some(Duration::from_secs(30 * 24 * 60 * 60)));
 
+  let auth_url = env_service.auth_url();
+  let auth_realm = env_service.auth_realm();
+  let auth_service = KeycloakAuthService::new(auth_url, auth_realm);
+
   let app_service = AppService::new(
     env_service,
     Arc::new(hub_service),
     Arc::new(data_service),
-    Arc::new(KeycloakAuthService::new()),
+    Arc::new(auth_service),
     Arc::new(db_service),
     Arc::new(session_service),
     Arc::new(secret_service),

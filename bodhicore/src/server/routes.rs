@@ -1,5 +1,11 @@
 use super::{
-  router_state::RouterState, routes_chat::chat_completions_handler, routes_info::{app_info_handler, setup_handler}, routes_models::{oai_model_handler, oai_models_handler}, routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler}, routes_ui::chats_router, RouterStateFn
+  router_state::RouterState,
+  routes_chat::chat_completions_handler,
+  routes_models::{oai_model_handler, oai_models_handler},
+  routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler},
+  routes_setup::{app_info_handler, setup_handler},
+  routes_ui::chats_router,
+  RouterStateFn,
 };
 use crate::{
   service::{auth_middleware, AppServiceFn},

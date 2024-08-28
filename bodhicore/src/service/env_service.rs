@@ -25,16 +25,36 @@ pub static BODHI_HOST: &str = "BODHI_HOST";
 pub static BODHI_PORT: &str = "BODHI_PORT";
 pub static BODHI_LOGS: &str = "BODHI_LOGS";
 pub static HF_HOME: &str = "HF_HOME";
+pub static BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
+pub static BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
+
+#[cfg(feature = "production")]
+mod env_config {
+  pub static ENV_TYPE: &str = "production";
+  pub static AUTH_URL: &str = "https://id.getbodhi.app";
+  pub static AUTH_REALM: &str = "bodhi";
+}
+
+#[cfg(not(feature = "production"))]
+mod env_config {
+  pub static ENV_TYPE: &str = "development";
+  pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
+  pub static AUTH_REALM: &str = "bodhi";
+}
+
+pub use env_config::*;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait EnvServiceFn: Send + Sync + std::fmt::Debug {
+  fn env_type(&self) -> String;
+
+  fn is_production(&self) -> bool;
+
+  fn version(&self) -> String;
+
   fn bodhi_home(&self) -> PathBuf;
 
-  fn hf_cache(&self) -> PathBuf;
-
   fn hf_home(&self) -> PathBuf;
-
-  fn aliases_dir(&self) -> PathBuf;
 
   fn logs_dir(&self) -> PathBuf;
 
@@ -45,6 +65,18 @@ pub trait EnvServiceFn: Send + Sync + std::fmt::Debug {
   fn db_path(&self) -> PathBuf;
 
   fn list(&self) -> HashMap<String, String>;
+
+  fn auth_url(&self) -> String;
+
+  fn auth_realm(&self) -> String;
+
+  fn hf_cache(&self) -> PathBuf {
+    self.hf_home().join("hub")
+  }
+
+  fn aliases_dir(&self) -> PathBuf {
+    self.bodhi_home().join("aliases")
+  }
 }
 
 #[derive(Debug, Clone)]
@@ -55,7 +87,32 @@ pub struct EnvService {
   logs_dir: Option<PathBuf>,
 }
 
+impl EnvService {
+  fn get_env_or_default(&self, env_var: &str, default: &str) -> String {
+    if self.is_production() {
+      default.to_string()
+    } else {
+      match self.env_wrapper.var(env_var) {
+        Ok(value) => value,
+        Err(_) => default.to_string(),
+      }
+    }
+  }
+}
+
 impl EnvServiceFn for EnvService {
+  fn env_type(&self) -> String {
+    ENV_TYPE.to_string()
+  }
+
+  fn is_production(&self) -> bool {
+    self.env_type() == "production"
+  }
+
+  fn version(&self) -> String {
+    env!("CARGO_PKG_VERSION").to_string()
+  }
+
   fn bodhi_home(&self) -> PathBuf {
     self
       .bodhi_home
@@ -74,14 +131,6 @@ impl EnvServiceFn for EnvService {
         "unreachable: hf_cache is None. setup_hf_cache should be called before calling hf_cache",
       )
       .clone()
-  }
-
-  fn hf_cache(&self) -> PathBuf {
-    self.hf_home().join("hub")
-  }
-
-  fn aliases_dir(&self) -> PathBuf {
-    self.bodhi_home().join("aliases")
   }
 
   fn logs_dir(&self) -> PathBuf {
@@ -129,6 +178,14 @@ impl EnvServiceFn for EnvService {
     result.insert(BODHI_HOST.to_string(), self.host());
     result.insert(BODHI_PORT.to_string(), self.port().to_string());
     result
+  }
+
+  fn auth_url(&self) -> String {
+    self.get_env_or_default(BODHI_AUTH_URL, AUTH_URL)
+  }
+
+  fn auth_realm(&self) -> String {
+    self.get_env_or_default(BODHI_AUTH_REALM, AUTH_REALM)
   }
 }
 
@@ -283,7 +340,7 @@ mod test {
     (tempdir, hf_cache)
   }
 
-  #[rstest::rstest]
+  #[rstest]
   fn test_init_service_bodhi_home_from_env(bodhi_home: (TempDir, PathBuf)) -> anyhow::Result<()> {
     let (_tempdir, bodhi_home) = bodhi_home;
     let bodhi_home_str = bodhi_home.display().to_string();
@@ -297,7 +354,7 @@ mod test {
     Ok(())
   }
 
-  #[rstest::rstest]
+  #[rstest]
   fn test_init_service_bodhi_home_from_home_dir(
     bodhi_home: (TempDir, PathBuf),
   ) -> anyhow::Result<()> {
@@ -317,7 +374,7 @@ mod test {
     Ok(())
   }
 
-  #[rstest::rstest]
+  #[rstest]
   fn test_init_service_fails_if_not_able_to_find_bodhi_home() -> anyhow::Result<()> {
     let mut mock = MockEnvWrapper::default();
     mock
@@ -484,8 +541,12 @@ mod test {
     assert_eq!(expected.len(), actual.len());
     for key in expected.keys() {
       assert_eq!(
-        expected.get(key).unwrap_or_else(|| panic!("{} to be present", &key)),
-        actual.get(key).unwrap_or_else(|| panic!("{} to be present", &key))
+        expected
+          .get(key)
+          .unwrap_or_else(|| panic!("{} to be present", &key)),
+        actual
+          .get(key)
+          .unwrap_or_else(|| panic!("{} to be present", &key))
       );
     }
     Ok(())
