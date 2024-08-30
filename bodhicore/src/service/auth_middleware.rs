@@ -689,7 +689,7 @@ mod tests {
   #[case::exchange_error(
     AuthError::ExchangeError(AuthServiceError::Reqwest("failed to register as resource server".to_string())),
     StatusCode::INTERNAL_SERVER_ERROR,
-    "failed to register as resource server"
+    "reqwest: failed to register as resource server"
   )]
   #[case::secret_service_error(
     AuthError::SecretServiceError(SecretServiceError::SecretNotFound),

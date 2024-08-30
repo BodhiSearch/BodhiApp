@@ -3,9 +3,11 @@ mod fwd_sse;
 mod router_state;
 mod routes;
 mod routes_chat;
-mod routes_setup;
+mod routes_dev;
+mod routes_login;
 mod routes_models;
 mod routes_ollama;
+mod routes_setup;
 mod routes_ui;
 #[allow(clippy::module_inception)]
 mod server;

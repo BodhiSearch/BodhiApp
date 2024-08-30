@@ -1,6 +1,8 @@
 use super::{
   router_state::RouterState,
   routes_chat::chat_completions_handler,
+  routes_dev::dev_secrets_handler,
+  routes_login::login_handler,
   routes_models::{oai_model_handler, oai_models_handler},
   routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler},
   routes_setup::{app_info_handler, setup_handler},
@@ -12,10 +14,14 @@ use crate::{
   SharedContextRwFn,
 };
 use axum::{
+  body::Body,
+  http::StatusCode,
   middleware::from_fn_with_state,
+  response::Response,
   routing::{get, post},
   Router,
 };
+use serde_json::json;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -26,10 +32,23 @@ pub fn build_routes(
   static_router: Option<Router>,
 ) -> Router {
   let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(ctx, app_service.clone()));
-  let public_apis = Router::new()
-    .route("/ping", get(|| async { "pong" }))
+  let mut public_apis = Router::new()
+    .route(
+      "/ping",
+      get(|| async {
+        Response::builder()
+          .status(StatusCode::OK)
+          .body(Body::from(json!({"message": "pong"}).to_string()))
+          .unwrap()
+      }),
+    )
     .route("/app/info", get(app_info_handler))
-    .route("/app/setup", post(setup_handler));
+    .route("/app/setup", post(setup_handler))
+    .route("/app/login", get(login_handler));
+  if !app_service.env_service().is_production() {
+    let dev_apis = Router::new().route("/dev/secrets", get(dev_secrets_handler));
+    public_apis = public_apis.merge(dev_apis);
+  }
   let api_router = Router::new().merge(chats_router());
   let protected_apis = Router::new()
     .route("/api/tags", get(ollama_models_handler))

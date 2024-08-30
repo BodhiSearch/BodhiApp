@@ -36,7 +36,7 @@ const AppInitializer: React.FC<AppInitializerProps> = ({ allowedStatus, children
               router.push('/ui/setup/resource-admin');
               break;
             default:
-              setError('Unexpected response from server');
+              setError(`unexpected /app/info status from server - ${data.status}`);
           }
         } else {
           setIsInitialized(true);

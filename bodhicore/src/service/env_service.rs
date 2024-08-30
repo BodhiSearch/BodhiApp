@@ -16,11 +16,14 @@ pub static ALIASES_DIR: &str = "aliases";
 pub static MODELS_YAML: &str = "models.yaml";
 
 pub static LOGS_DIR: &str = "logs";
+pub static DEFAULT_SCHEME: &str = "http";
+pub static DEFAULT_HOST: &str = "127.0.0.1";
 pub static DEFAULT_PORT: u16 = 1135;
 pub static DEFAULT_PORT_STR: &str = "1135";
-pub static DEFAULT_HOST: &str = "127.0.0.1";
 
 pub static BODHI_HOME: &str = "BODHI_HOME";
+pub static BODHI_SCHEME: &str = "BODHI_SCHEME";
+pub static BODHI_FRONTEND_URL: &str = "BODHI_FRONTEND_URL";
 pub static BODHI_HOST: &str = "BODHI_HOST";
 pub static BODHI_PORT: &str = "BODHI_PORT";
 pub static BODHI_LOGS: &str = "BODHI_LOGS";
@@ -52,11 +55,15 @@ pub trait EnvServiceFn: Send + Sync + std::fmt::Debug {
 
   fn version(&self) -> String;
 
+  fn frontend_url(&self) -> String;
+
   fn bodhi_home(&self) -> PathBuf;
 
   fn hf_home(&self) -> PathBuf;
 
   fn logs_dir(&self) -> PathBuf;
+
+  fn scheme(&self) -> String;
 
   fn host(&self) -> String;
 
@@ -74,8 +81,37 @@ pub trait EnvServiceFn: Send + Sync + std::fmt::Debug {
     self.hf_home().join("hub")
   }
 
+  fn server_url(&self) -> String {
+    format!("{}://{}:{}", self.scheme(), self.host(), self.port())
+  }
+
   fn aliases_dir(&self) -> PathBuf {
     self.bodhi_home().join("aliases")
+  }
+
+  fn login_url(&self) -> String {
+    format!(
+      "{}/realms/{}/protocol/openid-connect/auth",
+      self.auth_url(),
+      self.auth_realm()
+    )
+  }
+
+  fn token_url(&self) -> String {
+    format!(
+      "{}/realms/{}/protocol/openid-connect/token",
+      self.auth_url(),
+      self.auth_realm()
+    )
+  }
+
+  fn login_callback_url(&self) -> String {
+    format!(
+      "{}://{}:{}/app/login/callback",
+      self.scheme(),
+      self.host(),
+      self.port()
+    )
   }
 }
 
@@ -88,7 +124,7 @@ pub struct EnvService {
 }
 
 impl EnvService {
-  fn get_env_or_default(&self, env_var: &str, default: &str) -> String {
+  fn get_prod_or_env(&self, env_var: &str, default: &str) -> String {
     if self.is_production() {
       default.to_string()
     } else {
@@ -143,6 +179,20 @@ impl EnvServiceFn for EnvService {
       .clone()
   }
 
+  fn frontend_url(&self) -> String {
+    match self.env_wrapper.var(BODHI_FRONTEND_URL) {
+      Ok(value) => value,
+      Err(_) => self.server_url(),
+    }
+  }
+
+  fn scheme(&self) -> String {
+    match self.env_wrapper.var(BODHI_SCHEME) {
+      Ok(value) => value,
+      Err(_) => DEFAULT_SCHEME.to_string(),
+    }
+  }
+
   fn host(&self) -> String {
     match self.env_wrapper.var(BODHI_HOST) {
       Ok(value) => value,
@@ -181,11 +231,11 @@ impl EnvServiceFn for EnvService {
   }
 
   fn auth_url(&self) -> String {
-    self.get_env_or_default(BODHI_AUTH_URL, AUTH_URL)
+    self.get_prod_or_env(BODHI_AUTH_URL, AUTH_URL)
   }
 
   fn auth_realm(&self) -> String {
-    self.get_env_or_default(BODHI_AUTH_REALM, AUTH_REALM)
+    self.get_prod_or_env(BODHI_AUTH_REALM, AUTH_REALM)
   }
 }
 

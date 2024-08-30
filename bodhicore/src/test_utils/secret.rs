@@ -1,8 +1,18 @@
 use crate::service::{
-  AppRegInfo, ISecretService, SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE,
-  APP_STATUS_READY, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
+  AppRegInfo, CacheService, ISecretService, KeyringSecretService, SecretServiceError,
+  APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_READY, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
+  KEY_APP_STATUS,
 };
-use std::{collections::HashMap, sync::Mutex};
+use std::{
+  collections::HashMap,
+  sync::{Arc, Mutex},
+};
+
+impl KeyringSecretService {
+  pub fn with_cache(service_name: String, cache: Arc<dyn CacheService>) -> Self {
+    Self::new(service_name, cache)
+  }
+}
 
 #[derive(Debug)]
 pub struct SecretServiceStub {

@@ -30,8 +30,13 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   let hf_cache = env_service.hf_cache();
   let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new_from_hf_cache(hf_cache, true);
-  // TODO - have env identify test and prod, and use that to name the secret service
-  let secret_service = KeyringSecretService::new("bodhi_app".to_string());
+  let app_suffix = if env_service.is_production() {
+    ""
+  } else {
+    " - Dev"
+  };
+  let app_name = format!("Bodhi App{app_suffix}");
+  let secret_service = KeyringSecretService::with_service_name(app_name);
 
   let dbpath = env_service.db_path();
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
