@@ -11,7 +11,7 @@ pub enum SessionServiceError {
 type Result<T> = std::result::Result<T, SessionServiceError>;
 
 #[cfg_attr(test, mockall::automock)]
-pub trait SessionService: std::fmt::Debug {
+pub trait SessionService: Send + Sync + std::fmt::Debug {
   fn session_layer(&self) -> SessionManagerLayer<SqliteStore>;
 }
 

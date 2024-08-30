@@ -2,13 +2,14 @@
 use super::{AppRegInfo, HttpError, HttpErrorBuilder};
 use async_trait::async_trait;
 use oauth2::{AccessToken, RefreshToken};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, thiserror::Error)]
 pub enum AuthServiceError {
-  #[error("{0}")]
+  #[error("reqwest: {0}")]
   Reqwest(String),
-  #[error("{0}")]
+  #[error("api_error: {0}")]
   AuthServiceApiError(String),
 }
 
@@ -36,7 +37,9 @@ type Result<T> = std::result::Result<T, AuthServiceError>;
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait AuthService: Send + Sync + std::fmt::Debug {
-  async fn register_client(&self) -> Result<AppRegInfo>;
+  async fn register_client(&self, redirect_uris: Vec<String>) -> Result<AppRegInfo>;
+
+  async fn check_access_token(&self, access_token: &AccessToken) -> Result<bool>;
 
   async fn exchange_auth_code(
     &self,
@@ -71,13 +74,18 @@ impl KeycloakAuthService {
   }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct RegisterClientRequest {
+  pub redirect_uris: Vec<String>,
+}
+
 #[async_trait]
 impl AuthService for KeycloakAuthService {
-  async fn register_client(&self) -> Result<AppRegInfo> {
+  async fn register_client(&self, redirect_uris: Vec<String>) -> Result<AppRegInfo> {
+    let client_endpoint = format!("{}/clients", self.auth_api_url());
     let res = reqwest::Client::new()
-      .post(format!("{}/clients", self.auth_api_url()))
-      .header("Content-Type", "application/json")
-      .json(r#"{}"#)
+      .post(client_endpoint)
+      .json(&RegisterClientRequest { redirect_uris })
       .send()
       .await?;
     if res.status().is_success() {
@@ -89,6 +97,11 @@ impl AuthService for KeycloakAuthService {
         .unwrap_or("error at id-server registering as resource");
       Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
     }
+  }
+
+  async fn check_access_token(&self, access_token: &AccessToken) -> Result<bool> {
+    // TODO: returning true to complete the flow, implement this
+    Ok(true)
   }
 
   async fn exchange_auth_code(
@@ -145,7 +158,9 @@ mod tests {
       .create();
 
     let service = KeycloakAuthService::new(url, "test-realm".to_string());
-    let result = service.register_client().await;
+    let result = service
+      .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
+      .await;
     assert!(result.is_ok());
     let app_reg_info = result.unwrap();
     assert_eq!(
@@ -175,11 +190,13 @@ mod tests {
       .create();
 
     let service = KeycloakAuthService::new(url, "test-realm".to_string());
-    let result = service.register_client().await;
+    let result = service
+      .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
+      .await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(matches!(err, AuthServiceError::AuthServiceApiError(_)));
-    assert_eq!("cannot complete request", err.to_string());
+    assert_eq!("api_error: cannot complete request", err.to_string());
     mock_server.assert();
 
     Ok(())

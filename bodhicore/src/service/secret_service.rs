@@ -2,6 +2,7 @@ use crate::{
   asref_impl,
   service::cache_service::{CacheService, MokaCacheService},
 };
+use derive_new::new;
 use keyring::Entry;
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
@@ -86,22 +87,15 @@ where
 
 asref_impl!(ISecretService, KeyringSecretService);
 
-#[derive(Debug)]
+#[derive(Debug, new)]
 pub struct KeyringSecretService {
   service_name: String,
   cache: Arc<dyn CacheService>,
 }
 
 impl KeyringSecretService {
-  pub fn new(service_name: String) -> Self {
+  pub fn with_service_name(service_name: String) -> Self {
     let cache = Arc::new(MokaCacheService::new(None, None));
-    Self {
-      service_name,
-      cache,
-    }
-  }
-
-  pub fn with_cache(service_name: String, cache: Arc<dyn CacheService>) -> Self {
     Self {
       service_name,
       cache,

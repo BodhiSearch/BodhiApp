@@ -8,6 +8,7 @@ use axum::{
   response::{IntoResponse, Response},
   Json,
 };
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -78,4 +79,15 @@ impl IntoResponse for ApiError {
         .into_response(),
     }
   }
+}
+
+pub(crate) fn generate_random_string(length: usize) -> String {
+  const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let mut rng = rand::thread_rng();
+  (0..length)
+    .map(|_| {
+      let idx = rng.gen_range(0..CHARSET.len());
+      CHARSET[idx] as char
+    })
+    .collect()
 }

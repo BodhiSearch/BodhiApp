@@ -101,10 +101,25 @@ pub async fn setup_handler(
   }
 
   if request.authz {
-    let app_reg_info = auth_service.register_client().await?;
+    let env_service = &state.app_service().env_service();
+    let server_host = env_service.host();
+    let is_loopback =
+      server_host == "localhost" || server_host == "127.0.0.1" || server_host == "0.0.0.0";
+    let hosts = if is_loopback {
+      vec!["localhost", "127.0.0.1", "0.0.0.0"]
+    } else {
+      vec![server_host.as_str()]
+    };
+    let scheme = env_service.scheme();
+    let port = env_service.port();
+    let redirect_uris = hosts
+      .into_iter()
+      .map(|host| format!("{scheme}://{host}:{port}/app/login/callback"))
+      .collect::<Vec<String>>();
+    let app_reg_info = auth_service.register_client(redirect_uris).await?;
     set_secret(secret_service, KEY_APP_REG_INFO, &app_reg_info)?;
     secret_service.set_secret_string(KEY_APP_AUTHZ, "true")?;
-    secret_service.set_secret_string(KEY_APP_STATUS, "resoure-admin")?;
+    secret_service.set_secret_string(KEY_APP_STATUS, "resource-admin")?;
     Ok(SetupResponse {})
   } else {
     secret_service.set_secret_string(KEY_APP_AUTHZ, "false")?;
@@ -255,7 +270,7 @@ mod tests {
   #[case(
       SecretServiceStub::new(),
       SetupRequest { authz: true },
-      "resoure-admin",
+      "resource-admin",
   )]
   #[case(
       SecretServiceStub::with_map(maplit::hashmap! {
@@ -269,7 +284,7 @@ mod tests {
           KEY_APP_STATUS.to_string() => "setup".to_string(),
       }),
       SetupRequest { authz: true },
-      "resoure-admin",
+      "resource-admin",
   )]
   #[tokio::test]
   async fn test_setup_handler_success(
@@ -278,16 +293,18 @@ mod tests {
     #[case] expected_status: &str,
   ) -> anyhow::Result<()> {
     let mut mock_auth_service = MockAuthService::default();
-    mock_auth_service.expect_register_client().returning(|| {
-      Ok(AppRegInfo {
-        public_key: "public_key".to_string(),
-        alg: Algorithm::RS256,
-        kid: "kid".to_string(),
-        issuer: "issuer".to_string(),
-        client_id: "client_id".to_string(),
-        client_secret: "client_secret".to_string(),
-      })
-    });
+    mock_auth_service
+      .expect_register_client()
+      .returning(|_redirect_uris| {
+        Ok(AppRegInfo {
+          public_key: "public_key".to_string(),
+          alg: Algorithm::RS256,
+          kid: "kid".to_string(),
+          issuer: "issuer".to_string(),
+          client_id: "client_id".to_string(),
+          client_secret: "client_secret".to_string(),
+        })
+      });
     let app_service = Arc::new(
       AppServiceStubBuilder::default()
         .secret_service(Arc::new(secret_service))
@@ -335,7 +352,7 @@ mod tests {
     mock_auth_service
       .expect_register_client()
       .once()
-      .returning(|| {
+      .returning(|_redirect_uris| {
         Err(AuthServiceError::Reqwest(
           "failed to register as resource server".to_string(),
         ))
