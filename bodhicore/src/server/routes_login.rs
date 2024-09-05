@@ -5,14 +5,17 @@ use crate::service::{
 };
 use axum::{
   body::Body,
-  extract::State,
+  extract::{Query, State},
   http::StatusCode,
   response::{IntoResponse, Response},
 };
 use base64::{engine::general_purpose, Engine as _};
-use oauth2::AccessToken;
+use oauth2::{
+  url::ParseError, AccessToken, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier,
+  RedirectUrl,
+};
 use sha2::{Digest, Sha256};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -25,6 +28,8 @@ pub enum LoginError {
   SessionError(String),
   #[error(transparent)]
   AuthServiceError(#[from] AuthServiceError),
+  #[error(transparent)]
+  ParseError(#[from] ParseError),
 }
 
 impl From<tower_sessions::session::Error> for LoginError {
@@ -46,6 +51,10 @@ impl From<LoginError> for HttpError {
         .build()
         .unwrap(),
       LoginError::AuthServiceError(e) => e.into(),
+      LoginError::ParseError(e) => HttpErrorBuilder::default()
+        .internal_server(Some(&e.to_string()))
+        .build()
+        .unwrap(),
     }
   }
 }
@@ -110,6 +119,67 @@ pub async fn login_handler(
   Ok(response)
 }
 
+pub async fn login_callback_handler(
+  session: Session,
+  State(state): State<Arc<dyn RouterStateFn>>,
+  Query(params): Query<HashMap<String, String>>,
+) -> Result<Response, LoginError> {
+  let app_service = state.app_service();
+  let env_service = app_service.env_service();
+  let secret_service = app_service.secret_service();
+  let auth_service = app_service.auth_service();
+
+  let stored_state = session
+    .get::<String>("oauth_state")
+    .await?
+    .ok_or_else(|| LoginError::SessionError("Missing oauth_state in session".to_string()))?;
+  let received_state = params
+    .get("state")
+    .ok_or_else(|| LoginError::SessionError("Missing state parameter".to_string()))?;
+  if stored_state != *received_state {
+    return Err(LoginError::SessionError("Invalid state".to_string()));
+  }
+
+  let code = params
+    .get("code")
+    .ok_or_else(|| LoginError::SessionError("Missing code parameter".to_string()))?;
+
+  let pkce_verifier = session
+    .get::<String>("pkce_verifier")
+    .await?
+    .ok_or_else(|| LoginError::SessionError("Missing pkce_verifier in session".to_string()))?;
+
+  let app_reg_info = get_secret::<_, AppRegInfo>(secret_service, KEY_APP_REG_INFO)?
+    .ok_or(LoginError::AppRegInfoNotFound)?;
+
+  let token_response = auth_service
+    .exchange_auth_code(
+      AuthorizationCode::new(code.to_string()),
+      ClientId::new(app_reg_info.client_id),
+      ClientSecret::new(app_reg_info.client_secret),
+      RedirectUrl::new(env_service.login_callback_url())?,
+      PkceCodeVerifier::new(pkce_verifier),
+    )
+    .await?;
+
+  session
+    .insert("access_token", token_response.0.secret())
+    .await?;
+  session
+    .insert("refresh_token", token_response.1.secret())
+    .await?;
+
+  let ui_home = format!("{}/ui/home", env_service.frontend_url());
+  Ok(
+    Response::builder()
+      .status(StatusCode::FOUND)
+      .header("Location", ui_home)
+      .body(Body::empty())
+      .unwrap()
+      .into_response(),
+  )
+}
+
 fn generate_pkce() -> (String, String) {
   let code_verifier = generate_random_string(43);
   let code_challenge =
@@ -122,23 +192,30 @@ mod tests {
   use super::*;
   use crate::{
     server::RouterState,
-    service::{AppServiceFn, MockAuthService, MockEnvServiceFn, BODHI_FRONTEND_URL},
+    service::{
+      AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
+    },
     test_utils::{
-      temp_bodhi_home, AppServiceStubBuilder, EnvServiceStub, MockSharedContext, SecretServiceStub,
+      temp_bodhi_home, AppServiceStubBuilder, EnvServiceStub, MockSharedContext, ResponseTestExt,
+      SecretServiceStub, SessionTestExt,
     },
   };
+  use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
-    http::Request,
+    http::{header, Request},
     middleware::{from_fn, Next},
     routing::get,
     Router,
   };
   use mockall::predicate::function;
+  use oauth2::RefreshToken;
   use rstest::rstest;
+  use serde_json::Value;
   use std::sync::Arc;
   use tempfile::TempDir;
-  use tower::ServiceExt;
+  use tower::{Layer, ServiceExt};
+  use tower_sessions::session;
   use url::Url;
 
   #[rstest]
@@ -174,7 +251,7 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .env_service(Arc::new(mock_env_service))
-      .with_session_service(dbfile)
+      .build_session_service(dbfile)
       .await
       .build()?;
     let app_service = Arc::new(app_service);
@@ -239,7 +316,7 @@ mod tests {
         EnvServiceStub::default().with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000"),
       ))
       .auth_service(Arc::new(mock_auth_service))
-      .with_session_service(dbfile)
+      .build_session_service(dbfile)
       .await
       .build()?;
     let app_service = Arc::new(app_service);
@@ -271,5 +348,96 @@ mod tests {
     let (generated_verifier, challenge) = generate_pkce();
     assert_eq!(generated_verifier.len(), 43);
     assert_eq!(challenge.len(), 43);
+  }
+
+  #[rstest]
+  #[anyhow_trace]
+  #[tokio::test]
+  async fn test_login_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service
+      .expect_exchange_auth_code()
+      .returning(|_, _, _, _, _| {
+        Ok((
+          AccessToken::new("test_access_token".to_string()),
+          RefreshToken::new("test_refresh_token".to_string()),
+        ))
+      });
+
+    let mock_env_service =
+      EnvServiceStub::default().with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000");
+
+    let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
+      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+        client_id: "test_client_id".to_string(),
+        client_secret: "test_client_secret".to_string(),
+        public_key: "test_public_key".to_string(),
+        alg: jsonwebtoken::Algorithm::RS256,
+        kid: "test_kid".to_string(),
+        issuer: "test_issuer".to_string(),
+      }).unwrap(),
+    });
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let app_service = AppServiceStubBuilder::default()
+      .auth_service(Arc::new(mock_auth_service))
+      .env_service(Arc::new(mock_env_service))
+      .secret_service(Arc::new(secret_service))
+      .with_sqlite_session_service(session_service.clone())
+      .await
+      .build()?;
+
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/login", get(login_handler))
+      .route("/login/callback", get(login_callback_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let mut client = axum_test::TestServer::new(router)?;
+    client.do_save_cookies();
+
+    // Perform login request
+    let login_resp = client.get("/login").await;
+    login_resp.assert_status(StatusCode::FOUND);
+    let location = login_resp.headers().get("location").unwrap().to_str()?;
+    let url = Url::parse(location)?;
+    let query_params: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+
+    // Extract state and code_challenge from the login response
+    let state = query_params.get("state").unwrap();
+    let code_challenge = query_params.get("code_challenge").unwrap();
+
+    let query = format!(
+      "code=test_code&state={}&code_challenge={}",
+      state, code_challenge
+    );
+
+    // Perform callback request
+    let resp = client.get(&format!("/login/callback?{}", query)).await;
+    resp.assert_status(StatusCode::FOUND);
+    assert_eq!(
+      resp.headers().get(header::LOCATION).unwrap(),
+      "http://frontend.localhost:3000/ui/home"
+    );
+    let session_id = resp.cookie("bodhiapp_session_id");
+    let access_token = session_service
+      .get_session_value(session_id.value(), "access_token")
+      .await
+      .unwrap();
+    let access_token = access_token.as_str().unwrap();
+    assert_eq!(access_token, "test_access_token");
+    let refresh_token = session_service
+      .get_session_value(session_id.value(), "refresh_token")
+      .await
+      .unwrap();
+    let refresh_token = refresh_token.as_str().unwrap();
+    assert_eq!(refresh_token, "test_refresh_token");
+    Ok(())
   }
 }

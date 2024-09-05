@@ -77,6 +77,7 @@ keyring = { workspace = true, features = ["windows-native"] }
 [dev-dependencies]
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
+axum-test = { workspace = true }
 ctor = { workspace = true }
 dircpy = { workspace = true }
 http-body-util = { workspace = true }
@@ -91,6 +92,7 @@ rstest = { workspace = true }
 serial_test = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
+tower-cookies = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 url = { workspace = true }
 

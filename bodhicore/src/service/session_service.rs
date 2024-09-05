@@ -17,7 +17,7 @@ pub trait SessionService: Send + Sync + std::fmt::Debug {
 
 #[derive(Debug)]
 pub struct SqliteSessionService {
-  session_store: SqliteStore,
+  pub(crate) session_store: SqliteStore,
 }
 
 impl SqliteSessionService {

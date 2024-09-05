@@ -14,8 +14,9 @@ use crate::{
 use derive_builder::Builder;
 use rstest::fixture;
 use sqlx::SqlitePool;
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{fs::File, path::PathBuf, sync::Arc, time::Duration};
 use tempfile::TempDir;
+use tower_sessions_sqlx_store::SqliteStore;
 
 pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
 
@@ -133,16 +134,17 @@ impl AppServiceStubBuilder {
     Some(Arc::new(SecretServiceStub::default()))
   }
 
-  pub async fn with_session_service(&mut self, dbfile: PathBuf) -> &mut Self {
-    if !dbfile.exists() {
-      std::fs::File::create(&dbfile).expect("Failed to create database file");
-    }
-    let pool = SqlitePool::connect(&format!("sqlite:{}", dbfile.display()))
-      .await
-      .unwrap();
-    let session_service = SqliteSessionService::new(pool);
-    session_service.migrate().await.unwrap();
+  pub async fn build_session_service(&mut self, dbfile: PathBuf) -> &mut Self {
+    let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let session_service: Arc<dyn SessionService + Send + Sync> = Arc::new(session_service);
+    self.session_service = Some(Some(session_service));
+    self
+  }
+
+  pub async fn with_sqlite_session_service(
+    &mut self,
+    session_service: Arc<SqliteSessionService>,
+  ) -> &mut Self {
     self.session_service = Some(Some(session_service));
     self
   }
