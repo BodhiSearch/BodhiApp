@@ -1,7 +1,10 @@
 #![allow(unused_variables)] // TODO: remove this
 use super::{AppRegInfo, HttpError, HttpErrorBuilder};
 use async_trait::async_trait;
-use oauth2::{AccessToken, RefreshToken};
+use oauth2::{
+  AccessToken, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl,
+  RefreshToken,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -43,8 +46,11 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
 
   async fn exchange_auth_code(
     &self,
-    code: &str,
-    code_verifier: &str,
+    code: AuthorizationCode,
+    client_id: ClientId,
+    client_secret: ClientSecret,
+    redirect_uri: RedirectUrl,
+    code_verifier: PkceCodeVerifier,
   ) -> Result<(AccessToken, RefreshToken)>;
 
   async fn refresh_token(
@@ -106,8 +112,11 @@ impl AuthService for KeycloakAuthService {
 
   async fn exchange_auth_code(
     &self,
-    code: &str,
-    code_verifier: &str,
+    code: AuthorizationCode,
+    client_id: ClientId,
+    client_secret: ClientSecret,
+    redirect_uri: RedirectUrl,
+    code_verifier: PkceCodeVerifier,
   ) -> Result<(AccessToken, RefreshToken)> {
     todo!()
   }
