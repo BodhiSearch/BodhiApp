@@ -129,15 +129,16 @@ pub async fn login_callback_handler(
   let secret_service = app_service.secret_service();
   let auth_service = app_service.auth_service();
 
-  let stored_state = session
-    .get::<String>("oauth_state")
-    .await?
-    .ok_or_else(|| LoginError::SessionError("Missing oauth_state in session".to_string()))?;
+  let stored_state = session.get::<String>("oauth_state").await?.ok_or_else(|| {
+    LoginError::SessionError("login info not found in session, are cookies enabled?".to_string())
+  })?;
   let received_state = params
     .get("state")
     .ok_or_else(|| LoginError::SessionError("Missing state parameter".to_string()))?;
   if stored_state != *received_state {
-    return Err(LoginError::SessionError("Invalid state".to_string()));
+    return Err(LoginError::SessionError(
+      "state parameter in callback does not match with the one sent in login request".to_string(),
+    ));
   }
 
   let code = params
@@ -196,8 +197,8 @@ mod tests {
       AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
     },
     test_utils::{
-      temp_bodhi_home, AppServiceStubBuilder, EnvServiceStub, MockSharedContext, ResponseTestExt,
-      SecretServiceStub, SessionTestExt,
+      temp_bodhi_home, AppServiceStub, AppServiceStubBuilder, EnvServiceStub, MockSharedContext,
+      ResponseTestExt, SecretServiceStub, SessionTestExt,
     },
   };
   use anyhow_trace::anyhow_trace;
@@ -212,10 +213,10 @@ mod tests {
   use oauth2::RefreshToken;
   use rstest::rstest;
   use serde_json::Value;
-  use std::sync::Arc;
+  use std::{collections::HashMap, sync::Arc};
+  use strfmt::strfmt;
   use tempfile::TempDir;
-  use tower::{Layer, ServiceExt};
-  use tower_sessions::session;
+  use tower::ServiceExt;
   use url::Url;
 
   #[rstest]
@@ -278,7 +279,7 @@ mod tests {
     assert_eq!(status, StatusCode::FOUND);
 
     let url = Url::parse(location)?;
-    let query_params: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
     assert_eq!(query_params.get("response_type").unwrap(), "code");
     assert_eq!(query_params.get("client_id").unwrap(), "test_client_id");
     assert_eq!(query_params.get("redirect_uri").unwrap(), callback_url);
@@ -407,7 +408,7 @@ mod tests {
     login_resp.assert_status(StatusCode::FOUND);
     let location = login_resp.headers().get("location").unwrap().to_str()?;
     let url = Url::parse(location)?;
-    let query_params: std::collections::HashMap<_, _> = url.query_pairs().into_owned().collect();
+    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
     // Extract state and code_challenge from the login response
     let state = query_params.get("state").unwrap();
@@ -438,6 +439,165 @@ mod tests {
       .unwrap();
     let refresh_token = refresh_token.as_str().unwrap();
     assert_eq!(refresh_token, "test_refresh_token");
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_login_callback_handler_state_not_in_session(
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let app_service: AppServiceStub = AppServiceStubBuilder::default()
+      .build_session_service(temp_bodhi_home.path().join("test.db"))
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/login/callback", get(login_callback_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+    let resp = router
+      .oneshot(Request::get("/login/callback?code=test_code&state=test_state").body(Body::empty())?)
+      .await?;
+    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    let json = resp.json::<Value>().await?;
+    assert_eq!(
+      json["message"],
+      "login info not found in session, are cookies enabled?"
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(
+    "code=test_code&state={state}-modified&code_challenge={code_challenge}",
+    "state parameter in callback does not match with the one sent in login request"
+  )]
+  #[case(
+    "state={state}&code_challenge={code_challenge}",
+    "Missing code parameter"
+  )]
+  #[tokio::test]
+  async fn test_login_callback_handler_missing_params(
+    temp_bodhi_home: TempDir,
+    #[case] query_template: &str,
+    #[case] expected_error: &str,
+  ) -> anyhow::Result<()> {
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
+      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+        client_id: "test_client_id".to_string(),
+        client_secret: "test_client_secret".to_string(),
+        public_key: "test_public_key".to_string(),
+        alg: jsonwebtoken::Algorithm::RS256,
+        kid: "test_kid".to_string(),
+        issuer: "test_issuer".to_string(),
+      }).unwrap(),
+    });
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let app_service: AppServiceStub = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .with_sqlite_session_service(session_service.clone())
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/login", get(login_handler))
+      .route("/login/callback", get(login_callback_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let mut client = axum_test::TestServer::new(router)?;
+    client.do_save_cookies();
+
+    let login_resp = client.get("/login").await;
+    login_resp.assert_status(StatusCode::FOUND);
+    let location = login_resp.headers().get("location").unwrap().to_str()?;
+    let url = Url::parse(location)?;
+    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
+    let state = query_params.get("state").unwrap().to_string();
+    let code_challenge = query_params.get("code_challenge").unwrap().to_string();
+    let query = strfmt!(query_template, state, code_challenge)
+      .unwrap()
+      .to_string();
+    let resp = client.get(&format!("/login/callback?{}", query)).await;
+    resp.assert_status(StatusCode::INTERNAL_SERVER_ERROR);
+    let error = resp.json::<Value>();
+    let error = error.get("message").unwrap().as_str().unwrap();
+    assert_eq!(error, expected_error);
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_login_callback_auth_service_error(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
+      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+        client_id: "test_client_id".to_string(),
+        client_secret: "test_client_secret".to_string(),
+        public_key: "test_public_key".to_string(),
+        alg: jsonwebtoken::Algorithm::RS256,
+        kid: "test_kid".to_string(),
+        issuer: "test_issuer".to_string(),
+      }).unwrap(),
+    });
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let mut mock_auth_service = MockAuthService::new();
+    mock_auth_service
+      .expect_exchange_auth_code()
+      .returning(|_, _, _, _, _| {
+        Err(AuthServiceError::AuthServiceApiError(
+          "network error".to_string(),
+        ))
+      });
+    let app_service: AppServiceStub = AppServiceStubBuilder::default()
+      .auth_service(Arc::new(mock_auth_service))
+      .secret_service(Arc::new(secret_service))
+      .with_sqlite_session_service(session_service.clone())
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/login", get(login_handler))
+      .route("/login/callback", get(login_callback_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let mut client = axum_test::TestServer::new(router)?;
+    client.do_save_cookies();
+
+    // Simulate login to set up session
+    let login_resp = client.get("/login").await;
+    login_resp.assert_status(StatusCode::FOUND);
+    let location = login_resp.headers().get("location").unwrap().to_str()?;
+    let url = Url::parse(location)?;
+    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
+    let state = query_params.get("state").unwrap().to_string();
+    let code_challenge = query_params.get("code_challenge").unwrap().to_string();
+    // Prepare callback request
+    let callback_query = format!("code=test-code&state={state}&code_challenge={code_challenge}");
+    let resp = client
+      .get(&format!("/login/callback?{}", callback_query))
+      .await;
+
+    resp.assert_status(StatusCode::INTERNAL_SERVER_ERROR);
+    let error = resp.json::<Value>();
+    let error = error.get("message").unwrap().as_str().unwrap();
+    assert_eq!(error, "api_error: network error");
     Ok(())
   }
 }

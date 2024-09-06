@@ -2,7 +2,7 @@ use super::{
   router_state::RouterState,
   routes_chat::chat_completions_handler,
   routes_dev::dev_secrets_handler,
-  routes_login::login_handler,
+  routes_login::{login_callback_handler, login_handler},
   routes_models::{oai_model_handler, oai_models_handler},
   routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler},
   routes_setup::{app_info_handler, setup_handler},
@@ -44,7 +44,8 @@ pub fn build_routes(
     )
     .route("/app/info", get(app_info_handler))
     .route("/app/setup", post(setup_handler))
-    .route("/app/login", get(login_handler));
+    .route("/app/login", get(login_handler))
+    .route("/app/login/callback", get(login_callback_handler));
   if !app_service.env_service().is_production() {
     let dev_apis = Router::new().route("/dev/secrets", get(dev_secrets_handler));
     public_apis = public_apis.merge(dev_apis);
