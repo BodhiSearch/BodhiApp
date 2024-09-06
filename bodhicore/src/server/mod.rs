@@ -5,6 +5,7 @@ mod routes;
 mod routes_chat;
 mod routes_dev;
 mod routes_login;
+mod routes_models;
 mod routes_oai_models;
 mod routes_ollama;
 mod routes_setup;
