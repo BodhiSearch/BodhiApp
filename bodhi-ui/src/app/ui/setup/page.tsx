@@ -52,13 +52,6 @@ export default function Setup() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <Alert className="mb-4">
-              <AlertTitle>Warning</AlertTitle>
-              <AlertDescription>
-                Setting up in non-authenticated mode may compromise system resources.
-                We recommend choosing the authenticated mode for better security.
-              </AlertDescription>
-            </Alert>
             <div className="space-y-4">
               <Button
                 className="w-full"
@@ -74,6 +67,13 @@ export default function Setup() {
                   'Setup Authenticated Instance →'
                 )}
               </Button>
+              <Alert className="mb-4">
+                <AlertTitle>Warning</AlertTitle>
+                <AlertDescription>
+                  Setting up in non-authenticated mode may compromise system resources.
+                  We recommend choosing the authenticated mode for better security.
+                </AlertDescription>
+              </Alert>
               <Button
                 variant="outline"
                 className="w-full"

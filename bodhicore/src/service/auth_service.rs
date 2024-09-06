@@ -2,8 +2,9 @@
 use super::{AppRegInfo, HttpError, HttpErrorBuilder};
 use async_trait::async_trait;
 use oauth2::{
-  AccessToken, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl,
-  RefreshToken,
+  basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
+  EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
+  TokenResponse,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -75,8 +76,16 @@ impl KeycloakAuthService {
     Self { auth_url, realm }
   }
 
+  fn auth_url(&self) -> String {
+    format!("{}/realms/{}", self.auth_url, self.realm)
+  }
+
   fn auth_api_url(&self) -> String {
-    format!("{}/realms/{}/bodhi", self.auth_url, self.realm)
+    format!("{}/bodhi", self.auth_url())
+  }
+
+  fn auth_token_url(&self) -> String {
+    format!("{}/protocol/openid-connect/token", self.auth_url())
   }
 }
 
@@ -118,7 +127,36 @@ impl AuthService for KeycloakAuthService {
     redirect_uri: RedirectUrl,
     code_verifier: PkceCodeVerifier,
   ) -> Result<(AccessToken, RefreshToken)> {
-    todo!()
+    let params = [
+      ("grant_type", "authorization_code"),
+      ("code", code.secret()),
+      ("client_id", client_id.as_str()),
+      ("client_secret", client_secret.secret()),
+      ("redirect_uri", redirect_uri.as_str()),
+      ("code_verifier", code_verifier.secret()),
+    ];
+
+    let client = reqwest::Client::new();
+    let response = client
+      .post(self.auth_token_url())
+      .form(&params)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+        response.json().await?;
+      Ok((
+        token_response.access_token().to_owned(),
+        token_response.refresh_token().unwrap().to_owned(),
+      ))
+    } else {
+      let error = response.json::<Value>().await?;
+      let error_msg = error["error"]
+        .as_str()
+        .unwrap_or("Failed to exchange authorization code for tokens");
+      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+    }
   }
 
   async fn refresh_token(
