@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 
 const pages = [
-  { name: 'Home', path: '/' },
-  { name: 'Models', path: '/models' },
+  { name: 'Home', path: '/ui/home' },
+  { name: 'Models', path: '/ui/models' },
 ];
 
 export default function PageNavigation() {
@@ -15,7 +15,7 @@ export default function PageNavigation() {
   const [currentPage, setCurrentPage] = useState('Home');
 
   useEffect(() => {
-    const page = pages.find(p => p.path === pathname);
+    const page = pages.find(p => pathname.startsWith(p.path));
     if (page) {
       setCurrentPage(page.name);
     }
