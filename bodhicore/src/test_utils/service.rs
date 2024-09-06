@@ -13,10 +13,8 @@ use crate::{
 };
 use derive_builder::Builder;
 use rstest::fixture;
-use sqlx::SqlitePool;
-use std::{fs::File, path::PathBuf, sync::Arc, time::Duration};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 use tempfile::TempDir;
-use tower_sessions_sqlx_store::SqliteStore;
 
 pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
 
