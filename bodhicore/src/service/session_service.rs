@@ -1,3 +1,4 @@
+use cookie::SameSite;
 use sqlx::{Pool, Sqlite};
 use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
@@ -35,7 +36,8 @@ impl SqliteSessionService {
 impl SessionService for SqliteSessionService {
   fn session_layer(&self) -> SessionManagerLayer<SqliteStore> {
     SessionManagerLayer::new(self.session_store.clone())
-      .with_secure(true)
+      .with_secure(false) // TODO: change this when https is supported
+      .with_same_site(SameSite::Lax)
       .with_name("bodhiapp_session_id")
   }
 }

@@ -1,7 +1,7 @@
 use super::{utils::generate_random_string, RouterStateFn};
 use crate::service::{
   get_secret, AppRegInfo, AuthServiceError, HttpError, HttpErrorBuilder, SecretServiceError,
-  KEY_APP_REG_INFO,
+  KEY_APP_REG_INFO, KEY_APP_STATUS,
 };
 use axum::{
   body::Body,
@@ -150,7 +150,7 @@ pub async fn login_callback_handler(
     .await?
     .ok_or_else(|| LoginError::SessionError("Missing pkce_verifier in session".to_string()))?;
 
-  let app_reg_info = get_secret::<_, AppRegInfo>(secret_service, KEY_APP_REG_INFO)?
+  let app_reg_info = get_secret::<_, AppRegInfo>(secret_service.clone(), KEY_APP_REG_INFO)?
     .ok_or(LoginError::AppRegInfoNotFound)?;
 
   let token_response = auth_service
@@ -169,6 +169,7 @@ pub async fn login_callback_handler(
   session
     .insert("refresh_token", token_response.1.secret())
     .await?;
+  secret_service.set_secret_string(KEY_APP_STATUS, "ready")?;
 
   let ui_home = format!("{}/ui/home", env_service.frontend_url());
   Ok(

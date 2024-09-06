@@ -17,7 +17,7 @@ pub static MODELS_YAML: &str = "models.yaml";
 
 pub static LOGS_DIR: &str = "logs";
 pub static DEFAULT_SCHEME: &str = "http";
-pub static DEFAULT_HOST: &str = "127.0.0.1";
+pub static DEFAULT_HOST: &str = "localhost";
 pub static DEFAULT_PORT: u16 = 1135;
 pub static DEFAULT_PORT_STR: &str = "1135";
 
@@ -537,7 +537,7 @@ mod test {
       .with(eq(BODHI_HOST))
       .return_once(move |_| Err(VarError::NotPresent));
     let result = EnvService::new(mock).host();
-    assert_eq!("127.0.0.1", result);
+    assert_eq!("localhost", result);
     Ok(())
   }
 

@@ -196,9 +196,9 @@ For more information, try '--help'.
 
   #[rstest]
   #[case(vec!["bodhi", "serve", "-H", "0.0.0.0", "-p", "8080"], "0.0.0.0", 8080)]
-  #[case(vec!["bodhi", "serve", "-p", "8080"], "127.0.0.1", 8080)]
+  #[case(vec!["bodhi", "serve", "-p", "8080"], "localhost", 8080)]
   #[case(vec!["bodhi", "serve", "-H", "0.0.0.0"], "0.0.0.0", 1135)]
-  #[case(vec!["bodhi", "serve"], "127.0.0.1", 1135)]
+  #[case(vec!["bodhi", "serve"], "localhost", 1135)]
   fn test_cli_serve(
     #[case] args: Vec<&str>,
     #[case] host: &str,
