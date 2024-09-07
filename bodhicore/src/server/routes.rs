@@ -6,6 +6,7 @@ use super::{
   routes_models::models_router,
   routes_oai_models::{oai_model_handler, oai_models_handler},
   routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler},
+  routes_proxy::proxy_router,
   routes_setup::{app_info_handler, setup_handler},
   routes_ui::chats_router,
   RouterStateFn,
@@ -73,13 +74,17 @@ pub fn build_routes(
         .allow_headers(Any)
         .allow_credentials(false),
     )
+    .with_state(state);
+  let router = if app_service.env_service().is_production() {
+    if let Some(static_router) = static_router {
+      router.merge(static_router)
+    } else {
+      router
+    }
+  } else {
+    router.merge(proxy_router("http://localhost:3000".to_string()))
+  };
+  router
     .layer(app_service.session_service().session_layer())
     .layer(TraceLayer::new_for_http())
-    .with_state(state);
-
-  if let Some(static_router) = static_router {
-    router.merge(static_router)
-  } else {
-    router
-  }
 }

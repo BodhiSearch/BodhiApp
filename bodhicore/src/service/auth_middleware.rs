@@ -83,7 +83,7 @@ pub struct AppRegInfo {
 }
 
 pub async fn auth_middleware(
-  session: Session,
+  _session: Session,
   State(state): State<Arc<dyn RouterStateFn>>,
   headers: HeaderMap,
   mut req: Request,

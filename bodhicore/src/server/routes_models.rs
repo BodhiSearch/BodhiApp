@@ -1,6 +1,6 @@
 use super::RouterStateFn;
 use crate::{
-  objs::Alias,
+  objs::{Alias, GptContextParams, OAIRequestParams},
   service::{HttpError, HttpErrorBuilder},
 };
 use axum::{
@@ -9,7 +9,8 @@ use axum::{
   Json, Router,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use serde_json::{Number, Value};
+use std::{collections::HashMap, sync::Arc};
 
 pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
   Router::new().route("/models", get(list_local_aliases_handler))
@@ -27,8 +28,12 @@ struct ListAliasResponse {
   family: Option<String>,
   repo: String,
   filename: String,
+  snapshot: String,
   features: Vec<String>,
   chat_template: String,
+  model_params: HashMap<String, Value>,
+  request_params: HashMap<String, Value>,
+  context_params: HashMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -46,9 +51,91 @@ impl From<Alias> for ListAliasResponse {
       family: alias.family,
       repo: alias.repo.to_string(),
       filename: alias.filename,
+      snapshot: alias.snapshot,
       features: alias.features,
       chat_template: alias.chat_template.to_string(),
+      model_params: HashMap::new(),
+      request_params: alias.request_params.into(),
+      context_params: alias.context_params.into(),
     }
+  }
+}
+
+impl From<OAIRequestParams> for HashMap<String, Value> {
+  fn from(value: OAIRequestParams) -> Self {
+    let mut map = HashMap::new();
+    if let Some(frequency_penalty) = value.frequency_penalty {
+      map.insert(
+        "frequency_penalty".to_string(),
+        Value::Number(Number::from_f64(frequency_penalty.into()).unwrap()),
+      );
+    }
+    if let Some(max_tokens) = value.max_tokens {
+      map.insert(
+        "max_tokens".to_string(),
+        Value::Number(Number::from(max_tokens)),
+      );
+    }
+    if let Some(presence_penalty) = value.presence_penalty {
+      map.insert(
+        "presence_penalty".to_string(),
+        Value::Number(Number::from_f64(presence_penalty.into()).unwrap()),
+      );
+    }
+    if let Some(seed) = value.seed {
+      map.insert("seed".to_string(), Value::Number(Number::from(seed)));
+    }
+    if let Some(temperature) = value.temperature {
+      map.insert(
+        "temperature".to_string(),
+        Value::Number(Number::from_f64(temperature.into()).unwrap()),
+      );
+    }
+    if let Some(top_p) = value.top_p {
+      map.insert(
+        "top_p".to_string(),
+        Value::Number(Number::from_f64(top_p.into()).unwrap()),
+      );
+    }
+    map.insert(
+      "stop".to_string(),
+      Value::Array(value.stop.into_iter().map(Value::String).collect()),
+    );
+    map
+  }
+}
+
+impl From<GptContextParams> for HashMap<String, Value> {
+  fn from(value: GptContextParams) -> Self {
+    let mut map = HashMap::new();
+    if let Some(n_seed) = value.n_seed {
+      map.insert("n_seed".to_string(), Value::Number(Number::from(n_seed)));
+    }
+    if let Some(n_threads) = value.n_threads {
+      map.insert(
+        "n_threads".to_string(),
+        Value::Number(Number::from(n_threads)),
+      );
+    }
+    if let Some(n_ctx) = value.n_ctx {
+      map.insert("n_ctx".to_string(), Value::Number(Number::from(n_ctx)));
+    }
+    if let Some(n_parallel) = value.n_parallel {
+      map.insert(
+        "n_parallel".to_string(),
+        Value::Number(Number::from(n_parallel)),
+      );
+    }
+    if let Some(n_predict) = value.n_predict {
+      map.insert(
+        "n_predict".to_string(),
+        Value::Number(Number::from(n_predict)),
+      );
+    }
+    if let Some(n_keep) = value.n_keep {
+      map.insert("n_keep".to_string(), Value::Number(Number::from(n_keep)));
+    }
+    map
   }
 }
 
@@ -95,7 +182,7 @@ mod tests {
   use crate::test_utils::{AppServiceStubBuilder, MockRouterState, ResponseTestExt};
   use axum::{body::Body, http::Request, routing::get, Router};
   use rstest::{fixture, rstest};
-  use serde_json::Value;
+  use serde_json::{Number, Value};
   use std::sync::Arc;
   use tower::ServiceExt;
 
@@ -197,6 +284,16 @@ mod tests {
 
     assert!(!response.data.is_empty());
     let first_alias = &response.data[0];
+    let request_params = maplit::hashmap! {
+      "stop".to_string() => Value::Array(vec![
+        Value::String("<|start_header_id|>".to_string()),
+        Value::String("<|end_header_id|>".to_string()),
+        Value::String("<|eot_id|>".to_string()),
+      ]),
+    };
+    let context_params = maplit::hashmap! {
+      "n_keep".to_string() => Value::Number(Number::from(24)),
+    };
     let expected = ListAliasResponse {
       alias: "llama3:instruct".to_string(),
       family: Some("llama3".to_string()),
@@ -204,6 +301,10 @@ mod tests {
       filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
       features: vec!["chat".to_string()],
       chat_template: "llama3".to_string(),
+      snapshot: "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
+      model_params: HashMap::new(),
+      request_params,
+      context_params,
     };
 
     assert_eq!(first_alias, &expected);
