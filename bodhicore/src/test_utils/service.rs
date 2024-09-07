@@ -13,7 +13,7 @@ use crate::{
 };
 use derive_builder::Builder;
 use rstest::fixture;
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
 use tempfile::TempDir;
 
 pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
@@ -132,6 +132,49 @@ impl AppServiceStubBuilder {
     Some(Arc::new(SecretServiceStub::default()))
   }
 
+  pub fn with_hub_service(&mut self) -> &mut Self {
+    let temp_home = self.with_temp_home();
+    let hf_home = temp_home.path().join("huggingface");
+    copy_test_dir("tests/data/huggingface", &hf_home);
+    let hf_cache = hf_home.join("hub");
+    let hub_service = HfHubService::new(hf_cache, false, None);
+    self.hub_service = Some(Some(Arc::new(hub_service)));
+    self
+  }
+
+  pub fn with_data_service(&mut self) -> &mut Self {
+    let temp_home = self.with_temp_home();
+    let bodhi_home = temp_home.path().join("bodhi");
+    copy_test_dir("tests/data/bodhi", &bodhi_home);
+    let data_service = LocalDataService::new(bodhi_home);
+    self.data_service = Some(Some(Arc::new(data_service)));
+    self
+  }
+
+  pub fn with_temp_home(&mut self) -> Arc<TempDir> {
+    match &self.temp_home {
+      Some(Some(temp_home)) => temp_home.clone(),
+      None | Some(None) => {
+        let temp_home = Arc::new(temp_home());
+        self.temp_home = Some(Some(temp_home.clone()));
+        let env_service = EnvService::new_with_args(
+          MockEnvWrapper::default(),
+          temp_home.path().join("bodhi"),
+          temp_home.path().join("huggingface"),
+        );
+        self.env_service = Some(Some(Arc::new(env_service)));
+        temp_home
+      }
+    }
+  }
+
+  pub async fn with_session_service(&mut self) -> &mut Self {
+    let temp_home = self.with_temp_home();
+    let dbfile = temp_home.path().join("test.db");
+    self.build_session_service(dbfile).await;
+    self
+  }
+
   pub async fn build_session_service(&mut self, dbfile: PathBuf) -> &mut Self {
     let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let session_service: Arc<dyn SessionService + Send + Sync> = Arc::new(session_service);
@@ -144,6 +187,15 @@ impl AppServiceStubBuilder {
     session_service: Arc<SqliteSessionService>,
   ) -> &mut Self {
     self.session_service = Some(Some(session_service));
+    self
+  }
+
+  pub fn with_envs(&mut self, envs: HashMap<&str, &str>) -> &mut Self {
+    let mut env_service = EnvServiceStub::default();
+    for (key, value) in envs {
+      env_service = env_service.with_env(key, value);
+    }
+    self.env_service = Some(Some(Arc::new(env_service)));
     self
   }
 }
@@ -185,43 +237,5 @@ impl AppServiceFn for AppServiceStub {
 
   fn cache_service(&self) -> Arc<dyn CacheService> {
     self.cache_service.clone().unwrap()
-  }
-}
-
-impl AppServiceStubBuilder {
-  pub fn with_hub_service(&mut self) -> &mut Self {
-    let temp_home = self.with_temp_home();
-    let hf_home = temp_home.path().join("huggingface");
-    copy_test_dir("tests/data/huggingface", &hf_home);
-    let hf_cache = hf_home.join("hub");
-    let hub_service = HfHubService::new(hf_cache, false, None);
-    self.hub_service = Some(Some(Arc::new(hub_service)));
-    self
-  }
-
-  pub fn with_data_service(&mut self) -> &mut Self {
-    let temp_home = self.with_temp_home();
-    let bodhi_home = temp_home.path().join("bodhi");
-    copy_test_dir("tests/data/bodhi", &bodhi_home);
-    let data_service = LocalDataService::new(bodhi_home);
-    self.data_service = Some(Some(Arc::new(data_service)));
-    self
-  }
-
-  pub fn with_temp_home(&mut self) -> Arc<TempDir> {
-    match &self.temp_home {
-      Some(Some(temp_home)) => temp_home.clone(),
-      None | Some(None) => {
-        let temp_home = Arc::new(temp_home());
-        self.temp_home = Some(Some(temp_home.clone()));
-        let env_service = EnvService::new_with_args(
-          MockEnvWrapper::default(),
-          temp_home.path().join("bodhi"),
-          temp_home.path().join("huggingface"),
-        );
-        self.env_service = Some(Some(Arc::new(env_service)));
-        temp_home
-      }
-    }
   }
 }
