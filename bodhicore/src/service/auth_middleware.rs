@@ -13,6 +13,7 @@ use axum::{
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use tower_sessions::Session;
 
 #[derive(Debug, Clone, strum::Display, thiserror::Error)]
 pub enum AuthError {
@@ -82,6 +83,7 @@ pub struct AppRegInfo {
 }
 
 pub async fn auth_middleware(
+  session: Session,
   State(state): State<Arc<dyn RouterStateFn>>,
   headers: HeaderMap,
   mut req: Request,
@@ -94,7 +96,13 @@ pub async fn auth_middleware(
     .unwrap_or_else(|_| Some(APP_STATUS_SETUP.to_string()))
     .unwrap_or_else(|| APP_STATUS_SETUP.to_string());
   if app_status == APP_STATUS_SETUP {
-    return Ok(Redirect::to("/ui/setup").into_response());
+    return Ok(
+      Redirect::to(&format!(
+        "{}/ui/setup",
+        app_service.env_service().frontend_url()
+      ))
+      .into_response(),
+    );
   }
 
   let authz_status = &secret_service
@@ -193,7 +201,7 @@ mod tests {
   use crate::{
     server::{RouterState, RouterStateFn},
     service::{
-      auth_middleware::AppRegInfoBuilder, AuthServiceError, CacheService, HttpError,
+      auth_middleware::AppRegInfoBuilder, AppServiceFn, AuthServiceError, CacheService, HttpError,
       MockAuthService, MokaCacheService, SecretServiceError, APP_STATUS_READY, APP_STATUS_SETUP,
       KEY_RESOURCE_TOKEN,
     },
@@ -263,14 +271,18 @@ mod tests {
       .with_app_status_ready();
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
     let req = Request::get("/v1/chat/completions").body(Body::empty())?;
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
@@ -287,23 +299,29 @@ mod tests {
   #[case(SecretServiceStub::with_map(with_app_status_setup()))]
   #[case(SecretServiceStub::new())]
   #[tokio::test]
+  #[anyhow_trace]
   async fn test_auth_middleware_redirects_to_setup(
     #[case] secret_service: SecretServiceStub,
   ) -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
+      .with_session_service()
+      .await
+      .with_envs(maplit::hashmap! {"BODHI_FRONTEND_URL" => "https://bodhi.app"})
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
     let req = Request::get("/v1/chat/completions").body(Body::empty())?;
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::SEE_OTHER, response.status());
-    assert_eq!("/ui/setup", response.headers().get("Location").unwrap());
+    assert_eq!("https://bodhi.app/ui/setup", response.headers().get("Location").unwrap());
     Ok(())
   }
 
@@ -327,10 +345,13 @@ mod tests {
   ) -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(SecretServiceStub::default()))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
     let mut req = Request::get("/some-path");
     if let Some(header) = auth_header {
@@ -339,6 +360,7 @@ mod tests {
     let req = req.body(Body::empty())?;
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
     let response = router.oneshot(req).await?;
     assert_eq!(expected_status, response.status());
@@ -362,16 +384,20 @@ mod tests {
     );
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
     let req = Request::get("/some-path")
       .header("Authorization", format!("Bearer {}", token))
       .body(Body::empty())?;
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
     let response = router.oneshot(req).await?;
     let status = response.status();
@@ -398,16 +424,20 @@ mod tests {
     );
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
     let req = Request::get("/some-path")
       .header("Authorization", format!("Bearer {}", token))
       .body(Body::empty())?;
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
     let response = router.oneshot(req).await?;
     let status = response.status();
@@ -425,16 +455,20 @@ mod tests {
   async fn test_auth_middleware_public_key_missing() -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(SecretServiceStub::default()))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
     let req = Request::get("/some-path")
       .header("Authorization", "Bearer foobar")
       .body(Body::empty())?;
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
     let response = router.oneshot(req).await?;
     assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
@@ -463,18 +497,21 @@ mod tests {
     );
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
 
     let req = Request::get("/some-path")
       .header("Authorization", format!("Bearer {}", token))
       .body(Body::empty())?;
-
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
 
     let response = router.oneshot(req).await?;
@@ -515,10 +552,13 @@ mod tests {
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
       .cache_service(Arc::new(cache_service))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
 
     let req = Request::get("/some-path")
@@ -527,6 +567,7 @@ mod tests {
 
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
 
     let response = router.oneshot(req).await?;
@@ -573,10 +614,13 @@ mod tests {
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
       .cache_service(Arc::new(MokaCacheService::new(None, None)))
+      .with_session_service()
+      .await
       .build()?;
+    let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
+      app_service.clone(),
     ));
 
     let req = Request::get("/some-path")
@@ -585,6 +629,7 @@ mod tests {
 
     let router = test_router()
       .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
       .with_state(state);
 
     let response = router.oneshot(req).await?;
