@@ -163,6 +163,8 @@ pub async fn login_callback_handler(
     )
     .await?;
 
+  session.remove::<String>("oauth_state").await?;
+  session.remove::<String>("pkce_verifier").await?;
   session
     .insert("access_token", token_response.0.secret())
     .await?;

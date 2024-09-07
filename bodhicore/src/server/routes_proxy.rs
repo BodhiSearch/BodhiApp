@@ -37,8 +37,6 @@ async fn proxy_handler(mut req: Request, backend_url: String) -> Response<Body> 
 
 #[cfg(test)]
 mod tests {
-  use std::net::SocketAddr;
-
   use super::*;
   use crate::test_utils::ResponseTestExt;
   use axum::{
@@ -46,8 +44,8 @@ mod tests {
     http::{Request, StatusCode},
     routing::get,
   };
-  use axum_test::TestServer;
   use rstest::{fixture, rstest};
+  use std::net::SocketAddr;
   use tokio::{
     net::TcpListener,
     sync::oneshot::{channel, Sender},
