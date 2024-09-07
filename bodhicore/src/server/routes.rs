@@ -76,6 +76,7 @@ pub fn build_routes(
     .layer(app_service.session_service().session_layer())
     .layer(TraceLayer::new_for_http())
     .with_state(state);
+
   if let Some(static_router) = static_router {
     router.merge(static_router)
   } else {
