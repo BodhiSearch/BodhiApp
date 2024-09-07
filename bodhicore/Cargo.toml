@@ -23,6 +23,8 @@ futures-core = { workspace = true }
 futures-util = { workspace = true }
 hf-hub = { workspace = true, features = ["tokio"] }
 http-body = { workspace = true }
+hyper = { workspace = true, features = ["full"] }
+hyper-util = { workspace = true }
 indicatif = { workspace = true, features = ["tokio"] }
 jsonwebtoken = { workspace = true }
 keyring = { workspace = true, default-features = false }

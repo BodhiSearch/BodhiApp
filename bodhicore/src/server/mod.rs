@@ -8,6 +8,7 @@ mod routes_login;
 mod routes_models;
 mod routes_oai_models;
 mod routes_ollama;
+mod routes_proxy;
 mod routes_setup;
 mod routes_ui;
 #[allow(clippy::module_inception)]
