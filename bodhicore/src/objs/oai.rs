@@ -2,15 +2,15 @@
 use crate::objs::BuilderError;
 use async_openai::types::{CreateChatCompletionRequest, Stop};
 use clap::Args;
+use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args)]
-#[cfg_attr(test, derive(derive_builder::Builder))]
-#[cfg_attr(test,
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder)]
+#[
   builder(
     default,
     setter(into, strip_option),
-    build_fn(error = BuilderError)))]
+    build_fn(error = BuilderError))]
 pub struct OAIRequestParams {
   #[clap(long, value_parser = validate_range_neg_to_pos_2, help=r#"Number between -2.0 and 2.0. 
 Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.

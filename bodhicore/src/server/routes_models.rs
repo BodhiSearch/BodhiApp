@@ -38,8 +38,8 @@ pub struct AliasResponse {
   features: Vec<String>,
   chat_template: String,
   model_params: HashMap<String, Value>,
-  request_params: HashMap<String, Value>,
-  context_params: HashMap<String, Value>,
+  request_params: OAIRequestParams,
+  context_params: GptContextParams,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -74,8 +74,8 @@ impl From<Alias> for AliasResponse {
       features: alias.features,
       chat_template: alias.chat_template.to_string(),
       model_params: HashMap::new(),
-      request_params: alias.request_params.into(),
-      context_params: alias.context_params.into(),
+      request_params: alias.request_params,
+      context_params: alias.context_params,
     }
   }
 }
@@ -282,10 +282,13 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::test_utils::{AppServiceStubBuilder, MockRouterState, ResponseTestExt};
+  use crate::{
+    objs::{GptContextParamsBuilder, OAIRequestParamsBuilder},
+    test_utils::{AppServiceStubBuilder, MockRouterState, ResponseTestExt},
+  };
   use axum::{body::Body, http::Request, routing::get, Router};
   use rstest::{fixture, rstest};
-  use serde_json::{Number, Value};
+  use serde_json::Value;
   use std::sync::Arc;
   use tower::ServiceExt;
 
@@ -387,16 +390,6 @@ mod tests {
 
     assert!(!response.data.is_empty());
     let first_alias = &response.data[0];
-    let request_params = maplit::hashmap! {
-      "stop".to_string() => Value::Array(vec![
-        Value::String("<|start_header_id|>".to_string()),
-        Value::String("<|end_header_id|>".to_string()),
-        Value::String("<|eot_id|>".to_string()),
-      ]),
-    };
-    let context_params = maplit::hashmap! {
-      "n_keep".to_string() => Value::Number(Number::from(24)),
-    };
     let expected = AliasResponse {
       alias: "llama3:instruct".to_string(),
       family: Some("llama3".to_string()),
@@ -406,8 +399,18 @@ mod tests {
       chat_template: "llama3".to_string(),
       snapshot: "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       model_params: HashMap::new(),
-      request_params,
-      context_params,
+      request_params: OAIRequestParamsBuilder::default()
+        .stop(vec![
+          "<|start_header_id|>".to_string(),
+          "<|end_header_id|>".to_string(),
+          "<|eot_id|>".to_string(),
+        ])
+        .build()
+        .unwrap(),
+      context_params: GptContextParamsBuilder::default()
+        .n_keep(24)
+        .build()
+        .unwrap(),
     };
 
     assert_eq!(first_alias, &expected);
