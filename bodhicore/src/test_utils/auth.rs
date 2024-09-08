@@ -2,7 +2,10 @@ use crate::service::AppRegInfoBuilder;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
-use rsa::{pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey}, RsaPrivateKey, RsaPublicKey};
+use rsa::{
+  pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey},
+  RsaPrivateKey, RsaPublicKey,
+};
 use rstest::fixture;
 use serde_json::json;
 use uuid::Uuid;
@@ -31,10 +34,24 @@ pub fn key_pair() -> (RsaPrivateKey, RsaPublicKey) {
 
 #[fixture]
 pub fn token(key_pair: &(RsaPrivateKey, RsaPublicKey)) -> anyhow::Result<(String, String, String)> {
+  build_token(key_pair, (Utc::now() + Duration::hours(1)).timestamp())
+}
+
+#[fixture]
+pub fn expired_token(
+  key_pair: &(RsaPrivateKey, RsaPublicKey),
+) -> anyhow::Result<(String, String, String)> {
+  build_token(key_pair, (Utc::now() - Duration::hours(1)).timestamp())
+}
+
+pub fn build_token(
+  key_pair: &(RsaPrivateKey, RsaPublicKey),
+  exp: i64,
+) -> anyhow::Result<(String, String, String)> {
   let (private_key, public_key) = key_pair;
   let jti = Uuid::new_v4().to_string();
   let claims = json!({
-      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "exp": exp,
       "jti": jti,
       "iss": "https://id.mydomain.com/realms/myapp".to_string(),
       "sub": Uuid::new_v4().to_string(),
