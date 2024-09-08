@@ -11,22 +11,30 @@ use axum::{
   response::{IntoResponse, Redirect, Response},
 };
 use jsonwebtoken::{Algorithm, DecodingKey, Validation};
+use oauth2::{ClientId, ClientSecret, RefreshToken};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower_sessions::Session;
 
-#[derive(Debug, Clone, strum::Display, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum AuthError {
+  #[error("TokenNotFound")]
   TokenNotFound,
+  #[error("{0}")]
   InvalidToken(String),
+  #[error("InsufficientPermission")]
   InsufficientPermission,
+  #[error("{0}")]
   BadRequest(String),
+  #[error("{0}")]
   InternalServerError(String),
   #[error(transparent)]
   ExchangeError(#[from] AuthServiceError),
   #[error(transparent)]
   SecretServiceError(#[from] SecretServiceError),
+  #[error("{0}")]
+  SessionError(String),
 }
 
 impl From<AuthError> for HttpError {
@@ -57,7 +65,17 @@ impl From<AuthError> for HttpError {
         .build()
         .unwrap(),
       AuthError::SecretServiceError(err) => err.into(),
+      AuthError::SessionError(err) => HttpErrorBuilder::default()
+        .internal_server(Some(&err))
+        .build()
+        .unwrap(),
     }
+  }
+}
+
+impl From<tower_sessions::session::Error> for AuthError {
+  fn from(error: tower_sessions::session::Error) -> Self {
+    AuthError::SessionError(error.to_string())
   }
 }
 
@@ -70,6 +88,7 @@ impl IntoResponse for AuthError {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
   jti: String,
+  exp: u64,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
@@ -84,7 +103,7 @@ pub struct AppRegInfo {
 }
 
 pub async fn auth_middleware(
-  _session: Session,
+  session: Session,
   State(state): State<Arc<dyn RouterStateFn>>,
   headers: HeaderMap,
   mut req: Request,
@@ -118,7 +137,74 @@ pub async fn auth_middleware(
     return Ok(next.run(req).await);
   }
 
-  // Extract token from header
+  // Check for token in session
+  if let Some(access_token) = session.get::<String>("access_token").await? {
+    // Validate session token
+    let mut validation = Validation::default();
+    validation.insecure_disable_signature_validation();
+    validation.validate_exp = false;
+    let token_data = jsonwebtoken::decode::<Claims>(
+      &access_token,
+      &DecodingKey::from_secret(&[]), // dummy key for parsing
+      &validation,
+    )
+    .map_err(|e| AuthError::InvalidToken(format!("error decoding session access token: {e}")))?;
+
+    // Check if token is expired
+    let now = time::OffsetDateTime::now_utc();
+    if now.unix_timestamp() >= token_data.claims.exp as i64 {
+      // Token is expired, try to refresh
+      if let Some(refresh_token) = session.get::<String>("refresh_token").await? {
+        let app_reg_info: AppRegInfo =
+          get_secret(secret_service, KEY_APP_REG_INFO)?.ok_or_else(|| {
+            AuthError::InternalServerError("app registration info is missing".to_string())
+          })?;
+
+        let result = state
+          .app_service()
+          .auth_service()
+          .refresh_token(
+            RefreshToken::new(refresh_token),
+            ClientId::new(app_reg_info.client_id),
+            ClientSecret::new(app_reg_info.client_secret),
+          )
+          .await;
+
+        if let Ok((new_access_token, new_refresh_token)) = result {
+          // Store new tokens in session
+          session
+            .insert("access_token", new_access_token.secret())
+            .await?;
+          session
+            .insert("refresh_token", new_refresh_token.secret())
+            .await?;
+
+          // Set header and continue
+          req.headers_mut().insert(
+            KEY_RESOURCE_TOKEN,
+            new_access_token.secret().parse().unwrap(),
+          );
+          return Ok(next.run(req).await);
+        } else {
+          return Err(AuthError::InvalidToken(
+            "Cannot refresh access token, please logout and login again.".to_string(),
+          ));
+        }
+      } else {
+        return Err(AuthError::InvalidToken(
+          "Session expired. Please log in again.".to_string(),
+        ));
+      }
+    }
+
+    // Token is valid, set header and continue
+    req
+      .headers_mut()
+      .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+    return Ok(next.run(req).await);
+  }
+
+  // No session token, fallback to header
   let token = match headers.get(AUTHORIZATION) {
     None => return Err(AuthError::TokenNotFound),
     Some(header) => header
@@ -234,11 +320,12 @@ mod tests {
     server::{RouterState, RouterStateFn},
     service::{
       auth_middleware::AppRegInfoBuilder, AppServiceFn, AuthServiceError, CacheService, HttpError,
-      MockAuthService, MokaCacheService, SecretServiceError, APP_STATUS_READY, APP_STATUS_SETUP,
-      KEY_RESOURCE_TOKEN,
+      MockAuthService, MokaCacheService, SecretServiceError, SqliteSessionService,
+      APP_STATUS_READY, APP_STATUS_SETUP, KEY_RESOURCE_TOKEN,
     },
     test_utils::{
-      token, AppServiceStubBuilder, MockSharedContext, ResponseTestExt, SecretServiceStub,
+      expired_token, temp_bodhi_home, token, AppServiceStubBuilder, MockSharedContext,
+      ResponseTestExt, SecretServiceStub,
     },
   };
   use anyhow_trace::anyhow_trace;
@@ -252,14 +339,20 @@ mod tests {
     Json, Router,
   };
   use jsonwebtoken::Algorithm;
-  use mockall::predicate::eq;
-  use oauth2::{AccessToken, RefreshToken};
+  use mockall::predicate::{always, eq};
+  use oauth2::{AccessToken, ClientId, RefreshToken};
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use serde_json::{json, Value};
   use sha2::{Digest, Sha256};
   use std::{collections::HashMap, sync::Arc};
+  use tempfile::TempDir;
+  use time::{Duration, OffsetDateTime};
   use tower::ServiceExt;
+  use tower_sessions::{
+    session::{Id, Record},
+    SessionStore,
+  };
 
   #[derive(Debug, Serialize, Deserialize)]
   struct TestResponse {
@@ -270,11 +363,12 @@ mod tests {
 
   async fn test_handler(headers: HeaderMap, Path(path): Path<String>) -> Response {
     let empty = HeaderValue::from_str("").unwrap();
-    let x_api_token = headers
+    let x_resource_token = headers
       .get(KEY_RESOURCE_TOKEN)
       .unwrap_or(&empty)
       .to_str()
-      .unwrap();
+      .unwrap()
+      .to_string();
     let authorization_bearer_token = headers
       .get("Authorization")
       .unwrap_or(&empty)
@@ -283,7 +377,7 @@ mod tests {
     (
       StatusCode::IM_A_TEAPOT,
       Json(TestResponse {
-        x_resource_token: x_api_token.to_string(),
+        x_resource_token,
         authorization_header: authorization_bearer_token.to_string(),
         path,
       }),
@@ -489,7 +583,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_public_key_missing(
-    token: anyhow::Result<(String, String, String)>
+    token: anyhow::Result<(String, String, String)>,
   ) -> anyhow::Result<()> {
     let (_, token, _) = token?;
     let app_service = AppServiceStubBuilder::default()
@@ -806,6 +900,250 @@ mod tests {
       },
       body
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_with_valid_session_token(
+    token: anyhow::Result<(String, String, String)>,
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = token?;
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(SecretServiceStub::default()))
+      .session_service(session_service.clone())
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::new()),
+      app_service.clone(),
+    ));
+    let id = Id::default();
+    let mut record = Record {
+      id,
+      data: maplit::hashmap! {
+        "access_token".to_string() => Value::String(token.clone()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+
+    let req = Request::get("/some-path")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .body(Body::empty())?;
+    let router = test_router()
+      .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let response = router.oneshot(req).await?;
+    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
+    let body: Value = response.json().await?;
+    assert_eq!(token, body["x_resource_token"].as_str().unwrap());
+    assert_eq!("", body["authorization_header"].as_str().unwrap());
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_with_expired_session_token(
+    expired_token: anyhow::Result<(String, String, String)>,
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let (_, expired_token, _) = expired_token?;
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+
+    // Create mock auth service
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service
+      .expect_refresh_token()
+      .with(
+        always(),
+        eq(ClientId::new("test_client_id".to_string())),
+        always(),
+      )
+      .return_once(|_, _, _| {
+        Ok((
+          AccessToken::new("new_access_token".to_string()),
+          RefreshToken::new("new_refresh_token".to_string()),
+        ))
+      });
+
+    // Setup app service with mocks
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(
+      &AppRegInfoBuilder::test_default()
+        .client_id("test_client_id".to_string())
+        .client_secret("test_client_secret".to_string())
+        .build()?,
+    );
+
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .auth_service(Arc::new(mock_auth_service))
+      .session_service(session_service.clone())
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::new()),
+      app_service.clone(),
+    ));
+
+    let id = Id::default();
+    let mut record = Record {
+      id,
+      data: maplit::hashmap! {
+          "access_token".to_string() => Value::String(expired_token.clone()),
+          "refresh_token".to_string() => Value::String("refresh_token".to_string()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+
+    let req = Request::get("/some-path")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .body(Body::empty())?;
+    let router = test_router()
+      .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let response = router.oneshot(req).await?;
+    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
+    let body: Value = response.json().await?;
+
+    // Check that the new access token is used
+    assert_eq!(
+      "new_access_token",
+      body["x_resource_token"].as_str().unwrap()
+    );
+    assert_eq!("", body["authorization_header"].as_str().unwrap());
+
+    // Verify that the session was updated with the new tokens
+    let updated_record = session_service.session_store.load(&id).await?.unwrap();
+    assert_eq!(
+      "new_access_token",
+      updated_record
+        .data
+        .get("access_token")
+        .unwrap()
+        .as_str()
+        .unwrap()
+    );
+    assert_eq!(
+      "new_refresh_token",
+      updated_record
+        .data
+        .get("refresh_token")
+        .unwrap()
+        .as_str()
+        .unwrap()
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
+    expired_token: anyhow::Result<(String, String, String)>,
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let (_, expired_token, _) = expired_token?;
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+
+    // Create mock auth service that fails to refresh the token
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service
+      .expect_refresh_token()
+      .with(
+        always(),
+        eq(ClientId::new("test_client_id".to_string())),
+        always(),
+      )
+      .return_once(|_, _, _| {
+        Err(AuthServiceError::Reqwest(
+          "Failed to refresh token".to_string(),
+        ))
+      });
+
+    // Setup app service with mocks
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(
+      &AppRegInfoBuilder::test_default()
+        .client_id("test_client_id".to_string())
+        .client_secret("test_client_secret".to_string())
+        .build()?,
+    );
+
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .auth_service(Arc::new(mock_auth_service))
+      .session_service(session_service.clone())
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::new()),
+      app_service.clone(),
+    ));
+
+    let id = Id::default();
+    let mut record = Record {
+      id,
+      data: maplit::hashmap! {
+        "access_token".to_string() => Value::String(expired_token.clone()),
+        "refresh_token".to_string() => Value::String("refresh_token".to_string()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+
+    let req = Request::get("/some-path")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .body(Body::empty())?;
+    let router = test_router()
+      .layer(from_fn_with_state(state.clone(), auth_middleware))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let response = router.oneshot(req).await?;
+    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+    let body: Value = response.json().await?;
+
+    // Check that the error message is correct
+    assert_eq!(
+      "Cannot refresh access token, please logout and login again.",
+      body["message"].as_str().unwrap()
+    );
+    assert_eq!("invalid_request_error", body["type"].as_str().unwrap());
+    assert_eq!("invalid_api_key", body["code"].as_str().unwrap());
+
+    // Verify that the session was not updated
+    let updated_record = session_service.session_store.load(&id).await?.unwrap();
+    assert_eq!(
+      expired_token,
+      updated_record
+        .data
+        .get("access_token")
+        .unwrap()
+        .as_str()
+        .unwrap()
+    );
+    assert_eq!(
+      "refresh_token",
+      updated_record
+        .data
+        .get("refresh_token")
+        .unwrap()
+        .as_str()
+        .unwrap()
+    );
+
     Ok(())
   }
 }
