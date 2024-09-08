@@ -1,16 +1,15 @@
 #[allow(unused_imports)]
 use crate::objs::BuilderError;
 use clap::Args;
+use derive_builder::Builder;
 use llama_server_bindings::GptParams;
 use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args)]
-#[cfg_attr(test, derive(derive_builder::Builder))]
-#[cfg_attr(test,
-  builder(
-    default,
-    setter(into, strip_option),
-    build_fn(error = BuilderError)))]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder)]
+#[builder(
+  default,
+  setter(into, strip_option),
+  build_fn(error = BuilderError))]
 pub struct GptContextParams {
   #[arg(
     long,
