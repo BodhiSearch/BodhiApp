@@ -7,6 +7,7 @@ import { ChevronDown } from "lucide-react";
 const pages = [
   { name: 'Home', path: '/ui/home' },
   { name: 'Models', path: '/ui/models' },
+  { name: 'ModelFiles', path: '/ui/modelfiles' }, // Add this line
 ];
 
 export default function PageNavigation() {
