@@ -20,6 +20,8 @@ pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
 pub struct ListQueryParams {
   page: Option<usize>,
   page_size: Option<usize>,
+  sort: Option<String>,
+  sort_order: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -145,8 +147,10 @@ pub async fn list_local_aliases_handler(
 ) -> Result<Json<ListAliasesResponse>, HttpError> {
   let page = params.page.unwrap_or(1).max(1);
   let page_size = params.page_size.unwrap_or(30).min(100);
+  let sort = params.sort.unwrap_or_else(|| "name".to_string());
+  let sort_order = params.sort_order.unwrap_or_else(|| "asc".to_string());
 
-  let aliases = state
+  let mut aliases = state
     .app_service()
     .data_service()
     .list_aliases()
@@ -156,6 +160,22 @@ pub async fn list_local_aliases_handler(
         .build()
         .unwrap()
     })?;
+
+  // Sort the aliases based on the specified column and order
+  aliases.sort_by(|a, b| {
+    let cmp = match sort.as_str() {
+      "name" => a.alias.cmp(&b.alias),
+      "family" => a.family.cmp(&b.family),
+      "repo" => a.repo.cmp(&b.repo),
+      "filename" => a.filename.cmp(&b.filename),
+      _ => a.alias.cmp(&b.alias), // Default to sorting by name
+    };
+    if sort_order.to_lowercase() == "desc" {
+      cmp.reverse()
+    } else {
+      cmp
+    }
+  });
 
   let total = aliases.len();
   let start = (page - 1) * page_size;
@@ -308,6 +328,26 @@ mod tests {
     };
 
     assert_eq!(first_alias, &expected);
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_list_local_aliases_sorting(app: Router) -> anyhow::Result<()> {
+    let response = app
+      .oneshot(
+        Request::get("/api/aliases?sort=family&sort_order=desc")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?
+      .json::<ListAliasesResponse>()
+      .await?;
+
+    assert!(!response.data.is_empty());
+    let families: Vec<_> = response.data.iter().map(|a| &a.family).collect();
+    assert!(families.windows(2).all(|w| w[0] >= w[1]));
+
     Ok(())
   }
 }
