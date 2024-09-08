@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import AppHeader from '@/components/AppHeader';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, ArrowUpDown } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { DataTable, SortState, Pagination } from '@/components/DataTable';
+import { TableCell } from "@/components/ui/table";
 
 interface Model {
   alias: string;
@@ -27,12 +25,13 @@ interface ModelsResponse {
   page_size: number;
 }
 
-type SortDirection = 'asc' | 'desc';
-
-interface SortState {
-  column: string;
-  direction: SortDirection;
-}
+const columns = [
+  { id: 'alias', name: 'Name' },
+  { id: 'family', name: 'Family' },
+  { id: 'repo', name: 'Repo' },
+  { id: 'filename', name: 'Filename' },
+  { id: 'features', name: 'Features' },
+];
 
 export default function ModelsPage() {
   const [models, setModels] = useState<Model[]>([]);
@@ -72,104 +71,52 @@ export default function ModelsPage() {
     setPage(1); // Reset to first page when sorting
   };
 
-  const renderSortIcon = (column: string) => {
-    if (sort.column !== column) {
-      return <ArrowUpDown className="ml-2 h-4 w-4" />;
-    }
-    return sort.direction === 'asc' ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />;
-  };
+  const getItemId = (model: Model) => model.alias;
 
-  const toggleRowExpansion = (name: string) => {
-    setExpandedRow(expandedRow === name ? null : name);
-  };
+  const renderRow = (model: Model) => (
+    <>
+      <TableCell>{model.alias}</TableCell>
+      <TableCell>{model.family || ''}</TableCell>
+      <TableCell>{model.repo}</TableCell>
+      <TableCell>{model.filename}</TableCell>
+      <TableCell>{model.features.join(', ')}</TableCell>
+    </>
+  );
+
+  const renderExpandedRow = (model: Model) => (
+    <div className="p-4 bg-gray-50">
+      <h4 className="font-semibold">Additional Details:</h4>
+      <p>SHA: {model.snapshot}</p>
+      <p>Template: {model.chat_template}</p>
+      <h5 className="font-semibold mt-2">Parameters:</h5>
+      <p>Model: {JSON.stringify(model.model_params)}</p>
+      <p>Request: {JSON.stringify(model.request_params)}</p>
+      <p>Context: {JSON.stringify(model.context_params)}</p>
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <AppHeader />
-      {loading ? (
-        <div className="space-y-2">
-          {[...Array(5)].map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
-          ))}
-        </div>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {['Name', 'Family', 'Repo', 'Filename'].map((header) => (
-                <TableHead key={header}>
-                  <Button
-                    variant="ghost"
-                    onClick={() => toggleSort(header.toLowerCase())}
-                    className="font-bold"
-                  >
-                    {header}
-                    {renderSortIcon(header.toLowerCase())}
-                  </Button>
-                </TableHead>
-              ))}
-              <TableHead>Features</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {models.map((model) => (
-              <>
-                <TableRow key={model.alias}>
-                  <TableCell>{model.alias}</TableCell>
-                  <TableCell>{model.family || ''}</TableCell>
-                  <TableCell>{model.repo}</TableCell>
-                  <TableCell>{model.filename}</TableCell>
-                  <TableCell>{model.features.join(', ')}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleRowExpansion(model.alias)}
-                    >
-                      {expandedRow === model.alias ? <ChevronUp /> : <ChevronDown />}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-                {expandedRow === model.alias && (
-                  <TableRow>
-                    <TableCell colSpan={5}>
-                      <div className="p-4 bg-gray-50">
-                        <h4 className="font-semibold">Additional Details:</h4>
-                        <p>SHA: {model.snapshot}</p>
-                        <p>Template: {model.chat_template}</p>
-                        <h5 className="font-semibold mt-2">Parameters:</h5>
-                        <p>Model: {JSON.stringify(model.model_params)}</p>
-                        <p>Request: {JSON.stringify(model.request_params)}</p>
-                        <p>Context: {JSON.stringify(model.context_params)}</p>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <DataTable
+        data={models}
+        columns={columns}
+        loading={loading}
+        sort={sort}
+        onSortChange={toggleSort}
+        renderRow={renderRow}
+        renderExpandedRow={renderExpandedRow}
+        getItemId={getItemId}
+      />
       <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
         <div className="mb-2 sm:mb-0">
           Displaying {models.length} items of {totalItems}
         </div>
-        <div className="flex items-center space-x-4">
-          <Button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            Previous
-          </Button>
-          <span>Page {page} of {totalPages}</span>
-          <Button
-            onClick={() => setPage(p => p + 1)}
-            disabled={page === totalPages}
-          >
-            Next
-          </Button>
-        </div>
+        <Pagination
+          page={page}
+          totalPages={totalPages}
+          onPageChange={setPage}
+        />
       </div>
     </div>
   );

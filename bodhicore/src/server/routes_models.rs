@@ -1,6 +1,6 @@
 use super::RouterStateFn;
 use crate::{
-  objs::{Alias, GptContextParams, OAIRequestParams},
+  objs::{Alias, GptContextParams, HubFile, OAIRequestParams},
   service::{HttpError, HttpErrorBuilder},
 };
 use axum::{
@@ -12,20 +12,24 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 use std::{collections::HashMap, sync::Arc};
 
-pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
-  Router::new().route("/models", get(list_local_aliases_handler))
-}
-
-#[derive(Deserialize)]
-pub struct ListQueryParams {
+#[derive(Serialize, Deserialize)]
+pub struct PaginationSortParams {
   page: Option<usize>,
   page_size: Option<usize>,
   sort: Option<String>,
   sort_order: Option<String>,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct PaginatedResponse<T> {
+  data: Vec<T>,
+  total: usize,
+  page: usize,
+  page_size: usize,
+}
+
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-struct ListAliasResponse {
+pub struct AliasResponse {
   alias: String,
   family: Option<String>,
   repo: String,
@@ -39,16 +43,29 @@ struct ListAliasResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct ListAliasesResponse {
-  data: Vec<ListAliasResponse>,
-  total: usize,
-  page: usize,
-  page_size: usize,
+pub struct LocalModelResponse {
+  repo: String,
+  filename: String,
+  snapshot: String,
+  size: Option<u64>,
+  model_params: HashMap<String, Value>,
 }
 
-impl From<Alias> for ListAliasResponse {
+impl From<HubFile> for LocalModelResponse {
+  fn from(model: HubFile) -> Self {
+    LocalModelResponse {
+      repo: model.repo.to_string(),
+      filename: model.filename,
+      snapshot: model.snapshot,
+      size: model.size,
+      model_params: HashMap::new(),
+    }
+  }
+}
+
+impl From<Alias> for AliasResponse {
   fn from(alias: Alias) -> Self {
-    ListAliasResponse {
+    AliasResponse {
       alias: alias.alias,
       family: alias.family,
       repo: alias.repo.to_string(),
@@ -141,14 +158,17 @@ impl From<GptContextParams> for HashMap<String, Value> {
   }
 }
 
+pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
+  Router::new()
+    .route("/models", get(list_local_aliases_handler))
+    .route("/modelfiles", get(list_local_modelfiles_handler))
+}
+
 pub async fn list_local_aliases_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
-  Query(params): Query<ListQueryParams>,
-) -> Result<Json<ListAliasesResponse>, HttpError> {
-  let page = params.page.unwrap_or(1).max(1);
-  let page_size = params.page_size.unwrap_or(30).min(100);
-  let sort = params.sort.unwrap_or_else(|| "name".to_string());
-  let sort_order = params.sort_order.unwrap_or_else(|| "asc".to_string());
+  Query(params): Query<PaginationSortParams>,
+) -> Result<Json<PaginatedResponse<AliasResponse>>, HttpError> {
+  let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
 
   let mut aliases = state
     .app_service()
@@ -161,14 +181,78 @@ pub async fn list_local_aliases_handler(
         .unwrap()
     })?;
 
-  // Sort the aliases based on the specified column and order
+  sort_aliases(&mut aliases, &sort, &sort_order);
+
+  let total = aliases.len();
+  let (start, end) = calculate_pagination(page, page_size, total);
+
+  let data: Vec<AliasResponse> = aliases
+    .into_iter()
+    .skip(start)
+    .take(end - start)
+    .map(AliasResponse::from)
+    .collect();
+
+  Ok(Json(PaginatedResponse {
+    data,
+    total,
+    page,
+    page_size,
+  }))
+}
+
+pub async fn list_local_modelfiles_handler(
+  State(state): State<Arc<dyn RouterStateFn>>,
+  Query(params): Query<PaginationSortParams>,
+) -> Result<Json<PaginatedResponse<LocalModelResponse>>, HttpError> {
+  let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
+
+  let mut models = state.app_service().hub_service().list_local_models();
+
+  sort_models(&mut models, &sort, &sort_order);
+
+  let total = models.len();
+  let (start, end) = calculate_pagination(page, page_size, total);
+
+  let data: Vec<LocalModelResponse> = models
+    .into_iter()
+    .skip(start)
+    .take(end - start)
+    .map(Into::into)
+    .collect();
+
+  Ok(Json(PaginatedResponse {
+    data,
+    total,
+    page,
+    page_size,
+  }))
+}
+
+// Helper functions
+
+fn extract_pagination_sort_params(params: PaginationSortParams) -> (usize, usize, String, String) {
+  let page = params.page.unwrap_or(1).max(1);
+  let page_size = params.page_size.unwrap_or(30).min(100);
+  let sort = params.sort.unwrap_or_else(|| "name".to_string());
+  let sort_order = params.sort_order.unwrap_or_else(|| "asc".to_string());
+  (page, page_size, sort, sort_order)
+}
+
+fn calculate_pagination(page: usize, page_size: usize, total: usize) -> (usize, usize) {
+  let start = (page - 1) * page_size;
+  let end = (start + page_size).min(total);
+  (start, end)
+}
+
+fn sort_aliases(aliases: &mut Vec<Alias>, sort: &str, sort_order: &str) {
   aliases.sort_by(|a, b| {
-    let cmp = match sort.as_str() {
+    let cmp = match sort {
       "name" => a.alias.cmp(&b.alias),
       "family" => a.family.cmp(&b.family),
       "repo" => a.repo.cmp(&b.repo),
       "filename" => a.filename.cmp(&b.filename),
-      _ => a.alias.cmp(&b.alias), // Default to sorting by name
+      _ => a.alias.cmp(&b.alias),
     };
     if sort_order.to_lowercase() == "desc" {
       cmp.reverse()
@@ -176,24 +260,23 @@ pub async fn list_local_aliases_handler(
       cmp
     }
   });
+}
 
-  let total = aliases.len();
-  let start = (page - 1) * page_size;
-  let end = (start + page_size).min(total);
-
-  let data: Vec<ListAliasResponse> = aliases
-    .into_iter()
-    .skip(start)
-    .take(end - start)
-    .map(ListAliasResponse::from)
-    .collect();
-
-  Ok(Json(ListAliasesResponse {
-    data,
-    total,
-    page,
-    page_size,
-  }))
+fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
+  models.sort_by(|a, b| {
+    let cmp = match sort {
+      "repo" => a.repo.cmp(&b.repo),
+      "filename" => a.filename.cmp(&b.filename),
+      "snapshot" => a.snapshot.cmp(&b.snapshot),
+      "size" => a.size.cmp(&b.size),
+      _ => a.repo.cmp(&b.repo),
+    };
+    if sort_order.to_lowercase() == "desc" {
+      cmp.reverse()
+    } else {
+      cmp
+    }
+  });
 }
 
 #[cfg(test)]
@@ -299,7 +382,7 @@ mod tests {
     let response = app
       .oneshot(Request::get("/api/aliases").body(Body::empty()).unwrap())
       .await?
-      .json::<ListAliasesResponse>()
+      .json::<PaginatedResponse<AliasResponse>>()
       .await?;
 
     assert!(!response.data.is_empty());
@@ -314,7 +397,7 @@ mod tests {
     let context_params = maplit::hashmap! {
       "n_keep".to_string() => Value::Number(Number::from(24)),
     };
-    let expected = ListAliasResponse {
+    let expected = AliasResponse {
       alias: "llama3:instruct".to_string(),
       family: Some("llama3".to_string()),
       repo: "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string(),
@@ -341,7 +424,7 @@ mod tests {
           .unwrap(),
       )
       .await?
-      .json::<ListAliasesResponse>()
+      .json::<PaginatedResponse<AliasResponse>>()
       .await?;
 
     assert!(!response.data.is_empty());
