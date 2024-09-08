@@ -5,22 +5,23 @@ use crate::{
     default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo, REFS_MAIN,
     TOKENIZER_CONFIG_JSON,
   },
-  service::AppServiceFn,
+  service::{AppServiceFn, HubServiceError},
 };
 use std::sync::Arc;
 
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(test, derive(derive_new::new, derive_builder::Builder))]
+#[derive(Debug, Clone, PartialEq, derive_builder::Builder)]
 #[allow(clippy::too_many_arguments)]
 pub struct CreateCommand {
-  alias: String,
-  repo: Repo,
-  filename: String,
-  chat_template: ChatTemplate,
-  family: Option<String>,
-  force: bool,
-  oai_request_params: OAIRequestParams,
-  context_params: GptContextParams,
+  pub alias: String,
+  pub repo: Repo,
+  pub filename: String,
+  pub chat_template: ChatTemplate,
+  pub family: Option<String>,
+  pub force: bool,
+  #[builder(default = "true")]
+  pub auto_download: bool,
+  pub oai_request_params: OAIRequestParams,
+  pub context_params: GptContextParams,
 }
 
 impl TryFrom<Command> for CreateCommand {
@@ -57,6 +58,7 @@ impl TryFrom<Command> for CreateCommand {
           chat_template,
           family,
           force,
+          auto_download: true,
           oai_request_params,
           context_params,
         };
@@ -88,9 +90,20 @@ impl CreateCommand {
         );
         local_model_file
       }
-      None => service
-        .hub_service()
-        .download(&self.repo, &self.filename, self.force)?,
+      None => {
+        if self.auto_download {
+          service
+            .hub_service()
+            .download(&self.repo, &self.filename, self.force)?
+        } else {
+          return Err(BodhiError::HubServiceError(
+            HubServiceError::ModelFileMissing {
+              filename: self.filename.clone(),
+              repo: self.repo.clone().to_string(),
+            },
+          ));
+        }
+      }
     };
     let chat_template_repo = Repo::try_from(self.chat_template.clone())?;
     let tokenizer_file = service.hub_service().find_local_file(
@@ -172,6 +185,7 @@ mod test {
     chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
     family: Some("testalias".to_string()),
     force: false,
+    auto_download: true,
     oai_request_params: OAIRequestParams::default(),
     context_params: GptContextParams::default(),
   })]
@@ -206,6 +220,7 @@ mod test {
       chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
       family: None,
       force: false,
+      auto_download: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     };

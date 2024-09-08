@@ -9,6 +9,8 @@ use walkdir::WalkDir;
 
 #[derive(Debug, thiserror::Error)]
 pub enum HubServiceError {
+  #[error("file '{filename}' not found in $HF_HOME repo '{repo}'")]
+  ModelFileMissing { filename: String, repo: String },
   #[error(transparent)]
   ApiError(#[from] ApiError),
   #[error(

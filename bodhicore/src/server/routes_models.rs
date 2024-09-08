@@ -1,16 +1,23 @@
 use super::RouterStateFn;
+use crate::objs::{ChatTemplate, Repo};
+use crate::CreateCommand;
 use crate::{
   objs::{Alias, GptContextParams, HubFile, OAIRequestParams},
   service::{HttpError, HttpErrorBuilder},
 };
+use axum::extract::rejection::JsonRejection;
+use axum::response::{IntoResponse, Response};
 use axum::{
   extract::{Query, State},
-  routing::get,
+  routing::{get, post},
   Json, Router,
 };
+use axum_extra::extract::WithRejection;
+use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
-use serde_json::{Number, Value};
+use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
+use validator::Validate;
 
 #[derive(Serialize, Deserialize)]
 pub struct PaginationSortParams {
@@ -80,87 +87,10 @@ impl From<Alias> for AliasResponse {
   }
 }
 
-impl From<OAIRequestParams> for HashMap<String, Value> {
-  fn from(value: OAIRequestParams) -> Self {
-    let mut map = HashMap::new();
-    if let Some(frequency_penalty) = value.frequency_penalty {
-      map.insert(
-        "frequency_penalty".to_string(),
-        Value::Number(Number::from_f64(frequency_penalty.into()).unwrap()),
-      );
-    }
-    if let Some(max_tokens) = value.max_tokens {
-      map.insert(
-        "max_tokens".to_string(),
-        Value::Number(Number::from(max_tokens)),
-      );
-    }
-    if let Some(presence_penalty) = value.presence_penalty {
-      map.insert(
-        "presence_penalty".to_string(),
-        Value::Number(Number::from_f64(presence_penalty.into()).unwrap()),
-      );
-    }
-    if let Some(seed) = value.seed {
-      map.insert("seed".to_string(), Value::Number(Number::from(seed)));
-    }
-    if let Some(temperature) = value.temperature {
-      map.insert(
-        "temperature".to_string(),
-        Value::Number(Number::from_f64(temperature.into()).unwrap()),
-      );
-    }
-    if let Some(top_p) = value.top_p {
-      map.insert(
-        "top_p".to_string(),
-        Value::Number(Number::from_f64(top_p.into()).unwrap()),
-      );
-    }
-    map.insert(
-      "stop".to_string(),
-      Value::Array(value.stop.into_iter().map(Value::String).collect()),
-    );
-    map
-  }
-}
-
-impl From<GptContextParams> for HashMap<String, Value> {
-  fn from(value: GptContextParams) -> Self {
-    let mut map = HashMap::new();
-    if let Some(n_seed) = value.n_seed {
-      map.insert("n_seed".to_string(), Value::Number(Number::from(n_seed)));
-    }
-    if let Some(n_threads) = value.n_threads {
-      map.insert(
-        "n_threads".to_string(),
-        Value::Number(Number::from(n_threads)),
-      );
-    }
-    if let Some(n_ctx) = value.n_ctx {
-      map.insert("n_ctx".to_string(), Value::Number(Number::from(n_ctx)));
-    }
-    if let Some(n_parallel) = value.n_parallel {
-      map.insert(
-        "n_parallel".to_string(),
-        Value::Number(Number::from(n_parallel)),
-      );
-    }
-    if let Some(n_predict) = value.n_predict {
-      map.insert(
-        "n_predict".to_string(),
-        Value::Number(Number::from(n_predict)),
-      );
-    }
-    if let Some(n_keep) = value.n_keep {
-      map.insert("n_keep".to_string(), Value::Number(Number::from(n_keep)));
-    }
-    map
-  }
-}
-
 pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
   Router::new()
     .route("/models", get(list_local_aliases_handler))
+    .route("/models", post(create_alias_handler))
     .route("/modelfiles", get(list_local_modelfiles_handler))
 }
 
@@ -245,7 +175,7 @@ fn calculate_pagination(page: usize, page_size: usize, total: usize) -> (usize, 
   (start, end)
 }
 
-fn sort_aliases(aliases: &mut Vec<Alias>, sort: &str, sort_order: &str) {
+fn sort_aliases(aliases: &mut [Alias], sort: &str, sort_order: &str) {
   aliases.sort_by(|a, b| {
     let cmp = match sort {
       "name" => a.alias.cmp(&b.alias),
@@ -279,6 +209,101 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
   });
 }
 
+#[derive(Debug, Serialize, Deserialize, Validate)]
+pub struct CreateAliasRequest {
+  alias: String,
+  repo: Repo,
+  filename: String,
+  chat_template: ChatTemplate,
+  family: Option<String>,
+  request_params: Option<OAIRequestParams>,
+  context_params: Option<GptContextParams>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum CreateAliasError {
+  #[error("invalid request: {0}")]
+  JsonRejection(#[from] JsonRejection),
+  #[error("alias not found: {0}")]
+  AliasNotFound(String),
+  #[error("failed to create alias: {0}")]
+  CommandError(String),
+}
+
+impl From<CreateAliasError> for HttpError {
+  fn from(err: CreateAliasError) -> Self {
+    let (r#type, code, msg, status) = match err {
+      CreateAliasError::JsonRejection(msg) => (
+        "invalid_request_error",
+        "invalid_value",
+        msg.to_string(),
+        StatusCode::BAD_REQUEST,
+      ),
+      CreateAliasError::AliasNotFound(msg) => {
+        ("alias_not_found", "not_found", msg, StatusCode::NOT_FOUND)
+      }
+      CreateAliasError::CommandError(msg) => (
+        "invalid_request_error",
+        "command_error",
+        msg,
+        StatusCode::BAD_REQUEST,
+      ),
+    };
+    HttpErrorBuilder::default()
+      .status_code(status)
+      .r#type(r#type)
+      .code(code)
+      .message(&msg)
+      .build()
+      .unwrap()
+  }
+}
+
+impl IntoResponse for CreateAliasError {
+  fn into_response(self) -> Response {
+    let err = HttpError::from(self);
+    (err.status_code, Json(err.body)).into_response()
+  }
+}
+
+impl TryFrom<CreateAliasRequest> for CreateCommand {
+  type Error = CreateAliasError;
+
+  fn try_from(value: CreateAliasRequest) -> Result<Self, Self::Error> {
+    let result = CreateCommand {
+      alias: value.alias,
+      repo: value.repo,
+      filename: value.filename,
+      chat_template: value.chat_template,
+      family: value.family,
+      force: false,
+      auto_download: false,
+      oai_request_params: value.request_params.unwrap_or_default(),
+      context_params: value.context_params.unwrap_or_default(),
+    };
+    Ok(result)
+  }
+}
+
+pub async fn create_alias_handler(
+  State(state): State<Arc<dyn RouterStateFn>>,
+  WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, CreateAliasError>,
+) -> Result<(StatusCode, Json<AliasResponse>), CreateAliasError> {
+  let command = CreateCommand::try_from(payload)?;
+  let alias = command.alias.clone();
+  match command.execute(state.app_service()) {
+    Ok(()) => {
+      let alias = state
+        .app_service()
+        .data_service()
+        .find_alias(&alias)
+        .ok_or_else(|| CreateAliasError::AliasNotFound(alias))?;
+      Ok((StatusCode::CREATED, Json(AliasResponse::from(alias))))
+    }
+    Err(err) => Err(CreateAliasError::CommandError(err.to_string())),
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -296,6 +321,7 @@ mod tests {
   fn app() -> Router {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
+      .with_hub_service()
       .build()
       .unwrap();
     let service = Arc::new(service);
@@ -303,18 +329,17 @@ mod tests {
     router_state
       .expect_app_service()
       .returning(move || service.clone());
-
-    let app = Router::new()
-      .route("/api/aliases", get(list_local_aliases_handler))
-      .with_state(Arc::new(router_state));
-    app
+    Router::new()
+      .route("/api/models", get(list_local_aliases_handler))
+      .route("/api/models", post(create_alias_handler))
+      .with_state(Arc::new(router_state))
   }
 
   #[rstest]
   #[tokio::test]
   async fn test_list_local_aliases_handler(app: Router) -> anyhow::Result<()> {
     let response = app
-      .oneshot(Request::get("/api/aliases").body(Body::empty()).unwrap())
+      .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
       .await?
       .json::<Value>()
       .await?;
@@ -335,7 +360,7 @@ mod tests {
   async fn test_list_local_aliases_page_size(app: Router) -> anyhow::Result<()> {
     let response = app
       .oneshot(
-        Request::get("/api/aliases?page=2&page_size=2")
+        Request::get("/api/models?page=2&page_size=2")
           .body(Body::empty())
           .unwrap(),
       )
@@ -355,7 +380,7 @@ mod tests {
   async fn test_list_local_aliases_over_limit_page_size(app: Router) -> anyhow::Result<()> {
     let response = app
       .oneshot(
-        Request::get("/api/aliases?page_size=150")
+        Request::get("/api/models?page_size=150")
           .body(Body::empty())
           .unwrap(),
       )
@@ -379,11 +404,11 @@ mod tests {
       .returning(move || service.clone());
 
     let app = Router::new()
-      .route("/api/aliases", get(list_local_aliases_handler))
+      .route("/api/models", get(list_local_aliases_handler))
       .with_state(Arc::new(router_state));
 
     let response = app
-      .oneshot(Request::get("/api/aliases").body(Body::empty()).unwrap())
+      .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
       .await?
       .json::<PaginatedResponse<AliasResponse>>()
       .await?;
@@ -422,7 +447,7 @@ mod tests {
   async fn test_list_local_aliases_sorting(app: Router) -> anyhow::Result<()> {
     let response = app
       .oneshot(
-        Request::get("/api/aliases?sort=family&sort_order=desc")
+        Request::get("/api/models?sort=family&sort_order=desc")
           .body(Body::empty())
           .unwrap(),
       )
@@ -433,6 +458,95 @@ mod tests {
     assert!(!response.data.is_empty());
     let families: Vec<_> = response.data.iter().map(|a| &a.family).collect();
     assert!(families.windows(2).all(|w| w[0] >= w[1]));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_create_alias_handler(app: Router) -> anyhow::Result<()> {
+    let payload = serde_json::json!({
+      "alias": "test:alias",
+      "repo": "FakeFactory/fakemodel-gguf",
+      "filename": "fakemodel.Q4_0.gguf",
+      "chat_template": "llama3",
+      "family": "test_family",
+      "request_params": {
+        "temperature": 0.7
+      },
+      "context_params": {
+        "n_ctx": 2048
+      }
+    });
+
+    let response = app
+      .oneshot(
+        Request::post("/api/models")
+          .header("Content-Type", "application/json")
+          .body(Body::from(serde_json::to_string(&payload)?))
+          .unwrap(),
+      )
+      .await?;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let response = response.json::<AliasResponse>().await?;
+    assert_eq!(
+      response,
+      AliasResponse {
+        alias: "test:alias".to_string(),
+        family: Some("test_family".to_string()),
+        repo: "FakeFactory/fakemodel-gguf".to_string(),
+        filename: "fakemodel.Q4_0.gguf".to_string(),
+        chat_template: "llama3".to_string(),
+        snapshot: "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
+        features: vec!["chat".to_string()],
+        model_params: HashMap::new(),
+        request_params: OAIRequestParamsBuilder::default()
+          .temperature(0.7)
+          .build()
+          .unwrap(),
+        context_params: GptContextParamsBuilder::default()
+          .n_ctx(2048)
+          .build()
+          .unwrap(),
+      }
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_create_alias_handler_non_existent_repo(app: Router) -> anyhow::Result<()> {
+    let payload = serde_json::json!({
+      "alias": "test:newalias",
+      "repo": "FakeFactory/not-exists",
+      "filename": "fakemodel.Q4_0.gguf",
+      "chat_template": "llama3",
+      "family": "test_family",
+      "request_params": {
+        "temperature": 0.7
+      },
+      "context_params": {
+        "n_ctx": 2048
+      }
+    });
+
+    let response = app
+      .oneshot(
+        Request::post("/api/models")
+          .header("Content-Type", "application/json")
+          .body(Body::from(serde_json::to_string(&payload)?))
+          .unwrap(),
+      )
+      .await?;
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    // assert_eq!("", response.text().await?);
+    let error_body: Value = response.json().await?;
+    assert_eq!(error_body["type"], "invalid_request_error");
+    assert_eq!(error_body["code"], "command_error");
+    assert!(error_body["message"]
+      .as_str()
+      .unwrap()
+      .contains("file 'fakemodel.Q4_0.gguf' not found in $HF_HOME repo 'FakeFactory/not-exists'"));
 
     Ok(())
   }
