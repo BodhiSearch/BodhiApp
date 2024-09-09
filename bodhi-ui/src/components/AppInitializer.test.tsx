@@ -82,7 +82,7 @@ describe('AppInitializer', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Unexpected response from server')
+        screen.getByText(/Unable to connect to backend/, { exact: false })
       ).toBeInTheDocument();
     });
   });
@@ -224,7 +224,7 @@ describe('AppInitializer', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Unexpected response from server')
+        screen.getByText(/Unable to connect to backend/, { exact: false })
       ).toBeInTheDocument();
       expect(screen.queryByText('Child content')).not.toBeInTheDocument();
     });
