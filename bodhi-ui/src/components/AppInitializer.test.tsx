@@ -13,6 +13,10 @@ import {
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import AppInitializer from './AppInitializer';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { Toaster } from '@/components/ui/toaster';
+import { ReactNode } from 'react';
+import { waitForElementToBeRemoved } from '@testing-library/react';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -33,6 +37,33 @@ beforeEach(() => {
   pushMock.mockClear();
 });
 
+// Modify the createWrapper function
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        // Add this to prevent initial automatic refetching
+        refetchOnMount: false,
+      },
+    },
+  });
+  return ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      {children}
+    </QueryClientProvider>
+  );
+};
+
+// Add this helper function
+const renderWithSetup = async (ui: React.ReactElement) => {
+  const wrapper = createWrapper();
+  const rendered = render(ui, { wrapper });
+  // Wait for the loading state to disappear
+  await waitForElementToBeRemoved(() => rendered.getByText('Initializing app...'));
+  return rendered;
+};
+
 describe('AppInitializer', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -46,13 +77,12 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(<AppInitializer />);
+    await renderWithSetup(<AppInitializer />);
 
-    await waitFor(() => {
-      expect(
-        screen.getByText(/Unable to connect to backend/)
-      ).toBeInTheDocument();
-    });
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent('Error');
+    expect(alert).toHaveTextContent('API Error');
   });
 
   it('redirects to /ui/setup when status is setup and no allowedStatus is provided', async () => {
@@ -62,11 +92,9 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(<AppInitializer />);
+    await renderWithSetup(<AppInitializer />);
 
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
-    });
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
   it('redirects to /ui/home when status is ready and no allowedStatus is provided', async () => {
@@ -76,11 +104,9 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(<AppInitializer />);
+    await renderWithSetup(<AppInitializer />);
 
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/home');
-    });
+    expect(pushMock).toHaveBeenCalledWith('/ui/home');
   });
 
   it('redirects to /ui/setup/resource-admin when status is resource-admin and no allowedStatus is provided', async () => {
@@ -90,11 +116,9 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(<AppInitializer />);
+    await renderWithSetup(<AppInitializer />);
 
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup/resource-admin');
-    });
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup/resource-admin');
   });
 
   it('displays error message for unexpected status when no allowedStatus is provided', async () => {
@@ -103,16 +127,12 @@ describe('AppInitializer', () => {
         return res(ctx.json({ status: 'unexpected' }));
       })
     );
-
-    render(<AppInitializer />);
-
+    await renderWithSetup(<AppInitializer />);
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          /unexpected \/app\/info status from server - unexpected/,
-          { exact: false }
-        )
-      ).toBeInTheDocument();
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('Error');
+      expect(alert).toHaveTextContent("unexpected status from /app/info endpoint - 'unexpected'");
     });
   });
 
@@ -123,11 +143,9 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(<AppInitializer allowedStatus="ready" />);
+    await renderWithSetup(<AppInitializer allowedStatus="ready" />);
 
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
-    });
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
   it('redirects to /ui/home when status is ready and allowedStatus is setup', async () => {
@@ -137,11 +155,9 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(<AppInitializer allowedStatus="setup" />);
+    await renderWithSetup(<AppInitializer allowedStatus="setup" />);
 
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/home');
-    });
+    expect(pushMock).toHaveBeenCalledWith('/ui/home');
   });
 
   it('does not redirect when status matches allowedStatus', async () => {
@@ -151,11 +167,9 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(<AppInitializer allowedStatus="ready" />);
+    await renderWithSetup(<AppInitializer allowedStatus="ready" />);
 
-    await waitFor(() => {
-      expect(pushMock).not.toHaveBeenCalled();
-    });
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it('displays children content if app status matches allowedStatus', async () => {
@@ -165,15 +179,13 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(
+    await renderWithSetup(
       <AppInitializer allowedStatus="ready">
         <div>Child content</div>
       </AppInitializer>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Child content')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Child content')).toBeInTheDocument();
   });
 
   it('does not display children content if app status does not match allowedStatus', async () => {
@@ -183,7 +195,7 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(
+    await renderWithSetup(
       <AppInitializer allowedStatus="ready">
         <div>Child content</div>
       </AppInitializer>
@@ -201,19 +213,14 @@ describe('AppInitializer', () => {
         return res(ctx.delay(100), ctx.json({ status: 'ready' }));
       })
     );
-
-    render(
-      <AppInitializer allowedStatus="ready">
-        <div>Child content</div>
-      </AppInitializer>
-    );
+    const wrapper = createWrapper();
+    const rendered = render(<AppInitializer allowedStatus="ready">
+      <div>Child content</div>
+    </AppInitializer>, { wrapper });
 
     expect(screen.getByText('Initializing app...')).toBeInTheDocument();
-
-    await waitFor(() => {
-      expect(screen.queryByText('Initializing app...')).not.toBeInTheDocument();
-      expect(screen.getByText('Child content')).toBeInTheDocument();
-    });
+    await waitForElementToBeRemoved(() => rendered.getByText('Initializing app...'));
+    expect(screen.getByText('Child content')).toBeInTheDocument();
   });
 
   it('displays error message and not children when API call fails', async () => {
@@ -223,36 +230,18 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(
+    await renderWithSetup(
       <AppInitializer allowedStatus="ready">
         <div>Child content</div>
       </AppInitializer>
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Unable to connect to backend/)
-      ).toBeInTheDocument();
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('Error');
+      expect(alert).toHaveTextContent('API Error');
       expect(screen.queryByText('Child content')).not.toBeInTheDocument();
-    });
-  });
-
-  it('displays children for any status when no allowedStatus is provided', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-
-    render(
-      <AppInitializer>
-        <div>Child content</div>
-      </AppInitializer>
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByText('Child content')).not.toBeInTheDocument();
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
     });
   });
 
@@ -263,19 +252,17 @@ describe('AppInitializer', () => {
       })
     );
 
-    render(
+    await renderWithSetup(
       <AppInitializer allowedStatus="ready">
         <div>Child content</div>
       </AppInitializer>
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText(
-          /unexpected \/app\/info status from server - unexpected/,
-          { exact: false }
-        )
-      ).toBeInTheDocument();
+      const alert = screen.getByRole('alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('Error');
+      expect(alert).toHaveTextContent("unexpected status from /app/info endpoint - 'unexpected'");
       expect(screen.queryByText('Child content')).not.toBeInTheDocument();
     });
   });

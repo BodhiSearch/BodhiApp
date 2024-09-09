@@ -76,7 +76,9 @@ pub struct SetupRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct SetupResponse {}
+pub struct SetupResponse {
+  status: String,
+}
 
 impl IntoResponse for SetupResponse {
   fn into_response(self) -> Response {
@@ -120,11 +122,15 @@ pub async fn setup_handler(
     set_secret(secret_service, KEY_APP_REG_INFO, &app_reg_info)?;
     secret_service.set_secret_string(KEY_APP_AUTHZ, "true")?;
     secret_service.set_secret_string(KEY_APP_STATUS, "resource-admin")?;
-    Ok(SetupResponse {})
+    Ok(SetupResponse {
+      status: "resource-admin".to_string(),
+    })
   } else {
     secret_service.set_secret_string(KEY_APP_AUTHZ, "false")?;
     secret_service.set_secret_string(KEY_APP_STATUS, "ready")?;
-    Ok(SetupResponse {})
+    Ok(SetupResponse {
+      status: "ready".to_string(),
+    })
   }
 }
 

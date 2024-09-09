@@ -15,45 +15,32 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import AppInitializer from '@/components/AppInitializer';
-
-interface AppInfo {
-  status: 'setup' | 'ready' | 'resource-admin' | string;
-}
+import { AppInfo, useAppSetup } from '@/hooks/useAppSetup';
 
 function SetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(searchParams.get('error'));
-  const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || '';
+  const { setup, isSettingUp, setupError } = useAppSetup();
 
   const handleSetup = async (authz: boolean) => {
-    setIsLoading(true);
     setError(null);
-
     try {
-      const response = await fetch(`${bodhi_url}/app/setup`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ authz }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data: AppInfo = await response.json();
-      if (data.status === 'ready') {
-        router.push('/ui/home');
-      } else if (data.status === 'resource-admin') {
+      const response: AppInfo = await setup(authz);
+      if (response.status === 'resource-admin') {
         router.push('/ui/setup/resource-admin');
+      } else if (response.status === 'ready') {
+        router.push('/ui/home');
+      } else {
+        setError(`Unexpected setup status: ${response.status}`);
       }
     } catch (err) {
-      setError('An unexpected error occurred');
-    } finally {
-      setIsLoading(false);
+      if (err instanceof Error) {
+        {/* @ts-ignore */}
+        setError(`Error while setting up app: ${err.response?.data?.message || err?.message}`);
+      } else {
+        setError(`An unexpected error occurred during setup`);
+      }
     }
   };
 
@@ -82,9 +69,9 @@ function SetupContent() {
             <Button
               className="w-full"
               onClick={() => handleSetup(true)}
-              disabled={isLoading}
+              disabled={isSettingUp}
             >
-              {isLoading ? (
+              {isSettingUp ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Setting up...
@@ -105,9 +92,9 @@ function SetupContent() {
               variant="outline"
               className="w-full"
               onClick={() => handleSetup(false)}
-              disabled={isLoading}
+              disabled={isSettingUp}
             >
-              {isLoading ? (
+              {isSettingUp ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Setting up...

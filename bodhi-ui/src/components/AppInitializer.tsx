@@ -1,13 +1,10 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-
-interface AppInfo {
-  status: 'setup' | 'ready' | 'resource-admin' | string;
-}
+import { useAppSetup } from '@/hooks/useAppSetup';
 
 interface AppInitializerProps {
   allowedStatus?: 'setup' | 'ready' | 'resource-admin';
@@ -19,59 +16,28 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
   children,
 }) => {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [error, setError] = useState<string | null>(searchParams.get('error'));
-  const [isInitialized, setIsInitialized] = useState(false);
-  const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || 'http://localhost:3000';
+  const { appInfo, isLoading, isError, error } = useAppSetup();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const initializeApp = async () => {
-      try {
-        const response = await fetch(`${bodhi_url}/app/info`);
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data: AppInfo = await response.json();
-
-        if (!allowedStatus || data.status !== allowedStatus) {
-          switch (data.status) {
-            case 'setup':
-              router.push('/ui/setup');
-              break;
-            case 'ready':
-              router.push('/ui/home');
-              break;
-            case 'resource-admin':
-              router.push('/ui/setup/resource-admin');
-              break;
-            default:
-              setError(
-                `unexpected /app/info status from server - ${data.status}`
-              );
-          }
-        } else {
-          setIsInitialized(true);
-        }
-      } catch (error) {
-        setError(
-          `Unable to connect to backend: '${bodhi_url}', error: ${error}`
-        );
+    if (appInfo && (!allowedStatus || appInfo.status !== allowedStatus)) {
+      switch (appInfo.status) {
+        case 'setup':
+          router.push('/ui/setup');
+          break;
+        case 'ready':
+          router.push('/ui/home');
+          break;
+        case 'resource-admin':
+          router.push('/ui/setup/resource-admin');
+          break;
+        default:
+          setErrorMessage(`unexpected status from /app/info endpoint - '${appInfo.status}'`);
       }
-    };
+    }
+  }, [router, allowedStatus, appInfo, errorMessage]);
 
-    initializeApp();
-  }, [router, bodhi_url, allowedStatus]);
-
-  if (error) {
-    return (
-      <Alert variant="destructive">
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  if (!isInitialized) {
+  if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
@@ -80,7 +46,32 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
     );
   }
 
-  return children ? <>{children}</> : null;
+  if (isError) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>
+          {/* @ts-ignore */}
+          {error?.response?.data?.message || 'An unexpected error occurred'}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Error</AlertTitle>
+        <AlertDescription>{errorMessage}</AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (appInfo && appInfo.status === allowedStatus) {
+    return children ? <>{children}</> : null;
+  }
+
+  return null;
 };
 
 export default AppInitializer;
