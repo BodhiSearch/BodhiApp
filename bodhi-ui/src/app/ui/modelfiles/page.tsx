@@ -16,11 +16,11 @@ const bytesToGB = (bytes: number | undefined): string => {
 };
 
 const columns = [
-  { id: 'repo', name: 'Repo' },
-  { id: 'filename', name: 'Filename' },
-  { id: 'size', name: 'Size (GB)' },
-  { id: 'updated_at', name: 'Updated At' },
-  { id: 'snapshot', name: 'Snapshot' },
+  { id: 'repo', name: 'Repo', sorted: true },
+  { id: 'filename', name: 'Filename', sorted: true },
+  { id: 'size', name: 'Size (GB)', sorted: true },
+  { id: 'updated_at', name: 'Updated At', sorted: true },
+  { id: 'snapshot', name: 'Snapshot', sorted: true },
 ];
 
 export default function ModelFilesPage() {

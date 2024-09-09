@@ -3,20 +3,25 @@
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from "@/components/ui/table";
 import { Model, ModelsResponse, SortState } from '@/types/models';
+import { Button } from "@/components/ui/button";
+import { Pencil } from 'lucide-react';
 
 const columns = [
-  { id: 'alias', name: 'Name' },
-  { id: 'family', name: 'Family' },
-  { id: 'repo', name: 'Repo' },
-  { id: 'filename', name: 'Filename' },
-  { id: 'features', name: 'Features' },
+  { id: 'alias', name: 'Name', sorted: true },
+  { id: 'family', name: 'Family', sorted: true },
+  { id: 'repo', name: 'Repo', sorted: true },
+  { id: 'filename', name: 'Filename', sorted: true },
+  { id: 'features', name: 'Features', sorted: false },
+  { id: 'actions', name: 'Actions', sorted: false },
 ];
 
 export default function ModelsPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
   const [sort, setSort] = useState<SortState>({ column: 'alias', direction: 'asc' });
@@ -49,6 +54,10 @@ export default function ModelsPage() {
 
   const getItemId = (model: Model) => model.alias;
 
+  const handleEdit = (alias: string) => {
+    router.push(`/ui/models/edit?alias=${alias}`);
+  };
+
   const renderRow = (model: Model) => (
     <>
       <TableCell>{model.alias}</TableCell>
@@ -56,6 +65,16 @@ export default function ModelsPage() {
       <TableCell>{model.repo}</TableCell>
       <TableCell>{model.filename}</TableCell>
       <TableCell>{model.features.join(', ')}</TableCell>
+      <TableCell>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleEdit(model.alias)}
+          title={`Edit ${model.alias}`}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      </TableCell>
     </>
   );
 

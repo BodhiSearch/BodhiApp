@@ -29,4 +29,4 @@ export const createAliasSchema = z.object({
   context_params: contextParamsSchema,
 });
 
-export type CreateAliasFormData = z.infer<typeof createAliasSchema>;
+export type AliasFormData = z.infer<typeof createAliasSchema>;
