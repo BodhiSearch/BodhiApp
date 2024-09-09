@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
@@ -20,7 +20,9 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
   const [error, setError] = useState<string | null>(searchParams.get('error'));
   const [isInitialized, setIsInitialized] = useState(false);
   const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || '';
-  const bodhiBackend = new BodhiBackend(bodhi_url);
+  const bodhiBackend = useMemo(() => {
+    return new BodhiBackend(bodhi_url);
+  }, [bodhi_url]);
 
   useEffect(() => {
     const initializeApp = async () => {

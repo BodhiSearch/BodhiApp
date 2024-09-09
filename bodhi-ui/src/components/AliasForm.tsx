@@ -21,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -211,6 +210,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
       <FormField
         key={key}
         control={form.control}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         name={`${paramType}.${key}` as any}
         render={({ field: formField }) => (
           <FormItem>
@@ -398,11 +398,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 )}
               </CardHeader>
               <CardContent
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                  isRequestExpanded
-                    ? 'max-h-[1000px] opacity-100'
-                    : 'max-h-0 opacity-0'
-                }`}
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${isRequestExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
               >
                 {renderParamFields('request_params')}
               </CardContent>
@@ -423,11 +419,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 )}
               </CardHeader>
               <CardContent
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                  isContextExpanded
-                    ? 'max-h-[1000px] opacity-100'
-                    : 'max-h-0 opacity-0'
-                }`}
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${isContextExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
               >
                 {renderParamFields('context_params')}
               </CardContent>

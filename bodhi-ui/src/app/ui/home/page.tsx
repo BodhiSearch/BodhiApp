@@ -4,7 +4,6 @@ import { Suspense } from 'react';
 import { useEffect, useState } from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import AppHeader from '@/components/AppHeader';
-import PageNavigation from '@/components/PageNavigation';
 import {
   Card,
   CardContent,
@@ -14,6 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import Image from 'next/image';
 
 interface FeaturedModel {
   owner: string;
@@ -46,9 +46,11 @@ function HomeContent() {
           <Card key={index} className="flex flex-col bg-white">
             <CardHeader>
               <div className="flex items-center space-x-4">
-                <img
+                <Image
                   src={model.logo}
                   alt={model.modelname}
+                  width={64}
+                  height={64}
                   className="w-12 h-12 sm:w-16 sm:h-16"
                 />
                 <CardTitle className="text-lg sm:text-xl">
