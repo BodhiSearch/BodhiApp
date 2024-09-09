@@ -23,7 +23,7 @@ const columns = [
 export default function ModelsPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
+  const [pageSize] = useState(30);
   const [sort, setSort] = useState<SortState>({
     column: 'alias',
     direction: 'asc',
@@ -90,7 +90,6 @@ export default function ModelsPage() {
       <p>SHA: {model.snapshot}</p>
       <p>Template: {model.chat_template}</p>
       <h5 className="font-semibold mt-2">Parameters:</h5>
-      <p>Model: {JSON.stringify(model.model_params)}</p>
       <p>Request: {JSON.stringify(model.request_params)}</p>
       <p>Context: {JSON.stringify(model.context_params)}</p>
     </div>

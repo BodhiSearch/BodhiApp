@@ -6,9 +6,8 @@ export interface Model {
   snapshot: string;
   features: string[];
   chat_template: string;
-  model_params: Record<string, any>;
-  request_params: Record<string, any>;
-  context_params: Record<string, any>;
+  request_params: OAIRequestParams;
+  context_params: GptContextParams;
 }
 
 export interface ModelsResponse {
@@ -29,7 +28,6 @@ export interface ModelFile {
   size?: number;
   updated_at?: string;
   snapshot: string;
-  model_params: Record<string, any>;
 }
 
 export interface ModelFilesResponse {

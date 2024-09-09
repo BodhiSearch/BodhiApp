@@ -25,7 +25,7 @@ const columns = [
 
 export default function ModelFilesPage() {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
+  const [pageSize] = useState(30);
   const [sort, setSort] = useState<SortState>({
     column: 'filename',
     direction: 'asc',
@@ -79,8 +79,6 @@ export default function ModelFilesPage() {
 
   const renderExpandedRow = (modelFile: ModelFile) => (
     <div className="p-4 bg-gray-50">
-      <h4 className="font-semibold">Model Parameters:</h4>
-      <p>{JSON.stringify(modelFile.model_params)}</p>
       <h4 className="font-semibold mt-2">Full Snapshot:</h4>
       <p>{modelFile.snapshot}</p>
       {modelFile.size !== undefined && (
