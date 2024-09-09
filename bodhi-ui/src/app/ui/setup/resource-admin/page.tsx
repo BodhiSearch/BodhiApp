@@ -13,8 +13,6 @@ import {
 import Link from 'next/link';
 
 function ResourceAdminContent() {
-  const loginUrl = `${process.env.NEXT_PUBLIC_BODHI_URL}/app/login`;
-
   return (
     <Card className="w-full max-w-md mx-auto mt-10">
       <CardHeader>
@@ -24,7 +22,7 @@ function ResourceAdminContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Link href={loginUrl} passHref>
+        <Link href='/app/login' passHref>
           <Button className="w-full">Log In</Button>
         </Link>
       </CardContent>

@@ -5,13 +5,11 @@ export interface AppInfo {
   status: 'setup' | 'ready' | 'resource-admin' | string;
 }
 
-const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || '';
-
 export function useAppSetup() {
   const queryClient = useQueryClient();
 
   const getAppInfo = async (): Promise<AppInfo> => {
-    const response = await axios.get(`${bodhi_url}/app/info`);
+    const response = await axios.get(`/app/info`);
     return response.data;
   };
 
@@ -22,7 +20,7 @@ export function useAppSetup() {
 
   const setupMutation = useMutation<AppInfo, Error, boolean>(
     async (authz: boolean) => {
-      const response = await axios.post(`${bodhi_url}/app/setup`, { authz });
+      const response = await axios.post(`/app/setup`, { authz });
       return response.data;
     },
     {
