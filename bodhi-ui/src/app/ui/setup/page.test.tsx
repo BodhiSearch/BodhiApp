@@ -1,10 +1,25 @@
 'use client';
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import Setup from './page';
+import { Toaster } from '@/components/ui/toaster';
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}<Toaster /></QueryClientProvider>
+  );
+};
 
 // Mock the router
 const pushMock = vi.fn();
@@ -33,7 +48,18 @@ const server = setupServer(
   })
 );
 
-beforeAll(() => server.listen());
+beforeAll(() => {
+  // Suppress console errors
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    if (args[0]?.includes?.('Failed to load resource')) {
+      return;
+    }
+    originalConsoleError(...args);
+  };
+
+  server.listen({ onUnhandledRequest: 'bypass' });
+});
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 
@@ -50,7 +76,7 @@ describe('Setup Page', () => {
       })
     );
 
-    render(<Setup />);
+    render(<Setup />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText('Bodhi App Setup')).toBeInTheDocument();
@@ -64,7 +90,7 @@ describe('Setup Page', () => {
       })
     );
 
-    render(<Setup />);
+    render(<Setup />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/home');
@@ -78,7 +104,7 @@ describe('Setup Page', () => {
       })
     );
 
-    render(<Setup />);
+    render(<Setup />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/setup/resource-admin');
@@ -95,7 +121,7 @@ describe('Setup Page', () => {
       })
     );
 
-    render(<Setup />);
+    render(<Setup />, { wrapper: createWrapper() });
 
     const authButton = await screen.findByText(
       'Setup Authenticated Instance →'
@@ -117,7 +143,7 @@ describe('Setup Page', () => {
       })
     );
 
-    render(<Setup />);
+    render(<Setup />, { wrapper: createWrapper() });
 
     const unauthButton = await screen.findByText(
       'Setup Unauthenticated Instance →'
@@ -139,7 +165,7 @@ describe('Setup Page', () => {
       })
     );
 
-    render(<Setup />);
+    render(<Setup />, { wrapper: createWrapper() });
 
     const authButton = await screen.findByText(
       'Setup Authenticated Instance →'
@@ -148,7 +174,7 @@ describe('Setup Page', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('An unexpected error occurred')
+        screen.getByText('Error while setting up app: Setup failed')
       ).toBeInTheDocument();
     });
   });

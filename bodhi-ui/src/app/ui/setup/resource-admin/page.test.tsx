@@ -1,10 +1,24 @@
 'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import ResourceAdminPage from './page';
+
+const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  });
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+};
 
 // Mock the router
 const pushMock = vi.fn();
@@ -29,7 +43,19 @@ const server = setupServer(
   })
 );
 
-beforeAll(() => server.listen());
+beforeAll(() => {
+  // Suppress console errors
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    if (args[0]?.includes?.('Failed to load resource')) {
+      return;
+    }
+    originalConsoleError(...args);
+  };
+
+  server.listen({ onUnhandledRequest: 'bypass' });
+});
+
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 
@@ -46,7 +72,7 @@ describe('ResourceAdminPage', () => {
       })
     );
 
-    render(<ResourceAdminPage />);
+    render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByText('Resource Admin Setup')).toBeInTheDocument();
@@ -61,7 +87,7 @@ describe('ResourceAdminPage', () => {
       })
     );
 
-    render(<ResourceAdminPage />);
+    render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/setup');
@@ -75,7 +101,7 @@ describe('ResourceAdminPage', () => {
       })
     );
 
-    render(<ResourceAdminPage />);
+    render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/home');
