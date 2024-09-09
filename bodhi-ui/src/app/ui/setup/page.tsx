@@ -16,12 +16,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import AppInitializer from '@/components/AppInitializer';
 import { AppInfo, useAppSetup } from '@/hooks/useAppSetup';
+import { AxiosError } from 'axios';
 
 function SetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(searchParams.get('error'));
-  const { setup, isSettingUp, setupError } = useAppSetup();
+  const { setup, isSettingUp } = useAppSetup();
 
   const handleSetup = async (authz: boolean) => {
     setError(null);
@@ -35,11 +36,12 @@ function SetupContent() {
         setError(`Unexpected setup status: ${response.status}`);
       }
     } catch (err) {
-      if (err instanceof Error) {
-        {/* @ts-ignore */}
-        setError(`Error while setting up app: ${err.response?.data?.message || err?.message}`);
+      if (err instanceof AxiosError) {
+        setError(
+          `Error while setting up app: ${err.response?.data?.message || err?.message}`
+        );
       } else {
-        setError(`An unexpected error occurred during setup`);
+        setError(`An unexpected error occurred during setup: ${err}`);
       }
     }
   };
