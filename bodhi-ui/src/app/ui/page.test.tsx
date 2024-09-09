@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, vi, expect, beforeEach } from 'vitest';
@@ -24,7 +24,9 @@ describe('UiPage', () => {
   });
 
   it('redirects to /ui/setup when status is setup', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'setup' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'setup',
+    });
 
     render(<UiPage />);
 
@@ -34,7 +36,9 @@ describe('UiPage', () => {
   });
 
   it('redirects to /ui/home when status is ready', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(<UiPage />);
 
@@ -44,7 +48,9 @@ describe('UiPage', () => {
   });
 
   it('redirects to /ui/setup/resource-admin when status is resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'resource-admin' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'resource-admin',
+    });
 
     render(<UiPage />);
 
@@ -54,22 +60,30 @@ describe('UiPage', () => {
   });
 
   it('displays error message for unexpected status', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'unexpected' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'unexpected',
+    });
 
     render(<UiPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Unexpected response from server')).toBeInTheDocument();
+      expect(
+        screen.getByText('Unexpected response from server')
+      ).toBeInTheDocument();
     });
   });
 
   it('displays error message when API call fails', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockRejectedValueOnce(new Error('API Error'));
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockRejectedValueOnce(
+      new Error('API Error')
+    );
 
     render(<UiPage />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Unable to connect to backend/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Unable to connect to backend/)
+      ).toBeInTheDocument();
     });
   });
 });

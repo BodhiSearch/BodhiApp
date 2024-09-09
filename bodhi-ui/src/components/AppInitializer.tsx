@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -11,7 +11,10 @@ interface AppInitializerProps {
   children?: React.ReactNode;
 }
 
-const AppInitializer: React.FC<AppInitializerProps> = ({ allowedStatus, children }) => {
+const AppInitializer: React.FC<AppInitializerProps> = ({
+  allowedStatus,
+  children,
+}) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(searchParams.get('error'));
@@ -36,13 +39,17 @@ const AppInitializer: React.FC<AppInitializerProps> = ({ allowedStatus, children
               router.push('/ui/setup/resource-admin');
               break;
             default:
-              setError(`unexpected /app/info status from server - ${data.status}`);
+              setError(
+                `unexpected /app/info status from server - ${data.status}`
+              );
           }
         } else {
           setIsInitialized(true);
         }
       } catch (error) {
-        setError(`Unable to connect to backend: '${bodhi_url}', error: ${error}`);
+        setError(
+          `Unable to connect to backend: '${bodhi_url}', error: ${error}`
+        );
       }
     };
 

@@ -1,7 +1,14 @@
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import React, { useState } from 'react';
 
 export interface SortState {
@@ -34,7 +41,7 @@ export function DataTable<T>({
   onSortChange,
   renderRow,
   renderExpandedRow,
-  getItemId // New prop
+  getItemId, // New prop
 }: DataTableProps<T>) {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -42,7 +49,11 @@ export function DataTable<T>({
     if (sort.column !== columnId) {
       return <ArrowUpDown className="ml-2 h-4 w-4" />;
     }
-    return sort.direction === 'asc' ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />;
+    return sort.direction === 'asc' ? (
+      <ChevronUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ChevronDown className="ml-2 h-4 w-4" />
+    );
   };
 
   const toggleRowExpansion = (name: string) => {
@@ -94,7 +105,11 @@ export function DataTable<T>({
                     size="sm"
                     onClick={() => toggleRowExpansion(getItemId(item))}
                   >
-                    {expandedRow === getItemId(item) ? <ChevronUp /> : <ChevronDown />}
+                    {expandedRow === getItemId(item) ? (
+                      <ChevronUp />
+                    ) : (
+                      <ChevronDown />
+                    )}
                   </Button>
                 </TableCell>
               )}
@@ -116,7 +131,7 @@ export function DataTable<T>({
 export function Pagination({
   page,
   totalPages,
-  onPageChange
+  onPageChange,
 }: {
   page: number;
   totalPages: number;
@@ -130,7 +145,9 @@ export function Pagination({
       >
         Previous
       </Button>
-      <span>Page {page} of {totalPages}</span>
+      <span>
+        Page {page} of {totalPages}
+      </span>
       <Button
         onClick={() => onPageChange(page + 1)}
         disabled={page === totalPages}

@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, it, vi, expect } from 'vitest';
@@ -24,17 +24,23 @@ describe('AppInitializer', () => {
   });
 
   it('displays error message when API call fails', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockRejectedValueOnce(new Error('API Error'));
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockRejectedValueOnce(
+      new Error('API Error')
+    );
 
     render(<AppInitializer />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Unable to connect to backend/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Unable to connect to backend/)
+      ).toBeInTheDocument();
     });
   });
 
   it('redirects to /ui/setup when status is setup and no allowedStatus is provided', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'setup' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'setup',
+    });
 
     render(<AppInitializer />);
 
@@ -44,7 +50,9 @@ describe('AppInitializer', () => {
   });
 
   it('redirects to /ui/home when status is ready and no allowedStatus is provided', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(<AppInitializer />);
 
@@ -54,7 +62,9 @@ describe('AppInitializer', () => {
   });
 
   it('redirects to /ui/setup/resource-admin when status is resource-admin and no allowedStatus is provided', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'resource-admin' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'resource-admin',
+    });
 
     render(<AppInitializer />);
 
@@ -64,17 +74,23 @@ describe('AppInitializer', () => {
   });
 
   it('displays error message for unexpected status when no allowedStatus is provided', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'unexpected' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'unexpected',
+    });
 
     render(<AppInitializer />);
 
     await waitFor(() => {
-      expect(screen.getByText('Unexpected response from server')).toBeInTheDocument();
+      expect(
+        screen.getByText('Unexpected response from server')
+      ).toBeInTheDocument();
     });
   });
 
   it('redirects to /ui/setup when status is setup and allowedStatus is ready', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'setup' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'setup',
+    });
 
     render(<AppInitializer allowedStatus="ready" />);
 
@@ -84,7 +100,9 @@ describe('AppInitializer', () => {
   });
 
   it('redirects to /ui/home when status is ready and allowedStatus is setup', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(<AppInitializer allowedStatus="setup" />);
 
@@ -94,7 +112,9 @@ describe('AppInitializer', () => {
   });
 
   it('does not redirect when status matches allowedStatus', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(<AppInitializer allowedStatus="ready" />);
 
@@ -104,7 +124,9 @@ describe('AppInitializer', () => {
   });
 
   it('displays children content if app status matches allowedStatus', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(
       <AppInitializer allowedStatus="ready">
@@ -118,7 +140,9 @@ describe('AppInitializer', () => {
   });
 
   it('does not display children content if app status does not match allowedStatus', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'setup' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'setup',
+    });
 
     render(
       <AppInitializer allowedStatus="ready">
@@ -133,7 +157,9 @@ describe('AppInitializer', () => {
   });
 
   it('displays loading state before resolving app status', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(
       <AppInitializer allowedStatus="ready">
@@ -150,7 +176,9 @@ describe('AppInitializer', () => {
   });
 
   it('displays error message and not children when API call fails', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockRejectedValueOnce(new Error('API Error'));
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockRejectedValueOnce(
+      new Error('API Error')
+    );
 
     render(
       <AppInitializer allowedStatus="ready">
@@ -159,13 +187,17 @@ describe('AppInitializer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Unable to connect to backend/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Unable to connect to backend/)
+      ).toBeInTheDocument();
       expect(screen.queryByText('Child content')).not.toBeInTheDocument();
     });
   });
 
   it('displays children for any status when no allowedStatus is provided', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'setup' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'setup',
+    });
 
     render(
       <AppInitializer>
@@ -180,7 +212,9 @@ describe('AppInitializer', () => {
   });
 
   it('displays error message for unexpected status even with children', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'unexpected' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'unexpected',
+    });
 
     render(
       <AppInitializer allowedStatus="ready">
@@ -189,7 +223,9 @@ describe('AppInitializer', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Unexpected response from server')).toBeInTheDocument();
+      expect(
+        screen.getByText('Unexpected response from server')
+      ).toBeInTheDocument();
       expect(screen.queryByText('Child content')).not.toBeInTheDocument();
     });
   });

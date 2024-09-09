@@ -1,11 +1,11 @@
-'use client'
+'use client';
 
 import { useState } from 'react';
 import { useQuery } from 'react-query';
 import axios from 'axios';
 import AppHeader from '@/components/AppHeader';
 import { DataTable, Pagination } from '@/components/DataTable';
-import { TableCell } from "@/components/ui/table";
+import { TableCell } from '@/components/ui/table';
 import { ModelFile, ModelFilesResponse, SortState } from '@/types/models';
 
 // Helper function to convert bytes to GB
@@ -26,7 +26,10 @@ const columns = [
 export default function ModelFilesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
-  const [sort, setSort] = useState<SortState>({ column: 'filename', direction: 'asc' });
+  const [sort, setSort] = useState<SortState>({
+    column: 'filename',
+    direction: 'asc',
+  });
 
   const fetchModelFiles = async () => {
     const response = await axios.get<ModelFilesResponse>(`/api/ui/modelfiles`, {
@@ -34,8 +37,8 @@ export default function ModelFilesPage() {
         page,
         page_size: pageSize,
         sort: sort.column,
-        sort_order: sort.direction
-      }
+        sort_order: sort.direction,
+      },
     });
     return response.data;
   };
@@ -47,21 +50,29 @@ export default function ModelFilesPage() {
   );
 
   const toggleSort = (column: string) => {
-    setSort(prevSort => ({
+    setSort((prevSort) => ({
       column,
-      direction: prevSort.column === column && prevSort.direction === 'asc' ? 'desc' : 'asc'
+      direction:
+        prevSort.column === column && prevSort.direction === 'asc'
+          ? 'desc'
+          : 'asc',
     }));
     setPage(1);
   };
 
-  const getItemId = (modelFile: ModelFile) => `${modelFile.repo}${modelFile.filename}${modelFile.snapshot}`;
+  const getItemId = (modelFile: ModelFile) =>
+    `${modelFile.repo}${modelFile.filename}${modelFile.snapshot}`;
 
   const renderRow = (modelFile: ModelFile) => (
     <>
       <TableCell>{modelFile.repo}</TableCell>
       <TableCell>{modelFile.filename}</TableCell>
       <TableCell>{bytesToGB(modelFile.size)}</TableCell>
-      <TableCell>{modelFile.updated_at ? new Date(modelFile.updated_at).toLocaleString() : ''}</TableCell>
+      <TableCell>
+        {modelFile.updated_at
+          ? new Date(modelFile.updated_at).toLocaleString()
+          : ''}
+      </TableCell>
       <TableCell>{modelFile.snapshot.slice(0, 6)}</TableCell>
     </>
   );

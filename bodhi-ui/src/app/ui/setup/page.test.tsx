@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, vi, expect, beforeEach } from 'vitest';
@@ -31,7 +31,9 @@ describe('Setup Page', () => {
   });
 
   it('renders the setup page when status is setup', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'setup' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'setup',
+    });
 
     render(<Setup />);
 
@@ -41,7 +43,9 @@ describe('Setup Page', () => {
   });
 
   it('redirects to /ui/home when status is ready', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(<Setup />);
 
@@ -51,7 +55,9 @@ describe('Setup Page', () => {
   });
 
   it('redirects to /ui/setup/resource-admin when status is resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'resource-admin' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'resource-admin',
+    });
 
     render(<Setup />);
 
@@ -61,12 +67,18 @@ describe('Setup Page', () => {
   });
 
   it('sets up authenticated instance and redirects to /ui/home', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({ status: 'setup' });
-    vi.mocked(BodhiBackend.prototype.setupApp).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({
+      status: 'setup',
+    });
+    vi.mocked(BodhiBackend.prototype.setupApp).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(<Setup />);
 
-    const authButton = await screen.findByText('Setup Authenticated Instance →');
+    const authButton = await screen.findByText(
+      'Setup Authenticated Instance →'
+    );
     fireEvent.click(authButton);
 
     await waitFor(() => {
@@ -75,12 +87,18 @@ describe('Setup Page', () => {
   });
 
   it('sets up unauthenticated instance and redirects to /ui/setup/resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({ status: 'setup' });
-    vi.mocked(BodhiBackend.prototype.setupApp).mockResolvedValueOnce({ status: 'resource-admin' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({
+      status: 'setup',
+    });
+    vi.mocked(BodhiBackend.prototype.setupApp).mockResolvedValueOnce({
+      status: 'resource-admin',
+    });
 
     render(<Setup />);
 
-    const unauthButton = await screen.findByText('Setup Unauthenticated Instance →');
+    const unauthButton = await screen.findByText(
+      'Setup Unauthenticated Instance →'
+    );
     fireEvent.click(unauthButton);
 
     await waitFor(() => {
@@ -89,16 +107,24 @@ describe('Setup Page', () => {
   });
 
   it('displays error message when setup fails', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({ status: 'setup' });
-    vi.mocked(BodhiBackend.prototype.setupApp).mockRejectedValueOnce(new Error('Setup failed'));
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({
+      status: 'setup',
+    });
+    vi.mocked(BodhiBackend.prototype.setupApp).mockRejectedValueOnce(
+      new Error('Setup failed')
+    );
 
     render(<Setup />);
 
-    const authButton = await screen.findByText('Setup Authenticated Instance →');
+    const authButton = await screen.findByText(
+      'Setup Authenticated Instance →'
+    );
     fireEvent.click(authButton);
 
     await waitFor(() => {
-      expect(screen.getByText('An unexpected error occurred')).toBeInTheDocument();
+      expect(
+        screen.getByText('An unexpected error occurred')
+      ).toBeInTheDocument();
     });
   });
 });

@@ -1,5 +1,6 @@
-'use client'
+'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from 'react-query';
 import axios from 'axios';
@@ -7,11 +8,15 @@ import AliasForm from '@/components/AliasForm';
 import AppHeader from '@/components/AppHeader';
 import { Model } from '@/types/models';
 
-export default function EditAliasPage() {
+function EditAliasContent() {
   const searchParams = useSearchParams();
   const alias = searchParams.get('alias');
 
-  const { data: modelData, isLoading, error } = useQuery<Model>(
+  const {
+    data: modelData,
+    isLoading,
+    error,
+  } = useQuery<Model>(
     ['model', alias],
     async () => {
       const response = await axios.get(`/api/ui/models/${alias}`);
@@ -29,15 +34,17 @@ export default function EditAliasPage() {
   if (!modelData) return <div>No model data found</div>;
 
   return (
+    <>{modelData && <AliasForm isEditMode={true} initialData={modelData} />}</>
+  );
+}
+
+export default function EditAliasPage() {
+  return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <AppHeader />
-      {modelData && (
-        <AliasForm 
-          key={modelData.alias} 
-          isEditMode={true} 
-          initialData={modelData} 
-        />
-      )}
+      <Suspense fallback={<div>Loading...</div>}>
+        <EditAliasContent />
+      </Suspense>
     </div>
   );
 }
