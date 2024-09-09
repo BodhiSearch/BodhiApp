@@ -114,12 +114,12 @@ function SetupContent() {
   );
 }
 
-export default function Setup() {
+export default function SetupPage() {
   return (
-    <AppInitializer allowedStatus="setup">
-      <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
+      <AppInitializer allowedStatus="setup">
         <SetupContent />
-      </Suspense>
-    </AppInitializer>
+      </AppInitializer>
+    </Suspense>
   );
 }

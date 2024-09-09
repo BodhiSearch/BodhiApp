@@ -95,12 +95,12 @@ function HomeContent() {
 
 export default function HomePage() {
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-      <AppInitializer allowedStatus="ready" />
-      <AppHeader />
-      <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <AppInitializer allowedStatus="ready" />
+        <AppHeader />
         <HomeContent />
-      </Suspense>
-    </div>
+      </div>
+    </Suspense>
   );
 }
