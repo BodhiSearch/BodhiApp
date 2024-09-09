@@ -1,14 +1,14 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from 'react-query';
 import axios, { AxiosError } from 'axios';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from 'react-hook-form';
-import { createAliasSchema, CreateAliasFormData } from '@/schemas/alias';
-import { ModelsResponse } from '@/types/models';
+import { createAliasSchema, AliasFormData } from '@/schemas/alias';
+import { ModelsResponse, Model } from '@/types/models';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -18,13 +18,19 @@ import { requestParamsSchema, contextParamsSchema } from '@/schemas/alias';
 import { z } from 'zod';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 
-const CreateAliasForm: React.FC = () => {
+interface AliasFormProps {
+  isEditMode: boolean;
+  initialData?: Model;
+}
+
+const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const router = useRouter();
   const { toast } = useToast();
   const [isRequestExpanded, setIsRequestExpanded] = useState(false);
   const [isContextExpanded, setIsContextExpanded] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
-  const form = useForm<CreateAliasFormData>({
+  const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasSchema),
     mode: 'onSubmit',
     defaultValues: {
@@ -37,15 +43,35 @@ const CreateAliasForm: React.FC = () => {
     },
   });
 
-  const { data: modelsData } = useQuery<ModelsResponse>('models', async () => {
+  const { data: modelsData, isLoading: isModelsLoading } = useQuery<ModelsResponse>('models', async () => {
     const response = await axios.get('/api/ui/models');
     return response.data;
+  }, {
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
 
-  const { data: chatTemplates } = useQuery<string[]>('chatTemplates', async () => {
+  const { data: chatTemplates, isLoading: isTemplatesLoading } = useQuery<string[]>('chatTemplates', async () => {
     const response = await axios.get('/api/ui/chat_templates');
     return response.data;
+  }, {
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
   });
+
+  useEffect(() => {
+    if (isEditMode && initialData && !initialDataLoaded && !isModelsLoading && !isTemplatesLoading) {
+      form.reset({
+        alias: initialData.alias,
+        repo: initialData.repo,
+        filename: initialData.filename,
+        chat_template: initialData.chat_template,
+        request_params: initialData.request_params || {},
+        context_params: initialData.context_params || {},
+      });
+      setInitialDataLoaded(true);
+    }
+  }, [isEditMode, initialData, form, initialDataLoaded, isModelsLoading, isTemplatesLoading]);
 
   const uniqueRepos = useMemo(() => {
     if (!modelsData?.data) return [];
@@ -63,20 +89,36 @@ const CreateAliasForm: React.FC = () => {
     ));
   }, [modelsData?.data, selectedRepo]);
 
-  const onSubmit = async (data: CreateAliasFormData) => {
+  useEffect(() => {
+    if (selectedRepo && initialData && initialDataLoaded) {
+      if (availableFilenames.includes(initialData.filename)) {
+        form.setValue('filename', initialData.filename);
+      } else if (!availableFilenames.includes(form.getValues('filename'))) {
+        form.setValue('filename', '');
+      }
+    }
+  }, [selectedRepo, availableFilenames, form, initialData, initialDataLoaded]);
+
+  const onSubmit = async (data: AliasFormData) => {
     try {
-      const response = await axios.post('/api/ui/models', data);
-      if (response.status === 201) {
+      let response;
+      if (isEditMode) {
+        response = await axios.put(`/api/ui/models/${initialData?.alias}`, data);
+      } else {
+        response = await axios.post('/api/ui/models', data);
+      }
+      
+      if (response.status === 200 || response.status === 201) {
         toast({
           title: "Success",
-          description: `Alias ${data.alias} successfully created`,
+          description: `Alias ${data.alias} successfully ${isEditMode ? 'updated' : 'created'}`,
           duration: 5000,
         });
         router.push('/ui/models');
       }
     } catch (error) {
-      console.error('Error creating alias:', error);
-      let errorMessage = "Failed to create alias. Please try again.";
+      console.error(`Error ${isEditMode ? 'updating' : 'creating'} alias:`, error);
+      let errorMessage = `Failed to ${isEditMode ? 'update' : 'create'} alias. Please try again.`;
 
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError<{ message: string }>;
@@ -161,7 +203,7 @@ const CreateAliasForm: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-8 mx-4 my-6">
         <Card>
           <CardHeader>
-            <CardTitle>Create Model Alias</CardTitle>
+            <CardTitle>{isEditMode ? 'Edit' : 'Create'} Model Alias</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
@@ -171,7 +213,7 @@ const CreateAliasForm: React.FC = () => {
                 <FormItem>
                   <FormLabel>Alias</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input {...field} disabled={isEditMode} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -185,10 +227,7 @@ const CreateAliasForm: React.FC = () => {
                 <FormItem>
                   <FormLabel>Repo</FormLabel>
                   <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      form.setValue('filename', '');
-                    }}
+                    onValueChange={field.onChange}
                     value={field.value}
                   >
                     <FormControl>
@@ -304,11 +343,11 @@ const CreateAliasForm: React.FC = () => {
         </div>
 
         <div className="flex justify-center mt-8">
-          <Button type="submit">Create Model Alias</Button>
+          <Button type="submit">{isEditMode ? 'Update' : 'Create'} Model Alias</Button>
         </div>
       </form>
     </Form>
   );
 };
 
-export default CreateAliasForm;
+export default AliasForm;

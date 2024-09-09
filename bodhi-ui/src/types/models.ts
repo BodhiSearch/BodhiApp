@@ -39,7 +39,7 @@ export interface ModelFilesResponse {
   page_size: number;
 }
 
-// New types for CreateAliasForm
+// New types for AliasForm
 
 export interface CreateAliasRequest {
   alias: string;

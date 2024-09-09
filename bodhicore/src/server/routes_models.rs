@@ -92,6 +92,7 @@ pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
   Router::new()
     .route("/models", get(list_local_aliases_handler))
     .route("/models", post(create_alias_handler))
+    .route("/models/:id", get(get_alias_handler))
     .route("/modelfiles", get(list_local_modelfiles_handler))
     .route("/chat_templates", get(list_chat_templates_handler))
 }
@@ -321,6 +322,27 @@ pub async fn list_chat_templates_handler(
   Ok(Json(responses))
 }
 
+pub async fn get_alias_handler(
+  State(state): State<Arc<dyn RouterStateFn>>,
+  axum::extract::Path(id): axum::extract::Path<String>,
+) -> Result<Json<AliasResponse>, HttpError> {
+  let alias = state
+    .app_service()
+    .data_service()
+    .find_alias(&id)
+    .ok_or_else(|| {
+      HttpErrorBuilder::default()
+        .status_code(StatusCode::NOT_FOUND)
+        .r#type("alias_not_found")
+        .code("not_found")
+        .message(&format!("Alias '{}' not found", id))
+        .build()
+        .unwrap()
+    })?;
+
+  Ok(Json(AliasResponse::from(alias)))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -349,6 +371,7 @@ mod tests {
     Router::new()
       .route("/api/models", get(list_local_aliases_handler))
       .route("/api/models", post(create_alias_handler))
+      .route("/api/models/:id", get(get_alias_handler))
       .route("/api/chat_templates", get(list_chat_templates_handler))
       .with_state(Arc::new(router_state))
   }
@@ -599,6 +622,44 @@ mod tests {
         .iter()
         .any(|t| t == &ChatTemplate::Repo(Repo::try_from(repo).unwrap())));
     }
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_get_alias_handler(app: Router) -> anyhow::Result<()> {
+    let response = app
+      .oneshot(
+        Request::get("/api/models/llama3:instruct")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?;
+    assert_eq!(response.status(), StatusCode::OK);
+    let alias_response = response.json::<AliasResponse>().await?;
+    assert_eq!(alias_response.alias, "llama3:instruct");
+    assert_eq!(
+      alias_response.repo,
+      "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_get_alias_handler_non_existent(app: Router) -> anyhow::Result<()> {
+    let response = app
+      .oneshot(
+        Request::get("/api/models/non_existent_alias")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?;
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    let error_body: Value = response.json().await?;
+    assert_eq!(error_body["type"], "alias_not_found");
+    assert_eq!(error_body["code"], "not_found");
+
     Ok(())
   }
 }

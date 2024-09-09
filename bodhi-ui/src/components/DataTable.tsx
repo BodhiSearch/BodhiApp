@@ -12,6 +12,7 @@ export interface SortState {
 interface Column {
   id: string;
   name: string;
+  sorted: boolean;
 }
 
 interface DataTableProps<T> {
@@ -64,14 +65,18 @@ export function DataTable<T>({
         <TableRow>
           {columns.map((column) => (
             <TableHead key={column.id}>
-              <Button
-                variant="ghost"
-                onClick={() => onSortChange(column.id)}
-                className="font-bold"
-              >
-                {column.name}
-                {renderSortIcon(column.id)}
-              </Button>
+              {column.sorted ? (
+                <Button
+                  variant="ghost"
+                  onClick={() => onSortChange(column.id)}
+                  className="font-bold"
+                >
+                  {column.name}
+                  {renderSortIcon(column.id)}
+                </Button>
+              ) : (
+                <span className="font-bold">{column.name}</span>
+              )}
             </TableHead>
           ))}
           {renderExpandedRow && <TableHead></TableHead>}
