@@ -19,7 +19,8 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(searchParams.get('error'));
   const [isInitialized, setIsInitialized] = useState(false);
-  const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || '';
+  const bodhi_url =
+    process.env.NEXT_PUBLIC_BODHI_URL || 'http://localhost:3000';
   const bodhiBackend = useMemo(() => {
     return new BodhiBackend(bodhi_url);
   }, [bodhi_url]);
