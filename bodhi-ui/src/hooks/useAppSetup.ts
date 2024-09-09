@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import axios, { AxiosError } from 'axios';
+import axios from 'axios';
 
 export interface AppInfo {
   status: 'setup' | 'ready' | 'resource-admin' | string;

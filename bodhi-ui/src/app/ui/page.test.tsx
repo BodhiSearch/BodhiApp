@@ -1,7 +1,16 @@
 'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import {
+  describe,
+  it,
+  vi,
+  expect,
+  beforeEach,
+  beforeAll,
+  afterAll,
+  afterEach,
+} from 'vitest';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import UiPage from './page';
@@ -52,7 +61,10 @@ const createWrapper = () => {
     },
   });
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}<Toaster /></QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      {children}
+      <Toaster />
+    </QueryClientProvider>
   );
 };
 

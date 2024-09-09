@@ -49,9 +49,7 @@ const createWrapper = () => {
     },
   });
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 };
 
@@ -60,7 +58,9 @@ const renderWithSetup = async (ui: React.ReactElement) => {
   const wrapper = createWrapper();
   const rendered = render(ui, { wrapper });
   // Wait for the loading state to disappear
-  await waitForElementToBeRemoved(() => rendered.getByText('Initializing app...'));
+  await waitForElementToBeRemoved(() =>
+    rendered.getByText('Initializing app...')
+  );
   return rendered;
 };
 
@@ -132,7 +132,9 @@ describe('AppInitializer', () => {
       const alert = screen.getByRole('alert');
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent('Error');
-      expect(alert).toHaveTextContent("unexpected status from /app/info endpoint - 'unexpected'");
+      expect(alert).toHaveTextContent(
+        "unexpected status from /app/info endpoint - 'unexpected'"
+      );
     });
   });
 
@@ -214,12 +216,17 @@ describe('AppInitializer', () => {
       })
     );
     const wrapper = createWrapper();
-    const rendered = render(<AppInitializer allowedStatus="ready">
-      <div>Child content</div>
-    </AppInitializer>, { wrapper });
+    const rendered = render(
+      <AppInitializer allowedStatus="ready">
+        <div>Child content</div>
+      </AppInitializer>,
+      { wrapper }
+    );
 
     expect(screen.getByText('Initializing app...')).toBeInTheDocument();
-    await waitForElementToBeRemoved(() => rendered.getByText('Initializing app...'));
+    await waitForElementToBeRemoved(() =>
+      rendered.getByText('Initializing app...')
+    );
     expect(screen.getByText('Child content')).toBeInTheDocument();
   });
 
@@ -262,7 +269,9 @@ describe('AppInitializer', () => {
       const alert = screen.getByRole('alert');
       expect(alert).toBeInTheDocument();
       expect(alert).toHaveTextContent('Error');
-      expect(alert).toHaveTextContent("unexpected status from /app/info endpoint - 'unexpected'");
+      expect(alert).toHaveTextContent(
+        "unexpected status from /app/info endpoint - 'unexpected'"
+      );
       expect(screen.queryByText('Child content')).not.toBeInTheDocument();
     });
   });

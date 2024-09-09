@@ -32,7 +32,9 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
           router.push('/ui/setup/resource-admin');
           break;
         default:
-          setErrorMessage(`unexpected status from /app/info endpoint - '${appInfo.status}'`);
+          setErrorMessage(
+            `unexpected status from /app/info endpoint - '${appInfo.status}'`
+          );
       }
     }
   }, [router, allowedStatus, appInfo, errorMessage]);
@@ -51,8 +53,9 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {/* @ts-ignore */}
-          {error?.response?.data?.message || 'An unexpected error occurred'}
+          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+          {(error as any)?.response?.data?.message ||
+            'An unexpected error occurred'}
         </AlertDescription>
       </Alert>
     );
