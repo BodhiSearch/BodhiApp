@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery } from 'react-query';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import AppHeader from '@/components/AppHeader';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
@@ -90,7 +90,17 @@ export default function ModelFilesPage() {
     </div>
   );
 
-  if (error) return <div>An error occurred: {(error as Error).message}</div>;
+  if (error) {
+    if (error instanceof AxiosError) {
+      return (
+        <div>
+          An error occurred: {error.response?.data?.message || error.message}
+        </div>
+      );
+    } else {
+      return <div>An error occurred: {(error as Error)?.message}</div>;
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
