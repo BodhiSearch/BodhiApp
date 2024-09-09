@@ -1,25 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from 'react-query';
+import axios from 'axios';
 import AppHeader from '@/components/AppHeader';
-import { DataTable, SortState, Pagination } from '@/components/DataTable';
+import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from "@/components/ui/table";
-
-interface ModelFile {
-  repo: string;
-  filename: string;
-  size?: number; // Mark as optional
-  updated_at?: string;
-  snapshot: string;
-  model_params: Record<string, any>;
-}
-
-interface ModelFilesResponse {
-  data: ModelFile[];
-  total: number;
-  page: number;
-  page_size: number;
-}
+import { ModelFile, ModelFilesResponse, SortState } from '@/types/models';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -37,33 +24,27 @@ const columns = [
 ];
 
 export default function ModelFilesPage() {
-  const [modelFiles, setModelFiles] = useState<ModelFile[]>([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [pageSize, setPageSize] = useState(30);
   const [sort, setSort] = useState<SortState>({ column: 'filename', direction: 'asc' });
 
-  useEffect(() => {
-    const fetchModelFiles = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/ui/modelfiles?page=${page}&page_size=${pageSize}&sort=${sort.column}&sort_order=${sort.direction}`);
-        const data: ModelFilesResponse = await response.json();
-        setModelFiles(data.data);
-        setTotalPages(Math.ceil(data.total / data.page_size));
-        setTotalItems(data.total);
-        setPageSize(data.page_size);
-      } catch (error) {
-        console.error('Error fetching model files:', error);
-      } finally {
-        setLoading(false);
+  const fetchModelFiles = async () => {
+    const response = await axios.get<ModelFilesResponse>(`/api/ui/modelfiles`, {
+      params: {
+        page,
+        page_size: pageSize,
+        sort: sort.column,
+        sort_order: sort.direction
       }
-    };
+    });
+    return response.data;
+  };
 
-    fetchModelFiles();
-  }, [page, pageSize, sort]);
+  const { data, isLoading, error } = useQuery(
+    ['modelFiles', page, pageSize, sort],
+    fetchModelFiles,
+    { keepPreviousData: true }
+  );
 
   const toggleSort = (column: string) => {
     setSort(prevSort => ({
@@ -100,13 +81,15 @@ export default function ModelFilesPage() {
     </div>
   );
 
+  if (error) return <div>An error occurred: {(error as Error).message}</div>;
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <AppHeader />
       <DataTable
-        data={modelFiles}
+        data={data?.data || []}
         columns={columns}
-        loading={loading}
+        loading={isLoading}
         sort={sort}
         onSortChange={toggleSort}
         renderRow={renderRow}
@@ -115,11 +98,11 @@ export default function ModelFilesPage() {
       />
       <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
         <div className="mb-2 sm:mb-0">
-          Displaying {modelFiles.length} items of {totalItems}
+          Displaying {data?.data.length || 0} items of {data?.total || 0}
         </div>
         <Pagination
           page={page}
-          totalPages={totalPages}
+          totalPages={data ? Math.ceil(data.total / data.page_size) : 1}
           onPageChange={setPage}
         />
       </div>

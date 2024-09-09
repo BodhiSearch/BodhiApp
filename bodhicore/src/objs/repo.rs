@@ -14,7 +14,7 @@ pub static REFS_MAIN: &str = "refs/main";
 pub static REGEX_REPO: Lazy<Regex> =
   Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap());
 
-#[derive(Debug, Clone, PartialEq, Validate, Default, PartialOrd, Eq, Ord)]
+#[derive(Debug, Clone, PartialEq, Validate, Default, PartialOrd, Eq, Ord, Hash)]
 pub struct Repo {
   #[validate(regex(path = *REGEX_REPO, message = "does not match huggingface repo pattern 'owner/repo'"))]
   value: String,
