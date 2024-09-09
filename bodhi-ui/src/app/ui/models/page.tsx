@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useState } from 'react';
 import { useQuery } from 'react-query';
@@ -6,9 +6,9 @@ import axios from 'axios';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { DataTable, Pagination } from '@/components/DataTable';
-import { TableCell } from "@/components/ui/table";
+import { TableCell } from '@/components/ui/table';
 import { Model, ModelsResponse, SortState } from '@/types/models';
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
 
 const columns = [
@@ -24,7 +24,10 @@ export default function ModelsPage() {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
-  const [sort, setSort] = useState<SortState>({ column: 'alias', direction: 'asc' });
+  const [sort, setSort] = useState<SortState>({
+    column: 'alias',
+    direction: 'asc',
+  });
 
   const fetchModels = async () => {
     const response = await axios.get<ModelsResponse>(`/api/ui/models`, {
@@ -32,8 +35,8 @@ export default function ModelsPage() {
         page,
         page_size: pageSize,
         sort: sort.column,
-        sort_order: sort.direction
-      }
+        sort_order: sort.direction,
+      },
     });
     return response.data;
   };
@@ -45,9 +48,12 @@ export default function ModelsPage() {
   );
 
   const toggleSort = (column: string) => {
-    setSort(prevSort => ({
+    setSort((prevSort) => ({
       column,
-      direction: prevSort.column === column && prevSort.direction === 'asc' ? 'desc' : 'asc'
+      direction:
+        prevSort.column === column && prevSort.direction === 'asc'
+          ? 'desc'
+          : 'asc',
     }));
     setPage(1); // Reset to first page when sorting
   };

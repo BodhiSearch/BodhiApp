@@ -4,11 +4,11 @@ import UserMenu from './UserMenu';
 
 export default function AppHeader() {
   // This is a placeholder. In a real app, you'd get this from your auth state.
-  const userEmail = "user@example.com";
+  const userEmail = 'user@example.com';
 
   // This is a placeholder function. In a real app, you'd implement actual logout logic.
   const handleLogout = () => {
-    console.log("Logout clicked");
+    console.log('Logout clicked');
     // Implement your logout logic here
   };
 

@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, vi, expect, beforeEach } from 'vitest';
@@ -31,7 +31,9 @@ describe('ResourceAdminPage', () => {
   });
 
   it('renders the resource admin page when status is resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'resource-admin' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'resource-admin',
+    });
 
     render(<ResourceAdminPage />);
 
@@ -42,7 +44,9 @@ describe('ResourceAdminPage', () => {
   });
 
   it('redirects to /ui/setup when status is setup', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'setup' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'setup',
+    });
 
     render(<ResourceAdminPage />);
 
@@ -52,7 +56,9 @@ describe('ResourceAdminPage', () => {
   });
 
   it('redirects to /ui/home when status is ready', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({ status: 'ready' });
+    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
+      status: 'ready',
+    });
 
     render(<ResourceAdminPage />);
 
