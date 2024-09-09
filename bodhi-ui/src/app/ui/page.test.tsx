@@ -35,19 +35,7 @@ const server = setupServer(
 );
 
 // Add this configuration before starting the server
-beforeAll(() => {
-  // Suppress console errors
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    if (args[0]?.includes?.('Failed to load resource')) {
-      return;
-    }
-    originalConsoleError(...args);
-  };
-
-  server.listen({ onUnhandledRequest: 'bypass' });
-});
-
+beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
 

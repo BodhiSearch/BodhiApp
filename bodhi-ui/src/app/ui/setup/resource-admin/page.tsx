@@ -22,7 +22,7 @@ function ResourceAdminContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Link href='/app/login' passHref>
+        <Link href="/app/login" passHref>
           <Button className="w-full">Log In</Button>
         </Link>
       </CardContent>
