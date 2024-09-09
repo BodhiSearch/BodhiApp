@@ -34,10 +34,10 @@ function ResourceAdminContent() {
 
 export default function ResourceAdminPage() {
   return (
-    <AppInitializer allowedStatus="resource-admin">
-      <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
+      <AppInitializer allowedStatus="resource-admin">
         <ResourceAdminContent />
-      </Suspense>
-    </AppInitializer>
+      </AppInitializer>
+    </Suspense>
   );
 }
