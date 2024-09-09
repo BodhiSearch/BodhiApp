@@ -15,7 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import AppInitializer from '@/components/AppInitializer';
-import { BodhiBackend } from '@/services/BodhiBackend';
+
+interface AppInfo {
+  status: 'setup' | 'ready' | 'resource-admin' | string;
+}
 
 function SetupContent() {
   const router = useRouter();
@@ -23,14 +26,25 @@ function SetupContent() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(searchParams.get('error'));
   const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || '';
-  const bodhiBackend = new BodhiBackend(bodhi_url);
 
   const handleSetup = async (authz: boolean) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const data = await bodhiBackend.setupApp(authz);
+      const response = await fetch(`${bodhi_url}/app/setup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ authz }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data: AppInfo = await response.json();
       if (data.status === 'ready') {
         router.push('/ui/home');
       } else if (data.status === 'resource-admin') {
