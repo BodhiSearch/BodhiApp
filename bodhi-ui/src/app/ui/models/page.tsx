@@ -1,29 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery } from 'react-query';
+import axios from 'axios';
 import AppHeader from '@/components/AppHeader';
-import { DataTable, SortState, Pagination } from '@/components/DataTable';
+import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from "@/components/ui/table";
-
-interface Model {
-  alias: string;
-  family?: string;
-  repo: string;
-  filename: string;
-  snapshot: string;
-  features: string[];
-  chat_template: string;
-  model_params: Record<string, any>;
-  request_params: Record<string, any>;
-  context_params: Record<string, any>;
-}
-
-interface ModelsResponse {
-  data: Model[];
-  total: number;
-  page: number;
-  page_size: number;
-}
+import { Model, ModelsResponse, SortState } from '@/types/models';
 
 const columns = [
   { id: 'alias', name: 'Name' },
@@ -34,34 +17,27 @@ const columns = [
 ];
 
 export default function ModelsPage() {
-  const [models, setModels] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
   const [pageSize, setPageSize] = useState(30);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [sort, setSort] = useState<SortState>({ column: 'alias', direction: 'asc' });
 
-  useEffect(() => {
-    const fetchModels = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch(`/api/ui/models?page=${page}&page_size=${pageSize}&sort=${sort.column}&sort_order=${sort.direction}`);
-        const data: ModelsResponse = await response.json();
-        setModels(data.data);
-        setTotalPages(Math.ceil(data.total / data.page_size));
-        setTotalItems(data.total);
-        setPageSize(data.page_size);
-      } catch (error) {
-        console.error('Error fetching models:', error);
-      } finally {
-        setLoading(false);
+  const fetchModels = async () => {
+    const response = await axios.get<ModelsResponse>(`/api/ui/models`, {
+      params: {
+        page,
+        page_size: pageSize,
+        sort: sort.column,
+        sort_order: sort.direction
       }
-    };
+    });
+    return response.data;
+  };
 
-    fetchModels();
-  }, [page, pageSize, sort]);
+  const { data, isLoading, error } = useQuery(
+    ['models', page, pageSize, sort],
+    fetchModels,
+    { keepPreviousData: true }
+  );
 
   const toggleSort = (column: string) => {
     setSort(prevSort => ({
@@ -95,13 +71,15 @@ export default function ModelsPage() {
     </div>
   );
 
+  if (error) return <div>An error occurred: {(error as Error).message}</div>;
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
       <AppHeader />
       <DataTable
-        data={models}
+        data={data?.data || []}
         columns={columns}
-        loading={loading}
+        loading={isLoading}
         sort={sort}
         onSortChange={toggleSort}
         renderRow={renderRow}
@@ -110,11 +88,11 @@ export default function ModelsPage() {
       />
       <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
         <div className="mb-2 sm:mb-0">
-          Displaying {models.length} items of {totalItems}
+          Displaying {data?.data.length || 0} items of {data?.total || 0}
         </div>
         <Pagination
           page={page}
-          totalPages={totalPages}
+          totalPages={data ? Math.ceil(data.total / data.page_size) : 1}
           onPageChange={setPage}
         />
       </div>

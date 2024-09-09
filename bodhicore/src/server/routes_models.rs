@@ -1,5 +1,5 @@
 use super::RouterStateFn;
-use crate::objs::{ChatTemplate, Repo};
+use crate::objs::{ChatTemplate, ChatTemplateId, Repo};
 use crate::CreateCommand;
 use crate::{
   objs::{Alias, GptContextParams, HubFile, OAIRequestParams},
@@ -17,6 +17,7 @@ use hyper::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
+use strum::IntoEnumIterator;
 use validator::Validate;
 
 #[derive(Serialize, Deserialize)]
@@ -92,6 +93,7 @@ pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
     .route("/models", get(list_local_aliases_handler))
     .route("/models", post(create_alias_handler))
     .route("/modelfiles", get(list_local_modelfiles_handler))
+    .route("/chat_templates", get(list_chat_templates_handler))
 }
 
 pub async fn list_local_aliases_handler(
@@ -158,8 +160,6 @@ pub async fn list_local_modelfiles_handler(
     page_size,
   }))
 }
-
-// Helper functions
 
 fn extract_pagination_sort_params(params: PaginationSortParams) -> (usize, usize, String, String) {
   let page = params.page.unwrap_or(1).max(1);
@@ -304,6 +304,23 @@ pub async fn create_alias_handler(
   }
 }
 
+pub async fn list_chat_templates_handler(
+  State(state): State<Arc<dyn RouterStateFn>>,
+) -> Result<Json<Vec<ChatTemplate>>, HttpError> {
+  let mut responses = Vec::new();
+  for chat_template in ChatTemplateId::iter() {
+    responses.push(ChatTemplate::Id(chat_template));
+  }
+  let local_repos = state
+    .app_service()
+    .hub_service()
+    .list_local_tokenizer_configs();
+  for repo in local_repos {
+    responses.push(ChatTemplate::Repo(repo));
+  }
+  Ok(Json(responses))
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -332,6 +349,7 @@ mod tests {
     Router::new()
       .route("/api/models", get(list_local_aliases_handler))
       .route("/api/models", post(create_alias_handler))
+      .route("/api/chat_templates", get(list_chat_templates_handler))
       .with_state(Arc::new(router_state))
   }
 
@@ -548,6 +566,39 @@ mod tests {
       .unwrap()
       .contains("file 'fakemodel.Q4_0.gguf' not found in $HF_HOME repo 'FakeFactory/not-exists'"));
 
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_list_chat_templates_handler(app: Router) -> anyhow::Result<()> {
+    let response = app
+      .oneshot(
+        Request::get("/api/chat_templates")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?;
+    assert_eq!(response.status(), StatusCode::OK);
+    let response = response.json::<Vec<ChatTemplate>>().await?;
+
+    assert_eq!(13, response.len());
+    for template_id in ChatTemplateId::iter() {
+      assert!(response
+        .iter()
+        .any(|t| t == &ChatTemplate::Id(template_id.clone())));
+    }
+    let expected = vec![
+      "meta-llama/Llama-2-70b-chat-hf",
+      "meta-llama/Meta-Llama-3-70B-Instruct",
+      "meta-llama/Meta-Llama-3-8B-Instruct",
+      "MyFactory/testalias-gguf",
+    ];
+    for repo in expected {
+      assert!(response
+        .iter()
+        .any(|t| t == &ChatTemplate::Repo(Repo::try_from(repo).unwrap())));
+    }
     Ok(())
   }
 }

@@ -1,6 +1,7 @@
 use crate::objs::{HubFile, ObjError, Repo, REFS, REFS_MAIN};
 use hf_hub::{api::sync::ApiError, Cache};
 use std::{
+  collections::HashSet,
   fmt::{Debug, Formatter},
   fs,
   path::PathBuf,
@@ -62,6 +63,8 @@ pub trait HubService: std::fmt::Debug {
     -> Result<Option<HubFile>>;
 
   fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf;
+
+  fn list_local_tokenizer_configs(&self) -> Vec<Repo>;
 }
 
 impl HfHubService {
@@ -185,6 +188,47 @@ impl HubService for HfHubService {
       .join(snapshot)
       .join(filename)
   }
+
+  fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
+    // TODO: support non-main snapshots
+    let cache = self.hf_cache();
+    let mut unique_repos = HashSet::new();
+
+    if let Ok(entries) = fs::read_dir(&cache) {
+      for entry in entries.filter_map(|e| e.ok()) {
+        let path = entry.path();
+        if path.is_dir() {
+          if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+            if dir_name.starts_with("models--") {
+              let main_ref_path = path.join("refs").join("main");
+              if let Ok(snapshot) = fs::read_to_string(main_ref_path) {
+                let snapshot = snapshot.trim();
+                let tokenizer_config_path = path
+                  .join("snapshots")
+                  .join(snapshot)
+                  .join("tokenizer_config.json");
+
+                if tokenizer_config_path.exists() {
+                  if let Some(repo_path) = dir_name.strip_prefix("models--") {
+                    let repo_parts: Vec<&str> = repo_path.split("--").collect();
+                    if repo_parts.len() >= 2 {
+                      let owner = repo_parts[0];
+                      let repo_name = repo_parts[1..].join("/");
+                      let repo_string = format!("{}/{}", owner, repo_name);
+                      if let Ok(repo) = Repo::try_from(repo_string) {
+                        unique_repos.insert(repo);
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    unique_repos.into_iter().collect()
+  }
 }
 
 #[derive(Clone)]
@@ -287,7 +331,7 @@ mod test {
     },
   };
   use rstest::rstest;
-  use std::fs;
+  use std::{collections::HashSet, fs};
   use tempfile::TempDir;
 
   #[rstest]
@@ -472,6 +516,30 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
     );
     assert_eq!(4, models.len());
     assert_eq!(&expected_1, models.first().unwrap());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_hub_service_list_local_tokenizer_configs(
+    hub_service: HubServiceTuple,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
+    let repos = service.list_local_tokenizer_configs();
+    assert_eq!(4, repos.len(), "Expected 4 repos with tokenizer configs");
+    let expected_repos: HashSet<Repo> = [
+      "meta-llama/Llama-2-70b-chat-hf",
+      "meta-llama/Meta-Llama-3-70B-Instruct",
+      "meta-llama/Meta-Llama-3-8B-Instruct",
+      "MyFactory/testalias-gguf",
+    ]
+    .iter()
+    .map(|&s| Repo::try_from(s).unwrap())
+    .collect();
+    let result_set: HashSet<Repo> = repos.into_iter().collect();
+    assert_eq!(
+      expected_repos, result_set,
+      "Mismatch in expected and actual repos"
+    );
     Ok(())
   }
 }
