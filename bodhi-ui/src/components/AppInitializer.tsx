@@ -1,10 +1,13 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { BodhiBackend } from '@/services/BodhiBackend';
+
+interface AppInfo {
+  status: 'setup' | 'ready' | 'resource-admin' | string;
+}
 
 interface AppInitializerProps {
   allowedStatus?: 'setup' | 'ready' | 'resource-admin';
@@ -19,16 +22,16 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(searchParams.get('error'));
   const [isInitialized, setIsInitialized] = useState(false);
-  const bodhi_url =
-    process.env.NEXT_PUBLIC_BODHI_URL || 'http://localhost:3000';
-  const bodhiBackend = useMemo(() => {
-    return new BodhiBackend(bodhi_url);
-  }, [bodhi_url]);
+  const bodhi_url = process.env.NEXT_PUBLIC_BODHI_URL || 'http://localhost:3000';
 
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        const data = await bodhiBackend.getAppInfo();
+        const response = await fetch(`${bodhi_url}/app/info`);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        const data: AppInfo = await response.json();
 
         if (!allowedStatus || data.status !== allowedStatus) {
           switch (data.status) {
@@ -57,7 +60,7 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
     };
 
     initializeApp();
-  }, [router, bodhi_url, allowedStatus, bodhiBackend]);
+  }, [router, bodhi_url, allowedStatus]);
 
   if (error) {
     return (

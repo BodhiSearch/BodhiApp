@@ -1,12 +1,10 @@
 'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, vi, expect, beforeEach } from 'vitest';
+import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import ResourceAdminPage from './page';
-import { BodhiBackend } from '@/services/BodhiBackend';
-
-// Mock the BodhiBackend
-vi.mock('@/services/BodhiBackend');
 
 // Mock the router
 const pushMock = vi.fn();
@@ -24,6 +22,17 @@ vi.mock('next/image', () => ({
   default: () => <img alt="mocked image" />,
 }));
 
+// Setup MSW server
+const server = setupServer(
+  rest.get('*/app/info', (req, res, ctx) => {
+    return res(ctx.json({ status: 'resource-admin' }));
+  })
+);
+
+beforeAll(() => server.listen());
+afterAll(() => server.close());
+afterEach(() => server.resetHandlers());
+
 describe('ResourceAdminPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -31,9 +40,11 @@ describe('ResourceAdminPage', () => {
   });
 
   it('renders the resource admin page when status is resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'resource-admin',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'resource-admin' }));
+      })
+    );
 
     render(<ResourceAdminPage />);
 
@@ -44,9 +55,11 @@ describe('ResourceAdminPage', () => {
   });
 
   it('redirects to /ui/setup when status is setup', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'setup',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      })
+    );
 
     render(<ResourceAdminPage />);
 
@@ -56,9 +69,11 @@ describe('ResourceAdminPage', () => {
   });
 
   it('redirects to /ui/home when status is ready', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'ready',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
 
     render(<ResourceAdminPage />);
 

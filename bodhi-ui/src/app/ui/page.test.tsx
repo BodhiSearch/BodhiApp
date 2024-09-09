@@ -1,11 +1,10 @@
 'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
-import { describe, it, vi, expect, beforeEach } from 'vitest';
+import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import UiPage from './page';
-import { BodhiBackend } from '@/services/BodhiBackend';
-
-vi.mock('@/services/BodhiBackend');
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -17,6 +16,17 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+// Setup MSW server
+const server = setupServer(
+  rest.get('*/app/info', (req, res, ctx) => {
+    return res(ctx.json({ status: 'setup' }));
+  })
+);
+
+beforeAll(() => server.listen());
+afterAll(() => server.close());
+afterEach(() => server.resetHandlers());
+
 describe('UiPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -24,9 +34,11 @@ describe('UiPage', () => {
   });
 
   it('redirects to /ui/setup when status is setup', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'setup',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      })
+    );
 
     render(<UiPage />);
 
@@ -36,9 +48,11 @@ describe('UiPage', () => {
   });
 
   it('redirects to /ui/home when status is ready', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'ready',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
 
     render(<UiPage />);
 
@@ -48,9 +62,11 @@ describe('UiPage', () => {
   });
 
   it('redirects to /ui/setup/resource-admin when status is resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'resource-admin',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'resource-admin' }));
+      })
+    );
 
     render(<UiPage />);
 
@@ -60,22 +76,26 @@ describe('UiPage', () => {
   });
 
   it('displays error message for unexpected status', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'unexpected',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'unexpected' }));
+      })
+    );
 
     render(<UiPage />);
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Unable to connect to backend/, { exact: false })
+        screen.getByText(/unexpected \/app\/info status from server - unexpected/, { exact: false })
       ).toBeInTheDocument();
     });
   });
 
   it('displays error message when API call fails', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockRejectedValueOnce(
-      new Error('API Error')
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.status(500), ctx.json({ message: 'API Error' }));
+      })
     );
 
     render(<UiPage />);

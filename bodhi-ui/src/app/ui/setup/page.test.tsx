@@ -1,12 +1,10 @@
 'use client';
 
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, vi, expect, beforeEach } from 'vitest';
+import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import Setup from './page';
-import { BodhiBackend } from '@/services/BodhiBackend';
-
-// Mock the BodhiBackend
-vi.mock('@/services/BodhiBackend');
 
 // Mock the router
 const pushMock = vi.fn();
@@ -25,6 +23,20 @@ vi.mock('next/image', () => ({
   default: () => <img alt="mocked image" />,
 }));
 
+// Setup MSW server
+const server = setupServer(
+  rest.get('*/app/info', (req, res, ctx) => {
+    return res(ctx.json({ status: 'setup' }));
+  }),
+  rest.post('*/app/setup', (req, res, ctx) => {
+    return res(ctx.json({ status: 'ready' }));
+  })
+);
+
+beforeAll(() => server.listen());
+afterAll(() => server.close());
+afterEach(() => server.resetHandlers());
+
 describe('Setup Page', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -32,9 +44,11 @@ describe('Setup Page', () => {
   });
 
   it('renders the setup page when status is setup', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'setup',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      })
+    );
 
     render(<Setup />);
 
@@ -44,9 +58,11 @@ describe('Setup Page', () => {
   });
 
   it('redirects to /ui/home when status is ready', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'ready',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
 
     render(<Setup />);
 
@@ -56,9 +72,11 @@ describe('Setup Page', () => {
   });
 
   it('redirects to /ui/setup/resource-admin when status is resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValueOnce({
-      status: 'resource-admin',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'resource-admin' }));
+      })
+    );
 
     render(<Setup />);
 
@@ -68,12 +86,14 @@ describe('Setup Page', () => {
   });
 
   it('sets up authenticated instance and redirects to /ui/home', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({
-      status: 'setup',
-    });
-    vi.mocked(BodhiBackend.prototype.setupApp).mockResolvedValueOnce({
-      status: 'ready',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      }),
+      rest.post('*/app/setup', (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
 
     render(<Setup />);
 
@@ -88,12 +108,14 @@ describe('Setup Page', () => {
   });
 
   it('sets up unauthenticated instance and redirects to /ui/setup/resource-admin', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({
-      status: 'setup',
-    });
-    vi.mocked(BodhiBackend.prototype.setupApp).mockResolvedValueOnce({
-      status: 'resource-admin',
-    });
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      }),
+      rest.post('*/app/setup', (req, res, ctx) => {
+        return res(ctx.json({ status: 'resource-admin' }));
+      })
+    );
 
     render(<Setup />);
 
@@ -108,11 +130,13 @@ describe('Setup Page', () => {
   });
 
   it('displays error message when setup fails', async () => {
-    vi.mocked(BodhiBackend.prototype.getAppInfo).mockResolvedValue({
-      status: 'setup',
-    });
-    vi.mocked(BodhiBackend.prototype.setupApp).mockRejectedValueOnce(
-      new Error('Setup failed')
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      }),
+      rest.post('*/app/setup', (req, res, ctx) => {
+        return res(ctx.status(500), ctx.json({ message: 'Setup failed' }));
+      })
     );
 
     render(<Setup />);
