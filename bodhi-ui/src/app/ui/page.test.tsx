@@ -68,7 +68,7 @@ describe('UiPage', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText('Unexpected response from server')
+        screen.getByText(/Unable to connect to backend/, { exact: false })
       ).toBeInTheDocument();
     });
   });
