@@ -12,7 +12,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import CreateAliasPage from './page';
+import EditAliasPage from './page';
 import { ToastProvider } from '@/components/ui/toast';
 
 const mockToast = vi.fn();
@@ -24,6 +24,9 @@ vi.mock('@/components/AppHeader', () => ({
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
+  }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue('test-alias'),
   }),
 }));
 
@@ -50,6 +53,13 @@ const createWrapper = () => {
   );
 };
 
+const mockModelData = {
+  alias: 'test-alias',
+  repo: 'owner1/repo1',
+  filename: 'file1.gguf',
+  chat_template: 'llama2',
+};
+
 const mockModelsResponse = {
   data: [
     { repo: 'owner1/repo1', filename: 'file1.gguf' },
@@ -61,16 +71,19 @@ const mockModelsResponse = {
 const mockChatTemplatesResponse = ['llama2', 'llama3'];
 
 const server = setupServer(
+  rest.get('*/api/ui/models/:alias', (req, res, ctx) => {
+    return res(ctx.json(mockModelData));
+  }),
   rest.get('*/api/ui/models', (req, res, ctx) => {
     return res(ctx.json(mockModelsResponse));
   }),
   rest.get('*/api/ui/chat_templates', (req, res, ctx) => {
     return res(ctx.json(mockChatTemplatesResponse));
   }),
-  rest.post('*/api/ui/models', (req, res, ctx) => {
+  rest.put('*/api/ui/models/:alias', (req, res, ctx) => {
     return res(
       ctx.status(200),
-      ctx.json({ message: 'Model created successfully' })
+      ctx.json({ message: 'Model updated successfully' })
     );
   })
 );
@@ -87,9 +100,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('CreateAliasPage', () => {
-  it('renders the page with all form elements', async () => {
-    render(<CreateAliasPage />, { wrapper: createWrapper() });
+describe('EditAliasPage', () => {
+  it('renders the page with all form elements pre-filled with model data', async () => {
+    render(<EditAliasPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByTestId('app-header')).toBeInTheDocument();
@@ -109,42 +122,74 @@ describe('CreateAliasPage', () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByRole('button', { name: /create model alias/i })
+      screen.getByRole('button', { name: /update model alias/i })
     ).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
+      expect(screen.getByRole('textbox', { name: /repo/i })).toHaveValue(
+        'owner1/repo1'
+      );
+      expect(screen.getByRole('textbox', { name: /filename/i })).toHaveValue(
+        'file1.gguf'
+      );
+      expect(
+        screen.getByRole('textbox', { name: /chat template/i })
+      ).toHaveValue('llama2');
+    });
   });
 
-  it('submits the form with correct data', async () => {
+  it('submits the form with updated data', async () => {
     const user = userEvent.setup();
 
-    render(<CreateAliasPage />, { wrapper: createWrapper() });
+    render(<EditAliasPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
       expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
     });
 
-    await user.type(screen.getByLabelText(/alias/i), 'test-alias');
+    await user.clear(screen.getByRole('textbox', { name: /repo/i }));
     await user.type(
       screen.getByRole('textbox', { name: /repo/i }),
-      'owner1/repo1'
+      'owner2/repo2'
     );
+
+    await user.clear(screen.getByRole('textbox', { name: /filename/i }));
     await user.type(
       screen.getByRole('textbox', { name: /filename/i }),
-      'file1.gguf'
+      'file3.gguf'
     );
+
+    await user.clear(screen.getByRole('textbox', { name: /chat template/i }));
     await user.type(
       screen.getByRole('textbox', { name: /chat template/i }),
-      'llama2'
+      'llama3'
     );
+
     await user.click(
-      screen.getByRole('button', { name: /create model alias/i })
+      screen.getByRole('button', { name: /update model alias/i })
     );
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Success',
-        description: 'Alias test-alias successfully created',
+        description: 'Alias test-alias successfully updated',
         duration: 5000,
       });
+    });
+  });
+
+  it('displays error message when model data fails to load', async () => {
+    server.use(
+      rest.get('*/api/ui/models/:alias', (req, res, ctx) => {
+        return res(ctx.status(500));
+      })
+    );
+
+    render(<EditAliasPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByText('Error loading model data')).toBeInTheDocument();
     });
   });
 });
