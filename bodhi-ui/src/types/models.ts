@@ -1,3 +1,18 @@
+export interface AppInfo {
+  status: 'setup' | 'ready' | 'resource-admin' | string;
+}
+
+export interface ApiError {
+  message: string;
+  type: string;
+  param?: string;
+  code?: string;
+}
+
+export interface FeaturedModel {
+  name: string;
+}
+
 export interface Model {
   alias: string;
   family?: string;

@@ -134,7 +134,7 @@ describe('Setup Page', () => {
     });
   });
 
-  it('sets up unauthenticated instance and redirects to /ui/setup/resource-admin', async () => {
+  it('sets up authenticated instance and redirects to /ui/setup/resource-admin', async () => {
     server.use(
       rest.get('*/app/info', (req, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
