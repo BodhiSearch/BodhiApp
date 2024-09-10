@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,13 +8,6 @@ import { useForm } from 'react-hook-form';
 import { createAliasSchema, AliasFormData } from '@/schemas/alias';
 import { Model } from '@/types/models';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -29,12 +22,13 @@ import { requestParamsSchema, contextParamsSchema } from '@/schemas/alias';
 import { z } from 'zod';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import {
-  useModels,
-  useChatTemplates,
   useCreateModel,
   useUpdateModel,
+  useChatTemplates,
+  useModelFiles,
 } from '@/hooks/useQuery';
 import { AxiosError } from 'axios';
+import { AutocompleteInput } from '@/components/AutocompleteInput';
 
 interface AliasFormProps {
   isEditMode: boolean;
@@ -46,87 +40,66 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const { toast } = useToast();
   const [isRequestExpanded, setIsRequestExpanded] = useState(false);
   const [isContextExpanded, setIsContextExpanded] = useState(false);
-  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
+
+  const { data: chatTemplates, isLoading: chatTemplatesLoading } =
+    useChatTemplates();
+  const { data: modelsData, isLoading: modelsLoading } = useModelFiles(
+    1,
+    100,
+    'alias',
+    'asc'
+  );
+
+  const repoInputRef = useRef<HTMLInputElement>(null);
+  const filenameInputRef = useRef<HTMLInputElement>(null);
+  const chatTemplateInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentRepo, setCurrentRepo] = useState(initialData?.repo || '');
+
+  const repos = useMemo(() => {
+    if (!modelsData) return [];
+    const repoSet = new Set(modelsData.data.map((model) => model.repo));
+    return Array.from(repoSet).sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+  }, [modelsData]);
+
+  const filenames = useMemo(() => {
+    if (!modelsData || !currentRepo) return [];
+    const filenameSet = new Set(
+      modelsData.data
+        .filter((model) => model.repo === currentRepo)
+        .map((model) => model.filename)
+    );
+    return Array.from(filenameSet).sort((a, b) =>
+      a.toLowerCase().localeCompare(b.toLowerCase())
+    );
+  }, [modelsData, currentRepo]);
 
   const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasSchema),
     mode: 'onSubmit',
     defaultValues: {
-      alias: '',
-      repo: '',
-      filename: '',
-      chat_template: '',
-      request_params: undefined,
-      context_params: undefined,
+      alias: initialData?.alias || '',
+      repo: initialData?.repo || '',
+      filename: initialData?.filename || '',
+      chat_template: initialData?.chat_template || '',
+      request_params: initialData?.request_params || {},
+      context_params: initialData?.context_params || {},
     },
   });
 
-  const { data: modelsData, isLoading: isModelsLoading } = useModels(
-    1,
-    1000,
-    'alias',
-    'asc'
-  );
-  const { data: chatTemplates, isLoading: isTemplatesLoading } =
-    useChatTemplates();
-
-  useEffect(() => {
-    if (
-      isEditMode &&
-      initialData &&
-      !initialDataLoaded &&
-      !isModelsLoading &&
-      !isTemplatesLoading
-    ) {
-      form.reset({
-        alias: initialData.alias,
-        repo: initialData.repo,
-        filename: initialData.filename,
-        chat_template: initialData.chat_template,
-        request_params: initialData.request_params || {},
-        context_params: initialData.context_params || {},
-      });
-      setInitialDataLoaded(true);
-    }
-  }, [
-    isEditMode,
-    initialData,
-    form,
-    initialDataLoaded,
-    isModelsLoading,
-    isTemplatesLoading,
-  ]);
-
-  const uniqueRepos = useMemo(() => {
-    if (!modelsData?.data) return [];
-    return Array.from(new Set(modelsData.data.map((model) => model.repo)));
-  }, [modelsData?.data]);
-
-  const selectedRepo = form.watch('repo');
-
-  const availableFilenames = useMemo(() => {
-    if (!modelsData?.data || !selectedRepo) return [];
-    return Array.from(
-      new Set(
-        modelsData.data
-          .filter((model) => model.repo === selectedRepo)
-          .map((model) => model.filename)
-      )
-    );
-  }, [modelsData?.data, selectedRepo]);
-
-  useEffect(() => {
-    if (selectedRepo && initialData && initialDataLoaded) {
-      if (availableFilenames.includes(initialData.filename)) {
-        form.setValue('filename', initialData.filename);
-      } else if (!availableFilenames.includes(form.getValues('filename'))) {
-        form.setValue('filename', '');
-      }
-    }
-  }, [selectedRepo, availableFilenames, form, initialData, initialDataLoaded]);
-
   const createModel = useCreateModel();
   const updateModel = useUpdateModel(initialData?.alias || '');
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'repo') {
+        setCurrentRepo(value.repo || '');
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
 
   const onSubmit = async (data: AliasFormData) => {
     try {
@@ -266,6 +239,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
             <CardTitle>{isEditMode ? 'Edit' : 'New'} Model Alias</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Alias field */}
             <FormField
               control={form.control}
               name="alias"
@@ -280,80 +254,79 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               )}
             />
 
+            {/* Repo field with AutocompleteInput */}
             <FormField
               control={form.control}
               name="repo"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Repo</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a repo" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {uniqueRepos.map((repo) => (
-                        <SelectItem key={repo} value={repo}>
-                          {repo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      ref={repoInputRef}
+                      placeholder="Enter repo"
+                    />
+                  </FormControl>
+                  <AutocompleteInput
+                    value={field.value}
+                    onChange={(value) => field.onChange(value)}
+                    suggestions={repos}
+                    loading={modelsLoading}
+                    inputRef={repoInputRef}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* Filename field with AutocompleteInput */}
             <FormField
               control={form.control}
               name="filename"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Filename</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
+                  <FormControl>
+                    <Input
+                      {...field}
+                      ref={filenameInputRef}
+                      placeholder="Enter filename"
+                    />
+                  </FormControl>
+                  <AutocompleteInput
                     value={field.value}
-                    disabled={!selectedRepo}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a filename" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {availableFilenames.map((filename) => (
-                        <SelectItem key={filename} value={filename}>
-                          {filename}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(value) => field.onChange(value)}
+                    suggestions={filenames}
+                    loading={modelsLoading}
+                    inputRef={filenameInputRef}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* Chat Template field with AutocompleteInput */}
             <FormField
               control={form.control}
               name="chat_template"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Chat Template</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a chat template" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {chatTemplates?.map((template) => (
-                        <SelectItem key={template} value={template}>
-                          {template}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      ref={chatTemplateInputRef}
+                      placeholder="Enter chat template"
+                    />
+                  </FormControl>
+                  <AutocompleteInput
+                    value={field.value}
+                    onChange={(value) => field.onChange(value)}
+                    suggestions={chatTemplates || []}
+                    loading={chatTemplatesLoading}
+                    inputRef={chatTemplateInputRef}
+                  />
                   <FormMessage />
                 </FormItem>
               )}
