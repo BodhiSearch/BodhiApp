@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from 'react-query';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
 import AppHeader from '@/components/AppHeader';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
-import { Model, ModelsResponse, SortState } from '@/types/models';
+import { ApiError, Model, SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
+import { useModels } from '@/hooks/useQuery';
 
 const columns = [
   { id: 'alias', name: 'Name', sorted: true },
@@ -29,22 +29,11 @@ export default function ModelsPage() {
     direction: 'asc',
   });
 
-  const fetchModels = async () => {
-    const response = await axios.get<ModelsResponse>(`/api/ui/models`, {
-      params: {
-        page,
-        page_size: pageSize,
-        sort: sort.column,
-        sort_order: sort.direction,
-      },
-    });
-    return response.data;
-  };
-
-  const { data, isLoading, error } = useQuery(
-    ['models', page, pageSize, sort],
-    fetchModels,
-    { keepPreviousData: true }
+  const { data, isLoading, error } = useModels(
+    page,
+    pageSize,
+    sort.column,
+    sort.direction
   );
 
   const toggleSort = (column: string) => {
@@ -99,7 +88,8 @@ export default function ModelsPage() {
     if (error instanceof AxiosError) {
       return (
         <div>
-          An error occurred: {error.response?.data?.message || error.message}
+          An error occurred:{' '}
+          {(error.response?.data as ApiError)?.message || error.message}
         </div>
       );
     } else {
@@ -126,7 +116,11 @@ export default function ModelsPage() {
         </div>
         <Pagination
           page={page}
-          totalPages={data ? Math.ceil(data.total / data.page_size) : 1}
+          totalPages={
+            data
+              ? Math.ceil((data.total as number) / (data.page_size as number))
+              : 1
+          }
           onPageChange={setPage}
         />
       </div>

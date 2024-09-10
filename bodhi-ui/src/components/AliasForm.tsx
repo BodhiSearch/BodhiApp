@@ -3,12 +3,10 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { useQuery } from 'react-query';
-import axios, { AxiosError } from 'axios';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { createAliasSchema, AliasFormData } from '@/schemas/alias';
-import { ModelsResponse, Model } from '@/types/models';
+import { Model } from '@/types/models';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -30,6 +28,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { requestParamsSchema, contextParamsSchema } from '@/schemas/alias';
 import { z } from 'zod';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+import {
+  useModels,
+  useChatTemplates,
+  useCreateModel,
+  useUpdateModel,
+} from '@/hooks/useQuery';
+import { AxiosError } from 'axios';
 
 interface AliasFormProps {
   isEditMode: boolean;
@@ -56,32 +61,14 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     },
   });
 
-  const { data: modelsData, isLoading: isModelsLoading } =
-    useQuery<ModelsResponse>(
-      'models',
-      async () => {
-        const response = await axios.get('/api/ui/models');
-        return response.data;
-      },
-      {
-        refetchOnMount: true,
-        refetchOnWindowFocus: false,
-      }
-    );
-
-  const { data: chatTemplates, isLoading: isTemplatesLoading } = useQuery<
-    string[]
-  >(
-    'chatTemplates',
-    async () => {
-      const response = await axios.get('/api/ui/chat_templates');
-      return response.data;
-    },
-    {
-      refetchOnMount: true,
-      refetchOnWindowFocus: false,
-    }
+  const { data: modelsData, isLoading: isModelsLoading } = useModels(
+    1,
+    1000,
+    'alias',
+    'asc'
   );
+  const { data: chatTemplates, isLoading: isTemplatesLoading } =
+    useChatTemplates();
 
   useEffect(() => {
     if (
@@ -138,26 +125,20 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     }
   }, [selectedRepo, availableFilenames, form, initialData, initialDataLoaded]);
 
+  const createModel = useCreateModel();
+  const updateModel = useUpdateModel(initialData?.alias || '');
+
   const onSubmit = async (data: AliasFormData) => {
     try {
-      let response;
-      if (isEditMode) {
-        response = await axios.put(
-          `/api/ui/models/${initialData?.alias}`,
-          data
-        );
-      } else {
-        response = await axios.post('/api/ui/models', data);
-      }
+      const mutationFn = isEditMode ? updateModel : createModel;
+      await mutationFn.mutateAsync(data);
 
-      if (response.status === 200 || response.status === 201) {
-        toast({
-          title: 'Success',
-          description: `Alias ${data.alias} successfully ${isEditMode ? 'updated' : 'created'}`,
-          duration: 5000,
-        });
-        router.push('/ui/models');
-      }
+      toast({
+        title: 'Success',
+        description: `Alias ${data.alias} successfully ${isEditMode ? 'updated' : 'created'}`,
+        duration: 5000,
+      });
+      router.push('/ui/models');
     } catch (error) {
       console.error(
         `Error ${isEditMode ? 'updating' : 'creating'} alias:`,
@@ -165,11 +146,8 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
       );
       let errorMessage = `Failed to ${isEditMode ? 'update' : 'create'} alias. Please try again.`;
 
-      if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ message: string }>;
-        if (axiosError.response?.data?.message) {
-          errorMessage = axiosError.response.data.message;
-        }
+      if (error instanceof AxiosError && error.response?.data?.message) {
+        errorMessage = error.response.data.message;
       }
 
       toast({

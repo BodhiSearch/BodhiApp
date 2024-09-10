@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { useAppSetup } from '@/hooks/useAppSetup';
+import { useAppInfo } from '@/hooks/useQuery';
 
 interface AppInitializerProps {
   allowedStatus?: 'setup' | 'ready' | 'resource-admin';
@@ -16,7 +16,7 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
   children,
 }) => {
   const router = useRouter();
-  const { appInfo, isLoading, isError, error } = useAppSetup();
+  const { data: appInfo, isLoading, isError, error } = useAppInfo();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {

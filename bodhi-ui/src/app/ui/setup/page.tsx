@@ -15,25 +15,25 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import AppInitializer from '@/components/AppInitializer';
-import { AppInfo, useAppSetup } from '@/hooks/useAppSetup';
+import { useSetupApp } from '@/hooks/useQuery';
 import { AxiosError } from 'axios';
 
 function SetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(searchParams.get('error'));
-  const { setup, isSettingUp } = useAppSetup();
+  const { mutateAsync: setup, isLoading: isSettingUp } = useSetupApp();
 
   const handleSetup = async (authz: boolean) => {
     setError(null);
     try {
-      const response: AppInfo = await setup(authz);
-      if (response.status === 'resource-admin') {
+      const appInfo = await setup(authz);
+      if (appInfo.status === 'resource-admin') {
         router.push('/ui/setup/resource-admin');
-      } else if (response.status === 'ready') {
+      } else if (appInfo.status === 'ready') {
         router.push('/ui/home');
       } else {
-        setError(`Unexpected setup status: ${response.status}`);
+        setError(`Unexpected setup status: ${appInfo.status}`);
       }
     } catch (err) {
       if (err instanceof AxiosError) {

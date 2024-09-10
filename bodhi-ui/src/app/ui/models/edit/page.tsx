@@ -2,32 +2,15 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useQuery } from 'react-query';
-import axios from 'axios';
 import AliasForm from '@/components/AliasForm';
 import AppHeader from '@/components/AppHeader';
-import { Model } from '@/types/models';
+import { useModel } from '@/hooks/useQuery';
 
 function EditAliasContent() {
   const searchParams = useSearchParams();
   const alias = searchParams.get('alias');
 
-  const {
-    data: modelData,
-    isLoading,
-    error,
-  } = useQuery<Model>(
-    ['model', alias],
-    async () => {
-      const response = await axios.get(`/api/ui/models/${alias}`);
-      return response.data;
-    },
-    {
-      enabled: !!alias,
-      refetchOnMount: true,
-      refetchOnWindowFocus: false,
-    }
-  );
+  const { data: modelData, isLoading, error } = useModel(alias ?? '');
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading model data</div>;

@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from 'react-query';
-import axios, { AxiosError } from 'axios';
+import { AxiosError } from 'axios';
 import AppHeader from '@/components/AppHeader';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
-import { ModelFile, ModelFilesResponse, SortState } from '@/types/models';
+import { ApiError, ModelFile, SortState } from '@/types/models';
+import { useModelFiles } from '@/hooks/useQuery';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -31,22 +31,11 @@ export default function ModelFilesPage() {
     direction: 'asc',
   });
 
-  const fetchModelFiles = async () => {
-    const response = await axios.get<ModelFilesResponse>(`/api/ui/modelfiles`, {
-      params: {
-        page,
-        page_size: pageSize,
-        sort: sort.column,
-        sort_order: sort.direction,
-      },
-    });
-    return response.data;
-  };
-
-  const { data, isLoading, error } = useQuery(
-    ['modelFiles', page, pageSize, sort],
-    fetchModelFiles,
-    { keepPreviousData: true }
+  const { data, isLoading, error } = useModelFiles(
+    page,
+    pageSize,
+    sort.column,
+    sort.direction
   );
 
   const toggleSort = (column: string) => {
@@ -89,12 +78,12 @@ export default function ModelFilesPage() {
       )}
     </div>
   );
-
   if (error) {
     if (error instanceof AxiosError) {
       return (
         <div>
-          An error occurred: {error.response?.data?.message || error.message}
+          An error occurred:{' '}
+          {(error.response?.data as ApiError)?.message || error.message}
         </div>
       );
     } else {
@@ -121,7 +110,11 @@ export default function ModelFilesPage() {
         </div>
         <Pagination
           page={page}
-          totalPages={data ? Math.ceil(data.total / data.page_size) : 1}
+          totalPages={
+            data
+              ? Math.ceil((data.total as number) / (data.page_size as number))
+              : 1
+          }
           onPageChange={setPage}
         />
       </div>
