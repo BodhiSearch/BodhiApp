@@ -38,8 +38,12 @@ interface AliasFormProps {
 const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const router = useRouter();
   const { toast } = useToast();
-  const [isRequestExpanded, setIsRequestExpanded] = useState(false);
-  const [isContextExpanded, setIsContextExpanded] = useState(false);
+  const [isRequestExpanded, setIsRequestExpanded] = useState(
+    isEditMode && Object.keys(initialData?.request_params || {}).length > 0
+  );
+  const [isContextExpanded, setIsContextExpanded] = useState(
+    isEditMode && Object.keys(initialData?.context_params || {}).length > 0
+  );
 
   const { data: chatTemplates, isLoading: chatTemplatesLoading } =
     useChatTemplates();
