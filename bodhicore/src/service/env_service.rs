@@ -9,6 +9,7 @@ use std::{
   collections::HashMap,
   fs::{self, File},
   path::{Path, PathBuf},
+  sync::{Arc, Mutex},
 };
 
 pub static PROD_DB: &str = "bodhi.sqlite";
@@ -121,6 +122,8 @@ pub struct EnvService {
   bodhi_home: Option<PathBuf>,
   hf_home: Option<PathBuf>,
   logs_dir: Option<PathBuf>,
+  host: Arc<Mutex<Option<String>>>,
+  port: Arc<Mutex<Option<u16>>>,
 }
 
 impl EnvService {
@@ -133,6 +136,14 @@ impl EnvService {
         Err(_) => default.to_string(),
       }
     }
+  }
+
+  pub fn set_host(&self, host: &str) {
+    *self.host.lock().unwrap() = Some(host.to_string());
+  }
+
+  pub fn set_port(&self, port: u16) {
+    *self.port.lock().unwrap() = Some(port);
   }
 }
 
@@ -194,19 +205,25 @@ impl EnvServiceFn for EnvService {
   }
 
   fn host(&self) -> String {
-    match self.env_wrapper.var(BODHI_HOST) {
-      Ok(value) => value,
-      Err(_) => DEFAULT_HOST.to_string(),
+    match self.host.lock().unwrap().as_ref() {
+      Some(host) => host.clone(),
+      None => match self.env_wrapper.var(BODHI_HOST) {
+        Ok(value) => value,
+        Err(_) => DEFAULT_HOST.to_string(),
+      },
     }
   }
 
   fn port(&self) -> u16 {
-    match self.env_wrapper.var(BODHI_PORT) {
-      Ok(value) => match value.parse::<u16>() {
-        Ok(port) => port,
+    match self.port.lock().unwrap().as_ref() {
+      Some(port) => *port,
+      None => match self.env_wrapper.var(BODHI_PORT) {
+        Ok(value) => match value.parse::<u16>() {
+          Ok(port) => port,
+          Err(_) => DEFAULT_PORT,
+        },
         Err(_) => DEFAULT_PORT,
       },
-      Err(_) => DEFAULT_PORT,
     }
   }
 
@@ -247,6 +264,8 @@ impl EnvService {
       bodhi_home: None,
       hf_home: None,
       logs_dir: None,
+      host: Arc::new(Mutex::new(None)),
+      port: Arc::new(Mutex::new(None)),
     }
   }
 
@@ -258,6 +277,8 @@ impl EnvService {
       bodhi_home: Some(bodhi_home),
       hf_home: Some(hf_home),
       logs_dir: Some(logs_dir),
+      host: Arc::new(Mutex::new(None)),
+      port: Arc::new(Mutex::new(None)),
     }
   }
 

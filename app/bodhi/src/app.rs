@@ -52,7 +52,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   let auth_service = KeycloakAuthService::new(auth_url, auth_realm);
 
   let app_service = AppService::new(
-    env_service,
+    env_service.clone(),
     Arc::new(hub_service),
     Arc::new(data_service),
     Arc::new(auth_service),
@@ -95,7 +95,13 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
     }
     serve @ Command::Serve { .. } => {
       let serve_command = ServeCommand::try_from(serve)?;
-      serve_command.aexecute(service, None).await?;
+      match &serve_command {
+        cmd @ ServeCommand::ByParams { host, port } => {
+          env_service.set_host(host);
+          env_service.set_port(*port);
+          cmd.aexecute(service, None).await?;
+        },
+      }
     }
     pull @ Command::Pull { .. } => {
       let pull_command = PullCommand::try_from(pull)?;
