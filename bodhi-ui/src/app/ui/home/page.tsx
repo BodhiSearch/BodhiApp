@@ -30,11 +30,12 @@ interface FeaturedModel {
 function HomeContent() {
   const [featuredModels, setFeaturedModels] = useState<FeaturedModel[]>([]);
 
-  useEffect(() => {
-    fetch('https://api.getbodhi.app/featured-models')
-      .then((response) => response.json())
-      .then((data) => setFeaturedModels(data));
-  }, []);
+  // TODO: commenting for time being
+  // useEffect(() => {
+  //   fetch('https://api.getbodhi.app/featured-models')
+  //     .then((response) => response.json())
+  //     .then((data) => setFeaturedModels(data));
+  // }, []);
 
   return (
     <>

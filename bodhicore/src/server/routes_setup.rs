@@ -11,7 +11,6 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -82,7 +81,7 @@ pub struct SetupResponse {
 
 impl IntoResponse for SetupResponse {
   fn into_response(self) -> Response {
-    (StatusCode::OK, Json(json!({}))).into_response()
+    (StatusCode::OK, Json(self)).into_response()
   }
 }
 
