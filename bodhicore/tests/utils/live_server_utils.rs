@@ -12,7 +12,7 @@ use dircpy::CopyBuilder;
 use mockall::predicate::eq;
 use rstest::fixture;
 use sqlx::SqlitePool;
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{path::Path, sync::Arc};
 use tempfile::TempDir;
 
 use super::mocks::MockSecretService;
@@ -58,8 +58,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
     .with(eq(KEY_APP_STATUS))
     .returning(|_| Ok(Some("ready".to_string())));
   let session_service = SqliteSessionService::new(pool);
-  let cache_service =
-    MokaCacheService::new(Some(100), Some(Duration::from_secs(30 * 24 * 60 * 60)));
+  let cache_service = MokaCacheService::default();
   let service = AppService::new(
     Arc::new(env_service),
     Arc::new(hub_service),

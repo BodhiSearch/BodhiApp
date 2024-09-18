@@ -13,7 +13,7 @@ use crate::{
 };
 use derive_builder::Builder;
 use rstest::fixture;
-use std::{collections::HashMap, path::PathBuf, sync::Arc, time::Duration};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 
 pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
@@ -118,10 +118,7 @@ impl AppServiceStubBuilder {
   }
 
   fn default_cache_service(&self) -> Option<Arc<dyn CacheService + Send + Sync>> {
-    Some(Arc::new(MokaCacheService::new(
-      Some(100),
-      Some(Duration::from_secs(30 * 24 * 60 * 60)),
-    )))
+    Some(Arc::new(MokaCacheService::default()))
   }
 
   fn default_auth_service(&self) -> Option<Arc<dyn AuthService + Send + Sync>> {

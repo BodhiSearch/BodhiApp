@@ -12,7 +12,7 @@ mod shared_rw;
 #[cfg(test)]
 mod test_utils;
 mod tokenizer_config;
-mod utils;
+pub mod utils;
 
 // TODO: remove exposing of cli methods, rename cli to command package
 pub use cli::*;

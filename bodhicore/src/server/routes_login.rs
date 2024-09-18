@@ -1,19 +1,27 @@
 use super::{utils::generate_random_string, RouterStateFn};
-use crate::service::{
-  get_secret, AppRegInfo, AuthServiceError, HttpError, HttpErrorBuilder, SecretServiceError,
-  KEY_APP_REG_INFO, KEY_APP_STATUS,
+use crate::{
+  service::{
+    get_secret, AppRegInfo, AuthServiceError, HttpError, HttpErrorBuilder, SecretServiceError,
+    KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
+  },
+  utils::{decode_access_token, Claims},
 };
 use axum::{
   body::Body,
   extract::{Query, State},
-  http::{header::LOCATION, StatusCode},
+  http::{
+    header::{HeaderMap, LOCATION},
+    StatusCode,
+  },
   response::{IntoResponse, Response},
 };
 use base64::{engine::general_purpose, Engine as _};
+use jsonwebtoken::TokenData;
 use oauth2::{
   url::ParseError, AccessToken, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier,
   RedirectUrl,
 };
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
@@ -226,6 +234,53 @@ pub async fn logout_handler(
   Ok(response)
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserInfo {
+  pub email: String,
+}
+
+pub async fn user_info_handler(headers: HeaderMap) -> Result<Response, HttpError> {
+  let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
+    return Err(
+      HttpErrorBuilder::default()
+        .unauthorized("access token/api key is not present", None)
+        .build()
+        .unwrap(),
+    );
+  };
+  let token_str = token.to_str().map_err(|err| {
+    HttpErrorBuilder::default()
+      .bad_request(&format!("invalid token format: {err}"))
+      .build()
+      .unwrap()
+  })?;
+  if token_str.is_empty() {
+    return Err(
+      HttpErrorBuilder::default()
+        .unauthorized("access token/api key is not present", None)
+        .build()
+        .unwrap(),
+    );
+  }
+  let token_data: TokenData<Claims> = decode_access_token(token_str).map_err(|err| {
+    HttpErrorBuilder::default()
+      .unauthorized(&format!("invalid token: {err}"), None)
+      .build()
+      .unwrap()
+  })?;
+  Ok(
+    Response::builder()
+      .status(StatusCode::OK)
+      .body(Body::from(
+        serde_json::to_string(&UserInfo {
+          email: token_data.claims.email,
+        })
+        .unwrap(),
+      ))
+      .unwrap(),
+  )
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -235,8 +290,8 @@ mod tests {
       AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
     },
     test_utils::{
-      temp_bodhi_home, AppServiceStub, AppServiceStubBuilder, EnvServiceStub, MockSharedContext,
-      ResponseTestExt, SecretServiceStub, SessionTestExt,
+      temp_bodhi_home, token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub,
+      MockSharedContext, ResponseTestExt, SecretServiceStub, SessionTestExt,
     },
   };
   use anyhow_trace::anyhow_trace;
@@ -687,6 +742,96 @@ mod tests {
     assert_eq!("http://localhost:1135/ui/home", location);
     let record = session_service.get_session_record(session_id).await;
     assert!(record.is_none());
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_user_info_handler_valid_token(
+    token: anyhow::Result<(String, String, String)>,
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = token.unwrap();
+    let app_service: Arc<dyn AppServiceFn> = Arc::new(AppServiceStubBuilder::default().build()?);
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/app/user", get(user_info_handler))
+      .with_state(state);
+    let response = router
+      .oneshot(
+        Request::get("/app/user")
+          .header(KEY_RESOURCE_TOKEN, token)
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let response_json = response.json::<Value>().await.unwrap();
+    assert_eq!(
+      "testuser@email.com",
+      response_json["email"].as_str().unwrap(),
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
+    let app_service: Arc<dyn AppServiceFn> = Arc::new(AppServiceStubBuilder::default().build()?);
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/app/user", get(user_info_handler))
+      .with_state(state);
+    let response = router
+      .oneshot(
+        Request::get("/app/user")
+          .header(KEY_RESOURCE_TOKEN, "")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let response_json = response.json::<Value>().await.unwrap();
+    assert_eq!(
+      response_json["message"].as_str().unwrap(),
+      "access token/api key is not present"
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
+    let app_service: Arc<dyn AppServiceFn> = Arc::new(AppServiceStubBuilder::default().build()?);
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/app/user", get(user_info_handler))
+      .with_state(state);
+    let response = router
+      .oneshot(
+        Request::get("/app/user")
+          .header(KEY_RESOURCE_TOKEN, "invalid_token")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    let response_json = response.json::<Value>().await?;
+    assert_eq!(
+      "invalid token: InvalidToken",
+      response_json["message"].as_str().unwrap()
+    );
     Ok(())
   }
 }

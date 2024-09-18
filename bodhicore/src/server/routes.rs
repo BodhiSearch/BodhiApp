@@ -2,7 +2,7 @@ use super::{
   router_state::RouterState,
   routes_chat::chat_completions_handler,
   routes_dev::dev_secrets_handler,
-  routes_login::{login_callback_handler, login_handler, logout_handler},
+  routes_login::{login_callback_handler, login_handler, logout_handler, user_info_handler},
   routes_models::models_router,
   routes_oai_models::{oai_model_handler, oai_models_handler},
   routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler},
@@ -57,6 +57,7 @@ pub fn build_routes(
   }
   let api_router = Router::new().merge(chats_router()).merge(models_router());
   let protected_apis = Router::new()
+    .route("/app/user", get(user_info_handler))
     .route("/api/tags", get(ollama_models_handler))
     .route("/api/show", post(ollama_model_show_handler))
     .route("/api/chat", post(ollama_model_chat_handler))
