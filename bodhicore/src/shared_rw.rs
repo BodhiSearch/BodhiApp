@@ -516,7 +516,7 @@ mod test {
       .build()
       .unwrap();
     let mut mock = MockBodhiServerContext::default();
-    let expected_input = 
+    let expected_input =
       "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"testalias:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
     mock.expect_init().with().return_once(|| Ok(()));
     mock.expect_start_event_loop().with().return_once(|| Ok(()));

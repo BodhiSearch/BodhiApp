@@ -96,13 +96,13 @@ mod test {
     created_at: DateTime::<Utc>::from_timestamp_millis(1704070800000).unwrap(),
     updated_at: DateTime::<Utc>::from_timestamp_millis(1704070800000).unwrap(),
     messages: vec![
-      Message { 
+      Message {
         id: "".to_string(), 
         conversation_id: "".to_string(), 
         role: "user".to_string(), 
-        name: None, 
+        name: None,
         content: Some("What day comes after Monday?".to_string()), 
-        created_at: DateTime::<Utc>::default(), 
+        created_at: DateTime::<Utc>::default(),
       }],
   })]
   fn test_db_objs_serialize(
@@ -126,7 +126,7 @@ mod test {
           .unwrap()
       ])
     .build()
-    .unwrap(), 
+    .unwrap(),
     r#"{"id":"","title":"","messages":[{"role":"user","content":"test content"}]}"#)]
   fn test_db_objs_skip_serialize_if_default(
     #[case] obj: Conversation,

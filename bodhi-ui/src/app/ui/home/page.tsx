@@ -1,7 +1,7 @@
 'use client';
 
 import { Suspense } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import AppHeader from '@/components/AppHeader';
 import {
@@ -28,7 +28,7 @@ interface FeaturedModel {
 }
 
 function HomeContent() {
-  const [featuredModels, setFeaturedModels] = useState<FeaturedModel[]>([]);
+  const [featuredModels] = useState<FeaturedModel[]>([]);
 
   // TODO: commenting for time being
   // useEffect(() => {

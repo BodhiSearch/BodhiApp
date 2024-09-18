@@ -25,8 +25,10 @@ def mark_skip() -> Dict[str, pytest.MarkDecorator]:
 def mark_bodhi() -> Dict[str, pytest.MarkDecorator]:
   return {"marks": pytest.mark.bodhi()}
 
+
 def mark_ollama_bodhi() -> Dict[str, pytest.MarkDecorator]:
   return {"marks": [pytest.mark.bodhi(), pytest.mark.ollama_bodhi()]}
+
 
 def mark_ollama() -> Dict[str, pytest.MarkDecorator]:
   return {"marks": pytest.mark.ollama()}

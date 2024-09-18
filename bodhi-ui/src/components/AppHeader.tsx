@@ -9,12 +9,7 @@ export default function AppHeader() {
         <PageNavigation />
       </div>
       <div className="flex items-center space-x-4 order-1 sm:order-2">
-        <Image
-          src="/bodhi-logo.png"
-          alt="Bodhi Logo"
-          width={50}
-          height={50}
-        />
+        <Image src="/bodhi-logo.png" alt="Bodhi Logo" width={50} height={50} />
         <h1 className="text-3xl sm:text-4xl font-bold text-primary">Bodhi</h1>
       </div>
       <div className="order-3 w-full sm:w-auto">

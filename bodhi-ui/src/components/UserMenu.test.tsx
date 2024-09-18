@@ -15,7 +15,7 @@ import { setupServer } from 'msw/node';
 import UserMenu from './UserMenu';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { ReactNode } from 'react';
-import { ToastProvider } from "@/components/ui/toast";
+import { ToastProvider } from '@/components/ui/toast';
 import userEvent from '@testing-library/user-event';
 
 // Mock the Next.js router
@@ -67,10 +67,7 @@ describe('UserMenu', () => {
     const wrapper = createWrapper();
     server.use(
       rest.post('*/app/logout', (req, res, ctx) => {
-        return res(
-          ctx.set('location', '/ui/test/home'),
-          ctx.status(302)
-        );
+        return res(ctx.set('location', '/ui/test/home'), ctx.status(302));
       })
     );
 

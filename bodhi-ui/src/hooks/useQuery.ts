@@ -4,7 +4,7 @@ import {
   useQueryClient,
   UseQueryOptions,
   UseMutationOptions,
-  UseMutationResult
+  UseMutationResult,
 } from 'react-query';
 import apiClient from '@/lib/apiClient';
 import { AxiosError, AxiosResponse } from 'axios';
@@ -75,7 +75,7 @@ export function useAppInfo() {
 
 type SetupRequest = {
   authz: boolean;
-}
+};
 
 export function useSetupApp() {
   return useMutationQuery<AppInfo, SetupRequest>('/app/setup');
@@ -140,6 +140,8 @@ export function useFeaturedModels() {
   );
 }
 
-export function useLogout(options?: UseMutationOptions<AxiosResponse, AxiosError, void, unknown>): UseMutationResult<AxiosResponse, AxiosError, void, unknown> {
+export function useLogout(
+  options?: UseMutationOptions<AxiosResponse, AxiosError, void, unknown>
+): UseMutationResult<AxiosResponse, AxiosError, void, unknown> {
   return useMutationQuery<AxiosResponse, void>('/app/logout', 'post', options);
 }
