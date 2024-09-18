@@ -100,7 +100,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
           env_service.set_host(host);
           env_service.set_port(*port);
           cmd.aexecute(service, None).await?;
-        },
+        }
       }
     }
     pull @ Command::Pull { .. } => {

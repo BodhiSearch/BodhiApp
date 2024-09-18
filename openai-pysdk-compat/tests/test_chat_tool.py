@@ -104,6 +104,7 @@ def test_chat_tool(client, model, input, output):
   diff = DeepDiff(output, result)
   assert {} == diff
 
+
 weather_tools = [
   {
     "type": "function",

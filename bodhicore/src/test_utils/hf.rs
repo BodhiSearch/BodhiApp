@@ -5,7 +5,6 @@ use tempfile::{tempdir, TempDir};
 
 #[fixture]
 pub fn temp_home() -> TempDir {
-  
   tempdir().expect("Failed to create a temporary directory")
 }
 

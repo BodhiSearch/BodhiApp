@@ -1,5 +1,8 @@
 use bodhicore::{
-  db::DbError, objs::BuilderError, service::{DataServiceError, SessionServiceError}, CliError, ContextError,
+  db::DbError,
+  objs::BuilderError,
+  service::{DataServiceError, SessionServiceError},
+  CliError, ContextError,
 };
 use std::io;
 
