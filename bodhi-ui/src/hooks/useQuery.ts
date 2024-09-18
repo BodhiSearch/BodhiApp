@@ -4,9 +4,10 @@ import {
   useQueryClient,
   UseQueryOptions,
   UseMutationOptions,
+  UseMutationResult
 } from 'react-query';
 import apiClient from '@/lib/apiClient';
-import { AxiosError } from 'axios';
+import { AxiosError, AxiosResponse } from 'axios';
 import { AppInfo, FeaturedModel, Model, ModelFile } from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
 
@@ -42,18 +43,19 @@ export function useQuery<T>(
 export function useMutationQuery<T, V>(
   endpoint: string,
   method: 'post' | 'put' | 'delete' = 'post',
-  options?: UseMutationOptions<T, AxiosError, V>
-) {
+  options?: UseMutationOptions<AxiosResponse<T>, AxiosError, V>
+): UseMutationResult<AxiosResponse<T>, AxiosError, V> {
   const queryClient = useQueryClient();
 
-  return useMutation<T, AxiosError, V>(
+  return useMutation<AxiosResponse<T>, AxiosError, V>(
     async (variables) => {
-      const { data } = await apiClient[method]<T>(endpoint, variables, {
+      const response = await apiClient[method]<T>(endpoint, variables, {
         headers: {
           'Content-Type': 'application/json',
         },
+        validateStatus: (status) => status >= 200 && status < 400,
       });
-      return data;
+      return response;
     },
     {
       ...options,
@@ -136,4 +138,8 @@ export function useFeaturedModels() {
     'featuredModels',
     'https://api.getbodhi.app/featured-models'
   );
+}
+
+export function useLogout(options?: UseMutationOptions<AxiosResponse, AxiosError, void, unknown>): UseMutationResult<AxiosResponse, AxiosError, void, unknown> {
+  return useMutationQuery<AxiosResponse, void>('/app/logout', 'post', options);
 }

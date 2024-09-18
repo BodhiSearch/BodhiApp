@@ -27,7 +27,7 @@ function SetupContent() {
   const handleSetup = async (authz: boolean) => {
     setError(null);
     try {
-      const appInfo = await setup({ authz });
+      const { data: appInfo } = await setup({ authz });
       if (appInfo.status === 'resource-admin') {
         router.push('/ui/setup/resource-admin');
       } else if (appInfo.status === 'ready') {
