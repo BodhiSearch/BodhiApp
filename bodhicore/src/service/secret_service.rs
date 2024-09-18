@@ -95,7 +95,7 @@ pub struct KeyringSecretService {
 
 impl KeyringSecretService {
   pub fn with_service_name(service_name: String) -> Self {
-    let cache = Arc::new(MokaCacheService::new(None, None));
+    let cache = Arc::new(MokaCacheService::default());
     Self {
       service_name,
       cache,
@@ -142,14 +142,10 @@ mod tests {
   use super::*;
   use crate::service::cache_service::MokaCacheService;
   use serde::{Deserialize, Serialize};
-  use std::time::Duration;
 
   #[test]
   fn test_secret_service_with_cache() {
-    let cache = Arc::new(MokaCacheService::new(
-      Some(100),
-      Some(Duration::from_secs(60)),
-    ));
+    let cache = Arc::new(MokaCacheService::default());
     let service = KeyringSecretService::with_cache("bodhi_test".to_string(), cache.clone());
     service.set_secret_string("test_key", "test_value").unwrap();
     let value = service.get_secret_string("test_key").unwrap();
@@ -164,10 +160,7 @@ mod tests {
 
   #[test]
   fn test_secret_service_with_serialized_object() -> anyhow::Result<()> {
-    let cache = Arc::new(MokaCacheService::new(
-      Some(100),
-      Some(Duration::from_secs(60)),
-    ));
+    let cache = Arc::new(MokaCacheService::default());
     let mut service = Arc::new(KeyringSecretService::with_cache(
       "bodhi_test".to_string(),
       cache,

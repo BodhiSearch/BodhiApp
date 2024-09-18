@@ -3,7 +3,10 @@ use super::{
   APP_AUTHZ_TRUE, APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
   KEY_RESOURCE_TOKEN,
 };
-use crate::server::RouterStateFn;
+use crate::{
+  server::RouterStateFn,
+  utils::{decode_access_token, Claims},
+};
 use axum::{
   extract::{Request, State},
   http::{header::AUTHORIZATION, HeaderMap},
@@ -85,12 +88,6 @@ impl IntoResponse for AuthError {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-  jti: String,
-  exp: u64,
-}
-
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 #[cfg_attr(test, derive(derive_builder::Builder))]
 pub struct AppRegInfo {
@@ -140,15 +137,8 @@ pub async fn auth_middleware(
   // Check for token in session
   if let Some(access_token) = session.get::<String>("access_token").await? {
     // Validate session token
-    let mut validation = Validation::default();
-    validation.insecure_disable_signature_validation();
-    validation.validate_exp = false;
-    let token_data = jsonwebtoken::decode::<Claims>(
-      &access_token,
-      &DecodingKey::from_secret(&[]), // dummy key for parsing
-      &validation,
-    )
-    .map_err(|e| AuthError::InvalidToken(format!("error decoding session access token: {e}")))?;
+    let token_data =
+      decode_access_token(&access_token).map_err(|e| AuthError::InvalidToken(e.to_string()))?;
 
     // Check if token is expired
     let now = time::OffsetDateTime::now_utc();
@@ -227,15 +217,8 @@ pub async fn auth_middleware(
   let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
 
   // Decode token without validation to get the JTI
-  let mut validation = Validation::default();
-  validation.insecure_disable_signature_validation();
-  let token_data = jsonwebtoken::decode::<Claims>(
-    &token,
-    &DecodingKey::from_secret(&[]), // dummy key for parsing
-    &validation,
-  )
-  .map_err(|e| AuthError::InvalidToken(format!("error decoding token: {e}")))?;
-
+  let token_data =
+    decode_access_token(&token).map_err(|e| AuthError::InvalidToken(e.to_string()))?;
   let jti = &token_data.claims.jti;
 
   // Check cache for existing exchange token
@@ -671,7 +654,7 @@ mod tests {
       .expect_exchange_for_resource_token()
       .never();
 
-    let cache_service = MokaCacheService::new(None, None);
+    let cache_service = MokaCacheService::default();
     let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
     let cached_token = "token-from-cache";
     cache_service.set(
@@ -743,7 +726,7 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
-      .cache_service(Arc::new(MokaCacheService::new(None, None)))
+      .cache_service(Arc::new(MokaCacheService::default()))
       .with_session_service()
       .await
       .build()?;

@@ -12,7 +12,7 @@ use bodhicore::{
 };
 use clap::Parser;
 use include_dir::{include_dir, Dir};
-use std::{env, path::Path, sync::Arc, time::Duration};
+use std::{env, path::Path, sync::Arc};
 use tokio::runtime::Builder;
 use tower_serve_static::ServeDir;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -44,8 +44,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   db_service.migrate().await?;
   let session_service = SqliteSessionService::new(pool);
   session_service.migrate().await?;
-  let cache_service =
-    MokaCacheService::new(Some(100), Some(Duration::from_secs(30 * 24 * 60 * 60)));
+  let cache_service = MokaCacheService::default();
 
   let auth_url = env_service.auth_url();
   let auth_realm = env_service.auth_realm();
