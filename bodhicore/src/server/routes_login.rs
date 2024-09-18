@@ -6,7 +6,7 @@ use crate::service::{
 use axum::{
   body::Body,
   extract::{Query, State},
-  http::StatusCode,
+  http::{header::LOCATION, StatusCode},
   response::{IntoResponse, Response},
 };
 use base64::{engine::general_purpose, Engine as _};
@@ -191,6 +191,41 @@ fn generate_pkce() -> (String, String) {
   (code_verifier, code_challenge)
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum LogoutError {
+  #[error("failed to delete session: {0}")]
+  SessionDeleteError(String),
+}
+
+impl From<LogoutError> for HttpError {
+  fn from(value: LogoutError) -> Self {
+    match value {
+      LogoutError::SessionDeleteError(err) => HttpErrorBuilder::default()
+        .internal_server(Some(&err))
+        .build()
+        .unwrap(),
+    }
+  }
+}
+
+pub async fn logout_handler(
+  session: Session,
+  State(state): State<Arc<dyn RouterStateFn>>,
+) -> Result<Response, HttpError> {
+  let env_service = state.app_service().env_service();
+  session
+    .delete()
+    .await
+    .map_err(|err| LogoutError::SessionDeleteError(err.to_string()))?;
+  let ui_home = format!("{}/ui/home", env_service.frontend_url());
+  let response = Response::builder()
+    .status(StatusCode::FOUND)
+    .header(LOCATION, ui_home)
+    .body(Body::empty())
+    .unwrap();
+  Ok(response)
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -209,13 +244,14 @@ mod tests {
     body::Body,
     http::{header, Request},
     middleware::{from_fn, Next},
-    routing::get,
-    Router,
+    routing::{get, post},
+    Json, Router,
   };
+  use axum_test::TestServer;
   use mockall::predicate::function;
   use oauth2::RefreshToken;
   use rstest::rstest;
-  use serde_json::Value;
+  use serde_json::{json, Value};
   use std::{collections::HashMap, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;
@@ -403,7 +439,7 @@ mod tests {
       .layer(app_service.session_service().session_layer())
       .with_state(state);
 
-    let mut client = axum_test::TestServer::new(router)?;
+    let mut client = TestServer::new(router)?;
     client.do_save_cookies();
 
     // Perform login request
@@ -519,7 +555,7 @@ mod tests {
       .layer(app_service.session_service().session_layer())
       .with_state(state);
 
-    let mut client = axum_test::TestServer::new(router)?;
+    let mut client = TestServer::new(router)?;
     client.do_save_cookies();
 
     let login_resp = client.get("/login").await;
@@ -580,7 +616,7 @@ mod tests {
       .layer(app_service.session_service().session_layer())
       .with_state(state);
 
-    let mut client = axum_test::TestServer::new(router)?;
+    let mut client = TestServer::new(router)?;
     client.do_save_cookies();
 
     // Simulate login to set up session
@@ -601,6 +637,56 @@ mod tests {
     let error = resp.json::<Value>();
     let error = error.get("message").unwrap().as_str().unwrap();
     assert_eq!(error, "api_error: network error");
+    Ok(())
+  }
+
+  pub async fn create_test_session_handler(session: Session) -> impl IntoResponse {
+    session.insert("test", "test").await.unwrap();
+    (StatusCode::CREATED, Json(json!({})))
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_logout_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service =
+      Arc::new(SqliteSessionService::build_session_service(dbfile.clone()).await);
+    let app_service: Arc<dyn AppServiceFn> = Arc::new(
+      AppServiceStubBuilder::default()
+        .with_sqlite_session_service(session_service.clone())
+        .await
+        .build()?,
+    );
+
+    let state = Arc::new(RouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/app/logout", post(logout_handler))
+      .route("/test/session/new", post(create_test_session_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let mut client = TestServer::new(router)?;
+    client.do_save_cookies();
+
+    let resp = client.post("/test/session/new").await;
+    resp.assert_status(StatusCode::CREATED);
+    let cookie = resp.cookie("bodhiapp_session_id");
+    let session_id = cookie.value_trimmed();
+
+    let record = session_service.get_session_record(session_id).await;
+    assert!(record.is_some());
+
+    let resp = client.post("/app/logout").await;
+    resp.assert_status(StatusCode::FOUND);
+    let location = resp.header("Location");
+    let location = location.to_str().unwrap();
+    assert_eq!("http://localhost:1135/ui/home", location);
+    let record = session_service.get_session_record(session_id).await;
+    assert!(record.is_none());
     Ok(())
   }
 }
