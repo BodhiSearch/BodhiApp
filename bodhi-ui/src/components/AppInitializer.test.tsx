@@ -14,7 +14,6 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import AppInitializer from './AppInitializer';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import { Toaster } from '@/components/ui/toaster';
 import { ReactNode } from 'react';
 import { waitForElementToBeRemoved } from '@testing-library/react';
 
