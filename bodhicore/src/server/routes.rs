@@ -47,6 +47,7 @@ pub fn build_routes(
     .route("/app/info", get(app_info_handler))
     .route("/app/setup", post(setup_handler))
     .route("/app/login", get(login_handler))
+    .route("/app/login/", get(login_handler))
     .route("/app/login/callback", get(login_callback_handler));
   if !app_service.env_service().is_production() {
     let dev_apis = Router::new().route("/dev/secrets", get(dev_secrets_handler));

@@ -29,6 +29,9 @@ export function useQuery<T>(
     async () => {
       const { data } = await apiClient.get<T>(endpoint, {
         params,
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
       return data;
     },
@@ -45,7 +48,11 @@ export function useMutationQuery<T, V>(
 
   return useMutation<T, AxiosError, V>(
     async (variables) => {
-      const { data } = await apiClient[method]<T>(endpoint, variables);
+      const { data } = await apiClient[method]<T>(endpoint, variables, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
       return data;
     },
     {
@@ -64,8 +71,12 @@ export function useAppInfo() {
   return useQuery<AppInfo>('appInfo', '/app/info');
 }
 
+type SetupRequest = {
+  authz: boolean;
+}
+
 export function useSetupApp() {
-  return useMutationQuery<AppInfo, boolean>('/app/setup');
+  return useMutationQuery<AppInfo, SetupRequest>('/app/setup');
 }
 
 export function useModelFiles(
