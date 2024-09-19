@@ -12,7 +12,7 @@ use super::{
   RouterStateFn,
 };
 use crate::{
-  service::{auth_middleware, AppServiceFn},
+  service::{auth_middleware, optional_auth_middleware, AppServiceFn},
   SharedContextRwFn,
 };
 use axum::{
@@ -49,15 +49,18 @@ pub fn build_routes(
     .route("/app/login", get(login_handler))
     .route("/app/login/", get(login_handler))
     .route("/app/login/callback", get(login_callback_handler))
-    .route("/app/logout", post(logout_handler));
+    // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
+    .route("/api/ui/logout", post(logout_handler));
 
   if !app_service.env_service().is_production() {
     let dev_apis = Router::new().route("/dev/secrets", get(dev_secrets_handler));
     public_apis = public_apis.merge(dev_apis);
   }
   let api_router = Router::new().merge(chats_router()).merge(models_router());
+  let optional_auth = Router::new()
+    .route("/api/ui/user", get(user_info_handler))
+    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware));
   let protected_apis = Router::new()
-    .route("/app/user", get(user_info_handler))
     .route("/api/tags", get(ollama_models_handler))
     .route("/api/show", post(ollama_model_show_handler))
     .route("/api/chat", post(ollama_model_chat_handler))
@@ -69,6 +72,7 @@ pub fn build_routes(
 
   let router = Router::<Arc<dyn RouterStateFn>>::new()
     .merge(public_apis)
+    .merge(optional_auth)
     .merge(protected_apis)
     // TODO: check CORS
     .layer(

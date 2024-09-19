@@ -14,6 +14,7 @@ use axum::{
     StatusCode,
   },
   response::{IntoResponse, Response},
+  Json,
 };
 use base64::{engine::general_purpose, Engine as _};
 use jsonwebtoken::TokenData;
@@ -225,42 +226,35 @@ pub async fn logout_handler(
     .delete()
     .await
     .map_err(|err| LogoutError::SessionDeleteError(err.to_string()))?;
-  let ui_home = format!("{}/ui/home", env_service.frontend_url());
+  let ui_login = format!("{}/ui/login", env_service.frontend_url());
+  // TODO: sending 200 instead of 302 to avoid axios/xmlhttprequest following redirects
   let response = Response::builder()
-    .status(StatusCode::FOUND)
-    .header(LOCATION, ui_home)
+    .status(StatusCode::OK)
+    .header(LOCATION, ui_login)
     .body(Body::empty())
     .unwrap();
   Ok(response)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub struct UserInfo {
-  pub email: String,
+  pub logged_in: bool,
+  pub email: Option<String>,
 }
 
-pub async fn user_info_handler(headers: HeaderMap) -> Result<Response, HttpError> {
-  let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
-    return Err(
-      HttpErrorBuilder::default()
-        .unauthorized("access token/api key is not present", None)
-        .build()
-        .unwrap(),
-    );
+pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, HttpError> {
+  let not_loggedin = UserInfo {
+    logged_in: false,
+    email: None,
   };
-  let token_str = token.to_str().map_err(|err| {
-    HttpErrorBuilder::default()
-      .bad_request(&format!("invalid token format: {err}"))
-      .build()
-      .unwrap()
-  })?;
+  let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
+    return Ok(Json(not_loggedin));
+  };
+  let Ok(token_str) = token.to_str() else {
+    return Ok(Json(not_loggedin));
+  };
   if token_str.is_empty() {
-    return Err(
-      HttpErrorBuilder::default()
-        .unauthorized("access token/api key is not present", None)
-        .build()
-        .unwrap(),
-    );
+    return Ok(Json(not_loggedin));
   }
   let token_data: TokenData<Claims> = decode_access_token(token_str).map_err(|err| {
     HttpErrorBuilder::default()
@@ -268,17 +262,10 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Response, HttpError
       .build()
       .unwrap()
   })?;
-  Ok(
-    Response::builder()
-      .status(StatusCode::OK)
-      .body(Body::from(
-        serde_json::to_string(&UserInfo {
-          email: token_data.claims.email,
-        })
-        .unwrap(),
-      ))
-      .unwrap(),
-  )
+  Ok(Json(UserInfo {
+    logged_in: true,
+    email: Some(token_data.claims.email),
+  }))
 }
 
 #[cfg(test)]
@@ -736,10 +723,10 @@ mod tests {
     assert!(record.is_some());
 
     let resp = client.post("/app/logout").await;
-    resp.assert_status(StatusCode::FOUND);
+    resp.assert_status(StatusCode::OK);
     let location = resp.header("Location");
     let location = location.to_str().unwrap();
-    assert_eq!("http://localhost:1135/ui/home", location);
+    assert_eq!("http://localhost:1135/ui/login", location);
     let record = session_service.get_session_record(session_id).await;
     assert!(record.is_none());
     Ok(())
@@ -797,11 +784,14 @@ mod tests {
       )
       .await
       .unwrap();
-    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    let response_json = response.json::<Value>().await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let response_json = response.json::<UserInfo>().await?;
     assert_eq!(
-      response_json["message"].as_str().unwrap(),
-      "access token/api key is not present"
+      UserInfo {
+        logged_in: false,
+        email: None,
+      },
+      response_json
     );
     Ok(())
   }
