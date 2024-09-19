@@ -7,6 +7,7 @@ import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
 import { ApiError, ModelFile, SortState } from '@/types/models';
 import { useModelFiles } from '@/hooks/useQuery';
+import AppInitializer from '@/components/AppInitializer';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -23,7 +24,7 @@ const columns = [
   { id: 'snapshot', name: 'Snapshot', sorted: true },
 ];
 
-export default function ModelFilesPage() {
+function ModelFilesContent() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
   const [sort, setSort] = useState<SortState>({
@@ -119,5 +120,13 @@ export default function ModelFilesPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function ModelFilesPage() {
+  return (
+    <AppInitializer allowedStatus="ready" authenticated={true}>
+      <ModelFilesContent />
+    </AppInitializer>
   );
 }

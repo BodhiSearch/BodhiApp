@@ -1,22 +1,20 @@
 'use client';
 
-import { render, screen, waitFor } from '@testing-library/react';
-import {
-  beforeAll,
-  afterAll,
-  beforeEach,
-  describe,
-  it,
-  expect,
-  vi,
-} from 'vitest';
+import { createWrapper } from '@/tests/wrapper';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import UserMenu from './UserMenu';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { ReactNode } from 'react';
-import { ToastProvider } from '@/components/ui/toast';
-import userEvent from '@testing-library/user-event';
 
 // Mock the Next.js router
 const routerPushMock = vi.fn();
@@ -38,22 +36,6 @@ const server = setupServer();
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 beforeEach(() => server.resetHandlers());
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        refetchOnMount: false,
-      },
-    },
-  });
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>{children}</ToastProvider>
-    </QueryClientProvider>
-  );
-};
 
 describe('UserMenu', () => {
   it('renders user email', () => {

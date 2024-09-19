@@ -1,19 +1,19 @@
+import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { QueryClient, QueryClientProvider } from 'react-query';
 import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
   vi,
 } from 'vitest';
 import CreateAliasPage from './page';
-import { ToastProvider } from '@/components/ui/toast';
 
 const mockToast = vi.fn();
 
@@ -21,9 +21,10 @@ vi.mock('@/components/AppHeader', () => ({
   default: () => <div data-testid="app-header">Mocked AppHeader</div>,
 }));
 
+const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: vi.fn(),
+    push: pushMock,
   }),
 }));
 
@@ -35,21 +36,6 @@ vi.mock('@/components/ui/toaster', () => ({
   Toaster: () => null,
 }));
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <ToastProvider>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </ToastProvider>
-  );
-};
-
 const mockModelsResponse = {
   data: [
     { repo: 'owner1/repo1', filename: 'file1.gguf' },
@@ -60,20 +46,7 @@ const mockModelsResponse = {
 
 const mockChatTemplatesResponse = ['llama2', 'llama3'];
 
-const server = setupServer(
-  rest.get('*/api/ui/models', (req, res, ctx) => {
-    return res(ctx.json(mockModelsResponse));
-  }),
-  rest.get('*/api/ui/chat_templates', (req, res, ctx) => {
-    return res(ctx.json(mockChatTemplatesResponse));
-  }),
-  rest.post('*/api/ui/models', (req, res, ctx) => {
-    return res(
-      ctx.status(200),
-      ctx.json({ message: 'Model created successfully' })
-    );
-  })
-);
+const server = setupServer();
 
 beforeAll(() => {
   Element.prototype.hasPointerCapture = vi.fn(() => false);
@@ -86,8 +59,34 @@ afterEach(() => {
   server.resetHandlers();
   vi.clearAllMocks();
 });
+beforeEach(() => {
+  pushMock.mockClear();
+});
 
 describe('CreateAliasPage', () => {
+  beforeEach(() => {
+    server.use(
+      rest.get('*/app/info', (_, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      }),
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+      }),
+      rest.get('*/api/ui/models', (_, res, ctx) => {
+        return res(ctx.json(mockModelsResponse));
+      }),
+      rest.get('*/api/ui/chat_templates', (_, res, ctx) => {
+        return res(ctx.json(mockChatTemplatesResponse));
+      }),
+      rest.post('*/api/ui/models', (_, res, ctx) => {
+        return res(
+          ctx.status(200),
+          ctx.json({ message: 'Model created successfully' })
+        );
+      })
+    );
+  });
+
   it('renders the page with all form elements', async () => {
     render(<CreateAliasPage />, { wrapper: createWrapper() });
 
@@ -145,6 +144,42 @@ describe('CreateAliasPage', () => {
         description: 'Alias test-alias successfully created',
         duration: 5000,
       });
+    });
+  });
+});
+
+describe('CreateAliasPage access control', () => {
+  it('should redirect to /ui/setup if status is setup', async () => {
+    server.use(
+      rest.get('*/app/info', (_, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      })
+    );
+    server.use(
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+      })
+    );
+    render(<CreateAliasPage />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
+    });
+  });
+
+  it('should redirect to /ui/login if user is not logged in', async () => {
+    server.use(
+      rest.get('*/app/info', (_, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
+    server.use(
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.json({ logged_in: false }));
+      })
+    );
+    render(<CreateAliasPage />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/login');
     });
   });
 });

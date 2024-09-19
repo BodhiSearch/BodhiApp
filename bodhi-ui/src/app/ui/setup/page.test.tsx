@@ -1,9 +1,9 @@
 'use client';
 
+import { createWrapper } from '@/tests/wrapper';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { QueryClient, QueryClientProvider } from 'react-query';
 import {
   afterAll,
   afterEach,
@@ -15,23 +15,6 @@ import {
   vi,
 } from 'vitest';
 import Setup from './page';
-import { Toaster } from '@/components/ui/toaster';
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster />
-    </QueryClientProvider>
-  );
-};
 
 // Mock the router
 const pushMock = vi.fn();

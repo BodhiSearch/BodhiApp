@@ -1,9 +1,9 @@
 'use client';
 
+import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { QueryClient, QueryClientProvider } from 'react-query';
 import {
   afterAll,
   afterEach,
@@ -15,19 +15,6 @@ import {
   vi,
 } from 'vitest';
 import ResourceAdminPage from './page';
-
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
 
 // Mock the router
 const pushMock = vi.fn();

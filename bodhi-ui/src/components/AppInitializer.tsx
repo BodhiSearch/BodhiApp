@@ -1,45 +1,38 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import { useAppInfo, useUser } from '@/hooks/useQuery';
 import { useRouter } from 'next/navigation';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { ReactNode } from 'react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { useAppInfo } from '@/hooks/useQuery';
+import { ApiError } from '@/types/models';
 
 interface AppInitializerProps {
+  children?: ReactNode;
   allowedStatus?: 'setup' | 'ready' | 'resource-admin';
-  children?: React.ReactNode;
+  authenticated?: boolean;
 }
 
-const AppInitializer: React.FC<AppInitializerProps> = ({
-  allowedStatus,
+export default function AppInitializer({
   children,
-}) => {
+  allowedStatus,
+  authenticated = false,
+}: AppInitializerProps) {
   const router = useRouter();
-  const { data: appInfo, isLoading, isError, error } = useAppInfo();
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const {
+    data: appInfo,
+    error: appError,
+    isLoading: appLoading,
+  } = useAppInfo();
+  const {
+    data: userInfo,
+    error: userError,
+    isLoading: userLoading,
+  } = authenticated // eslint-disable-next-line react-hooks/rules-of-hooks
+    ? useUser()
+    : { data: { logged_in: false }, error: null, isLoading: false };
 
-  useEffect(() => {
-    if (appInfo && (!allowedStatus || appInfo.status !== allowedStatus)) {
-      switch (appInfo.status) {
-        case 'setup':
-          router.push('/ui/setup');
-          break;
-        case 'ready':
-          router.push('/ui/home');
-          break;
-        case 'resource-admin':
-          router.push('/ui/setup/resource-admin');
-          break;
-        default:
-          setErrorMessage(
-            `unexpected status from /app/info endpoint - '${appInfo.status}'`
-          );
-      }
-    }
-  }, [router, allowedStatus, appInfo, errorMessage]);
-
-  if (isLoading) {
+  if (appLoading || (authenticated && userLoading)) {
     return (
       <div className="flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
@@ -48,33 +41,56 @@ const AppInitializer: React.FC<AppInitializerProps> = ({
     );
   }
 
-  if (isError) {
+  if (appError) {
     return (
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-          {(error as any)?.response?.data?.message ||
-            'An unexpected error occurred'}
+          {(appError.response?.data as ApiError)?.message || appError.message}
         </AlertDescription>
       </Alert>
     );
   }
 
-  if (errorMessage) {
+  if (authenticated && userError) {
     return (
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{errorMessage}</AlertDescription>
+        <AlertDescription>
+          {(userError.response?.data as ApiError)?.message || userError.message}
+        </AlertDescription>
       </Alert>
     );
   }
 
-  if (appInfo && appInfo.status === allowedStatus) {
-    return children ? <>{children}</> : null;
+  if (appInfo) {
+    const { status } = appInfo;
+    if (!allowedStatus || status !== allowedStatus) {
+      switch (status) {
+        case 'setup':
+          router.push('/ui/setup');
+          return null;
+        case 'ready':
+          router.push('/ui/home');
+          return null;
+        case 'resource-admin':
+          router.push('/ui/setup/resource-admin');
+          return null;
+        default:
+          return (
+            <Alert variant="destructive">
+              <h2>Error</h2>
+              <p>{`unexpected status from /app/info endpoint - '${status}'`}</p>
+            </Alert>
+          );
+      }
+    }
   }
 
-  return null;
-};
+  if (authenticated && !userInfo?.logged_in) {
+    router.push('/ui/login');
+    return null;
+  }
 
-export default AppInitializer;
+  return <>{children}</>;
+}

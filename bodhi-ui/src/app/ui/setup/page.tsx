@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -119,10 +119,8 @@ function SetupContent() {
 
 export default function SetupPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AppInitializer allowedStatus="setup">
-        <SetupContent />
-      </AppInitializer>
-    </Suspense>
+    <AppInitializer allowedStatus="setup" authenticated={false}>
+      <SetupContent />
+    </AppInitializer>
   );
 }

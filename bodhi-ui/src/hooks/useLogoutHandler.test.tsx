@@ -1,12 +1,20 @@
-import React from 'react';
+import { Button } from '@/components/ui/button';
+import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, it, expect, beforeEach, vi, beforeAll, afterAll } from 'vitest';
-import { useLogoutHandler } from './useLogoutHandler';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { setupServer } from 'msw/node';
 import { rest } from 'msw';
-import { Button } from '@/components/ui/button';
+import { setupServer } from 'msw/node';
+import React from 'react';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+import { useLogoutHandler } from './useLogoutHandler';
 
 // Mock useToast hook
 const toastMock = vi.fn();
@@ -31,24 +39,11 @@ beforeEach(() => {
   toastMock.mockClear();
 });
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient} > {children} </QueryClientProvider>
-  );
-};
-
 // Simple component that uses the useLogoutHandler hook
 const LogoutButton: React.FC = () => {
   const { logout, isLoading: isLoggingOut } = useLogoutHandler();
   return (
-    <Button onClick={() => logout()} disabled={isLoggingOut} >
+    <Button onClick={() => logout()} disabled={isLoggingOut}>
       {isLoggingOut ? 'Logging out...' : 'Log Out'}
     </Button>
   );
@@ -64,7 +59,12 @@ describe('useLogoutHandler', () => {
   it('renders logout button and handles successful logout', async () => {
     server.use(
       rest.post('*/api/ui/logout', (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(200), ctx.set('Location', 'http://localhost:1135/ui/test/login'), ctx.json({}));
+        return res(
+          ctx.delay(100),
+          ctx.status(200),
+          ctx.set('Location', 'http://localhost:1135/ui/test/login'),
+          ctx.json({})
+        );
       })
     );
 
@@ -75,11 +75,17 @@ describe('useLogoutHandler', () => {
 
     await userEvent.click(logoutButton);
 
-    expect(screen.getByRole('button', { name: 'Logging out...' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Logging out...' })
+    ).toBeInTheDocument();
     expect(logoutButton).toBeDisabled();
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('http://localhost:1135/ui/test/login');
-      expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
+      expect(pushMock).toHaveBeenCalledWith(
+        'http://localhost:1135/ui/test/login'
+      );
+      expect(
+        screen.getByRole('button', { name: 'Log Out' })
+      ).toBeInTheDocument();
     });
     expect(logoutButton).not.toBeDisabled();
   });
@@ -87,7 +93,10 @@ describe('useLogoutHandler', () => {
   it('handles logout API error and shows toast message', async () => {
     server.use(
       rest.post('*/api/ui/logout', (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ message: 'Internal Server Error' }));
+        return res(
+          ctx.status(500),
+          ctx.json({ message: 'Internal Server Error' })
+        );
       })
     );
 
@@ -97,7 +106,9 @@ describe('useLogoutHandler', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Log Out' })
+      ).toBeInTheDocument();
     });
 
     expect(logoutButton).not.toBeDisabled();

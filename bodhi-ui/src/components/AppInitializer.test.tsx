@@ -1,21 +1,24 @@
 'use client';
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { createWrapper } from '@/tests/wrapper';
 import {
-  beforeAll,
-  afterAll,
-  beforeEach,
-  describe,
-  it,
-  expect,
-  vi,
-} from 'vitest';
+  render,
+  screen,
+  waitFor,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import AppInitializer from './AppInitializer';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { ReactNode } from 'react';
-import { waitForElementToBeRemoved } from '@testing-library/react';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -36,22 +39,6 @@ beforeEach(() => {
   pushMock.mockClear();
 });
 
-// Modify the createWrapper function
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        // Add this to prevent initial automatic refetching
-        refetchOnMount: false,
-      },
-    },
-  });
-  return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
-
 // Add this helper function
 const renderWithSetup = async (ui: React.ReactElement) => {
   const wrapper = createWrapper();
@@ -63,10 +50,15 @@ const renderWithSetup = async (ui: React.ReactElement) => {
   return rendered;
 };
 
-describe('AppInitializer', () => {
+describe('AppInitializer with no authentication', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     pushMock.mockClear();
+    server.use(
+      rest.get('*/api/ui/user', (req, res, ctx) => {
+        return res(ctx.status(200), ctx.json({ logged_in: false }));
+      })
+    );
   });
 
   it('displays error message when API call fails', async () => {
@@ -273,5 +265,91 @@ describe('AppInitializer', () => {
       );
       expect(screen.queryByText('Child content')).not.toBeInTheDocument();
     });
+  });
+});
+
+describe('AppInitializer with status ready and authentication required', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    pushMock.mockClear();
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
+  });
+
+  it('redirects to /ui/login when authenticated is true and user is not logged in', async () => {
+    server.use(
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.status(200), ctx.json({ logged_in: false }));
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true} />
+    );
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/login');
+    });
+  });
+
+  it('displays children when authenticated is true and user is logged in', async () => {
+    server.use(
+      rest.get('*/api/ui/user', (req, res, ctx) => {
+        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={true}>
+        <div>Child content</div>
+      </AppInitializer>
+    );
+
+    expect(screen.getByText('Child content')).toBeInTheDocument();
+  });
+
+  it('displays loading state while checking user authentication', async () => {
+    server.use(
+      rest.get('*/api/ui/user', (req, res, ctx) => {
+        return res(
+          ctx.delay(100),
+          ctx.json({ logged_in: true, email: 'test@example.com' })
+        );
+      })
+    );
+    const wrapper = createWrapper();
+    render(
+      <AppInitializer allowedStatus="ready" authenticated={true}>
+        <div>Child content</div>
+      </AppInitializer>,
+      { wrapper }
+    );
+
+    expect(screen.getByText('Initializing app...')).toBeInTheDocument();
+    await waitForElementToBeRemoved(() =>
+      screen.getByText('Initializing app...')
+    );
+    expect(screen.getByText('Child content')).toBeInTheDocument();
+  });
+
+  it('does not check user authentication when authenticated is false', async () => {
+    const apiCallSpy = vi.fn();
+    server.use(
+      rest.get('*/api/ui/user', (req, res, ctx) => {
+        apiCallSpy();
+        return res(ctx.status(200), ctx.json({ logged_in: false }));
+      })
+    );
+
+    await renderWithSetup(
+      <AppInitializer allowedStatus="ready" authenticated={false}>
+        <div>Child content</div>
+      </AppInitializer>
+    );
+    expect(apiCallSpy).not.toHaveBeenCalled();
+    expect(screen.getByText('Child content')).toBeInTheDocument();
   });
 });

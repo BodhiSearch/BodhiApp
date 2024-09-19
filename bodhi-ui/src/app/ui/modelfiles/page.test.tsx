@@ -1,11 +1,12 @@
+import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { QueryClient, QueryClientProvider } from 'react-query';
 import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -31,18 +32,12 @@ vi.mock('@/components/DataTable', () => ({
   Pagination: () => <div data-testid="pagination">Mocked Pagination</div>,
 }));
 
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-};
+const pushMock = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
+}));
 
 const mockModelFilesResponse = {
   data: [
@@ -59,17 +54,31 @@ const mockModelFilesResponse = {
   page_size: 30,
 };
 
-const server = setupServer(
-  rest.get('*/api/ui/modelfiles', (req, res, ctx) => {
-    return res(ctx.json(mockModelFilesResponse));
-  })
-);
+const server = setupServer();
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
+beforeEach(() => {
+  vi.resetAllMocks();
+  pushMock.mockClear();
+});
 
 describe('ModelFilesPage', () => {
+  beforeEach(() => {
+    server.use(
+      rest.get('*/app/info', (_, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      }),
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+      }),
+      rest.get('*/api/ui/modelfiles', (_, res, ctx) => {
+        return res(ctx.json(mockModelFilesResponse));
+      })
+    );
+  });
+
   it('renders model files data successfully', async () => {
     render(<ModelFilesPage />, { wrapper: createWrapper() });
 
@@ -100,6 +109,42 @@ describe('ModelFilesPage', () => {
       expect(
         screen.getByText('An error occurred: Internal Server Error')
       ).toBeInTheDocument();
+    });
+  });
+});
+
+describe('ModelFilesPage access control', () => {
+  it('should redirect to /ui/setup if status is setup', async () => {
+    server.use(
+      rest.get('*/app/info', (_, res, ctx) => {
+        return res(ctx.json({ status: 'setup' }));
+      })
+    );
+    server.use(
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+      })
+    );
+    render(<ModelFilesPage />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
+    });
+  });
+
+  it('should redirect to /ui/login if user is not logged in', async () => {
+    server.use(
+      rest.get('*/app/info', (_, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
+    server.use(
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.json({ logged_in: false }));
+      })
+    );
+    render(<ModelFilesPage />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/login');
     });
   });
 });

@@ -10,6 +10,7 @@ import { ApiError, Model, SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
+import AppInitializer from '@/components/AppInitializer';
 
 const columns = [
   { id: 'alias', name: 'Name', sorted: true },
@@ -20,7 +21,7 @@ const columns = [
   { id: 'actions', name: 'Actions', sorted: false },
 ];
 
-export default function ModelsPage() {
+function ModelsPageContent() {
   const router = useRouter();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
@@ -125,5 +126,13 @@ export default function ModelsPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function ModelsPage() {
+  return (
+    <AppInitializer allowedStatus="ready" authenticated={true}>
+      <ModelsPageContent />
+    </AppInitializer>
   );
 }
