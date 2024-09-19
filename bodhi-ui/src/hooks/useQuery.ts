@@ -167,8 +167,5 @@ export function useUser() {
     onError: (error) => {
       throw error;
     },
-    // TODO: remove this when we handle login callback in UI, so can remove caching on login state change
-    cacheTime: 0,
-    staleTime: 0,
   });
 }

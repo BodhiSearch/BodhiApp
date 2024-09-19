@@ -1,8 +1,7 @@
 'use client';
 
-import { QueryClient, QueryClientProvider } from 'react-query';
 import { useState } from 'react';
-import { UserProvider } from '@/hooks/useUserContext';
+import { QueryClient, QueryClientProvider } from 'react-query';
 
 export default function ClientProviders({
   children,
@@ -12,8 +11,6 @@ export default function ClientProviders({
   const [queryClient] = useState(() => new QueryClient());
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <UserProvider>{children}</UserProvider>
-    </QueryClientProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 }

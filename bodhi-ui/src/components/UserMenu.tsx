@@ -8,19 +8,32 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
+import { useUser } from '@/hooks/useQuery';
+import Link from 'next/link';
+import { path_app_login } from '@/lib/utils';
 
 interface UserMenuProps {}
 
 export default function UserMenu({}: UserMenuProps) {
   const router = useRouter();
-  const email = 'user@example.com';
-  const { logout, isLoading } = useLogoutHandler();
+  const { data: userInfo, isLoading, error } = useUser();
+  const { logout, isLoading: isLoadingLogout } = useLogoutHandler();
 
+  if (isLoading || error || !userInfo) return <div></div>;
+  if (!userInfo?.logged_in) {
+    return (
+      <Link href={path_app_login} passHref>
+        <Button variant="outline" className="w-full justify-between">
+          Log In
+        </Button>
+      </Link>
+    );
+  }
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="w-full justify-between">
-          {email} <ChevronDown className="ml-2 h-4 w-4" />
+          {userInfo?.email} <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -35,10 +48,10 @@ export default function UserMenu({}: UserMenuProps) {
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => logout()}
-          disabled={isLoading}
+          disabled={isLoadingLogout}
           className="justify-center sm:justify-start"
         >
-          {isLoading ? 'Logging out...' : 'Logout'}
+          {isLoadingLogout ? 'Logging out...' : 'Logout'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

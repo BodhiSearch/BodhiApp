@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react';
 import { useState } from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import AppHeader from '@/components/AppHeader';
@@ -97,10 +96,8 @@ function HomeContent() {
 
 export default function HomePage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AppInitializer allowedStatus="ready">
-        <HomeContent />
-      </AppInitializer>
-    </Suspense>
+    <AppInitializer allowedStatus="ready" authenticated={false}>
+      <HomeContent />
+    </AppInitializer>
   );
 }

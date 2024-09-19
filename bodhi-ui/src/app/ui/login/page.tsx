@@ -10,11 +10,13 @@ import {
 } from '@/components/ui/card';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
-import { useUserContext } from '@/hooks/useUserContext';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
+import AppInitializer from '@/components/AppInitializer';
+import { useUser } from '@/hooks/useQuery';
+import { path_app_login, path_home } from '@/lib/utils';
 
-export default function LoginContent() {
-  const { userInfo, isLoading } = useUserContext();
+function LoginContent() {
+  const { data: userInfo, isLoading } = useUser();
   const { logout, isLoading: isLoggingOut } = useLogoutHandler();
 
   if (isLoading) {
@@ -38,7 +40,7 @@ export default function LoginContent() {
         <CardContent>
           {userInfo?.logged_in ? (
             <>
-              <Link href="/app/home" passHref>
+              <Link href={path_home} passHref>
                 <Button className="w-full mb-2" variant="secondary">
                   Go to Home
                 </Button>
@@ -52,12 +54,20 @@ export default function LoginContent() {
               </Button>
             </>
           ) : (
-            <Link href="/app/login" passHref>
+            <Link href={path_app_login} passHref>
               <Button className="w-full">Log In</Button>
             </Link>
           )}
         </CardContent>
       </Card>
     </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <AppInitializer allowedStatus="ready" authenticated={false}>
+      <LoginContent />
+    </AppInitializer>
   );
 }

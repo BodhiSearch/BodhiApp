@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense } from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { path_app_login } from '@/lib/utils';
 import Link from 'next/link';
 
 function ResourceAdminContent() {
@@ -22,7 +22,7 @@ function ResourceAdminContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Link href="/app/login" passHref>
+        <Link href={path_app_login} passHref>
           <Button className="w-full">Log In</Button>
         </Link>
       </CardContent>
@@ -32,10 +32,8 @@ function ResourceAdminContent() {
 
 export default function ResourceAdminPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <AppInitializer allowedStatus="resource-admin">
-        <ResourceAdminContent />
-      </AppInitializer>
-    </Suspense>
+    <AppInitializer allowedStatus="resource-admin" authenticated={false}>
+      <ResourceAdminContent />
+    </AppInitializer>
   );
 }

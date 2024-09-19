@@ -14,8 +14,7 @@ import {
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import UiPage from './page';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import { Toaster } from '@/components/ui/toaster';
+import { createWrapper } from '@/tests/wrapper';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -38,23 +37,6 @@ const server = setupServer(
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 afterEach(() => server.resetHandlers());
-
-// Create a wrapper component that includes the QueryClientProvider
-const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
-  return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster />
-    </QueryClientProvider>
-  );
-};
 
 describe('UiPage', () => {
   beforeEach(() => {
