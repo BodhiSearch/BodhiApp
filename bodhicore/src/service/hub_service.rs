@@ -105,8 +105,7 @@ impl HubService for HfHubService {
         let path = entry.path().to_path_buf();
         let local_model_file = match HubFile::try_from(path.clone()) {
           Ok(local_model_file) => local_model_file,
-          Err(err) => {
-            tracing::info!(?err, ?path, "error converting Path to LocalModelFile");
+          Err(_) => {
             return None;
           }
         };
