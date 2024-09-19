@@ -88,3 +88,8 @@ export interface ChatTemplate {
   id: string;
   name: string;
 }
+
+export interface UserInfo {
+  logged_in: boolean;
+  email?: string;
+}

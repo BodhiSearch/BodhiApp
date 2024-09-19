@@ -7,45 +7,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
-import { useLogout } from '@/hooks/useQuery';
-import { useToast } from '@/hooks/use-toast';
-import { ApiError } from '@/types/models';
+import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 
 interface UserMenuProps {}
 
 export default function UserMenu({}: UserMenuProps) {
   const router = useRouter();
-  const { toast } = useToast();
   const email = 'user@example.com';
-
-  const { mutate: logout, isLoading } = useLogout({
-    onSuccess: (response) => {
-      const redirectUrl = response.headers['location'] || '/ui/home';
-      router.push(redirectUrl);
-    },
-    onError: (error) => {
-      console.error('Logout failed:', error);
-      let errorMessage = 'An unexpected error occurred. Please try again.';
-
-      if (
-        error.response &&
-        error.response.data &&
-        (error.response.data as ApiError).message
-      ) {
-        errorMessage = (error.response.data as ApiError).message;
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-
-      toast({
-        variant: 'destructive',
-        title: 'Logout failed',
-        description: `Message: ${errorMessage}. Try again later.`,
-      });
-    },
-  });
+  const { logout, isLoading } = useLogoutHandler();
 
   return (
     <DropdownMenu>

@@ -8,7 +8,13 @@ import {
 } from 'react-query';
 import apiClient from '@/lib/apiClient';
 import { AxiosError, AxiosResponse } from 'axios';
-import { AppInfo, FeaturedModel, Model, ModelFile } from '@/types/models';
+import {
+  AppInfo,
+  FeaturedModel,
+  Model,
+  ModelFile,
+  UserInfo,
+} from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
 
 type PagedApiResponse<T> = {
@@ -143,5 +149,26 @@ export function useFeaturedModels() {
 export function useLogout(
   options?: UseMutationOptions<AxiosResponse, AxiosError, void, unknown>
 ): UseMutationResult<AxiosResponse, AxiosError, void, unknown> {
-  return useMutationQuery<AxiosResponse, void>('/app/logout', 'post', options);
+  const queryClient = useQueryClient();
+  return useMutationQuery<AxiosResponse, void>('/api/ui/logout', 'post', {
+    ...options,
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries();
+      if (options?.onSuccess) {
+        options.onSuccess(data, variables, context);
+      }
+    },
+  });
+}
+
+export function useUser() {
+  return useQuery<UserInfo | null>('user', '/api/ui/user', undefined, {
+    retry: false,
+    onError: (error) => {
+      throw error;
+    },
+    // TODO: remove this when we handle login callback in UI, so can remove caching on login state change
+    cacheTime: 0,
+    staleTime: 0,
+  });
 }
