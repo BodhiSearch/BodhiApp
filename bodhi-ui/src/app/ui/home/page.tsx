@@ -38,7 +38,8 @@ function HomeContent() {
   // }, []);
 
   return (
-    <>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <AppHeader />
       <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 mt-8">
         Featured Models
       </h2>
@@ -90,18 +91,16 @@ function HomeContent() {
           </Card>
         ))}
       </div>
-    </>
+    </div>
   );
 }
 
 export default function HomePage() {
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <AppInitializer allowedStatus="ready" />
-        <AppHeader />
+      <AppInitializer allowedStatus="ready">
         <HomeContent />
-      </div>
+      </AppInitializer>
     </Suspense>
   );
 }

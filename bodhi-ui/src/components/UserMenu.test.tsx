@@ -66,7 +66,7 @@ describe('UserMenu', () => {
     const user = userEvent.setup();
     const wrapper = createWrapper();
     server.use(
-      rest.post('*/app/logout', (req, res, ctx) => {
+      rest.post('*/api/ui/logout', (_, res, ctx) => {
         return res(ctx.set('location', '/ui/test/home'), ctx.status(302));
       })
     );
