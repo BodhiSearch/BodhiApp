@@ -1,5 +1,5 @@
-use crate::{HttpError, HttpErrorBuilder};
 use crate::shared_rw::ContextError;
+use crate::{HttpError, HttpErrorBuilder};
 use axum::{extract::rejection::JsonRejection, response::IntoResponse};
 use thiserror::Error;
 
@@ -58,8 +58,6 @@ impl IntoResponse for OpenAIApiError {
   }
 }
 
-pub type Result<T> = std::result::Result<T, OpenAIApiError>;
-
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -75,7 +73,9 @@ mod tests {
   use serde_json::json;
   use tower::ServiceExt;
 
-  async fn error_handler(State(error): State<OpenAIApiError>) -> Result<()> {
+  async fn error_handler(
+    State(error): State<OpenAIApiError>,
+  ) -> std::result::Result<(), OpenAIApiError> {
     Err(error)
   }
 

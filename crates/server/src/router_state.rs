@@ -14,7 +14,7 @@ pub trait RouterStateFn: Send + Sync {
     &self,
     request: CreateChatCompletionRequest,
     userdata: Sender<String>,
-  ) -> crate::oai::Result<()>;
+  ) -> std::result::Result<(), OpenAIApiError>;
 }
 
 #[derive(Debug, Clone)]
@@ -48,7 +48,7 @@ impl RouterStateFn for RouterState {
     &self,
     request: CreateChatCompletionRequest,
     userdata: Sender<String>,
-  ) -> crate::oai::Result<()> {
+  ) -> std::result::Result<(), OpenAIApiError> {
     let Some(alias) = self.app_service.data_service().find_alias(&request.model) else {
       return Err(crate::oai::OpenAIApiError::ModelNotFound(request.model));
     };

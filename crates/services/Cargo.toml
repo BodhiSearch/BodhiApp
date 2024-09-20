@@ -72,5 +72,14 @@ keyring = { workspace = true, features = ["linux-native"] }
 keyring = { workspace = true, features = ["windows-native"] }
 
 [features]
-test-utils = ["rstest", "mockall", "base64", "rsa", "rand", "tempfile", "anyhow"]
+test-utils = [
+  "rstest",
+  "mockall",
+  "base64",
+  "rsa",
+  "rand",
+  "tempfile",
+  "anyhow",
+  "objs/test-utils",
+]
 production = []

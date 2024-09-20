@@ -1,5 +1,5 @@
 #[cfg(not(test))]
-use crate::server::interactive::InteractiveRuntime;
+use crate::interactive::InteractiveRuntime;
 #[cfg(test)]
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
 use commands::{CliError, Command, PullCommand, PullCommandError};

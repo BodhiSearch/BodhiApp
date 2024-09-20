@@ -1,30 +1,13 @@
-use crate::BodhiError;
 use axum::{
-  body::Body,
-  http::{header::CONTENT_TYPE, request::Builder, Request, StatusCode},
+  http::StatusCode,
   response::{IntoResponse, Response},
   Json,
 };
 use jsonwebtoken::{DecodingKey, Validation};
-use objs::Common;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use services::db::DbError;
 use thiserror::Error;
-
-pub trait AxumRequestExt {
-  #[allow(clippy::result_large_err)]
-  fn json<T: serde::Serialize>(self, value: T) -> Result<Request<Body>, BodhiError>;
-}
-
-impl AxumRequestExt for Builder {
-  fn json<T: serde::Serialize>(self, value: T) -> std::result::Result<Request<Body>, BodhiError> {
-    let this = self.header(CONTENT_TYPE, "application/json");
-    let content = serde_json::to_string(&value).map_err(Common::SerdeJsonDeserialize)?;
-    let result = this.body(Body::from(content))?;
-    Ok(result)
-  }
-}
 
 // TODO - have internal log message, and external user message
 #[derive(Debug, Error)]

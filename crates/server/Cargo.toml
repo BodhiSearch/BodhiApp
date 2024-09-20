@@ -29,6 +29,7 @@ jsonwebtoken = { workspace = true }
 llama-server-bindings = { path = "../../llama-server-bindings" }
 mime = { workspace = true }
 minijinja = { workspace = true }
+mockall = { workspace = true, optional = true }
 oauth2 = { workspace = true }
 objs = { path = "../objs" }
 pin-project-lite = { workspace = true }
@@ -56,6 +57,9 @@ tower = { workspace = true }
 tower-http = { workspace = true, features = ["trace", "cors"] }
 tower-sessions = { workspace = true }
 tracing = { workspace = true, features = ["async-await", "log"] }
+tracing-subscriber = { workspace = true, features = [
+  "env-filter",
+], optional = true }
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
@@ -79,4 +83,13 @@ url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [features]
-test-utils = ["anyhow", "reqwest", "http-body-util"]
+test-utils = [
+  "anyhow",
+  "reqwest",
+  "http-body-util",
+  "mockall",
+  "tracing-subscriber",
+]
+
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(ci)'] }

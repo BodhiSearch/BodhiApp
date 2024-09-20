@@ -12,6 +12,8 @@ use serde::{
 use std::{fmt, ops::Deref};
 use validator::{Validate, ValidationError};
 
+use crate::ContextError;
+
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
   Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))
 }
@@ -115,7 +117,7 @@ fn validate_chat_template(chat_template: &ChatTemplateVersions) -> Result<(), Va
 
 impl TokenizerConfig {
   #[allow(clippy::result_large_err)]
-  pub fn apply_chat_template<T>(&self, messages: &[T]) -> crate::shared_rw::Result<String>
+  pub fn apply_chat_template<T>(&self, messages: &[T]) -> Result<String, ContextError>
   where
     for<'a> &'a T: Into<ChatMessage>,
   {
@@ -235,7 +237,13 @@ mod test {
     let content = std::fs::read_to_string(filename)?;
     let config = serde_json::from_str::<TokenizerConfig>(&content)?;
 
-    let inputs = std::fs::read_to_string("../../chat-template-compat/tests/data/inputs.yaml")?;
+    let input_filename = concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../../chat-template-compat/tests/data/inputs.yaml"
+    );
+    let inputs = std::fs::read_to_string(input_filename).map_err(|source| {
+      anyhow!("failed to read inputs file on path  {input_filename}: {source}")
+    })?;
     let inputs: serde_yaml::Value = serde_yaml::from_str(&inputs)?;
     let input = inputs
       .as_sequence()

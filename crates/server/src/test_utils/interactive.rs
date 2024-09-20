@@ -1,4 +1,4 @@
-use crate::InteractiveError;
+use crate::interactive::InteractiveError;
 use objs::Alias;
 use services::AppServiceFn;
 use std::sync::Arc;

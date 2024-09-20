@@ -1,4 +1,4 @@
-use crate::SharedContextRwFn;
+use crate::{ContextError, SharedContextRwFn};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{Callback, GptParams};
 use objs::*;
@@ -22,13 +22,13 @@ mockall::mock! {
 
   #[async_trait::async_trait]
   impl SharedContextRwFn for SharedContext {
-    async fn reload(&self, gpt_params: Option<GptParams>) -> crate::shared_rw::Result<()>;
+    async fn reload(&self, gpt_params: Option<GptParams>) -> std::result::Result<(), ContextError>;
 
-    async fn try_stop(&self) -> crate::shared_rw::Result<()>;
+    async fn try_stop(&self) -> std::result::Result<(), ContextError>;
 
     async fn has_model(&self) -> bool;
 
-    async fn get_gpt_params(&self) -> crate::shared_rw::Result<Option<GptParams>>;
+    async fn get_gpt_params(&self) -> std::result::Result<Option<GptParams>, ContextError>;
 
     async fn chat_completions(
       &self,
@@ -37,7 +37,7 @@ mockall::mock! {
       model_file: HubFile,
       tokenizer_file: HubFile,
       userdata: Sender<String>,
-    ) -> crate::shared_rw::Result<()>;
+    ) -> std::result::Result<(), ContextError>;
   }
 }
 

@@ -1,9 +1,9 @@
-use bodhicore::{server::run::RunCommandError, ContextError};
 use commands::{
   AliasCommandError, CliError, CreateCommandError, EnvCommandError, ListCommandError,
   PullCommandError,
 };
 use objs::BuilderError;
+use server::{ContextError, RunCommandError};
 use services::{db::DbError, DataServiceError, SessionServiceError};
 use std::io;
 
@@ -12,7 +12,7 @@ pub enum AppError {
   #[error("{0}")]
   Unreachable(String),
   #[error(transparent)]
-  BodhiError(#[from] bodhicore::BodhiError),
+  BodhiError(#[from] server::BodhiError),
   #[error(transparent)]
   Context(#[from] ContextError),
   #[error(transparent)]
