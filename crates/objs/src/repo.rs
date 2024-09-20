@@ -1,10 +1,9 @@
+use crate::error::ObjError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, ops::Deref};
 use validator::Validate;
-
-use super::ObjError;
 
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
 pub static GGUF: &str = "gguf";

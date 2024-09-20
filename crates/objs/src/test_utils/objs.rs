@@ -1,12 +1,12 @@
 use super::SNAPSHOT;
 use crate::{
-  cli::create::CreateCommandBuilder,
-  objs::{
-    Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams, GptContextParamsBuilder,
-    HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder, RemoteModel, Repo,
-    TOKENIZER_CONFIG_JSON,
-  },
-  CreateCommand,
+  alias::{Alias, AliasBuilder},
+  chat_template::{ChatTemplate, ChatTemplateId},
+  gpt_params::{GptContextParams, GptContextParamsBuilder},
+  hub_file::{HubFile, HubFileBuilder},
+  oai::{OAIRequestParams, OAIRequestParamsBuilder},
+  remote_file::RemoteModel,
+  repo::{Repo, TOKENIZER_CONFIG_JSON},
 };
 use std::path::PathBuf;
 

@@ -1,7 +1,4 @@
-use super::{
-  copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home, EnvServiceStub, MockDbService,
-  MockEnvWrapper, SecretServiceStub,
-};
+use super::{EnvServiceStub, MockDbService, MockEnvWrapper, SecretServiceStub};
 use crate::{
   db::DbService,
   service::{
@@ -12,6 +9,7 @@ use crate::{
   },
 };
 use derive_builder::Builder;
+use objs::test_utils::{copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home};
 use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;

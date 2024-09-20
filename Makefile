@@ -5,7 +5,7 @@ test:
 
 format:
 	cd bodhi-ui && npm run format && npm run lint
-	cargo fmt -p bodhicore -p bodhi
+	cargo fmt -p bodhicore -p bodhi -p objs
 	cd openai-pysdk-compat && poetry run ruff format .
 
 .PHONY: test format

@@ -1,4 +1,3 @@
-use crate::objs::BuilderError;
 use axum::{
   extract::rejection::JsonRejection,
   http::StatusCode,
@@ -6,6 +5,7 @@ use axum::{
   Json,
 };
 use derive_builder::Builder;
+use objs::BuilderError;
 use serde::{Deserialize, Serialize};
 
 mod status_code {

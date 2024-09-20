@@ -1,3 +1,8 @@
+#[cfg(feature = "test-utils")]
+pub mod test_utils;
+#[cfg(all(not(feature = "test-utils"), test))]
+pub mod test_utils;
+
 mod alias;
 mod builder;
 mod chat_template;
@@ -10,8 +15,8 @@ mod repo;
 mod utils;
 
 pub use alias::*;
-pub use builder::BuilderError;
-pub use chat_template::{ChatTemplate, ChatTemplateId};
+pub use builder::*;
+pub use chat_template::*;
 pub use error::*;
 pub use gpt_params::*;
 pub use hub_file::*;

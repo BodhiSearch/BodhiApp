@@ -1,6 +1,7 @@
-use crate::{objs::*, SharedContextRwFn};
+use crate::SharedContextRwFn;
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{Callback, GptParams};
+use objs::*;
 use std::ffi::c_void;
 use tokio::sync::mpsc::Sender;
 

@@ -13,6 +13,7 @@ custom-protocol = ["tauri/custom-protocol"]
 [dependencies]
 axum = { workspace = true }
 bodhicore = { path = "../../bodhicore" }
+objs = { path = "../../crates/objs" }
 clap = { workspace = true, features = ["derive"] }
 dotenv = { workspace = true }
 futures-util = { workspace = true }

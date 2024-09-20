@@ -1,12 +1,7 @@
-use crate::{
-  oai::OpenAIApiError,
-  objs::{REFS_MAIN, TOKENIZER_CONFIG_JSON},
-  service::AppServiceFn,
-  shared_rw::SharedContextRwFn,
-  Repo,
-};
+use crate::{oai::OpenAIApiError, service::AppServiceFn, shared_rw::SharedContextRwFn};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::async_trait;
+use objs::{Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
@@ -92,18 +87,17 @@ impl RouterState {
 mod test {
   use super::RouterState;
   use crate::{
-    objs::{Alias, HubFile, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     server::RouterStateFn,
     service::{MockDataService, MockHubService},
     shared_rw::ContextError,
     test_utils::{test_channel, AppServiceStubMock, MockSharedContext, ResponseTestExt},
-    Repo,
   };
   use async_openai::types::CreateChatCompletionRequest;
   use axum::http::StatusCode;
   use axum::response::{IntoResponse, Response};
   use llama_server_bindings::LlamaCppError;
   use mockall::predicate::{always, eq};
+  use objs::{Alias, HubFile, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
   use serde_json::{json, Value};
   use std::sync::Arc;

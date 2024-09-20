@@ -56,12 +56,12 @@ impl RunCommand {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{Alias, HubFile, RemoteModel, REFS_MAIN, TOKENIZER_CONFIG_JSON},
     service::{MockDataService, MockHubService},
     test_utils::{AppServiceStubMock, MockInteractiveRuntime},
-    Repo, RunCommand,
+    RunCommand,
   };
   use mockall::predicate::{always, eq};
+  use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
   use std::{path::PathBuf, sync::Arc};
 

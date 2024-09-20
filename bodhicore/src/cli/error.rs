@@ -1,4 +1,4 @@
-use crate::objs::ObjError;
+use objs::ObjError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CliError {

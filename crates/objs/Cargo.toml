@@ -1,0 +1,33 @@
+[package]
+name = "objs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-openai = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
+derive_builder = { workspace = true }
+dircpy = { workspace = true, optional = true }
+derive-new = { workspace = true }
+hf-hub = { workspace = true }
+llama-server-bindings = { path = "../../llama-server-bindings" }
+once_cell = { workspace = true }
+prettytable-rs = { workspace = true }
+regex = { workspace = true }
+rstest = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+tempfile = { workspace = true, optional = true }
+thiserror = { workspace = true }
+validator = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+rstest = { workspace = true }
+tempfile = { workspace = true }
+
+[features]
+test-utils = ["rstest", "tempfile", "dircpy"]

@@ -1,11 +1,11 @@
 use crate::{
   db::DbError,
   oai::OpenAIApiError,
-  objs::ObjError,
   service::{AuthServiceError, DataServiceError, HubServiceError},
   shared_rw::ContextError,
 };
 use async_openai::error::OpenAIError;
+use objs::ObjError;
 use std::{io, sync::Arc};
 use thiserror::Error;
 use tokio::task::JoinError;

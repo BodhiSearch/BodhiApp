@@ -1,5 +1,4 @@
-#[allow(unused_imports)]
-use crate::objs::BuilderError;
+use crate::builder::BuilderError;
 use async_openai::types::{CreateChatCompletionRequest, Stop};
 use clap::Args;
 use derive_builder::Builder;

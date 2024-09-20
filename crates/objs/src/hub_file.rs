@@ -1,4 +1,4 @@
-use super::{ObjError, Repo};
+use crate::{error::ObjError, repo::Repo};
 use derive_new::new;
 use once_cell::sync::Lazy;
 use prettytable::{Cell, Row};
@@ -11,7 +11,7 @@ pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
 });
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, new)]
-#[cfg_attr(test, derive(derive_builder::Builder))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(derive_builder::Builder))]
 pub struct HubFile {
   pub hf_cache: PathBuf,
   pub repo: Repo,

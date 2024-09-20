@@ -1,10 +1,6 @@
 use super::RouterStateFn;
-use crate::objs::{ChatTemplate, ChatTemplateId, Repo};
+use crate::service::{HttpError, HttpErrorBuilder};
 use crate::CreateCommand;
-use crate::{
-  objs::{Alias, GptContextParams, HubFile, OAIRequestParams},
-  service::{HttpError, HttpErrorBuilder},
-};
 use axum::extract::rejection::JsonRejection;
 use axum::response::{IntoResponse, Response};
 use axum::{
@@ -14,6 +10,9 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use hyper::StatusCode;
+use objs::{
+  Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{collections::HashMap, sync::Arc};
@@ -346,11 +345,9 @@ pub async fn get_alias_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{
-    objs::{GptContextParamsBuilder, OAIRequestParamsBuilder},
-    test_utils::{AppServiceStubBuilder, MockRouterState, ResponseTestExt},
-  };
+  use crate::test_utils::{AppServiceStubBuilder, MockRouterState, ResponseTestExt};
   use axum::{body::Body, http::Request, routing::get, Router};
+  use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder};
   use rstest::{fixture, rstest};
   use serde_json::Value;
   use std::sync::Arc;

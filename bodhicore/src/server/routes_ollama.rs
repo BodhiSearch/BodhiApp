@@ -1,8 +1,5 @@
 use super::RouterStateFn;
-use crate::{
-  objs::{Alias, GGUF},
-  server::direct_sse::{DirectEvent, DirectSse},
-};
+use crate::server::direct_sse::{DirectEvent, DirectSse};
 use async_openai::types::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
   ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage,
@@ -19,6 +16,7 @@ use axum::{
 };
 use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
+use objs::{Alias, GGUF};
 use serde::{Deserialize, Serialize, Serializer};
 use std::{collections::HashMap, fs, sync::Arc, time::UNIX_EPOCH};
 use tokio_stream::wrappers::ReceiverStream;

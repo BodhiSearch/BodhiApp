@@ -1,5 +1,4 @@
-#[allow(unused_imports)]
-use crate::objs::BuilderError;
+use crate::builder::BuilderError;
 use clap::Args;
 use derive_builder::Builder;
 use llama_server_bindings::GptParams;

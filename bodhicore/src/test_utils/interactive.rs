@@ -1,4 +1,5 @@
-use crate::{error::Result, objs::Alias, service::AppServiceFn};
+use crate::{error::Result, service::AppServiceFn};
+use objs::Alias;
 use std::sync::Arc;
 
 mockall::mock! {

@@ -357,8 +357,8 @@ mod tests {
       APP_STATUS_READY, APP_STATUS_SETUP, KEY_RESOURCE_TOKEN,
     },
     test_utils::{
-      expired_token, temp_bodhi_home, token, AppServiceStubBuilder, MockSharedContext,
-      ResponseTestExt, SecretServiceStub,
+      expired_token, token, AppServiceStubBuilder, MockSharedContext, ResponseTestExt,
+      SecretServiceStub,
     },
   };
   use anyhow_trace::anyhow_trace;
@@ -374,6 +374,7 @@ mod tests {
   use jsonwebtoken::Algorithm;
   use mockall::predicate::{always, eq};
   use oauth2::{AccessToken, ClientId, RefreshToken};
+  use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use serde_json::{json, Value};
