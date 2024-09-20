@@ -1,12 +1,12 @@
 use crate::{native::NativeCommand, AppError};
 use axum::Router;
-use server::{RunCommand, ServeCommand};
 use clap::Parser;
 use commands::{
   Cli, Command, CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand,
   PullCommand,
 };
 use include_dir::{include_dir, Dir};
+use server::{RunCommand, ServeCommand};
 use services::{
   db::{DbPool, DbService, SqliteDbService, TimeService},
   AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService,

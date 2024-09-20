@@ -42,7 +42,10 @@ describe('UserMenu', () => {
     vi.resetAllMocks();
     server.use(
       rest.get('*/api/ui/user', (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: true, email: 'user@example.com' }));
+        return res(
+          ctx.status(200),
+          ctx.json({ logged_in: true, email: 'user@example.com' })
+        );
       }),
       rest.post('*/api/ui/logout', (_, res, ctx) => {
         return res(ctx.set('location', '/ui/test/home'), ctx.status(302));

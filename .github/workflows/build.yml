@@ -40,17 +40,13 @@ jobs:
           LLAMA_CPP_BUILD_FLAGS: ${{ matrix.llama_cpp_build_flags }}
       - name: clean
         run: |
-          cargo clean -p llama-server-bindings
-          cargo clean -p bodhicore
-          cargo clean -p bodhi
+          make ci.clean
       - name: build llama-server-bindings
         run: |
           cargo build -p llama-server-bindings --target ${{ matrix.target }}
       - name: Generate code coverage
-        working-directory: bodhicore
         run: |
-          cargo llvm-cov clean
-          cargo llvm-cov nextest --all-features --lcov --output-path lcov.info
+          make ci.coverage
         env:
           HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
           HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
@@ -62,7 +58,7 @@ jobs:
           slug: BodhiSearch/BodhiApp
           files: lcov.info
           fail_ci_if_error: true
-          flags: ${{ matrix.target }},bodhicore
+          flags: ${{ matrix.target }},bodhi
       - name: build the app
         working-directory: app/bodhi
         run: |

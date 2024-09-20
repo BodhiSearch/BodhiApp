@@ -1,6 +1,7 @@
 use crate::{command::Command, error::CliError};
 use objs::{
-  default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON
+  default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo,
+  REFS_MAIN, TOKENIZER_CONFIG_JSON,
 };
 use services::{AppServiceFn, DataServiceError, HubServiceError};
 use std::sync::Arc;
