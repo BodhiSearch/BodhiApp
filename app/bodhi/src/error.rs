@@ -1,5 +1,8 @@
 use bodhicore::{server::run::RunCommandError, ContextError};
-use commands::{AliasCommandError, CliError, CreateCommandError, EnvCommandError, ListCommandError, PullCommandError};
+use commands::{
+  AliasCommandError, CliError, CreateCommandError, EnvCommandError, ListCommandError,
+  PullCommandError,
+};
 use objs::BuilderError;
 use services::{db::DbError, DataServiceError, SessionServiceError};
 use std::io;

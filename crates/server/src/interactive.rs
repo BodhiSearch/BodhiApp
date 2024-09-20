@@ -1,7 +1,4 @@
-use crate::{
-  server::{RouterState, RouterStateFn},
-  ContextError, SharedContextRw,
-};
+use crate::{ContextError, RouterState, RouterStateFn, SharedContextRw};
 use async_openai::{
   error::OpenAIError,
   types::{
