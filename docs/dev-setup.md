@@ -17,5 +17,4 @@ cargo install cargo-llvm-cov --locked
 
 # Running Coverage Test
 
-`cargo xtask coverage --dev -p bodhicore`
-
+`cargo xtask coverage`

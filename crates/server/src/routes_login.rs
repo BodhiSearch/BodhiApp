@@ -271,8 +271,8 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Htt
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::RouterState;
   use crate::test_utils::{MockSharedContext, ResponseTestExt};
+  use crate::RouterState;
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,

@@ -1,5 +1,14 @@
 [workspace]
-members = ["app/bodhi", "crates/commands", "crates/integration-tests", "crates/objs", "crates/server", "crates/services", "llama-server-bindings", "xtask"]
+members = [
+  "app/bodhi",
+  "crates/commands",
+  "crates/integration-tests",
+  "crates/objs",
+  "crates/server",
+  "crates/services",
+  "llama-server-bindings",
+  "xtask",
+]
 resolver = "2"
 
 [workspace.dependencies]

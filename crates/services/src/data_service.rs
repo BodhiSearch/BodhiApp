@@ -1,6 +1,6 @@
 use super::{ALIASES_DIR, MODELS_YAML};
-use objs::Common;
 use derive_new::new;
+use objs::Common;
 use objs::{Alias, RemoteModel};
 use std::{collections::HashMap, fmt::Debug, fs, io, path::PathBuf};
 

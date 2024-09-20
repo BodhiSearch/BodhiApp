@@ -90,6 +90,3 @@ test-utils = [
   "mockall",
   "tracing-subscriber",
 ]
-
-[lints.rust]
-unexpected_cfgs = { level = "allow", check-cfg = ['cfg(ci)'] }
