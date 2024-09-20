@@ -1,6 +1,6 @@
-use crate::objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
 use crate::service::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use clap::{ArgGroup, Parser, Subcommand};
+use objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
 use strum::Display;
 
 #[derive(Debug, PartialEq, Parser)]
@@ -150,8 +150,8 @@ fn gguf_filename_parser(filename: &str) -> Result<String, String> {
 #[cfg(test)]
 mod test {
   use super::*;
-  use crate::objs::OAIRequestParams;
   use clap::CommandFactory;
+  use objs::OAIRequestParams;
   use rstest::rstest;
 
   #[test]

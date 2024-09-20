@@ -1,9 +1,9 @@
 use bodhicore::{
   db::DbError,
-  objs::BuilderError,
   service::{DataServiceError, SessionServiceError},
   CliError, ContextError,
 };
+use objs::BuilderError;
 use std::io;
 
 #[derive(Debug, thiserror::Error)]

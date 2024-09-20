@@ -1,13 +1,11 @@
 use super::RouterStateFn;
-use crate::{
-  objs::Alias,
-  service::{HttpError, HttpErrorBuilder},
-};
+use crate::service::{HttpError, HttpErrorBuilder};
 use async_openai::types::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},
   Json,
 };
+use objs::Alias;
 use std::{fs, sync::Arc, time::UNIX_EPOCH};
 
 pub(crate) async fn oai_models_handler(

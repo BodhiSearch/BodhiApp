@@ -4,14 +4,13 @@ use async_openai::types::{
 };
 use derive_new::new;
 use minijinja::{Environment, ErrorKind};
+use objs::{validation_errors, HubFile, ObjError};
 use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
 use std::{fmt, ops::Deref};
 use validator::{Validate, ValidationError};
-
-use crate::objs::{validation_errors, HubFile, ObjError};
 
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
   Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))
@@ -198,10 +197,10 @@ impl TryFrom<HubFile> for TokenizerConfig {
 #[cfg(test)]
 mod test {
   use super::*;
-  use crate::objs::HubFile;
-  use crate::test_utils::hf_cache;
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
+  use objs::test_utils::hf_cache;
+  use objs::HubFile;
   use rstest::rstest;
   use std::path::PathBuf;
   use tempfile::TempDir;

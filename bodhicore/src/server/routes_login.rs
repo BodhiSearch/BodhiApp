@@ -277,8 +277,8 @@ mod tests {
       AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
     },
     test_utils::{
-      temp_bodhi_home, token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub,
-      MockSharedContext, ResponseTestExt, SecretServiceStub, SessionTestExt,
+      token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub, MockSharedContext,
+      ResponseTestExt, SecretServiceStub, SessionTestExt,
     },
   };
   use anyhow_trace::anyhow_trace;
@@ -292,6 +292,7 @@ mod tests {
   use axum_test::TestServer;
   use mockall::predicate::function;
   use oauth2::RefreshToken;
+  use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use serde_json::{json, Value};
   use std::{collections::HashMap, sync::Arc};

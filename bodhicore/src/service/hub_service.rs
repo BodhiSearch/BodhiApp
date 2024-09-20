@@ -1,5 +1,5 @@
-use crate::objs::{HubFile, ObjError, Repo, REFS, REFS_MAIN};
 use hf_hub::{api::sync::ApiError, Cache};
+use objs::{HubFile, ObjError, Repo, REFS, REFS_MAIN};
 use std::{
   collections::HashSet,
   fmt::{Debug, Formatter},
@@ -323,12 +323,11 @@ impl HfHubService {
 #[cfg(test)]
 mod test {
   use super::{HfHubService, HubService};
-  use crate::{
-    objs::{HubFile, Repo, REFS_MAIN},
-    test_utils::{
-      hf_test_token_allowed, hf_test_token_public, hub_service, temp_hf_home, HubServiceTuple,
-    },
+  use crate::test_utils::{
+    hf_test_token_allowed, hf_test_token_public, hub_service, HubServiceTuple,
   };
+  use objs::test_utils::temp_hf_home;
+  use objs::{HubFile, Repo, REFS_MAIN};
   use rstest::rstest;
   use std::{collections::HashSet, fs};
   use tempfile::TempDir;

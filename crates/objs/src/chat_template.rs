@@ -1,4 +1,4 @@
-use super::{ObjError, Repo};
+use crate::{error::ObjError, repo::Repo};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use strum::{AsRefStr, EnumIter};

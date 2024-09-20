@@ -4,11 +4,11 @@ use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
 use llama_server_bindings::BodhiServerContext;
 
 use crate::error::Common;
-use crate::objs::{Alias, HubFile, ObjError};
 use crate::service::DataServiceError;
 use crate::tokenizer_config::TokenizerConfig;
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{GptParams, GptParamsBuilder, GptParamsBuilderError, LlamaCppError};
+use objs::{Alias, HubFile, ObjError};
 use std::ffi::{c_char, c_void};
 use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -258,9 +258,8 @@ impl ModelLoadStrategy {
 #[cfg(test)]
 mod test {
   use crate::{
-    objs::{Alias, HubFile},
     shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
-    test_utils::{hf_cache, test_channel, MockBodhiServerContext},
+    test_utils::{test_channel, MockBodhiServerContext},
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -269,6 +268,8 @@ mod test {
     bindings::llama_server_disable_logging, disable_llama_log, GptParams, GptParamsBuilder,
   };
   use mockall::predicate::{always, eq};
+  use objs::test_utils::hf_cache;
+  use objs::{Alias, HubFile};
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;

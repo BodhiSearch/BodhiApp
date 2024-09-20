@@ -1,6 +1,5 @@
 use crate::{
   error::{BodhiError, Common},
-  objs::{Alias, ObjError},
   server::{RouterState, RouterStateFn},
   service::{AppServiceFn, HubServiceError},
   SharedContextRw,
@@ -14,6 +13,7 @@ use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
 use llama_server_bindings::{disable_llama_log, GptParamsBuilder};
+use objs::{Alias, ObjError};
 use std::{
   io::{self, Write},
   sync::Arc,
@@ -206,11 +206,11 @@ impl InteractiveRuntime {
 mod test {
   use super::Interactive;
   use crate::{
-    objs::Alias,
     service::{MockEnvServiceFn, MockHubService},
     test_utils::AppServiceStubMock,
   };
   use mockall::predicate::eq;
+  use objs::Alias;
   use rstest::rstest;
   use std::{path::PathBuf, sync::Arc};
 

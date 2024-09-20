@@ -1,4 +1,6 @@
-use super::{gpt_params::GptContextParams, ChatTemplate, OAIRequestParams, Repo};
+use crate::{
+  chat_template::ChatTemplate, gpt_params::GptContextParams, oai::OAIRequestParams, repo::Repo,
+};
 use derive_new::new;
 use prettytable::Row;
 use serde::Deserialize;

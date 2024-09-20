@@ -1,5 +1,6 @@
 use super::CliError;
-use crate::{objs::RemoteModel, service::AppServiceFn, Command};
+use crate::{service::AppServiceFn, Command};
+use objs::RemoteModel;
 use prettytable::{
   format::{self},
   row, Row, Table,

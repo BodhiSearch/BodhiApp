@@ -1,9 +1,8 @@
+use crate::builder::BuilderError;
 use llama_server_bindings::GptParamsBuilderError;
 use std::{io, path::PathBuf};
 use thiserror::Error;
 use validator::{ValidationError, ValidationErrors};
-
-use super::BuilderError;
 
 #[derive(Debug, Error)]
 pub enum ObjError {

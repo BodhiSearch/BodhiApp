@@ -1,7 +1,6 @@
-use crate::objs::is_default;
-#[allow(unused_imports)]
-use crate::objs::BuilderError;
 use chrono::{serde::ts_milliseconds, DateTime, Utc};
+#[allow(unused_imports)]
+use objs::{is_default, BuilderError};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 

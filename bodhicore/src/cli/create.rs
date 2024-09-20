@@ -1,11 +1,11 @@
 use super::{CliError, Command};
 use crate::{
   error::{BodhiError, Result},
-  objs::{
-    default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo, REFS_MAIN,
-    TOKENIZER_CONFIG_JSON,
-  },
   service::{AppServiceFn, HubServiceError},
+};
+use objs::{
+  default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo, REFS_MAIN,
+  TOKENIZER_CONFIG_JSON,
 };
 use std::sync::Arc;
 
@@ -153,15 +153,15 @@ mod test {
   use super::CreateCommand;
   use crate::{
     cli::Command,
-    objs::{
-      Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
-      REFS_MAIN, TOKENIZER_CONFIG_JSON,
-    },
     service::{MockDataService, MockHubService},
     test_utils::{AppServiceStubMock, AppServiceStubMockBuilder},
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
+  use objs::{
+    Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
+    REFS_MAIN, TOKENIZER_CONFIG_JSON,
+  };
   use rstest::rstest;
   use std::{path::PathBuf, sync::Arc};
 

@@ -1,19 +1,23 @@
-#[allow(unused_imports)]
-use super::{is_default, BuilderError};
-use super::{ChatTemplate, GptContextParams, OAIRequestParams, Repo};
-use crate::utils::to_safe_filename;
+use super::{
+  chat_template::ChatTemplate, gpt_params::GptContextParams, oai::OAIRequestParams, repo::Repo,
+  utils::is_default, utils::to_safe_filename,
+};
 use derive_new::new;
 use prettytable::{Cell, Row};
 use serde::{Deserialize, Serialize};
 
 #[allow(clippy::too_many_arguments)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, new)]
-#[cfg_attr(test, derive(Default, derive_builder::Builder))]
-#[cfg_attr(test,
+#[cfg_attr(
+  any(test, feature = "test-utils"),
+  derive(Default, derive_builder::Builder)
+)]
+#[cfg_attr(
+  any(test, feature = "test-utils"),
   builder(
     default,
     setter(into, strip_option),
-    build_fn(error = BuilderError)))]
+    build_fn(error = super::builder::BuilderError)))]
 pub struct Alias {
   pub alias: String,
   #[serde(skip_serializing_if = "Option::is_none")]
@@ -59,10 +63,11 @@ pub fn default_features() -> Vec<String> {
 mod test {
   use super::Alias;
   use crate::{
-    objs::{
-      AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParamsBuilder, OAIRequestParamsBuilder,
-    },
-    Repo,
+    alias::AliasBuilder,
+    chat_template::{ChatTemplate, ChatTemplateId},
+    gpt_params::GptContextParamsBuilder,
+    oai::OAIRequestParamsBuilder,
+    repo::Repo,
   };
   use prettytable::{Cell, Row};
   use rstest::rstest;
