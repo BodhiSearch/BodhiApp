@@ -1,4 +1,4 @@
-use crate::{decode_access_token, Claims, HttpError, HttpErrorBuilder, RouterStateFn};
+use crate::{decode_access_token, Claims, RouterStateFn, HttpError, HttpErrorBuilder};
 use axum::{
   extract::{Request, State},
   http::{header::AUTHORIZATION, HeaderMap, HeaderValue},

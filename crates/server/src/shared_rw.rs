@@ -44,7 +44,7 @@ pub enum ContextError {
   Unreachable(String),
 }
 
-pub type Result<T> = std::result::Result<T, ContextError>;
+type Result<T> = std::result::Result<T, ContextError>;
 
 unsafe extern "C" fn callback_stream(
   contents: *const c_char,

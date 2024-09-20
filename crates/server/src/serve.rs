@@ -1,6 +1,6 @@
 use crate::{
-  server::{build_routes, build_server_handle, shutdown_signal, ServerHandle, ShutdownCallback},
-  BodhiError, SharedContextRw, SharedContextRwFn,
+  build_routes, build_server_handle, shutdown_signal, BodhiError, ServerHandle, SharedContextRw,
+  SharedContextRwFn, ShutdownCallback,
 };
 use axum::Router;
 use commands::{CliError, Command};

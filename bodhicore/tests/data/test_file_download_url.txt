@@ -1,1 +1,0 @@
-test hf.rs/test_hf_download_url downloads this file from github

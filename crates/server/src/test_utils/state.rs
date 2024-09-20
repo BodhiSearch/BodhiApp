@@ -16,7 +16,7 @@ mockall::mock! {
       &self,
       request: CreateChatCompletionRequest,
       userdata: Sender<String>,
-    ) -> crate::oai::Result<()>;
+    ) -> Result<(), crate::oai::OpenAIApiError>;
   }
 
   impl Clone for RouterState {
