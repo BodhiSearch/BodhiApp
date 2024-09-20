@@ -1,11 +1,11 @@
 #![allow(unused_variables)] // TODO: remove this
-use super::{AppRegInfo, HttpError, HttpErrorBuilder};
 use async_trait::async_trait;
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
   TokenResponse,
 };
+use objs::AppRegInfo;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -23,22 +23,9 @@ impl From<reqwest::Error> for AuthServiceError {
   }
 }
 
-impl From<AuthServiceError> for HttpError {
-  fn from(value: AuthServiceError) -> Self {
-    let msg = match value {
-      AuthServiceError::Reqwest(msg) => msg,
-      AuthServiceError::AuthServiceApiError(msg) => msg,
-    };
-    HttpErrorBuilder::default()
-      .internal_server(Some(&msg))
-      .build()
-      .unwrap()
-  }
-}
-
 type Result<T> = std::result::Result<T, AuthServiceError>;
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AuthService: Send + Sync + std::fmt::Debug {
   async fn register_client(&self, redirect_uris: Vec<String>) -> Result<AppRegInfo>;

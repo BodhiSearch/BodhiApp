@@ -1,7 +1,5 @@
-use crate::{
-  service::{error::HttpError, HttpErrorBuilder},
-  shared_rw::ContextError,
-};
+use crate::server::{HttpError, HttpErrorBuilder};
+use crate::shared_rw::ContextError;
 use axum::{extract::rejection::JsonRejection, response::IntoResponse};
 use thiserror::Error;
 

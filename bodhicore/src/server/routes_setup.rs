@@ -1,8 +1,5 @@
 use super::RouterStateFn;
-use crate::service::{
-  set_secret, AuthServiceError, BadRequestError, HttpError, HttpErrorBuilder, SecretServiceError,
-  KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
-};
+use crate::server::{BadRequestError, HttpError, HttpErrorBuilder};
 use axum::{
   extract::State,
   http::StatusCode,
@@ -11,6 +8,9 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use serde::{Deserialize, Serialize};
+use services::{
+  set_secret, AuthServiceError, SecretServiceError, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
+};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -136,11 +136,8 @@ pub async fn setup_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{
-    server::RouterState,
-    service::{get_secret, AppRegInfo, AppServiceFn, ErrorBody, MockAuthService},
-    test_utils::{AppServiceStubBuilder, MockSharedContext, ResponseTestExt, SecretServiceStub},
-  };
+  use crate::server::{ErrorBody, RouterState};
+  use crate::test_utils::{MockSharedContext, ResponseTestExt};
   use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -148,7 +145,13 @@ mod tests {
     Router,
   };
   use jsonwebtoken::Algorithm;
+  use objs::AppRegInfo;
   use rstest::rstest;
+  use services::{
+    get_secret,
+    test_utils::{AppServiceStubBuilder, SecretServiceStub},
+    AppServiceFn, MockAuthService,
+  };
   use std::sync::Arc;
   use tower::ServiceExt;
 
@@ -223,8 +226,6 @@ mod tests {
     #[case] expected_status: StatusCode,
     #[case] expected_error: String,
   ) -> anyhow::Result<()> {
-    use crate::service::ErrorBody;
-
     let app_service = Arc::new(
       AppServiceStubBuilder::default()
         .secret_service(Arc::new(secret_service))

@@ -1,6 +1,8 @@
 use super::RouterStateFn;
-use crate::service::{HttpError, HttpErrorBuilder};
-use crate::CreateCommand;
+use crate::{
+  server::{HttpError, HttpErrorBuilder},
+  CreateCommand,
+};
 use axum::extract::rejection::JsonRejection;
 use axum::response::{IntoResponse, Response};
 use axum::{
@@ -345,11 +347,12 @@ pub async fn get_alias_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::test_utils::{AppServiceStubBuilder, MockRouterState, ResponseTestExt};
+  use crate::test_utils::{MockRouterState, ResponseTestExt};
   use axum::{body::Body, http::Request, routing::get, Router};
   use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder};
   use rstest::{fixture, rstest};
   use serde_json::Value;
+  use services::test_utils::AppServiceStubBuilder;
   use std::sync::Arc;
   use tower::ServiceExt;
 

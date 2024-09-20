@@ -1,9 +1,6 @@
-use bodhicore::{
-  db::DbError,
-  service::{DataServiceError, SessionServiceError},
-  CliError, ContextError,
-};
+use bodhicore::{CliError, ContextError};
 use objs::BuilderError;
+use services::{db::DbError, DataServiceError, SessionServiceError};
 use std::io;
 
 #[derive(Debug, thiserror::Error)]

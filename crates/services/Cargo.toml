@@ -4,3 +4,73 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+anyhow = { workspace = true, optional = true }
+axum = { workspace = true }
+base64 = { workspace = true, optional = true }
+derive-new = { workspace = true }
+async-trait = { workspace = true }
+cookie = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+derive_builder = { workspace = true }
+dirs = { workspace = true }
+dotenv = { workspace = true }
+jsonwebtoken = { workspace = true }
+hf-hub = { workspace = true, features = ["tokio"] }
+keyring = { workspace = true, default-features = false }
+mini-moka = { workspace = true }
+mockall = { workspace = true, optional = true }
+objs = { path = "../objs" }
+oauth2 = { workspace = true }
+reqwest = { workspace = true }
+rand = { workspace = true, optional = true }
+rsa = { workspace = true, optional = true }
+rstest = { workspace = true, optional = true }
+sha2 = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+sqlx = { workspace = true, features = [
+  "runtime-tokio",
+  "sqlite",
+  "macros",
+  "migrate",
+  "chrono",
+] }
+tempfile = { workspace = true, optional = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+tower-sessions = { workspace = true }
+tower-sessions-sqlx-store = { workspace = true, features = ["sqlite"] }
+tracing = { workspace = true, features = ["async-await", "log"] }
+ureq = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+walkdir = { workspace = true }
+
+[dev-dependencies]
+axum-test = { workspace = true }
+axum-extra = { workspace = true }
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+base64 = { workspace = true }
+objs = { path = "../objs", features = ["test-utils"] }
+mockall = { workspace = true }
+mockito = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
+rstest = { workspace = true }
+rsa = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full", "test-util"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { workspace = true, features = ["apple-native"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { workspace = true, features = ["linux-native"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { workspace = true, features = ["windows-native"] }
+
+[features]
+test-utils = ["rstest", "mockall", "base64", "rsa", "rand", "tempfile", "anyhow"]
+production = []

@@ -1,6 +1,7 @@
 use super::CliError;
-use crate::{error::BodhiError, service::AppServiceFn, Command};
+use crate::{error::BodhiError, Command};
 use objs::{Alias, HubFile, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
+use services::AppServiceFn;
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
@@ -148,14 +149,14 @@ impl PullCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{
-    service::{MockDataService, MockHubService, ALIASES_DIR},
-    test_utils::{AppServiceStubBuilder, AppServiceStubMock},
-    Command, PullCommand,
-  };
+  use crate::{Command, PullCommand};
   use mockall::predicate::eq;
   use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
+  use services::{
+    test_utils::{AppServiceStubBuilder, AppServiceStubMock},
+    MockDataService, MockHubService, ALIASES_DIR,
+  };
   use std::{fs, path::PathBuf, sync::Arc};
 
   #[rstest]

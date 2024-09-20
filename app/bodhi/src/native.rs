@@ -1,5 +1,6 @@
 use axum::Router;
-use bodhicore::{service::AppServiceFn, ServeCommand, ServerShutdownHandle};
+use bodhicore::{ServeCommand, ServerShutdownHandle};
+use services::AppServiceFn;
 use std::sync::{Arc, Mutex};
 use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,

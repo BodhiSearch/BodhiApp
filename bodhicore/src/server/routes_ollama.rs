@@ -461,9 +461,7 @@ pub(crate) async fn ollama_model_chat_handler(
 #[cfg(test)]
 mod test {
   use super::{ollama_model_show_handler, ollama_models_handler};
-  use crate::test_utils::{
-    AppServiceStubBuilder, MockRouterState, RequestTestExt, ResponseTestExt,
-  };
+  use crate::test_utils::{MockRouterState, RequestTestExt, ResponseTestExt};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -473,6 +471,7 @@ mod test {
   };
   use rstest::rstest;
   use serde_json::{json, Value};
+  use services::test_utils::AppServiceStubBuilder;
   use std::sync::Arc;
   use tower::ServiceExt;
   use validator::ValidateLength;

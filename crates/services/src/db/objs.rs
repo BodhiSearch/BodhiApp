@@ -4,13 +4,10 @@ use objs::{is_default, BuilderError};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow)]
-#[cfg_attr(test, derive(derive_builder::Builder))]
-#[cfg_attr(test,
-  builder(
-    default,
-    setter(into, strip_option),
-    build_fn(error = BuilderError)))]
+#[derive(
+  Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow, derive_builder::Builder,
+)]
+#[builder(default, setter(into, strip_option), build_fn(error = BuilderError))]
 pub struct Conversation {
   #[serde(default)]
   pub id: String,
@@ -32,16 +29,10 @@ pub struct Conversation {
   pub messages: Vec<Message>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow)]
-#[cfg_attr(test, derive(derive_builder::Builder))]
-#[cfg_attr(
-  test,
-  builder(
-    default,
-    setter(into, strip_option),
-    build_fn(error = BuilderError)
-  )
+#[derive(
+  Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow, derive_builder::Builder,
 )]
+#[builder(default, setter(into, strip_option), build_fn(error = BuilderError))]
 pub struct Message {
   #[serde(default, skip_serializing)]
   pub id: String,

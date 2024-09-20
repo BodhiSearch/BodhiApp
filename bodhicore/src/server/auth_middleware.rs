@@ -1,8 +1,4 @@
-use super::{
-  get_secret, AppServiceFn, AuthService, AuthServiceError, HttpError, HttpErrorBuilder,
-  ISecretService, SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_SETUP,
-  KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
-};
+use crate::server::{HttpError, HttpErrorBuilder};
 use crate::{
   server::RouterStateFn,
   utils::{decode_access_token, Claims},
@@ -13,9 +9,14 @@ use axum::{
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
 };
-use jsonwebtoken::{Algorithm, DecodingKey, Validation};
+use jsonwebtoken::{DecodingKey, Validation};
 use oauth2::{ClientId, ClientSecret, RefreshToken};
-use serde::{Deserialize, Serialize};
+use objs::AppRegInfo;
+use services::{
+  get_secret, AppServiceFn, AuthService, AuthServiceError, ISecretService, SecretServiceError,
+  APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
+  KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
+};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -86,17 +87,6 @@ impl IntoResponse for AuthError {
   fn into_response(self) -> axum::response::Response {
     HttpError::from(self).into_response()
   }
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-#[cfg_attr(test, derive(derive_builder::Builder))]
-pub struct AppRegInfo {
-  pub public_key: String,
-  pub alg: Algorithm,
-  pub kid: String,
-  pub issuer: String,
-  pub client_id: String,
-  pub client_secret: String,
 }
 
 pub async fn auth_middleware(
@@ -350,16 +340,8 @@ fn app_status(secret_service: &Arc<dyn ISecretService>) -> String {
 mod tests {
   use super::{auth_middleware, AuthError};
   use crate::{
-    server::{RouterState, RouterStateFn},
-    service::{
-      auth_middleware::AppRegInfoBuilder, optional_auth_middleware, AuthServiceError, CacheService,
-      HttpError, MockAuthService, MokaCacheService, SecretServiceError, SqliteSessionService,
-      APP_STATUS_READY, APP_STATUS_SETUP, KEY_RESOURCE_TOKEN,
-    },
-    test_utils::{
-      expired_token, token, AppServiceStubBuilder, MockSharedContext, ResponseTestExt,
-      SecretServiceStub,
-    },
+    server::{optional_auth_middleware, HttpError, RouterState, RouterStateFn},
+    test_utils::{MockSharedContext, ResponseTestExt},
   };
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -375,9 +357,15 @@ mod tests {
   use mockall::predicate::{always, eq};
   use oauth2::{AccessToken, ClientId, RefreshToken};
   use objs::test_utils::temp_bodhi_home;
+  use objs::AppRegInfoBuilder;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use serde_json::{json, Value};
+  use services::{
+    test_utils::{expired_token, token, AppServiceStubBuilder, SecretServiceStub},
+    AuthServiceError, CacheService, MockAuthService, MokaCacheService, SecretServiceError,
+    SqliteSessionService, APP_STATUS_READY, APP_STATUS_SETUP, KEY_RESOURCE_TOKEN,
+  };
   use sha2::{Digest, Sha256};
   use std::{collections::HashMap, sync::Arc};
   use tempfile::TempDir;
@@ -1204,7 +1192,7 @@ mod tests {
     #[case] expected_status: StatusCode,
     #[case] expected_message: &str,
   ) -> anyhow::Result<()> {
-    use crate::service::ErrorBody;
+    use crate::server::ErrorBody;
 
     let app = test_error_router(error);
 

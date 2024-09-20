@@ -1,4 +1,6 @@
+mod auth_middleware;
 mod direct_sse;
+mod error;
 mod fwd_sse;
 mod router_state;
 mod routes;
@@ -20,3 +22,5 @@ pub use crate::server::routes::build_routes;
 pub use crate::server::server::*;
 pub use crate::server::shutdown::shutdown_signal;
 pub use crate::server::utils::AxumRequestExt;
+pub use auth_middleware::*;
+pub use error::*;

@@ -7,6 +7,7 @@ use axum::{
 use derive_builder::Builder;
 use objs::BuilderError;
 use serde::{Deserialize, Serialize};
+use services::{AuthServiceError, SecretServiceError};
 
 mod status_code {
   use axum::http::StatusCode;
@@ -150,6 +151,28 @@ impl IntoResponse for BadRequestError {
         .unwrap(),
     )
       .into_response()
+  }
+}
+
+impl From<AuthServiceError> for HttpError {
+  fn from(value: AuthServiceError) -> Self {
+    let msg = match value {
+      AuthServiceError::Reqwest(msg) => msg,
+      AuthServiceError::AuthServiceApiError(msg) => msg,
+    };
+    HttpErrorBuilder::default()
+      .internal_server(Some(&msg))
+      .build()
+      .unwrap()
+  }
+}
+
+impl From<SecretServiceError> for HttpError {
+  fn from(err: SecretServiceError) -> Self {
+    HttpErrorBuilder::default()
+      .internal_server(Some(&err.to_string()))
+      .build()
+      .unwrap()
   }
 }
 

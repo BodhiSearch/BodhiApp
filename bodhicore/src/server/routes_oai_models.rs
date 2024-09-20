@@ -1,5 +1,5 @@
 use super::RouterStateFn;
-use crate::service::{HttpError, HttpErrorBuilder};
+use crate::server::{HttpError, HttpErrorBuilder};
 use async_openai::types::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},

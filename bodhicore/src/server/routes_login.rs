@@ -1,11 +1,6 @@
 use super::{utils::generate_random_string, RouterStateFn};
-use crate::{
-  service::{
-    get_secret, AppRegInfo, AuthServiceError, HttpError, HttpErrorBuilder, SecretServiceError,
-    KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
-  },
-  utils::{decode_access_token, Claims},
-};
+use crate::server::{HttpError, HttpErrorBuilder};
+use crate::utils::{decode_access_token, Claims};
 use axum::{
   body::Body,
   extract::{Query, State},
@@ -22,7 +17,12 @@ use oauth2::{
   url::ParseError, AccessToken, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier,
   RedirectUrl,
 };
+use objs::AppRegInfo;
 use serde::{Deserialize, Serialize};
+use services::{
+  get_secret, AuthServiceError, SecretServiceError, KEY_APP_REG_INFO, KEY_APP_STATUS,
+  KEY_RESOURCE_TOKEN,
+};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
@@ -271,16 +271,8 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Htt
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{
-    server::RouterState,
-    service::{
-      AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
-    },
-    test_utils::{
-      token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub, MockSharedContext,
-      ResponseTestExt, SecretServiceStub, SessionTestExt,
-    },
-  };
+  use crate::server::RouterState;
+  use crate::test_utils::{MockSharedContext, ResponseTestExt};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -295,6 +287,13 @@ mod tests {
   use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use serde_json::{json, Value};
+  use services::{
+    test_utils::{
+      token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub, SecretServiceStub,
+      SessionTestExt,
+    },
+    AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
+  };
   use std::{collections::HashMap, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;

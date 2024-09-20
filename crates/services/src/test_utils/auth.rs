@@ -1,7 +1,6 @@
-use crate::service::AppRegInfoBuilder;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::{Duration, Utc};
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use rsa::{
   pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey},
   RsaPrivateKey, RsaPublicKey,
@@ -9,19 +8,6 @@ use rsa::{
 use rstest::fixture;
 use serde_json::json;
 use uuid::Uuid;
-
-impl AppRegInfoBuilder {
-  pub fn test_default() -> Self {
-    Self::default()
-      .public_key("public_key".to_string())
-      .issuer("https://id.mydomain.com/realms/myapp".to_string())
-      .client_id("test-client".to_string())
-      .client_secret("test-client-secret".to_string())
-      .alg(Algorithm::RS256)
-      .kid("test-kid".to_string())
-      .clone()
-  }
-}
 
 #[fixture]
 #[once]

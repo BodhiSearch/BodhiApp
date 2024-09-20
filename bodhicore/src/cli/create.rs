@@ -1,12 +1,10 @@
 use super::{CliError, Command};
-use crate::{
-  error::{BodhiError, Result},
-  service::{AppServiceFn, HubServiceError},
-};
+use crate::error::{BodhiError, Result};
 use objs::{
   default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo, REFS_MAIN,
   TOKENIZER_CONFIG_JSON,
 };
+use services::{AppServiceFn, HubServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, derive_builder::Builder)]
@@ -151,11 +149,7 @@ impl CreateCommand {
 #[cfg(test)]
 mod test {
   use super::CreateCommand;
-  use crate::{
-    cli::Command,
-    service::{MockDataService, MockHubService},
-    test_utils::{AppServiceStubMock, AppServiceStubMockBuilder},
-  };
+  use crate::cli::Command;
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
   use objs::{
@@ -163,6 +157,10 @@ mod test {
     REFS_MAIN, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
+  use services::{
+    test_utils::{AppServiceStubMock, AppServiceStubMockBuilder},
+    MockDataService, MockHubService,
+  };
   use std::{path::PathBuf, sync::Arc};
 
   #[rstest]
