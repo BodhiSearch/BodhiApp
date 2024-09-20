@@ -1,7 +1,7 @@
 'use client';
 
 import { createWrapper } from '@/tests/wrapper';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -38,22 +38,34 @@ afterAll(() => server.close());
 beforeEach(() => server.resetHandlers());
 
 describe('UserMenu', () => {
-  it('renders user email', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    server.use(
+      rest.get('*/api/ui/user', (_, res, ctx) => {
+        return res(ctx.status(200), ctx.json({ logged_in: true, email: 'user@example.com' }));
+      }),
+      rest.post('*/api/ui/logout', (_, res, ctx) => {
+        return res(ctx.set('location', '/ui/test/home'), ctx.status(302));
+      })
+    );
+  });
+
+  it('renders user email', async () => {
     const wrapper = createWrapper();
     render(<UserMenu />, { wrapper });
-    expect(screen.getByText('user@example.com')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('user@example.com')).toBeInTheDocument();
+    });
   });
 
   it('handles successful logout', async () => {
     const user = userEvent.setup();
     const wrapper = createWrapper();
-    server.use(
-      rest.post('*/api/ui/logout', (_, res, ctx) => {
-        return res(ctx.set('location', '/ui/test/home'), ctx.status(302));
-      })
-    );
 
     render(<UserMenu />, { wrapper });
+    await waitFor(() => {
+      expect(screen.getByText('user@example.com')).toBeInTheDocument();
+    });
 
     const userEmail = screen.getByText('user@example.com');
     await user.click(userEmail);
