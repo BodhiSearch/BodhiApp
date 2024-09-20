@@ -1,7 +1,6 @@
-use super::{Command, StdoutWriter};
-use crate::cli::CliError;
+use crate::{command::Command, error::CliError, out_writer::StdoutWriter};
 use objs::Common;
-use services::AppServiceFn;
+use services::{AppServiceFn, DataServiceError};
 use std::{env, sync::Arc};
 
 pub enum ManageAliasCommand {
@@ -14,7 +13,7 @@ pub enum ManageAliasCommand {
 impl TryFrom<Command> for ManageAliasCommand {
   type Error = CliError;
 
-  fn try_from(value: Command) -> Result<Self, Self::Error> {
+  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
       Command::Show { alias } => Ok(ManageAliasCommand::Show { alias }),
       Command::Cp { alias, new_alias } => Ok(ManageAliasCommand::Copy { alias, new_alias }),
@@ -28,12 +27,24 @@ impl TryFrom<Command> for ManageAliasCommand {
   }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum AliasCommandError {
+  #[error("alias '{0}' not found")]
+  AliasNotFound(String),
+  #[error(transparent)]
+  Common(#[from] Common),
+  #[error(transparent)]
+  DataService(#[from] DataServiceError),
+}
+
+type Result<T> = std::result::Result<T, AliasCommandError>;
+
 impl ManageAliasCommand {
   pub fn execute(
     &self,
     service: Arc<dyn AppServiceFn>,
     stdout: &mut dyn StdoutWriter,
-  ) -> crate::error::Result<()> {
+  ) -> Result<()> {
     match self {
       ManageAliasCommand::Show { alias } => {
         self.show(alias, service, stdout)?;
@@ -56,9 +67,9 @@ impl ManageAliasCommand {
     alias: &str,
     service: Arc<dyn AppServiceFn>,
     stdout: &mut dyn StdoutWriter,
-  ) -> crate::error::Result<()> {
+  ) -> Result<()> {
     let Some(alias) = service.data_service().find_alias(alias) else {
-      return Err(crate::BodhiError::AliasNotFound(alias.to_string()));
+      return Err(AliasCommandError::AliasNotFound(alias.to_string()));
     };
     let result = serde_yaml::to_string(&alias).map_err(Common::from)?;
     stdout.write(&result).map_err(Common::from)?;
@@ -70,7 +81,7 @@ impl ManageAliasCommand {
     alias: &str,
     service: Arc<dyn AppServiceFn>,
     stdout: &mut dyn StdoutWriter,
-  ) -> crate::error::Result<()> {
+  ) -> Result<()> {
     service.data_service().delete_alias(alias)?;
     stdout
       .write(&format!("alias '{alias}' deleted.\n"))
@@ -84,7 +95,7 @@ impl ManageAliasCommand {
     new_alias: &str,
     service: Arc<dyn AppServiceFn>,
     stdout: &mut dyn StdoutWriter,
-  ) -> crate::error::Result<()> {
+  ) -> Result<()> {
     service.data_service().copy_alias(alias, new_alias)?;
     stdout
       .write(&format!(
@@ -99,7 +110,7 @@ impl ManageAliasCommand {
     alias: &str,
     service: Arc<dyn AppServiceFn>,
     stdout: &mut dyn StdoutWriter,
-  ) -> crate::error::Result<()> {
+  ) -> Result<()> {
     let filename = service.data_service().alias_filename(alias)?;
     match env::var("EDITOR") {
       Ok(editor) => {
@@ -138,7 +149,7 @@ impl ManageAliasCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{Command, ManageAliasCommand, MockStdoutWriter};
+  use crate::{alias::ManageAliasCommand, command::Command, out_writer::MockStdoutWriter};
   use mockall::predicate::eq;
   use rstest::rstest;
   use services::test_utils::AppServiceStubBuilder;

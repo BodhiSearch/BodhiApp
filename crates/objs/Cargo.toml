@@ -28,6 +28,7 @@ validator = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
+dircpy = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
 

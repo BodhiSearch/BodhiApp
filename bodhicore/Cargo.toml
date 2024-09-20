@@ -12,6 +12,7 @@ base64 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
+commands = { path = "../crates/commands" }
 cookie = { workspace = true }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
@@ -83,6 +84,7 @@ keyring = { workspace = true, features = ["windows-native"] }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 axum-test = { workspace = true }
+commands = { path = "../crates/commands", features = ["test-utils"] }
 ctor = { workspace = true }
 dircpy = { workspace = true }
 http-body-util = { workspace = true }

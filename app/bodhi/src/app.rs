@@ -1,11 +1,11 @@
 use crate::{native::NativeCommand, AppError};
 use axum::Router;
-use bodhicore::{
-  cli::{Cli, Command, ServeCommand},
-  CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
-  RunCommand,
-};
+use bodhicore::server::{run::RunCommand, serve::ServeCommand};
 use clap::Parser;
+use commands::{
+  Cli, Command, CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand,
+  PullCommand,
+};
 use include_dir::{include_dir, Dir};
 use services::{
   db::{DbPool, DbService, SqliteDbService, TimeService},

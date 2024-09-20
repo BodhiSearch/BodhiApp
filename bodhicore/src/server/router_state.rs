@@ -1,4 +1,4 @@
-use crate::{oai::OpenAIApiError, shared_rw::SharedContextRwFn};
+use crate::{oai::OpenAIApiError, shared_rw::SharedContextRwFn, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::async_trait;
 use objs::{Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
@@ -29,6 +29,14 @@ impl RouterState {
     Self { ctx, app_service }
   }
 }
+
+#[derive(Debug, thiserror::Error)]
+pub enum RouterStateError {
+  #[error(transparent)]
+  ContextError(#[from] ContextError),
+}
+
+type Result<T> = std::result::Result<T, RouterStateError>;
 
 #[async_trait]
 impl RouterStateFn for RouterState {
@@ -78,7 +86,7 @@ impl RouterStateFn for RouterState {
 }
 
 impl RouterState {
-  pub async fn try_stop(&self) -> crate::error::Result<()> {
+  pub async fn try_stop(&self) -> Result<()> {
     self.ctx.try_stop().await?;
     Ok(())
   }

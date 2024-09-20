@@ -1,10 +1,8 @@
-use super::{CliError, Command};
-use crate::error::{BodhiError, Result};
+use crate::{command::Command, error::CliError};
 use objs::{
-  default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, Repo, REFS_MAIN,
-  TOKENIZER_CONFIG_JSON,
+  default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON
 };
-use services::{AppServiceFn, HubServiceError};
+use services::{AppServiceFn, DataServiceError, HubServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, derive_builder::Builder)]
@@ -21,6 +19,22 @@ pub struct CreateCommand {
   pub oai_request_params: OAIRequestParams,
   pub context_params: GptContextParams,
 }
+
+#[derive(Debug, thiserror::Error)]
+pub enum CreateCommandError {
+  #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
+  AliasExists(String),
+  #[error("model file '{filename}' not found in repo '{repo}'")]
+  ModelFileMissing { filename: String, repo: String },
+  #[error(transparent)]
+  ObjError(#[from] ObjError),
+  #[error(transparent)]
+  HubServiceError(#[from] HubServiceError),
+  #[error(transparent)]
+  DataServiceError(#[from] DataServiceError),
+}
+
+type Result<T> = std::result::Result<T, CreateCommandError>;
 
 impl TryFrom<Command> for CreateCommand {
   type Error = CliError;
@@ -74,7 +88,7 @@ impl CreateCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     if !self.force && service.data_service().find_alias(&self.alias).is_some() {
-      return Err(BodhiError::AliasExists(self.alias.clone()));
+      return Err(CreateCommandError::AliasExists(self.alias.clone()));
     }
     let local_model_file =
       service
@@ -94,12 +108,10 @@ impl CreateCommand {
             .hub_service()
             .download(&self.repo, &self.filename, self.force)?
         } else {
-          return Err(BodhiError::HubServiceError(
-            HubServiceError::ModelFileMissing {
-              filename: self.filename.clone(),
-              repo: self.repo.clone().to_string(),
-            },
-          ));
+          return Err(CreateCommandError::ModelFileMissing {
+            filename: self.filename.clone(),
+            repo: self.repo.clone().to_string(),
+          });
         }
       }
     };
@@ -149,7 +161,7 @@ impl CreateCommand {
 #[cfg(test)]
 mod test {
   use super::CreateCommand;
-  use crate::cli::Command;
+  use crate::command::Command;
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
   use objs::{

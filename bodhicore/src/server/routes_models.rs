@@ -1,8 +1,5 @@
 use super::RouterStateFn;
-use crate::{
-  server::{HttpError, HttpErrorBuilder},
-  CreateCommand,
-};
+use crate::server::{HttpError, HttpErrorBuilder};
 use axum::extract::rejection::JsonRejection;
 use axum::response::{IntoResponse, Response};
 use axum::{
@@ -11,6 +8,7 @@ use axum::{
   Json, Router,
 };
 use axum_extra::extract::WithRejection;
+use commands::CreateCommand;
 use hyper::StatusCode;
 use objs::{
   Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
@@ -347,7 +345,10 @@ pub async fn get_alias_handler(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::test_utils::{MockRouterState, ResponseTestExt};
+  use crate::{
+    server::ErrorBody,
+    test_utils::{MockRouterState, ResponseTestExt},
+  };
   use axum::{body::Body, http::Request, routing::get, Router};
   use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder};
   use rstest::{fixture, rstest};
@@ -581,13 +582,13 @@ mod tests {
       .await?;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     // assert_eq!("", response.text().await?);
-    let error_body: Value = response.json().await?;
-    assert_eq!(error_body["type"], "invalid_request_error");
-    assert_eq!(error_body["code"], "command_error");
-    assert!(error_body["message"]
-      .as_str()
-      .unwrap()
-      .contains("file 'fakemodel.Q4_0.gguf' not found in $HF_HOME repo 'FakeFactory/not-exists'"));
+    let error_body = response.json::<ErrorBody>().await?;
+    assert_eq!(error_body.r#type, "invalid_request_error");
+    assert_eq!(error_body.code, Some("command_error".to_string()));
+    assert_eq!(
+      error_body.message,
+      "model file 'fakemodel.Q4_0.gguf' not found in repo 'FakeFactory/not-exists'"
+    );
 
     Ok(())
   }
