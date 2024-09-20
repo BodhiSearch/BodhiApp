@@ -1,6 +1,6 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
-  ServeCommand, ServerShutdownHandle,
+  server::serve::{ServeCommand, ServerShutdownHandle},
 };
 use dircpy::CopyBuilder;
 use mockall::predicate::eq;
@@ -100,7 +100,8 @@ pub async fn live_server(
   };
   let handle = serve_command
     .get_server_handle(app_service.clone(), None)
-    .await?;
+    .await
+    .unwrap();
   Ok(TestServerHandle { host, port, handle })
 }
 

@@ -1,19 +1,21 @@
 use crate::{
-  error::BodhiError,
   server::{RouterState, RouterStateFn},
-  SharedContextRw,
+  ContextError, SharedContextRw,
 };
-use async_openai::types::{
-  ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
-  ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
-  CreateChatCompletionRequestArgs, CreateChatCompletionStreamResponse, Role,
+use async_openai::{
+  error::OpenAIError,
+  types::{
+    ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
+    ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
+    CreateChatCompletionRequestArgs, CreateChatCompletionStreamResponse, Role,
+  },
 };
 use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
-use llama_server_bindings::{disable_llama_log, GptParamsBuilder};
+use llama_server_bindings::{disable_llama_log, GptParamsBuilder, GptParamsBuilderError};
 use objs::{Alias, Common, ObjError};
-use services::{AppServiceFn, HubServiceError};
+use services::{AppServiceFn, DataServiceError, HubServiceError};
 use std::{
   io::{self, Write},
   sync::Arc,
@@ -23,6 +25,8 @@ use tokio::{
   sync::{mpsc::channel, Mutex},
   task::JoinHandle,
 };
+
+use super::router_state::RouterStateError;
 
 fn infinite_loading(msg: String) -> ProgressBar {
   let spinner_style = ProgressStyle::with_template("{spinner:.green} {wide_msg}")
@@ -41,8 +45,30 @@ pub struct Interactive {
   alias: Alias,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum InteractiveError {
+  #[error(transparent)]
+  OpenAIError(#[from] OpenAIError),
+  #[error(transparent)]
+  HubServiceError(#[from] HubServiceError),
+  #[error(transparent)]
+  DataServiceError(#[from] DataServiceError),
+  #[error(transparent)]
+  ObjError(#[from] ObjError),
+  #[error(transparent)]
+  GptParamsBuilderError(#[from] GptParamsBuilderError),
+  #[error(transparent)]
+  ContextError(#[from] ContextError),
+  #[error(transparent)]
+  RouterStateError(#[from] RouterStateError),
+  #[error(transparent)]
+  Common(#[from] Common),
+}
+
+type Result<T> = std::result::Result<T, InteractiveError>;
+
 impl Interactive {
-  pub async fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  pub async fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     let alias = self.alias.clone();
     let model = service
       .hub_service()
@@ -69,8 +95,7 @@ impl Interactive {
     let pb = infinite_loading(String::from("Loading..."));
     let mut gpt_params = GptParamsBuilder::default()
       .model(model.path().display().to_string())
-      .build()
-      .map_err(ObjError::from)?;
+      .build()?;
     alias.context_params.update(&mut gpt_params);
     disable_llama_log();
 
@@ -117,7 +142,7 @@ impl Interactive {
     router_state: &RouterState,
     input: &str,
     chat_history: Arc<Mutex<Vec<ChatCompletionRequestMessage>>>,
-  ) -> crate::error::Result<()> {
+  ) -> Result<()> {
     let mut lock = chat_history.lock().await;
     (*lock).push(ChatCompletionRequestMessage::User(
       ChatCompletionRequestUserMessage {
@@ -133,10 +158,9 @@ impl Interactive {
       .model(model)
       .stream(true)
       .messages(msgs_clone)
-      .build()
-      .map_err(BodhiError::BuildError)?;
+      .build()?;
     let (tx, mut rx) = channel::<String>(100);
-    let handle: JoinHandle<crate::error::Result<()>> =
+    let handle: JoinHandle<Result<()>> =
       tokio::spawn(async move {
         let mut deltas = String::new();
         while let Some(message) = rx.recv().await {
@@ -197,7 +221,7 @@ impl InteractiveRuntime {
     &self,
     alias: Alias,
     service: Arc<dyn AppServiceFn>,
-  ) -> crate::error::Result<()> {
+  ) -> Result<()> {
     Interactive::new(alias).execute(service).await
   }
 }

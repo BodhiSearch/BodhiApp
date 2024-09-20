@@ -1,9 +1,9 @@
 use crate::{
-  cli::{CliError, Command},
   server::{build_routes, build_server_handle, shutdown_signal, ServerHandle, ShutdownCallback},
   BodhiError, SharedContextRw, SharedContextRwFn,
 };
 use axum::Router;
+use commands::{CliError, Command};
 use objs::Common;
 use services::AppServiceFn;
 use std::sync::Arc;

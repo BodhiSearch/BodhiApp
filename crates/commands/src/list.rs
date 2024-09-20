@@ -1,11 +1,10 @@
-use super::CliError;
-use crate::Command;
+use crate::{command::Command, error::CliError};
 use objs::RemoteModel;
 use prettytable::{
   format::{self},
   row, Row, Table,
 };
-use services::AppServiceFn;
+use services::{AppServiceFn, DataServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
@@ -18,7 +17,7 @@ pub enum ListCommand {
 impl TryFrom<Command> for ListCommand {
   type Error = CliError;
 
-  fn try_from(value: Command) -> Result<Self, Self::Error> {
+  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
       Command::List { remote, models } => match (remote, models) {
         (true, false) => Ok(ListCommand::Remote),
@@ -33,9 +32,21 @@ impl TryFrom<Command> for ListCommand {
   }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ListCommandError {
+  #[error(transparent)]
+  DataServiceError(#[from] DataServiceError),
+  #[error("alias {0} already exists")]
+  AliasExists(String),
+  #[error("alias {0} not found")]
+  AliasNotFound(String),
+}
+
+type Result<T> = std::result::Result<T, ListCommandError>;
+
 impl ListCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     match self {
       ListCommand::Local => self.list_local_model_alias(service)?,
       ListCommand::Remote => self.list_remote_models(service)?,
@@ -44,7 +55,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_model_alias(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  fn list_local_model_alias(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     let mut table = Table::new();
     table.add_row(row![
       "ALIAS",
@@ -65,7 +76,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_models(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  fn list_local_models(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     let mut table = Table::new();
     table.add_row(row!["REPO", "FILENAME", "SNAPSHOT", "SIZE"]);
     let mut models = service.hub_service().list_local_models();
@@ -78,7 +89,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_remote_models(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  fn list_remote_models(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     let models: Vec<RemoteModel> = service.data_service().list_remote_models()?;
     let mut table = Table::new();
     table.add_row(row![

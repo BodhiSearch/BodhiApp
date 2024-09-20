@@ -1,11 +1,12 @@
-use super::CliError;
 #[cfg(not(test))]
-use crate::interactive::InteractiveRuntime;
+use crate::server::interactive::InteractiveRuntime;
 #[cfg(test)]
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
-use crate::{error::BodhiError, Command, PullCommand};
-use services::AppServiceFn;
+use commands::{CliError, Command, PullCommand, PullCommandError};
+use services::{AppServiceFn, DataServiceError};
 use std::sync::Arc;
+
+use super::interactive::InteractiveError;
 
 pub enum RunCommand {
   WithAlias { alias: String },
@@ -22,9 +23,27 @@ impl TryFrom<Command> for RunCommand {
   }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum RunCommandError {
+  #[error(
+    r#"model alias '{0}' not found in pre-configured model aliases.
+Run `bodhi list -r` to see list of pre-configured model aliases
+"#
+  )]
+  AliasNotFound(String),
+  #[error(transparent)]
+  DataServiceError(#[from] DataServiceError),
+  #[error(transparent)]
+  PullCommandError(#[from] PullCommandError),
+  #[error(transparent)]
+  InteractiveError(#[from] InteractiveError),
+}
+
+type Result<T> = std::result::Result<T, RunCommandError>;
+
 impl RunCommand {
   #[allow(clippy::result_large_err)]
-  pub async fn aexecute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  pub async fn aexecute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     match self {
       RunCommand::WithAlias { alias } => {
         let alias = match service.data_service().find_alias(&alias) {
@@ -42,10 +61,10 @@ impl RunCommand {
               command.execute(service.clone())?;
               match service.data_service().find_alias(&alias) {
                 Some(alias_obj) => alias_obj,
-                None => return Err(BodhiError::AliasNotFound(alias)),
+                None => return Err(RunCommandError::AliasNotFound(alias)),
               }
             }
-            None => return Err(BodhiError::AliasNotFound(alias)),
+            None => return Err(RunCommandError::AliasNotFound(alias)),
           },
         };
         InteractiveRuntime::new().execute(alias, service).await?;
@@ -57,7 +76,8 @@ impl RunCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{test_utils::MockInteractiveRuntime, RunCommand};
+  use super::RunCommand;
+  use crate::test_utils::MockInteractiveRuntime;
   use mockall::predicate::{always, eq};
   use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;

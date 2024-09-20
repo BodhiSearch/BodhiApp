@@ -1,8 +1,8 @@
-use super::CliError;
-use crate::{error::BodhiError, Command};
-use objs::{Alias, HubFile, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
-use services::AppServiceFn;
+use objs::{Alias, HubFile, ObjError, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
+use services::{AppServiceFn, DataServiceError, HubServiceError};
 use std::sync::Arc;
+
+use crate::{command::Command, error::CliError};
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
@@ -20,7 +20,7 @@ pub enum PullCommand {
 impl TryFrom<Command> for PullCommand {
   type Error = CliError;
 
-  fn try_from(value: Command) -> Result<Self, Self::Error> {
+  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
       Command::Pull {
         alias,
@@ -51,16 +51,32 @@ impl TryFrom<Command> for PullCommand {
   }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum PullCommandError {
+  #[error(transparent)]
+  HubServiceError(#[from] HubServiceError),
+  #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
+  AliasExists(String),
+  #[error("alias '{0}' not found")]
+  AliasNotFound(String),
+  #[error(transparent)]
+  DataServiceError(#[from] DataServiceError),
+  #[error(transparent)]
+  ObjError(#[from] ObjError),
+}
+
+type Result<T> = std::result::Result<T, PullCommandError>;
+
 impl PullCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> crate::error::Result<()> {
+  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
     match self {
       PullCommand::ByAlias { alias, force } => {
         if !force && service.data_service().find_alias(&alias).is_some() {
-          return Err(BodhiError::AliasExists(alias));
+          return Err(PullCommandError::AliasExists(alias));
         }
         let Some(model) = service.data_service().find_remote_model(&alias)? else {
-          return Err(BodhiError::AliasNotFound(alias));
+          return Err(PullCommandError::AliasNotFound(alias));
         };
         let local_model_file = PullCommand::download_file_if_missing(
           service.clone(),
@@ -123,7 +139,7 @@ impl PullCommand {
     filename: &str,
     snapshot: &str,
     force: bool,
-  ) -> crate::error::Result<HubFile> {
+  ) -> Result<HubFile> {
     let local_model_file = service
       .hub_service()
       .find_local_file(repo, filename, snapshot)?;
@@ -149,7 +165,8 @@ impl PullCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{Command, PullCommand};
+  use super::PullCommand;
+  use crate::command::Command;
   use mockall::predicate::eq;
   use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;

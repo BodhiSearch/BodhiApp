@@ -7,8 +7,13 @@ pub struct EnvCommand {
   service: Arc<dyn AppServiceFn>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum EnvCommandError {}
+
+type Result<T> = std::result::Result<T, EnvCommandError>;
+
 impl EnvCommand {
-  pub fn execute(&self) -> crate::error::Result<()> {
+  pub fn execute(&self) -> Result<()> {
     let envs = self.service.env_service().list();
     // println!("List of current environment/config variables:");
     // println!();

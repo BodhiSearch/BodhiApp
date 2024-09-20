@@ -1,4 +1,4 @@
-use crate::error::Result;
+use crate::server::interactive::InteractiveError;
 use objs::Alias;
 use services::AppServiceFn;
 use std::sync::Arc;
@@ -8,6 +8,6 @@ mockall::mock! {
   pub InteractiveRuntime {
     pub fn new() -> Self;
 
-    pub async fn execute(&self, alias: Alias, service: Arc<dyn AppServiceFn>) -> Result<()>;
+    pub async fn execute(&self, alias: Alias, service: Arc<dyn AppServiceFn>) -> Result<(), InteractiveError>;
   }
 }

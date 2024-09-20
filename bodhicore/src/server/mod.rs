@@ -2,6 +2,7 @@ mod auth_middleware;
 mod direct_sse;
 mod error;
 mod fwd_sse;
+pub mod interactive;
 mod router_state;
 mod routes;
 mod routes_chat;
@@ -13,6 +14,8 @@ mod routes_ollama;
 mod routes_proxy;
 mod routes_setup;
 mod routes_ui;
+pub mod run;
+pub mod serve;
 #[allow(clippy::module_inception)]
 mod server;
 mod shutdown;
