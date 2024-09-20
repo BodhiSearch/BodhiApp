@@ -15,7 +15,7 @@ ci.clean:
 			CRATES="$$CRATES $$(basename $$dir)"; \
 		fi \
 	done; \
-	cargo clean $$(for crate in $$CRATES; do echo -n " -p $$crate"; done)
+	cargo clean $$(echo $$CRATES | xargs -n1 echo -p)
 
 ci.coverage:
 	cargo llvm-cov clean
