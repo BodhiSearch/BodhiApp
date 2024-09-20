@@ -1,0 +1,82 @@
+[package]
+name = "server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true, optional = true }
+async-openai = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+base64 = { workspace = true }
+bytes = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+commands = { path = "../commands" }
+derive_builder = { workspace = true }
+derive-new = { workspace = true }
+dialoguer = { workspace = true, features = ["history"] }
+dirs = { workspace = true }
+futures = { workspace = true }
+futures-core = { workspace = true }
+futures-util = { workspace = true }
+http-body = { workspace = true }
+http-body-util = { workspace = true, optional = true }
+hyper = { workspace = true, features = ["full"] }
+hyper-util = { workspace = true }
+indicatif = { workspace = true, features = ["tokio"] }
+jsonwebtoken = { workspace = true }
+llama-server-bindings = { path = "../../llama-server-bindings" }
+mime = { workspace = true }
+minijinja = { workspace = true }
+oauth2 = { workspace = true }
+objs = { path = "../objs" }
+pin-project-lite = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+services = { path = "../services" }
+sha2 = { workspace = true }
+sqlx = { workspace = true, features = [
+  "runtime-tokio",
+  "sqlite",
+  "macros",
+  "migrate",
+  "chrono",
+] }
+strum = { workspace = true, features = ["derive"] }
+sync_wrapper = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tokio-stream = { workspace = true }
+tower = { workspace = true }
+tower-http = { workspace = true, features = ["trace", "cors"] }
+tower-sessions = { workspace = true }
+tracing = { workspace = true, features = ["async-await", "log"] }
+validator = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+axum-extra = { workspace = true }
+axum-test = { workspace = true }
+commands = { path = "../commands", features = ["test-utils"] }
+http-body-util = { workspace = true }
+objs = { path = "../objs", features = ["test-utils"] }
+rstest = { workspace = true }
+maplit = { workspace = true }
+mockall = { workspace = true }
+reqwest = { workspace = true }
+services = { path = "../services", features = ["test-utils"] }
+serial_test = { workspace = true }
+strfmt = { workspace = true }
+tempfile = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+url = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
+
+[features]
+test-utils = ["anyhow", "reqwest", "http-body-util"]
