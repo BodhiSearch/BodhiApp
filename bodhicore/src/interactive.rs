@@ -1,7 +1,6 @@
 use crate::{
-  error::{BodhiError, Common},
+  error::BodhiError,
   server::{RouterState, RouterStateFn},
-  service::{AppServiceFn, HubServiceError},
   SharedContextRw,
 };
 use async_openai::types::{
@@ -13,7 +12,8 @@ use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
 use llama_server_bindings::{disable_llama_log, GptParamsBuilder};
-use objs::{Alias, ObjError};
+use objs::{Alias, Common, ObjError};
+use services::{AppServiceFn, HubServiceError};
 use std::{
   io::{self, Write},
   sync::Arc,
@@ -205,13 +205,10 @@ impl InteractiveRuntime {
 #[cfg(test)]
 mod test {
   use super::Interactive;
-  use crate::{
-    service::{MockEnvServiceFn, MockHubService},
-    test_utils::AppServiceStubMock,
-  };
   use mockall::predicate::eq;
   use objs::Alias;
   use rstest::rstest;
+  use services::{test_utils::AppServiceStubMock, MockEnvServiceFn, MockHubService};
   use std::{path::PathBuf, sync::Arc};
 
   #[rstest]

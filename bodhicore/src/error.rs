@@ -1,15 +1,8 @@
-use crate::{
-  db::DbError,
-  oai::OpenAIApiError,
-  service::{AuthServiceError, DataServiceError, HubServiceError},
-  shared_rw::ContextError,
-};
+use crate::{oai::OpenAIApiError, shared_rw::ContextError};
 use async_openai::error::OpenAIError;
-use objs::ObjError;
-use std::{io, sync::Arc};
+use objs::{Common, ObjError};
+use services::{db::DbError, AuthServiceError, DataServiceError, HubServiceError};
 use thiserror::Error;
-use tokio::task::JoinError;
-use validator::ValidationErrors;
 
 #[derive(Debug, Error)]
 pub enum BodhiError {
@@ -48,45 +41,3 @@ Run `bodhi list -r` to see list of pre-configured model aliases
 }
 
 pub type Result<T> = std::result::Result<T, BodhiError>;
-
-#[derive(Debug, thiserror::Error)]
-pub enum Common {
-  #[error("io_file: {source}\npath='{path}'")]
-  IoFile {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
-  #[error("io_error_dir_create: {source}\npath='{path}'")]
-  IoDir {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
-  #[error("io: {0}")]
-  Io(#[from] std::io::Error),
-  #[error(transparent)]
-  SerdeYamlDeserialize(#[from] serde_yaml::Error),
-  #[error("serde_yaml_serialize: {source}\nfilename='{filename}'")]
-  SerdeYamlSerialize {
-    #[source]
-    source: serde_yaml::Error,
-    filename: String,
-  },
-  #[error("serde_json_serialize: {source}\nvalue: {value}")]
-  SerdeJsonSerialize {
-    #[source]
-    source: serde_json::Error,
-    value: String,
-  },
-  #[error("serde_json_deserialize: {0}")]
-  SerdeJsonDeserialize(#[from] serde_json::Error),
-  #[error(transparent)]
-  Validation(#[from] ValidationErrors),
-  #[error("stderr: {0}")]
-  Stdlib(#[from] Arc<dyn std::error::Error + Send + Sync>),
-  #[error("sender_err: error sending signal using channel for '{0}'")]
-  Sender(String),
-  #[error(transparent)]
-  Join(JoinError),
-}

@@ -1,8 +1,6 @@
-use std::sync::Arc;
-
 use prettytable::{format::FormatBuilder, row, Cell, Row, Table};
-
-use crate::service::AppServiceFn;
+use services::AppServiceFn;
+use std::sync::Arc;
 
 #[derive(Debug, derive_new::new)]
 pub struct EnvCommand {

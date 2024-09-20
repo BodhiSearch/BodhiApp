@@ -1,10 +1,11 @@
 use super::CliError;
-use crate::{service::AppServiceFn, Command};
+use crate::Command;
 use objs::RemoteModel;
 use prettytable::{
   format::{self},
   row, Row, Table,
 };
+use services::AppServiceFn;
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]

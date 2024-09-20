@@ -4,10 +4,12 @@ mod bodhi;
 mod hf;
 mod io;
 mod objs;
+mod setup;
 
 pub use bodhi::*;
 pub use hf::*;
 pub use io::*;
 pub use objs::*;
+pub use setup::*;
 
 pub static SNAPSHOT: &str = "5007652f7a641fe7170e0bad4f63839419bd9213";

@@ -2,16 +2,16 @@ use crate::{native::NativeCommand, AppError};
 use axum::Router;
 use bodhicore::{
   cli::{Cli, Command, ServeCommand},
-  db::{DbPool, DbService, SqliteDbService, TimeService},
-  service::{
-    AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService,
-    LocalDataService, MokaCacheService, SqliteSessionService,
-  },
   CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand, PullCommand,
   RunCommand,
 };
 use clap::Parser;
 use include_dir::{include_dir, Dir};
+use services::{
+  db::{DbPool, DbService, SqliteDbService, TimeService},
+  AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService,
+  LocalDataService, MokaCacheService, SqliteSessionService,
+};
 use std::{env, path::Path, sync::Arc};
 use tokio::runtime::Builder;
 use tower_serve_static::ServeDir;

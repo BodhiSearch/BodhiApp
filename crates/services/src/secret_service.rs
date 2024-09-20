@@ -1,13 +1,11 @@
 use crate::{
   asref_impl,
-  service::cache_service::{CacheService, MokaCacheService},
+  cache_service::{CacheService, MokaCacheService},
 };
 use derive_new::new;
 use keyring::Entry;
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
-
-use super::{HttpError, HttpErrorBuilder};
 
 pub const KEY_APP_STATUS: &str = "app_status";
 pub const APP_STATUS_READY: &str = "ready";
@@ -40,18 +38,9 @@ impl From<keyring::Error> for SecretServiceError {
   }
 }
 
-impl From<SecretServiceError> for HttpError {
-  fn from(err: SecretServiceError) -> Self {
-    HttpErrorBuilder::default()
-      .internal_server(Some(&err.to_string()))
-      .build()
-      .unwrap()
-  }
-}
-
 pub type Result<T> = std::result::Result<T, SecretServiceError>;
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait ISecretService: Send + Sync + std::fmt::Debug {
   // TODO: make it async so can have async mutex
   fn set_secret_string(&self, key: &str, value: &str) -> Result<()>;
@@ -140,7 +129,7 @@ impl ISecretService for KeyringSecretService {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::service::cache_service::MokaCacheService;
+  use crate::cache_service::MokaCacheService;
   use serde::{Deserialize, Serialize};
 
   #[test]

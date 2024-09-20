@@ -53,7 +53,7 @@ Check Huggingface Home is set correctly using environment variable $HF_HOME or u
 
 type Result<T> = std::result::Result<T, HubServiceError>;
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait HubService: std::fmt::Debug {
   fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile>;
 

@@ -1,5 +1,4 @@
 use super::{utils::ApiError, RouterStateFn};
-use crate::db::objs::Conversation;
 use axum::{
   body::Body,
   extract::{Path as UrlPath, State},
@@ -8,6 +7,7 @@ use axum::{
   routing::{delete, get, post},
   Router,
 };
+use services::db::objs::Conversation;
 use std::sync::Arc;
 
 pub fn chats_router() -> Router<Arc<dyn RouterStateFn>> {
@@ -89,14 +89,8 @@ async fn ui_chat_delete_handler(
 mod test {
   use super::chats_router;
   use crate::{
-    db::{
-      objs::{Conversation, ConversationBuilder, MessageBuilder},
-      DbService, SqliteDbService,
-    },
     server::RouterState,
-    test_utils::{
-      db_service, AppServiceStubBuilder, MockSharedContext, RequestTestExt, ResponseTestExt,
-    },
+    test_utils::{MockSharedContext, RequestTestExt, ResponseTestExt},
   };
   use axum::{
     body::Body,
@@ -105,6 +99,11 @@ mod test {
   use chrono::{DateTime, Utc};
   use rstest::rstest;
   use serde_json::Value;
+  use services::db::{
+    objs::{Conversation, ConversationBuilder, MessageBuilder},
+    DbService, SqliteDbService,
+  };
+  use services::test_utils::{db_service, AppServiceStubBuilder};
   use std::sync::Arc;
   use tempfile::TempDir;
   use tower::ServiceExt;

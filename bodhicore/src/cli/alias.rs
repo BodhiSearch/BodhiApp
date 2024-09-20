@@ -1,4 +1,7 @@
-use crate::{error::Common, service::AppServiceFn, CliError, Command, StdoutWriter};
+use super::{Command, StdoutWriter};
+use crate::cli::CliError;
+use objs::Common;
+use services::AppServiceFn;
 use std::{env, sync::Arc};
 
 pub enum ManageAliasCommand {
@@ -135,9 +138,10 @@ impl ManageAliasCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{test_utils::AppServiceStubBuilder, Command, ManageAliasCommand, MockStdoutWriter};
+  use crate::{Command, ManageAliasCommand, MockStdoutWriter};
   use mockall::predicate::eq;
   use rstest::rstest;
+  use services::test_utils::AppServiceStubBuilder;
   use std::sync::Arc;
 
   #[rstest]

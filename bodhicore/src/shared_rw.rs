@@ -3,12 +3,12 @@ use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
 #[cfg(not(test))]
 use llama_server_bindings::BodhiServerContext;
 
-use crate::error::Common;
-use crate::service::DataServiceError;
 use crate::tokenizer_config::TokenizerConfig;
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{GptParams, GptParamsBuilder, GptParamsBuilderError, LlamaCppError};
+use objs::Common;
 use objs::{Alias, HubFile, ObjError};
+use services::DataServiceError;
 use std::ffi::{c_char, c_void};
 use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};

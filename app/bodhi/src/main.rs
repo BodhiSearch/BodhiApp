@@ -2,12 +2,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bodhi::{main_internal, setup_logs, AppError};
-use bodhicore::service::{env_wrapper::EnvWrapper, EnvService};
+use services::{env_wrapper::DefaultEnvWrapper, EnvService};
 use std::sync::Arc;
 use tracing_appender::non_blocking::WorkerGuard;
 
 pub fn main() {
-  let mut env_service = EnvService::new(EnvWrapper::default());
+  let mut env_service = EnvService::new(Arc::new(DefaultEnvWrapper::default()));
   match env_service.setup_bodhi_home() {
     Ok(bodhi_home) => bodhi_home,
     Err(err) => {

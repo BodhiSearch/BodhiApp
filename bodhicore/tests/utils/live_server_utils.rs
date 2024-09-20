@@ -1,21 +1,19 @@
 use bodhicore::{
   bindings::{disable_llama_log, llama_server_disable_logging},
-  db::{SqliteDbService, TimeService},
-  service::{
-    env_wrapper::EnvWrapper, AppService, AppServiceFn, EnvService, HfHubService,
-    KeycloakAuthService, LocalDataService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
-    KEY_APP_STATUS,
-  },
   ServeCommand, ServerShutdownHandle,
 };
 use dircpy::CopyBuilder;
 use mockall::predicate::eq;
 use rstest::fixture;
+use services::{
+  db::{SqliteDbService, TimeService},
+  env_wrapper::DefaultEnvWrapper,
+  AppService, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, LocalDataService,
+  MockISecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ, KEY_APP_STATUS,
+};
 use sqlx::SqlitePool;
 use std::{path::Path, sync::Arc};
 use tempfile::TempDir;
-
-use super::mocks::MockSecretService;
 
 pub fn copy_test_dir(src: &str, dst_path: &Path) {
   let src_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(src);
@@ -38,7 +36,11 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   let bodhi_home = cache_dir.join("bodhi");
   let hf_home = cache_dir.join("huggingface");
   let hf_cache = hf_home.join("hub");
-  let env_service = EnvService::new_with_args(EnvWrapper::default(), bodhi_home.clone(), hf_home);
+  let env_service = EnvService::new_with_args(
+    Arc::new(DefaultEnvWrapper::default()),
+    bodhi_home.clone(),
+    hf_home,
+  );
   env_service.create_home_dirs(&bodhi_home).unwrap();
   let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new(hf_cache, false, None);
@@ -48,7 +50,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   );
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
   let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
-  let mut secret_service = MockSecretService::default();
+  let mut secret_service = MockISecretService::default();
   secret_service
     .expect_get_secret_string()
     .with(eq(KEY_APP_AUTHZ))

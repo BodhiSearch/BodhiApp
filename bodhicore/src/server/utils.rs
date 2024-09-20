@@ -1,15 +1,14 @@
-use crate::{
-  db::DbError,
-  error::{BodhiError, Common},
-};
+use crate::BodhiError;
 use axum::{
   body::Body,
   http::{header::CONTENT_TYPE, request::Builder, Request, StatusCode},
   response::{IntoResponse, Response},
   Json,
 };
+use objs::Common;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use services::db::DbError;
 use thiserror::Error;
 
 pub trait AxumRequestExt {

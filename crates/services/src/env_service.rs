@@ -1,10 +1,5 @@
-#[allow(unused)]
-#[cfg(not(test))]
-use super::env_wrapper::EnvWrapper;
-#[cfg(test)]
-use crate::test_utils::MockEnvWrapper as EnvWrapper;
-
 use super::DataServiceError;
+use crate::env_wrapper::EnvWrapper;
 use std::{
   collections::HashMap,
   fs::{self, File},
@@ -48,7 +43,7 @@ mod env_config {
 
 pub use env_config::*;
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait EnvServiceFn: Send + Sync + std::fmt::Debug {
   fn env_type(&self) -> String;
 
@@ -118,7 +113,7 @@ pub trait EnvServiceFn: Send + Sync + std::fmt::Debug {
 
 #[derive(Debug, Clone)]
 pub struct EnvService {
-  env_wrapper: EnvWrapper,
+  env_wrapper: Arc<dyn EnvWrapper>,
   bodhi_home: Option<PathBuf>,
   hf_home: Option<PathBuf>,
   logs_dir: Option<PathBuf>,
@@ -258,7 +253,7 @@ impl EnvServiceFn for EnvService {
 
 impl EnvService {
   #[allow(clippy::new_without_default)]
-  pub fn new(env_wrapper: EnvWrapper) -> Self {
+  pub fn new(env_wrapper: Arc<dyn EnvWrapper>) -> Self {
     EnvService {
       env_wrapper,
       bodhi_home: None,
@@ -270,7 +265,11 @@ impl EnvService {
   }
 
   #[allow(private_interfaces)]
-  pub fn new_with_args(env_wrapper: EnvWrapper, bodhi_home: PathBuf, hf_home: PathBuf) -> Self {
+  pub fn new_with_args(
+    env_wrapper: Arc<dyn EnvWrapper>,
+    bodhi_home: PathBuf,
+    hf_home: PathBuf,
+  ) -> Self {
     let logs_dir = hf_home.join("logs");
     Self {
       env_wrapper,
@@ -385,7 +384,7 @@ impl EnvService {
 #[cfg(test)]
 mod test {
   use super::*;
-  use crate::test_utils::MockEnvWrapper;
+  use crate::env_wrapper::MockEnvWrapper;
   use mockall::predicate::eq;
   use rstest::{fixture, rstest};
   use std::{env::VarError, fs};
@@ -420,7 +419,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_HOME))
       .returning(move |_| Ok(bodhi_home_str.clone()));
-    let result = EnvService::new(mock).setup_bodhi_home()?;
+    let result = EnvService::new(Arc::new(mock)).setup_bodhi_home()?;
     assert_eq!(bodhi_home, result);
     Ok(())
   }
@@ -440,7 +439,7 @@ mod test {
       .expect_home_dir()
       .returning(move || Some(PathBuf::from(home_dir.clone())));
 
-    let result = EnvService::new(mock).setup_bodhi_home()?;
+    let result = EnvService::new(Arc::new(mock)).setup_bodhi_home()?;
     assert_eq!(bodhi_home, result);
     Ok(())
   }
@@ -454,7 +453,7 @@ mod test {
       .returning(|_| Err(VarError::NotPresent));
     mock.expect_home_dir().returning(move || None);
 
-    let result = EnvService::new(mock).setup_bodhi_home();
+    let result = EnvService::new(Arc::new(mock)).setup_bodhi_home();
     assert!(result.is_err());
     assert_eq!("bodhi_home_err: failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.", result.unwrap_err().to_string());
     Ok(())
@@ -474,7 +473,7 @@ mod test {
       .expect_var()
       .with(eq(HF_HOME))
       .returning(move |_| Ok(hf_home.clone()));
-    let result = EnvService::new(mock).setup_hf_cache()?;
+    let result = EnvService::new(Arc::new(mock)).setup_hf_cache()?;
     assert_eq!(hf_cache.canonicalize()?, result);
     Ok(())
   }
@@ -491,7 +490,7 @@ mod test {
     mock
       .expect_home_dir()
       .returning(move || Some(home_dir.clone()));
-    let result = EnvService::new(mock).setup_hf_cache()?;
+    let result = EnvService::new(Arc::new(mock)).setup_hf_cache()?;
     assert_eq!(hf_cache, result);
     Ok(())
   }
@@ -504,7 +503,7 @@ mod test {
       .with(eq(HF_HOME))
       .returning(move |_| Err(VarError::NotPresent));
     mock.expect_home_dir().returning(move || None);
-    let result = EnvService::new(mock).setup_hf_cache();
+    let result = EnvService::new(Arc::new(mock)).setup_hf_cache();
     assert!(result.is_err());
     assert_eq!("hf_home_err: failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.", result.unwrap_err().to_string());
     Ok(())
@@ -523,7 +522,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_HOME))
       .return_once(move |_| Ok(bodhi_home_str));
-    let mut env_service = EnvService::new(mock);
+    let mut env_service = EnvService::new(Arc::new(mock));
     env_service.setup_bodhi_home()?;
     let result = env_service.load_dotenv();
     assert_eq!(Some(envfile), result);
@@ -545,7 +544,7 @@ mod test {
       .expect_var()
       .with(eq(key.to_string()))
       .return_once(move |_| Ok(value));
-    let result = func(&EnvService::new(mock));
+    let result = func(&EnvService::new(Arc::new(mock)));
     assert_eq!(expected, result);
     Ok(())
   }
@@ -557,7 +556,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_HOST))
       .return_once(move |_| Err(VarError::NotPresent));
-    let result = EnvService::new(mock).host();
+    let result = EnvService::new(Arc::new(mock)).host();
     assert_eq!("localhost", result);
     Ok(())
   }
@@ -569,7 +568,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_PORT))
       .return_once(move |_| Ok("8080".to_string()));
-    let result = EnvService::new(mock).port();
+    let result = EnvService::new(Arc::new(mock)).port();
     assert_eq!(8080, result);
     Ok(())
   }
@@ -581,7 +580,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_PORT))
       .return_once(move |_| Err(VarError::NotPresent));
-    let result = EnvService::new(mock).port();
+    let result = EnvService::new(Arc::new(mock)).port();
     assert_eq!(1135, result);
     Ok(())
   }
@@ -598,7 +597,7 @@ mod test {
       .with(eq(BODHI_PORT))
       .return_once(move |_| Ok("8080".to_string()));
     let result = EnvService::new_with_args(
-      mock,
+      Arc::new(mock),
       PathBuf::from("/tmp/bodhi_home"),
       PathBuf::from("/tmp/hf_home"),
     );

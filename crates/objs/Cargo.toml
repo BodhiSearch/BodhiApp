@@ -9,6 +9,7 @@ clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
 derive-new = { workspace = true }
+jsonwebtoken = { workspace = true }
 hf-hub = { workspace = true }
 llama-server-bindings = { path = "../../llama-server-bindings" }
 once_cell = { workspace = true }
@@ -19,6 +20,7 @@ serde = { workspace = true }
 serde_yaml = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["full"] }
 tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 validator = { workspace = true, features = ["derive"] }

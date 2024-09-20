@@ -1,4 +1,4 @@
-use crate::service::SqliteSessionService;
+use crate::SqliteSessionService;
 use serde_json::Value;
 use sqlx::SqlitePool;
 use std::{fs::File, path::PathBuf, str::FromStr};
@@ -21,12 +21,14 @@ impl SqliteSessionService {
   }
 }
 
+#[async_trait::async_trait]
 pub trait SessionTestExt {
   async fn get_session_value(&self, session_id: &str, key: &str) -> Option<Value>;
 
   async fn get_session_record(&self, session_id: &str) -> Option<Record>;
 }
 
+#[async_trait::async_trait]
 impl SessionTestExt for SqliteSessionService {
   async fn get_session_value(&self, session_id: &str, key: &str) -> Option<Value> {
     let record = self.get_session_record(session_id).await.unwrap();

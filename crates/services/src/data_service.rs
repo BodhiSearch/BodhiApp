@@ -1,5 +1,5 @@
 use super::{ALIASES_DIR, MODELS_YAML};
-use crate::error::Common;
+use objs::Common;
 use derive_new::new;
 use objs::{Alias, RemoteModel};
 use std::{collections::HashMap, fmt::Debug, fs, io, path::PathBuf};
@@ -36,7 +36,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
 
 type Result<T> = std::result::Result<T, DataServiceError>;
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait DataService: std::fmt::Debug {
   fn list_aliases(&self) -> Result<Vec<Alias>>;
 

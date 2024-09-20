@@ -1,6 +1,5 @@
-use crate::server::RouterStateFn;
+use crate::{server::RouterStateFn, service::AppServiceFn};
 use async_openai::types::CreateChatCompletionRequest;
-use services::AppServiceFn;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 

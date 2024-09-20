@@ -45,6 +45,7 @@ reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
+services = { path = "../crates/services" }
 sha2 = { workspace = true }
 sqlx = { workspace = true, features = [
   "runtime-tokio",
@@ -95,6 +96,7 @@ rand = { workspace = true }
 rsa = { workspace = true }
 rstest = { workspace = true }
 serial_test = { workspace = true }
+services = { path = "../crates/services", features = ["test-utils"] }
 strfmt = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
@@ -107,3 +109,4 @@ unexpected_cfgs = { level = "allow", check-cfg = ['cfg(ci)'] }
 
 [features]
 production = []
+test-utils = []

@@ -1,12 +1,10 @@
 pub mod bindings;
 pub mod cli;
-pub mod db;
+// pub mod db;
 mod error;
 pub mod interactive;
-mod macros;
 mod oai;
 pub mod server;
-pub mod service;
 mod shared_rw;
 #[cfg(test)]
 mod test_utils;

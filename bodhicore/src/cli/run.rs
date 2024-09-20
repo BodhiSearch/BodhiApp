@@ -3,8 +3,10 @@ use super::CliError;
 use crate::interactive::InteractiveRuntime;
 #[cfg(test)]
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
-use crate::{error::BodhiError, service::AppServiceFn, Command, PullCommand};
+use crate::{error::BodhiError, Command, PullCommand};
+use services::AppServiceFn;
 use std::sync::Arc;
+
 pub enum RunCommand {
   WithAlias { alias: String },
 }
@@ -55,14 +57,11 @@ impl RunCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{
-    service::{MockDataService, MockHubService},
-    test_utils::{AppServiceStubMock, MockInteractiveRuntime},
-    RunCommand,
-  };
+  use crate::{test_utils::MockInteractiveRuntime, RunCommand};
   use mockall::predicate::{always, eq};
   use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
+  use services::{test_utils::AppServiceStubMock, MockDataService, MockHubService};
   use std::{path::PathBuf, sync::Arc};
 
   #[rstest]

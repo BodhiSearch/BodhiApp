@@ -12,7 +12,7 @@ use super::{
   RouterStateFn,
 };
 use crate::{
-  service::{auth_middleware, optional_auth_middleware, AppServiceFn},
+  server::{auth_middleware, optional_auth_middleware},
   SharedContextRwFn,
 };
 use axum::{
@@ -24,6 +24,7 @@ use axum::{
   Router,
 };
 use serde_json::json;
+use services::AppServiceFn;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;

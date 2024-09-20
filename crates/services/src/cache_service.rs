@@ -1,6 +1,6 @@
 use mini_moka::sync::Cache;
 
-#[cfg_attr(test, mockall::automock)]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait CacheService: Send + Sync + std::fmt::Debug {
   fn get(&self, key: &str) -> Option<String>;
 
