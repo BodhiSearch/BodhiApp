@@ -1,7 +1,4 @@
-use crate::db::{
-  objs::{Conversation, Message},
-  DbError, DbService, SqliteDbService, TimeServiceFn,
-};
+use crate::db::{Conversation, DbError, DbService, Message, SqliteDbService, TimeServiceFn};
 use chrono::{DateTime, Timelike, Utc};
 use rstest::fixture;
 use sqlx::SqlitePool;

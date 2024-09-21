@@ -1,7 +1,4 @@
-use crate::{
-  asref_impl,
-  cache_service::{CacheService, MokaCacheService},
-};
+use crate::{asref_impl, CacheService, MokaCacheService};
 use derive_new::new;
 use keyring::Entry;
 use serde::de::DeserializeOwned;
@@ -128,9 +125,11 @@ impl ISecretService for KeyringSecretService {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::cache_service::MokaCacheService;
+  use crate::{
+    get_secret, set_secret, CacheService, ISecretService, KeyringSecretService, MokaCacheService,
+  };
   use serde::{Deserialize, Serialize};
+  use std::sync::Arc;
 
   #[test]
   fn test_secret_service_with_cache() {

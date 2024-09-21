@@ -1,4 +1,4 @@
-use super::{ALIASES_DIR, MODELS_YAML};
+use crate::{ALIASES_DIR, MODELS_YAML};
 use derive_new::new;
 use objs::{Alias, RemoteModel};
 use std::{collections::HashMap, fmt::Debug, fs, io, path::PathBuf};
@@ -227,8 +227,10 @@ impl LocalDataService {
 
 #[cfg(test)]
 mod test {
-  use super::DataService;
-  use crate::test_utils::{data_service, DataServiceTuple};
+  use crate::{
+    test_utils::{data_service, DataServiceTuple},
+    DataService,
+  };
   use anyhow_trace::anyhow_trace;
   use objs::{Alias, RemoteModel};
   use rstest::rstest;

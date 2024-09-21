@@ -1,4 +1,4 @@
-use super::DbError;
+use crate::db::DbError;
 use sqlx::SqlitePool;
 use std::result::Result;
 
@@ -18,7 +18,7 @@ impl DbPool {
 
 #[cfg(test)]
 mod test {
-  use super::DbPool;
+  use crate::db::DbPool;
 
   #[tokio::test]
   async fn test_db_pool_raises_error() -> anyhow::Result<()> {

@@ -48,7 +48,7 @@ pub struct Message {
 
 #[cfg(test)]
 mod test {
-  use super::{Conversation, ConversationBuilder, Message, MessageBuilder};
+  use crate::db::{Conversation, ConversationBuilder, Message, MessageBuilder};
   use chrono::{DateTime, Utc};
   use rstest::rstest;
 

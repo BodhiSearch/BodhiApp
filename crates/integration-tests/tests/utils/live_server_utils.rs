@@ -4,9 +4,9 @@ use rstest::fixture;
 use server::{disable_llama_log, llama_server_disable_logging, ServeCommand, ServerShutdownHandle};
 use services::{
   db::{SqliteDbService, TimeService},
-  env_wrapper::DefaultEnvWrapper,
-  AppService, AppServiceFn, EnvService, HfHubService, KeycloakAuthService, LocalDataService,
-  MockISecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ, KEY_APP_STATUS,
+  AppService, AppServiceFn, DefaultEnvWrapper, EnvService, HfHubService, KeycloakAuthService,
+  LocalDataService, MockISecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
+  KEY_APP_STATUS,
 };
 use sqlx::SqlitePool;
 use std::{path::Path, sync::Arc};

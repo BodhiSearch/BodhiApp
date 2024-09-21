@@ -1,11 +1,11 @@
-use super::{
+use crate::db::{
   objs::{Conversation, Message},
   service::CONVERSATIONS,
   DbError, DbService,
 };
 
 #[derive(Debug, PartialEq)]
-pub(super) struct NoOpDbService {}
+pub struct NoOpDbService {}
 
 impl NoOpDbService {
   pub(super) fn new() -> Self {
@@ -52,13 +52,7 @@ impl DbService for NoOpDbService {
 
 #[cfg(test)]
 mod test {
-  use super::{
-    super::{
-      objs::{Conversation, Message},
-      DbService,
-    },
-    NoOpDbService,
-  };
+  use crate::db::{Conversation, DbService, Message, NoOpDbService};
 
   #[tokio::test]
   async fn test_no_op_save() -> anyhow::Result<()> {

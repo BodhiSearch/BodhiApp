@@ -1,7 +1,4 @@
-use super::{
-  no_op::NoOpDbService,
-  objs::{Conversation, Message},
-};
+use crate::db::{Conversation, Message, NoOpDbService};
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
 use sqlx::{migrate::MigrateError, SqlitePool};
@@ -251,11 +248,9 @@ impl DbService for SqliteDbService {
 
 #[cfg(test)]
 mod test {
-  use super::{SqliteDbService, TimeService, TimeServiceFn};
   use crate::{
     db::{
-      objs::{ConversationBuilder, MessageBuilder},
-      service::DbService,
+      ConversationBuilder, DbService, MessageBuilder, SqliteDbService, TimeService, TimeServiceFn,
     },
     test_utils::db_service,
   };

@@ -1,5 +1,4 @@
-use super::DataServiceError;
-use crate::env_wrapper::EnvWrapper;
+use crate::{DataServiceError, EnvWrapper};
 use std::{
   collections::HashMap,
   fs::{self, File},
@@ -383,11 +382,12 @@ impl EnvService {
 
 #[cfg(test)]
 mod test {
-  use super::*;
-  use crate::env_wrapper::MockEnvWrapper;
+  use crate::{
+    EnvService, EnvServiceFn, MockEnvWrapper, BODHI_HOME, BODHI_HOST, BODHI_PORT, HF_HOME,
+  };
   use mockall::predicate::eq;
   use rstest::{fixture, rstest};
-  use std::{env::VarError, fs};
+  use std::{collections::HashMap, env::VarError, fs, path::PathBuf, sync::Arc};
   use tempfile::TempDir;
 
   #[fixture]
