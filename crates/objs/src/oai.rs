@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::builder::BuilderError;
 use async_openai::types::{CreateChatCompletionRequest, Stop};
 use clap::Args;
@@ -74,27 +76,19 @@ fn validate_range_neg_to_pos_2(s: &str) -> Result<f32, String> {
 }
 
 fn validate_range_0_to_2(s: &str) -> Result<f32, String> {
-  let lower = 0.0;
-  let upper = 2.0;
-  validate_range(s, lower, upper)
+  validate_range(s, 0.0, 2.0)
 }
 
 fn validate_range_0_to_1(s: &str) -> Result<f32, String> {
-  let lower = 0.0;
-  let upper = 1.0;
-  validate_range(s, lower, upper)
+  validate_range(s, 0.0, 1.0)
 }
 
-fn validate_range(s: &str, lower: f32, upper: f32) -> Result<f32, String> {
-  match s.parse::<f32>() {
-    Ok(val) if (lower..=upper).contains(&val) => Ok(val),
-    Ok(_) => Err(format!(
-      "The value must be between {lower} and {upper} inclusive."
-    )),
-    Err(_) => Err(String::from(
-      "The value must be a valid floating point number.",
-    )),
-  }
+fn validate_range<T: PartialOrd + FromStr + std::fmt::Debug>(s: &str, lower: T, upper: T) -> Result<T, String> {
+    match s.parse::<T>() {
+        Ok(val) if lower <= val && val <= upper => Ok(val),
+        Ok(_) => Err(format!("The value must be between {:?} and {:?} inclusive.", lower, upper)),
+        Err(_) => Err(String::from("The value must be a valid number.")),
+    }
 }
 
 impl OAIRequestParams {
@@ -116,4 +110,104 @@ fn update_if_none<T: Clone>(self_param: &Option<T>, request_param: &mut Option<T
   if self_param.is_some() && request_param.is_none() {
     request_param.clone_from(self_param);
   }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_range_neg_to_pos_2() {
+        assert!(validate_range_neg_to_pos_2("-2.0").is_ok());
+        assert!(validate_range_neg_to_pos_2("0").is_ok());
+        assert!(validate_range_neg_to_pos_2("2.0").is_ok());
+        assert!(validate_range_neg_to_pos_2("-2.1").is_err());
+        assert!(validate_range_neg_to_pos_2("2.1").is_err());
+        assert!(validate_range_neg_to_pos_2("invalid").is_err());
+    }
+
+    #[test]
+    fn test_validate_range_0_to_2() {
+        assert!(validate_range_0_to_2("0").is_ok());
+        assert!(validate_range_0_to_2("1.5").is_ok());
+        assert!(validate_range_0_to_2("2.0").is_ok());
+        assert!(validate_range_0_to_2("-0.1").is_err());
+        assert!(validate_range_0_to_2("2.1").is_err());
+        assert!(validate_range_0_to_2("invalid").is_err());
+    }
+
+    #[test]
+    fn test_validate_range_0_to_1() {
+        assert!(validate_range_0_to_1("0").is_ok());
+        assert!(validate_range_0_to_1("0.5").is_ok());
+        assert!(validate_range_0_to_1("1.0").is_ok());
+        assert!(validate_range_0_to_1("-0.1").is_err());
+        assert!(validate_range_0_to_1("1.1").is_err());
+        assert!(validate_range_0_to_1("invalid").is_err());
+    }
+
+    #[test]
+    fn test_validate_range() {
+        assert!(validate_range("5", 0, 10).is_ok());
+        assert!(validate_range("0", 0, 10).is_ok());
+        assert!(validate_range("10", 0, 10).is_ok());
+        assert!(validate_range("-1", 0, 10).is_err());
+        assert!(validate_range("11", 0, 10).is_err());
+        assert!(validate_range("invalid", 0, 10).is_err());
+    }
+
+    #[test]
+    fn test_oai_request_params_update() {
+        let mut request = CreateChatCompletionRequest::default();
+        let params = OAIRequestParams {
+            frequency_penalty: Some(0.5),
+            max_tokens: Some(100),
+            presence_penalty: Some(0.2),
+            seed: Some(42),
+            stop: vec!["END".to_string()],
+            temperature: Some(0.7),
+            top_p: Some(0.9),
+            user: Some("test_user".to_string()),
+        };
+
+        params.update(&mut request);
+
+        assert_eq!(request.frequency_penalty, Some(0.5));
+        assert_eq!(request.max_tokens, Some(100));
+        assert_eq!(request.presence_penalty, Some(0.2));
+        assert_eq!(request.seed, Some(42));
+        assert_eq!(request.stop, Some(Stop::StringArray(vec!["END".to_string()])));
+        assert_eq!(request.temperature, Some(0.7));
+        assert_eq!(request.top_p, Some(0.9));
+        assert_eq!(request.user, Some("test_user".to_string()));
+    }
+
+    #[test]
+    fn test_oai_request_params_update_partial() {
+        let mut request = CreateChatCompletionRequest::default();
+        request.temperature = Some(0.5);
+        request.max_tokens = Some(50);
+
+        let params = OAIRequestParams {
+            frequency_penalty: Some(0.5),
+            max_tokens: Some(100),
+            presence_penalty: None,
+            seed: None,
+            stop: vec![],
+            temperature: None,
+            top_p: Some(0.9),
+            user: None,
+        };
+
+        params.update(&mut request);
+
+        assert_eq!(request.frequency_penalty, Some(0.5));
+        assert_eq!(request.max_tokens, Some(50)); // Should not be updated
+        assert_eq!(request.presence_penalty, None);
+        assert_eq!(request.seed, None);
+        assert_eq!(request.stop, None);
+        assert_eq!(request.temperature, Some(0.5)); // Should not be updated
+        assert_eq!(request.top_p, Some(0.9));
+        assert_eq!(request.user, None);
+    }
 }
