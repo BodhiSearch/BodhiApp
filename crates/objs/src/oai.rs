@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::builder::BuilderError;
+use crate::BuilderError;
 use async_openai::types::{CreateChatCompletionRequest, Stop};
 use clap::Args;
 use derive_builder::Builder;
