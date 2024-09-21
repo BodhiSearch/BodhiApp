@@ -3,8 +3,8 @@ use derive_new::new;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
-use std::{fs, path::PathBuf};
 use std::fmt;
+use std::{fs, path::PathBuf};
 
 pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
   Regex::new(r"^(?P<hf_cache>.+)/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<snapshot>[^/]+)/(?P<filename>.*)$").unwrap()
@@ -63,9 +63,13 @@ impl TryFrom<PathBuf> for HubFile {
 }
 
 impl fmt::Display for HubFile {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "HubFile {{ repo: {}, filename: {}, snapshot: {} }}", self.repo, self.filename, self.snapshot)
-    }
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(
+      f,
+      "HubFile {{ repo: {}, filename: {}, snapshot: {} }}",
+      self.repo, self.filename, self.snapshot
+    )
+  }
 }
 
 #[cfg(test)]
@@ -100,15 +104,15 @@ mod test {
   #[test]
   fn test_hub_file_display() {
     let hub_file = HubFile {
-        hf_cache: PathBuf::from("/tmp"),
-        repo: Repo::try_from("test/repo").unwrap(),
-        filename: "test.gguf".to_string(),
-        snapshot: "abc123".to_string(),
-        size: Some(1000),
+      hf_cache: PathBuf::from("/tmp"),
+      repo: Repo::try_from("test/repo").unwrap(),
+      filename: "test.gguf".to_string(),
+      snapshot: "abc123".to_string(),
+      size: Some(1000),
     };
     assert_eq!(
-        format!("{}", hub_file),
-        "HubFile { repo: test/repo, filename: test.gguf, snapshot: abc123 }"
+      format!("{}", hub_file),
+      "HubFile { repo: test/repo, filename: test.gguf, snapshot: abc123 }"
     );
   }
 }

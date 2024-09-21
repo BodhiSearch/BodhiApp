@@ -9,7 +9,6 @@ clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
 derive-new = { workspace = true }
-jsonwebtoken = { workspace = true }
 hf-hub = { workspace = true }
 llama-server-bindings = { path = "../../llama-server-bindings" }
 once_cell = { workspace = true }

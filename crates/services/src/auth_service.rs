@@ -1,11 +1,11 @@
 #![allow(unused_variables)] // TODO: remove this
+use crate::AppRegInfo;
 use async_trait::async_trait;
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
   TokenResponse,
 };
-use objs::AppRegInfo;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -191,6 +191,8 @@ impl AuthService for KeycloakAuthService {
 
 #[cfg(test)]
 mod tests {
+  use crate::AppRegInfo;
+
   use super::*;
   use jsonwebtoken::Algorithm;
   use mockito::{Matcher, Server};

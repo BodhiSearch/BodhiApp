@@ -145,12 +145,11 @@ mod tests {
     Router,
   };
   use jsonwebtoken::Algorithm;
-  use objs::AppRegInfo;
   use rstest::rstest;
   use services::{
     get_secret,
     test_utils::{AppServiceStubBuilder, SecretServiceStub},
-    AppServiceFn, MockAuthService,
+    AppRegInfo, AppServiceFn, MockAuthService,
   };
   use std::sync::Arc;
   use tower::ServiceExt;

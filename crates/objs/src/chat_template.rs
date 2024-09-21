@@ -15,7 +15,7 @@ use strum::{AsRefStr, EnumIter};
   strum::Display,
   Eq,
   Hash,
-  Copy
+  Copy,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]

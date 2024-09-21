@@ -17,10 +17,9 @@ use oauth2::{
   url::ParseError, AccessToken, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier,
   RedirectUrl,
 };
-use objs::AppRegInfo;
 use serde::{Deserialize, Serialize};
 use services::{
-  get_secret, AuthServiceError, SecretServiceError, KEY_APP_REG_INFO, KEY_APP_STATUS,
+  get_secret, AppRegInfo, AuthServiceError, SecretServiceError, KEY_APP_REG_INFO, KEY_APP_STATUS,
   KEY_RESOURCE_TOKEN,
 };
 use sha2::{Digest, Sha256};

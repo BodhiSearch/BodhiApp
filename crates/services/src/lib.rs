@@ -12,6 +12,7 @@ mod env_service;
 pub mod env_wrapper;
 mod hub_service;
 mod macros;
+mod objs;
 mod secret_service;
 mod session_service;
 
@@ -21,5 +22,6 @@ pub use cache_service::*;
 pub use data_service::*;
 pub use env_service::*;
 pub use hub_service::*;
+pub use objs::*;
 pub use secret_service::*;
 pub use session_service::*;

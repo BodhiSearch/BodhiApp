@@ -21,22 +21,22 @@ pub(crate) fn to_safe_filename(input: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use rstest::rstest;
+  use super::*;
+  use rstest::rstest;
 
-    #[rstest]
-    #[case("normal_filename.txt", "normal_filename.txt")]
-    #[case("file with spaces.txt", "filewithspaces.txt")]
-    #[case("file:with:colons.txt", "file--with--colons.txt")]
-    #[case("file<with>brackets.txt", "file--with--brackets.txt")]
-    #[case("file\"with\"quotes.txt", "file--with--quotes.txt")]
-    #[case("file\\with/slashes.txt", "file--with--slashes.txt")]
-    #[case("file|with|pipes.txt", "file--with--pipes.txt")]
-    #[case("file?with?questions.txt", "file--with--questions.txt")]
-    #[case("file*with*stars.txt", "file--with--stars.txt")]
-    #[case("file\nwith\nnewlines.txt", "filewithnewlines.txt")]
-    #[case("file\twith\ttabs.txt", "filewithtabs.txt")]
-    fn test_to_safe_filename(#[case] input: &str, #[case] expected: &str) {
-        assert_eq!(to_safe_filename(input), expected);
-    }
+  #[rstest]
+  #[case("normal_filename.txt", "normal_filename.txt")]
+  #[case("file with spaces.txt", "filewithspaces.txt")]
+  #[case("file:with:colons.txt", "file--with--colons.txt")]
+  #[case("file<with>brackets.txt", "file--with--brackets.txt")]
+  #[case("file\"with\"quotes.txt", "file--with--quotes.txt")]
+  #[case("file\\with/slashes.txt", "file--with--slashes.txt")]
+  #[case("file|with|pipes.txt", "file--with--pipes.txt")]
+  #[case("file?with?questions.txt", "file--with--questions.txt")]
+  #[case("file*with*stars.txt", "file--with--stars.txt")]
+  #[case("file\nwith\nnewlines.txt", "filewithnewlines.txt")]
+  #[case("file\twith\ttabs.txt", "filewithtabs.txt")]
+  fn test_to_safe_filename(#[case] input: &str, #[case] expected: &str) {
+    assert_eq!(to_safe_filename(input), expected);
+  }
 }

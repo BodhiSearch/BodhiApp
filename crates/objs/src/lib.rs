@@ -12,7 +12,6 @@ mod hub_file;
 mod oai;
 mod remote_file;
 mod repo;
-mod setup;
 mod utils;
 
 pub use alias::*;
@@ -24,5 +23,4 @@ pub use hub_file::*;
 pub use oai::*;
 pub use remote_file::*;
 pub use repo::*;
-pub use setup::*;
 pub use utils::*;
