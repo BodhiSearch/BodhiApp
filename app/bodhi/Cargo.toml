@@ -11,11 +11,12 @@ authors = ["Amir Nagri <amir.nagri@gmail.com>"]
 custom-protocol = ["tauri/custom-protocol"]
 
 [dependencies]
+commands = { workspace = true }
+objs = { workspace = true }
+server = { workspace = true }
+services = { workspace = true }
+
 axum = { workspace = true }
-server = { path = "../../crates/server" }
-commands = { path = "../../crates/commands" }
-objs = { path = "../../crates/objs" }
-services = { path = "../../crates/services" }
 clap = { workspace = true, features = ["derive"] }
 dotenv = { workspace = true }
 futures-util = { workspace = true }

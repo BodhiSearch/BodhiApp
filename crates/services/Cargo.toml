@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+objs = { workspace = true }
+
 anyhow = { workspace = true, optional = true }
 axum = { workspace = true }
 base64 = { workspace = true, optional = true }
@@ -19,7 +21,6 @@ hf-hub = { workspace = true, features = ["tokio"] }
 keyring = { workspace = true, default-features = false }
 mini-moka = { workspace = true }
 mockall = { workspace = true, optional = true }
-objs = { path = "../objs" }
 oauth2 = { workspace = true }
 reqwest = { workspace = true }
 rand = { workspace = true, optional = true }
@@ -47,12 +48,13 @@ uuid = { workspace = true, features = ["v4"] }
 walkdir = { workspace = true }
 
 [dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
+
 axum-test = { workspace = true }
 axum-extra = { workspace = true }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 base64 = { workspace = true }
-objs = { path = "../objs", features = ["test-utils"] }
 mockall = { workspace = true }
 mockito = { workspace = true }
 rand = { workspace = true }

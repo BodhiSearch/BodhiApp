@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+commands = { workspace = true }
+objs = { workspace = true }
+llama-server-bindings = { workspace = true }
+services = { workspace = true }
+
 anyhow = { workspace = true, optional = true }
 async-openai = { workspace = true }
 async-trait = { workspace = true }
@@ -12,7 +17,6 @@ axum-extra = { workspace = true }
 base64 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true, features = ["serde"] }
-commands = { path = "../commands" }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
 dialoguer = { workspace = true, features = ["history"] }
@@ -26,19 +30,16 @@ hyper = { workspace = true, features = ["full"] }
 hyper-util = { workspace = true }
 indicatif = { workspace = true, features = ["tokio"] }
 jsonwebtoken = { workspace = true }
-llama-server-bindings = { path = "../../llama-server-bindings" }
 mime = { workspace = true }
 minijinja = { workspace = true }
 mockall = { workspace = true, optional = true }
 oauth2 = { workspace = true }
-objs = { path = "../objs" }
 pin-project-lite = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
-services = { path = "../services" }
 sha2 = { workspace = true }
 sqlx = { workspace = true, features = [
   "runtime-tokio",
@@ -63,18 +64,19 @@ tracing-subscriber = { workspace = true, features = [
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
+commands = { workspace = true, features = ["test-utils"] }
+objs = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 axum-extra = { workspace = true }
 axum-test = { workspace = true }
-commands = { path = "../commands", features = ["test-utils"] }
 http-body-util = { workspace = true }
-objs = { path = "../objs", features = ["test-utils"] }
 rstest = { workspace = true }
 maplit = { workspace = true }
 mockall = { workspace = true }
 reqwest = { workspace = true }
-services = { path = "../services", features = ["test-utils"] }
 serial_test = { workspace = true }
 strfmt = { workspace = true }
 tempfile = { workspace = true }

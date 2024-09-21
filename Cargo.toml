@@ -12,6 +12,13 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
+objs = { path = "crates/objs" }
+services = { path = "crates/services" }
+commands = { path = "crates/commands" }
+server = { path = "crates/server" }
+bodhi = { path = "app/bodhi" }
+llama-server-bindings = { path = "llama-server-bindings" }
+
 anyhow = "1.0.81"
 anyhow_trace = "0.1.3"
 async-openai = "0.20.0"
