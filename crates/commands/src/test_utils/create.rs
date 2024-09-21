@@ -1,6 +1,5 @@
+use crate::{CreateCommand, CreateCommandBuilder};
 use objs::{ChatTemplate, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
-
-use crate::create::{CreateCommand, CreateCommandBuilder};
 
 impl CreateCommand {
   pub fn testalias() -> CreateCommand {

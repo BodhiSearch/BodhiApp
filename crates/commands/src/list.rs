@@ -1,4 +1,4 @@
-use crate::{command::Command, error::CliError, objs_ext::IntoRow};
+use crate::{objs_ext::IntoRow, CliError, Command};
 use objs::RemoteModel;
 use prettytable::{
   format::{self},
@@ -113,7 +113,7 @@ impl ListCommand {
 
 #[cfg(test)]
 mod test {
-  use super::{Command, ListCommand};
+  use crate::{Command, ListCommand};
   use rstest::rstest;
 
   #[rstest]

@@ -1,8 +1,7 @@
+use crate::{CliError, Command};
 use objs::{Alias, HubFile, ObjError, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
 use services::{AppServiceFn, DataServiceError, HubServiceError};
 use std::sync::Arc;
-
-use crate::{command::Command, error::CliError};
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
@@ -165,8 +164,7 @@ impl PullCommand {
 
 #[cfg(test)]
 mod test {
-  use super::PullCommand;
-  use crate::command::Command;
+  use crate::{Command, PullCommand};
   use mockall::predicate::eq;
   use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;

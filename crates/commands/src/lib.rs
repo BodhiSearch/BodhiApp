@@ -9,7 +9,7 @@ mod create;
 mod envs;
 mod error;
 mod list;
-mod objs_ext;
+pub mod objs_ext;
 mod out_writer;
 mod pull;
 

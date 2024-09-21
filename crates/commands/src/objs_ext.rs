@@ -54,14 +54,11 @@ impl IntoRow for RemoteModel {
 
 #[cfg(test)]
 mod test {
-  use std::path::PathBuf;
-
   use crate::objs_ext::IntoRow;
-
-  use super::RemoteModel;
-  use objs::{Alias, HubFile, Repo};
+  use objs::{Alias, HubFile, RemoteModel, Repo};
   use prettytable::{Cell, Row};
   use rstest::rstest;
+  use std::path::PathBuf;
 
   #[test]
   fn test_alias_to_row() -> anyhow::Result<()> {
