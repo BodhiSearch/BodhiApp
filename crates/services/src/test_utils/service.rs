@@ -1,6 +1,6 @@
 use crate::{
-  db::DbService,
-  test_utils::{EnvServiceStub, MockDbService, SecretServiceStub},
+  db::{DbService, MockDbService},
+  test_utils::{EnvServiceStub, SecretServiceStub},
   AppService, AuthService, CacheService, DataService, DefaultEnvService, EnvService, HfHubService,
   HubService, LocalDataService, MockAuthService, MockCacheService, MockDataService, MockEnvService,
   MockEnvWrapper, MockHubService, MockSecretService, MockSessionService, MokaCacheService,

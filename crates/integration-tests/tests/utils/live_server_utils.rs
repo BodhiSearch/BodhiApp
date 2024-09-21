@@ -3,7 +3,7 @@ use mockall::predicate::eq;
 use rstest::fixture;
 use server::{disable_llama_log, llama_server_disable_logging, ServeCommand, ServerShutdownHandle};
 use services::{
-  db::{SqliteDbService, TimeService},
+  db::{SqliteDbService, DefaultTimeService},
   AppService, DefaultAppService, DefaultEnvService, DefaultEnvWrapper, HfHubService,
   KeycloakAuthService, LocalDataService, MockSecretService, MokaCacheService, SqliteSessionService,
   KEY_APP_AUTHZ, KEY_APP_STATUS,
@@ -46,7 +46,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppService>) {
     String::from("bodhi"),
   );
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
-  let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
+  let db_service = SqliteDbService::new(pool.clone(), Arc::new(DefaultTimeService));
   let mut secret_service = MockSecretService::default();
   secret_service
     .expect_get_secret_string()

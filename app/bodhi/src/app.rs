@@ -8,7 +8,7 @@ use commands::{
 use include_dir::{include_dir, Dir};
 use server::{RunCommand, ServeCommand};
 use services::{
-  db::{DbPool, DbService, SqliteDbService, TimeService},
+  db::{DbPool, DbService, SqliteDbService, DefaultTimeService},
   DefaultAppService, DefaultEnvService, EnvService, HfHubService, KeycloakAuthService,
   KeyringSecretService, LocalDataService, MokaCacheService, SqliteSessionService,
 };
@@ -40,7 +40,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
 
   let dbpath = env_service.db_path();
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
-  let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
+  let db_service = SqliteDbService::new(pool.clone(), Arc::new(DefaultTimeService));
   db_service.migrate().await?;
   let session_service = SqliteSessionService::new(pool);
   session_service.migrate().await?;
