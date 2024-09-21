@@ -149,9 +149,9 @@ fn gguf_filename_parser(filename: &str) -> Result<String, String> {
 #[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 mod test {
-  use super::*;
-  use clap::CommandFactory;
-  use objs::OAIRequestParams;
+  use crate::{Cli, Command};
+  use clap::{CommandFactory, Parser};
+  use objs::{ChatTemplateId, GptContextParams, OAIRequestParams};
   use rstest::rstest;
 
   #[test]

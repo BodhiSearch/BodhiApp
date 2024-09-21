@@ -1,4 +1,4 @@
-use crate::{command::Command, error::CliError};
+use crate::{CliError, Command};
 use objs::{
   default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo,
   REFS_MAIN, TOKENIZER_CONFIG_JSON,
@@ -161,8 +161,7 @@ impl CreateCommand {
 
 #[cfg(test)]
 mod test {
-  use super::CreateCommand;
-  use crate::command::Command;
+  use crate::{Command, CreateCommand};
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
   use objs::{

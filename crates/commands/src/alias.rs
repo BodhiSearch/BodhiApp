@@ -1,4 +1,4 @@
-use crate::{command::Command, error::CliError, out_writer::StdoutWriter};
+use crate::{CliError, Command, StdoutWriter};
 use services::{AppServiceFn, DataServiceError};
 use std::{env, io, sync::Arc};
 
@@ -144,7 +144,7 @@ impl ManageAliasCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{alias::ManageAliasCommand, command::Command, out_writer::MockStdoutWriter};
+  use crate::{Command, ManageAliasCommand, MockStdoutWriter};
   use mockall::predicate::eq;
   use rstest::rstest;
   use services::test_utils::AppServiceStubBuilder;
