@@ -1,10 +1,9 @@
-use crate::obj_exts::update;
 #[cfg(test)]
-use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
+use crate::test_utils::MockServerContext as BodhiServerContext;
 #[cfg(not(test))]
-use llama_server_bindings::BodhiServerContext;
+use llama_server_bindings::{BodhiServerContext, ServerContext};
 
-use crate::{tokenizer_config::TokenizerConfig, Common};
+use crate::{obj_exts::update, tokenizer_config::TokenizerConfig, Common};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{GptParams, GptParamsBuilder, GptParamsBuilderError, LlamaCppError};
 use objs::{Alias, HubFile, ObjError};
@@ -259,7 +258,7 @@ impl ModelLoadStrategy {
 mod test {
   use crate::{
     shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
-    test_utils::{test_channel, MockBodhiServerContext},
+    test_utils::{test_channel, MockServerContext},
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
@@ -468,7 +467,7 @@ mod test {
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
-    let mut mock = MockBodhiServerContext::default();
+    let mut mock = MockServerContext::default();
     let expected_input =
       "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"testalias:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
     mock.expect_init().with().return_once(|| Ok(()));
@@ -483,7 +482,7 @@ mod test {
       .expect_get_gpt_params()
       .return_once(move || gpt_params_cl);
 
-    let ctx = MockBodhiServerContext::new_context();
+    let ctx = MockServerContext::new_context();
     ctx
       .expect()
       .with(eq(gpt_params.clone()))
@@ -516,7 +515,7 @@ mod test {
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
-    let mut mock = MockBodhiServerContext::default();
+    let mut mock = MockServerContext::default();
     let expected_input =
       "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"testalias:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
     mock.expect_init().with().return_once(|| Ok(()));
@@ -526,7 +525,7 @@ mod test {
       .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
 
-    let ctx = MockBodhiServerContext::new_context();
+    let ctx = MockServerContext::new_context();
     ctx
       .expect()
       .with(eq(GptParams {
@@ -560,7 +559,7 @@ mod test {
       .build()
       .unwrap();
     let loaded_model_filepath = loaded_model.path().display().to_string();
-    let mut loaded_ctx = MockBodhiServerContext::default();
+    let mut loaded_ctx = MockServerContext::default();
     loaded_ctx.expect_init().with().return_once(|| Ok(()));
     loaded_ctx
       .expect_start_event_loop()
@@ -580,13 +579,13 @@ mod test {
       .expect_completions()
       .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
-    let ctx = MockBodhiServerContext::new_context();
+    let ctx = MockServerContext::new_context();
     ctx
       .expect()
       .with(eq(loaded_params.clone()))
       .return_once(move |_| Ok(loaded_ctx));
 
-    let mut request_context = MockBodhiServerContext::default();
+    let mut request_context = MockServerContext::default();
     request_context.expect_init().with().return_once(|| Ok(()));
     request_context
       .expect_start_event_loop()
@@ -604,7 +603,7 @@ mod test {
     request_context
       .expect_get_gpt_params()
       .return_once(move || request_params_cl);
-    let request_ctx = MockBodhiServerContext::new_context();
+    let request_ctx = MockServerContext::new_context();
     request_ctx
       .expect()
       .with(eq(request_params))

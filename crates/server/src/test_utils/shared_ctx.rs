@@ -42,7 +42,7 @@ mockall::mock! {
 }
 
 mockall::mock! {
-  pub BodhiServerContext {
+  pub ServerContext {
     pub fn new(gpt_params: GptParams) -> llama_server_bindings::Result<Self>;
 
     pub fn init(&self) -> llama_server_bindings::Result<()>;
@@ -62,7 +62,7 @@ mockall::mock! {
     pub fn stop(&mut self) -> llama_server_bindings::Result<()>;
   }
 
-  impl std::fmt::Debug for BodhiServerContext {
+  impl std::fmt::Debug for ServerContext {
     fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
   }
 }
