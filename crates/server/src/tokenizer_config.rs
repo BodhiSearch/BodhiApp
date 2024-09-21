@@ -62,7 +62,7 @@ impl<'a> From<&'a ChatCompletionRequestMessage> for ChatMessage {
 }
 
 #[derive(Clone, Serialize, Deserialize, Default)]
-pub(crate) struct ChatTemplateInputs {
+pub struct ChatTemplateInputs {
   messages: Vec<ChatMessage>,
   bos_token: Option<String>,
   eos_token: Option<String>,
@@ -197,7 +197,7 @@ impl TryFrom<HubFile> for TokenizerConfig {
 
 #[cfg(test)]
 mod test {
-  use super::*;
+  use crate::{ChatMessage, TokenizerConfig, ChatTemplateVersions};
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
   use objs::test_utils::hf_cache;

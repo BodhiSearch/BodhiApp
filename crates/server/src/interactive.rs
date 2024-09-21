@@ -1,5 +1,7 @@
-use super::router_state::RouterStateError;
-use crate::{obj_exts::update, Common, ContextError, RouterState, RouterStateFn, SharedContextRw};
+use crate::{
+  obj_exts::update, Common, ContextError, RouterState, RouterStateError, RouterStateFn,
+  SharedContextRw,
+};
 use async_openai::{
   error::OpenAIError,
   types::{
@@ -220,7 +222,7 @@ impl InteractiveRuntime {
 
 #[cfg(test)]
 mod test {
-  use super::Interactive;
+  use crate::Interactive;
   use mockall::predicate::eq;
   use objs::Alias;
   use rstest::rstest;

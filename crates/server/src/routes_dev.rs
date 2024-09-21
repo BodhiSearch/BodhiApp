@@ -1,5 +1,4 @@
-use super::RouterStateFn;
-use crate::{HttpError, HttpErrorBuilder};
+use crate::{HttpError, HttpErrorBuilder, RouterStateFn};
 use axum::{
   body::Body,
   extract::State,

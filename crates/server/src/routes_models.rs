@@ -1,9 +1,7 @@
-use super::RouterStateFn;
-use crate::{HttpError, HttpErrorBuilder};
-use axum::extract::rejection::JsonRejection;
-use axum::response::{IntoResponse, Response};
+use crate::{HttpError, HttpErrorBuilder, RouterStateFn};
 use axum::{
-  extract::{Query, State},
+  extract::{rejection::JsonRejection, Query, State},
+  response::{IntoResponse, Response},
   routing::{get, post},
   Json, Router,
 };
@@ -344,17 +342,27 @@ pub async fn get_alias_handler(
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use crate::{
+    create_alias_handler, get_alias_handler, list_chat_templates_handler,
+    list_local_aliases_handler,
     test_utils::{MockRouterState, ResponseTestExt},
-    ErrorBody,
+    AliasResponse, ErrorBody, PaginatedResponse,
   };
-  use axum::{body::Body, http::Request, routing::get, Router};
-  use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder};
+  use axum::{
+    body::Body,
+    http::{status::StatusCode, Request},
+    routing::{get, post},
+    Router,
+  };
+  use objs::{
+    ChatTemplate, ChatTemplateId, GptContextParamsBuilder, OAIRequestParamsBuilder, Repo,
+  };
   use rstest::{fixture, rstest};
   use serde_json::Value;
   use services::test_utils::AppServiceStubBuilder;
+  use std::collections::HashMap;
   use std::sync::Arc;
+  use strum::IntoEnumIterator;
   use tower::ServiceExt;
 
   #[fixture]

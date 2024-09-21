@@ -1,6 +1,6 @@
-use super::{utils::generate_random_string, RouterStateFn};
-use crate::utils::{decode_access_token, Claims};
-use crate::{HttpError, HttpErrorBuilder};
+use crate::{
+  decode_access_token, generate_random_string, Claims, HttpError, HttpErrorBuilder, RouterStateFn,
+};
 use axum::{
   body::Body,
   extract::{Query, State},
@@ -192,7 +192,7 @@ pub async fn login_callback_handler(
   )
 }
 
-fn generate_pkce() -> (String, String) {
+pub fn generate_pkce() -> (String, String) {
   let code_verifier = generate_random_string(43);
   let code_challenge =
     general_purpose::URL_SAFE_NO_PAD.encode(Sha256::digest(code_verifier.as_bytes()));
@@ -269,20 +269,23 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Htt
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::test_utils::{MockSharedContext, ResponseTestExt};
-  use crate::RouterState;
+  use crate::{
+    generate_pkce, login_callback_handler, login_handler, logout_handler,
+    test_utils::{MockSharedContext, ResponseTestExt},
+    user_info_handler, RouterState, UserInfo,
+  };
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
-    http::{header, Request},
+    http::{header, status::StatusCode, Request},
     middleware::{from_fn, Next},
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
   };
   use axum_test::TestServer;
   use mockall::predicate::function;
-  use oauth2::RefreshToken;
+  use oauth2::{AccessToken, RefreshToken};
   use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -293,10 +296,12 @@ mod tests {
     },
     AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
   };
+  use services::{AppRegInfo, AuthServiceError, KEY_APP_REG_INFO, KEY_RESOURCE_TOKEN};
   use std::{collections::HashMap, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;
   use tower::ServiceExt;
+  use tower_sessions::Session;
   use url::Url;
 
   #[rstest]

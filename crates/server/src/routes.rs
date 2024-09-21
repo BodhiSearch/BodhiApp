@@ -1,17 +1,10 @@
-use super::{
-  router_state::RouterState,
-  routes_chat::chat_completions_handler,
-  routes_dev::dev_secrets_handler,
-  routes_login::{login_callback_handler, login_handler, logout_handler, user_info_handler},
-  routes_models::models_router,
-  routes_oai_models::{oai_model_handler, oai_models_handler},
-  routes_ollama::{ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler},
-  routes_proxy::proxy_router,
-  routes_setup::{app_info_handler, setup_handler},
-  routes_ui::chats_router,
-  RouterStateFn,
+use crate::{
+  app_info_handler, auth_middleware, chat_completions_handler, chats_router, dev_secrets_handler,
+  login_callback_handler, login_handler, logout_handler, models_router, oai_model_handler,
+  oai_models_handler, ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
+  optional_auth_middleware, proxy_router, setup_handler, user_info_handler, RouterState,
+  RouterStateFn, SharedContextRwFn,
 };
-use crate::{auth_middleware, optional_auth_middleware, SharedContextRwFn};
 use axum::{
   body::Body,
   http::StatusCode,

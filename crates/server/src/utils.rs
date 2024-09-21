@@ -11,7 +11,7 @@ use thiserror::Error;
 
 // TODO - have internal log message, and external user message
 #[derive(Debug, Error)]
-pub(crate) enum ApiError {
+pub enum ApiError {
   #[error("{0}")]
   ServerError(String),
   #[error("{0}")]
@@ -64,7 +64,7 @@ impl IntoResponse for ApiError {
   }
 }
 
-pub(crate) fn generate_random_string(length: usize) -> String {
+pub fn generate_random_string(length: usize) -> String {
   const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let mut rng = rand::thread_rng();
   (0..length)
