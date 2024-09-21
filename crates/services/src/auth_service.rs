@@ -1,4 +1,3 @@
-#![allow(unused_variables)] // TODO: remove this
 use crate::AppRegInfo;
 use async_trait::async_trait;
 use oauth2::{
@@ -103,6 +102,7 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
+  #[allow(unused_variables)]
   async fn check_access_token(&self, access_token: &AccessToken) -> Result<bool> {
     // TODO: returning true to complete the flow, implement this
     Ok(true)
@@ -181,6 +181,7 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
+  #[allow(unused_variables)]
   async fn exchange_for_resource_token(
     &self,
     client_token: &str,
@@ -191,11 +192,10 @@ impl AuthService for KeycloakAuthService {
 
 #[cfg(test)]
 mod tests {
-  use crate::AppRegInfo;
-
-  use super::*;
+  use crate::{AppRegInfo, AuthService, AuthServiceError, KeycloakAuthService};
   use jsonwebtoken::Algorithm;
   use mockito::{Matcher, Server};
+  use oauth2::{ClientId, ClientSecret, RefreshToken};
   use rstest::rstest;
   use serde_json::json;
 

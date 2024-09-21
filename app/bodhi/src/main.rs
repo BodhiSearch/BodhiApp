@@ -2,7 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bodhi::{main_internal, setup_logs, AppError};
-use services::{env_wrapper::DefaultEnvWrapper, EnvService};
+use services::{DefaultEnvWrapper, EnvService};
 use std::sync::Arc;
 use tracing_appender::non_blocking::WorkerGuard;
 

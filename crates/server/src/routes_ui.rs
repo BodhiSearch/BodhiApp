@@ -7,7 +7,7 @@ use axum::{
   routing::{delete, get, post},
   Router,
 };
-use services::db::objs::Conversation;
+use services::db::Conversation;
 use std::sync::Arc;
 
 pub fn chats_router() -> Router<Arc<dyn RouterStateFn>> {
@@ -100,8 +100,7 @@ mod test {
   use rstest::rstest;
   use serde_json::Value;
   use services::db::{
-    objs::{Conversation, ConversationBuilder, MessageBuilder},
-    DbService, SqliteDbService,
+    DbService, SqliteDbService, {Conversation, ConversationBuilder, MessageBuilder},
   };
   use services::test_utils::{db_service, AppServiceStubBuilder};
   use std::sync::Arc;

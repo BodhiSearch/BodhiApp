@@ -322,9 +322,9 @@ impl HfHubService {
 
 #[cfg(test)]
 mod test {
-  use super::{HfHubService, HubService};
-  use crate::test_utils::{
-    hf_test_token_allowed, hf_test_token_public, hub_service, HubServiceTuple,
+  use crate::{
+    test_utils::{hf_test_token_allowed, hf_test_token_public, hub_service, HubServiceTuple},
+    HfHubService, HubService,
   };
   use objs::test_utils::temp_hf_home;
   use objs::{HubFile, Repo, REFS_MAIN};

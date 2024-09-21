@@ -38,7 +38,7 @@ impl CacheService for MokaCacheService {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use crate::{CacheService, MokaCacheService};
 
   #[test]
   fn test_cache_service() {
