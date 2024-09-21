@@ -5,9 +5,10 @@ use axum::{
   extract::State,
   response::{IntoResponse, Response},
 };
-use objs::AppRegInfo;
 use serde_json::json;
-use services::{get_secret, SecretServiceError, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS};
+use services::{
+  get_secret, AppRegInfo, SecretServiceError, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
+};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error)]

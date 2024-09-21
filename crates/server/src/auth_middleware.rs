@@ -7,11 +7,10 @@ use axum::{
 };
 use jsonwebtoken::{DecodingKey, Validation};
 use oauth2::{ClientId, ClientSecret, RefreshToken};
-use objs::AppRegInfo;
 use services::{
-  get_secret, AppServiceFn, AuthService, AuthServiceError, ISecretService, SecretServiceError,
-  APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_SETUP, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
-  KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
+  get_secret, AppRegInfo, AppServiceFn, AuthService, AuthServiceError, ISecretService,
+  SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_SETUP, KEY_APP_AUTHZ,
+  KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -353,14 +352,14 @@ mod tests {
   use mockall::predicate::{always, eq};
   use oauth2::{AccessToken, ClientId, RefreshToken};
   use objs::test_utils::temp_bodhi_home;
-  use objs::AppRegInfoBuilder;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use serde_json::{json, Value};
   use services::{
     test_utils::{expired_token, token, AppServiceStubBuilder, SecretServiceStub},
-    AuthServiceError, CacheService, MockAuthService, MokaCacheService, SecretServiceError,
-    SqliteSessionService, APP_STATUS_READY, APP_STATUS_SETUP, KEY_RESOURCE_TOKEN,
+    AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MokaCacheService,
+    SecretServiceError, SqliteSessionService, APP_STATUS_READY, APP_STATUS_SETUP,
+    KEY_RESOURCE_TOKEN,
   };
   use sha2::{Digest, Sha256};
   use std::{collections::HashMap, sync::Arc};

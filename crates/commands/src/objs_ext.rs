@@ -56,9 +56,9 @@ impl IntoRow for RemoteModel {
 mod test {
   use std::path::PathBuf;
 
-use crate::objs_ext::IntoRow;
+  use crate::objs_ext::IntoRow;
 
-use super::RemoteModel;
+  use super::RemoteModel;
   use objs::{Alias, HubFile, Repo};
   use prettytable::{Cell, Row};
   use rstest::rstest;
