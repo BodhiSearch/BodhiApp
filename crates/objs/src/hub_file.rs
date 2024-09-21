@@ -1,7 +1,6 @@
 use crate::{error::ObjError, repo::Repo};
 use derive_new::new;
 use once_cell::sync::Lazy;
-use prettytable::{Cell, Row};
 use regex::Regex;
 use serde::Serialize;
 use std::{fs, path::PathBuf};
@@ -63,27 +62,6 @@ impl TryFrom<PathBuf> for HubFile {
   }
 }
 
-impl From<HubFile> for Row {
-  fn from(model: HubFile) -> Self {
-    let HubFile {
-      repo,
-      filename,
-      snapshot,
-      size,
-      ..
-    } = model;
-    let human_size = size
-      .map(|size| format!("{:.2} GB", size as f64 / 2_f64.powf(30.0)))
-      .unwrap_or_else(|| String::from("Unknown"));
-    Row::from(vec![
-      Cell::new(&repo),
-      Cell::new(&filename),
-      Cell::new(&snapshot[..8]),
-      Cell::new(&human_size),
-    ])
-  }
-}
-
 impl fmt::Display for HubFile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "HubFile {{ repo: {}, filename: {}, snapshot: {} }}", self.repo, self.filename, self.snapshot)
@@ -94,30 +72,9 @@ impl fmt::Display for HubFile {
 mod test {
   use super::{HubFile, Repo};
   use crate::test_utils::hf_cache;
-  use prettytable::{Cell, Row};
   use rstest::rstest;
   use std::path::PathBuf;
   use tempfile::TempDir;
-
-  #[test]
-  fn test_local_model_to_row() -> anyhow::Result<()> {
-    let model = HubFile::new(
-      PathBuf::from("."),
-      Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")?,
-      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      "1234567890".to_string(),
-      Some(1024 * 1024 * 1024 * 10),
-    );
-    let row = model.into();
-    let expected = Row::from(vec![
-      Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
-      Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-      Cell::new("12345678"),
-      Cell::new("10.00 GB"),
-    ]);
-    assert_eq!(expected, row);
-    Ok(())
-  }
 
   #[rstest]
   fn test_local_model_file_from_pathbuf(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {

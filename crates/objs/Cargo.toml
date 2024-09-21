@@ -13,7 +13,6 @@ jsonwebtoken = { workspace = true }
 hf-hub = { workspace = true }
 llama-server-bindings = { path = "../../llama-server-bindings" }
 once_cell = { workspace = true }
-prettytable-rs = { workspace = true }
 regex = { workspace = true }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true }

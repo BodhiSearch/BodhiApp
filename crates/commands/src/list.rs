@@ -1,8 +1,8 @@
-use crate::{command::Command, error::CliError};
+use crate::{command::Command, error::CliError, objs_ext::IntoRow};
 use objs::RemoteModel;
 use prettytable::{
   format::{self},
-  row, Row, Table,
+  row, Table,
 };
 use services::{AppServiceFn, DataServiceError};
 use std::sync::Arc;
@@ -66,7 +66,7 @@ impl ListCommand {
       "CHAT TEMPLATE"
     ]);
     let aliases = service.data_service().list_aliases()?;
-    for row in aliases.into_iter().map(Row::from) {
+    for row in aliases.into_iter().map(IntoRow::into_row) {
       table.add_row(row);
     }
     table.set_format(format::FormatBuilder::default().padding(2, 2).build());
@@ -81,7 +81,7 @@ impl ListCommand {
     table.add_row(row!["REPO", "FILENAME", "SNAPSHOT", "SIZE"]);
     let mut models = service.hub_service().list_local_models();
     models.sort_by(|a, b| a.repo.cmp(&b.repo));
-    for row in models.into_iter().map(Row::from) {
+    for row in models.into_iter().map(IntoRow::into_row) {
       table.add_row(row);
     }
     table.set_format(format::FormatBuilder::default().padding(2, 2).build());
@@ -100,7 +100,7 @@ impl ListCommand {
       "FEATURES",
       "CHAT TEMPLATE"
     ]);
-    for row in models.into_iter().map(Row::from) {
+    for row in models.into_iter().map(IntoRow::into_row) {
       table.add_row(row);
     }
     table.set_format(format::FormatBuilder::default().padding(2, 2).build());
