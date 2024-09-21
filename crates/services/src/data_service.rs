@@ -1,6 +1,5 @@
 use super::{ALIASES_DIR, MODELS_YAML};
 use derive_new::new;
-use objs::Common;
 use objs::{Alias, RemoteModel};
 use std::{collections::HashMap, fmt::Debug, fs, io, path::PathBuf};
 
@@ -16,10 +15,16 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
   )]
   FileMissing { filename: String, dirname: String },
-  #[error(transparent)]
-  Common(#[from] Common),
   #[error("source: {source}\npath:{path}\nfailed to create file/directory")]
   DirCreate {
+    #[source]
+    source: io::Error,
+    path: String,
+  },
+  #[error("io: {0}")]
+  Io(#[from] std::io::Error),
+  #[error("io_file: {source}\npath='{path}'")]
+  IoFile {
     #[source]
     source: io::Error,
     path: String,
@@ -32,6 +37,14 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   AliasNotExists(String),
   #[error("alias '{0}' already exists in $BODHI_HOME/aliases")]
   AliasExists(String),
+  #[error(transparent)]
+  SerdeYamlDeserialize(#[from] serde_yaml::Error),
+  #[error("serde_yaml_serialize: {source}\nfilename='{filename}'")]
+  SerdeYamlSerialize {
+    #[source]
+    source: serde_yaml::Error,
+    filename: String,
+  },
 }
 
 type Result<T> = std::result::Result<T, DataServiceError>;
@@ -77,9 +90,9 @@ impl DataService for LocalDataService {
   }
 
   fn save_alias(&self, alias: &Alias) -> Result<PathBuf> {
-    let contents = serde_yaml::to_string(alias).map_err(Common::SerdeYamlDeserialize)?;
+    let contents = serde_yaml::to_string(alias)?;
     let filename = self.aliases_dir().join(alias.config_filename());
-    fs::write(filename.clone(), contents).map_err(|err| Common::IoFile {
+    fs::write(filename.clone(), contents).map_err(|err| DataServiceError::IoFile {
       source: err,
       path: alias.config_filename().clone(),
     })?;
@@ -109,12 +122,13 @@ impl DataService for LocalDataService {
         dirname: "".to_string(),
       });
     }
-    let content = fs::read_to_string(models_file.clone()).map_err(|err| Common::IoFile {
-      source: err,
-      path: models_file.display().to_string(),
-    })?;
+    let content =
+      fs::read_to_string(models_file.clone()).map_err(|err| DataServiceError::IoFile {
+        source: err,
+        path: models_file.display().to_string(),
+      })?;
     let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content).map_err(|err| {
-      Common::SerdeYamlSerialize {
+      DataServiceError::SerdeYamlSerialize {
         source: err,
         filename: models_file.display().to_string(),
       }
@@ -140,7 +154,7 @@ impl DataService for LocalDataService {
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
       .ok_or_else(|| DataServiceError::AliasNotExists(alias.to_string()))?;
-    fs::remove_file(filename).map_err(Common::from)?;
+    fs::remove_file(filename)?;
     Ok(())
   }
 
@@ -164,7 +178,7 @@ impl LocalDataService {
   fn _list_aliases(&self) -> Result<HashMap<String, Alias>> {
     {
       let aliases_dir = self.aliases_dir();
-      let yaml_files = fs::read_dir(&aliases_dir).map_err(|err| Common::IoFile {
+      let yaml_files = fs::read_dir(&aliases_dir).map_err(|err| DataServiceError::IoFile {
         source: err,
         path: aliases_dir.display().to_string(),
       })?;
@@ -190,13 +204,13 @@ impl LocalDataService {
             Ok(content) => match serde_yaml::from_str::<Alias>(&content) {
               Ok(alias) => Some((filename, alias)),
               Err(err) => {
-                let err = Common::SerdeYamlDeserialize(err);
+                let err = DataServiceError::SerdeYamlDeserialize(err);
                 tracing::warn!(filename, ?err, "Error deserializing model alias YAML file",);
                 None
               }
             },
             Err(err) => {
-              let err = Common::IoFile {
+              let err = DataServiceError::IoFile {
                 source: err,
                 path: filename,
               };

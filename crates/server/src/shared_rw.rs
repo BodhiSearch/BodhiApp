@@ -1,12 +1,12 @@
+use crate::obj_exts::update;
 #[cfg(test)]
 use crate::test_utils::MockBodhiServerContext as BodhiServerContext;
 #[cfg(not(test))]
 use llama_server_bindings::BodhiServerContext;
 
-use crate::tokenizer_config::TokenizerConfig;
+use crate::{tokenizer_config::TokenizerConfig, Common};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_bindings::{GptParams, GptParamsBuilder, GptParamsBuilderError, LlamaCppError};
-use objs::Common;
 use objs::{Alias, HubFile, ObjError};
 use services::DataServiceError;
 use std::ffi::{c_char, c_void};
@@ -186,7 +186,7 @@ impl SharedContextRwFn for SharedContextRw {
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
         let mut new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
-        alias.context_params.update(&mut new_gpt_params);
+        update(&alias.context_params, &mut new_gpt_params);
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
@@ -204,7 +204,7 @@ impl SharedContextRwFn for SharedContextRw {
         // TODO: take context params from alias
         // TODO: reload keeping lock and doing completions operation
         let mut new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
-        alias.context_params.update(&mut new_gpt_params);
+        update(&alias.context_params, &mut new_gpt_params);
         drop(lock);
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;

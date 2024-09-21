@@ -10,6 +10,7 @@ mod error;
 mod fwd_sse;
 mod interactive;
 mod oai;
+mod obj_exts;
 mod router_state;
 mod routes;
 mod routes_chat;

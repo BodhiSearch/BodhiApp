@@ -1,7 +1,6 @@
 use crate::{command::Command, error::CliError, out_writer::StdoutWriter};
-use objs::Common;
 use services::{AppServiceFn, DataServiceError};
-use std::{env, sync::Arc};
+use std::{env, io, sync::Arc};
 
 pub enum ManageAliasCommand {
   Show { alias: String },
@@ -31,10 +30,18 @@ impl TryFrom<Command> for ManageAliasCommand {
 pub enum AliasCommandError {
   #[error("alias '{0}' not found")]
   AliasNotFound(String),
+  #[error("io_file: {source}\npath='{path}'")]
+  IoFile {
+    #[source]
+    source: io::Error,
+    path: String,
+  },
   #[error(transparent)]
-  Common(#[from] Common),
+  SerdeYamlDeserialize(#[from] serde_yaml::Error),
   #[error(transparent)]
   DataService(#[from] DataServiceError),
+  #[error("io: {0}")]
+  Io(#[from] std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, AliasCommandError>;
@@ -71,8 +78,8 @@ impl ManageAliasCommand {
     let Some(alias) = service.data_service().find_alias(alias) else {
       return Err(AliasCommandError::AliasNotFound(alias.to_string()));
     };
-    let result = serde_yaml::to_string(&alias).map_err(Common::from)?;
-    stdout.write(&result).map_err(Common::from)?;
+    let result = serde_yaml::to_string(&alias)?;
+    stdout.write(&result)?;
     Ok(())
   }
 
@@ -83,9 +90,7 @@ impl ManageAliasCommand {
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     service.data_service().delete_alias(alias)?;
-    stdout
-      .write(&format!("alias '{alias}' deleted.\n"))
-      .map_err(Common::from)?;
+    let _ = stdout.write(&format!("alias '{alias}' deleted.\n"));
     Ok(())
   }
 
@@ -97,11 +102,9 @@ impl ManageAliasCommand {
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     service.data_service().copy_alias(alias, new_alias)?;
-    stdout
-      .write(&format!(
-        "created new alias '{new_alias}' from '{alias}'.\n"
-      ))
-      .map_err(Common::from)?;
+    let _ = stdout.write(&format!(
+      "created new alias '{new_alias}' from '{alias}'.\n"
+    ));
     Ok(())
   }
 
@@ -114,33 +117,25 @@ impl ManageAliasCommand {
     let filename = service.data_service().alias_filename(alias)?;
     match env::var("EDITOR") {
       Ok(editor) => {
-        stdout
-          .write(&format!(
-            "opening file '{}' in external EDITOR '{}'.\n",
-            filename.display(),
-            editor
-          ))
-          .map_err(Common::from)?;
+        let _ = stdout.write(&format!(
+          "opening file '{}' in external EDITOR '{}'.\n",
+          filename.display(),
+          editor
+        ));
         std::process::Command::new(&editor)
           .arg(filename.display().to_string())
-          .spawn()
-          .map_err(Common::from)?
-          .wait()
-          .map_err(Common::from)?;
+          .spawn()?
+          .wait()?;
       }
       Err(_) => {
-        stdout
-          .write(&format!(
-            "opening file '{}' in using system 'open'.\n",
-            filename.display(),
-          ))
-          .map_err(Common::from)?;
+        let _ = stdout.write(&format!(
+          "opening file '{}' in using system 'open'.\n",
+          filename.display(),
+        ));
         std::process::Command::new("open")
           .arg(filename.display().to_string())
-          .spawn()
-          .map_err(Common::from)?
-          .wait()
-          .map_err(Common::from)?;
+          .spawn()?
+          .wait()?;
       }
     };
     Ok(())

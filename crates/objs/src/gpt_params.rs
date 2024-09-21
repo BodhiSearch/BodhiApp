@@ -1,7 +1,6 @@
 use crate::builder::BuilderError;
 use clap::Args;
 use derive_builder::Builder;
-use llama_server_bindings::GptParams;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder)]
@@ -57,15 +56,4 @@ default: 0"#
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
   pub n_keep: Option<i32>,
-}
-
-impl GptContextParams {
-  pub fn update(&self, gpt_params: &mut GptParams) {
-    // gpt_params.n_threads = self.n_threads;
-    gpt_params.seed = self.n_seed;
-    gpt_params.n_ctx = self.n_ctx;
-    gpt_params.n_predict = self.n_predict;
-    gpt_params.n_parallel = self.n_parallel;
-    gpt_params.n_keep = self.n_keep;
-  }
 }
