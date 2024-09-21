@@ -1,4 +1,4 @@
-use crate::{ContextError, RouterState, RouterStateFn, SharedContextRw};
+use crate::{obj_exts::update, Common, ContextError, RouterState, RouterStateFn, SharedContextRw};
 use async_openai::{
   error::OpenAIError,
   types::{
@@ -11,7 +11,7 @@ use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
 use llama_server_bindings::{disable_llama_log, GptParamsBuilder, GptParamsBuilderError};
-use objs::{Alias, Common, ObjError};
+use objs::{Alias, ObjError};
 use services::{AppServiceFn, DataServiceError, HubServiceError};
 use std::{
   io::{self, Write},
@@ -93,7 +93,7 @@ impl Interactive {
     let mut gpt_params = GptParamsBuilder::default()
       .model(model.path().display().to_string())
       .build()?;
-    alias.context_params.update(&mut gpt_params);
+    update(&alias.context_params, &mut gpt_params);
     disable_llama_log();
 
     let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
