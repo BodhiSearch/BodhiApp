@@ -32,8 +32,7 @@ pub fn fwd_sse(rx: Receiver<String>) -> Response {
 
 #[cfg(test)]
 mod tests {
-  use super::fwd_sse;
-  use crate::test_utils::ResponseTestExt;
+  use crate::{fwd_sse, test_utils::ResponseTestExt};
   use axum::{
     body::Body,
     http::{Request, StatusCode},

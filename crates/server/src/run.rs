@@ -1,8 +1,8 @@
-use super::interactive::InteractiveError;
 #[cfg(not(test))]
 use crate::interactive::InteractiveRuntime;
 #[cfg(test)]
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
+use crate::InteractiveError;
 use commands::{CliError, Command, PullCommand, PullCommandError};
 use services::{AppServiceFn, DataServiceError};
 use std::sync::Arc;
@@ -75,8 +75,7 @@ impl RunCommand {
 
 #[cfg(test)]
 mod test {
-  use super::RunCommand;
-  use crate::test_utils::MockInteractiveRuntime;
+  use crate::{test_utils::MockInteractiveRuntime, RunCommand};
   use mockall::predicate::{always, eq};
   use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;

@@ -1,5 +1,4 @@
-use super::RouterStateFn;
-use crate::{HttpError, HttpErrorBuilder};
+use crate::{HttpError, HttpErrorBuilder, RouterStateFn};
 use async_openai::types::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},
@@ -8,7 +7,7 @@ use axum::{
 use objs::Alias;
 use std::{fs, sync::Arc, time::UNIX_EPOCH};
 
-pub(crate) async fn oai_models_handler(
+pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
 ) -> Result<Json<ListModelResponse>, HttpError> {
   let models = state
@@ -30,7 +29,7 @@ pub(crate) async fn oai_models_handler(
   }))
 }
 
-pub(crate) async fn oai_model_handler(
+pub async fn oai_model_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
   Path(id): Path<String>,
 ) -> Result<Json<Model>, HttpError> {

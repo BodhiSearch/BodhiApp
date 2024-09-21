@@ -94,9 +94,11 @@ impl RouterState {
 
 #[cfg(test)]
 mod test {
-  use super::RouterState;
-  use crate::test_utils::{test_channel, MockSharedContext, ResponseTestExt};
-  use crate::{shared_rw::ContextError, RouterStateFn};
+  use crate::{
+    shared_rw::ContextError,
+    test_utils::{test_channel, MockSharedContext, ResponseTestExt},
+    RouterState, RouterStateFn,
+  };
   use async_openai::types::CreateChatCompletionRequest;
   use axum::http::StatusCode;
   use axum::response::{IntoResponse, Response};

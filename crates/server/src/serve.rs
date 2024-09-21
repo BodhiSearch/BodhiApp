@@ -115,7 +115,8 @@ impl ServeCommand {
 
 #[cfg(test)]
 mod test {
-  use super::{Command, ServeCommand};
+  use crate::ServeCommand;
+  use commands::Command;
   use rstest::rstest;
 
   #[rstest]

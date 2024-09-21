@@ -217,10 +217,7 @@ impl KeepAliveStream {
 
 #[cfg(test)]
 mod test {
-  use std::time::Duration;
-
-  use super::{DirectSse, KeepAlive};
-  use crate::{test_utils::ResponseTestExt, DirectEvent};
+  use crate::{test_utils::ResponseTestExt, DirectEvent, DirectSse, KeepAlive};
   use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -229,6 +226,7 @@ mod test {
     Router,
   };
   use futures_util::StreamExt;
+  use std::time::Duration;
   use tokio_stream::wrappers::ReceiverStream;
   use tower::ServiceExt;
 

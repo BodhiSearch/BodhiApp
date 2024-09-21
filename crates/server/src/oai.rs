@@ -60,8 +60,7 @@ impl IntoResponse for OpenAIApiError {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::test_utils::ResponseTestExt;
+  use crate::{test_utils::ResponseTestExt, OpenAIApiError};
   use axum::{
     body::Body,
     extract::State,

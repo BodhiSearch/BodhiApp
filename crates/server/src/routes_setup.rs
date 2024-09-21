@@ -1,5 +1,4 @@
-use super::RouterStateFn;
-use crate::{BadRequestError, HttpError, HttpErrorBuilder};
+use crate::{BadRequestError, HttpError, HttpErrorBuilder, RouterStateFn};
 use axum::{
   extract::State,
   http::StatusCode,
@@ -43,13 +42,13 @@ impl IntoResponse for AppServiceError {
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub(crate) struct AppInfo {
+pub struct AppInfo {
   version: String,
   status: String,
   authz: bool,
 }
 
-pub(crate) async fn app_info_handler(
+pub async fn app_info_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
 ) -> Result<Json<AppInfo>, HttpError> {
   let secret_service = &state.app_service().secret_service();
@@ -135,9 +134,11 @@ pub async fn setup_handler(
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::test_utils::{MockSharedContext, ResponseTestExt};
-  use crate::{ErrorBody, RouterState};
+  use crate::{
+    app_info_handler, setup_handler,
+    test_utils::{MockSharedContext, ResponseTestExt},
+    AppInfo, ErrorBody, RouterState, SetupRequest,
+  };
   use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -149,7 +150,8 @@ mod tests {
   use services::{
     get_secret,
     test_utils::{AppServiceStubBuilder, SecretServiceStub},
-    AppRegInfo, AppServiceFn, MockAuthService,
+    AppRegInfo, AppServiceFn, AuthServiceError, MockAuthService, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
+    KEY_APP_STATUS,
   };
   use std::sync::Arc;
   use tower::ServiceExt;

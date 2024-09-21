@@ -1,4 +1,4 @@
-use super::{utils::ApiError, RouterStateFn};
+use crate::{ApiError, RouterStateFn};
 use axum::{
   body::Body,
   extract::{Path as UrlPath, State},
@@ -87,8 +87,8 @@ async fn ui_chat_delete_handler(
 
 #[cfg(test)]
 mod test {
-  use super::chats_router;
   use crate::{
+    chats_router,
     test_utils::{MockSharedContext, RequestTestExt, ResponseTestExt},
     RouterState,
   };

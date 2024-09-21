@@ -1,5 +1,4 @@
-use super::RouterStateFn;
-use crate::{DirectEvent, DirectSse};
+use crate::{DirectEvent, DirectSse, RouterStateFn};
 use async_openai::types::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
   ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage,
@@ -22,13 +21,13 @@ use std::{collections::HashMap, fs, sync::Arc, time::UNIX_EPOCH};
 use tokio_stream::wrappers::ReceiverStream;
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct ModelsResponse {
+pub struct ModelsResponse {
   models: Vec<Model>,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct Model {
+pub struct Model {
   model: String,
   #[serde(serialize_with = "serialize_datetime")]
   modified_at: u32,
@@ -39,7 +38,7 @@ pub(crate) struct Model {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) struct ModelDetails {
+pub struct ModelDetails {
   parent_model: Option<String>,
   format: String,
   family: String,
@@ -49,11 +48,11 @@ pub(crate) struct ModelDetails {
 }
 
 #[derive(Serialize, Deserialize)]
-pub(crate) struct OllamaError {
+pub struct OllamaError {
   error: String,
 }
 
-pub(crate) async fn ollama_models_handler(
+pub async fn ollama_models_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
 ) -> Result<Json<ModelsResponse>, Json<OllamaError>> {
   let models = state
@@ -126,7 +125,7 @@ pub struct ShowResponse {
   pub template: String,
 }
 
-pub(crate) async fn ollama_model_show_handler(
+pub async fn ollama_model_show_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
   Json(request): Json<ShowRequest>,
 ) -> Result<Json<ShowResponse>, Json<OllamaError>> {
@@ -388,7 +387,7 @@ pub struct Options {
   pub num_thread: Option<i32>,
 }
 
-pub(crate) async fn ollama_model_chat_handler(
+pub async fn ollama_model_chat_handler(
   State(state): State<Arc<dyn RouterStateFn>>,
   Json(ollama_request): Json<ChatRequest>,
 ) -> Result<Response, Json<OllamaError>> {
@@ -460,8 +459,10 @@ pub(crate) async fn ollama_model_chat_handler(
 
 #[cfg(test)]
 mod test {
-  use super::{ollama_model_show_handler, ollama_models_handler};
-  use crate::test_utils::{MockRouterState, RequestTestExt, ResponseTestExt};
+  use crate::{
+    ollama_model_show_handler, ollama_models_handler,
+    test_utils::{MockRouterState, RequestTestExt, ResponseTestExt},
+  };
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,

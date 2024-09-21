@@ -89,7 +89,7 @@ impl Server {
 
 #[cfg(test)]
 mod test {
-  use super::{build_server_handle, ServerHandle, ShutdownCallback};
+  use crate::{build_server_handle, ServerHandle, ShutdownCallback};
   use anyhow::anyhow;
   use axum::{routing::get, Router};
   use reqwest::StatusCode;

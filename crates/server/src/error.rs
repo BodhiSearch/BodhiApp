@@ -266,17 +266,16 @@ pub enum Common {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::test_utils::ResponseTestExt;
+  use crate::{
+    test_utils::ResponseTestExt, BadRequestError, ErrorBody, HttpError, HttpErrorBuilder,
+  };
   use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-    routing::{get, post},
-    Router,
+    body::Body, http::{Request, StatusCode}, routing::{get, post}, Json, Router
   };
   use axum_extra::extract::WithRejection;
   use rstest::rstest;
-  use serde_json::Value;
+  use serde::Deserialize;
+use serde_json::Value;
   use tower::ServiceExt;
 
   #[rstest]

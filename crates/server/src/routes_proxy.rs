@@ -37,12 +37,12 @@ async fn proxy_handler(mut req: Request, backend_url: String) -> Response<Body> 
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::test_utils::ResponseTestExt;
+  use crate::{proxy_router, test_utils::ResponseTestExt};
   use axum::{
     body::Body,
     http::{Request, StatusCode},
     routing::get,
+    Router,
   };
   use rstest::{fixture, rstest};
   use std::net::SocketAddr;

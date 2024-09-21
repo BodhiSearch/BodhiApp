@@ -1,7 +1,7 @@
 use tracing_subscriber::{fmt, EnvFilter};
 
 #[allow(unused)]
-pub(crate) fn init_test_tracing() {
+pub fn init_test_tracing() {
   let filter = EnvFilter::from_default_env(); // Use RUST_LOG environment variable
   let subscriber = fmt::Subscriber::builder()
     .with_env_filter(filter) // Set the filter to use the RUST_LOG environment variable
