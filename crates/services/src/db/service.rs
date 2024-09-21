@@ -8,14 +8,15 @@ use uuid::Uuid;
 pub static CONVERSATIONS: &str = "conversations";
 pub static MESSAGES: &str = "messages";
 
-pub trait TimeServiceFn: std::fmt::Debug + Send + Sync {
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+pub trait TimeService: std::fmt::Debug + Send + Sync {
   fn utc_now(&self) -> DateTime<Utc>;
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct TimeService;
+pub struct DefaultTimeService;
 
-impl TimeServiceFn for TimeService {
+impl TimeService for DefaultTimeService {
   fn utc_now(&self) -> DateTime<Utc> {
     let now = chrono::Utc::now();
     now.with_nanosecond(0).unwrap_or(now)
@@ -40,6 +41,7 @@ pub enum DbError {
   Migrate(#[from] MigrateError),
 }
 
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn migrate(&self) -> Result<(), DbError>;
@@ -60,7 +62,7 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 #[derive(Debug, Clone, new)]
 pub struct SqliteDbService {
   pool: SqlitePool,
-  time_service: Arc<dyn TimeServiceFn>,
+  time_service: Arc<dyn TimeService>,
 }
 
 impl SqliteDbService {
@@ -250,7 +252,7 @@ impl DbService for SqliteDbService {
 mod test {
   use crate::{
     db::{
-      ConversationBuilder, DbService, MessageBuilder, SqliteDbService, TimeService, TimeServiceFn,
+      ConversationBuilder, DbService, MessageBuilder, SqliteDbService, DefaultTimeService, TimeService,
     },
     test_utils::db_service,
   };
@@ -413,7 +415,7 @@ mod test {
 
   #[test]
   fn test_time_service_utc_now() -> anyhow::Result<()> {
-    let now = TimeService.utc_now();
+    let now = DefaultTimeService.utc_now();
     let now_chrono = chrono::Utc::now();
     assert!(now.timestamp() - now_chrono.timestamp() < 1);
     Ok(())

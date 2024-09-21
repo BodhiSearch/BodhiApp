@@ -1,57 +1,9 @@
-use crate::db::{Conversation, DbError, DbService, Message, SqliteDbService, TimeServiceFn};
+use crate::db::{MockTimeService, SqliteDbService};
 use chrono::{DateTime, Timelike, Utc};
 use rstest::fixture;
 use sqlx::SqlitePool;
-use std::{
-  fmt::{self, Formatter},
-  fs::File,
-  sync::Arc,
-};
+use std::{fs::File, sync::Arc};
 use tempfile::TempDir;
-
-mockall::mock! {
-  pub TimeService {}
-
-  impl TimeServiceFn for TimeService {
-    fn utc_now(&self) -> DateTime<Utc>;
-  }
-
-  impl std::fmt::Debug for TimeService {
-    fn fmt<'a>(&self, f: &mut Formatter<'a>) -> fmt::Result;
-  }
-
-  unsafe impl Send for TimeService {}
-
-  unsafe impl Sync for TimeService {}
-}
-
-mockall::mock! {
-  pub DbService {}
-
-  #[async_trait::async_trait]
-  impl DbService for DbService {
-    async fn migrate(&self) -> Result<(), DbError>;
-
-    async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError>;
-
-    async fn save_message(&self, message: &mut Message) -> Result<(), DbError>;
-
-    async fn list_conversations(&self) -> Result<Vec<Conversation>, DbError>;
-
-    async fn delete_conversations(&self, id: &str) -> Result<(), DbError>;
-
-    async fn delete_all_conversations(&self) -> Result<(), DbError>;
-
-    async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError>;
-  }
-
-  impl std::fmt::Debug for DbService {
-    fn fmt<'a>(&self, f: &mut std::fmt::Formatter<'a>) -> std::fmt::Result;
-  }
-
-  unsafe impl Send for DbService {}
-  unsafe impl Sync for DbService {}
-}
 
 #[fixture]
 pub async fn testdb() -> (TempDir, SqlitePool) {
