@@ -1,4 +1,4 @@
-use super::{ObjError, Repo};
+use crate::{ObjError, Repo};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use strum::{AsRefStr, EnumIter};
@@ -82,7 +82,7 @@ impl Display for ChatTemplate {
 
 #[cfg(test)]
 mod test {
-  use super::{ChatTemplate, ChatTemplateId, Repo};
+  use crate::{ChatTemplate, ChatTemplateId, Repo};
   use rstest::rstest;
   use std::collections::HashSet;
 

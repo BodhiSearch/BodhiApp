@@ -1,4 +1,4 @@
-use super::BuilderError;
+use crate::BuilderError;
 use clap::Args;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};

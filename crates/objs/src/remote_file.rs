@@ -1,4 +1,4 @@
-use super::{ChatTemplate, GptContextParams, OAIRequestParams, Repo};
+use crate::{ChatTemplate, GptContextParams, OAIRequestParams, Repo};
 use derive_new::new;
 use serde::Deserialize;
 
