@@ -4,7 +4,7 @@ use crate::interactive::InteractiveRuntime;
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
 use crate::InteractiveError;
 use commands::{CliError, Command, PullCommand, PullCommandError};
-use services::{AppServiceFn, DataServiceError};
+use services::{AppService, DataServiceError};
 use std::sync::Arc;
 
 pub enum RunCommand {
@@ -42,7 +42,7 @@ type Result<T> = std::result::Result<T, RunCommandError>;
 
 impl RunCommand {
   #[allow(clippy::result_large_err)]
-  pub async fn aexecute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  pub async fn aexecute(self, service: Arc<dyn AppService>) -> Result<()> {
     match self {
       RunCommand::WithAlias { alias } => {
         let alias = match service.data_service().find_alias(&alias) {

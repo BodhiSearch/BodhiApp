@@ -1,5 +1,5 @@
 use crate::{
-  AppRegInfo, CacheService, ISecretService, KeyringSecretService, SecretServiceError,
+  AppRegInfo, CacheService, KeyringSecretService, SecretService, SecretServiceError,
   APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_READY, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
   KEY_APP_STATUS,
 };
@@ -70,7 +70,7 @@ impl SecretServiceStub {
   }
 }
 
-impl ISecretService for SecretServiceStub {
+impl SecretService for SecretServiceStub {
   fn set_secret_string(&self, key: &str, value: &str) -> Result<(), SecretServiceError> {
     let mut store = self.store.lock().unwrap();
     store.insert(key.to_string(), value.to_string());

@@ -3,7 +3,7 @@ use objs::{
   default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo,
   REFS_MAIN, TOKENIZER_CONFIG_JSON,
 };
-use services::{AppServiceFn, DataServiceError, HubServiceError};
+use services::{AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, derive_builder::Builder)]
@@ -87,7 +87,7 @@ impl TryFrom<Command> for CreateCommand {
 
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     if !self.force && service.data_service().find_alias(&self.alias).is_some() {
       return Err(CreateCommandError::AliasExists(self.alias.clone()));
     }

@@ -1,13 +1,13 @@
 use crate::{
-  db::DbService, AuthService, CacheService, DataService, EnvServiceFn, HubService, ISecretService,
+  db::DbService, AuthService, CacheService, DataService, EnvService, HubService, SecretService,
   SessionService,
 };
 use derive_new::new;
 use std::sync::Arc;
 
 #[cfg_attr(test, mockall::automock)]
-pub trait AppServiceFn: std::fmt::Debug + Send + Sync {
-  fn env_service(&self) -> Arc<dyn EnvServiceFn>;
+pub trait AppService: std::fmt::Debug + Send + Sync {
+  fn env_service(&self) -> Arc<dyn EnvService>;
 
   fn data_service(&self) -> Arc<dyn DataService>;
 
@@ -19,26 +19,26 @@ pub trait AppServiceFn: std::fmt::Debug + Send + Sync {
 
   fn session_service(&self) -> Arc<dyn SessionService>;
 
-  fn secret_service(&self) -> Arc<dyn ISecretService>;
+  fn secret_service(&self) -> Arc<dyn SecretService>;
 
   fn cache_service(&self) -> Arc<dyn CacheService>;
 }
 
 #[allow(clippy::too_many_arguments)]
 #[derive(Clone, Debug, new)]
-pub struct AppService {
-  env_service: Arc<dyn EnvServiceFn + Send + Sync>,
+pub struct DefaultAppService {
+  env_service: Arc<dyn EnvService + Send + Sync>,
   hub_service: Arc<dyn HubService + Send + Sync>,
   data_service: Arc<dyn DataService + Send + Sync>,
   auth_service: Arc<dyn AuthService + Send + Sync>,
   db_service: Arc<dyn DbService + Send + Sync>,
   session_service: Arc<dyn SessionService + Send + Sync>,
-  secret_service: Arc<dyn ISecretService + Send + Sync>,
+  secret_service: Arc<dyn SecretService + Send + Sync>,
   cache_service: Arc<dyn CacheService + Send + Sync>,
 }
 
-impl AppServiceFn for AppService {
-  fn env_service(&self) -> Arc<dyn EnvServiceFn> {
+impl AppService for DefaultAppService {
+  fn env_service(&self) -> Arc<dyn EnvService> {
     self.env_service.clone()
   }
 
@@ -62,7 +62,7 @@ impl AppServiceFn for AppService {
     self.session_service.clone()
   }
 
-  fn secret_service(&self) -> Arc<dyn ISecretService> {
+  fn secret_service(&self) -> Arc<dyn SecretService> {
     self.secret_service.clone()
   }
 

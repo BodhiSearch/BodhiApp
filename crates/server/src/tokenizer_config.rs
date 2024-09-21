@@ -197,7 +197,7 @@ impl TryFrom<HubFile> for TokenizerConfig {
 
 #[cfg(test)]
 mod test {
-  use crate::{ChatMessage, TokenizerConfig, ChatTemplateVersions};
+  use crate::{ChatMessage, ChatTemplateVersions, TokenizerConfig};
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
   use objs::test_utils::hf_cache;

@@ -150,7 +150,7 @@ mod tests {
   use services::{
     get_secret,
     test_utils::{AppServiceStubBuilder, SecretServiceStub},
-    AppRegInfo, AppServiceFn, AuthServiceError, MockAuthService, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
+    AppRegInfo, AppService, AuthServiceError, MockAuthService, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
     KEY_APP_STATUS,
   };
   use std::sync::Arc;

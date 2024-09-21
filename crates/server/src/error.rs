@@ -270,12 +270,15 @@ mod tests {
     test_utils::ResponseTestExt, BadRequestError, ErrorBody, HttpError, HttpErrorBuilder,
   };
   use axum::{
-    body::Body, http::{Request, StatusCode}, routing::{get, post}, Json, Router
+    body::Body,
+    http::{Request, StatusCode},
+    routing::{get, post},
+    Json, Router,
   };
   use axum_extra::extract::WithRejection;
   use rstest::rstest;
   use serde::Deserialize;
-use serde_json::Value;
+  use serde_json::Value;
   use tower::ServiceExt;
 
   #[rstest]

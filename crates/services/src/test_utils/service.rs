@@ -1,10 +1,10 @@
 use crate::{
   db::DbService,
   test_utils::{EnvServiceStub, MockDbService, SecretServiceStub},
-  AppServiceFn, AuthService, CacheService, DataService, EnvService, EnvServiceFn, HfHubService,
-  HubService, ISecretService, LocalDataService, MockAuthService, MockCacheService, MockDataService,
-  MockEnvServiceFn, MockEnvWrapper, MockHubService, MockISecretService, MockSessionService,
-  MokaCacheService, SessionService, SqliteSessionService,
+  AppService, AuthService, CacheService, DataService, DefaultEnvService, EnvService, HfHubService,
+  HubService, LocalDataService, MockAuthService, MockCacheService, MockDataService, MockEnvService,
+  MockEnvWrapper, MockHubService, MockSecretService, MockSessionService, MokaCacheService,
+  SecretService, SessionService, SqliteSessionService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home};
@@ -33,13 +33,13 @@ pub fn data_service(temp_bodhi_home: TempDir) -> DataServiceTuple {
 #[derive(Default, Builder)]
 #[builder(default, setter(into))]
 pub struct AppServiceStubMock {
-  pub env_service: Arc<MockEnvServiceFn>,
+  pub env_service: Arc<MockEnvService>,
   pub hub_service: Arc<MockHubService>,
   pub data_service: Arc<MockDataService>,
   pub auth_service: Arc<MockAuthService>,
   pub db_service: Arc<MockDbService>,
   pub session_service: Arc<MockSessionService>,
-  pub secret_service: Arc<MockISecretService>,
+  pub secret_service: Arc<MockSecretService>,
   pub cache_service: Arc<MockCacheService>,
 }
 
@@ -56,8 +56,8 @@ impl AppServiceStubMock {
 }
 
 // Implement AppServiceFn for the combined struct
-impl AppServiceFn for AppServiceStubMock {
-  fn env_service(&self) -> Arc<dyn EnvServiceFn> {
+impl AppService for AppServiceStubMock {
+  fn env_service(&self) -> Arc<dyn EnvService> {
     self.env_service.clone()
   }
 
@@ -81,7 +81,7 @@ impl AppServiceFn for AppServiceStubMock {
     self.session_service.clone()
   }
 
-  fn secret_service(&self) -> Arc<dyn ISecretService> {
+  fn secret_service(&self) -> Arc<dyn SecretService> {
     self.secret_service.clone()
   }
 
@@ -94,7 +94,7 @@ impl AppServiceFn for AppServiceStubMock {
 #[builder(default, setter(strip_option))]
 pub struct AppServiceStub {
   #[builder(default = "self.default_env_service()")]
-  pub env_service: Option<Arc<dyn EnvServiceFn + Send + Sync>>,
+  pub env_service: Option<Arc<dyn EnvService + Send + Sync>>,
   pub hub_service: Option<Arc<dyn HubService + Send + Sync>>,
   pub temp_home: Option<Arc<TempDir>>,
   pub data_service: Option<Arc<dyn DataService + Send + Sync>>,
@@ -103,13 +103,13 @@ pub struct AppServiceStub {
   pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
   pub session_service: Option<Arc<dyn SessionService + Send + Sync>>,
   #[builder(default = "self.default_secret_service()")]
-  pub secret_service: Option<Arc<dyn ISecretService + Send + Sync>>,
+  pub secret_service: Option<Arc<dyn SecretService + Send + Sync>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService + Send + Sync>>,
 }
 
 impl AppServiceStubBuilder {
-  fn default_env_service(&self) -> Option<Arc<dyn EnvServiceFn + Send + Sync>> {
+  fn default_env_service(&self) -> Option<Arc<dyn EnvService + Send + Sync>> {
     Some(Arc::new(EnvServiceStub::default()))
   }
 
@@ -121,7 +121,7 @@ impl AppServiceStubBuilder {
     Some(Arc::new(MockAuthService::default()))
   }
 
-  fn default_secret_service(&self) -> Option<Arc<dyn ISecretService + Send + Sync>> {
+  fn default_secret_service(&self) -> Option<Arc<dyn SecretService + Send + Sync>> {
     Some(Arc::new(SecretServiceStub::default()))
   }
 
@@ -150,7 +150,7 @@ impl AppServiceStubBuilder {
       None | Some(None) => {
         let temp_home = Arc::new(temp_home());
         self.temp_home = Some(Some(temp_home.clone()));
-        let env_service = EnvService::new_with_args(
+        let env_service = DefaultEnvService::new_with_args(
           Arc::new(MockEnvWrapper::default()),
           temp_home.path().join("bodhi"),
           temp_home.path().join("huggingface"),
@@ -199,8 +199,8 @@ impl AppServiceStub {
   }
 }
 
-impl AppServiceFn for AppServiceStub {
-  fn env_service(&self) -> Arc<dyn EnvServiceFn> {
+impl AppService for AppServiceStub {
+  fn env_service(&self) -> Arc<dyn EnvService> {
     self.env_service.clone().unwrap()
   }
 
@@ -224,7 +224,7 @@ impl AppServiceFn for AppServiceStub {
     self.session_service.clone().unwrap()
   }
 
-  fn secret_service(&self) -> Arc<dyn ISecretService> {
+  fn secret_service(&self) -> Arc<dyn SecretService> {
     self.secret_service.clone().unwrap()
   }
 

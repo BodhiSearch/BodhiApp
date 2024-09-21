@@ -38,7 +38,7 @@ impl From<keyring::Error> for SecretServiceError {
 pub type Result<T> = std::result::Result<T, SecretServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
-pub trait ISecretService: Send + Sync + std::fmt::Debug {
+pub trait SecretService: Send + Sync + std::fmt::Debug {
   // TODO: make it async so can have async mutex
   fn set_secret_string(&self, key: &str, value: &str) -> Result<()>;
 
@@ -51,7 +51,7 @@ pub trait ISecretService: Send + Sync + std::fmt::Debug {
 pub fn set_secret<S, T>(slf: S, key: &str, value: T) -> Result<()>
 where
   T: serde::Serialize,
-  S: AsRef<dyn ISecretService>,
+  S: AsRef<dyn SecretService>,
 {
   let value_str = serde_json::to_string(&value)?;
   slf.as_ref().set_secret_string(key, &value_str)
@@ -60,7 +60,7 @@ where
 pub fn get_secret<S, T>(slf: S, key: &str) -> Result<Option<T>>
 where
   T: DeserializeOwned,
-  S: AsRef<dyn ISecretService>,
+  S: AsRef<dyn SecretService>,
 {
   match slf.as_ref().get_secret_string(key)? {
     Some(value) => {
@@ -71,7 +71,7 @@ where
   }
 }
 
-asref_impl!(ISecretService, KeyringSecretService);
+asref_impl!(SecretService, KeyringSecretService);
 
 #[derive(Debug, new)]
 pub struct KeyringSecretService {
@@ -94,7 +94,7 @@ impl KeyringSecretService {
   }
 }
 
-impl ISecretService for KeyringSecretService {
+impl SecretService for KeyringSecretService {
   fn set_secret_string(&self, key: &str, value: &str) -> Result<()> {
     self.entry(key)?.set_password(value)?;
     self.cache.set(key, value);
@@ -126,7 +126,7 @@ impl ISecretService for KeyringSecretService {
 #[cfg(test)]
 mod tests {
   use crate::{
-    get_secret, set_secret, CacheService, ISecretService, KeyringSecretService, MokaCacheService,
+    get_secret, set_secret, CacheService, KeyringSecretService, MokaCacheService, SecretService,
   };
   use serde::{Deserialize, Serialize};
   use std::sync::Arc;

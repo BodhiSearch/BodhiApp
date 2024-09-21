@@ -14,14 +14,14 @@ use axum::{
   Router,
 };
 use serde_json::json;
-use services::AppServiceFn;
+use services::AppService;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 pub fn build_routes(
   ctx: Arc<dyn SharedContextRwFn>,
-  app_service: Arc<dyn AppServiceFn>,
+  app_service: Arc<dyn AppService>,
   static_router: Option<Router>,
 ) -> Router {
   let state: Arc<dyn RouterStateFn> = Arc::new(RouterState::new(ctx, app_service.clone()));

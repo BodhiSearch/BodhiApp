@@ -1,6 +1,6 @@
 use axum::Router;
 use server::{ServeCommand, ServerShutdownHandle};
-use services::AppServiceFn;
+use services::AppService;
 use std::sync::{Arc, Mutex};
 use tauri::{
   AppHandle, CustomMenuItem, Manager, RunEvent, SystemTray, SystemTrayEvent, SystemTrayMenu,
@@ -8,14 +8,14 @@ use tauri::{
 };
 
 pub struct NativeCommand {
-  service: Arc<dyn AppServiceFn>,
+  service: Arc<dyn AppService>,
   ui: bool,
 }
 
 type ServerHandleState = Arc<Mutex<Option<ServerShutdownHandle>>>;
 
 impl NativeCommand {
-  pub fn new(service: Arc<dyn AppServiceFn>, ui: bool) -> Self {
+  pub fn new(service: Arc<dyn AppService>, ui: bool) -> Self {
     Self { service, ui }
   }
 

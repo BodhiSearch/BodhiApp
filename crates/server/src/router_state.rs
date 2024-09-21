@@ -2,13 +2,13 @@ use crate::{oai::OpenAIApiError, shared_rw::SharedContextRwFn, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::async_trait;
 use objs::{Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
-use services::AppServiceFn;
+use services::AppService;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 #[async_trait]
 pub trait RouterStateFn: Send + Sync {
-  fn app_service(&self) -> Arc<dyn AppServiceFn>;
+  fn app_service(&self) -> Arc<dyn AppService>;
 
   async fn chat_completions(
     &self,
@@ -21,11 +21,11 @@ pub trait RouterStateFn: Send + Sync {
 pub struct RouterState {
   pub(crate) ctx: Arc<dyn SharedContextRwFn>,
 
-  pub(crate) app_service: Arc<dyn AppServiceFn>,
+  pub(crate) app_service: Arc<dyn AppService>,
 }
 
 impl RouterState {
-  pub(crate) fn new(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppServiceFn>) -> Self {
+  pub(crate) fn new(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppService>) -> Self {
     Self { ctx, app_service }
   }
 }
@@ -40,7 +40,7 @@ type Result<T> = std::result::Result<T, RouterStateError>;
 
 #[async_trait]
 impl RouterStateFn for RouterState {
-  fn app_service(&self) -> Arc<dyn AppServiceFn> {
+  fn app_service(&self) -> Arc<dyn AppService> {
     self.app_service.clone()
   }
 
