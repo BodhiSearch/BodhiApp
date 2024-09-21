@@ -2,7 +2,7 @@ use crate::error::ObjError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::{fmt::Display, ops::Deref};
+use std::{fmt::Display, ops::Deref, str::FromStr};
 use validator::Validate;
 
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
@@ -15,7 +15,10 @@ pub static REGEX_REPO: Lazy<Regex> =
 
 #[derive(Debug, Clone, PartialEq, Validate, Default, PartialOrd, Eq, Ord, Hash)]
 pub struct Repo {
-  #[validate(regex(path = *REGEX_REPO, message = "does not match huggingface repo pattern 'owner/repo'"))]
+  #[validate(regex(
+        path = *REGEX_REPO,
+        message = "does not match the huggingface repo pattern 'username/repo'"
+    ))]
   value: String,
 }
 
@@ -81,6 +84,14 @@ impl Deref for Repo {
   }
 }
 
+impl FromStr for Repo {
+  type Err = ObjError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    Repo::try_from(s)
+  }
+}
+
 #[cfg(test)]
 mod test {
   use super::Repo;
@@ -92,8 +103,12 @@ mod test {
   #[case("simple/repo")]
   #[case("QuantFactory/Meta-Llama-3-70B-Instruct-GGUF")]
   #[case("Qua-nt.Fac_tory/Meta.Llama-3_70B-Instruct-GGUF")]
-  fn test_repo_valid(#[case] repo: String) -> anyhow::Result<()> {
-    Repo::try_from(repo)?.validate()?;
+  fn test_repo_valid(#[case] input: String) -> anyhow::Result<()> {
+    Repo::try_from(input.clone())?.validate()?;
+
+    let repo: Result<Repo, _> = input.parse();
+    assert!(repo.is_ok());
+    assert_eq!(repo.unwrap().to_string(), input);
     Ok(())
   }
 
@@ -104,13 +119,15 @@ mod test {
   #[case("simp!e/repo")]
   #[case("simple/repo/file")]
   #[anyhow_trace]
-  fn test_repo_invalid(#[case] repo: String) -> anyhow::Result<()> {
-    let result = Repo::try_from(repo);
+  fn test_repo_invalid(#[case] input: String) -> anyhow::Result<()> {
+    let result = Repo::try_from(input.clone());
     assert!(result.is_err());
     assert_eq!(
-      "value: does not match huggingface repo pattern 'owner/repo'",
+      "Validation failed: value: does not match the huggingface repo pattern 'username/repo'",
       result.unwrap_err().to_string()
     );
+    let repo: Result<Repo, _> = input.parse();
+    assert!(repo.is_err());
     Ok(())
   }
 }

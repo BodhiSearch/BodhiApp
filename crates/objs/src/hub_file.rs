@@ -5,6 +5,7 @@ use prettytable::{Cell, Row};
 use regex::Regex;
 use serde::Serialize;
 use std::{fs, path::PathBuf};
+use std::fmt;
 
 pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
   Regex::new(r"^(?P<hf_cache>.+)/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<snapshot>[^/]+)/(?P<filename>.*)$").unwrap()
@@ -37,12 +38,16 @@ impl TryFrom<PathBuf> for HubFile {
   fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
     let path = value.display().to_string();
     let caps = REGEX_HF_REPO_FILE
-      .captures(&path)
-      .ok_or_else(|| ObjError::Conversion {
-        from: "PathBuf".to_string(),
-        to: "HubFile".to_string(),
-        error: format!("'{path}' does not match huggingface hub cache filepath pattern"),
-      })?;
+        .captures(&path)
+        .ok_or_else(|| ObjError::Conversion {
+            from: "PathBuf".to_string(),
+            to: "HubFile".to_string(),
+            error: format!(
+                "The path '{}' does not match the expected Hugging Face hub cache filepath pattern. \
+                 Expected format: '<hf_cache>/models--<username>--<repo_name>/snapshots/<snapshot>/<filename>'",
+                path
+            ),
+        })?;
     let size = match fs::metadata(&value) {
       Ok(metadata) => Some(metadata.len()),
       Err(_) => None,
@@ -77,6 +82,12 @@ impl From<HubFile> for Row {
       Cell::new(&human_size),
     ])
   }
+}
+
+impl fmt::Display for HubFile {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "HubFile {{ repo: {}, filename: {}, snapshot: {} }}", self.repo, self.filename, self.snapshot)
+    }
 }
 
 #[cfg(test)]
@@ -127,5 +138,20 @@ mod test {
     );
     assert_eq!(expected, local_model);
     Ok(())
+  }
+
+  #[test]
+  fn test_hub_file_display() {
+    let hub_file = HubFile {
+        hf_cache: PathBuf::from("/tmp"),
+        repo: Repo::try_from("test/repo").unwrap(),
+        filename: "test.gguf".to_string(),
+        snapshot: "abc123".to_string(),
+        size: Some(1000),
+    };
+    assert_eq!(
+        format!("{}", hub_file),
+        "HubFile { repo: test/repo, filename: test.gguf, snapshot: abc123 }"
+    );
   }
 }

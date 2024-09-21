@@ -10,9 +10,11 @@ use crate::{
 };
 use std::path::PathBuf;
 
+const DEFAULT_CHAT_TEMPLATE: ChatTemplateId = ChatTemplateId::Llama3;
+
 impl Default for ChatTemplate {
   fn default() -> Self {
-    ChatTemplate::Id(ChatTemplateId::Llama3)
+    ChatTemplate::Id(DEFAULT_CHAT_TEMPLATE)
   }
 }
 
