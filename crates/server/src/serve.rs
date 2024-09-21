@@ -1,6 +1,6 @@
 use crate::{
-  build_routes, build_server_handle, shutdown_signal, BodhiError, ServerHandle, SharedContextRw,
-  SharedContextRwFn, ShutdownCallback,
+  build_routes, build_server_handle, shutdown_signal, BodhiError, ServerHandle, DefaultSharedContextRw,
+  SharedContextRw, ShutdownCallback,
 };
 use axum::Router;
 use commands::{CliError, Command};
@@ -28,7 +28,7 @@ impl TryFrom<Command> for ServeCommand {
 }
 
 pub struct ShutdownContextCallback {
-  ctx: Arc<dyn SharedContextRwFn>,
+  ctx: Arc<dyn SharedContextRw>,
 }
 
 #[async_trait::async_trait]
@@ -86,8 +86,8 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let ctx = SharedContextRw::new_shared_rw(None).await?;
-    let ctx: Arc<dyn SharedContextRwFn> = Arc::new(ctx);
+    let ctx = DefaultSharedContextRw::new_shared_rw(None).await?;
+    let ctx: Arc<dyn SharedContextRw> = Arc::new(ctx);
     let app = build_routes(ctx.clone(), service, static_router);
 
     let join_handle = tokio::spawn(async move {

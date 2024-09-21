@@ -3,7 +3,7 @@ use crate::{
   login_callback_handler, login_handler, logout_handler, models_router, oai_model_handler,
   oai_models_handler, ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
   optional_auth_middleware, proxy_router, setup_handler, user_info_handler, DefaultRouterState,
-  RouterState, SharedContextRwFn,
+  RouterState, SharedContextRw,
 };
 use axum::{
   body::Body,
@@ -20,7 +20,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 pub fn build_routes(
-  ctx: Arc<dyn SharedContextRwFn>,
+  ctx: Arc<dyn SharedContextRw>,
   app_service: Arc<dyn AppService>,
   static_router: Option<Router>,
 ) -> Router {

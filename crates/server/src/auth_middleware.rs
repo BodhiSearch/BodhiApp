@@ -334,9 +334,8 @@ fn app_status(secret_service: &Arc<dyn SecretService>) -> String {
 #[cfg(test)]
 mod tests {
   use crate::{
-    auth_middleware, optional_auth_middleware,
-    test_utils::{MockSharedContext, ResponseTestExt},
-    AuthError, ErrorBody, HttpError, DefaultRouterState, RouterState,
+    auth_middleware, optional_auth_middleware, test_utils::ResponseTestExt, AuthError,
+    DefaultRouterState, ErrorBody, HttpError, MockSharedContextRw, RouterState,
   };
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -466,7 +465,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
     let req = Request::get(path).body(Body::empty())?;
@@ -507,7 +506,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
     let req = Request::get("/with_auth").body(Body::empty())?;
@@ -548,7 +547,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
     let mut req = Request::get("/with_auth");
@@ -589,7 +588,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
     let req = Request::get("/with_auth")
@@ -628,7 +627,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
     let req = Request::get("/with_auth")
@@ -660,7 +659,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
     let req = Request::get("/with_auth")
@@ -700,7 +699,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
 
@@ -756,7 +755,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
 
@@ -816,7 +815,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
 
@@ -868,7 +867,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
     let id = Id::default();
@@ -945,7 +944,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
 
@@ -1042,7 +1041,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
+      Arc::new(MockSharedContextRw::new()),
       app_service.clone(),
     ));
 

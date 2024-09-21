@@ -271,8 +271,8 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Htt
 mod tests {
   use crate::{
     generate_pkce, login_callback_handler, login_handler, logout_handler,
-    test_utils::{MockSharedContext, ResponseTestExt},
-    user_info_handler, DefaultRouterState, UserInfo,
+    test_utils::ResponseTestExt, user_info_handler, DefaultRouterState, MockSharedContextRw,
+    UserInfo,
   };
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -342,7 +342,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -407,7 +407,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let session_layer = app_service.session_service().session_layer();
@@ -475,7 +475,7 @@ mod tests {
 
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
 
@@ -539,7 +539,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -592,7 +592,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -653,7 +653,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -705,7 +705,7 @@ mod tests {
     );
 
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
 
@@ -744,7 +744,7 @@ mod tests {
     let (_, token, _) = token.unwrap();
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -773,7 +773,7 @@ mod tests {
   async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -805,7 +805,7 @@ mod tests {
   async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
