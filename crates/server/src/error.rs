@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use services::SecretServiceError;
 use services::{db::DbError, AuthServiceError, DataServiceError, HubServiceError};
 use thiserror::Error;
+use tokio::task::JoinError;
 
 mod status_code {
   use axum::http::StatusCode;
@@ -215,6 +216,8 @@ Run `bodhi list -r` to see list of pre-configured model aliases
   OAuthError(#[from] AuthServiceError),
   #[error(transparent)]
   Db(#[from] DbError),
+  #[error(transparent)]
+  Join(#[from] JoinError),
 }
 
 pub type Result<T> = std::result::Result<T, BodhiError>;

@@ -2,7 +2,6 @@ use crate::builder::BuilderError;
 use llama_server_bindings::GptParamsBuilderError;
 use std::{io, path::PathBuf, sync::Arc};
 use thiserror::Error;
-use tokio::task::JoinError;
 use validator::{ValidationError, ValidationErrors};
 
 #[derive(Debug, Error)]
@@ -81,6 +80,4 @@ pub enum Common {
   Stdlib(#[from] Arc<dyn std::error::Error + Send + Sync>),
   #[error("sender_err: error sending signal using channel for '{0}'")]
   Sender(String),
-  #[error(transparent)]
-  Join(JoinError),
 }
