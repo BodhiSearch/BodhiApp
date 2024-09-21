@@ -1,5 +1,5 @@
 use crate::{CliError, Command, StdoutWriter};
-use services::{AppServiceFn, DataServiceError};
+use services::{AppService, DataServiceError};
 use std::{env, io, sync::Arc};
 
 pub enum ManageAliasCommand {
@@ -47,11 +47,7 @@ pub enum AliasCommandError {
 type Result<T> = std::result::Result<T, AliasCommandError>;
 
 impl ManageAliasCommand {
-  pub fn execute(
-    &self,
-    service: Arc<dyn AppServiceFn>,
-    stdout: &mut dyn StdoutWriter,
-  ) -> Result<()> {
+  pub fn execute(&self, service: Arc<dyn AppService>, stdout: &mut dyn StdoutWriter) -> Result<()> {
     match self {
       ManageAliasCommand::Show { alias } => {
         self.show(alias, service, stdout)?;
@@ -72,7 +68,7 @@ impl ManageAliasCommand {
   fn show(
     &self,
     alias: &str,
-    service: Arc<dyn AppServiceFn>,
+    service: Arc<dyn AppService>,
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     let Some(alias) = service.data_service().find_alias(alias) else {
@@ -86,7 +82,7 @@ impl ManageAliasCommand {
   fn delete(
     &self,
     alias: &str,
-    service: Arc<dyn AppServiceFn>,
+    service: Arc<dyn AppService>,
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     service.data_service().delete_alias(alias)?;
@@ -98,7 +94,7 @@ impl ManageAliasCommand {
     &self,
     alias: &str,
     new_alias: &str,
-    service: Arc<dyn AppServiceFn>,
+    service: Arc<dyn AppService>,
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     service.data_service().copy_alias(alias, new_alias)?;
@@ -111,7 +107,7 @@ impl ManageAliasCommand {
   fn edit(
     &self,
     alias: &str,
-    service: Arc<dyn AppServiceFn>,
+    service: Arc<dyn AppService>,
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     let filename = service.data_service().alias_filename(alias)?;

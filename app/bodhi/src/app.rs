@@ -9,8 +9,8 @@ use include_dir::{include_dir, Dir};
 use server::{RunCommand, ServeCommand};
 use services::{
   db::{DbPool, DbService, SqliteDbService, TimeService},
-  AppService, EnvService, EnvServiceFn, HfHubService, KeycloakAuthService, KeyringSecretService,
-  LocalDataService, MokaCacheService, SqliteSessionService,
+  DefaultAppService, DefaultEnvService, EnvService, HfHubService, KeycloakAuthService,
+  KeyringSecretService, LocalDataService, MokaCacheService, SqliteSessionService,
 };
 use std::{env, path::Path, sync::Arc};
 use tokio::runtime::Builder;
@@ -20,12 +20,12 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 
 static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
 
-pub fn main_internal(env_service: Arc<EnvService>) -> super::Result<()> {
+pub fn main_internal(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build()?;
   runtime.block_on(async move { aexecute(env_service).await })
 }
 
-async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
+async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
   let bodhi_home = env_service.bodhi_home();
   let hf_cache = env_service.hf_cache();
   let data_service = LocalDataService::new(bodhi_home.clone());
@@ -50,7 +50,7 @@ async fn aexecute(env_service: Arc<EnvService>) -> super::Result<()> {
   let auth_realm = env_service.auth_realm();
   let auth_service = KeycloakAuthService::new(auth_url, auth_realm);
 
-  let app_service = AppService::new(
+  let app_service = DefaultAppService::new(
     env_service.clone(),
     Arc::new(hub_service),
     Arc::new(data_service),

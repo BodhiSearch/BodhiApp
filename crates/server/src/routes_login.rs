@@ -294,7 +294,7 @@ mod tests {
       token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub, SecretServiceStub,
       SessionTestExt,
     },
-    AppServiceFn, MockAuthService, MockEnvServiceFn, SqliteSessionService, BODHI_FRONTEND_URL,
+    AppService, MockAuthService, MockEnvService, SqliteSessionService, BODHI_FRONTEND_URL,
   };
   use services::{AppRegInfo, AuthServiceError, KEY_APP_REG_INFO, KEY_RESOURCE_TOKEN};
   use std::{collections::HashMap, sync::Arc};
@@ -326,7 +326,7 @@ mod tests {
     #[case] login_url: &str,
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
-    let mut mock_env_service = MockEnvServiceFn::new();
+    let mut mock_env_service = MockEnvService::new();
     mock_env_service
       .expect_login_callback_url()
       .return_const(callback_url.to_string());
@@ -697,7 +697,7 @@ mod tests {
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service =
       Arc::new(SqliteSessionService::build_session_service(dbfile.clone()).await);
-    let app_service: Arc<dyn AppServiceFn> = Arc::new(
+    let app_service: Arc<dyn AppService> = Arc::new(
       AppServiceStubBuilder::default()
         .with_sqlite_session_service(session_service.clone())
         .await
@@ -742,7 +742,7 @@ mod tests {
     token: anyhow::Result<(String, String, String)>,
   ) -> anyhow::Result<()> {
     let (_, token, _) = token.unwrap();
-    let app_service: Arc<dyn AppServiceFn> = Arc::new(AppServiceStubBuilder::default().build()?);
+    let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),
@@ -771,7 +771,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
-    let app_service: Arc<dyn AppServiceFn> = Arc::new(AppServiceStubBuilder::default().build()?);
+    let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),
@@ -803,7 +803,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_user_info_handler_invalid_token() -> anyhow::Result<()> {
-    let app_service: Arc<dyn AppServiceFn> = Arc::new(AppServiceStubBuilder::default().build()?);
+    let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(RouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),

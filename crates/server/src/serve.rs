@@ -4,7 +4,7 @@ use crate::{
 };
 use axum::Router;
 use commands::{CliError, Command};
-use services::AppServiceFn;
+use services::AppService;
 use std::sync::Arc;
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
@@ -65,7 +65,7 @@ impl ServerShutdownHandle {
 impl ServeCommand {
   pub async fn aexecute(
     &self,
-    service: Arc<dyn AppServiceFn>,
+    service: Arc<dyn AppService>,
     static_router: Option<Router>,
   ) -> crate::error::Result<()> {
     let handle = self.get_server_handle(service, static_router).await?;
@@ -76,7 +76,7 @@ impl ServeCommand {
   // TODO: move this to another module that returns a handle when passed server components
   pub async fn get_server_handle(
     &self,
-    service: Arc<dyn AppServiceFn>,
+    service: Arc<dyn AppService>,
     static_router: Option<Router>,
   ) -> crate::error::Result<ServerShutdownHandle> {
     let ServeCommand::ByParams { host, port } = self;

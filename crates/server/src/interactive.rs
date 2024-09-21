@@ -15,7 +15,7 @@ use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
 use llama_server_bindings::{disable_llama_log, GptParamsBuilder, GptParamsBuilderError};
 use objs::{Alias, ObjError};
-use services::{AppServiceFn, DataServiceError, HubServiceError};
+use services::{AppService, DataServiceError, HubServiceError};
 use std::{
   io::{self, Write},
   sync::Arc,
@@ -66,7 +66,7 @@ pub enum InteractiveError {
 type Result<T> = std::result::Result<T, InteractiveError>;
 
 impl Interactive {
-  pub async fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  pub async fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     let alias = self.alias.clone();
     let model = service
       .hub_service()
@@ -215,7 +215,7 @@ impl InteractiveRuntime {
     InteractiveRuntime {}
   }
 
-  pub async fn execute(&self, alias: Alias, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  pub async fn execute(&self, alias: Alias, service: Arc<dyn AppService>) -> Result<()> {
     Interactive::new(alias).execute(service).await
   }
 }
@@ -226,7 +226,7 @@ mod test {
   use mockall::predicate::eq;
   use objs::Alias;
   use rstest::rstest;
-  use services::{test_utils::AppServiceStubMock, MockEnvServiceFn, MockHubService};
+  use services::{test_utils::AppServiceStubMock, MockEnvService, MockHubService};
   use std::{path::PathBuf, sync::Arc};
 
   #[rstest]
@@ -248,7 +248,7 @@ mod test {
       .expect_model_file_path()
       .with(eq(alias.repo), eq(alias.filename), eq(alias.snapshot))
       .return_once(|_, _, _| PathBuf::from("/tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf"));
-    let mut mock_env_service = MockEnvServiceFn::default();
+    let mut mock_env_service = MockEnvService::default();
     mock_env_service
       .expect_hf_home()
       .with()

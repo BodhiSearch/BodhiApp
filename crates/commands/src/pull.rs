@@ -1,6 +1,6 @@
 use crate::{CliError, Command};
 use objs::{Alias, HubFile, ObjError, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
-use services::{AppServiceFn, DataServiceError, HubServiceError};
+use services::{AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
@@ -68,7 +68,7 @@ type Result<T> = std::result::Result<T, PullCommandError>;
 
 impl PullCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     match self {
       PullCommand::ByAlias { alias, force } => {
         if !force && service.data_service().find_alias(&alias).is_some() {
@@ -133,7 +133,7 @@ impl PullCommand {
   }
 
   fn download_file_if_missing(
-    service: Arc<dyn AppServiceFn>,
+    service: Arc<dyn AppService>,
     repo: &Repo,
     filename: &str,
     snapshot: &str,

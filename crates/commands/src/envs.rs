@@ -1,10 +1,10 @@
 use prettytable::{format::FormatBuilder, row, Cell, Row, Table};
-use services::AppServiceFn;
+use services::AppService;
 use std::sync::Arc;
 
 #[derive(Debug, derive_new::new)]
 pub struct EnvCommand {
-  service: Arc<dyn AppServiceFn>,
+  service: Arc<dyn AppService>,
 }
 
 #[derive(Debug, thiserror::Error)]

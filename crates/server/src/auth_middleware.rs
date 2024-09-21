@@ -8,7 +8,7 @@ use axum::{
 use jsonwebtoken::{DecodingKey, Validation};
 use oauth2::{ClientId, ClientSecret, RefreshToken};
 use services::{
-  get_secret, AppRegInfo, AppServiceFn, AuthService, AuthServiceError, ISecretService,
+  get_secret, AppRegInfo, AppService, AuthService, AuthServiceError, SecretService,
   SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_SETUP, KEY_APP_AUTHZ,
   KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
 };
@@ -189,8 +189,8 @@ pub async fn optional_auth_middleware(
 
 async fn validate_token_from_header(
   header: &HeaderValue,
-  app_service: Arc<dyn AppServiceFn>,
-  secret_service: Arc<dyn ISecretService>,
+  app_service: Arc<dyn AppService>,
+  secret_service: Arc<dyn SecretService>,
   state: Arc<dyn RouterStateFn>,
 ) -> Result<String, AuthError> {
   let token = header
@@ -268,7 +268,7 @@ async fn validate_token_from_header(
 async fn validate_access_token(
   session: Session,
   auth_service: &Arc<dyn AuthService>,
-  secret_service: &Arc<dyn ISecretService>,
+  secret_service: &Arc<dyn SecretService>,
   access_token: String,
 ) -> Result<String, AuthError> {
   // Validate session token
@@ -317,14 +317,14 @@ async fn validate_access_token(
   Ok(access_token)
 }
 
-fn authz_status(secret_service: &Arc<dyn ISecretService>) -> String {
+fn authz_status(secret_service: &Arc<dyn SecretService>) -> String {
   secret_service
     .get_secret_string(KEY_APP_AUTHZ)
     .unwrap_or_else(|_| Some(APP_AUTHZ_TRUE.to_string()))
     .unwrap_or_else(|| APP_AUTHZ_TRUE.to_string())
 }
 
-fn app_status(secret_service: &Arc<dyn ISecretService>) -> String {
+fn app_status(secret_service: &Arc<dyn SecretService>) -> String {
   secret_service
     .get_secret_string(KEY_APP_STATUS)
     .unwrap_or_else(|_| Some(APP_STATUS_SETUP.to_string()))

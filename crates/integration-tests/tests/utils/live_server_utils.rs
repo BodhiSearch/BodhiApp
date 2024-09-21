@@ -4,9 +4,9 @@ use rstest::fixture;
 use server::{disable_llama_log, llama_server_disable_logging, ServeCommand, ServerShutdownHandle};
 use services::{
   db::{SqliteDbService, TimeService},
-  AppService, AppServiceFn, DefaultEnvWrapper, EnvService, HfHubService, KeycloakAuthService,
-  LocalDataService, MockISecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
-  KEY_APP_STATUS,
+  AppService, DefaultAppService, DefaultEnvService, DefaultEnvWrapper, HfHubService,
+  KeycloakAuthService, LocalDataService, MockSecretService, MokaCacheService, SqliteSessionService,
+  KEY_APP_AUTHZ, KEY_APP_STATUS,
 };
 use sqlx::SqlitePool;
 use std::{path::Path, sync::Arc};
@@ -23,7 +23,7 @@ pub fn copy_test_dir(src: &str, dst_path: &Path) {
 
 #[fixture]
 #[once]
-pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
+pub fn tinyllama() -> (TempDir, Arc<dyn AppService>) {
   let temp_dir = tempfile::tempdir().unwrap();
   let cache_dir = temp_dir.path().join(".cache");
   std::fs::create_dir_all(&cache_dir).unwrap();
@@ -33,7 +33,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   let bodhi_home = cache_dir.join("bodhi");
   let hf_home = cache_dir.join("huggingface");
   let hf_cache = hf_home.join("hub");
-  let env_service = EnvService::new_with_args(
+  let env_service = DefaultEnvService::new_with_args(
     Arc::new(DefaultEnvWrapper::default()),
     bodhi_home.clone(),
     hf_home,
@@ -47,7 +47,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
   );
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
   let db_service = SqliteDbService::new(pool.clone(), Arc::new(TimeService));
-  let mut secret_service = MockISecretService::default();
+  let mut secret_service = MockSecretService::default();
   secret_service
     .expect_get_secret_string()
     .with(eq(KEY_APP_AUTHZ))
@@ -58,7 +58,7 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppServiceFn>) {
     .returning(|_| Ok(Some("ready".to_string())));
   let session_service = SqliteSessionService::new(pool);
   let cache_service = MokaCacheService::default();
-  let service = AppService::new(
+  let service = DefaultAppService::new(
     Arc::new(env_service),
     Arc::new(hub_service),
     Arc::new(data_service),
@@ -86,7 +86,7 @@ pub fn setup(#[from(setup_logs)] _setup_logs: ()) {}
 #[awt]
 pub async fn live_server(
   #[from(setup)] _setup: (),
-  tinyllama: &(TempDir, Arc<dyn AppServiceFn>),
+  tinyllama: &(TempDir, Arc<dyn AppService>),
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();

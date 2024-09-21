@@ -4,7 +4,7 @@ use prettytable::{
   format::{self},
   row, Table,
 };
-use services::{AppServiceFn, DataServiceError};
+use services::{AppService, DataServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
@@ -46,7 +46,7 @@ type Result<T> = std::result::Result<T, ListCommandError>;
 
 impl ListCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     match self {
       ListCommand::Local => self.list_local_model_alias(service)?,
       ListCommand::Remote => self.list_remote_models(service)?,
@@ -55,7 +55,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_model_alias(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  fn list_local_model_alias(self, service: Arc<dyn AppService>) -> Result<()> {
     let mut table = Table::new();
     table.add_row(row![
       "ALIAS",
@@ -76,7 +76,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_local_models(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  fn list_local_models(self, service: Arc<dyn AppService>) -> Result<()> {
     let mut table = Table::new();
     table.add_row(row!["REPO", "FILENAME", "SNAPSHOT", "SIZE"]);
     let mut models = service.hub_service().list_local_models();
@@ -89,7 +89,7 @@ impl ListCommand {
     Ok(())
   }
 
-  fn list_remote_models(self, service: Arc<dyn AppServiceFn>) -> Result<()> {
+  fn list_remote_models(self, service: Arc<dyn AppService>) -> Result<()> {
     let models: Vec<RemoteModel> = service.data_service().list_remote_models()?;
     let mut table = Table::new();
     table.add_row(row![

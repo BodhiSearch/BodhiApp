@@ -1,5 +1,5 @@
 use crate::{
-  EnvServiceFn, AUTH_REALM, AUTH_URL, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST, BODHI_PORT,
+  EnvService, AUTH_REALM, AUTH_URL, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST, BODHI_PORT,
   BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
 use std::{
@@ -34,7 +34,7 @@ impl EnvServiceStub {
   }
 }
 
-impl EnvServiceFn for EnvServiceStub {
+impl EnvService for EnvServiceStub {
   fn env_type(&self) -> String {
     "test".to_string()
   }
