@@ -135,9 +135,8 @@ pub async fn setup_handler(
 #[cfg(test)]
 mod tests {
   use crate::{
-    app_info_handler, setup_handler,
-    test_utils::{MockSharedContext, ResponseTestExt},
-    AppInfo, ErrorBody, DefaultRouterState, SetupRequest,
+    app_info_handler, setup_handler, test_utils::ResponseTestExt, AppInfo, DefaultRouterState,
+    ErrorBody, MockSharedContextRw, SetupRequest,
   };
   use axum::{
     body::Body,
@@ -196,7 +195,7 @@ mod tests {
       .secret_service(Arc::new(secret_service))
       .build()?;
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       Arc::new(app_service),
     ));
     let router = Router::new()
@@ -234,7 +233,7 @@ mod tests {
         .build()?,
     );
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
 
@@ -319,7 +318,7 @@ mod tests {
         .build()?,
     );
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -371,7 +370,7 @@ mod tests {
         .build()?,
     );
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -414,7 +413,7 @@ mod tests {
   ) -> anyhow::Result<()> {
     let app_service = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
+      Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
     let router = Router::new()

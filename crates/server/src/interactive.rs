@@ -1,6 +1,6 @@
 use crate::{
   obj_exts::update, Common, ContextError, DefaultRouterState, RouterStateError, RouterState,
-  SharedContextRw,
+  DefaultSharedContextRw,
 };
 use async_openai::{
   error::OpenAIError,
@@ -97,7 +97,7 @@ impl Interactive {
     update(&alias.context_params, &mut gpt_params);
     disable_llama_log();
 
-    let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let shared_rw = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let router_state = DefaultRouterState::new(Arc::new(shared_rw), service);
     pb.finish_and_clear();
     let mut shell_history = BasicHistory::new().max_entries(100).no_duplicates(false);

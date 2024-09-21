@@ -1,4 +1,4 @@
-use crate::{oai::OpenAIApiError, shared_rw::SharedContextRwFn, ContextError};
+use crate::{oai::OpenAIApiError, shared_rw::SharedContextRw, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::async_trait;
 use objs::{Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
@@ -20,13 +20,13 @@ pub trait RouterState: Send + Sync {
 
 #[derive(Debug, Clone)]
 pub struct DefaultRouterState {
-  pub(crate) ctx: Arc<dyn SharedContextRwFn>,
+  pub(crate) ctx: Arc<dyn SharedContextRw>,
 
   pub(crate) app_service: Arc<dyn AppService>,
 }
 
 impl DefaultRouterState {
-  pub(crate) fn new(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppService>) -> Self {
+  pub(crate) fn new(ctx: Arc<dyn SharedContextRw>, app_service: Arc<dyn AppService>) -> Self {
     Self { ctx, app_service }
   }
 }
@@ -97,8 +97,8 @@ impl DefaultRouterState {
 mod test {
   use crate::{
     shared_rw::ContextError,
-    test_utils::{test_channel, MockSharedContext, ResponseTestExt},
-    DefaultRouterState, RouterState,
+    test_utils::{test_channel, ResponseTestExt},
+    DefaultRouterState, MockSharedContextRw, RouterState,
   };
   use async_openai::types::CreateChatCompletionRequest;
   use axum::http::StatusCode;
@@ -119,7 +119,7 @@ mod test {
       .expect_find_alias()
       .with(eq("not-found"))
       .return_once(|_| None);
-    let mock_ctx = MockSharedContext::default();
+    let mock_ctx = MockSharedContextRw::default();
     let service = AppServiceStubMock::builder()
       .data_service(mock_data_service)
       .build()?;
@@ -169,7 +169,7 @@ mod test {
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
-    let mut mock_ctx = MockSharedContext::default();
+    let mut mock_ctx = MockSharedContextRw::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
       "messages": [
@@ -218,7 +218,7 @@ mod test {
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
-    let mut mock_ctx = MockSharedContext::default();
+    let mut mock_ctx = MockSharedContextRw::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
       "messages": [

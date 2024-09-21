@@ -19,7 +19,7 @@ use tokio::sync::RwLock;
 use validator::{Validate, ValidationErrors};
 
 #[derive(Debug)]
-pub struct SharedContextRw {
+pub struct DefaultSharedContextRw {
   ctx: RwLock<Option<BodhiServerContext>>,
 }
 
@@ -75,8 +75,9 @@ unsafe extern "C" fn callback_stream(
   size
 }
 
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
-pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
+pub trait SharedContextRw: std::fmt::Debug + Send + Sync {
   async fn reload(&self, gpt_params: Option<GptParams>) -> Result<()>;
 
   async fn try_stop(&self) -> Result<()>;
@@ -95,12 +96,12 @@ pub trait SharedContextRwFn: std::fmt::Debug + Send + Sync {
   ) -> Result<()>;
 }
 
-impl SharedContextRw {
+impl DefaultSharedContextRw {
   pub async fn new_shared_rw(gpt_params: Option<GptParams>) -> Result<Self>
   where
     Self: Sized,
   {
-    let ctx = SharedContextRw {
+    let ctx = DefaultSharedContextRw {
       ctx: RwLock::new(None),
     };
     ctx.reload(gpt_params).await?;
@@ -109,7 +110,7 @@ impl SharedContextRw {
 }
 
 #[async_trait::async_trait]
-impl SharedContextRwFn for SharedContextRw {
+impl SharedContextRw for DefaultSharedContextRw {
   async fn has_model(&self) -> bool {
     let lock = self.ctx.read().await;
     lock.as_ref().is_some()
@@ -257,7 +258,7 @@ impl ModelLoadStrategy {
 #[cfg(test)]
 mod test {
   use crate::{
-    shared_rw::{ModelLoadStrategy, SharedContextRw, SharedContextRwFn},
+    shared_rw::{ModelLoadStrategy, DefaultSharedContextRw, SharedContextRw},
     test_utils::{test_channel, MockServerContext},
   };
   use anyhow::anyhow;
@@ -292,7 +293,7 @@ mod test {
   #[ignore]
   #[tokio::test]
   async fn test_shared_rw_new() -> anyhow::Result<()> {
-    let ctx = SharedContextRw::new_shared_rw(None).await?;
+    let ctx = DefaultSharedContextRw::new_shared_rw(None).await?;
     assert!(!ctx.has_model().await);
     Ok(())
   }
@@ -309,7 +310,7 @@ mod test {
       model: model_file,
       ..GptParams::default()
     };
-    let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     assert!(ctx.has_model().await);
     ctx.try_stop().await?;
     Ok(())
@@ -327,7 +328,7 @@ mod test {
       model: model_file.clone(),
       ..GptParams::default()
     };
-    let ctx = SharedContextRw::new_shared_rw(Some(gpt_params.clone())).await?;
+    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params.clone())).await?;
     let model_params = ctx.get_gpt_params().await?.unwrap();
     assert_eq!(model_file, model_params.model);
     ctx.reload(None).await?;
@@ -350,7 +351,7 @@ mod test {
       model: model_file,
       ..GptParams::default()
     };
-    let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     ctx.try_stop().await?;
     assert!(!ctx.has_model().await);
     Ok(())
@@ -400,7 +401,7 @@ mod test {
       model: model_file,
       ..GptParams::default()
     };
-    let ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let userdata = String::with_capacity(1024);
     let lock = ctx.ctx.read().await;
     let inner = lock.as_ref().expect("should have context loaded");
@@ -488,7 +489,7 @@ mod test {
       .with(eq(gpt_params.clone()))
       .return_once(move |_| Ok(mock));
 
-    let shared_ctx = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let shared_ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
@@ -534,7 +535,7 @@ mod test {
       }))
       .return_once(move |_| Ok(mock));
 
-    let shared_ctx = SharedContextRw::new_shared_rw(None).await?;
+    let shared_ctx = DefaultSharedContextRw::new_shared_rw(None).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
@@ -614,7 +615,7 @@ mod test {
       .build()
       .unwrap();
 
-    let shared_ctx = SharedContextRw::new_shared_rw(Some(loaded_params)).await?;
+    let shared_ctx = DefaultSharedContextRw::new_shared_rw(Some(loaded_params)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "fakemodel:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
