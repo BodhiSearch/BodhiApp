@@ -1,4 +1,4 @@
-use crate::{ApiError, RouterStateFn};
+use crate::{ApiError, RouterState};
 use axum::{
   body::Body,
   extract::{Path as UrlPath, State},
@@ -10,7 +10,7 @@ use axum::{
 use services::db::Conversation;
 use std::sync::Arc;
 
-pub fn chats_router() -> Router<Arc<dyn RouterStateFn>> {
+pub fn chats_router() -> Router<Arc<dyn RouterState>> {
   Router::new()
     .route("/chats", get(ui_chats_handler))
     .route("/chats", delete(ui_chats_delete_handler))
@@ -20,7 +20,7 @@ pub fn chats_router() -> Router<Arc<dyn RouterStateFn>> {
 }
 
 async fn ui_chats_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<Vec<Conversation>>, ApiError> {
   let convos = state
     .app_service()
@@ -31,7 +31,7 @@ async fn ui_chats_handler(
 }
 
 async fn ui_chat_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   UrlPath(id): UrlPath<String>,
 ) -> Result<Json<Conversation>, ApiError> {
   let convo = state
@@ -43,7 +43,7 @@ async fn ui_chat_handler(
 }
 
 async fn ui_chat_new_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   UrlPath(id): UrlPath<String>,
   Json(mut conversation): Json<Conversation>,
 ) -> Result<Response<Body>, ApiError> {
@@ -63,7 +63,7 @@ async fn ui_chat_new_handler(
 }
 
 async fn ui_chats_delete_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
 ) -> Result<(), ApiError> {
   state
     .app_service()
@@ -74,7 +74,7 @@ async fn ui_chats_delete_handler(
 }
 
 async fn ui_chat_delete_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   UrlPath(id): UrlPath<String>,
 ) -> Result<(), ApiError> {
   state
@@ -90,7 +90,7 @@ mod test {
   use crate::{
     chats_router,
     test_utils::{MockSharedContext, RequestTestExt, ResponseTestExt},
-    RouterState,
+    DefaultRouterState,
   };
   use axum::{
     body::Body,
@@ -131,7 +131,7 @@ mod test {
     let app_service = AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .build()?;
-    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .oneshot(Request::get("/chats").body(Body::empty()).unwrap())
@@ -176,7 +176,7 @@ mod test {
     let app_service = AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .build()?;
-    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .oneshot(
@@ -216,7 +216,7 @@ mod test {
     let app_service = AppServiceStubBuilder::default()
       .db_service(Arc::new(db_service))
       .build()?;
-    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), Arc::new(app_service));
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .clone()
@@ -261,7 +261,7 @@ mod test {
         .db_service(db_service.clone())
         .build()?,
     );
-    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .clone()
@@ -285,7 +285,7 @@ mod test {
         .db_service(Arc::new(db_service))
         .build()?,
     );
-    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .clone()
@@ -316,7 +316,7 @@ mod test {
         .db_service(db_service.clone())
         .build()?,
     );
-    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let content = r#"{
 "title": "What is the capital of France?",
@@ -377,7 +377,7 @@ mod test {
         .db_service(db_service.clone())
         .build()?,
     );
-    let router_state = RouterState::new(Arc::new(MockSharedContext::new()), app_service);
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), app_service);
     let router = chats_router().with_state(Arc::new(router_state));
     let content = r#"{
       "title": "What is the capital of France?",

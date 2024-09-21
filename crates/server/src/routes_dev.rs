@@ -1,4 +1,4 @@
-use crate::{HttpError, HttpErrorBuilder, RouterStateFn};
+use crate::{HttpError, HttpErrorBuilder, RouterState};
 use axum::{
   body::Body,
   extract::State,
@@ -40,7 +40,7 @@ impl IntoResponse for DevError {
 }
 
 pub async fn dev_secrets_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Response, DevError> {
   let secret_service = state.app_service().secret_service();
   let value = json! {{

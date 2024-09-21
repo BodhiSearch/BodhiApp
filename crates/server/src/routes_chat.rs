@@ -1,4 +1,4 @@
-use crate::{fwd_sse, oai::OpenAIApiError, RouterStateFn};
+use crate::{fwd_sse, oai::OpenAIApiError, RouterState};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::{
   body::Body,
@@ -11,7 +11,7 @@ use axum_extra::extract::WithRejection;
 use std::sync::Arc;
 
 pub async fn chat_completions_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, OpenAIApiError>,
 ) -> Result<Response, OpenAIApiError> {
   let stream = request.stream.unwrap_or(false);
@@ -46,7 +46,8 @@ pub async fn chat_completions_handler(
 mod test {
   use crate::{
     routes_chat::chat_completions_handler,
-    test_utils::{MockRouterState, RequestTestExt, ResponseTestExt},
+    test_utils::{RequestTestExt, ResponseTestExt},
+    MockRouterState,
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::{

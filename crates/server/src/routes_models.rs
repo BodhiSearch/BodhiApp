@@ -1,4 +1,4 @@
-use crate::{HttpError, HttpErrorBuilder, RouterStateFn};
+use crate::{HttpError, HttpErrorBuilder, RouterState};
 use axum::{
   extract::{rejection::JsonRejection, Query, State},
   response::{IntoResponse, Response},
@@ -85,7 +85,7 @@ impl From<Alias> for AliasResponse {
   }
 }
 
-pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
+pub fn models_router() -> Router<Arc<dyn RouterState>> {
   Router::new()
     .route("/models", get(list_local_aliases_handler))
     .route("/models", post(create_alias_handler))
@@ -95,7 +95,7 @@ pub fn models_router() -> Router<Arc<dyn RouterStateFn>> {
 }
 
 pub async fn list_local_aliases_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<PaginationSortParams>,
 ) -> Result<Json<PaginatedResponse<AliasResponse>>, HttpError> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
@@ -132,7 +132,7 @@ pub async fn list_local_aliases_handler(
 }
 
 pub async fn list_local_modelfiles_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<PaginationSortParams>,
 ) -> Result<Json<PaginatedResponse<LocalModelResponse>>, HttpError> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
@@ -284,7 +284,7 @@ impl TryFrom<CreateAliasRequest> for CreateCommand {
 }
 
 pub async fn create_alias_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, CreateAliasError>,
 ) -> Result<(StatusCode, Json<AliasResponse>), CreateAliasError> {
   let command = CreateCommand::try_from(payload)?;
@@ -303,7 +303,7 @@ pub async fn create_alias_handler(
 }
 
 pub async fn list_chat_templates_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<Vec<ChatTemplate>>, HttpError> {
   let mut responses = Vec::new();
   for chat_template in ChatTemplateId::iter() {
@@ -320,7 +320,7 @@ pub async fn list_chat_templates_handler(
 }
 
 pub async fn get_alias_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   axum::extract::Path(id): axum::extract::Path<String>,
 ) -> Result<Json<AliasResponse>, HttpError> {
   let alias = state
@@ -344,9 +344,8 @@ pub async fn get_alias_handler(
 mod tests {
   use crate::{
     create_alias_handler, get_alias_handler, list_chat_templates_handler,
-    list_local_aliases_handler,
-    test_utils::{MockRouterState, ResponseTestExt},
-    AliasResponse, ErrorBody, PaginatedResponse,
+    list_local_aliases_handler, test_utils::ResponseTestExt, AliasResponse, ErrorBody,
+    MockRouterState, PaginatedResponse,
   };
   use axum::{
     body::Body,
