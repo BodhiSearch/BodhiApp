@@ -4,7 +4,6 @@ use crate::{
 };
 use axum::Router;
 use commands::{CliError, Command};
-use objs::Common;
 use services::AppServiceFn;
 use std::sync::Arc;
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
@@ -58,7 +57,7 @@ impl ServerShutdownHandle {
       Ok(()) => {}
       Err(err) => tracing::warn!(?err, "error sending shutdown signal on shutdown channel"),
     };
-    (self.join_handle.await.map_err(Common::Join)?)?;
+    (self.join_handle.await?)?;
     Ok(())
   }
 }
