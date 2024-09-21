@@ -7,6 +7,7 @@ mod alias;
 mod command;
 mod create;
 mod envs;
+mod objs_ext;
 mod error;
 mod list;
 mod out_writer;

@@ -3,7 +3,6 @@ use super::{
   utils::is_default, utils::to_safe_filename,
 };
 use derive_new::new;
-use prettytable::{Cell, Row};
 use serde::{Deserialize, Serialize};
 
 #[allow(clippy::too_many_arguments)]
@@ -41,19 +40,6 @@ impl Alias {
   }
 }
 
-impl From<Alias> for Row {
-  fn from(value: Alias) -> Self {
-    Row::from(vec![
-      Cell::new(&value.alias),
-      Cell::new(&value.family.unwrap_or_default()),
-      Cell::new(&value.repo.to_string()),
-      Cell::new(&value.filename),
-      Cell::new(&value.features.join(",")),
-      Cell::new(&value.chat_template.to_string()),
-    ])
-  }
-}
-
 // TODO: hard coding for time being
 pub fn default_features() -> Vec<String> {
   vec!["chat".to_string()]
@@ -79,7 +65,6 @@ mod test {
     oai::OAIRequestParamsBuilder,
     repo::Repo,
   };
-  use prettytable::{Cell, Row};
   use rstest::rstest;
 
   fn tinyllama_builder() -> AliasBuilder {
@@ -195,24 +180,6 @@ chat_template: llama3
   ) -> anyhow::Result<()> {
     let actual = serde_yaml::from_str(&serialized)?;
     assert_eq!(expected, actual);
-    Ok(())
-  }
-
-  #[test]
-  fn test_alias_to_row() -> anyhow::Result<()> {
-    let alias = Alias::testalias();
-    let row = Row::from(alias);
-    assert_eq!(
-      Row::from(vec![
-        Cell::new("testalias:instruct"),
-        Cell::new("testalias"),
-        Cell::new("MyFactory/testalias-gguf"),
-        Cell::new("testalias.Q8_0.gguf"),
-        Cell::new("chat"),
-        Cell::new("llama3"),
-      ]),
-      row
-    );
     Ok(())
   }
 
