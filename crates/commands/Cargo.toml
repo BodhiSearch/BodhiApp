@@ -4,14 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+objs = { workspace = true }
+services = { workspace = true }
+
 axum = { workspace = true }
 async-trait = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
-objs = { path = "../objs" }
 prettytable-rs = { workspace = true }
-services = { path = "../services" }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 serde_yaml = { workspace = true }
@@ -19,12 +20,13 @@ tracing = { workspace = true, features = ["async-await", "log"] }
 tokio = { workspace = true, features = ["full"] }
 
 [dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 mockall = { workspace = true }
 rstest = { workspace = true }
-objs = { path = "../objs", features = ["test-utils"] }
-services = { path = "../services", features = ["test-utils"] }
 
 [features]
 test-utils = []
