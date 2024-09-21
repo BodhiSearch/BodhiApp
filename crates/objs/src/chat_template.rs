@@ -13,6 +13,9 @@ use strum::{AsRefStr, EnumIter};
   EnumIter,
   AsRefStr,
   strum::Display,
+  Eq,
+  Hash,
+  Copy
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -36,7 +39,7 @@ impl PartialOrd for ChatTemplateId {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Hash)]
 #[serde(untagged)]
 pub enum ChatTemplate {
   Id(ChatTemplateId),
@@ -81,6 +84,7 @@ impl Display for ChatTemplate {
 mod test {
   use super::{ChatTemplate, ChatTemplateId, Repo};
   use rstest::rstest;
+  use std::collections::HashSet;
 
   #[rstest]
   fn test_chat_template_id_partial_ord() {
@@ -137,5 +141,20 @@ mod test {
     let repo: Repo = Repo::try_from(input)?;
     assert_eq!(expected, repo.to_string());
     Ok(())
+  }
+
+  #[test]
+  fn test_chat_template_eq_and_hash() {
+    let template1 = ChatTemplate::Id(ChatTemplateId::Llama3);
+    let template2 = ChatTemplate::Id(ChatTemplateId::Llama3);
+    let template3 = ChatTemplate::Id(ChatTemplateId::Llama2);
+
+    assert_eq!(template1, template2);
+    assert_ne!(template1, template3);
+
+    let mut set = HashSet::new();
+    set.insert(template1);
+    assert!(set.contains(&template2));
+    assert!(!set.contains(&template3));
   }
 }

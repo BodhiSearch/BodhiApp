@@ -7,25 +7,30 @@ use validator::{ValidationError, ValidationErrors};
 
 #[derive(Debug, Error)]
 pub enum ObjError {
-  #[error(transparent)]
+  #[error("Validation failed: {0}")]
   Validation(#[from] ValidationErrors),
-  #[error("cannot convert '{from}' to '{to}', error: \"{error}\"")]
+
+  #[error("Cannot convert '{from}' to '{to}'. Error: {error}")]
   Conversion {
     from: String,
     to: String,
     error: String,
   },
-  #[error("io error: {source}\npath: {path}")]
+
+  #[error("IO error occurred while accessing '{path}': {source}")]
   IoWithDetail {
     #[source]
     source: io::Error,
     path: PathBuf,
   },
-  #[error(transparent)]
+
+  #[error("JSON serialization/deserialization error: {0}")]
   SerdeJson(#[from] serde_json::Error),
-  #[error(transparent)]
+
+  #[error("Builder error: {0}")]
   Builder(#[from] BuilderError),
-  #[error(transparent)]
+
+  #[error("GPT parameters builder error: {0}")]
   GptBuilder(#[from] GptParamsBuilderError),
 }
 

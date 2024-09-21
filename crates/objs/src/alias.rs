@@ -59,6 +59,16 @@ pub fn default_features() -> Vec<String> {
   vec!["chat".to_string()]
 }
 
+impl std::fmt::Display for Alias {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "Alias {{ alias: {}, repo: {}, filename: {} }}",
+      self.alias, self.repo, self.filename
+    )
+  }
+}
+
 #[cfg(test)]
 mod test {
   use super::Alias;
@@ -204,5 +214,19 @@ chat_template: llama3
       row
     );
     Ok(())
+  }
+
+  #[test]
+  fn test_alias_display() {
+    let alias = Alias {
+      alias: "test:alias".to_string(),
+      repo: Repo::try_from("test/repo").unwrap(),
+      filename: "test.gguf".to_string(),
+      ..Default::default()
+    };
+    assert_eq!(
+      format!("{}", alias),
+      "Alias { alias: test:alias, repo: test/repo, filename: test.gguf }"
+    );
   }
 }

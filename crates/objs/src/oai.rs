@@ -83,11 +83,11 @@ fn validate_range_0_to_1(s: &str) -> Result<f32, String> {
   validate_range(s, 0.0, 1.0)
 }
 
-fn validate_range<T: PartialOrd + FromStr + std::fmt::Debug>(s: &str, lower: T, upper: T) -> Result<T, String> {
+fn validate_range<T: PartialOrd + FromStr + std::fmt::Debug + std::fmt::Display>(s: &str, lower: T, upper: T) -> Result<T, String> {
     match s.parse::<T>() {
         Ok(val) if lower <= val && val <= upper => Ok(val),
-        Ok(_) => Err(format!("The value must be between {:?} and {:?} inclusive.", lower, upper)),
-        Err(_) => Err(String::from("The value must be a valid number.")),
+        Ok(val) => Err(format!("The value {} is out of range. It must be between {:?} and {:?} inclusive.", val, lower, upper)),
+        Err(_) => Err(format!("'{}' is not a valid number. Please enter a number between {:?} and {:?}.", s, lower, upper)),
     }
 }
 
@@ -209,5 +209,20 @@ mod tests {
         assert_eq!(request.temperature, Some(0.5)); // Should not be updated
         assert_eq!(request.top_p, Some(0.9));
         assert_eq!(request.user, None);
+    }
+
+    #[test]
+    fn test_validate_range_error_messages() {
+        let result = validate_range("2.5", 0.0, 2.0);
+        assert_eq!(
+            result.unwrap_err(),
+            "The value 2.5 is out of range. It must be between 0.0 and 2.0 inclusive."
+        );
+
+        let result = validate_range("invalid", 0, 10);
+        assert_eq!(
+            result.unwrap_err(),
+            "'invalid' is not a valid number. Please enter a number between 0 and 10."
+        );
     }
 }
