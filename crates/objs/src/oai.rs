@@ -1,10 +1,9 @@
-use std::str::FromStr;
-
 use crate::BuilderError;
 use async_openai::types::{CreateChatCompletionRequest, Stop};
 use clap::Args;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder)]
 #[

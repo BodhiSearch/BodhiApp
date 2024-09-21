@@ -1,3 +1,4 @@
+use super::router_state::RouterStateError;
 use crate::{obj_exts::update, Common, ContextError, RouterState, RouterStateFn, SharedContextRw};
 use async_openai::{
   error::OpenAIError,
@@ -22,8 +23,6 @@ use tokio::{
   sync::{mpsc::channel, Mutex},
   task::JoinHandle,
 };
-
-use super::router_state::RouterStateError;
 
 fn infinite_loading(msg: String) -> ProgressBar {
   let spinner_style = ProgressStyle::with_template("{spinner:.green} {wide_msg}")
