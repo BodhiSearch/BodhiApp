@@ -1,7 +1,4 @@
-use super::{
-  chat_template::ChatTemplate, gpt_params::GptContextParams, oai::OAIRequestParams, repo::Repo,
-  utils::is_default, utils::to_safe_filename,
-};
+use crate::{is_default, to_safe_filename, ChatTemplate, GptContextParams, OAIRequestParams, Repo};
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
@@ -57,10 +54,9 @@ impl std::fmt::Display for Alias {
 
 #[cfg(test)]
 mod test {
-  use super::Alias;
   use crate::{
-    AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParamsBuilder, OAIRequestParamsBuilder,
-    Repo,
+    Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParamsBuilder,
+    OAIRequestParamsBuilder, Repo,
   };
   use rstest::rstest;
 

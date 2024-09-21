@@ -1,4 +1,4 @@
-use super::{ObjError, Repo};
+use crate::{ObjError, Repo};
 use derive_new::new;
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -74,8 +74,7 @@ impl fmt::Display for HubFile {
 
 #[cfg(test)]
 mod test {
-  use super::{HubFile, Repo};
-  use crate::test_utils::hf_cache;
+  use crate::{test_utils::hf_cache, HubFile, Repo};
   use rstest::rstest;
   use std::path::PathBuf;
   use tempfile::TempDir;

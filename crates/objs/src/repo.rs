@@ -1,4 +1,4 @@
-use super::ObjError;
+use crate::ObjError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -94,7 +94,7 @@ impl FromStr for Repo {
 
 #[cfg(test)]
 mod test {
-  use super::Repo;
+  use crate::Repo;
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
   use validator::Validate;
