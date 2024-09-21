@@ -4,7 +4,6 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod alias;
-mod builder;
 mod chat_template;
 mod error;
 mod gpt_params;
@@ -15,7 +14,6 @@ mod repo;
 mod utils;
 
 pub use alias::*;
-pub use builder::*;
 pub use chat_template::*;
 pub use error::*;
 pub use gpt_params::*;

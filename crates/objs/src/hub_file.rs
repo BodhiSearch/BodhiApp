@@ -1,4 +1,4 @@
-use crate::{error::ObjError, repo::Repo};
+use super::{ObjError, Repo};
 use derive_new::new;
 use once_cell::sync::Lazy;
 use regex::Regex;

@@ -1,6 +1,4 @@
-use crate::{
-  chat_template::ChatTemplate, gpt_params::GptContextParams, oai::OAIRequestParams, repo::Repo,
-};
+use super::{ChatTemplate, GptContextParams, OAIRequestParams, Repo};
 use derive_new::new;
 use serde::Deserialize;
 
