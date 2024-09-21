@@ -1,4 +1,4 @@
-use crate::{DirectEvent, DirectSse, RouterStateFn};
+use crate::{DirectEvent, DirectSse, RouterState};
 use async_openai::types::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
   ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage,
@@ -53,7 +53,7 @@ pub struct OllamaError {
 }
 
 pub async fn ollama_models_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<ModelsResponse>, Json<OllamaError>> {
   let models = state
     .app_service()
@@ -70,7 +70,7 @@ pub async fn ollama_models_handler(
   Ok(Json(ModelsResponse { models }))
 }
 
-fn to_ollama_model(state: Arc<dyn RouterStateFn>, alias: Alias) -> Model {
+fn to_ollama_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
   let bodhi_home = &state.app_service().env_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = fs::metadata(path)
@@ -126,7 +126,7 @@ pub struct ShowResponse {
 }
 
 pub async fn ollama_model_show_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   Json(request): Json<ShowRequest>,
 ) -> Result<Json<ShowResponse>, Json<OllamaError>> {
   let alias = state
@@ -142,7 +142,7 @@ pub async fn ollama_model_show_handler(
   Ok(Json(model))
 }
 
-fn to_ollama_model_show(state: Arc<dyn RouterStateFn>, alias: Alias) -> ShowResponse {
+fn to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowResponse {
   let request_params = serde_yaml::to_string(&alias.request_params).unwrap_or_default();
   let context_params = serde_yaml::to_string(&alias.context_params).unwrap_or_default();
   let parameters = format!("{context_params}{request_params}");
@@ -388,7 +388,7 @@ pub struct Options {
 }
 
 pub async fn ollama_model_chat_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   Json(ollama_request): Json<ChatRequest>,
 ) -> Result<Response, Json<OllamaError>> {
   let request: CreateChatCompletionRequest = ollama_request.into();
@@ -461,7 +461,8 @@ pub async fn ollama_model_chat_handler(
 mod test {
   use crate::{
     ollama_model_show_handler, ollama_models_handler,
-    test_utils::{MockRouterState, RequestTestExt, ResponseTestExt},
+    test_utils::{RequestTestExt, ResponseTestExt},
+    MockRouterState,
   };
   use anyhow_trace::anyhow_trace;
   use axum::{

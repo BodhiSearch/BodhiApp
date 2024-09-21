@@ -1,4 +1,4 @@
-use crate::{BadRequestError, HttpError, HttpErrorBuilder, RouterStateFn};
+use crate::{BadRequestError, HttpError, HttpErrorBuilder, RouterState};
 use axum::{
   extract::State,
   http::StatusCode,
@@ -49,7 +49,7 @@ pub struct AppInfo {
 }
 
 pub async fn app_info_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<AppInfo>, HttpError> {
   let secret_service = &state.app_service().secret_service();
   let authz = secret_service
@@ -85,7 +85,7 @@ impl IntoResponse for SetupResponse {
 }
 
 pub async fn setup_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, BadRequestError>,
 ) -> Result<SetupResponse, AppServiceError> {
   let secret_service = &state.app_service().secret_service();
@@ -137,7 +137,7 @@ mod tests {
   use crate::{
     app_info_handler, setup_handler,
     test_utils::{MockSharedContext, ResponseTestExt},
-    AppInfo, ErrorBody, RouterState, SetupRequest,
+    AppInfo, ErrorBody, DefaultRouterState, SetupRequest,
   };
   use axum::{
     body::Body,
@@ -195,7 +195,7 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .build()?;
-    let state = Arc::new(RouterState::new(
+    let state = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::default()),
       Arc::new(app_service),
     ));
@@ -233,7 +233,7 @@ mod tests {
         .auth_service(Arc::new(MockAuthService::new()))
         .build()?,
     );
-    let state = Arc::new(RouterState::new(
+    let state = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
@@ -318,7 +318,7 @@ mod tests {
         .auth_service(Arc::new(mock_auth_service))
         .build()?,
     );
-    let state = Arc::new(RouterState::new(
+    let state = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
@@ -370,7 +370,7 @@ mod tests {
         .auth_service(Arc::new(mock_auth_service))
         .build()?,
     );
-    let state = Arc::new(RouterState::new(
+    let state = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
@@ -413,7 +413,7 @@ mod tests {
     #[case] expected_error: &str,
   ) -> anyhow::Result<()> {
     let app_service = Arc::new(AppServiceStubBuilder::default().build()?);
-    let state = Arc::new(RouterState::new(
+    let state = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));

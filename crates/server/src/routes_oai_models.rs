@@ -1,4 +1,4 @@
-use crate::{HttpError, HttpErrorBuilder, RouterStateFn};
+use crate::{HttpError, HttpErrorBuilder, RouterState};
 use async_openai::types::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},
@@ -8,7 +8,7 @@ use objs::Alias;
 use std::{fs, sync::Arc, time::UNIX_EPOCH};
 
 pub async fn oai_models_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<ListModelResponse>, HttpError> {
   let models = state
     .app_service()
@@ -30,7 +30,7 @@ pub async fn oai_models_handler(
 }
 
 pub async fn oai_model_handler(
-  State(state): State<Arc<dyn RouterStateFn>>,
+  State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<Model>, HttpError> {
   let alias = state
@@ -49,7 +49,7 @@ pub async fn oai_model_handler(
   Ok(Json(model))
 }
 
-fn to_oai_model(state: Arc<dyn RouterStateFn>, alias: Alias) -> Model {
+fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
   let bodhi_home = &state.app_service().env_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = fs::metadata(path)

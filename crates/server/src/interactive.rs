@@ -1,5 +1,5 @@
 use crate::{
-  obj_exts::update, Common, ContextError, RouterState, RouterStateError, RouterStateFn,
+  obj_exts::update, Common, ContextError, DefaultRouterState, RouterStateError, RouterState,
   SharedContextRw,
 };
 use async_openai::{
@@ -98,7 +98,7 @@ impl Interactive {
     disable_llama_log();
 
     let shared_rw = SharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let router_state = RouterState::new(Arc::new(shared_rw), service);
+    let router_state = DefaultRouterState::new(Arc::new(shared_rw), service);
     pb.finish_and_clear();
     let mut shell_history = BasicHistory::new().max_entries(100).no_duplicates(false);
     let chat_history = Arc::new(Mutex::new(Vec::<ChatCompletionRequestMessage>::new()));
@@ -137,7 +137,7 @@ impl Interactive {
 
   async fn process_input(
     &self,
-    router_state: &RouterState,
+    router_state: &DefaultRouterState,
     input: &str,
     chat_history: Arc<Mutex<Vec<ChatCompletionRequestMessage>>>,
   ) -> Result<()> {

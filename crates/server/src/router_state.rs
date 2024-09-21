@@ -6,8 +6,9 @@ use services::AppService;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
-pub trait RouterStateFn: Send + Sync {
+pub trait RouterState: Send + Sync {
   fn app_service(&self) -> Arc<dyn AppService>;
 
   async fn chat_completions(
@@ -18,13 +19,13 @@ pub trait RouterStateFn: Send + Sync {
 }
 
 #[derive(Debug, Clone)]
-pub struct RouterState {
+pub struct DefaultRouterState {
   pub(crate) ctx: Arc<dyn SharedContextRwFn>,
 
   pub(crate) app_service: Arc<dyn AppService>,
 }
 
-impl RouterState {
+impl DefaultRouterState {
   pub(crate) fn new(ctx: Arc<dyn SharedContextRwFn>, app_service: Arc<dyn AppService>) -> Self {
     Self { ctx, app_service }
   }
@@ -39,7 +40,7 @@ pub enum RouterStateError {
 type Result<T> = std::result::Result<T, RouterStateError>;
 
 #[async_trait]
-impl RouterStateFn for RouterState {
+impl RouterState for DefaultRouterState {
   fn app_service(&self) -> Arc<dyn AppService> {
     self.app_service.clone()
   }
@@ -85,7 +86,7 @@ impl RouterStateFn for RouterState {
   }
 }
 
-impl RouterState {
+impl DefaultRouterState {
   pub async fn try_stop(&self) -> Result<()> {
     self.ctx.try_stop().await?;
     Ok(())
@@ -97,7 +98,7 @@ mod test {
   use crate::{
     shared_rw::ContextError,
     test_utils::{test_channel, MockSharedContext, ResponseTestExt},
-    RouterState, RouterStateFn,
+    DefaultRouterState, RouterState,
   };
   use async_openai::types::CreateChatCompletionRequest;
   use axum::http::StatusCode;
@@ -122,7 +123,7 @@ mod test {
     let service = AppServiceStubMock::builder()
       .data_service(mock_data_service)
       .build()?;
-    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(service));
+    let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "not-found",
       "messages": [
@@ -189,7 +190,7 @@ mod test {
       .hub_service(mock_hub_service)
       .data_service(mock_data_service)
       .build()?;
-    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(service));
+    let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let (tx, _rx) = test_channel();
     state.chat_completions(request, tx).await?;
     Ok(())
@@ -243,7 +244,7 @@ mod test {
       .hub_service(mock_hub_service)
       .data_service(mock_data_service)
       .build()?;
-    let state = RouterState::new(Arc::new(mock_ctx), Arc::new(service));
+    let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let result = state.chat_completions(request, tx).await;
     assert!(result.is_err());
     let response = result.unwrap_err().into_response();
