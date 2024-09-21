@@ -1,3 +1,4 @@
+use crate::ContextError;
 use async_openai::types::{
   ChatCompletionRequestMessage,
   ChatCompletionRequestUserMessageContent::{Array, Text},
@@ -11,8 +12,6 @@ use serde::{
 };
 use std::{fmt, ops::Deref};
 use validator::{Validate, ValidationError};
-
-use crate::ContextError;
 
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
   Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))

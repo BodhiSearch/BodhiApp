@@ -1,3 +1,4 @@
+use super::interactive::InteractiveError;
 #[cfg(not(test))]
 use crate::interactive::InteractiveRuntime;
 #[cfg(test)]
@@ -5,8 +6,6 @@ use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
 use commands::{CliError, Command, PullCommand, PullCommandError};
 use services::{AppServiceFn, DataServiceError};
 use std::sync::Arc;
-
-use super::interactive::InteractiveError;
 
 pub enum RunCommand {
   WithAlias { alias: String },

@@ -1,5 +1,3 @@
-use std::{io, sync::Arc};
-
 use crate::{oai::OpenAIApiError, shared_rw::ContextError};
 use async_openai::error::OpenAIError;
 use axum::{
@@ -14,6 +12,7 @@ use objs::ObjError;
 use serde::{Deserialize, Serialize};
 use services::SecretServiceError;
 use services::{db::DbError, AuthServiceError, DataServiceError, HubServiceError};
+use std::{io, sync::Arc};
 use thiserror::Error;
 use tokio::task::JoinError;
 use validator::ValidationErrors;
