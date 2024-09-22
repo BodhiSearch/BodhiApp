@@ -58,10 +58,6 @@ pub enum Command {
     /// The GGUF model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
     #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
     filename: Option<String>,
-
-    /// If the file already exists in $HF_HOME, force download and overwrite it
-    #[clap(long = "force")]
-    force: bool,
   },
 
   /// Create a new model alias
@@ -90,10 +86,6 @@ pub enum Command {
     /// Optional meta information, family of the model
     #[clap(long)]
     family: Option<String>,
-
-    /// If the file already exists in $HF_HOME, force download and overwrite it
-    #[clap(long)]
-    force: bool,
 
     #[clap(flatten, next_help_heading = "OpenAI Compatible Request defaults")]
     oai_request_params: OAIRequestParams,
@@ -270,7 +262,7 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None, false)]
+  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None)]
   #[case(vec!["bodhi",
       "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
@@ -279,7 +271,6 @@ For more information, try '--help'.
     None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
     Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-    false
   )]
   #[case(vec![ "bodhi", "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
@@ -288,7 +279,6 @@ For more information, try '--help'.
     None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
     Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-    false
   )]
   #[case(vec![ "bodhi", "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
@@ -297,21 +287,18 @@ For more information, try '--help'.
     None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
     Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-    false
   )]
   fn test_cli_pull_valid(
     #[case] args: Vec<&str>,
     #[case] alias: Option<String>,
     #[case] repo: Option<String>,
     #[case] filename: Option<String>,
-    #[case] force: bool,
   ) -> anyhow::Result<()> {
     let actual = Cli::try_parse_from(args)?.command;
     let expected = Command::Pull {
       alias,
       repo,
       filename,
-      force,
     };
     assert_eq!(expected, actual);
     Ok(())
@@ -427,7 +414,6 @@ For more information, try '--help'.
       chat_template: Some(chat_template),
       tokenizer_config: None,
       family: Some(family),
-      force: false,
       oai_request_params,
       context_params,
     };
@@ -496,7 +482,7 @@ For more information, try '--help'.
   #[case(Command::App {ui: false}, "app")]
   #[case(Command::Serve {host: Default::default(), port: 0}, "serve")]
   #[case(Command::List {remote: false, models: false}, "list")]
-  #[case(Command::Pull { alias: None, repo: None, filename: None, force: false }, "pull")]
+  #[case(Command::Pull { alias: None, repo: None, filename: None }, "pull")]
   #[case(Command::Create {
       alias: Default::default(),
       repo: Default::default(),
@@ -504,7 +490,6 @@ For more information, try '--help'.
       chat_template: None,
       tokenizer_config: None,
       family: None,
-      force: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     }, "create")]

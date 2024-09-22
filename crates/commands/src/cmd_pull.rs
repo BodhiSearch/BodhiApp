@@ -5,15 +5,8 @@ use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
-  ByAlias {
-    alias: String,
-    force: bool,
-  },
-  ByRepoFile {
-    repo: Repo,
-    filename: String,
-    force: bool,
-  },
+  ByAlias { alias: String },
+  ByRepoFile { repo: Repo, filename: String },
 }
 
 impl TryFrom<Command> for PullCommand {
@@ -25,10 +18,9 @@ impl TryFrom<Command> for PullCommand {
         alias,
         repo,
         filename,
-        force,
       } => {
         let pull_command = match alias {
-          Some(alias) => PullCommand::ByAlias { alias, force },
+          Some(alias) => PullCommand::ByAlias { alias },
           None => match (repo, filename) {
             (Some(repo), Some(filename)) => PullCommand::ByRepoFile {
               repo: Repo::try_from(repo).map_err(|err| CmdIntoError::BadRequest {
@@ -37,7 +29,6 @@ impl TryFrom<Command> for PullCommand {
                 error: format!("invalid repo {err}"),
               })?,
               filename,
-              force,
             },
             (repo, filename) => {
               return Err(CmdIntoError::BadRequest {
@@ -64,7 +55,7 @@ impl TryFrom<Command> for PullCommand {
 pub enum PullCommandError {
   #[error(transparent)]
   HubServiceError(#[from] HubServiceError),
-  #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
+  #[error("model alias '{0}' already exists")]
   AliasExists(String),
   #[error("alias '{0}' not found")]
   AliasNotFound(String),
@@ -80,8 +71,8 @@ impl PullCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     match self {
-      PullCommand::ByAlias { alias, force } => {
-        if !force && service.data_service().find_alias(&alias).is_some() {
+      PullCommand::ByAlias { alias } => {
+        if service.data_service().find_alias(&alias).is_some() {
           return Err(PullCommandError::AliasExists(alias));
         }
         let Some(model) = service.data_service().find_remote_model(&alias)? else {
@@ -92,14 +83,12 @@ impl PullCommand {
           &model.repo,
           &model.filename,
           REFS_MAIN,
-          force,
         )?;
         _ = PullCommand::download_file_if_missing(
           service.clone(),
           &Repo::try_from(model.chat_template.clone())?,
           TOKENIZER_CONFIG_JSON,
           REFS_MAIN,
-          force,
         )?;
         let alias = Alias::new(
           model.alias,
@@ -119,21 +108,17 @@ impl PullCommand {
         );
         Ok(())
       }
-      PullCommand::ByRepoFile {
-        repo,
-        filename,
-        force,
-      } => {
+      PullCommand::ByRepoFile { repo, filename } => {
         let local_model_file = service
           .hub_service()
           .find_local_file(&repo, &filename, REFS_MAIN)?;
         match local_model_file {
-          Some(_) if !force => {
+          Some(_) => {
             println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
             return Ok(());
           }
           _ => {
-            service.hub_service().download(&repo, &filename, force)?;
+            service.hub_service().download(&repo, &filename)?;
             println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
           }
         }
@@ -147,13 +132,12 @@ impl PullCommand {
     repo: &Repo,
     filename: &str,
     snapshot: &str,
-    force: bool,
   ) -> Result<HubFile> {
     let local_model_file = service
       .hub_service()
       .find_local_file(repo, filename, snapshot)?;
     match local_model_file {
-      Some(local_model_file) if !force => {
+      Some(local_model_file) => {
         println!(
           "repo: '{}', filename: '{}' already exists in $HF_HOME",
           &repo, &filename
@@ -161,7 +145,7 @@ impl PullCommand {
         Ok(local_model_file)
       }
       _ => {
-        let local_model_file = service.hub_service().download(repo, filename, force)?;
+        let local_model_file = service.hub_service().download(repo, filename)?;
         println!(
           "repo: '{}', filename: '{}' downloaded into $HF_HOME",
           repo, filename
@@ -185,19 +169,16 @@ mod test {
   use std::{fs, path::PathBuf, sync::Arc};
 
   #[rstest]
-  fn test_pull_by_alias_fails_if_alias_exists_no_force() -> anyhow::Result<()> {
+  fn test_pull_by_alias_fails_if_alias_exists() -> anyhow::Result<()> {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .build()?;
     let alias = String::from("testalias-exists:instruct");
-    let pull = PullCommand::ByAlias {
-      alias,
-      force: false,
-    };
+    let pull = PullCommand::ByAlias { alias };
     let result = pull.execute(Arc::new(service));
     assert!(result.is_err());
     assert_eq!(
-      "model alias 'testalias-exists:instruct' already exists. Use --force to overwrite the model alias config",
+      "model alias 'testalias-exists:instruct' already exists",
       result.unwrap_err().to_string()
     );
     Ok(())
@@ -231,9 +212,8 @@ mod test {
       .with(
         eq(remote_model.repo),
         eq(remote_model.filename.clone()),
-        eq(false),
       )
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .return_once(|_, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
@@ -249,7 +229,6 @@ mod test {
       .build()?;
     let pull = PullCommand::ByAlias {
       alias: remote_model.alias,
-      force: false,
     };
     pull.execute(Arc::new(service))?;
     Ok(())
@@ -262,7 +241,6 @@ mod test {
     let pull = PullCommand::ByRepoFile {
       repo: repo.clone(),
       filename: filename.to_string(),
-      force: false,
     };
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
@@ -271,8 +249,8 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(repo), eq(filename), eq(false))
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .with(eq(repo), eq(filename))
+      .return_once(|_, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
     let service = AppServiceStubMock::builder()
       .hub_service(mock_hub_service)
@@ -287,20 +265,16 @@ mod test {
     alias: Some("llama3:instruct".to_string()),
     repo: None,
     filename: None,
-    force: false,
   }, PullCommand::ByAlias {
     alias: "llama3:instruct".to_string(),
-    force: false,
   })]
   #[case(Command::Pull {
     alias: None,
     repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
     filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
-    force: false,
   },
   PullCommand::ByRepoFile {
     repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), 
-    force: false
   })]
   fn test_pull_command_try_from_command(
     #[case] input: Command,
@@ -320,7 +294,6 @@ mod test {
     let service = Arc::new(service);
     let command = PullCommand::ByAlias {
       alias: "testalias:instruct".to_string(),
-      force: false,
     };
     command.execute(service.clone())?;
     let alias = service

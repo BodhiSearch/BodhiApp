@@ -14,7 +14,6 @@ pub struct CreateCommand {
   pub filename: String,
   pub chat_template: ChatTemplate,
   pub family: Option<String>,
-  pub force: bool,
   #[builder(default = "true")]
   pub auto_download: bool,
   pub oai_request_params: OAIRequestParams,
@@ -23,7 +22,7 @@ pub struct CreateCommand {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CreateCommandError {
-  #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
+  #[error("model alias '{0}' already exists")]
   AliasExists(String),
   #[error("model file '{filename}' not found in repo '{repo}'")]
   ModelFileMissing { filename: String, repo: String },
@@ -49,7 +48,6 @@ impl TryFrom<Command> for CreateCommand {
         chat_template,
         tokenizer_config,
         family,
-        force,
         oai_request_params,
         context_params,
       } => {
@@ -84,7 +82,6 @@ impl TryFrom<Command> for CreateCommand {
           filename,
           chat_template,
           family,
-          force,
           auto_download: true,
           oai_request_params,
           context_params,
@@ -102,7 +99,7 @@ impl TryFrom<Command> for CreateCommand {
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
-    if !self.force && service.data_service().find_alias(&self.alias).is_some() {
+    if service.data_service().find_alias(&self.alias).is_some() {
       return Err(CreateCommandError::AliasExists(self.alias.clone()));
     }
     let local_model_file =
@@ -121,7 +118,7 @@ impl CreateCommand {
         if self.auto_download {
           service
             .hub_service()
-            .download(&self.repo, &self.filename, self.force)?
+            .download(&self.repo, &self.filename)?
         } else {
           return Err(CreateCommandError::ModelFileMissing {
             filename: self.filename.clone(),
@@ -137,7 +134,7 @@ impl CreateCommand {
       REFS_MAIN,
     )?;
     match tokenizer_file {
-      Some(_) if !self.force => {
+      Some(_) => {
         println!(
           "tokenizer from repo: '{}', filename: '{}' already exists in $HF_HOME",
           &self.repo, &self.filename
@@ -146,7 +143,7 @@ impl CreateCommand {
       _ => {
         service
           .hub_service()
-          .download(&chat_template_repo, TOKENIZER_CONFIG_JSON, self.force)?;
+          .download(&chat_template_repo, TOKENIZER_CONFIG_JSON)?;
         println!(
           "tokenizer from repo: '{}', filename: '{}' downloaded into $HF_HOME",
           &self.repo, &self.filename
@@ -198,7 +195,6 @@ mod test {
     chat_template: Some(ChatTemplateId::Llama3),
     tokenizer_config: None,
     family: Some("testalias".to_string()),
-    force: false,
     oai_request_params: OAIRequestParams::default(),
     context_params: GptContextParams::default(),
   },
@@ -208,7 +204,6 @@ mod test {
     filename: "testalias.Q8_0.gguf".to_string(),
     chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
     family: Some("testalias".to_string()),
-    force: false,
     auto_download: true,
     oai_request_params: OAIRequestParams::default(),
     context_params: GptContextParams::default(),
@@ -235,7 +230,6 @@ mod test {
       chat_template: None,
       tokenizer_config: Some("invalid-chat/repo/pattern".to_string()),
       family: None,
-      force: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
@@ -249,7 +243,6 @@ mod test {
       chat_template: Some(ChatTemplateId::Llama3),
       tokenizer_config: None,
       family: None,
-      force: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
@@ -263,7 +256,6 @@ mod test {
       chat_template: None,
       tokenizer_config: None,
       family: None,
-      force: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
@@ -281,14 +273,13 @@ mod test {
   }
 
   #[rstest]
-  fn test_create_execute_fails_if_exists_force_false() -> anyhow::Result<()> {
+  fn test_create_execute_fails_if_exists() -> anyhow::Result<()> {
     let create = CreateCommand {
       alias: "testalias:instruct".to_string(),
       repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
       filename: "testalias.Q8_0.gguf".to_string(),
       chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
       family: None,
-      force: false,
       auto_download: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
@@ -310,7 +301,7 @@ mod test {
     let result = create.execute(Arc::new(service));
     assert!(result.is_err());
     assert_eq!(
-      "model alias 'testalias:instruct' already exists. Use --force to overwrite the model alias config",
+      "model alias 'testalias:instruct' already exists",
       result.unwrap_err().to_string()
     );
     Ok(())
@@ -338,9 +329,8 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(false),
       )
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .return_once(|_, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
@@ -386,9 +376,8 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(false),
       )
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .return_once(|_, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
       .with(
@@ -399,8 +388,8 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON), eq(false))
-      .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
+      .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON))
+      .return_once(|_, _| Ok(HubFile::testalias_tokenizer()));
     let alias = Alias::test_alias_instruct_builder()
       .chat_template(chat_template.clone())
       .build()

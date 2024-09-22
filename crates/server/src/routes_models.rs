@@ -274,7 +274,6 @@ impl TryFrom<CreateAliasRequest> for CreateCommand {
       filename: value.filename,
       chat_template: value.chat_template,
       family: value.family,
-      force: false,
       auto_download: false,
       oai_request_params: value.request_params.unwrap_or_default(),
       context_params: value.context_params.unwrap_or_default(),

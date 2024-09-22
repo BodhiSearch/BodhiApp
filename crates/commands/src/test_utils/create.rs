@@ -13,7 +13,6 @@ impl CreateCommand {
       .filename("testalias.Q8_0.gguf".to_string())
       .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
       .family(Some("testalias".to_string()))
-      .force(false)
       .oai_request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .to_owned()
