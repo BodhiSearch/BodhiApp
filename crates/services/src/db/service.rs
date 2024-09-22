@@ -252,7 +252,8 @@ impl DbService for SqliteDbService {
 mod test {
   use crate::{
     db::{
-      ConversationBuilder, DbService, MessageBuilder, SqliteDbService, DefaultTimeService, TimeService,
+      ConversationBuilder, DbService, DefaultTimeService, MessageBuilder, SqliteDbService,
+      TimeService,
     },
     test_utils::db_service,
   };

@@ -1,9 +1,9 @@
 use crate::{
-  build_routes, build_server_handle, shutdown_signal, BodhiError, ServerHandle, DefaultSharedContextRw,
-  SharedContextRw, ShutdownCallback,
+  build_routes, build_server_handle, shutdown_signal, BodhiError, DefaultSharedContextRw,
+  ServerHandle, SharedContextRw, ShutdownCallback,
 };
 use axum::Router;
-use commands::{CliError, Command};
+use commands::{CmdIntoError, Command};
 use services::AppService;
 use std::sync::Arc;
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
@@ -14,15 +14,15 @@ pub enum ServeCommand {
 }
 
 impl TryFrom<Command> for ServeCommand {
-  type Error = CliError;
+  type Error = CmdIntoError;
 
   fn try_from(value: Command) -> Result<Self, Self::Error> {
     match value {
       Command::Serve { host, port } => Ok(ServeCommand::ByParams { host, port }),
-      cmd => Err(CliError::ConvertCommand(
-        cmd.to_string(),
-        "serve".to_string(),
-      )),
+      cmd => Err(CmdIntoError::Convert {
+        input: cmd.to_string(),
+        output: "ServeCommand".to_string(),
+      }),
     }
   }
 }
@@ -143,7 +143,7 @@ mod test {
     let result = ServeCommand::try_from(cmd);
     assert!(result.is_err());
     assert_eq!(
-      "Command 'list' cannot be converted into command 'serve'",
+      "Command 'list' cannot be converted into command 'ServeCommand'",
       result.unwrap_err().to_string()
     );
     Ok(())

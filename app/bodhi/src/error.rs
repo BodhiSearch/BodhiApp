@@ -1,5 +1,5 @@
 use commands::{
-  AliasCommandError, CliError, CreateCommandError, EnvCommandError, ListCommandError,
+  AliasCommandError, CmdIntoError, CreateCommandError, EnvCommandError, ListCommandError,
   PullCommandError,
 };
 use objs::BuilderError;
@@ -22,7 +22,7 @@ pub enum AppError {
   #[error(transparent)]
   Tauri(#[from] tauri::Error),
   #[error(transparent)]
-  Cli(#[from] CliError),
+  Cli(#[from] CmdIntoError),
   #[error(transparent)]
   Db(#[from] DbError),
   #[error(transparent)]

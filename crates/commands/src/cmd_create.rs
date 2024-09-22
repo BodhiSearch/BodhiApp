@@ -1,4 +1,4 @@
-use crate::{CliError, Command};
+use crate::{CmdIntoError, Command};
 use objs::{
   default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo,
   REFS_MAIN, TOKENIZER_CONFIG_JSON,
@@ -38,7 +38,7 @@ pub enum CreateCommandError {
 type Result<T> = std::result::Result<T, CreateCommandError>;
 
 impl TryFrom<Command> for CreateCommand {
-  type Error = CliError;
+  type Error = CmdIntoError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
@@ -56,17 +56,31 @@ impl TryFrom<Command> for CreateCommand {
         let chat_template = match chat_template {
           Some(chat_template) => ChatTemplate::Id(chat_template),
           None => match tokenizer_config {
-            Some(tokenizer_config) => ChatTemplate::Repo(Repo::try_from(tokenizer_config)?),
+            Some(tokenizer_config) => match Repo::try_from(tokenizer_config) {
+              Ok(repo) => ChatTemplate::Repo(repo),
+              Err(err) => Err(CmdIntoError::BadRequest {
+                input: "create".to_string(),
+                output: "CreateCommand".to_string(),
+                error: format!("tokenizer_config repo {err}"),
+              })?,
+            },
             None => {
-              return Err(CliError::BadRequest(format!(
-                "cannot initialize create command with invalid state. chat_template: '{chat_template:?}', tokenizer_config: '{tokenizer_config:?}'"
-              )))
+              return Err(CmdIntoError::BadRequest {
+                input: "create".to_string(),
+                output: "CreateCommand".to_string(),
+                error: "one of chat_template and tokenizer_config must be provided".to_string(),
+              })
             }
           },
         };
+        let repo = Repo::try_from(repo).map_err(|err| CmdIntoError::BadRequest {
+          input: "create".to_string(),
+          output: "CreateCommand".to_string(),
+          error: format!("model repo {err}"),
+        })?;
         let result = CreateCommand {
           alias,
-          repo: Repo::try_from(repo)?,
+          repo,
           filename,
           chat_template,
           family,
@@ -77,10 +91,10 @@ impl TryFrom<Command> for CreateCommand {
         };
         Ok(result)
       }
-      cmd => Err(CliError::ConvertCommand(
-        cmd.to_string(),
-        "create".to_string(),
-      )),
+      cmd => Err(CmdIntoError::Convert {
+        input: cmd.to_string(),
+        output: "CreateCommand".to_string(),
+      }),
     }
   }
 }
@@ -209,7 +223,52 @@ mod test {
   }
 
   #[rstest]
-  #[case(Command::App {ui: false}, "Command 'app' cannot be converted into command 'create'")]
+  #[case(
+    Command::App {ui: false},
+    "Command 'app' cannot be converted into command 'CreateCommand'"
+  )]
+  #[case(
+    Command::Create {
+      alias: "test".to_string(),
+      repo: "valid/repo".to_string(),
+      filename: "model.gguf".to_string(),
+      chat_template: None,
+      tokenizer_config: Some("invalid-chat/repo/pattern".to_string()),
+      family: None,
+      force: false,
+      oai_request_params: OAIRequestParams::default(),
+      context_params: GptContextParams::default(),
+    },
+    "Command 'create' cannot be converted into command 'CreateCommand', error: 'tokenizer_config repo Validation failed: value: does not match the huggingface repo pattern 'username/repo''"
+  )]
+  #[case(
+    Command::Create {
+      alias: "test".to_string(),
+      repo: "invalid-repo".to_string(),
+      filename: "model.gguf".to_string(),
+      chat_template: Some(ChatTemplateId::Llama3),
+      tokenizer_config: None,
+      family: None,
+      force: false,
+      oai_request_params: OAIRequestParams::default(),
+      context_params: GptContextParams::default(),
+    },
+    "Command 'create' cannot be converted into command 'CreateCommand', error: 'model repo Validation failed: value: does not match the huggingface repo pattern 'username/repo''"
+  )]
+  #[case(
+    Command::Create {
+      alias: "test".to_string(),
+      repo: "invalid-repo".to_string(),
+      filename: "model.gguf".to_string(),
+      chat_template: None,
+      tokenizer_config: None,
+      family: None,
+      force: false,
+      oai_request_params: OAIRequestParams::default(),
+      context_params: GptContextParams::default(),
+    },
+    "Command 'create' cannot be converted into command 'CreateCommand', error: 'one of chat_template and tokenizer_config must be provided'"
+  )]
   #[anyhow_trace]
   fn test_create_try_from_invalid(
     #[case] input: Command,

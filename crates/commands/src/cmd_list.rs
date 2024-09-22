@@ -1,4 +1,4 @@
-use crate::{objs_ext::IntoRow, CliError, Command};
+use crate::{objs_ext::IntoRow, CmdIntoError, Command};
 use objs::RemoteModel;
 use prettytable::{
   format::{self},
@@ -15,7 +15,7 @@ pub enum ListCommand {
 }
 
 impl TryFrom<Command> for ListCommand {
-  type Error = CliError;
+  type Error = CmdIntoError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
@@ -23,11 +23,18 @@ impl TryFrom<Command> for ListCommand {
         (true, false) => Ok(ListCommand::Remote),
         (false, true) => Ok(ListCommand::Models),
         (false, false) => Ok(ListCommand::Local),
-        (true, true) => Err(CliError::BadRequest(format!(
-          "cannot initialize list command with invalid state. --remote: {remote}, --models: {models}"
-        ))),
+        (true, true) => Err(CmdIntoError::BadRequest {
+          input: value.to_string(),
+          output: "ListCommand".to_string(),
+          error:
+            "cannot initialize list command with invalid state. --remote: true, --models: true"
+              .to_string(),
+        }),
       },
-      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "list".to_string())),
+      cmd => Err(CmdIntoError::Convert {
+        input: cmd.to_string(),
+        output: "ListCommand".to_string(),
+      }),
     }
   }
 }
@@ -117,8 +124,8 @@ mod test {
   use rstest::rstest;
 
   #[rstest]
-  #[case(Command::App {ui: false}, "Command 'app' cannot be converted into command 'list'")]
-  #[case(Command::List {remote: true, models: true}, "cannot initialize list command with invalid state. --remote: true, --models: true")]
+  #[case(Command::App {ui: false}, "Command 'app' cannot be converted into command 'ListCommand'")]
+  #[case(Command::List {remote: true, models: true}, "Command 'list' cannot be converted into command 'ListCommand', error: 'cannot initialize list command with invalid state. --remote: true, --models: true'")]
   fn test_list_invalid_try_from(#[case] input: Command, #[case] expected: String) {
     let result = ListCommand::try_from(input);
     assert!(result.is_err());

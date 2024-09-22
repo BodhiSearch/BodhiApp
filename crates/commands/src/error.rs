@@ -1,11 +1,11 @@
-use objs::ObjError;
-
-#[derive(Debug, thiserror::Error)]
-pub enum CliError {
-  #[error("{0}")]
-  BadRequest(String),
-  #[error("Command '{0}' cannot be converted into command '{1}'")]
-  ConvertCommand(String, String),
-  #[error(transparent)]
-  ObjError(#[from] ObjError),
+#[derive(Debug, PartialEq, thiserror::Error)]
+pub enum CmdIntoError {
+  #[error("Command '{input}' cannot be converted into command '{output}'")]
+  Convert { input: String, output: String },
+  #[error("Command '{input}' cannot be converted into command '{output}', error: '{error}'")]
+  BadRequest {
+    input: String,
+    output: String,
+    error: String,
+  },
 }

@@ -1,7 +1,8 @@
-use crate::{CliError, Command, StdoutWriter};
+use crate::{CmdIntoError, Command, StdoutWriter};
 use services::{AppService, DataServiceError};
 use std::{env, io, sync::Arc};
 
+#[derive(Debug, PartialEq)]
 pub enum ManageAliasCommand {
   Show { alias: String },
   Copy { alias: String, new_alias: String },
@@ -10,7 +11,7 @@ pub enum ManageAliasCommand {
 }
 
 impl TryFrom<Command> for ManageAliasCommand {
-  type Error = CliError;
+  type Error = CmdIntoError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
@@ -18,10 +19,10 @@ impl TryFrom<Command> for ManageAliasCommand {
       Command::Cp { alias, new_alias } => Ok(ManageAliasCommand::Copy { alias, new_alias }),
       Command::Edit { alias } => Ok(ManageAliasCommand::Edit { alias }),
       Command::Rm { alias } => Ok(ManageAliasCommand::Delete { alias }),
-      cmd => Err(CliError::ConvertCommand(
-        cmd.to_string(),
-        "show".to_string(),
-      )),
+      cmd => Err(CmdIntoError::Convert {
+        input: cmd.to_string(),
+        output: "alias".to_string(),
+      }),
     }
   }
 }
@@ -86,7 +87,7 @@ impl ManageAliasCommand {
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     service.data_service().delete_alias(alias)?;
-    let _ = stdout.write(&format!("alias '{alias}' deleted.\n"));
+    stdout.write(&format!("alias '{alias}' deleted.\n"))?;
     Ok(())
   }
 
@@ -98,9 +99,9 @@ impl ManageAliasCommand {
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     service.data_service().copy_alias(alias, new_alias)?;
-    let _ = stdout.write(&format!(
+    stdout.write(&format!(
       "created new alias '{new_alias}' from '{alias}'.\n"
-    ));
+    ))?;
     Ok(())
   }
 
@@ -113,21 +114,21 @@ impl ManageAliasCommand {
     let filename = service.data_service().alias_filename(alias)?;
     match env::var("EDITOR") {
       Ok(editor) => {
-        let _ = stdout.write(&format!(
+        stdout.write(&format!(
           "opening file '{}' in external EDITOR '{}'.\n",
           filename.display(),
           editor
-        ));
+        ))?;
         std::process::Command::new(&editor)
           .arg(filename.display().to_string())
           .spawn()?
           .wait()?;
       }
       Err(_) => {
-        let _ = stdout.write(&format!(
+        stdout.write(&format!(
           "opening file '{}' in using system 'open'.\n",
           filename.display(),
-        ));
+        ))?;
         std::process::Command::new("open")
           .arg(filename.display().to_string())
           .spawn()?
@@ -140,7 +141,7 @@ impl ManageAliasCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{Command, ManageAliasCommand, MockStdoutWriter};
+  use crate::{CmdIntoError, Command, ManageAliasCommand, MockStdoutWriter};
   use mockall::predicate::eq;
   use rstest::rstest;
   use services::test_utils::AppServiceStubBuilder;
@@ -213,5 +214,52 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
       .join("tinyllama--myconfig.yaml")
       .exists());
     Ok(())
+  }
+
+  #[rstest]
+  #[case::show(
+      Command::Show { alias: "test_alias".to_string() },
+      ManageAliasCommand::Show { alias: "test_alias".to_string() }
+  )]
+  #[case::copy(
+      Command::Cp {
+          alias: "old_alias".to_string(), 
+          new_alias: "new_alias".to_string() 
+      },
+      ManageAliasCommand::Copy {
+          alias: "old_alias".to_string(), 
+          new_alias: "new_alias".to_string() 
+      }
+  )]
+  #[case::edit(
+      Command::Edit { alias: "edit_alias".to_string() },
+      ManageAliasCommand::Edit { alias: "edit_alias".to_string() }
+  )]
+  #[case::delete(
+      Command::Rm { alias: "delete_alias".to_string() },
+      ManageAliasCommand::Delete { alias: "delete_alias".to_string() }
+  )]
+  fn test_manage_alias_command_try_from_valid(
+    #[case] input: Command,
+    #[case] expected: ManageAliasCommand,
+  ) {
+    let result = ManageAliasCommand::try_from(input);
+    assert_eq!(Ok(expected), result);
+  }
+
+  #[test]
+  fn test_manage_alias_command_try_from_invalid() {
+    let invalid_cmd = Command::List {
+      remote: false,
+      models: false,
+    };
+    let result = ManageAliasCommand::try_from(invalid_cmd);
+    assert_eq!(
+      result,
+      Err(CmdIntoError::Convert {
+        input: "list".to_string(),
+        output: "alias".to_string()
+      })
+    );
   }
 }
