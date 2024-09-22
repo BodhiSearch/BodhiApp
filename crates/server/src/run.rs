@@ -3,7 +3,7 @@ use crate::interactive::InteractiveRuntime;
 #[cfg(test)]
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
 use crate::InteractiveError;
-use commands::{CliError, Command, PullCommand, PullCommandError};
+use commands::{CmdIntoError, Command, PullCommand, PullCommandError};
 use services::{AppService, DataServiceError};
 use std::sync::Arc;
 
@@ -12,12 +12,15 @@ pub enum RunCommand {
 }
 
 impl TryFrom<Command> for RunCommand {
-  type Error = CliError;
+  type Error = CmdIntoError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
       Command::Run { alias } => Ok(RunCommand::WithAlias { alias }),
-      cmd => Err(CliError::ConvertCommand(cmd.to_string(), "run".to_string())),
+      cmd => Err(CmdIntoError::Convert {
+        input: cmd.to_string(),
+        output: "RunCommand".to_string(),
+      }),
     }
   }
 }

@@ -8,7 +8,7 @@ use commands::{
 use include_dir::{include_dir, Dir};
 use server::{RunCommand, ServeCommand};
 use services::{
-  db::{DbPool, DbService, SqliteDbService, DefaultTimeService},
+  db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
   DefaultAppService, DefaultEnvService, EnvService, HfHubService, KeycloakAuthService,
   KeyringSecretService, LocalDataService, MokaCacheService, SqliteSessionService,
 };

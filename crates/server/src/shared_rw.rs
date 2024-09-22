@@ -258,7 +258,7 @@ impl ModelLoadStrategy {
 #[cfg(test)]
 mod test {
   use crate::{
-    shared_rw::{ModelLoadStrategy, DefaultSharedContextRw, SharedContextRw},
+    shared_rw::{DefaultSharedContextRw, ModelLoadStrategy, SharedContextRw},
     test_utils::{test_channel, MockServerContext},
   };
   use anyhow::anyhow;

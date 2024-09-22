@@ -1,4 +1,4 @@
-use crate::{CliError, Command};
+use crate::{CmdIntoError, Command};
 use objs::{Alias, HubFile, ObjError, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
 use services::{AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
@@ -17,7 +17,7 @@ pub enum PullCommand {
 }
 
 impl TryFrom<Command> for PullCommand {
-  type Error = CliError;
+  type Error = CmdIntoError;
 
   fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
     match value {
@@ -31,21 +31,31 @@ impl TryFrom<Command> for PullCommand {
           Some(alias) => PullCommand::ByAlias { alias, force },
           None => match (repo, filename) {
             (Some(repo), Some(filename)) => PullCommand::ByRepoFile {
-              repo: Repo::try_from(repo)?,
+              repo: Repo::try_from(repo).map_err(|err| CmdIntoError::BadRequest {
+                input: "pull".to_string(),
+                output: "PullCommand".to_string(),
+                error: format!("invalid repo {err}"),
+              })?,
               filename,
               force,
             },
-            (repo, filename) => return Err(CliError::BadRequest(format!(
-              "cannot initialize pull command with invalid state: repo={repo:?}, filename={filename:?}"
-            ))),
+            (repo, filename) => {
+              return Err(CmdIntoError::BadRequest {
+                input: "pull".to_string(),
+                output: "PullCommand".to_string(),
+                error: format!(
+                  "repo and filename are required: repo={repo:?}, filename={filename:?}"
+                ),
+              })
+            }
           },
         };
         Ok(pull_command)
       }
-      cmd => Err(CliError::ConvertCommand(
-        cmd.to_string(),
-        "pull".to_string(),
-      )),
+      cmd => Err(CmdIntoError::Convert {
+        input: cmd.to_string(),
+        output: "pull".to_string(),
+      }),
     }
   }
 }
