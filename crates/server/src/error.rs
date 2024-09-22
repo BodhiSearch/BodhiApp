@@ -192,7 +192,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
 "#
   )]
   AliasNotFound(String),
-  #[error("model alias '{0}' already exists. Use --force to overwrite the model alias config")]
+  #[error("model alias '{0}' already exists")]
   AliasExists(String),
   #[error("$HOME directory not found, set home directory using $HOME")]
   HomeDirectory,

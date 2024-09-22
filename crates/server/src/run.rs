@@ -54,7 +54,6 @@ impl RunCommand {
             Some(remote_model) => {
               let command = PullCommand::ByAlias {
                 alias: remote_model.alias.clone(),
-                force: false,
               };
               println!(
                 "downloading files to run model alias '{}'",
@@ -142,8 +141,8 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf"), eq(false))
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf"))
+      .return_once(|_, _| Ok(HubFile::testalias()));
 
     mock_hub_service
       .expect_find_local_file()
@@ -151,8 +150,8 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(false))
-      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON))
+      .return_once(|_, _| Ok(HubFile::llama3_tokenizer()));
     mock_data_service
       .expect_save_alias()
       .with(eq(Alias::testalias()))

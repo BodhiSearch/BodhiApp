@@ -55,7 +55,7 @@ type Result<T> = std::result::Result<T, HubServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait HubService: std::fmt::Debug {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile>;
+  fn download(&self, repo: &Repo, filename: &str) -> Result<HubFile>;
 
   fn list_local_models(&self) -> Vec<HubFile>;
 
@@ -83,12 +83,12 @@ impl HfHubService {
 }
 
 impl HubService for HfHubService {
-  fn download(&self, repo: &Repo, filename: &str, force: bool) -> Result<HubFile> {
+  fn download(&self, repo: &Repo, filename: &str) -> Result<HubFile> {
     let hf_repo = self.cache.repo(hf_hub::Repo::model(repo.to_string()));
     let from_cache = hf_repo.get(filename);
     let path = match from_cache {
-      Some(path) if !force => path,
-      Some(_) | None => self.download_sync(repo, filename)?,
+      Some(path) => path,
+      None => self.download_sync(repo, filename)?,
     };
     let result = HubFile::try_from(path)?;
     Ok(result)
@@ -344,7 +344,6 @@ mod test {
     let local_model_file = service.download(
       &Repo::try_from("amir36/test-model-repo")?,
       "tokenizer_config.json",
-      false,
     )?;
     assert!(local_model_file.path().exists());
     let expected = HubFile::new(
@@ -382,7 +381,6 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
     let local_model_file = service.download(
       &Repo::try_from("amir36/test-gated-repo")?,
       "tokenizer_config.json",
-      false,
     );
     assert!(local_model_file.is_err());
     assert_eq!(expected, local_model_file.unwrap_err().to_string());
@@ -400,7 +398,6 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
     let local_model_file = service.download(
       &Repo::try_from("amir36/test-gated-repo")?,
       "tokenizer_config.json",
-      false,
     )?;
     let path = local_model_file.path();
     assert!(path.exists());
@@ -480,7 +477,6 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
     let local_model_file = service.download(
       &Repo::try_from("amir36/not-exists")?,
       "tokenizer_config.json",
-      false,
     );
     assert!(local_model_file.is_err());
     assert_eq!(error, local_model_file.unwrap_err().to_string());
