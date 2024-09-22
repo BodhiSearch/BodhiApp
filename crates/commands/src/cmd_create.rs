@@ -16,6 +16,8 @@ pub struct CreateCommand {
   pub family: Option<String>,
   #[builder(default = "true")]
   pub auto_download: bool,
+  #[builder(default = "false")]
+  pub update: bool,
   pub oai_request_params: OAIRequestParams,
   pub context_params: GptContextParams,
 }
@@ -48,6 +50,7 @@ impl TryFrom<Command> for CreateCommand {
         chat_template,
         tokenizer_config,
         family,
+        update,
         oai_request_params,
         context_params,
       } => {
@@ -83,6 +86,7 @@ impl TryFrom<Command> for CreateCommand {
           chat_template,
           family,
           auto_download: true,
+          update,
           oai_request_params,
           context_params,
         };
@@ -100,7 +104,12 @@ impl CreateCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     if service.data_service().find_alias(&self.alias).is_some() {
-      return Err(CreateCommandError::AliasExists(self.alias.clone()));
+      if !self.update {
+        return Err(CreateCommandError::AliasExists(self.alias.clone()));
+      }
+      println!("Updating existing alias: '{}'", self.alias);
+    } else {
+      println!("Creating new alias: '{}'", self.alias);
     }
     let local_model_file =
       service
@@ -116,9 +125,7 @@ impl CreateCommand {
       }
       None => {
         if self.auto_download {
-          service
-            .hub_service()
-            .download(&self.repo, &self.filename)?
+          service.hub_service().download(&self.repo, &self.filename)?
         } else {
           return Err(CreateCommandError::ModelFileMissing {
             filename: self.filename.clone(),
@@ -176,13 +183,13 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
   use objs::{
-    Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile, OAIRequestParams, Repo,
-    REFS_MAIN, TOKENIZER_CONFIG_JSON,
+    Alias, ChatTemplate, ChatTemplateId, GptContextParams, GptContextParamsBuilder, HubFile,
+    OAIRequestParams, OAIRequestParamsBuilder, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
   use services::{
-    test_utils::{AppServiceStubMock, AppServiceStubMockBuilder},
-    MockDataService, MockHubService,
+    test_utils::{AppServiceStubBuilder, AppServiceStubMock, AppServiceStubMockBuilder},
+    AppService, MockDataService, MockHubService,
   };
   use std::{path::PathBuf, sync::Arc};
 
@@ -195,6 +202,7 @@ mod test {
     chat_template: Some(ChatTemplateId::Llama3),
     tokenizer_config: None,
     family: Some("testalias".to_string()),
+    update: true,
     oai_request_params: OAIRequestParams::default(),
     context_params: GptContextParams::default(),
   },
@@ -205,6 +213,7 @@ mod test {
     chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
     family: Some("testalias".to_string()),
     auto_download: true,
+    update: true,
     oai_request_params: OAIRequestParams::default(),
     context_params: GptContextParams::default(),
   })]
@@ -230,6 +239,7 @@ mod test {
       chat_template: None,
       tokenizer_config: Some("invalid-chat/repo/pattern".to_string()),
       family: None,
+      update: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
@@ -243,6 +253,7 @@ mod test {
       chat_template: Some(ChatTemplateId::Llama3),
       tokenizer_config: None,
       family: None,
+      update: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
@@ -256,6 +267,7 @@ mod test {
       chat_template: None,
       tokenizer_config: None,
       family: None,
+      update: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
@@ -273,37 +285,69 @@ mod test {
   }
 
   #[rstest]
-  fn test_create_execute_fails_if_exists() -> anyhow::Result<()> {
-    let create = CreateCommand {
-      alias: "testalias:instruct".to_string(),
-      repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
-      filename: "testalias.Q8_0.gguf".to_string(),
-      chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
-      family: None,
+  fn test_create_execute_updates_if_exists() -> anyhow::Result<()> {
+    let update_alias = CreateCommand {
+      alias: "tinyllama:instruct".to_string(),
+      repo: Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())?,
+      filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
+      chat_template: ChatTemplate::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
+      family: Some("tinyllama".to_string()),
       auto_download: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
+      update: true,
+      oai_request_params: OAIRequestParamsBuilder::default()
+        .frequency_penalty(1.0)
+        .max_tokens(2048 as u16)
+        .build()
+        .unwrap(),
+      context_params: GptContextParamsBuilder::default()
+        .n_ctx(2048)
+        .n_keep(2048)
+        .n_parallel(2)
+        .n_seed(42 as u32)
+        .n_threads(8 as u32)
+        .build()
+        .unwrap(),
     };
-    let mut mock = MockDataService::default();
-    mock
-      .expect_find_alias()
-      .with(eq("testalias:instruct"))
-      .return_once(|_| {
-        let alias = Alias {
-          alias: "testalias:instruct".to_string(),
-          ..Alias::default()
-        };
-        Some(alias)
-      });
-    let service = AppServiceStubMockBuilder::default()
-      .data_service(mock)
-      .build()?;
-    let result = create.execute(Arc::new(service));
-    assert!(result.is_err());
-    assert_eq!(
-      "model alias 'testalias:instruct' already exists",
-      result.unwrap_err().to_string()
+    let service = Arc::new(
+      AppServiceStubBuilder::default()
+        .with_data_service()
+        .with_hub_service()
+        .build()?,
     );
+    let repo_alias = service
+      .data_service()
+      .find_alias("tinyllama:instruct")
+      .unwrap();
+    let result = update_alias.execute(service.clone());
+    assert!(result.is_ok());
+    let updated_alias = service
+      .data_service()
+      .find_alias("tinyllama:instruct")
+      .unwrap();
+    assert_ne!(repo_alias, updated_alias);
+    let expected = Alias {
+      alias: "tinyllama:instruct".to_string(),
+      family: Some("tinyllama".to_string()),
+      repo: Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())?,
+      filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
+      snapshot: "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
+      features: vec!["chat".to_string()],
+      chat_template: ChatTemplate::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
+      request_params: OAIRequestParamsBuilder::default()
+        .frequency_penalty(1.0)
+        .max_tokens(2048 as u16)
+        .build()
+        .unwrap(),
+      context_params: GptContextParamsBuilder::default()
+        .n_ctx(2048)
+        .n_keep(2048)
+        .n_parallel(2)
+        .n_seed(42 as u32)
+        .n_threads(8 as u32)
+        .build()
+        .unwrap(),
+    };
+    assert_eq!(expected, updated_alias);
     Ok(())
   }
 
@@ -326,10 +370,7 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(
-        eq(create.repo.clone()),
-        eq(create.filename.clone()),
-      )
+      .with(eq(create.repo.clone()), eq(create.filename.clone()))
       .return_once(|_, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
@@ -373,10 +414,7 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(
-        eq(create.repo.clone()),
-        eq(create.filename.clone()),
-      )
+      .with(eq(create.repo.clone()), eq(create.filename.clone()))
       .return_once(|_, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()

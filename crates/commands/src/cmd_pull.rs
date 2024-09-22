@@ -209,10 +209,7 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(
-        eq(remote_model.repo),
-        eq(remote_model.filename.clone()),
-      )
+      .with(eq(remote_model.repo), eq(remote_model.filename.clone()))
       .return_once(|_, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()

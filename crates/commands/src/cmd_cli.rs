@@ -60,7 +60,7 @@ pub enum Command {
     filename: Option<String>,
   },
 
-  /// Create a new model alias
+  /// Create or update a model alias
   #[clap(group = ArgGroup::new("template").required(true))]
   Create {
     /// Unique name of the model alias. E.g. llama3:8b-instruct, model alias should not be present,
@@ -86,6 +86,10 @@ pub enum Command {
     /// Optional meta information, family of the model
     #[clap(long)]
     family: Option<String>,
+
+    /// Update the existing alias if it already exists
+    #[clap(long)]
+    update: bool,
 
     #[clap(flatten, next_help_heading = "OpenAI Compatible Request defaults")]
     oai_request_params: OAIRequestParams,
@@ -346,6 +350,7 @@ For more information, try '--help'.
     "testalias.Q8_0.gguf",
     "testalias",
     ChatTemplateId::Llama3,
+    false,
     OAIRequestParams::default(),
     GptContextParams::default(),
   )]
@@ -376,6 +381,7 @@ For more information, try '--help'.
     "testalias.Q8_0.gguf".to_string(),
     "testalias".to_string(),
     ChatTemplateId::Llama3,
+    false,
     OAIRequestParams {
       frequency_penalty: Some(0.8),
       max_tokens: Some(512),
@@ -396,6 +402,24 @@ For more information, try '--help'.
     }
   ,
   )]
+  #[case(vec![
+    "bodhi", "create",
+    "testalias:instruct",
+    "--repo", "MyFactory/testalias-gguf",
+    "--filename", "testalias.Q8_0.gguf",
+    "--family", "testalias",
+    "--chat-template", "llama3",
+    "--update"
+  ],
+    "testalias:instruct",
+    "MyFactory/testalias-gguf",
+    "testalias.Q8_0.gguf",
+    "testalias",
+    ChatTemplateId::Llama3,
+    true,
+    OAIRequestParams::default(),
+    GptContextParams::default(),
+  )]
   fn test_cli_create_valid(
     #[case] args: Vec<&str>,
     #[case] alias: String,
@@ -403,6 +427,7 @@ For more information, try '--help'.
     #[case] filename: String,
     #[case] family: String,
     #[case] chat_template: ChatTemplateId,
+    #[case] update: bool,
     #[case] oai_request_params: OAIRequestParams,
     #[case] context_params: GptContextParams,
   ) -> anyhow::Result<()> {
@@ -414,6 +439,7 @@ For more information, try '--help'.
       chat_template: Some(chat_template),
       tokenizer_config: None,
       family: Some(family),
+      update,
       oai_request_params,
       context_params,
     };
@@ -490,6 +516,7 @@ For more information, try '--help'.
       chat_template: None,
       tokenizer_config: None,
       family: None,
+      update: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     }, "create")]
