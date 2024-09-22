@@ -275,6 +275,7 @@ impl TryFrom<CreateAliasRequest> for CreateCommand {
       chat_template: value.chat_template,
       family: value.family,
       auto_download: false,
+      update: false,
       oai_request_params: value.request_params.unwrap_or_default(),
       context_params: value.context_params.unwrap_or_default(),
     };
@@ -612,19 +613,20 @@ mod tests {
     assert_eq!(response.status(), StatusCode::OK);
     let response = response.json::<Vec<ChatTemplate>>().await?;
 
-    assert_eq!(13, response.len());
+    assert_eq!(14, response.len());
     for template_id in ChatTemplateId::iter() {
       assert!(response
         .iter()
         .any(|t| t == &ChatTemplate::Id(template_id.clone())));
     }
-    let expected = vec![
+    let expected_chat_templates = vec![
       "meta-llama/Llama-2-70b-chat-hf",
       "meta-llama/Meta-Llama-3-70B-Instruct",
       "meta-llama/Meta-Llama-3-8B-Instruct",
       "MyFactory/testalias-gguf",
+      "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     ];
-    for repo in expected {
+    for repo in expected_chat_templates {
       assert!(response
         .iter()
         .any(|t| t == &ChatTemplate::Repo(Repo::try_from(repo).unwrap())));

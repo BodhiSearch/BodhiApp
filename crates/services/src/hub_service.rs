@@ -508,7 +508,7 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       Some(21),
     );
-    assert_eq!(4, models.len());
+    assert_eq!(5, models.len());
     assert_eq!(&expected_1, models.first().unwrap());
     Ok(())
   }
@@ -519,12 +519,13 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
   ) -> anyhow::Result<()> {
     let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
     let repos = service.list_local_tokenizer_configs();
-    assert_eq!(4, repos.len(), "Expected 4 repos with tokenizer configs");
+    assert_eq!(5, repos.len(), "Expected 5 repos with tokenizer configs");
     let expected_repos: HashSet<Repo> = [
       "meta-llama/Llama-2-70b-chat-hf",
       "meta-llama/Meta-Llama-3-70B-Instruct",
       "meta-llama/Meta-Llama-3-8B-Instruct",
       "MyFactory/testalias-gguf",
+      "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
     ]
     .iter()
     .map(|&s| Repo::try_from(s).unwrap())
