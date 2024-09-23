@@ -1,9 +1,9 @@
 use crate::{
-  app_info_handler, auth_middleware, chat_completions_handler, chats_router, dev_secrets_handler,
-  login_callback_handler, login_handler, logout_handler, models_router, oai_model_handler,
-  oai_models_handler, ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
-  optional_auth_middleware, proxy_router, setup_handler, user_info_handler, DefaultRouterState,
-  RouterState, SharedContextRw,
+  app_info_handler, auth_middleware, chat_completions_handler, chats_router, create_router,
+  dev_secrets_handler, login_callback_handler, login_handler, logout_handler, models_router,
+  oai_model_handler, oai_models_handler, ollama_model_chat_handler, ollama_model_show_handler,
+  ollama_models_handler, optional_auth_middleware, proxy_router, setup_handler, user_info_handler,
+  DefaultRouterState, RouterState, SharedContextRw,
 };
 use axum::{
   body::Body,
@@ -47,7 +47,10 @@ pub fn build_routes(
     let dev_apis = Router::new().route("/dev/secrets", get(dev_secrets_handler));
     public_apis = public_apis.merge(dev_apis);
   }
-  let api_router = Router::new().merge(chats_router()).merge(models_router());
+  let api_router = Router::new()
+    .merge(chats_router())
+    .merge(models_router())
+    .merge(create_router());
   let optional_auth = Router::new()
     .route("/api/ui/user", get(user_info_handler))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware));

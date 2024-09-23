@@ -1,3 +1,4 @@
+mod alias_response;
 mod bindings;
 mod common;
 mod http;
