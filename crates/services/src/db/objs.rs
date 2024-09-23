@@ -4,6 +4,7 @@ use objs::{is_default, BuilderError};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use strum::EnumString;
+use uuid::Uuid;
 
 #[derive(
   Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow, derive_builder::Builder,
@@ -47,6 +48,15 @@ pub struct Message {
   pub created_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum DownloadStatus {
+  Pending,
+  Completed,
+  Error(String),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DownloadRequest {
   pub id: String,
@@ -57,13 +67,17 @@ pub struct DownloadRequest {
   pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
-pub enum DownloadStatus {
-  Pending,
-  Completed,
-  Error(String),
+impl DownloadRequest {
+  pub fn new_pending(repo: String, filename: String) -> Self {
+    DownloadRequest {
+      id: Uuid::new_v4().to_string(),
+      repo,
+      filename,
+      status: DownloadStatus::Pending,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    }
+  }
 }
 
 #[cfg(test)]

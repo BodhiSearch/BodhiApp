@@ -95,7 +95,7 @@ impl AppService for AppServiceStubMock {
 pub struct AppServiceStub {
   #[builder(default = "self.default_env_service()")]
   pub env_service: Option<Arc<dyn EnvService + Send + Sync>>,
-  pub hub_service: Option<Arc<dyn HubService + Send + Sync>>,
+  pub hub_service: Option<Arc<dyn HubService>>,
   pub temp_home: Option<Arc<TempDir>>,
   pub data_service: Option<Arc<dyn DataService + Send + Sync>>,
   #[builder(default = "self.default_auth_service()")]
