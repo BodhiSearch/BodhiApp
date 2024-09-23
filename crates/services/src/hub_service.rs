@@ -54,7 +54,7 @@ Check Huggingface Home is set correctly using environment variable $HF_HOME or u
 type Result<T> = std::result::Result<T, HubServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
-pub trait HubService: std::fmt::Debug {
+pub trait HubService: std::fmt::Debug + Send + Sync {
   fn download(&self, repo: &Repo, filename: &str) -> Result<HubFile>;
 
   fn list_local_models(&self) -> Vec<HubFile>;

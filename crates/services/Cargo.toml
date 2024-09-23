@@ -47,6 +47,7 @@ tracing = { workspace = true, features = ["async-await", "log"] }
 ureq = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 walkdir = { workspace = true }
+tokio = { workspace = true, optional = true}
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
@@ -84,5 +85,6 @@ test-utils = [
   "tempfile",
   "anyhow",
   "objs/test-utils",
+  "tokio",
 ]
 production = []
