@@ -129,9 +129,15 @@ export function useCreateModel() {
 }
 
 export function useUpdateModel(alias: string) {
+  const queryClient = useQueryClient();
   return useMutationQuery<Model, AliasFormData>(
     `/api/ui/models/${alias}`,
-    'put'
+    'put',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries(['model', alias]);
+      },
+    }
   );
 }
 

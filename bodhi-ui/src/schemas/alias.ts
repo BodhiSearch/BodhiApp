@@ -1,12 +1,19 @@
 import * as z from 'zod';
 
+const preprocessStop = (value: unknown) => {
+  if (typeof value === 'string') {
+    return value.split(',').map((item) => item.trim()).filter((item) => item.length > 0);
+  }
+  return value;
+};
+
 export const requestParamsSchema = z
   .object({
     frequency_penalty: z.coerce.number().min(-2).max(2).optional(),
     max_tokens: z.coerce.number().int().min(0).max(65535).optional(), // u16 range
     presence_penalty: z.coerce.number().min(-2).max(2).optional(),
     seed: z.coerce.number().int().optional(), // i64 range, but JS can't represent full range
-    stop: z.array(z.string()).max(4).optional(),
+    stop: z.preprocess(preprocessStop, z.array(z.string()).max(4).optional()),
     temperature: z.coerce.number().min(0).max(2).optional(),
     top_p: z.coerce.number().min(0).max(1).optional(),
     user: z.string().optional(),
