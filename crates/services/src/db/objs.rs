@@ -3,6 +3,7 @@ use chrono::{serde::ts_milliseconds, DateTime, Utc};
 use objs::{is_default, BuilderError};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use strum::EnumString;
 
 #[derive(
   Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow, derive_builder::Builder,
@@ -44,6 +45,25 @@ pub struct Message {
   pub content: Option<String>,
   #[serde(default, skip_serializing)]
   pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DownloadRequest {
+  pub id: String,
+  pub repo: String,
+  pub filename: String,
+  pub status: DownloadStatus,
+  pub created_at: DateTime<Utc>,
+  pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum DownloadStatus {
+  Pending,
+  Completed,
+  Error(String),
 }
 
 #[cfg(test)]
