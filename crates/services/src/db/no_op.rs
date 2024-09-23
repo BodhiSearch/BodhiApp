@@ -1,5 +1,5 @@
 use crate::db::{
-  objs::{Conversation, Message},
+  objs::{Conversation, DownloadRequest, Message},
   service::CONVERSATIONS,
   DbError, DbService,
 };
@@ -47,6 +47,22 @@ impl DbService for NoOpDbService {
       source: sqlx::Error::RowNotFound,
       table: CONVERSATIONS.to_string(),
     })
+  }
+
+  async fn create_download_request(&self, _request: &DownloadRequest) -> Result<(), DbError> {
+    Ok(())
+  }
+
+  async fn get_download_request(&self, _id: &str) -> Result<Option<DownloadRequest>, DbError> {
+    Ok(None)
+  }
+
+  async fn update_download_request(&self, _request: &DownloadRequest) -> Result<(), DbError> {
+    Ok(())
+  }
+
+  async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
+    Ok(vec![])
   }
 }
 

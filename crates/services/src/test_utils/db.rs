@@ -1,4 +1,4 @@
-use crate::db::{MockTimeService, SqliteDbService};
+use crate::db::{DbService, MockTimeService, SqliteDbService};
 use chrono::{DateTime, Timelike, Utc};
 use rstest::fixture;
 use sqlx::SqlitePool;
@@ -18,7 +18,6 @@ pub async fn testdb() -> (TempDir, SqlitePool) {
   let pool = SqlitePool::connect(&format!("sqlite:{dbpath}"))
     .await
     .unwrap();
-  sqlx::migrate!("./migrations").run(&pool).await.unwrap();
   (tempdir, pool)
 }
 
@@ -32,5 +31,6 @@ pub async fn db_service(
   let mut mock_time_service = MockTimeService::new();
   mock_time_service.expect_utc_now().returning(move || now);
   let service = SqliteDbService::new(pool, Arc::new(mock_time_service));
+  service.migrate().await.unwrap();
   (_tempdir, now, service)
 }

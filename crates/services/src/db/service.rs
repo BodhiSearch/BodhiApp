@@ -1,9 +1,11 @@
-use crate::db::{Conversation, Message, NoOpDbService};
+use crate::db::{Conversation, DownloadRequest, Message, NoOpDbService};
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
 use sqlx::{migrate::MigrateError, SqlitePool};
-use std::sync::Arc;
+use std::{str::FromStr, sync::Arc};
 use uuid::Uuid;
+
+use super::DownloadStatus;
 
 pub static CONVERSATIONS: &str = "conversations";
 pub static MESSAGES: &str = "messages";
@@ -57,6 +59,14 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn delete_all_conversations(&self) -> Result<(), DbError>;
 
   async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError>;
+
+  async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
+
+  async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError>;
+
+  async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
+
+  async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -246,14 +256,109 @@ impl DbService for SqliteDbService {
       })?;
     Ok(())
   }
+
+  async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
+    sqlx::query(
+      "INSERT INTO download_requests (id, repo, filename, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&request.id)
+    .bind(&request.repo)
+    .bind(&request.filename)
+    .bind(request.status.to_string())
+    .bind(request.created_at.timestamp())
+    .bind(request.updated_at.timestamp())
+    .execute(&self.pool)
+    .await
+    .map_err(|source| DbError::Sqlx {
+      source,
+      table: "download_requests".to_string(),
+    })?;
+    Ok(())
+  }
+
+  async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {
+    let result = sqlx::query_as::<_, (String, String, String, String, i64, i64)>(
+      "SELECT id, repo, filename, status, created_at, updated_at FROM download_requests WHERE id = ?",
+    )
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await
+    .map_err(|source| DbError::Sqlx {
+      source,
+      table: "download_requests".to_string(),
+    })?;
+
+    match result {
+      Some((id, repo, filename, status, created_at, updated_at)) => {
+        let Ok(status) = DownloadStatus::from_str(&status) else {
+          tracing::warn!("unknown download status: {status} for id: {id}");
+          return Ok(None);
+        };
+
+        Ok(Some(DownloadRequest {
+          id,
+          repo,
+          filename,
+          status,
+          created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
+          updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+        }))
+      }
+      None => Ok(None),
+    }
+  }
+
+  async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
+    sqlx::query("UPDATE download_requests SET status = ?, updated_at = ? WHERE id = ?")
+      .bind(request.status.to_string())
+      .bind(request.updated_at.timestamp())
+      .bind(&request.id)
+      .execute(&self.pool)
+      .await
+      .map_err(|source| DbError::Sqlx {
+        source,
+        table: "download_requests".to_string(),
+      })?;
+    Ok(())
+  }
+
+  async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
+    let results = sqlx::query_as::<_, (String, String, String, String, i64, i64)>(
+      "SELECT id, repo, filename, status, created_at, updated_at FROM download_requests WHERE status = ?",
+    )
+    .bind(DownloadStatus::Pending.to_string())
+    .fetch_all(&self.pool)
+    .await
+    .map_err(|source| DbError::Sqlx {
+      source,
+      table: "download_requests".to_string(),
+    })?;
+
+    let results = results
+      .into_iter()
+      .filter_map(|(id, repo, filename, status, created_at, updated_at)| {
+        let status = DownloadStatus::from_str(&status).ok()?;
+        Some(DownloadRequest {
+          id,
+          repo,
+          filename,
+          status,
+          created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
+          updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+        })
+      })
+      .collect::<Vec<DownloadRequest>>();
+    Ok(results)
+  }
 }
 
 #[cfg(test)]
 mod test {
   use crate::{
     db::{
-      ConversationBuilder, DbService, DefaultTimeService, MessageBuilder, SqliteDbService,
-      TimeService,
+      ConversationBuilder, DbService, DefaultTimeService, DownloadRequest, DownloadStatus,
+      MessageBuilder, SqliteDbService, TimeService,
     },
     test_utils::db_service,
   };
@@ -419,6 +524,88 @@ mod test {
     let now = DefaultTimeService.utc_now();
     let now_chrono = chrono::Utc::now();
     assert!(now.timestamp() - now_chrono.timestamp() < 1);
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_create_download_request(
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+  ) -> anyhow::Result<()> {
+    let (_tempdir, now, service) = db_service;
+    let request = DownloadRequest {
+      id: Uuid::new_v4().to_string(),
+      repo: "test/repo".to_string(),
+      filename: "test_file.gguf".to_string(),
+      status: DownloadStatus::Pending,
+      created_at: now,
+      updated_at: now,
+    };
+    service.create_download_request(&request).await?;
+
+    let fetched = service.get_download_request(&request.id).await?;
+    assert!(fetched.is_some());
+    assert_eq!(request, fetched.unwrap());
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_update_download_request(
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+  ) -> anyhow::Result<()> {
+    let (_tempdir, now, service) = db_service;
+    let mut request = DownloadRequest {
+      id: Uuid::new_v4().to_string(),
+      repo: "test/repo".to_string(),
+      filename: "test_file.gguf".to_string(),
+      status: DownloadStatus::Pending,
+      created_at: now,
+      updated_at: now,
+    };
+    service.create_download_request(&request).await?;
+
+    request.status = DownloadStatus::Completed;
+    request.updated_at = now + chrono::Duration::hours(1);
+    service.update_download_request(&request).await?;
+
+    let fetched = service.get_download_request(&request.id).await?.unwrap();
+    assert_eq!(request, fetched);
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_list_pending_downloads(
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+  ) -> anyhow::Result<()> {
+    let (_tempdir, now, service) = db_service;
+    let pending_request = DownloadRequest {
+      id: Uuid::new_v4().to_string(),
+      repo: "test/repo1".to_string(),
+      filename: "test_file1.gguf".to_string(),
+      status: DownloadStatus::Pending,
+      created_at: now,
+      updated_at: now,
+    };
+    let completed_request = DownloadRequest {
+      id: Uuid::new_v4().to_string(),
+      repo: "test/repo2".to_string(),
+      filename: "test_file2.gguf".to_string(),
+      status: DownloadStatus::Completed,
+      created_at: now,
+      updated_at: now,
+    };
+
+    service.create_download_request(&pending_request).await?;
+    service.create_download_request(&completed_request).await?;
+
+    let pending_downloads = service.list_pending_downloads().await?;
+    assert_eq!(1, pending_downloads.len());
+    assert_eq!(pending_request, pending_downloads[0]);
     Ok(())
   }
 }
