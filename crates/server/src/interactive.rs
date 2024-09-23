@@ -61,6 +61,11 @@ pub enum InteractiveError {
   RouterStateError(#[from] RouterStateError),
   #[error(transparent)]
   Common(#[from] Common),
+  #[error(
+    r#"file '{filename}' not found in $HF_HOME{dirname}.
+Check Huggingface Home is set correctly using environment variable $HF_HOME or using command-line or settings file."#
+  )]
+  FileMissing { filename: String, dirname: String },
 }
 
 type Result<T> = std::result::Result<T, InteractiveError>;
@@ -85,7 +90,7 @@ impl Interactive {
           .strip_prefix(&service.env_service().hf_home().display().to_string())
           .unwrap_or(&dirname)
           .to_string();
-        HubServiceError::FileMissing {
+        InteractiveError::FileMissing {
           filename,
           dirname: relative_dir,
         }
