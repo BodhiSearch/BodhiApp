@@ -10,8 +10,6 @@ use walkdir::WalkDir;
 
 #[derive(Debug, thiserror::Error)]
 pub enum HubServiceError {
-  #[error("file '{filename}' not found in $HF_HOME repo '{repo}'")]
-  ModelFileMissing { filename: String, repo: String },
   #[error(transparent)]
   ApiError(#[from] ApiError),
   #[error(
@@ -41,14 +39,8 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   OnlyRefsMainSupported,
   #[error(transparent)]
   ObjError(#[from] ObjError),
-  #[error(
-    r#"file '{filename}' not found in $HF_HOME{dirname}.
-Check Huggingface Home is set correctly using environment variable $HF_HOME or using command-line or settings file."#
-  )]
-  FileMissing { filename: String, dirname: String },
-
-  #[error("chat_template not found in tokenizer_config.json")]
-  ChatTemplate,
+  #[error("io_error: {0}")]
+  IoError(#[from] std::io::Error),
 }
 
 type Result<T> = std::result::Result<T, HubServiceError>;
@@ -62,6 +54,8 @@ pub trait HubService: std::fmt::Debug + Send + Sync {
   fn find_local_file(&self, repo: &Repo, filename: &str, snapshot: &str)
     -> Result<Option<HubFile>>;
 
+  fn local_file_exists(&self, repo: &Repo, filename: &str, snapshot: &str) -> Result<bool>;
+
   fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf;
 
   fn list_local_tokenizer_configs(&self) -> Vec<Repo>;
@@ -72,6 +66,7 @@ impl HfHubService {
     self.cache.path().to_path_buf()
   }
 
+  #[allow(unused)]
   fn hf_home(&self) -> PathBuf {
     self
       .cache
@@ -118,6 +113,28 @@ impl HubService for HfHubService {
       .collect::<Vec<_>>()
   }
 
+  fn local_file_exists(&self, repo: &Repo, filename: &str, snapshot: &str) -> Result<bool> {
+    let snapshot = if snapshot.starts_with(REFS) {
+      if !snapshot.eq(REFS_MAIN) {
+        return Err(HubServiceError::OnlyRefsMainSupported);
+      }
+      let refs_file = self.hf_cache().join(repo.path()).join(snapshot);
+      if !refs_file.exists() {
+        return Ok(false);
+      }
+      std::fs::read_to_string(refs_file.clone())?
+    } else {
+      snapshot.to_owned()
+    };
+    let filepath = self
+      .hf_cache()
+      .join(repo.path())
+      .join("snapshots")
+      .join(&snapshot)
+      .join(filename);
+    Ok(filepath.exists())
+  }
+
   fn find_local_file(
     &self,
     repo: &Repo,
@@ -132,25 +149,7 @@ impl HubService for HfHubService {
       if !refs_file.exists() {
         return Ok(None);
       }
-      std::fs::read_to_string(refs_file.clone()).map_err(|_err| {
-        let dirname = refs_file
-          .parent()
-          .map(|f| f.display().to_string())
-          .unwrap_or(String::from("<unknown>"));
-        let filename = refs_file
-          .file_name()
-          .map(|f| f.to_string_lossy().into_owned())
-          .unwrap_or(String::from("<unknown>"));
-        let hf_home = self.hf_home().display().to_string();
-        let relative = dirname
-          .strip_prefix(&hf_home)
-          .unwrap_or_else(|| &dirname)
-          .to_string();
-        HubServiceError::FileMissing {
-          filename,
-          dirname: relative,
-        }
-      })?
+      std::fs::read_to_string(refs_file.clone())?
     } else {
       snapshot.to_owned()
     };
@@ -158,7 +157,7 @@ impl HubService for HfHubService {
       .hf_cache()
       .join(repo.path())
       .join("snapshots")
-      .join(snapshot.clone())
+      .join(&snapshot)
       .join(filename);
     if filepath.exists() {
       let size = match fs::metadata(&filepath) {
@@ -484,7 +483,7 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
   }
 
   #[rstest]
-  fn test_hf_hub_service_find_local_file_returns_not_found_if_refs_main_not_present(
+  fn test_hf_hub_service_find_local_file_returns_none_if_refs_main_not_present(
     hub_service: HubServiceTuple,
   ) -> anyhow::Result<()> {
     let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
@@ -492,8 +491,9 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
       &Repo::try_from("TheBloke/NotDownloaded")?,
       "some-model-file.gguf",
       REFS_MAIN,
-    )?;
-    assert!(result.is_none());
+    );
+    assert!(result.is_ok());
+    assert!(result.unwrap().is_none());
     Ok(())
   }
 
@@ -535,6 +535,69 @@ Go to https://huggingface.co/amir36/not-exists to request access, login via CLI,
       expected_repos, result_set,
       "Mismatch in expected and actual repos"
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("9ff8b00464fc439a64bb374769dec3dd627be1c2", true)]
+  #[case("e9149a12809580e8602995856f8098ce973d1080", true)]
+  #[case("refs/main", true)]
+  #[case("nonexistent_snapshot", false)]
+  fn test_hf_hub_service_local_file_exists(
+    hub_service: HubServiceTuple,
+    #[case] snapshot: String,
+    #[case] expected: bool,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp, _, service) = hub_service;
+    let repo = Repo::try_from("meta-llama/Llama-2-70b-chat-hf")?;
+    let filename = "tokenizer_config.json";
+    let exists = service.local_file_exists(&repo, filename, &snapshot)?;
+    assert_eq!(expected, exists);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_hub_service_local_file_exists_err_on_non_main_refs(
+    hub_service: HubServiceTuple,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp, _, service) = hub_service;
+    let repo = Repo::try_from("meta-llama/Llama-2-70b-chat-hf")?;
+    let filename = "tokenizer_config.json";
+    let result = service.local_file_exists(&repo, filename, "refs/custom");
+    assert!(result.is_err());
+    assert_eq!(
+      "only files from refs/main supported",
+      result.unwrap_err().to_string()
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_hub_service_local_file_exists_refs_main_not_present(
+    hub_service: HubServiceTuple,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
+    let result = service.local_file_exists(
+      &Repo::try_from("TheBloke/NotDownloaded")?,
+      "some-model-file.gguf",
+      REFS_MAIN,
+    );
+    assert!(result.is_ok());
+    assert_eq!(false, result.unwrap());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_hub_service_local_file_exists_repo_not_exists(
+    hub_service: HubServiceTuple,
+  ) -> anyhow::Result<()> {
+    let HubServiceTuple(_temp, _, service) = hub_service;
+    let repo = Repo::try_from("nonexistent/repo")?;
+    let filename = "some_file.txt";
+    let snapshot = "some_snapshot";
+
+    let exists = service.local_file_exists(&repo, filename, snapshot)?;
+    assert!(!exists);
     Ok(())
   }
 }

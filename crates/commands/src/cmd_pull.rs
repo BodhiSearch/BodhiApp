@@ -109,18 +109,15 @@ impl PullCommand {
         Ok(())
       }
       PullCommand::ByRepoFile { repo, filename } => {
-        let local_model_file = service
+        let model_file_exists = service
           .hub_service()
-          .find_local_file(&repo, &filename, REFS_MAIN)?;
-        match local_model_file {
-          Some(_) => {
-            println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
-            return Ok(());
-          }
-          _ => {
-            service.hub_service().download(&repo, &filename)?;
-            println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
-          }
+          .local_file_exists(&repo, &filename, REFS_MAIN)?;
+        if model_file_exists {
+          println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
+          return Ok(());
+        } else {
+          service.hub_service().download(&repo, &filename)?;
+          println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
         Ok(())
       }
@@ -241,9 +238,9 @@ mod test {
     };
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
-      .expect_find_local_file()
+      .expect_local_file_exists()
       .with(eq(repo.clone()), eq(filename), eq(REFS_MAIN))
-      .return_once(|_, _, _| Ok(None));
+      .return_once(|_, _, _| Ok(false));
     mock_hub_service
       .expect_download()
       .with(eq(repo), eq(filename))

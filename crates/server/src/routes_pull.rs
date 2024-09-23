@@ -86,11 +86,11 @@ async fn pull_by_repo_file_handler(
   let repo = Repo::try_from(payload.repo.clone()).map_err(|_| PullError::InvalidRequest)?;
 
   // Check if the file is already downloaded
-  if let Ok(Some(_)) =
+  if let Ok(true) =
     state
       .app_service()
       .hub_service()
-      .find_local_file(&repo, &payload.filename, REFS_MAIN)
+      .local_file_exists(&repo, &payload.filename, REFS_MAIN)
   {
     return Err(PullError::CommandError(
       "File is already downloaded".to_string(),
@@ -155,11 +155,11 @@ async fn pull_by_alias_handler(
   };
 
   // Check if the file is already downloaded
-  if let Ok(Some(_)) =
+  if let Ok(true) =
     state
       .app_service()
       .hub_service()
-      .find_local_file(&model.repo, &model.filename, REFS_MAIN)
+      .local_file_exists(&model.repo, &model.filename, REFS_MAIN)
   {
     return Err(PullError::CommandError(
       "File is already downloaded".to_string(),
@@ -313,13 +313,13 @@ mod tests {
   async fn test_pull_by_repo_file_success(temp_home: TempDir) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
-      .expect_find_local_file()
+      .expect_local_file_exists()
       .with(
         eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf".to_string()),
         eq(REFS_MAIN),
       )
-      .returning(|_, _, _| Ok(None));
+      .returning(|_, _, _| Ok(false));
     mock_hub_service
       .expect_download()
       .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf".to_string()))
@@ -382,13 +382,13 @@ mod tests {
   async fn test_pull_by_repo_file_already_downloaded(temp_home: TempDir) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
-      .expect_find_local_file()
+      .expect_local_file_exists()
       .with(
         eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf".to_string()),
         eq(REFS_MAIN),
       )
-      .returning(|_, _, _| Ok(Some(HubFile::testalias())));
+      .returning(|_, _, _| Ok(true));
     let db_service = Arc::new(db_service_in(&temp_home).await);
     let app_service = test_app_service(Arc::new(mock_hub_service), db_service).await;
     let router = test_router(Arc::new(app_service));
@@ -422,8 +422,8 @@ mod tests {
   ) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
-      .expect_find_local_file()
-      .returning(|_, _, _| Ok(None));
+      .expect_local_file_exists()
+      .returning(|_, _, _| Ok(false));
     let db_service = db_service_in(&temp_home).await;
     let pending_request = DownloadRequest::new_pending(
       Repo::testalias().to_string(),
@@ -465,6 +465,14 @@ mod tests {
   async fn test_pull_by_alias_success(temp_home: TempDir) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
+      .expect_local_file_exists()
+      .with(
+        eq(Repo::testalias()),
+        eq("testalias.Q8_0.gguf".to_string()),
+        eq(REFS_MAIN),
+      )
+      .returning(|_, _, _| Ok(false));
+    mock_hub_service
       .expect_find_local_file()
       .with(
         eq(Repo::testalias()),
@@ -480,6 +488,14 @@ mod tests {
         eq(REFS_MAIN),
       )
       .returning(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
+    mock_hub_service
+      .expect_local_file_exists()
+      .with(
+        eq(Repo::llama3()),
+        eq(TOKENIZER_CONFIG_JSON.to_string()),
+        eq(REFS_MAIN),
+      )
+      .returning(|_, _, _| Ok(true));
     mock_hub_service
       .expect_download()
       .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf".to_string()))
