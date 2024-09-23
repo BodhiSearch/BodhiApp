@@ -47,7 +47,7 @@ pub fn build_routes(
     let dev_apis = Router::new().route("/dev/secrets", get(dev_secrets_handler));
     public_apis = public_apis.merge(dev_apis);
   }
-  let api_router = Router::new()
+  let api_ui_router = Router::new()
     .merge(chats_router())
     .merge(models_router())
     .merge(create_router());
@@ -58,7 +58,7 @@ pub fn build_routes(
     .route("/api/tags", get(ollama_models_handler))
     .route("/api/show", post(ollama_model_show_handler))
     .route("/api/chat", post(ollama_model_chat_handler))
-    .nest("/api/ui", api_router)
+    .nest("/api/ui", api_ui_router)
     .route("/v1/models", get(oai_models_handler))
     .route("/v1/models/:id", get(oai_model_handler))
     .route("/v1/chat/completions", post(chat_completions_handler))
