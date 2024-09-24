@@ -1,4 +1,3 @@
-use crate::{CmdIntoError, Command};
 use objs::{Alias, HubFile, ObjError, Repo, TOKENIZER_CONFIG_JSON};
 use services::{AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
@@ -13,53 +12,6 @@ pub enum PullCommand {
     filename: String,
     snapshot: Option<String>,
   },
-}
-
-impl TryFrom<Command> for PullCommand {
-  type Error = CmdIntoError;
-
-  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
-    match value {
-      Command::Pull {
-        alias,
-        repo,
-        filename,
-        snapshot,
-      } => {
-        let pull_command = match alias {
-          Some(alias) => PullCommand::ByAlias { alias },
-          None => match (repo, filename) {
-            (Some(repo), Some(filename)) => {
-              let repo = Repo::try_from(repo).map_err(|err| CmdIntoError::BadRequest {
-                input: "pull".to_string(),
-                output: "PullCommand".to_string(),
-                error: format!("invalid repo {err}"),
-              })?;
-              PullCommand::ByRepoFile {
-                repo,
-                filename,
-                snapshot,
-              }
-            }
-            (repo, filename) => {
-              return Err(CmdIntoError::BadRequest {
-                input: "pull".to_string(),
-                output: "PullCommand".to_string(),
-                error: format!(
-                  "repo and filename are required: repo={repo:?}, filename={filename:?}"
-                ),
-              })
-            }
-          },
-        };
-        Ok(pull_command)
-      }
-      cmd => Err(CmdIntoError::Convert {
-        input: cmd.to_string(),
-        output: "pull".to_string(),
-      }),
-    }
-  }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -159,9 +111,7 @@ impl PullCommand {
         Ok(local_model_file)
       }
       _ => {
-        let local_model_file = service
-          .hub_service()
-          .download(repo, filename, snapshot)?;
+        let local_model_file = service.hub_service().download(repo, filename, snapshot)?;
         println!(
           "repo: '{}', filename: '{}' downloaded into $HF_HOME",
           repo, filename
@@ -174,7 +124,7 @@ impl PullCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{Command, PullCommand};
+  use crate::PullCommand;
   use mockall::predicate::eq;
   use objs::{Alias, HubFile, RemoteModel, Repo, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
@@ -280,57 +230,6 @@ mod test {
       .data_service(mock_data_service)
       .build()?;
     pull.execute(Arc::new(service))?;
-    Ok(())
-  }
-
-  #[rstest]
-  #[case(Command::Pull {
-    alias: Some("llama3:instruct".to_string()),
-    repo: None,
-    filename: None,
-    snapshot: None,
-  }, PullCommand::ByAlias {
-    alias: "llama3:instruct".to_string(),
-  })]
-  #[case(Command::Pull {
-    alias: None,
-    repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
-    filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
-    snapshot: None,
-  },
-  PullCommand::ByRepoFile {
-    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-    snapshot: None,
-  })]
-  #[case(Command::Pull {
-    alias: None,
-    repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
-    filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
-    snapshot: Some("main".to_string()),
-  },
-  PullCommand::ByRepoFile {
-    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-    snapshot: Some("main".to_string()),
-  })]
-  #[case(Command::Pull {
-    alias: None,
-    repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
-    filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
-    snapshot: Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()),
-  },
-  PullCommand::ByRepoFile {
-    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-    snapshot: Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()),
-  })]
-  fn test_pull_command_try_from_command(
-    #[case] input: Command,
-    #[case] expected: PullCommand,
-  ) -> anyhow::Result<()> {
-    let pull_command: PullCommand = PullCommand::try_from(input)?;
-    assert_eq!(expected, pull_command);
     Ok(())
   }
 

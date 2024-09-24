@@ -1,11 +1,12 @@
 use commands::{
-  AliasCommandError, CmdIntoError, CreateCommandError, EnvCommandError, ListCommandError,
-  PullCommandError,
+  AliasCommandError, CreateCommandError, EnvCommandError, ListCommandError, PullCommandError,
 };
 use objs::BuilderError;
 use server::{ContextError, RunCommandError};
 use services::{db::DbError, DataServiceError, SessionServiceError};
 use std::io;
+
+use crate::convert::ConvertError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum AppError {
@@ -21,8 +22,6 @@ pub enum AppError {
   Io(#[from] io::Error),
   #[error(transparent)]
   Tauri(#[from] tauri::Error),
-  #[error(transparent)]
-  Cli(#[from] CmdIntoError),
   #[error(transparent)]
   Db(#[from] DbError),
   #[error(transparent)]
@@ -41,6 +40,8 @@ pub enum AppError {
   ListCommandError(#[from] ListCommandError),
   #[error(transparent)]
   EnvCommandError(#[from] EnvCommandError),
+  #[error(transparent)]
+  ConvertError(#[from] ConvertError),
 }
 
 pub(crate) type Result<T> = std::result::Result<T, AppError>;

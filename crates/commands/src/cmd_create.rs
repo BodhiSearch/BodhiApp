@@ -1,4 +1,3 @@
-use crate::{CmdIntoError, Command};
 use objs::{
   default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo,
   TOKENIZER_CONFIG_JSON,
@@ -38,70 +37,6 @@ pub enum CreateCommandError {
 }
 
 type Result<T> = std::result::Result<T, CreateCommandError>;
-
-impl TryFrom<Command> for CreateCommand {
-  type Error = CmdIntoError;
-
-  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
-    match value {
-      Command::Create {
-        alias,
-        repo,
-        filename,
-        snapshot,
-        chat_template,
-        tokenizer_config,
-        family,
-        update,
-        oai_request_params,
-        context_params,
-      } => {
-        let chat_template = match chat_template {
-          Some(chat_template) => ChatTemplate::Id(chat_template),
-          None => match tokenizer_config {
-            Some(tokenizer_config) => match Repo::try_from(tokenizer_config) {
-              Ok(repo) => ChatTemplate::Repo(repo),
-              Err(err) => Err(CmdIntoError::BadRequest {
-                input: "create".to_string(),
-                output: "CreateCommand".to_string(),
-                error: format!("tokenizer_config repo {err}"),
-              })?,
-            },
-            None => {
-              return Err(CmdIntoError::BadRequest {
-                input: "create".to_string(),
-                output: "CreateCommand".to_string(),
-                error: "one of chat_template and tokenizer_config must be provided".to_string(),
-              })
-            }
-          },
-        };
-        let repo = Repo::try_from(repo).map_err(|err| CmdIntoError::BadRequest {
-          input: "create".to_string(),
-          output: "CreateCommand".to_string(),
-          error: format!("model repo {err}"),
-        })?;
-        let result = CreateCommand {
-          alias,
-          repo,
-          filename,
-          snapshot,
-          chat_template,
-          family,
-          auto_download: true,
-          update,
-          oai_request_params,
-          context_params,
-        };
-        Ok(result)
-      }
-      cmd => Err(CmdIntoError::Convert {
-        input: cmd.to_string(),
-        output: "CreateCommand".to_string(),
-      }),
-    }
-  }
-}
 
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
@@ -183,12 +118,11 @@ impl CreateCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{Command, CreateCommand};
-  use anyhow_trace::anyhow_trace;
+  use crate::CreateCommand;
   use mockall::predicate::*;
   use objs::{
-    Alias, ChatTemplate, ChatTemplateId, GptContextParams, GptContextParamsBuilder, HubFile,
-    OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
+    Alias, ChatTemplate, GptContextParamsBuilder, HubFile, OAIRequestParamsBuilder, Repo,
+    TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
   use services::{
@@ -196,102 +130,6 @@ mod test {
     AppService, MockDataService, MockHubService,
   };
   use std::{path::PathBuf, sync::Arc};
-
-  #[rstest]
-  #[case(
-  Command::Create {
-    alias: "testalias:instruct".to_string(),
-    repo: "MyFactory/testalias-gguf".to_string(),
-    filename: "testalias.Q8_0.gguf".to_string(),
-    snapshot: Some("main".to_string()),
-    chat_template: Some(ChatTemplateId::Llama3),
-    tokenizer_config: None,
-    family: Some("testalias".to_string()),
-    update: true,
-    oai_request_params: OAIRequestParams::default(),
-    context_params: GptContextParams::default(),
-  },
-  CreateCommand {
-    alias: "testalias:instruct".to_string(),
-    repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
-    filename: "testalias.Q8_0.gguf".to_string(),
-    snapshot: Some("main".to_string()),
-    chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
-    family: Some("testalias".to_string()),
-    auto_download: true,
-    update: true,
-    oai_request_params: OAIRequestParams::default(),
-    context_params: GptContextParams::default(),
-  })]
-  fn test_create_try_from_valid(
-    #[case] input: Command,
-    #[case] expected: CreateCommand,
-  ) -> anyhow::Result<()> {
-    let command = CreateCommand::try_from(input)?;
-    assert_eq!(expected, command);
-    Ok(())
-  }
-
-  #[rstest]
-  #[case(
-    Command::App {ui: false},
-    "Command 'app' cannot be converted into command 'CreateCommand'"
-  )]
-  #[case(
-    Command::Create {
-      alias: "test".to_string(),
-      repo: "valid/repo".to_string(),
-      filename: "model.gguf".to_string(),
-      snapshot: None,
-      chat_template: None,
-      tokenizer_config: Some("invalid-chat/repo/pattern".to_string()),
-      family: None,
-      update: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    },
-    "Command 'create' cannot be converted into command 'CreateCommand', error: 'tokenizer_config repo Validation failed: value: does not match the huggingface repo pattern 'username/repo''"
-  )]
-  #[case(
-    Command::Create {
-      alias: "test".to_string(),
-      repo: "invalid-repo".to_string(),
-      filename: "model.gguf".to_string(),
-      snapshot: None,
-      chat_template: Some(ChatTemplateId::Llama3),
-      tokenizer_config: None,
-      family: None,
-      update: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    },
-    "Command 'create' cannot be converted into command 'CreateCommand', error: 'model repo Validation failed: value: does not match the huggingface repo pattern 'username/repo''"
-  )]
-  #[case(
-    Command::Create {
-      alias: "test".to_string(),
-      repo: "invalid-repo".to_string(),
-      filename: "model.gguf".to_string(),
-      snapshot: None,
-      chat_template: None,
-      tokenizer_config: None,
-      family: None,
-      update: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    },
-    "Command 'create' cannot be converted into command 'CreateCommand', error: 'one of chat_template and tokenizer_config must be provided'"
-  )]
-  #[anyhow_trace]
-  fn test_create_try_from_invalid(
-    #[case] input: Command,
-    #[case] message: String,
-  ) -> anyhow::Result<()> {
-    let actual = CreateCommand::try_from(input);
-    assert!(actual.is_err());
-    assert_eq!(message, actual.unwrap_err().to_string());
-    Ok(())
-  }
 
   #[rstest]
   fn test_create_execute_updates_if_exists() -> anyhow::Result<()> {

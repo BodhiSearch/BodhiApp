@@ -9,7 +9,6 @@ mod cmd_create;
 mod cmd_envs;
 mod cmd_list;
 mod cmd_pull;
-mod error;
 pub mod objs_ext;
 mod out_writer;
 
@@ -19,5 +18,4 @@ pub use cmd_create::*;
 pub use cmd_envs::*;
 pub use cmd_list::*;
 pub use cmd_pull::*;
-pub use error::*;
 pub use out_writer::*;

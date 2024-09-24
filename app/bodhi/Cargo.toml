@@ -30,6 +30,11 @@ tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 webbrowser = { workspace = true }
 
+[dev-dependencies]
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+rstest = { workspace = true }
+
 [build-dependencies]
 anyhow = { workspace = true }
 fs_extra = { workspace = true }

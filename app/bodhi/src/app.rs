@@ -1,12 +1,15 @@
-use crate::{native::NativeCommand, AppError};
+use crate::{
+  convert::{
+    build_create_command, build_list_command, build_manage_alias_command, build_pull_command,
+    build_run_command, build_serve_command,
+  },
+  native::NativeCommand,
+  AppError,
+};
 use axum::Router;
 use clap::Parser;
-use commands::{
-  Cli, Command, CreateCommand, DefaultStdoutWriter, EnvCommand, ListCommand, ManageAliasCommand,
-  PullCommand,
-};
+use commands::{Cli, Command, DefaultStdoutWriter, EnvCommand};
 use include_dir::{include_dir, Dir};
-use server::{RunCommand, ServeCommand};
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
   DefaultAppService, DefaultEnvService, EnvService, HfHubService, KeycloakAuthService,
@@ -88,47 +91,37 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
         .aexecute(Some(static_router()))
         .await?;
     }
-    list @ Command::List { .. } => {
-      let list_command = ListCommand::try_from(list)?;
+    Command::Serve { host, port } => {
+      let serve_command = build_serve_command(host, port)?;
+      serve_command.aexecute(service, None).await?;
+    }
+    Command::List { remote, models } => {
+      let list_command = build_list_command(remote, models)?;
       list_command.execute(service)?;
     }
-    serve @ Command::Serve { .. } => {
-      let serve_command = ServeCommand::try_from(serve)?;
-      match &serve_command {
-        cmd @ ServeCommand::ByParams { host, port } => {
-          env_service.set_host(host);
-          env_service.set_port(*port);
-          cmd.aexecute(service, None).await?;
-        }
-      }
-    }
-    pull @ Command::Pull { .. } => {
-      let pull_command = PullCommand::try_from(pull)?;
+    Command::Pull {
+      alias,
+      repo,
+      filename,
+      snapshot,
+    } => {
+      let pull_command = build_pull_command(alias, repo, filename, snapshot)?;
       pull_command.execute(service)?;
     }
-    create @ Command::Create { .. } => {
-      let create_command = CreateCommand::try_from(create)?;
+    cmd @ Command::Create { .. } => {
+      let create_command = build_create_command(cmd)?;
       create_command.execute(service)?;
     }
-    run @ Command::Run { .. } => {
-      let run_command = RunCommand::try_from(run)?;
+    Command::Run { alias } => {
+      let run_command = build_run_command(alias)?;
       run_command.aexecute(service).await?;
     }
-    show @ Command::Show { .. } => {
-      let show = ManageAliasCommand::try_from(show)?;
-      show.execute(service, &mut DefaultStdoutWriter::default())?;
-    }
-    cp @ Command::Cp { .. } => {
-      let cp = ManageAliasCommand::try_from(cp)?;
-      cp.execute(service, &mut DefaultStdoutWriter::default())?;
-    }
-    edit @ Command::Edit { .. } => {
-      let edit = ManageAliasCommand::try_from(edit)?;
-      edit.execute(service, &mut DefaultStdoutWriter::default())?;
-    }
-    rm @ Command::Rm { .. } => {
-      let rm = ManageAliasCommand::try_from(rm)?;
-      rm.execute(service, &mut DefaultStdoutWriter::default())?;
+    cmd @ (Command::Show { .. }
+    | Command::Cp { .. }
+    | Command::Edit { .. }
+    | Command::Rm { .. }) => {
+      let manage_alias_command = build_manage_alias_command(cmd)?;
+      manage_alias_command.execute(service, &mut DefaultStdoutWriter::default())?;
     }
   }
   Ok(())

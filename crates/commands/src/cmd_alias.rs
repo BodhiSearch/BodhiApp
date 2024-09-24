@@ -1,4 +1,4 @@
-use crate::{CmdIntoError, Command, StdoutWriter};
+use crate::StdoutWriter;
 use services::{AppService, DataServiceError};
 use std::{env, io, sync::Arc};
 
@@ -8,23 +8,6 @@ pub enum ManageAliasCommand {
   Copy { alias: String, new_alias: String },
   Edit { alias: String },
   Delete { alias: String },
-}
-
-impl TryFrom<Command> for ManageAliasCommand {
-  type Error = CmdIntoError;
-
-  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
-    match value {
-      Command::Show { alias } => Ok(ManageAliasCommand::Show { alias }),
-      Command::Cp { alias, new_alias } => Ok(ManageAliasCommand::Copy { alias, new_alias }),
-      Command::Edit { alias } => Ok(ManageAliasCommand::Edit { alias }),
-      Command::Rm { alias } => Ok(ManageAliasCommand::Delete { alias }),
-      cmd => Err(CmdIntoError::Convert {
-        input: cmd.to_string(),
-        output: "alias".to_string(),
-      }),
-    }
-  }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -141,7 +124,7 @@ impl ManageAliasCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{CmdIntoError, Command, ManageAliasCommand, MockStdoutWriter};
+  use crate::{ManageAliasCommand, MockStdoutWriter};
   use mockall::predicate::eq;
   use rstest::rstest;
   use services::test_utils::AppServiceStubBuilder;
@@ -152,9 +135,9 @@ mod test {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .build()?;
-    let show = ManageAliasCommand::try_from(Command::Show {
+    let show = ManageAliasCommand::Show {
       alias: "tinyllama:instruct".to_string(),
-    })?;
+    };
     let mut mock = MockStdoutWriter::default();
     mock
       .expect_write()
@@ -178,9 +161,9 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .build()?;
-    let delete = ManageAliasCommand::try_from(Command::Rm {
+    let delete = ManageAliasCommand::Delete {
       alias: "tinyllama:instruct".to_string(),
-    })?;
+    };
     let mut mock = MockStdoutWriter::default();
     mock
       .expect_write()
@@ -196,10 +179,10 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
       .with_data_service()
       .build()?;
     let service = Arc::new(service);
-    let copy = ManageAliasCommand::try_from(Command::Cp {
+    let copy = ManageAliasCommand::Copy {
       alias: "tinyllama:instruct".to_string(),
       new_alias: "tinyllama:myconfig".to_string(),
-    })?;
+    };
     let mut mock = MockStdoutWriter::default();
     mock
       .expect_write()
@@ -214,52 +197,5 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
       .join("tinyllama--myconfig.yaml")
       .exists());
     Ok(())
-  }
-
-  #[rstest]
-  #[case::show(
-      Command::Show { alias: "test_alias".to_string() },
-      ManageAliasCommand::Show { alias: "test_alias".to_string() }
-  )]
-  #[case::copy(
-      Command::Cp {
-          alias: "old_alias".to_string(), 
-          new_alias: "new_alias".to_string() 
-      },
-      ManageAliasCommand::Copy {
-          alias: "old_alias".to_string(), 
-          new_alias: "new_alias".to_string() 
-      }
-  )]
-  #[case::edit(
-      Command::Edit { alias: "edit_alias".to_string() },
-      ManageAliasCommand::Edit { alias: "edit_alias".to_string() }
-  )]
-  #[case::delete(
-      Command::Rm { alias: "delete_alias".to_string() },
-      ManageAliasCommand::Delete { alias: "delete_alias".to_string() }
-  )]
-  fn test_manage_alias_command_try_from_valid(
-    #[case] input: Command,
-    #[case] expected: ManageAliasCommand,
-  ) {
-    let result = ManageAliasCommand::try_from(input);
-    assert_eq!(Ok(expected), result);
-  }
-
-  #[test]
-  fn test_manage_alias_command_try_from_invalid() {
-    let invalid_cmd = Command::List {
-      remote: false,
-      models: false,
-    };
-    let result = ManageAliasCommand::try_from(invalid_cmd);
-    assert_eq!(
-      result,
-      Err(CmdIntoError::Convert {
-        input: "list".to_string(),
-        output: "alias".to_string()
-      })
-    );
   }
 }
