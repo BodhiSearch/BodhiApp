@@ -1,7 +1,7 @@
 use crate::{CmdIntoError, Command};
 use objs::{
   default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo,
-  REFS_MAIN, TOKENIZER_CONFIG_JSON,
+  TOKENIZER_CONFIG_JSON,
 };
 use services::{AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
@@ -13,6 +13,7 @@ pub struct CreateCommand {
   pub repo: Repo,
   pub filename: String,
   // TODO(support snapshot): have snapshot as an option
+  // pub snapshot: Option<String>,
   pub chat_template: ChatTemplate,
   pub family: Option<String>,
   #[builder(default = "true")]
@@ -115,7 +116,7 @@ impl CreateCommand {
     let local_model_file =
       service
         .hub_service()
-        .find_local_file(&self.repo, &self.filename, REFS_MAIN)?;
+        .find_local_file(&self.repo, &self.filename, None)?;
     let local_model_file = match local_model_file {
       Some(local_model_file) => {
         println!(
@@ -139,11 +140,10 @@ impl CreateCommand {
       }
     };
     let chat_template_repo = Repo::try_from(self.chat_template.clone())?;
-    let tokenizer_file = service.hub_service().find_local_file(
-      &chat_template_repo,
-      TOKENIZER_CONFIG_JSON,
-      REFS_MAIN,
-    )?;
+    let tokenizer_file =
+      service
+        .hub_service()
+        .find_local_file(&chat_template_repo, TOKENIZER_CONFIG_JSON, None)?;
     match tokenizer_file {
       Some(_) => {
         println!(
@@ -188,7 +188,7 @@ mod test {
   use mockall::predicate::*;
   use objs::{
     Alias, ChatTemplate, ChatTemplateId, GptContextParams, GptContextParamsBuilder, HubFile,
-    OAIRequestParams, OAIRequestParamsBuilder, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON,
+    OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
   use services::{
@@ -369,7 +369,7 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
@@ -377,12 +377,12 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(None)
+        eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let alias = Alias::testalias();
     mock_data_service
@@ -417,7 +417,7 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
@@ -425,7 +425,7 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(None)
+        eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
@@ -433,7 +433,7 @@ mod test {
       .with(
         eq(tokenizer_repo.clone()),
         eq(TOKENIZER_CONFIG_JSON),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
@@ -441,7 +441,7 @@ mod test {
       .with(
         eq(tokenizer_repo.clone()),
         eq(TOKENIZER_CONFIG_JSON),
-        eq(None)
+        eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
     let alias = Alias::test_alias_instruct_builder()

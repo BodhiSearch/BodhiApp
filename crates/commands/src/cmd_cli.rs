@@ -59,7 +59,8 @@ pub enum Command {
     #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
     filename: Option<String>,
 
-    // TODO(support snapshot): have snapshot as an option
+    #[clap(long, short = 's', requires = "repo")]
+    snapshot: Option<String>,
   },
 
   /// Create or update a model alias
@@ -78,7 +79,6 @@ pub enum Command {
     filename: String,
 
     // TODO(support snapshot): have snapshot as an option
-
     /// In-built chat template mapping to use to convert chat messages to LLM prompt
     #[clap(long, group = "template")]
     chat_template: Option<ChatTemplateId>,
@@ -270,43 +270,43 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None)]
-  #[case(vec!["bodhi",
-      "pull",
+  #[case(vec!["bodhi", "pull", "llama3:instruct"], Some(String::from("llama3:instruct")), None, None,None)]
+  #[case(vec!["bodhi", "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
       "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
     ],
     None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
-    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-  )]
-  #[case(vec![ "bodhi", "pull",
+    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")), None)]
+  #[case(vec!["bodhi", "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
       "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
+      "-s", "main"
     ],
     None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
-    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-  )]
+    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")), Some("main".to_string()))]
   #[case(vec![ "bodhi", "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
-      "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"
-  ],
+      "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
+      "-s", "191239b3e26b2882fb562ffccdd1cf0f65402adb",
+    ],
     None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
-    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")),
-  )]
+    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")), Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()))]
   fn test_cli_pull_valid(
     #[case] args: Vec<&str>,
     #[case] alias: Option<String>,
     #[case] repo: Option<String>,
     #[case] filename: Option<String>,
+    #[case] snapshot: Option<String>,
   ) -> anyhow::Result<()> {
     let actual = Cli::try_parse_from(args)?.command;
     let expected = Command::Pull {
       alias,
       repo,
       filename,
+      snapshot,
     };
     assert_eq!(expected, actual);
     Ok(())
@@ -512,7 +512,7 @@ For more information, try '--help'.
   #[case(Command::App {ui: false}, "app")]
   #[case(Command::Serve {host: Default::default(), port: 0}, "serve")]
   #[case(Command::List {remote: false, models: false}, "list")]
-  #[case(Command::Pull { alias: None, repo: None, filename: None }, "pull")]
+  #[case(Command::Pull { alias: None, repo: None, filename: None, snapshot: None }, "pull")]
   #[case(Command::Create {
       alias: Default::default(),
       repo: Default::default(),

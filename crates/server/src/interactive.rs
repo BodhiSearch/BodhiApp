@@ -75,7 +75,7 @@ impl Interactive {
     let alias = self.alias.clone();
     let model = service
       .hub_service()
-      .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)?
+      .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot.clone()))?
       .ok_or_else(|| {
         let filepath = &service
           .hub_service()
@@ -246,7 +246,7 @@ mod test {
       .with(
         eq(alias.repo.clone()),
         eq(alias.filename.clone()),
-        eq(alias.snapshot.clone()),
+        eq(Some(alias.snapshot.clone())),
       )
       .return_once(|_, _, _| Ok(None));
     mock
