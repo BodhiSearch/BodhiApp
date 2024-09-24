@@ -1,7 +1,7 @@
 use crate::{oai::OpenAIApiError, shared_rw::SharedContextRw, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::async_trait;
-use objs::{Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
+use objs::{Repo, TOKENIZER_CONFIG_JSON};
 use services::AppService;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -56,7 +56,7 @@ impl RouterState for DefaultRouterState {
     let model_file = self
       .app_service
       .hub_service()
-      .find_local_file(&alias.repo, &alias.filename, &alias.snapshot)
+      .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot.clone()))
       .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
     let Some(model_file) = model_file else {
       return Err(OpenAIApiError::InternalServer(format!(
@@ -69,7 +69,7 @@ impl RouterState for DefaultRouterState {
     let tokenizer_file = self
       .app_service
       .hub_service()
-      .find_local_file(&tokenizer_repo, TOKENIZER_CONFIG_JSON, REFS_MAIN)
+      .find_local_file(&tokenizer_repo, TOKENIZER_CONFIG_JSON, None)
       .map_err(|err| OpenAIApiError::InternalServer(err.to_string()))?;
     let Some(tokenizer_file) = tokenizer_file else {
       return Err(OpenAIApiError::InternalServer(format!(
@@ -105,7 +105,7 @@ mod test {
   use axum::response::{IntoResponse, Response};
   use llama_server_bindings::LlamaCppError;
   use mockall::predicate::{always, eq};
-  use objs::{Alias, HubFile, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
+  use objs::{Alias, HubFile, Repo, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
   use serde_json::{json, Value};
   use services::{test_utils::AppServiceStubMock, MockDataService, MockHubService};
@@ -162,12 +162,12 @@ mod test {
       .with(
         eq(testalias.repo),
         eq(testalias.filename),
-        eq(testalias.snapshot),
+        eq(Some(testalias.snapshot)),
       )
       .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
     mock_hub_service
       .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let mut mock_ctx = MockSharedContextRw::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
@@ -211,12 +211,12 @@ mod test {
       .with(
         eq(testalias.repo),
         eq(testalias.filename),
-        eq(testalias.snapshot),
+        eq(Some(testalias.snapshot)),
       )
       .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
     mock_hub_service
       .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let mut mock_ctx = MockSharedContextRw::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{

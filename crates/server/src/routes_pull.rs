@@ -9,7 +9,7 @@ use axum_extra::extract::WithRejection;
 use chrono::Utc;
 use commands::{PullCommand, PullCommandError};
 use hyper::StatusCode;
-use objs::{Repo, REFS_MAIN};
+use objs::Repo;
 use serde::{Deserialize, Serialize};
 use services::{
   db::{DownloadRequest, DownloadStatus},
@@ -90,7 +90,7 @@ async fn pull_by_repo_file_handler(
     state
       .app_service()
       .hub_service()
-      .local_file_exists(&repo, &payload.filename, REFS_MAIN)
+      .local_file_exists(&repo, &payload.filename, None)
   {
     return Err(PullError::CommandError(
       "File is already downloaded".to_string(),
@@ -128,6 +128,7 @@ async fn pull_by_repo_file_handler(
     let command = PullCommand::ByRepoFile {
       repo,
       filename: payload.filename,
+      snapshot: None,
     };
     let result = command.execute(app_service.clone());
     update_download_status(app_service, request_id, result).await;
@@ -159,7 +160,7 @@ async fn pull_by_alias_handler(
     state
       .app_service()
       .hub_service()
-      .local_file_exists(&model.repo, &model.filename, REFS_MAIN)
+      .local_file_exists(&model.repo, &model.filename, None)
   {
     return Err(PullError::CommandError(
       "File is already downloaded".to_string(),
@@ -317,7 +318,7 @@ mod tests {
       .with(
         eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf".to_string()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .returning(|_, _, _| Ok(false));
     mock_hub_service
@@ -333,7 +334,7 @@ mod tests {
       .with(
         eq(Repo::llama3()),
         eq("testalias.Q8_0.gguf".to_string()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .once()
       .returning(|_, _, _| Ok(None));
@@ -390,7 +391,7 @@ mod tests {
       .with(
         eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf".to_string()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .returning(|_, _, _| Ok(true));
     let db_service = Arc::new(db_service_in(&temp_home).await);
@@ -473,7 +474,7 @@ mod tests {
       .with(
         eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf".to_string()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .returning(|_, _, _| Ok(false));
     mock_hub_service
@@ -481,7 +482,7 @@ mod tests {
       .with(
         eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf".to_string()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .returning(|_, _, _| Ok(None));
     mock_hub_service
@@ -489,7 +490,7 @@ mod tests {
       .with(
         eq(Repo::llama3()),
         eq(TOKENIZER_CONFIG_JSON.to_string()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .returning(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     mock_hub_service
@@ -497,7 +498,7 @@ mod tests {
       .with(
         eq(Repo::llama3()),
         eq(TOKENIZER_CONFIG_JSON.to_string()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .returning(|_, _, _| Ok(true));
     mock_hub_service

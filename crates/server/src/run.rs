@@ -79,7 +79,7 @@ impl RunCommand {
 mod test {
   use crate::{test_utils::MockInteractiveRuntime, RunCommand};
   use mockall::predicate::{always, eq};
-  use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
+  use objs::{Alias, HubFile, RemoteModel, Repo, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
   use services::{test_utils::AppServiceStubMock, MockDataService, MockHubService};
   use std::{path::PathBuf, sync::Arc};
@@ -136,7 +136,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .with(
         eq(Repo::testalias()),
         eq("testalias.Q8_0.gguf"),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
@@ -146,7 +146,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
 
     mock_hub_service
       .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()

@@ -1,12 +1,18 @@
 use crate::{CmdIntoError, Command};
-use objs::{Alias, HubFile, ObjError, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
+use objs::{Alias, HubFile, ObjError, Repo, TOKENIZER_CONFIG_JSON};
 use services::{AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
-  ByAlias { alias: String },
-  ByRepoFile { repo: Repo, filename: String },
+  ByAlias {
+    alias: String,
+  },
+  ByRepoFile {
+    repo: Repo,
+    filename: String,
+    snapshot: Option<String>,
+  },
 }
 
 impl TryFrom<Command> for PullCommand {
@@ -18,18 +24,23 @@ impl TryFrom<Command> for PullCommand {
         alias,
         repo,
         filename,
+        snapshot,
       } => {
         let pull_command = match alias {
           Some(alias) => PullCommand::ByAlias { alias },
           None => match (repo, filename) {
-            (Some(repo), Some(filename)) => PullCommand::ByRepoFile {
-              repo: Repo::try_from(repo).map_err(|err| CmdIntoError::BadRequest {
+            (Some(repo), Some(filename)) => {
+              let repo = Repo::try_from(repo).map_err(|err| CmdIntoError::BadRequest {
                 input: "pull".to_string(),
                 output: "PullCommand".to_string(),
                 error: format!("invalid repo {err}"),
-              })?,
-              filename,
-            },
+              })?;
+              PullCommand::ByRepoFile {
+                repo,
+                filename,
+                snapshot,
+              }
+            }
             (repo, filename) => {
               return Err(CmdIntoError::BadRequest {
                 input: "pull".to_string(),
@@ -82,13 +93,13 @@ impl PullCommand {
           service.clone(),
           &model.repo,
           &model.filename,
-          REFS_MAIN,
+          None,
         )?;
         _ = PullCommand::download_file_if_missing(
           service.clone(),
           &Repo::try_from(model.chat_template.clone())?,
           TOKENIZER_CONFIG_JSON,
-          REFS_MAIN,
+          None,
         )?;
         let alias = Alias::new(
           model.alias,
@@ -108,16 +119,21 @@ impl PullCommand {
         );
         Ok(())
       }
-      PullCommand::ByRepoFile { repo, filename } => {
-        let model_file_exists = service
-          .hub_service()
-          .local_file_exists(&repo, &filename, REFS_MAIN)?;
+      PullCommand::ByRepoFile {
+        repo,
+        filename,
+        snapshot,
+      } => {
+        let model_file_exists =
+          service
+            .hub_service()
+            .local_file_exists(&repo, &filename, snapshot.clone())?;
         if model_file_exists {
           println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
           return Ok(());
         } else {
           // TODO(support snapshot): have snapshot as an option
-          service.hub_service().download(&repo, &filename, None)?;
+          service.hub_service().download(&repo, &filename, snapshot)?;
           println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
         Ok(())
@@ -129,11 +145,12 @@ impl PullCommand {
     service: Arc<dyn AppService>,
     repo: &Repo,
     filename: &str,
-    snapshot: &str,
+    snapshot: Option<String>,
   ) -> Result<HubFile> {
-    let local_model_file = service
-      .hub_service()
-      .find_local_file(repo, filename, snapshot)?;
+    let local_model_file =
+      service
+        .hub_service()
+        .find_local_file(repo, filename, snapshot.clone())?;
     match local_model_file {
       Some(local_model_file) => {
         println!(
@@ -146,7 +163,7 @@ impl PullCommand {
         let local_model_file = service
           .hub_service()
           // TODO(support snapshot): have snapshot as an option
-          .download(repo, filename, None)?;
+          .download(repo, filename, snapshot)?;
         println!(
           "repo: '{}', filename: '{}' downloaded into $HF_HOME",
           repo, filename
@@ -161,7 +178,7 @@ impl PullCommand {
 mod test {
   use crate::{Command, PullCommand};
   use mockall::predicate::eq;
-  use objs::{Alias, HubFile, RemoteModel, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON};
+  use objs::{Alias, HubFile, RemoteModel, Repo, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
   use services::{
     test_utils::{AppServiceStubBuilder, AppServiceStubMock},
@@ -192,20 +209,19 @@ mod test {
     mock_data_service
       .expect_find_alias()
       .with(eq(remote_model.alias.clone()))
-      .times(1)
-      .returning(|_| None);
+      .return_once(|_| None);
     let remote_clone = remote_model.clone();
     mock_data_service
       .expect_find_remote_model()
       .with(eq(remote_model.alias.clone()))
-      .return_once(move |_| Ok(Some(remote_clone.clone())));
+      .return_once(move |_| Ok(Some(remote_clone)));
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_find_local_file()
       .with(
         eq(remote_model.repo.clone()),
         eq(remote_model.filename.clone()),
-        eq(REFS_MAIN),
+        eq(None),
       )
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
@@ -218,7 +234,7 @@ mod test {
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let alias = Alias::testalias();
     mock_data_service
@@ -237,21 +253,28 @@ mod test {
   }
 
   #[rstest]
-  fn test_pull_by_repo_file_only_pulls_the_model() -> anyhow::Result<()> {
+  #[case(None)]
+  #[case(Some("main".to_string()))]
+  #[case(Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()))]
+  #[anyhow_trace::anyhow_trace]
+  fn test_pull_by_repo_file_only_pulls_the_model(
+    #[case] snapshot: Option<String>,
+  ) -> anyhow::Result<()> {
     let repo = Repo::try_from("google/gemma-7b-it-GGUF")?;
     let filename = "gemma-7b-it.gguf";
     let pull = PullCommand::ByRepoFile {
       repo: repo.clone(),
       filename: filename.to_string(),
+      snapshot: snapshot.clone(),
     };
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_local_file_exists()
-      .with(eq(repo.clone()), eq(filename), eq(REFS_MAIN))
+      .with(eq(repo.clone()), eq(filename), eq(snapshot.clone()))
       .return_once(|_, _, _| Ok(false));
     mock_hub_service
       .expect_download()
-      .with(eq(repo), eq(filename), eq(None))
+      .with(eq(repo), eq(filename), eq(snapshot))
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
     let service = AppServiceStubMock::builder()
@@ -267,6 +290,7 @@ mod test {
     alias: Some("llama3:instruct".to_string()),
     repo: None,
     filename: None,
+    snapshot: None,
   }, PullCommand::ByAlias {
     alias: "llama3:instruct".to_string(),
   })]
@@ -274,9 +298,34 @@ mod test {
     alias: None,
     repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
     filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
+    snapshot: None,
   },
   PullCommand::ByRepoFile {
-    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(), filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(), 
+    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
+    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+    snapshot: None,
+  })]
+  #[case(Command::Pull {
+    alias: None,
+    repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
+    filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
+    snapshot: Some("main".to_string()),
+  },
+  PullCommand::ByRepoFile {
+    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
+    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+    snapshot: Some("main".to_string()),
+  })]
+  #[case(Command::Pull {
+    alias: None,
+    repo: Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()),
+    filename: Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()),
+    snapshot: Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()),
+  },
+  PullCommand::ByRepoFile {
+    repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
+    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+    snapshot: Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()),
   })]
   fn test_pull_command_try_from_command(
     #[case] input: Command,

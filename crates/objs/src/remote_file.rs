@@ -10,6 +10,7 @@ pub struct RemoteModel {
   pub family: String,
   pub repo: Repo,
   pub filename: String,
+  // TODO(support snapshot): support snapshot in remote_file
   pub features: Vec<String>,
   pub chat_template: ChatTemplate,
   #[serde(default)]
