@@ -66,6 +66,10 @@ pub trait DataService: std::fmt::Debug {
   fn delete_alias(&self, alias: &str) -> Result<()>;
 
   fn alias_filename(&self, alias: &str) -> Result<PathBuf>;
+
+  fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>>;
+
+  fn write_file(&self, folder: Option<String>, filename: &str, contents: &[u8]) -> Result<()>;
 }
 
 #[derive(Debug, Clone, PartialEq, new)]
@@ -80,6 +84,14 @@ impl LocalDataService {
 
   fn models_yaml(&self) -> PathBuf {
     self.bodhi_home.join(MODELS_YAML)
+  }
+
+  fn construct_path(&self, folder: Option<String>, filename: &str) -> PathBuf {
+    let mut path = self.bodhi_home.clone();
+    if let Some(folder) = folder {
+      path = path.join(folder);
+    }
+    path.join(filename)
   }
 }
 
@@ -171,6 +183,40 @@ impl DataService for LocalDataService {
       result.display()
     );
     Ok(result)
+  }
+
+  fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>> {
+    let path = self.construct_path(folder.clone(), filename);
+
+    if !path.exists() {
+      return Err(DataServiceError::FileMissing {
+        filename: filename.to_string(),
+        dirname: folder.unwrap_or_default(),
+      });
+    }
+
+    fs::read(&path).map_err(|err| DataServiceError::IoFile {
+      source: err,
+      path: path.display().to_string(),
+    })
+  }
+
+  fn write_file(&self, folder: Option<String>, filename: &str, contents: &[u8]) -> Result<()> {
+    let path = self.construct_path(folder, filename);
+
+    if let Some(parent) = path.parent() {
+      if !parent.exists() {
+        fs::create_dir_all(parent).map_err(|err| DataServiceError::DirCreate {
+          source: err,
+          path: parent.display().to_string(),
+        })?;
+      }
+    }
+
+    fs::write(&path, contents).map_err(|err| DataServiceError::IoFile {
+      source: err,
+      path: path.display().to_string(),
+    })
   }
 }
 
@@ -368,6 +414,79 @@ filename='{models_file}'"#
     let mut expected = Alias::tinyllama();
     expected.alias = "tinyllama:mymodel".to_string();
     assert_eq!(expected, new_alias);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_read_file(data_service: DataServiceTuple) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
+    let folder = Some("test_folder".to_string());
+    let filename = "test_file.txt";
+    let file_path = bodhi_home.join("test_folder").join(filename);
+    fs::create_dir_all(file_path.parent().unwrap())?;
+    fs::write(&file_path, b"test content")?;
+
+    let content = service.read_file(folder.clone(), filename)?;
+    assert_eq!(b"test content".to_vec(), content);
+
+    let content = service.read_file(None, filename);
+    assert!(content.is_err());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_write_file(data_service: DataServiceTuple) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
+    let folder = Some("test_folder".to_string());
+    let filename = "test_file.txt";
+    let file_path = bodhi_home.join("test_folder").join(filename);
+
+    service.write_file(folder.clone(), filename, b"test content")?;
+    assert!(file_path.exists());
+    let content = fs::read(&file_path)?;
+    assert_eq!(b"test content".to_vec(), content);
+
+    service.write_file(None, filename, b"test content in root")?;
+    let root_file_path = bodhi_home.join(filename);
+    assert!(root_file_path.exists());
+    let content = fs::read(&root_file_path)?;
+    assert_eq!(b"test content in root".to_vec(), content);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_write_file_create_folder(
+    data_service: DataServiceTuple,
+  ) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
+    let folder = Some("new_folder".to_string());
+    let filename = "new_file.txt";
+    let file_path = bodhi_home.join("new_folder").join(filename);
+
+    service.write_file(folder.clone(), filename, b"new content")?;
+    assert!(file_path.exists());
+    let content = fs::read(&file_path)?;
+    assert_eq!(b"new content".to_vec(), content);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_local_data_service_read_file_not_found(
+    data_service: DataServiceTuple,
+  ) -> anyhow::Result<()> {
+    let DataServiceTuple(_temp, _, service) = data_service;
+    let folder = Some("non_existent_folder".to_string());
+    let filename = "non_existent_file.txt";
+
+    let result = service.read_file(folder, filename);
+    assert!(result.is_err());
+    assert_eq!(
+      "file 'non_existent_file.txt' not found in $BODHI_HOME/non_existent_folder.\n$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME.",
+      result.unwrap_err().to_string()
+    );
+
     Ok(())
   }
 }
