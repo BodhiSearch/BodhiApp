@@ -12,6 +12,7 @@ pub struct CreateCommand {
   pub alias: String,
   pub repo: Repo,
   pub filename: String,
+  // TODO(support snapshot): have snapshot as an option
   pub chat_template: ChatTemplate,
   pub family: Option<String>,
   #[builder(default = "true")]
@@ -125,7 +126,10 @@ impl CreateCommand {
       }
       None => {
         if self.auto_download {
-          service.hub_service().download(&self.repo, &self.filename)?
+          service
+            .hub_service()
+            // TODO(support snapshot): have snapshot as an option
+            .download(&self.repo, &self.filename, None)?
         } else {
           return Err(CreateCommandError::ModelFileMissing {
             filename: self.filename.clone(),
@@ -150,7 +154,7 @@ impl CreateCommand {
       _ => {
         service
           .hub_service()
-          .download(&chat_template_repo, TOKENIZER_CONFIG_JSON)?;
+          .download(&chat_template_repo, TOKENIZER_CONFIG_JSON, None)?;
         println!(
           "tokenizer from repo: '{}', filename: '{}' downloaded into $HF_HOME",
           &self.repo, &self.filename
@@ -181,7 +185,7 @@ impl CreateCommand {
 mod test {
   use crate::{Command, CreateCommand};
   use anyhow_trace::anyhow_trace;
-  use mockall::predicate::eq;
+  use mockall::predicate::*;
   use objs::{
     Alias, ChatTemplate, ChatTemplateId, GptContextParams, GptContextParamsBuilder, HubFile,
     OAIRequestParams, OAIRequestParamsBuilder, Repo, REFS_MAIN, TOKENIZER_CONFIG_JSON,
@@ -370,8 +374,12 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(create.repo.clone()), eq(create.filename.clone()))
-      .return_once(|_, _| Ok(HubFile::testalias()));
+      .with(
+        eq(create.repo.clone()),
+        eq(create.filename.clone()),
+        eq(None)
+      )
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
@@ -414,8 +422,12 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(create.repo.clone()), eq(create.filename.clone()))
-      .return_once(|_, _| Ok(HubFile::testalias()));
+      .with(
+        eq(create.repo.clone()),
+        eq(create.filename.clone()),
+        eq(None)
+      )
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
       .with(
@@ -426,8 +438,12 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(tokenizer_repo), eq(TOKENIZER_CONFIG_JSON))
-      .return_once(|_, _| Ok(HubFile::testalias_tokenizer()));
+      .with(
+        eq(tokenizer_repo.clone()),
+        eq(TOKENIZER_CONFIG_JSON),
+        eq(None)
+      )
+      .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
     let alias = Alias::test_alias_instruct_builder()
       .chat_template(chat_template.clone())
       .build()

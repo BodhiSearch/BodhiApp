@@ -322,8 +322,12 @@ mod tests {
       .returning(|_, _, _| Ok(false));
     mock_hub_service
       .expect_download()
-      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf".to_string()))
-      .returning(|_, _| Ok(HubFile::testalias()));
+      .with(
+        eq(Repo::testalias()),
+        eq("testalias.Q8_0.gguf".to_string()),
+        eq(None),
+      )
+      .returning(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
       .with(
@@ -498,8 +502,12 @@ mod tests {
       .returning(|_, _, _| Ok(true));
     mock_hub_service
       .expect_download()
-      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf".to_string()))
-      .returning(|_, _| Ok(HubFile::testalias()));
+      .with(
+        eq(Repo::testalias()),
+        eq("testalias.Q8_0.gguf".to_string()),
+        eq(None),
+      )
+      .returning(|_, _, _| Ok(HubFile::testalias()));
     let db_service = db_service_with_events(&temp_home).await;
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);

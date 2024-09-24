@@ -116,7 +116,8 @@ impl PullCommand {
           println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
           return Ok(());
         } else {
-          service.hub_service().download(&repo, &filename)?;
+          // TODO(support snapshot): have snapshot as an option
+          service.hub_service().download(&repo, &filename, None)?;
           println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
         Ok(())
@@ -142,7 +143,10 @@ impl PullCommand {
         Ok(local_model_file)
       }
       _ => {
-        let local_model_file = service.hub_service().download(repo, filename)?;
+        let local_model_file = service
+          .hub_service()
+          // TODO(support snapshot): have snapshot as an option
+          .download(repo, filename, None)?;
         println!(
           "repo: '{}', filename: '{}' downloaded into $HF_HOME",
           repo, filename
@@ -206,8 +210,12 @@ mod test {
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()
-      .with(eq(remote_model.repo), eq(remote_model.filename.clone()))
-      .return_once(|_, _| Ok(HubFile::testalias()));
+      .with(
+        eq(remote_model.repo),
+        eq(remote_model.filename.clone()),
+        eq(None),
+      )
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(REFS_MAIN))
@@ -243,8 +251,8 @@ mod test {
       .return_once(|_, _, _| Ok(false));
     mock_hub_service
       .expect_download()
-      .with(eq(repo), eq(filename))
-      .return_once(|_, _| Ok(HubFile::testalias()));
+      .with(eq(repo), eq(filename), eq(None))
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mock_data_service = MockDataService::new();
     let service = AppServiceStubMock::builder()
       .hub_service(mock_hub_service)

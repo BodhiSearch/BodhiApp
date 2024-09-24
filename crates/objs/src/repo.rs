@@ -10,6 +10,7 @@ pub static GGUF: &str = "gguf";
 pub static GGUF_EXTENSION: &str = ".gguf";
 pub static REFS: &str = "refs";
 pub static REFS_MAIN: &str = "refs/main";
+pub static SNAPSHOT_MAIN: &str = "main";
 pub static REGEX_REPO: Lazy<Regex> =
   Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$").unwrap());
 
