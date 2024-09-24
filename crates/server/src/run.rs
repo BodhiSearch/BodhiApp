@@ -3,26 +3,12 @@ use crate::interactive::InteractiveRuntime;
 #[cfg(test)]
 use crate::test_utils::MockInteractiveRuntime as InteractiveRuntime;
 use crate::InteractiveError;
-use commands::{CmdIntoError, Command, PullCommand, PullCommandError};
+use commands::{PullCommand, PullCommandError};
 use services::{AppService, DataServiceError};
 use std::sync::Arc;
 
 pub enum RunCommand {
   WithAlias { alias: String },
-}
-
-impl TryFrom<Command> for RunCommand {
-  type Error = CmdIntoError;
-
-  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
-    match value {
-      Command::Run { alias } => Ok(RunCommand::WithAlias { alias }),
-      cmd => Err(CmdIntoError::Convert {
-        input: cmd.to_string(),
-        output: "RunCommand".to_string(),
-      }),
-    }
-  }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -133,11 +119,7 @@ Run `bodhi list -r` to see list of pre-configured model aliases
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_find_local_file()
-      .with(
-        eq(Repo::testalias()),
-        eq("testalias.Q8_0.gguf"),
-        eq(None),
-      )
+      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf"), eq(None))
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
       .expect_download()

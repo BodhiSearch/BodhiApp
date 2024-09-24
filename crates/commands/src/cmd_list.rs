@@ -1,4 +1,4 @@
-use crate::{objs_ext::IntoRow, CmdIntoError, Command};
+use crate::objs_ext::IntoRow;
 use objs::RemoteModel;
 use prettytable::{
   format::{self},
@@ -12,31 +12,6 @@ pub enum ListCommand {
   Local,
   Remote,
   Models,
-}
-
-impl TryFrom<Command> for ListCommand {
-  type Error = CmdIntoError;
-
-  fn try_from(value: Command) -> std::result::Result<Self, Self::Error> {
-    match value {
-      Command::List { remote, models } => match (remote, models) {
-        (true, false) => Ok(ListCommand::Remote),
-        (false, true) => Ok(ListCommand::Models),
-        (false, false) => Ok(ListCommand::Local),
-        (true, true) => Err(CmdIntoError::BadRequest {
-          input: value.to_string(),
-          output: "ListCommand".to_string(),
-          error:
-            "cannot initialize list command with invalid state. --remote: true, --models: true"
-              .to_string(),
-        }),
-      },
-      cmd => Err(CmdIntoError::Convert {
-        input: cmd.to_string(),
-        output: "ListCommand".to_string(),
-      }),
-    }
-  }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -114,43 +89,6 @@ impl ListCommand {
     table.printstd();
     println!();
     println!("To download and configure the model alias, run `bodhi pull <ALIAS>`");
-    Ok(())
-  }
-}
-
-#[cfg(test)]
-mod test {
-  use crate::{Command, ListCommand};
-  use rstest::rstest;
-
-  #[rstest]
-  #[case(Command::App {ui: false}, "Command 'app' cannot be converted into command 'ListCommand'")]
-  #[case(Command::List {remote: true, models: true}, "Command 'list' cannot be converted into command 'ListCommand', error: 'cannot initialize list command with invalid state. --remote: true, --models: true'")]
-  fn test_list_invalid_try_from(#[case] input: Command, #[case] expected: String) {
-    let result = ListCommand::try_from(input);
-    assert!(result.is_err());
-    assert_eq!(expected, result.unwrap_err().to_string());
-  }
-
-  #[rstest]
-  #[case(Command::List {
-    remote: false,
-    models: false,
-  }, ListCommand::Local)]
-  #[case(Command::List {
-    remote: true,
-    models: false,
-  }, ListCommand::Remote)]
-  #[case(Command::List {
-    remote: false,
-    models: true,
-  }, ListCommand::Models)]
-  fn test_list_valid_try_from(
-    #[case] input: Command,
-    #[case] expected: ListCommand,
-  ) -> anyhow::Result<()> {
-    let result = ListCommand::try_from(input)?;
-    assert_eq!(expected, result);
     Ok(())
   }
 }

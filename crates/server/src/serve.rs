@@ -3,7 +3,6 @@ use crate::{
   ServerHandle, SharedContextRw, ShutdownCallback,
 };
 use axum::Router;
-use commands::{CmdIntoError, Command};
 use services::AppService;
 use std::sync::Arc;
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
@@ -11,20 +10,6 @@ use tokio::{sync::oneshot::Sender, task::JoinHandle};
 #[derive(Debug, Clone, PartialEq)]
 pub enum ServeCommand {
   ByParams { host: String, port: u16 },
-}
-
-impl TryFrom<Command> for ServeCommand {
-  type Error = CmdIntoError;
-
-  fn try_from(value: Command) -> Result<Self, Self::Error> {
-    match value {
-      Command::Serve { host, port } => Ok(ServeCommand::ByParams { host, port }),
-      cmd => Err(CmdIntoError::Convert {
-        input: cmd.to_string(),
-        output: "ServeCommand".to_string(),
-      }),
-    }
-  }
 }
 
 pub struct ShutdownContextCallback {
@@ -110,42 +95,5 @@ impl ServeCommand {
       join_handle,
       shutdown,
     })
-  }
-}
-
-#[cfg(test)]
-mod test {
-  use crate::ServeCommand;
-  use commands::Command;
-  use rstest::rstest;
-
-  #[rstest]
-  fn test_serve_command_from_serve() -> anyhow::Result<()> {
-    let cmd = Command::Serve {
-      host: "localhost".to_string(),
-      port: 1135,
-    };
-    let result = ServeCommand::try_from(cmd)?;
-    let expected = ServeCommand::ByParams {
-      host: "localhost".to_string(),
-      port: 1135,
-    };
-    assert_eq!(expected, result);
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_serve_command_convert_err() -> anyhow::Result<()> {
-    let cmd = Command::List {
-      remote: false,
-      models: false,
-    };
-    let result = ServeCommand::try_from(cmd);
-    assert!(result.is_err());
-    assert_eq!(
-      "Command 'list' cannot be converted into command 'ServeCommand'",
-      result.unwrap_err().to_string()
-    );
-    Ok(())
   }
 }

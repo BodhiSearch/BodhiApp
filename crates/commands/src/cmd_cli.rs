@@ -3,7 +3,7 @@ use objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, R
 use services::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use strum::Display;
 
-#[derive(Debug, PartialEq, Parser)]
+#[derive(Debug, PartialEq, Parser, Clone)]
 #[command(name = "bodhi")]
 #[command(version)]
 #[command(about = "Run GenerativeAI LLMs locally and serve them via OpenAI compatible API")]
@@ -12,7 +12,7 @@ pub struct Cli {
   pub command: Command,
 }
 
-#[derive(Debug, PartialEq, Subcommand, Display)]
+#[derive(Debug, PartialEq, Subcommand, Display, Clone)]
 #[strum(serialize_all = "lowercase")]
 #[allow(clippy::large_enum_variant)]
 pub enum Command {
