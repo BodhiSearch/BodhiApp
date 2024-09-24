@@ -58,6 +58,8 @@ pub enum Command {
     /// The GGUF model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
     #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
     filename: Option<String>,
+
+    // TODO(support snapshot): have snapshot as an option
   },
 
   /// Create or update a model alias
@@ -74,6 +76,8 @@ pub enum Command {
     /// The gguf model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
     #[clap(long, short = 'f', value_parser = gguf_filename_parser)]
     filename: String,
+
+    // TODO(support snapshot): have snapshot as an option
 
     /// In-built chat template mapping to use to convert chat messages to LLM prompt
     #[clap(long, group = "template")]
