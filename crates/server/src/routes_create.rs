@@ -24,6 +24,7 @@ pub struct CreateAliasRequest {
   alias: Option<String>,
   repo: Repo,
   filename: String,
+  snapshot: Option<String>,
   chat_template: ChatTemplate,
   family: Option<String>,
   request_params: Option<OAIRequestParams>,
@@ -101,6 +102,7 @@ impl TryFrom<CreateAliasRequest> for CreateCommand {
       alias,
       repo: value.repo,
       filename: value.filename,
+      snapshot: value.snapshot,
       chat_template: value.chat_template,
       family: value.family,
       auto_download: false,
@@ -194,10 +196,8 @@ mod tests {
       .with_state(Arc::new(router_state))
   }
 
-  #[rstest]
-  #[tokio::test]
-  async fn test_create_alias_handler(app: Router) -> anyhow::Result<()> {
-    let payload = serde_json::json!({
+  fn payload() -> Value {
+    serde_json::json!({
       "alias": "test:alias",
       "repo": "FakeFactory/fakemodel-gguf",
       "filename": "fakemodel.Q4_0.gguf",
@@ -209,8 +209,87 @@ mod tests {
       "context_params": {
         "n_ctx": 2048
       }
-    });
+    })
+  }
 
+  fn expected() -> AliasResponse {
+    AliasResponseBuilder::default()
+      .alias("test:alias".to_string())
+      .repo("FakeFactory/fakemodel-gguf")
+      .filename("fakemodel.Q4_0.gguf")
+      .family(Some("test_family".to_string()))
+      .chat_template("llama3")
+      .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
+      .features(vec!["chat".to_string()])
+      .model_params(HashMap::new())
+      .request_params(
+        OAIRequestParamsBuilder::default()
+          .temperature(0.7)
+          .build()
+          .unwrap(),
+      )
+      .context_params(
+        GptContextParamsBuilder::default()
+          .n_ctx(2048)
+          .build()
+          .unwrap(),
+      )
+      .build()
+      .unwrap()
+  }
+
+  fn payload_with_snapshot() -> Value {
+    serde_json::json!({
+      "alias": "test:alias",
+      "repo": "FakeFactory/fakemodel-gguf",
+      "filename": "fakemodel.Q4_0.gguf",
+      "snapshot": "191239b3e26b2882fb562ffccdd1cf0f65402adb",
+      "chat_template": "llama3",
+      "family": "test_family",
+      "request_params": {
+        "temperature": 0.7
+      },
+      "context_params": {
+        "n_ctx": 2048
+      }
+    })
+  }
+
+  fn expected_with_snapshot() -> AliasResponse {
+    AliasResponseBuilder::default()
+      .alias("test:alias".to_string())
+      .repo("FakeFactory/fakemodel-gguf")
+      .filename("fakemodel.Q4_0.gguf")
+      .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb")
+      .family(Some("test_family".to_string()))
+      .chat_template("llama3")
+      .features(vec!["chat".to_string()])
+      .model_params(HashMap::new())
+      .request_params(
+        OAIRequestParamsBuilder::default()
+          .temperature(0.7)
+          .build()
+          .unwrap(),
+      )
+      .context_params(
+        GptContextParamsBuilder::default()
+          .n_ctx(2048)
+          .build()
+          .unwrap(),
+      )
+      .build()
+      .unwrap()
+  }
+
+  #[rstest]
+  #[case(payload(), expected())]
+  #[case(payload_with_snapshot(), expected_with_snapshot())]
+  #[tokio::test]
+  async fn test_create_alias_handler(
+    app: Router,
+    #[case] payload: Value,
+    #[case] expected: AliasResponse,
+  ) -> anyhow::Result<()> {
     let response = app
       .oneshot(
         Request::post("/api/models")
@@ -221,32 +300,7 @@ mod tests {
       .await?;
     assert_eq!(response.status(), StatusCode::CREATED);
     let response = response.json::<AliasResponse>().await?;
-    assert_eq!(
-      response,
-      AliasResponseBuilder::default()
-        .alias("test:alias".to_string())
-        .repo("FakeFactory/fakemodel-gguf")
-        .filename("fakemodel.Q4_0.gguf")
-        .family(Some("test_family".to_string()))
-        .chat_template("llama3")
-        .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
-        .features(vec!["chat".to_string()])
-        .model_params(HashMap::new())
-        .request_params(
-          OAIRequestParamsBuilder::default()
-            .temperature(0.7)
-            .build()
-            .unwrap()
-        )
-        .context_params(
-          GptContextParamsBuilder::default()
-            .n_ctx(2048)
-            .build()
-            .unwrap()
-        )
-        .build()
-        .unwrap()
-    );
+    assert_eq!(response, expected);
     Ok(())
   }
 

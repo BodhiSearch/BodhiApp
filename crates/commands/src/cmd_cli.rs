@@ -59,6 +59,7 @@ pub enum Command {
     #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
     filename: Option<String>,
 
+    /// The snapshot or branch name of the repo to pull the model from, e.g. `main`, `abcdsha`
     #[clap(long, short = 's', requires = "repo")]
     snapshot: Option<String>,
   },
@@ -75,10 +76,13 @@ pub enum Command {
     repo: String,
 
     /// The gguf model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
-    #[clap(long, short = 'f', value_parser = gguf_filename_parser)]
+    #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
     filename: String,
 
-    // TODO(support snapshot): have snapshot as an option
+    /// The snapshot or branch name of the repo to pull the model from, e.g. `main`, `abcdsha`
+    #[clap(long, short = 's', requires = "repo")]
+    snapshot: Option<String>,
+
     /// In-built chat template mapping to use to convert chat messages to LLM prompt
     #[clap(long, group = "template")]
     chat_template: Option<ChatTemplateId>,
@@ -352,6 +356,7 @@ For more information, try '--help'.
     "testalias:instruct",
     "MyFactory/testalias-gguf",
     "testalias.Q8_0.gguf",
+    None,
     "testalias",
     ChatTemplateId::Llama3,
     false,
@@ -383,6 +388,7 @@ For more information, try '--help'.
     "testalias:instruct".to_string(),
     "MyFactory/testalias-gguf".to_string(),
     "testalias.Q8_0.gguf".to_string(),
+    None,
     "testalias".to_string(),
     ChatTemplateId::Llama3,
     false,
@@ -411,6 +417,7 @@ For more information, try '--help'.
     "testalias:instruct",
     "--repo", "MyFactory/testalias-gguf",
     "--filename", "testalias.Q8_0.gguf",
+    "--snapshot", "abcdsha1",
     "--family", "testalias",
     "--chat-template", "llama3",
     "--update"
@@ -418,6 +425,7 @@ For more information, try '--help'.
     "testalias:instruct",
     "MyFactory/testalias-gguf",
     "testalias.Q8_0.gguf",
+    Some("abcdsha1".to_string()),
     "testalias",
     ChatTemplateId::Llama3,
     true,
@@ -429,6 +437,7 @@ For more information, try '--help'.
     #[case] alias: String,
     #[case] repo: String,
     #[case] filename: String,
+    #[case] snapshot: Option<String>,
     #[case] family: String,
     #[case] chat_template: ChatTemplateId,
     #[case] update: bool,
@@ -440,6 +449,7 @@ For more information, try '--help'.
       alias,
       repo,
       filename,
+      snapshot,
       chat_template: Some(chat_template),
       tokenizer_config: None,
       family: Some(family),
@@ -517,6 +527,7 @@ For more information, try '--help'.
       alias: Default::default(),
       repo: Default::default(),
       filename: Default::default(),
+      snapshot: None,
       chat_template: None,
       tokenizer_config: None,
       family: None,

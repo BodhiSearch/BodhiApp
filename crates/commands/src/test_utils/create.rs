@@ -11,6 +11,7 @@ impl CreateCommand {
       .alias("testalias:instruct".to_string())
       .repo(Repo::try_from("MyFactory/testalias-gguf").unwrap())
       .filename("testalias.Q8_0.gguf".to_string())
+      .snapshot(None)
       .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
       .family(Some("testalias".to_string()))
       .oai_request_params(OAIRequestParams::default())

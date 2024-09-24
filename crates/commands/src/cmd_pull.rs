@@ -132,7 +132,6 @@ impl PullCommand {
           println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
           return Ok(());
         } else {
-          // TODO(support snapshot): have snapshot as an option
           service.hub_service().download(&repo, &filename, snapshot)?;
           println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
@@ -162,7 +161,6 @@ impl PullCommand {
       _ => {
         let local_model_file = service
           .hub_service()
-          // TODO(support snapshot): have snapshot as an option
           .download(repo, filename, snapshot)?;
         println!(
           "repo: '{}', filename: '{}' downloaded into $HF_HOME",
