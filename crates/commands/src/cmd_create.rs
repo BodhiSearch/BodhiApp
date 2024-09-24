@@ -12,8 +12,7 @@ pub struct CreateCommand {
   pub alias: String,
   pub repo: Repo,
   pub filename: String,
-  // TODO(support snapshot): have snapshot as an option
-  // pub snapshot: Option<String>,
+  pub snapshot: Option<String>,
   pub chat_template: ChatTemplate,
   pub family: Option<String>,
   #[builder(default = "true")]
@@ -49,6 +48,7 @@ impl TryFrom<Command> for CreateCommand {
         alias,
         repo,
         filename,
+        snapshot,
         chat_template,
         tokenizer_config,
         family,
@@ -85,6 +85,7 @@ impl TryFrom<Command> for CreateCommand {
           alias,
           repo,
           filename,
+          snapshot,
           chat_template,
           family,
           auto_download: true,
@@ -116,7 +117,7 @@ impl CreateCommand {
     let local_model_file =
       service
         .hub_service()
-        .find_local_file(&self.repo, &self.filename, None)?;
+        .find_local_file(&self.repo, &self.filename, self.snapshot.clone())?;
     let local_model_file = match local_model_file {
       Some(local_model_file) => {
         println!(
@@ -129,8 +130,7 @@ impl CreateCommand {
         if self.auto_download {
           service
             .hub_service()
-            // TODO(support snapshot): have snapshot as an option
-            .download(&self.repo, &self.filename, None)?
+            .download(&self.repo, &self.filename, self.snapshot)?
         } else {
           return Err(CreateCommandError::ModelFileMissing {
             filename: self.filename.clone(),
@@ -203,6 +203,7 @@ mod test {
     alias: "testalias:instruct".to_string(),
     repo: "MyFactory/testalias-gguf".to_string(),
     filename: "testalias.Q8_0.gguf".to_string(),
+    snapshot: Some("main".to_string()),
     chat_template: Some(ChatTemplateId::Llama3),
     tokenizer_config: None,
     family: Some("testalias".to_string()),
@@ -214,6 +215,7 @@ mod test {
     alias: "testalias:instruct".to_string(),
     repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
     filename: "testalias.Q8_0.gguf".to_string(),
+    snapshot: Some("main".to_string()),
     chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
     family: Some("testalias".to_string()),
     auto_download: true,
@@ -240,6 +242,7 @@ mod test {
       alias: "test".to_string(),
       repo: "valid/repo".to_string(),
       filename: "model.gguf".to_string(),
+      snapshot: None,
       chat_template: None,
       tokenizer_config: Some("invalid-chat/repo/pattern".to_string()),
       family: None,
@@ -254,6 +257,7 @@ mod test {
       alias: "test".to_string(),
       repo: "invalid-repo".to_string(),
       filename: "model.gguf".to_string(),
+      snapshot: None,
       chat_template: Some(ChatTemplateId::Llama3),
       tokenizer_config: None,
       family: None,
@@ -268,6 +272,7 @@ mod test {
       alias: "test".to_string(),
       repo: "invalid-repo".to_string(),
       filename: "model.gguf".to_string(),
+      snapshot: None,
       chat_template: None,
       tokenizer_config: None,
       family: None,
@@ -290,10 +295,11 @@ mod test {
 
   #[rstest]
   fn test_create_execute_updates_if_exists() -> anyhow::Result<()> {
-    let update_alias = CreateCommand {
+    let create_cmd = CreateCommand {
       alias: "tinyllama:instruct".to_string(),
       repo: Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())?,
       filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
+      snapshot: Some("main".to_string()),
       chat_template: ChatTemplate::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
       family: Some("tinyllama".to_string()),
       auto_download: false,
@@ -322,7 +328,7 @@ mod test {
       .data_service()
       .find_alias("tinyllama:instruct")
       .unwrap();
-    let result = update_alias.execute(service.clone());
+    let result = create_cmd.execute(service.clone());
     assert!(result.is_ok());
     let updated_alias = service
       .data_service()
@@ -356,8 +362,16 @@ mod test {
   }
 
   #[rstest]
-  fn test_create_execute_downloads_model_saves_alias() -> anyhow::Result<()> {
-    let create = CreateCommand::testalias();
+  #[case(None)]
+  #[case(Some("main".to_string()))]
+  #[case(Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
+  fn test_create_execute_downloads_model_saves_alias(
+    #[case] snapshot: Option<String>,
+  ) -> anyhow::Result<()> {
+    let create = CreateCommand::testalias_builder()
+      .snapshot(snapshot.clone())
+      .build()
+      .unwrap();
     let mut mock_data_service = MockDataService::default();
     mock_data_service
       .expect_find_alias()
@@ -369,7 +383,7 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(None),
+        eq(snapshot.clone()),
       )
       .return_once(|_, _, _| Ok(None));
     mock_hub_service
@@ -377,7 +391,7 @@ mod test {
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
-        eq(None),
+        eq(snapshot.clone()),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     mock_hub_service
