@@ -4,6 +4,8 @@ use crate::db::{
   DbError, DbService,
 };
 
+use super::{AccessRequest, RequestStatus};
+
 #[derive(Debug, PartialEq)]
 pub struct NoOpDbService {}
 
@@ -63,6 +65,26 @@ impl DbService for NoOpDbService {
 
   async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
     Ok(vec![])
+  }
+
+  async fn insert_pending_request(&self, _email: String) -> Result<AccessRequest, DbError> {
+    todo!()
+  }
+
+  async fn get_pending_request(&self, _email: String) -> Result<Option<AccessRequest>, DbError> {
+    Ok(None)
+  }
+
+  async fn list_pending_requests(
+    &self,
+    _page: u32,
+    _per_page: u32,
+  ) -> Result<Vec<AccessRequest>, DbError> {
+    Ok(vec![])
+  }
+
+  async fn update_request_status(&self, _id: i64, _status: RequestStatus) -> Result<(), DbError> {
+    Ok(())
   }
 }
 
