@@ -8,7 +8,7 @@ use tokio::sync::mpsc::Sender;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
-pub trait RouterState: Send + Sync {
+pub trait RouterState: std::fmt::Debug + Send + Sync {
   fn app_service(&self) -> Arc<dyn AppService>;
 
   async fn chat_completions(

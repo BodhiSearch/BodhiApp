@@ -19,15 +19,13 @@ pub fn key_pair() -> (RsaPrivateKey, RsaPublicKey) {
 }
 
 #[fixture]
-pub fn token(key_pair: &(RsaPrivateKey, RsaPublicKey)) -> anyhow::Result<(String, String, String)> {
-  build_token(key_pair, (Utc::now() + Duration::hours(1)).timestamp())
+pub fn token(key_pair: &(RsaPrivateKey, RsaPublicKey)) -> (String, String, String) {
+  build_token(key_pair, (Utc::now() + Duration::hours(1)).timestamp()).unwrap()
 }
 
 #[fixture]
-pub fn expired_token(
-  key_pair: &(RsaPrivateKey, RsaPublicKey),
-) -> anyhow::Result<(String, String, String)> {
-  build_token(key_pair, (Utc::now() - Duration::hours(1)).timestamp())
+pub fn expired_token(key_pair: &(RsaPrivateKey, RsaPublicKey)) -> (String, String, String) {
+  build_token(key_pair, (Utc::now() - Duration::hours(1)).timestamp()).unwrap()
 }
 
 pub fn build_token(
