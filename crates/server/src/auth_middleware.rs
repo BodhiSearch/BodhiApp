@@ -277,44 +277,44 @@ async fn validate_access_token(
 
   // Check if token is expired
   let now = time::OffsetDateTime::now_utc();
-  if now.unix_timestamp() >= token_data.claims.exp as i64 {
-    // Token is expired, try to refresh
-    if let Some(refresh_token) = session.get::<String>("refresh_token").await? {
-      let app_reg_info: AppRegInfo =
-        get_secret(secret_service, KEY_APP_REG_INFO)?.ok_or_else(|| {
-          AuthError::InternalServerError("app registration info is missing".to_string())
-        })?;
-
-      let result = auth_service
-        .refresh_token(
-          RefreshToken::new(refresh_token),
-          ClientId::new(app_reg_info.client_id),
-          ClientSecret::new(app_reg_info.client_secret),
-        )
-        .await;
-
-      if let Ok((new_access_token, new_refresh_token)) = result {
-        // Store new tokens in session
-        session
-          .insert("access_token", new_access_token.secret())
-          .await?;
-        session
-          .insert("refresh_token", new_refresh_token.secret())
-          .await?;
-
-        return Ok(new_access_token.secret().to_string());
-      } else {
-        return Err(AuthError::InvalidToken(
-          "Cannot refresh access token, please logout and login again.".to_string(),
-        ));
-      }
-    } else {
-      return Err(AuthError::InvalidToken(
-        "Session expired. Please log in again.".to_string(),
-      ));
-    }
+  if now.unix_timestamp() < token_data.claims.exp as i64 {
+    return Ok(access_token);
   }
-  Ok(access_token)
+  // Token is expired, try to refresh
+  if let Some(refresh_token) = session.get::<String>("refresh_token").await? {
+    let app_reg_info: AppRegInfo =
+      get_secret(secret_service, KEY_APP_REG_INFO)?.ok_or_else(|| {
+        AuthError::InternalServerError("app registration info is missing".to_string())
+      })?;
+
+    let result = auth_service
+      .refresh_token(
+        RefreshToken::new(refresh_token),
+        ClientId::new(app_reg_info.client_id),
+        ClientSecret::new(app_reg_info.client_secret),
+      )
+      .await;
+
+    if let Ok((new_access_token, new_refresh_token)) = result {
+      // Store new tokens in session
+      session
+        .insert("access_token", new_access_token.secret())
+        .await?;
+      session
+        .insert("refresh_token", new_refresh_token.secret())
+        .await?;
+
+      Ok(new_access_token.secret().to_string())
+    } else {
+      Err(AuthError::InvalidToken(
+        "Cannot refresh access token, please logout and login again.".to_string(),
+      ))
+    }
+  } else {
+    Err(AuthError::InvalidToken(
+      "Session expired. Please log in again.".to_string(),
+    ))
+  }
 }
 
 fn authz_status(secret_service: &Arc<dyn SecretService>) -> String {
@@ -572,9 +572,9 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_algorithm_mismatch(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token?;
+    let (_, token, _) = token;
     let mut secret_service = SecretServiceStub::default();
     secret_service.with_app_reg_info(
       &AppRegInfoBuilder::test_default()
@@ -611,9 +611,9 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_kid_mismatch(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token?;
+    let (_, token, _) = token;
     let mut secret_service = SecretServiceStub::default();
     secret_service.with_app_reg_info(
       &AppRegInfoBuilder::test_default()
@@ -649,9 +649,9 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_public_key_missing(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token?;
+    let (_, token, _) = token;
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(SecretServiceStub::default()))
       .with_session_service()
@@ -682,9 +682,9 @@ mod tests {
   #[anyhow_trace]
   #[tokio::test]
   async fn test_auth_middleware_token_issuer_error(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, public_key) = token?;
+    let (_, token, public_key) = token;
     let mut secret_service = SecretServiceStub::default();
     secret_service.with_app_reg_info(
       &AppRegInfoBuilder::test_default()
@@ -727,10 +727,10 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_no_exchange_if_present_in_cache(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (jti, token, _) = token?;
+    let (jti, token, _) = token;
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_exchange_for_resource_token()
@@ -786,10 +786,10 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_exchange_if_exchange_token_not_in_cache(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (_, token, public_key) = token?;
+    let (_, token, public_key) = token;
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_exchange_for_resource_token()
@@ -854,11 +854,11 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_with_valid_session_token(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
     temp_bodhi_home: TempDir,
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token?;
+    let (_, token, _) = token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let app_service = AppServiceStubBuilder::default()
@@ -904,11 +904,11 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token(
-    expired_token: anyhow::Result<(String, String, String)>,
+    expired_token: (String, String, String),
     temp_bodhi_home: TempDir,
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (_, expired_token, _) = expired_token?;
+    let (_, expired_token, _) = expired_token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
 
@@ -1003,10 +1003,10 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
-    expired_token: anyhow::Result<(String, String, String)>,
+    expired_token: (String, String, String),
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
-    let (_, expired_token, _) = expired_token?;
+    let (_, expired_token, _) = expired_token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
 

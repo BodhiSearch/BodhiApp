@@ -1,10 +1,10 @@
 use crate::{
   db::{DbService, MockDbService},
   test_utils::{EnvServiceStub, SecretServiceStub},
-  AppService, AuthService, CacheService, DataService, DefaultEnvService, EnvService, HfHubService,
-  HubService, LocalDataService, MockAuthService, MockCacheService, MockDataService, MockEnvService,
-  MockEnvWrapper, MockHubService, MockSecretService, MockSessionService, MokaCacheService,
-  SecretService, SessionService, SqliteSessionService,
+  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, DefaultEnvService,
+  EnvService, HfHubService, HubService, LocalDataService, MockAuthService, MockCacheService,
+  MockDataService, MockEnvService, MockEnvWrapper, MockHubService, MockSecretService,
+  MockSessionService, MokaCacheService, SecretService, SessionService, SqliteSessionService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home};
@@ -175,7 +175,7 @@ impl AppServiceStubBuilder {
     self
   }
 
-  pub async fn with_sqlite_session_service(
+  pub fn with_sqlite_session_service(
     &mut self,
     session_service: Arc<SqliteSessionService>,
   ) -> &mut Self {
@@ -189,6 +189,13 @@ impl AppServiceStubBuilder {
       env_service = env_service.with_env(key, value);
     }
     self.env_service = Some(Some(Arc::new(env_service)));
+    self
+  }
+
+  pub fn with_secret_service(&mut self) -> &mut Self {
+    let mut secret_service = SecretServiceStub::default();
+    secret_service.with_app_reg_info(&AppRegInfoBuilder::test_default().build().unwrap());
+    self.secret_service = Some(Some(Arc::new(secret_service)));
     self
   }
 }

@@ -14,8 +14,7 @@ use axum::{
 use base64::{engine::general_purpose, Engine as _};
 use jsonwebtoken::TokenData;
 use oauth2::{
-  url::ParseError, AccessToken, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier,
-  RedirectUrl,
+  url::ParseError, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl,
 };
 use serde::{Deserialize, Serialize};
 use services::{
@@ -78,53 +77,50 @@ impl IntoResponse for LoginError {
 }
 
 pub async fn login_handler(
+  headers: HeaderMap,
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Response, LoginError> {
   let app_service = state.app_service();
   let env_service = app_service.env_service();
-  let secret_service = app_service.secret_service();
-  let auth_service = app_service.auth_service();
-
-  if let Ok(Some(access_token)) = session.get::<String>("access_token").await {
-    if auth_service
-      .check_access_token(&AccessToken::new(access_token))
-      .await?
-    {
+  match headers.get(KEY_RESOURCE_TOKEN) {
+    Some(_) => {
       let ui_home = format!("{}/ui/home", env_service.frontend_url());
-      return Ok(
+      Ok(
         Response::builder()
           .status(StatusCode::FOUND)
           .header("Location", ui_home)
           .body(Body::empty())
           .unwrap()
           .into_response(),
+      )
+    }
+    None => {
+      let secret_service = app_service.secret_service();
+      let app_ref_info = get_secret::<_, AppRegInfo>(secret_service, KEY_APP_REG_INFO)?
+        .ok_or(LoginError::AppRegInfoNotFound)?;
+      let callback_url = env_service.login_callback_url();
+      let client_id = app_ref_info.client_id;
+      let state = generate_random_string(32);
+      session.insert("oauth_state", &state).await?;
+
+      let (code_verifier, code_challenge) = generate_pkce();
+      session.insert("pkce_verifier", &code_verifier).await?;
+
+      let login_url = format!(
+          "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope=openid+email+profile",
+          env_service.login_url(), client_id, callback_url, state, code_challenge
       );
+
+      let response = Response::builder()
+        .status(StatusCode::FOUND)
+        .header("Location", login_url)
+        .body(Body::empty())
+        .unwrap()
+        .into_response();
+      Ok(response)
     }
   }
-
-  let app_ref_info = get_secret::<_, AppRegInfo>(secret_service, KEY_APP_REG_INFO)?
-    .ok_or(LoginError::AppRegInfoNotFound)?;
-  let callback_url = env_service.login_callback_url();
-  let client_id = app_ref_info.client_id;
-  let state = generate_random_string(32);
-  session.insert("oauth_state", &state).await?;
-
-  let (code_verifier, code_challenge) = generate_pkce();
-  session.insert("pkce_verifier", &code_verifier).await?;
-
-  let login_url = format!(
-        "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope=openid+email+profile",
-        env_service.login_url(), client_id, callback_url, state, code_challenge
-    );
-
-  let response = Response::builder()
-    .status(StatusCode::FOUND)
-    .header("Location", login_url)
-    .body(Body::empty())
-    .unwrap()
-    .into_response();
-  Ok(response)
 }
 
 pub async fn login_callback_handler(
@@ -270,29 +266,28 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Htt
 #[cfg(test)]
 mod tests {
   use crate::{
-    generate_pkce, login_callback_handler, login_handler, logout_handler,
+    generate_pkce, login_callback_handler, login_handler, logout_handler, optional_auth_middleware,
     test_utils::ResponseTestExt, user_info_handler, DefaultRouterState, MockSharedContextRw,
-    UserInfo,
+    RouterState, UserInfo,
   };
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
     http::{header, status::StatusCode, Request},
-    middleware::{from_fn, Next},
-    response::{IntoResponse, Response},
+    middleware::from_fn_with_state,
+    response::IntoResponse,
     routing::{get, post},
     Json, Router,
   };
   use axum_test::TestServer;
-  use mockall::predicate::function;
   use oauth2::{AccessToken, RefreshToken};
   use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use serde_json::{json, Value};
   use services::{
     test_utils::{
-      token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub, SecretServiceStub,
-      SessionTestExt,
+      expired_token, token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub,
+      SecretServiceStub, SessionTestExt,
     },
     AppService, MockAuthService, MockEnvService, SqliteSessionService, BODHI_FRONTEND_URL,
   };
@@ -300,8 +295,12 @@ mod tests {
   use std::{collections::HashMap, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;
+  use time::OffsetDateTime;
   use tower::ServiceExt;
-  use tower_sessions::Session;
+  use tower_sessions::{
+    session::{Id, Record},
+    Session, SessionStore,
+  };
   use url::Url;
 
   #[rstest]
@@ -376,57 +375,97 @@ mod tests {
     Ok(())
   }
 
-  async fn set_session_token(req: Request<Body>, next: Next) -> Response {
-    let session = req
-      .extensions()
-      .get::<Session>()
-      .ok_or(anyhow::anyhow!("Missing session"))
-      .unwrap();
-    session.insert("access_token", "valid_token").await.unwrap();
-    next.run(req).await
+  #[rstest]
+  #[tokio::test]
+  async fn test_login_handler_already_logged_in(
+    temp_bodhi_home: TempDir,
+    token: (String, String, String),
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = token;
+    test_login_handler_with_token(
+      temp_bodhi_home,
+      token,
+      StatusCode::FOUND,
+      "http://frontend.localhost:3000/ui/home",
+    )
+    .await
   }
 
   #[rstest]
   #[tokio::test]
-  async fn test_login_handler_already_logged_in(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
-    let mut mock_auth_service = MockAuthService::default();
-    mock_auth_service
-      .expect_check_access_token()
-      .with(function(move |arg: &AccessToken| {
-        arg.secret() == "valid_token"
-      }))
-      .return_once(|_| Ok(true));
+  async fn test_login_handler_for_expired_token_redirects_to_login(
+    temp_bodhi_home: TempDir,
+    expired_token: (String, String, String),
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = expired_token;
+    test_login_handler_with_token(
+      temp_bodhi_home,
+      token,
+      StatusCode::FOUND,
+      "http://id.localhost/realms/test-realm/protocol/openid-connect/auth",
+    )
+    .await
+  }
+
+  async fn test_login_handler_with_token(
+    temp_bodhi_home: TempDir,
+    token: String,
+    status: StatusCode,
+    location: &str,
+  ) -> anyhow::Result<()> {
     let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = SqliteSessionService::build_session_service(dbfile).await;
+    let record = set_token_in_session(&session_service, &token).await?;
     let app_service = AppServiceStubBuilder::default()
       .env_service(Arc::new(
         EnvServiceStub::default().with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000"),
       ))
-      .auth_service(Arc::new(mock_auth_service))
-      .build_session_service(dbfile)
-      .await
+      .with_sqlite_session_service(Arc::new(session_service))
+      .with_secret_service()
       .build()?;
     let app_service = Arc::new(app_service);
-    let state = Arc::new(DefaultRouterState::new(
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContextRw::default()),
       app_service.clone(),
     ));
-    let session_layer = app_service.session_service().session_layer();
     let router = Router::new()
       .route("/login", get(login_handler))
-      .layer(from_fn(set_session_token))
-      .layer(session_layer)
-      .with_state(state);
+      .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
+      .with_state(state)
+      .layer(app_service.session_service().session_layer());
     let resp = router
-      .oneshot(Request::get("/login").body(Body::empty())?)
+      .oneshot(
+        Request::get("/login")
+          .header("Cookie", format!("bodhiapp_session_id={}", record.id))
+          .body(Body::empty())?,
+      )
       .await?;
-
-    assert_eq!(resp.status(), StatusCode::FOUND);
-    assert_eq!(
-      resp.headers().get("location").unwrap(),
-      &"http://frontend.localhost:3000/ui/home"
-    );
-
+    // assert_eq!("", resp.text().await?);
+    assert_eq!(resp.status(), status);
+    assert!(resp
+      .headers()
+      .get("location")
+      .unwrap()
+      .to_str()
+      .unwrap()
+      .starts_with(location),);
     Ok(())
+  }
+
+  async fn set_token_in_session(
+    session_service: &SqliteSessionService,
+    token: &str,
+  ) -> Result<Record, anyhow::Error> {
+    let id = Id::default();
+    let mut record = Record {
+      id,
+      data: maplit::hashmap! {
+        "access_token".to_string() => Value::String(token.to_string()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + time::Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+    Ok(record)
   }
 
   #[rstest]
@@ -470,7 +509,6 @@ mod tests {
       .env_service(Arc::new(mock_env_service))
       .secret_service(Arc::new(secret_service))
       .with_sqlite_session_service(session_service.clone())
-      .await
       .build()?;
 
     let app_service = Arc::new(app_service);
@@ -588,7 +626,6 @@ mod tests {
     let app_service: AppServiceStub = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .with_sqlite_session_service(session_service.clone())
-      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
@@ -649,7 +686,6 @@ mod tests {
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
       .with_sqlite_session_service(session_service.clone())
-      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
@@ -700,7 +736,6 @@ mod tests {
     let app_service: Arc<dyn AppService> = Arc::new(
       AppServiceStubBuilder::default()
         .with_sqlite_session_service(session_service.clone())
-        .await
         .build()?,
     );
 
@@ -739,9 +774,9 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_user_info_handler_valid_token(
-    token: anyhow::Result<(String, String, String)>,
+    token: (String, String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token.unwrap();
+    let (_, token, _) = token;
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContextRw::default()),
