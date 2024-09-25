@@ -1,6 +1,6 @@
 use crate::db::{
-  Conversation, DbError, DbService, DefaultTimeService, DownloadRequest, Message, MockTimeService,
-  SqliteDbService,
+  AccessRequest, Conversation, DbError, DbService, DefaultTimeService, DownloadRequest, Message,
+  MockTimeService, RequestStatus, SqliteDbService,
 };
 use chrono::{DateTime, Timelike, Utc};
 use rstest::fixture;
@@ -132,5 +132,25 @@ impl DbService for TestDbService {
     let result = self.inner.list_pending_downloads().await;
     self.notify("list_pending_downloads").await;
     result
+  }
+
+  async fn insert_pending_request(&self, _email: String) -> Result<AccessRequest, DbError> {
+    todo!()
+  }
+
+  async fn get_pending_request(&self, _email: String) -> Result<Option<AccessRequest>, DbError> {
+    todo!()
+  }
+
+  async fn list_pending_requests(
+    &self,
+    _page: u32,
+    _per_page: u32,
+  ) -> Result<Vec<AccessRequest>, DbError> {
+    todo!()
+  }
+
+  async fn update_request_status(&self, _id: i64, _status: RequestStatus) -> Result<(), DbError> {
+    todo!()
   }
 }

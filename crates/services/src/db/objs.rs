@@ -80,6 +80,24 @@ impl DownloadRequest {
   }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct AccessRequest {
+  pub id: i64,
+  pub email: String,
+  pub created_at: DateTime<Utc>,
+  pub updated_at: DateTime<Utc>,
+  pub status: RequestStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum RequestStatus {
+  Pending,
+  Approved,
+  Rejected,
+}
+
 #[cfg(test)]
 mod test {
   use crate::db::{Conversation, ConversationBuilder, Message, MessageBuilder};

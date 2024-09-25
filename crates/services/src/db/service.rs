@@ -1,11 +1,12 @@
-use crate::db::{Conversation, DownloadRequest, Message, NoOpDbService};
+use crate::db::{
+  AccessRequest, Conversation, DownloadRequest, DownloadStatus, Message, NoOpDbService,
+  RequestStatus,
+};
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
-use sqlx::{migrate::MigrateError, SqlitePool};
+use sqlx::{migrate::MigrateError, query_as, SqlitePool};
 use std::{str::FromStr, sync::Arc};
 use uuid::Uuid;
-
-use super::DownloadStatus;
 
 pub static CONVERSATIONS: &str = "conversations";
 pub static MESSAGES: &str = "messages";
@@ -41,6 +42,8 @@ pub enum DbError {
   },
   #[error("sqlx_migrate: {0}")]
   Migrate(#[from] MigrateError),
+  #[error("strum_parse: {0}")]
+  StrumParse(#[from] strum::ParseError),
 }
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -67,6 +70,18 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
 
   async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError>;
+
+  async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError>;
+
+  async fn get_pending_request(&self, email: String) -> Result<Option<AccessRequest>, DbError>;
+
+  async fn list_pending_requests(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<Vec<AccessRequest>, DbError>;
+
+  async fn update_request_status(&self, id: i64, status: RequestStatus) -> Result<(), DbError>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -165,7 +180,7 @@ impl DbService for SqliteDbService {
   }
 
   async fn list_conversations(&self) -> Result<Vec<Conversation>, DbError> {
-    let conversations = sqlx::query_as::<_, (String, String, i64, i64)>(
+    let conversations = query_as::<_, (String, String, i64, i64)>(
       "SELECT id, title, created_at, updated_at FROM conversations ORDER BY created_at DESC",
     )
     .fetch_all(&self.pool)
@@ -190,14 +205,14 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError> {
-    let messages = sqlx::query_as::<_, Message>(
+    let messages = query_as::<_, Message>(
       "SELECT id, conversation_id, role, name, content, created_at FROM messages WHERE conversation_id = ?"
     )
     .bind(id)
     .fetch_all(&self.pool)
     .await.map_err(|source| DbError::Sqlx { source, table: MESSAGES.to_string() })?;
 
-    let row = sqlx::query_as::<_, (String, String, i64, i64)>(
+    let row = query_as::<_, (String, String, i64, i64)>(
       "SELECT id, title, created_at, updated_at FROM conversations WHERE id = ?",
     )
     .bind(id)
@@ -278,7 +293,7 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {
-    let result = sqlx::query_as::<_, (String, String, String, String, i64, i64)>(
+    let result = query_as::<_, (String, String, String, String, i64, i64)>(
       "SELECT id, repo, filename, status, created_at, updated_at FROM download_requests WHERE id = ?",
     )
     .bind(id)
@@ -324,7 +339,7 @@ impl DbService for SqliteDbService {
   }
 
   async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
-    let results = sqlx::query_as::<_, (String, String, String, String, i64, i64)>(
+    let results = query_as::<_, (String, String, String, String, i64, i64)>(
       "SELECT id, repo, filename, status, created_at, updated_at FROM download_requests WHERE status = ?",
     )
     .bind(DownloadStatus::Pending.to_string())
@@ -351,14 +366,137 @@ impl DbService for SqliteDbService {
       .collect::<Vec<DownloadRequest>>();
     Ok(results)
   }
+
+  async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError> {
+    let now = self.time_service.utc_now();
+    let result = query_as::<_, (i64, String, DateTime<Utc>, DateTime<Utc>, String)>(
+      "INSERT INTO access_requests (email, created_at, updated_at, status)
+         VALUES (?, ?, ?, ?)
+         RETURNING id, email, created_at, updated_at, status",
+    )
+    .bind(&email)
+    .bind(now)
+    .bind(now)
+    .bind(RequestStatus::Pending.to_string())
+    .fetch_one(&self.pool)
+    .await
+    .map_err(|e| DbError::Sqlx {
+      source: e,
+      table: "access_requests".to_string(),
+    })?;
+
+    Ok(AccessRequest {
+      id: result.0,
+      email: result.1,
+      created_at: result.2,
+      updated_at: result.3,
+      status: RequestStatus::from_str(&result.4)?,
+    })
+  }
+
+  async fn get_pending_request(&self, email: String) -> Result<Option<AccessRequest>, DbError> {
+    let result = query_as::<_, (i64, String, DateTime<Utc>, DateTime<Utc>, String)>(
+      "SELECT id, email, created_at, updated_at, status
+         FROM access_requests
+         WHERE email = ? AND status = ?",
+    )
+    .bind(&email)
+    .bind(RequestStatus::Pending.to_string())
+    .fetch_optional(&self.pool)
+    .await
+    .map_err(|e| DbError::Sqlx {
+      source: e,
+      table: "access_requests".to_string(),
+    })?;
+
+    let result = result
+      .map(|(id, email, created_at, updated_at, status)| {
+        let Ok(status) = RequestStatus::from_str(&status) else {
+          tracing::warn!("unknown request status: {} for id: {}", status, id);
+          return None;
+        };
+        let result = AccessRequest {
+          id,
+          email,
+          created_at,
+          updated_at,
+          status,
+        };
+        Some(result)
+      })
+      .unwrap_or(None);
+    Ok(result)
+  }
+
+  async fn list_pending_requests(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<Vec<AccessRequest>, DbError> {
+    let offset = (page - 1) * per_page;
+    let results = query_as::<_, (i64, String, DateTime<Utc>, DateTime<Utc>, String)>(
+      "SELECT id, email, created_at, updated_at, status
+         FROM access_requests
+         WHERE status = ?
+         ORDER BY created_at ASC
+         LIMIT ? OFFSET ?",
+    )
+    .bind(RequestStatus::Pending.to_string())
+    .bind(per_page as i64)
+    .bind(offset as i64)
+    .fetch_all(&self.pool)
+    .await
+    .map_err(|e| DbError::Sqlx {
+      source: e,
+      table: "access_requests".to_string(),
+    })?;
+
+    let results = results
+      .into_iter()
+      .filter_map(|(id, email, created_at, updated_at, status)| {
+        let Ok(status) = RequestStatus::from_str(&status) else {
+          tracing::warn!("unknown request status: {} for id: {}", status, id);
+          return None;
+        };
+        let result = AccessRequest {
+          id,
+          email,
+          created_at,
+          updated_at,
+          status,
+        };
+        Some(result)
+      })
+      .collect::<Vec<AccessRequest>>();
+    Ok(results)
+  }
+
+  async fn update_request_status(&self, id: i64, status: RequestStatus) -> Result<(), DbError> {
+    let now = self.time_service.utc_now();
+    sqlx::query(
+      "UPDATE access_requests
+         SET status = ?, updated_at = ?
+         WHERE id = ?",
+    )
+    .bind(status.to_string())
+    .bind(now)
+    .bind(id)
+    .execute(&self.pool)
+    .await
+    .map_err(|e| DbError::Sqlx {
+      source: e,
+      table: "access_requests".to_string(),
+    })?;
+    Ok(())
+  }
 }
 
 #[cfg(test)]
 mod test {
   use crate::{
     db::{
-      ConversationBuilder, DbService, DefaultTimeService, DownloadRequest, DownloadStatus,
-      MessageBuilder, SqliteDbService, TimeService,
+      AccessRequest, ConversationBuilder, DbService, DefaultTimeService, DownloadRequest,
+      DownloadStatus, MessageBuilder, RequestStatus, SqliteDbService, TimeService,
     },
     test_utils::db_service,
   };
@@ -606,6 +744,91 @@ mod test {
     let pending_downloads = service.list_pending_downloads().await?;
     assert_eq!(1, pending_downloads.len());
     assert_eq!(pending_request, pending_downloads[0]);
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_insert_pending_request(
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+  ) -> anyhow::Result<()> {
+    let (_tempdir, now, service) = db_service;
+    let email = "test@example.com".to_string();
+    let pending_request = service.insert_pending_request(email.clone()).await?;
+    let expected_request = AccessRequest {
+      id: pending_request.id, // We don't know this in advance
+      email: email,
+      created_at: now,
+      updated_at: now,
+      status: RequestStatus::Pending,
+    };
+    assert_eq!(pending_request, expected_request);
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_get_pending_request(
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+  ) -> anyhow::Result<()> {
+    let (_tempdir, _, service) = db_service;
+    let email = "test@example.com".to_string();
+    let inserted_request = service.insert_pending_request(email.clone()).await?;
+    let fetched_request = service.get_pending_request(email).await?;
+    assert!(fetched_request.is_some());
+    let fetched_request = fetched_request.unwrap();
+    assert_eq!(fetched_request, inserted_request);
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_list_pending_requests(
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+  ) -> anyhow::Result<()> {
+    let (_tempdir, now, service) = db_service;
+    let emails = vec![
+      "test1@example.com".to_string(),
+      "test2@example.com".to_string(),
+      "test3@example.com".to_string(),
+    ];
+    for email in &emails {
+      service.insert_pending_request(email.clone()).await?;
+    }
+    let page1 = service.list_pending_requests(1, 2).await?;
+    assert_eq!(page1.len(), 2);
+    let page2 = service.list_pending_requests(2, 2).await?;
+    assert_eq!(page2.len(), 1);
+    for (i, request) in page1.iter().chain(page2.iter()).enumerate() {
+      let expected_request = AccessRequest {
+        id: request.id, // We don't know this in advance
+        email: emails[i].clone(),
+        created_at: now,
+        updated_at: now,
+        status: RequestStatus::Pending,
+      };
+      assert_eq!(request, &expected_request);
+    }
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_update_request_status(
+    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+  ) -> anyhow::Result<()> {
+    let (_tempdir, _now, service) = db_service;
+    let email = "test@example.com".to_string();
+    let inserted_request = service.insert_pending_request(email.clone()).await?;
+    service
+      .update_request_status(inserted_request.id, RequestStatus::Approved)
+      .await?;
+    let updated_request = service.get_pending_request(email).await?;
+    assert!(updated_request.is_none());
     Ok(())
   }
 }

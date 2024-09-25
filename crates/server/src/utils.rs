@@ -33,6 +33,7 @@ impl From<DbError> for ApiError {
         "not able to connect to database at {url}, error: {source}",
       )),
       DbError::Migrate(err) => ApiError::ServerError(err.to_string()),
+      DbError::StrumParse(err) => ApiError::ServerError(err.to_string()),
     }
   }
 }
