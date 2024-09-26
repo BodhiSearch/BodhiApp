@@ -10,6 +10,13 @@ pub fn temp_bodhi_home(temp_dir: TempDir) -> TempDir {
 }
 
 #[fixture]
+pub fn empty_bodhi_home(temp_dir: TempDir) -> TempDir {
+  let dst_path = temp_dir.path().join("bodhi");
+  std::fs::create_dir_all(&dst_path).unwrap();
+  temp_dir
+}
+
+#[fixture]
 pub fn temp_dir() -> TempDir {
   build_temp_dir()
 }

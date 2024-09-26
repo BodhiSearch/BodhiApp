@@ -26,27 +26,21 @@ pub static HF_HOME: &str = "HF_HOME";
 pub static BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
 pub static BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
 
-#[cfg(feature = "production")]
-mod env_config {
-  pub static ENV_TYPE: &str = "production";
-  pub static AUTH_URL: &str = "https://id.getbodhi.app";
-  pub static AUTH_REALM: &str = "bodhi";
+#[derive(Debug, Clone, PartialEq, Default, strum::EnumString, strum::Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum EnvType {
+  Production,
+  #[default]
+  Development,
 }
-
-#[cfg(not(feature = "production"))]
-mod env_config {
-  pub static ENV_TYPE: &str = "development";
-  pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
-  pub static AUTH_REALM: &str = "bodhi";
-}
-
-pub use env_config::*;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait EnvService: Send + Sync + std::fmt::Debug {
-  fn env_type(&self) -> String;
+  fn env_type(&self) -> EnvType;
 
-  fn is_production(&self) -> bool;
+  fn is_production(&self) -> bool {
+    self.env_type() == EnvType::Production
+  }
 
   fn version(&self) -> String;
 
@@ -112,6 +106,10 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
 
 #[derive(Debug, Clone)]
 pub struct DefaultEnvService {
+  env_type: EnvType,
+  auth_url: String,
+  auth_realm: String,
+  version: String,
   env_wrapper: Arc<dyn EnvWrapper>,
   bodhi_home: Option<PathBuf>,
   hf_home: Option<PathBuf>,
@@ -121,17 +119,6 @@ pub struct DefaultEnvService {
 }
 
 impl DefaultEnvService {
-  fn get_prod_or_env(&self, env_var: &str, default: &str) -> String {
-    if self.is_production() {
-      default.to_string()
-    } else {
-      match self.env_wrapper.var(env_var) {
-        Ok(value) => value,
-        Err(_) => default.to_string(),
-      }
-    }
-  }
-
   pub fn set_host(&self, host: &str) {
     *self.host.lock().unwrap() = Some(host.to_string());
   }
@@ -142,16 +129,12 @@ impl DefaultEnvService {
 }
 
 impl EnvService for DefaultEnvService {
-  fn env_type(&self) -> String {
-    ENV_TYPE.to_string()
-  }
-
-  fn is_production(&self) -> bool {
-    self.env_type() == "production"
+  fn env_type(&self) -> EnvType {
+    self.env_type.clone()
   }
 
   fn version(&self) -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+    self.version.clone()
   }
 
   fn bodhi_home(&self) -> PathBuf {
@@ -242,39 +225,31 @@ impl EnvService for DefaultEnvService {
   }
 
   fn auth_url(&self) -> String {
-    self.get_prod_or_env(BODHI_AUTH_URL, AUTH_URL)
+    self.auth_url.clone()
   }
 
   fn auth_realm(&self) -> String {
-    self.get_prod_or_env(BODHI_AUTH_REALM, AUTH_REALM)
+    self.auth_realm.clone()
   }
 }
 
 impl DefaultEnvService {
   #[allow(clippy::new_without_default)]
-  pub fn new(env_wrapper: Arc<dyn EnvWrapper>) -> Self {
+  pub fn new(
+    env_type: EnvType,
+    auth_url: String,
+    auth_realm: String,
+    env_wrapper: Arc<dyn EnvWrapper>,
+  ) -> Self {
     DefaultEnvService {
+      env_type,
+      auth_url,
+      auth_realm,
+      version: env!("CARGO_PKG_VERSION").to_string(),
       env_wrapper,
       bodhi_home: None,
       hf_home: None,
       logs_dir: None,
-      host: Arc::new(Mutex::new(None)),
-      port: Arc::new(Mutex::new(None)),
-    }
-  }
-
-  #[allow(private_interfaces)]
-  pub fn new_with_args(
-    env_wrapper: Arc<dyn EnvWrapper>,
-    bodhi_home: PathBuf,
-    hf_home: PathBuf,
-  ) -> Self {
-    let logs_dir = hf_home.join("logs");
-    Self {
-      env_wrapper,
-      bodhi_home: Some(bodhi_home),
-      hf_home: Some(hf_home),
-      logs_dir: Some(logs_dir),
       host: Arc::new(Mutex::new(None)),
       port: Arc::new(Mutex::new(None)),
     }
@@ -383,63 +358,41 @@ impl DefaultEnvService {
 #[cfg(test)]
 mod test {
   use crate::{
-    DefaultEnvService, EnvService, MockEnvWrapper, BODHI_HOME, BODHI_HOST, BODHI_PORT, HF_HOME,
+    test_utils::EnvWrapperStub, DefaultEnvService, EnvService, MockEnvWrapper, BODHI_HOME,
+    BODHI_HOST, BODHI_PORT, HF_HOME,
   };
   use mockall::predicate::eq;
-  use rstest::{fixture, rstest};
-  use std::{collections::HashMap, env::VarError, fs, path::PathBuf, sync::Arc};
+  use objs::test_utils::{empty_bodhi_home, empty_hf_home, temp_dir};
+  use rstest::rstest;
+  use std::{collections::HashMap, env::VarError, fs, sync::Arc};
   use tempfile::TempDir;
 
-  #[fixture]
-  fn bodhi_home() -> (TempDir, PathBuf) {
-    let tempdir = tempfile::tempdir().unwrap();
-    let bodhi_home = tempdir.path().join(".cache").join("bodhi");
-    fs::create_dir_all(&bodhi_home).unwrap();
-    (tempdir, bodhi_home)
-  }
-
-  #[fixture]
-  fn hf_cache() -> (TempDir, PathBuf) {
-    let tempdir = tempfile::tempdir().unwrap();
-    let hf_cache = tempdir
-      .path()
-      .join(".cache")
-      .join("huggingface")
-      .join("hub");
-    fs::create_dir_all(&hf_cache).unwrap();
-    (tempdir, hf_cache)
-  }
-
   #[rstest]
-  fn test_init_service_bodhi_home_from_env(bodhi_home: (TempDir, PathBuf)) -> anyhow::Result<()> {
-    let (_tempdir, bodhi_home) = bodhi_home;
+  fn test_init_service_bodhi_home_from_env(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
+    let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let bodhi_home_str = bodhi_home.display().to_string();
     let mut mock = MockEnvWrapper::default();
     mock
       .expect_var()
       .with(eq(BODHI_HOME))
       .returning(move |_| Ok(bodhi_home_str.clone()));
-    let result = DefaultEnvService::new(Arc::new(mock)).setup_bodhi_home()?;
+    let result = DefaultEnvService::test_new(Arc::new(mock)).setup_bodhi_home()?;
     assert_eq!(bodhi_home, result);
     Ok(())
   }
 
   #[rstest]
-  fn test_init_service_bodhi_home_from_home_dir(
-    bodhi_home: (TempDir, PathBuf),
-  ) -> anyhow::Result<()> {
-    let (homedir, bodhi_home) = bodhi_home;
-    let home_dir = homedir.path().display().to_string();
+  fn test_init_service_bodhi_home_from_home_dir(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
+    let bodhi_home = empty_bodhi_home.path().join(".cache").join("bodhi");
+    let home_dir = empty_bodhi_home.path().to_path_buf();
     let mut mock = MockEnvWrapper::default();
     mock
       .expect_var()
       .with(eq(BODHI_HOME))
       .returning(|_| Err(VarError::NotPresent));
-    mock
-      .expect_home_dir()
-      .returning(move || Some(PathBuf::from(home_dir.clone())));
+    mock.expect_home_dir().return_once(move || Some(home_dir));
 
-    let result = DefaultEnvService::new(Arc::new(mock)).setup_bodhi_home()?;
+    let result = DefaultEnvService::test_new(Arc::new(mock)).setup_bodhi_home()?;
     assert_eq!(bodhi_home, result);
     Ok(())
   }
@@ -453,35 +406,30 @@ mod test {
       .returning(|_| Err(VarError::NotPresent));
     mock.expect_home_dir().returning(move || None);
 
-    let result = DefaultEnvService::new(Arc::new(mock)).setup_bodhi_home();
+    let result = DefaultEnvService::test_new(Arc::new(mock)).setup_bodhi_home();
     assert!(result.is_err());
     assert_eq!("bodhi_home_err: failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.", result.unwrap_err().to_string());
     Ok(())
   }
 
   #[rstest]
-  fn test_init_service_hf_cache_from_env(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {
-    let (_tempdir, hf_cache) = hf_cache;
-    let hf_home = hf_cache
-      .join("..")
-      .canonicalize()
-      .unwrap()
-      .display()
-      .to_string();
+  fn test_init_service_hf_cache_from_env(empty_hf_home: TempDir) -> anyhow::Result<()> {
+    let hf_home = empty_hf_home.path().join(".cache").join("huggingface");
+    let hf_home_str = hf_home.display().to_string();
     let mut mock = MockEnvWrapper::default();
     mock
       .expect_var()
       .with(eq(HF_HOME))
-      .returning(move |_| Ok(hf_home.clone()));
-    let result = DefaultEnvService::new(Arc::new(mock)).setup_hf_cache()?;
-    assert_eq!(hf_cache.canonicalize()?, result);
+      .return_once(move |_| Ok(hf_home_str));
+    let result = DefaultEnvService::test_new(Arc::new(mock)).setup_hf_cache()?;
+    assert_eq!(hf_home.join("hub"), result);
     Ok(())
   }
 
   #[rstest]
-  fn test_init_service_hf_cache_from_dirs_home(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {
-    let (tempdir, hf_cache) = hf_cache;
-    let home_dir = tempdir.path().to_path_buf();
+  fn test_init_service_hf_cache_from_dirs_home(empty_hf_home: TempDir) -> anyhow::Result<()> {
+    let hf_home = empty_hf_home.path().join(".cache").join("huggingface");
+    let home_dir = empty_hf_home.path().to_path_buf();
     let mut mock = MockEnvWrapper::default();
     mock
       .expect_var()
@@ -490,8 +438,8 @@ mod test {
     mock
       .expect_home_dir()
       .returning(move || Some(home_dir.clone()));
-    let result = DefaultEnvService::new(Arc::new(mock)).setup_hf_cache()?;
-    assert_eq!(hf_cache, result);
+    let result = DefaultEnvService::test_new(Arc::new(mock)).setup_hf_cache()?;
+    assert_eq!(hf_home.join("hub"), result);
     Ok(())
   }
 
@@ -503,7 +451,7 @@ mod test {
       .with(eq(HF_HOME))
       .returning(move |_| Err(VarError::NotPresent));
     mock.expect_home_dir().returning(move || None);
-    let result = DefaultEnvService::new(Arc::new(mock)).setup_hf_cache();
+    let result = DefaultEnvService::test_new(Arc::new(mock)).setup_hf_cache();
     assert!(result.is_err());
     assert_eq!("hf_home_err: failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.", result.unwrap_err().to_string());
     Ok(())
@@ -511,9 +459,9 @@ mod test {
 
   #[rstest]
   fn test_init_service_loads_dotenv_from_bodhi_home(
-    bodhi_home: (TempDir, PathBuf),
+    empty_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
-    let (_tempdir, bodhi_home) = bodhi_home;
+    let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let envfile = bodhi_home.join(".env");
     fs::write(&envfile, r#"TEST_NAME=load_from_dotenv"#)?;
     let bodhi_home_str = bodhi_home.display().to_string();
@@ -522,7 +470,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_HOME))
       .return_once(move |_| Ok(bodhi_home_str));
-    let mut env_service = DefaultEnvService::new(Arc::new(mock));
+    let mut env_service = DefaultEnvService::test_new(Arc::new(mock));
     env_service.setup_bodhi_home()?;
     let result = env_service.load_dotenv();
     assert_eq!(Some(envfile), result);
@@ -544,7 +492,7 @@ mod test {
       .expect_var()
       .with(eq(key.to_string()))
       .return_once(move |_| Ok(value));
-    let result = func(&DefaultEnvService::new(Arc::new(mock)));
+    let result = func(&DefaultEnvService::test_new(Arc::new(mock)));
     assert_eq!(expected, result);
     Ok(())
   }
@@ -556,7 +504,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_HOST))
       .return_once(move |_| Err(VarError::NotPresent));
-    let result = DefaultEnvService::new(Arc::new(mock)).host();
+    let result = DefaultEnvService::test_new(Arc::new(mock)).host();
     assert_eq!("localhost", result);
     Ok(())
   }
@@ -568,7 +516,7 @@ mod test {
       .expect_var()
       .with(eq(BODHI_PORT))
       .return_once(move |_| Ok("8080".to_string()));
-    let result = DefaultEnvService::new(Arc::new(mock)).port();
+    let result = DefaultEnvService::test_new(Arc::new(mock)).port();
     assert_eq!(8080, result);
     Ok(())
   }
@@ -580,32 +528,37 @@ mod test {
       .expect_var()
       .with(eq(BODHI_PORT))
       .return_once(move |_| Err(VarError::NotPresent));
-    let result = DefaultEnvService::new(Arc::new(mock)).port();
+    let result = DefaultEnvService::test_new(Arc::new(mock)).port();
     assert_eq!(1135, result);
     Ok(())
   }
 
   #[rstest]
-  fn test_env_service_list() -> anyhow::Result<()> {
-    let mut mock = MockEnvWrapper::default();
-    mock
-      .expect_var()
-      .with(eq(BODHI_HOST))
-      .return_once(move |_| Ok("0.0.0.0".to_string()));
-    mock
-      .expect_var()
-      .with(eq(BODHI_PORT))
-      .return_once(move |_| Ok("8080".to_string()));
-    let result = DefaultEnvService::new_with_args(
-      Arc::new(mock),
-      PathBuf::from("/tmp/bodhi_home"),
-      PathBuf::from("/tmp/hf_home"),
-    );
+  fn test_env_service_setup_updates_dirs_in_env_service(temp_dir: TempDir) -> anyhow::Result<()> {
+    let envs = HashMap::from([
+      ("HOME".to_string(), temp_dir.path().display().to_string()),
+      (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (BODHI_PORT.to_string(), "8080".to_string()),
+    ]);
+    let env_wrapper = EnvWrapperStub::new(envs);
+    let mut result = DefaultEnvService::test_new(Arc::new(env_wrapper));
+    result.setup_bodhi_home()?;
+    result.setup_hf_cache()?;
+    result.setup_logs_dir()?;
     let actual = result.list();
     let mut expected = HashMap::<String, String>::new();
-    expected.insert("BODHI_HOME".to_string(), "/tmp/bodhi_home".to_string());
-    expected.insert("HF_HOME".to_string(), "/tmp/hf_home".to_string());
-    expected.insert("BODHI_LOGS".to_string(), "/tmp/hf_home/logs".to_string());
+    expected.insert(
+      "BODHI_HOME".to_string(),
+      format!("{}/.cache/bodhi", temp_dir.path().display()),
+    );
+    expected.insert(
+      "HF_HOME".to_string(),
+      format!("{}/.cache/huggingface", temp_dir.path().display()),
+    );
+    expected.insert(
+      "BODHI_LOGS".to_string(),
+      format!("{}/.cache/bodhi/logs", temp_dir.path().display()),
+    );
     expected.insert("BODHI_HOST".to_string(), "0.0.0.0".to_string());
     expected.insert("BODHI_PORT".to_string(), "8080".to_string());
     assert_eq!(expected.len(), actual.len());

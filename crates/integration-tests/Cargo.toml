@@ -7,6 +7,9 @@ edition = "2021"
 
 
 [dev-dependencies]
+server = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+
 anyhow = { workspace = true }
 dircpy = { workspace = true }
 rstest = { workspace = true }
@@ -16,8 +19,6 @@ serial_test = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 rand = { workspace = true }
 reqwest = { workspace = true }
-server = { path = "../server", features = ["test-utils"] }
-services = { path = "../services",features = ["test-utils"]  }
 sqlx = { workspace = true, features = [
   "runtime-tokio",
   "sqlite",

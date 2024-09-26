@@ -1,10 +1,10 @@
 use crate::{
   db::{DbService, MockDbService},
   test_utils::{EnvServiceStub, SecretServiceStub},
-  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, DefaultEnvService,
-  EnvService, HfHubService, HubService, LocalDataService, MockAuthService, MockCacheService,
-  MockDataService, MockEnvService, MockEnvWrapper, MockHubService, MockSecretService,
-  MockSessionService, MokaCacheService, SecretService, SessionService, SqliteSessionService,
+  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService,
+  HubService, LocalDataService, MockAuthService, MockCacheService, MockDataService, MockEnvService,
+  MockHubService, MockSecretService, MockSessionService, MokaCacheService, SecretService,
+  SessionService, SqliteSessionService, BODHI_HOME, HF_HOME,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -131,11 +131,17 @@ impl AppServiceStubBuilder {
       None | Some(None) => {
         let temp_home = Arc::new(build_temp_dir());
         self.temp_home = Some(Some(temp_home.clone()));
-        let env_service = DefaultEnvService::new_with_args(
-          Arc::new(MockEnvWrapper::default()),
-          temp_home.path().join("bodhi"),
-          temp_home.path().join("huggingface"),
-        );
+        let envs = HashMap::from([
+          (
+            BODHI_HOME.to_string(),
+            temp_home.path().join("bodhi").display().to_string(),
+          ),
+          (
+            HF_HOME.to_string(),
+            temp_home.path().join("huggingface").display().to_string(),
+          ),
+        ]);
+        let env_service = EnvServiceStub::new(envs);
         self.env_service = Some(Some(Arc::new(env_service)));
         temp_home
       }

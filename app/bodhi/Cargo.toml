@@ -9,6 +9,7 @@ authors = ["Amir Nagri <amir.nagri@gmail.com>"]
 [features]
 # This feature is used for production builds or when a dev server is not specified, DO NOT REMOVE!!
 custom-protocol = ["tauri/custom-protocol"]
+production = []
 
 [dependencies]
 commands = { workspace = true }

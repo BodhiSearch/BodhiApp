@@ -6,8 +6,33 @@ use services::{DefaultEnvService, DefaultEnvWrapper};
 use std::sync::Arc;
 use tracing_appender::non_blocking::WorkerGuard;
 
+#[cfg(feature = "production")]
+mod env_config {
+  use services::EnvType;
+
+  pub static ENV_TYPE: EnvType = EnvType::Production;
+  pub static AUTH_URL: &str = "https://id.getbodhi.app";
+  pub static AUTH_REALM: &str = "bodhi";
+}
+
+#[cfg(not(feature = "production"))]
+mod env_config {
+  use services::EnvType;
+
+  pub static ENV_TYPE: EnvType = EnvType::Development;
+  pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
+  pub static AUTH_REALM: &str = "bodhi";
+}
+
+pub use env_config::*;
+
 pub fn main() {
-  let mut env_service = DefaultEnvService::new(Arc::new(DefaultEnvWrapper::default()));
+  let mut env_service = DefaultEnvService::new(
+    ENV_TYPE.clone(),
+    AUTH_URL.to_string(),
+    AUTH_REALM.to_string(),
+    Arc::new(DefaultEnvWrapper::default()),
+  );
   match env_service.setup_bodhi_home() {
     Ok(bodhi_home) => bodhi_home,
     Err(err) => {
