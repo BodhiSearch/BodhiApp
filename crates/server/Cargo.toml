@@ -76,6 +76,7 @@ http-body-util = { workspace = true }
 rstest = { workspace = true }
 maplit = { workspace = true }
 mockall = { workspace = true }
+mockito = { workspace = true }
 reqwest = { workspace = true }
 serial_test = { workspace = true }
 strfmt = { workspace = true }

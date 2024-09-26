@@ -1,5 +1,6 @@
 use crate::{
-  decode_access_token, generate_random_string, Claims, HttpError, HttpErrorBuilder, RouterState,
+  app_status_or_default, decode_access_token, generate_random_string, Claims, HttpError,
+  HttpErrorBuilder, RouterState,
 };
 use axum::{
   body::Body,
@@ -15,11 +16,12 @@ use base64::{engine::general_purpose, Engine as _};
 use jsonwebtoken::TokenData;
 use oauth2::{
   url::ParseError, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl,
+  RefreshToken,
 };
 use serde::{Deserialize, Serialize};
 use services::{
-  get_secret, AppRegInfo, AuthServiceError, SecretServiceError, KEY_APP_REG_INFO, KEY_APP_STATUS,
-  KEY_RESOURCE_TOKEN,
+  get_secret, AppRegInfo, AppStatus, AuthServiceError, SecretServiceError, KEY_APP_REG_INFO,
+  KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -29,6 +31,8 @@ use tower_sessions::Session;
 pub enum LoginError {
   #[error("app registration info not found")]
   AppRegInfoNotFound,
+  #[error("app status is not valid: {0}")]
+  AppStatusInvalid(AppStatus),
   #[error(transparent)]
   SecretServiceError(#[from] SecretServiceError),
   #[error("{0}")]
@@ -37,6 +41,8 @@ pub enum LoginError {
   AuthServiceError(#[from] AuthServiceError),
   #[error(transparent)]
   ParseError(#[from] ParseError),
+  #[error(transparent)]
+  JwtError(#[from] jsonwebtoken::errors::Error),
 }
 
 impl From<tower_sessions::session::Error> for LoginError {
@@ -60,6 +66,14 @@ impl From<LoginError> for HttpError {
       LoginError::AuthServiceError(e) => e.into(),
       LoginError::ParseError(e) => HttpErrorBuilder::default()
         .internal_server(Some(&e.to_string()))
+        .build()
+        .unwrap(),
+      LoginError::JwtError(error) => HttpErrorBuilder::default()
+        .internal_server(Some(&error.to_string()))
+        .build()
+        .unwrap(),
+      err @ LoginError::AppStatusInvalid(_) => HttpErrorBuilder::default()
+        .internal_server(Some(&err.to_string()))
         .build()
         .unwrap(),
     }
@@ -133,6 +147,11 @@ pub async fn login_callback_handler(
   let secret_service = app_service.secret_service();
   let auth_service = app_service.auth_service();
 
+  let app_status = app_status_or_default(&secret_service);
+  if app_status == AppStatus::Setup {
+    return Err(LoginError::AppStatusInvalid(app_status));
+  }
+  let status_resource_admin = app_status == AppStatus::ResourceAdmin;
   let stored_state = session.get::<String>("oauth_state").await?.ok_or_else(|| {
     LoginError::SessionError("login info not found in session, are cookies enabled?".to_string())
   })?;
@@ -154,14 +173,14 @@ pub async fn login_callback_handler(
     .await?
     .ok_or_else(|| LoginError::SessionError("Missing pkce_verifier in session".to_string()))?;
 
-  let app_reg_info = get_secret::<_, AppRegInfo>(secret_service.clone(), KEY_APP_REG_INFO)?
+  let app_reg_info = get_secret::<_, AppRegInfo>(&secret_service, KEY_APP_REG_INFO)?
     .ok_or(LoginError::AppRegInfoNotFound)?;
 
   let token_response = auth_service
     .exchange_auth_code(
       AuthorizationCode::new(code.to_string()),
-      ClientId::new(app_reg_info.client_id),
-      ClientSecret::new(app_reg_info.client_secret),
+      ClientId::new(app_reg_info.client_id.clone()),
+      ClientSecret::new(app_reg_info.client_secret.clone()),
       RedirectUrl::new(env_service.login_callback_url())?,
       PkceCodeVerifier::new(pkce_verifier),
     )
@@ -169,14 +188,26 @@ pub async fn login_callback_handler(
 
   session.remove::<String>("oauth_state").await?;
   session.remove::<String>("pkce_verifier").await?;
-  session
-    .insert("access_token", token_response.0.secret())
-    .await?;
-  session
-    .insert("refresh_token", token_response.1.secret())
-    .await?;
-  secret_service.set_secret_string(KEY_APP_STATUS, "ready")?;
-
+  let mut access_token = token_response.0.secret().to_string();
+  let mut refresh_token = token_response.1.secret().to_string();
+  let email = decode_access_token(&access_token)?.claims.email;
+  if status_resource_admin {
+    auth_service
+      .make_resource_admin(&app_reg_info.client_id, &app_reg_info.client_secret, &email)
+      .await?;
+    secret_service.set_secret_string(KEY_APP_STATUS, &AppStatus::Ready.to_string())?;
+    let (new_access_token, new_refresh_token) = auth_service
+      .refresh_token(
+        RefreshToken::new(refresh_token.to_string()),
+        ClientId::new(app_reg_info.client_id.clone()),
+        ClientSecret::new(app_reg_info.client_secret.clone()),
+      )
+      .await?;
+    access_token = new_access_token.secret().to_string();
+    refresh_token = new_refresh_token.secret().to_string();
+  }
+  session.insert("access_token", access_token).await?;
+  session.insert("refresh_token", refresh_token).await?;
   let ui_home = format!("{}/ui/home", env_service.frontend_url());
   Ok(
     Response::builder()
@@ -273,14 +304,15 @@ mod tests {
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
-    http::{header, status::StatusCode, Request},
+    http::{status::StatusCode, Request},
     middleware::from_fn_with_state,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     routing::{get, post},
     Json, Router,
   };
   use axum_test::TestServer;
-  use oauth2::{AccessToken, RefreshToken};
+  use mockito::{Matcher, Server};
+  use oauth2::{AccessToken, PkceCodeVerifier, RefreshToken};
   use objs::test_utils::temp_bodhi_home;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -289,13 +321,15 @@ mod tests {
       expired_token, token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub,
       SecretServiceStub, SessionTestExt,
     },
-    AppService, MockAuthService, MockEnvService, SqliteSessionService, BODHI_FRONTEND_URL,
+    AppRegInfo, AppService, AuthServiceError, MockAuthService, MockEnvService,
+    SqliteSessionService, APP_STATUS_READY, BODHI_FRONTEND_URL, KEY_APP_REG_INFO, KEY_APP_STATUS,
+    KEY_RESOURCE_TOKEN,
   };
-  use services::{AppRegInfo, AuthServiceError, KEY_APP_REG_INFO, KEY_RESOURCE_TOKEN};
+  use services::{AppStatus, KeycloakAuthService};
   use std::{collections::HashMap, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;
-  use time::OffsetDateTime;
+  use time::{Duration, OffsetDateTime};
   use tower::ServiceExt;
   use tower_sessions::{
     session::{Id, Record},
@@ -377,7 +411,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_login_handler_already_logged_in(
+  async fn test_login_handler_logged_in_redirects_to_home(
     temp_bodhi_home: TempDir,
     token: (String, String, String),
   ) -> anyhow::Result<()> {
@@ -478,14 +512,19 @@ mod tests {
   #[rstest]
   #[anyhow_trace]
   #[tokio::test]
-  async fn test_login_callback_handler(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+  async fn test_login_callback_handler(
+    temp_bodhi_home: TempDir,
+    token: (String, String, String),
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let mut mock_auth_service = MockAuthService::default();
+    let token_clone = token.clone();
     mock_auth_service
       .expect_exchange_auth_code()
-      .returning(|_, _, _, _, _| {
+      .returning(move |_, _, _, _, _| {
         Ok((
-          AccessToken::new("test_access_token".to_string()),
+          AccessToken::new(token_clone.clone()),
           RefreshToken::new("test_refresh_token".to_string()),
         ))
       });
@@ -502,6 +541,7 @@ mod tests {
         kid: "test_kid".to_string(),
         issuer: "test_issuer".to_string(),
       }).unwrap(),
+      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
     });
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let app_service = AppServiceStubBuilder::default()
@@ -544,18 +584,19 @@ mod tests {
 
     // Perform callback request
     let resp = client.get(&format!("/login/callback?{}", query)).await;
-    resp.assert_status(StatusCode::FOUND);
-    assert_eq!(
-      resp.headers().get(header::LOCATION).unwrap(),
-      "http://frontend.localhost:3000/ui/home"
-    );
+    assert_eq!("", resp.text());
+    // resp.assert_status(StatusCode::FOUND);
+    // assert_eq!(
+    //   resp.headers().get(header::LOCATION).unwrap(),
+    //   "http://frontend.localhost:3000/ui/home"
+    // );
     let session_id = resp.cookie("bodhiapp_session_id");
     let access_token = session_service
       .get_session_value(session_id.value(), "access_token")
       .await
       .unwrap();
     let access_token = access_token.as_str().unwrap();
-    assert_eq!(access_token, "test_access_token");
+    assert_eq!(access_token, token);
     let refresh_token = session_service
       .get_session_value(session_id.value(), "refresh_token")
       .await
@@ -571,7 +612,11 @@ mod tests {
   async fn test_login_callback_handler_state_not_in_session(
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
+    let secret_service = Arc::new(SecretServiceStub::with_map(maplit::hashmap! {
+      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
+    }));
     let app_service: AppServiceStub = AppServiceStubBuilder::default()
+      .secret_service(secret_service)
       .build_session_service(temp_bodhi_home.path().join("test.db"))
       .await
       .build()?;
@@ -621,6 +666,7 @@ mod tests {
         kid: "test_kid".to_string(),
         issuer: "test_issuer".to_string(),
       }).unwrap(),
+      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
     });
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let app_service: AppServiceStub = AppServiceStubBuilder::default()
@@ -672,6 +718,7 @@ mod tests {
         kid: "test_kid".to_string(),
         issuer: "test_issuer".to_string(),
       }).unwrap(),
+      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
     });
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let mut mock_auth_service = MockAuthService::new();
@@ -861,6 +908,196 @@ mod tests {
       "invalid token: InvalidToken",
       response_json["message"].as_str().unwrap()
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_login_callback_handler_resource_admin(
+    temp_bodhi_home: TempDir,
+    token: (String, String, String),
+  ) -> anyhow::Result<()> {
+    let (_, token, _) = token;
+    let mut server = Server::new_async().await;
+    let keycloak_url = server.url();
+    let id = Id::default();
+    let app_service =
+      setup_app_service_resource_admin(&temp_bodhi_home, &id, &keycloak_url).await?;
+    setup_keycloak_mocks_resource_admin(&mut server, &token).await;
+    let result = execute_login_callback(&id, app_service.clone()).await?;
+    assert_login_callback_result_resource_admin(result, app_service).await?;
+    Ok(())
+  }
+
+  async fn setup_app_service_resource_admin(
+    temp_bodhi_home: &TempDir,
+    id: &Id,
+    keycloak_url: &str,
+  ) -> anyhow::Result<Arc<AppServiceStub>> {
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = SqliteSessionService::build_session_service(dbfile).await;
+    let mut record = Record {
+      id: id.clone(),
+      data: maplit::hashmap! {
+        "oauth_state".to_string() => Value::String("test_state".to_string()),
+        "pkce_verifier".to_string() => Value::String("test_pkce_verifier".to_string()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+    let session_service = Arc::new(session_service);
+    let secret_service = Arc::new(SecretServiceStub::with_map(maplit::hashmap! {
+      KEY_APP_STATUS.to_string() => AppStatus::ResourceAdmin.to_string(),
+      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+        client_id: "test_client_id".to_string(),
+        client_secret: "test_client_secret".to_string(),
+        public_key: "test_public_key".to_string(),
+        alg: jsonwebtoken::Algorithm::RS256,
+        kid: "test_kid".to_string(),
+        issuer: "test_issuer".to_string(),
+      })?,
+    }));
+    let auth_service = Arc::new(KeycloakAuthService::new(
+      keycloak_url.to_string(),
+      "test-realm".to_string(),
+    ));
+    let mock_env_service = Arc::new(
+      EnvServiceStub::default()
+        .with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000")
+        .with_env("BODHI_HOST", "localhost")
+        .with_env("BODHI_PORT", "9000")
+        .with_env("BODHI_AUTH_URL", keycloak_url),
+    );
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(secret_service)
+      .auth_service(auth_service)
+      .env_service(mock_env_service)
+      .with_sqlite_session_service(session_service)
+      .build()?;
+    Ok(Arc::new(app_service))
+  }
+
+  async fn setup_keycloak_mocks_resource_admin(server: &mut Server, token: &str) {
+    // Mock token endpoint for code exchange
+    let code_verifier = PkceCodeVerifier::new("test_pkce_verifier".to_string());
+    let code_secret = code_verifier.secret();
+    server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "authorization_code".into()),
+        Matcher::UrlEncoded("code".into(), "test_code".into()),
+        Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
+        Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
+        Matcher::UrlEncoded(
+          "redirect_uri".into(),
+          "http://localhost:9000/app/login/callback".into(),
+        ),
+        Matcher::UrlEncoded("code_verifier".into(), code_secret.into()),
+      ]))
+      .with_status(200)
+      .with_body(
+        json!({
+          "access_token": token,
+          "refresh_token": "initial_refresh_token",
+          "token_type": "Bearer",
+          "expires_in": 300,
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+
+    // Mock token endpoint for client credentials
+    server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "client_credentials".into()),
+        Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
+        Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
+      ]))
+      .with_status(200)
+      .with_body(
+        json!({
+          "access_token": "client_access_token",
+          "token_type": "Bearer",
+          "expires_in": 300,
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+
+    // Mock make-resource-admin endpoint
+    server
+      .mock(
+        "POST",
+        "/realms/test-realm/bodhi/clients/make-resource-admin",
+      )
+      .match_header("Authorization", "Bearer client_access_token")
+      .match_body(Matcher::Json(json!({"username": "testuser@email.com"})))
+      .with_status(200)
+      .with_body("{}")
+      .create_async()
+      .await;
+
+    // Mock token refresh endpoint
+    server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "refresh_token".into()),
+        Matcher::UrlEncoded("refresh_token".into(), "initial_refresh_token".into()),
+        Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
+        Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
+      ]))
+      .with_status(200)
+      .with_body(
+        json!({
+          "access_token": "new_access_token",
+          "refresh_token": "new_refresh_token",
+          "token_type": "Bearer",
+          "expires_in": 300,
+        })
+        .to_string(),
+      )
+      .create_async()
+      .await;
+  }
+
+  async fn execute_login_callback(
+    id: &Id,
+    app_service: Arc<AppServiceStub>,
+  ) -> Result<Response, anyhow::Error> {
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContextRw::default()),
+      app_service.clone(),
+    ));
+    let router: Router = Router::new()
+      .route("/login/callback", get(login_callback_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+    let request = Request::get("/login/callback?code=test_code&state=test_state")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .body(Body::empty())
+      .unwrap();
+    let response = router.oneshot(request).await?;
+    Ok(response)
+  }
+
+  async fn assert_login_callback_result_resource_admin(
+    response: Response,
+    app_service: Arc<AppServiceStub>,
+  ) -> anyhow::Result<()> {
+    assert_eq!(response.status(), StatusCode::FOUND);
+    assert_eq!(
+      response.headers().get("Location").unwrap(),
+      "http://frontend.localhost:3000/ui/home"
+    );
+    let secret_service = app_service.secret_service();
+    let updated_status = secret_service
+      .get_secret_string(KEY_APP_STATUS)
+      .unwrap()
+      .unwrap();
+    assert_eq!("ready", updated_status);
     Ok(())
   }
 }

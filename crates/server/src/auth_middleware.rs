@@ -1,4 +1,6 @@
-use crate::{decode_access_token, Claims, HttpError, HttpErrorBuilder, RouterState};
+use crate::{
+  app_status_or_default, decode_access_token, Claims, HttpError, HttpErrorBuilder, RouterState,
+};
 use axum::{
   extract::{Request, State},
   http::{header::AUTHORIZATION, HeaderMap, HeaderValue},
@@ -8,9 +10,9 @@ use axum::{
 use jsonwebtoken::{DecodingKey, Validation};
 use oauth2::{ClientId, ClientSecret, RefreshToken};
 use services::{
-  get_secret, AppRegInfo, AppService, AuthService, AuthServiceError, SecretService,
-  SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_SETUP, KEY_APP_AUTHZ,
-  KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
+  get_secret, AppRegInfo, AppService, AppStatus, AuthService, AuthServiceError, SecretService,
+  SecretServiceError, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
+  KEY_RESOURCE_TOKEN,
 };
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -96,7 +98,7 @@ pub async fn auth_middleware(
   let secret_service = app_service.secret_service();
 
   // Check app status
-  if app_status(&secret_service) == APP_STATUS_SETUP {
+  if app_status_or_default(&secret_service) == AppStatus::Setup {
     return Ok(
       Redirect::to(&format!(
         "{}/ui/setup",
@@ -146,7 +148,7 @@ pub async fn optional_auth_middleware(
   let secret_service = app_service.secret_service();
 
   // Check app status
-  if app_status(&secret_service) == APP_STATUS_SETUP {
+  if app_status_or_default(&secret_service) == AppStatus::Setup {
     return Ok(next.run(req).await);
   }
 
@@ -322,13 +324,6 @@ fn authz_status(secret_service: &Arc<dyn SecretService>) -> String {
     .get_secret_string(KEY_APP_AUTHZ)
     .unwrap_or_else(|_| Some(APP_AUTHZ_TRUE.to_string()))
     .unwrap_or_else(|| APP_AUTHZ_TRUE.to_string())
-}
-
-fn app_status(secret_service: &Arc<dyn SecretService>) -> String {
-  secret_service
-    .get_secret_string(KEY_APP_STATUS)
-    .unwrap_or_else(|_| Some(APP_STATUS_SETUP.to_string()))
-    .unwrap_or_else(|| APP_STATUS_SETUP.to_string())
 }
 
 #[cfg(test)]

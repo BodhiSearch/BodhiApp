@@ -49,8 +49,8 @@ pub struct Message {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum DownloadStatus {
   Pending,
   Completed,
@@ -90,8 +90,8 @@ pub struct AccessRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
-#[serde(rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
 pub enum RequestStatus {
   Pending,
   Approved,
