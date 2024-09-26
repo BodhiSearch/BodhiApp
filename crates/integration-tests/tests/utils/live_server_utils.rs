@@ -4,12 +4,13 @@ use rstest::fixture;
 use server::{disable_llama_log, llama_server_disable_logging, ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
-  AppService, DefaultAppService, DefaultEnvService, DefaultEnvWrapper, HfHubService,
-  KeycloakAuthService, LocalDataService, MockSecretService, MokaCacheService, SqliteSessionService,
-  KEY_APP_AUTHZ, KEY_APP_STATUS,
+  test_utils::EnvWrapperStub,
+  AppService, DefaultAppService, DefaultEnvService, EnvType, HfHubService, KeycloakAuthService,
+  LocalDataService, MockSecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
+  KEY_APP_STATUS,
 };
 use sqlx::SqlitePool;
-use std::{path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
 
 pub fn copy_test_dir(src: &str, dst_path: &Path) {
@@ -33,10 +34,26 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppService>) {
   let bodhi_home = cache_dir.join("bodhi");
   let hf_home = cache_dir.join("huggingface");
   let hf_cache = hf_home.join("hub");
-  let env_service = DefaultEnvService::new_with_args(
-    Arc::new(DefaultEnvWrapper::default()),
-    bodhi_home.clone(),
-    hf_home,
+  let envs = HashMap::from([
+    (
+      String::from("HOME"),
+      temp_dir.path().to_str().unwrap().to_string(),
+    ),
+    (
+      String::from("BODHI_HOME"),
+      bodhi_home.to_str().unwrap().to_string(),
+    ),
+    (
+      String::from("HF_HOME"),
+      hf_home.to_str().unwrap().to_string(),
+    ),
+  ]);
+  let env_wrapper = EnvWrapperStub::new(envs);
+  let env_service = DefaultEnvService::new(
+    EnvType::Development,
+    "".to_string(),
+    "".to_string(),
+    Arc::new(env_wrapper),
   );
   env_service.create_home_dirs(&bodhi_home).unwrap();
   let data_service = LocalDataService::new(bodhi_home.clone());

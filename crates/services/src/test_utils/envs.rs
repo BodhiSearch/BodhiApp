@@ -1,12 +1,20 @@
+use objs::test_utils::temp_dir;
+use rstest::fixture;
+use tempfile::TempDir;
+
 use crate::{
-  EnvService, AUTH_REALM, AUTH_URL, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST, BODHI_PORT,
-  BODHI_SCHEME, HF_HOME, LOGS_DIR,
+  DefaultEnvService, EnvService, EnvType, EnvWrapper, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST,
+  BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
 use std::{
   collections::HashMap,
+  env::VarError,
   path::PathBuf,
   sync::{Arc, RwLock},
 };
+
+const TEST_AUTH_URL: &str = "TEST_AUTH_URL";
+const TEST_AUTH_REALM: &str = "TEST_AUTH_REALM";
 
 pub fn hf_test_token_allowed() -> Option<String> {
   dotenv::from_filename(".env.test").ok();
@@ -18,12 +26,36 @@ pub fn hf_test_token_public() -> Option<String> {
   Some(std::env::var("HF_TEST_TOKEN_PUBLIC").unwrap())
 }
 
+impl DefaultEnvService {
+  pub fn test_new(env_wrapper: Arc<dyn EnvWrapper>) -> Self {
+    Self::new(
+      EnvType::Development,
+      "".to_string(),
+      "".to_string(),
+      env_wrapper,
+    )
+  }
+}
+
+#[fixture]
+pub fn test_env_service(
+  #[default(HashMap::new())] envs: HashMap<String, String>,
+) -> EnvServiceStub {
+  EnvServiceStub::new(envs)
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct EnvServiceStub {
   envs: Arc<RwLock<HashMap<String, String>>>,
 }
 
 impl EnvServiceStub {
+  pub fn new(envs: HashMap<String, String>) -> Self {
+    Self {
+      envs: Arc::new(RwLock::new(envs)),
+    }
+  }
+
   pub fn with_env(self, key: &str, value: &str) -> Self {
     self
       .envs
@@ -35,12 +67,8 @@ impl EnvServiceStub {
 }
 
 impl EnvService for EnvServiceStub {
-  fn env_type(&self) -> String {
-    "test".to_string()
-  }
-
-  fn is_production(&self) -> bool {
-    false
+  fn env_type(&self) -> EnvType {
+    EnvType::Development
   }
 
   fn version(&self) -> String {
@@ -105,16 +133,48 @@ impl EnvService for EnvServiceStub {
   }
 
   fn auth_url(&self) -> String {
-    match self.envs.read().unwrap().get(AUTH_URL) {
+    match self.envs.read().unwrap().get(TEST_AUTH_URL) {
       Some(path) => path.to_string(),
       None => "http://id.localhost".to_string(),
     }
   }
 
   fn auth_realm(&self) -> String {
-    match self.envs.read().unwrap().get(AUTH_REALM) {
+    match self.envs.read().unwrap().get(TEST_AUTH_REALM) {
       Some(path) => path.to_string(),
       None => "test-realm".to_string(),
+    }
+  }
+}
+
+#[derive(Debug)]
+pub struct EnvWrapperStub {
+  envs: Arc<RwLock<HashMap<String, String>>>,
+  temp_dir: TempDir,
+}
+
+impl EnvWrapperStub {
+  pub fn new(envs: HashMap<String, String>) -> Self {
+    let temp_dir = temp_dir();
+    Self {
+      envs: Arc::new(RwLock::new(envs)),
+      temp_dir,
+    }
+  }
+}
+
+impl EnvWrapper for EnvWrapperStub {
+  fn var(&self, key: &str) -> Result<String, VarError> {
+    match self.envs.read().unwrap().get(key) {
+      Some(path) => Ok(path.to_string()),
+      None => Err(VarError::NotPresent),
+    }
+  }
+
+  fn home_dir(&self) -> Option<PathBuf> {
+    match self.envs.read().unwrap().get("HOME") {
+      Some(path) => Some(PathBuf::from(path)),
+      None => Some(self.temp_dir.path().to_path_buf()),
     }
   }
 }
