@@ -38,6 +38,7 @@ sqlx = { workspace = true, features = [
   "chrono",
 ] }
 strum = { workspace = true }
+tap = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true }
 time = { workspace = true }
@@ -47,7 +48,7 @@ tracing = { workspace = true, features = ["async-await", "log"] }
 ureq = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 walkdir = { workspace = true }
-tokio = { workspace = true, optional = true}
+tokio = { workspace = true, optional = true }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
@@ -64,6 +65,7 @@ reqwest = { workspace = true }
 rstest = { workspace = true }
 rsa = { workspace = true }
 strfmt = { workspace = true }
+tap = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 
@@ -83,6 +85,7 @@ test-utils = [
   "base64",
   "rsa",
   "rand",
+  "tap",
   "tempfile",
   "anyhow",
   "objs/test-utils",

@@ -311,6 +311,7 @@ mod tests {
     Json, Router,
   };
   use axum_test::TestServer;
+  use hyper::header::LOCATION;
   use mockito::{Matcher, Server};
   use oauth2::{AccessToken, PkceCodeVerifier, RefreshToken};
   use objs::test_utils::temp_bodhi_home;
@@ -584,12 +585,11 @@ mod tests {
 
     // Perform callback request
     let resp = client.get(&format!("/login/callback?{}", query)).await;
-    assert_eq!("", resp.text());
-    // resp.assert_status(StatusCode::FOUND);
-    // assert_eq!(
-    //   resp.headers().get(header::LOCATION).unwrap(),
-    //   "http://frontend.localhost:3000/ui/home"
-    // );
+    resp.assert_status(StatusCode::FOUND);
+    assert_eq!(
+      resp.headers().get(LOCATION).unwrap(),
+      "http://frontend.localhost:3000/ui/home"
+    );
     let session_id = resp.cookie("bodhiapp_session_id");
     let access_token = session_service
       .get_session_value(session_id.value(), "access_token")

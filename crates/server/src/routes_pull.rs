@@ -253,15 +253,14 @@ mod tests {
     Router,
   };
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_home, HubFile, TOKENIZER_CONFIG_JSON};
+  use objs::{HubFile, TOKENIZER_CONFIG_JSON};
   use rstest::rstest;
   use services::{
     db::DbService,
-    test_utils::{db_service_in, db_service_with_events, AppServiceStub, AppServiceStubBuilder},
+    test_utils::{test_db_service, AppServiceStub, AppServiceStubBuilder, TestDbService},
     HubService, MockHubService,
   };
   use std::{sync::Arc, time::Duration};
-  use tempfile::TempDir;
   use tower::ServiceExt;
 
   macro_rules! wait_for_event {
@@ -284,9 +283,7 @@ mod tests {
     mock_hub_service: Arc<dyn HubService>,
     db_service: Arc<dyn DbService>,
   ) -> AppServiceStub {
-    let temp_home = Arc::new(tempfile::tempdir().unwrap());
     AppServiceStubBuilder::default()
-      .temp_home(temp_home)
       .hub_service(mock_hub_service)
       .with_data_service()
       .db_service(db_service)
@@ -310,8 +307,13 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_pull_by_repo_file_success(temp_home: TempDir) -> anyhow::Result<()> {
+  async fn test_pull_by_repo_file_success(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_local_file_exists()
@@ -339,7 +341,6 @@ mod tests {
       .once()
       .returning(|_, _, _| Ok(None));
     let mock_hub_service = Arc::new(mock_hub_service);
-    let db_service = db_service_with_events(&temp_home).await;
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
     let app_service = test_app_service(mock_hub_service, db_service.clone()).await;
@@ -383,8 +384,13 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_pull_by_repo_file_already_downloaded(temp_home: TempDir) -> anyhow::Result<()> {
+  async fn test_pull_by_repo_file_already_downloaded(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_local_file_exists()
@@ -394,7 +400,7 @@ mod tests {
         eq(None),
       )
       .returning(|_, _, _| Ok(true));
-    let db_service = Arc::new(db_service_in(&temp_home).await);
+    let db_service = Arc::new(db_service);
     let app_service = test_app_service(Arc::new(mock_hub_service), db_service).await;
     let router = test_router(Arc::new(app_service));
     let payload = serde_json::json!({
@@ -421,15 +427,17 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
   async fn test_pull_by_repo_file_existing_pending_download(
-    temp_home: TempDir,
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_local_file_exists()
       .returning(|_, _, _| Ok(false));
-    let db_service = db_service_in(&temp_home).await;
     let pending_request = DownloadRequest::new_pending(
       Repo::testalias().to_string(),
       "testalias.Q8_0.gguf".to_string(),
@@ -466,8 +474,13 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_pull_by_alias_success(temp_home: TempDir) -> anyhow::Result<()> {
+  async fn test_pull_by_alias_success(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_local_file_exists()
@@ -509,7 +522,6 @@ mod tests {
         eq(None),
       )
       .returning(|_, _, _| Ok(HubFile::testalias()));
-    let db_service = db_service_with_events(&temp_home).await;
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
     let app_service = test_app_service(Arc::new(mock_hub_service), db_service.clone()).await;
@@ -545,10 +557,14 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_pull_by_alias_not_found(temp_home: TempDir) -> anyhow::Result<()> {
+  async fn test_pull_by_alias_not_found(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
     let mock_hub_service = MockHubService::new();
-    let db_service = db_service_in(&temp_home).await;
     let app_service = test_app_service(Arc::new(mock_hub_service), Arc::new(db_service)).await;
     let router = test_router(Arc::new(app_service));
     let response = router
@@ -572,10 +588,14 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_get_download_status_success(temp_home: TempDir) -> anyhow::Result<()> {
+  async fn test_get_download_status_success(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
     let mock_hub_service = MockHubService::new();
-    let db_service = db_service_in(&temp_home).await;
     let db_service = Arc::new(db_service);
     let app_service = test_app_service(Arc::new(mock_hub_service), db_service.clone()).await;
     let router = test_router(Arc::new(app_service));
@@ -604,10 +624,14 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_get_download_status_not_found(temp_home: TempDir) -> anyhow::Result<()> {
+  async fn test_get_download_status_not_found(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
     let mock_hub_service = MockHubService::new();
-    let db_service = db_service_in(&temp_home).await;
     let app_service = test_app_service(Arc::new(mock_hub_service), Arc::new(db_service)).await;
     let router = test_router(Arc::new(app_service));
     let response = router
