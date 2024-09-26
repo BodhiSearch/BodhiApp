@@ -274,7 +274,7 @@ impl LocalDataService {
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::{data_service, DataServiceTuple},
+    test_utils::{test_data_service, TestDataService},
     DataService,
   };
   use anyhow_trace::anyhow_trace;
@@ -284,10 +284,9 @@ mod test {
 
   #[rstest]
   fn test_local_data_service_models_file_missing(
-    data_service: DataServiceTuple,
+    #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp_bodhi_home, bodhi_home, service) = data_service;
-    fs::remove_file(bodhi_home.join("models.yaml"))?;
+    fs::remove_file(service.bodhi_home().join("models.yaml"))?;
     let result = service.find_remote_model("testalias:instruct");
     assert!(result.is_err());
     let expected = r#"file 'models.yaml' not found in $BODHI_HOME/.
@@ -299,10 +298,9 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   #[rstest]
   #[anyhow_trace]
   fn test_local_data_service_models_file_corrupt(
-    data_service: DataServiceTuple,
+    #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
-    let models_file = bodhi_home.join("models.yaml");
+    let models_file = service.bodhi_home().join("models.yaml");
     fs::write(
       &models_file,
       r#"
@@ -330,11 +328,10 @@ filename='{models_file}'"#
   #[case("testalias:instruct", true)]
   #[case("testalias-notexists", false)]
   fn test_local_data_service_find_remote_model(
-    data_service: DataServiceTuple,
+    #[from(test_data_service)] service: TestDataService,
     #[case] alias: String,
     #[case] found: bool,
   ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, _, service) = data_service;
     let remote_model = service.find_remote_model(&alias)?;
     assert_eq!(found, remote_model.is_some());
     Ok(())
@@ -342,9 +339,8 @@ filename='{models_file}'"#
 
   #[rstest]
   fn test_local_data_service_list_remote_models(
-    data_service: DataServiceTuple,
+    #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp_dir, _, service) = data_service;
     let models = service.list_remote_models()?;
     let expected_1 = RemoteModel::llama3();
     let expected_2 = RemoteModel::testalias();
@@ -355,8 +351,9 @@ filename='{models_file}'"#
   }
 
   #[rstest]
-  fn test_local_data_service_find_alias(data_service: DataServiceTuple) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, _, service) = data_service;
+  fn test_local_data_service_find_alias(
+    #[from(test_data_service)] service: TestDataService,
+  ) -> anyhow::Result<()> {
     let alias = service.find_alias("testalias-exists:instruct");
     let expected = Alias::test_alias_exists();
     assert_eq!(Some(expected), alias);
@@ -364,8 +361,9 @@ filename='{models_file}'"#
   }
 
   #[rstest]
-  fn test_local_data_service_list_aliases(data_service: DataServiceTuple) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, _, service) = data_service;
+  fn test_local_data_service_list_aliases(
+    #[from(test_data_service)] service: TestDataService,
+  ) -> anyhow::Result<()> {
     let result = service.list_aliases()?;
     assert_eq!(3, result.len());
     assert!(result.contains(&Alias::llama3()));
@@ -374,15 +372,18 @@ filename='{models_file}'"#
   }
 
   #[rstest]
-  fn test_local_data_service_delete_alias(data_service: DataServiceTuple) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
-    let exists = bodhi_home
+  fn test_local_data_service_delete_alias(
+    #[from(test_data_service)] service: TestDataService,
+  ) -> anyhow::Result<()> {
+    let exists = service
+      .bodhi_home()
       .join("aliases")
       .join("tinyllama--instruct.yaml")
       .exists();
     assert!(exists);
     service.delete_alias("tinyllama:instruct")?;
-    let exists = bodhi_home
+    let exists = service
+      .bodhi_home()
       .join("aliases")
       .join("tinyllama--instruct.yaml")
       .exists();
@@ -392,9 +393,8 @@ filename='{models_file}'"#
 
   #[rstest]
   fn test_local_data_service_delete_alias_not_found(
-    data_service: DataServiceTuple,
+    #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, _, service) = data_service;
     let result = service.delete_alias("notexists--instruct.yaml");
     assert!(result.is_err());
     assert_eq!(
@@ -405,8 +405,9 @@ filename='{models_file}'"#
   }
 
   #[rstest]
-  fn test_local_data_service_copy_alias(data_service: DataServiceTuple) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, _, service) = data_service;
+  fn test_local_data_service_copy_alias(
+    #[from(test_data_service)] service: TestDataService,
+  ) -> anyhow::Result<()> {
     service.copy_alias("tinyllama:instruct", "tinyllama:mymodel")?;
     let new_alias = service
       .find_alias("tinyllama:mymodel")
@@ -418,11 +419,12 @@ filename='{models_file}'"#
   }
 
   #[rstest]
-  fn test_local_data_service_read_file(data_service: DataServiceTuple) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
+  fn test_local_data_service_read_file(
+    #[from(test_data_service)] service: TestDataService,
+  ) -> anyhow::Result<()> {
     let folder = Some("test_folder".to_string());
     let filename = "test_file.txt";
-    let file_path = bodhi_home.join("test_folder").join(filename);
+    let file_path = service.bodhi_home().join("test_folder").join(filename);
     fs::create_dir_all(file_path.parent().unwrap())?;
     fs::write(&file_path, b"test content")?;
 
@@ -435,11 +437,12 @@ filename='{models_file}'"#
   }
 
   #[rstest]
-  fn test_local_data_service_write_file(data_service: DataServiceTuple) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
+  fn test_local_data_service_write_file(
+    #[from(test_data_service)] service: TestDataService,
+  ) -> anyhow::Result<()> {
     let folder = Some("test_folder".to_string());
     let filename = "test_file.txt";
-    let file_path = bodhi_home.join("test_folder").join(filename);
+    let file_path = service.bodhi_home().join("test_folder").join(filename);
 
     service.write_file(folder.clone(), filename, b"test content")?;
     assert!(file_path.exists());
@@ -447,7 +450,7 @@ filename='{models_file}'"#
     assert_eq!(b"test content".to_vec(), content);
 
     service.write_file(None, filename, b"test content in root")?;
-    let root_file_path = bodhi_home.join(filename);
+    let root_file_path = service.bodhi_home().join(filename);
     assert!(root_file_path.exists());
     let content = fs::read(&root_file_path)?;
     assert_eq!(b"test content in root".to_vec(), content);
@@ -457,12 +460,11 @@ filename='{models_file}'"#
 
   #[rstest]
   fn test_local_data_service_write_file_create_folder(
-    data_service: DataServiceTuple,
+    #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, bodhi_home, service) = data_service;
     let folder = Some("new_folder".to_string());
     let filename = "new_file.txt";
-    let file_path = bodhi_home.join("new_folder").join(filename);
+    let file_path = service.bodhi_home().join("new_folder").join(filename);
 
     service.write_file(folder.clone(), filename, b"new content")?;
     assert!(file_path.exists());
@@ -474,9 +476,8 @@ filename='{models_file}'"#
 
   #[rstest]
   fn test_local_data_service_read_file_not_found(
-    data_service: DataServiceTuple,
+    #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
-    let DataServiceTuple(_temp, _, service) = data_service;
     let folder = Some("non_existent_folder".to_string());
     let filename = "non_existent_file.txt";
 
