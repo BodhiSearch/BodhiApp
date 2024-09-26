@@ -1,73 +1,62 @@
 use crate::db::{
-  AccessRequest, Conversation, DbError, DbService, DefaultTimeService, DownloadRequest, Message,
-  MockTimeService, RequestStatus, SqliteDbService,
+  AccessRequest, Conversation, DbError, DbService, DownloadRequest, Message, RequestStatus,
+  SqliteDbService, TimeService,
 };
 use chrono::{DateTime, Timelike, Utc};
+use objs::test_utils::temp_dir;
 use rstest::fixture;
 use sqlx::SqlitePool;
 use std::{fs::File, sync::Arc};
+use tap::Tap;
 use tempfile::TempDir;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 #[fixture]
-pub async fn testdb() -> (TempDir, SqlitePool) {
-  let tempdir = tempfile::tempdir().unwrap();
-  let dbpath = tempdir
-    .path()
-    .to_path_buf()
-    .join("testdb.sqlite")
-    .display()
-    .to_string();
-  File::create(&dbpath).unwrap();
-  let pool = SqlitePool::connect(&format!("sqlite:{dbpath}"))
-    .await
-    .unwrap();
-  (tempdir, pool)
-}
-
-#[fixture]
-#[awt]
-pub async fn db_service(
-  #[future] testdb: (TempDir, SqlitePool),
-) -> (TempDir, DateTime<Utc>, SqliteDbService) {
-  let (_tempdir, pool) = testdb;
-  let now = chrono::Utc::now().with_nanosecond(0).unwrap();
-  let mut mock_time_service = MockTimeService::new();
-  mock_time_service.expect_utc_now().returning(move || now);
-  let service = SqliteDbService::new(pool, Arc::new(mock_time_service));
-  service.migrate().await.unwrap();
-  (_tempdir, now, service)
-}
-
-pub async fn db_service_with_events(temp_home: &TempDir) -> TestDbService {
-  let db_service = db_service_in(temp_home).await;
-  TestDbService::new(db_service)
-}
-
-pub async fn db_service_in(temp_home: &TempDir) -> SqliteDbService {
-  let dbfile = temp_home.path().join("testdb.sqlite");
+pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
+  let dbfile = temp_dir.path().join("testdb.sqlite");
   File::create(&dbfile).unwrap();
   let dbpath = dbfile.to_str().unwrap();
   let pool = SqlitePool::connect(&format!("sqlite:{dbpath}"))
     .await
     .unwrap();
-  let db_service = SqliteDbService::new(pool, Arc::new(DefaultTimeService::default()));
+  let time_service = FrozenTimeService::new();
+  let now = time_service.utc_now();
+  let db_service = SqliteDbService::new(pool, Arc::new(time_service));
   db_service.migrate().await.unwrap();
-  db_service
+  TestDbService::new(temp_dir, db_service, now)
+}
+
+#[derive(Debug)]
+pub struct FrozenTimeService(DateTime<Utc>);
+
+impl FrozenTimeService {
+  pub fn new() -> Self {
+    FrozenTimeService(chrono::Utc::now().with_nanosecond(0).unwrap())
+  }
+}
+
+impl TimeService for FrozenTimeService {
+  fn utc_now(&self) -> DateTime<Utc> {
+    self.0
+  }
 }
 
 #[derive(Debug)]
 pub struct TestDbService {
+  _temp_dir: TempDir,
   inner: SqliteDbService,
   event_sender: Sender<String>,
+  now: DateTime<Utc>,
 }
 
 impl TestDbService {
-  pub fn new(inner: SqliteDbService) -> Self {
+  pub fn new(_temp_dir: TempDir, inner: SqliteDbService, now: DateTime<Utc>) -> Self {
     let (event_sender, _) = channel(100);
     TestDbService {
+      _temp_dir,
       inner,
       event_sender,
+      now,
     }
   }
 
@@ -75,82 +64,131 @@ impl TestDbService {
     self.event_sender.subscribe()
   }
 
-  async fn notify(&self, event: &str) {
+  fn notify(&self, event: &str) {
     let _ = self.event_sender.send(event.to_string());
+  }
+
+  pub fn now(&self) -> DateTime<Utc> {
+    self.now
   }
 }
 
 #[async_trait::async_trait]
 impl DbService for TestDbService {
   async fn migrate(&self) -> Result<(), DbError> {
-    self.inner.migrate().await
+    self.inner.migrate().await.tap(|_| self.notify("migrate"))
   }
 
-  async fn save_conversation(&self, _conversation: &mut Conversation) -> Result<(), DbError> {
-    todo!()
+  async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError> {
+    self.inner.save_conversation(conversation).await
+    // .tap(|_| self.notify("save_conversation"))
   }
 
-  async fn save_message(&self, _message: &mut Message) -> Result<(), DbError> {
-    todo!()
+  async fn save_message(&self, message: &mut Message) -> Result<(), DbError> {
+    self
+      .inner
+      .save_message(message)
+      .await
+      .tap(|_| self.notify("save_message"))
   }
 
   async fn list_conversations(&self) -> Result<Vec<Conversation>, DbError> {
-    todo!()
+    self
+      .inner
+      .list_conversations()
+      .await
+      .tap(|_| self.notify("list_conversations"))
   }
 
-  async fn delete_conversations(&self, _id: &str) -> Result<(), DbError> {
-    todo!()
+  async fn delete_conversations(&self, id: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_conversations(id)
+      .await
+      .tap(|_| self.notify("delete_conversations"))
   }
 
   async fn delete_all_conversations(&self) -> Result<(), DbError> {
-    todo!()
+    self
+      .inner
+      .delete_all_conversations()
+      .await
+      .tap(|_| self.notify("delete_all_conversations"))
   }
 
-  async fn get_conversation_with_messages(&self, _id: &str) -> Result<Conversation, DbError> {
-    todo!()
+  async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError> {
+    self
+      .inner
+      .get_conversation_with_messages(id)
+      .await
+      .tap(|_| self.notify("get_conversation_with_messages"))
   }
 
   async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {
-    let result = self.inner.get_download_request(id).await;
-    self.notify("get_download_request").await;
-    result
+    self
+      .inner
+      .get_download_request(id)
+      .await
+      .tap(|_| self.notify("get_download_request"))
   }
 
   async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
-    let result = self.inner.create_download_request(request).await;
-    self.notify("create_download_request").await;
-    result
+    self
+      .inner
+      .create_download_request(request)
+      .await
+      .tap(|_| self.notify("create_download_request"))
   }
 
   async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
-    let result = self.inner.update_download_request(request).await;
-    self.notify("update_download_request").await;
-    result
+    self
+      .inner
+      .update_download_request(request)
+      .await
+      .tap(|_| self.notify("update_download_request"))
   }
 
   async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
-    let result = self.inner.list_pending_downloads().await;
-    self.notify("list_pending_downloads").await;
-    result
+    self
+      .inner
+      .list_pending_downloads()
+      .await
+      .tap(|_| self.notify("list_pending_downloads"))
   }
 
-  async fn insert_pending_request(&self, _email: String) -> Result<AccessRequest, DbError> {
-    todo!()
+  async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError> {
+    self
+      .inner
+      .insert_pending_request(email)
+      .await
+      .tap(|_| self.notify("insert_pending_request"))
   }
 
-  async fn get_pending_request(&self, _email: String) -> Result<Option<AccessRequest>, DbError> {
-    todo!()
+  async fn get_pending_request(&self, email: String) -> Result<Option<AccessRequest>, DbError> {
+    self
+      .inner
+      .get_pending_request(email)
+      .await
+      .tap(|_| self.notify("get_pending_request"))
   }
 
   async fn list_pending_requests(
     &self,
-    _page: u32,
-    _per_page: u32,
+    page: u32,
+    per_page: u32,
   ) -> Result<Vec<AccessRequest>, DbError> {
-    todo!()
+    self
+      .inner
+      .list_pending_requests(page, per_page)
+      .await
+      .tap(|_| self.notify("list_pending_requests"))
   }
 
-  async fn update_request_status(&self, _id: i64, _status: RequestStatus) -> Result<(), DbError> {
-    todo!()
+  async fn update_request_status(&self, id: i64, status: RequestStatus) -> Result<(), DbError> {
+    self
+      .inner
+      .update_request_status(id, status)
+      .await
+      .tap(|_| self.notify("update_request_status"))
   }
 }

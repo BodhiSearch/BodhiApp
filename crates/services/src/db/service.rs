@@ -1,6 +1,5 @@
 use crate::db::{
-  AccessRequest, Conversation, DownloadRequest, DownloadStatus, Message, NoOpDbService,
-  RequestStatus,
+  AccessRequest, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
@@ -88,12 +87,6 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 pub struct SqliteDbService {
   pool: SqlitePool,
   time_service: Arc<dyn TimeService>,
-}
-
-impl SqliteDbService {
-  pub fn no_op() -> impl DbService {
-    NoOpDbService::new()
-  }
 }
 
 #[async_trait::async_trait]
@@ -495,23 +488,24 @@ impl DbService for SqliteDbService {
 mod test {
   use crate::{
     db::{
-      AccessRequest, ConversationBuilder, DbService, DefaultTimeService, DownloadRequest,
-      DownloadStatus, MessageBuilder, RequestStatus, SqliteDbService, TimeService,
+      AccessRequest, ConversationBuilder, DbService, DownloadRequest, DownloadStatus,
+      MessageBuilder, RequestStatus,
     },
-    test_utils::db_service,
+    test_utils::{test_db_service, TestDbService},
   };
-  use chrono::{DateTime, Days, Timelike, Utc};
+  use chrono::{Days, Timelike};
   use rstest::rstest;
-  use tempfile::TempDir;
   use uuid::Uuid;
 
   #[rstest]
   #[awt]
   #[tokio::test]
   async fn test_db_service_conversations_create(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, now, service) = db_service;
+    let now = service.now();
     let created = chrono::Utc::now()
       .checked_sub_days(Days::new(1))
       .unwrap()
@@ -535,9 +529,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_conversations_update(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, _now, service) = db_service;
     let created = chrono::Utc::now()
       .checked_sub_days(Days::new(1))
       .unwrap()
@@ -563,9 +558,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_list_conversation(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, _now, service) = db_service;
     service
       .save_conversation(&mut ConversationBuilder::default().build().unwrap())
       .await?;
@@ -581,9 +577,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_save_message(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, _now, service) = db_service;
     let mut conversation = ConversationBuilder::default()
       .title("test title")
       .build()
@@ -608,9 +605,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_delete_conversation(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, _now, service) = db_service;
     let mut conversation = ConversationBuilder::default()
       .title("test title")
       .build()
@@ -640,9 +638,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_delete_all_conversation(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, _now, service) = db_service;
     let mut conversation = ConversationBuilder::default().build().unwrap();
     service.save_conversation(&mut conversation).await?;
     let mut message = MessageBuilder::default()
@@ -657,21 +656,15 @@ mod test {
     Ok(())
   }
 
-  #[test]
-  fn test_time_service_utc_now() -> anyhow::Result<()> {
-    let now = DefaultTimeService.utc_now();
-    let now_chrono = chrono::Utc::now();
-    assert!(now.timestamp() - now_chrono.timestamp() < 1);
-    Ok(())
-  }
-
   #[rstest]
   #[awt]
   #[tokio::test]
   async fn test_db_service_create_download_request(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, now, service) = db_service;
+    let now = service.now();
     let request = DownloadRequest {
       id: Uuid::new_v4().to_string(),
       repo: "test/repo".to_string(),
@@ -692,9 +685,11 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_update_download_request(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, now, service) = db_service;
+    let now = service.now();
     let mut request = DownloadRequest {
       id: Uuid::new_v4().to_string(),
       repo: "test/repo".to_string(),
@@ -710,7 +705,17 @@ mod test {
     service.update_download_request(&request).await?;
 
     let fetched = service.get_download_request(&request.id).await?.unwrap();
-    assert_eq!(request, fetched);
+    assert_eq!(
+      DownloadRequest {
+        id: request.id,
+        repo: "test/repo".to_string(),
+        filename: "test_file.gguf".to_string(),
+        status: DownloadStatus::Completed,
+        created_at: now,
+        updated_at: now + chrono::Duration::hours(1),
+      },
+      fetched
+    );
     Ok(())
   }
 
@@ -718,9 +723,11 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_list_pending_downloads(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, now, service) = db_service;
+    let now = service.now();
     let pending_request = DownloadRequest {
       id: Uuid::new_v4().to_string(),
       repo: "test/repo1".to_string(),
@@ -751,9 +758,11 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_insert_pending_request(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, now, service) = db_service;
+    let now = service.now();
     let email = "test@example.com".to_string();
     let pending_request = service.insert_pending_request(email.clone()).await?;
     let expected_request = AccessRequest {
@@ -771,15 +780,15 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_get_pending_request(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, _, service) = db_service;
     let email = "test@example.com".to_string();
     let inserted_request = service.insert_pending_request(email.clone()).await?;
     let fetched_request = service.get_pending_request(email).await?;
     assert!(fetched_request.is_some());
-    let fetched_request = fetched_request.unwrap();
-    assert_eq!(fetched_request, inserted_request);
+    assert_eq!(fetched_request.unwrap(), inserted_request);
     Ok(())
   }
 
@@ -787,9 +796,11 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_list_pending_requests(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, now, service) = db_service;
+    let now = service.now();
     let emails = vec![
       "test1@example.com".to_string(),
       "test2@example.com".to_string(),
@@ -804,7 +815,7 @@ mod test {
     assert_eq!(page2.len(), 1);
     for (i, request) in page1.iter().chain(page2.iter()).enumerate() {
       let expected_request = AccessRequest {
-        id: request.id, // We don't know this in advance
+        id: request.id,
         email: emails[i].clone(),
         created_at: now,
         updated_at: now,
@@ -819,9 +830,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_db_service_update_request_status(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_tempdir, _now, service) = db_service;
     let email = "test@example.com".to_string();
     let inserted_request = service.insert_pending_request(email.clone()).await?;
     service

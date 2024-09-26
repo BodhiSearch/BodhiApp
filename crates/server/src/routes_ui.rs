@@ -96,15 +96,14 @@ mod test {
     body::Body,
     http::{Request, StatusCode},
   };
-  use chrono::{DateTime, Utc};
   use rstest::rstest;
   use serde_json::Value;
-  use services::db::{
-    DbService, SqliteDbService, {Conversation, ConversationBuilder, MessageBuilder},
+  use services::test_utils::AppServiceStubBuilder;
+  use services::{
+    db::{Conversation, ConversationBuilder, DbService, MessageBuilder},
+    test_utils::{test_db_service, TestDbService},
   };
-  use services::test_utils::{db_service, AppServiceStubBuilder};
   use std::sync::Arc;
-  use tempfile::TempDir;
   use tower::ServiceExt;
   use uuid::Uuid;
   use validator::ValidateLength;
@@ -113,9 +112,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_index(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_temp, _now, db_service) = db_service;
     let mut convo_1 = ConversationBuilder::default()
       .title("test title 1")
       .messages(vec![MessageBuilder::default()
@@ -157,9 +157,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_get(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_temp, _now, db_service) = db_service;
     let mut convo = ConversationBuilder::default().title("test title").build()?;
     let message_1 = MessageBuilder::default()
       .conversation_id(&convo.id)
@@ -202,9 +203,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_delete(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_temp, _now, db_service) = db_service;
     let mut convo = ConversationBuilder::default().id(Uuid::new_v4()).build()?;
     let message_1 = MessageBuilder::default()
       .conversation_id(&convo.id)
@@ -245,9 +247,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_delete_chats(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_temp, _now, db_service) = db_service;
     let mut convo = ConversationBuilder::default().build()?;
     let message_1 = MessageBuilder::default()
       .conversation_id(&convo.id)
@@ -280,9 +283,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_get_not_found(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_temp, _now, db_service) = db_service;
     let app_service = Arc::new(
       AppServiceStubBuilder::default()
         .db_service(Arc::new(db_service))
@@ -310,9 +314,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_new_chat(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_temp, _now, db_service) = db_service;
     let db_service = Arc::new(db_service);
     let app_service = Arc::new(
       AppServiceStubBuilder::default()
@@ -371,9 +376,10 @@ mod test {
   #[awt]
   #[tokio::test]
   async fn test_chat_routes_update_chat(
-    #[future] db_service: (TempDir, DateTime<Utc>, SqliteDbService),
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (_temp, _now, db_service) = db_service;
     let db_service = Arc::new(db_service);
     let app_service = Arc::new(
       AppServiceStubBuilder::default()
