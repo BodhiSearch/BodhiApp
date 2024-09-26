@@ -54,7 +54,7 @@ thiserror = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true }
-tower = { workspace = true }
+tower = { workspace = true, features = ["util"] }
 tower-http = { workspace = true, features = ["trace", "cors"] }
 tower-sessions = { workspace = true }
 tracing = { workspace = true, features = ["async-await", "log"] }
