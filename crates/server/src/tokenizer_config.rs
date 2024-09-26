@@ -200,7 +200,7 @@ mod test {
   use crate::{ChatMessage, ChatTemplateVersions, TokenizerConfig};
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
-  use objs::{test_utils::temp_hf_home, HubFile};
+  use objs::{test_utils::temp_hf_home, HubFileBuilder};
   use rstest::rstest;
   use tempfile::TempDir;
 
@@ -317,7 +317,7 @@ mod test {
   #[rstest]
   fn test_tokenizer_config_from_hub_file(temp_hf_home: TempDir) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let tokenizer_file = HubFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache)
       .build()
       .unwrap();
