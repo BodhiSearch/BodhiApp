@@ -121,8 +121,8 @@ mod test {
   use crate::CreateCommand;
   use mockall::predicate::*;
   use objs::{
-    Alias, ChatTemplate, GptContextParamsBuilder, HubFile, OAIRequestParamsBuilder, Repo,
-    TOKENIZER_CONFIG_JSON,
+    Alias, AliasBuilder, ChatTemplate, GptContextParamsBuilder, HubFile, OAIRequestParamsBuilder,
+    Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
   use services::{
@@ -296,7 +296,7 @@ mod test {
         eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
-    let alias = Alias::test_alias_instruct_builder()
+    let alias = AliasBuilder::testalias()
       .chat_template(chat_template.clone())
       .build()
       .unwrap();
