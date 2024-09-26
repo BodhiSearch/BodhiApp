@@ -29,8 +29,6 @@ type Result<T> = std::result::Result<T, AuthServiceError>;
 pub trait AuthService: Send + Sync + std::fmt::Debug {
   async fn register_client(&self, redirect_uris: Vec<String>) -> Result<AppRegInfo>;
 
-  async fn check_access_token(&self, access_token: &AccessToken) -> Result<bool>;
-
   async fn exchange_auth_code(
     &self,
     code: AuthorizationCode,
@@ -51,6 +49,13 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     &self,
     client_token: &str,
   ) -> Result<(AccessToken, RefreshToken)>;
+
+  async fn make_resource_admin(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    email: &str,
+  ) -> Result<()>;
 }
 
 #[derive(Debug)]
@@ -74,6 +79,37 @@ impl KeycloakAuthService {
 
   fn auth_token_url(&self) -> String {
     format!("{}/protocol/openid-connect/token", self.auth_url())
+  }
+
+  async fn get_client_access_token(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+  ) -> Result<AccessToken> {
+    let params = [
+      ("grant_type", "client_credentials"),
+      ("client_id", client_id),
+      ("client_secret", client_secret),
+    ];
+
+    let client = reqwest::Client::new();
+    let response = client
+      .post(self.auth_token_url())
+      .form(&params)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+        response.json().await?;
+      Ok(token_response.access_token().to_owned())
+    } else {
+      let error = response.json::<Value>().await?;
+      let error_msg = error["error"]
+        .as_str()
+        .unwrap_or("Failed to get client access token");
+      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+    }
   }
 }
 
@@ -102,12 +138,6 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
-  #[allow(unused_variables)]
-  async fn check_access_token(&self, access_token: &AccessToken) -> Result<bool> {
-    // TODO: returning true to complete the flow, implement this
-    Ok(true)
-  }
-
   async fn exchange_auth_code(
     &self,
     code: AuthorizationCode,
@@ -131,7 +161,6 @@ impl AuthService for KeycloakAuthService {
       .form(&params)
       .send()
       .await?;
-
     if response.status().is_success() {
       let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
         response.json().await?;
@@ -187,6 +216,38 @@ impl AuthService for KeycloakAuthService {
     client_token: &str,
   ) -> Result<(AccessToken, RefreshToken)> {
     todo!()
+  }
+
+  async fn make_resource_admin(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    email: &str,
+  ) -> Result<()> {
+    // Get client access token
+    let access_token = self
+      .get_client_access_token(client_id, client_secret)
+      .await?;
+
+    // Make API call to make the user a resource admin
+    let endpoint = format!("{}/clients/make-resource-admin", self.auth_api_url());
+    let client = reqwest::Client::new();
+    let response = client
+      .post(endpoint)
+      .bearer_auth(access_token.secret())
+      .json(&serde_json::json!({ "username": email }))
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      Ok(())
+    } else {
+      let error = response.json::<Value>().await?;
+      let error_msg = error["error"]
+        .as_str()
+        .unwrap_or("Failed to make resource admin");
+      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+    }
   }
 }
 
@@ -366,6 +427,144 @@ mod tests {
     assert_eq!(error.to_string(), "api_error: invalid_grant");
 
     mock.assert();
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("test_client_id", "test_client_secret", "test@example.com")]
+  #[tokio::test]
+  async fn test_make_resource_admin_success(
+    #[case] client_id: &str,
+    #[case] client_secret: &str,
+    #[case] email: &str,
+  ) -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    // Mock token endpoint
+    let token_mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "client_credentials".into()),
+        Matcher::UrlEncoded("client_id".into(), client_id.into()),
+        Matcher::UrlEncoded("client_secret".into(), client_secret.into()),
+      ]))
+      .with_status(200)
+      .with_body(
+        json!({
+            "access_token": "test_access_token",
+            "token_type": "Bearer",
+            "expires_in": 300,
+        })
+        .to_string(),
+      )
+      .create();
+
+    // Mock make-resource-admin endpoint
+    let admin_mock = server
+      .mock(
+        "POST",
+        "/realms/test-realm/bodhi/clients/make-resource-admin",
+      )
+      .match_header("Authorization", "Bearer test_access_token")
+      .match_body(Matcher::Json(json!({"username": email})))
+      .with_status(200)
+      .with_body("{}")
+      .create();
+
+    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let result = service
+      .make_resource_admin(client_id, client_secret, email)
+      .await;
+
+    assert!(result.is_ok());
+    token_mock.assert();
+    admin_mock.assert();
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("test_client_id", "test_client_secret", "test@example.com")]
+  #[tokio::test]
+  async fn test_make_resource_admin_token_failure(
+    #[case] client_id: &str,
+    #[case] client_secret: &str,
+    #[case] email: &str,
+  ) -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    // Mock token endpoint with failure
+    let token_mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .with_status(400)
+      .with_body(json!({"error": "invalid_client"}).to_string())
+      .create();
+
+    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let result = service
+      .make_resource_admin(client_id, client_secret, email)
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(
+      result.unwrap_err(),
+      AuthServiceError::AuthServiceApiError(_)
+    ));
+    token_mock.assert();
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("test_client_id", "test_client_secret", "test@example.com")]
+  #[tokio::test]
+  async fn test_make_resource_admin_api_failure(
+    #[case] client_id: &str,
+    #[case] client_secret: &str,
+    #[case] email: &str,
+  ) -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    // Mock token endpoint
+    let token_mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .with_status(200)
+      .with_body(
+        json!({
+            "access_token": "test_access_token",
+            "token_type": "Bearer",
+            "expires_in": 300,
+        })
+        .to_string(),
+      )
+      .create();
+
+    // Mock make-resource-admin endpoint with failure
+    let admin_mock = server
+      .mock(
+        "POST",
+        "/realms/test-realm/bodhi/clients/make-resource-admin",
+      )
+      .with_status(400)
+      .with_body(json!({"error": "user_not_found"}).to_string())
+      .create();
+
+    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let result = service
+      .make_resource_admin(client_id, client_secret, email)
+      .await;
+
+    assert!(result.is_err());
+    assert!(matches!(
+      result.unwrap_err(),
+      AuthServiceError::AuthServiceApiError(_)
+    ));
+    token_mock.assert();
+    admin_mock.assert();
+
     Ok(())
   }
 }

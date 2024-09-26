@@ -10,3 +10,15 @@ pub struct AppRegInfo {
   pub client_id: String,
   pub client_secret: String,
 }
+
+#[derive(
+  Debug, Serialize, Deserialize, PartialEq, strum::Display, Clone, Default, strum::EnumString,
+)]
+#[strum(serialize_all = "kebab-case")]
+#[serde(rename_all = "kebab-case")]
+pub enum AppStatus {
+  #[default]
+  Setup,
+  Ready,
+  ResourceAdmin,
+}

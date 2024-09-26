@@ -13,7 +13,7 @@ pub struct Cli {
 }
 
 #[derive(Debug, PartialEq, Subcommand, Display, Clone)]
-#[strum(serialize_all = "lowercase")]
+#[strum(serialize_all = "kebab-case")]
 #[allow(clippy::large_enum_variant)]
 pub enum Command {
   /// list down the environment variables for current runtime
