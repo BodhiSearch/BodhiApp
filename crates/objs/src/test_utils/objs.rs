@@ -27,8 +27,8 @@ impl Repo {
   }
 }
 
-impl HubFile {
-  pub fn testalias_builder() -> HubFileBuilder {
+impl HubFileBuilder {
+  pub fn testalias() -> HubFileBuilder {
     HubFileBuilder::default()
       .repo(Repo::testalias())
       .filename("testalias.Q8_0.gguf".to_string())
@@ -37,7 +37,7 @@ impl HubFile {
       .to_owned()
   }
 
-  pub fn fakemodel_builder() -> HubFileBuilder {
+  pub fn fakemodel() -> HubFileBuilder {
     HubFileBuilder::default()
       .repo(Repo::fakemodel())
       .filename("fakemodel.Q4_0.gguf".to_string())
@@ -46,14 +46,7 @@ impl HubFile {
       .to_owned()
   }
 
-  pub fn testalias() -> HubFile {
-    HubFile::testalias_builder()
-      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
-      .build()
-      .unwrap()
-  }
-
-  pub fn testalias_tokenizer_builder() -> HubFileBuilder {
+  pub fn testalias_tokenizer() -> HubFileBuilder {
     HubFileBuilder::default()
       .repo(Repo::testalias())
       .filename(TOKENIZER_CONFIG_JSON.to_string())
@@ -62,30 +55,36 @@ impl HubFile {
       .to_owned()
   }
 
-  pub fn testalias_tokenizer() -> HubFile {
-    HubFile::testalias_tokenizer_builder()
+  pub fn llama3_tokenizer() -> HubFileBuilder {
+    HubFileBuilder::default()
+      .repo(Repo::llama3())
+      .filename(TOKENIZER_CONFIG_JSON.to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(33))
+      .to_owned()
+  }
+}
+
+impl HubFile {
+  pub fn testalias() -> HubFile {
+    HubFileBuilder::testalias()
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
   }
 
-  pub fn fakemodel_tokenizer_builder() -> HubFileBuilder {
-    HubFileBuilder::default()
-      .repo(Repo::fakemodel())
-      .filename(TOKENIZER_CONFIG_JSON.to_string())
-      .snapshot(SNAPSHOT.to_string())
-      .size(Some(22))
-      .to_owned()
+  pub fn testalias_tokenizer() -> HubFile {
+    HubFileBuilder::testalias_tokenizer()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .build()
+      .unwrap()
   }
 
   pub fn llama3_tokenizer() -> HubFile {
-    HubFile::new(
-      PathBuf::from("/tmp/ignored/huggingface/hub"),
-      Repo::llama3(),
-      TOKENIZER_CONFIG_JSON.to_string(),
-      SNAPSHOT.to_string(),
-      Some(33),
-    )
+    HubFileBuilder::llama3_tokenizer()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .build()
+      .unwrap()
   }
 }
 
@@ -119,12 +118,8 @@ impl RemoteModel {
   }
 }
 
-impl Alias {
-  pub fn testalias() -> Alias {
-    Alias::test_alias_instruct_builder().build().unwrap()
-  }
-
-  pub fn test_alias_instruct_builder() -> AliasBuilder {
+impl AliasBuilder {
+  pub fn testalias() -> AliasBuilder {
     AliasBuilder::default()
       .alias("testalias:instruct".to_string())
       .family("testalias")
@@ -138,21 +133,21 @@ impl Alias {
       .to_owned()
   }
 
-  pub fn test_alias_exists() -> Alias {
-    Alias::new(
-      String::from("testalias-exists:instruct"),
-      Some(String::from("testalias")),
-      Repo::try_from("MyFactory/testalias-exists-instruct-gguf").unwrap(),
-      String::from("testalias-exists-instruct.Q8_0.gguf"),
-      SNAPSHOT.to_string(),
-      vec![String::from("chat")],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-      OAIRequestParams::default(),
-      GptContextParams::default(),
-    )
+  pub fn testalias_exists() -> AliasBuilder {
+    AliasBuilder::default()
+      .alias("testalias-exists:instruct".to_string())
+      .family("testalias")
+      .repo(Repo::try_from("MyFactory/testalias-exists-instruct-gguf").unwrap())
+      .filename("testalias-exists-instruct.Q8_0.gguf".to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .features(vec!["chat".to_string()])
+      .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
+      .request_params(OAIRequestParams::default())
+      .context_params(GptContextParams::default())
+      .to_owned()
   }
 
-  pub fn llama3() -> Alias {
+  pub fn llama3() -> AliasBuilder {
     let request_params = OAIRequestParamsBuilder::default()
       .stop(vec![
         "<|start_header_id|>".to_string(),
@@ -165,30 +160,49 @@ impl Alias {
       .n_keep(24)
       .build()
       .unwrap();
-    Alias::new(
-      String::from("llama3:instruct"),
-      Some(String::from("llama3")),
-      Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-      String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-      SNAPSHOT.to_string(),
-      vec![String::from("chat")],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
-      request_params,
-      gpt_params,
-    )
+    AliasBuilder::default()
+      .alias("llama3:instruct".to_string())
+      .family("llama3")
+      .repo(Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap())
+      .filename("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string())
+      .snapshot(SNAPSHOT.to_string())
+      .features(vec!["chat".to_string()])
+      .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
+      .request_params(request_params)
+      .context_params(gpt_params)
+      .to_owned()
+  }
+
+  pub fn tinyllama() -> AliasBuilder {
+    AliasBuilder::default()
+      .alias("tinyllama:instruct".to_string())
+      .repo(Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF").unwrap())
+      .filename("tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string())
+      .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
+      .features(vec!["chat".to_string()])
+      .chat_template(ChatTemplate::Repo(
+        Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
+      ))
+      .request_params(OAIRequestParams::default())
+      .context_params(GptContextParams::default())
+      .to_owned()
+  }
+}
+
+impl Alias {
+  pub fn testalias() -> Alias {
+    AliasBuilder::testalias().build().unwrap()
+  }
+
+  pub fn test_alias_exists() -> Alias {
+    AliasBuilder::testalias_exists().build().unwrap()
+  }
+
+  pub fn llama3() -> Alias {
+    AliasBuilder::llama3().build().unwrap()
   }
 
   pub fn tinyllama() -> Alias {
-    Alias::new(
-      "tinyllama:instruct".to_string(),
-      None,
-      Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF").unwrap(),
-      "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
-      "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
-      vec!["chat".to_string()],
-      ChatTemplate::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap()),
-      OAIRequestParams::default(),
-      GptContextParams::default(),
-    )
+    AliasBuilder::tinyllama().build().unwrap()
   }
 }

@@ -46,8 +46,8 @@ impl std::fmt::Display for Alias {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
-      "Alias {{ alias: {}, repo: {}, filename: {} }}",
-      self.alias, self.repo, self.filename
+      "Alias {{ alias: {}, repo: {}, filename: {}, snapshot: {} }}",
+      self.alias, self.repo, self.filename, self.snapshot
     )
   }
 }
@@ -59,31 +59,6 @@ mod test {
     OAIRequestParamsBuilder, Repo,
   };
   use rstest::rstest;
-
-  fn tinyllama_builder() -> AliasBuilder {
-    AliasBuilder::default()
-      .alias("tinyllama:instruct")
-      .repo(Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF").unwrap())
-      .filename("tinyllama-1.1b-chat-v1.0.Q4_0.gguf")
-      .snapshot("52e7645ba7c309695bec7ac98f4f005b139cf465")
-      .features(vec!["chat".to_string()])
-      .request_params(
-        OAIRequestParamsBuilder::default()
-          .temperature(0.7)
-          .top_p(0.95)
-          .build()
-          .unwrap(),
-      )
-      .context_params(
-        GptContextParamsBuilder::default()
-          .n_ctx(2048)
-          .n_parallel(4u8)
-          .n_predict(256)
-          .build()
-          .unwrap(),
-      )
-      .to_owned()
-  }
 
   #[rstest]
   #[case("llama3:instruct", "llama3--instruct.yaml")]
@@ -108,16 +83,29 @@ chat_template: llama3
 "#
   )]
   #[case(
-    tinyllama_builder()
+    AliasBuilder::tinyllama()
       .chat_template(ChatTemplate::Repo(
         Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
       ))
+      .request_params(OAIRequestParamsBuilder::default()
+        .temperature(0.7)
+        .top_p(0.95)
+        .build()
+        .unwrap())
+      .context_params(
+        GptContextParamsBuilder::default()
+          .n_ctx(2048)
+          .n_parallel(4u8)
+          .n_predict(256)
+          .build()
+          .unwrap(),
+      )
       .build()
       .unwrap(),
     r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
-filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
-snapshot: 52e7645ba7c309695bec7ac98f4f005b139cf465
+repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
+filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
+snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 features:
 - chat
 chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
@@ -131,24 +119,17 @@ context_params:
 "#
   )]
   #[case(
-    tinyllama_builder()
+    AliasBuilder::tinyllama()
       .chat_template(ChatTemplate::Id(ChatTemplateId::Tinyllama))
       .build()
       .unwrap(),
     r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
-filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
-snapshot: 52e7645ba7c309695bec7ac98f4f005b139cf465
+repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
+filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
+snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 features:
 - chat
 chat_template: tinyllama
-request_params:
-  temperature: 0.7
-  top_p: 0.95
-context_params:
-  n_ctx: 2048
-  n_parallel: 4
-  n_predict: 256
 "#)]
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: &str) -> anyhow::Result<()> {
     let actual = serde_yaml::to_string(&alias)?;
@@ -157,11 +138,11 @@ context_params:
   }
 
   #[rstest]
-  #[case(
+  #[case::request_ctx_params(
     r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
-filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
-snapshot: 52e7645ba7c309695bec7ac98f4f005b139cf465
+repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
+filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
+snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 features:
 - chat
 chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
@@ -173,28 +154,34 @@ context_params:
   n_parallel: 4
   n_predict: 256
 "#,
-tinyllama_builder()
-.chat_template(ChatTemplate::Repo(
-  Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
-))
-.build()
-.unwrap()
+  AliasBuilder::tinyllama()
+    .chat_template(ChatTemplate::Repo(
+      Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
+    ))
+  .request_params(OAIRequestParamsBuilder::default()
+  .temperature(0.7)
+  .top_p(0.95)
+  .build()
+  .unwrap())
+  .context_params(
+  GptContextParamsBuilder::default()
+    .n_ctx(2048)
+    .n_parallel(4u8)
+    .n_predict(256)
+    .build()
+    .unwrap(),
+  )
+  .build()
+  .unwrap()
   )]
-  #[case(r#"alias: tinyllama:instruct
-repo: TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF
-filename: tinyllama-1.1b-chat-v1.0.Q4_0.gguf
-snapshot: 52e7645ba7c309695bec7ac98f4f005b139cf465
+  #[case::chat_template_id(r#"alias: tinyllama:instruct
+repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
+filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
+snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 features:
 - chat
 chat_template: tinyllama
-request_params:
-  temperature: 0.7
-  top_p: 0.95
-context_params:
-  n_ctx: 2048
-  n_parallel: 4
-  n_predict: 256
-"#, tinyllama_builder()
+"#, AliasBuilder::tinyllama()
 .chat_template(ChatTemplate::Id(ChatTemplateId::Tinyllama))
 .build()
 .unwrap())]
@@ -213,11 +200,12 @@ context_params:
       alias: "test:alias".to_string(),
       repo: Repo::try_from("test/repo").unwrap(),
       filename: "test.gguf".to_string(),
+      snapshot: "main".to_string(),
       ..Default::default()
     };
     assert_eq!(
       format!("{}", alias),
-      "Alias { alias: test:alias, repo: test/repo, filename: test.gguf }"
+      "Alias { alias: test:alias, repo: test/repo, filename: test.gguf, snapshot: main }"
     );
   }
 }
