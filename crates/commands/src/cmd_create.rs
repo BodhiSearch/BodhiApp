@@ -118,7 +118,7 @@ impl CreateCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::CreateCommand;
+  use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
     Alias, AliasBuilder, ChatTemplate, GptContextParamsBuilder, HubFile, OAIRequestParamsBuilder,
@@ -206,7 +206,7 @@ mod test {
   fn test_create_execute_downloads_model_saves_alias(
     #[case] snapshot: Option<String>,
   ) -> anyhow::Result<()> {
-    let create = CreateCommand::testalias_builder()
+    let create = CreateCommandBuilder::testalias()
       .snapshot(snapshot.clone())
       .build()
       .unwrap();
@@ -254,7 +254,7 @@ mod test {
   ) -> anyhow::Result<()> {
     let tokenizer_repo = Repo::try_from("MyFactory/testalias")?;
     let chat_template = ChatTemplate::Repo(tokenizer_repo.clone());
-    let create = CreateCommand::testalias_builder()
+    let create = CreateCommandBuilder::testalias()
       .chat_template(chat_template.clone())
       .build()
       .unwrap();

@@ -50,7 +50,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
 type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
-pub trait DataService: std::fmt::Debug {
+pub trait DataService: Send + Sync + std::fmt::Debug {
   fn list_aliases(&self) -> Result<Vec<Alias>>;
 
   fn save_alias(&self, alias: &Alias) -> Result<PathBuf>;

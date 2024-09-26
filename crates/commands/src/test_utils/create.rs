@@ -3,10 +3,12 @@ use objs::{ChatTemplate, ChatTemplateId, GptContextParams, OAIRequestParams, Rep
 
 impl CreateCommand {
   pub fn testalias() -> CreateCommand {
-    CreateCommand::testalias_builder().build().unwrap()
+    CreateCommandBuilder::testalias().build().unwrap()
   }
+}
 
-  pub fn testalias_builder() -> CreateCommandBuilder {
+impl CreateCommandBuilder {
+  pub fn testalias() -> CreateCommandBuilder {
     CreateCommandBuilder::default()
       .alias("testalias:instruct".to_string())
       .repo(Repo::try_from("MyFactory/testalias-gguf").unwrap())
