@@ -1,4 +1,5 @@
 mod auth;
+mod data;
 mod db;
 mod envs;
 mod hf;
@@ -7,6 +8,7 @@ mod service;
 mod session;
 
 pub use auth::*;
+pub use data::*;
 pub use db::*;
 pub use envs::*;
 pub use hf::*;

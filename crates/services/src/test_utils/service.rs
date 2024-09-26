@@ -7,19 +7,9 @@ use crate::{
   MockSessionService, MokaCacheService, SecretService, SessionService, SqliteSessionService,
 };
 use derive_builder::Builder;
-use objs::test_utils::{build_temp_dir, copy_test_dir, temp_bodhi_home};
-use rstest::fixture;
+use objs::test_utils::{build_temp_dir, copy_test_dir};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
-
-pub struct DataServiceTuple(pub TempDir, pub PathBuf, pub LocalDataService);
-
-#[fixture]
-pub fn data_service(temp_bodhi_home: TempDir) -> DataServiceTuple {
-  let bodhi_home = temp_bodhi_home.path().join("bodhi");
-  let data_service = LocalDataService::new(bodhi_home.clone());
-  DataServiceTuple(temp_bodhi_home, bodhi_home, data_service)
-}
 
 #[derive(Default, Builder)]
 #[builder(default, setter(into))]
