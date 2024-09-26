@@ -268,14 +268,12 @@ mod test {
     bindings::llama_server_disable_logging, disable_llama_log, GptParams, GptParamsBuilder,
   };
   use mockall::predicate::{always, eq};
-  use objs::test_utils::hf_cache;
-  use objs::{Alias, HubFile};
+  use objs::{test_utils::temp_hf_home, Alias, HubFile};
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
   use std::{
     ffi::{c_char, c_void},
-    path::PathBuf,
     slice,
   };
   use tempfile::TempDir;
@@ -455,10 +453,8 @@ mod test {
   #[tokio::test]
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
-  async fn test_chat_completions_continue_strategy(
-    hf_cache: (TempDir, PathBuf),
-  ) -> anyhow::Result<()> {
-    let (_temp, hf_cache) = hf_cache;
+  async fn test_chat_completions_continue_strategy(temp_hf_home: TempDir) -> anyhow::Result<()> {
+    let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let model_file = HubFile::testalias_builder()
       .hf_cache(hf_cache.clone())
       .build()
@@ -505,8 +501,8 @@ mod test {
   #[tokio::test]
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
-  async fn test_chat_completions_load_strategy(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {
-    let (_temp, hf_cache) = hf_cache;
+  async fn test_chat_completions_load_strategy(temp_hf_home: TempDir) -> anyhow::Result<()> {
+    let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let model_file = HubFile::testalias_builder()
       .hf_cache(hf_cache.clone())
       .build()
@@ -552,9 +548,9 @@ mod test {
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
   async fn test_chat_completions_drop_and_load_strategy(
-    hf_cache: (TempDir, PathBuf),
+    temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
-    let (_temp, hf_cache) = hf_cache;
+    let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let loaded_model = HubFile::testalias_builder()
       .hf_cache(hf_cache.clone())
       .build()
