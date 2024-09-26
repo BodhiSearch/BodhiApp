@@ -359,8 +359,10 @@ impl HfHubService {
 mod test {
   use super::SNAPSHOT_MAIN;
   use crate::{
-    test_utils::{hf_test_token_allowed, hf_test_token_public, hub_service, HubServiceTuple},
-    HfHubService, HubService,
+    test_utils::{
+      build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
+    },
+    HubService,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{test_utils::temp_hf_home, HubFile, Repo};
@@ -393,7 +395,7 @@ mod test {
     #[case] version: &str,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let service = HfHubService::new(hf_cache.clone(), false, token);
+    let service = build_hf_service(token, temp_hf_home);
     let local_model_file = service.download(
       &Repo::try_from("amir36/test-model-repo")?,
       "tokenizer_config.json",
@@ -455,8 +457,7 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
     #[case] snapshot: Option<String>,
     #[case] error: &str,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let service = HfHubService::new(hf_cache, false, token);
+    let service = build_hf_service(token, temp_hf_home);
     let local_model_file = service.download(
       &Repo::try_from("amir36/test-gated-repo")?,
       "tokenizer_config.json",
@@ -470,27 +471,18 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   }
 
   #[rstest]
-  #[case(hf_test_token_allowed(), None, "2")]
-  #[case(hf_test_token_allowed(), Some("main".to_string()), "2")]
-  #[case(
-    hf_test_token_allowed(),
-    Some("57a2b0118ef1cb0ab5d9544e5d9600d189f66a72".to_string()),
-    "2"
-  )]
-  #[case(
-    hf_test_token_allowed(),
-    Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()),
-    "1"
-  )]
+  #[case(None, "2")]
+  #[case( Some("main".to_string()), "2")]
+  #[case( Some("57a2b0118ef1cb0ab5d9544e5d9600d189f66a72".to_string()), "2" )]
+  #[case( Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()), "1" )]
   fn test_hf_hub_service_download_gated_file_allowed(
-    temp_hf_home: TempDir,
-    #[case] token: Option<String>,
+    #[with(hf_test_token_allowed())]
+    #[from(test_hf_service)]
+    hf_service: TestHfService,
     #[case] snapshot: Option<String>,
     #[case] version: &str,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let service = HfHubService::new(hf_cache, false, token);
-    let local_model_file = service.download(
+    let local_model_file = hf_service.download(
       &Repo::try_from("amir36/test-gated-repo")?,
       "tokenizer_config.json",
       snapshot.clone(),
@@ -502,10 +494,10 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
     } else {
       &snapshot.unwrap()
     };
-    let expected = temp_hf_home
-      .path()
+    let expected = hf_service
+      .hf_cache()
       .join(format!(
-        "huggingface/hub/models--amir36--test-gated-repo/snapshots/{sha}/tokenizer_config.json"
+        "models--amir36--test-gated-repo/snapshots/{sha}/tokenizer_config.json"
       ))
       .display()
       .to_string();
@@ -525,11 +517,10 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   #[case(Some("9ff8b00464fc439a64bb374769dec3dd627be1c2".to_string()), "this is version 1\n")]
   #[case(Some("e9149a12809580e8602995856f8098ce973d1080".to_string()), "this is version 2\n")]
   fn test_hf_hub_service_find_local_file(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
     #[case] snapshot: Option<String>,
     #[case] expected: String,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp, _, service) = hub_service;
     let repo = Repo::try_from("meta-llama/Llama-2-70b-chat-hf")?;
     let filename = "tokenizer_config.json";
     let local_model_file = service.find_local_file(&repo, filename, snapshot)?.unwrap();
@@ -540,9 +531,8 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
 
   #[rstest]
   fn test_hf_hub_service_find_local_model_not_present(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp, _, service) = hub_service;
     let repo = Repo::try_from("meta-llama/Llama-2-70b-chat-hf")?;
     let filename = "tokenizer_config.json";
     let local_model_file = service.find_local_file(
@@ -556,9 +546,8 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
 
   #[rstest]
   fn test_hf_hub_service_find_local_model_with_non_main_refs(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp, _, service) = hub_service;
     let repo = Repo::fakemodel();
     let filename = "fakemodel.Q4_0.gguf";
     let result = service.find_local_file(&repo, filename, Some("non-main".to_string()));
@@ -616,8 +605,7 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   ) -> anyhow::Result<()> {
     let sha = snapshot.clone().unwrap_or("main".to_string());
     let error = strfmt!(error, sha, repo => "amir36/not-exists", status)?;
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let service = HfHubService::new(hf_cache, false, token);
+    let service = build_hf_service(token, temp_hf_home);
     let local_model_file = service.download(
       &Repo::try_from("amir36/not-exists")?,
       "tokenizer_config.json",
@@ -630,9 +618,8 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
 
   #[rstest]
   fn test_hf_hub_service_find_local_file_returns_none_if_refs_main_not_present(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
     let result = service.find_local_file(
       &Repo::try_from("TheBloke/NotDownloaded")?,
       "some-model-file.gguf",
@@ -644,11 +631,12 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   }
 
   #[rstest]
-  fn test_hf_hub_service_list_local_models(hub_service: HubServiceTuple) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp_hf_home, hf_cache, service) = hub_service;
+  fn test_hf_hub_service_list_local_models(
+    #[from(test_hf_service)] service: TestHfService,
+  ) -> anyhow::Result<()> {
     let models = service.list_local_models();
     let expected_1 = HubFile::new(
-      hf_cache,
+      service.hf_cache(),
       Repo::try_from("google/gemma-1.1-2b-it-GGUF")?,
       "2b_it_v1p1.gguf".to_string(),
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
@@ -661,9 +649,8 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
 
   #[rstest]
   fn test_hf_hub_service_list_local_tokenizer_configs(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
     let repos = service.list_local_tokenizer_configs();
     assert_eq!(5, repos.len(), "Expected 5 repos with tokenizer configs");
     let expected_repos: HashSet<Repo> = [
@@ -690,11 +677,10 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
   #[case("main", true)]
   #[case("nonexistent_snapshot", false)]
   fn test_hf_hub_service_local_file_exists(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
     #[case] snapshot: String,
     #[case] expected: bool,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp, _, service) = hub_service;
     let repo = Repo::try_from("meta-llama/Llama-2-70b-chat-hf")?;
     let filename = "tokenizer_config.json";
     let exists = service.local_file_exists(&repo, filename, Some(snapshot))?;
@@ -704,9 +690,8 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
 
   #[rstest]
   fn test_hf_hub_service_local_file_exists_refs_main_not_present(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp_hf_home, _hf_cache, service) = hub_service;
     let result = service.local_file_exists(
       &Repo::try_from("TheBloke/NotDownloaded")?,
       "some-model-file.gguf",
@@ -719,9 +704,8 @@ Go to https://huggingface.co/{repo} to request access, login via CLI, and then t
 
   #[rstest]
   fn test_hf_hub_service_local_file_exists_repo_not_exists(
-    hub_service: HubServiceTuple,
+    #[from(test_hf_service)] service: TestHfService,
   ) -> anyhow::Result<()> {
-    let HubServiceTuple(_temp, _, service) = hub_service;
     let repo = Repo::try_from("nonexistent/repo")?;
     let filename = "some_file.txt";
     let snapshot = "some_snapshot";

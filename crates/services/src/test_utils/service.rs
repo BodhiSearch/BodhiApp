@@ -7,19 +7,10 @@ use crate::{
   MockSessionService, MokaCacheService, SecretService, SessionService, SqliteSessionService,
 };
 use derive_builder::Builder;
-use objs::test_utils::{copy_test_dir, temp_bodhi_home, temp_hf_home, temp_home};
+use objs::test_utils::{build_temp_dir, copy_test_dir, temp_bodhi_home};
 use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
-
-pub struct HubServiceTuple(pub TempDir, pub PathBuf, pub HfHubService);
-
-#[fixture]
-pub fn hub_service(temp_hf_home: TempDir) -> HubServiceTuple {
-  let hf_cache = temp_hf_home.path().join("huggingface/hub");
-  let hub_service = HfHubService::new(hf_cache.clone(), false, None);
-  HubServiceTuple(temp_hf_home, hf_cache, hub_service)
-}
 
 pub struct DataServiceTuple(pub TempDir, pub PathBuf, pub LocalDataService);
 
@@ -148,7 +139,7 @@ impl AppServiceStubBuilder {
     match &self.temp_home {
       Some(Some(temp_home)) => temp_home.clone(),
       None | Some(None) => {
-        let temp_home = Arc::new(temp_home());
+        let temp_home = Arc::new(build_temp_dir());
         self.temp_home = Some(Some(temp_home.clone()));
         let env_service = DefaultEnvService::new_with_args(
           Arc::new(MockEnvWrapper::default()),

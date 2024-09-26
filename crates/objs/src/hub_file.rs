@@ -74,14 +74,14 @@ impl fmt::Display for HubFile {
 
 #[cfg(test)]
 mod test {
-  use crate::{test_utils::hf_cache, HubFile, Repo};
+  use crate::{test_utils::temp_hf_home, HubFile, Repo};
   use rstest::rstest;
   use std::path::PathBuf;
   use tempfile::TempDir;
 
   #[rstest]
-  fn test_local_model_file_from_pathbuf(hf_cache: (TempDir, PathBuf)) -> anyhow::Result<()> {
-    let (_temp, hf_cache) = hf_cache;
+  fn test_local_model_file_from_pathbuf(temp_hf_home: TempDir) -> anyhow::Result<()> {
+    let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let filepath = hf_cache
       .clone()
       .join("models--MyFactory--testalias-gguf")

@@ -11,5 +11,9 @@ pub fn temp_bodhi_home(temp_dir: TempDir) -> TempDir {
 
 #[fixture]
 pub fn temp_dir() -> TempDir {
+  build_temp_dir()
+}
+
+pub fn build_temp_dir() -> TempDir {
   tempdir().expect("Failed to create a temporary directory")
 }
