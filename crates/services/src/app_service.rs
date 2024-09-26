@@ -27,14 +27,14 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 #[allow(clippy::too_many_arguments)]
 #[derive(Clone, Debug, new)]
 pub struct DefaultAppService {
-  env_service: Arc<dyn EnvService + Send + Sync>,
-  hub_service: Arc<dyn HubService + Send + Sync>,
-  data_service: Arc<dyn DataService + Send + Sync>,
-  auth_service: Arc<dyn AuthService + Send + Sync>,
-  db_service: Arc<dyn DbService + Send + Sync>,
-  session_service: Arc<dyn SessionService + Send + Sync>,
-  secret_service: Arc<dyn SecretService + Send + Sync>,
-  cache_service: Arc<dyn CacheService + Send + Sync>,
+  env_service: Arc<dyn EnvService>,
+  hub_service: Arc<dyn HubService>,
+  data_service: Arc<dyn DataService>,
+  auth_service: Arc<dyn AuthService>,
+  db_service: Arc<dyn DbService>,
+  session_service: Arc<dyn SessionService>,
+  secret_service: Arc<dyn SecretService>,
+  cache_service: Arc<dyn CacheService>,
 }
 
 impl AppService for DefaultAppService {
