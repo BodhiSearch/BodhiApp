@@ -268,7 +268,7 @@ mod test {
     bindings::llama_server_disable_logging, disable_llama_log, GptParams, GptParamsBuilder,
   };
   use mockall::predicate::{always, eq};
-  use objs::{test_utils::temp_hf_home, Alias, HubFile};
+  use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder};
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
@@ -455,12 +455,12 @@ mod test {
   #[anyhow_trace]
   async fn test_chat_completions_continue_strategy(temp_hf_home: TempDir) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let model_file = HubFile::testalias_builder()
+    let model_file = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
     let model_filepath = model_file.path().display().to_string();
-    let tokenizer_file = HubFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
@@ -503,12 +503,12 @@ mod test {
   #[anyhow_trace]
   async fn test_chat_completions_load_strategy(temp_hf_home: TempDir) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let model_file = HubFile::testalias_builder()
+    let model_file = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
     let model_filepath = model_file.path().display().to_string();
-    let tokenizer_file = HubFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
@@ -551,7 +551,7 @@ mod test {
     temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
-    let loaded_model = HubFile::testalias_builder()
+    let loaded_model = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
@@ -589,7 +589,7 @@ mod test {
       .with()
       .return_once(|| Ok(()));
 
-    let request_model = HubFile::fakemodel_builder()
+    let request_model = HubFileBuilder::fakemodel()
       .hf_cache(hf_cache.clone())
       .build()?;
     let request_model_filepath = request_model.path().display().to_string();
@@ -606,7 +606,7 @@ mod test {
       .with(eq(request_params))
       .return_once(move |_| Ok(request_context));
 
-    let tokenizer_file = HubFile::testalias_tokenizer_builder()
+    let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
