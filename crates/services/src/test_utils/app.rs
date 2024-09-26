@@ -75,34 +75,34 @@ impl AppService for AppServiceStubMock {
 #[builder(default, setter(strip_option))]
 pub struct AppServiceStub {
   #[builder(default = "self.default_env_service()")]
-  pub env_service: Option<Arc<dyn EnvService + Send + Sync>>,
+  pub env_service: Option<Arc<dyn EnvService>>,
   pub hub_service: Option<Arc<dyn HubService>>,
   pub temp_home: Option<Arc<TempDir>>,
-  pub data_service: Option<Arc<dyn DataService + Send + Sync>>,
+  pub data_service: Option<Arc<dyn DataService>>,
   #[builder(default = "self.default_auth_service()")]
-  pub auth_service: Option<Arc<dyn AuthService + Send + Sync>>,
-  pub db_service: Option<Arc<dyn DbService + Send + Sync>>,
-  pub session_service: Option<Arc<dyn SessionService + Send + Sync>>,
+  pub auth_service: Option<Arc<dyn AuthService>>,
+  pub db_service: Option<Arc<dyn DbService>>,
+  pub session_service: Option<Arc<dyn SessionService>>,
   #[builder(default = "self.default_secret_service()")]
-  pub secret_service: Option<Arc<dyn SecretService + Send + Sync>>,
+  pub secret_service: Option<Arc<dyn SecretService>>,
   #[builder(default = "self.default_cache_service()")]
-  pub cache_service: Option<Arc<dyn CacheService + Send + Sync>>,
+  pub cache_service: Option<Arc<dyn CacheService>>,
 }
 
 impl AppServiceStubBuilder {
-  fn default_env_service(&self) -> Option<Arc<dyn EnvService + Send + Sync>> {
+  fn default_env_service(&self) -> Option<Arc<dyn EnvService>> {
     Some(Arc::new(EnvServiceStub::default()))
   }
 
-  fn default_cache_service(&self) -> Option<Arc<dyn CacheService + Send + Sync>> {
+  fn default_cache_service(&self) -> Option<Arc<dyn CacheService>> {
     Some(Arc::new(MokaCacheService::default()))
   }
 
-  fn default_auth_service(&self) -> Option<Arc<dyn AuthService + Send + Sync>> {
+  fn default_auth_service(&self) -> Option<Arc<dyn AuthService>> {
     Some(Arc::new(MockAuthService::default()))
   }
 
-  fn default_secret_service(&self) -> Option<Arc<dyn SecretService + Send + Sync>> {
+  fn default_secret_service(&self) -> Option<Arc<dyn SecretService>> {
     Some(Arc::new(SecretServiceStub::default()))
   }
 
