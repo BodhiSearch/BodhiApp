@@ -59,6 +59,7 @@ axum-extra = { workspace = true }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 base64 = { workspace = true }
+maplit = { workspace = true }
 mockall = { workspace = true }
 mockito = { workspace = true }
 once_cell = { workspace = true }
