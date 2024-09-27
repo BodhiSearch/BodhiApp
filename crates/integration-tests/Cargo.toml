@@ -7,6 +7,7 @@ edition = "2021"
 
 
 [dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
 server = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 

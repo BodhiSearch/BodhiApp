@@ -1,4 +1,5 @@
 use crate::{DataServiceError, EnvWrapper};
+use objs::EnvType;
 use std::{
   collections::HashMap,
   fs::{self, File},
@@ -25,14 +26,6 @@ pub static BODHI_LOGS: &str = "BODHI_LOGS";
 pub static HF_HOME: &str = "HF_HOME";
 pub static BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
 pub static BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
-
-#[derive(Debug, Clone, PartialEq, Default, strum::EnumString, strum::Display)]
-#[strum(serialize_all = "snake_case")]
-pub enum EnvType {
-  Production,
-  #[default]
-  Development,
-}
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait EnvService: Send + Sync + std::fmt::Debug {
@@ -365,11 +358,14 @@ impl DefaultEnvService {
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::EnvWrapperStub, DefaultEnvService, EnvService, EnvType, MockEnvWrapper, BODHI_HOME,
+    test_utils::EnvWrapperStub, DefaultEnvService, EnvService, MockEnvWrapper, BODHI_HOME,
     BODHI_HOST, BODHI_PORT, HF_HOME,
   };
   use mockall::predicate::eq;
-  use objs::test_utils::{empty_bodhi_home, empty_hf_home, temp_dir};
+  use objs::{
+    test_utils::{empty_bodhi_home, empty_hf_home, temp_dir},
+    EnvType,
+  };
   use rstest::rstest;
   use std::{collections::HashMap, env::VarError, fs, sync::Arc};
   use strfmt::strfmt;

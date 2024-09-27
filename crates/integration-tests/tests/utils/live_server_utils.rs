@@ -1,11 +1,12 @@
 use dircpy::CopyBuilder;
 use mockall::predicate::eq;
+use objs::EnvType;
 use rstest::fixture;
 use server::{disable_llama_log, llama_server_disable_logging, ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
   test_utils::EnvWrapperStub,
-  AppService, DefaultAppService, DefaultEnvService, EnvType, HfHubService, KeycloakAuthService,
+  AppService, DefaultAppService, DefaultEnvService, HfHubService, KeycloakAuthService,
   LocalDataService, MockSecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
   KEY_APP_STATUS,
 };
