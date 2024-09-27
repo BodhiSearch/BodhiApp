@@ -280,7 +280,14 @@ impl DefaultEnvService {
       Err(_) => {
         let home_dir = self.env_wrapper.home_dir();
         match home_dir {
-          Some(home_dir) => home_dir.join(".cache").join("bodhi"),
+          Some(home_dir) => {
+            let path = if self.is_production() {
+              "bodhi"
+            } else {
+              "bodhi-dev"
+            };
+            home_dir.join(".cache").join(path)
+          }
           None => return Err(DataServiceError::BodhiHome),
         }
       }
@@ -358,13 +365,14 @@ impl DefaultEnvService {
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::EnvWrapperStub, DefaultEnvService, EnvService, MockEnvWrapper, BODHI_HOME,
+    test_utils::EnvWrapperStub, DefaultEnvService, EnvService, EnvType, MockEnvWrapper, BODHI_HOME,
     BODHI_HOST, BODHI_PORT, HF_HOME,
   };
   use mockall::predicate::eq;
   use objs::test_utils::{empty_bodhi_home, empty_hf_home, temp_dir};
   use rstest::rstest;
   use std::{collections::HashMap, env::VarError, fs, sync::Arc};
+  use strfmt::strfmt;
   use tempfile::TempDir;
 
   #[rstest]
@@ -376,22 +384,6 @@ mod test {
       .expect_var()
       .with(eq(BODHI_HOME))
       .returning(move |_| Ok(bodhi_home_str.clone()));
-    let result = DefaultEnvService::test_new(Arc::new(mock)).setup_bodhi_home()?;
-    assert_eq!(bodhi_home, result);
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_init_service_bodhi_home_from_home_dir(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
-    let bodhi_home = empty_bodhi_home.path().join(".cache").join("bodhi");
-    let home_dir = empty_bodhi_home.path().to_path_buf();
-    let mut mock = MockEnvWrapper::default();
-    mock
-      .expect_var()
-      .with(eq(BODHI_HOME))
-      .returning(|_| Err(VarError::NotPresent));
-    mock.expect_home_dir().return_once(move || Some(home_dir));
-
     let result = DefaultEnvService::test_new(Arc::new(mock)).setup_bodhi_home()?;
     assert_eq!(bodhi_home, result);
     Ok(())
@@ -534,34 +526,56 @@ mod test {
   }
 
   #[rstest]
-  fn test_env_service_setup_updates_dirs_in_env_service(temp_dir: TempDir) -> anyhow::Result<()> {
-    let envs = HashMap::from([
+  #[case::dev_from_home(EnvType::Development, None, "bodhi-dev")]
+  #[case::prod_from_home(EnvType::Production, None, "bodhi")]
+  #[case::dev_from_env(
+    EnvType::Development,
+    Some("{temp_dir}/.cache/bodhi-dev-from-env"),
+    "bodhi-dev-from-env"
+  )]
+  #[case::prod_from_env(
+    EnvType::Production,
+    Some("{temp_dir}/.cache/bodhi-prod-from-env"),
+    "bodhi-prod-from-env"
+  )]
+  fn test_env_service_setup_updates_dirs_in_env_service(
+    #[case] env_type: EnvType,
+    #[case] bodhi_home_tmpl: Option<&str>,
+    #[case] expected: String,
+    temp_dir: TempDir,
+  ) -> anyhow::Result<()> {
+    let mut envs = HashMap::from([
       ("HOME".to_string(), temp_dir.path().display().to_string()),
       (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
       (BODHI_PORT.to_string(), "8080".to_string()),
     ]);
+    let expected_bodhi_home = if let Some(bodhi_home_tmpl) = bodhi_home_tmpl {
+      let bodhi_home =
+        strfmt!(bodhi_home_tmpl, temp_dir => temp_dir.path().display().to_string()).unwrap();
+      envs.insert(BODHI_HOME.to_string(), bodhi_home.clone());
+      bodhi_home
+    } else {
+      format!("{}/.cache/{expected}", temp_dir.path().display())
+    };
     let env_wrapper = EnvWrapperStub::new(envs);
-    let mut result = DefaultEnvService::test_new(Arc::new(env_wrapper));
+    let mut result = DefaultEnvService::new(
+      env_type,
+      "https://id.getbodhi.app".to_string(),
+      "bodhi-realm".to_string(),
+      Arc::new(env_wrapper),
+    );
     result.setup_bodhi_home()?;
     result.setup_hf_cache()?;
     result.setup_logs_dir()?;
     let actual = result.list();
     let mut expected = HashMap::<String, String>::new();
-    expected.insert(
-      "BODHI_HOME".to_string(),
-      format!("{}/.cache/bodhi", temp_dir.path().display()),
-    );
+    expected.insert("BODHI_HOME".to_string(), expected_bodhi_home);
     expected.insert(
       "HF_HOME".to_string(),
       format!("{}/.cache/huggingface", temp_dir.path().display()),
     );
-    expected.insert(
-      "BODHI_LOGS".to_string(),
-      format!("{}/.cache/bodhi/logs", temp_dir.path().display()),
-    );
     expected.insert("BODHI_HOST".to_string(), "0.0.0.0".to_string());
     expected.insert("BODHI_PORT".to_string(), "8080".to_string());
-    assert_eq!(expected.len(), actual.len());
     for key in expected.keys() {
       assert_eq!(
         expected

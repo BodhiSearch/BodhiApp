@@ -33,21 +33,15 @@ pub fn main() {
     AUTH_REALM.to_string(),
     Arc::new(DefaultEnvWrapper::default()),
   );
-  match env_service.setup_bodhi_home() {
-    Ok(bodhi_home) => bodhi_home,
-    Err(err) => {
-      eprintln!("fatal error: {}\nexiting...", err);
-      std::process::exit(1);
-    }
-  };
+  if let Err(err) = env_service.setup_bodhi_home() {
+    eprintln!("fatal error: {}\nexiting...", err);
+    std::process::exit(1);
+  }
   env_service.load_dotenv();
-  match env_service.setup_hf_cache() {
-    Ok(hf_cache) => hf_cache,
-    Err(err) => {
-      eprintln!("fatal error: {}\nexiting...", err);
-      std::process::exit(1);
-    }
-  };
+  if let Err(err) = env_service.setup_hf_cache() {
+    eprintln!("fatal error: {}\nexiting...", err);
+    std::process::exit(1);
+  }
   let _guard = match env_service.setup_logs_dir() {
     Ok(logs_dir) => setup_logs(&logs_dir),
     Err(err) => Err::<WorkerGuard, AppError>(err.into()),

@@ -5,7 +5,7 @@ use serde_json::Value;
 #[cfg(not(ci))]
 #[rstest::rstest]
 #[awt]
-#[serial_test::serial(live_server)]
+#[serial_test::serial(live)]
 #[tokio::test]
 async fn test_live_chat_completions(
   #[future] live_server: anyhow::Result<TestServerHandle>,
@@ -50,7 +50,7 @@ async fn test_live_chat_completions(
 #[cfg(not(ci))]
 #[rstest::rstest]
 #[awt]
-#[serial_test::serial(live_server)]
+#[serial_test::serial(live)]
 #[tokio::test]
 async fn test_live_chat_completions_stream(
   #[future] live_server: anyhow::Result<TestServerHandle>,
