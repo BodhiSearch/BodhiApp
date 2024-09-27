@@ -8,7 +8,7 @@ use tracing_appender::non_blocking::WorkerGuard;
 
 #[cfg(feature = "production")]
 mod env_config {
-  use services::EnvType;
+  use objs::EnvType;
 
   pub static ENV_TYPE: EnvType = EnvType::Production;
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
@@ -17,7 +17,7 @@ mod env_config {
 
 #[cfg(not(feature = "production"))]
 mod env_config {
-  use services::EnvType;
+  use objs::EnvType;
 
   pub static ENV_TYPE: EnvType = EnvType::Development;
   pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";

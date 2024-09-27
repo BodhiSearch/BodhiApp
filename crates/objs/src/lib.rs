@@ -5,6 +5,7 @@ pub mod test_utils;
 
 mod alias;
 mod chat_template;
+mod envs;
 mod error;
 mod gpt_params;
 mod hub_file;
@@ -15,6 +16,7 @@ mod utils;
 
 pub use alias::*;
 pub use chat_template::*;
+pub use envs::*;
 pub use error::*;
 pub use gpt_params::*;
 pub use hub_file::*;

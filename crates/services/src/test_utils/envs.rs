@@ -1,17 +1,16 @@
-use objs::test_utils::temp_dir;
-use rstest::fixture;
-use tempfile::TempDir;
-
 use crate::{
-  DefaultEnvService, EnvService, EnvType, EnvWrapper, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST,
+  DefaultEnvService, EnvService, EnvWrapper, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST,
   BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
+use objs::{test_utils::temp_dir, EnvType};
+use rstest::fixture;
 use std::{
   collections::HashMap,
   env::VarError,
   path::PathBuf,
   sync::{Arc, RwLock},
 };
+use tempfile::TempDir;
 
 const TEST_AUTH_URL: &str = "TEST_AUTH_URL";
 const TEST_AUTH_REALM: &str = "TEST_AUTH_REALM";
