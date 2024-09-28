@@ -125,7 +125,10 @@ mod test {
     OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
-  use services::{test_utils::AppServiceStubBuilder, AppService, MockHubService};
+  use services::{
+    test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
+    AppService,
+  };
   use std::sync::Arc;
 
   #[rstest]
@@ -202,21 +205,13 @@ mod test {
   #[case(Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
   fn test_cmd_create_downloads_model_saves_alias(
     #[case] snapshot: Option<String>,
+    mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
     let create = CreateCommandBuilder::testalias()
       .snapshot(snapshot.clone())
       .build()
       .unwrap();
-    let mut mock_hub_service = MockHubService::default();
-    mock_hub_service
-      .expect_find_local_file()
-      .with(
-        eq(create.repo.clone()),
-        eq(create.filename.clone()),
-        eq(snapshot.clone()),
-      )
-      .return_once(|_, _, _| Ok(None));
-    mock_hub_service
+    test_hf_service
       .expect_download()
       .with(
         eq(create.repo.clone()),
@@ -224,13 +219,9 @@ mod test {
         eq(snapshot.clone()),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    mock_hub_service
-      .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
-      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let service = Arc::new(
       AppServiceStubBuilder::default()
-        .hub_service(Arc::new(mock_hub_service))
+        .hub_service(Arc::new(test_hf_service))
         .with_data_service()
         .build()?,
     );
@@ -257,23 +248,16 @@ mod test {
   }
 
   #[rstest]
-  fn test_cmd_create_with_tokenizer_config_downloads_tokenizer_saves_alias() -> anyhow::Result<()> {
+  fn test_cmd_create_with_tokenizer_config_downloads_tokenizer_saves_alias(
+    mut test_hf_service: TestHfService,
+  ) -> anyhow::Result<()> {
     let tokenizer_repo = Repo::try_from("MyFactory/testalias")?;
     let chat_template = ChatTemplate::Repo(tokenizer_repo.clone());
     let create = CreateCommandBuilder::testalias()
       .chat_template(chat_template.clone())
       .build()
       .unwrap();
-    let mut mock_hub_service = MockHubService::new();
-    mock_hub_service
-      .expect_find_local_file()
-      .with(
-        eq(create.repo.clone()),
-        eq(create.filename.clone()),
-        eq(None),
-      )
-      .return_once(|_, _, _| Ok(None));
-    mock_hub_service
+    test_hf_service
       .expect_download()
       .with(
         eq(create.repo.clone()),
@@ -281,15 +265,7 @@ mod test {
         eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    mock_hub_service
-      .expect_find_local_file()
-      .with(
-        eq(tokenizer_repo.clone()),
-        eq(TOKENIZER_CONFIG_JSON),
-        eq(None),
-      )
-      .return_once(|_, _, _| Ok(None));
-    mock_hub_service
+    test_hf_service
       .expect_download()
       .with(
         eq(tokenizer_repo.clone()),
@@ -299,7 +275,7 @@ mod test {
       .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
     let service = Arc::new(
       AppServiceStubBuilder::default()
-        .hub_service(Arc::new(mock_hub_service))
+        .hub_service(Arc::new(test_hf_service))
         .with_data_service()
         .build()?,
     );

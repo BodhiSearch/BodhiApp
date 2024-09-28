@@ -128,10 +128,13 @@ mod test {
   use mockall::predicate::eq;
   use objs::{
     test_utils::SNAPSHOT, Alias, ChatTemplate, GptContextParams, HubFile, OAIRequestParams,
-    RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
+    RemoteModel, Repo,
   };
   use rstest::rstest;
-  use services::{test_utils::AppServiceStubBuilder, AppService, MockHubService, ALIASES_DIR};
+  use services::{
+    test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
+    AppService, ALIASES_DIR,
+  };
   use std::{fs, sync::Arc};
 
   #[rstest]
@@ -151,18 +154,11 @@ mod test {
   }
 
   #[rstest]
-  fn test_pull_by_alias_creates_new_alias() -> anyhow::Result<()> {
+  fn test_pull_by_alias_creates_new_alias(
+    mut test_hf_service: TestHfService,
+  ) -> anyhow::Result<()> {
     let remote_model = RemoteModel::testalias();
-    let mut mock_hub_service = MockHubService::new();
-    mock_hub_service
-      .expect_find_local_file()
-      .with(
-        eq(Repo::try_from("MyFactory/testalias-gguf").unwrap()),
-        eq("testalias.Q8_0.gguf"),
-        eq(None),
-      )
-      .return_once(|_, _, _| Ok(None));
-    mock_hub_service
+    test_hf_service
       .expect_download()
       .with(
         eq(Repo::try_from("MyFactory/testalias-gguf").unwrap()),
@@ -170,13 +166,9 @@ mod test {
         eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    mock_hub_service
-      .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
-      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
     let service = AppServiceStubBuilder::default()
       .with_data_service()
-      .hub_service(Arc::new(mock_hub_service))
+      .hub_service(Arc::new(test_hf_service))
       .build()?;
     let pull = PullCommand::ByAlias {
       alias: remote_model.alias,
@@ -211,6 +203,7 @@ mod test {
   #[anyhow_trace::anyhow_trace]
   fn test_pull_by_repo_file_only_pulls_the_model(
     #[case] snapshot: Option<String>,
+    mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
     let repo = Repo::testalias();
     let filename = Repo::testalias_filename();
@@ -219,17 +212,12 @@ mod test {
       filename: filename.to_string(),
       snapshot: snapshot.clone(),
     };
-    let mut mock_hub_service = MockHubService::new();
-    mock_hub_service
-      .expect_local_file_exists()
-      .with(eq(repo.clone()), eq(filename.clone()), eq(snapshot.clone()))
-      .return_once(|_, _, _| Ok(false));
-    mock_hub_service
+    test_hf_service
       .expect_download()
       .with(eq(repo), eq(filename), eq(snapshot))
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     let service = AppServiceStubBuilder::default()
-      .hub_service(Arc::new(mock_hub_service))
+      .hub_service(Arc::new(test_hf_service))
       .build()?;
     pull.execute(Arc::new(service))?;
     Ok(())

@@ -67,10 +67,13 @@ mod test {
   use mockall::predicate::{always, eq};
   use objs::{
     test_utils::SNAPSHOT, Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile,
-    OAIRequestParams, Repo, TOKENIZER_CONFIG_JSON,
+    OAIRequestParams, Repo,
   };
   use rstest::rstest;
-  use services::{test_utils::AppServiceStubBuilder, AppService, MockHubService};
+  use services::{
+    test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
+    AppService,
+  };
   use std::sync::Arc;
 
   #[rstest]
@@ -95,36 +98,25 @@ Run `bodhi list -r` to see list of pre-configured model aliases
 
   #[rstest]
   #[tokio::test]
-  async fn test_run_with_alias_downloads_a_known_alias_if_not_configured() -> anyhow::Result<()> {
+  async fn test_run_with_alias_downloads_a_known_alias_if_not_configured(
+    mut test_hf_service: TestHfService,
+  ) -> anyhow::Result<()> {
     let run_command = RunCommand::WithAlias {
-      alias: "testalias:instruct".to_string(),
+      alias: "testalias:q4_instruct".to_string(),
     };
-    let mut mock_hub_service = MockHubService::new();
-    mock_hub_service
-      .expect_find_local_file()
-      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf"), eq(None))
-      .return_once(|_, _, _| Ok(None));
-    mock_hub_service
+    test_hf_service
       .expect_download()
-      .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf"), eq(None))
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
-    mock_hub_service
-      .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
-      .return_once(|_, _, _| Ok(None));
-    mock_hub_service
-      .expect_download()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
-      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
+      .with(eq(Repo::testalias()), eq(Repo::testalias_q4()), eq(None))
+      .return_once(|_, _, _| Ok(HubFile::testalias_q4()));
     let mut mock_interactive = MockInteractiveRuntime::default();
     mock_interactive
       .expect_execute()
-      .with(eq(Alias::testalias()), always())
+      .with(eq(Alias::testalias_q4()), always())
       .return_once(|_, _| Ok(()));
     let service = Arc::new(
       AppServiceStubBuilder::default()
         .with_data_service()
-        .hub_service(Arc::new(mock_hub_service))
+        .hub_service(Arc::new(test_hf_service))
         .build()?,
     );
     let ctx = MockInteractiveRuntime::new_context();
@@ -132,14 +124,14 @@ Run `bodhi list -r` to see list of pre-configured model aliases
     run_command.aexecute(service.clone()).await?;
     let created = service
       .data_service()
-      .find_alias("testalias:instruct")
+      .find_alias("testalias:q4_instruct")
       .unwrap();
     assert_eq!(
       Alias {
-        alias: "testalias:instruct".to_string(),
+        alias: "testalias:q4_instruct".to_string(),
         family: Some("testalias".to_string()),
         repo: Repo::testalias(),
-        filename: "testalias.Q8_0.gguf".to_string(),
+        filename: Repo::testalias_q4(),
         snapshot: SNAPSHOT.to_string(),
         features: vec!["chat".to_string()],
         chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),

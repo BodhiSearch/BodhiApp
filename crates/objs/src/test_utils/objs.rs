@@ -37,6 +37,10 @@ impl Repo {
   pub fn testalias_exists_filename() -> String {
     "testalias.Q8_0.gguf".to_string()
   }
+
+  pub fn testalias_q4() -> String {
+    "testalias.Q4_0.gguf".to_string()
+  }
 }
 
 impl HubFileBuilder {
@@ -89,6 +93,14 @@ impl HubFileBuilder {
 impl HubFile {
   pub fn testalias() -> HubFile {
     HubFileBuilder::testalias()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .build()
+      .unwrap()
+  }
+
+  pub fn testalias_q4() -> HubFile {
+    HubFileBuilder::testalias()
+      .filename(Repo::testalias_q4())
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
@@ -152,7 +164,7 @@ impl AliasBuilder {
       .alias("testalias:instruct".to_string())
       .family("testalias")
       .repo(Repo::testalias())
-      .filename("testalias.Q8_0.gguf".to_string())
+      .filename(Repo::testalias_filename())
       .snapshot(SNAPSHOT.to_string())
       .features(vec!["chat".to_string()])
       .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
@@ -161,17 +173,16 @@ impl AliasBuilder {
       .to_owned()
   }
 
+  pub fn testalias_q4() -> AliasBuilder {
+    AliasBuilder::testalias()
+      .alias("testalias:q4_instruct")
+      .filename(Repo::testalias_q4())
+      .to_owned()
+  }
+
   pub fn testalias_exists() -> AliasBuilder {
-    AliasBuilder::default()
+    AliasBuilder::testalias()
       .alias("testalias-exists:instruct".to_string())
-      .family("testalias")
-      .repo(Repo::try_from("MyFactory/testalias-gguf").unwrap())
-      .filename("testalias.Q8_0.gguf".to_string())
-      .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213".to_string())
-      .features(vec!["chat".to_string()])
-      .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
-      .request_params(OAIRequestParams::default())
-      .context_params(GptContextParams::default())
       .to_owned()
   }
 
@@ -220,6 +231,10 @@ impl AliasBuilder {
 impl Alias {
   pub fn testalias() -> Alias {
     AliasBuilder::testalias().build().unwrap()
+  }
+
+  pub fn testalias_q4() -> Alias {
+    AliasBuilder::testalias_q4().build().unwrap()
   }
 
   pub fn testalias_exists() -> Alias {

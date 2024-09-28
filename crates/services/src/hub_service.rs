@@ -476,7 +476,7 @@ Go to https://huggingface.co/amir36/test-gated-repo to request access to the mod
   #[case( Some("57a2b0118ef1cb0ab5d9544e5d9600d189f66a72".to_string()), "2" )]
   #[case( Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()), "1" )]
   fn test_hf_hub_service_download_gated_file_allowed(
-    #[with(hf_test_token_allowed())]
+    #[with(hf_test_token_allowed(), true)]
     #[from(test_hf_service)]
     hf_service: TestHfService,
     #[case] snapshot: Option<String>,

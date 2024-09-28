@@ -344,7 +344,7 @@ filename='{models_file}'"#
     let models = service.list_remote_models()?;
     let expected_1 = RemoteModel::llama3();
     let expected_2 = RemoteModel::testalias();
-    assert_eq!(6, models.len());
+    assert_eq!(7, models.len());
     assert!(models.contains(&expected_1));
     assert!(models.contains(&expected_2));
     Ok(())
