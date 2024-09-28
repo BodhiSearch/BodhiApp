@@ -7,7 +7,7 @@ use async_openai::{
   types::{
     ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
     ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
-    CreateChatCompletionRequestArgs, CreateChatCompletionStreamResponse, Role,
+    CreateChatCompletionRequestArgs, CreateChatCompletionStreamResponse,
   },
 };
 use derive_new::new;
@@ -150,8 +150,7 @@ impl Interactive {
     (*lock).push(ChatCompletionRequestMessage::User(
       ChatCompletionRequestUserMessage {
         content: ChatCompletionRequestUserMessageContent::Text(input.to_string()),
-        role: Role::User,
-        name: None,
+        ..Default::default()
       },
     ));
     let msgs_clone = (*lock).clone();

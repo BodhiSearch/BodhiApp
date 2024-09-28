@@ -249,7 +249,8 @@ pub async fn get_alias_handler(
 mod tests {
   use crate::{
     get_alias_handler, list_chat_templates_handler, list_local_aliases_handler,
-    test_utils::ResponseTestExt, AliasResponse, MockRouterState, PaginatedResponse,
+    test_utils::{router_state_stub, ResponseTestExt},
+    AliasResponse, DefaultRouterState, PaginatedResponse,
   };
   use axum::{
     body::Body,
@@ -260,37 +261,28 @@ mod tests {
   use objs::{
     ChatTemplate, ChatTemplateId, GptContextParamsBuilder, OAIRequestParamsBuilder, Repo,
   };
-  use rstest::{fixture, rstest};
+  use rstest::rstest;
   use serde_json::Value;
-  use services::test_utils::AppServiceStubBuilder;
   use std::collections::HashMap;
   use std::sync::Arc;
   use strum::IntoEnumIterator;
   use tower::ServiceExt;
 
-  #[fixture]
-  fn app() -> Router {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .with_hub_service()
-      .build()
-      .unwrap();
-    let service = Arc::new(service);
-    let mut router_state = MockRouterState::new();
-    router_state
-      .expect_app_service()
-      .returning(move || service.clone());
+  fn test_router(router_state_stub: DefaultRouterState) -> Router {
     Router::new()
       .route("/api/models", get(list_local_aliases_handler))
       .route("/api/models/:id", get(get_alias_handler))
       .route("/api/chat_templates", get(list_chat_templates_handler))
-      .with_state(Arc::new(router_state))
+      .with_state(Arc::new(router_state_stub))
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_list_local_aliases_handler(app: Router) -> anyhow::Result<()> {
-    let response = app
+  async fn test_list_local_aliases_handler(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
       .await?
       .json::<Value>()
@@ -308,9 +300,12 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_list_local_aliases_page_size(app: Router) -> anyhow::Result<()> {
-    let response = app
+  async fn test_list_local_aliases_page_size(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(
         Request::get("/api/models?page=2&page_size=2")
           .body(Body::empty())
@@ -328,9 +323,12 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_list_local_aliases_over_limit_page_size(app: Router) -> anyhow::Result<()> {
-    let response = app
+  async fn test_list_local_aliases_over_limit_page_size(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(
         Request::get("/api/models?page_size=150")
           .body(Body::empty())
@@ -344,22 +342,13 @@ mod tests {
     Ok(())
   }
 
+  #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_list_local_aliases_response_structure() -> anyhow::Result<()> {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .build()?;
-    let service = Arc::new(service);
-    let mut router_state = MockRouterState::new();
-    router_state
-      .expect_app_service()
-      .returning(move || service.clone());
-
-    let app = Router::new()
-      .route("/api/models", get(list_local_aliases_handler))
-      .with_state(Arc::new(router_state));
-
-    let response = app
+  async fn test_list_local_aliases_response_structure(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(Request::get("/api/models").body(Body::empty()).unwrap())
       .await?
       .json::<PaginatedResponse<AliasResponse>>()
@@ -395,9 +384,12 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_list_local_aliases_sorting(app: Router) -> anyhow::Result<()> {
-    let response = app
+  async fn test_list_local_aliases_sorting(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(
         Request::get("/api/models?sort=family&sort_order=desc")
           .body(Body::empty())
@@ -415,9 +407,12 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_get_alias_handler(app: Router) -> anyhow::Result<()> {
-    let response = app
+  async fn test_get_alias_handler(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(
         Request::get("/api/models/llama3:instruct")
           .body(Body::empty())
@@ -432,9 +427,12 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_get_alias_handler_non_existent(app: Router) -> anyhow::Result<()> {
-    let response = app
+  async fn test_get_alias_handler_non_existent(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(
         Request::get("/api/models/non_existent_alias")
           .body(Body::empty())
@@ -450,9 +448,12 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_list_chat_templates_handler(app: Router) -> anyhow::Result<()> {
-    let response = app
+  async fn test_list_chat_templates_handler(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
+    let response = test_router(router_state_stub)
       .oneshot(
         Request::get("/api/chat_templates")
           .body(Body::empty())
@@ -464,9 +465,7 @@ mod tests {
 
     assert_eq!(14, response.len());
     for template_id in ChatTemplateId::iter() {
-      assert!(response
-        .iter()
-        .any(|t| t == &ChatTemplate::Id(template_id.clone())));
+      assert!(response.iter().any(|t| t == &ChatTemplate::Id(template_id)));
     }
     let expected_chat_templates = vec![
       "meta-llama/Llama-2-70b-chat-hf",

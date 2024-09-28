@@ -19,7 +19,7 @@ pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
   let pool = SqlitePool::connect(&format!("sqlite:{dbpath}"))
     .await
     .unwrap();
-  let time_service = FrozenTimeService::new();
+  let time_service = FrozenTimeService::default();
   let now = time_service.utc_now();
   let db_service = SqliteDbService::new(pool, Arc::new(time_service));
   db_service.migrate().await.unwrap();
@@ -29,8 +29,8 @@ pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
 #[derive(Debug)]
 pub struct FrozenTimeService(DateTime<Utc>);
 
-impl FrozenTimeService {
-  pub fn new() -> Self {
+impl Default for FrozenTimeService {
+  fn default() -> Self {
     FrozenTimeService(chrono::Utc::now().with_nanosecond(0).unwrap())
   }
 }

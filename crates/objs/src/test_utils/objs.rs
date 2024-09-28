@@ -147,8 +147,8 @@ impl RemoteModel {
     RemoteModel::new(
       String::from("testalias:instruct"),
       String::from("testalias"),
-      Repo::try_from("MyFactory/testalias-gguf").unwrap(),
-      String::from("testalias.Q8_0.gguf"),
+      Repo::testalias(),
+      Repo::testalias_filename(),
       None,
       vec![String::from("chat")],
       ChatTemplate::Id(ChatTemplateId::Llama3),

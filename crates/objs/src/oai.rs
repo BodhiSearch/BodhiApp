@@ -25,7 +25,7 @@ The token count of your prompt plus `max_tokens` cannot exceed the model's conte
 default: -1 (disabled)"#
   )]
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub max_tokens: Option<u16>,
+  pub max_tokens: Option<u32>,
 
   #[arg(long, value_parser = validate_range_neg_to_pos_2, help=r#"Number between -2.0 and 2.0.
 Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
