@@ -355,7 +355,7 @@ filename='{models_file}'"#
     #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
     let alias = service.find_alias("testalias-exists:instruct");
-    let expected = Alias::test_alias_exists();
+    let expected = Alias::testalias_exists();
     assert_eq!(Some(expected), alias);
     Ok(())
   }
@@ -367,7 +367,7 @@ filename='{models_file}'"#
     let result = service.list_aliases()?;
     assert_eq!(3, result.len());
     assert!(result.contains(&Alias::llama3()));
-    assert!(result.contains(&Alias::test_alias_exists()));
+    assert!(result.contains(&Alias::testalias_exists()));
     Ok(())
   }
 

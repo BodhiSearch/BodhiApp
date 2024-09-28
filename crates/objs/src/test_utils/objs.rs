@@ -22,8 +22,20 @@ impl Repo {
     Repo::try_from("MyFactory/testalias-gguf").unwrap()
   }
 
+  pub fn testalias_filename() -> String {
+    "testalias.Q8_0.gguf".to_string()
+  }
+
+  pub fn testalias_exists() -> Repo {
+    Repo::try_from("MyFactory/testalias-gguf").unwrap()
+  }
+
   pub fn fakemodel() -> Repo {
     Repo::try_from("FakeFactory/fakemodel-gguf").unwrap()
+  }
+
+  pub fn testalias_exists_filename() -> String {
+    "testalias.Q8_0.gguf".to_string()
   }
 }
 
@@ -34,6 +46,15 @@ impl HubFileBuilder {
       .filename("testalias.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())
       .size(Some(22))
+      .to_owned()
+  }
+
+  pub fn testalias_exists() -> HubFileBuilder {
+    HubFileBuilder::default()
+      .repo(Repo::testalias_exists())
+      .filename(Repo::testalias_exists_filename())
+      .snapshot(SNAPSHOT.to_string())
+      .size(Some(21))
       .to_owned()
   }
 
@@ -59,8 +80,8 @@ impl HubFileBuilder {
     HubFileBuilder::default()
       .repo(Repo::llama3())
       .filename(TOKENIZER_CONFIG_JSON.to_string())
-      .snapshot(SNAPSHOT.to_string())
-      .size(Some(33))
+      .snapshot("c4a54320a52ed5f88b7a2f84496903ea4ff07b45".to_string())
+      .size(Some(50977))
       .to_owned()
   }
 }
@@ -68,6 +89,13 @@ impl HubFileBuilder {
 impl HubFile {
   pub fn testalias() -> HubFile {
     HubFileBuilder::testalias()
+      .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
+      .build()
+      .unwrap()
+  }
+
+  pub fn testalias_exists() -> HubFile {
+    HubFileBuilder::testalias_exists()
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
@@ -137,9 +165,9 @@ impl AliasBuilder {
     AliasBuilder::default()
       .alias("testalias-exists:instruct".to_string())
       .family("testalias")
-      .repo(Repo::try_from("MyFactory/testalias-exists-instruct-gguf").unwrap())
-      .filename("testalias-exists-instruct.Q8_0.gguf".to_string())
-      .snapshot(SNAPSHOT.to_string())
+      .repo(Repo::try_from("MyFactory/testalias-gguf").unwrap())
+      .filename("testalias.Q8_0.gguf".to_string())
+      .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213".to_string())
       .features(vec!["chat".to_string()])
       .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
       .request_params(OAIRequestParams::default())
@@ -194,7 +222,7 @@ impl Alias {
     AliasBuilder::testalias().build().unwrap()
   }
 
-  pub fn test_alias_exists() -> Alias {
+  pub fn testalias_exists() -> Alias {
     AliasBuilder::testalias_exists().build().unwrap()
   }
 

@@ -228,47 +228,32 @@ impl InteractiveRuntime {
 #[cfg(test)]
 mod test {
   use crate::Interactive;
-  use mockall::predicate::eq;
-  use objs::Alias;
+  use objs::{AliasBuilder, Repo};
   use rstest::rstest;
-  use services::{test_utils::AppServiceStubMock, MockEnvService, MockHubService};
-  use std::{path::PathBuf, sync::Arc};
+  use services::test_utils::AppServiceStubBuilder;
+  use std::sync::Arc;
 
   #[rstest]
   #[tokio::test]
   async fn test_interactive_non_remote_model_alias_local_model_not_found_raises_error(
   ) -> anyhow::Result<()> {
-    let alias = Alias::testalias();
-    let alias_clone = alias.clone();
-    let mut mock = MockHubService::default();
-    mock
-      .expect_find_local_file()
-      .with(
-        eq(alias.repo.clone()),
-        eq(alias.filename.clone()),
-        eq(Some(alias.snapshot.clone())),
-      )
-      .return_once(|_, _, _| Ok(None));
-    mock
-      .expect_model_file_path()
-      .with(eq(alias.repo), eq(alias.filename), eq(alias.snapshot))
-      .return_once(|_, _, _| PathBuf::from("/tmp/huggingface/hub/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213/testalias.Q8_0.gguf"));
-    let mut mock_env_service = MockEnvService::default();
-    mock_env_service
-      .expect_hf_home()
-      .with()
-      .return_once(|| PathBuf::from("/tmp/huggingface/hub"));
-
-    let service = AppServiceStubMock::builder()
-      .env_service(mock_env_service)
-      .hub_service(mock)
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
+      .with_hub_service()
       .build()?;
-    let result = Interactive::new(alias_clone)
-      .execute(Arc::new(service))
-      .await;
+    let result = Interactive::new(
+      AliasBuilder::default()
+        .alias("notexists:instruct")
+        .repo(Repo::testalias())
+        .filename("notexists.Q8_0.gguf")
+        .snapshot("main")
+        .build()?,
+    )
+    .execute(Arc::new(service))
+    .await;
     assert!(result.is_err());
     assert_eq!(
-      r#"file 'testalias.Q8_0.gguf' not found in $HF_HOME/models--MyFactory--testalias-gguf/snapshots/5007652f7a641fe7170e0bad4f63839419bd9213.
+      r#"file 'notexists.Q8_0.gguf' not found in $HF_HOME/hub/models--MyFactory--testalias-gguf/snapshots/main.
 Check Huggingface Home is set correctly using environment variable $HF_HOME or using command-line or settings file."#,
       result.unwrap_err().to_string()
     );

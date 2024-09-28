@@ -121,15 +121,12 @@ mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
-    Alias, AliasBuilder, ChatTemplate, GptContextParamsBuilder, HubFile, OAIRequestParamsBuilder,
-    Repo, TOKENIZER_CONFIG_JSON,
+    test_utils::SNAPSHOT, Alias, ChatTemplate, GptContextParams, GptContextParamsBuilder, HubFile,
+    OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
-  use services::{
-    test_utils::{AppServiceStubBuilder, AppServiceStubMock, AppServiceStubMockBuilder},
-    AppService, MockDataService, MockHubService,
-  };
-  use std::{path::PathBuf, sync::Arc};
+  use services::{test_utils::AppServiceStubBuilder, AppService, MockHubService};
+  use std::sync::Arc;
 
   #[rstest]
   fn test_create_execute_updates_if_exists() -> anyhow::Result<()> {
@@ -203,18 +200,13 @@ mod test {
   #[case(None)]
   #[case(Some("main".to_string()))]
   #[case(Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
-  fn test_create_execute_downloads_model_saves_alias(
+  fn test_cmd_create_downloads_model_saves_alias(
     #[case] snapshot: Option<String>,
   ) -> anyhow::Result<()> {
     let create = CreateCommandBuilder::testalias()
       .snapshot(snapshot.clone())
       .build()
       .unwrap();
-    let mut mock_data_service = MockDataService::default();
-    mock_data_service
-      .expect_find_alias()
-      .with(eq(create.alias.clone()))
-      .return_once(|_| None);
     let mut mock_hub_service = MockHubService::default();
     mock_hub_service
       .expect_find_local_file()
@@ -236,33 +228,42 @@ mod test {
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
       .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
-    let alias = Alias::testalias();
-    mock_data_service
-      .expect_save_alias()
-      .with(eq(alias))
-      .return_once(|_| Ok(PathBuf::from(".")));
-    let service = AppServiceStubMockBuilder::default()
-      .hub_service(mock_hub_service)
-      .data_service(mock_data_service)
-      .build()?;
-    create.execute(Arc::new(service))?;
+    let service = Arc::new(
+      AppServiceStubBuilder::default()
+        .hub_service(Arc::new(mock_hub_service))
+        .with_data_service()
+        .build()?,
+    );
+    create.execute(service.clone())?;
+    let created = service
+      .data_service()
+      .find_alias("testalias:instruct")
+      .unwrap();
+    assert_eq!(
+      Alias {
+        alias: "testalias:instruct".to_string(),
+        family: Some("testalias".to_string()),
+        repo: Repo::testalias(),
+        filename: Repo::testalias_filename(),
+        snapshot: SNAPSHOT.to_string(),
+        features: vec!["chat".to_string()],
+        chat_template: ChatTemplate::Id(objs::ChatTemplateId::Llama3),
+        request_params: OAIRequestParams::default(),
+        context_params: GptContextParams::default()
+      },
+      created
+    );
     Ok(())
   }
 
   #[rstest]
-  fn test_create_execute_with_tokenizer_config_downloads_tokenizer_saves_alias(
-  ) -> anyhow::Result<()> {
+  fn test_cmd_create_with_tokenizer_config_downloads_tokenizer_saves_alias() -> anyhow::Result<()> {
     let tokenizer_repo = Repo::try_from("MyFactory/testalias")?;
     let chat_template = ChatTemplate::Repo(tokenizer_repo.clone());
     let create = CreateCommandBuilder::testalias()
       .chat_template(chat_template.clone())
       .build()
       .unwrap();
-    let mut mock_data_service = MockDataService::default();
-    mock_data_service
-      .expect_find_alias()
-      .with(eq(create.alias.clone()))
-      .return_once(|_| None);
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_find_local_file()
@@ -296,19 +297,31 @@ mod test {
         eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
-    let alias = AliasBuilder::testalias()
-      .chat_template(chat_template.clone())
-      .build()
+    let service = Arc::new(
+      AppServiceStubBuilder::default()
+        .hub_service(Arc::new(mock_hub_service))
+        .with_data_service()
+        .build()?,
+    );
+    create.execute(service.clone())?;
+    let created = service
+      .data_service()
+      .find_alias("testalias:instruct")
       .unwrap();
-    mock_data_service
-      .expect_save_alias()
-      .with(eq(alias))
-      .return_once(|_| Ok(PathBuf::from("ignored")));
-    let service = AppServiceStubMock::builder()
-      .hub_service(mock_hub_service)
-      .data_service(mock_data_service)
-      .build()?;
-    create.execute(Arc::new(service))?;
+    assert_eq!(
+      Alias {
+        alias: "testalias:instruct".to_string(),
+        family: Some("testalias".to_string()),
+        repo: Repo::try_from("MyFactory/testalias-gguf").unwrap(),
+        filename: "testalias.Q8_0.gguf".to_string(),
+        snapshot: SNAPSHOT.to_string(),
+        features: vec!["chat".to_string()],
+        chat_template: ChatTemplate::Repo(Repo::try_from("MyFactory/testalias")?),
+        request_params: OAIRequestParams::default(),
+        context_params: GptContextParams::default()
+      },
+      created
+    );
     Ok(())
   }
 }

@@ -77,6 +77,9 @@ impl RouterState for DefaultRouterState {
         TOKENIZER_CONFIG_JSON, tokenizer_repo
       )));
     };
+    let alias = dbg!(alias);
+    let model_file = dbg!(model_file);
+    let tokenizer_file = dbg!(tokenizer_file);
     self
       .ctx
       .chat_completions(request, alias, model_file, tokenizer_file, userdata)
@@ -100,30 +103,27 @@ mod test {
     test_utils::{test_channel, ResponseTestExt},
     DefaultRouterState, MockSharedContextRw, RouterState,
   };
+  use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
   use axum::http::StatusCode;
   use axum::response::{IntoResponse, Response};
   use llama_server_bindings::LlamaCppError;
   use mockall::predicate::{always, eq};
-  use objs::{Alias, HubFile, Repo, TOKENIZER_CONFIG_JSON};
+  use objs::{test_utils::temp_dir, Alias, HubFileBuilder};
   use rstest::rstest;
   use serde_json::{json, Value};
-  use services::{test_utils::AppServiceStubMock, MockDataService, MockHubService};
+  use services::test_utils::AppServiceStubBuilder;
   use std::sync::Arc;
+  use tempfile::TempDir;
 
   #[rstest]
   #[tokio::test]
   async fn test_router_state_chat_completions_model_not_found() -> anyhow::Result<()> {
-    let mut mock_data_service = MockDataService::default();
-    mock_data_service
-      .expect_find_alias()
-      .with(eq("not-found"))
-      .return_once(|_| None);
-    let mock_ctx = MockSharedContextRw::default();
-    let service = AppServiceStubMock::builder()
-      .data_service(mock_data_service)
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
       .build()?;
-    let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
+    let state =
+      DefaultRouterState::new(Arc::new(MockSharedContextRw::default()), Arc::new(service));
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "not-found",
       "messages": [
@@ -148,47 +148,38 @@ mod test {
 
   #[rstest]
   #[tokio::test]
-  async fn test_router_state_chat_completions_delegate_to_context_with_alias() -> anyhow::Result<()>
-  {
-    let mut mock_data_service = MockDataService::default();
-    mock_data_service
-      .expect_find_alias()
-      .with(eq("testalias:instruct"))
-      .return_once(|_| Some(Alias::testalias()));
-    let testalias = Alias::testalias();
-    let mut mock_hub_service = MockHubService::new();
-    mock_hub_service
-      .expect_find_local_file()
-      .with(
-        eq(testalias.repo),
-        eq(testalias.filename),
-        eq(Some(testalias.snapshot)),
-      )
-      .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
-    mock_hub_service
-      .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
-      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
+  #[anyhow_trace]
+  async fn test_router_state_chat_completions_delegate_to_context_with_alias(
+    temp_dir: TempDir,
+  ) -> anyhow::Result<()> {
     let mut mock_ctx = MockSharedContextRw::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
-      "model": "testalias:instruct",
+      "model": "testalias-exists:instruct",
       "messages": [
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
+    let hf_cache = temp_dir.path().join("huggingface/hub").to_path_buf();
+    let model_file = HubFileBuilder::testalias_exists()
+      .hf_cache(hf_cache.clone())
+      .build()?;
+    let llama3_tokenizer = HubFileBuilder::llama3_tokenizer()
+      .hf_cache(hf_cache.clone())
+      .build()?;
     mock_ctx
       .expect_chat_completions()
       .with(
         eq(request.clone()),
-        eq(Alias::testalias()),
-        eq(HubFile::testalias()),
-        eq(HubFile::llama3_tokenizer()),
+        eq(Alias::testalias_exists()),
+        eq(model_file),
+        eq(llama3_tokenizer),
         always(),
       )
       .return_once(|_, _, _, _, _| Ok(()));
-    let service = AppServiceStubMock::builder()
-      .hub_service(mock_hub_service)
-      .data_service(mock_data_service)
+    let service = AppServiceStubBuilder::default()
+      .with_temp_home_as(temp_dir)
+      .with_data_service()
+      .with_hub_service()
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let (tx, _rx) = test_channel();
@@ -198,41 +189,36 @@ mod test {
 
   #[rstest]
   #[tokio::test]
-  async fn test_router_state_chat_completions_returns_context_err() -> anyhow::Result<()> {
-    let mut mock_data_service = MockDataService::new();
-    mock_data_service
-      .expect_find_alias()
-      .with(eq("testalias:instruct"))
-      .return_once(|_| Some(Alias::testalias()));
-    let testalias = Alias::testalias();
-    let mut mock_hub_service = MockHubService::new();
-    mock_hub_service
-      .expect_find_local_file()
-      .with(
-        eq(testalias.repo),
-        eq(testalias.filename),
-        eq(Some(testalias.snapshot)),
-      )
-      .return_once(|_, _, _| Ok(Some(HubFile::testalias())));
-    mock_hub_service
-      .expect_find_local_file()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
-      .return_once(|_, _, _| Ok(Some(HubFile::llama3_tokenizer())));
+  async fn test_router_state_chat_completions_returns_context_err(
+    temp_dir: TempDir,
+  ) -> anyhow::Result<()> {
+    let hf_cache = temp_dir.path().join("huggingface/hub").to_path_buf();
     let mut mock_ctx = MockSharedContextRw::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
-      "model": "testalias:instruct",
+      "model": "testalias-exists:instruct",
       "messages": [
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
     let (tx, _rx) = test_channel();
+    let model_file = HubFileBuilder::testalias_exists()
+      .hf_cache(hf_cache.clone())
+      .build()?;
+    let llama3_tokenizer = HubFileBuilder::llama3_tokenizer()
+      .hf_cache(hf_cache.clone())
+      .build()?;
+    let alias = Alias::testalias_exists();
+
+    let model_file = dbg!(model_file);
+    let llama3_tokenizer = dbg!(llama3_tokenizer);
+    let alias = dbg!(alias);
     mock_ctx
       .expect_chat_completions()
       .with(
         eq(request.clone()),
-        eq(Alias::testalias()),
-        eq(HubFile::testalias()),
-        eq(HubFile::llama3_tokenizer()),
+        eq(alias),
+        eq(model_file),
+        eq(llama3_tokenizer),
         always(),
       )
       .return_once(|_, _, _, _, _| {
@@ -240,9 +226,10 @@ mod test {
           LlamaCppError::BodhiServerChatCompletion("test error".to_string()),
         ))
       });
-    let service = AppServiceStubMock::builder()
-      .hub_service(mock_hub_service)
-      .data_service(mock_data_service)
+    let service = AppServiceStubBuilder::default()
+      .with_temp_home_as(temp_dir)
+      .with_hub_service()
+      .with_data_service()
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let result = state.chat_completions(request, tx).await;
