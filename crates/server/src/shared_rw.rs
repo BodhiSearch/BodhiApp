@@ -13,7 +13,6 @@ use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
-use thiserror::Error;
 use tokio::sync::mpsc::Sender;
 use tokio::sync::RwLock;
 use validator::{Validate, ValidationErrors};
@@ -23,7 +22,7 @@ pub struct DefaultSharedContextRw {
   ctx: RwLock<Option<BodhiServerContext>>,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ContextError {
   #[error(transparent)]
   BodhiError(#[from] LlamaCppError),

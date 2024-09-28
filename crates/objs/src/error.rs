@@ -4,7 +4,6 @@ use std::{
   fmt::{self, Display},
 };
 use std::{io, path::PathBuf};
-use thiserror::Error;
 use validator::{ValidationError, ValidationErrors};
 
 #[doc = "Common error type for derive_builder::Builder"]
@@ -40,7 +39,7 @@ impl Display for BuilderError {
 
 impl Error for BuilderError {}
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ObjError {
   #[error("Validation failed: {0}")]
   Validation(#[from] ValidationErrors),

@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use services::SecretServiceError;
 use services::{db::DbError, AuthServiceError, DataServiceError, HubServiceError};
 use std::{io, sync::Arc};
-use thiserror::Error;
 use tokio::task::JoinError;
 use validator::ValidationErrors;
 
@@ -184,7 +183,7 @@ impl From<SecretServiceError> for HttpError {
   }
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum BodhiError {
   #[error(
     r#"model alias '{0}' not found in pre-configured model aliases.
