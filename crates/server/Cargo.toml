@@ -79,6 +79,7 @@ maplit = { workspace = true }
 mockall = { workspace = true }
 mockito = { workspace = true }
 reqwest = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
 serial_test = { workspace = true }
 strfmt = { workspace = true }
 tempfile = { workspace = true }
