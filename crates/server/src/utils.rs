@@ -9,10 +9,9 @@ use jsonwebtoken::{DecodingKey, Validation};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use services::{db::DbError, AppStatus, SecretService, KEY_APP_STATUS};
-use thiserror::Error;
 
 // TODO - have internal log message, and external user message
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum ApiError {
   #[error("{0}")]
   ServerError(String),

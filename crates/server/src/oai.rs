@@ -1,9 +1,8 @@
 use crate::shared_rw::ContextError;
 use crate::{HttpError, HttpErrorBuilder};
 use axum::{extract::rejection::JsonRejection, response::IntoResponse};
-use thiserror::Error;
 
-#[derive(Debug, Clone, Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum OpenAIApiError {
   #[error("{0}")]
   ModelNotFound(String),
