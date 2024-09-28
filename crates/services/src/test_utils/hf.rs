@@ -1,4 +1,4 @@
-use crate::{HfHubService, HubService, HubServiceError};
+use crate::{HfHubService, HubService, HubServiceError, MockHubService};
 use objs::{test_utils::temp_hf_home, HubFile, Repo};
 use rstest::fixture;
 use std::path::PathBuf;
@@ -16,12 +16,15 @@ pub fn build_hf_service(token: Option<String>, temp_hf_home: TempDir) -> HfHubSe
 #[fixture]
 pub fn test_hf_service(
   #[default(None)] token: Option<String>,
+  #[default(false)] allow_downloads: bool,
   temp_hf_home: TempDir,
 ) -> TestHfService {
   let inner = HfHubService::new(temp_hf_home.path().join("huggingface/hub"), false, token);
   TestHfService {
     _temp_dir: temp_hf_home,
     inner,
+    inner_mock: MockHubService::new(),
+    allow_downloads,
   }
 }
 
@@ -29,11 +32,19 @@ pub fn test_hf_service(
 pub struct TestHfService {
   _temp_dir: TempDir,
   inner: HfHubService,
+  inner_mock: MockHubService,
+  allow_downloads: bool,
 }
 
 impl TestHfService {
   pub fn hf_cache(&self) -> PathBuf {
     self._temp_dir.path().join("huggingface/hub")
+  }
+
+  pub fn expect_download(
+    &mut self,
+  ) -> &mut crate::__mock_MockHubService_HubService::__download::Expectation {
+    self.inner_mock.expect_download()
   }
 }
 
@@ -42,7 +53,11 @@ type Result<T> = std::result::Result<T, HubServiceError>;
 impl HubService for TestHfService {
   #[allow(clippy::needless_lifetimes)]
   fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
-    self.inner.download(repo, filename, snapshot)
+    if self.allow_downloads {
+      self.inner.download(repo, filename, snapshot)
+    } else {
+      self.inner_mock.download(repo, filename, snapshot)
+    }
   }
 
   fn list_local_models(&self) -> Vec<HubFile> {
