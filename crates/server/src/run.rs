@@ -65,33 +65,27 @@ impl RunCommand {
 mod test {
   use crate::{test_utils::MockInteractiveRuntime, RunCommand};
   use mockall::predicate::{always, eq};
-  use objs::{Alias, HubFile, RemoteModel, Repo, TOKENIZER_CONFIG_JSON};
+  use objs::{
+    test_utils::SNAPSHOT, Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile,
+    OAIRequestParams, Repo, TOKENIZER_CONFIG_JSON,
+  };
   use rstest::rstest;
-  use services::{test_utils::AppServiceStubMock, MockDataService, MockHubService};
-  use std::{path::PathBuf, sync::Arc};
+  use services::{test_utils::AppServiceStubBuilder, AppService, MockHubService};
+  use std::sync::Arc;
 
   #[rstest]
   #[tokio::test]
   async fn test_run_with_alias_return_error_if_alias_not_found() -> anyhow::Result<()> {
     let run_command = RunCommand::WithAlias {
-      alias: "testalias:instruct".to_string(),
+      alias: "testalias:notexists".to_string(),
     };
-    let mut mock_data_service = MockDataService::new();
-    mock_data_service
-      .expect_find_alias()
-      .with(eq("testalias:instruct"))
-      .return_once(|_| None);
-    mock_data_service
-      .expect_find_remote_model()
-      .with(eq("testalias:instruct"))
-      .return_once(|_| Ok(None));
-    let service = AppServiceStubMock::builder()
-      .data_service(mock_data_service)
+    let service = AppServiceStubBuilder::default()
+      .with_data_service()
       .build()?;
     let result = run_command.aexecute(Arc::new(service)).await;
     assert!(result.is_err());
     assert_eq!(
-      r#"model alias 'testalias:instruct' not found in pre-configured model aliases.
+      r#"model alias 'testalias:notexists' not found in pre-configured model aliases.
 Run `bodhi list -r` to see list of pre-configured model aliases
 "#,
       result.unwrap_err().to_string()
@@ -105,17 +99,6 @@ Run `bodhi list -r` to see list of pre-configured model aliases
     let run_command = RunCommand::WithAlias {
       alias: "testalias:instruct".to_string(),
     };
-    let mut mock_data_service = MockDataService::default();
-    mock_data_service
-      .expect_find_alias()
-      .with(eq("testalias:instruct"))
-      .times(2)
-      .returning(|_| None);
-    mock_data_service
-      .expect_find_remote_model()
-      .with(eq("testalias:instruct"))
-      .times(2)
-      .returning(|_| Ok(Some(RemoteModel::testalias())));
     let mut mock_hub_service = MockHubService::new();
     mock_hub_service
       .expect_find_local_file()
@@ -125,7 +108,6 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .expect_download()
       .with(eq(Repo::testalias()), eq("testalias.Q8_0.gguf"), eq(None))
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-
     mock_hub_service
       .expect_find_local_file()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
@@ -134,26 +116,38 @@ Run `bodhi list -r` to see list of pre-configured model aliases
       .expect_download()
       .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
-    mock_data_service
-      .expect_save_alias()
-      .with(eq(Alias::testalias()))
-      .return_once(|_| Ok(PathBuf::from("ignore")));
-    mock_data_service
-      .expect_find_alias()
-      .with(eq("testalias:instruct"))
-      .return_once(|_| Some(Alias::testalias()));
     let mut mock_interactive = MockInteractiveRuntime::default();
     mock_interactive
       .expect_execute()
       .with(eq(Alias::testalias()), always())
       .return_once(|_, _| Ok(()));
-    let service = AppServiceStubMock::builder()
-      .hub_service(mock_hub_service)
-      .data_service(mock_data_service)
-      .build()?;
+    let service = Arc::new(
+      AppServiceStubBuilder::default()
+        .with_data_service()
+        .hub_service(Arc::new(mock_hub_service))
+        .build()?,
+    );
     let ctx = MockInteractiveRuntime::new_context();
     ctx.expect().return_once(move || mock_interactive);
-    run_command.aexecute(Arc::new(service)).await?;
+    run_command.aexecute(service.clone()).await?;
+    let created = service
+      .data_service()
+      .find_alias("testalias:instruct")
+      .unwrap();
+    assert_eq!(
+      Alias {
+        alias: "testalias:instruct".to_string(),
+        family: Some("testalias".to_string()),
+        repo: Repo::testalias(),
+        filename: "testalias.Q8_0.gguf".to_string(),
+        snapshot: SNAPSHOT.to_string(),
+        features: vec!["chat".to_string()],
+        chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+        request_params: OAIRequestParams::default(),
+        context_params: GptContextParams::default(),
+      },
+      created
+    );
     Ok(())
   }
 }

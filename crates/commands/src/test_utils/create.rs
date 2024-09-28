@@ -11,8 +11,8 @@ impl CreateCommandBuilder {
   pub fn testalias() -> CreateCommandBuilder {
     CreateCommandBuilder::default()
       .alias("testalias:instruct".to_string())
-      .repo(Repo::try_from("MyFactory/testalias-gguf").unwrap())
-      .filename("testalias.Q8_0.gguf".to_string())
+      .repo(Repo::testalias())
+      .filename(Repo::testalias_filename())
       .snapshot(None)
       .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
       .family(Some("testalias".to_string()))

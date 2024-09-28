@@ -1,9 +1,8 @@
 use crate::{
-  db::{DbService, MockDbService},
+  db::DbService,
   test_utils::{EnvServiceStub, SecretServiceStub},
   AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService,
-  HubService, LocalDataService, MockAuthService, MockCacheService, MockDataService, MockEnvService,
-  MockHubService, MockSecretService, MockSessionService, MokaCacheService, SecretService,
+  HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
   SessionService, SqliteSessionService, BODHI_HOME, HF_HOME,
 };
 use derive_builder::Builder;
@@ -11,71 +10,12 @@ use objs::test_utils::{build_temp_dir, copy_test_dir};
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 
-#[derive(Default, Builder)]
-#[builder(default, setter(into))]
-pub struct AppServiceStubMock {
-  pub env_service: Arc<MockEnvService>,
-  pub hub_service: Arc<MockHubService>,
-  pub data_service: Arc<MockDataService>,
-  pub auth_service: Arc<MockAuthService>,
-  pub db_service: Arc<MockDbService>,
-  pub session_service: Arc<MockSessionService>,
-  pub secret_service: Arc<MockSecretService>,
-  pub cache_service: Arc<MockCacheService>,
-}
-
-impl std::fmt::Debug for AppServiceStubMock {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "AppServiceStubMock")
-  }
-}
-
-impl AppServiceStubMock {
-  pub fn builder() -> AppServiceStubMockBuilder {
-    AppServiceStubMockBuilder::default()
-  }
-}
-
-// Implement AppServiceFn for the combined struct
-impl AppService for AppServiceStubMock {
-  fn env_service(&self) -> Arc<dyn EnvService> {
-    self.env_service.clone()
-  }
-
-  fn data_service(&self) -> Arc<dyn DataService> {
-    self.data_service.clone()
-  }
-
-  fn hub_service(&self) -> Arc<dyn HubService> {
-    self.hub_service.clone()
-  }
-
-  fn auth_service(&self) -> Arc<dyn AuthService> {
-    self.auth_service.clone()
-  }
-
-  fn db_service(&self) -> Arc<dyn DbService> {
-    self.db_service.clone()
-  }
-
-  fn session_service(&self) -> Arc<dyn SessionService> {
-    self.session_service.clone()
-  }
-
-  fn secret_service(&self) -> Arc<dyn SecretService> {
-    self.secret_service.clone()
-  }
-
-  fn cache_service(&self) -> Arc<dyn CacheService> {
-    self.cache_service.clone()
-  }
-}
-
 #[derive(Debug, Default, Builder)]
 #[builder(default, setter(strip_option))]
 pub struct AppServiceStub {
   #[builder(default = "self.default_env_service()")]
   pub env_service: Option<Arc<dyn EnvService>>,
+  #[builder(default = "self.default_hub_service()")]
   pub hub_service: Option<Arc<dyn HubService>>,
   pub temp_home: Option<Arc<TempDir>>,
   pub data_service: Option<Arc<dyn DataService>>,
@@ -102,6 +42,10 @@ impl AppServiceStubBuilder {
     Some(Arc::new(MockAuthService::default()))
   }
 
+  fn default_hub_service(&self) -> Option<Arc<dyn HubService>> {
+    Some(Arc::new(MockHubService::default()))
+  }
+
   fn default_secret_service(&self) -> Option<Arc<dyn SecretService>> {
     Some(Arc::new(SecretServiceStub::default()))
   }
@@ -122,6 +66,12 @@ impl AppServiceStubBuilder {
     copy_test_dir("tests/data/bodhi", &bodhi_home);
     let data_service = LocalDataService::new(bodhi_home);
     self.data_service = Some(Some(Arc::new(data_service)));
+    self
+  }
+
+  pub fn with_temp_home_as(&mut self, temp_dir: TempDir) -> &mut Self {
+    self.temp_home = Some(Some(Arc::new(temp_dir)));
+    self.with_temp_home();
     self
   }
 
