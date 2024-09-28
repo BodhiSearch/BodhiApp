@@ -6,7 +6,6 @@ use services::AppService;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
-#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait RouterState: std::fmt::Debug + Send + Sync {
   fn app_service(&self) -> Arc<dyn AppService>;
@@ -77,9 +76,6 @@ impl RouterState for DefaultRouterState {
         TOKENIZER_CONFIG_JSON, tokenizer_repo
       )));
     };
-    let alias = dbg!(alias);
-    let model_file = dbg!(model_file);
-    let tokenizer_file = dbg!(tokenizer_file);
     self
       .ctx
       .chat_completions(request, alias, model_file, tokenizer_file, userdata)
@@ -208,10 +204,6 @@ mod test {
       .hf_cache(hf_cache.clone())
       .build()?;
     let alias = Alias::testalias_exists();
-
-    let model_file = dbg!(model_file);
-    let llama3_tokenizer = dbg!(llama3_tokenizer);
-    let alias = dbg!(alias);
     mock_ctx
       .expect_chat_completions()
       .with(

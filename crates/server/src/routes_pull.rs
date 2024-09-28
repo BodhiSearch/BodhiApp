@@ -246,7 +246,7 @@ async fn update_download_status(
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{test_utils::ResponseTestExt, ErrorBody, MockRouterState};
+  use crate::{test_utils::ResponseTestExt, DefaultRouterState, ErrorBody, MockSharedContextRw};
   use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
@@ -258,10 +258,9 @@ mod tests {
   use services::{
     db::DbService,
     test_utils::{
-      test_db_service, test_hf_service, AppServiceStub, AppServiceStubBuilder, TestDbService,
-      TestHfService,
+      app_service_stub_builder, test_db_service, test_hf_service, AppServiceStubBuilder,
+      TestDbService, TestHfService,
     },
-    HubService,
   };
   use std::{sync::Arc, time::Duration};
   use tower::ServiceExt;
@@ -282,23 +281,8 @@ mod tests {
     }};
   }
 
-  async fn test_app_service(
-    mock_hub_service: Arc<dyn HubService>,
-    db_service: Arc<dyn DbService>,
-  ) -> AppServiceStub {
-    AppServiceStubBuilder::default()
-      .hub_service(mock_hub_service)
-      .with_data_service()
-      .db_service(db_service)
-      .build()
-      .unwrap()
-  }
-
   fn test_router(service: Arc<dyn AppService>) -> Router {
-    let mut router_state = MockRouterState::new();
-    router_state
-      .expect_app_service()
-      .returning(move || service.clone());
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContextRw::new()), service);
     Router::new()
       .route("/modelfiles/pull", post(pull_by_repo_file_handler))
       .route("/modelfiles/pull/:alias", post(pull_by_alias_handler))
@@ -317,6 +301,7 @@ mod tests {
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     test_hf_service
       .expect_download()
@@ -324,7 +309,10 @@ mod tests {
       .returning(|_, _, _| Ok(HubFile::testalias()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
-    let app_service = test_app_service(Arc::new(test_hf_service), db_service.clone()).await;
+    let app_service = app_service_stub_builder
+      .db_service(db_service.clone())
+      .hub_service(Arc::new(test_hf_service))
+      .build()?;
     let router = test_router(Arc::new(app_service));
     let payload = serde_json::json!({
         "repo": "MyFactory/testalias-gguf",
@@ -372,9 +360,13 @@ mod tests {
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     let db_service = Arc::new(db_service);
-    let app_service = test_app_service(Arc::new(test_hf_service), db_service).await;
+    let app_service = app_service_stub_builder
+      .db_service(db_service.clone())
+      .hub_service(Arc::new(test_hf_service))
+      .build()?;
     let router = test_router(Arc::new(app_service));
     let payload = serde_json::json!({
         "repo": Repo::testalias().to_string(),
@@ -407,12 +399,17 @@ mod tests {
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     let pending_request =
       DownloadRequest::new_pending(Repo::testalias().to_string(), Repo::testalias_q4());
     db_service.create_download_request(&pending_request).await?;
     let db_service = Arc::new(db_service);
-    let app_service = test_app_service(Arc::new(test_hf_service), db_service.clone()).await;
+    let app_service = app_service_stub_builder
+      .db_service(db_service.clone())
+      .hub_service(Arc::new(test_hf_service))
+      .build()?;
+
     let router = test_router(Arc::new(app_service));
 
     let payload = serde_json::json!({
@@ -449,6 +446,7 @@ mod tests {
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     test_hf_service
       .expect_download()
@@ -456,7 +454,10 @@ mod tests {
       .returning(|_, _, _| Ok(HubFile::testalias()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
-    let app_service = test_app_service(Arc::new(test_hf_service), db_service.clone()).await;
+    let app_service = app_service_stub_builder
+      .db_service(db_service.clone())
+      .hub_service(Arc::new(test_hf_service))
+      .build()?;
     let router = test_router(Arc::new(app_service));
     let response = router
       .oneshot(
@@ -496,8 +497,12 @@ mod tests {
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
-    let app_service = test_app_service(Arc::new(test_hf_service), Arc::new(db_service)).await;
+    let app_service = app_service_stub_builder
+      .db_service(Arc::new(db_service))
+      .hub_service(Arc::new(test_hf_service))
+      .build()?;
     let router = test_router(Arc::new(app_service));
     let response = router
       .oneshot(
@@ -527,12 +532,14 @@ mod tests {
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     let db_service = Arc::new(db_service);
-    let app_service = test_app_service(Arc::new(test_hf_service), db_service.clone()).await;
+    let app_service = app_service_stub_builder
+      .db_service(db_service.clone())
+      .hub_service(Arc::new(test_hf_service))
+      .build()?;
     let router = test_router(Arc::new(app_service));
-
-    // Create a test download request
     let test_request =
       DownloadRequest::new_pending("test/repo".to_string(), "test.gguf".to_string());
     db_service.create_download_request(&test_request).await?;
@@ -563,8 +570,13 @@ mod tests {
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
-    let app_service = test_app_service(Arc::new(test_hf_service), Arc::new(db_service)).await;
+    let app_service = app_service_stub_builder
+      .db_service(Arc::new(db_service))
+      .hub_service(Arc::new(test_hf_service))
+      .build()?;
+
     let router = test_router(Arc::new(app_service));
     let response = router
       .oneshot(

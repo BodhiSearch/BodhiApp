@@ -272,6 +272,7 @@ mod test {
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
+  use services::test_utils::{app_service_stub, AppServiceStub};
   use std::{
     ffi::{c_char, c_void},
     slice,
@@ -450,11 +451,14 @@ mod test {
   }
 
   #[rstest]
-  #[tokio::test]
+  #[awt]
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
-  async fn test_chat_completions_continue_strategy(temp_hf_home: TempDir) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
+  #[tokio::test]
+  async fn test_chat_completions_continue_strategy(
+    #[future] app_service_stub: AppServiceStub,
+  ) -> anyhow::Result<()> {
+    let hf_cache = app_service_stub.hf_cache();
     let model_file = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
       .build()
@@ -465,8 +469,7 @@ mod test {
       .build()
       .unwrap();
     let mut mock = MockServerContext::default();
-    let expected_input =
-      "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"testalias:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
+    let expected_input = r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#;
     mock.expect_init().with().return_once(|| Ok(()));
     mock.expect_start_event_loop().with().return_once(|| Ok(()));
     mock
@@ -513,8 +516,7 @@ mod test {
       .build()
       .unwrap();
     let mut mock = MockServerContext::default();
-    let expected_input =
-      "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"testalias:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
+    let expected_input = r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#;
     mock.expect_init().with().return_once(|| Ok(()));
     mock.expect_start_event_loop().with().return_once(|| Ok(()));
     mock
@@ -570,8 +572,7 @@ mod test {
       .expect_get_gpt_params()
       .return_once(move || loaded_params_cl);
     loaded_ctx.expect_stop().with().return_once(|| Ok(()));
-    let expected_input =
-      "{\"messages\":[{\"content\":\"What day comes after Monday?\",\"role\":\"user\"}],\"model\":\"fakemodel:instruct\",\"prompt\":\"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\\n\\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\\n\\n\"}";
+    let expected_input = r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"fakemodel:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#;
     loaded_ctx
       .expect_completions()
       .with(eq(expected_input), eq(""), always(), always())

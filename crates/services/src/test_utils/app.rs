@@ -1,23 +1,48 @@
 use crate::{
   db::DbService,
-  test_utils::{EnvServiceStub, SecretServiceStub},
+  test_utils::{test_db_service, EnvServiceStub, SecretServiceStub, TestDbService},
   AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService,
   HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
   SessionService, SqliteSessionService, BODHI_HOME, HF_HOME,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
+use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
+
+#[fixture]
+#[awt]
+pub async fn app_service_stub(
+  #[future] app_service_stub_builder: AppServiceStubBuilder,
+) -> AppServiceStub {
+  app_service_stub_builder.build().unwrap()
+}
+
+#[fixture]
+#[awt]
+pub async fn app_service_stub_builder(
+  #[future] test_db_service: TestDbService,
+) -> AppServiceStubBuilder {
+  AppServiceStubBuilder::default()
+    // .with_temp_home()
+    .with_hub_service()
+    .with_data_service()
+    .db_service(Arc::new(test_db_service))
+    .with_session_service()
+    .await
+    .with_secret_service()
+    .to_owned()
+}
 
 #[derive(Debug, Default, Builder)]
 #[builder(default, setter(strip_option))]
 pub struct AppServiceStub {
+  pub temp_home: Option<Arc<TempDir>>,
   #[builder(default = "self.default_env_service()")]
   pub env_service: Option<Arc<dyn EnvService>>,
   #[builder(default = "self.default_hub_service()")]
   pub hub_service: Option<Arc<dyn HubService>>,
-  pub temp_home: Option<Arc<TempDir>>,
   pub data_service: Option<Arc<dyn DataService>>,
   #[builder(default = "self.default_auth_service()")]
   pub auth_service: Option<Arc<dyn AuthService>>,
@@ -50,8 +75,50 @@ impl AppServiceStubBuilder {
     Some(Arc::new(SecretServiceStub::default()))
   }
 
+  fn with_temp_home(&mut self) -> &mut Self {
+    self.with_temp_home_as(build_temp_dir());
+    self
+  }
+
+  pub fn with_temp_home_as(&mut self, temp_dir: TempDir) -> &mut Self {
+    let temp_home = Arc::new(temp_dir);
+    self.temp_home = Some(Some(temp_home.clone()));
+    let envs = HashMap::from([
+      (
+        BODHI_HOME.to_string(),
+        temp_home.path().join("bodhi").display().to_string(),
+      ),
+      (
+        HF_HOME.to_string(),
+        temp_home.path().join("huggingface").display().to_string(),
+      ),
+    ]);
+    let env_service = EnvServiceStub::new(envs);
+    self.env_service = Some(Some(Arc::new(env_service)));
+    self
+  }
+
+  pub fn setup_temp_home(&mut self) -> Arc<TempDir> {
+    match &self.temp_home {
+      Some(Some(temp_home)) => temp_home.clone(),
+      None | Some(None) => {
+        self.with_temp_home();
+        self.temp_home.clone().unwrap().unwrap().clone()
+      }
+    }
+  }
+
+  pub fn with_envs(&mut self, envs: HashMap<&str, &str>) -> &mut Self {
+    let mut env_service = EnvServiceStub::default();
+    for (key, value) in envs {
+      env_service = env_service.with_env(key, value);
+    }
+    self.env_service = Some(Some(Arc::new(env_service)));
+    self
+  }
+
   pub fn with_hub_service(&mut self) -> &mut Self {
-    let temp_home = self.with_temp_home();
+    let temp_home = self.setup_temp_home();
     let hf_home = temp_home.path().join("huggingface");
     copy_test_dir("tests/data/huggingface", &hf_home);
     let hf_cache = hf_home.join("hub");
@@ -61,7 +128,7 @@ impl AppServiceStubBuilder {
   }
 
   pub fn with_data_service(&mut self) -> &mut Self {
-    let temp_home = self.with_temp_home();
+    let temp_home = self.setup_temp_home();
     let bodhi_home = temp_home.path().join("bodhi");
     copy_test_dir("tests/data/bodhi", &bodhi_home);
     let data_service = LocalDataService::new(bodhi_home);
@@ -69,37 +136,8 @@ impl AppServiceStubBuilder {
     self
   }
 
-  pub fn with_temp_home_as(&mut self, temp_dir: TempDir) -> &mut Self {
-    self.temp_home = Some(Some(Arc::new(temp_dir)));
-    self.with_temp_home();
-    self
-  }
-
-  pub fn with_temp_home(&mut self) -> Arc<TempDir> {
-    match &self.temp_home {
-      Some(Some(temp_home)) => temp_home.clone(),
-      None | Some(None) => {
-        let temp_home = Arc::new(build_temp_dir());
-        self.temp_home = Some(Some(temp_home.clone()));
-        let envs = HashMap::from([
-          (
-            BODHI_HOME.to_string(),
-            temp_home.path().join("bodhi").display().to_string(),
-          ),
-          (
-            HF_HOME.to_string(),
-            temp_home.path().join("huggingface").display().to_string(),
-          ),
-        ]);
-        let env_service = EnvServiceStub::new(envs);
-        self.env_service = Some(Some(Arc::new(env_service)));
-        temp_home
-      }
-    }
-  }
-
   pub async fn with_session_service(&mut self) -> &mut Self {
-    let temp_home = self.with_temp_home();
+    let temp_home = self.setup_temp_home();
     let dbfile = temp_home.path().join("test.db");
     self.build_session_service(dbfile).await;
     self
@@ -120,15 +158,6 @@ impl AppServiceStubBuilder {
     self
   }
 
-  pub fn with_envs(&mut self, envs: HashMap<&str, &str>) -> &mut Self {
-    let mut env_service = EnvServiceStub::default();
-    for (key, value) in envs {
-      env_service = env_service.with_env(key, value);
-    }
-    self.env_service = Some(Some(Arc::new(env_service)));
-    self
-  }
-
   pub fn with_secret_service(&mut self) -> &mut Self {
     let mut secret_service = SecretServiceStub::default();
     secret_service.with_app_reg_info(&AppRegInfoBuilder::test_default().build().unwrap());
@@ -140,6 +169,15 @@ impl AppServiceStubBuilder {
 impl AppServiceStub {
   pub fn bodhi_home(&self) -> PathBuf {
     self.temp_home.clone().unwrap().path().join("bodhi")
+  }
+
+  pub fn hf_cache(&self) -> PathBuf {
+    self
+      .temp_home
+      .clone()
+      .unwrap()
+      .path()
+      .join("huggingface/hub")
   }
 }
 

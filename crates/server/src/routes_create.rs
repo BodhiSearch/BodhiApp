@@ -162,7 +162,7 @@ pub async fn update_alias_handler(
 mod tests {
   use crate::{
     create_alias_handler, test_utils::ResponseTestExt, update_alias_handler, AliasResponse,
-    AliasResponseBuilder, ErrorBody, MockRouterState,
+    AliasResponseBuilder, DefaultRouterState, ErrorBody, MockSharedContextRw,
   };
   use axum::{
     body::Body,
@@ -173,23 +173,18 @@ mod tests {
   use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder};
   use rstest::{fixture, rstest};
   use serde_json::Value;
-  use services::test_utils::AppServiceStubBuilder;
+  use services::test_utils::{app_service_stub, AppServiceStub};
   use std::collections::HashMap;
   use std::sync::Arc;
   use tower::ServiceExt;
 
   #[fixture]
-  fn app() -> Router {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .with_hub_service()
-      .build()
-      .unwrap();
-    let service = Arc::new(service);
-    let mut router_state = MockRouterState::new();
-    router_state
-      .expect_app_service()
-      .returning(move || service.clone());
+  #[awt]
+  async fn app(#[future] app_service_stub: AppServiceStub) -> Router {
+    let router_state = DefaultRouterState::new(
+      Arc::new(MockSharedContextRw::default()),
+      Arc::new(app_service_stub),
+    );
     Router::new()
       .route("/api/models", post(create_alias_handler))
       .route("/api/models/:id", put(update_alias_handler))
@@ -198,11 +193,11 @@ mod tests {
 
   fn payload() -> Value {
     serde_json::json!({
-      "alias": "test:alias",
-      "repo": "FakeFactory/fakemodel-gguf",
-      "filename": "fakemodel.Q4_0.gguf",
+      "alias": "testalias:instruct",
+      "repo": "MyFactory/testalias-gguf",
+      "filename": "testalias.Q8_0.gguf",
       "chat_template": "llama3",
-      "family": "test_family",
+      "family": "testalias",
       "request_params": {
         "temperature": 0.7
       },
@@ -214,11 +209,11 @@ mod tests {
 
   fn expected() -> AliasResponse {
     AliasResponseBuilder::default()
-      .alias("test:alias".to_string())
-      .repo("FakeFactory/fakemodel-gguf")
-      .filename("fakemodel.Q4_0.gguf")
-      .family(Some("test_family".to_string()))
+      .alias("testalias:instruct".to_string())
+      .repo("MyFactory/testalias-gguf")
+      .filename("testalias.Q8_0.gguf")
       .chat_template("llama3")
+      .family(Some("testalias".to_string()))
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
       .features(vec!["chat".to_string()])
       .model_params(HashMap::new())
@@ -240,12 +235,12 @@ mod tests {
 
   fn payload_with_snapshot() -> Value {
     serde_json::json!({
-      "alias": "test:alias",
-      "repo": "FakeFactory/fakemodel-gguf",
-      "filename": "fakemodel.Q4_0.gguf",
-      "snapshot": "191239b3e26b2882fb562ffccdd1cf0f65402adb",
+      "alias": "testalias:instruct",
+      "repo": "MyFactory/testalias-gguf",
+      "filename": "testalias.Q8_0.gguf",
+      "snapshot": "5007652f7a641fe7170e0bad4f63839419bd9213",
       "chat_template": "llama3",
-      "family": "test_family",
+      "family": "testalias",
       "request_params": {
         "temperature": 0.7
       },
@@ -257,11 +252,11 @@ mod tests {
 
   fn expected_with_snapshot() -> AliasResponse {
     AliasResponseBuilder::default()
-      .alias("test:alias".to_string())
-      .repo("FakeFactory/fakemodel-gguf")
-      .filename("fakemodel.Q4_0.gguf")
-      .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb")
-      .family(Some("test_family".to_string()))
+      .alias("testalias:instruct".to_string())
+      .repo("MyFactory/testalias-gguf")
+      .filename("testalias.Q8_0.gguf")
+      .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
+      .family(Some("testalias".to_string()))
       .chat_template("llama3")
       .features(vec!["chat".to_string()])
       .model_params(HashMap::new())
@@ -285,8 +280,9 @@ mod tests {
   #[case(payload(), expected())]
   #[case(payload_with_snapshot(), expected_with_snapshot())]
   #[tokio::test]
+  #[awt]
   async fn test_create_alias_handler(
-    app: Router,
+    #[future] app: Router,
     #[case] payload: Value,
     #[case] expected: AliasResponse,
   ) -> anyhow::Result<()> {
@@ -305,8 +301,11 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_create_alias_handler_non_existent_repo(app: Router) -> anyhow::Result<()> {
+  async fn test_create_alias_handler_non_existent_repo(
+    #[future] app: Router,
+  ) -> anyhow::Result<()> {
     let payload = serde_json::json!({
       "alias": "test:newalias",
       "repo": "FakeFactory/not-exists",
@@ -330,21 +329,24 @@ mod tests {
       )
       .await?;
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
-    // assert_eq!("", response.text().await?);
     let error_body = response.json::<ErrorBody>().await?;
-    assert_eq!(error_body.r#type, "invalid_request_error");
-    assert_eq!(error_body.code, Some("command_error".to_string()));
     assert_eq!(
-      error_body.message,
-      "model file 'fakemodel.Q4_0.gguf' not found in repo 'FakeFactory/not-exists'"
+      ErrorBody {
+        r#type: "invalid_request_error".to_string(),
+        code: Some("command_error".to_string()),
+        message: "model file 'fakemodel.Q4_0.gguf' not found in repo 'FakeFactory/not-exists'"
+          .to_string(),
+        param: None,
+      },
+      error_body
     );
-
     Ok(())
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_update_alias_handler(app: Router) -> anyhow::Result<()> {
+  async fn test_update_alias_handler(#[future] app: Router) -> anyhow::Result<()> {
     let payload = serde_json::json!({
       "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
       "filename": "tinyllama-1.1b-chat-v0.3.Q2_K.gguf",
@@ -378,7 +380,7 @@ mod tests {
         .request_params(
           OAIRequestParamsBuilder::default()
             .temperature(0.8)
-            .max_tokens(2000 as u16)
+            .max_tokens(2000_u16)
             .build()
             .unwrap()
         )
@@ -396,8 +398,9 @@ mod tests {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_update_alias_handler_mismatch(app: Router) -> anyhow::Result<()> {
+  async fn test_update_alias_handler_mismatch(#[future] app: Router) -> anyhow::Result<()> {
     let payload = serde_json::json!({
       "alias": "llama3:different",
       "repo": "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
@@ -418,18 +421,22 @@ mod tests {
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     let error_body = response.json::<ErrorBody>().await?;
-    assert_eq!(error_body.code, Some("alias_mismatch".to_string()));
     assert_eq!(
-      error_body.message,
-      "alias in request does not match path parameter"
+      ErrorBody {
+        r#type: "invalid_request_error".to_string(),
+        code: Some("alias_mismatch".to_string()),
+        message: "alias in request does not match path parameter".to_string(),
+        param: None,
+      },
+      error_body
     );
-
     Ok(())
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_create_alias_handler_missing_alias(app: Router) -> anyhow::Result<()> {
+  async fn test_create_alias_handler_missing_alias(#[future] app: Router) -> anyhow::Result<()> {
     let payload = serde_json::json!({
       "repo": "FakeFactory/fakemodel-gguf",
       "filename": "fakemodel.Q4_0.gguf",
@@ -454,10 +461,15 @@ mod tests {
 
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     let error_body = response.json::<ErrorBody>().await?;
-    assert_eq!(error_body.r#type, "invalid_request_error");
-    assert_eq!(error_body.code, Some("missing_alias".to_string()));
-    assert_eq!(error_body.message, "alias is required");
-
+    assert_eq!(
+      ErrorBody {
+        r#type: "invalid_request_error".to_string(),
+        code: Some("missing_alias".to_string()),
+        message: "alias is required".to_string(),
+        param: None,
+      },
+      error_body
+    );
     Ok(())
   }
 
@@ -490,9 +502,10 @@ mod tests {
       "n_ctx": 4096
     }
   }), Method::PUT, "/api/models/tinyllama:instruct")]
+  #[awt]
   #[tokio::test]
   async fn test_create_alias_repo_not_downloaded_error(
-    app: Router,
+    #[future] app: Router,
     #[case] payload: Value,
     #[case] method: Method,
     #[case] url: String,

@@ -37,6 +37,7 @@ oauth2 = { workspace = true }
 pin-project-lite = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true, optional = true }
+rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
@@ -88,6 +89,7 @@ uuid = { workspace = true, features = ["v4"] }
 [features]
 test-utils = [
   "anyhow",
+  "rstest",
   "reqwest",
   "http-body-util",
   "mockall",

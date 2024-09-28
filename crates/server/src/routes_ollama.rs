@@ -195,9 +195,6 @@ impl From<ChatRequest> for CreateChatCompletionRequest {
         .collect::<Vec<_>>(),
       model: val.model,
       frequency_penalty: options.frequency_penalty,
-      logit_bias: None,
-      logprobs: None,
-      top_logprobs: None,
       max_tokens: options.num_predict,
       n: Some(1),
       presence_penalty: options.presence_penalty,
@@ -207,11 +204,7 @@ impl From<ChatRequest> for CreateChatCompletionRequest {
       stream: val.stream,
       temperature: options.temperature,
       top_p: options.top_p,
-      tools: None,
-      tool_choice: None,
-      user: None,
-      function_call: None,
-      functions: None,
+      ..Default::default()
     }
   }
 }
@@ -308,13 +301,11 @@ impl From<Message> for ChatCompletionRequestMessage {
       }
       "system" => ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
         content: val.content,
-        role: Role::System,
-        name: None,
+        ..Default::default()
       }),
       _ => ChatCompletionRequestMessage::User(ChatCompletionRequestUserMessage {
         content: ChatCompletionRequestUserMessageContent::Text(val.content),
-        role: Role::User,
-        name: None,
+        ..Default::default()
       }),
     }
   }
@@ -358,7 +349,7 @@ pub struct Duration(String);
 pub struct Options {
   pub num_keep: Option<i32>,
   pub seed: Option<i64>,
-  pub num_predict: Option<u16>,
+  pub num_predict: Option<u32>,
   pub top_k: Option<i32>,
   pub top_p: Option<f32>,
   pub tfs_z: Option<f32>,
@@ -461,8 +452,8 @@ pub async fn ollama_model_chat_handler(
 mod test {
   use crate::{
     ollama_model_show_handler, ollama_models_handler,
-    test_utils::{RequestTestExt, ResponseTestExt},
-    MockRouterState,
+    test_utils::{router_state_stub, RequestTestExt, ResponseTestExt},
+    DefaultRouterState,
   };
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -473,25 +464,19 @@ mod test {
   };
   use rstest::rstest;
   use serde_json::{json, Value};
-  use services::test_utils::AppServiceStubBuilder;
   use std::sync::Arc;
   use tower::ServiceExt;
   use validator::ValidateLength;
 
   #[rstest]
+  #[awt]
   #[tokio::test]
-  async fn test_ollama_routes_models_list() -> anyhow::Result<()> {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .build()?;
-    let service = Arc::new(service);
-    let mut router_state = MockRouterState::new();
-    router_state
-      .expect_app_service()
-      .returning(move || service.clone());
+  async fn test_ollama_routes_models_list(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
     let app = Router::new()
       .route("/api/tags", get(ollama_models_handler))
-      .with_state(Arc::new(router_state));
+      .with_state(Arc::new(router_state_stub));
     let response = app
       .oneshot(Request::get("/api/tags").body(Body::empty()).unwrap())
       .await?
@@ -509,20 +494,15 @@ mod test {
   }
 
   #[rstest]
-  #[anyhow_trace]
+  #[awt]
   #[tokio::test]
-  async fn test_ollama_model_show() -> anyhow::Result<()> {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .build()?;
-    let service = Arc::new(service);
-    let mut router_state = MockRouterState::new();
-    router_state
-      .expect_app_service()
-      .returning(move || service.clone());
+  #[anyhow_trace]
+  async fn test_ollama_model_show(
+    #[future] router_state_stub: DefaultRouterState,
+  ) -> anyhow::Result<()> {
     let app = Router::new()
       .route("/api/show", post(ollama_model_show_handler))
-      .with_state(Arc::new(router_state));
+      .with_state(Arc::new(router_state_stub));
     let response = app
       .oneshot(Request::post("/api/show").json(json! {{"name": "llama3:instruct"}})?)
       .await?

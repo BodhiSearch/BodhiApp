@@ -2,6 +2,7 @@ use crate::ContextError;
 use async_openai::types::{
   ChatCompletionRequestMessage,
   ChatCompletionRequestUserMessageContent::{Array, Text},
+  Role,
 };
 use derive_new::new;
 use minijinja::{Environment, ErrorKind};
@@ -32,25 +33,29 @@ impl<'a> From<&'a ChatMessage> for ChatMessage {
 impl<'a> From<&'a ChatCompletionRequestMessage> for ChatMessage {
   fn from(value: &'a ChatCompletionRequestMessage) -> Self {
     let (role, content) = match value {
-      ChatCompletionRequestMessage::System(m) => (m.role.to_string(), Some(m.content.clone())),
+      ChatCompletionRequestMessage::System(m) => {
+        (Role::System.to_string(), Some(m.content.clone()))
+      }
       ChatCompletionRequestMessage::User(m) => match &m.content {
-        Text(content) => (m.role.to_string(), Some(content.clone())),
+        Text(content) => (Role::User.to_string(), Some(content.clone())),
         Array(content) => {
           let fold = content.clone().into_iter().fold(String::new(), |mut f, i| {
             match i {
               async_openai::types::ChatCompletionRequestMessageContentPart::Text(t) => {
                 f.push_str(&t.text);
               }
-              async_openai::types::ChatCompletionRequestMessageContentPart::Image(_) => {
+              async_openai::types::ChatCompletionRequestMessageContentPart::ImageUrl(_) => {
                 unimplemented!()
               }
             };
             f
           });
-          (m.role.to_string().clone(), Some(fold))
+          (Role::User.to_string(), Some(fold))
         }
       },
-      ChatCompletionRequestMessage::Assistant(m) => (m.role.to_string().clone(), m.content.clone()),
+      ChatCompletionRequestMessage::Assistant(m) => {
+        (Role::Assistant.to_string(), m.content.clone())
+      }
       ChatCompletionRequestMessage::Tool(_) => unimplemented!(),
       ChatCompletionRequestMessage::Function(_) => unimplemented!(),
     };
