@@ -22,7 +22,7 @@ clap = { workspace = true, features = ["derive"] }
 dotenv = { workspace = true }
 futures-util = { workspace = true }
 include_dir = { workspace = true }
-tauri = { version = "1.6.1", features = ["updater", "api-all", "system-tray"] }
+tauri = { version = "1.6.1", features = [ "api-all", "system-tray"] }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tower-serve-static = { workspace = true }

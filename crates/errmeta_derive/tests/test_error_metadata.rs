@@ -13,12 +13,20 @@ pub enum ErrorType {
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 #[error("inner error")]
-#[error_meta(status = 500, code = "inner_error_code", error_type = "inner_error_type")]
+#[error_meta(
+  status = 500,
+  code = "inner_error_code",
+  error_type = "inner_error_type"
+)]
 pub struct InnerError;
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 #[error("inner error fields")]
-#[error_meta(status = 500, code = "inner_error_code", error_type = "inner_error_type")]
+#[error_meta(
+  status = 500,
+  code = "inner_error_code",
+  error_type = "inner_error_type"
+)]
 pub struct InnerErrorFields {
   msg: String,
   status: i32,
@@ -26,7 +34,11 @@ pub struct InnerErrorFields {
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 #[error("inner error fields dup")]
-#[error_meta(status = 500, code = "inner_error_code", error_type = "inner_error_type")]
+#[error_meta(
+  status = 500,
+  code = "inner_error_code",
+  error_type = "inner_error_type"
+)]
 pub struct InnerErrorFieldsDup {
   msg: String,
   status: i32,
@@ -34,7 +46,11 @@ pub struct InnerErrorFieldsDup {
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 #[error("error with source")]
-#[error_meta(status = 500, code = "error_with_source_code", error_type = "error_with_source_type")]
+#[error_meta(
+  status = 500,
+  code = "error_with_source_code",
+  error_type = "error_with_source_type"
+)]
 pub struct ErrorWithSource {
   #[source]
   inner: InnerErrorFields,

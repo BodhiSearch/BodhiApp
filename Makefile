@@ -29,11 +29,15 @@ ci.coverage:
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
-	@for dir in crates/* app/bodhi; do \
+	@for dir in crates/* crates/app/bodhi; do \
 		if [ -f $$dir/Cargo.toml ]; then \
 			sed -i.bak "s/^version = .*/version = \"$(VERSION)\"/" $$dir/Cargo.toml && \
 			rm $$dir/Cargo.toml.bak; \
 		fi \
 	done
 
-.PHONY: test format ci.clean ci.coverage
+ci.build:
+	cd crates/app/bodhi && \
+	cargo tauri build $${TARGET:+--target $${TARGET}} --ci --config '{"tauri": {"updater": {"active": false}}}'
+
+.PHONY: test format ci.clean ci.coverage ci.update-version ci.build

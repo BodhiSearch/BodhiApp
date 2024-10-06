@@ -60,6 +60,5 @@ jobs:
           fail_ci_if_error: true
           flags: ${{ matrix.target }},bodhi
       - name: build the app
-        working-directory: app/bodhi
         run: |
-          cargo tauri build --target ${{ matrix.target }} --ci --config '{"tauri": {"updater": {"active": false}}}'
+          make ci.build TARGET=${{ matrix.target }}
