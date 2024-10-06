@@ -72,7 +72,7 @@ mod test {
   }
 
   #[rstest]
-  #[case(
+  #[case::default(
     Alias::default(),
     r#"alias: ''
 repo: ''
@@ -82,7 +82,7 @@ features: []
 chat_template: llama3
 "#
   )]
-  #[case(
+  #[case::full(
     AliasBuilder::tinyllama()
       .chat_template(ChatTemplate::Repo(
         Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
@@ -118,7 +118,7 @@ context_params:
   n_predict: 256
 "#
   )]
-  #[case(
+  #[case::chat_template_id(
     AliasBuilder::tinyllama()
       .chat_template(ChatTemplate::Id(ChatTemplateId::Tinyllama))
       .build()

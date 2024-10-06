@@ -121,7 +121,7 @@ mod test {
     let result = Repo::try_from(input.clone());
     assert!(result.is_err());
     assert_eq!(
-      "Validation failed: value: does not match the huggingface repo pattern 'username/repo'",
+      "value: does not match the huggingface repo pattern 'username/repo'",
       result.unwrap_err().to_string()
     );
     let repo: Result<Repo, _> = input.parse();
