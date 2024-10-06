@@ -24,3 +24,14 @@ pub use oai::*;
 pub use remote_file::*;
 pub use repo::*;
 pub use utils::*;
+
+#[macro_export]
+macro_rules! impl_error_from {
+  ($source_error:ty, $target_error:ident :: $variant:ident, $intermediate_error:ty) => {
+    impl From<$source_error> for $target_error {
+      fn from(err: $source_error) -> Self {
+        $target_error::$variant(<$intermediate_error>::from(err))
+      }
+    }
+  };
+}
