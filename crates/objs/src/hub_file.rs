@@ -37,16 +37,8 @@ impl TryFrom<PathBuf> for HubFile {
   fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
     let path = value.display().to_string();
     let caps = REGEX_HF_REPO_FILE
-        .captures(&path)
-        .ok_or_else(|| ObjError::Conversion {
-            from: "PathBuf".to_string(),
-            to: "HubFile".to_string(),
-            error: format!(
-                "The path '{}' does not match the expected Hugging Face hub cache filepath pattern. \
-                 Expected format: '<hf_cache>/models--<username>--<repo_name>/snapshots/<snapshot>/<filename>'",
-                path
-            ),
-        })?;
+      .captures(&path)
+      .ok_or_else(|| ObjError::FilePatternMismatch(path.clone()))?;
     let size = match fs::metadata(&value) {
       Ok(metadata) => Some(metadata.len()),
       Err(_) => None,
