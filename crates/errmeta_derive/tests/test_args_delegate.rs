@@ -4,7 +4,11 @@ use std::collections::HashMap;
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 #[error("inner error")]
-#[error_meta(status = 400, code = "inner_error_code", error_type = "inner_error_type")]
+#[error_meta(
+  status = 400,
+  code = "inner_error_code",
+  error_type = "inner_error_type"
+)]
 pub struct InnerError {
   field1: String,
   status: i32,
@@ -12,7 +16,11 @@ pub struct InnerError {
 
 #[derive(Debug, thiserror::Error, ErrorMeta)]
 #[error("inner error dup")]
-#[error_meta(status = 400, code = "inner_error_code", error_type = "inner_error_type")]
+#[error_meta(
+  status = 400,
+  code = "inner_error_code",
+  error_type = "inner_error_type"
+)]
 pub struct InnerErrorDup {
   field1: String,
   status: i32,

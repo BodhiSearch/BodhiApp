@@ -32,11 +32,13 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
       generate_impl(name, error_type_body, status_body, code_body, args_method)
     }
     Data::Struct(_) => {
-      let error_meta =
-        parse_error_meta(&input.attrs).unwrap_or_else(|| panic!("error_meta attribute missing for struct {}", name));
+      let error_meta = parse_error_meta(&input.attrs)
+        .unwrap_or_else(|| panic!("error_meta attribute missing for struct {}", name));
       let error_type = error_meta
         .error_type
-        .map(|error_type_value| quote! { <_ as AsRef<str>>::as_ref(&#error_type_value).to_string() })
+        .map(
+          |error_type_value| quote! { <_ as AsRef<str>>::as_ref(&#error_type_value).to_string() },
+        )
         .unwrap_or_else(|| panic!("error_type attribute missing for struct {}", name));
       let status = error_meta
         .status
@@ -198,7 +200,9 @@ fn generate_attribute_method(
     let error_meta = parse_error_meta(&variant.attrs);
 
     match method {
-      "error_type" => generate_error_type_arm(name, variant_name, &pattern, is_transparent, &error_meta),
+      "error_type" => {
+        generate_error_type_arm(name, variant_name, &pattern, is_transparent, &error_meta)
+      }
       "status" => generate_status_arm(name, variant_name, &pattern, is_transparent, &error_meta),
       "code" => generate_code_arm(name, variant_name, &pattern, is_transparent, &error_meta),
       _ => unreachable!(),
@@ -381,7 +385,9 @@ fn generate_args_method(name: &Ident, data: &Data) -> TokenStream2 {
           }
         }
         Fields::Unnamed(unnamed_fields) => {
-          let field_indices: Vec<_> = (0..unnamed_fields.unnamed.len()).map(syn::Index::from).collect();
+          let field_indices: Vec<_> = (0..unnamed_fields.unnamed.len())
+            .map(syn::Index::from)
+            .collect();
           quote! {
             let mut map = ::std::collections::HashMap::new();
             #(
@@ -404,7 +410,8 @@ fn generate_args_method(name: &Ident, data: &Data) -> TokenStream2 {
 #[cfg(test)]
 mod tests {
   use crate::{
-    generate_args_method, generate_attribute_method, impl_error_metadata, is_transparent, parse_error_meta, ErrorMeta,
+    generate_args_method, generate_attribute_method, impl_error_metadata, is_transparent,
+    parse_error_meta, ErrorMeta,
   };
   use pretty_assertions::assert_eq;
   use proc_macro2::{Span, TokenStream as TokenStream2};

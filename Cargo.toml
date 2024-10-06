@@ -1,6 +1,6 @@
 [workspace]
 members = [
-  "app/bodhi",
+  "crates/app/bodhi",
   "crates/commands",
   "crates/errmeta_derive",
   "crates/integration-tests",

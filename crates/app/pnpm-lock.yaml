@@ -36,8 +36,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       ai:
-        specifier: file:../vercel-ai/packages/core
-        version: file:../vercel-ai/packages/core(openai@4.49.1)(react@18.3.1)(solid-js@1.8.17)(svelte@4.2.18)(vue@3.4.27(typescript@5.4.5))(zod@3.23.8)
+        specifier: file:../../vercel-ai/packages/core
+        version: file:../../vercel-ai/packages/core(openai@4.49.1)(react@18.3.1)(solid-js@1.8.17)(svelte@4.2.18)(vue@3.4.27(typescript@5.4.5))(zod@3.23.8)
       axios:
         specifier: ^1.6.8
         version: 1.7.2
@@ -855,8 +855,8 @@ packages:
     resolution: {integrity: sha512-5GG/5IbQQpC9FpkRGsSvZI5QYeSCzlJHdpBQntCsuTOxhKD8lqKhrleg2Yi7yvMIf82Ycmmqln9U8V9qwEiJew==}
     engines: {node: '>= 8.0.0'}
 
-  ai@file:../vercel-ai/packages/core:
-    resolution: {directory: ../vercel-ai/packages/core, type: directory}
+  ai@file:../../vercel-ai/packages/core:
+    resolution: {directory: ../../vercel-ai/packages/core, type: directory}
     engines: {node: '>=18'}
     peerDependencies:
       openai: ^4.42.0
@@ -3679,7 +3679,7 @@ snapshots:
     dependencies:
       humanize-ms: 1.2.1
 
-  ai@file:../vercel-ai/packages/core(openai@4.49.1)(react@18.3.1)(solid-js@1.8.17)(svelte@4.2.18)(vue@3.4.27(typescript@5.4.5))(zod@3.23.8):
+  ai@file:../../vercel-ai/packages/core(openai@4.49.1)(react@18.3.1)(solid-js@1.8.17)(svelte@4.2.18)(vue@3.4.27(typescript@5.4.5))(zod@3.23.8):
     dependencies:
       '@ai-sdk/provider': 0.0.10
       '@ai-sdk/provider-utils': 0.0.13(zod@3.23.8)
