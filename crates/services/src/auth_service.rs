@@ -5,22 +5,23 @@ use oauth2::{
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
   TokenResponse,
 };
+use objs::{impl_error_from, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum AuthServiceError {
-  #[error("reqwest: {0}")]
-  Reqwest(String),
-  #[error("api_error: {0}")]
+  #[error(transparent)]
+  Reqwest(#[from] ReqwestError),
+  #[error("auth_service_api_error")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
   AuthServiceApiError(String),
 }
 
-impl From<reqwest::Error> for AuthServiceError {
-  fn from(value: reqwest::Error) -> Self {
-    Self::Reqwest(value.to_string())
-  }
-}
+impl_error_from!(
+  reqwest::Error,
+  AuthServiceError::Reqwest,
+  ::objs::ReqwestError
+);
 
 type Result<T> = std::result::Result<T, AuthServiceError>;
 
@@ -64,6 +65,17 @@ pub struct KeycloakAuthService {
   realm: String,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+struct KeycloakError {
+  error: String,
+}
+
+impl From<KeycloakError> for AuthServiceError {
+  fn from(value: KeycloakError) -> Self {
+    AuthServiceError::AuthServiceApiError(value.error)
+  }
+}
+
 impl KeycloakAuthService {
   pub fn new(auth_url: String, realm: String) -> Self {
     Self { auth_url, realm }
@@ -104,11 +116,8 @@ impl KeycloakAuthService {
         response.json().await?;
       Ok(token_response.access_token().to_owned())
     } else {
-      let error = response.json::<Value>().await?;
-      let error_msg = error["error"]
-        .as_str()
-        .unwrap_or("Failed to get client access token");
-      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+      let error = response.json::<KeycloakError>().await?;
+      Err(error.into())
     }
   }
 }
@@ -122,19 +131,16 @@ pub struct RegisterClientRequest {
 impl AuthService for KeycloakAuthService {
   async fn register_client(&self, redirect_uris: Vec<String>) -> Result<AppRegInfo> {
     let client_endpoint = format!("{}/clients", self.auth_api_url());
-    let res = reqwest::Client::new()
+    let response = reqwest::Client::new()
       .post(client_endpoint)
       .json(&RegisterClientRequest { redirect_uris })
       .send()
       .await?;
-    if res.status().is_success() {
-      Ok(res.json::<AppRegInfo>().await?)
+    if response.status().is_success() {
+      Ok(response.json::<AppRegInfo>().await?)
     } else {
-      let error = res.json::<Value>().await?;
-      let error_msg = error["error"]
-        .as_str()
-        .unwrap_or("error at id-server registering as resource");
-      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+      let error = response.json::<KeycloakError>().await?;
+      Err(error.into())
     }
   }
 
@@ -169,11 +175,8 @@ impl AuthService for KeycloakAuthService {
         token_response.refresh_token().unwrap().to_owned(),
       ))
     } else {
-      let error = response.json::<Value>().await?;
-      let error_msg = error["error"]
-        .as_str()
-        .unwrap_or("Failed to exchange authorization code for tokens");
-      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+      let error = response.json::<KeycloakError>().await?;
+      Err(error.into())
     }
   }
 
@@ -204,9 +207,8 @@ impl AuthService for KeycloakAuthService {
         token_response.refresh_token().unwrap().to_owned(),
       ))
     } else {
-      let error = response.json::<Value>().await?;
-      let error_msg = error["error"].as_str().unwrap_or("Failed to refresh token");
-      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+      let error = response.json::<KeycloakError>().await?;
+      Err(error.into())
     }
   }
 
@@ -242,11 +244,8 @@ impl AuthService for KeycloakAuthService {
     if response.status().is_success() {
       Ok(())
     } else {
-      let error = response.json::<Value>().await?;
-      let error_msg = error["error"]
-        .as_str()
-        .unwrap_or("Failed to make resource admin");
-      Err(AuthServiceError::AuthServiceApiError(error_msg.to_string()))
+      let error = response.json::<KeycloakError>().await?;
+      Err(error.into())
     }
   }
 }
@@ -254,11 +253,24 @@ impl AuthService for KeycloakAuthService {
 #[cfg(test)]
 mod tests {
   use crate::{AppRegInfo, AuthService, AuthServiceError, KeycloakAuthService};
+  use fluent::{FluentBundle, FluentResource};
   use jsonwebtoken::Algorithm;
   use mockito::{Matcher, Server};
   use oauth2::{ClientId, ClientSecret, RefreshToken};
+  use objs::test_utils::{assert_error_message, fluent_bundle};
   use rstest::rstest;
   use serde_json::json;
+
+  #[rstest]
+  fn test_auth_service_api_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let error = AuthServiceError::AuthServiceApiError("test".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "error from auth service: \u{2068}test\u{2069}",
+    );
+  }
 
   #[rstest]
   #[tokio::test]
@@ -320,10 +332,10 @@ mod tests {
       .await;
     assert!(result.is_err());
     let err = result.unwrap_err();
-    assert!(matches!(err, AuthServiceError::AuthServiceApiError(_)));
-    assert_eq!("api_error: cannot complete request", err.to_string());
+    assert!(
+      matches!(err, AuthServiceError::AuthServiceApiError(msg) if msg == "cannot complete request")
+    );
     mock_server.assert();
-
     Ok(())
   }
 
@@ -423,9 +435,7 @@ mod tests {
 
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(matches!(error, AuthServiceError::AuthServiceApiError(_)));
-    assert_eq!(error.to_string(), "api_error: invalid_grant");
-
+    assert!(matches!(error, AuthServiceError::AuthServiceApiError(msg) if msg == "invalid_grant"));
     mock.assert();
     Ok(())
   }

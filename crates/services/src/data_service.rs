@@ -1,51 +1,61 @@
 use crate::{ALIASES_DIR, MODELS_YAML};
 use derive_new::new;
-use objs::{Alias, RemoteModel};
-use std::{collections::HashMap, fmt::Debug, fs, io, path::PathBuf};
+use objs::{
+  impl_error_from, Alias, ErrorType, IoDirCreateError, IoError, IoFileDeleteError, IoFileReadError,
+  IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
+};
+use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error("alias_exists")]
+#[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+pub struct AliasExistsError(pub String);
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error("alias_not_exists")]
+#[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+pub struct AliasNotExistsError(pub String);
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum DataServiceError {
-  #[error(
-    r#"directory '{dirname}' not found in $BODHI_HOME.
-$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
-  )]
+  #[error("dir_missing")]
+  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   DirMissing { dirname: String },
-  #[error(
-    r#"file '{filename}' not found in $BODHI_HOME/{dirname}.
-$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#
-  )]
+  #[error("file_missing")]
+  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   FileMissing { filename: String, dirname: String },
-  #[error("source: {source}\npath:{path}\nfailed to create file/directory")]
-  DirCreate {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
-  #[error("io: {0}")]
-  Io(#[from] std::io::Error),
-  #[error("io_file: {source}\npath='{path}'")]
-  IoFile {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
-  #[error("bodhi_home_err: failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
-  BodhiHome,
-  #[error("hf_home_err: failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
-  HfHome,
-  #[error("alias '{0}' not found in $BODHI_HOME/aliases")]
-  AliasNotExists(String),
-  #[error("alias '{0}' already exists in $BODHI_HOME/aliases")]
-  AliasExists(String),
   #[error(transparent)]
-  SerdeYamlDeserialize(#[from] serde_yaml::Error),
-  #[error("serde_yaml_serialize: {source}\nfilename='{filename}'")]
-  SerdeYamlSerialize {
-    #[source]
-    source: serde_yaml::Error,
-    filename: String,
-  },
+  DirCreate(#[from] IoDirCreateError),
+  #[error(transparent)]
+  Io(#[from] IoError),
+  #[error(transparent)]
+  IoFileRead(#[from] IoFileReadError),
+  #[error(transparent)]
+  IoFileDelete(#[from] IoFileDeleteError),
+  #[error(transparent)]
+  IoFileWrite(#[from] IoFileWriteError),
+  #[error("bodhi_home")]
+  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
+  BodhiHome,
+  #[error("hf_home")]
+  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
+  HfHome,
+  #[error(transparent)]
+  AliasNotExists(#[from] AliasNotExistsError),
+  #[error(transparent)]
+  AliasExists(#[from] AliasExistsError),
+  #[error(transparent)]
+  SerdeYamlErrorWithPath(#[from] SerdeYamlWithPathError),
+  #[error(transparent)]
+  SerdeYamlError(#[from] SerdeYamlError),
 }
+
+impl_error_from!(
+  ::serde_yaml::Error,
+  DataServiceError::SerdeYamlError,
+  ::objs::SerdeYamlError
+);
+impl_error_from!(::std::io::Error, DataServiceError::Io, ::objs::IoError);
 
 type Result<T> = std::result::Result<T, DataServiceError>;
 
@@ -104,10 +114,8 @@ impl DataService for LocalDataService {
   fn save_alias(&self, alias: &Alias) -> Result<PathBuf> {
     let contents = serde_yaml::to_string(alias)?;
     let filename = self.aliases_dir().join(alias.config_filename());
-    fs::write(filename.clone(), contents).map_err(|err| DataServiceError::IoFile {
-      source: err,
-      path: alias.config_filename().clone(),
-    })?;
+    fs::write(filename.clone(), contents)
+      .map_err(|err| IoFileWriteError::new(err, alias.config_filename().clone()))?;
     Ok(filename)
   }
 
@@ -134,30 +142,25 @@ impl DataService for LocalDataService {
         dirname: "".to_string(),
       });
     }
-    let content =
-      fs::read_to_string(models_file.clone()).map_err(|err| DataServiceError::IoFile {
-        source: err,
-        path: models_file.display().to_string(),
-      })?;
-    let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content).map_err(|err| {
-      DataServiceError::SerdeYamlSerialize {
-        source: err,
-        filename: models_file.display().to_string(),
-      }
-    })?;
+    let content = fs::read_to_string(models_file.clone())
+      .map_err(|err| IoFileReadError::new(err, models_file.display().to_string()))?;
+    let models = serde_yaml::from_str::<Vec<RemoteModel>>(&content)
+      .map_err(|err| SerdeYamlWithPathError::new(err, models_file.display().to_string()))?;
     Ok(models)
   }
 
   fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
     let mut alias = self
       .find_alias(alias)
-      .ok_or_else(|| DataServiceError::AliasNotExists(alias.to_string()))?;
-    if self.find_alias(new_alias).is_some() {
-      return Err(DataServiceError::AliasExists(new_alias.to_string()));
+      .ok_or_else(|| AliasNotExistsError(alias.to_string()))?;
+    match self.find_alias(new_alias) {
+      Some(_) => Err(AliasExistsError(new_alias.to_string()))?,
+      None => {
+        alias.alias = new_alias.to_string();
+        self.save_alias(&alias)?;
+        Ok(())
+      }
     }
-    alias.alias = new_alias.to_string();
-    self.save_alias(&alias)?;
-    Ok(())
   }
 
   fn delete_alias(&self, alias: &str) -> Result<()> {
@@ -165,8 +168,8 @@ impl DataService for LocalDataService {
       ._list_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
-      .ok_or_else(|| DataServiceError::AliasNotExists(alias.to_string()))?;
-    fs::remove_file(filename)?;
+      .ok_or_else(|| AliasNotExistsError(alias.to_string()))?;
+    fs::remove_file(&filename).map_err(|err| IoFileDeleteError::new(err, filename))?;
     Ok(())
   }
 
@@ -175,14 +178,8 @@ impl DataService for LocalDataService {
       ._list_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
-      .ok_or_else(|| DataServiceError::AliasNotExists(alias.to_string()))?;
-    let result = PathBuf::from(filename);
-    assert!(
-      result.exists(),
-      "file should exists at path {}",
-      result.display()
-    );
-    Ok(result)
+      .ok_or_else(|| AliasNotExistsError(alias.to_string()))?;
+    Ok(PathBuf::from(filename))
   }
 
   fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>> {
@@ -195,28 +192,22 @@ impl DataService for LocalDataService {
       });
     }
 
-    fs::read(&path).map_err(|err| DataServiceError::IoFile {
-      source: err,
-      path: path.display().to_string(),
-    })
+    let result =
+      fs::read(&path).map_err(|err| IoFileReadError::new(err, path.display().to_string()))?;
+    Ok(result)
   }
 
   fn write_file(&self, folder: Option<String>, filename: &str, contents: &[u8]) -> Result<()> {
     let path = self.construct_path(folder, filename);
-
     if let Some(parent) = path.parent() {
       if !parent.exists() {
-        fs::create_dir_all(parent).map_err(|err| DataServiceError::DirCreate {
-          source: err,
-          path: parent.display().to_string(),
-        })?;
+        fs::create_dir_all(parent)
+          .map_err(|err| IoDirCreateError::new(err, parent.display().to_string()))?;
       }
     }
-
-    fs::write(&path, contents).map_err(|err| DataServiceError::IoFile {
-      source: err,
-      path: path.display().to_string(),
-    })
+    fs::write(&path, contents)
+      .map_err(|err| IoFileWriteError::new(err, path.display().to_string()))?;
+    Ok(())
   }
 }
 
@@ -224,10 +215,7 @@ impl LocalDataService {
   fn _list_aliases(&self) -> Result<HashMap<String, Alias>> {
     {
       let aliases_dir = self.aliases_dir();
-      let yaml_files = fs::read_dir(&aliases_dir).map_err(|err| DataServiceError::IoFile {
-        source: err,
-        path: aliases_dir.display().to_string(),
-      })?;
+      let yaml_files = fs::read_dir(&aliases_dir)?;
       let yaml_files = yaml_files
         .filter_map(|entry| {
           let file_path = entry.ok()?.path();
@@ -250,16 +238,13 @@ impl LocalDataService {
             Ok(content) => match serde_yaml::from_str::<Alias>(&content) {
               Ok(alias) => Some((filename, alias)),
               Err(err) => {
-                let err = DataServiceError::SerdeYamlDeserialize(err);
-                tracing::warn!(filename, ?err, "Error deserializing model alias YAML file",);
+                let err = SerdeYamlWithPathError::new(err, filename);
+                tracing::warn!(?err, "Error deserializing model alias YAML file",);
                 None
               }
             },
             Err(err) => {
-              let err = DataServiceError::IoFile {
-                source: err,
-                path: filename,
-              };
+              let err = IoFileReadError::new(err, filename);
               tracing::warn!(?err, "Error reading model alias YAML file");
               None
             }
@@ -275,12 +260,57 @@ impl LocalDataService {
 mod test {
   use crate::{
     test_utils::{test_data_service, TestDataService},
-    DataService,
+    AliasExistsError, AliasNotExistsError, DataService, DataServiceError,
   };
   use anyhow_trace::anyhow_trace;
-  use objs::{Alias, RemoteModel};
+  use fluent::{FluentBundle, FluentResource};
+  use objs::{
+    test_utils::{assert_error_message, fluent_bundle},
+    Alias, RemoteModel,
+  };
   use rstest::rstest;
   use std::fs;
+
+  #[rstest]
+  #[case(DataServiceError::DirMissing { dirname: "test".to_string() }, 
+  "directory '\u{2068}test\u{2069}' not found in $BODHI_HOME.\n".to_string() + 
+    r#"$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
+  #[case(DataServiceError::FileMissing { filename: "test.txt".to_string(), dirname: "test".to_string() }, 
+  "file '\u{2068}test.txt\u{2069}' not found in $BODHI_HOME/\u{2068}test\u{2069}.\n".to_string() + 
+    r#"$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
+  #[case(DataServiceError::BodhiHome,
+  "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
+  #[case(DataServiceError::HfHome,
+  "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
+  fn test_data_service_error(
+    fluent_bundle: FluentBundle<FluentResource>,
+    #[case] error: DataServiceError,
+    #[case] message: String,
+  ) {
+    assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
+  }
+
+  #[rstest]
+  fn test_alias_not_exists_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let error = AliasNotExistsError("testalias".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "alias '\u{2068}testalias\u{2069}' not found in $BODHI_HOME/aliases.",
+    );
+  }
+
+  #[rstest]
+  fn test_alias_exists_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let error = AliasExistsError("testalias".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "alias '\u{2068}testalias\u{2069}' already exists in $BODHI_HOME/aliases.",
+    );
+  }
 
   #[rstest]
   fn test_local_data_service_models_file_missing(
@@ -289,9 +319,10 @@ mod test {
     fs::remove_file(service.bodhi_home().join("models.yaml"))?;
     let result = service.find_remote_model("testalias:instruct");
     assert!(result.is_err());
-    let expected = r#"file 'models.yaml' not found in $BODHI_HOME/.
-$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#;
-    assert_eq!(expected, result.unwrap_err().to_string());
+    assert!(matches!(
+      result.unwrap_err(),
+      DataServiceError::FileMissing { filename, dirname } if filename == "models.yaml" && dirname == ""
+    ));
     Ok(())
   }
 
@@ -315,12 +346,10 @@ chat_template: llama3
     )?;
     let result = service.find_remote_model("testalias:instruct");
     assert!(result.is_err());
-    let models_file = models_file.display().to_string();
-    let expected = format!(
-      r#"serde_yaml_serialize: .[0]: missing field `alias` at line 3 column 3
-filename='{models_file}'"#
-    );
-    assert_eq!(expected, result.unwrap_err().to_string());
+    assert!(matches!(
+      result.unwrap_err(),
+      DataServiceError::SerdeYamlErrorWithPath(_)
+    ));
     Ok(())
   }
 
@@ -397,9 +426,8 @@ filename='{models_file}'"#
   ) -> anyhow::Result<()> {
     let result = service.delete_alias("notexists--instruct.yaml");
     assert!(result.is_err());
-    assert_eq!(
-      "alias 'notexists--instruct.yaml' not found in $BODHI_HOME/aliases",
-      result.unwrap_err().to_string()
+    assert!(
+      matches!(result.unwrap_err(), DataServiceError::AliasNotExists(alias) if alias == AliasNotExistsError("notexists--instruct.yaml".to_string()))
     );
     Ok(())
   }
@@ -483,11 +511,10 @@ filename='{models_file}'"#
 
     let result = service.read_file(folder, filename);
     assert!(result.is_err());
-    assert_eq!(
-      "file 'non_existent_file.txt' not found in $BODHI_HOME/non_existent_folder.\n$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME.",
-      result.unwrap_err().to_string()
-    );
-
+    assert!(matches!(
+      result.unwrap_err(),
+      DataServiceError::FileMissing { filename, dirname } if filename == "non_existent_file.txt" && dirname == "non_existent_folder"
+    ));
     Ok(())
   }
 }
