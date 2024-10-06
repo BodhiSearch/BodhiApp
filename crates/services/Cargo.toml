@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 objs = { workspace = true }
+errmeta_derive = { workspace = true }
 
 anyhow = { workspace = true, optional = true }
 axum = { workspace = true }
@@ -59,6 +60,7 @@ axum-extra = { workspace = true }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 base64 = { workspace = true }
+fluent = { workspace = true }
 maplit = { workspace = true }
 mockall = { workspace = true }
 mockito = { workspace = true }

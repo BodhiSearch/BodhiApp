@@ -1,5 +1,5 @@
 use crate::{DataServiceError, EnvWrapper};
-use objs::EnvType;
+use objs::{EnvType, IoDirCreateError, IoFileWriteError};
 use std::{
   collections::HashMap,
   fs::{self, File},
@@ -292,25 +292,19 @@ impl DefaultEnvService {
 
   pub fn create_home_dirs(&self, bodhi_home: &Path) -> Result<(), DataServiceError> {
     if !bodhi_home.exists() {
-      fs::create_dir_all(bodhi_home).map_err(|err| DataServiceError::DirCreate {
-        source: err,
-        path: bodhi_home.display().to_string(),
-      })?;
+      fs::create_dir_all(bodhi_home)
+        .map_err(|err| IoDirCreateError::new(err, bodhi_home.display().to_string()))?;
     }
 
     let alias_home = bodhi_home.join(ALIASES_DIR);
     if !alias_home.exists() {
-      fs::create_dir_all(&alias_home).map_err(|err| DataServiceError::DirCreate {
-        source: err,
-        path: alias_home.display().to_string(),
-      })?;
+      fs::create_dir_all(&alias_home)
+        .map_err(|err| IoDirCreateError::new(err, alias_home.display().to_string()))?;
     }
     let db_path = bodhi_home.join(PROD_DB);
     if !db_path.exists() {
-      File::create_new(&db_path).map_err(|err| DataServiceError::DirCreate {
-        source: err,
-        path: db_path.display().to_string(),
-      })?;
+      File::create_new(&db_path)
+        .map_err(|err| IoFileWriteError::new(err, db_path.display().to_string()))?;
     }
     let models_file = bodhi_home.join(MODELS_YAML);
     if !models_file.exists() {
@@ -332,10 +326,8 @@ impl DefaultEnvService {
     };
     let hf_cache = hf_home.join("hub");
     if !hf_cache.exists() {
-      fs::create_dir_all(&hf_cache).map_err(|err| DataServiceError::DirCreate {
-        source: err,
-        path: hf_cache.display().to_string(),
-      })?;
+      fs::create_dir_all(&hf_cache)
+        .map_err(|err| IoDirCreateError::new(err, hf_cache.display().to_string()))?;
     }
     self.hf_home = Some(hf_home.clone());
     Ok(hf_cache)
@@ -346,10 +338,8 @@ impl DefaultEnvService {
       Ok(logs_dir) => PathBuf::from(logs_dir),
       Err(_) => self.bodhi_home().join(LOGS_DIR),
     };
-    fs::create_dir_all(&logs_dir).map_err(|err| DataServiceError::DirCreate {
-      source: err,
-      path: logs_dir.display().to_string(),
-    })?;
+    fs::create_dir_all(&logs_dir)
+      .map_err(|err| IoDirCreateError::new(err, logs_dir.display().to_string()))?;
     self.logs_dir = Some(logs_dir.clone());
     Ok(logs_dir)
   }
@@ -358,8 +348,8 @@ impl DefaultEnvService {
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::EnvWrapperStub, DefaultEnvService, EnvService, MockEnvWrapper, BODHI_HOME,
-    BODHI_HOST, BODHI_PORT, HF_HOME,
+    test_utils::EnvWrapperStub, DataServiceError, DefaultEnvService, EnvService, MockEnvWrapper,
+    BODHI_HOME, BODHI_HOST, BODHI_PORT, HF_HOME,
   };
   use mockall::predicate::eq;
   use objs::{
@@ -396,7 +386,7 @@ mod test {
 
     let result = DefaultEnvService::test_new(Arc::new(mock)).setup_bodhi_home();
     assert!(result.is_err());
-    assert_eq!("bodhi_home_err: failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.", result.unwrap_err().to_string());
+    assert!(matches!(result.unwrap_err(), DataServiceError::BodhiHome));
     Ok(())
   }
 
@@ -441,7 +431,7 @@ mod test {
     mock.expect_home_dir().returning(move || None);
     let result = DefaultEnvService::test_new(Arc::new(mock)).setup_hf_cache();
     assert!(result.is_err());
-    assert_eq!("hf_home_err: failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.", result.unwrap_err().to_string());
+    assert!(matches!(result.unwrap_err(), DataServiceError::HfHome));
     Ok(())
   }
 
