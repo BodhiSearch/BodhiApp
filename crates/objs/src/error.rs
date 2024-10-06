@@ -15,7 +15,7 @@ pub enum ObjError {
   IoWithPathError(#[from] IoWithPathError),
 
   #[error(transparent)]
-  JsonSerializationError(#[from] JsonSerializationError),
+  SerdeJsonError(#[from] SerdeJsonError),
 
   #[error(transparent)]
   Builder(#[from] BuilderError),
@@ -37,20 +37,22 @@ pub enum ErrorType {
   Validation,
   #[strum(serialize = "bad_request_error")]
   BadRequest,
+  #[strum(serialize = "invalid_app_state")]
+  InvalidAppState,
   #[strum(serialize = "internal_server_error")]
   InternalServer,
   #[strum(serialize = "authentication_error")]
   Authentication,
 }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("bad_request_error")]
 #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
 pub struct BadRequestError {
   reason: String,
 }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("internal_server_error")]
 #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
 pub struct InternalServerError {
@@ -75,11 +77,73 @@ pub struct IoWithPathError {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("json_serialization_error")]
+#[error("io_dir_create_error")]
 #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
-pub struct JsonSerializationError {
+pub struct IoDirCreateError {
+  #[source]
+  source: std::io::Error,
+  path: String,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("io_file_read_failed")]
+#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+pub struct IoFileReadError {
+  #[source]
+  source: std::io::Error,
+  path: String,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("io_file_write_failed")]
+#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+pub struct IoFileWriteError {
+  #[source]
+  source: std::io::Error,
+  path: String,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("io_file_delete_failed")]
+#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+pub struct IoFileDeleteError {
+  #[source]
+  source: std::io::Error,
+  path: String,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("serde_json_error")]
+#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+pub struct SerdeJsonError {
   #[from]
   source: serde_json::Error,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("serde_json_with_path_error")]
+#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+pub struct SerdeJsonWithPathError {
+  #[source]
+  source: serde_json::Error,
+  path: String,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("serde_yaml_error")]
+#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+pub struct SerdeYamlError {
+  #[from]
+  source: serde_yaml::Error,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("serde_yaml_with_path_error")]
+#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+pub struct SerdeYamlWithPathError {
+  #[source]
+  source: serde_yaml::Error,
+  path: String,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -187,14 +251,98 @@ mod tests {
   }
 
   #[rstest]
-  fn test_json_serialization_error(fluent_bundle: FluentBundle<FluentResource>) {
+  fn test_io_dir_create_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let io_error = std::io::Error::new(std::io::ErrorKind::AlreadyExists, "already exists");
+    let error = IoDirCreateError::new(io_error, "model-home".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "io_error: failed to create directory $BODHI_HOME/\u{2068}model-home\u{2069}, error: \u{2068}already exists\u{2069}",
+    );
+  }
+
+  #[rstest]
+  fn test_io_file_read_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+    let error = IoFileWriteError::new(io_error, "test.txt".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "io_error: failed to update file $BODHI_HOME/\u{2068}test.txt\u{2069}, error: \u{2068}file not found\u{2069}",
+    );
+  }
+
+  #[rstest]
+  fn test_io_file_write_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+    let error = IoFileReadError::new(io_error, "test.txt".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "io_error: failed to read file $BODHI_HOME/\u{2068}test.txt\u{2069}, error: \u{2068}file not found\u{2069}",
+    );
+  }
+
+  #[rstest]
+  fn test_io_file_delete_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "file not found");
+    let error = IoFileDeleteError::new(io_error, "test.txt".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "io_error: failed to delete file $BODHI_HOME/\u{2068}test.txt\u{2069}, error: \u{2068}file not found\u{2069}",
+    );
+  }
+
+  #[rstest]
+  fn test_serde_json_error(fluent_bundle: FluentBundle<FluentResource>) {
     let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
-    let error = JsonSerializationError::new(json_error);
+    let error = SerdeJsonError::new(json_error);
     assert_error_message(
       &fluent_bundle,
       &error.code(),
       error.args(),
       "error serializing/deserializing json: \u{2068}expected value at line 1 column 1\u{2069}",
+    );
+  }
+
+  #[rstest]
+  fn test_serde_json_with_path_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let json_error = serde_json::from_str::<serde_json::Value>("invalid json").unwrap_err();
+    let error = SerdeJsonWithPathError::new(json_error, "test.json".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "error serializing/deserializing json: path: \u{2068}test.json\u{2069}, \u{2068}expected value at line 1 column 1\u{2069}",
+    );
+  }
+
+  #[rstest]
+  fn test_yaml_serialization_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let yaml_error = serde_yaml::from_str::<serde_yaml::Value>("invalid: foo\n\tbar").unwrap_err();
+    let error = SerdeYamlError::new(yaml_error);
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "error serializing/deserializing yaml: \u{2068}found a tab character that violates indentation at line 2 column 1, while scanning a plain scalar at line 1 column 10\u{2069}",
+    );
+  }
+
+  #[rstest]
+  fn test_yaml_serialization_with_path_error(fluent_bundle: FluentBundle<FluentResource>) {
+    let yaml_error = serde_yaml::from_str::<serde_yaml::Value>("invalid: foo\n\tbar").unwrap_err();
+    let error = SerdeYamlWithPathError::new(yaml_error, "test.yaml".to_string());
+    assert_error_message(
+      &fluent_bundle,
+      &error.code(),
+      error.args(),
+      "error serializing/deserializing yaml: path: \u{2068}test.yaml\u{2069}, \u{2068}found a tab character that violates indentation at line 2 column 1, while scanning a plain scalar at line 1 column 10\u{2069}",
     );
   }
 

@@ -1,5 +1,4 @@
 use crate::{ObjError, Repo};
-use derive_new::new;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
@@ -10,7 +9,7 @@ pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
   Regex::new(r"^(?P<hf_cache>.+)/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<snapshot>[^/]+)/(?P<filename>.*)$").unwrap()
 });
 
-#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, new)]
+#[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, derive_new::new)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(derive_builder::Builder))]
 pub struct HubFile {
   pub hf_cache: PathBuf,
