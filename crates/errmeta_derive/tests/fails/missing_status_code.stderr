@@ -1,0 +1,7 @@
+error: status not specified for variant 'BadRequest'
+ --> tests/fails/missing_status_code.rs:1:10
+  |
+1 | #[derive(errmeta_derive::ErrorMeta)]
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the derive macro `errmeta_derive::ErrorMeta` (in Nightly builds, run with -Z macro-backtrace for more info)

@@ -1,0 +1,30 @@
+[package]
+name = "errmeta_derive"
+version = "0.0.16-dev"
+edition = "2021"
+description = "A proc macro for adding metadata on errors"
+license = "MIT"
+authors = ["Amir Nagri <amir.nagri@gmail.com>"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["full"] }
+convert_case = { workspace = true }
+
+[dev-dependencies]
+http = "1.1.0"
+pretty_assertions = "1.4.1"
+rstest = "0.23.0"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = { version = "1.0.128" }
+strum = { version = "0.26.3", features = ["derive"] }
+thiserror = "1.0.64"
+trybuild = "1.0.99"
+
+[[test]]
+name = "trybuild"
+path = "tests/trybuild.rs"

@@ -1,0 +1,7 @@
+error[E0277]: the trait bound `InvalidErrorType: AsRef<str>` is not satisfied
+ --> tests/fails/invalid_error_type.rs:3:17
+  |
+3 | #[derive(Debug, errmeta_derive::ErrorMeta)]
+  |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `AsRef<str>` is not implemented for `InvalidErrorType`
+  |
+  = note: this error originates in the derive macro `errmeta_derive::ErrorMeta` (in Nightly builds, run with -Z macro-backtrace for more info)
