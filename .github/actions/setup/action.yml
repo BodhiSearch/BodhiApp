@@ -64,19 +64,9 @@ runs:
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-pnpm-store-
-    - name: Install dependencies
+    - name: Setup Vercel AI
       shell: bash
-      working-directory: vercel-ai
-      run: pnpm recursive install --frozen-lockfile
-    - name: Install dependencies
+      run: make ci.setup-vercel-ai
+    - name: Install app pnpm dependencies
       shell: bash
-      working-directory: vercel-ai/packages/core
-      run: pnpm install --frozen-lockfile
-    - name: Build Vercel AI
-      shell: bash
-      working-directory: vercel-ai
-      run: pnpm run build --filter=ai...
-    - name: Install dependencies
-      shell: bash
-      working-directory: crates/app
-      run: pnpm install
+      run: make ci.app-pnpm
