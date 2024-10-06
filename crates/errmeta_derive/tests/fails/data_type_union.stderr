@@ -1,0 +1,7 @@
+error: proc-macro derive panicked
+ --> tests/fails/data_type_union.rs:1:10
+  |
+1 | #[derive(errmeta_derive::ErrorMeta)]
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = help: message: ErrorMeta can only be derived for enums and structs
