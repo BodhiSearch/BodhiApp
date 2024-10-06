@@ -11,6 +11,7 @@ clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
 derive-new = { workspace = true }
+fluent = { workspace = true, optional = true }
 hf-hub = { workspace = true }
 once_cell = { workspace = true }
 regex = { workspace = true }
@@ -34,4 +35,4 @@ tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 
 [features]
-test-utils = ["rstest", "tempfile", "dircpy"]
+test-utils = ["rstest", "tempfile", "dircpy", "fluent"]

@@ -178,54 +178,10 @@ impl From<String> for BuilderError {
 
 #[cfg(test)]
 mod tests {
-  use crate::Repo;
-
   use super::*;
+  use crate::{test_utils::{assert_error_message, fluent_bundle}, Repo};
   use fluent::{FluentBundle, FluentResource};
-  use rstest::{fixture, rstest};
-  use std::{collections::HashMap, fs};
-
-  #[fixture]
-  fn fluent_bundle() -> FluentBundle<FluentResource> {
-    let ftl_string =
-      fs::read_to_string("tests/messages/test.ftl").expect("Failed to read FTL file");
-    let res = FluentResource::try_new(ftl_string).expect("Failed to parse FTL resource");
-    let mut bundle = FluentBundle::default();
-    bundle
-      .add_resource(res)
-      .expect("Failed to add FTL resource to bundle");
-    bundle
-  }
-
-  // Test helper function
-  fn assert_error_message(
-    bundle: &FluentBundle<FluentResource>,
-    code: &str,
-    args: HashMap<String, String>,
-    expected: &str,
-  ) {
-    let message = bundle
-      .get_message(code)
-      .expect(&format!("Message not found, code: {code}"))
-      .value()
-      .expect(&format!("Message has no value, code: {code}"));
-    let mut errors = Vec::new();
-    let args = args
-      .into_iter()
-      .map(|(k, v)| (k.to_string(), v.to_string()))
-      .collect();
-    let formatted = bundle.format_pattern(message, Some(&args), &mut errors);
-    assert_eq!(
-      errors
-        .first()
-        .map(|err| err.to_string())
-        .unwrap_or_default(),
-      "",
-      "formatting errors occurred"
-    );
-    assert!(errors.is_empty(), "formatting errors occurred");
-    assert_eq!(formatted.to_string(), expected);
-  }
+  use rstest::rstest;
 
   #[rstest]
   fn test_validation_error(fluent_bundle: FluentBundle<FluentResource>) {

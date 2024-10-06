@@ -1,11 +1,13 @@
 #![allow(unused_imports)]
 
 mod bodhi;
+mod error;
 mod hf;
 mod io;
 mod objs;
 
 pub use bodhi::*;
+pub use error::*;
 pub use hf::*;
 pub use io::*;
 pub use objs::*;
