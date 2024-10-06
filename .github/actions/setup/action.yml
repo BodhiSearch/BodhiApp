@@ -78,5 +78,5 @@ runs:
       run: pnpm run build --filter=ai...
     - name: Install dependencies
       shell: bash
-      working-directory: app
+      working-directory: crates/app
       run: pnpm install
