@@ -1,5 +1,5 @@
 use hf_hub::Cache;
-use objs::{impl_error_from, ErrorType, HubFile, IoError, ObjError, Repo};
+use objs::{impl_error_from, AppError, ErrorType, HubFile, IoError, ObjError, Repo};
 use std::{
   collections::HashSet,
   fmt::{Debug, Formatter},
@@ -12,7 +12,7 @@ pub static SNAPSHOT_MAIN: &str = "main";
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("hub_file_missing")]
-#[error_meta(error_type = ErrorType::NotFound, status = 404)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
 pub struct HubFileNotFoundError {
   filename: String,
   repo: String,
@@ -21,7 +21,7 @@ pub struct HubFileNotFoundError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("hub_api_error")]
-#[error_meta(error_type = ErrorType::InternalServer, status = self.error_status, code = self.error_code())]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = self.error_status, code = self.error_code())]
 pub struct HubApiError {
   error: String,
   error_status: u16,
@@ -54,6 +54,7 @@ pub enum HubApiErrorKind {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum HubServiceError {
   #[error(transparent)]
   HubApiError(#[from] HubApiError),
@@ -400,8 +401,10 @@ mod test {
   };
   use anyhow_trace::anyhow_trace;
   use fluent::{FluentBundle, FluentResource};
-  use objs::test_utils::{assert_error_message, fluent_bundle};
-  use objs::{test_utils::temp_hf_home, HubFile, Repo};
+  use objs::{
+    test_utils::{assert_error_message, fluent_bundle, temp_hf_home},
+    AppError, HubFile, Repo,
+  };
   use rstest::rstest;
   use std::{collections::HashSet, fs};
   use strfmt::strfmt;

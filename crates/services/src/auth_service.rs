@@ -5,10 +5,11 @@ use oauth2::{
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
   TokenResponse,
 };
-use objs::{impl_error_from, ErrorType, ReqwestError};
+use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum AuthServiceError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
@@ -257,12 +258,15 @@ mod tests {
   use jsonwebtoken::Algorithm;
   use mockito::{Matcher, Server};
   use oauth2::{ClientId, ClientSecret, RefreshToken};
-  use objs::test_utils::{assert_error_message, fluent_bundle};
+  use objs::{
+    test_utils::{assert_error_message, fluent_bundle},
+    AppError,
+  };
   use rstest::rstest;
   use serde_json::json;
 
   #[rstest]
-  fn test_auth_service_api_error(fluent_bundle: FluentBundle<FluentResource>) {
+  fn test_error_messages(fluent_bundle: FluentBundle<FluentResource>) {
     let error = AuthServiceError::AuthServiceApiError("test".to_string());
     assert_error_message(
       &fluent_bundle,

@@ -1,11 +1,12 @@
 use crate::db::SqlxError;
 use cookie::SameSite;
-use objs::impl_error_from;
+use objs::{impl_error_from, AppError};
 use sqlx::{Pool, Sqlite};
 use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum SessionServiceError {
   #[error(transparent)]
   SqlxError(#[from] SqlxError),

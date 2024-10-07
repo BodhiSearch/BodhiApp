@@ -1,30 +1,31 @@
 use crate::{ALIASES_DIR, MODELS_YAML};
 use derive_new::new;
 use objs::{
-  impl_error_from, Alias, ErrorType, IoDirCreateError, IoError, IoFileDeleteError, IoFileReadError,
-  IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
+  impl_error_from, Alias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
+  IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
 };
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf};
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error("alias_exists")]
-#[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
 pub struct AliasExistsError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error("alias_not_exists")]
-#[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
 pub struct AliasNotExistsError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("data_file_missing")]
-#[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
 pub struct DataFileNotFoundError {
   filename: String,
   dirname: String,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
   #[error("dir_missing")]
   #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
@@ -191,7 +192,9 @@ impl DataService for LocalDataService {
   fn find_file(&self, folder: Option<String>, filename: &str) -> Result<PathBuf> {
     let path = self.construct_path(&folder, filename);
     if !path.exists() {
-      return Err(DataFileNotFoundError::new(filename.to_string(), folder.unwrap_or_default()).into());
+      return Err(
+        DataFileNotFoundError::new(filename.to_string(), folder.unwrap_or_default()).into(),
+      );
     }
     Ok(path)
   }
@@ -272,50 +275,30 @@ mod test {
   use fluent::{FluentBundle, FluentResource};
   use objs::{
     test_utils::{assert_error_message, fluent_bundle},
-    Alias, RemoteModel,
+    Alias, AppError, RemoteModel,
   };
   use rstest::rstest;
   use std::fs;
 
   #[rstest]
-  #[case::dir_missing(DataServiceError::DirMissing { dirname: "test".to_string() }, 
+  #[case::dir_missing(&DataServiceError::DirMissing { dirname: "test".to_string() },
   r#"directory 'test' not found in $BODHI_HOME.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
-  #[case::not_found(DataServiceError::DataFileNotFound(DataFileNotFoundError::new("test.txt".to_string(), "test".to_string())),
+  #[case::not_found(&DataServiceError::DataFileNotFound(DataFileNotFoundError::new("test.txt".to_string(), "test".to_string())),
   r#"file 'test.txt' not found in $BODHI_HOME/test.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
-  #[case(DataServiceError::BodhiHome,
+  #[case(&DataServiceError::BodhiHome,
   "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
-  #[case(DataServiceError::HfHome,
+  #[case(&DataServiceError::HfHome,
   "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
+  #[case(&AliasNotExistsError("testalias".to_string()), "alias 'testalias' not found in $BODHI_HOME/aliases.")]
+  #[case(&AliasExistsError("testalias".to_string()), "alias 'testalias' already exists in $BODHI_HOME/aliases.")]
   fn test_data_service_error(
     fluent_bundle: FluentBundle<FluentResource>,
-    #[case] error: DataServiceError,
+    #[case] error: &dyn AppError,
     #[case] message: String,
   ) {
     assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
-  }
-
-  #[rstest]
-  fn test_alias_not_exists_error(fluent_bundle: FluentBundle<FluentResource>) {
-    let error = AliasNotExistsError("testalias".to_string());
-    assert_error_message(
-      &fluent_bundle,
-      &error.code(),
-      error.args(),
-      "alias 'testalias' not found in $BODHI_HOME/aliases.",
-    );
-  }
-
-  #[rstest]
-  fn test_alias_exists_error(fluent_bundle: FluentBundle<FluentResource>) {
-    let error = AliasExistsError("testalias".to_string());
-    assert_error_message(
-      &fluent_bundle,
-      &error.code(),
-      error.args(),
-      "alias 'testalias' already exists in $BODHI_HOME/aliases.",
-    );
   }
 
   #[rstest]
