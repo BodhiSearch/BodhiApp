@@ -1,5 +1,5 @@
 use crate::StdoutWriter;
-use objs::{impl_error_from, IoError, SerdeYamlError};
+use objs::{impl_error_from, AppError, IoError, SerdeYamlError};
 use services::{AliasNotExistsError, AppService, DataServiceError};
 use std::{env, sync::Arc};
 
@@ -12,6 +12,7 @@ pub enum ManageAliasCommand {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum AliasCommandError {
   #[error(transparent)]
   AliasNotExists(#[from] AliasNotExistsError),

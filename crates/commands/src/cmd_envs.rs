@@ -1,3 +1,4 @@
+use objs::AppError;
 use prettytable::{format::FormatBuilder, row, Cell, Row, Table};
 use services::AppService;
 use std::sync::Arc;
@@ -8,6 +9,7 @@ pub struct EnvCommand {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum EnvCommandError {}
 
 type Result<T> = std::result::Result<T, EnvCommandError>;
