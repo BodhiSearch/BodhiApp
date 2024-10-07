@@ -1,6 +1,7 @@
 use crate::{asref_impl, CacheService, MokaCacheService};
 use derive_new::new;
 use keyring::Entry;
+use objs::{impl_error_from, ErrorType, SerdeJsonError};
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
@@ -13,21 +14,20 @@ pub const APP_AUTHZ_FALSE: &str = "false";
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 pub const KEY_APP_REG_INFO: &str = "app_reg_info";
 
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum SecretServiceError {
-  #[error("{0}")]
+  #[error("keyring_error")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
   KeyringError(String),
-  #[error("Secret not found")]
-  SecretNotFound,
-  #[error("{0}")]
-  SerdeJsonError(String),
+  #[error(transparent)]
+  SerdeJsonError(#[from] SerdeJsonError),
 }
 
-impl From<serde_json::Error> for SecretServiceError {
-  fn from(err: serde_json::Error) -> Self {
-    SecretServiceError::SerdeJsonError(format!("{:?}", err))
-  }
-}
+impl_error_from!(
+  ::serde_json::Error,
+  SecretServiceError::SerdeJsonError,
+  ::objs::SerdeJsonError
+);
 
 impl From<keyring::Error> for SecretServiceError {
   fn from(err: keyring::Error) -> Self {
@@ -112,7 +112,7 @@ impl SecretService for KeyringSecretService {
         Ok(Some(value))
       }
       Err(keyring::Error::NoEntry) => Ok(None),
-      Err(e) => Err(SecretServiceError::KeyringError(e.to_string())),
+      Err(e) => Err(e.into()),
     }
   }
 
@@ -127,9 +127,20 @@ impl SecretService for KeyringSecretService {
 mod tests {
   use crate::{
     get_secret, set_secret, CacheService, KeyringSecretService, MokaCacheService, SecretService,
+    SecretServiceError,
   };
+  use fluent::{FluentBundle, FluentResource};
+  use objs::test_utils::{assert_error_message, fluent_bundle};
+  use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use std::sync::Arc;
+
+  #[rstest]
+  fn test_secret_service_error_messages(fluent_bundle: FluentBundle<FluentResource>) {
+    let error = SecretServiceError::KeyringError("secret not found".to_string());
+    let message = "secret not found";
+    assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
+  }
 
   #[test]
   fn test_secret_service_with_cache() {

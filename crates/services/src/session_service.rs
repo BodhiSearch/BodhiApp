@@ -1,13 +1,21 @@
+use crate::db::SqlxError;
 use cookie::SameSite;
+use objs::impl_error_from;
 use sqlx::{Pool, Sqlite};
 use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum SessionServiceError {
   #[error(transparent)]
-  SqlxError(#[from] sqlx::Error),
+  SqlxError(#[from] SqlxError),
 }
+
+impl_error_from!(
+  ::sqlx::Error,
+  SessionServiceError::SqlxError,
+  crate::db::SqlxError
+);
 
 type Result<T> = std::result::Result<T, SessionServiceError>;
 
