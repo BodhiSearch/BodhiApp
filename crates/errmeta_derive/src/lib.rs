@@ -4,7 +4,7 @@ use proc_macro2::TokenStream as TokenStream2;
 use quote::{format_ident, quote};
 use syn::{
   parse::{Parse, ParseStream},
-  parse_macro_input, Attribute, Data, DeriveInput, Fields, Ident, LitStr, Token, Variant,
+  parse_macro_input, Attribute, Data, DeriveInput, Fields, Ident, Token, Variant,
 };
 
 #[proc_macro_derive(ErrorMeta, attributes(error_meta))]
@@ -46,7 +46,7 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
         .unwrap_or_else(|| panic!("status attribute missing for struct {}", name));
       let code = error_meta
         .code
-        .map(|lit_str| quote! { #lit_str.to_string() })
+        .map(|code| quote! { <_ as AsRef<str>>::as_ref(&#code).to_string() })
         .unwrap_or_else(|| {
           let default_code = name.to_string().to_case(Case::Snake);
           quote! { #default_code.to_string() }
@@ -128,7 +128,7 @@ fn generate_pattern(fields: &Fields) -> TokenStream2 {
 struct ErrorMeta {
   error_type: Option<syn::Expr>,
   status: Option<syn::Expr>,
-  code: Option<LitStr>,
+  code: Option<syn::Expr>,
   args_delegate: Option<bool>,
 }
 
@@ -153,8 +153,8 @@ impl Parse for ErrorMeta {
           status = Some(expr);
         }
         "code" => {
-          let lit_str: LitStr = input.parse()?;
-          code = Some(lit_str);
+          let expr: syn::Expr = input.parse()?;
+          code = Some(expr);
         }
         "args_delegate" => {
           let lit_bool: syn::LitBool = input.parse()?;
@@ -280,7 +280,7 @@ fn generate_code_arm(
   if let Some(error_meta) = error_meta {
     if let Some(code) = &error_meta.code {
       return quote! {
-        #name::#variant_name #pattern => #code.to_string(),
+        #name::#variant_name #pattern => <_ as AsRef<str>>::as_ref(&#code).to_string(),
       };
     }
   }
@@ -414,10 +414,10 @@ mod tests {
     parse_error_meta, ErrorMeta,
   };
   use pretty_assertions::assert_eq;
-  use proc_macro2::{Span, TokenStream as TokenStream2};
+  use proc_macro2::TokenStream as TokenStream2;
   use quote::quote;
   use rstest::rstest;
-  use syn::{parse_quote, Attribute, DeriveInput, Ident, LitStr, Variant};
+  use syn::{parse_quote, Attribute, DeriveInput, Ident, Variant};
 
   #[rstest]
   #[case(
@@ -446,7 +446,7 @@ mod tests {
     Some(ErrorMeta {
       error_type: Some(parse_quote!("TestError")),
       status: Some(parse_quote!(400)),
-      code: Some(LitStr::new("test_code", Span::call_site())),
+      code: Some(parse_quote!("test_code")),
       args_delegate: None,
     }),
   )]
@@ -460,20 +460,20 @@ mod tests {
     }),
   )]
   #[case::as_expr(
-    parse_quote!(#[error_meta(error_type = internal_server_error(), status = status_500())]),
+    parse_quote!(#[error_meta(error_type = internal_server_error(), status = status_500(), code = generate_code())]),
     Some(ErrorMeta {
       error_type: Some(parse_quote!(internal_server_error())),
       status: Some(parse_quote!(status_500())),
-      code: None,
+      code: Some(parse_quote!(generate_code())),
       args_delegate: None,
     }),
   )]
   #[case::as_enum(
-    parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError)]),
+    parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = ErrorCode::InternalServerError)]),
     Some(ErrorMeta {
       error_type: Some(parse_quote!(ErrorType::InternalServerError)),
       status: Some(parse_quote!(StatusCode::InternalServerError)),
-      code: None,
+      code: Some(parse_quote!(ErrorCode::InternalServerError)),
       args_delegate: None,
     }),
   )]
@@ -505,22 +505,22 @@ mod tests {
   })]
   #[case("code", quote! {
     match self {
-      TestEnum::Variant1 => "error_1".to_string(),
-      TestEnum::Variant2 => "test_enum-variant_2".to_string(),
+      TestEnum::Variant1 => <_ as AsRef<str>>::as_ref(&error_code()).to_string(),
+      TestEnum::Variant2 => <_ as AsRef<str>>::as_ref(&"error_2").to_string(),
       TestEnum::Variant3(err) => err.code(),
-      TestEnum::Variant4 => "internal_server_error".to_string(),
+      TestEnum::Variant4 => <_ as AsRef<str>>::as_ref(&ErrorCode::InternalServerError).to_string(),
     }
   })]
   fn test_generate_attribute_method_for_enum(#[case] method: &str, #[case] expected: TokenStream2) {
     let name: Ident = parse_quote!(TestEnum);
     let variants: syn::punctuated::Punctuated<syn::Variant, syn::token::Comma> = parse_quote! {
-      #[error_meta(error_type = internal_server_error(), status = status_400(), code = "error_1")]
+      #[error_meta(error_type = internal_server_error(), status = status_400(), code = error_code())]
       Variant1,
-      #[error_meta(error_type = "Error2", status = 500)]
+      #[error_meta(error_type = "Error2", status = 500, code = "error_2")]
       Variant2,
       #[error(transparent)]
       Variant3(std::io::Error),
-      #[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = "internal_server_error")]
+      #[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = ErrorCode::InternalServerError)]
       Variant4
     };
 
@@ -603,7 +603,7 @@ mod tests {
 
           pub fn code(&self) -> String {
             match self {
-              TestEnum::Variant1{..} => "error_1".to_string(),
+              TestEnum::Variant1{..} => <_ as AsRef<str>>::as_ref(&"error_1").to_string(),
               TestEnum::Variant2(..) => "test_enum-variant_2".to_string(),
             }
           }
@@ -660,7 +660,7 @@ mod tests {
         }
 
         pub fn code(&self) -> String {
-          "invalid_input".to_string()
+          <_ as AsRef<str>>::as_ref(&"invalid_input").to_string()
         }
 
         pub fn args(&self) -> ::std::collections::HashMap<String, String> {
@@ -778,7 +778,7 @@ mod tests {
       #[derive(ErrorMeta)]
       enum TestEnum {
         #[error(transparent)]
-        #[error_meta(error_type = "Error1", status = 400, code = "error_1")]
+        #[error_meta(error_type = "Error1", status = 400, code = self.generate_code())]
         Variant1(std::io::Error)
       }
     };
@@ -807,7 +807,7 @@ mod tests {
 
         pub fn code(&self) -> String {
           match self {
-            TestEnum::Variant1(..) => "error_1".to_string(),
+            TestEnum::Variant1(..) => <_ as AsRef<str>>::as_ref(&self.generate_code()).to_string(),
           }
         }
 

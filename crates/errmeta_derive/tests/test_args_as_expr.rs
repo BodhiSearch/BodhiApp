@@ -38,17 +38,27 @@ enum TestErrorExpr {
   #[error_meta(status = 400, error_type = get_error_type())]
   ExprErrorType,
 
+  #[error("error with expression error code")]
+  #[error_meta(status = 400, error_type = "expr_error_code_error", code = self.get_code())]
+  ExprErrorCode,
+
   #[error("error with enum error type")]
   #[error_meta(status = 500, error_type = ErrorType::InternalServerError)]
   EnumErrorType,
 
   #[error("error with both expressions")]
-  #[error_meta(status = get_status(), error_type = get_error_type())]
-  BothExpr,
+  #[error_meta(status = get_status(), error_type = get_error_type(), code = self.get_code())]
+  AllExpr,
 
   #[error("error with enum and expression")]
   #[error_meta(status = get_status(), error_type = ErrorType::BadRequest)]
   EnumAndExpr,
+}
+
+impl TestErrorExpr {
+  fn get_code(&self) -> String {
+    self.to_string()
+  }
 }
 
 impl From<&TestErrorExpr> for ErrorMetas {
@@ -89,10 +99,17 @@ impl From<&TestErrorExpr> for ErrorMetas {
     error_type: "internal_server_error".to_string(),
     args: HashMap::new(),
 })]
-#[case::both_expr(TestErrorExpr::BothExpr, ErrorMetas {
+#[case::expr_error_code(TestErrorExpr::ExprErrorCode, ErrorMetas {
+    message: "error with expression error code".to_string(),
+    status: 400,
+    code: "error with expression error code".to_string(),
+    error_type: "expr_error_code_error".to_string(),
+    args: HashMap::new(),
+})]
+#[case::both_expr(TestErrorExpr::AllExpr, ErrorMetas {
     message: "error with both expressions".to_string(),
     status: 500,
-    code: "test_error_expr-both_expr".to_string(),
+    code: "error with both expressions".to_string(),
     error_type: "dynamic_error_type".to_string(),
     args: HashMap::new(),
 })]
