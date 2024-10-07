@@ -13,6 +13,7 @@ async-trait = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
+fluent = { workspace = true }
 prettytable-rs = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }

@@ -1,5 +1,5 @@
 use crate::objs_ext::IntoRow;
-use objs::RemoteModel;
+use objs::{AppError, RemoteModel};
 use prettytable::{
   format::{self},
   row, Table,
@@ -15,6 +15,7 @@ pub enum ListCommand {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum ListCommandError {
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),

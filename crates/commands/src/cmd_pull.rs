@@ -1,4 +1,4 @@
-use objs::{Alias, ErrorType, HubFile, ObjError, Repo, TOKENIZER_CONFIG_JSON};
+use objs::{Alias, AppError, ErrorType, HubFile, ObjError, Repo, TOKENIZER_CONFIG_JSON};
 use services::{AliasExistsError, AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
 
@@ -16,10 +16,11 @@ pub enum PullCommand {
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("remote_model_not_found")]
-#[error_meta(error_type = ErrorType::NotFound, status = 404)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
 pub struct RemoteModelNotFoundError(pub String);
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum PullCommandError {
   #[error(transparent)]
   HubServiceError(#[from] HubServiceError),
@@ -130,11 +131,12 @@ impl PullCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{PullCommand, PullCommandError};
+  use crate::{PullCommand, PullCommandError, RemoteModelNotFoundError};
+  use fluent::{FluentBundle, FluentResource};
   use mockall::predicate::eq;
   use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplate, GptContextParams, HubFile, OAIRequestParams,
-    RemoteModel, Repo,
+    test_utils::{assert_error_message, fluent_bundle, SNAPSHOT},
+    Alias, AppError, ChatTemplate, GptContextParams, HubFile, OAIRequestParams, RemoteModel, Repo,
   };
   use rstest::rstest;
   use services::{
@@ -142,6 +144,16 @@ mod test {
     AliasExistsError, AppService, ALIASES_DIR,
   };
   use std::{fs, sync::Arc};
+
+  #[rstest]
+  #[case(&RemoteModelNotFoundError("testalias".to_string()), "model not found: 'testalias'")]
+  fn test_error_messages(
+    fluent_bundle: FluentBundle<FluentResource>,
+    #[case] error: &dyn AppError,
+    #[case] expected: &str,
+  ) {
+    assert_error_message(&fluent_bundle, &error.code(), error.args(), expected);
+  }
 
   #[rstest]
   fn test_pull_by_alias_fails_if_alias_exists() -> anyhow::Result<()> {
