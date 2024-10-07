@@ -1,9 +1,11 @@
 use crate::db::{
-  AccessRequest, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus,
+  AccessRequest, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus, SqlxError,
+  SqlxMigrateError,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
-use sqlx::{migrate::MigrateError, query_as, SqlitePool};
+use objs::{impl_error_from, ErrorType};
+use sqlx::{query_as, SqlitePool};
 use std::{str::FromStr, sync::Arc};
 use uuid::Uuid;
 
@@ -25,25 +27,23 @@ impl TimeService for DefaultTimeService {
   }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum DbError {
-  #[error("sqlx_query: {source}\ntable: {table}")]
-  Sqlx {
-    #[source]
-    source: sqlx::Error,
-    table: String,
-  },
-  #[error("sqlx_connect: {source}\nurl: {url}")]
-  SqlxConnect {
-    #[source]
-    source: sqlx::Error,
-    url: String,
-  },
-  #[error("sqlx_migrate: {0}")]
-  Migrate(#[from] MigrateError),
-  #[error("strum_parse: {0}")]
+  #[error(transparent)]
+  SqlxError(#[from] SqlxError),
+  #[error(transparent)]
+  SqlxMigrateError(#[from] SqlxMigrateError),
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::BadRequest, status = 400, code="db_error-strum_parse", args_delegate = false)]
   StrumParse(#[from] strum::ParseError),
 }
+
+impl_error_from!(::sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
+impl_error_from!(
+  ::sqlx::migrate::MigrateError,
+  DbError::SqlxMigrateError,
+  crate::db::SqlxMigrateError
+);
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
@@ -121,11 +121,7 @@ impl DbService for SqliteDbService {
     .bind(&conversation.title)
     .bind(conversation.updated_at.timestamp())
     .execute(&self.pool)
-    .await
-    .map_err(|source| DbError::Sqlx {
-      source,
-      table: CONVERSATIONS.to_string(),
-    })?;
+    .await?;
     for message in &mut conversation.messages {
       if message.conversation_id.is_empty() {
         message.conversation_id.clone_from(&conversation.id);
@@ -164,11 +160,7 @@ impl DbService for SqliteDbService {
     .bind(&message.content)
     .bind(message.created_at.timestamp())
     .execute(&self.pool)
-    .await
-    .map_err(|source| DbError::Sqlx {
-      source,
-      table: MESSAGES.to_string(),
-    })?;
+    .await?;
     Ok(())
   }
 
@@ -177,11 +169,7 @@ impl DbService for SqliteDbService {
       "SELECT id, title, created_at, updated_at FROM conversations ORDER BY created_at DESC",
     )
     .fetch_all(&self.pool)
-    .await
-    .map_err(|source| DbError::Sqlx {
-      source,
-      table: CONVERSATIONS.to_string(),
-    })?;
+    .await?;
 
     let mut result = Vec::new();
     for (id, title, created_at, updated_at) in conversations {
@@ -203,18 +191,14 @@ impl DbService for SqliteDbService {
     )
     .bind(id)
     .fetch_all(&self.pool)
-    .await.map_err(|source| DbError::Sqlx { source, table: MESSAGES.to_string() })?;
+    .await?;
 
     let row = query_as::<_, (String, String, i64, i64)>(
       "SELECT id, title, created_at, updated_at FROM conversations WHERE id = ?",
     )
     .bind(id)
     .fetch_one(&self.pool)
-    .await
-    .map_err(|source| DbError::Sqlx {
-      source,
-      table: CONVERSATIONS.to_string(),
-    })?;
+    .await?;
 
     let conversation = Conversation {
       id: row.0.clone(),
@@ -231,37 +215,21 @@ impl DbService for SqliteDbService {
     sqlx::query("DELETE FROM messages where conversation_id=?")
       .bind(id)
       .execute(&self.pool)
-      .await
-      .map_err(|source| DbError::Sqlx {
-        source,
-        table: MESSAGES.to_string(),
-      })?;
+      .await?;
     sqlx::query("DELETE FROM conversations where id=?")
       .bind(id)
       .execute(&self.pool)
-      .await
-      .map_err(|source| DbError::Sqlx {
-        source,
-        table: CONVERSATIONS.to_string(),
-      })?;
+      .await?;
     Ok(())
   }
 
   async fn delete_all_conversations(&self) -> Result<(), DbError> {
     sqlx::query("DELETE FROM messages")
       .execute(&self.pool)
-      .await
-      .map_err(|source| DbError::Sqlx {
-        source,
-        table: MESSAGES.to_string(),
-      })?;
+      .await?;
     sqlx::query("DELETE FROM conversations")
       .execute(&self.pool)
-      .await
-      .map_err(|source| DbError::Sqlx {
-        source,
-        table: CONVERSATIONS.to_string(),
-      })?;
+      .await?;
     Ok(())
   }
 
@@ -277,11 +245,7 @@ impl DbService for SqliteDbService {
     .bind(request.created_at.timestamp())
     .bind(request.updated_at.timestamp())
     .execute(&self.pool)
-    .await
-    .map_err(|source| DbError::Sqlx {
-      source,
-      table: "download_requests".to_string(),
-    })?;
+    .await?;
     Ok(())
   }
 
@@ -291,11 +255,7 @@ impl DbService for SqliteDbService {
     )
     .bind(id)
     .fetch_optional(&self.pool)
-    .await
-    .map_err(|source| DbError::Sqlx {
-      source,
-      table: "download_requests".to_string(),
-    })?;
+    .await?;
 
     match result {
       Some((id, repo, filename, status, created_at, updated_at)) => {
@@ -323,11 +283,7 @@ impl DbService for SqliteDbService {
       .bind(request.updated_at.timestamp())
       .bind(&request.id)
       .execute(&self.pool)
-      .await
-      .map_err(|source| DbError::Sqlx {
-        source,
-        table: "download_requests".to_string(),
-      })?;
+      .await?;
     Ok(())
   }
 
@@ -337,11 +293,7 @@ impl DbService for SqliteDbService {
     )
     .bind(DownloadStatus::Pending.to_string())
     .fetch_all(&self.pool)
-    .await
-    .map_err(|source| DbError::Sqlx {
-      source,
-      table: "download_requests".to_string(),
-    })?;
+    .await?;
 
     let results = results
       .into_iter()
@@ -372,11 +324,7 @@ impl DbService for SqliteDbService {
     .bind(now)
     .bind(RequestStatus::Pending.to_string())
     .fetch_one(&self.pool)
-    .await
-    .map_err(|e| DbError::Sqlx {
-      source: e,
-      table: "access_requests".to_string(),
-    })?;
+    .await?;
 
     Ok(AccessRequest {
       id: result.0,
@@ -396,11 +344,7 @@ impl DbService for SqliteDbService {
     .bind(&email)
     .bind(RequestStatus::Pending.to_string())
     .fetch_optional(&self.pool)
-    .await
-    .map_err(|e| DbError::Sqlx {
-      source: e,
-      table: "access_requests".to_string(),
-    })?;
+    .await?;
 
     let result = result
       .map(|(id, email, created_at, updated_at, status)| {
@@ -438,11 +382,7 @@ impl DbService for SqliteDbService {
     .bind(per_page as i64)
     .bind(offset as i64)
     .fetch_all(&self.pool)
-    .await
-    .map_err(|e| DbError::Sqlx {
-      source: e,
-      table: "access_requests".to_string(),
-    })?;
+    .await?;
 
     let results = results
       .into_iter()
@@ -475,11 +415,7 @@ impl DbService for SqliteDbService {
     .bind(now)
     .bind(id)
     .execute(&self.pool)
-    .await
-    .map_err(|e| DbError::Sqlx {
-      source: e,
-      table: "access_requests".to_string(),
-    })?;
+    .await?;
     Ok(())
   }
 }
@@ -488,8 +424,8 @@ impl DbService for SqliteDbService {
 mod test {
   use crate::{
     db::{
-      AccessRequest, ConversationBuilder, DbService, DownloadRequest, DownloadStatus,
-      MessageBuilder, RequestStatus,
+      AccessRequest, ConversationBuilder, DbError, DbService, DownloadRequest, DownloadStatus,
+      MessageBuilder, RequestStatus, SqlxError,
     },
     test_utils::{test_db_service, TestDbService},
   };
@@ -627,10 +563,10 @@ mod test {
       .get_conversation_with_messages(&conversation.id)
       .await;
     assert!(convos.is_err());
-    assert_eq!(
-      "sqlx_query: no rows returned by a query that expected to return at least one row\ntable: conversations",
-      convos.unwrap_err().to_string()
-    );
+    assert!(matches!(
+      convos.unwrap_err(),
+      DbError::SqlxError(SqlxError { source }) if source.to_string() == sqlx::Error::RowNotFound.to_string()
+    ));
     Ok(())
   }
 
@@ -767,7 +703,7 @@ mod test {
     let pending_request = service.insert_pending_request(email.clone()).await?;
     let expected_request = AccessRequest {
       id: pending_request.id, // We don't know this in advance
-      email: email,
+      email,
       created_at: now,
       updated_at: now,
       status: RequestStatus::Pending,

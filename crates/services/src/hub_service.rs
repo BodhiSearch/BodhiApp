@@ -392,12 +392,11 @@ impl HfHubService {
 
 #[cfg(test)]
 mod test {
-  use super::SNAPSHOT_MAIN;
   use crate::{
     test_utils::{
       build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
     },
-    HubApiError, HubApiErrorKind, HubFileNotFoundError, HubService, HubServiceError,
+    HubApiError, HubApiErrorKind, HubFileNotFoundError, HubService, HubServiceError, SNAPSHOT_MAIN,
   };
   use anyhow_trace::anyhow_trace;
   use fluent::{FluentBundle, FluentResource};
