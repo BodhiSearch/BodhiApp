@@ -20,8 +20,9 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
   match &input.data {
     Data::Enum(data) => {
       let variants = &data.variants;
+      let error_meta_header = parse_enum_meta_header(&input.attrs);
       if variants.is_empty() {
-        return empty_enum(name);
+        return empty_enum(name, &error_meta_header.trait_to_impl);
       }
 
       let error_type_body = generate_attribute_method(name, variants, "error_type");
@@ -29,10 +30,17 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
       let code_body = generate_attribute_method(name, variants, "code");
       let args_method = generate_args_method(name, &input.data);
 
-      generate_impl(name, error_type_body, status_body, code_body, args_method)
+      generate_impl(
+        name,
+        error_type_body,
+        status_body,
+        code_body,
+        args_method,
+        &error_meta_header.trait_to_impl,
+      )
     }
     Data::Struct(_) => {
-      let error_meta = parse_error_meta(&input.attrs)
+      let error_meta = parse_struct_meta_attrs(&input.attrs)
         .unwrap_or_else(|| panic!("error_meta attribute missing for struct {}", name));
       let error_type = error_meta
         .error_type
@@ -52,7 +60,14 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
           quote! { #default_code.to_string() }
         });
       let args_method = generate_args_method(name, &input.data);
-      generate_impl(name, error_type, status, code, args_method)
+      generate_impl(
+        name,
+        error_type,
+        status,
+        code,
+        args_method,
+        &error_meta.trait_to_impl,
+      )
     }
     Data::Union(_) => panic!("ErrorMeta can only be derived for enums and structs"),
   }
@@ -64,42 +79,61 @@ fn generate_impl(
   status_body: TokenStream2,
   code_body: TokenStream2,
   args_method: TokenStream2,
+  trait_to_impl: &Option<syn::Path>,
 ) -> TokenStream2 {
-  quote! {
-    impl #name {
-      pub fn error_type(&self) -> String {
-        #error_type_body
-      }
+  let visibility = if trait_to_impl.is_some() {
+    quote! {}
+  } else {
+    quote! { pub }
+  };
 
-      pub fn status(&self) -> i32 {
-        #status_body
-      }
+  let impl_block = quote! {
+    #visibility fn error_type(&self) -> String {
+      #error_type_body
+    }
 
-      pub fn status_u16(&self) -> u16 {
-        match self.status() {
-          status if status <= u16::MAX as i32 => status as u16,
-          _ => panic!("Status code is out of range for u16"),
-        }
-      }
+    #visibility fn status(&self) -> i32 {
+      #status_body
+    }
 
-      pub fn code(&self) -> String {
-        #code_body
-      }
-
-      pub fn args(&self) -> ::std::collections::HashMap<String, String> {
-        #args_method
+    #visibility fn status_u16(&self) -> u16 {
+      match self.status() {
+        status if status <= u16::MAX as i32 => status as u16,
+        _ => panic!("Status code is out of range for u16"),
       }
     }
+
+    #visibility fn code(&self) -> String {
+      #code_body
+    }
+
+    #visibility fn args(&self) -> ::std::collections::HashMap<String, String> {
+      #args_method
+    }
+  };
+
+  match trait_to_impl {
+    Some(trait_path) => quote! {
+      impl #trait_path for #name {
+        #impl_block
+      }
+    },
+    None => quote! {
+      impl #name {
+        #impl_block
+      }
+    },
   }
 }
 
-fn empty_enum(name: &Ident) -> TokenStream2 {
+fn empty_enum(name: &Ident, trait_to_impl: &Option<syn::Path>) -> TokenStream2 {
   generate_impl(
     name,
     quote! { unreachable!("Empty enum has no variants") },
     quote! { unreachable!("Empty enum has no variants") },
     quote! { unreachable!("Empty enum has no variants") },
     quote! { unreachable!("Empty enum has no variants") },
+    trait_to_impl,
   )
 }
 
@@ -125,14 +159,59 @@ fn generate_pattern(fields: &Fields) -> TokenStream2 {
 }
 
 #[derive(Debug, PartialEq)]
-struct ErrorMeta {
+struct EnumMetaHeader {
+  trait_to_impl: Option<syn::Path>,
+}
+
+impl Parse for EnumMetaHeader {
+  fn parse(input: ParseStream) -> syn::Result<Self> {
+    let mut trait_to_impl = None;
+
+    while !input.is_empty() {
+      let ident: Ident = input.parse()?;
+      input.parse::<Token![=]>()?;
+
+      if ident == "trait_to_impl" {
+        trait_to_impl = Some(input.parse()?);
+      } else {
+        return Err(syn::Error::new(
+          ident.span(),
+          format!("unknown attribute '{}'", ident),
+        ));
+      }
+
+      if input.peek(Token![,]) {
+        input.parse::<Token![,]>()?;
+      }
+    }
+
+    Ok(EnumMetaHeader { trait_to_impl })
+  }
+}
+
+fn parse_enum_meta_header(attrs: &[Attribute]) -> EnumMetaHeader {
+  for attr in attrs {
+    if attr.path().is_ident("error_meta") {
+      let attrs = attr
+        .parse_args::<EnumMetaHeader>()
+        .unwrap_or_else(|e| panic!("error parsing error meta attrs for enum: {}", e));
+      return attrs;
+    }
+  }
+  EnumMetaHeader {
+    trait_to_impl: None,
+  }
+}
+
+#[derive(Debug, PartialEq)]
+struct EnumMetaAttrs {
   error_type: Option<syn::Expr>,
   status: Option<syn::Expr>,
   code: Option<syn::Expr>,
   args_delegate: Option<bool>,
 }
 
-impl Parse for ErrorMeta {
+impl Parse for EnumMetaAttrs {
   fn parse(input: ParseStream) -> syn::Result<Self> {
     let mut error_type = None;
     let mut status = None;
@@ -145,22 +224,24 @@ impl Parse for ErrorMeta {
 
       match ident.to_string().as_str() {
         "error_type" => {
-          let expr: syn::Expr = input.parse()?;
-          error_type = Some(expr);
+          error_type = Some(input.parse()?);
         }
         "status" => {
-          let expr: syn::Expr = input.parse()?;
-          status = Some(expr);
+          status = Some(input.parse()?);
         }
         "code" => {
-          let expr: syn::Expr = input.parse()?;
-          code = Some(expr);
+          code = Some(input.parse()?);
         }
         "args_delegate" => {
           let lit_bool: syn::LitBool = input.parse()?;
           args_delegate = Some(lit_bool.value);
         }
-        _ => return Err(syn::Error::new(ident.span(), "Unknown attribute")),
+        attr => {
+          return Err(syn::Error::new(
+            ident.span(),
+            format!("unknown attribute '{}'", attr),
+          ))
+        }
       }
 
       if input.peek(Token![,]) {
@@ -168,7 +249,7 @@ impl Parse for ErrorMeta {
       }
     }
 
-    Ok(ErrorMeta {
+    Ok(EnumMetaAttrs {
       error_type,
       status,
       code,
@@ -177,14 +258,82 @@ impl Parse for ErrorMeta {
   }
 }
 
-fn parse_error_meta(attrs: &[Attribute]) -> Option<ErrorMeta> {
-  attrs.iter().find_map(|attr| {
+fn parse_enum_meta_attrs(attrs: &[Attribute]) -> Option<EnumMetaAttrs> {
+  for attr in attrs {
     if attr.path().is_ident("error_meta") {
-      attr.parse_args::<ErrorMeta>().ok()
-    } else {
-      None
+      let attrs = attr
+        .parse_args::<EnumMetaAttrs>()
+        .unwrap_or_else(|e| panic!("error parsing error meta attrs for enum: {}", e));
+      return Some(attrs);
     }
-  })
+  }
+  None
+}
+
+#[derive(Debug, PartialEq)]
+struct StructMetaAttrs {
+  error_type: Option<syn::Expr>,
+  status: Option<syn::Expr>,
+  code: Option<syn::Expr>,
+  trait_to_impl: Option<syn::Path>,
+}
+
+impl Parse for StructMetaAttrs {
+  fn parse(input: ParseStream) -> syn::Result<Self> {
+    let mut error_type = None;
+    let mut status = None;
+    let mut code = None;
+    let mut trait_to_impl = None;
+
+    while !input.is_empty() {
+      let ident: Ident = input.parse()?;
+      input.parse::<Token![=]>()?;
+
+      match ident.to_string().as_str() {
+        "error_type" => {
+          error_type = Some(input.parse()?);
+        }
+        "status" => {
+          status = Some(input.parse()?);
+        }
+        "code" => {
+          code = Some(input.parse()?);
+        }
+        "trait_to_impl" => {
+          trait_to_impl = Some(input.parse()?);
+        }
+        attr => {
+          return Err(syn::Error::new(
+            ident.span(),
+            format!("unknown attribute '{}'", attr),
+          ))
+        }
+      }
+
+      if input.peek(Token![,]) {
+        input.parse::<Token![,]>()?;
+      }
+    }
+
+    Ok(StructMetaAttrs {
+      error_type,
+      status,
+      code,
+      trait_to_impl,
+    })
+  }
+}
+
+fn parse_struct_meta_attrs(attrs: &[Attribute]) -> Option<StructMetaAttrs> {
+  for attr in attrs {
+    if attr.path().is_ident("error_meta") {
+      let attrs = attr
+        .parse_args::<StructMetaAttrs>()
+        .unwrap_or_else(|e| panic!("error parsing error meta attrs for struct: {}", e));
+      return Some(attrs);
+    }
+  }
+  None
 }
 
 fn generate_attribute_method(
@@ -197,7 +346,7 @@ fn generate_attribute_method(
     let pattern = generate_pattern(&variant.fields);
 
     let is_transparent = is_transparent(variant);
-    let error_meta = parse_error_meta(&variant.attrs);
+    let error_meta = parse_enum_meta_attrs(&variant.attrs);
 
     match method {
       "error_type" => {
@@ -221,7 +370,7 @@ fn generate_error_type_arm(
   variant_name: &Ident,
   pattern: &TokenStream2,
   is_transparent: bool,
-  error_meta: &Option<ErrorMeta>,
+  error_meta: &Option<EnumMetaAttrs>,
 ) -> TokenStream2 {
   if let Some(error_meta) = error_meta {
     if let Some(error_type) = &error_meta.error_type {
@@ -248,7 +397,7 @@ fn generate_status_arm(
   variant_name: &Ident,
   pattern: &TokenStream2,
   is_transparent: bool,
-  error_meta: &Option<ErrorMeta>,
+  error_meta: &Option<EnumMetaAttrs>,
 ) -> TokenStream2 {
   if let Some(error_meta) = error_meta {
     if let Some(status) = &error_meta.status {
@@ -275,7 +424,7 @@ fn generate_code_arm(
   variant_name: &Ident,
   pattern: &TokenStream2,
   is_transparent: bool,
-  error_meta: &Option<ErrorMeta>,
+  error_meta: &Option<EnumMetaAttrs>,
 ) -> TokenStream2 {
   if let Some(error_meta) = error_meta {
     if let Some(code) = &error_meta.code {
@@ -308,7 +457,7 @@ fn generate_args_method(name: &Ident, data: &Data) -> TokenStream2 {
         let variant_name = &variant.ident;
         let fields = &variant.fields;
         let is_transparent = is_transparent(variant);
-        let error_meta = parse_error_meta(&variant.attrs);
+        let error_meta = parse_enum_meta_attrs(&variant.attrs);
 
         if is_transparent {
           let args_delegate = error_meta.and_then(|meta| meta.args_delegate).unwrap_or(true);
@@ -409,15 +558,15 @@ fn generate_args_method(name: &Ident, data: &Data) -> TokenStream2 {
 
 #[cfg(test)]
 mod tests {
+  use super::*;
   use crate::{
     generate_args_method, generate_attribute_method, impl_error_metadata, is_transparent,
-    parse_error_meta, ErrorMeta,
+    parse_enum_meta_attrs, EnumMetaAttrs,
   };
   use pretty_assertions::assert_eq;
-  use proc_macro2::TokenStream as TokenStream2;
   use quote::quote;
   use rstest::rstest;
-  use syn::{parse_quote, Attribute, DeriveInput, Ident, Variant};
+  use syn::parse_quote;
 
   #[rstest]
   #[case(
@@ -443,7 +592,7 @@ mod tests {
   #[rstest]
   #[case::all_provided(
     parse_quote!(#[error_meta(error_type = "TestError", status = 400, code = "test_code")]),
-    Some(ErrorMeta {
+    Some(EnumMetaAttrs {
       error_type: Some(parse_quote!("TestError")),
       status: Some(parse_quote!(400)),
       code: Some(parse_quote!("test_code")),
@@ -452,7 +601,7 @@ mod tests {
   )]
   #[case::code_fallback(
     parse_quote!(#[error_meta(error_type = "PartialError", status = 500)]),
-    Some(ErrorMeta {
+    Some(EnumMetaAttrs {
       error_type: Some(parse_quote!("PartialError")),
       status: Some(parse_quote!(500)),
       code: None,
@@ -461,7 +610,7 @@ mod tests {
   )]
   #[case::as_expr(
     parse_quote!(#[error_meta(error_type = internal_server_error(), status = status_500(), code = generate_code())]),
-    Some(ErrorMeta {
+    Some(EnumMetaAttrs {
       error_type: Some(parse_quote!(internal_server_error())),
       status: Some(parse_quote!(status_500())),
       code: Some(parse_quote!(generate_code())),
@@ -470,7 +619,7 @@ mod tests {
   )]
   #[case::as_enum(
     parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = ErrorCode::InternalServerError)]),
-    Some(ErrorMeta {
+    Some(EnumMetaAttrs {
       error_type: Some(parse_quote!(ErrorType::InternalServerError)),
       status: Some(parse_quote!(StatusCode::InternalServerError)),
       code: Some(parse_quote!(ErrorCode::InternalServerError)),
@@ -479,10 +628,59 @@ mod tests {
   )]
   #[case::incorrect_attr(
     parse_quote!(#[other_attribute]),
-    <Option<ErrorMeta>>::None
+    <Option<EnumMetaAttrs>>::None
   )]
-  fn test_parse_error_meta(#[case] attr: Attribute, #[case] expected: Option<ErrorMeta>) {
-    let error_meta = parse_error_meta(&[attr]);
+  fn test_parse_error_meta(#[case] attr: Attribute, #[case] expected: Option<EnumMetaAttrs>) {
+    let error_meta = parse_enum_meta_attrs(&[attr]);
+    assert_eq!(error_meta, expected);
+  }
+
+  #[rstest]
+  #[case::all_provided(
+    parse_quote!(#[error_meta(error_type = "TestError", status = 400, code = "test_code", trait_to_impl = ErrorMetadata)]),
+    Some(StructMetaAttrs {
+      error_type: Some(parse_quote!("TestError")),
+      status: Some(parse_quote!(400)),
+      code: Some(parse_quote!("test_code")),
+      trait_to_impl: Some(parse_quote!(ErrorMetadata)),
+    }),
+  )]
+  #[case::minimal(
+    parse_quote!(#[error_meta(error_type = "PartialError", status = 500)]),
+    Some(StructMetaAttrs {
+      error_type: Some(parse_quote!("PartialError")),
+      status: Some(parse_quote!(500)),
+      code: None,
+      trait_to_impl: None,
+    }),
+  )]
+  #[case::as_expr(
+    parse_quote!(#[error_meta(error_type = internal_server_error(), status = status_500(), code = generate_code(), trait_to_impl = ErrorMetadata)]),
+    Some(StructMetaAttrs {
+      error_type: Some(parse_quote!(internal_server_error())),
+      status: Some(parse_quote!(status_500())),
+      code: Some(parse_quote!(generate_code())),
+      trait_to_impl: Some(parse_quote!(ErrorMetadata)),
+    }),
+  )]
+  #[case::as_enum(
+    parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = ErrorCode::InternalServerError, trait_to_impl = ErrorMetadata)]),
+    Some(StructMetaAttrs {
+      error_type: Some(parse_quote!(ErrorType::InternalServerError)),
+      status: Some(parse_quote!(StatusCode::InternalServerError)),
+      code: Some(parse_quote!(ErrorCode::InternalServerError)),
+      trait_to_impl: Some(parse_quote!(ErrorMetadata)),
+    }),
+  )]
+  #[case::incorrect_attr(
+    parse_quote!(#[other_attribute]),
+    <Option<StructMetaAttrs>>::None
+  )]
+  fn test_parse_struct_error_meta(
+    #[case] attr: Attribute,
+    #[case] expected: Option<StructMetaAttrs>,
+  ) {
+    let error_meta = parse_struct_meta_attrs(&[attr]);
     assert_eq!(error_meta, expected);
   }
 
@@ -529,7 +727,7 @@ mod tests {
   }
 
   #[rstest]
-  fn test_generate_args_method_named_fields() {
+  fn test_generate_args_method_enum_variants() {
     let input: DeriveInput = parse_quote! {
       enum TestEnum {
         Variant1 { field1: String, field2: i32 },
@@ -563,6 +761,55 @@ mod tests {
     );
   }
 
+  fn enum_method_impls(visibility: TokenStream2) -> TokenStream2 {
+    quote! {
+      #visibility fn error_type(&self) -> String {
+        match self {
+          TestEnum::Variant1{..} => <_ as AsRef<str>>::as_ref(&"Error1").to_string(),
+          TestEnum::Variant2(..) => <_ as AsRef<str>>::as_ref(&"Error2").to_string(),
+        }
+      }
+
+      #visibility fn status(&self) -> i32 {
+        match self {
+          TestEnum::Variant1{..} => <_ as Into<i32>>::into(400),
+          TestEnum::Variant2(..) => <_ as Into<i32>>::into(500),
+        }
+      }
+
+      #visibility fn status_u16(&self) -> u16 {
+        match self.status() {
+          status if status <= u16::MAX as i32 => status as u16,
+          _ => panic!("Status code is out of range for u16"),
+        }
+      }
+
+      #visibility fn code(&self) -> String {
+        match self {
+          TestEnum::Variant1{..} => <_ as AsRef<str>>::as_ref(&"error_1").to_string(),
+          TestEnum::Variant2(..) => "test_enum-variant_2".to_string(),
+        }
+      }
+
+      #visibility fn args(&self) -> ::std::collections::HashMap<String, String> {
+        match self {
+          TestEnum::Variant1 { field1, field2 } => {
+            let mut map = ::std::collections::HashMap::new();
+            map.insert(stringify!(field1).to_string(), format!("{}", field1));
+            map.insert(stringify!(field2).to_string(), format!("{}", field2));
+            map
+          },
+          TestEnum::Variant2(var_0, var_1) => {
+            let mut map = ::std::collections::HashMap::new();
+            map.insert(stringify!(var_0).to_string(), format!("{}", var_0));
+            map.insert(stringify!(var_1).to_string(), format!("{}", var_1));
+            map
+          },
+        }
+      }
+    }
+  }
+
   #[rstest]
   fn test_impl_error_metadata() {
     let input: DeriveInput = parse_quote! {
@@ -576,54 +823,12 @@ mod tests {
     };
 
     let output = impl_error_metadata(&input);
+    let method_impls = enum_method_impls(quote! { pub });
     assert_eq!(
       output.to_string(),
       quote! {
         impl TestEnum {
-          pub fn error_type(&self) -> String {
-            match self {
-              TestEnum::Variant1{..} => <_ as AsRef<str>>::as_ref(&"Error1").to_string(),
-              TestEnum::Variant2(..) => <_ as AsRef<str>>::as_ref(&"Error2").to_string(),
-            }
-          }
-
-          pub fn status(&self) -> i32 {
-            match self {
-              TestEnum::Variant1{..} => <_ as Into<i32>>::into(400),
-              TestEnum::Variant2(..) => <_ as Into<i32>>::into(500),
-            }
-          }
-
-          pub fn status_u16(&self) -> u16 {
-            match self.status() {
-              status if status <= u16::MAX as i32 => status as u16,
-              _ => panic!("Status code is out of range for u16"),
-            }
-          }
-
-          pub fn code(&self) -> String {
-            match self {
-              TestEnum::Variant1{..} => <_ as AsRef<str>>::as_ref(&"error_1").to_string(),
-              TestEnum::Variant2(..) => "test_enum-variant_2".to_string(),
-            }
-          }
-
-          pub fn args(&self) -> ::std::collections::HashMap<String, String> {
-            match self {
-              TestEnum::Variant1 { field1, field2 } => {
-                let mut map = ::std::collections::HashMap::new();
-                map.insert(stringify!(field1).to_string(), format!("{}", field1));
-                map.insert(stringify!(field2).to_string(), format!("{}", field2));
-                map
-              },
-              TestEnum::Variant2(var_0, var_1) => {
-                let mut map = ::std::collections::HashMap::new();
-                map.insert(stringify!(var_0).to_string(), format!("{}", var_0));
-                map.insert(stringify!(var_1).to_string(), format!("{}", var_1));
-                map
-              },
-            }
-          }
+          #method_impls
         }
       }
       .to_string()
@@ -631,6 +836,60 @@ mod tests {
   }
 
   #[test]
+  fn test_impl_error_metadata_for_enum_with_trait() {
+    let input: DeriveInput = parse_quote! {
+      #[derive(ErrorMeta)]
+      #[error_meta(trait_to_impl = ErrorMetadata)]
+      enum TestEnum {
+        #[error_meta(error_type = "Error1", status = 400, code = "error_1")]
+        Variant1 { field1: String, field2: i32 },
+        #[error_meta(error_type = "Error2", status = 500)]
+        Variant2(String, i32),
+      }
+    };
+
+    let output = impl_error_metadata(&input);
+    let method_impls = enum_method_impls(quote! {});
+    let expected = quote! {
+      impl ErrorMetadata for TestEnum {
+        #method_impls
+      }
+    };
+
+    assert_eq!(output.to_string(), expected.to_string());
+  }
+
+  fn struct_method_impls(visibility: TokenStream2) -> TokenStream2 {
+    quote! {
+      #visibility fn error_type(&self) -> String {
+        <_ as AsRef<str>>::as_ref(&"StructError").to_string()
+      }
+
+      #visibility fn status(&self) -> i32 {
+        <_ as Into<i32>>::into(422)
+      }
+
+      #visibility fn status_u16(&self) -> u16 {
+        match self.status() {
+          status if status <= u16::MAX as i32 => status as u16,
+          _ => panic!("Status code is out of range for u16"),
+        }
+      }
+
+      #visibility fn code(&self) -> String {
+        <_ as AsRef<str>>::as_ref(&"invalid_input").to_string()
+      }
+
+      #visibility fn args(&self) -> ::std::collections::HashMap<String, String> {
+        let mut map = ::std::collections::HashMap::new();
+        map.insert(stringify!(field1).to_string(), format!("{}", self.field1));
+        map.insert(stringify!(field2).to_string(), format!("{}", self.field2));
+        map
+      }
+    }
+  }
+
+  #[rstest]
   fn test_impl_error_metadata_for_struct() {
     let input: DeriveInput = parse_quote! {
       #[derive(ErrorMeta)]
@@ -640,38 +899,34 @@ mod tests {
         field2: i32,
       }
     };
-
     let output = impl_error_metadata(&input);
+    let method_impls = struct_method_impls(quote! { pub });
     let expected = quote! {
       impl MyError {
-        pub fn error_type(&self) -> String {
-          <_ as AsRef<str>>::as_ref(&"StructError").to_string()
-        }
-
-        pub fn status(&self) -> i32 {
-          <_ as Into<i32>>::into(422)
-        }
-
-        pub fn status_u16(&self) -> u16 {
-          match self.status() {
-            status if status <= u16::MAX as i32 => status as u16,
-            _ => panic!("Status code is out of range for u16"),
-          }
-        }
-
-        pub fn code(&self) -> String {
-          <_ as AsRef<str>>::as_ref(&"invalid_input").to_string()
-        }
-
-        pub fn args(&self) -> ::std::collections::HashMap<String, String> {
-          let mut map = ::std::collections::HashMap::new();
-          map.insert(stringify!(field1).to_string(), format!("{}", self.field1));
-          map.insert(stringify!(field2).to_string(), format!("{}", self.field2));
-          map
-        }
+        #method_impls
       }
     };
 
+    assert_eq!(output.to_string(), expected.to_string());
+  }
+
+  #[test]
+  fn test_impl_error_metadata_for_struct_with_trait_to_impl() {
+    let input: DeriveInput = parse_quote! {
+      #[derive(ErrorMeta)]
+      #[error_meta(trait_to_impl = ErrorMetadata, error_type = "StructError", status = 422, code = "invalid_input")]
+      struct MyError {
+        field1: String,
+        field2: i32,
+      }
+    };
+    let output = impl_error_metadata(&input);
+    let method_impls = struct_method_impls(quote! {});
+    let expected = quote! {
+      impl ErrorMetadata for MyError {
+        #method_impls
+      }
+    };
     assert_eq!(output.to_string(), expected.to_string());
   }
 
