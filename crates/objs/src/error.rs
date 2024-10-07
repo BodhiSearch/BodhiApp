@@ -43,6 +43,8 @@ pub enum ErrorType {
   InternalServer,
   #[strum(serialize = "authentication_error")]
   Authentication,
+  #[strum(serialize = "not_found_error")]
+  NotFound,
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -179,7 +181,10 @@ impl From<String> for BuilderError {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{test_utils::{assert_error_message, fluent_bundle}, Repo};
+  use crate::{
+    test_utils::{assert_error_message, fluent_bundle},
+    Repo,
+  };
   use fluent::{FluentBundle, FluentResource};
   use rstest::rstest;
 
