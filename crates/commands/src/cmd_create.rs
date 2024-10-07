@@ -2,7 +2,10 @@ use objs::{
   default_features, Alias, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo,
   TOKENIZER_CONFIG_JSON,
 };
-use services::{AppService, DataServiceError, HubServiceError};
+use services::{
+  AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,
+  SNAPSHOT_MAIN,
+};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq, derive_builder::Builder)]
@@ -22,12 +25,10 @@ pub struct CreateCommand {
   pub context_params: GptContextParams,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum CreateCommandError {
-  #[error("model alias '{0}' already exists")]
-  AliasExists(String),
-  #[error("model file '{filename}' not found in repo '{repo}'")]
-  ModelFileMissing { filename: String, repo: String },
+  #[error(transparent)]
+  AliasExists(#[from] AliasExistsError),
   #[error(transparent)]
   ObjError(#[from] ObjError),
   #[error(transparent)]
@@ -43,44 +44,53 @@ impl CreateCommand {
   pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     if service.data_service().find_alias(&self.alias).is_some() {
       if !self.update {
-        return Err(CreateCommandError::AliasExists(self.alias.clone()));
+        return Err(AliasExistsError(self.alias.clone()).into());
       }
       println!("Updating existing alias: '{}'", self.alias);
     } else {
       println!("Creating new alias: '{}'", self.alias);
     }
-    let local_model_file =
+    let file_exists =
       service
         .hub_service()
-        .find_local_file(&self.repo, &self.filename, self.snapshot.clone())?;
-    let local_model_file = match local_model_file {
-      Some(local_model_file) => {
+        .local_file_exists(&self.repo, &self.filename, self.snapshot.clone())?;
+    let local_model_file = match file_exists {
+      true => {
         println!(
-          "repo: '{}', filename: '{}' already exists in $HF_HOME",
+          "repo: '{}', filename: '{}', already exists in $HF_HOME",
           &self.repo, &self.filename
         );
-        local_model_file
+        service
+          .hub_service()
+          .find_local_file(&self.repo, &self.filename, self.snapshot.clone())?
       }
-      None => {
+      false => {
         if self.auto_download {
           service
             .hub_service()
             .download(&self.repo, &self.filename, self.snapshot)?
         } else {
-          return Err(CreateCommandError::ModelFileMissing {
-            filename: self.filename.clone(),
-            repo: self.repo.clone().to_string(),
-          });
+          return Err(CreateCommandError::HubServiceError(
+            HubFileNotFoundError::new(
+              self.filename.clone(),
+              self.repo.path(),
+              self
+                .snapshot
+                .clone()
+                .unwrap_or_else(|| SNAPSHOT_MAIN.to_string()),
+            )
+            .into(),
+          ));
         }
       }
     };
     let chat_template_repo = Repo::try_from(self.chat_template.clone())?;
-    let tokenizer_file =
+    let file_exists =
       service
         .hub_service()
-        .find_local_file(&chat_template_repo, TOKENIZER_CONFIG_JSON, None)?;
-    match tokenizer_file {
-      Some(_) => {
+        .local_file_exists(&chat_template_repo, TOKENIZER_CONFIG_JSON, None)?;
+    match file_exists {
+      true => {
         println!(
           "tokenizer from repo: '{}', filename: '{}' already exists in $HF_HOME",
           &self.repo, &self.filename

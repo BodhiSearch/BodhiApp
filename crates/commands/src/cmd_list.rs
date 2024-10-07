@@ -14,14 +14,10 @@ pub enum ListCommand {
   Models,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum ListCommandError {
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
-  #[error("alias {0} already exists")]
-  AliasExists(String),
-  #[error("alias {0} not found")]
-  AliasNotFound(String),
 }
 
 type Result<T> = std::result::Result<T, ListCommandError>;

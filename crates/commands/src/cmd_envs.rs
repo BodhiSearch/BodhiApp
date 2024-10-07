@@ -7,7 +7,7 @@ pub struct EnvCommand {
   service: Arc<dyn AppService>,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum EnvCommandError {}
 
 type Result<T> = std::result::Result<T, EnvCommandError>;
