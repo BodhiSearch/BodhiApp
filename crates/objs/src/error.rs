@@ -195,7 +195,7 @@ mod tests {
       &fluent_bundle,
       &validation_error.code(),
       validation_error.args(),
-      "validation_error: \u{2068}value: does not match the huggingface repo pattern 'username/repo'\u{2069}",
+      "validation_error: value: does not match the huggingface repo pattern 'username/repo'",
     );
   }
 
@@ -207,7 +207,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "io_error: path: \u{2068}test.txt\u{2069}, \u{2068}file not found\u{2069}",
+      "io_error: path: test.txt, file not found",
     );
   }
 
@@ -219,7 +219,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "io_error: failed to create directory $BODHI_HOME/\u{2068}model-home\u{2069}, error: \u{2068}already exists\u{2069}",
+      "io_error: failed to create directory $BODHI_HOME/model-home, error: already exists",
     );
   }
 
@@ -231,7 +231,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "io_error: failed to update file $BODHI_HOME/\u{2068}test.txt\u{2069}, error: \u{2068}file not found\u{2069}",
+      "io_error: failed to update file $BODHI_HOME/test.txt, error: file not found",
     );
   }
 
@@ -243,7 +243,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "io_error: failed to read file $BODHI_HOME/\u{2068}test.txt\u{2069}, error: \u{2068}file not found\u{2069}",
+      "io_error: failed to read file $BODHI_HOME/test.txt, error: file not found",
     );
   }
 
@@ -255,7 +255,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "io_error: failed to delete file $BODHI_HOME/\u{2068}test.txt\u{2069}, error: \u{2068}file not found\u{2069}",
+      "io_error: failed to delete file $BODHI_HOME/test.txt, error: file not found",
     );
   }
 
@@ -267,7 +267,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "error serializing/deserializing json: \u{2068}expected value at line 1 column 1\u{2069}",
+      "error serializing/deserializing json: expected value at line 1 column 1",
     );
   }
 
@@ -279,7 +279,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "error serializing/deserializing json: path: \u{2068}test.json\u{2069}, \u{2068}expected value at line 1 column 1\u{2069}",
+      "error serializing/deserializing json: path: test.json, expected value at line 1 column 1",
     );
   }
 
@@ -291,7 +291,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "error serializing/deserializing yaml: \u{2068}found a tab character that violates indentation at line 2 column 1, while scanning a plain scalar at line 1 column 10\u{2069}",
+      "error serializing/deserializing yaml: found a tab character that violates indentation at line 2 column 1, while scanning a plain scalar at line 1 column 10",
     );
   }
 
@@ -303,7 +303,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "error serializing/deserializing yaml: path: \u{2068}test.yaml\u{2069}, \u{2068}found a tab character that violates indentation at line 2 column 1, while scanning a plain scalar at line 1 column 10\u{2069}",
+      "error serializing/deserializing yaml: path: test.yaml, found a tab character that violates indentation at line 2 column 1, while scanning a plain scalar at line 1 column 10",
     );
   }
 
@@ -314,7 +314,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "invalid request, reason: \u{2068}invalid input\u{2069}",
+      "invalid request, reason: invalid input",
     );
   }
 
@@ -325,7 +325,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "internal_server_error: \u{2068}unexpected server error\u{2069}",
+      "internal_server_error: unexpected server error",
     );
   }
 
@@ -337,7 +337,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "io_error: \u{2068}test io error\u{2069}",
+      "io_error: test io error",
     );
   }
 
@@ -356,17 +356,17 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "error connecting to internal service: \u{2068}error sending request for url (http://foobar.nohost/)\u{2069}",
+      "error connecting to internal service: error sending request for url (http://foobar.nohost/)",
     );
   }
 
   #[rstest]
   #[case::uninitialized_field(
     ObjError::Builder(BuilderError::UninitializedField("field_name")),
-    "builder_error: uninitialized field: \u{2068}field_name\u{2069}"
+    "builder_error: uninitialized field: field_name"
   )]
-  #[case::validation_error(ObjError::Builder(BuilderError::ValidationError("validation failed".to_string())), "builder_error: validation error: \u{2068}validation failed\u{2069}")]
-  #[case(ObjError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: \u{2068}test.txt\u{2069}")]
+  #[case::validation_error(ObjError::Builder(BuilderError::ValidationError("validation failed".to_string())), "builder_error: validation error: validation failed")]
+  #[case(ObjError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: test.txt")]
   fn test_object_error(
     fluent_bundle: FluentBundle<FluentResource>,
     #[case] error: ObjError,

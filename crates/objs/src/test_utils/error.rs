@@ -28,7 +28,13 @@ pub fn assert_error_message(
     "formatting errors occurred"
   );
   assert!(errors.is_empty(), "formatting errors occurred");
-  assert_eq!(formatted.to_string(), expected);
+  assert_eq!(
+    formatted
+      .to_string()
+      .replace("\u{2068}", "")
+      .replace("\u{2069}", ""),
+    expected
+  );
 }
 
 #[fixture]
