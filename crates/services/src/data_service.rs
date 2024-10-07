@@ -16,14 +16,21 @@ pub struct AliasExistsError(pub String);
 #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
 pub struct AliasNotExistsError(pub String);
 
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("data_file_missing")]
+#[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+pub struct DataFileNotFoundError {
+  filename: String,
+  dirname: String,
+}
+
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum DataServiceError {
   #[error("dir_missing")]
   #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   DirMissing { dirname: String },
-  #[error("file_missing")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
-  FileMissing { filename: String, dirname: String },
+  #[error(transparent)]
+  DataFileNotFound(#[from] DataFileNotFoundError),
   #[error(transparent)]
   DirCreate(#[from] IoDirCreateError),
   #[error(transparent)]
@@ -80,6 +87,8 @@ pub trait DataService: Send + Sync + std::fmt::Debug {
   fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>>;
 
   fn write_file(&self, folder: Option<String>, filename: &str, contents: &[u8]) -> Result<()>;
+
+  fn find_file(&self, folder: Option<String>, filename: &str) -> Result<PathBuf>;
 }
 
 #[derive(Debug, Clone, PartialEq, new)]
@@ -96,7 +105,7 @@ impl LocalDataService {
     self.bodhi_home.join(MODELS_YAML)
   }
 
-  fn construct_path(&self, folder: Option<String>, filename: &str) -> PathBuf {
+  fn construct_path(&self, folder: &Option<String>, filename: &str) -> PathBuf {
     let mut path = self.bodhi_home.clone();
     if let Some(folder) = folder {
       path = path.join(folder);
@@ -137,10 +146,7 @@ impl DataService for LocalDataService {
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
     let models_file = self.models_yaml();
     if !models_file.exists() {
-      return Err(DataServiceError::FileMissing {
-        filename: String::from(MODELS_YAML),
-        dirname: "".to_string(),
-      });
+      return Err(DataFileNotFoundError::new(String::from(MODELS_YAML), "".to_string()).into());
     }
     let content = fs::read_to_string(models_file.clone())
       .map_err(|err| IoFileReadError::new(err, models_file.display().to_string()))?;
@@ -182,23 +188,23 @@ impl DataService for LocalDataService {
     Ok(PathBuf::from(filename))
   }
 
-  fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>> {
-    let path = self.construct_path(folder.clone(), filename);
-
+  fn find_file(&self, folder: Option<String>, filename: &str) -> Result<PathBuf> {
+    let path = self.construct_path(&folder, filename);
     if !path.exists() {
-      return Err(DataServiceError::FileMissing {
-        filename: filename.to_string(),
-        dirname: folder.unwrap_or_default(),
-      });
+      return Err(DataFileNotFoundError::new(filename.to_string(), folder.unwrap_or_default()).into());
     }
+    Ok(path)
+  }
 
+  fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>> {
+    let path = self.find_file(folder, filename)?;
     let result =
       fs::read(&path).map_err(|err| IoFileReadError::new(err, path.display().to_string()))?;
     Ok(result)
   }
 
   fn write_file(&self, folder: Option<String>, filename: &str, contents: &[u8]) -> Result<()> {
-    let path = self.construct_path(folder, filename);
+    let path = self.construct_path(&folder, filename);
     if let Some(parent) = path.parent() {
       if !parent.exists() {
         fs::create_dir_all(parent)
@@ -260,7 +266,7 @@ impl LocalDataService {
 mod test {
   use crate::{
     test_utils::{test_data_service, TestDataService},
-    AliasExistsError, AliasNotExistsError, DataService, DataServiceError,
+    AliasExistsError, AliasNotExistsError, DataFileNotFoundError, DataService, DataServiceError,
   };
   use anyhow_trace::anyhow_trace;
   use fluent::{FluentBundle, FluentResource};
@@ -272,12 +278,12 @@ mod test {
   use std::fs;
 
   #[rstest]
-  #[case(DataServiceError::DirMissing { dirname: "test".to_string() }, 
-  "directory '\u{2068}test\u{2069}' not found in $BODHI_HOME.\n".to_string() + 
-    r#"$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
-  #[case(DataServiceError::FileMissing { filename: "test.txt".to_string(), dirname: "test".to_string() }, 
-  "file '\u{2068}test.txt\u{2069}' not found in $BODHI_HOME/\u{2068}test\u{2069}.\n".to_string() + 
-    r#"$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
+  #[case::dir_missing(DataServiceError::DirMissing { dirname: "test".to_string() }, 
+  r#"directory 'test' not found in $BODHI_HOME.
+$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
+  #[case::not_found(DataServiceError::DataFileNotFound(DataFileNotFoundError::new("test.txt".to_string(), "test".to_string())),
+  r#"file 'test.txt' not found in $BODHI_HOME/test.
+$BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
   #[case(DataServiceError::BodhiHome,
   "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
   #[case(DataServiceError::HfHome,
@@ -297,7 +303,7 @@ mod test {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "alias '\u{2068}testalias\u{2069}' not found in $BODHI_HOME/aliases.",
+      "alias 'testalias' not found in $BODHI_HOME/aliases.",
     );
   }
 
@@ -308,7 +314,7 @@ mod test {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "alias '\u{2068}testalias\u{2069}' already exists in $BODHI_HOME/aliases.",
+      "alias 'testalias' already exists in $BODHI_HOME/aliases.",
     );
   }
 
@@ -321,7 +327,7 @@ mod test {
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      DataServiceError::FileMissing { filename, dirname } if filename == "models.yaml" && dirname == ""
+      DataServiceError::DataFileNotFound(error) if error == DataFileNotFoundError::new("models.yaml".to_string(), "".to_string())
     ));
     Ok(())
   }
@@ -513,7 +519,7 @@ chat_template: llama3
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      DataServiceError::FileMissing { filename, dirname } if filename == "non_existent_file.txt" && dirname == "non_existent_folder"
+      DataServiceError::DataFileNotFound(error) if error == DataFileNotFoundError::new("non_existent_file.txt".to_string(), "non_existent_folder".to_string())
     ));
     Ok(())
   }

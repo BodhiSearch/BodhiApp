@@ -268,7 +268,7 @@ mod tests {
       &fluent_bundle,
       &error.code(),
       error.args(),
-      "error from auth service: \u{2068}test\u{2069}",
+      "error from auth service: test",
     );
   }
 

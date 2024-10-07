@@ -60,6 +60,10 @@ impl DataService for TestDataService {
     self.inner.alias_filename(alias)
   }
 
+  fn find_file(&self, folder: Option<String>, filename: &str) -> Result<PathBuf> {
+    self.inner.find_file(folder, filename)
+  }
+
   fn read_file(&self, folder: Option<String>, filename: &str) -> Result<Vec<u8>> {
     self.inner.read_file(folder, filename)
   }

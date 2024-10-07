@@ -69,7 +69,7 @@ impl HubService for TestHfService {
     repo: &Repo,
     filename: &str,
     snapshot: Option<String>,
-  ) -> Result<Option<HubFile>> {
+  ) -> Result<HubFile> {
     self.inner.find_local_file(repo, filename, snapshot)
   }
 
