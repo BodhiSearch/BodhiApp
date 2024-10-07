@@ -1,6 +1,7 @@
 use crate::StdoutWriter;
-use services::{AppService, DataServiceError};
-use std::{env, io, sync::Arc};
+use objs::{impl_error_from, IoError, SerdeYamlError};
+use services::{AliasNotExistsError, AppService, DataServiceError};
+use std::{env, sync::Arc};
 
 #[derive(Debug, PartialEq)]
 pub enum ManageAliasCommand {
@@ -10,23 +11,24 @@ pub enum ManageAliasCommand {
   Delete { alias: String },
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum AliasCommandError {
-  #[error("alias '{0}' not found")]
-  AliasNotFound(String),
-  #[error("io_file: {source}\npath='{path}'")]
-  IoFile {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
   #[error(transparent)]
-  SerdeYamlDeserialize(#[from] serde_yaml::Error),
+  AliasNotExists(#[from] AliasNotExistsError),
+  #[error(transparent)]
+  SerdeYamlError(#[from] SerdeYamlError),
   #[error(transparent)]
   DataService(#[from] DataServiceError),
-  #[error("io: {0}")]
-  Io(#[from] std::io::Error),
+  #[error(transparent)]
+  Io(#[from] IoError),
 }
+
+impl_error_from!(::std::io::Error, AliasCommandError::Io, ::objs::IoError);
+impl_error_from!(
+  ::serde_yaml::Error,
+  AliasCommandError::SerdeYamlError,
+  ::objs::SerdeYamlError
+);
 
 type Result<T> = std::result::Result<T, AliasCommandError>;
 
@@ -56,7 +58,7 @@ impl ManageAliasCommand {
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     let Some(alias) = service.data_service().find_alias(alias) else {
-      return Err(AliasCommandError::AliasNotFound(alias.to_string()));
+      return Err(AliasNotExistsError(alias.to_string()).into());
     };
     let result = serde_yaml::to_string(&alias)?;
     stdout.write(&result)?;

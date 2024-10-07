@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 objs = { workspace = true }
+errmeta_derive = { workspace = true }
 services = { workspace = true }
 
 axum = { workspace = true }

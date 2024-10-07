@@ -1,5 +1,5 @@
-use objs::{Alias, HubFile, ObjError, Repo, TOKENIZER_CONFIG_JSON};
-use services::{AppService, DataServiceError, HubServiceError};
+use objs::{Alias, ErrorType, HubFile, ObjError, Repo, TOKENIZER_CONFIG_JSON};
+use services::{AliasExistsError, AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
@@ -14,14 +14,19 @@ pub enum PullCommand {
   },
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("remote_model_not_found")]
+#[error_meta(error_type = ErrorType::NotFound, status = 404)]
+pub struct RemoteModelNotFoundError(pub String);
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 pub enum PullCommandError {
   #[error(transparent)]
   HubServiceError(#[from] HubServiceError),
-  #[error("model alias '{0}' already exists")]
-  AliasExists(String),
-  #[error("alias '{0}' not found")]
-  AliasNotFound(String),
+  #[error(transparent)]
+  AliasExists(#[from] AliasExistsError),
+  #[error(transparent)]
+  RemoteModelNotFound(#[from] RemoteModelNotFoundError),
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
   #[error(transparent)]
@@ -33,22 +38,18 @@ type Result<T> = std::result::Result<T, PullCommandError>;
 impl PullCommand {
   #[allow(clippy::result_large_err)]
   pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
-    match self {
+    match &self {
       PullCommand::ByAlias { alias } => {
-        if service.data_service().find_alias(&alias).is_some() {
-          return Err(PullCommandError::AliasExists(alias));
+        if service.data_service().find_alias(alias).is_some() {
+          return Err(AliasExistsError(alias.clone()).into());
         }
-        let Some(model) = service.data_service().find_remote_model(&alias)? else {
-          return Err(PullCommandError::AliasNotFound(alias));
+        let Some(model) = service.data_service().find_remote_model(alias)? else {
+          return Err(RemoteModelNotFoundError(alias.clone()).into());
         };
-        let local_model_file = PullCommand::download_file_if_missing(
-          service.clone(),
-          &model.repo,
-          &model.filename,
-          None,
-        )?;
-        _ = PullCommand::download_file_if_missing(
-          service.clone(),
+        let local_model_file =
+          self.download_file_if_missing(&service, &model.repo, &model.filename, None)?;
+        _ = self.download_file_if_missing(
+          &service,
           &Repo::try_from(model.chat_template.clone())?,
           TOKENIZER_CONFIG_JSON,
           None,
@@ -79,12 +80,14 @@ impl PullCommand {
         let model_file_exists =
           service
             .hub_service()
-            .local_file_exists(&repo, &filename, snapshot.clone())?;
+            .local_file_exists(repo, filename, snapshot.clone())?;
         if model_file_exists {
           println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
           return Ok(());
         } else {
-          service.hub_service().download(&repo, &filename, snapshot)?;
+          service
+            .hub_service()
+            .download(repo, filename, snapshot.clone())?;
           println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
         Ok(())
@@ -93,21 +96,24 @@ impl PullCommand {
   }
 
   fn download_file_if_missing(
-    service: Arc<dyn AppService>,
+    &self,
+    service: &Arc<dyn AppService>,
     repo: &Repo,
     filename: &str,
     snapshot: Option<String>,
   ) -> Result<HubFile> {
-    let local_model_file =
-      service
-        .hub_service()
-        .find_local_file(repo, filename, snapshot.clone())?;
-    match local_model_file {
-      Some(local_model_file) => {
+    let file_exists = service
+      .hub_service()
+      .local_file_exists(repo, filename, snapshot.clone())?;
+    match file_exists {
+      true => {
         println!(
           "repo: '{}', filename: '{}' already exists in $HF_HOME",
           &repo, &filename
         );
+        let local_model_file = service
+          .hub_service()
+          .find_local_file(repo, filename, snapshot)?;
         Ok(local_model_file)
       }
       _ => {
@@ -124,7 +130,7 @@ impl PullCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::PullCommand;
+  use crate::{PullCommand, PullCommandError};
   use mockall::predicate::eq;
   use objs::{
     test_utils::SNAPSHOT, Alias, ChatTemplate, GptContextParams, HubFile, OAIRequestParams,
@@ -133,7 +139,7 @@ mod test {
   use rstest::rstest;
   use services::{
     test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
-    AppService, ALIASES_DIR,
+    AliasExistsError, AppService, ALIASES_DIR,
   };
   use std::{fs, sync::Arc};
 
@@ -142,14 +148,16 @@ mod test {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .build()?;
-    let alias = String::from("testalias-exists:instruct");
-    let pull = PullCommand::ByAlias { alias };
+    let alias = "testalias-exists:instruct";
+    let pull = PullCommand::ByAlias {
+      alias: alias.to_string(),
+    };
     let result = pull.execute(Arc::new(service));
     assert!(result.is_err());
-    assert_eq!(
-      "model alias 'testalias-exists:instruct' already exists",
-      result.unwrap_err().to_string()
-    );
+    assert!(matches!(
+      result.unwrap_err(),
+      PullCommandError::AliasExists(arg) if arg == AliasExistsError(alias.to_string())
+    ));
     Ok(())
   }
 
