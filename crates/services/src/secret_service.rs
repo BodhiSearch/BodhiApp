@@ -1,7 +1,7 @@
 use crate::{asref_impl, CacheService, MokaCacheService};
 use derive_new::new;
 use keyring::Entry;
-use objs::{impl_error_from, ErrorType, SerdeJsonError};
+use objs::{impl_error_from, AppError, ErrorType, SerdeJsonError};
 use serde::de::DeserializeOwned;
 use std::sync::Arc;
 
@@ -15,6 +15,7 @@ pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 pub const KEY_APP_REG_INFO: &str = "app_reg_info";
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum SecretServiceError {
   #[error("keyring_error")]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
@@ -130,7 +131,10 @@ mod tests {
     SecretServiceError,
   };
   use fluent::{FluentBundle, FluentResource};
-  use objs::test_utils::{assert_error_message, fluent_bundle};
+  use objs::{
+    test_utils::{assert_error_message, fluent_bundle},
+    AppError,
+  };
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use std::sync::Arc;

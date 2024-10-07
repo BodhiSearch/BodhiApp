@@ -1,8 +1,8 @@
-use objs::ErrorType;
+use objs::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("sqlx_error")]
-#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
 pub struct SqlxError {
   #[from]
   pub source: sqlx::Error,
@@ -18,7 +18,7 @@ impl Eq for SqlxError {}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("sqlx_migrate_error")]
-#[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
 pub struct SqlxMigrateError {
   #[from]
   source: sqlx::migrate::MigrateError,
@@ -38,19 +38,22 @@ mod tests {
   use fluent::{FluentBundle, FluentResource};
   use objs::test_utils::{assert_error_message, fluent_bundle};
   use rstest::rstest;
-use sqlx::migrate::MigrateError;
+  use sqlx::migrate::MigrateError;
 
   #[rstest]
-  fn test_sqlx_error_message(fluent_bundle: FluentBundle<FluentResource>) {
-    let error = SqlxError::new(sqlx::Error::RowNotFound);
-    let message = "no rows returned by a query that expected to return at least one row";
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
-  }
-
-  #[rstest]
-  fn test_sqlx_migrate_error_message(fluent_bundle: FluentBundle<FluentResource>) {
-    let error = SqlxMigrateError::new(MigrateError::VersionMissing(1));
-    let message = "migration 1 was previously applied but is missing in the resolved migrations";
+  #[case::sqlx(
+    &SqlxError::new(sqlx::Error::RowNotFound),
+    "no rows returned by a query that expected to return at least one row"
+  )]
+  #[case::migration(
+    &SqlxMigrateError::new(MigrateError::VersionMissing(1)),
+    "migration 1 was previously applied but is missing in the resolved migrations"
+  )]
+  fn test_sqlx_error_message(
+    fluent_bundle: FluentBundle<FluentResource>,
+    #[case] error: &dyn AppError,
+    #[case] message: String,
+  ) {
     assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
   }
 }

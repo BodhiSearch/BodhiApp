@@ -4,7 +4,7 @@ use crate::db::{
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
-use objs::{impl_error_from, ErrorType};
+use objs::{impl_error_from, AppError, ErrorType};
 use sqlx::{query_as, SqlitePool};
 use std::{str::FromStr, sync::Arc};
 use uuid::Uuid;
@@ -28,6 +28,7 @@ impl TimeService for DefaultTimeService {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum DbError {
   #[error(transparent)]
   SqlxError(#[from] SqlxError),
