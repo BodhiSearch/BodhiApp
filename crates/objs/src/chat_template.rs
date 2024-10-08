@@ -1,4 +1,4 @@
-use crate::{ObjError, Repo};
+use crate::{ObjValidationError, Repo};
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use strum::{AsRefStr, EnumIter};
@@ -47,7 +47,7 @@ pub enum ChatTemplate {
 }
 
 impl TryFrom<ChatTemplate> for Repo {
-  type Error = ObjError;
+  type Error = ObjValidationError;
 
   fn try_from(value: ChatTemplate) -> Result<Self, Self::Error> {
     let repo = match value {

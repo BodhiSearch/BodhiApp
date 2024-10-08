@@ -1,4 +1,4 @@
-use crate::ObjError;
+use crate::ObjValidationError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -21,7 +21,7 @@ pub struct Repo {
 }
 
 impl TryFrom<String> for Repo {
-  type Error = ObjError;
+  type Error = ObjValidationError;
 
   fn try_from(value: String) -> Result<Self, Self::Error> {
     let repo = Repo { value };
@@ -31,7 +31,7 @@ impl TryFrom<String> for Repo {
 }
 
 impl TryFrom<&str> for Repo {
-  type Error = ObjError;
+  type Error = ObjValidationError;
 
   fn try_from(value: &str) -> Result<Self, Self::Error> {
     let repo = Repo {
@@ -83,7 +83,7 @@ impl Deref for Repo {
 }
 
 impl FromStr for Repo {
-  type Err = ObjError;
+  type Err = ObjValidationError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     Repo::try_from(s)
@@ -92,7 +92,7 @@ impl FromStr for Repo {
 
 #[cfg(test)]
 mod test {
-  use crate::Repo;
+  use crate::{ObjValidationError, Repo};
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
   use validator::Validate;
@@ -120,10 +120,22 @@ mod test {
   fn test_repo_invalid(#[case] input: String) -> anyhow::Result<()> {
     let result = Repo::try_from(input.clone());
     assert!(result.is_err());
-    assert_eq!(
-      "value: does not match the huggingface repo pattern 'username/repo'",
-      result.unwrap_err().to_string()
-    );
+    let err = result.unwrap_err();
+    match err {
+      ObjValidationError::ValidationErrors(errors) => {
+        assert_eq!(errors.errors().len(), 1);
+        assert_eq!(
+          errors.to_string(),
+          "value: does not match the huggingface repo pattern 'username/repo'"
+        );
+      }
+      _ => {
+        panic!(
+          "Expected ObjValidationError::ValidationErrors, got {:?}",
+          err
+        );
+      }
+    }
     let repo: Result<Repo, _> = input.parse();
     assert!(repo.is_err());
     Ok(())

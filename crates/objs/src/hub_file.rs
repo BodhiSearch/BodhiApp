@@ -1,4 +1,4 @@
-use crate::{ObjError, Repo};
+use crate::{ObjValidationError, Repo};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Serialize;
@@ -31,13 +31,13 @@ impl HubFile {
 }
 
 impl TryFrom<PathBuf> for HubFile {
-  type Error = ObjError;
+  type Error = ObjValidationError;
 
   fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
     let path = value.display().to_string();
     let caps = REGEX_HF_REPO_FILE
       .captures(&path)
-      .ok_or_else(|| ObjError::FilePatternMismatch(path.clone()))?;
+      .ok_or_else(|| ObjValidationError::FilePatternMismatch(path.clone()))?;
     let size = match fs::metadata(&value) {
       Ok(metadata) => Some(metadata.len()),
       Err(_) => None,
