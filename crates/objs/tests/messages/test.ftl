@@ -12,6 +12,7 @@ serde_json_error = error serializing/deserializing json: {$source}
 serde_json_with_path_error = error serializing/deserializing json: path: {$path}, {$source}
 serde_yaml_error = error serializing/deserializing yaml: {$source}
 serde_yaml_with_path_error = error serializing/deserializing yaml: path: {$path}, {$source}
-obj_error-file_pattern_mismatch = file pattern does not match huggingface repo pattern, path: {$var_0}
-obj_error-validation = validation_error: {$error}
+obj_validation_error-file_pattern_mismatch = file pattern does not match huggingface repo pattern, path: {$var_0}
+obj_validation_error-validation_errors = validation_error: {$var_0}
+
 reqwest_error = error connecting to internal service: {$source}

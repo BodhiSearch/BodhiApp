@@ -1,4 +1,3 @@
-use crate::impl_error_from;
 use derive_builder::UninitializedFieldError;
 use std::collections::HashMap;
 use validator::{ValidationError, ValidationErrors};
@@ -14,36 +13,6 @@ pub trait AppError: std::error::Error {
 
   fn args(&self) -> HashMap<String, String>;
 }
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum ObjError {
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Validation, status = 400, code="obj_error-validation", args_delegate = false)]
-  Validation(#[from] ValidationErrors),
-
-  #[error("file_pattern_mismatch")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 400)]
-  FilePatternMismatch(String),
-
-  #[error(transparent)]
-  IoWithPathError(#[from] IoWithPathError),
-
-  #[error(transparent)]
-  SerdeJsonError(#[from] SerdeJsonError),
-
-  #[error(transparent)]
-  Builder(#[from] BuilderError),
-}
-
-impl_error_from!(
-  ::serde_json::Error,
-  ObjError::SerdeJsonError,
-  crate::SerdeJsonError
-);
-
-#[allow(unused)]
-pub type Result<T> = std::result::Result<T, ObjError>;
 
 pub fn validation_errors(field: &'static str, error: ValidationError) -> ValidationErrors {
   let mut errs = ValidationErrors::new();
@@ -66,6 +35,18 @@ pub enum ErrorType {
   Authentication,
   #[strum(serialize = "not_found_error")]
   NotFound,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum ObjValidationError {
+  #[error("validation_errors")]
+  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  ValidationErrors(#[from] ValidationErrors),
+
+  #[error("file_pattern_mismatch")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 400)]
+  FilePatternMismatch(String),
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -212,7 +193,11 @@ mod tests {
   };
   use fluent::{FluentBundle, FluentResource};
   use rstest::rstest;
-  use std::io::{Error as StdIoError, ErrorKind};
+  use std::{
+    borrow::Cow,
+    io::{Error as StdIoError, ErrorKind},
+  };
+  use validator::ValidationErrorsKind;
 
   #[rstest]
   #[case(&Repo::try_from("invalid-repo").unwrap_err(), "validation_error: value: does not match the huggingface repo pattern 'username/repo'")]
@@ -228,7 +213,9 @@ mod tests {
   #[case(&BadRequestError::new("invalid input".to_string()), "invalid request, reason: invalid input")]
   #[case(&InternalServerError::new("unexpected server error".to_string()), "internal_server_error: unexpected server error")]
   #[case(&IoError::new(StdIoError::new(ErrorKind::PermissionDenied, "test io error")), "io_error: test io error")]
-  fn test_error_messages(
+  #[case(&ObjValidationError::ValidationErrors(ValidationErrors(HashMap::from([("field", ValidationErrorsKind::Field(vec![validator::ValidationError::new("value").with_message(Cow::Borrowed("validation failed"))]))]))), "validation_error: field: validation failed")]
+  #[case(&ObjValidationError::FilePatternMismatch("huggingface/hub/models--invalid-repo/snapshots/model.gguf".to_string()), "file pattern does not match huggingface repo pattern, path: huggingface/hub/models--invalid-repo/snapshots/model.gguf")]
+  fn test_objs_error_messages(
     fluent_bundle: FluentBundle<FluentResource>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
@@ -257,14 +244,14 @@ mod tests {
 
   #[rstest]
   #[case::uninitialized_field(
-    ObjError::Builder(BuilderError::UninitializedField("field_name")),
+    &BuilderError::UninitializedField("field_name"),
     "builder_error: uninitialized field: field_name"
   )]
-  #[case::validation_error(ObjError::Builder(BuilderError::ValidationError("validation failed".to_string())), "builder_error: validation error: validation failed")]
-  #[case(ObjError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: test.txt")]
+  #[case::validation_error(&BuilderError::ValidationError("validation failed".to_string()), "builder_error: validation error: validation failed")]
+  #[case::file_pattern_mismatch(&ObjValidationError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: test.txt")]
   fn test_object_error(
     fluent_bundle: FluentBundle<FluentResource>,
-    #[case] error: ObjError,
+    #[case] error: &dyn AppError,
     #[case] expected: &str,
   ) {
     assert_error_message(&fluent_bundle, &error.code(), error.args(), &expected);
