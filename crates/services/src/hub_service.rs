@@ -1,5 +1,5 @@
 use hf_hub::Cache;
-use objs::{impl_error_from, AppError, ErrorType, HubFile, IoError, ObjError, Repo};
+use objs::{impl_error_from, AppError, ErrorType, HubFile, IoError, ObjValidationError, Repo};
 use std::{
   collections::HashSet,
   fmt::{Debug, Formatter},
@@ -61,7 +61,7 @@ pub enum HubServiceError {
   #[error(transparent)]
   HubFileNotFound(#[from] HubFileNotFoundError),
   #[error(transparent)]
-  ObjError(#[from] ObjError),
+  ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
   IoError(#[from] IoError),
 }
