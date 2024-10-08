@@ -12,9 +12,9 @@ use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf};
 pub struct AliasExistsError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error("alias_not_exists")]
+#[error("alias_not_found")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
-pub struct AliasNotExistsError(pub String);
+pub struct AliasNotFoundError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("data_file_missing")]
@@ -49,7 +49,7 @@ pub enum DataServiceError {
   #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
   HfHome,
   #[error(transparent)]
-  AliasNotExists(#[from] AliasNotExistsError),
+  AliasNotExists(#[from] AliasNotFoundError),
   #[error(transparent)]
   AliasExists(#[from] AliasExistsError),
   #[error(transparent)]
@@ -159,7 +159,7 @@ impl DataService for LocalDataService {
   fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
     let mut alias = self
       .find_alias(alias)
-      .ok_or_else(|| AliasNotExistsError(alias.to_string()))?;
+      .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
     match self.find_alias(new_alias) {
       Some(_) => Err(AliasExistsError(new_alias.to_string()))?,
       None => {
@@ -175,7 +175,7 @@ impl DataService for LocalDataService {
       ._list_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
-      .ok_or_else(|| AliasNotExistsError(alias.to_string()))?;
+      .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
     fs::remove_file(&filename).map_err(|err| IoFileDeleteError::new(err, filename))?;
     Ok(())
   }
@@ -185,7 +185,7 @@ impl DataService for LocalDataService {
       ._list_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
-      .ok_or_else(|| AliasNotExistsError(alias.to_string()))?;
+      .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
     Ok(PathBuf::from(filename))
   }
 
@@ -269,7 +269,7 @@ impl LocalDataService {
 mod test {
   use crate::{
     test_utils::{test_data_service, TestDataService},
-    AliasExistsError, AliasNotExistsError, DataFileNotFoundError, DataService, DataServiceError,
+    AliasExistsError, AliasNotFoundError, DataFileNotFoundError, DataService, DataServiceError,
   };
   use anyhow_trace::anyhow_trace;
   use fluent::{FluentBundle, FluentResource};
@@ -291,7 +291,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
   #[case(&DataServiceError::HfHome,
   "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
-  #[case(&AliasNotExistsError("testalias".to_string()), "alias 'testalias' not found in $BODHI_HOME/aliases.")]
+  #[case(&AliasNotFoundError("testalias".to_string()), "alias 'testalias' not found in $BODHI_HOME/aliases.")]
   #[case(&AliasExistsError("testalias".to_string()), "alias 'testalias' already exists in $BODHI_HOME/aliases.")]
   fn test_data_service_error(
     fluent_bundle: FluentBundle<FluentResource>,
@@ -416,7 +416,7 @@ chat_template: llama3
     let result = service.delete_alias("notexists--instruct.yaml");
     assert!(result.is_err());
     assert!(
-      matches!(result.unwrap_err(), DataServiceError::AliasNotExists(alias) if alias == AliasNotExistsError("notexists--instruct.yaml".to_string()))
+      matches!(result.unwrap_err(), DataServiceError::AliasNotExists(alias) if alias == AliasNotFoundError("notexists--instruct.yaml".to_string()))
     );
     Ok(())
   }

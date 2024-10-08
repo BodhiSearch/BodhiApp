@@ -266,7 +266,7 @@ mod tests {
   use serde_json::json;
 
   #[rstest]
-  fn test_error_messages(fluent_bundle: FluentBundle<FluentResource>) {
+  fn test_services_error_messages(fluent_bundle: FluentBundle<FluentResource>) {
     let error = AuthServiceError::AuthServiceApiError("test".to_string());
     assert_error_message(
       &fluent_bundle,
