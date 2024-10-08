@@ -1,4 +1,4 @@
-use objs::{Alias, AppError, ErrorType, HubFile, ObjError, Repo, TOKENIZER_CONFIG_JSON};
+use objs::{Alias, AppError, ErrorType, HubFile, ObjValidationError, Repo, TOKENIZER_CONFIG_JSON};
 use services::{AliasExistsError, AppService, DataServiceError, HubServiceError};
 use std::sync::Arc;
 
@@ -31,7 +31,7 @@ pub enum PullCommandError {
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
   #[error(transparent)]
-  ObjError(#[from] ObjError),
+  ObjValidationError(#[from] ObjValidationError),
 }
 
 type Result<T> = std::result::Result<T, PullCommandError>;
@@ -147,7 +147,7 @@ mod test {
 
   #[rstest]
   #[case(&RemoteModelNotFoundError("testalias".to_string()), "model not found: 'testalias'")]
-  fn test_error_messages(
+  fn test_command_error_messages(
     fluent_bundle: FluentBundle<FluentResource>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
