@@ -1,6 +1,6 @@
 use crate::StdoutWriter;
 use objs::{impl_error_from, AppError, IoError, SerdeYamlError};
-use services::{AliasNotExistsError, AppService, DataServiceError};
+use services::{AliasNotFoundError, AppService, DataServiceError};
 use std::{env, sync::Arc};
 
 #[derive(Debug, PartialEq)]
@@ -15,7 +15,7 @@ pub enum ManageAliasCommand {
 #[error_meta(trait_to_impl = AppError)]
 pub enum AliasCommandError {
   #[error(transparent)]
-  AliasNotExists(#[from] AliasNotExistsError),
+  AliasNotExists(#[from] AliasNotFoundError),
   #[error(transparent)]
   SerdeYamlError(#[from] SerdeYamlError),
   #[error(transparent)]
@@ -59,7 +59,7 @@ impl ManageAliasCommand {
     stdout: &mut dyn StdoutWriter,
   ) -> Result<()> {
     let Some(alias) = service.data_service().find_alias(alias) else {
-      return Err(AliasNotExistsError(alias.to_string()).into());
+      return Err(AliasNotFoundError(alias.to_string()).into());
     };
     let result = serde_yaml::to_string(&alias)?;
     stdout.write(&result)?;

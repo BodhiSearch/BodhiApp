@@ -1,5 +1,6 @@
 use objs::{
-  default_features, Alias, AppError, ChatTemplate, GptContextParams, OAIRequestParams, ObjError, Repo, TOKENIZER_CONFIG_JSON
+  default_features, Alias, AppError, ChatTemplate, GptContextParams, OAIRequestParams,
+  ObjValidationError, Repo, TOKENIZER_CONFIG_JSON,
 };
 use services::{
   AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,
@@ -30,7 +31,7 @@ pub enum CreateCommandError {
   #[error(transparent)]
   AliasExists(#[from] AliasExistsError),
   #[error(transparent)]
-  ObjError(#[from] ObjError),
+  ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
   HubServiceError(#[from] HubServiceError),
   #[error(transparent)]
