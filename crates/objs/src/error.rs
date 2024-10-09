@@ -1,18 +1,6 @@
+use crate::AppError;
 use derive_builder::UninitializedFieldError;
-use std::collections::HashMap;
 use validator::{ValidationError, ValidationErrors};
-
-pub trait AppError: std::error::Error {
-  fn error_type(&self) -> String;
-
-  fn status(&self) -> i32;
-
-  fn status_u16(&self) -> u16;
-
-  fn code(&self) -> String;
-
-  fn args(&self) -> HashMap<String, String>;
-}
 
 pub fn validation_errors(field: &'static str, error: ValidationError) -> ValidationErrors {
   let mut errs = ValidationErrors::new();
@@ -195,6 +183,7 @@ mod tests {
   use rstest::rstest;
   use std::{
     borrow::Cow,
+    collections::HashMap,
     io::{Error as StdIoError, ErrorKind},
   };
   use validator::ValidationErrorsKind;

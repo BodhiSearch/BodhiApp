@@ -4,6 +4,7 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod alias;
+mod app_error;
 mod chat_template;
 mod envs;
 mod error;
@@ -15,6 +16,7 @@ mod repo;
 mod utils;
 
 pub use alias::*;
+pub use app_error::*;
 pub use chat_template::*;
 pub use envs::*;
 pub use error::*;
