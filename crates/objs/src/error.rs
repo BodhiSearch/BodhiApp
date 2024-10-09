@@ -138,15 +138,22 @@ pub struct SerdeYamlWithPathError {
   path: String,
 }
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("internal_network_error")]
 #[error_meta(trait_to_impl = AppError,
   error_type = "ErrorType::InternalServer",
   status = 500,
 )]
 pub struct ReqwestError {
-  #[from]
-  source: reqwest::Error,
+  error: String,
+}
+
+impl From<reqwest::Error> for ReqwestError {
+  fn from(source: reqwest::Error) -> Self {
+    Self {
+      error: source.to_string(),
+    }
+  }
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, strum::Display)]
@@ -215,13 +222,8 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_reqwest_error(fluent_bundle: FluentBundle<FluentResource>) {
-    let reqwest_error = reqwest::Client::new()
-      .get("http://foobar.nohost/")
-      .send()
-      .await
-      .unwrap_err();
     let error = ReqwestError {
-      source: reqwest_error,
+      error: "error sending request for url (http://foobar.nohost/)".to_string(),
     };
     assert_error_message(
       &fluent_bundle,
