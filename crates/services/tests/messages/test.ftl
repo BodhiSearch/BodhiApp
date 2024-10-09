@@ -35,3 +35,5 @@ hub_api_error-request = {$error}.
 secret_service_error-keyring_error = {$var_0}
 sqlx_error = {$source}
 sqlx_migrate_error = {$source}
+localization_error-rwlock_write = concurrency error setting up localization resource: {$source}
+localization_error-rwlock_read = concurrency error accessing localization resource: {$source}
