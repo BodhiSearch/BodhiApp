@@ -1,6 +1,6 @@
 use crate::{
-  db::DbService, AuthService, CacheService, DataService, EnvService, HubService, SecretService,
-  SessionService,
+  db::DbService, AuthService, CacheService, DataService, EnvService, HubService,
+  LocalizationService, SecretService, SessionService,
 };
 use derive_new::new;
 use std::sync::Arc;
@@ -22,6 +22,8 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
   fn secret_service(&self) -> Arc<dyn SecretService>;
 
   fn cache_service(&self) -> Arc<dyn CacheService>;
+
+  fn localization_service(&self) -> Arc<dyn LocalizationService>;
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -35,6 +37,7 @@ pub struct DefaultAppService {
   session_service: Arc<dyn SessionService>,
   secret_service: Arc<dyn SecretService>,
   cache_service: Arc<dyn CacheService>,
+  localization_service: Arc<dyn LocalizationService>,
 }
 
 impl AppService for DefaultAppService {
@@ -68,5 +71,9 @@ impl AppService for DefaultAppService {
 
   fn cache_service(&self) -> Arc<dyn CacheService> {
     self.cache_service.clone()
+  }
+
+  fn localization_service(&self) -> Arc<dyn LocalizationService> {
+    self.localization_service.clone()
   }
 }
