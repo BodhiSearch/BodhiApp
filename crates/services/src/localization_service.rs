@@ -1,4 +1,4 @@
-use fluent::{concurrent::FluentBundle, FluentResource};
+use fluent::{concurrent::FluentBundle, FluentArgs, FluentResource};
 use include_dir::Dir;
 use objs::{AppError, ErrorType};
 use std::{
@@ -7,6 +7,15 @@ use std::{
 };
 use thiserror::Error;
 use unic_langid::LanguageIdentifier;
+
+pub trait LocalizationService: std::fmt::Debug + Send + Sync {
+  fn get_message(
+    &self,
+    locale: &LanguageIdentifier,
+    code: &str,
+    args: HashMap<String, String>,
+  ) -> Result<Option<String>, LocalizationError>;
+}
 
 #[derive(Debug, Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -34,11 +43,11 @@ pub enum LocalizationError {
   LocaleNotSupported(String),
 }
 
-pub struct LocalizationService {
+pub struct FluentLocalizationService {
   bundles: RwLock<HashMap<LanguageIdentifier, Arc<FluentBundle<FluentResource>>>>,
 }
 
-impl LocalizationService {
+impl FluentLocalizationService {
   fn new() -> Self {
     Self {
       bundles: RwLock::new(HashMap::new()),
@@ -129,8 +138,15 @@ impl LocalizationService {
     &self,
     locale: &LanguageIdentifier,
     code: &str,
-    args: Option<&fluent::FluentArgs<'_>>,
+    args: Option<HashMap<String, String>>,
   ) -> Result<Option<String>, LocalizationError> {
+    let args: Option<FluentArgs> = args.map(|args| {
+      let mut fluent_args = FluentArgs::new();
+      for (key, value) in args {
+        fluent_args.set(key, value);
+      }
+      fluent_args
+    });
     let bundles = self
       .bundles
       .read()
@@ -145,7 +161,7 @@ impl LocalizationService {
       .value()
       .ok_or_else(|| LocalizationError::FormatPattern(code.to_string()))?;
     let mut errors = vec![];
-    let result = bundle.format_pattern(pattern, args, &mut errors);
+    let result = bundle.format_pattern(pattern, args.as_ref(), &mut errors);
     if errors.is_empty() {
       Ok(Some(result.to_string()))
     } else {
@@ -162,37 +178,42 @@ impl LocalizationService {
 
 #[cfg(test)]
 mod tests {
-  use crate::localization_service::LocalizationService;
+  use crate::localization_service::FluentLocalizationService;
   use include_dir::{include_dir, Dir};
   use rstest::*;
   use unic_langid::LanguageIdentifier;
+  use std::collections::HashMap;
 
   static RESOURCES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/tests/resources");
 
   #[fixture]
-  fn localization_service() -> LocalizationService {
-    LocalizationService::with_locale_resources(&RESOURCES_DIR).unwrap()
+  fn localization_service() -> FluentLocalizationService {
+    FluentLocalizationService::with_locale_resources(&RESOURCES_DIR).unwrap()
   }
 
   #[rstest]
   #[case("en-US", "hello-world", None, "Hello, World!")]
-  #[case("en-US", "hello-world-args", Some("Alice"), "Hello, \u{2068}Alice\u{2069}!")]
+  #[case(
+    "en-US",
+    "hello-world-args",
+    Some(HashMap::from([("name".to_string(), "Alice".to_string())])),
+    "Hello, \u{2068}Alice\u{2069}!"
+  )]
   #[case("fr-FR", "hello-world", None, "Bonjour, le monde !")]
-  #[case("fr-FR", "hello-world-args", Some("Alice"), "Bonjour, \u{2068}Alice\u{2069} !")]
+  #[case(
+    "fr-FR",
+    "hello-world-args",
+    Some(HashMap::from([("name".to_string(), "Alice".to_string())])),
+    "Bonjour, \u{2068}Alice\u{2069} !"
+  )]
   fn test_localization_service(
-    localization_service: LocalizationService,
+    localization_service: FluentLocalizationService,
     #[case] locale: &str,
     #[case] message_key: &str,
-    #[case] name: Option<&str>,
+    #[case] args: Option<HashMap<String, String>>,
     #[case] expected: &str,
   ) -> Result<(), anyhow::Error> {
     let lang_id: LanguageIdentifier = locale.parse()?;
-    let mut args = fluent::FluentArgs::new();
-    if let Some(name_value) = name {
-      args.set("name", name_value);
-    }
-    let args = if name.is_some() { Some(&args) } else { None };
-
     let result = localization_service.get_message(&lang_id, message_key, args)?;
     assert_eq!(result, Some(expected.to_string()));
 

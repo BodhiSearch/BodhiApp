@@ -1,9 +1,5 @@
 use crate::{
-  db::DbService,
-  test_utils::{test_db_service, EnvServiceStub, SecretServiceStub, TestDbService},
-  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService,
-  HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
-  SessionService, SqliteSessionService, BODHI_HOME, HF_HOME,
+  db::DbService, test_utils::{test_db_service, EnvServiceStub, SecretServiceStub, TestDbService}, AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService, HubService, LocalDataService, LocalizationService, MockAuthService, MockHubService, MokaCacheService, SecretService, SessionService, SqliteSessionService, BODHI_HOME, HF_HOME
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
@@ -52,6 +48,7 @@ pub struct AppServiceStub {
   pub secret_service: Option<Arc<dyn SecretService>>,
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService>>,
+  pub localization_service: Option<Arc<dyn LocalizationService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -212,5 +209,9 @@ impl AppService for AppServiceStub {
 
   fn cache_service(&self) -> Arc<dyn CacheService> {
     self.cache_service.clone().unwrap()
+  }
+
+  fn localization_service(&self) -> Arc<dyn LocalizationService> {
+    self.localization_service.clone().unwrap()
   }
 }
