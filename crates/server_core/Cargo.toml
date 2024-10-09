@@ -1,0 +1,49 @@
+[package]
+name = "server_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+commands = { workspace = true }
+errmeta_derive = { workspace = true }
+objs = { workspace = true }
+llama-server-bindings = { workspace = true }
+services = { workspace = true }
+
+anyhow = { workspace = true, optional = true }
+async-openai = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true }
+axum-extra = { workspace = true }
+derive-new = { workspace = true }
+minijinja = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true, features = ["async-await", "log"] }
+tracing-subscriber = { workspace = true, features = [
+  "env-filter",
+], optional = true }
+validator = { workspace = true, features = ["derive"] }
+
+[dev-dependencies]
+commands = { workspace = true, features = ["test-utils"] }
+objs = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+axum-test = { workspace = true }
+dirs = { workspace = true }
+http-body-util = { workspace = true }
+mockall = { workspace = true }
+reqwest = { workspace = true }
+rstest = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+serde_yaml = { workspace = true }
+serial_test = { workspace = true }
+tempfile = { workspace = true }
+
+[features]
+test-utils = ["anyhow", "tracing-subscriber"]
