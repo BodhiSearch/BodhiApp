@@ -1,8 +1,9 @@
 use crate::{
-  db::DbService, AuthService, CacheService, DataService, EnvService, HubService,
-  LocalizationService, SecretService, SessionService,
+  db::DbService, AuthService, CacheService, DataService, EnvService, HubService, SecretService,
+  SessionService,
 };
 use derive_new::new;
+use objs::LocalizationService;
 use std::sync::Arc;
 
 #[cfg_attr(test, mockall::automock)]
