@@ -1,10 +1,13 @@
+use crate::FluentLocalizationService;
 use axum::{
   body::Body,
   response::{IntoResponse, Response},
 };
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::borrow::Borrow;
 use std::collections::HashMap;
+use std::{borrow::Borrow, str::FromStr};
+use unic_langid::LanguageIdentifier;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
 pub struct ErrorBody {
@@ -47,17 +50,41 @@ pub struct ApiError {
   pub args: HashMap<String, String>,
 }
 
+// TODO: limiting to EN_US locale, need to refactor and move creating ApiError to route_layer to
+// use the request locale
+static EN_US: Lazy<LanguageIdentifier> =
+  Lazy::new(|| LanguageIdentifier::from_str("en-US").unwrap());
+const DEFAULT_ERR_MSG: &str = "something went wrong, try again later";
+
 impl IntoResponse for ApiError {
   fn into_response(self) -> Response {
-    let message = format!("l10n: {:?}", self.args);
+    let ApiError {
+      error_type,
+      status,
+      code,
+      args,
+      ..
+    } = self;
+    let instance = FluentLocalizationService::get_instance();
+    let message = instance
+      .get_message(&EN_US, &code, Some(args))
+      .unwrap_or_else(|err| {
+        tracing::warn!(
+          "failed to get message: err: {}, code={}, args={:?}",
+          err,
+          err.code(),
+          err.args()
+        );
+        DEFAULT_ERR_MSG.to_string()
+      });
     Response::builder()
-      .status(self.status)
+      .status(status)
       .body(Body::from(
         serde_json::to_string(&OpenAIApiError {
           error: ErrorBody {
             message,
-            r#type: self.error_type,
-            code: Some(self.code),
+            r#type: error_type,
+            code: Some(code),
             param: None,
           },
         })
@@ -83,11 +110,26 @@ impl<T: AppError + 'static> From<T> for ApiError {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use crate::test_utils::{localization_service, set_mock_localization_service};
   use axum::{body::Body, extract::Path, http::Request, routing::get, Router};
   use http_body_util::BodyExt;
-  use rstest::rstest;
+  use rstest::{fixture, rstest};
   use serde_json::{json, Value};
+  use std::sync::Arc;
   use tower::ServiceExt;
+
+  #[fixture]
+  pub fn setup_api_error_localization(
+    localization_service: Arc<FluentLocalizationService>,
+  ) -> Arc<FluentLocalizationService> {
+    localization_service
+      .load_resource(&include_dir::include_dir!(
+        "$CARGO_MANIFEST_DIR/tests/resources-api-error"
+      ))
+      .unwrap();
+    set_mock_localization_service(localization_service.clone());
+    localization_service
+  }
 
   #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
   #[error_meta(trait_to_impl = AppError, error_type = "test_even_error", status = 418, code = "test_even_code")]
@@ -114,20 +156,22 @@ mod tests {
   }
 
   #[rstest]
+  #[serial_test::serial(localization)]
   #[case("2", ErrorBody {
-    message: r#"l10n: {"reason": "even"}"#.to_string(),
+    message: "even_error from l10n file: \u{2068}even\u{2069}".to_string(),
     r#type: "test_even_error".to_string(),
     code: Some("test_even_code".to_string()),
     param: None
   })]
   #[case("3", ErrorBody {
-    message: r#"l10n: {"reason": "odd"}"#.to_string(),
+    message: "odd_error from l10n file: \u{2068}odd\u{2069}".to_string(),
     r#type: "test_odd_error".to_string(),
     code: Some("test_odd_code".to_string()),
     param: None
   })]
   #[tokio::test]
   async fn test_app_error_into_response(
+    _setup_api_error_localization: Arc<FluentLocalizationService>,
     #[case] input: &str,
     #[case] error: ErrorBody,
   ) -> anyhow::Result<()> {
@@ -145,7 +189,7 @@ mod tests {
   }
 
   #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-  #[error_meta(trait_to_impl = AppError, error_type = "test_error_response", status = 418, code = "error_response_code")]
+  #[error_meta(trait_to_impl = AppError, error_type = "test_error_response", status = 418)]
   #[error("error_response_obj")]
   pub struct ErrorResponseObj {
     reason: String,
@@ -156,8 +200,11 @@ mod tests {
   }
 
   #[rstest]
+  #[serial_test::serial(localization)]
   #[tokio::test]
-  async fn test_app_error_custom_into_response() -> anyhow::Result<()> {
+  async fn test_app_error_custom_into_response(
+    _setup_api_error_localization: Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
     let router = Router::new().route("/", get(handler_response_error));
     let req = Request::get("/").body(Body::empty()).unwrap();
     let response = router.oneshot(req).await?;
@@ -169,9 +216,9 @@ mod tests {
       response_json,
       json! {{
         "error": {
-          "message": r#"l10n: {"reason": "error message"}"#,
+          "message": "from localization file: \u{2068}error message\u{2069}",
           "type": "test_error_response",
-          "code": "error_response_code",
+          "code": "error_response_obj",
           "param": null,
         }
       }}
@@ -185,8 +232,11 @@ mod tests {
   }
 
   #[rstest]
+  #[serial_test::serial(localization)]
   #[tokio::test]
-  async fn test_error_auto_into_response() -> anyhow::Result<()> {
+  async fn test_error_auto_into_response(
+    _setup_api_error_localization: Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
     let req = Request::get("/").body(Body::empty()).unwrap();
     let response = Router::new()
       .route("/", get(handler_auto_into_response))
@@ -200,9 +250,9 @@ mod tests {
       response_json,
       json! {{
         "error": {
-          "message": r#"l10n: {"reason": "error message"}"#,
+          "message": "from localization file: \u{2068}error message\u{2069}",
           "type": "test_error_response",
-          "code": "error_response_code",
+          "code": "error_response_obj",
           "param": null
         },
       }}
