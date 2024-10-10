@@ -25,8 +25,7 @@ pub struct DefaultRouterState {
 }
 
 impl DefaultRouterState {
-  #[allow(unused)]
-  pub(crate) fn new(ctx: Arc<dyn SharedContextRw>, app_service: Arc<dyn AppService>) -> Self {
+  pub fn new(ctx: Arc<dyn SharedContextRw>, app_service: Arc<dyn AppService>) -> Self {
     Self { ctx, app_service }
   }
 }
