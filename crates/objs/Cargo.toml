@@ -37,6 +37,8 @@ rstest = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 tower = { workspace = true }
+unic-langid = { workspace = true }
+
 
 [features]
 test-utils = ["rstest", "tempfile", "dircpy", "fluent"]
