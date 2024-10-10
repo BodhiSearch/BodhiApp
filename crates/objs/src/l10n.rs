@@ -1,10 +1,12 @@
 use crate::{AppError, ErrorType};
 use fluent::{concurrent::FluentBundle, FluentArgs, FluentResource};
 use include_dir::Dir;
+#[cfg(not(test))]
+use std::sync::{Arc, Once};
 use std::{
   collections::HashMap,
   str::FromStr,
-  sync::{Arc, LazyLock, Once, RwLock},
+  sync::{LazyLock, RwLock},
 };
 use thiserror::Error;
 use unic_langid::LanguageIdentifier;
@@ -15,33 +17,48 @@ pub trait LocalizationService: std::fmt::Debug + Send + Sync {
     locale: &LanguageIdentifier,
     code: &str,
     args: HashMap<String, String>,
-  ) -> Result<Option<String>, LocalizationError>;
+  ) -> Result<Option<String>, LocalizationSetupError>;
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("locale_not_supported")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+pub struct LocaleNotSupportedError {
+  locale: String,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("l10n_rwlock_read")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+pub struct RwLockReadError {
+  reason: String,
 }
 
 #[derive(Debug, PartialEq, Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum LocalizationError {
+pub enum LocalizationMessageError {
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-fluent_error", args_delegate = false)]
-  FluentError(#[from] fluent::FluentError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-unic_langid_error", args_delegate = false)]
-  UnicLangidError(#[from] unic_langid::LanguageIdentifierError),
-  #[error("rwlock_write")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-rwlock_write")]
-  RwLockWrite(String),
-  #[error("rwlock_read")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-rwlock_read")]
-  RwLockRead(String),
+  RwLockRead(#[from] RwLockReadError),
   #[error("message_not_found")]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-message_not_found")]
   MessageNotFound(String),
   #[error("format_pattern")]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-format_pattern")]
   FormatPattern(String),
-  #[error("locale_not_supported")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-locale_not_supported")]
-  LocaleNotSupported(String),
+  #[error(transparent)]
+  LocaleNotSupported(#[from] LocaleNotSupportedError),
+}
+
+#[derive(Debug, PartialEq, Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum LocalizationSetupError {
+  #[error("rwlock_write")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-rwlock_write")]
+  RwLockWrite(String),
+  #[error(transparent)]
+  RwLockRead(#[from] RwLockReadError),
+  #[error(transparent)]
+  LocaleNotSupported(#[from] LocaleNotSupportedError),
 }
 
 // basic support for locales
@@ -63,6 +80,7 @@ impl FluentLocalizationService {
     }
   }
 
+  #[cfg(not(test))]
   pub fn get_instance() -> Arc<FluentLocalizationService> {
     static INSTANCE: Once = Once::new();
     static mut SERVICE: Option<Arc<FluentLocalizationService>> = None;
@@ -77,7 +95,7 @@ impl FluentLocalizationService {
     unsafe { Arc::clone(SERVICE.as_ref().unwrap()) }
   }
 
-  pub fn load_resource(&self, embedded_dir: &Dir) -> Result<(), LocalizationError> {
+  pub fn load_resource(&self, embedded_dir: &Dir) -> Result<(), LocalizationSetupError> {
     for locale_dir in embedded_dir.entries() {
       match locale_dir.as_dir() {
         Some(locale_dir) => {
@@ -138,14 +156,14 @@ impl FluentLocalizationService {
     &self,
     locale: LanguageIdentifier,
     resources: Vec<String>,
-  ) -> Result<(), LocalizationError> {
+  ) -> Result<(), LocalizationSetupError> {
     if !SUPPORTED_LOCALES.contains(&locale) {
-      return Err(LocalizationError::LocaleNotSupported(locale.to_string()));
+      return Err(LocaleNotSupportedError::new(locale.to_string()))?;
     }
     let mut bundles = self
       .bundles
       .write()
-      .map_err(|err| LocalizationError::RwLockRead(err.to_string()))?;
+      .map_err(|err| RwLockReadError::new(err.to_string()))?;
     let bundle = match bundles.get_mut(&locale) {
       Some(bundle) => bundle,
       None => {
@@ -175,9 +193,9 @@ impl FluentLocalizationService {
     locale: &LanguageIdentifier,
     code: &str,
     args: Option<HashMap<String, String>>,
-  ) -> Result<Option<String>, LocalizationError> {
+  ) -> Result<String, LocalizationMessageError> {
     if !SUPPORTED_LOCALES.contains(locale) {
-      return Err(LocalizationError::LocaleNotSupported(locale.to_string()));
+      return Err(LocaleNotSupportedError::new(locale.to_string()))?;
     }
     let args: Option<FluentArgs> = args.map(|args| {
       let mut fluent_args = FluentArgs::new();
@@ -189,22 +207,22 @@ impl FluentLocalizationService {
     let bundles = self
       .bundles
       .read()
-      .map_err(|err| LocalizationError::RwLockRead(err.to_string()))?;
+      .map_err(|err| RwLockReadError::new(err.to_string()))?;
     let bundle = bundles
       .get(locale)
-      .ok_or_else(|| LocalizationError::MessageNotFound(code.to_string()))?;
+      .ok_or_else(|| LocaleNotSupportedError::new(code.to_string()))?;
     let message = bundle
       .get_message(code)
-      .ok_or_else(|| LocalizationError::MessageNotFound(code.to_string()))?;
+      .ok_or_else(|| LocalizationMessageError::MessageNotFound(code.to_string()))?;
     let pattern = message
       .value()
-      .ok_or_else(|| LocalizationError::FormatPattern(code.to_string()))?;
+      .ok_or_else(|| LocalizationMessageError::FormatPattern(code.to_string()))?;
     let mut errors = vec![];
     let result = bundle.format_pattern(pattern, args.as_ref(), &mut errors);
     if errors.is_empty() {
-      Ok(Some(result.to_string()))
+      Ok(result.to_string())
     } else {
-      Err(LocalizationError::FormatPattern(
+      Err(LocalizationMessageError::FormatPattern(
         errors
           .iter()
           .map(|err| err.to_string())
@@ -219,7 +237,7 @@ impl FluentLocalizationService {
 mod tests {
   use super::FluentLocalizationService;
   use crate::test_utils::localization_service;
-  use crate::LocalizationError;
+  use crate::{LocaleNotSupportedError, LocalizationSetupError, LocalizationMessageError};
   use include_dir::{include_dir, Dir};
   use rstest::*;
   use std::str::FromStr;
@@ -256,7 +274,7 @@ mod tests {
     localization_service.load_resource(&RESOURCES_DIR).unwrap();
     let lang_id: LanguageIdentifier = locale.parse()?;
     let result = localization_service.get_message(&lang_id, message_key, args)?;
-    assert_eq!(result, Some(expected.to_string()));
+    assert_eq!(result, expected.to_string());
     Ok(())
   }
 
@@ -288,7 +306,7 @@ mod tests {
       .unwrap();
     let lang_id: LanguageIdentifier = locale.parse()?;
     let result = localization_service.get_message(&lang_id, message_key, args)?;
-    assert_eq!(result, Some(expected.to_string()));
+    assert_eq!(result, expected.to_string());
     Ok(())
   }
 
@@ -333,7 +351,7 @@ mod tests {
 
     let lang_id: LanguageIdentifier = locale.parse()?;
     let result = localization_service.get_message(&lang_id, message_key, args)?;
-    assert_eq!(result, Some(expected.to_string()));
+    assert_eq!(result, expected.to_string());
 
     Ok(())
   }
@@ -361,7 +379,7 @@ mod tests {
     assert!(result.is_err());
     assert_eq!(
       result.unwrap_err(),
-      LocalizationError::LocaleNotSupported("en-UK".to_string())
+      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string()))
     );
   }
 
@@ -373,7 +391,7 @@ mod tests {
     assert!(result.is_err());
     assert_eq!(
       result.unwrap_err(),
-      LocalizationError::LocaleNotSupported("en-UK".to_string())
+      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string()))
     );
   }
 
@@ -391,7 +409,7 @@ mod tests {
     let result = localization_service.get_message(&lang_id, "test-key", None);
     assert!(result.is_err());
     match result.unwrap_err() {
-      LocalizationError::LocaleNotSupported(locale) => {
+      LocalizationMessageError::LocaleNotSupported(LocaleNotSupportedError { locale }) => {
         assert_eq!(locale, "ja-JP");
       }
       err => {
@@ -407,12 +425,14 @@ mod tests {
     let result = localization_service.get_message(&lang_id, "non-existent-key", None);
     assert!(matches!(
       result,
-      Err(LocalizationError::MessageNotFound(key)) if key == "non-existent-key"
+      Err(LocalizationMessageError::MessageNotFound(key)) if key == "non-existent-key"
     ));
   }
 
   #[rstest]
-  fn test_get_message_missing_pattern_if_message_not_properly_formed(localization_service: Arc<FluentLocalizationService>) {
+  fn test_get_message_missing_pattern_if_message_not_properly_formed(
+    localization_service: Arc<FluentLocalizationService>,
+  ) {
     static RESOURCES_MISSING_PATTERN: Dir =
       include_dir!("$CARGO_MANIFEST_DIR/tests/resources-missing-pattern");
     localization_service
@@ -422,7 +442,7 @@ mod tests {
     let result = localization_service.get_message(&lang_id, "missing-pattern", None);
     assert!(result.is_err());
     match result.unwrap_err() {
-      LocalizationError::MessageNotFound(message) => {
+      LocalizationMessageError::MessageNotFound(message) => {
         assert_eq!(message, "missing-pattern");
       }
       err => {
@@ -449,7 +469,7 @@ mod tests {
     );
     assert!(result.is_err());
     match result.unwrap_err() {
-      LocalizationError::FormatPattern(message) => {
+      LocalizationMessageError::FormatPattern(message) => {
         assert_eq!(message, "Resolver error: Unknown variable: $nonexistent");
       }
       err => {
@@ -474,7 +494,7 @@ mod tests {
 
     let results = futures::future::join_all(tasks).await;
     for result in results {
-      assert_eq!(result.unwrap(), Some("Hello, World!".to_string()));
+      assert_eq!(result.unwrap(), "Hello, World!".to_string());
     }
   }
 
