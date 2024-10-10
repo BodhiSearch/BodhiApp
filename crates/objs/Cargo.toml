@@ -12,8 +12,9 @@ clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
 derive-new = { workspace = true }
-fluent = { workspace = true, optional = true }
+fluent = { workspace = true }
 hf-hub = { workspace = true }
+include_dir = { workspace = true }
 once_cell = { workspace = true }
 regex = { workspace = true }
 reqwest = { workspace = true }
@@ -23,14 +24,16 @@ serde_yaml = { workspace = true }
 serde_json = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
+tracing = { workspace = true }
 thiserror = { workspace = true }
+unic-langid = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 dircpy = { workspace = true }
-fluent = { workspace = true }
+futures = { workspace = true }
 http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["full"] }
 rstest = { workspace = true }
@@ -41,4 +44,4 @@ unic-langid = { workspace = true }
 
 
 [features]
-test-utils = ["rstest", "tempfile", "dircpy", "fluent"]
+test-utils = ["rstest", "tempfile", "dircpy"]
