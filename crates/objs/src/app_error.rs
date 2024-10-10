@@ -1,10 +1,23 @@
 use axum::{
-  http::StatusCode,
+  body::Body,
   response::{IntoResponse, Response},
-  Json,
 };
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::collections::HashMap;
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
+pub struct ErrorBody {
+  pub message: String,
+  pub r#type: String,
+  pub code: Option<String>,
+  pub param: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
+pub struct OpenAIApiError {
+  pub error: ErrorBody,
+}
 
 pub trait AppError: std::error::Error {
   fn error_type(&self) -> String;
@@ -24,34 +37,46 @@ impl<T: AppError + 'static> From<T> for Box<dyn AppError> {
   }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
-struct ErrorBody {
-  pub message: String,
-  pub r#type: String,
-  pub code: Option<String>,
-  pub param: Option<String>,
+#[derive(Debug, thiserror::Error)]
+#[error("api_error")]
+pub struct ApiError {
+  pub name: String,
+  pub error_type: String,
+  pub status: u16,
+  pub code: String,
+  pub args: HashMap<String, String>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
-struct OpenAIApiError {
-  pub error: ErrorBody,
-}
-
-impl IntoResponse for Box<dyn AppError> {
+impl IntoResponse for ApiError {
   fn into_response(self) -> Response {
-    let error = OpenAIApiError {
-      error: ErrorBody {
-        message: self.to_string(),
-        r#type: self.error_type(),
-        code: Some(self.code()),
-        param: None,
-      },
-    };
-    (
-      StatusCode::try_from(self.status_u16()).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-      Json(error),
-    )
-      .into_response()
+    let message = format!("l10n: {:?}", self.args);
+    Response::builder()
+      .status(self.status)
+      .body(Body::from(
+        serde_json::to_string(&OpenAIApiError {
+          error: ErrorBody {
+            message,
+            r#type: self.error_type,
+            code: Some(self.code),
+            param: None,
+          },
+        })
+        .unwrap(),
+      ))
+      .unwrap()
+  }
+}
+
+impl<T: AppError + 'static> From<T> for ApiError {
+  fn from(value: T) -> Self {
+    let value = value.borrow();
+    ApiError {
+      name: value.to_string(),
+      error_type: value.error_type(),
+      status: value.status_u16(),
+      code: value.code(),
+      args: value.args(),
+    }
   }
 }
 
@@ -61,6 +86,7 @@ mod tests {
   use axum::{body::Body, extract::Path, http::Request, routing::get, Router};
   use http_body_util::BodyExt;
   use rstest::rstest;
+  use serde_json::{json, Value};
   use tower::ServiceExt;
 
   #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -77,7 +103,9 @@ mod tests {
     reason: String,
   }
 
-  async fn handler_return_error(Path(input): Path<String>) -> Result<Response, Box<dyn AppError>> {
+  async fn handler_return_different_error_objs(
+    Path(input): Path<String>,
+  ) -> Result<Response, ApiError> {
     if input.parse::<i32>().unwrap() % 2 == 0 {
       Err(EvenErrorObj::new("even".to_string()))?
     } else {
@@ -87,13 +115,13 @@ mod tests {
 
   #[rstest]
   #[case("2", ErrorBody {
-    message: "even_error_obj".to_string(),
+    message: r#"l10n: {"reason": "even"}"#.to_string(),
     r#type: "test_even_error".to_string(),
     code: Some("test_even_code".to_string()),
     param: None
   })]
   #[case("3", ErrorBody {
-    message: "odd_error_obj".to_string(),
+    message: r#"l10n: {"reason": "odd"}"#.to_string(),
     r#type: "test_odd_error".to_string(),
     code: Some("test_odd_code".to_string()),
     param: None
@@ -103,7 +131,7 @@ mod tests {
     #[case] input: &str,
     #[case] error: ErrorBody,
   ) -> anyhow::Result<()> {
-    let router = Router::new().route("/:input", get(handler_return_error));
+    let router = Router::new().route("/:input", get(handler_return_different_error_objs));
     let req = Request::get(format!("/{}", input))
       .body(Body::empty())
       .unwrap();
@@ -123,24 +151,7 @@ mod tests {
     reason: String,
   }
 
-  impl IntoResponse for ErrorResponseObj {
-    fn into_response(self) -> Response {
-      let api_error = OpenAIApiError {
-        error: ErrorBody {
-          message: self.to_string(),
-          r#type: self.error_type(),
-          code: Some(self.code()),
-          param: None,
-        },
-      };
-      Response::builder()
-        .status(self.status_u16())
-        .body(Body::from(serde_json::to_string(&api_error).unwrap()))
-        .unwrap()
-    }
-  }
-
-  async fn handler_response_error() -> Result<Response, ErrorResponseObj> {
+  async fn handler_response_error() -> Result<Response, ApiError> {
     Err(ErrorResponseObj::new("error message".to_string()))?
   }
 
@@ -153,17 +164,48 @@ mod tests {
     assert_eq!(418, response.status());
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let str = String::from_utf8_lossy(&bytes);
-    let response_json = serde_json::from_str::<OpenAIApiError>(&str)?;
+    let response_json = serde_json::from_str::<Value>(&str)?;
     assert_eq!(
       response_json,
-      OpenAIApiError {
-        error: ErrorBody {
-          message: "error_response_obj".to_string(),
-          r#type: "test_error_response".to_string(),
-          code: Some("error_response_code".to_string()),
-          param: None
+      json! {{
+        "error": {
+          "message": r#"l10n: {"reason": "error message"}"#,
+          "type": "test_error_response",
+          "code": "error_response_code",
+          "param": null,
         }
-      }
+      }}
+    );
+    Ok(())
+  }
+
+  #[allow(unused)]
+  async fn handler_auto_into_response() -> Result<Response, ApiError> {
+    Err(ErrorResponseObj::new("error message".to_string()))?
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_error_auto_into_response() -> anyhow::Result<()> {
+    let req = Request::get("/").body(Body::empty()).unwrap();
+    let response = Router::new()
+      .route("/", get(handler_auto_into_response))
+      .oneshot(req)
+      .await?;
+    assert_eq!(418, response.status());
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let str = String::from_utf8_lossy(&bytes);
+    let response_json = serde_json::from_str::<Value>(&str)?;
+    assert_eq!(
+      response_json,
+      json! {{
+        "error": {
+          "message": r#"l10n: {"reason": "error message"}"#,
+          "type": "test_error_response",
+          "code": "error_response_code",
+          "param": null
+        },
+      }}
     );
     Ok(())
   }
