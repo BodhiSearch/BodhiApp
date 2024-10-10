@@ -1,8 +1,13 @@
 use crate::{
-  db::DbService, test_utils::{test_db_service, EnvServiceStub, SecretServiceStub, TestDbService}, AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService, HubService, LocalDataService, LocalizationService, MockAuthService, MockHubService, MokaCacheService, SecretService, SessionService, SqliteSessionService, BODHI_HOME, HF_HOME
+  db::DbService,
+  test_utils::{test_db_service, EnvServiceStub, SecretServiceStub, TestDbService},
+  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService,
+  HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
+  SessionService, SqliteSessionService, BODHI_HOME, HF_HOME,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir};
+use objs::LocalizationService;
 use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
