@@ -1,8 +1,6 @@
 use crate::{AppError, ErrorType};
 use fluent::{concurrent::FluentBundle, FluentArgs, FluentResource};
 use include_dir::Dir;
-#[cfg(not(test))]
-use std::sync::{Arc, Once};
 use std::{
   collections::HashMap,
   str::FromStr,
@@ -73,26 +71,33 @@ pub struct FluentLocalizationService {
   bundles: RwLock<HashMap<LanguageIdentifier, FluentBundle<FluentResource>>>,
 }
 
+#[cfg(all(not(test), not(feature = "test-utils")))]
+mod impl_localization_service {
+  use super::*;
+  use std::sync::{Arc, Once};
+
+  impl FluentLocalizationService {
+    pub fn get_instance() -> Arc<FluentLocalizationService> {
+      static INSTANCE: Once = Once::new();
+      static mut SERVICE: Option<Arc<FluentLocalizationService>> = None;
+
+      INSTANCE.call_once(|| {
+        let service = Arc::new(FluentLocalizationService::new());
+        unsafe {
+          SERVICE = Some(Arc::clone(&service));
+        }
+      });
+
+      unsafe { Arc::clone(SERVICE.as_ref().unwrap()) }
+    }
+  }
+}
+
 impl FluentLocalizationService {
   pub(super) fn new() -> Self {
     Self {
       bundles: RwLock::new(HashMap::new()),
     }
-  }
-
-  #[cfg(not(test))]
-  pub fn get_instance() -> Arc<FluentLocalizationService> {
-    static INSTANCE: Once = Once::new();
-    static mut SERVICE: Option<Arc<FluentLocalizationService>> = None;
-
-    INSTANCE.call_once(|| {
-      let service = Arc::new(FluentLocalizationService::new());
-      unsafe {
-        SERVICE = Some(Arc::clone(&service));
-      }
-    });
-
-    unsafe { Arc::clone(SERVICE.as_ref().unwrap()) }
   }
 
   pub fn load_resource(&self, embedded_dir: &Dir) -> Result<(), LocalizationSetupError> {
@@ -237,7 +242,7 @@ impl FluentLocalizationService {
 mod tests {
   use super::FluentLocalizationService;
   use crate::test_utils::localization_service;
-  use crate::{LocaleNotSupportedError, LocalizationSetupError, LocalizationMessageError};
+  use crate::{LocaleNotSupportedError, LocalizationMessageError, LocalizationSetupError};
   use include_dir::{include_dir, Dir};
   use rstest::*;
   use std::str::FromStr;
