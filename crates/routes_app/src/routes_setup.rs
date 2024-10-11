@@ -122,6 +122,7 @@ mod tests {
   };
   use jsonwebtoken::Algorithm;
   use objs::{FluentLocalizationService, ReqwestError};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
   use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContextRw};
@@ -197,6 +198,7 @@ mod tests {
       SetupRequest { authz: true },
   )]
   #[tokio::test]
+  #[serial_test::serial(localization)]
   async fn test_setup_handler_error(
     #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
     #[case] secret_service: SecretServiceStub,
@@ -335,6 +337,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
+  #[serial_test::serial(localization)]
   async fn test_setup_handler_register_resource_error(
     #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
@@ -403,6 +406,7 @@ mod tests {
     "failed to parse the request body as JSON, error: \u{2068}Failed to parse the request body as JSON\u{2069}"
   )]
   #[tokio::test]
+  #[serial_test::serial(localization)]
   async fn test_setup_handler_bad_request(
     #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
     #[case] body: &str,
