@@ -132,27 +132,27 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{PullCommand, PullCommandError, RemoteModelNotFoundError};
-  use fluent::{FluentBundle, FluentResource};
   use mockall::predicate::eq;
+  use objs::FluentLocalizationService;
   use objs::{
-    test_utils::{assert_error_message, fluent_bundle, SNAPSHOT},
+    test_utils::{assert_error_message, SNAPSHOT},
     Alias, AppError, ChatTemplate, GptContextParams, HubFile, OAIRequestParams, RemoteModel, Repo,
   };
   use rstest::rstest;
   use services::{
-    test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
+    test_utils::{setup_l10n_services, test_hf_service, AppServiceStubBuilder, TestHfService},
     AliasExistsError, AppService, ALIASES_DIR,
   };
   use std::{fs, sync::Arc};
 
   #[rstest]
-  #[case(&RemoteModelNotFoundError("testalias".to_string()), "model not found: 'testalias'")]
+  #[case(&RemoteModelNotFoundError("testalias".to_string()), "remote model alias 'testalias' not found")]
   fn test_command_error_messages(
-    fluent_bundle: FluentBundle<FluentResource>,
+    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
   ) {
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), expected);
+    assert_error_message(localization_service, &error.code(), error.args(), expected);
   }
 
   #[rstest]

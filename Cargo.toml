@@ -24,8 +24,9 @@ services = { path = "crates/services" }
 commands = { path = "crates/commands" }
 server_core = { path = "crates/server_core" }
 auth_middleware = { path = "crates/auth_middleware" }
-server = { path = "crates/server" }
 routes_oai = { path = "crates/routes_oai" }
+routes_app = { path = "crates/routes_app" }
+server = { path = "crates/server" }
 bodhi = { path = "app/bodhi" }
 
 anyhow = "1.0.81"
