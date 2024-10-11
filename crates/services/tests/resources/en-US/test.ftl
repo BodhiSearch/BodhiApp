@@ -13,7 +13,7 @@ hub_service_error-may_be_not_exists = {$source}.
   You are not logged in to huggingface using CLI `huggingface-cli login`.
   So either the huggingface repo '{$repo}' does not exists, or is private, or requires request access.
   Go to https://huggingface.co/{$repo} to request access, login via CLI, and then try again.
-remote_model_not_found_error = remote model alias '{$var_0}' not found.
+remote_model_not_found_error = remote model alias '{$var_0}' not found
 data_file_not_found_error = file '{$filename}' not found in $BODHI_HOME/{$dirname}.
   $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME.
 hub_file_not_found_error = file '{$filename}' not found in huggingface repo '{$repo}', snapshot '{$snapshot}'.
