@@ -143,7 +143,7 @@ pub struct SerdeYamlWithPathError {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("internal_network_error")]
 #[error_meta(trait_to_impl = AppError,
-  error_type = "ErrorType::InternalServer",
+  error_type = ErrorType::InternalServer,
   status = 500,
 )]
 pub struct ReqwestError {

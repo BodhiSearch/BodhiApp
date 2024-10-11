@@ -9,6 +9,7 @@ members = [
   "crates/server",
   "crates/server_core",
   "crates/routes_oai",
+  "crates/routes_app",
   "crates/services",
   "llama-server-bindings",
   "xtask",
