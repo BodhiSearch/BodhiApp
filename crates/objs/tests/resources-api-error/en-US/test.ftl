@@ -1,10 +1,3 @@
-localization_error-fluent_error = l10n_fluent_error: {$error}
-localization_error-unic_langid_error = l10n_unic_langid_error: {$error}
-localization_error-rwlock_write = l10n_rwlock_write: {$var_0}
-rwlock_read_error = l10n_rwlock_read: {$var_0}
-localization_message_error-message_not_found = l10n_message_not_found: {$var_0}
-localization_message_error-format_pattern = l10n_format_pattern: {$var_0}
-localization_message_error-locale_not_supported = l10n_locale_not_supported: {$var_0}
 error_response_obj = from localization file: {$reason}
 test_even_code = even_error from l10n file: {$reason}
 test_odd_code = odd_error from l10n file: {$reason}

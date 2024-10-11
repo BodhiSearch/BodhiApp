@@ -110,26 +110,13 @@ impl<T: AppError + 'static> From<T> for ApiError {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::test_utils::{localization_service, set_mock_localization_service};
+  use crate::test_utils::setup_api_error_l10n;
   use axum::{body::Body, extract::Path, http::Request, routing::get, Router};
   use http_body_util::BodyExt;
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
   use std::sync::Arc;
   use tower::ServiceExt;
-
-  #[fixture]
-  pub fn setup_api_error_localization(
-    localization_service: Arc<FluentLocalizationService>,
-  ) -> Arc<FluentLocalizationService> {
-    localization_service
-      .load_resource(&include_dir::include_dir!(
-        "$CARGO_MANIFEST_DIR/tests/resources-api-error"
-      ))
-      .unwrap();
-    set_mock_localization_service(localization_service.clone());
-    localization_service
-  }
 
   #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
   #[error_meta(trait_to_impl = AppError, error_type = "test_even_error", status = 418, code = "test_even_code")]
@@ -155,6 +142,21 @@ mod tests {
     }
   }
 
+  #[fixture]
+  fn setup_l10n(
+    setup_api_error_l10n: Arc<FluentLocalizationService>,
+  ) -> Arc<FluentLocalizationService> {
+    let api_errors = std::fs::read_to_string(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/tests/resources-api-error/en-US/test.ftl"
+    ))
+    .unwrap();
+    setup_api_error_l10n
+      .load_locale(EN_US.clone(), vec![api_errors])
+      .unwrap();
+    setup_api_error_l10n
+  }
+
   #[rstest]
   #[serial_test::serial(localization)]
   #[case("2", ErrorBody {
@@ -171,7 +173,7 @@ mod tests {
   })]
   #[tokio::test]
   async fn test_app_error_into_response(
-    _setup_api_error_localization: Arc<FluentLocalizationService>,
+    _setup_l10n: Arc<FluentLocalizationService>,
     #[case] input: &str,
     #[case] error: ErrorBody,
   ) -> anyhow::Result<()> {
@@ -203,7 +205,7 @@ mod tests {
   #[serial_test::serial(localization)]
   #[tokio::test]
   async fn test_app_error_custom_into_response(
-    _setup_api_error_localization: Arc<FluentLocalizationService>,
+    _setup_l10n: Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let router = Router::new().route("/", get(handler_response_error));
     let req = Request::get("/").body(Body::empty()).unwrap();
@@ -235,7 +237,7 @@ mod tests {
   #[serial_test::serial(localization)]
   #[tokio::test]
   async fn test_error_auto_into_response(
-    _setup_api_error_localization: Arc<FluentLocalizationService>,
+    _setup_l10n: Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let req = Request::get("/").body(Body::empty()).unwrap();
     let response = Router::new()

@@ -39,7 +39,7 @@ pub fn assert_error_message(
 
 #[fixture]
 pub fn fluent_bundle(
-  #[default("tests/messages/test.ftl")] path: &str,
+  #[default("tests/resources/en-US/test.ftl")] path: &str,
 ) -> FluentBundle<FluentResource> {
   let ftl_string = fs::read_to_string(path).expect("Failed to read FTL file");
   let res = FluentResource::try_new(ftl_string).expect("Failed to parse FTL resource");

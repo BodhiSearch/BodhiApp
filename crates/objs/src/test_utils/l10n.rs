@@ -35,3 +35,16 @@ pub fn clear_mock_localization_service() {
   let mut mock = MOCK_LOCALIZATION_SERVICE.write().unwrap();
   *mock = None;
 }
+
+#[fixture]
+pub fn setup_api_error_l10n(
+  localization_service: Arc<FluentLocalizationService>,
+) -> Arc<FluentLocalizationService> {
+  localization_service
+    .load_resource(&include_dir::include_dir!(
+      "$CARGO_MANIFEST_DIR/tests/resources"
+    ))
+    .unwrap();
+  set_mock_localization_service(localization_service.clone());
+  localization_service
+}
