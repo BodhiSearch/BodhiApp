@@ -1,3 +1,6 @@
+use rstest::fixture;
+
+#[fixture]
 pub fn enable_tracing() {
   use tracing_subscriber::fmt::format::FmtSpan;
 

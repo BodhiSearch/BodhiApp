@@ -249,7 +249,7 @@ mod tests {
   use std::{collections::HashMap, sync::Arc};
   use unic_langid::LanguageIdentifier;
 
-  static RESOURCES_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/tests/resources");
+  static RESOURCES_DIR_0: Dir = include_dir!("$CARGO_MANIFEST_DIR/tests/resources-0");
   static RESOURCES_DIR_1: Dir = include_dir!("$CARGO_MANIFEST_DIR/tests/resources-1");
   static RESOURCES_UNSUPPORTED: Dir =
     include_dir!("$CARGO_MANIFEST_DIR/tests/resources-unsupported");
@@ -276,7 +276,9 @@ mod tests {
     #[case] args: Option<HashMap<String, String>>,
     #[case] expected: &str,
   ) -> Result<(), anyhow::Error> {
-    localization_service.load_resource(&RESOURCES_DIR).unwrap();
+    localization_service
+      .load_resource(&RESOURCES_DIR_0)
+      .unwrap();
     let lang_id: LanguageIdentifier = locale.parse()?;
     let result = localization_service.get_message(&lang_id, message_key, args)?;
     assert_eq!(result, expected.to_string());
@@ -305,7 +307,9 @@ mod tests {
     #[case] args: Option<HashMap<String, String>>,
     #[case] expected: &str,
   ) -> anyhow::Result<()> {
-    localization_service.load_resource(&RESOURCES_DIR).unwrap();
+    localization_service
+      .load_resource(&RESOURCES_DIR_0)
+      .unwrap();
     localization_service
       .load_resource(&RESOURCES_DIR_1)
       .unwrap();
@@ -341,11 +345,11 @@ mod tests {
     let fr_fr = LanguageIdentifier::from_str("fr-FR").unwrap();
     let en_us_resource = include_str!(concat!(
       env!("CARGO_MANIFEST_DIR"),
-      "/tests/resources/en-US/test-messages-1.ftl"
+      "/tests/resources-0/en-US/test-messages-1.ftl"
     ));
     let fr_fr_resource = include_str!(concat!(
       env!("CARGO_MANIFEST_DIR"),
-      "/tests/resources/fr-FR/test-messages-1.ftl"
+      "/tests/resources-0/fr-FR/test-messages-1.ftl"
     ));
     localization_service
       .load_locale(en_us, vec![fr_fr_resource.to_string()])
@@ -425,7 +429,9 @@ mod tests {
 
   #[rstest]
   fn test_get_message_missing_message(localization_service: Arc<FluentLocalizationService>) {
-    localization_service.load_resource(&RESOURCES_DIR).unwrap();
+    localization_service
+      .load_resource(&RESOURCES_DIR_0)
+      .unwrap();
     let lang_id = LanguageIdentifier::from_str("en-US").unwrap();
     let result = localization_service.get_message(&lang_id, "non-existent-key", None);
     assert!(matches!(
@@ -486,7 +492,9 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_concurrent_access(localization_service: Arc<FluentLocalizationService>) {
-    localization_service.load_resource(&RESOURCES_DIR).unwrap();
+    localization_service
+      .load_resource(&RESOURCES_DIR_0)
+      .unwrap();
     let lang_id = LanguageIdentifier::from_str("en-US").unwrap();
 
     let tasks: Vec<_> = (0..100)
