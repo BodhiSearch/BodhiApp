@@ -32,6 +32,14 @@ impl PartialEq for SqlxMigrateError {
 
 impl Eq for SqlxMigrateError {}
 
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("item_not_found")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
+pub struct ItemNotFound {
+  id: String,
+  item_type: String,
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
@@ -49,6 +57,10 @@ mod tests {
   #[case::migration(
     &SqlxMigrateError::new(MigrateError::VersionMissing(1)),
     "migration 1 was previously applied but is missing in the resolved migrations"
+  )]
+  #[case::item_not_found(
+    &ItemNotFound::new("1".to_string(), "user".to_string()),
+    "item '1' of type 'user' not found in db"
   )]
   #[serial_test::serial(localization)]
   fn test_sqlx_error_message(

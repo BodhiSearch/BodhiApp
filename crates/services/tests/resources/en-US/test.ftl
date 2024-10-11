@@ -2,8 +2,8 @@ data_service_error-dir_missing = directory '{$dirname}' not found in $BODHI_HOME
   $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME.
 data_service_error-bodhi_home = failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.
 data_service_error-hf_home = failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.
-alias_not_found_error = alias '{$var_0}' not found in $BODHI_HOME/aliases.
-alias_exists_error = alias '{$var_0}' already exists in $BODHI_HOME/aliases.
+alias_not_found_error = alias '{$var_0}' not found in $BODHI_HOME/aliases
+alias_exists_error = alias '{$var_0}' already exists in $BODHI_HOME/aliases
 auth_service_error-auth_service_api_error = error from auth service: {$var_0}
 hub_api_error = error from huggingface api: {$source}
 hub_service_error-gated_access = {$source}.
@@ -13,7 +13,7 @@ hub_service_error-may_be_not_exists = {$source}.
   You are not logged in to huggingface using CLI `huggingface-cli login`.
   So either the huggingface repo '{$repo}' does not exists, or is private, or requires request access.
   Go to https://huggingface.co/{$repo} to request access, login via CLI, and then try again.
-remote_model_not_found_error = remote model alias '{$var_0}' not found
+remote_model_not_found_error = remote model alias '{$alias}' not found, check your alias and try again
 data_file_not_found_error = file '{$filename}' not found in $BODHI_HOME/{$dirname}.
   $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME.
 hub_file_not_found_error = file '{$filename}' not found in huggingface repo '{$repo}', snapshot '{$snapshot}'.
@@ -42,3 +42,4 @@ json_web_token_error-InvalidSignature = authentication token signature does not 
 json_web_token_error-InvalidIssuer = authentication token issuer is invalid
 json_web_token_error-InvalidAudience = authentication token audience is invalid
 json_web_token_error-Unknown = authentication token is invalid, source: {$source}
+item_not_found = item '{$id}' of type '{$item_type}' not found in db
