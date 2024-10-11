@@ -49,6 +49,7 @@ time = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }
 tower = { workspace = true, features = ["util"] }
 url = { workspace = true }
+uuid = { workspace = true, features = ["v4"] }
 
 [features]
 test-utils = ["include_dir", "rstest"]
