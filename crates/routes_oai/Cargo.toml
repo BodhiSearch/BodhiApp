@@ -1,0 +1,28 @@
+[package]
+name = "routes_oai"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+llama-server-bindings = { workspace = true }
+errmeta_derive = { workspace = true }
+objs = { workspace = true }
+services = { workspace = true }
+server_core = { workspace = true }
+
+async-openai = { workspace = true }
+axum = { workspace = true }
+
+[dev-dependencies]
+server_core = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+auth_middleware = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+rstest = { workspace = true }
+tower = { workspace = true, features = ["util"] }
+tokio = { workspace = true, features = ["full", "test-util"] }
+serde_json = { workspace = true, features = ["preserve_order"] }
+
+[features]
+test-utils = []

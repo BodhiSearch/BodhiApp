@@ -6,7 +6,7 @@ use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
 use rstest::fixture;
 use sqlx::SqlitePool;
-use std::{fs::File, sync::Arc};
+use std::{fs::File, path::Path, sync::Arc};
 use tap::Tap;
 use tempfile::TempDir;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
@@ -38,6 +38,10 @@ impl Default for FrozenTimeService {
 impl TimeService for FrozenTimeService {
   fn utc_now(&self) -> DateTime<Utc> {
     self.0
+  }
+
+  fn created_at(&self, _path: &Path) -> u32 {
+    0
   }
 }
 

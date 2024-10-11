@@ -1,5 +1,5 @@
 use crate::{
-  db::DbService,
+  db::{DbService, TimeService},
   test_utils::{test_db_service, EnvServiceStub, SecretServiceStub, TestDbService},
   AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService,
   HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
@@ -11,6 +11,8 @@ use objs::LocalizationService;
 use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
+
+use super::FrozenTimeService;
 
 #[fixture]
 #[awt]
@@ -54,6 +56,8 @@ pub struct AppServiceStub {
   #[builder(default = "self.default_cache_service()")]
   pub cache_service: Option<Arc<dyn CacheService>>,
   pub localization_service: Option<Arc<dyn LocalizationService>>,
+  #[builder(default = "self.default_time_service()")]
+  pub time_service: Option<Arc<dyn TimeService>>,
 }
 
 impl AppServiceStubBuilder {
@@ -75,6 +79,10 @@ impl AppServiceStubBuilder {
 
   fn default_secret_service(&self) -> Option<Arc<dyn SecretService>> {
     Some(Arc::new(SecretServiceStub::default()))
+  }
+
+  fn default_time_service(&self) -> Option<Arc<dyn TimeService>> {
+    Some(Arc::new(FrozenTimeService::default()))
   }
 
   fn with_temp_home(&mut self) -> &mut Self {
@@ -218,5 +226,9 @@ impl AppService for AppServiceStub {
 
   fn localization_service(&self) -> Arc<dyn LocalizationService> {
     self.localization_service.clone().unwrap()
+  }
+
+  fn time_service(&self) -> Arc<dyn TimeService> {
+    self.time_service.clone().unwrap()
   }
 }

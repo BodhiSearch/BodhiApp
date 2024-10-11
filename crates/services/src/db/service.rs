@@ -6,7 +6,7 @@ use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
 use objs::{impl_error_from, AppError, ErrorType};
 use sqlx::{query_as, SqlitePool};
-use std::{str::FromStr, sync::Arc};
+use std::{fs, path::Path, str::FromStr, sync::Arc, time::UNIX_EPOCH};
 use uuid::Uuid;
 
 pub static CONVERSATIONS: &str = "conversations";
@@ -15,6 +15,8 @@ pub static MESSAGES: &str = "messages";
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait TimeService: std::fmt::Debug + Send + Sync {
   fn utc_now(&self) -> DateTime<Utc>;
+
+  fn created_at(&self, path: &Path) -> u32;
 }
 
 #[derive(Debug, Clone, Default)]
@@ -24,6 +26,15 @@ impl TimeService for DefaultTimeService {
   fn utc_now(&self) -> DateTime<Utc> {
     let now = chrono::Utc::now();
     now.with_nanosecond(0).unwrap_or(now)
+  }
+
+  fn created_at(&self, path: &Path) -> u32 {
+    fs::metadata(path)
+      .map_err(|e| e.to_string())
+      .and_then(|m| m.created().map_err(|e| e.to_string()))
+      .and_then(|t| t.duration_since(UNIX_EPOCH).map_err(|e| e.to_string()))
+      .unwrap_or_default()
+      .as_secs() as u32
   }
 }
 

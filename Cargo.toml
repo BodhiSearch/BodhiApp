@@ -5,8 +5,10 @@ members = [
   "crates/errmeta_derive",
   "crates/integration-tests",
   "crates/objs",
+  "crates/auth_middleware",
   "crates/server",
   "crates/server_core",
+  "crates/routes_oai",
   "crates/services",
   "llama-server-bindings",
   "xtask",
@@ -14,14 +16,16 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-bodhi = { path = "app/bodhi" }
-commands = { path = "crates/commands" }
-errmeta_derive = { path = "crates/errmeta_derive" }
 llama-server-bindings = { path = "llama-server-bindings" }
+errmeta_derive = { path = "crates/errmeta_derive" }
 objs = { path = "crates/objs" }
-server_core = { path = "crates/server_core" }
-server = { path = "crates/server" }
 services = { path = "crates/services" }
+commands = { path = "crates/commands" }
+server_core = { path = "crates/server_core" }
+auth_middleware = { path = "crates/auth_middleware" }
+server = { path = "crates/server" }
+routes_oai = { path = "crates/routes_oai" }
+bodhi = { path = "app/bodhi" }
 
 anyhow = "1.0.81"
 anyhow_trace = "0.1.3"
