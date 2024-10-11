@@ -441,6 +441,7 @@ An error occurred while connecting to huggingface.co. Check your internet connec
     r#"request error: https://someurl.com/my/repo: status code 403.
 An error occurred while requesting access to huggingface repo 'my/repo'."#
   )]
+  #[serial_test::serial(localization)]
   fn test_hub_service_api_error(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] kind: HubApiErrorKind,
@@ -456,20 +457,18 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
   }
 
   #[rstest]
+  #[case(&HubFileNotFoundError::new(
+    "testalias.gguf".to_string(),
+    "test/repo".to_string(),
+    "main".to_string(),
+  ), "file 'testalias.gguf' not found in huggingface repo 'test/repo', snapshot 'main'.")]
+  #[serial_test::serial(localization)]
   fn test_hub_service_alias_not_found_error(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+    #[case] error: &dyn AppError,
+    #[case] expected: &str,
   ) {
-    let error = HubFileNotFoundError::new(
-      "testalias.gguf".to_string(),
-      "test/repo".to_string(),
-      "main".to_string(),
-    );
-    assert_error_message(
-      localization_service,
-      &error.code(),
-      error.args(),
-      "file 'testalias.gguf' not found in huggingface repo 'test/repo', snapshot 'main'.",
-    );
+    assert_error_message(localization_service, &error.code(), error.args(), expected);
   }
 
   #[rstest]

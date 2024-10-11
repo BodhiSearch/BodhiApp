@@ -292,6 +292,7 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
   #[case(&AliasNotFoundError("testalias".to_string()), "alias 'testalias' not found in $BODHI_HOME/aliases.")]
   #[case(&AliasExistsError("testalias".to_string()), "alias 'testalias' already exists in $BODHI_HOME/aliases.")]
+  #[serial_test::serial(localization)]
   fn test_data_service_error(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,

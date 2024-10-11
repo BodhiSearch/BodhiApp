@@ -159,7 +159,6 @@ mod tests {
   }
 
   #[rstest]
-  #[serial_test::serial(localization)]
   #[case("2", ErrorBody {
     message: "even_error from l10n file: \u{2068}even\u{2069}".to_string(),
     r#type: "test_even_error".to_string(),
@@ -173,6 +172,7 @@ mod tests {
     param: None
   })]
   #[tokio::test]
+  #[serial_test::serial(localization)]
   async fn test_app_error_into_response(
     _setup_l10n_objs_local: Arc<FluentLocalizationService>,
     #[case] input: &str,
@@ -203,8 +203,8 @@ mod tests {
   }
 
   #[rstest]
-  #[serial_test::serial(localization)]
   #[tokio::test]
+  #[serial_test::serial(localization)]
   async fn test_app_error_custom_into_response(
     _setup_l10n_objs_local: Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
@@ -234,8 +234,8 @@ mod tests {
   }
 
   #[rstest]
-  #[serial_test::serial(localization)]
   #[tokio::test]
+  #[serial_test::serial(localization)]
   async fn test_error_auto_into_response(
     _setup_l10n_objs_local: Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {

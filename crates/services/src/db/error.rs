@@ -50,6 +50,7 @@ mod tests {
     &SqlxMigrateError::new(MigrateError::VersionMissing(1)),
     "migration 1 was previously applied but is missing in the resolved migrations"
   )]
+  #[serial_test::serial(localization)]
   fn test_sqlx_error_message(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
