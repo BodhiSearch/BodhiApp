@@ -8,12 +8,13 @@ pub fn validation_errors(field: &'static str, error: ValidationError) -> Validat
   errs
 }
 
+// https://help.openai.com/en/articles/6897213-openai-library-error-types-guidance
 #[derive(Debug, strum::Display, strum::AsRefStr)]
 #[strum(serialize_all = "snake_case")]
 pub enum ErrorType {
   #[strum(serialize = "validation_error")]
   Validation,
-  #[strum(serialize = "bad_request_error")]
+  #[strum(serialize = "invalid_request_error")]
   BadRequest,
   #[strum(serialize = "invalid_app_state")]
   InvalidAppState,

@@ -37,7 +37,7 @@ pub fn clear_mock_localization_service() {
 }
 
 #[fixture]
-pub fn setup_api_error_l10n(
+pub fn setup_l10n_objs(
   localization_service: Arc<FluentLocalizationService>,
 ) -> Arc<FluentLocalizationService> {
   localization_service
