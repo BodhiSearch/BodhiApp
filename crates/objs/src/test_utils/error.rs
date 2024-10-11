@@ -1,35 +1,17 @@
+use crate::{FluentLocalizationService, EN_US};
 use fluent::{FluentBundle, FluentResource};
 use rstest::fixture;
-use std::{collections::HashMap, fs};
+use std::{collections::HashMap, fs, sync::Arc};
 
 pub fn assert_error_message(
-  bundle: &FluentBundle<FluentResource>,
+  service: Arc<FluentLocalizationService>,
   code: &str,
   args: HashMap<String, String>,
   expected: &str,
 ) {
-  let message = bundle
-    .get_message(code)
-    .expect(&format!("Message not found, code: {code}"))
-    .value()
-    .expect(&format!("Message has no value, code: {code}"));
-  let mut errors = Vec::new();
-  let args = args
-    .into_iter()
-    .map(|(k, v)| (k.to_string(), v.to_string()))
-    .collect();
-  let formatted = bundle.format_pattern(message, Some(&args), &mut errors);
+  let message = service.get_message(&EN_US, code, Some(args)).unwrap();
   assert_eq!(
-    errors
-      .first()
-      .map(|err| err.to_string())
-      .unwrap_or_default(),
-    "",
-    "formatting errors occurred"
-  );
-  assert!(errors.is_empty(), "formatting errors occurred");
-  assert_eq!(
-    formatted
+    message
       .to_string()
       .replace("\u{2068}", "")
       .replace("\u{2069}", ""),

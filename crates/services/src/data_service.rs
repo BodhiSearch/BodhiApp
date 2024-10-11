@@ -268,17 +268,16 @@ impl LocalDataService {
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::{test_data_service, TestDataService},
+    test_utils::{setup_l10n_services, test_data_service, TestDataService},
     AliasExistsError, AliasNotFoundError, DataFileNotFoundError, DataService, DataServiceError,
   };
   use anyhow_trace::anyhow_trace;
-  use fluent::{FluentBundle, FluentResource};
   use objs::{
-    test_utils::{assert_error_message, fluent_bundle},
-    Alias, AppError, RemoteModel,
+    test_utils::assert_error_message, Alias, AppError, FluentLocalizationService, RemoteModel,
   };
   use rstest::rstest;
   use std::fs;
+  use std::sync::Arc;
 
   #[rstest]
   #[case::dir_missing(&DataServiceError::DirMissing { dirname: "test".to_string() },
@@ -294,11 +293,11 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   #[case(&AliasNotFoundError("testalias".to_string()), "alias 'testalias' not found in $BODHI_HOME/aliases.")]
   #[case(&AliasExistsError("testalias".to_string()), "alias 'testalias' already exists in $BODHI_HOME/aliases.")]
   fn test_data_service_error(
-    fluent_bundle: FluentBundle<FluentResource>,
+    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] message: String,
   ) {
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
+    assert_error_message(localization_service, &error.code(), error.args(), &message);
   }
 
   #[rstest]

@@ -1,5 +1,6 @@
 use crate::AppRegInfo;
 use async_trait::async_trait;
+use jsonwebtoken::{DecodingKey, Validation};
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
@@ -7,6 +8,35 @@ use oauth2::{
 };
 use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, status = 401)]
+#[error("json_web_token_error")]
+pub struct JsonWebTokenError {
+  #[from]
+  source: jsonwebtoken::errors::Error,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+  pub jti: String,
+  pub exp: u64,
+  pub email: String,
+}
+
+pub fn decode_access_token(
+  access_token: &str,
+) -> std::result::Result<jsonwebtoken::TokenData<Claims>, JsonWebTokenError> {
+  let mut validation = Validation::default();
+  validation.insecure_disable_signature_validation();
+  validation.validate_exp = false;
+  let token_data = jsonwebtoken::decode::<Claims>(
+    access_token,
+    &DecodingKey::from_secret(&[]), // dummy key for parsing
+    &validation,
+  )?;
+  Ok(token_data)
+}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -253,23 +283,24 @@ impl AuthService for KeycloakAuthService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{AppRegInfo, AuthService, AuthServiceError, KeycloakAuthService};
-  use fluent::{FluentBundle, FluentResource};
+  use crate::{
+    test_utils::setup_l10n_services, AppRegInfo, AuthService, AuthServiceError, KeycloakAuthService,
+  };
   use jsonwebtoken::Algorithm;
   use mockito::{Matcher, Server};
   use oauth2::{ClientId, ClientSecret, RefreshToken};
-  use objs::{
-    test_utils::{assert_error_message, fluent_bundle},
-    AppError,
-  };
+  use objs::{test_utils::assert_error_message, AppError, FluentLocalizationService};
   use rstest::rstest;
   use serde_json::json;
+  use std::sync::Arc;
 
   #[rstest]
-  fn test_services_error_messages(fluent_bundle: FluentBundle<FluentResource>) {
+  fn test_services_error_messages(
+    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+  ) {
     let error = AuthServiceError::AuthServiceApiError("test".to_string());
     assert_error_message(
-      &fluent_bundle,
+      localization_service,
       &error.code(),
       error.args(),
       "error from auth service: test",

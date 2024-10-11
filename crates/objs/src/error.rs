@@ -184,15 +184,15 @@ impl From<String> for BuilderError {
 mod tests {
   use super::*;
   use crate::{
-    test_utils::{assert_error_message, fluent_bundle},
-    Repo,
+    test_utils::{assert_error_message, setup_l10n_objs},
+    FluentLocalizationService, Repo,
   };
-  use fluent::{FluentBundle, FluentResource};
   use rstest::rstest;
   use std::{
     borrow::Cow,
     collections::HashMap,
     io::{Error as StdIoError, ErrorKind},
+    sync::Arc,
   };
   use validator::ValidationErrorsKind;
 
@@ -213,21 +213,23 @@ mod tests {
   #[case(&ObjValidationError::ValidationErrors(ValidationErrors(HashMap::from([("field", ValidationErrorsKind::Field(vec![validator::ValidationError::new("value").with_message(Cow::Borrowed("validation failed"))]))]))), "validation_error: field: validation failed")]
   #[case(&ObjValidationError::FilePatternMismatch("huggingface/hub/models--invalid-repo/snapshots/model.gguf".to_string()), "file pattern does not match huggingface repo pattern, path: huggingface/hub/models--invalid-repo/snapshots/model.gguf")]
   fn test_objs_error_messages(
-    fluent_bundle: FluentBundle<FluentResource>,
+    #[from(setup_l10n_objs)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
   ) {
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), expected);
+    assert_error_message(localization_service, &error.code(), error.args(), expected);
   }
 
   #[rstest]
   #[tokio::test]
-  async fn test_reqwest_error(fluent_bundle: FluentBundle<FluentResource>) {
+  async fn test_reqwest_error(
+    #[from(setup_l10n_objs)] localization_service: Arc<FluentLocalizationService>,
+  ) {
     let error = ReqwestError {
       error: "error sending request for url (http://foobar.nohost/)".to_string(),
     };
     assert_error_message(
-      &fluent_bundle,
+      localization_service,
       &error.code(),
       error.args(),
       "error connecting to internal service: error sending request for url (http://foobar.nohost/)",
@@ -242,10 +244,10 @@ mod tests {
   #[case::validation_error(&BuilderError::ValidationError("validation failed".to_string()), "builder_error: validation error: validation failed")]
   #[case::file_pattern_mismatch(&ObjValidationError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: test.txt")]
   fn test_object_error(
-    fluent_bundle: FluentBundle<FluentResource>,
+    #[from(setup_l10n_objs)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
   ) {
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), &expected);
+    assert_error_message(localization_service, &error.code(), error.args(), &expected);
   }
 }

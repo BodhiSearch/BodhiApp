@@ -35,10 +35,11 @@ impl Eq for SqlxMigrateError {}
 #[cfg(test)]
 mod tests {
   use super::*;
-  use fluent::{FluentBundle, FluentResource};
-  use objs::test_utils::{assert_error_message, fluent_bundle};
+  use crate::test_utils::setup_l10n_services;
+  use objs::{test_utils::assert_error_message, FluentLocalizationService};
   use rstest::rstest;
   use sqlx::migrate::MigrateError;
+  use std::sync::Arc;
 
   #[rstest]
   #[case::sqlx(
@@ -50,10 +51,10 @@ mod tests {
     "migration 1 was previously applied but is missing in the resolved migrations"
   )]
   fn test_sqlx_error_message(
-    fluent_bundle: FluentBundle<FluentResource>,
+    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] message: String,
   ) {
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
+    assert_error_message(localization_service, &error.code(), error.args(), &message);
   }
 }

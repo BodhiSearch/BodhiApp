@@ -127,23 +127,21 @@ impl SecretService for KeyringSecretService {
 #[cfg(test)]
 mod tests {
   use crate::{
-    get_secret, set_secret, CacheService, KeyringSecretService, MokaCacheService, SecretService,
-    SecretServiceError,
+    get_secret, set_secret, test_utils::setup_l10n_services, CacheService, KeyringSecretService,
+    MokaCacheService, SecretService, SecretServiceError,
   };
-  use fluent::{FluentBundle, FluentResource};
-  use objs::{
-    test_utils::{assert_error_message, fluent_bundle},
-    AppError,
-  };
+  use objs::{test_utils::assert_error_message, AppError, FluentLocalizationService};
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use std::sync::Arc;
 
   #[rstest]
-  fn test_secret_service_error_messages(fluent_bundle: FluentBundle<FluentResource>) {
+  fn test_secret_service_error_messages(
+    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+  ) {
     let error = SecretServiceError::KeyringError("secret not found".to_string());
     let message = "secret not found";
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
+    assert_error_message(localization_service, &error.code(), error.args(), &message);
   }
 
   #[test]

@@ -37,3 +37,4 @@ sqlx_error = {$source}
 sqlx_migrate_error = {$source}
 localization_error-rwlock_write = concurrency error setting up localization resource: {$source}
 localization_error-rwlock_read = concurrency error accessing localization resource: {$source}
+json_web_token_error = {$source}
