@@ -4,11 +4,13 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod routes_create;
+mod routes_dev;
 mod routes_login;
 mod routes_pull;
 mod routes_setup;
 
 pub use routes_create::*;
+pub use routes_dev::*;
 pub use routes_login::*;
 pub use routes_pull::*;
 pub use routes_setup::*;
