@@ -469,7 +469,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     "testalias.gguf".to_string(),
     "test/repo".to_string(),
     "main".to_string(),
-  ), "file 'testalias.gguf' not found in huggingface repo 'test/repo', snapshot 'main'.")]
+  ), "file 'testalias.gguf' not found in huggingface repo 'test/repo', snapshot 'main'")]
   #[case(&RemoteModelNotFoundError::new(
     "llama3:instruct".to_string(),
   ), "remote model alias 'llama3:instruct' not found, check your alias and try again")]
