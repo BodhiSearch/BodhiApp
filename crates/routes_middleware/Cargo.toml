@@ -1,0 +1,46 @@
+[package]
+name = "routes_middleware"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+commands = { workspace = true }
+errmeta_derive = { workspace = true }
+objs = { workspace = true }
+include_dir = { workspace = true, optional = true }
+llama-server-bindings = { workspace = true }
+services = { workspace = true }
+server_core = { workspace = true }
+time = { workspace = true }
+
+axum = { workspace = true }
+jsonwebtoken = { workspace = true }
+rand = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+oauth2 = { workspace = true }
+sha2 = { workspace = true }
+tower-sessions = { workspace = true }
+tracing = { workspace = true, features = ["async-await", "log"] }
+
+[dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
+include_dir = { workspace = true }
+services = { workspace = true, features = ["test-utils"] }
+server_core = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+mockall = { workspace = true }
+rstest = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
+tempfile = { workspace = true }
+tower = { workspace = true, features = ["util"] }
+tokio = { workspace = true, features = ["full"] }
+maplit = { workspace = true }
+reqwest = { workspace = true }
+http-body-util = { workspace = true }
+
+
+[features]
+test-utils = ["include_dir"]

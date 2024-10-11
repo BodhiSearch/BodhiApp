@@ -1,6 +1,6 @@
 use crate::AppRegInfo;
 use async_trait::async_trait;
-use jsonwebtoken::{DecodingKey, Validation};
+use jsonwebtoken::{errors::ErrorKind, DecodingKey, Validation};
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
@@ -9,12 +9,26 @@ use oauth2::{
 use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, status = 401)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, status = 401, code=self.code())]
 #[error("json_web_token_error")]
 pub struct JsonWebTokenError {
   #[from]
   source: jsonwebtoken::errors::Error,
+}
+
+impl JsonWebTokenError {
+  fn code(&self) -> String {
+    match self.source.kind() {
+      ErrorKind::InvalidToken
+      | ErrorKind::InvalidSignature
+      | ErrorKind::InvalidIssuer
+      | ErrorKind::InvalidAudience => {
+        format!("json_web_token_error-{:?}", self.source.kind())
+      }
+      _ => "json_web_token_error-Unknown".to_string(),
+    }
+  }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -284,9 +298,10 @@ impl AuthService for KeycloakAuthService {
 #[cfg(test)]
 mod tests {
   use crate::{
-    test_utils::setup_l10n_services, AppRegInfo, AuthService, AuthServiceError, KeycloakAuthService,
+    test_utils::setup_l10n_services, AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError,
+    KeycloakAuthService,
   };
-  use jsonwebtoken::Algorithm;
+  use jsonwebtoken::{errors::ErrorKind, Algorithm};
   use mockito::{Matcher, Server};
   use oauth2::{ClientId, ClientSecret, RefreshToken};
   use objs::{test_utils::assert_error_message, AppError, FluentLocalizationService};
@@ -295,15 +310,22 @@ mod tests {
   use std::sync::Arc;
 
   #[rstest]
+  #[case(&AuthServiceError::AuthServiceApiError("test".to_string()), "error from auth service: test")]
+  #[case(&JsonWebTokenError::new(ErrorKind::InvalidToken.into()), "authentication token is invalid")]
+  #[case(&JsonWebTokenError::new(ErrorKind::InvalidSignature.into()), "authentication token signature does not match")]
+  #[case(&JsonWebTokenError::new(ErrorKind::InvalidIssuer.into()), "authentication token issuer is invalid")]
+  #[case(&JsonWebTokenError::new(ErrorKind::InvalidAudience.into()), "authentication token audience is invalid")]
+  #[case(&JsonWebTokenError::new(ErrorKind::InvalidSubject.into()), "authentication token is invalid, source: InvalidSubject")]
   fn test_services_error_messages(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+    #[case] error: &dyn AppError,
+    #[case] expected_message: &str,
   ) {
-    let error = AuthServiceError::AuthServiceApiError("test".to_string());
     assert_error_message(
       localization_service,
       &error.code(),
       error.args(),
-      "error from auth service: test",
+      expected_message,
     );
   }
 
