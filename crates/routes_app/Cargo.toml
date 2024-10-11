@@ -1,0 +1,36 @@
+[package]
+name = "routes_app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+errmeta_derive = { workspace = true }
+objs = { workspace = true }
+services = { workspace = true }
+auth_middleware = { workspace = true }
+server_core = { workspace = true }
+
+axum = { workspace = true }
+axum-extra = { workspace = true }
+jsonwebtoken = { workspace = true }
+include_dir = { workspace = true, optional = true }
+rstest = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+services = { workspace = true, features = ["test-utils"] }
+server_core = { workspace = true, features = ["test-utils"] }
+auth_middleware = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+include_dir = { workspace = true }
+rstest = { workspace = true }
+maplit = { workspace = true }
+tower = { workspace = true, features = ["util"] }
+tokio = { workspace = true, features = ["full", "test-util"] }
+
+
+[features]
+test-utils = ["include_dir", "rstest"]
