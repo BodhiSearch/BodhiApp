@@ -52,7 +52,7 @@ fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
 #[cfg(test)]
 mod tests {
   use super::{oai_model_handler, oai_models_handler};
-  use auth_middleware::test_utils::setup_l10n_middleware;
+  use crate::test_utils::setup_l10n_routes_oai;
   use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -149,7 +149,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_oai_model_handler_not_found(
-    #[from(setup_l10n_middleware)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n_routes_oai)] _localization_service: Arc<FluentLocalizationService>,
     #[future] app: Router,
   ) -> anyhow::Result<()> {
     let response = app
