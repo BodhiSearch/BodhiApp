@@ -16,6 +16,7 @@ time = { workspace = true }
 axum = { workspace = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true }
+rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 oauth2 = { workspace = true }
@@ -43,4 +44,4 @@ http-body-util = { workspace = true }
 
 
 [features]
-test-utils = ["include_dir"]
+test-utils = ["include_dir", "rstest"]

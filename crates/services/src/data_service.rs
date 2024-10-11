@@ -13,7 +13,7 @@ pub struct AliasExistsError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error("alias_not_found")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
 pub struct AliasNotFoundError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
