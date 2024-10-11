@@ -26,6 +26,7 @@ minijinja = { workspace = true }
 mockall = { workspace = true, optional = true }
 pin-project-lite = { workspace = true }
 reqwest = { workspace = true, optional = true }
+rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sync_wrapper = { workspace = true }
@@ -59,4 +60,11 @@ tempfile = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 
 [features]
-test-utils = ["anyhow", "tracing-subscriber", "mockall", "reqwest", "http-body-util"]
+test-utils = [
+  "anyhow",
+  "tracing-subscriber",
+  "mockall",
+  "reqwest",
+  "rstest",
+  "http-body-util",
+]
