@@ -20,6 +20,13 @@ pub struct HubFileNotFoundError {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("remote_model_not_found")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
+pub struct RemoteModelNotFoundError {
+  alias: String,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("hub_api_error")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = self.error_status, code = self.error_code())]
 pub struct HubApiError {
@@ -398,7 +405,8 @@ mod test {
       build_hf_service, hf_test_token_allowed, hf_test_token_public, setup_l10n_services,
       test_hf_service, TestHfService,
     },
-    HubApiError, HubApiErrorKind, HubFileNotFoundError, HubService, HubServiceError, SNAPSHOT_MAIN,
+    HubApiError, HubApiErrorKind, HubFileNotFoundError, HubService, HubServiceError,
+    RemoteModelNotFoundError, SNAPSHOT_MAIN,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
@@ -462,6 +470,9 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     "test/repo".to_string(),
     "main".to_string(),
   ), "file 'testalias.gguf' not found in huggingface repo 'test/repo', snapshot 'main'.")]
+  #[case(&RemoteModelNotFoundError::new(
+    "llama3:instruct".to_string(),
+  ), "remote model alias 'llama3:instruct' not found, check your alias and try again")]
   #[serial_test::serial(localization)]
   fn test_hub_service_alias_not_found_error(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,

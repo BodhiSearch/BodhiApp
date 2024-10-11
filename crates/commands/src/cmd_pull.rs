@@ -1,5 +1,7 @@
-use objs::{Alias, AppError, ErrorType, HubFile, ObjValidationError, Repo, TOKENIZER_CONFIG_JSON};
-use services::{AliasExistsError, AppService, DataServiceError, HubServiceError};
+use objs::{Alias, AppError, HubFile, ObjValidationError, Repo, TOKENIZER_CONFIG_JSON};
+use services::{
+  AliasExistsError, AppService, DataServiceError, HubServiceError, RemoteModelNotFoundError,
+};
 use std::sync::Arc;
 
 #[derive(Debug, PartialEq)]
@@ -13,11 +15,6 @@ pub enum PullCommand {
     snapshot: Option<String>,
   },
 }
-
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("remote_model_not_found")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
-pub struct RemoteModelNotFoundError(pub String);
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -45,7 +42,7 @@ impl PullCommand {
           return Err(AliasExistsError(alias.clone()).into());
         }
         let Some(model) = service.data_service().find_remote_model(alias)? else {
-          return Err(RemoteModelNotFoundError(alias.clone()).into());
+          return Err(RemoteModelNotFoundError::new(alias.clone()))?;
         };
         let local_model_file =
           self.download_file_if_missing(&service, &model.repo, &model.filename, None)?;
@@ -131,29 +128,18 @@ impl PullCommand {
 
 #[cfg(test)]
 mod test {
-  use crate::{PullCommand, PullCommandError, RemoteModelNotFoundError};
+  use crate::{PullCommand, PullCommandError};
   use mockall::predicate::eq;
-  use objs::FluentLocalizationService;
   use objs::{
-    test_utils::{assert_error_message, SNAPSHOT},
-    Alias, AppError, ChatTemplate, GptContextParams, HubFile, OAIRequestParams, RemoteModel, Repo,
+    test_utils::SNAPSHOT, Alias, ChatTemplate, GptContextParams, HubFile, OAIRequestParams,
+    RemoteModel, Repo,
   };
   use rstest::rstest;
   use services::{
-    test_utils::{setup_l10n_services, test_hf_service, AppServiceStubBuilder, TestHfService},
+    test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
     AliasExistsError, AppService, ALIASES_DIR,
   };
   use std::{fs, sync::Arc};
-
-  #[rstest]
-  #[case(&RemoteModelNotFoundError("testalias".to_string()), "remote model alias 'testalias' not found")]
-  fn test_command_error_messages(
-    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
-    #[case] error: &dyn AppError,
-    #[case] expected: &str,
-  ) {
-    assert_error_message(localization_service, &error.code(), error.args(), expected);
-  }
 
   #[rstest]
   fn test_pull_by_alias_fails_if_alias_exists() -> anyhow::Result<()> {
