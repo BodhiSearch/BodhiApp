@@ -3,6 +3,7 @@ pub mod test_utils;
 #[cfg(all(not(feature = "test-utils"), test))]
 pub mod test_utils;
 
+mod bindings;
 mod direct_sse;
 mod fwd_sse;
 pub mod obj_exts;
@@ -11,6 +12,7 @@ mod router_state;
 mod shared_rw;
 mod tokenizer_config;
 
+pub use bindings::*;
 pub use direct_sse::*;
 pub use fwd_sse::*;
 pub use objs::*;
