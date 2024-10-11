@@ -1,6 +1,7 @@
-use crate::FluentLocalizationService;
+use crate::{FluentLocalizationService, JsonRejectionError};
 use axum::{
   body::Body,
+  extract::rejection::JsonRejection,
   response::{IntoResponse, Response},
 };
 use once_cell::sync::Lazy;
@@ -49,6 +50,12 @@ pub struct ApiError {
   pub status: u16,
   pub code: String,
   pub args: HashMap<String, String>,
+}
+
+impl From<JsonRejection> for ApiError {
+  fn from(value: JsonRejection) -> Self {
+    JsonRejectionError::new(value).into()
+  }
 }
 
 // TODO: limiting to EN_US locale, need to refactor and move creating ApiError to route_layer to

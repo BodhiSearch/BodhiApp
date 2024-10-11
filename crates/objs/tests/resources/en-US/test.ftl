@@ -15,3 +15,4 @@ serde_yaml_with_path_error = error serializing/deserializing yaml: path: {$path}
 obj_validation_error-file_pattern_mismatch = file pattern does not match huggingface repo pattern, path: {$var_0}
 obj_validation_error-validation_errors = validation_error: {$var_0}
 reqwest_error = error connecting to internal service: {$error}
+json_rejection_error = failed to parse the request body as JSON, error: {$source}
