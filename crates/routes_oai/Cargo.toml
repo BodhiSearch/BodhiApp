@@ -12,6 +12,10 @@ server_core = { workspace = true }
 
 async-openai = { workspace = true }
 axum = { workspace = true }
+axum-extra = { workspace = true }
+derive-new = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
 
 [dev-dependencies]
 server_core = { workspace = true, features = ["test-utils"] }
@@ -19,10 +23,13 @@ services = { workspace = true, features = ["test-utils"] }
 auth_middleware = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+mockall = { workspace = true }
+reqwest = { workspace = true }
 rstest = { workspace = true }
-tower = { workspace = true, features = ["util"] }
-tokio = { workspace = true, features = ["full", "test-util"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
+tokio = { workspace = true, features = ["full", "test-util"] }
+tower = { workspace = true, features = ["util"] }
 
 [features]
 test-utils = []
