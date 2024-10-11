@@ -136,12 +136,14 @@ mod tests {
   use std::sync::Arc;
 
   #[rstest]
+  #[case(&SecretServiceError::KeyringError("secret not found".to_string()), "secret not found")]
+  #[serial_test::serial(localization)]
   fn test_secret_service_error_messages(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+    #[case] error: &dyn AppError,
+    #[case] expected: &str,
   ) {
-    let error = SecretServiceError::KeyringError("secret not found".to_string());
-    let message = "secret not found";
-    assert_error_message(localization_service, &error.code(), error.args(), &message);
+    assert_error_message(localization_service, &error.code(), error.args(), expected);
   }
 
   #[test]
