@@ -16,7 +16,7 @@ hub_service_error-may_be_not_exists = {$source}.
 remote_model_not_found_error = remote model alias '{$alias}' not found, check your alias and try again
 data_file_not_found_error = file '{$filename}' not found in $BODHI_HOME/{$dirname}.
   $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME.
-hub_file_not_found_error = file '{$filename}' not found in huggingface repo '{$repo}', snapshot '{$snapshot}'.
+hub_file_not_found_error = file '{$filename}' not found in huggingface repo '{$repo}', snapshot '{$snapshot}'
 hub_api_error-gated_access = {$error}.
   huggingface repo '{$repo}' is requires requesting for access from website.
   Go to https://huggingface.co/{$repo} to request access to the model and try again.

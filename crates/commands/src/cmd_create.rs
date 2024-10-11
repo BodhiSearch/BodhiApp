@@ -74,7 +74,7 @@ impl CreateCommand {
           return Err(CreateCommandError::HubServiceError(
             HubFileNotFoundError::new(
               self.filename.clone(),
-              self.repo.path(),
+              self.repo.to_string(),
               self
                 .snapshot
                 .clone()

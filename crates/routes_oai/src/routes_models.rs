@@ -1,11 +1,12 @@
-use crate::{AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams};
 use axum::{
   extract::{Query, State},
   routing::get,
   Json, Router,
 };
 use objs::{Alias, ApiError, ChatTemplate, ChatTemplateId, HubFile};
-use server_core::RouterState;
+use server_core::{
+  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, RouterState,
+};
 use services::AliasNotFoundError;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
@@ -145,10 +146,7 @@ pub async fn get_alias_handler(
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    get_alias_handler, list_chat_templates_handler, list_local_aliases_handler, AliasResponse,
-    PaginatedResponse,
-  };
+  use crate::{get_alias_handler, list_chat_templates_handler, list_local_aliases_handler};
   use axum::{
     body::Body,
     http::{status::StatusCode, Request},
@@ -165,6 +163,7 @@ mod tests {
     test_utils::{router_state_stub, ResponseTestExt},
     DefaultRouterState,
   };
+  use server_core::{AliasResponse, PaginatedResponse};
   use std::collections::HashMap;
   use std::sync::Arc;
   use strum::IntoEnumIterator;

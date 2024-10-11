@@ -6,12 +6,14 @@ pub mod test_utils;
 mod direct_sse;
 mod fwd_sse;
 pub mod obj_exts;
+mod objs;
 mod router_state;
 mod shared_rw;
 mod tokenizer_config;
 
 pub use direct_sse::*;
 pub use fwd_sse::*;
+pub use objs::*;
 pub use router_state::*;
 pub use shared_rw::*;
 pub use tokenizer_config::*;

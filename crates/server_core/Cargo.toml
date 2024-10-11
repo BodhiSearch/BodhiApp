@@ -16,6 +16,7 @@ async-trait = { workspace = true }
 axum = { workspace = true }
 axum-extra = { workspace = true }
 bytes = { workspace = true }
+derive_builder = { workspace = true }
 derive-new = { workspace = true }
 futures = { workspace = true }
 futures-core = { workspace = true }
