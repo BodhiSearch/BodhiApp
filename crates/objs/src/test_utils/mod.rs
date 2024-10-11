@@ -3,6 +3,7 @@
 mod bodhi;
 mod error;
 mod hf;
+mod http;
 mod io;
 mod l10n;
 mod logs;
@@ -11,6 +12,7 @@ mod objs;
 pub use bodhi::*;
 pub use error::*;
 pub use hf::*;
+pub use http::*;
 pub use io::*;
 pub use l10n::*;
 pub use logs::*;

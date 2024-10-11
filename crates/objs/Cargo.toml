@@ -37,6 +37,7 @@ validator = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
+axum-extra = { workspace = true }
 ctor = { workspace = true }
 dircpy = { workspace = true }
 futures = { workspace = true }

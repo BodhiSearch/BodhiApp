@@ -1,4 +1,5 @@
 use crate::AppError;
+use axum::{extract::rejection::JsonRejection, http::StatusCode};
 use derive_builder::UninitializedFieldError;
 use validator::{ValidationError, ValidationErrors};
 
@@ -180,20 +181,33 @@ impl From<String> for BuilderError {
   }
 }
 
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("json_rejection_error")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = StatusCode::BAD_REQUEST.as_u16())]
+pub struct JsonRejectionError {
+  #[from]
+  source: JsonRejection,
+}
+
 #[cfg(test)]
 mod tests {
   use super::*;
   use crate::{
-    test_utils::{assert_error_message, setup_l10n_objs},
-    FluentLocalizationService, Repo,
+    test_utils::{assert_error_message, parse, setup_l10n_objs},
+    ApiError, FluentLocalizationService, Repo,
   };
+  use axum::{body::Body, response::Response, routing::get, Json, Router};
+  use axum_extra::extract::WithRejection;
   use rstest::rstest;
+  use serde::{Deserialize, Serialize};
+  use serde_json::{json, Value};
   use std::{
     borrow::Cow,
     collections::HashMap,
     io::{Error as StdIoError, ErrorKind},
     sync::Arc,
   };
+  use tower::ServiceExt;
   use validator::ValidationErrorsKind;
 
   #[rstest]
@@ -228,5 +242,52 @@ mod tests {
     #[case] expected: &str,
   ) {
     assert_error_message(localization_service, &error.code(), error.args(), expected);
+  }
+
+  #[rstest]
+  #[serial_test::serial(localization)]
+  #[tokio::test]
+  async fn test_json_rejection_error(
+    #[from(setup_l10n_objs)] _localization_service: Arc<FluentLocalizationService>,
+  ) {
+    #[derive(Debug, Serialize, Deserialize)]
+    struct Input {
+      source: String,
+    }
+
+    async fn with_json_rejection(
+      WithRejection(Json(value), _): WithRejection<Json<Input>, ApiError>,
+    ) -> Result<Response, ApiError> {
+      let input = value.source;
+      Ok(
+        Response::builder()
+          .status(418)
+          .body(Body::from(format!("{{\"message\": \"ok - {input}\"}}")))
+          .unwrap(),
+      )
+    }
+
+    let router = Router::new().route("/", get(with_json_rejection));
+    let response = router
+      .oneshot(
+        axum::http::Request::builder()
+          .uri("/")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let response = parse::<Value>(response).await;
+    assert_eq!(
+      response,
+      json! {{
+        "error": {
+          "message": "failed to parse the request body as JSON, error: \u{2068}Expected request with `Content-Type: application/json`\u{2069}",
+          "type": "invalid_request_error",
+          "code": "json_rejection_error"
+        }
+      }}
+    );
   }
 }
