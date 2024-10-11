@@ -395,18 +395,18 @@ impl HfHubService {
 mod test {
   use crate::{
     test_utils::{
-      build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
+      build_hf_service, hf_test_token_allowed, hf_test_token_public, setup_l10n_services,
+      test_hf_service, TestHfService,
     },
     HubApiError, HubApiErrorKind, HubFileNotFoundError, HubService, HubServiceError, SNAPSHOT_MAIN,
   };
   use anyhow_trace::anyhow_trace;
-  use fluent::{FluentBundle, FluentResource};
   use objs::{
-    test_utils::{assert_error_message, fluent_bundle, temp_hf_home},
-    AppError, HubFile, Repo,
+    test_utils::{assert_error_message, temp_hf_home},
+    AppError, FluentLocalizationService, HubFile, Repo,
   };
   use rstest::rstest;
-  use std::{collections::HashSet, fs};
+  use std::{collections::HashSet, fs, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;
 
@@ -442,7 +442,7 @@ An error occurred while connecting to huggingface.co. Check your internet connec
 An error occurred while requesting access to huggingface repo 'my/repo'."#
   )]
   fn test_hub_service_api_error(
-    fluent_bundle: FluentBundle<FluentResource>,
+    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] kind: HubApiErrorKind,
     #[case] message: String,
   ) {
@@ -452,18 +452,20 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       "my/repo".to_string(),
       kind,
     );
-    assert_error_message(&fluent_bundle, &error.code(), error.args(), &message);
+    assert_error_message(localization_service, &error.code(), error.args(), &message);
   }
 
   #[rstest]
-  fn test_hub_service_alias_not_found_error(fluent_bundle: FluentBundle<FluentResource>) {
+  fn test_hub_service_alias_not_found_error(
+    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+  ) {
     let error = HubFileNotFoundError::new(
       "testalias.gguf".to_string(),
       "test/repo".to_string(),
       "main".to_string(),
     );
     assert_error_message(
-      &fluent_bundle,
+      localization_service,
       &error.code(),
       error.args(),
       "file 'testalias.gguf' not found in huggingface repo 'test/repo', snapshot 'main'.",
