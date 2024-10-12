@@ -1,8 +1,9 @@
 use dircpy::CopyBuilder;
+use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
 use mockall::predicate::eq;
-use objs::EnvType;
+use objs::{EnvType, FluentLocalizationService};
 use rstest::fixture;
-use server::{disable_llama_log, llama_server_disable_logging, ServeCommand, ServerShutdownHandle};
+use server_app::{test_utils::setup_l10n_server_app, ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
   test_utils::EnvWrapperStub,
@@ -23,9 +24,19 @@ pub fn copy_test_dir(src: &str, dst_path: &Path) {
     .unwrap();
 }
 
+#[allow(unused)]
+pub fn disable_test_logging() {
+  disable_llama_log();
+  unsafe {
+    llama_server_disable_logging();
+  }
+}
+
 #[fixture]
 #[once]
-pub fn tinyllama() -> (TempDir, Arc<dyn AppService>) {
+pub fn tinyllama(
+  #[from(setup_l10n_server_app)] localization_service: Arc<FluentLocalizationService>,
+) -> (TempDir, Arc<dyn AppService>) {
   let temp_dir = tempfile::tempdir().unwrap();
   let cache_dir = temp_dir.path().join(".cache");
   std::fs::create_dir_all(&cache_dir).unwrap();
@@ -64,7 +75,8 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppService>) {
     String::from("bodhi"),
   );
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
-  let db_service = SqliteDbService::new(pool.clone(), Arc::new(DefaultTimeService));
+  let time_service = Arc::new(DefaultTimeService);
+  let db_service = SqliteDbService::new(pool.clone(), time_service.clone());
   let mut secret_service = MockSecretService::default();
   secret_service
     .expect_get_secret_string()
@@ -85,6 +97,8 @@ pub fn tinyllama() -> (TempDir, Arc<dyn AppService>) {
     Arc::new(session_service),
     Arc::new(secret_service),
     Arc::new(cache_service),
+    localization_service,
+    time_service,
   );
   (temp_dir, Arc::new(service))
 }
