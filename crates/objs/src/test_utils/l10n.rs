@@ -1,4 +1,4 @@
-use crate::FluentLocalizationService;
+use crate::{l10n::L10N_RESOURCES, FluentLocalizationService};
 use rstest::fixture;
 use std::sync::{Arc, RwLock};
 
@@ -40,11 +40,7 @@ pub fn clear_mock_localization_service() {
 pub fn setup_l10n_objs(
   localization_service: Arc<FluentLocalizationService>,
 ) -> Arc<FluentLocalizationService> {
-  localization_service
-    .load_resource(&include_dir::include_dir!(
-      "$CARGO_MANIFEST_DIR/tests/resources"
-    ))
-    .unwrap();
+  localization_service.load_resource(&L10N_RESOURCES).unwrap();
   set_mock_localization_service(localization_service.clone());
   localization_service
 }

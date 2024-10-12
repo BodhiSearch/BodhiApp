@@ -7,7 +7,7 @@ edition = "2021"
 commands = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
-include_dir = { workspace = true, optional = true }
+include_dir = { workspace = true }
 llama-server-bindings = { workspace = true }
 services = { workspace = true }
 server_core = { workspace = true }
@@ -26,7 +26,6 @@ tracing = { workspace = true, features = ["async-await", "log"] }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
-include_dir = { workspace = true }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 
@@ -44,4 +43,4 @@ http-body-util = { workspace = true }
 
 
 [features]
-test-utils = ["include_dir", "rstest"]
+test-utils = ["rstest"]
