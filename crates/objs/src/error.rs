@@ -236,7 +236,7 @@ mod tests {
   #[case::validation_error(&BuilderError::ValidationError("validation failed".to_string()), "builder_error: validation error: validation failed")]
   #[case::file_pattern_mismatch(&ObjValidationError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: test.txt")]
   #[serial_test::serial(localization)]
-  fn test_objs_error_messages(
+  fn test_error_messages_objs(
     #[from(setup_l10n_objs)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,

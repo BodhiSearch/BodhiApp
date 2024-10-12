@@ -317,7 +317,7 @@ mod tests {
   #[case(&JsonWebTokenError::new(ErrorKind::InvalidAudience.into()), "authentication token audience is invalid")]
   #[case(&JsonWebTokenError::new(ErrorKind::InvalidSubject.into()), "authentication token is invalid, source: InvalidSubject")]
   #[serial_test::serial(localization)]
-  fn test_services_error_messages(
+  fn test_error_messages_services(
     #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected_message: &str,

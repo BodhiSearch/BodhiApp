@@ -34,7 +34,7 @@ mod tests {
   #[rstest]
   #[serial_test::serial(localization)]
   #[tokio::test]
-  async fn test_task_join_error_messages(
+  async fn test_error_messages_task_join(
     #[from(setup_l10n_server_app)] localization_service: Arc<FluentLocalizationService>,
   ) {
     let join_error = build_join_error().await;
