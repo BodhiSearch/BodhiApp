@@ -26,3 +26,9 @@ pub use hub_service::*;
 pub use objs::*;
 pub use secret_service::*;
 pub use session_service::*;
+
+pub mod l10n {
+  use include_dir::Dir;
+
+  pub const L10N_RESOURCES: Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
+}

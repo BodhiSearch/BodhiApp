@@ -15,7 +15,7 @@ chrono = { workspace = true }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
 futures-util = { workspace = true }
-include_dir = { workspace = true, optional = true }
+include_dir = { workspace = true }
 mime = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -36,7 +36,6 @@ auth_middleware = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
-include_dir = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
 reqwest = { workspace = true }
@@ -46,4 +45,4 @@ tokio = { workspace = true, features = ["full", "test-util"] }
 tower = { workspace = true, features = ["util"] }
 
 [features]
-test-utils = ["include_dir"]
+test-utils = []

@@ -427,7 +427,7 @@ mod tests {
         "error": {
           "type": "invalid_request_error",
           "code": "create_alias_error-alias_not_present",
-          "message": "alias not present in request"
+          "message": "alias is not present in request"
         }
       }}
     );

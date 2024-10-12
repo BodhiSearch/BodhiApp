@@ -10,7 +10,7 @@ mod envs;
 mod error;
 mod gpt_params;
 mod hub_file;
-mod l10n;
+mod localization_service;
 mod oai;
 mod remote_file;
 mod repo;
@@ -23,7 +23,7 @@ pub use envs::*;
 pub use error::*;
 pub use gpt_params::*;
 pub use hub_file::*;
-pub use l10n::*;
+pub use localization_service::*;
 pub use oai::*;
 pub use remote_file::*;
 pub use repo::*;
@@ -38,4 +38,10 @@ macro_rules! impl_error_from {
       }
     }
   };
+}
+
+pub mod l10n {
+  use include_dir::Dir;
+
+  pub const L10N_RESOURCES: Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
 }

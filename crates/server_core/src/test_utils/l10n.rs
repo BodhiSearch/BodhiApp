@@ -8,9 +8,7 @@ pub fn setup_l10n_server_core(
   #[from(setup_l10n_commands)] localization_service: Arc<FluentLocalizationService>,
 ) -> Arc<FluentLocalizationService> {
   localization_service
-    .load_resource(&include_dir::include_dir!(
-      "$CARGO_MANIFEST_DIR/tests/resources"
-    ))
+    .load_resource(&crate::l10n::L10N_RESOURCES)
     .unwrap();
   localization_service
 }

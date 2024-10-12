@@ -18,3 +18,9 @@ pub use routes_login::*;
 pub use routes_pull::*;
 pub use routes_setup::*;
 pub use routes_ui::*;
+
+pub mod l10n {
+  use include_dir::Dir;
+
+  pub const L10N_RESOURCES: Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
+}
