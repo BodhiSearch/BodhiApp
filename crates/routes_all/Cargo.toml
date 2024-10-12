@@ -1,0 +1,28 @@
+[package]
+name = "routes_all"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+services = { workspace = true }
+auth_middleware = { workspace = true }
+server_core = { workspace = true }
+routes_app = { workspace = true }
+routes_oai = { workspace = true }
+
+axum = { workspace = true }
+tower-http = { workspace = true, features = ["trace", "cors"] }
+serde_json = { workspace = true }
+hyper-util = { workspace = true }
+
+[dev-dependencies]
+server_core = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+rstest = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tower = { workspace = true, features = ["util"] }
+
+[features]
+test-utils = []
