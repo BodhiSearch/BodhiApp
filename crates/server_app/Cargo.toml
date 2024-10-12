@@ -1,0 +1,29 @@
+[package]
+name = "server_app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+llama-server-bindings = { workspace = true }
+errmeta_derive = { workspace = true }
+objs = { workspace = true }
+services = { workspace = true }
+server_core = { workspace = true }
+
+async-openai = { workspace = true }
+derive-new = { workspace = true }
+dialoguer = { workspace = true, features = ["history"] }
+indicatif = { workspace = true, features = ["tokio"] }
+tokio = { workspace = true, features = ["full"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+rstest = { workspace = true }
+
+[features]
+test-utils = []

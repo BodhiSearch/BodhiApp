@@ -1,18 +1,19 @@
 [workspace]
 members = [
-  "crates/app/bodhi",
-  "crates/commands",
+  "xtask",
+  "llama-server-bindings",
   "crates/errmeta_derive",
-  "crates/integration-tests",
   "crates/objs",
-  "crates/auth_middleware",
-  "crates/server",
+  "crates/services",
+  "crates/commands",
   "crates/server_core",
+  "crates/auth_middleware",
   "crates/routes_oai",
   "crates/routes_app",
-  "crates/services",
-  "llama-server-bindings",
-  "xtask",
+  "crates/server_app",
+  "crates/server",
+  "crates/app/bodhi",
+  "crates/integration-tests",
 ]
 resolver = "2"
 
@@ -26,6 +27,7 @@ server_core = { path = "crates/server_core" }
 auth_middleware = { path = "crates/auth_middleware" }
 routes_oai = { path = "crates/routes_oai" }
 routes_app = { path = "crates/routes_app" }
+server_app = { path = "crates/server_app" }
 server = { path = "crates/server" }
 bodhi = { path = "app/bodhi" }
 

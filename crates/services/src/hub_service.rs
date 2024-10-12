@@ -14,9 +14,9 @@ pub static SNAPSHOT_MAIN: &str = "main";
 #[error("hub_file_missing")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
 pub struct HubFileNotFoundError {
-  filename: String,
-  repo: String,
-  snapshot: String,
+  pub filename: String,
+  pub repo: String,
+  pub snapshot: String,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
