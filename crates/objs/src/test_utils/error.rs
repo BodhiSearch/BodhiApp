@@ -1,4 +1,4 @@
-use crate::{FluentLocalizationService, EN_US};
+use crate::{FluentLocalizationService, LocalizationService, EN_US};
 use fluent::{FluentBundle, FluentResource};
 use rstest::fixture;
 use std::{collections::HashMap, fs, sync::Arc};

@@ -43,5 +43,5 @@ macro_rules! impl_error_from {
 pub mod l10n {
   use include_dir::Dir;
 
-  pub const L10N_RESOURCES: Dir = include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
+  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
 }

@@ -11,7 +11,7 @@ pub fn setup_l10n_services(
   #[from(setup_l10n_objs)] localization_service: Arc<FluentLocalizationService>,
 ) -> Arc<FluentLocalizationService> {
   localization_service
-    .load_resource(&crate::l10n::L10N_RESOURCES)
+    .load_resource(crate::l10n::L10N_RESOURCES)
     .unwrap();
   localization_service
 }

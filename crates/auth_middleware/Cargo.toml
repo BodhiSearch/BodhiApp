@@ -43,4 +43,4 @@ http-body-util = { workspace = true }
 
 
 [features]
-test-utils = ["rstest"]
+test-utils = ["rstest", "services/test-utils"]

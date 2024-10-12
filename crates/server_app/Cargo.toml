@@ -19,6 +19,8 @@ derive-new = { workspace = true }
 dialoguer = { workspace = true, features = ["history"] }
 include_dir = { workspace = true }
 indicatif = { workspace = true, features = ["tokio"] }
+mockall = { workspace = true, optional = true }
+rstest = { workspace = true, optional = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
@@ -27,7 +29,7 @@ tracing = { workspace = true }
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
-routes_app = { workspace = true, features = ["test-utils"] }
+routes_all = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 mockall = { workspace = true }
@@ -37,4 +39,4 @@ rstest = { workspace = true }
 serial_test = { workspace = true }
 
 [features]
-test-utils = []
+test-utils = ["rstest", "mockall", "routes_all/test-utils"]

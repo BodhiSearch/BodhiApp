@@ -1,15 +1,30 @@
 use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
-use objs::{ChatTemplate, Repo};
-use server::{RunCommand, ServeCommand};
+use objs::{AppError, ChatTemplate, ErrorType, Repo};
+use server_app::{RunCommand, ServeCommand};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("convert_error_bad_request")]
+#[error_meta(error_type = ErrorType::BadRequest, status = 400, code = self.error_code)]
+pub struct ConvertBadRequestError {
+  input: String,
+  output: String,
+  error_code: String,
+}
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum ConvertError {
-  #[error("Command '{input}' cannot be converted into command '{output}'")]
+  #[error("convert")]
+  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   Convert { input: String, output: String },
-  #[error("Command '{input}' cannot be converted into command '{output}', error: '{error}'")]
-  BadRequest {
+  #[error(transparent)]
+  ConvertBadRequest(#[from] ConvertBadRequestError),
+  #[error("invalid_repo")]
+  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  InvalidRepo {
     input: String,
     output: String,
+    repo: String,
     error: String,
   },
 }
@@ -19,12 +34,11 @@ pub fn build_list_command(remote: bool, models: bool) -> Result<ListCommand, Con
     (true, false) => Ok(ListCommand::Remote),
     (false, true) => Ok(ListCommand::Models),
     (false, false) => Ok(ListCommand::Local),
-    (true, true) => Err(ConvertError::BadRequest {
-      input: "list".to_string(),
-      output: "ListCommand".to_string(),
-      error: "cannot initialize list command with invalid state. --remote: true, --models: true"
-        .to_string(),
-    }),
+    (true, true) => Err(ConvertBadRequestError::new(
+      "list".to_string(),
+      "ListCommand".to_string(),
+      "convert_bad_request-list_command".to_string(),
+    ))?,
   }
 }
 
@@ -54,25 +68,28 @@ pub fn build_create_command(command: Command) -> Result<CreateCommand, ConvertEr
       let chat_template = match (chat_template, tokenizer_config) {
         (Some(chat_template), None) => ChatTemplate::Id(chat_template),
         (None, Some(tokenizer_config)) => {
-          let repo = Repo::try_from(tokenizer_config).map_err(|err| ConvertError::BadRequest {
-            input: "create".to_string(),
-            output: "CreateCommand".to_string(),
-            error: format!("tokenizer_config repo {err}"),
-          })?;
+          let repo =
+            Repo::try_from(tokenizer_config.clone()).map_err(|err| ConvertError::InvalidRepo {
+              input: "create".to_string(),
+              output: "CreateCommand".to_string(),
+              repo: tokenizer_config.clone(),
+              error: err.to_string(),
+            })?;
           ChatTemplate::Repo(repo)
         }
         _ => {
-          return Err(ConvertError::BadRequest {
-            input: "create".to_string(),
-            output: "CreateCommand".to_string(),
-            error: "one of chat_template and tokenizer_config must be provided".to_string(),
-          })
+          return Err(ConvertBadRequestError::new(
+            "create".to_string(),
+            "CreateCommand".to_string(),
+            "convert_bad_request-create_command".to_string(),
+          ))?;
         }
       };
-      let repo = Repo::try_from(repo).map_err(|err| ConvertError::BadRequest {
+      let repo = Repo::try_from(repo.clone()).map_err(|err| ConvertError::InvalidRepo {
         input: "create".to_string(),
         output: "CreateCommand".to_string(),
-        error: format!("model repo {err}"),
+        repo,
+        error: err.to_string(),
       })?;
       Ok(CreateCommand {
         alias,
@@ -116,10 +133,11 @@ pub fn build_pull_command(
   match (alias, repo, filename) {
     (Some(alias), None, None) => Ok(PullCommand::ByAlias { alias }),
     (None, Some(repo), Some(filename)) => {
-      let repo = Repo::try_from(repo).map_err(|err| ConvertError::BadRequest {
+      let repo = Repo::try_from(repo.clone()).map_err(|err| ConvertError::InvalidRepo {
         input: "pull".to_string(),
         output: "PullCommand".to_string(),
-        error: format!("invalid repo {err}"),
+        repo,
+        error: err.to_string(),
       })?;
       Ok(PullCommand::ByRepoFile {
         repo,
@@ -127,11 +145,11 @@ pub fn build_pull_command(
         snapshot,
       })
     }
-    _ => Err(ConvertError::BadRequest {
-      input: "pull".to_string(),
-      output: "PullCommand".to_string(),
-      error: "invalid pull command".to_string(),
-    }),
+    _ => Err(ConvertBadRequestError::new(
+      "pull".to_string(),
+      "PullCommand".to_string(),
+      "convert_bad_request-pull_command".to_string(),
+    ))?,
   }
 }
 
@@ -141,10 +159,14 @@ mod tests {
     build_create_command, build_list_command, build_manage_alias_command, build_pull_command,
     build_serve_command,
   };
+  use crate::test_utils::setup_l10n_bodhi;
   use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
-  use objs::{ChatTemplate, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
+  use objs::test_utils::assert_error_message;
+  use objs::FluentLocalizationService;
+  use objs::{AppError, ChatTemplate, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
   use rstest::rstest;
-  use server::ServeCommand;
+  use server_app::ServeCommand;
+  use std::sync::Arc;
 
   #[rstest]
   #[case::show(
@@ -178,17 +200,22 @@ mod tests {
     Ok(())
   }
 
-  #[test]
-  fn test_build_manage_alias_command_invalid() {
+  #[rstest]
+  fn test_build_manage_alias_command_invalid(
+    #[from(setup_l10n_bodhi)] service: Arc<FluentLocalizationService>,
+  ) {
     let invalid_cmd = Command::List {
       remote: false,
       models: false,
     };
     let result = build_manage_alias_command(invalid_cmd);
     assert!(result.is_err());
-    assert_eq!(
-      result.unwrap_err().to_string(),
-      "Command 'list' cannot be converted into command 'ManageAliasCommand'"
+    let app_error: &dyn AppError = &result.unwrap_err();
+    assert_error_message(
+      service,
+      &app_error.code(),
+      app_error.args(),
+      "Command 'list' cannot be converted into command 'ManageAliasCommand'",
     );
   }
 
@@ -245,7 +272,7 @@ mod tests {
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
-    "Command 'create' cannot be converted into command 'CreateCommand', error: 'tokenizer_config repo Validation failed: value: does not match the huggingface repo pattern 'username/repo''"
+    "Command 'create' cannot be converted into command 'CreateCommand', repo invalid-chat/repo/pattern is invalid: validation_errors"
   )]
   #[case(
     Command::Create {
@@ -260,7 +287,7 @@ mod tests {
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
-    "Command 'create' cannot be converted into command 'CreateCommand', error: 'model repo Validation failed: value: does not match the huggingface repo pattern 'username/repo''"
+    "Command 'create' cannot be converted into command 'CreateCommand', repo invalid-repo is invalid: validation_errors"
   )]
   #[case(
     Command::Create {
@@ -275,16 +302,23 @@ mod tests {
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
     },
-    "Command 'create' cannot be converted into command 'CreateCommand', error: 'one of chat_template and tokenizer_config must be provided'"
+    "Command 'create' cannot be converted into command 'CreateCommand', one of chat_template and tokenizer_config must be provided"
   )]
   #[anyhow_trace::anyhow_trace]
   fn test_create_try_from_invalid(
+    #[from(setup_l10n_bodhi)] _localization_service: Arc<FluentLocalizationService>,
     #[case] input: Command,
     #[case] message: String,
   ) -> anyhow::Result<()> {
     let actual = build_create_command(input);
     assert!(actual.is_err());
-    assert_eq!(message, actual.unwrap_err().to_string());
+    let api_error: &dyn AppError = &actual.unwrap_err();
+    assert_error_message(
+      _localization_service,
+      &api_error.code(),
+      api_error.args(),
+      &message,
+    );
     Ok(())
   }
 
@@ -304,15 +338,17 @@ mod tests {
   }
 
   #[rstest]
-  #[case(true, true, "Command 'list' cannot be converted into command 'ListCommand', error: 'cannot initialize list command with invalid state. --remote: true, --models: true'")]
+  #[case(true, true, "Command 'list' cannot be converted into command 'ListCommand', cannot initialize list command with invalid state. --remote: true, --models: true")]
   fn test_list_invalid_try_from(
+    #[from(setup_l10n_bodhi)] service: Arc<FluentLocalizationService>,
     #[case] remote: bool,
     #[case] models: bool,
     #[case] expected: String,
   ) {
     let result = build_list_command(remote, models);
     assert!(result.is_err());
-    assert_eq!(expected, result.unwrap_err().to_string());
+    let app_error: &dyn AppError = &result.unwrap_err();
+    assert_error_message(service, &app_error.code(), app_error.args(), &expected);
   }
 
   #[rstest]
