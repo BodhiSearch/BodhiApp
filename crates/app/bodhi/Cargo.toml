@@ -46,6 +46,7 @@ server_app = { workspace = true, features = ["test-utils"] }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 rstest = { workspace = true }
+serial_test = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }

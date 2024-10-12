@@ -201,6 +201,7 @@ mod tests {
   }
 
   #[rstest]
+  #[serial_test::serial(localization)]
   fn test_build_manage_alias_command_invalid(
     #[from(setup_l10n_bodhi)] service: Arc<FluentLocalizationService>,
   ) {
@@ -305,6 +306,7 @@ mod tests {
     "Command 'create' cannot be converted into command 'CreateCommand', one of chat_template and tokenizer_config must be provided"
   )]
   #[anyhow_trace::anyhow_trace]
+  #[serial_test::serial(localization)]
   fn test_create_try_from_invalid(
     #[from(setup_l10n_bodhi)] _localization_service: Arc<FluentLocalizationService>,
     #[case] input: Command,
@@ -339,6 +341,7 @@ mod tests {
 
   #[rstest]
   #[case(true, true, "Command 'list' cannot be converted into command 'ListCommand', cannot initialize list command with invalid state. --remote: true, --models: true")]
+  #[serial_test::serial(localization)]
   fn test_list_invalid_try_from(
     #[from(setup_l10n_bodhi)] service: Arc<FluentLocalizationService>,
     #[case] remote: bool,
