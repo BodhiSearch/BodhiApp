@@ -17,6 +17,7 @@ async-trait = { workspace = true }
 axum = { workspace = true }
 derive-new = { workspace = true }
 dialoguer = { workspace = true, features = ["history"] }
+include_dir = { workspace = true, optional = true }
 indicatif = { workspace = true, features = ["tokio"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -26,12 +27,15 @@ tracing = { workspace = true }
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
+routes_app = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
+include_dir = { workspace = true }
 mockall = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true }
 rstest = { workspace = true }
+serial_test = { workspace = true }
 
 [features]
-test-utils = []
+test-utils = ["include_dir"]

@@ -52,4 +52,4 @@ url = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 
 [features]
-test-utils = ["include_dir", "rstest"]
+test-utils = ["include_dir", "rstest", "auth_middleware/test-utils"]

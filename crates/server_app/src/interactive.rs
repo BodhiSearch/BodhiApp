@@ -1,3 +1,4 @@
+use crate::TaskJoinError;
 use async_openai::{
   error::OpenAIError,
   types::{
@@ -25,7 +26,7 @@ use std::{
 };
 use tokio::{
   sync::{mpsc::channel, Mutex},
-  task::{JoinError, JoinHandle},
+  task::JoinHandle,
 };
 
 fn infinite_loading(msg: String) -> ProgressBar {
@@ -51,8 +52,7 @@ pub enum InteractiveError {
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "interactive_error-join_error", args_delegate = false)]
-  JoinError(#[from] JoinError),
+  Join(#[from] TaskJoinError),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::BadRequest, status = 400, code = "interactive_error-openai_error", args_delegate = false)]
   OpenAIError(#[from] OpenAIError),
@@ -77,6 +77,11 @@ impl_error_from!(
   ::serde_json::Error,
   InteractiveError::SerdeJson,
   ::objs::SerdeJsonError
+);
+impl_error_from!(
+  ::tokio::task::JoinError,
+  InteractiveError::Join,
+  crate::TaskJoinError
 );
 
 type Result<T> = std::result::Result<T, InteractiveError>;
