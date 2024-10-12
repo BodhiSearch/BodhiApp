@@ -1,27 +1,26 @@
+use crate::{
+  build_server_handle, shutdown_signal, ServerError, ServerHandle, ShutdownCallback, TaskJoinError,
+};
 use axum::Router;
-use objs::{AppError, ErrorType};
+use objs::{impl_error_from, AppError};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContextRw, SharedContextRw};
 use services::AppService;
 use std::sync::Arc;
-use tokio::{
-  sync::oneshot::Sender,
-  task::{JoinError, JoinHandle},
-};
-
-use crate::{build_server_handle, shutdown_signal, ServerError, ServerHandle, ShutdownCallback};
+use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ServeError {
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "serve_error-join", args_delegate = false)]
-  Join(#[from] JoinError),
+  Join(#[from] TaskJoinError),
   #[error(transparent)]
   Context(#[from] ContextError),
   #[error(transparent)]
   Server(#[from] ServerError),
 }
+
+impl_error_from!(tokio::task::JoinError, ServeError::Join, TaskJoinError);
 
 type Result<T> = std::result::Result<T, ServeError>;
 
