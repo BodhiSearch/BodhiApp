@@ -10,6 +10,7 @@ members = [
   "crates/auth_middleware",
   "crates/routes_oai",
   "crates/routes_app",
+  "crates/routes_all",
   "crates/server_app",
   "crates/server",
   "crates/app/bodhi",
@@ -27,6 +28,7 @@ server_core = { path = "crates/server_core" }
 auth_middleware = { path = "crates/auth_middleware" }
 routes_oai = { path = "crates/routes_oai" }
 routes_app = { path = "crates/routes_app" }
+routes_all = { path = "crates/routes_all" }
 server_app = { path = "crates/server_app" }
 server = { path = "crates/server" }
 bodhi = { path = "app/bodhi" }

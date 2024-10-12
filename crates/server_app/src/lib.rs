@@ -5,6 +5,12 @@ pub mod test_utils;
 
 mod interactive;
 mod run;
+mod serve;
+mod server;
+mod shutdown;
 
 pub use interactive::*;
 pub use run::*;
+pub use serve::*;
+pub use server::*;
+pub use shutdown::*;

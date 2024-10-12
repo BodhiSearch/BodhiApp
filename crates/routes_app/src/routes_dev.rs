@@ -1,5 +1,5 @@
 use axum::{body::Body, extract::State, response::Response};
-use objs::{AppError, SerdeJsonError};
+use objs::{ApiError, AppError, SerdeJsonError};
 use serde_json::json;
 use server_core::RouterState;
 use services::{
@@ -18,7 +18,7 @@ pub enum DevError {
 
 pub async fn dev_secrets_handler(
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Response, DevError> {
+) -> Result<Response, ApiError> {
   let secret_service = state.app_service().secret_service();
   let value = json! {{
     "authz": secret_service.get_secret_string(KEY_APP_AUTHZ)?,
@@ -32,3 +32,5 @@ pub async fn dev_secrets_handler(
       .unwrap(),
   )
 }
+
+// TODO: write tests

@@ -10,14 +10,18 @@ objs = { workspace = true }
 services = { workspace = true }
 commands = { workspace = true }
 server_core = { workspace = true }
+routes_all = { workspace = true }
 
 async-openai = { workspace = true }
+async-trait = { workspace = true }
+axum = { workspace = true }
 derive-new = { workspace = true }
 dialoguer = { workspace = true, features = ["history"] }
 indicatif = { workspace = true, features = ["tokio"] }
-tokio = { workspace = true, features = ["full"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
@@ -25,6 +29,8 @@ services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 mockall = { workspace = true }
+rand = { workspace = true }
+reqwest = { workspace = true }
 rstest = { workspace = true }
 
 [features]
