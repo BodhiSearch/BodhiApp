@@ -1,5 +1,5 @@
 use axum::Router;
-use server::{ServeCommand, ServerShutdownHandle};
+use server_app::{ServeCommand, ServerShutdownHandle};
 use services::AppService;
 use std::sync::{Arc, Mutex};
 use tauri::{

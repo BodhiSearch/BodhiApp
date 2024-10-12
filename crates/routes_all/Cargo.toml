@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+objs = { workspace = true }
 services = { workspace = true }
 auth_middleware = { workspace = true }
 server_core = { workspace = true }
@@ -12,6 +13,7 @@ routes_oai = { workspace = true }
 
 axum = { workspace = true }
 include_dir = { workspace = true }
+rstest = { workspace = true, optional = true }
 tower-http = { workspace = true, features = ["trace", "cors"] }
 serde_json = { workspace = true }
 hyper-util = { workspace = true }
@@ -19,6 +21,7 @@ hyper-util = { workspace = true }
 [dev-dependencies]
 server_core = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
+routes_app = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 rstest = { workspace = true }
@@ -26,4 +29,4 @@ tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true, features = ["util"] }
 
 [features]
-test-utils = []
+test-utils = ["rstest", "routes_app/test-utils"]

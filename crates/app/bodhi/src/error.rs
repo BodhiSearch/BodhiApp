@@ -1,19 +1,18 @@
 use commands::{
   AliasCommandError, CreateCommandError, EnvCommandError, ListCommandError, PullCommandError,
 };
-use objs::BuilderError;
-use server::{ContextError, RunCommandError};
+use objs::{BuilderError, LocalizationSetupError};
+use server_app::{RunCommandError, ServeError};
+use server_core::ContextError;
 use services::{db::DbError, DataServiceError, SessionServiceError};
 use std::io;
 
 use crate::convert::ConvertError;
 
 #[derive(Debug, thiserror::Error)]
-pub enum AppError {
+pub enum BodhiError {
   #[error("{0}")]
   Unreachable(String),
-  #[error(transparent)]
-  BodhiError(#[from] server::BodhiError),
   #[error(transparent)]
   Context(#[from] ContextError),
   #[error(transparent)]
@@ -42,6 +41,10 @@ pub enum AppError {
   EnvCommandError(#[from] EnvCommandError),
   #[error(transparent)]
   ConvertError(#[from] ConvertError),
+  #[error(transparent)]
+  LocalizationSetup(#[from] LocalizationSetupError),
+  #[error(transparent)]
+  Serve(#[from] ServeError),
 }
 
-pub(crate) type Result<T> = std::result::Result<T, AppError>;
+pub(crate) type Result<T> = std::result::Result<T, BodhiError>;

@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use bodhi::{main_internal, setup_logs, AppError};
+use bodhi::{main_internal, setup_logs, BodhiError};
 use services::{DefaultEnvService, DefaultEnvWrapper};
 use std::sync::Arc;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -44,7 +44,7 @@ pub fn main() {
   }
   let _guard = match env_service.setup_logs_dir() {
     Ok(logs_dir) => setup_logs(&logs_dir),
-    Err(err) => Err::<WorkerGuard, AppError>(err.into()),
+    Err(err) => Err::<WorkerGuard, BodhiError>(err.into()),
   };
   if _guard.is_err() {
     eprintln!("failed to configure logging, will be skipped");

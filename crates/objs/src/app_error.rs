@@ -1,4 +1,4 @@
-use crate::{FluentLocalizationService, JsonRejectionError};
+use crate::{FluentLocalizationService, JsonRejectionError, LocalizationService};
 use axum::{
   body::Body,
   extract::rejection::JsonRejection,

@@ -14,8 +14,8 @@ pub trait LocalizationService: std::fmt::Debug + Send + Sync {
     &self,
     locale: &LanguageIdentifier,
     code: &str,
-    args: HashMap<String, String>,
-  ) -> Result<Option<String>, LocalizationSetupError>;
+    args: Option<HashMap<String, String>>,
+  ) -> Result<String, LocalizationMessageError>;
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -71,6 +71,14 @@ pub struct FluentLocalizationService {
   bundles: RwLock<HashMap<LanguageIdentifier, FluentBundle<FluentResource>>>,
 }
 
+impl std::fmt::Debug for FluentLocalizationService {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let bundles = self.bundles.read().unwrap();
+    let locales = bundles.keys().collect::<Vec<_>>();
+    write!(f, "FluentLocalizationService {{ locales: {:?} }}", locales)
+  }
+}
+
 #[cfg(all(not(test), not(feature = "test-utils")))]
 mod impl_localization_service {
   use super::*;
@@ -100,7 +108,7 @@ impl FluentLocalizationService {
     }
   }
 
-  pub fn load_resource(&self, embedded_dir: &Dir) -> Result<(), LocalizationSetupError> {
+  pub fn load_resource(&self, embedded_dir: &Dir) -> Result<&Self, LocalizationSetupError> {
     for locale_dir in embedded_dir.entries() {
       match locale_dir.as_dir() {
         Some(locale_dir) => {
@@ -154,7 +162,7 @@ impl FluentLocalizationService {
         }
       }
     }
-    Ok(())
+    Ok(self)
   }
 
   pub fn load_locale(
@@ -191,9 +199,10 @@ impl FluentLocalizationService {
     }
     Ok(())
   }
+}
 
-  /// Retrieves a localized message based on locale and message code.
-  pub fn get_message(
+impl LocalizationService for FluentLocalizationService {
+  fn get_message(
     &self,
     locale: &LanguageIdentifier,
     code: &str,
@@ -242,7 +251,9 @@ impl FluentLocalizationService {
 mod tests {
   use super::FluentLocalizationService;
   use crate::test_utils::localization_service;
-  use crate::{LocaleNotSupportedError, LocalizationMessageError, LocalizationSetupError};
+  use crate::{
+    LocaleNotSupportedError, LocalizationMessageError, LocalizationService, LocalizationSetupError,
+  };
   use include_dir::{include_dir, Dir};
   use rstest::*;
   use std::str::FromStr;

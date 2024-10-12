@@ -4,12 +4,13 @@ use crate::{
     build_run_command, build_serve_command,
   },
   native::NativeCommand,
-  AppError,
+  BodhiError,
 };
 use axum::Router;
 use clap::Parser;
 use commands::{Cli, Command, DefaultStdoutWriter, EnvCommand};
 use include_dir::{include_dir, Dir};
+use objs::FluentLocalizationService;
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
   DefaultAppService, DefaultEnvService, EnvService, HfHubService, KeycloakAuthService,
@@ -43,7 +44,8 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
 
   let dbpath = env_service.db_path();
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
-  let db_service = SqliteDbService::new(pool.clone(), Arc::new(DefaultTimeService));
+  let time_service = Arc::new(DefaultTimeService);
+  let db_service = SqliteDbService::new(pool.clone(), time_service.clone());
   db_service.migrate().await?;
   let session_service = SqliteSessionService::new(pool);
   session_service.migrate().await?;
@@ -52,6 +54,18 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
   let auth_url = env_service.auth_url();
   let auth_realm = env_service.auth_realm();
   let auth_service = KeycloakAuthService::new(auth_url, auth_realm);
+  let localization_service = FluentLocalizationService::get_instance();
+  localization_service
+    .load_resource(objs::l10n::L10N_RESOURCES)?
+    .load_resource(services::l10n::L10N_RESOURCES)?
+    .load_resource(commands::l10n::L10N_RESOURCES)?
+    .load_resource(server_core::l10n::L10N_RESOURCES)?
+    .load_resource(auth_middleware::l10n::L10N_RESOURCES)?
+    .load_resource(routes_oai::l10n::L10N_RESOURCES)?
+    .load_resource(routes_app::l10n::L10N_RESOURCES)?
+    .load_resource(routes_all::l10n::L10N_RESOURCES)?
+    .load_resource(server_app::l10n::L10N_RESOURCES)?
+    .load_resource(crate::l10n::L10N_RESOURCES)?;
 
   let app_service = DefaultAppService::new(
     env_service.clone(),
@@ -62,6 +76,8 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
     Arc::new(session_service),
     Arc::new(secret_service),
     Arc::new(cache_service),
+    localization_service,
+    time_service,
   );
   let service = Arc::new(app_service);
 
@@ -69,7 +85,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
   if args.len() == 1
     && args
       .first()
-      .ok_or_else(|| AppError::Unreachable("already checked the length is 1".to_string()))?
+      .ok_or_else(|| BodhiError::Unreachable("already checked the length is 1".to_string()))?
       .contains(".app/Contents/MacOS/")
   {
     // the app was launched using Bodhi.app, launch the native app with system tray

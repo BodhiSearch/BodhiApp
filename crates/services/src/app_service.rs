@@ -2,7 +2,6 @@ use crate::{
   db::{DbService, TimeService},
   AuthService, CacheService, DataService, EnvService, HubService, SecretService, SessionService,
 };
-use derive_new::new;
 use objs::LocalizationService;
 use std::sync::Arc;
 
@@ -30,7 +29,7 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 }
 
 #[allow(clippy::too_many_arguments)]
-#[derive(Clone, Debug, new)]
+#[derive(Clone, Debug, derive_new::new)]
 pub struct DefaultAppService {
   env_service: Arc<dyn EnvService>,
   hub_service: Arc<dyn HubService>,
