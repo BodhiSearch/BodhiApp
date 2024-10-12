@@ -1,3 +1,4 @@
+use crate::LoginError;
 use auth_middleware::{app_status_or_default, generate_random_string};
 use axum::{
   body::Body,
@@ -12,48 +13,18 @@ use axum::{
 use base64::{engine::general_purpose, Engine as _};
 use jsonwebtoken::TokenData;
 use oauth2::{
-  url::ParseError, AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl,
-  RefreshToken,
+  AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl, RefreshToken,
 };
 use objs::{ApiError, AppError, BadRequestError, ErrorType};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
-  decode_access_token, get_secret, AppRegInfo, AppStatus, AuthServiceError, Claims,
-  JsonWebTokenError, SecretServiceError, KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
+  decode_access_token, get_secret, AppRegInfo, AppStatus, Claims,
+  KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum LoginError {
-  #[error("app_reg_info_not_found")]
-  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
-  AppRegInfoNotFound,
-  #[error("app_status_invalid")]
-  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
-  AppStatusInvalid(AppStatus),
-  #[error(transparent)]
-  SecretServiceError(#[from] SecretServiceError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Authentication, status = 401, code = "login_error-session_error", args_delegate = false)]
-  SessionError(#[from] tower_sessions::session::Error),
-  #[error("session_info_not_found")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
-  SessionInfoNotFound,
-  #[error(transparent)]
-  AuthServiceError(#[from] AuthServiceError),
-  #[error(transparent)]
-  BadRequest(#[from] BadRequestError),
-
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "login_error-parse_error", args_delegate = false)]
-  ParseError(#[from] ParseError),
-  #[error(transparent)]
-  JsonWebToken(#[from] JsonWebTokenError),
-}
 
 pub async fn login_handler(
   headers: HeaderMap,
