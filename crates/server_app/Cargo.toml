@@ -8,6 +8,7 @@ llama-server-bindings = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 services = { workspace = true }
+commands = { workspace = true }
 server_core = { workspace = true }
 
 async-openai = { workspace = true }
@@ -23,6 +24,7 @@ objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
+mockall = { workspace = true }
 rstest = { workspace = true }
 
 [features]

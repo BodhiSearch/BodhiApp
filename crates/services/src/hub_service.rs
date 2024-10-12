@@ -23,7 +23,7 @@ pub struct HubFileNotFoundError {
 #[error("remote_model_not_found")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
 pub struct RemoteModelNotFoundError {
-  alias: String,
+  pub alias: String,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
