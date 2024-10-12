@@ -14,7 +14,9 @@ clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
 fluent = { workspace = true }
+include_dir = { workspace = true, optional = true }
 prettytable-rs = { workspace = true }
+rstest = { workspace = true, optional = true }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 serde_yaml = { workspace = true }
@@ -27,8 +29,9 @@ services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
+include_dir = { workspace = true }
 mockall = { workspace = true }
 rstest = { workspace = true }
 
 [features]
-test-utils = []
+test-utils = ["rstest", "include_dir", "services/test-utils"]

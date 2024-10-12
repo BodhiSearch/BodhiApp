@@ -1,16 +1,13 @@
 #[cfg(test)]
 use crate::test_utils::MockServerContext as BodhiServerContext;
-use crate::TokenizerConfigError;
 #[cfg(not(test))]
 use llama_server_bindings::{BodhiServerContext, ServerContext};
 
+use crate::ContextError;
 use crate::{obj_exts::update, tokenizer_config::TokenizerConfig};
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_bindings::{GptParams, GptParamsBuilder, GptParamsBuilderError, LlamaCppError};
-use objs::{
-  impl_error_from, Alias, AppError, ErrorType, HubFile, ObjValidationError, SerdeJsonError,
-};
-use services::DataServiceError;
+use llama_server_bindings::{GptParams, GptParamsBuilder};
+use objs::{Alias, HubFile};
 use std::ffi::{c_char, c_void};
 use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -24,42 +21,6 @@ use validator::Validate;
 pub struct DefaultSharedContextRw {
   ctx: RwLock<Option<BodhiServerContext>>,
 }
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum ContextError {
-  #[error(transparent)]
-  SerdeJson(#[from] SerdeJsonError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "context_error-llama_cpp_error", args_delegate = false)]
-  LlamaCpp(#[from] LlamaCppError),
-  #[error(transparent)]
-  DataServiceError(#[from] DataServiceError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "context_error-gpt_params_builder_error", args_delegate = false)]
-  BuilderError(#[from] GptParamsBuilderError),
-  #[error(transparent)]
-  ObjValidationError(#[from] ObjValidationError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "context_error-minijina_error", args_delegate = false)]
-  Minijina(#[from] minijinja::Error),
-  #[error("unreachable")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
-  Unreachable(String),
-  #[error(transparent)]
-  TokenizerConfig(#[from] TokenizerConfigError),
-}
-
-impl_error_from!(
-  ::serde_json::Error,
-  ContextError::SerdeJson,
-  ::objs::SerdeJsonError
-);
-impl_error_from!(
-  ::validator::ValidationErrors,
-  ContextError::ObjValidationError,
-  ::objs::ObjValidationError
-);
 
 type Result<T> = std::result::Result<T, ContextError>;
 

@@ -90,7 +90,7 @@ impl DefaultRouterState {
 #[cfg(test)]
 mod test {
   use crate::{
-    shared_rw::ContextError, test_utils::test_channel, DefaultRouterState, MockSharedContextRw,
+    ContextError, test_utils::test_channel, DefaultRouterState, MockSharedContextRw,
     RouterState, RouterStateError,
   };
   use anyhow_trace::anyhow_trace;
