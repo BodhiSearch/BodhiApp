@@ -4,7 +4,7 @@ use rstest::fixture;
 use std::{collections::HashMap, fs, sync::Arc};
 
 pub fn assert_error_message(
-  service: Arc<FluentLocalizationService>,
+  service: &Arc<FluentLocalizationService>,
   code: &str,
   args: HashMap<String, String>,
   expected: &str,
