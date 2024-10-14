@@ -402,15 +402,14 @@ impl HfHubService {
 mod test {
   use crate::{
     test_utils::{
-      build_hf_service, hf_test_token_allowed, hf_test_token_public, setup_l10n_services,
-      test_hf_service, TestHfService,
+      build_hf_service, hf_test_token_allowed, hf_test_token_public, test_hf_service, TestHfService,
     },
     HubApiError, HubApiErrorKind, HubFileNotFoundError, HubService, HubServiceError,
     RemoteModelNotFoundError, SNAPSHOT_MAIN,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::{assert_error_message, temp_hf_home},
+    test_utils::{assert_error_message, setup_l10n, temp_hf_home},
     AppError, FluentLocalizationService, HubFile, Repo,
   };
   use rstest::rstest;
@@ -449,9 +448,8 @@ An error occurred while connecting to huggingface.co. Check your internet connec
     r#"request error: https://someurl.com/my/repo: status code 403.
 An error occurred while requesting access to huggingface repo 'my/repo'."#
   )]
-  #[serial_test::serial(localization)]
   fn test_hub_service_api_error(
-    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] kind: HubApiErrorKind,
     #[case] message: String,
   ) {
@@ -473,9 +471,8 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
   #[case(&RemoteModelNotFoundError::new(
     "llama3:instruct".to_string(),
   ), "remote model alias 'llama3:instruct' not found, check your alias and try again")]
-  #[serial_test::serial(localization)]
   fn test_hub_service_alias_not_found_error(
-    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
   ) {
