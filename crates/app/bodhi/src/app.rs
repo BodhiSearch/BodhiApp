@@ -4,7 +4,6 @@ use crate::{
     build_run_command, build_serve_command,
   },
   native::NativeCommand,
-  BodhiError,
 };
 use axum::Router;
 use clap::Parser;
@@ -85,7 +84,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
   if args.len() == 1
     && args
       .first()
-      .ok_or_else(|| BodhiError::Unreachable("already checked the length is 1".to_string()))?
+      .expect("already checked the length is 1")
       .contains(".app/Contents/MacOS/")
   {
     // the app was launched using Bodhi.app, launch the native app with system tray
