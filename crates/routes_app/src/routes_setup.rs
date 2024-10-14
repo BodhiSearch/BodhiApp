@@ -111,9 +111,7 @@ pub async fn setup_handler(
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    app_info_handler, setup_handler, test_utils::setup_l10n_routes_app, AppInfo, SetupRequest,
-  };
+  use crate::{app_info_handler, setup_handler, AppInfo, SetupRequest};
   use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -121,7 +119,7 @@ mod tests {
     Router,
   };
   use jsonwebtoken::Algorithm;
-  use objs::{FluentLocalizationService, ReqwestError};
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, ReqwestError};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -198,9 +196,8 @@ mod tests {
       SetupRequest { authz: true },
   )]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_setup_handler_error(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[case] secret_service: SecretServiceStub,
     #[case] payload: SetupRequest,
   ) -> anyhow::Result<()> {
@@ -337,9 +334,8 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_setup_handler_register_resource_error(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
         KEY_APP_STATUS.to_string() => "setup".to_string(),
@@ -406,9 +402,8 @@ mod tests {
     "failed to parse the request body as JSON, error: \u{2068}Failed to parse the request body as JSON\u{2069}"
   )]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_setup_handler_bad_request(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[case] body: &str,
     #[case] expected_error: &str,
   ) -> anyhow::Result<()> {

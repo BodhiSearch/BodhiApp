@@ -19,8 +19,8 @@ use objs::{ApiError, AppError, BadRequestError, ErrorType};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
-  decode_access_token, get_secret, AppRegInfo, AppStatus, Claims,
-  KEY_APP_REG_INFO, KEY_APP_STATUS, KEY_RESOURCE_TOKEN,
+  decode_access_token, get_secret, AppRegInfo, AppStatus, Claims, KEY_APP_REG_INFO, KEY_APP_STATUS,
+  KEY_RESOURCE_TOKEN,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -240,8 +240,8 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
 #[cfg(test)]
 mod tests {
   use crate::{
-    generate_pkce, login_callback_handler, login_handler, logout_handler,
-    test_utils::setup_l10n_routes_app, user_info_handler, UserInfo,
+    generate_pkce, login_callback_handler, login_handler, logout_handler, user_info_handler,
+    UserInfo,
   };
   use anyhow_trace::anyhow_trace;
   use auth_middleware::optional_auth_middleware;
@@ -257,7 +257,10 @@ mod tests {
   use hyper::header::LOCATION;
   use mockito::{Matcher, Server};
   use oauth2::{AccessToken, PkceCodeVerifier, RefreshToken};
-  use objs::{test_utils::temp_bodhi_home, FluentLocalizationService};
+  use objs::{
+    test_utils::{setup_l10n, temp_bodhi_home},
+    FluentLocalizationService,
+  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -555,10 +558,9 @@ mod tests {
   #[rstest]
   #[tokio::test]
   #[anyhow_trace]
-  #[serial_test::serial(localization)]
   async fn test_login_callback_handler_state_not_in_session(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let secret_service = Arc::new(SecretServiceStub::with_map(maplit::hashmap! {
       KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
@@ -605,10 +607,9 @@ mod tests {
     "missing code parameter"
   )]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_login_callback_handler_missing_params(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[case] query_template: &str,
     #[case] expected_error: &str,
   ) -> anyhow::Result<()> {
@@ -673,10 +674,9 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_login_callback_auth_service_error(
     temp_bodhi_home: TempDir,
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let dbfile = temp_bodhi_home.path().join("test.db");
     let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
@@ -798,9 +798,8 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_user_info_handler_valid_token(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     token: (String, String, String),
   ) -> anyhow::Result<()> {
     let (_, token, _) = token;
@@ -864,9 +863,8 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_user_info_handler_invalid_token(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(

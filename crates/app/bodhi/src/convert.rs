@@ -159,9 +159,8 @@ mod tests {
     build_create_command, build_list_command, build_manage_alias_command, build_pull_command,
     build_serve_command,
   };
-  use crate::test_utils::setup_l10n_bodhi;
   use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
-  use objs::test_utils::assert_error_message;
+  use objs::test_utils::{assert_error_message, setup_l10n};
   use objs::FluentLocalizationService;
   use objs::{AppError, ChatTemplate, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
   use rstest::rstest;
@@ -201,9 +200,8 @@ mod tests {
   }
 
   #[rstest]
-  #[serial_test::serial(localization)]
   fn test_build_manage_alias_command_invalid(
-    #[from(setup_l10n_bodhi)] service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] service: &Arc<FluentLocalizationService>,
   ) {
     let invalid_cmd = Command::List {
       remote: false,
@@ -306,9 +304,8 @@ mod tests {
     "Command 'create' cannot be converted into command 'CreateCommand', one of chat_template and tokenizer_config must be provided"
   )]
   #[anyhow_trace::anyhow_trace]
-  #[serial_test::serial(localization)]
   fn test_create_try_from_invalid(
-    #[from(setup_l10n_bodhi)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[case] input: Command,
     #[case] message: String,
   ) -> anyhow::Result<()> {
@@ -341,9 +338,8 @@ mod tests {
 
   #[rstest]
   #[case(true, true, "Command 'list' cannot be converted into command 'ListCommand', cannot initialize list command with invalid state. --remote: true, --models: true")]
-  #[serial_test::serial(localization)]
   fn test_list_invalid_try_from(
-    #[from(setup_l10n_bodhi)] service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] service: &Arc<FluentLocalizationService>,
     #[case] remote: bool,
     #[case] models: bool,
     #[case] expected: String,

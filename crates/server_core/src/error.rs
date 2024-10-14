@@ -41,9 +41,9 @@ impl_error_from!(
 
 #[cfg(test)]
 mod tests {
-  use crate::{test_utils::setup_l10n_server_core, ContextError};
+  use crate::ContextError;
   use llama_server_bindings::{GptParamsBuilderError, LlamaCppError};
-  use objs::test_utils::assert_error_message;
+  use objs::test_utils::{assert_error_message, setup_l10n};
   use objs::AppError;
   use objs::FluentLocalizationService;
   use rstest::rstest;
@@ -54,9 +54,8 @@ mod tests {
   #[case(&ContextError::BuilderError(GptParamsBuilderError::UninitializedField("field")), "error building gpt params: `field` must be initialized")]
   #[case(&ContextError::Minijina(minijinja::Error::new(minijinja::ErrorKind::NonKey, "error")), "error rendering template: not a key type: error")]
   #[case(&ContextError::Unreachable("unreachable".to_string()), "should not happen: unreachable")]
-  #[serial_test::serial(localization)]
   fn test_error_messages_server_core(
-    #[from(setup_l10n_server_core)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected_message: &str,
   ) {

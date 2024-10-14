@@ -154,7 +154,8 @@ mod tests {
     Router,
   };
   use objs::{
-    ChatTemplate, ChatTemplateId, GptContextParamsBuilder, OAIRequestParamsBuilder, Repo,
+    test_utils::setup_l10n, ChatTemplate, ChatTemplateId, FluentLocalizationService,
+    GptContextParamsBuilder, OAIRequestParamsBuilder, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -332,6 +333,7 @@ mod tests {
   #[tokio::test]
   async fn test_get_alias_handler_non_existent(
     #[future] router_state_stub: DefaultRouterState,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let response = test_router(router_state_stub)
       .oneshot(

@@ -11,8 +11,11 @@ pub struct TaskJoinError {
 
 #[cfg(test)]
 mod tests {
-  use crate::{test_utils::setup_l10n_server_app, TaskJoinError};
-  use objs::{test_utils::assert_error_message, AppError, FluentLocalizationService};
+  use crate::TaskJoinError;
+  use objs::{
+    test_utils::{assert_error_message, setup_l10n},
+    AppError, FluentLocalizationService,
+  };
   use rstest::rstest;
   use std::sync::Arc;
   use tokio::task::JoinError;
@@ -32,10 +35,9 @@ mod tests {
   }
 
   #[rstest]
-  #[serial_test::serial(localization)]
   #[tokio::test]
   async fn test_error_messages_task_join(
-    #[from(setup_l10n_server_app)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
   ) {
     let join_error = build_join_error().await;
     let expected = format!("failed to join task: {}", join_error);

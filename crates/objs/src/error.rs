@@ -244,7 +244,7 @@ mod tests {
   }
 
   #[rstest]
-    #[tokio::test]
+  #[tokio::test]
   async fn test_json_rejection_error(
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) {

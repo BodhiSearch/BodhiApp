@@ -33,12 +33,12 @@ pub enum LoginError {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    test_utils::setup_l10n_routes_app, AppServiceError, CreateAliasError, LoginError, LogoutError,
-    PullError,
-  };
+  use crate::{AppServiceError, CreateAliasError, LoginError, LogoutError, PullError};
   use oauth2::url::ParseError;
-  use objs::{test_utils::assert_error_message, AppError, FluentLocalizationService};
+  use objs::{
+    test_utils::{assert_error_message, setup_l10n},
+    AppError, FluentLocalizationService,
+  };
   use rstest::rstest;
   use services::AppStatus;
   use std::sync::Arc;
@@ -54,9 +54,8 @@ mod tests {
   #[case(&CreateAliasError::AliasMismatch { path: "pathalias".to_string(), request: "requestalias".to_string() }, "alias in path 'pathalias' does not match alias in request 'requestalias'")]
   #[case(&LogoutError::SessionDelete(serde_json::from_str::<String>("{invalid").unwrap_err().into()), "failed to delete session, error: invalid type: map, expected a string at line 1 column 0")]
   #[case(&PullError::FileAlreadyExists { repo: "test/repo".to_string(), filename: "filename.gguf".to_string(), snapshot: "main".to_string() }, "file filename.gguf already exists in repo test/repo with snapshot main")]
-  #[serial_test::serial(localization)]
   fn test_error_messages_routes_app(
-    #[from(setup_l10n_routes_app)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
   ) {

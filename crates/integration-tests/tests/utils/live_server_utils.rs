@@ -1,9 +1,10 @@
 use dircpy::CopyBuilder;
 use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
 use mockall::predicate::eq;
+use objs::test_utils::setup_l10n;
 use objs::{EnvType, FluentLocalizationService};
 use rstest::fixture;
-use server_app::{test_utils::setup_l10n_server_app, ServeCommand, ServerShutdownHandle};
+use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
   test_utils::EnvWrapperStub,
@@ -35,7 +36,7 @@ pub fn disable_test_logging() {
 #[fixture]
 #[once]
 pub fn tinyllama(
-  #[from(setup_l10n_server_app)] localization_service: Arc<FluentLocalizationService>,
+  #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
 ) -> (TempDir, Arc<dyn AppService>) {
   let temp_dir = tempfile::tempdir().unwrap();
   let cache_dir = temp_dir.path().join(".cache");
@@ -97,7 +98,7 @@ pub fn tinyllama(
     Arc::new(session_service),
     Arc::new(secret_service),
     Arc::new(cache_service),
-    localization_service,
+    localization_service.clone(),
     time_service,
   );
   (temp_dir, Arc::new(service))

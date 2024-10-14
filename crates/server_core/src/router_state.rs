@@ -90,8 +90,8 @@ impl DefaultRouterState {
 #[cfg(test)]
 mod test {
   use crate::{
-    ContextError, test_utils::test_channel, DefaultRouterState, MockSharedContextRw,
-    RouterState, RouterStateError,
+    test_utils::test_channel, ContextError, DefaultRouterState, MockSharedContextRw, RouterState,
+    RouterStateError,
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;

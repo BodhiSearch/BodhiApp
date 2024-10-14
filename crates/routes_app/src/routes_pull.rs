@@ -210,7 +210,6 @@ async fn update_download_status(
 #[cfg(test)]
 mod tests {
   use super::{get_download_status_handler, pull_by_alias_handler, pull_by_repo_file_handler};
-  use crate::test_utils::setup_l10n_routes_app;
   use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
@@ -218,7 +217,7 @@ mod tests {
     Router,
   };
   use mockall::predicate::eq;
-  use objs::{FluentLocalizationService, HubFile, Repo};
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -325,7 +324,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_repo_file_already_downloaded(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -373,7 +372,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_repo_file_existing_pending_download(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -421,7 +420,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_alias_success(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     mut test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -473,7 +472,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_pull_by_alias_not_found(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -513,7 +512,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_get_download_status_success(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
@@ -552,7 +551,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_get_download_status_not_found(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     test_hf_service: TestHfService,
     #[future]
     #[from(test_db_service)]
