@@ -107,14 +107,17 @@ pub async fn update_alias_handler(
 
 #[cfg(test)]
 mod tests {
-  use crate::{create_alias_handler, test_utils::setup_l10n_routes_app, update_alias_handler};
+  use crate::{create_alias_handler, update_alias_handler};
   use axum::{
     body::Body,
     http::{status::StatusCode, Method, Request},
     routing::{post, put},
     Router,
   };
-  use objs::{FluentLocalizationService, GptContextParamsBuilder, OAIRequestParamsBuilder};
+  use objs::{
+    test_utils::setup_l10n, FluentLocalizationService, GptContextParamsBuilder,
+    OAIRequestParamsBuilder,
+  };
   use pretty_assertions::assert_eq;
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
@@ -252,9 +255,8 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_create_alias_handler_non_existent_repo(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
   ) -> anyhow::Result<()> {
     let payload = serde_json::json!({
@@ -351,9 +353,8 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_update_alias_handler_mismatch(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
   ) -> anyhow::Result<()> {
     let payload = serde_json::json!({
@@ -392,9 +393,8 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_create_alias_handler_missing_alias(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
   ) -> anyhow::Result<()> {
     let payload = serde_json::json!({
@@ -465,9 +465,8 @@ mod tests {
   }), Method::PUT, "/api/models/tinyllama:instruct")]
   #[awt]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_create_alias_repo_not_downloaded_error(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
     #[case] payload: Value,
     #[case] method: Method,

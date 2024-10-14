@@ -89,12 +89,12 @@ async fn ui_chat_delete_handler(
 
 #[cfg(test)]
 mod test {
-  use crate::{chats_router, test_utils::setup_l10n_routes_app};
+  use crate::chats_router;
   use axum::{
     body::Body,
     http::{Request, StatusCode},
   };
-  use objs::FluentLocalizationService;
+  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use rstest::rstest;
   use serde_json::{json, Value};
   use server_core::{
@@ -285,9 +285,8 @@ mod test {
   #[rstest]
   #[awt]
   #[tokio::test]
-  #[serial_test::serial(localization)]
   async fn test_chat_routes_get_not_found(
-    #[from(setup_l10n_routes_app)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,

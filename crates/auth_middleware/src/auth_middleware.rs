@@ -299,7 +299,7 @@ fn authz_status(secret_service: &Arc<dyn SecretService>) -> String {
 
 #[cfg(test)]
 mod tests {
-  use crate::{auth_middleware, optional_auth_middleware, test_utils::setup_l10n_middleware};
+  use crate::{auth_middleware, optional_auth_middleware};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -312,7 +312,10 @@ mod tests {
   use jsonwebtoken::Algorithm;
   use mockall::predicate::{always, eq};
   use oauth2::{AccessToken, ClientId, RefreshToken};
-  use objs::{test_utils::temp_bodhi_home, FluentLocalizationService, ReqwestError};
+  use objs::{
+    test_utils::{setup_l10n, temp_bodhi_home},
+    FluentLocalizationService, ReqwestError,
+  };
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use serde_json::{json, Value};
@@ -518,7 +521,7 @@ mod tests {
   )]
   #[tokio::test]
   async fn test_auth_middleware_auth_header_errors(
-    #[from(setup_l10n_middleware)] _setup_l10n: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] auth_header: Option<&str>,
     #[case] expected_status: StatusCode,
     #[case] expected_error: Value,
@@ -551,7 +554,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_algorithm_mismatch(
-    #[from(setup_l10n_middleware)] _setup_l10n: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     token: (String, String, String),
   ) -> anyhow::Result<()> {
     let (_, token, _) = token;
@@ -598,7 +601,7 @@ mod tests {
   #[tokio::test]
   async fn test_auth_middleware_kid_mismatch(
     token: (String, String, String),
-    #[from(setup_l10n_middleware)] _setup_l10n: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let (_, token, _) = token;
     let mut secret_service = SecretServiceStub::default();
@@ -642,7 +645,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_public_key_missing(
-    #[from(setup_l10n_middleware)] _setup_l10n: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     token: (String, String, String),
   ) -> anyhow::Result<()> {
     let (_, token, _) = token;
@@ -681,7 +684,7 @@ mod tests {
   #[anyhow_trace]
   #[tokio::test]
   async fn test_auth_middleware_token_issuer_error(
-    #[from(setup_l10n_middleware)] _setup_l10n: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     token: (String, String, String),
   ) -> anyhow::Result<()> {
     let (_, token, public_key) = token;
@@ -899,7 +902,7 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token(
-    #[from(setup_l10n_middleware)] _setup_l10n: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     expired_token: (String, String, String),
     temp_bodhi_home: TempDir,
     #[case] path: &str,
@@ -999,7 +1002,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
-    #[from(setup_l10n_middleware)] _setup_l10n: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     expired_token: (String, String, String),
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {

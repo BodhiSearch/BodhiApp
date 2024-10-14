@@ -52,13 +52,12 @@ fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
 #[cfg(test)]
 mod tests {
   use super::{oai_model_handler, oai_models_handler};
-  use crate::test_utils::setup_l10n_routes_oai;
   use axum::{
     body::Body,
     http::{Request, StatusCode},
     Router,
   };
-  use objs::FluentLocalizationService;
+  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
   use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContextRw};
@@ -149,7 +148,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_oai_model_handler_not_found(
-    #[from(setup_l10n_routes_oai)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
   ) -> anyhow::Result<()> {
     let response = app

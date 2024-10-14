@@ -7,6 +7,7 @@ edition = "2021"
 llama-server-bindings = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
+auth_middleware = { workspace = true }
 
 async-openai = { workspace = true }
 axum = { workspace = true }
@@ -17,6 +18,7 @@ derive-new = { workspace = true }
 futures-util = { workspace = true }
 include_dir = { workspace = true }
 mime = { workspace = true }
+rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
@@ -45,4 +47,4 @@ tokio = { workspace = true, features = ["full", "test-util"] }
 tower = { workspace = true, features = ["util"] }
 
 [features]
-test-utils = []
+test-utils = ["rstest", "auth_middleware/test-utils"]
