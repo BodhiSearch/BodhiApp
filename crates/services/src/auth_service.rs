@@ -297,14 +297,14 @@ impl AuthService for KeycloakAuthService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    test_utils::setup_l10n_services, AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError,
-    KeycloakAuthService,
-  };
+  use crate::{AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError, KeycloakAuthService};
   use jsonwebtoken::{errors::ErrorKind, Algorithm};
   use mockito::{Matcher, Server};
   use oauth2::{ClientId, ClientSecret, RefreshToken};
-  use objs::{test_utils::assert_error_message, AppError, FluentLocalizationService};
+  use objs::{
+    test_utils::{assert_error_message, setup_l10n},
+    AppError, FluentLocalizationService,
+  };
   use rstest::rstest;
   use serde_json::json;
   use std::sync::Arc;
@@ -316,9 +316,8 @@ mod tests {
   #[case(&JsonWebTokenError::new(ErrorKind::InvalidIssuer.into()), "authentication token issuer is invalid")]
   #[case(&JsonWebTokenError::new(ErrorKind::InvalidAudience.into()), "authentication token audience is invalid")]
   #[case(&JsonWebTokenError::new(ErrorKind::InvalidSubject.into()), "authentication token is invalid, source: InvalidSubject")]
-  #[serial_test::serial(localization)]
   fn test_error_messages_services(
-    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected_message: &str,
   ) {

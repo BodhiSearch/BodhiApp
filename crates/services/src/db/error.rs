@@ -43,8 +43,10 @@ pub struct ItemNotFound {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::test_utils::setup_l10n_services;
-  use objs::{test_utils::assert_error_message, FluentLocalizationService};
+  use objs::{
+    test_utils::{assert_error_message, setup_l10n},
+    FluentLocalizationService,
+  };
   use rstest::rstest;
   use sqlx::migrate::MigrateError;
   use std::sync::Arc;
@@ -62,9 +64,8 @@ mod tests {
     &ItemNotFound::new("1".to_string(), "user".to_string()),
     "item '1' of type 'user' not found in db"
   )]
-  #[serial_test::serial(localization)]
   fn test_sqlx_error_message(
-    #[from(setup_l10n_services)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] message: String,
   ) {
