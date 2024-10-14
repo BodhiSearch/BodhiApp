@@ -193,7 +193,7 @@ pub struct JsonRejectionError {
 mod tests {
   use super::*;
   use crate::{
-    test_utils::{assert_error_message, parse, setup_l10n_objs},
+    test_utils::{assert_error_message, parse, setup_l10n},
     ApiError, FluentLocalizationService, Repo,
   };
   use axum::{body::Body, response::Response, routing::get, Json, Router};
@@ -235,9 +235,8 @@ mod tests {
   )]
   #[case::validation_error(&BuilderError::ValidationError("validation failed".to_string()), "builder_error: validation error: validation failed")]
   #[case::file_pattern_mismatch(&ObjValidationError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: test.txt")]
-  #[serial_test::serial(localization)]
   fn test_error_messages_objs(
-    #[from(setup_l10n_objs)] localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,
     #[case] expected: &str,
   ) {
@@ -245,10 +244,9 @@ mod tests {
   }
 
   #[rstest]
-  #[serial_test::serial(localization)]
-  #[tokio::test]
+    #[tokio::test]
   async fn test_json_rejection_error(
-    #[from(setup_l10n_objs)] _localization_service: Arc<FluentLocalizationService>,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) {
     #[derive(Debug, Serialize, Deserialize)]
     struct Input {

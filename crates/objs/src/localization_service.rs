@@ -250,7 +250,7 @@ impl LocalizationService for FluentLocalizationService {
 #[cfg(test)]
 mod tests {
   use super::FluentLocalizationService;
-  use crate::test_utils::localization_service;
+  use crate::test_utils::{localization_service, setup_l10n};
   use crate::{
     LocaleNotSupportedError, LocalizationMessageError, LocalizationService, LocalizationSetupError,
   };
@@ -522,8 +522,8 @@ mod tests {
     }
   }
 
-  #[test]
-  fn test_get_instance() {
+  #[rstest]
+  fn test_get_instance(#[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>) {
     let instance1 = FluentLocalizationService::get_instance();
     let instance2 = FluentLocalizationService::get_instance();
 
