@@ -1,5 +1,5 @@
 use crate::TokenizerConfigError;
-use llama_server_bindings::{GptParamsBuilderError, LlamaCppError};
+use llama_server_bindings::{CommonParamsBuilderError, LlamaCppError};
 use objs::{impl_error_from, AppError, ErrorType, ObjValidationError, SerdeJsonError};
 use services::DataServiceError;
 
@@ -15,7 +15,7 @@ pub enum ContextError {
   DataServiceError(#[from] DataServiceError),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "context_error-gpt_params_builder_error", args_delegate = false)]
-  BuilderError(#[from] GptParamsBuilderError),
+  BuilderError(#[from] CommonParamsBuilderError),
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
@@ -42,7 +42,7 @@ impl_error_from!(
 #[cfg(test)]
 mod tests {
   use crate::ContextError;
-  use llama_server_bindings::{GptParamsBuilderError, LlamaCppError};
+  use llama_server_bindings::{CommonParamsBuilderError, LlamaCppError};
   use objs::test_utils::{assert_error_message, setup_l10n};
   use objs::AppError;
   use objs::FluentLocalizationService;
@@ -50,8 +50,8 @@ mod tests {
   use std::sync::Arc;
 
   #[rstest]
-  #[case(&ContextError::LlamaCpp(LlamaCppError::GptParamsInit("test".to_string())), "error initializing llama cpp: gpt_params_init: test")]
-  #[case(&ContextError::BuilderError(GptParamsBuilderError::UninitializedField("field")), "error building gpt params: `field` must be initialized")]
+  #[case(&ContextError::LlamaCpp(LlamaCppError::GptParamsInit("test".to_string())), "error initializing llama cpp: common_params_init: test")]
+  #[case(&ContextError::BuilderError(CommonParamsBuilderError::UninitializedField("field")), "error building gpt params: `field` must be initialized")]
   #[case(&ContextError::Minijina(minijinja::Error::new(minijinja::ErrorKind::NonKey, "error")), "error rendering template: not a key type: error")]
   #[case(&ContextError::Unreachable("unreachable".to_string()), "should not happen: unreachable")]
   fn test_error_messages_server_core(

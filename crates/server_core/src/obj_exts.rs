@@ -1,7 +1,7 @@
-use llama_server_bindings::GptParams;
+use llama_server_bindings::CommonParams;
 use objs::GptContextParams;
 
-pub fn update(slf: &GptContextParams, gpt_params: &mut GptParams) {
+pub fn update(slf: &GptContextParams, gpt_params: &mut CommonParams) {
   // gpt_params.n_threads = self.n_threads;
   gpt_params.seed = slf.n_seed;
   gpt_params.n_ctx = slf.n_ctx;

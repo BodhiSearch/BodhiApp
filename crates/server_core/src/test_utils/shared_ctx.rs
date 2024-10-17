@@ -1,13 +1,13 @@
-use llama_server_bindings::{Callback, GptParams};
+use llama_server_bindings::{Callback, CommonParams};
 use std::ffi::c_void;
 
 mockall::mock! {
   pub ServerContext {
-    pub fn new(gpt_params: GptParams) -> llama_server_bindings::Result<Self>;
+    pub fn new(gpt_params: CommonParams) -> llama_server_bindings::Result<Self>;
 
     pub fn init(&self) -> llama_server_bindings::Result<()>;
 
-    pub fn get_gpt_params(&self) -> GptParams;
+    pub fn get_common_params(&self) -> CommonParams;
 
     pub fn start_event_loop(&self) -> llama_server_bindings::Result<()>;
 

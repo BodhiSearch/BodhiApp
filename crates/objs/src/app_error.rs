@@ -26,6 +26,17 @@ pub struct OpenAIApiError {
   pub status: u16,
 }
 
+impl std::fmt::Display for OpenAIApiError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+      f,
+      "status: {}, {}",
+      self.status,
+      serde_json::to_string(self).unwrap()
+    )
+  }
+}
+
 pub trait AppError: std::error::Error {
   fn error_type(&self) -> String;
 
@@ -44,14 +55,19 @@ impl<T: AppError + 'static> From<T> for Box<dyn AppError> {
   }
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("api_error")]
+#[derive(Debug, Serialize, Deserialize, thiserror::Error)]
 pub struct ApiError {
   pub name: String,
   pub error_type: String,
   pub status: u16,
   pub code: String,
   pub args: HashMap<String, String>,
+}
+
+impl std::fmt::Display for ApiError {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", serde_json::to_string(self).unwrap())
+  }
 }
 
 impl From<JsonRejection> for ApiError {

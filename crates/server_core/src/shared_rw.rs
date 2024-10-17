@@ -6,7 +6,7 @@ use llama_server_bindings::{BodhiServerContext, ServerContext};
 use crate::ContextError;
 use crate::{obj_exts::update, tokenizer_config::TokenizerConfig};
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_bindings::{GptParams, GptParamsBuilder};
+use llama_server_bindings::{CommonParams, CommonParamsBuilder};
 use objs::{Alias, HubFile};
 use std::ffi::{c_char, c_void};
 use std::slice;
@@ -57,13 +57,13 @@ unsafe extern "C" fn callback_stream(
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait SharedContextRw: std::fmt::Debug + Send + Sync {
-  async fn reload(&self, gpt_params: Option<GptParams>) -> Result<()>;
+  async fn reload(&self, gpt_params: Option<CommonParams>) -> Result<()>;
 
   async fn try_stop(&self) -> Result<()>;
 
   async fn has_model(&self) -> bool;
 
-  async fn get_gpt_params(&self) -> Result<Option<GptParams>>;
+  async fn get_common_params(&self) -> Result<Option<CommonParams>>;
 
   async fn chat_completions(
     &self,
@@ -76,7 +76,7 @@ pub trait SharedContextRw: std::fmt::Debug + Send + Sync {
 }
 
 impl DefaultSharedContextRw {
-  pub async fn new_shared_rw(gpt_params: Option<GptParams>) -> Result<Self>
+  pub async fn new_shared_rw(gpt_params: Option<CommonParams>) -> Result<Self>
   where
     Self: Sized,
   {
@@ -95,7 +95,7 @@ impl SharedContextRw for DefaultSharedContextRw {
     lock.as_ref().is_some()
   }
 
-  async fn reload(&self, gpt_params: Option<GptParams>) -> crate::shared_rw::Result<()> {
+  async fn reload(&self, gpt_params: Option<CommonParams>) -> crate::shared_rw::Result<()> {
     let mut lock = self.ctx.write().await;
     try_stop_with(&mut lock)?;
     let Some(gpt_params) = gpt_params else {
@@ -121,10 +121,10 @@ impl SharedContextRw for DefaultSharedContextRw {
     Ok(())
   }
 
-  async fn get_gpt_params(&self) -> crate::shared_rw::Result<Option<GptParams>> {
+  async fn get_common_params(&self) -> crate::shared_rw::Result<Option<CommonParams>> {
     let lock = self.ctx.read().await;
     if let Some(opt) = lock.as_ref() {
-      Ok(Some(opt.get_gpt_params()))
+      Ok(Some(opt.get_common_params()))
     } else {
       Ok(None)
     }
@@ -140,7 +140,7 @@ impl SharedContextRw for DefaultSharedContextRw {
   ) -> crate::shared_rw::Result<()> {
     let lock = self.ctx.read().await;
     let ctx = lock.as_ref();
-    let loaded_model = ctx.map(|ctx| ctx.get_gpt_params().model.clone());
+    let loaded_model = ctx.map(|ctx| ctx.get_common_params().model.clone());
     let request_model = model_file.path().display().to_string();
     let chat_template: TokenizerConfig = TokenizerConfig::try_from(tokenizer_file)?;
     chat_template.validate()?;
@@ -164,7 +164,9 @@ impl SharedContextRw for DefaultSharedContextRw {
       }
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
-        let mut new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
+        let mut new_gpt_params = CommonParamsBuilder::default()
+          .model(request_model)
+          .build()?;
         update(&alias.context_params, &mut new_gpt_params);
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
@@ -182,7 +184,9 @@ impl SharedContextRw for DefaultSharedContextRw {
       ModelLoadStrategy::Load => {
         // TODO: take context params from alias
         // TODO: reload keeping lock and doing completions operation
-        let mut new_gpt_params = GptParamsBuilder::default().model(request_model).build()?;
+        let mut new_gpt_params = CommonParamsBuilder::default()
+          .model(request_model)
+          .build()?;
         update(&alias.context_params, &mut new_gpt_params);
         drop(lock);
         self.reload(Some(new_gpt_params)).await?;
@@ -244,7 +248,7 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
   use llama_server_bindings::{
-    bindings::llama_server_disable_logging, disable_llama_log, GptParams, GptParamsBuilder,
+    bindings::llama_server_disable_logging, disable_llama_log, CommonParams, CommonParamsBuilder,
   };
   use mockall::predicate::{always, eq};
   use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder};
@@ -284,9 +288,9 @@ mod test {
     unsafe {
       llama_server_disable_logging();
     }
-    let gpt_params = GptParams {
+    let gpt_params = CommonParams {
       model: model_file,
-      ..GptParams::default()
+      ..CommonParams::default()
     };
     let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     assert!(ctx.has_model().await);
@@ -302,17 +306,17 @@ mod test {
     unsafe {
       llama_server_disable_logging();
     }
-    let gpt_params = GptParams {
+    let gpt_params = CommonParams {
       model: model_file.clone(),
-      ..GptParams::default()
+      ..CommonParams::default()
     };
     let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params.clone())).await?;
-    let model_params = ctx.get_gpt_params().await?.unwrap();
+    let model_params = ctx.get_common_params().await?.unwrap();
     assert_eq!(model_file, model_params.model);
     ctx.reload(None).await?;
-    assert!(ctx.get_gpt_params().await?.is_none());
+    assert!(ctx.get_common_params().await?.is_none());
     ctx.reload(Some(gpt_params)).await?;
-    let model_params = ctx.get_gpt_params().await?.unwrap();
+    let model_params = ctx.get_common_params().await?.unwrap();
     assert_eq!(model_file, model_params.model);
     Ok(())
   }
@@ -325,9 +329,9 @@ mod test {
     unsafe {
       llama_server_disable_logging();
     }
-    let gpt_params = GptParams {
+    let gpt_params = CommonParams {
       model: model_file,
-      ..GptParams::default()
+      ..CommonParams::default()
     };
     let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     ctx.try_stop().await?;
@@ -374,10 +378,10 @@ mod test {
     unsafe {
       llama_server_disable_logging();
     }
-    let gpt_params = GptParams {
+    let gpt_params = CommonParams {
       seed: Some(42),
       model: model_file,
-      ..GptParams::default()
+      ..CommonParams::default()
     };
     let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
     let userdata = String::with_capacity(1024);
@@ -455,10 +459,12 @@ mod test {
       .expect_completions()
       .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
-    let gpt_params = GptParamsBuilder::default().model(model_filepath).build()?;
+    let gpt_params = CommonParamsBuilder::default()
+      .model(model_filepath)
+      .build()?;
     let gpt_params_cl = gpt_params.clone();
     mock
-      .expect_get_gpt_params()
+      .expect_get_common_params()
       .return_once(move || gpt_params_cl);
 
     let ctx = MockServerContext::new_context();
@@ -506,7 +512,7 @@ mod test {
     let ctx = MockServerContext::new_context();
     ctx
       .expect()
-      .with(eq(GptParams {
+      .with(eq(CommonParams {
         model: model_filepath,
         ..Default::default()
       }))
@@ -543,12 +549,12 @@ mod test {
       .expect_start_event_loop()
       .with()
       .return_once(|| Ok(()));
-    let loaded_params = GptParamsBuilder::default()
+    let loaded_params = CommonParamsBuilder::default()
       .model(loaded_model_filepath)
       .build()?;
     let loaded_params_cl = loaded_params.clone();
     loaded_ctx
-      .expect_get_gpt_params()
+      .expect_get_common_params()
       .return_once(move || loaded_params_cl);
     loaded_ctx.expect_stop().with().return_once(|| Ok(()));
     let expected_input = r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"fakemodel:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#;
@@ -573,12 +579,12 @@ mod test {
       .hf_cache(hf_cache.clone())
       .build()?;
     let request_model_filepath = request_model.path().display().to_string();
-    let request_params = GptParamsBuilder::default()
+    let request_params = CommonParamsBuilder::default()
       .model(request_model_filepath)
       .build()?;
     let request_params_cl = request_params.clone();
     request_context
-      .expect_get_gpt_params()
+      .expect_get_common_params()
       .return_once(move || request_params_cl);
     let request_ctx = MockServerContext::new_context();
     request_ctx
