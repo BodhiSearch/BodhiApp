@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bodhi::{main_internal, setup_logs, BodhiError};
+use objs::ApiError;
 use services::{DefaultEnvService, DefaultEnvWrapper};
 use std::sync::Arc;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -52,6 +53,7 @@ pub fn main() {
   let result = main_internal(Arc::new(env_service));
   if let Err(err) = result {
     tracing::warn!(?err, "application exited with error");
+    let err: ApiError = err.into();
     eprintln!("fatal error: {}\nexiting...", err);
     std::process::exit(1);
   } else {
