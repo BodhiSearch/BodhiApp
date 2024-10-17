@@ -10,7 +10,7 @@ use async_openai::{
 use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
-use llama_server_bindings::{disable_llama_log, GptParamsBuilder, GptParamsBuilderError};
+use llama_server_bindings::{disable_llama_log, CommonParamsBuilder, CommonParamsBuilderError};
 use objs::{
   impl_error_from, Alias, AppError, BuilderError, ErrorType, ObjValidationError, SerdeJsonError,
 };
@@ -66,7 +66,7 @@ pub enum InteractiveError {
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "interactive_error-gpt_params_builder_error", args_delegate = false)]
-  GptParamsBuilderError(#[from] GptParamsBuilderError),
+  GptParamsBuilderError(#[from] CommonParamsBuilderError),
   #[error(transparent)]
   ContextError(#[from] ContextError),
   #[error(transparent)]
@@ -95,7 +95,7 @@ impl Interactive {
       Some(alias.snapshot.clone()),
     )?;
     let pb = infinite_loading(String::from("Loading..."));
-    let mut gpt_params = GptParamsBuilder::default()
+    let mut gpt_params = CommonParamsBuilder::default()
       .model(model.path().display().to_string())
       .build()?;
     update(&alias.context_params, &mut gpt_params);
@@ -164,6 +164,9 @@ impl Interactive {
     let handle: JoinHandle<Result<()>> = tokio::spawn(async move {
       let mut deltas = String::new();
       while let Some(message) = rx.recv().await {
+        if message.trim() == "data: [DONE]" {
+          break;
+        }
         let message = if message.starts_with("data: ") {
           message.strip_prefix("data: ").unwrap()
         } else {
