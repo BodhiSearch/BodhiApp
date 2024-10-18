@@ -1,0 +1,22 @@
+[package]
+name = "llamacpp_rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+errmeta_derive = { workspace = true }
+objs = { workspace = true }
+
+derive_builder = { workspace = true }
+libc = { workspace = true }
+llamacpp-sys = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
+
+rstest = { workspace = true }
+
+[features]
+test-utils = []
