@@ -1,6 +1,8 @@
 [workspace]
 members = [
   "xtask",
+  "llamacpp-sys",
+  "crates/llamacpp_rs",
   "llama-server-bindings",
   "crates/errmeta_derive",
   "crates/objs",
@@ -18,6 +20,8 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
+llamacpp-sys = { path = "llamacpp-sys" }
+llamacpp_rs = { path = "crates/llamacpp_rs" }
 llama-server-bindings = { path = "llama-server-bindings" }
 errmeta_derive = { path = "crates/errmeta_derive" }
 objs = { path = "crates/objs" }
@@ -67,6 +71,7 @@ include_dir = "0.7.3"
 indicatif = "0.17.8"
 jsonwebtoken = "9.3.0"
 keyring = { version = "3.2.0", default-features = false }
+libc = "0.2.161"
 lazy_static = "1.4.0"
 maplit = "1.0.2"
 mime = "0.3.17"
