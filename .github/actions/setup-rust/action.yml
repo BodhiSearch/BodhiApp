@@ -1,0 +1,40 @@
+name: "Setup Rust"
+description: "Sets up Rust with caching"
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+  targets:
+    description: "Targets to build for"
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - uses: Swatinem/rust-cache@v2
+      with:
+        cache-directories: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          ~/.cargo/bin
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          target
+        key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-target-
+    - name: install Rust stable
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
+        targets: ${{ inputs.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || inputs.targets }}
+    - name: install dependencies (ubuntu only)
+      shell: bash
+      if: inputs.platform == 'ubuntu-22.04' # This must match the platform value defined above.
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
+      # You can remove the one that doesn't apply to your app to speed up the workflow a bit.

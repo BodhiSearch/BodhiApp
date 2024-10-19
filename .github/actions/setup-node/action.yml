@@ -1,0 +1,13 @@
+name: "Setup Node.js"
+description: "Sets up Node.js"
+runs:
+  using: "composite"
+  steps:
+    - name: setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/iron
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 9
+        run_install: false

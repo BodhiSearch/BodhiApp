@@ -1,0 +1,11 @@
+name: "Setup Tauri CLI"
+description: "Sets up Tauri CLI"
+runs:
+  using: "composite"
+  steps:
+    - name: Install Tauri CLI
+      shell: bash
+      run: |
+        if ! cargo tauri -V &> /dev/null; then
+          cargo install tauri-cli@^2.0.0
+        fi

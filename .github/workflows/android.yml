@@ -1,0 +1,58 @@
+name: android
+on:
+  push:
+    branches:
+      - aihack
+  workflow_dispatch:
+
+env:
+  CI: true
+  RUST_BACKTRACE: 1
+
+jobs:
+  publish-android:
+    runs-on: ubuntu-22.04
+    # if: false
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: setup node
+        uses: ./.github/actions/setup-node
+      - name: setup android
+        uses: ./.github/actions/setup-android
+      - name: setup rust
+        uses: ./.github/actions/setup-rust
+        with:
+          platform: ubuntu-22.04
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: crates/droid
+      - name: Setup Tauri CLI
+        uses: ./.github/actions/setup-tauri-cli
+      - name: Build Android app
+        run: make build-android
+        working-directory: crates/droid
+      - name: Decode Android keystore
+        run: echo ${{ secrets.ANDROID_KEYSTORE_BASE64 }} | base64 -d > android-release-keystore.jks
+        working-directory: crates/droid
+      - name: Sign and rename APK
+        run: |
+          export ANDROID_KEYSTORE_PATH=android-release-keystore.jks
+          export ANDROID_KEY_ALIAS=${{ secrets.ANDROID_KEY_ALIAS }}
+          export ANDROID_KEYSTORE_PASSWORD=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          make sign-apk
+          make rename-apk
+        working-directory: crates/droid
+      - name: Get Node project version
+        id: package-version
+        uses: martinbeentjes/npm-get-version-action@v1.3.1
+      - name: Publish
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          name: 'BodhiDroid v${{ steps.package-version.outputs.current-version}}'
+          tag_name: 'v${{ steps.package-version.outputs.current-version}}'
+          generate_release_notes: true
+          files: ./src-tauri/gen/android/app/build/outputs/apk/universal/release/bodhidroid-*.apk
