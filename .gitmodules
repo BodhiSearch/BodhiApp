@@ -1,9 +1,6 @@
 [submodule "vercel-ai"]
 	path = vercel-ai
 	url = git@github.com:BodhiSearch/ai.git
-[submodule "llama-server-bindings"]
-	path = llama-server-bindings
-	url = git@github.com:BodhiSearch/llama-server-bindings.git
 [submodule "llamacpp-sys"]
 	path = llamacpp-sys
 	url = git@github.com:BodhiSearch/llamacpp-sys.git

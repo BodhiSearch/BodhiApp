@@ -16,7 +16,6 @@ members = [
   "crates/app/bodhi",
   "crates/integration-tests",
 ]
-exclude = ["llama-server-bindings"]
 resolver = "2"
 
 [workspace.dependencies]
