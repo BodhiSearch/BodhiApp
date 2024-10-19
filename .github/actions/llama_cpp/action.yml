@@ -12,7 +12,7 @@ runs:
   steps:
     - name: Build
       shell: bash
-      working-directory: llama-server-bindings/llama.cpp
+      working-directory: llamacpp-sys/llama.cpp
       id: cmake_build
       run: |
         sysctl -a

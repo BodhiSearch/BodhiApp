@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-llama-server-bindings = { workspace = true }
 errmeta_derive = { workspace = true }
+llamacpp_rs = { workspace = true }
 objs = { workspace = true }
 services = { workspace = true }
 commands = { workspace = true }

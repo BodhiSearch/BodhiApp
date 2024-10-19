@@ -1,5 +1,5 @@
 use crate::TokenizerConfigError;
-use llama_server_bindings::{CommonParamsBuilderError, LlamaCppError};
+use llamacpp_rs::{CommonParamsBuilderError, LlamaCppError};
 use objs::{impl_error_from, AppError, ErrorType, ObjValidationError, SerdeJsonError};
 use services::DataServiceError;
 
@@ -9,7 +9,6 @@ pub enum ContextError {
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "context_error-llama_cpp_error", args_delegate = false)]
   LlamaCpp(#[from] LlamaCppError),
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
@@ -26,6 +25,9 @@ pub enum ContextError {
   Unreachable(String),
   #[error(transparent)]
   TokenizerConfig(#[from] TokenizerConfigError),
+  #[error("library_path_missing")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  LibraryPathMissing,
 }
 
 impl_error_from!(
@@ -42,7 +44,7 @@ impl_error_from!(
 #[cfg(test)]
 mod tests {
   use crate::ContextError;
-  use llama_server_bindings::{CommonParamsBuilderError, LlamaCppError};
+  use llamacpp_rs::CommonParamsBuilderError;
   use objs::test_utils::{assert_error_message, setup_l10n};
   use objs::AppError;
   use objs::FluentLocalizationService;
@@ -50,7 +52,6 @@ mod tests {
   use std::sync::Arc;
 
   #[rstest]
-  #[case(&ContextError::LlamaCpp(LlamaCppError::GptParamsInit("test".to_string())), "error initializing llama cpp: common_params_init: test")]
   #[case(&ContextError::BuilderError(CommonParamsBuilderError::UninitializedField("field")), "error building gpt params: `field` must be initialized")]
   #[case(&ContextError::Minijina(minijinja::Error::new(minijinja::ErrorKind::NonKey, "error")), "error rendering template: not a key type: error")]
   #[case(&ContextError::Unreachable("unreachable".to_string()), "should not happen: unreachable")]

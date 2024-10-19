@@ -34,6 +34,7 @@ async fn test_live_chat_completions(
     .await?
     .json::<Value>()
     .await?;
+  handle.shutdown().await?;
   assert_eq!(
     "One word: Tuesday.",
     response["choices"][0]["message"]["content"]
@@ -43,7 +44,6 @@ async fn test_live_chat_completions(
   )?;
   assert_eq!(expected, response["choices"]);
   assert_eq!("tinyllama:instruct", response["model"]);
-  handle.shutdown().await?;
   Ok(())
 }
 
@@ -95,6 +95,7 @@ async fn test_live_chat_completions_stream(
       }
     })
     .collect::<Vec<_>>();
+  handle.shutdown().await?;
   for (index, content) in ["One", " word", ":", " T", "ues", "day", "."]
     .iter()
     .enumerate()
@@ -108,6 +109,5 @@ async fn test_live_chat_completions_stream(
   }
   let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
   assert_eq!(expected, streams.get(7).unwrap()["choices"]);
-  handle.shutdown().await?;
   Ok(())
 }

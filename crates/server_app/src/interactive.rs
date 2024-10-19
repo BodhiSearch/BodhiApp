@@ -10,13 +10,13 @@ use async_openai::{
 use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
 use indicatif::{ProgressBar, ProgressStyle};
-use llama_server_bindings::{disable_llama_log, CommonParamsBuilder, CommonParamsBuilderError};
+use llamacpp_rs::{CommonParamsBuilder, CommonParamsBuilderError};
 use objs::{
   impl_error_from, Alias, AppError, BuilderError, ErrorType, ObjValidationError, SerdeJsonError,
 };
 use server_core::{
   obj_exts::update, ContextError, DefaultRouterState, DefaultSharedContextRw, RouterState,
-  RouterStateError,
+  RouterStateError, SharedContextRw,
 };
 use services::{AppService, DataServiceError, HubServiceError};
 use std::{
@@ -99,9 +99,8 @@ impl Interactive {
       .model(model.path().display().to_string())
       .build()?;
     update(&alias.context_params, &mut gpt_params);
-    disable_llama_log();
-
-    let shared_rw = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let shared_rw = DefaultSharedContextRw::default();
+    shared_rw.reload(Some(gpt_params)).await?;
     let router_state = DefaultRouterState::new(Arc::new(shared_rw), service);
     pb.finish_and_clear();
     let mut shell_history = BasicHistory::new().max_entries(100).no_duplicates(false);

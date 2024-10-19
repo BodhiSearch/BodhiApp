@@ -3,7 +3,6 @@ members = [
   "xtask",
   "llamacpp-sys",
   "crates/llamacpp_rs",
-  "llama-server-bindings",
   "crates/errmeta_derive",
   "crates/objs",
   "crates/services",
@@ -17,12 +16,12 @@ members = [
   "crates/app/bodhi",
   "crates/integration-tests",
 ]
+exclude = ["llama-server-bindings"]
 resolver = "2"
 
 [workspace.dependencies]
 llamacpp-sys = { path = "llamacpp-sys" }
 llamacpp_rs = { path = "crates/llamacpp_rs" }
-llama-server-bindings = { path = "llama-server-bindings" }
 errmeta_derive = { path = "crates/errmeta_derive" }
 objs = { path = "crates/objs" }
 services = { path = "crates/services" }

@@ -9,7 +9,7 @@ format:
 	cd openai-pysdk-compat && poetry run ruff format .
 
 ci.clean:
-	@CRATES="bodhi llama-server-bindings"; \
+	@CRATES="bodhi llamacpp-sys"; \
 	for dir in crates/*; do \
 		if [ -f $$dir/Cargo.toml ]; then \
 			CRATES="$$CRATES $$(basename $$dir)"; \

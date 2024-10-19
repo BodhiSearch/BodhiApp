@@ -7,7 +7,7 @@ edition = "2021"
 commands = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
-llama-server-bindings = { workspace = true }
+llamacpp_rs = { workspace = true }
 services = { workspace = true }
 
 anyhow = { workspace = true, optional = true }
@@ -44,6 +44,7 @@ validator = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 commands = { workspace = true, features = ["test-utils"] }
 objs = { workspace = true, features = ["test-utils"] }
+llamacpp_rs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
