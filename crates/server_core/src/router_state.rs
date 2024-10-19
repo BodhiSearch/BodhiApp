@@ -95,7 +95,7 @@ mod test {
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
-  use llama_server_bindings::LlamaCppError;
+  use llamacpp_rs::LlamaCppError;
   use mockall::predicate::{always, eq};
   use objs::{test_utils::temp_dir, Alias, HubFileBuilder};
   use rstest::rstest;

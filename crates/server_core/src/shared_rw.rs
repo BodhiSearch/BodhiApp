@@ -1,14 +1,10 @@
-#[cfg(test)]
-use crate::test_utils::MockServerContext as BodhiServerContext;
-#[cfg(not(test))]
-use llama_server_bindings::{BodhiServerContext, ServerContext};
-
 use crate::ContextError;
 use crate::{obj_exts::update, tokenizer_config::TokenizerConfig};
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_bindings::{CommonParams, CommonParamsBuilder};
+use llamacpp_rs::{BodhiServerContext, CommonParams, CommonParamsBuilder, ServerContext};
 use objs::{Alias, HubFile};
 use std::ffi::{c_char, c_void};
+use std::path::{Path, PathBuf};
 use std::slice;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -17,14 +13,9 @@ use tokio::sync::mpsc::Sender;
 use tokio::sync::RwLock;
 use validator::Validate;
 
-#[derive(Debug)]
-pub struct DefaultSharedContextRw {
-  ctx: RwLock<Option<BodhiServerContext>>,
-}
-
 type Result<T> = std::result::Result<T, ContextError>;
 
-unsafe extern "C" fn callback_stream(
+extern "C" fn callback_stream(
   contents: *const c_char,
   size: usize,
   callback_userdata: *mut c_void,
@@ -35,7 +26,7 @@ unsafe extern "C" fn callback_stream(
     Err(_) => return 0,
   }
   .to_owned();
-  let userdata = &mut *(callback_userdata as *mut (Sender<String>, Arc<AtomicBool>));
+  let userdata = unsafe { &mut *(callback_userdata as *mut (Sender<String>, Arc<AtomicBool>)) };
   let sender = userdata.0.clone();
   let receiver_status = userdata.1.clone();
 
@@ -57,6 +48,8 @@ unsafe extern "C" fn callback_stream(
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait SharedContextRw: std::fmt::Debug + Send + Sync {
+  async fn set_library_path(&mut self, path: PathBuf) -> Result<()>;
+
   async fn reload(&self, gpt_params: Option<CommonParams>) -> Result<()>;
 
   async fn try_stop(&self) -> Result<()>;
@@ -73,23 +66,64 @@ pub trait SharedContextRw: std::fmt::Debug + Send + Sync {
     tokenizer_file: HubFile,
     userdata: Sender<String>,
   ) -> Result<()>;
+
+  fn disable_logging(&mut self);
+}
+
+pub trait ServerContextFactory: std::fmt::Debug + Send + Sync {
+  fn create_server_context(&self) -> Box<dyn ServerContext>;
+}
+
+#[derive(Debug)]
+pub struct DefaultServerContextFactory;
+
+impl ServerContextFactory for DefaultServerContextFactory {
+  fn create_server_context(&self) -> Box<dyn ServerContext> {
+    Box::new(BodhiServerContext::default())
+  }
+}
+
+#[derive(Debug)]
+pub struct DefaultSharedContextRw {
+  disable_logging: bool,
+  library_path: Option<PathBuf>,
+  factory: Box<dyn ServerContextFactory>,
+  ctx: RwLock<Option<Box<dyn ServerContext + 'static>>>,
+}
+
+impl Default for DefaultSharedContextRw {
+  fn default() -> Self {
+    Self::new(true, Box::new(DefaultServerContextFactory), None)
+  }
 }
 
 impl DefaultSharedContextRw {
-  pub async fn new_shared_rw(gpt_params: Option<CommonParams>) -> Result<Self>
-  where
-    Self: Sized,
-  {
-    let ctx = DefaultSharedContextRw {
+  pub fn new(
+    disable_logging: bool,
+    factory: Box<dyn ServerContextFactory>,
+    library_path: Option<PathBuf>,
+  ) -> Self {
+    Self {
+      disable_logging,
+      factory,
       ctx: RwLock::new(None),
-    };
-    ctx.reload(gpt_params).await?;
-    Ok(ctx)
+      library_path,
+    }
   }
 }
 
 #[async_trait::async_trait]
 impl SharedContextRw for DefaultSharedContextRw {
+  async fn set_library_path(&mut self, path: PathBuf) -> Result<()> {
+    self.library_path = Some(path.to_path_buf());
+    let common_params = {
+      let params = self.ctx.read().await;
+      params.as_ref().map(|ctx| ctx.get_common_params())
+    };
+    self.reload(common_params).await?;
+    Ok(())
+  }
+
   async fn has_model(&self) -> bool {
     let lock = self.ctx.read().await;
     lock.as_ref().is_some()
@@ -101,7 +135,16 @@ impl SharedContextRw for DefaultSharedContextRw {
     let Some(gpt_params) = gpt_params else {
       return Ok(());
     };
-    let ctx = BodhiServerContext::new(gpt_params)?;
+    let ctx = self.factory.create_server_context();
+    let library_path: &Path = match self.library_path.as_ref() {
+      Some(path) => path,
+      None => Err(ContextError::LibraryPathMissing)?,
+    };
+    ctx.load_library(library_path)?;
+    if self.disable_logging {
+      let _ = ctx.disable_logging();
+    }
+    ctx.create_context(&gpt_params)?;
     *lock = Some(ctx);
     let Some(ctx) = lock.as_ref() else {
       unreachable!("just injected ctx in rwlock");
@@ -204,10 +247,14 @@ impl SharedContextRw for DefaultSharedContextRw {
       }
     }
   }
+
+  fn disable_logging(&mut self) {
+    self.disable_logging = true;
+  }
 }
 
 fn try_stop_with(
-  lock: &mut tokio::sync::RwLockWriteGuard<'_, Option<BodhiServerContext>>,
+  lock: &mut tokio::sync::RwLockWriteGuard<'_, Option<Box<dyn ServerContext + 'static>>>,
 ) -> Result<()> {
   let opt = lock.take();
   if let Some(mut ctx) = opt {
@@ -240,26 +287,23 @@ impl ModelLoadStrategy {
 
 #[cfg(test)]
 mod test {
-  use crate::{
+  use std::path::PathBuf;
+
+use crate::{
     shared_rw::{DefaultSharedContextRw, ModelLoadStrategy, SharedContextRw},
-    test_utils::{test_channel, MockServerContext},
+    test_utils::{mock_server_ctx, test_channel, BodhiServerFactoryStub},
+    ServerContextFactory,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
-  use async_openai::types::{CreateChatCompletionRequest, CreateChatCompletionResponse};
-  use llama_server_bindings::{
-    bindings::llama_server_disable_logging, disable_llama_log, CommonParams, CommonParamsBuilder,
-  };
+  use async_openai::types::CreateChatCompletionRequest;
+  use llamacpp_rs::{CommonParams, CommonParamsBuilder, MockServerContext};
   use mockall::predicate::{always, eq};
   use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder};
   use rstest::{fixture, rstest};
   use serde_json::json;
   use serial_test::serial;
   use services::test_utils::{app_service_stub, AppServiceStub};
-  use std::{
-    ffi::{c_char, c_void},
-    slice,
-  };
   use tempfile::TempDir;
 
   #[fixture]
@@ -275,7 +319,7 @@ mod test {
   #[ignore]
   #[tokio::test]
   async fn test_shared_rw_new() -> anyhow::Result<()> {
-    let ctx = DefaultSharedContextRw::new_shared_rw(None).await?;
+    let ctx = DefaultSharedContextRw::default();
     assert!(!ctx.has_model().await);
     Ok(())
   }
@@ -283,16 +327,22 @@ mod test {
   #[ignore]
   #[rstest]
   #[tokio::test]
-  async fn test_shared_rw_new_with_params(model_file: String) -> anyhow::Result<()> {
-    disable_llama_log();
-    unsafe {
-      llama_server_disable_logging();
-    }
+  async fn test_shared_rw_new_reload(
+    mock_server_ctx: MockServerContext,
+    model_file: String,
+  ) -> anyhow::Result<()> {
     let gpt_params = CommonParams {
       model: model_file,
       ..CommonParams::default()
     };
-    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let factory: Box<dyn ServerContextFactory> =
+      Box::new(BodhiServerFactoryStub::new(Box::new(mock_server_ctx)));
+    let ctx = DefaultSharedContextRw::new(
+      false,
+      factory,
+      Some(PathBuf::from("/tmp/test_library.dylib")),
+    );
+    ctx.reload(Some(gpt_params)).await?;
     assert!(ctx.has_model().await);
     ctx.try_stop().await?;
     Ok(())
@@ -301,16 +351,26 @@ mod test {
   #[ignore]
   #[rstest]
   #[tokio::test]
-  async fn test_shared_rw_reload(model_file: String) -> anyhow::Result<()> {
-    disable_llama_log();
-    unsafe {
-      llama_server_disable_logging();
-    }
+  async fn test_shared_rw_reload_with_none(
+    mock_server_ctx: MockServerContext,
+    #[from(mock_server_ctx)] mock_server_ctx_2: MockServerContext,
+    model_file: String,
+  ) -> anyhow::Result<()> {
     let gpt_params = CommonParams {
       model: model_file.clone(),
       ..CommonParams::default()
     };
-    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params.clone())).await?;
+    let factory: Box<dyn ServerContextFactory> =
+      Box::new(BodhiServerFactoryStub::new_with_instances(vec![
+        Box::new(mock_server_ctx),
+        Box::new(mock_server_ctx_2),
+      ]));
+    let ctx = DefaultSharedContextRw::new(
+      false,
+      factory,
+      Some(PathBuf::from("/tmp/test_library.dylib")),
+    );
+    ctx.reload(Some(gpt_params.clone())).await?;
     let model_params = ctx.get_common_params().await?.unwrap();
     assert_eq!(model_file, model_params.model);
     ctx.reload(None).await?;
@@ -318,91 +378,31 @@ mod test {
     ctx.reload(Some(gpt_params)).await?;
     let model_params = ctx.get_common_params().await?.unwrap();
     assert_eq!(model_file, model_params.model);
+    ctx.try_stop().await?;
     Ok(())
   }
 
   #[ignore]
   #[rstest]
   #[tokio::test]
-  async fn test_shared_rw_try_stop(model_file: String) -> anyhow::Result<()> {
-    disable_llama_log();
-    unsafe {
-      llama_server_disable_logging();
-    }
+  async fn test_shared_rw_try_stop(
+    mock_server_ctx: MockServerContext,
+    model_file: String,
+  ) -> anyhow::Result<()> {
     let gpt_params = CommonParams {
       model: model_file,
       ..CommonParams::default()
     };
-    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let factory: Box<dyn ServerContextFactory> =
+      Box::new(BodhiServerFactoryStub::new(Box::new(mock_server_ctx)));
+    let ctx = DefaultSharedContextRw::new(
+      false,
+      factory,
+      Some(PathBuf::from("/tmp/test_library.dylib")),
+    );
+    ctx.reload(Some(gpt_params)).await?;
     ctx.try_stop().await?;
     assert!(!ctx.has_model().await);
-    Ok(())
-  }
-
-  pub unsafe extern "C" fn test_callback(
-    contents: *const c_char,
-    size: usize,
-    userdata: *mut c_void,
-  ) -> usize {
-    let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
-    let input_str = match std::str::from_utf8(slice) {
-      Ok(s) => s,
-      Err(_) => return 0,
-    };
-
-    let user_data_str = unsafe { &mut *(userdata as *mut String) };
-    user_data_str.push_str(input_str);
-    size
-  }
-
-  #[fixture]
-  pub fn chat_request() -> String {
-    let request = json!({
-      "seed": 42,
-      "messages": [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What day comes after Monday?"},
-      ],
-    });
-    serde_json::to_string(&request).expect("should serialize chat completion request to string")
-  }
-
-  #[ignore]
-  #[rstest]
-  #[tokio::test]
-  async fn test_shared_rw_completions(
-    model_file: String,
-    chat_request: String,
-  ) -> anyhow::Result<()> {
-    disable_llama_log();
-    unsafe {
-      llama_server_disable_logging();
-    }
-    let gpt_params = CommonParams {
-      seed: Some(42),
-      model: model_file,
-      ..CommonParams::default()
-    };
-    let ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
-    let userdata = String::with_capacity(1024);
-    let lock = ctx.ctx.read().await;
-    let inner = lock.as_ref().expect("should have context loaded");
-    inner.completions(
-      &chat_request,
-      "",
-      Some(test_callback),
-      &userdata as *const _ as *mut _,
-    )?;
-    let response: CreateChatCompletionResponse =
-      serde_json::from_str(&userdata).expect("parse as chat completion response json");
-    assert_eq!(
-      "The day that comes after Monday is Tuesday.",
-      response.choices[0]
-        .message
-        .content
-        .as_ref()
-        .expect("content does not exists")
-    );
     Ok(())
   }
 
@@ -439,6 +439,7 @@ mod test {
   #[anyhow_trace]
   #[tokio::test]
   async fn test_chat_completions_continue_strategy(
+    mut mock_server_ctx: MockServerContext,
     #[future] app_service_stub: AppServiceStub,
   ) -> anyhow::Result<()> {
     let hf_cache = app_service_stub.hf_cache();
@@ -451,11 +452,8 @@ mod test {
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
-    let mut mock = MockServerContext::default();
     let expected_input = r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#;
-    mock.expect_init().with().return_once(|| Ok(()));
-    mock.expect_start_event_loop().with().return_once(|| Ok(()));
-    mock
+    mock_server_ctx
       .expect_completions()
       .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
@@ -463,17 +461,17 @@ mod test {
       .model(model_filepath)
       .build()?;
     let gpt_params_cl = gpt_params.clone();
-    mock
+    mock_server_ctx
       .expect_get_common_params()
       .return_once(move || gpt_params_cl);
 
-    let ctx = MockServerContext::new_context();
-    ctx
-      .expect()
-      .with(eq(gpt_params.clone()))
-      .return_once(move |_| Ok(mock));
-
-    let shared_ctx = DefaultSharedContextRw::new_shared_rw(Some(gpt_params)).await?;
+    let bodhi_server_factory = BodhiServerFactoryStub::new(Box::new(mock_server_ctx));
+    let shared_ctx = DefaultSharedContextRw::new(
+      false,
+      Box::new(bodhi_server_factory),
+      Some(PathBuf::from("/tmp/test_library.dylib")),
+    );
+    shared_ctx.reload(Some(gpt_params)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
@@ -489,36 +487,31 @@ mod test {
   #[tokio::test]
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
-  async fn test_chat_completions_load_strategy(temp_hf_home: TempDir) -> anyhow::Result<()> {
+  async fn test_chat_completions_load_strategy(
+    mut mock_server_ctx: MockServerContext,
+    temp_hf_home: TempDir,
+  ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
     let model_file = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
-    let model_filepath = model_file.path().display().to_string();
     let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
-    let mut mock = MockServerContext::default();
     let expected_input = r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#;
-    mock.expect_init().with().return_once(|| Ok(()));
-    mock.expect_start_event_loop().with().return_once(|| Ok(()));
-    mock
+    mock_server_ctx
       .expect_completions()
       .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
 
-    let ctx = MockServerContext::new_context();
-    ctx
-      .expect()
-      .with(eq(CommonParams {
-        model: model_filepath,
-        ..Default::default()
-      }))
-      .return_once(move |_| Ok(mock));
-
-    let shared_ctx = DefaultSharedContextRw::new_shared_rw(None).await?;
+    let bodhi_server_factory = BodhiServerFactoryStub::new(Box::new(mock_server_ctx));
+    let shared_ctx = DefaultSharedContextRw::new(
+      false,
+      Box::new(bodhi_server_factory),
+      Some(PathBuf::from("/tmp/test_library.dylib")),
+    );
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
@@ -535,6 +528,8 @@ mod test {
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
   async fn test_chat_completions_drop_and_load_strategy(
+    mut mock_server_ctx: MockServerContext,
+    #[from(mock_server_ctx)] mut request_context: MockServerContext,
     temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface/hub");
@@ -543,37 +538,18 @@ mod test {
       .build()
       .unwrap();
     let loaded_model_filepath = loaded_model.path().display().to_string();
-    let mut loaded_ctx = MockServerContext::default();
-    loaded_ctx.expect_init().with().return_once(|| Ok(()));
-    loaded_ctx
-      .expect_start_event_loop()
-      .with()
-      .return_once(|| Ok(()));
     let loaded_params = CommonParamsBuilder::default()
       .model(loaded_model_filepath)
       .build()?;
     let loaded_params_cl = loaded_params.clone();
-    loaded_ctx
+    mock_server_ctx
       .expect_get_common_params()
       .return_once(move || loaded_params_cl);
-    loaded_ctx.expect_stop().with().return_once(|| Ok(()));
     let expected_input = r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"fakemodel:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#;
-    loaded_ctx
+    mock_server_ctx
       .expect_completions()
       .with(eq(expected_input), eq(""), always(), always())
       .return_once(|_, _, _, _| Ok(()));
-    let ctx = MockServerContext::new_context();
-    ctx
-      .expect()
-      .with(eq(loaded_params.clone()))
-      .return_once(move |_| Ok(loaded_ctx));
-
-    let mut request_context = MockServerContext::default();
-    request_context.expect_init().with().return_once(|| Ok(()));
-    request_context
-      .expect_start_event_loop()
-      .with()
-      .return_once(|| Ok(()));
 
     let request_model = HubFileBuilder::fakemodel()
       .hf_cache(hf_cache.clone())
@@ -586,18 +562,21 @@ mod test {
     request_context
       .expect_get_common_params()
       .return_once(move || request_params_cl);
-    let request_ctx = MockServerContext::new_context();
-    request_ctx
-      .expect()
-      .with(eq(request_params))
-      .return_once(move |_| Ok(request_context));
-
     let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
 
-    let shared_ctx = DefaultSharedContextRw::new_shared_rw(Some(loaded_params)).await?;
+    let bodhi_server_factory = BodhiServerFactoryStub::new_with_instances(vec![
+      Box::new(mock_server_ctx),
+      Box::new(request_context),
+    ]);
+    let shared_ctx = DefaultSharedContextRw::new(
+      false,
+      Box::new(bodhi_server_factory),
+      Some(PathBuf::from("/tmp/test_library.dylib")),
+    );
+    shared_ctx.reload(Some(loaded_params)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "fakemodel:instruct",
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]

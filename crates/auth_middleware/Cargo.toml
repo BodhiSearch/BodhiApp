@@ -8,7 +8,6 @@ commands = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 include_dir = { workspace = true }
-llama-server-bindings = { workspace = true }
 services = { workspace = true }
 server_core = { workspace = true }
 time = { workspace = true }

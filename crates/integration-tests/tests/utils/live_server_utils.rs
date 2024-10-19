@@ -1,5 +1,4 @@
 use dircpy::CopyBuilder;
-use llama_server_bindings::{bindings::llama_server_disable_logging, disable_llama_log};
 use mockall::predicate::eq;
 use objs::test_utils::setup_l10n;
 use objs::{EnvType, FluentLocalizationService};
@@ -13,6 +12,7 @@ use services::{
   KEY_APP_STATUS,
 };
 use sqlx::SqlitePool;
+use std::path::PathBuf;
 use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
 
@@ -23,14 +23,6 @@ pub fn copy_test_dir(src: &str, dst_path: &Path) {
     .with_include_filter("")
     .run()
     .unwrap();
-}
-
-#[allow(unused)]
-pub fn disable_test_logging() {
-  disable_llama_log();
-  unsafe {
-    llama_server_disable_logging();
-  }
 }
 
 #[fixture]
@@ -47,6 +39,7 @@ pub fn tinyllama(
   let bodhi_home = cache_dir.join("bodhi");
   let hf_home = cache_dir.join("huggingface");
   let hf_cache = hf_home.join("hub");
+
   let envs = HashMap::from([
     (
       String::from("HOME"),
@@ -69,6 +62,7 @@ pub fn tinyllama(
     Arc::new(env_wrapper),
   );
   env_service.create_home_dirs(&bodhi_home).unwrap();
+  env_service.set_library_path(library_path().display().to_string());
   let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new(hf_cache, false, None);
   let auth_service = KeycloakAuthService::new(
@@ -104,21 +98,25 @@ pub fn tinyllama(
   (temp_dir, Arc::new(service))
 }
 
-#[fixture]
-pub fn setup_logs() {
-  disable_llama_log();
-  unsafe {
-    llama_server_disable_logging();
+fn library_path() -> PathBuf {
+  let library_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    .join("../../llamacpp-sys/libs")
+    .join(llamacpp_sys::BUILD_TARGET)
+    .join(
+      llamacpp_sys::BUILD_VARIANTS
+        .first()
+        .expect("no build variants"),
+    )
+    .join(llamacpp_sys::LIBRARY_NAME);
+  if !library_path.exists() {
+    panic!("Library path does not exist: {}", library_path.display())
   }
+  library_path
 }
-
-#[fixture]
-pub fn setup(#[from(setup_logs)] _setup_logs: ()) {}
 
 #[fixture]
 #[awt]
 pub async fn live_server(
-  #[from(setup)] _setup: (),
   tinyllama: &(TempDir, Arc<dyn AppService>),
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");

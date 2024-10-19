@@ -1,4 +1,4 @@
-use llama_server_bindings::CommonParams;
+use llamacpp_rs::CommonParams;
 use objs::GptContextParams;
 
 pub fn update(slf: &GptContextParams, gpt_params: &mut CommonParams) {

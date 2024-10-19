@@ -59,6 +59,8 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
 
   fn auth_realm(&self) -> String;
 
+  fn library_path(&self) -> Option<String>;
+
   fn hf_cache(&self) -> PathBuf {
     self.hf_home().join("hub")
   }
@@ -109,6 +111,7 @@ pub struct DefaultEnvService {
   logs_dir: Option<PathBuf>,
   host: Arc<Mutex<Option<String>>>,
   port: Arc<Mutex<Option<u16>>>,
+  library_path: Arc<Mutex<Option<String>>>,
 }
 
 impl DefaultEnvService {
@@ -118,6 +121,10 @@ impl DefaultEnvService {
 
   pub fn set_port(&self, port: u16) {
     *self.port.lock().unwrap() = Some(port);
+  }
+
+  pub fn set_library_path(&self, library_path: String) {
+    *self.library_path.lock().unwrap() = Some(library_path);
   }
 }
 
@@ -224,6 +231,10 @@ impl EnvService for DefaultEnvService {
   fn auth_realm(&self) -> String {
     self.auth_realm.clone()
   }
+
+  fn library_path(&self) -> Option<String> {
+    self.library_path.lock().unwrap().clone()
+  }
 }
 
 impl DefaultEnvService {
@@ -245,6 +256,7 @@ impl DefaultEnvService {
       logs_dir: None,
       host: Arc::new(Mutex::new(None)),
       port: Arc::new(Mutex::new(None)),
+      library_path: Arc::new(Mutex::new(None)),
     }
   }
 

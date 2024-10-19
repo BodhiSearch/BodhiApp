@@ -110,9 +110,6 @@ jobs:
       - name: clean
         run: |
           make ci.clean
-      - name: build llama-server-bindings
-        run: |
-          cargo build -p llama-server-bindings --target ${{ matrix.target }}
       - name: Update version in Cargo.toml files
         run: |
           make ci.update-version VERSION=${{ env.VERSION }}

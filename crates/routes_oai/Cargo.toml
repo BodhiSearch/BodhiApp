@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-llama-server-bindings = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 auth_middleware = { workspace = true }

@@ -10,13 +10,19 @@ objs = { workspace = true }
 derive_builder = { workspace = true }
 libc = { workspace = true }
 llamacpp-sys = { workspace = true }
+mockall = { workspace = true, optional = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
 
+anyhow = { workspace = true }
+async-openai = { workspace = true }
+dirs = { workspace = true }
+mockall = { workspace = true }
 rstest = { workspace = true }
+serde_json = { workspace = true }
 
 [features]
-test-utils = []
+test-utils = ["mockall"]

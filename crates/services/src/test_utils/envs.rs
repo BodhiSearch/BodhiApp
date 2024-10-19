@@ -144,6 +144,10 @@ impl EnvService for EnvServiceStub {
       None => "test-realm".to_string(),
     }
   }
+
+  fn library_path(&self) -> Option<String> {
+    Some("/tmp/library-path.dylib".to_string())
+  }
 }
 
 #[derive(Debug)]

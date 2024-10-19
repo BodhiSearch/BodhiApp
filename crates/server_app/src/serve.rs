@@ -6,7 +6,7 @@ use objs::{impl_error_from, AppError};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContextRw, SharedContextRw};
 use services::AppService;
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -88,7 +88,16 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let ctx = DefaultSharedContextRw::new_shared_rw(None).await?;
+    let Some(library_path) = service.env_service().library_path() else {
+      return Err(ContextError::LibraryPathMissing)?;
+    };
+    let library_path = PathBuf::from(library_path);
+    if !library_path.exists() {
+      return Err(ContextError::LibraryPathMissing)?;
+    }
+    let mut ctx = DefaultSharedContextRw::default();
+    // ctx.disable_logging();
+    ctx.set_library_path(library_path).await?;
     let ctx: Arc<dyn SharedContextRw> = Arc::new(ctx);
     let app = build_routes(ctx.clone(), service, static_router);
 
