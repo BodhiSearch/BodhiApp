@@ -9,3 +9,9 @@ runs:
         if ! cargo tauri -V &> /dev/null; then
           cargo install tauri-cli@^2.0.0
         fi
+    - name: Install bindgen
+      shell: bash
+      run: |
+        if ! bindgen -V &> /dev/null; then
+          cargo install bindgen-cli
+        fi
