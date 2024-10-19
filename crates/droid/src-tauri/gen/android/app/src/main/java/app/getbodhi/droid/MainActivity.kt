@@ -1,3 +1,3 @@
-package com.tauri.dev
+package app.getbodhi.droid
 
 class MainActivity : TauriActivity()
