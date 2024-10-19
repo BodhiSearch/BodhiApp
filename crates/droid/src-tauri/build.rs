@@ -25,9 +25,6 @@ fn copy_android_libs(target: &str) -> Result<()> {
     .join("cpu")
     .join("libbodhi-server.so");
   if !src_file.exists() {
-    thread::sleep(Duration::from_millis(1000));
-  }
-  if !src_file.exists() {
     return Err(anyhow::anyhow!(
       "source file does not exist {}",
       src_file.display()
