@@ -17,6 +17,13 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Rewrite submodule URLs and checkout submodules
+        shell: bash
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
       - name: setup node
         uses: ./.github/actions/setup-node
       - name: setup android
@@ -31,9 +38,9 @@ jobs:
         working-directory: crates/droid
       - name: Setup Tauri CLI
         uses: ./.github/actions/setup-tauri-cli
-      - name: Build Android app
-        run: make build-android
-        working-directory: crates/droid
+      # - name: Build Android app
+      #   run: make build-android
+      #   working-directory: crates/droid
       - name: Decode Android keystore
         run: echo ${{ secrets.ANDROID_KEYSTORE_BASE64 }} | base64 -d > android-release-keystore.jks
         working-directory: crates/droid
