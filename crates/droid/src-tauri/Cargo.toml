@@ -8,12 +8,17 @@ rust-version = "1.77.2"
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[build-dependencies]
-tauri-build = { version = "2.0.1", features = [] }
-
 [dependencies]
+llamacpp-sys = { workspace = true }
+
 serde_json = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 log = { workspace = true }
 tauri = { version = "2.0.3", features = [] }
 tauri-plugin-log = "2.0.0-rc"
+
+[build-dependencies]
+anyhow = { workspace = true }
+fs_extra = { workspace = true }
+phf = { workspace = true, features = ["macros"] }
+tauri-build = { version = "2.0.1", features = [] }
