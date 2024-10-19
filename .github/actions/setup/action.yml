@@ -41,8 +41,14 @@ runs:
     - name: install tauri CLI
       shell: bash
       run: |
-        if [ ! -f ~/.cargo/bin/cargo-tauri ]; then
+        if ! cargo tauri -V &> /dev/null; then
           cargo install tauri-cli@1.6.2
+        fi
+    - name: Install bindgen
+      shell: bash
+      run: |
+        if ! bindgen -V &> /dev/null; then
+          cargo install bindgen-cli
         fi
     # https://github.com/pnpm/action-setup
     - uses: pnpm/action-setup@v3
