@@ -11,13 +11,12 @@ $(error ANDROID_HOME is not set. Please set it to your Android SDK path)
 endif
 
 # Build Android app
-.PHONY: build-android
+.PHONY: build-android sign-apk rename-apk
 build-android:
 	@echo "Building Android app..."
 	NDK_HOME=$(ANDROID_HOME)/ndk/$(NDK_VERSION) cargo tauri android build -v
 
 # Sign APK
-.PHONY: sign-apk
 sign-apk:
 	@echo "Signing APK..."
 	@if [ -z "$(ANDROID_KEYSTORE_PATH)" ]; then \
@@ -39,8 +38,6 @@ sign-apk:
 		--out src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-signed.apk \
 		src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release-unsigned.apk
 
-# Rename APK
-.PHONY: rename-apk
 rename-apk:
 	@echo "Renaming APK..."
 	$(eval VERSION := $(shell node -p "require('./package.json').version"))
