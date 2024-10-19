@@ -129,7 +129,7 @@ validator = "0.18.1"
 walkdir = "2.5.0"
 webbrowser = "1.0.0"
 
-[profile.release.package.bodhi]
-codegen-units = 1
-strip = true
-opt-level = 3
+# [profile.release.package.bodhi]
+# codegen-units = 1
+# strip = true
+# opt-level = 3

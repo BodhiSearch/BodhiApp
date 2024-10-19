@@ -1,7 +1,6 @@
-use std::{env, path::PathBuf};
+#![allow(unused)]
 
-use anyhow::Context;
-use fs_extra::dir::CopyOptions;
+use std::{env, path::PathBuf, thread, time::Duration};
 
 type Result<T> = anyhow::Result<T>;
 
@@ -20,18 +19,22 @@ fn copy_lib() -> Result<()> {
 }
 
 fn copy_android_libs(target: &str) -> Result<()> {
-  let src_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+  let src_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .join("../../../llamacpp-sys/libs")
-    .join(target);
-  let dest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-    .join("libs")
-    .join(target);
-  fs_extra::dir::copy(src_path, dest_dir, &{
-    let mut options = CopyOptions::new();
-    options.copy_inside = true;
-    options.overwrite = true;
-    options
-  })
-  .context("Failed to copy libraries from llamacpp-sys")?;
+    .join(target)
+    .join("cpu")
+    .join("libbodhi-server.so");
+  if !src_file.exists() {
+    thread::sleep(Duration::from_millis(1000));
+  }
+  if !src_file.exists() {
+    return Err(anyhow::anyhow!(
+      "source file does not exist {}",
+      src_file.display()
+    ));
+  }
+  let dest_file = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    .join("gen/android/app/src/main/jniLibs/arm64-v8a/libbodhi-server.so");
+  std::fs::copy(src_file, dest_file)?;
   Ok(())
 }
