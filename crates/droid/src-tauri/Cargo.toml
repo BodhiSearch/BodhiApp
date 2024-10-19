@@ -15,5 +15,5 @@ tauri-build = { version = "2.0.1", features = [] }
 serde_json = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 log = { workspace = true }
-tauri = { workspace = true, features = [] }
-tauri-plugin-log = { workspace = true }
+tauri = { version = "2.0.3", features = [] }
+tauri-plugin-log = "2.0.0-rc"
