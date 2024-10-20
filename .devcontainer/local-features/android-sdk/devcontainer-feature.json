@@ -1,0 +1,28 @@
+{
+  "name": "Android SDK",
+  "id": "android-sdk",
+  "version": "1.0.0",
+  "description": "Installs Android SDK and NDK",
+  "options": {
+    "ANDROID_SDK_TOOLS_VERSION": {
+      "type": "string",
+      "default": "9477386",
+      "description": "Android SDK Tools version"
+    },
+    "ANDROID_PLATFORM_VERSION": {
+      "type": "string",
+      "default": "34",
+      "description": "Android Platform version"
+    },
+    "ANDROID_BUILD_TOOLS_VERSION": {
+      "type": "string",
+      "default": "34.0.0",
+      "description": "Android Build Tools version"
+    },
+    "NDK_VERSION": {
+      "type": "string",
+      "default": "27.1.12297006",
+      "description": "Android NDK version"
+    }
+  }
+}

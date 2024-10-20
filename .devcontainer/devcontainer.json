@@ -1,0 +1,41 @@
+{
+	"name": "Rust",
+	"runArgs": [
+		"--network=host"
+	],
+	"image": "debian:bullseye",
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": "true",
+			"username": "vscode",
+			"upgradePackages": "true"
+		},
+		"ghcr.io/devcontainers/features/rust:1": {
+			"version": "latest",
+			"targets": [
+				"aarch64-unknown-linux-gnu",
+				"aarch64-linux-android"
+			]
+		},
+		"ghcr.io/devcontainers/features/node:1": {
+			"version": "lts"
+		}
+	},
+	"remoteUser": "vscode",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"rust-lang.rust-analyzer",
+				"serayuzgur.crates",
+				"vadimcn.vscode-lldb"
+			]
+		}
+	},
+	"remoteEnv": {
+		"ANDROID_HOME": "/usr/local/android-sdk",
+		"ANDROID_SDK_ROOT": "/usr/local/android-sdk",
+		"PATH": "${containerEnv:PATH}:${containerEnv:ANDROID_SDK_ROOT}/platform-tools",
+		"CARGO_HOME": "$HOME/.cargo-bodhi"
+	},
+	"postCreateCommand": "rustc --version && cargo --version && rustup --version"
+}
