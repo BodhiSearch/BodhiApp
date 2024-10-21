@@ -16,8 +16,8 @@ ARG DEPENDENCIES="build-essential curl libappindicator3-dev libgtk-3-dev librsvg
 ARG EXTRA_DEPENDENCIES=""
 
 # Argument for which image version to use
-ARG IMAGE="mcr.microsoft.com/vscode/devcontainers/base"
-ARG VARIANT="0-ubuntu-22.04"
+ARG IMAGE="debian"
+ARG VARIANT="bullseye"
 
 ######################################
 ## Base image

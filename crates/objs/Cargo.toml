@@ -43,7 +43,7 @@ ctor = { workspace = true }
 dircpy = { workspace = true }
 futures = { workspace = true }
 http-body-util = { workspace = true }
-hyper = { workspace = true, features = ["full"] }
+hyper = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 serial_test = { workspace = true }
