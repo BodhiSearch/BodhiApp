@@ -13,10 +13,10 @@ members = [
   "crates/routes_app",
   "crates/routes_all",
   "crates/server_app",
-  "crates/app/bodhi",
   "crates/integration-tests",
 ]
 resolver = "2"
+exclude = ["crates/app/bodhi"]
 
 [workspace.dependencies]
 llamacpp-sys = { path = "llamacpp-sys" }
@@ -31,7 +31,7 @@ routes_oai = { path = "crates/routes_oai" }
 routes_app = { path = "crates/routes_app" }
 routes_all = { path = "crates/routes_all" }
 server_app = { path = "crates/server_app" }
-bodhi = { path = "app/bodhi" }
+# bodhi = { path = "app/bodhi" }
 
 anyhow = "1.0.81"
 anyhow_trace = "0.1.3"
@@ -125,7 +125,7 @@ validator = "0.18.1"
 walkdir = "2.5.0"
 webbrowser = "1.0.0"
 
-[profile.release.package.bodhi]
-codegen-units = 1
-strip = true
-opt-level = 3
+# [profile.release.package.bodhi]
+# codegen-units = 1
+# strip = true
+# opt-level = 3
