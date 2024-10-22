@@ -19,7 +19,7 @@ runs:
         git submodule sync --recursive
         git submodule update --init --recursive --depth=1
         git config --global --unset url.https://gh_pat:${{ inputs.GH_PAT }}@github.com/.insteadOf
-    - uses: ./.github/actions/setup
+    - uses: ./.github/actions/setup-rust
       with:
         platform: ${{ inputs.platform }}
-    - uses: ./.github/actions/setup
+    - uses: ./.github/actions/setup-node
