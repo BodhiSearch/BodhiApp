@@ -5,6 +5,9 @@ inputs:
   GH_PAT:
     description: Github token
     required: true
+  platform:
+    description: Platform to build for
+    required: true
 
 runs:
   using: composite
@@ -16,57 +19,7 @@ runs:
         git submodule sync --recursive
         git submodule update --init --recursive --depth=1
         git config --global --unset url.https://gh_pat:${{ inputs.GH_PAT }}@github.com/.insteadOf
-    - name: install dependencies (ubuntu only)
-      shell: bash
-      if: matrix.platform == 'ubuntu-22.04' # This must match the platform value defined above.
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      # webkitgtk 4.0 is for Tauri v1 - webkitgtk 4.1 is for Tauri v2.
-      # You can remove the one that doesn't apply to your app to speed up the workflow a bit.
-    - name: install Rust stable
-      uses: dtolnay/rust-toolchain@stable
+    - uses: ./actions/setup-rust
       with:
-        # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
-        targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
-        components: llvm-tools
-    - uses: Swatinem/rust-cache@v2
-      with:
-        cache-directories: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          ~/.cargo/bin
-    - uses: taiki-e/install-action@nextest
-    - uses: taiki-e/install-action@cargo-llvm-cov
-    - name: install tauri CLI
-      shell: bash
-      run: |
-        if [ ! -f ~/.cargo/bin/cargo-tauri ]; then
-          cargo install tauri-cli@1.6.2
-        fi
-    # https://github.com/pnpm/action-setup
-    - uses: pnpm/action-setup@v3
-      with:
-        version: 9
-        run_install: false
-    - name: setup node
-      uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Get pnpm store directory
-      shell: bash
-      run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-    - uses: actions/cache@v4
-      name: Setup pnpm cache
-      with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
-    - name: Setup Vercel AI
-      shell: bash
-      run: make ci.setup-vercel-ai
-    - name: Install app pnpm dependencies
-      shell: bash
-      run: make ci.app-pnpm
+        platform: ${{ inputs.platform }}
+    - uses: ./actions/setup-node
