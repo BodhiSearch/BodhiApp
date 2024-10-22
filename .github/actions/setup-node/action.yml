@@ -1,0 +1,35 @@
+name: setup-node
+description: setup node and pnpm
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v3
+      with:
+        version: 9
+        run_install: false
+    - name: setup node
+      uses: actions/setup-node@v4
+      with:
+        node-version: lts/iron
+    - name: Get pnpm store directory
+      shell: bash
+      run: |
+        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+    - uses: actions/cache@v4
+      name: Setup pnpm cache
+      with:
+        path: ${{ env.STORE_PATH }}
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+    - name: Setup Vercel AI
+      shell: bash
+      run: make ci.setup-vercel-ai
+    - name: Install app pnpm dependencies
+      shell: bash
+      run: make ci.app-pnpm

@@ -103,6 +103,7 @@ jobs:
         uses: ./.github/actions/setup
         with:
           GH_PAT: ${{ secrets.GH_PAT }}
+          platform: ${{ matrix.platform }}
       - name: llama_cpp
         uses: ./.github/actions/llama_cpp
         with:
