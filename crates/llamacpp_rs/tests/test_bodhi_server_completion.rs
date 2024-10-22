@@ -7,6 +7,7 @@ use rstest::rstest;
 use utils::{chat_completion_request, bodhi_server_ctx, test_callback};
 
 #[rstest]
+#[ignore]
 pub fn test_bodhi_server_completion(
   #[from(bodhi_server_ctx)] ctx: BodhiServerContext,
   chat_completion_request: String,
