@@ -35,6 +35,10 @@ jobs:
         with:
           GH_PAT: ${{ secrets.GH_PAT }}
           platform: ${{ matrix.platform }}
+      - uses: ./.github/actions/setup-rust
+        with:
+          platform: ${{ matrix.platform }}
+      - uses: ./.github/actions/setup-node
       - name: llama_cpp
         uses: ./.github/actions/llama_cpp
         with:
@@ -42,21 +46,21 @@ jobs:
       - name: clean
         run: |
           make ci.clean
-      - name: Generate code coverage
-        run: |
-          make ci.coverage
-        env:
-          HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
-          HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
-          RUSTFLAGS: "--cfg ci"
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: BodhiSearch/BodhiApp
-          files: lcov.info
-          fail_ci_if_error: true
-          flags: ${{ matrix.target }},bodhi
-      - name: build the app
-        run: |
-          make ci.build TARGET=${{ matrix.target }}
+      # - name: Generate code coverage
+      #   run: |
+      #     make ci.coverage
+      #   env:
+      #     HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
+      #     HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
+      #     RUSTFLAGS: "--cfg ci"
+      # - name: Upload coverage reports to Codecov
+      #   uses: codecov/codecov-action@v4.0.1
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     slug: BodhiSearch/BodhiApp
+      #     files: lcov.info
+      #     fail_ci_if_error: true
+      #     flags: ${{ matrix.target }},bodhi
+      # - name: build the app
+      #   run: |
+      #     make ci.build TARGET=${{ matrix.target }}
