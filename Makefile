@@ -29,7 +29,7 @@ ci.coverage:
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
-	@for dir in crates/* crates/app/bodhi; do \
+	@for dir in crates/* crates/bodhiui/src-tauri; do \
 		if [ -f $$dir/Cargo.toml ]; then \
 			sed -i.bak "s/^version = .*/version = \"$(VERSION)\"/" $$dir/Cargo.toml && \
 			rm $$dir/Cargo.toml.bak; \
@@ -37,7 +37,7 @@ ci.update-version:
 	done
 
 ci.build:
-	cd crates/app/bodhi && \
+	cd crates/bodhiui/src-tauri && \
 	cargo tauri build $${TARGET:+--target $${TARGET}} --ci --config '{"tauri": {"updater": {"active": false}}}'
 
 ci.setup-vercel-ai:
@@ -46,6 +46,6 @@ ci.setup-vercel-ai:
 	cd vercel-ai && pnpm run build --filter=ai...
 
 ci.app-pnpm:
-	cd crates/app && pnpm install
+	cd crates/bodhiui && pnpm install
 
 .PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai

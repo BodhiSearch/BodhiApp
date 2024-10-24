@@ -17,7 +17,7 @@ members = [
   "crates/integration-tests",
 ]
 resolver = "2"
-exclude = ["crates/app/bodhi"]
+exclude = ["crates/chatapp/bodhi"]
 
 [workspace.dependencies]
 llamacpp-sys = { path = "llamacpp-sys" }
