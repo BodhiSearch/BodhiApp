@@ -25,7 +25,15 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     libsoup2.4-dev \
     # WebKit and JavaScriptCore for web content
     libjavascriptcoregtk-4.0-dev \
-    libwebkit2gtk-4.0-dev \
+    libwebkit2gtk-4.1-dev \
+    # tauri v2
+    curl \
+    wget \
+    file \
+    libxdo-dev \
+    libssl-dev \
+    libayatana-appindicator3-dev \
+    librsvg2-dev \
     # dev tools
     vim \
     tig \
@@ -44,5 +52,5 @@ RUN apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rustup component add llvm-tools-preview rust-src && \
-    cargo install cargo-llvm-cov cargo-nextest bindgen-cli && \
+    cargo install cargo-llvm-cov cargo-nextest bindgen-cli tauri-cli@^2.0.0 && \
     rustc --version && cargo --version && rustup --version
