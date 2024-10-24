@@ -13,6 +13,7 @@ members = [
   "crates/routes_app",
   "crates/routes_all",
   "crates/server_app",
+  "crates/bodhiui/src-tauri",
   "crates/integration-tests",
 ]
 resolver = "2"
@@ -32,6 +33,7 @@ routes_app = { path = "crates/routes_app" }
 routes_all = { path = "crates/routes_all" }
 server_app = { path = "crates/server_app" }
 # bodhi = { path = "app/bodhi" }
+bodhiui = { path = "crates/bodhiui/src-tauri" }
 
 anyhow = "1.0.81"
 anyhow_trace = "0.1.3"
@@ -71,6 +73,7 @@ jsonwebtoken = "9.3.0"
 keyring = { version = "3.2.0", default-features = false }
 libc = "0.2.161"
 lazy_static = "1.4.0"
+log = "0.4"
 maplit = "1.0.2"
 mime = "0.3.17"
 mime_guess = "2.0.4"

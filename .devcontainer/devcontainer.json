@@ -34,7 +34,8 @@
         "dustypomerleau.rust-syntax",
         "tauri-apps.tauri-vscode",
         "k--kato.intellij-idea-keybindings",
-        "ms-vscode.makefile-tools"
+        "ms-vscode.makefile-tools",
+        "1YiB.rust-bundle"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh"
