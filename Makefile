@@ -1,10 +1,10 @@
 test:
 	cargo test
-	cd bodhi-ui && npm test -- --run
+	cd crates/bodhiui && npm test -- --run
 	cd openai-pysdk-compat && poetry run pytest || true
 
 format:
-	cd bodhi-ui && npm run format && npm run lint
+	cd crates/bodhiui && npm run format && npm run lint
 	cargo fmt --all
 	cd openai-pysdk-compat && poetry run ruff format .
 
