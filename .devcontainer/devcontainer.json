@@ -53,6 +53,7 @@
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/dotfiles,target=/home/vscode/dotfiles,type=bind"
   ],
   "postCreateCommand": [
+    "git submodule update --init --recursive",
     "./.devcontainer/postCreateCommand.sh"
   ]
 }
