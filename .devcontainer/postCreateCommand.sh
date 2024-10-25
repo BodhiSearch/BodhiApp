@@ -14,6 +14,3 @@ export NEXT_TELEMETRY_DISABLED=1
 cd /workspaces/BodhiApp/llamacpp-sys && pre-commit install
 cd /workspaces/BodhiApp/llamacpp-sys/llama.cpp && pre-commit install
 cd /workspaces/BodhiApp
-
-# Kill the SSH agent
-ssh-agent -k
