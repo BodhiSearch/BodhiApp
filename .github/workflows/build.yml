@@ -18,7 +18,8 @@ jobs:
         include:
           - platform: "macos-latest"
             target: aarch64-apple-darwin
-            llama_cpp_build_flags: "-DGGML_METAL_EMBED_LIBRARY=ON -DGGML_OPENMP=OFF"
+          - platform: "ubuntu-latest"
+            target: aarch64-unknown-linux-gnu
     runs-on: ${{ matrix.platform }}
     steps:
       - name: envs
@@ -41,10 +42,6 @@ jobs:
           platform: ${{ matrix.platform }}
       - name: setup-node
         uses: ./.github/actions/setup-node
-      - name: llama_cpp
-        uses: ./.github/actions/llama_cpp
-        with:
-          LLAMA_CPP_BUILD_FLAGS: ${{ matrix.llama_cpp_build_flags }}
       - name: clean
         run: |
           make ci.clean
@@ -58,11 +55,12 @@ jobs:
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         with:
+          name: BodhiApp-${{ matrix.target }}
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: BodhiSearch/BodhiApp
           files: lcov.info
           fail_ci_if_error: true
           flags: ${{ matrix.target }},bodhi
-      - name: build the app
-        run: |
-          make ci.build TARGET=${{ matrix.target }}
+      # - name: build the app
+      #   run: |
+      #     make ci.build TARGET=${{ matrix.target }}
