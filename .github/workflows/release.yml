@@ -81,7 +81,6 @@ jobs:
         include:
           - platform: "macos-latest" # for Arm based macs (M1 and above).
             target: aarch64-apple-darwin
-            llama_cpp_build_flags: "-DLLAMA_METAL_EMBED_LIBRARY=ON"
           # - platform: "macos-latest" # for Intel based macs.
           #   args: "--target x86_64-apple-darwin"
           # - platform: "ubuntu-22.04" # for Tauri v1 you could replace this with ubuntu-20.04.
@@ -108,10 +107,6 @@ jobs:
         with:
           platform: ${{ matrix.platform }}
       - uses: ./.github/actions/setup-node
-      - name: llama_cpp
-        uses: ./.github/actions/llama_cpp
-        with:
-          LLAMA_CPP_BUILD_FLAGS: ${{ matrix.llama_cpp_build_flags }}
       - name: clean
         run: |
           make ci.clean
