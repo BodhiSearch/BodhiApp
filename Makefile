@@ -21,7 +21,7 @@ ci.coverage:
 	cargo llvm-cov clean
 	@CRATES=""; \
 	for dir in crates/*; do \
-		if [ -f $$dir/Cargo.toml ]; then \
+		if [ -f $$dir/Cargo.toml ] && [ "$$(basename $$dir)" != "integration-tests" ]; then \
 			CRATES="$$CRATES -p $$(basename $$dir)"; \
 		fi \
 	done; \
