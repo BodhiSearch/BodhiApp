@@ -81,10 +81,6 @@ pub fn setup_l10n(
     .load_resource(&include_dir::include_dir!(
       "$CARGO_MANIFEST_DIR/../server_app/src/resources"
     ))
-    .unwrap()
-    .load_resource(&include_dir::include_dir!(
-      "$CARGO_MANIFEST_DIR/../app/bodhi/src/resources"
-    ))
     .unwrap();
   set_mock_localization_service(localization_service.clone());
   localization_service
