@@ -47,11 +47,9 @@
   },
   "remoteUser": "vscode",
   "workspaceFolder": "/workspaces/BodhiApp",
-  "workspaceMount": "source=bodhiapp-workspace,target=/workspaces/BodhiApp,type=volume",
   "mounts": [
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,readonly",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.cache,target=/home/vscode/.cache,type=bind",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/dotfiles,target=/home/vscode/dotfiles,type=bind"
   ],
-  "postCreateCommand": "sh -c '/usr/local/bin/checkout.sh && ./.devcontainer/postCreateCommand.sh'"
+  "postCreateCommand": "./.devcontainer/postCreateCommand.sh'"
 }
