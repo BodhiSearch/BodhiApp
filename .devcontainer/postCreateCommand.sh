@@ -2,9 +2,7 @@
 set -e
 
 # https://github.com/devcontainers/features/pull/754/files
-sudo chown -R "vscode:vscode" "${RUSTUP_HOME}" "${CARGO_HOME}" && \
-    find "${RUSTUP_HOME}" -type d -print0 | xargs -n 1 -0 chmod g+s && \
-    find "${CARGO_HOME}" -type d -print0 | xargs -n 1 -0 chmod g+s
+sudo chown -R "vscode:vscode" "${RUSTUP_HOME}" "${CARGO_HOME}"
 
 # cargo installs
 bash /home/vscode/dotfiles/install_devcontainer.sh
