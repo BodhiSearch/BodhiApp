@@ -797,15 +797,16 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
   fn test_hf_hub_service_list_local_models(
     #[from(test_hf_service)] service: TestHfService,
   ) -> anyhow::Result<()> {
-    let models = service.list_local_models();
+    let mut models = service.list_local_models();
     let expected_1 = HubFile::new(
       service.hf_cache(),
-      Repo::try_from("google/gemma-1.1-2b-it-GGUF")?,
-      "2b_it_v1p1.gguf".to_string(),
-      "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
-      Some(21),
+      Repo::try_from("FakeFactory/fakemodel-gguf")?,
+      "fakemodel.Q4_0.gguf".to_string(),
+      "191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string(),
+      Some(25),
     );
     assert_eq!(6, models.len());
+    models.sort();
     assert_eq!(&expected_1, models.first().unwrap());
     Ok(())
   }

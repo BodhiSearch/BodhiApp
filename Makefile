@@ -25,7 +25,7 @@ ci.coverage:
 			CRATES="$$CRATES -p $$(basename $$dir)"; \
 		fi \
 	done; \
-	cargo llvm-cov nextest --all-features --lcov --output-path lcov.info $$CRATES
+	cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$CRATES
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
