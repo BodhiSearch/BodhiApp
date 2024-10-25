@@ -51,10 +51,6 @@ RUN apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the checkout script
-COPY checkout.sh /usr/local/bin/checkout.sh
-RUN chmod +x /usr/local/bin/checkout.sh
-
 RUN rustup component add llvm-tools-preview rust-src && \
     cargo install cargo-llvm-cov cargo-nextest bindgen-cli tauri-cli@^2.0.0 && \
     rustc --version && cargo --version && rustup --version
