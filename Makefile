@@ -19,6 +19,9 @@ ci.clean:
 
 ci.coverage:
 	cargo llvm-cov clean
+	$(MAKE) coverage
+
+coverage:
 	@CRATES=""; \
 	for dir in crates/*; do \
 		if [ -f $$dir/Cargo.toml ] && [ "$$(basename $$dir)" != "integration-tests" ]; then \
