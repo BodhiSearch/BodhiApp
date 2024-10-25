@@ -49,6 +49,7 @@
   "workspaceFolder": "/workspaces/BodhiApp",
   "mounts": [
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.cache,target=/home/vscode/.cache,type=bind",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,readonly",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/dotfiles,target=/home/vscode/dotfiles,type=bind"
   ],
   "postCreateCommand": "./.devcontainer/postCreateCommand.sh'"
