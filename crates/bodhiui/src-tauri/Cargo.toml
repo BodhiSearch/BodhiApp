@@ -7,12 +7,17 @@ edition = "2021"
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
-[build-dependencies]
-tauri-build = { version = "2.0.1", features = [] }
-
 [dependencies]
 log = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-tauri = { version = "2.0.6", features = [] }
-tauri-plugin-log = "2.0.0-rc"
+tauri = { version = "2.0.6", features = [], optional = true }
+tauri-plugin-log = { version = "2.0.0-rc", optional = true }
+
+[build-dependencies]
+tauri-build = { version = "2.0.1", features = [] }
+anyhow = { workspace = true }
+fs_extra = { workspace = true }
+
+[features]
+native = ["tauri", "tauri-plugin-log"]
