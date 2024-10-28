@@ -4,3 +4,6 @@ convert_bad_request-pull_command = Command '{$input}' cannot be converted into c
 convert_error-invalid_repo = Command '{$input}' cannot be converted into command '{$output}', repo {$repo} is invalid: {$error}
 convert_error-convert = Command '{$input}' cannot be converted into command '{$output}'
 convert_error-bad_request = Command '{$input}' cannot be converted into command '{$output}', {$error}
+bodhi_error-native_not_supported = application is built with non-native variant, does not support `app` command to launch app in native mode
+bodhi_error-unreachable = unreachable: {$var_0}
+native_error-tauri = {$error}

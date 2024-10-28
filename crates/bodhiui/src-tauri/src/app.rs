@@ -1,14 +1,15 @@
+#[cfg(feature = "native")]
+use crate::native;
+
 use crate::{
   convert::{
     build_create_command, build_list_command, build_manage_alias_command, build_pull_command,
     build_run_command, build_serve_command,
   },
-  native::NativeCommand,
+  error::{BodhiError, Result},
 };
-use axum::Router;
 use clap::Parser;
 use commands::{Cli, Command, DefaultStdoutWriter, EnvCommand};
-use include_dir::{include_dir, Dir};
 use objs::FluentLocalizationService;
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
@@ -17,18 +18,15 @@ use services::{
 };
 use std::{env, path::Path, sync::Arc};
 use tokio::runtime::Builder;
-use tower_serve_static::ServeDir;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
-
-pub fn main_internal(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
+pub fn main_internal(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build()?;
   runtime.block_on(async move { aexecute(env_service).await })
 }
 
-async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
+async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let bodhi_home = env_service.bodhi_home();
   let hf_cache = env_service.hf_cache();
   let data_service = LocalDataService::new(bodhi_home.clone());
@@ -81,17 +79,20 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
   let service = Arc::new(app_service);
 
   let args = env::args().collect::<Vec<_>>();
-  if args.len() == 1
-    && args
-      .first()
-      .expect("already checked the length is 1")
-      .contains(".app/Contents/MacOS/")
-  {
-    // the app was launched using Bodhi.app, launch the native app with system tray
-    NativeCommand::new(service, true)
-      .aexecute(Some(static_router()))
-      .await?;
-    return Ok(());
+  if args.len() == 1 {
+    if env_service.is_native() {
+      if cfg!(feature = "native") {
+        // the app was launched executing the executable, launch the native app with system tray
+        #[cfg(feature = "native")]
+        native::NativeCommand::new(service.clone(), true)
+          .aexecute(Some(native::static_router()))
+          .await?;
+      } else {
+        Err(BodhiError::Unreachable(format!(
+          r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#
+        )))?;
+      }
+    }
   }
 
   // the app was called from wrapper
@@ -101,10 +102,21 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
     Command::Envs {} => {
       EnvCommand::new(service).execute()?;
     }
-    Command::App { ui } => {
-      NativeCommand::new(service, ui)
-        .aexecute(Some(static_router()))
-        .await?;
+    Command::App { ui: _ui } => {
+      if env_service.is_native() {
+        if cfg!(feature = "native") {
+          #[cfg(feature = "native")]
+          native::NativeCommand::new(service, _ui)
+            .aexecute(Some(native::static_router()))
+            .await?;
+        } else {
+          Err(BodhiError::Unreachable(format!(
+            r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#
+          )))?;
+        }
+      } else {
+        Err(BodhiError::NativeNotSupported)?;
+      }
     }
     Command::Serve { host, port } => {
       let serve_command = build_serve_command(host, port)?;
@@ -142,7 +154,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> super::Result<()> {
   Ok(())
 }
 
-pub fn setup_logs(logs_dir: &Path) -> super::Result<WorkerGuard> {
+pub fn setup_logs(logs_dir: &Path) -> Result<WorkerGuard> {
   let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
   let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
   let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
@@ -152,9 +164,4 @@ pub fn setup_logs(logs_dir: &Path) -> super::Result<WorkerGuard> {
     .with(fmt::layer().with_writer(non_blocking))
     .init();
   Ok(guard)
-}
-
-fn static_router() -> Router {
-  let static_service = ServeDir::new(&ASSETS).append_index_html_on_directories(true);
-  Router::new().fallback_service(static_service)
 }

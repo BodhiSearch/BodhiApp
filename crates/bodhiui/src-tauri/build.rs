@@ -10,6 +10,7 @@ use std::{
 fn main() -> anyhow::Result<()> {
   #[cfg(feature = "native")]
   tauri_build::build();
+  println!("cargo:rerun-if-changed=../src");
   build_frontend()?;
   Ok(())
 }
@@ -46,7 +47,6 @@ fn build_frontend() -> anyhow::Result<()> {
   Ok(())
 }
 
-#[allow(dead_code)]
 fn exec_command<I, S>(cwd: &Path, cmd: &str, args: I, err_msg: &str) -> anyhow::Result<()>
 where
   I: IntoIterator<Item = S>,

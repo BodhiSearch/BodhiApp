@@ -1,5 +1,5 @@
 use crate::{DataServiceError, EnvWrapper};
-use objs::{EnvType, IoDirCreateError, IoFileWriteError};
+use objs::{AppType, EnvType, IoDirCreateError, IoFileWriteError};
 use std::{
   collections::HashMap,
   fs::{self, File},
@@ -30,6 +30,12 @@ pub static BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait EnvService: Send + Sync + std::fmt::Debug {
   fn env_type(&self) -> EnvType;
+
+  fn app_type(&self) -> AppType;
+
+  fn is_native(&self) -> bool {
+    self.app_type() == AppType::Native
+  }
 
   fn is_production(&self) -> bool {
     self.env_type() == EnvType::Production
@@ -102,6 +108,7 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
 #[derive(Debug, Clone)]
 pub struct DefaultEnvService {
   env_type: EnvType,
+  app_type: AppType,
   auth_url: String,
   auth_realm: String,
   version: String,
@@ -131,6 +138,10 @@ impl DefaultEnvService {
 impl EnvService for DefaultEnvService {
   fn env_type(&self) -> EnvType {
     self.env_type.clone()
+  }
+
+  fn app_type(&self) -> AppType {
+    self.app_type.clone()
   }
 
   fn version(&self) -> String {
@@ -241,12 +252,14 @@ impl DefaultEnvService {
   #[allow(clippy::new_without_default)]
   pub fn new(
     env_type: EnvType,
+    app_type: AppType,
     auth_url: String,
     auth_realm: String,
     env_wrapper: Arc<dyn EnvWrapper>,
   ) -> Self {
     DefaultEnvService {
       env_type,
+      app_type,
       auth_url,
       auth_realm,
       version: env!("CARGO_PKG_VERSION").to_string(),
@@ -366,7 +379,7 @@ mod test {
   use mockall::predicate::eq;
   use objs::{
     test_utils::{empty_bodhi_home, empty_hf_home, temp_dir},
-    EnvType,
+    AppType, EnvType,
   };
   use rstest::rstest;
   use std::{collections::HashMap, env::VarError, fs, sync::Arc};
@@ -558,6 +571,7 @@ mod test {
     let env_wrapper = EnvWrapperStub::new(envs);
     let mut result = DefaultEnvService::new(
       env_type,
+      AppType::Container,
       "https://id.getbodhi.app".to_string(),
       "bodhi-realm".to_string(),
       Arc::new(env_wrapper),

@@ -1,12 +1,8 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-#[cfg(feature = "native")]
-fn main() {
-  app_lib::native::run();
-}
+use app_lib::lib_main::_main;
 
-#[cfg(not(feature = "native"))]
-fn main() {
-  println!("BodhiUI is not built with native support");
+pub fn main() {
+  _main();
 }

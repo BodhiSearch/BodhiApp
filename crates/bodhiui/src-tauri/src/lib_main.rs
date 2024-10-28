@@ -1,8 +1,8 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-
-use bodhi::{main_internal, setup_logs, BodhiError};
-use objs::{ApiError, OpenAIApiError};
+use crate::{
+  app::{main_internal, setup_logs},
+  error::BodhiError,
+};
+use objs::{ApiError, AppType, OpenAIApiError};
 use services::{DefaultEnvService, DefaultEnvWrapper};
 use std::sync::Arc;
 use tracing_appender::non_blocking::WorkerGuard;
@@ -27,9 +27,16 @@ mod env_config {
 
 pub use env_config::*;
 
-pub fn main() {
+#[cfg(feature = "native")]
+pub const APP_TYPE: AppType = AppType::Native;
+
+#[cfg(not(feature = "native"))]
+pub const APP_TYPE: AppType = AppType::Container;
+
+pub fn _main() {
   let mut env_service = DefaultEnvService::new(
     ENV_TYPE.clone(),
+    APP_TYPE,
     AUTH_URL.to_string(),
     AUTH_REALM.to_string(),
     Arc::new(DefaultEnvWrapper::default()),
