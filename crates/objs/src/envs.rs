@@ -5,3 +5,10 @@ pub enum EnvType {
   #[default]
   Development,
 }
+
+#[derive(Debug, Clone, PartialEq, strum::EnumString, strum::Display)]
+#[strum(serialize_all = "snake_case")]
+pub enum AppType {
+  Native,
+  Container,
+}

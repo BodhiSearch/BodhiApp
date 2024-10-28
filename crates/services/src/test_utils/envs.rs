@@ -2,7 +2,7 @@ use crate::{
   DefaultEnvService, EnvService, EnvWrapper, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST,
   BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
-use objs::{test_utils::temp_dir, EnvType};
+use objs::{test_utils::temp_dir, AppType, EnvType};
 use rstest::fixture;
 use std::{
   collections::HashMap,
@@ -29,6 +29,7 @@ impl DefaultEnvService {
   pub fn test_new(env_wrapper: Arc<dyn EnvWrapper>) -> Self {
     Self::new(
       EnvType::Development,
+      AppType::Container,
       "".to_string(),
       "".to_string(),
       env_wrapper,

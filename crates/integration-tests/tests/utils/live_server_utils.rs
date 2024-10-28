@@ -1,7 +1,7 @@
 use dircpy::CopyBuilder;
 use mockall::predicate::eq;
 use objs::test_utils::setup_l10n;
-use objs::{EnvType, FluentLocalizationService};
+use objs::{AppType, EnvType, FluentLocalizationService};
 use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
@@ -57,6 +57,7 @@ pub fn tinyllama(
   let env_wrapper = EnvWrapperStub::new(envs);
   let env_service = DefaultEnvService::new(
     EnvType::Development,
+    AppType::Container,
     "".to_string(),
     "".to_string(),
     Arc::new(env_wrapper),
