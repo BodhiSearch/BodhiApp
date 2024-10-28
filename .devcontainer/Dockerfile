@@ -38,8 +38,6 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     vim \
     tig \
     pre-commit \
-    # x11 for launching tauri native window
-    x11-apps \
     # Clean up
     && apt-get autoremove -y \
     && apt-get clean -y \

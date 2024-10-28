@@ -43,6 +43,7 @@
     }
   },
   "containerEnv": {
+    "SHELL": "/bin/zsh",
     "DISPLAY": "host.docker.internal:0"
   },
   "remoteUser": "vscode",
