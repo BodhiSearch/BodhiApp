@@ -28,6 +28,9 @@ pub enum ContextError {
   #[error("library_path_missing")]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
   LibraryPathMissing,
+  #[error("library_not_exists")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  LibraryNotExists(String),
 }
 
 impl_error_from!(

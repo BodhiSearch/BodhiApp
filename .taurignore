@@ -1,2 +1,3 @@
 *.o
 llamacpp-sys
+crates/bodhiui/src-tauri/libs/
