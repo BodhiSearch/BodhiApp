@@ -2,7 +2,7 @@ use crate::{
   DefaultEnvService, EnvService, EnvWrapper, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
   BODHI_HOST, BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
-use objs::{test_utils::temp_dir, AppType, EnvType};
+use objs::{test_utils::temp_dir, AppType, EnvType, LogLevel};
 use rstest::fixture;
 use std::{
   collections::HashMap,
@@ -165,6 +165,10 @@ impl EnvService for EnvServiceStub {
 
   fn library_lookup_path(&self) -> String {
     "/tmp".to_string()
+  }
+
+  fn log_level(&self) -> LogLevel {
+    LogLevel::Warn
   }
 }
 

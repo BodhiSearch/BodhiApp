@@ -1,7 +1,7 @@
 use crate::{DataServiceError, EnvWrapper};
 use objs::{
-  ApiError, AppError, AppType, EnvType, ErrorType, IoError, SerdeYamlError, SerdeYamlWithPathError,
-  Settings,
+  ApiError, AppError, AppType, EnvType, ErrorType, IoError, LogLevel, SerdeYamlError,
+  SerdeYamlWithPathError, Settings,
 };
 use serde::Serialize;
 use std::{
@@ -31,6 +31,7 @@ pub static HF_HOME: &str = "HF_HOME";
 pub static BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
 pub static BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
 pub static BODHI_APP_TYPE: &str = "BODHI_APP_TYPE";
+pub static BODHI_LOG_LEVEL: &str = "BODHI_LOG_LEVEL";
 pub static BODHI_LIBRARY_PATH: &str = "BODHI_LIBRARY_PATH";
 pub static BODHI_LIBRARY_LOOKUP_PATH: &str = "BODHI_LIBRARY_LOOKUP_PATH";
 
@@ -85,6 +86,8 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
   fn auth_url(&self) -> String;
 
   fn auth_realm(&self) -> String;
+
+  fn log_level(&self) -> LogLevel;
 
   fn library_lookup_path(&self) -> String;
 
@@ -250,6 +253,14 @@ impl EnvService for DefaultEnvService {
 
   fn auth_realm(&self) -> String {
     self.auth_realm.clone()
+  }
+
+  fn log_level(&self) -> LogLevel {
+    self
+      .env_wrapper
+      .var(BODHI_LOG_LEVEL)
+      .map(|value| LogLevel::try_from(value.as_str()).unwrap_or(LogLevel::Warn))
+      .unwrap_or(LogLevel::Warn)
   }
 
   fn library_lookup_path(&self) -> String {
