@@ -1,6 +1,6 @@
 use axum::Router;
 use include_dir::{include_dir, Dir};
-use objs::{AppError, ErrorType};
+use objs::{AppError, ErrorType, LogLevel};
 use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
 use services::AppService;
 use std::sync::{Arc, Mutex};
@@ -54,13 +54,14 @@ impl NativeCommand {
       .get_server_handle(self.service.clone(), static_router)
       .await?;
     let ui = self.ui;
+    let log_level: LogLevel = self.service.env_service().log_level();
 
     tauri::Builder::default()
       .setup(move |app| {
         if cfg!(debug_assertions) {
           app.handle().plugin(
             tauri_plugin_log::Builder::default()
-              .level(log::LevelFilter::Info)
+              .level(log_level)
               .build(),
           )?;
         }

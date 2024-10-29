@@ -16,10 +16,8 @@ use services::{
   DefaultAppService, DefaultEnvService, EnvService, HfHubService, KeycloakAuthService,
   KeyringSecretService, LocalDataService, MokaCacheService, SqliteSessionService,
 };
-use std::{env, path::Path, sync::Arc};
+use std::{env, sync::Arc};
 use tokio::runtime::Builder;
-use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 pub fn main_internal(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build()?;
@@ -79,19 +77,18 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let service = Arc::new(app_service);
 
   let args = env::args().collect::<Vec<_>>();
-  if args.len() == 1 {
-    if env_service.is_native() {
-      if cfg!(feature = "native") {
-        // the app was launched executing the executable, launch the native app with system tray
-        #[cfg(feature = "native")]
-        native::NativeCommand::new(service.clone(), true)
-          .aexecute(Some(native::static_router()))
-          .await?;
-      } else {
-        Err(BodhiError::Unreachable(format!(
-          r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#
-        )))?;
-      }
+  if args.len() == 1 && env_service.is_native() {
+    if cfg!(feature = "native") {
+      // the app was launched executing the executable, launch the native app with system tray
+      #[cfg(feature = "native")]
+      native::NativeCommand::new(service.clone(), true)
+        .aexecute(Some(native::static_router()))
+        .await?;
+    } else {
+      Err(BodhiError::Unreachable(
+        r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#
+          .to_string(),
+      ))?;
     }
   }
 
@@ -152,16 +149,4 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
     }
   }
   Ok(())
-}
-
-pub fn setup_logs(logs_dir: &Path) -> Result<WorkerGuard> {
-  let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
-  let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-  let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-  let filter = filter.add_directive("hf_hub=error".parse().unwrap());
-  tracing_subscriber::registry()
-    .with(filter)
-    .with(fmt::layer().with_writer(non_blocking))
-    .init();
-  Ok(guard)
 }
