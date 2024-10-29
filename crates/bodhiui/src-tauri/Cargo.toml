@@ -39,6 +39,11 @@ derive-new = { workspace = true }
 # futures-util = { workspace = true }
 webbrowser = { workspace = true, optional = true }
 
+[dev-dependencies]
+rstest = { workspace = true }
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+
 [build-dependencies]
 tauri-build = { version = "2.0.1", features = [] }
 anyhow = { workspace = true }

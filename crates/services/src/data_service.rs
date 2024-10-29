@@ -27,6 +27,15 @@ pub struct DataFileNotFoundError {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
+  #[error("bodhi_home_not_exists")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  BodhiHomeNotExists(String),
+  #[error("hf_home_not_exists")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  HfHomeNotExists(String),
+  #[error("logs_dir_not_exists")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  LogsDirNotExists(String),
   #[error("dir_missing")]
   #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   DirMissing { dirname: String },
@@ -42,12 +51,6 @@ pub enum DataServiceError {
   IoFileDelete(#[from] IoFileDeleteError),
   #[error(transparent)]
   IoFileWrite(#[from] IoFileWriteError),
-  #[error("bodhi_home")]
-  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
-  BodhiHome,
-  #[error("hf_home")]
-  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
-  HfHome,
   #[error(transparent)]
   AliasNotExists(#[from] AliasNotFoundError),
   #[error(transparent)]
@@ -281,16 +284,15 @@ mod test {
   use std::sync::Arc;
 
   #[rstest]
+  #[case::bodhi_home(&DataServiceError::BodhiHomeNotExists("/tmp/bodhi".to_string()), "BODHI_HOME does not exists: /tmp/bodhi")]
+  #[case::hf_home(&DataServiceError::HfHomeNotExists("/tmp/hf".to_string()), "HF_HOME does not exists: /tmp/hf")]
+  #[case::logs_dir(&DataServiceError::LogsDirNotExists("/tmp/logs".to_string()), "BODHI_LOGS does not exists: /tmp/logs")]
   #[case::dir_missing(&DataServiceError::DirMissing { dirname: "test".to_string() },
   r#"directory 'test' not found in $BODHI_HOME.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
   #[case::not_found(&DataServiceError::DataFileNotFound(DataFileNotFoundError::new("test.txt".to_string(), "test".to_string())),
   r#"file 'test.txt' not found in $BODHI_HOME/test.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
-  #[case(&DataServiceError::BodhiHome,
-  "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
-  #[case(&DataServiceError::HfHome,
-  "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
   #[case(&AliasNotFoundError("testalias".to_string()), "alias 'testalias' not found in $BODHI_HOME/aliases")]
   #[case(&AliasExistsError("testalias".to_string()), "alias 'testalias' already exists in $BODHI_HOME/aliases")]
   fn test_data_service_error(

@@ -1,13 +1,13 @@
 use crate::{
-  DefaultEnvService, EnvService, EnvWrapper, BODHI_FRONTEND_URL, BODHI_HOME, BODHI_HOST,
-  BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
+  DefaultEnvService, EnvService, EnvWrapper, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
+  BODHI_HOST, BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
 use objs::{test_utils::temp_dir, AppType, EnvType};
 use rstest::fixture;
 use std::{
   collections::HashMap,
   env::VarError,
-  path::PathBuf,
+  path::{Path, PathBuf},
   sync::{Arc, RwLock},
 };
 use tempfile::TempDir;
@@ -28,12 +28,16 @@ pub fn hf_test_token_public() -> Option<String> {
 impl DefaultEnvService {
   pub fn test_new(env_wrapper: Arc<dyn EnvWrapper>) -> Self {
     Self::new(
+      PathBuf::from("/tmp/bodhi"),
+      PathBuf::from("/tmp/hf"),
+      PathBuf::from("/tmp/logs"),
       EnvType::Development,
       AppType::Container,
       "".to_string(),
       "".to_string(),
       env_wrapper,
     )
+    .unwrap()
   }
 }
 
@@ -69,6 +73,13 @@ impl EnvServiceStub {
 impl EnvService for EnvServiceStub {
   fn env_type(&self) -> EnvType {
     EnvType::Development
+  }
+
+  fn app_type(&self) -> AppType {
+    match self.envs.read().unwrap().get(BODHI_APP_TYPE) {
+      Some(app_type) => AppType::try_from(app_type.as_str()).unwrap_or(AppType::Container),
+      None => AppType::Container,
+    }
   }
 
   fn version(&self) -> String {
@@ -149,6 +160,12 @@ impl EnvService for EnvServiceStub {
   fn library_path(&self) -> Option<String> {
     Some("/tmp/library-path.dylib".to_string())
   }
+
+  fn set_library_path(&mut self, _library_path: String) {}
+
+  fn library_lookup_path(&self) -> String {
+    "/tmp".to_string()
+  }
 }
 
 #[derive(Debug)]
@@ -180,5 +197,9 @@ impl EnvWrapper for EnvWrapperStub {
       Some(path) => Some(PathBuf::from(path)),
       None => Some(self.temp_dir.path().to_path_buf()),
     }
+  }
+
+  fn load(&self, _path: &Path) {
+    //
   }
 }

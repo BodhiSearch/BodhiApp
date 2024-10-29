@@ -31,9 +31,10 @@ async fn test_live_chat_completions(
       ]
     }))
     .send()
-    .await?
-    .json::<Value>()
     .await?;
+  assert_eq!(200, response.status());
+  // assert_eq!("", response.text().await?);
+  let response = response.json::<Value>().await?;
   handle.shutdown().await?;
   assert_eq!(
     "One word: Tuesday.",

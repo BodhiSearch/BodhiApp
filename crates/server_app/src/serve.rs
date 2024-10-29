@@ -6,7 +6,7 @@ use objs::{impl_error_from, AppError};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContextRw, SharedContextRw};
 use services::AppService;
-use std::{path::PathBuf, sync::Arc};
+use std::{path::Path, sync::Arc};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -91,9 +91,12 @@ impl ServeCommand {
     let Some(library_path) = service.env_service().library_path() else {
       return Err(ContextError::LibraryPathMissing)?;
     };
-    let library_path = PathBuf::from(library_path);
+    let library_lookup_path = service.env_service().library_lookup_path();
+    let library_path = Path::new(&library_lookup_path).join(library_path);
     if !library_path.exists() {
-      return Err(ContextError::LibraryPathMissing)?;
+      return Err(ContextError::LibraryNotExists(
+        library_path.to_string_lossy().to_string(),
+      ))?;
     }
     let mut ctx = DefaultSharedContextRw::default();
     // ctx.disable_logging();

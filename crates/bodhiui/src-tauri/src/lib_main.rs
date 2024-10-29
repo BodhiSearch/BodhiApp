@@ -1,11 +1,7 @@
-use crate::{
-  app::{main_internal, setup_logs},
-  error::BodhiError,
-};
+use crate::app::{main_internal, setup_logs};
 use objs::{ApiError, AppType, OpenAIApiError};
-use services::{DefaultEnvService, DefaultEnvWrapper};
+use services::{DefaultEnvService, DefaultEnvWrapper, EnvService, InitService};
 use std::sync::Arc;
-use tracing_appender::non_blocking::WorkerGuard;
 
 #[cfg(feature = "production")]
 mod env_config {
@@ -34,29 +30,43 @@ pub const APP_TYPE: AppType = AppType::Native;
 pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
-  let mut env_service = DefaultEnvService::new(
+  let mut env_wrapper = DefaultEnvWrapper::default();
+  let (bodhi_home, hf_home, logs_dir) = match InitService::new(&mut env_wrapper, &ENV_TYPE).setup()
+  {
+    Ok(paths) => paths,
+    Err(err) => {
+      let api_error: ApiError = err.into();
+      eprintln!(
+        "fatal error, setting up app dirs, error: {}\nexiting...",
+        api_error
+      );
+      std::process::exit(1);
+    }
+  };
+  let env_service = match DefaultEnvService::new(
+    bodhi_home,
+    hf_home,
+    logs_dir,
     ENV_TYPE.clone(),
-    APP_TYPE,
+    APP_TYPE.clone(),
     AUTH_URL.to_string(),
     AUTH_REALM.to_string(),
-    Arc::new(DefaultEnvWrapper::default()),
-  );
-  if let Err(err) = env_service.setup_bodhi_home() {
-    eprintln!("fatal error: {}\nexiting...", err);
-    std::process::exit(1);
-  }
-  env_service.load_dotenv();
-  if let Err(err) = env_service.setup_hf_cache() {
-    eprintln!("fatal error: {}\nexiting...", err);
-    std::process::exit(1);
-  }
-  let _guard = match env_service.setup_logs_dir() {
-    Ok(logs_dir) => setup_logs(&logs_dir),
-    Err(err) => Err::<WorkerGuard, BodhiError>(err.into()),
+    Arc::new(env_wrapper),
+  ) {
+    Ok(env_service) => env_service,
+    Err(err) => {
+      let api_error: ApiError = err.into();
+      eprintln!(
+        "fatal error, setting up environment service, error: {}\nexiting...",
+        api_error
+      );
+      std::process::exit(1);
+    }
   };
-  if _guard.is_err() {
-    eprintln!("failed to configure logging, will be skipped");
-  };
+  // let _guard = setup_logs(&env_service.logs_dir());
+  // if _guard.is_err() {
+  //   eprintln!("failed to configure logging, will be skipped");
+  // };
   let result = main_internal(Arc::new(env_service));
   if let Err(err) = result {
     tracing::warn!(?err, "application exited with error");
@@ -67,4 +77,5 @@ pub fn _main() {
   } else {
     tracing::info!("application exited with success");
   }
+  // drop(_guard);
 }

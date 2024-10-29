@@ -1,18 +1,16 @@
 use dircpy::CopyBuilder;
 use mockall::predicate::eq;
-use objs::test_utils::setup_l10n;
-use objs::{AppType, EnvType, FluentLocalizationService};
+use objs::{test_utils::setup_l10n, AppType, EnvType, FluentLocalizationService};
 use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
   test_utils::EnvWrapperStub,
-  AppService, DefaultAppService, DefaultEnvService, HfHubService, KeycloakAuthService,
+  AppService, DefaultAppService, DefaultEnvService, HfHubService, InitService, KeycloakAuthService,
   LocalDataService, MockSecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
   KEY_APP_STATUS,
 };
 use sqlx::SqlitePool;
-use std::path::PathBuf;
 use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
 
@@ -37,9 +35,16 @@ pub fn tinyllama(
   copy_test_dir("tests/data/live", &cache_dir);
 
   let bodhi_home = cache_dir.join("bodhi");
+  let bodhi_logs = bodhi_home.join("logs");
   let hf_home = cache_dir.join("huggingface");
   let hf_cache = hf_home.join("hub");
-
+  let libs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+    .join("..")
+    .join("..")
+    .join("llamacpp-sys")
+    .join("libs")
+    .canonicalize()
+    .unwrap();
   let envs = HashMap::from([
     (
       String::from("HOME"),
@@ -50,20 +55,35 @@ pub fn tinyllama(
       bodhi_home.to_str().unwrap().to_string(),
     ),
     (
+      String::from("BODHI_LOGS"),
+      bodhi_logs.to_str().unwrap().to_string(),
+    ),
+    (
       String::from("HF_HOME"),
       hf_home.to_str().unwrap().to_string(),
     ),
+    (
+      String::from("BODHI_LIBRARY_LOOKUP_PATH"),
+      libs_dir.display().to_string(),
+    ),
   ]);
   let env_wrapper = EnvWrapperStub::new(envs);
+  InitService::new(&env_wrapper, &EnvType::Development)
+    .setup()
+    .unwrap();
   let env_service = DefaultEnvService::new(
+    bodhi_home.clone(),
+    bodhi_logs.clone(),
+    hf_home.clone(),
     EnvType::Development,
     AppType::Container,
     "".to_string(),
     "".to_string(),
     Arc::new(env_wrapper),
-  );
-  env_service.create_home_dirs(&bodhi_home).unwrap();
-  env_service.set_library_path(library_path().display().to_string());
+  )
+  .unwrap();
+  // TODO: fix this
+  // env_service.set_library_path(library_path().display().to_string());
   let data_service = LocalDataService::new(bodhi_home.clone());
   let hub_service = HfHubService::new(hf_cache, false, None);
   let auth_service = KeycloakAuthService::new(
@@ -97,22 +117,6 @@ pub fn tinyllama(
     time_service,
   );
   (temp_dir, Arc::new(service))
-}
-
-fn library_path() -> PathBuf {
-  let library_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-    .join("../../llamacpp-sys/libs")
-    .join(llamacpp_sys::BUILD_TARGET)
-    .join(
-      llamacpp_sys::BUILD_VARIANTS
-        .first()
-        .expect("no build variants"),
-    )
-    .join(llamacpp_sys::LIBRARY_NAME);
-  if !library_path.exists() {
-    panic!("Library path does not exist: {}", library_path.display())
-  }
-  library_path
 }
 
 #[fixture]
