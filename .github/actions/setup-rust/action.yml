@@ -28,19 +28,10 @@ runs:
           ~/.cargo/registry
           ~/.cargo/git
           ~/.cargo/bin
-    - name: Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          target
-        key: ${{ runner.os }}-cargo-target-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-target-
     - name: install Rust stable
       uses: dtolnay/rust-toolchain@stable
       with:
-        # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
-        targets: ${{ inputs.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || inputs.targets }}
+        targets: ${{ inputs.targets }}
         components: rustfmt,clippy,llvm-tools
     - uses: taiki-e/install-action@nextest
     - uses: taiki-e/install-action@cargo-llvm-cov
