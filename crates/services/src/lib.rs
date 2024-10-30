@@ -16,6 +16,7 @@ mod macros;
 mod objs;
 mod secret_service;
 mod session_service;
+mod setting_service;
 
 pub use app_service::*;
 pub use auth_service::*;
@@ -23,11 +24,12 @@ pub use cache_service::*;
 pub use data_service::*;
 pub use env_service::*;
 pub use env_wrapper::*;
-pub use init_service::*;
 pub use hub_service::*;
+pub use init_service::*;
 pub use objs::*;
 pub use secret_service::*;
 pub use session_service::*;
+pub use setting_service::*;
 
 pub mod l10n {
   use include_dir::Dir;

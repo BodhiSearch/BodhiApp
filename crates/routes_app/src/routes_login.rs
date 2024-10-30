@@ -26,6 +26,8 @@ use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 
+// TODO: use `impl_error_from!`
+
 pub async fn login_handler(
   headers: HeaderMap,
   session: Session,
@@ -52,12 +54,14 @@ pub async fn login_handler(
       let callback_url = env_service.login_callback_url();
       let client_id = app_ref_info.client_id;
       let state = generate_random_string(32);
+      // TODO: use `impl_error_from!`
       session
         .insert("oauth_state", &state)
         .await
         .map_err(LoginError::from)?;
 
       let (code_verifier, code_challenge) = generate_pkce();
+      // TODO: use `impl_error_from!`
       session
         .insert("pkce_verifier", &code_verifier)
         .await

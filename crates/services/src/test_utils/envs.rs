@@ -1,5 +1,5 @@
 use crate::{
-  DefaultEnvService, EnvService, EnvWrapper, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
+  EnvService, EnvServiceError, EnvWrapper, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
   BODHI_HOST, BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
 use objs::{test_utils::temp_dir, AppType, EnvType, LogLevel};
@@ -23,22 +23,6 @@ pub fn hf_test_token_allowed() -> Option<String> {
 pub fn hf_test_token_public() -> Option<String> {
   dotenv::from_filename(".env.test").ok();
   Some(std::env::var("HF_TEST_TOKEN_PUBLIC").unwrap())
-}
-
-impl DefaultEnvService {
-  pub fn test_new(env_wrapper: Arc<dyn EnvWrapper>) -> Self {
-    Self::new(
-      PathBuf::from("/tmp/bodhi"),
-      PathBuf::from("/tmp/hf"),
-      PathBuf::from("/tmp/logs"),
-      EnvType::Development,
-      AppType::Container,
-      "".to_string(),
-      "".to_string(),
-      env_wrapper,
-    )
-    .unwrap()
-  }
 }
 
 #[fixture]
@@ -157,11 +141,13 @@ impl EnvService for EnvServiceStub {
     }
   }
 
-  fn library_path(&self) -> Option<String> {
-    Some("/tmp/library-path.dylib".to_string())
+  fn library_path(&self) -> String {
+    "/tmp/library-path.dylib".to_string()
   }
 
-  fn set_library_path(&mut self, _library_path: String) {}
+  fn set_setting(&self, _key: &str, _value: &str) -> Result<(), EnvServiceError> {
+    Ok(())
+  }
 
   fn library_lookup_path(&self) -> String {
     "/tmp".to_string()

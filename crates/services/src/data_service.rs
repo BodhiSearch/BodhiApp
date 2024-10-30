@@ -27,15 +27,6 @@ pub struct DataFileNotFoundError {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
-  #[error("bodhi_home_not_exists")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
-  BodhiHomeNotExists(String),
-  #[error("hf_home_not_exists")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
-  HfHomeNotExists(String),
-  #[error("logs_dir_not_exists")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
-  LogsDirNotExists(String),
   #[error("dir_missing")]
   #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   DirMissing { dirname: String },
@@ -284,9 +275,6 @@ mod test {
   use std::sync::Arc;
 
   #[rstest]
-  #[case::bodhi_home(&DataServiceError::BodhiHomeNotExists("/tmp/bodhi".to_string()), "BODHI_HOME does not exists: /tmp/bodhi")]
-  #[case::hf_home(&DataServiceError::HfHomeNotExists("/tmp/hf".to_string()), "HF_HOME does not exists: /tmp/hf")]
-  #[case::logs_dir(&DataServiceError::LogsDirNotExists("/tmp/logs".to_string()), "BODHI_LOGS does not exists: /tmp/logs")]
   #[case::dir_missing(&DataServiceError::DirMissing { dirname: "test".to_string() },
   r#"directory 'test' not found in $BODHI_HOME.
 $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HOME."#)]
