@@ -13,7 +13,7 @@ members = [
   "crates/routes_app",
   "crates/routes_all",
   "crates/server_app",
-  "crates/bodhiui/src-tauri",
+  "crates/bodhiapp/src-tauri",
   "crates/integration-tests",
 ]
 resolver = "2"
@@ -33,7 +33,7 @@ routes_app = { path = "crates/routes_app" }
 routes_all = { path = "crates/routes_all" }
 server_app = { path = "crates/server_app" }
 # bodhi = { path = "app/bodhi" }
-bodhiui = { path = "crates/bodhiui/src-tauri" }
+bodhiapp = { path = "crates/bodhiapp/src-tauri" }
 
 anyhow = "1.0.81"
 anyhow_trace = "0.1.3"
