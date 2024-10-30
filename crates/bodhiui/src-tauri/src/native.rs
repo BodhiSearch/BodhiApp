@@ -45,9 +45,7 @@ impl NativeCommand {
   // TODO: modbile entry point as marked by default tauri app generator
   // #[cfg_attr(mobile, tauri::mobile_entry_point)]
   pub async fn aexecute(&self, static_router: Option<Router>) -> Result<()> {
-    let host = self.service.env_service().host();
-    let port = self.service.env_service().port();
-    let addr = format!("http://{host}:{port}/");
+    let addr = self.service.env_service().server_url();
     let addr_clone = addr.clone();
     let cmd = ServeCommand::ByParams { host, port };
     let server_handle = cmd

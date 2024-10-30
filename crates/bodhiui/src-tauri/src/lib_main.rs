@@ -1,6 +1,6 @@
 use crate::app::main_internal;
 use objs::{ApiError, AppType, OpenAIApiError};
-use services::{DefaultEnvService, DefaultEnvWrapper, InitService};
+use services::{DefaultEnvService, DefaultEnvWrapper, DefaultSettingService, InitService, SETTINGS_YAML};
 use std::sync::Arc;
 
 #[cfg(feature = "production")]
@@ -30,10 +30,9 @@ pub const APP_TYPE: AppType = AppType::Native;
 pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
-  let mut env_wrapper = DefaultEnvWrapper::default();
-  let (bodhi_home, hf_home, logs_dir) = match InitService::new(&mut env_wrapper, &ENV_TYPE).setup()
-  {
-    Ok(paths) => paths,
+  let env_wrapper = DefaultEnvWrapper::default();
+  let bodhi_home = match InitService::new(&env_wrapper, &ENV_TYPE).setup() {
+    Ok(bodhi_home) => bodhi_home,
     Err(err) => {
       let api_error: ApiError = err.into();
       eprintln!(
@@ -43,15 +42,15 @@ pub fn _main() {
       std::process::exit(1);
     }
   };
+  let settings_file = bodhi_home.join(SETTINGS_YAML);
+  let setting_service = DefaultSettingService::new(Arc::new(env_wrapper), settings_file);
   let env_service = match DefaultEnvService::new(
     bodhi_home,
-    hf_home,
-    logs_dir.clone(),
     ENV_TYPE.clone(),
     APP_TYPE.clone(),
     AUTH_URL.to_string(),
     AUTH_REALM.to_string(),
-    Arc::new(env_wrapper),
+    Arc::new(setting_service),
   ) {
     Ok(env_service) => env_service,
     Err(err) => {
@@ -84,7 +83,7 @@ pub fn _main() {
         .init();
       Ok(guard)
     }
-
+    let logs_dir = env_service.logs_dir();
     let result = setup_logs(&env_service, &logs_dir);
     if result.is_err() {
       eprintln!("failed to configure logging, will be skipped");

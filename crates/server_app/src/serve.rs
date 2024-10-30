@@ -88,9 +88,7 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let Some(library_path) = service.env_service().library_path() else {
-      return Err(ContextError::LibraryPathMissing)?;
-    };
+    let library_path = service.env_service().library_path();
     let library_lookup_path = service.env_service().library_lookup_path();
     let library_path = Path::new(&library_lookup_path).join(library_path);
     if !library_path.exists() {

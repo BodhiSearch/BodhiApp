@@ -6,9 +6,9 @@ use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
   test_utils::EnvWrapperStub,
-  AppService, DefaultAppService, DefaultEnvService, HfHubService, InitService, KeycloakAuthService,
-  LocalDataService, MockSecretService, MokaCacheService, SqliteSessionService, KEY_APP_AUTHZ,
-  KEY_APP_STATUS,
+  AppService, DefaultAppService, DefaultEnvService, DefaultSettingService, HfHubService,
+  InitService, KeycloakAuthService, LocalDataService, MockSecretService, MokaCacheService,
+  SqliteSessionService, KEY_APP_AUTHZ, KEY_APP_STATUS,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -71,15 +71,15 @@ pub fn tinyllama(
   InitService::new(&env_wrapper, &EnvType::Development)
     .setup()
     .unwrap();
+  let setting_service =
+    DefaultSettingService::new(Arc::new(env_wrapper), bodhi_home.join("settings.yaml"));
   let env_service = DefaultEnvService::new(
     bodhi_home.clone(),
-    bodhi_logs.clone(),
-    hf_home.clone(),
     EnvType::Development,
     AppType::Container,
     "".to_string(),
     "".to_string(),
-    Arc::new(env_wrapper),
+    Arc::new(setting_service),
   )
   .unwrap();
   // TODO: fix this
