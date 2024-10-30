@@ -1,20 +1,39 @@
 {
-  "name": "BodhiApp",
+  "name": "BodhiApp-Linux-x86_64",
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": "."
   },
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
+      "configureZshAsDefaultShell": true,
+      "installOhMyZsh": true,
+      "installOhMyZshConfig": true,
+      "upgradePackages": true,
       "username": "vscode",
-      "userUid": "1000",
-      "userGid": "1000",
-      "upgradePackages": true
+      "userUid": "automatic",
+      "userGid": "automatic"
     },
-    "ghcr.io/devcontainers/features/node:1": {},
-    "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/git-lfs:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/node:1": {
+      "nodeGypDependencies": true,
+      "installYarnUsingApt": true,
+      "version": "lts",
+      "pnpmVersion": "latest",
+      "nvmVersion": "latest"
+    },
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": true,
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/git-lfs:1": {
+      "autoPull": true,
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {
+      "installDirectlyFromGitHubRelease": true,
+      "version": "latest"
+    }
   },
   "customizations": {
     "vscode": {
@@ -44,7 +63,9 @@
   },
   "containerEnv": {
     "SHELL": "/bin/zsh",
-    "DISPLAY": "host.docker.internal:0"
+    "DISPLAY": "host.docker.internal:0",
+    "ARCH": "x86_64",
+    "TARGET": "x86_64-unknown-linux-gnu"
   },
   "remoteUser": "vscode",
   "workspaceFolder": "/workspaces/BodhiApp",
@@ -53,5 +74,5 @@
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,readonly",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/dotfiles,target=/home/vscode/dotfiles,type=bind"
   ],
-  "postCreateCommand": "git submodule update --init --recursive && .devcontainer/postCreateCommand.sh"
+  "postCreateCommand": "git submodule update --init --recursive && ./.devcontainer/postCreateCommand.sh"
 }
