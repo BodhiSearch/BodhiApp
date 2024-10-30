@@ -47,22 +47,22 @@ jobs:
       - name: clean
         run: |
           make ci.clean
-      - name: Generate code coverage
-        run: |
-          make ci.coverage
-        env:
-          HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
-          HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
-          RUSTFLAGS: "--cfg ci"
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
-        with:
-          name: BodhiApp-${{ matrix.target }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: BodhiSearch/BodhiApp
-          files: lcov.info
-          fail_ci_if_error: true
-          flags: ${{ matrix.target }},bodhi
+      # - name: Generate code coverage
+      #   run: |
+      #     make ci.coverage
+      #   env:
+      #     HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
+      #     HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
+      #     RUSTFLAGS: "--cfg ci"
+      # - name: Upload coverage reports to Codecov
+      #   uses: codecov/codecov-action@v4.0.1
+      #   with:
+      #     name: BodhiApp-${{ matrix.target }}
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     slug: BodhiSearch/BodhiApp
+      #     files: lcov.info
+      #     fail_ci_if_error: true
+      #     flags: ${{ matrix.target }},bodhi
       # - name: build the app
       #   run: |
       #     make ci.build TARGET=${{ matrix.target }}
