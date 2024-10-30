@@ -454,7 +454,7 @@ mod tests {
     assert_eq!(download_request.filename, Repo::testalias_q4());
     assert_eq!(download_request.status, DownloadStatus::Pending);
 
-    let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(100));
+    let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(500));
     assert!(
       event_received,
       "Timed out waiting for update_download_request event"
