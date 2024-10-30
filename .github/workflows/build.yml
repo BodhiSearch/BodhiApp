@@ -1,4 +1,4 @@
-name: App Build Flow
+name: Mac/Linux Build Flow
 
 on:
   push:
@@ -27,6 +27,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - name: envs
+        shell: bash
         run: |
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo RUN_URL=${RUN_URL} >> $GITHUB_ENV
