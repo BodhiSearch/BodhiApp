@@ -1,4 +1,4 @@
-use tokio::signal::{self, unix::SignalKind};
+use tokio::signal;
 
 pub async fn shutdown_signal() {
   let ctrl_c = async {
@@ -10,7 +10,7 @@ pub async fn shutdown_signal() {
 
   #[cfg(unix)]
   let terminate = async {
-    signal::unix::signal(SignalKind::terminate())
+    signal::unix::signal(signal::unix::SignalKind::terminate())
       .expect("failed to install signal handler")
       .recv()
       .await;
@@ -18,9 +18,16 @@ pub async fn shutdown_signal() {
   };
 
   #[cfg(not(unix))]
-  let terminate = std::future::pending::<()>();
+  let terminate = async {
+    signal::windows::ctrl_break()
+      .expect("failed to install Ctrl+Break handler")
+      .recv()
+      .await;
+    tracing::info!("received Ctrl+Break, stopping server");
+  };
+
   tokio::select! {
-      _ = ctrl_c => {},
-      _ = terminate => {},
+    _ = ctrl_c => {},
+    _ = terminate => {},
   }
 }
