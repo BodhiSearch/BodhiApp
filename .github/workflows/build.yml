@@ -16,10 +16,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # - platform: "macos-latest"
-          #   target: aarch64-apple-darwin
+          - platform: macos-latest
+            target: aarch64-apple-darwin
           - platform: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+          # - platform: macos-13
+          #   target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform }}
     steps:
       - name: envs
@@ -28,9 +32,6 @@ jobs:
           echo RUN_URL=${RUN_URL} >> $GITHUB_ENV
           echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
       - uses: actions/checkout@v4
-        # with:
-        #   lfs: true
-        # not running integration test on CI, disabling lfs
       - name: setup
         uses: ./.github/actions/setup
         with:
