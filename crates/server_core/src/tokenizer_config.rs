@@ -338,7 +338,7 @@ mod test {
 
   #[rstest]
   fn test_tokenizer_config_from_hub_file(temp_hf_home: TempDir) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
+    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache)
       .build()

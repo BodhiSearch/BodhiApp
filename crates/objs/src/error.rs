@@ -89,7 +89,7 @@ pub struct IoFileReadError {
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("io_file_write_failed")]
+#[error("io_file_write_error")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
 pub struct IoFileWriteError {
   #[source]

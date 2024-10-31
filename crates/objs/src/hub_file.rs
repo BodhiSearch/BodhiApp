@@ -72,7 +72,7 @@ mod test {
 
   #[rstest]
   fn test_local_model_file_from_pathbuf(temp_hf_home: TempDir) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
+    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let filepath = hf_cache
       .clone()
       .join("models--MyFactory--testalias-gguf")

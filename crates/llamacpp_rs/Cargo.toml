@@ -8,6 +8,7 @@ errmeta_derive = { workspace = true }
 objs = { workspace = true }
 
 derive_builder = { workspace = true }
+include_dir = { workspace = true }
 libc = { workspace = true }
 llamacpp-sys = { workspace = true }
 mockall = { workspace = true, optional = true }

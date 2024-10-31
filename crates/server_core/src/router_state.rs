@@ -146,7 +146,11 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let hf_cache = temp_dir.path().join("huggingface/hub").to_path_buf();
+    let hf_cache = temp_dir
+      .path()
+      .join("huggingface")
+      .join("hub")
+      .to_path_buf();
     let model_file = HubFileBuilder::testalias_exists()
       .hf_cache(hf_cache.clone())
       .build()?;
@@ -179,7 +183,11 @@ mod test {
   async fn test_router_state_chat_completions_returns_context_err(
     temp_dir: TempDir,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_dir.path().join("huggingface/hub").to_path_buf();
+    let hf_cache = temp_dir
+      .path()
+      .join("huggingface")
+      .join("hub")
+      .to_path_buf();
     let mut mock_ctx = MockSharedContextRw::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias-exists:instruct",

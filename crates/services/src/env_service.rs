@@ -3,11 +3,7 @@ use objs::{
   impl_error_from, AppError, AppType, EnvType, ErrorType, IoDirCreateError, IoError, LogLevel,
   SerdeYamlError,
 };
-use std::{
-  collections::HashMap,
-  path::{Path, PathBuf},
-  sync::Arc,
-};
+use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 pub static PROD_DB: &str = "bodhi.sqlite";
 pub static ALIASES_DIR: &str = "aliases";
@@ -57,9 +53,6 @@ pub enum EnvServiceError {
   #[error("bodhi_home_not_exists")]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
   BodhiHomeNotExists(String),
-  #[error("hf_home_not_found")]
-  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
-  HfHomeNotFound,
   #[error("invalid_setting_key")]
   #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   InvalidSettingKey(String),
@@ -194,12 +187,6 @@ impl DefaultEnvService {
         bodhi_home.display().to_string(),
       ));
     }
-    let env_file = bodhi_home.join(".env");
-    if env_file.exists() {
-      setting_service.load(&env_file);
-    }
-    DefaultEnvService::setup_hf_home(&setting_service)?;
-    DefaultEnvService::setup_logs_dir(&setting_service, &bodhi_home)?;
     Ok(DefaultEnvService {
       bodhi_home,
       env_type,
@@ -209,45 +196,6 @@ impl DefaultEnvService {
       auth_url,
       auth_realm,
     })
-  }
-
-  fn setup_hf_home(setting_service: &Arc<dyn SettingService>) -> Result<PathBuf, EnvServiceError> {
-    let hf_home = match setting_service.get_setting(HF_HOME) {
-      Some(hf_home) => PathBuf::from(hf_home),
-      None => match setting_service.home_dir() {
-        Some(home_dir) => {
-          let hf_home = home_dir.join(".cache").join("huggingface");
-          setting_service.set_setting(HF_HOME, &hf_home.display().to_string())?;
-          hf_home
-        }
-        None => return Err(EnvServiceError::HfHomeNotFound),
-      },
-    };
-    let hf_hub = hf_home.join("hub");
-    if !hf_hub.exists() {
-      std::fs::create_dir_all(&hf_hub)
-        .map_err(|err| IoDirCreateError::new(err, hf_hub.display().to_string()))?;
-    }
-    Ok(hf_home)
-  }
-
-  fn setup_logs_dir(
-    setting_service: &Arc<dyn SettingService>,
-    bodhi_home: &Path,
-  ) -> Result<PathBuf, EnvServiceError> {
-    let logs_dir = match setting_service.get_setting(BODHI_LOGS) {
-      Some(logs_dir) => PathBuf::from(logs_dir),
-      None => {
-        let logs_dir = bodhi_home.join(LOGS_DIR);
-        setting_service.set_setting(BODHI_LOGS, &logs_dir.display().to_string())?;
-        logs_dir
-      }
-    };
-    if !logs_dir.exists() {
-      std::fs::create_dir_all(&logs_dir)
-        .map_err(|err| IoDirCreateError::new(err, logs_dir.display().to_string()))?;
-    }
-    Ok(logs_dir)
   }
 }
 
@@ -348,7 +296,7 @@ impl EnvService for DefaultEnvService {
   }
 
   fn library_path(&self) -> String {
-    self.setting_service.get_setting_or_default(
+    let library_path = self.setting_service.get_setting_or_default(
       BODHI_LIBRARY_PATH,
       &format!(
         "{}/{}/{}",
@@ -356,7 +304,8 @@ impl EnvService for DefaultEnvService {
         llamacpp_sys::DEFAULT_VARIANT,
         llamacpp_sys::LIBRARY_NAME
       ),
-    )
+    );
+    library_path.replace('/', std::path::MAIN_SEPARATOR_STR)
   }
 
   fn set_setting(&self, key: &str, value: &str) -> Result<(), EnvServiceError> {
@@ -394,25 +343,18 @@ impl EnvService for DefaultEnvService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    DefaultEnvService, EnvServiceError, MockSettingService, SettingService, BODHI_LOGS, HF_HOME,
-    LOGS_DIR,
-  };
-  use mockall::predicate::eq;
+  use crate::EnvServiceError;
   use objs::AppError;
   use objs::{
-    test_utils::{assert_error_message, setup_l10n, temp_dir},
+    test_utils::{assert_error_message, setup_l10n},
     FluentLocalizationService,
   };
   use rstest::rstest;
   use std::sync::Arc;
-  use tempfile::TempDir;
 
   #[rstest]
   #[case(&EnvServiceError::BodhiHomeNotExists("/path/to/home".to_string()),
     "BODHI_HOME does not exists: /path/to/home")]
-  #[case(&EnvServiceError::HfHomeNotFound,
-    "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
   #[case(&EnvServiceError::InvalidSettingKey("invalid_key".to_string()),
     "Setting key is invalid: invalid_key")]
   #[case(&EnvServiceError::SettingsUpdateError("update failed".to_string()),
@@ -423,113 +365,5 @@ mod tests {
     #[case] message: &str,
   ) {
     assert_error_message(localization_service, &error.code(), error.args(), message);
-  }
-
-  #[rstest]
-  fn test_setup_hf_home_when_setting_exists(temp_dir: TempDir) -> anyhow::Result<()> {
-    let hf_home = temp_dir.path().join("hf_home");
-    let mut mock = MockSettingService::default();
-    mock
-      .expect_get_setting()
-      .with(eq(HF_HOME))
-      .times(1)
-      .return_const(Some(hf_home.display().to_string()));
-
-    let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let result = DefaultEnvService::setup_hf_home(&setting_service)?;
-
-    assert_eq!(result, hf_home);
-    assert!(hf_home.join("hub").exists());
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_setup_hf_home_when_setting_missing_but_home_dir_exists(
-    temp_dir: TempDir,
-  ) -> anyhow::Result<()> {
-    let home_dir = temp_dir.path().to_path_buf();
-    let expected_hf_home = home_dir.join(".cache").join("huggingface");
-    let mut mock = MockSettingService::default();
-
-    mock
-      .expect_get_setting()
-      .with(eq(HF_HOME))
-      .times(1)
-      .return_const(None);
-    mock.expect_home_dir().times(1).return_const(Some(home_dir));
-    mock
-      .expect_set_setting()
-      .with(eq(HF_HOME), eq(expected_hf_home.display().to_string()))
-      .times(1)
-      .return_once(|_, _| Ok(()));
-
-    let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let result = DefaultEnvService::setup_hf_home(&setting_service)?;
-
-    assert_eq!(result, expected_hf_home);
-    assert!(expected_hf_home.join("hub").exists());
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_setup_hf_home_when_setting_and_home_dir_missing() -> anyhow::Result<()> {
-    let mut mock = MockSettingService::default();
-    mock
-      .expect_get_setting()
-      .with(eq(HF_HOME))
-      .times(1)
-      .return_const(None);
-    mock.expect_home_dir().times(1).return_const(None);
-
-    let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let result = DefaultEnvService::setup_hf_home(&setting_service);
-
-    assert!(matches!(result, Err(EnvServiceError::HfHomeNotFound)));
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_setup_logs_dir_when_setting_exists(temp_dir: TempDir) -> anyhow::Result<()> {
-    let logs_dir = temp_dir.path().join("logs");
-    let mut mock = MockSettingService::default();
-    mock
-      .expect_get_setting()
-      .with(eq(BODHI_LOGS))
-      .times(1)
-      .return_const(Some(logs_dir.display().to_string()));
-
-    let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let bodhi_home = temp_dir.path().to_path_buf();
-    let result = DefaultEnvService::setup_logs_dir(&setting_service, &bodhi_home)?;
-
-    assert_eq!(result, logs_dir);
-    assert!(logs_dir.exists());
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_setup_logs_dir_when_setting_missing(temp_dir: TempDir) -> anyhow::Result<()> {
-    let bodhi_home = temp_dir.path().to_path_buf();
-    let expected_logs_dir = bodhi_home.join(LOGS_DIR);
-    let mut mock = MockSettingService::default();
-
-    mock
-      .expect_get_setting()
-      .with(eq(BODHI_LOGS))
-      .times(1)
-      .return_const(None);
-
-    // Mock set_setting for BODHI_LOGS
-    mock
-      .expect_set_setting()
-      .with(eq(BODHI_LOGS), eq(expected_logs_dir.display().to_string()))
-      .return_once(|_, _| Ok(()));
-
-    let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let result = DefaultEnvService::setup_logs_dir(&setting_service, &bodhi_home)?;
-
-    assert_eq!(result, expected_logs_dir);
-    assert!(expected_logs_dir.exists());
-    Ok(())
   }
 }

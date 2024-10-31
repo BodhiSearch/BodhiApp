@@ -187,7 +187,8 @@ impl AppServiceStub {
       .clone()
       .unwrap()
       .path()
-      .join("huggingface/hub")
+      .join("huggingface")
+      .join("hub")
   }
 }
 

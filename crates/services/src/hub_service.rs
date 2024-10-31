@@ -502,7 +502,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     #[case] snapshot: Option<String>,
     #[case] version: &str,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
+    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let service = build_hf_service(token, temp_hf_home);
     let local_model_file = service.download(
       &Repo::try_from("amir36/test-model-repo")?,

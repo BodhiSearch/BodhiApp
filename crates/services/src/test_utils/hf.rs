@@ -10,7 +10,11 @@ pub fn hf_service(#[default(None)] token: Option<String>, temp_hf_home: TempDir)
 }
 
 pub fn build_hf_service(token: Option<String>, temp_hf_home: TempDir) -> HfHubService {
-  HfHubService::new(temp_hf_home.path().join("huggingface/hub"), false, token)
+  HfHubService::new(
+    temp_hf_home.path().join("huggingface").join("hub"),
+    false,
+    token,
+  )
 }
 
 #[fixture]
@@ -19,7 +23,11 @@ pub fn test_hf_service(
   #[default(false)] allow_downloads: bool,
   temp_hf_home: TempDir,
 ) -> TestHfService {
-  let inner = HfHubService::new(temp_hf_home.path().join("huggingface/hub"), false, token);
+  let inner = HfHubService::new(
+    temp_hf_home.path().join("huggingface").join("hub"),
+    false,
+    token,
+  );
   TestHfService {
     _temp_dir: temp_hf_home,
     inner,
@@ -38,7 +46,7 @@ pub struct TestHfService {
 
 impl TestHfService {
   pub fn hf_cache(&self) -> PathBuf {
-    self._temp_dir.path().join("huggingface/hub")
+    self._temp_dir.path().join("huggingface").join("hub")
   }
 
   pub fn expect_download(
