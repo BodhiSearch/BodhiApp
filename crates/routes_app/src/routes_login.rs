@@ -928,7 +928,7 @@ mod tests {
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let mut record = Record {
-      id: id.clone(),
+      id: *id,
       data: maplit::hashmap! {
         "oauth_state".to_string() => Value::String("test_state".to_string()),
         "pkce_verifier".to_string() => Value::String("test_pkce_verifier".to_string()),

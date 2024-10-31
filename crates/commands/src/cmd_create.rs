@@ -155,15 +155,15 @@ mod test {
       update: true,
       oai_request_params: OAIRequestParamsBuilder::default()
         .frequency_penalty(1.0)
-        .max_tokens(2048 as u16)
+        .max_tokens(2048_u16)
         .build()
         .unwrap(),
       context_params: GptContextParamsBuilder::default()
         .n_ctx(2048)
         .n_keep(2048)
         .n_parallel(2)
-        .n_seed(42 as u32)
-        .n_threads(8 as u32)
+        .n_seed(42_u32)
+        .n_threads(8_u32)
         .build()
         .unwrap(),
     };
@@ -194,15 +194,15 @@ mod test {
       chat_template: ChatTemplate::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
       request_params: OAIRequestParamsBuilder::default()
         .frequency_penalty(1.0)
-        .max_tokens(2048 as u16)
+        .max_tokens(2048_u16)
         .build()
         .unwrap(),
       context_params: GptContextParamsBuilder::default()
         .n_ctx(2048)
         .n_keep(2048)
         .n_parallel(2)
-        .n_seed(42 as u32)
-        .n_threads(8 as u32)
+        .n_seed(42_u32)
+        .n_threads(8_u32)
         .build()
         .unwrap(),
     };

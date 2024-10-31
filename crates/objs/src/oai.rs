@@ -123,6 +123,8 @@ fn update_if_none<T: Clone>(self_param: &Option<T>, request_param: &mut Option<T
 
 #[cfg(test)]
 mod tests {
+  use async_openai::types::CreateChatCompletionRequestArgs;
+
   use super::*;
 
   #[test]
@@ -196,9 +198,11 @@ mod tests {
 
   #[test]
   fn test_oai_request_params_update_partial() {
-    let mut request = CreateChatCompletionRequest::default();
-    request.temperature = Some(0.5);
-    request.max_tokens = Some(50);
+    let mut request = CreateChatCompletionRequestArgs::default()
+      .temperature(0.5)
+      .max_tokens(50_u32)
+      .build()
+      .unwrap();
 
     let params = OAIRequestParams {
       frequency_penalty: Some(0.5),

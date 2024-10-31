@@ -70,14 +70,14 @@ impl InitService<'_> {
     if !bodhi_home.exists() {
       fs::create_dir_all(bodhi_home).map_err(|err| InitServiceError::DirCreate {
         source: err,
-        path: format!("$BODHI_HOME={}", bodhi_home.display().to_string()),
+        path: format!("$BODHI_HOME={}", bodhi_home.display()),
       })?;
     }
     let alias_home = bodhi_home.join(ALIASES_DIR);
     if !alias_home.exists() {
       fs::create_dir_all(&alias_home).map_err(|err| InitServiceError::DirCreate {
         source: err,
-        path: format!("$BODHI_HOME/aliases"),
+        path: "$BODHI_HOME/aliases".to_string(),
       })?;
     }
     let db_path = bodhi_home.join(PROD_DB);

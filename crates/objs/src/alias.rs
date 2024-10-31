@@ -189,7 +189,7 @@ chat_template: tinyllama
     #[case] serialized: &str,
     #[case] expected: Alias,
   ) -> anyhow::Result<()> {
-    let actual = serde_yaml::from_str(&serialized)?;
+    let actual = serde_yaml::from_str(serialized)?;
     assert_eq!(expected, actual);
     Ok(())
   }
