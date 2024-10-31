@@ -27,7 +27,6 @@ mod tests {
       if true {
         panic!("fail");
       }
-      ()
     })
     .await;
     assert!(handle.is_err());

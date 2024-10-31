@@ -61,10 +61,10 @@ pub struct ErrorWithSource {
 enum TestError {
   #[error("test error message")]
   #[error_meta(status = 500, code = "test_error_code", error_type = "test_error_type")]
-  TestError,
+  SomeIssue,
   #[error("error default code")]
   #[error_meta(status = 500, error_type = "test_error_default_code_type")]
-  TestErrorDefaultCode,
+  SomeIssueDefaultCode,
   #[error("error type asref str")]
   #[error_meta(status = 500, error_type = ErrorType::InternalServerError)]
   WithErrorTypeAsRefStr,
@@ -102,17 +102,17 @@ impl From<&TestError> for ErrorMetas {
 }
 
 #[rstest]
-#[case::default(TestError::TestError, ErrorMetas {
+#[case::default(TestError::SomeIssue, ErrorMetas {
   message: "test error message".to_string(),
   status: 500,
   code: "test_error_code".to_string(),
   error_type: "test_error_type".to_string(),
   args: HashMap::new(),
 })]
-#[case::default_code(TestError::TestErrorDefaultCode, ErrorMetas {
+#[case::default_code(TestError::SomeIssueDefaultCode, ErrorMetas {
   message: "error default code".to_string(),
   status: 500,
-  code: "test_error-test_error_default_code".to_string(),
+  code: "test_error-some_issue_default_code".to_string(),
   error_type: "test_error_default_code_type".to_string(),
   args: HashMap::new(),
 })]

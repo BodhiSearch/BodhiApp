@@ -862,7 +862,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       Some(SNAPSHOT_MAIN.to_string()),
     );
     assert!(result.is_ok());
-    assert_eq!(false, result.unwrap());
+    assert!(!result.unwrap());
     Ok(())
   }
 

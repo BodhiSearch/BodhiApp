@@ -108,9 +108,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
             .aexecute(Some(native::static_router()))
             .await?;
         } else {
-          Err(BodhiError::Unreachable(format!(
-            r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#
-          )))?;
+          Err(BodhiError::Unreachable(r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#.to_string()))?;
         }
       } else {
         Err(BodhiError::NativeNotSupported)?;

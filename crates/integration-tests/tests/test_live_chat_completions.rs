@@ -84,9 +84,7 @@ async fn test_live_chat_completions_stream(
   let streams = response
     .lines()
     .filter_map(|line| {
-      if line.is_empty() {
-        None
-      } else if line == "data: [DONE]" {
+      if line.is_empty() || line == "data: [DONE]" {
         None
       } else if line.starts_with("data: ") {
         let value: Value = serde_json::from_str(line.strip_prefix("data: ").unwrap()).unwrap();
