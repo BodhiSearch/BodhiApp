@@ -6,10 +6,10 @@ pub mod test_utils;
 #[cfg(all(not(feature = "test-utils"), test))]
 pub mod test_utils;
 
-pub mod lib_main;
 mod app;
 mod convert;
 mod error;
+pub mod lib_main;
 
 pub mod l10n {
   use include_dir::Dir;

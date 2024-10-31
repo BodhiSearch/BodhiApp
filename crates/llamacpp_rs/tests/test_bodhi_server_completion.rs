@@ -4,7 +4,7 @@ use anyhow::Context;
 use async_openai::types::CreateChatCompletionResponse;
 use llamacpp_rs::{BodhiServerContext, ServerContext};
 use rstest::rstest;
-use utils::{chat_completion_request, bodhi_server_ctx, test_callback};
+use utils::{bodhi_server_ctx, chat_completion_request, test_callback};
 
 #[rstest]
 #[ignore]
