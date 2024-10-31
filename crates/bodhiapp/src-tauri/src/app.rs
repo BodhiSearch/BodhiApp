@@ -52,6 +52,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let localization_service = FluentLocalizationService::get_instance();
   localization_service
     .load_resource(objs::l10n::L10N_RESOURCES)?
+    .load_resource(llamacpp_rs::l10n::L10N_RESOURCES)?
     .load_resource(services::l10n::L10N_RESOURCES)?
     .load_resource(commands::l10n::L10N_RESOURCES)?
     .load_resource(server_core::l10n::L10N_RESOURCES)?

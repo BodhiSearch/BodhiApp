@@ -289,7 +289,7 @@ impl ModelLoadStrategy {
 mod test {
   use std::path::PathBuf;
 
-use crate::{
+  use crate::{
     shared_rw::{DefaultSharedContextRw, ModelLoadStrategy, SharedContextRw},
     test_utils::{mock_server_ctx, test_channel, BodhiServerFactoryStub},
     ServerContextFactory,
@@ -491,7 +491,7 @@ use crate::{
     mut mock_server_ctx: MockServerContext,
     temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
+    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let model_file = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
       .build()
@@ -532,7 +532,7 @@ use crate::{
     #[from(mock_server_ctx)] mut request_context: MockServerContext,
     temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface/hub");
+    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let loaded_model = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
       .build()

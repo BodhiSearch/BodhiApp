@@ -44,7 +44,5 @@ json_web_token_error-Unknown = authentication token is invalid, source: {$source
 item_not_found = item '{$id}' of type '{$item_type}' not found in db
 env_service_error-bodhi_home_not_exists = BODHI_HOME does not exists: {$var_0}
 env_service_error-settings_update_error = failed to update settings: {$var_0}
-env_service_error-hf_home_not_found = failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.
 env_service_error-invalid_setting_key = Setting key is invalid: {$var_0}
-init_service_error-bodhi_home_not_found = failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.
 setting_error-lock_error = concurrency error accessing settings: {$var_0}

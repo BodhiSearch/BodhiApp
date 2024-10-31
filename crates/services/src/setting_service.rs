@@ -31,6 +31,8 @@ type Result<T> = std::result::Result<T, SettingServiceError>;
 pub trait SettingService: std::fmt::Debug + Send + Sync {
   fn load(&self, path: &Path);
 
+  fn load_default_env(&self, bodhi_home: &Path);
+
   fn home_dir(&self) -> Option<PathBuf>;
 
   fn get_setting(&self, key: &str) -> Option<String>;
@@ -90,6 +92,13 @@ impl DefaultSettingService {
 impl SettingService for DefaultSettingService {
   fn load(&self, path: &Path) {
     self.env_wrapper.load(path);
+  }
+
+  fn load_default_env(&self, bodhi_home: &Path) {
+    let env_file = bodhi_home.join(".env");
+    if env_file.exists() {
+      self.load(&env_file);
+    }
   }
 
   fn home_dir(&self) -> Option<PathBuf> {

@@ -69,7 +69,7 @@ pub fn tinyllama(
   ]);
   let env_wrapper = EnvWrapperStub::new(envs);
   InitService::new(&env_wrapper, &EnvType::Development)
-    .setup()
+    .setup_bodhi_home()
     .unwrap();
   let setting_service =
     DefaultSettingService::new(Arc::new(env_wrapper), bodhi_home.join("settings.yaml"));
