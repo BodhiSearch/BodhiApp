@@ -38,6 +38,8 @@ jobs:
         with:
           GH_PAT: ${{ secrets.GH_PAT }}
           platform: ${{ matrix.platform }}
+          git-config: |
+            core.symlinks=true
       - name: setup-rust
         uses: ./.github/actions/setup-rust
         with:
