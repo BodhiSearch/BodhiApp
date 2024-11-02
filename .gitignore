@@ -1,4 +1,6 @@
-.vscode
+**/.vscode/**/*
+!/.vscode/keybindings-mac.json
+!/.vscode/keybindings-win.json
 .idea
 llama.log
 tmpserver
@@ -37,7 +39,6 @@ coverage.*/**
 
 # python
 .env
-.vscode
 .idea
 storage
 .python-version
