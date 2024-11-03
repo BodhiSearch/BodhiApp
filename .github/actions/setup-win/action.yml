@@ -9,16 +9,29 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Cache Chocolatey packages
+      uses: actions/cache@v3
+      id: choco-cache
+      with:
+        path: |
+          C:\Users\runneradmin\AppData\Local\Temp\chocolatey
+          C:\ProgramData\chocolatey
+        key: ${{ runner.os }}-choco-${{ hashFiles('.github/actions/setup-win/action.yml') }}
+        restore-keys: |
+          ${{ runner.os }}-choco-
+
     - name: Install Visual Studio Build Tools
       shell: pwsh
+      if: steps.choco-cache.outputs.cache-hit != 'true'
       run: |
         # Install VS Build Tools first
         choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended" -y
 
     - name: Install other build dependencies
       shell: pwsh
+      if: steps.choco-cache.outputs.cache-hit != 'true'
       run: |
-        choco install -y make cmake git python3
+        choco install -y make cmake git
 
     - name: Setup Python
       uses: actions/setup-python@v5
