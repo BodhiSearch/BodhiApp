@@ -4,8 +4,8 @@ inputs:
   platform:
     description: "Platform to build for"
     required: true
-  targets:
-    description: "Targets to build for"
+  target:
+    description: "Target to build for"
     required: false
     default: ""
 
@@ -31,19 +31,31 @@ runs:
     - name: install Rust stable
       uses: dtolnay/rust-toolchain@stable
       with:
-        targets: ${{ inputs.targets }}
+        targets: ${{ inputs.target }}
         components: rustfmt,clippy,llvm-tools
     - uses: taiki-e/install-action@nextest
     - uses: taiki-e/install-action@cargo-llvm-cov
     - name: Install Tauri CLI
-      shell: bash
+      shell: ${{ inputs.platform == 'windows-latest' && 'pwsh' || 'bash' }}
       run: |
-        if ! cargo tauri -V &> /dev/null; then
-          cargo install tauri-cli@^2.0.0
-        fi
+        if ($IsWindows) {
+          if (-not (Get-Command cargo-tauri -ErrorAction SilentlyContinue)) {
+            cargo install tauri-cli@^2.0.0
+          }
+        } else {
+          if ! cargo tauri -V &> /dev/null; then
+            cargo install tauri-cli@^2.0.0
+          fi
+        }
     - name: Install bindgen
-      shell: bash
+      shell: ${{ inputs.platform == 'windows-latest' && 'pwsh' || 'bash' }}
       run: |
-        if ! bindgen -V &> /dev/null; then
-          cargo install bindgen-cli
-        fi
+        if ($IsWindows) {
+          if (-not (Get-Command bindgen -ErrorAction SilentlyContinue)) {
+            cargo install bindgen-cli
+          }
+        } else {
+          if ! bindgen -V &> /dev/null; then
+            cargo install bindgen-cli
+          fi
+        }
