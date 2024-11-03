@@ -31,7 +31,14 @@ fn _main() -> anyhow::Result<()> {
 fn copy_libs() -> anyhow::Result<PathBuf> {
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
-  let llamacpp_sys = PathBuf::from(&project_dir).join("../../../llamacpp-sys/libs");
+  let llamacpp_sys = PathBuf::from(&project_dir)
+    .join("..")
+    .join("..")
+    .join("..")
+    .join("llamacpp-sys")
+    .join("libs")
+    .canonicalize()
+    .context("failed to canonicalize llamacpp-sys path")?;
   if !llamacpp_sys.exists() {
     bail!(
       "{} directory does not exist, did you forget to checkout the submodule?",
