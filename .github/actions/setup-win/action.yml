@@ -10,7 +10,7 @@ runs:
   using: composite
   steps:
     - name: Cache Chocolatey packages
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       id: choco-cache
       with:
         path: |
@@ -24,7 +24,6 @@ runs:
       shell: pwsh
       if: steps.choco-cache.outputs.cache-hit != 'true'
       run: |
-        # Install VS Build Tools first
         choco install visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended" -y
 
     - name: Install other build dependencies
@@ -33,16 +32,15 @@ runs:
       run: |
         choco install -y make cmake git
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-        cache: 'pip'
-
     - name: Enable symlinks
       shell: pwsh
       run: |
         git config --global core.symlinks true
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
     - name: Setup Rust
       uses: dtolnay/rust-toolchain@stable
