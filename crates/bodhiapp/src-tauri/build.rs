@@ -7,7 +7,11 @@ use std::{
   process::Command,
 };
 
-fn main() -> anyhow::Result<()> {
+fn main() {
+  _main().unwrap();
+}
+
+fn _main() -> anyhow::Result<()> {
   #[cfg(feature = "native")]
   tauri_build::build();
   let project_dir =
@@ -51,18 +55,33 @@ fn copy_libs() -> anyhow::Result<PathBuf> {
 }
 
 fn build_frontend(bodhiapp_dir: &Path) -> anyhow::Result<()> {
-  exec_command(
-    bodhiapp_dir,
-    "pnpm",
-    ["install"],
-    "error running `npm install` on bodhiapp",
-  )?;
-  exec_command(
-    bodhiapp_dir,
-    "pnpm",
-    ["run", "build"],
-    "error running `npm run build` on bodhiapp",
-  )?;
+  if cfg!(windows) {
+    exec_command(
+      bodhiapp_dir,
+      "pwsh",
+      ["-Command", "pnpm install"],
+      "error running `pnpm install` on bodhiapp",
+    )?;
+    exec_command(
+      bodhiapp_dir,
+      "pwsh",
+      ["-Command", "pnpm run build"],
+      "error running `pnpm run build` on bodhiapp",
+    )?;
+  } else {
+    exec_command(
+      bodhiapp_dir,
+      "pnpm",
+      ["install"],
+      "error running `pnpm install` on bodhiapp",
+    )?;
+    exec_command(
+      bodhiapp_dir,
+      "pnpm",
+      ["run", "build"],
+      "error running `pnpm run build` on bodhiapp",
+    )?;
+  }
   Ok(())
 }
 
@@ -86,13 +105,14 @@ where
   I: IntoIterator<Item = S>,
   S: AsRef<OsStr>,
 {
-  Command::new(cmd)
+  let status = Command::new(cmd)
     .current_dir(cwd)
     .args(args)
     .status()
-    .context(err_msg.to_string())?
-    .success()
-    .then_some(())
     .context(err_msg.to_string())?;
+
+  if !status.success() {
+    bail!(err_msg.to_string());
+  }
   Ok(())
 }
