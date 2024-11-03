@@ -2,13 +2,13 @@
 
 test:
 	cargo test
-	cd crates/bodhiapp && npm test -- --run
-	cd openai-pysdk-compat && poetry run pytest || true
+	powershell -Command "Push-Location crates/bodhiapp; npm test -- --run; Pop-Location"
+	powershell -Command "Push-Location openai-pysdk-compat; poetry run pytest; exit 0"
 
 format:
-	cd crates/bodhiapp && npm run format && npm run lint
+	powershell -Command "Push-Location crates/bodhiapp; npm run format; npm run lint; Pop-Location"
 	cargo fmt --all
-	cd openai-pysdk-compat && poetry run ruff format .
+	powershell -Command "Push-Location openai-pysdk-compat; poetry run ruff format .; Pop-Location"
 
 ci.clean:
 	@powershell -Command "$$CRATES='llamacpp-sys'; \
@@ -41,19 +41,19 @@ ci.update-version:
 	}"
 
 ci.build:
-	cd crates/bodhiapp/src-tauri && \
+	powershell -Command "Push-Location crates/bodhiapp/src-tauri; \
 	if ($$env:TARGET) { \
-		cargo tauri build --target $$env:TARGET --ci --config '{"tauri": {"updater": {"active": false}}}' \
+		cargo tauri build --target $$env:TARGET --ci --config '{\"tauri\": {\"updater\": {\"active\": false}}}'; \
 	} else { \
-		cargo tauri build --ci --config '{"tauri": {"updater": {"active": false}}}' \
-	}
+		cargo tauri build --ci --config '{\"tauri\": {\"updater\": {\"active\": false}}}'; \
+	}"
 
 ci.setup-vercel-ai:
-	cd vercel-ai && pnpm recursive install --frozen-lockfile
-	cd vercel-ai/packages/core && pnpm install --frozen-lockfile
-	cd vercel-ai && pnpm run build --filter=ai...
+	powershell -Command "Push-Location vercel-ai; pnpm recursive install --frozen-lockfile; \
+	Push-Location packages/core; pnpm install --frozen-lockfile; Pop-Location; \
+	pnpm run build --filter=ai...; Pop-Location"
 
 ci.app-pnpm:
-	cd crates/bodhiapp && pnpm install
+	powershell -Command "Push-Location crates/bodhiapp; pnpm install; Pop-Location"
 
 .PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.app-pnpm
