@@ -1,7 +1,6 @@
 use anyhow::{bail, Context};
 use fs_extra::dir::CopyOptions;
 use std::{
-  ffi::OsStr,
   fs,
   path::{Path, PathBuf},
   process::Command,
