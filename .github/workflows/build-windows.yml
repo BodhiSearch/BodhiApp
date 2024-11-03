@@ -1,0 +1,69 @@
+name: Windows Build Flow
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CI: true
+  RUST_BACKTRACE: 1
+
+jobs:
+  build-windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Set environment variables
+        shell: pwsh
+        run: |
+          $RUN_URL = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "RUN_URL=${RUN_URL}" >> $env:GITHUB_ENV
+          echo "TARGET=${{ matrix.target }}" >> $env:GITHUB_ENV
+      - name: Windows Setup
+        uses: ./.github/actions/setup-win
+        with:
+          GH_PAT: ${{ secrets.GH_PAT }}
+      - uses: actions/checkout@v4
+      - name: Setup Git with PAT
+        shell: pwsh
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
+
+      - name: Install Node dependencies
+        shell: pwsh
+        run: |
+          npm install
+
+      - name: Clean
+        shell: pwsh
+        run: |
+          make -f Makefile.win.mk ci.clean
+
+      - name: Generate code coverage
+        shell: pwsh
+        run: |
+          make -f Makefile.win.mk ci.coverage
+        env:
+          HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
+          HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
+          RUSTFLAGS: "--cfg ci"
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          name: BodhiApp-${{ matrix.target }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: BodhiSearch/BodhiApp
+          files: lcov.info
+          fail_ci_if_error: true
+          flags: ${{ matrix.target }},bodhi
