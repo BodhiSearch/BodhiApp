@@ -17,11 +17,11 @@ fn _main() -> anyhow::Result<()> {
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
   let bodhiapp_dir = fs::canonicalize(PathBuf::from(project_dir).join(".."))
-    .context("error canocilizing bodhiapp path")?;
+    .context("error canonicalizing bodhiapp path")?;
   if cfg!(debug_assertions) {
     // build only if non-production build, as `tauri_build::build()` is already doing the job
     println!("cargo:rerun-if-changed=../src");
-    build_frontend(&bodhiapp_dir)?;
+    build_frontend()?;
   }
   copy_frontend(&bodhiapp_dir)?;
   let llamacpp_sys_libs = copy_libs()?;
@@ -39,10 +39,8 @@ fn copy_libs() -> anyhow::Result<PathBuf> {
       llamacpp_sys.display()
     );
   }
-  let llamacpp_sys_libs =
-    fs::canonicalize(llamacpp_sys).context("error canocilizing llamacpp-sys path")?;
   let dest_dir = PathBuf::from(&project_dir).join("libs");
-  fs_extra::dir::copy(&llamacpp_sys_libs, &dest_dir, &{
+  fs_extra::dir::copy(&llamacpp_sys, &dest_dir, &{
     let mut options = CopyOptions::new();
     options.copy_inside = true;
     options.skip_exist = false;
@@ -51,50 +49,33 @@ fn copy_libs() -> anyhow::Result<PathBuf> {
     options
   })
   .context("failed to copy libs")?;
-  Ok(llamacpp_sys_libs)
+  Ok(llamacpp_sys.to_path_buf())
 }
 
-fn build_frontend(bodhiapp_dir: &Path) -> anyhow::Result<()> {
-  if cfg!(windows) {
-    // Convert path to a Windows-friendly format
-    let dir_str = bodhiapp_dir.to_string_lossy().replace('/', "\\");
-    exec_command(
-      bodhiapp_dir,
-      "pwsh",
-      [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        &format!("Set-Location '{}'; pnpm install", dir_str),
-      ],
-      "error running `pnpm install` on bodhiapp",
-    )?;
-    exec_command(
-      bodhiapp_dir,
-      "pwsh",
-      [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        &format!("Set-Location '{}'; pnpm run build", dir_str),
-      ],
-      "error running `pnpm run build` on bodhiapp",
-    )?;
+fn build_frontend() -> anyhow::Result<()> {
+  let mut makefile_args: Vec<&str> = get_makefile_args();
+  makefile_args.push("build_frontend");
+  let status = if cfg!(windows) {
+    Command::new("pwsh")
+      .args(["-Command", &format!("make {}", makefile_args.join(" "))])
+      .status()
   } else {
-    exec_command(
-      bodhiapp_dir,
-      "pnpm",
-      ["install"],
-      "error running `pnpm install` on bodhiapp",
-    )?;
-    exec_command(
-      bodhiapp_dir,
-      "pnpm",
-      ["run", "build"],
-      "error running `pnpm run build` on bodhiapp",
-    )?;
+    Command::new("make").args(&makefile_args).status()
+  }
+  .expect("failed to execute make command for clean");
+  if !status.success() {
+    let platform = if cfg!(windows) { "Windows" } else { "Linux" };
+    bail!("make command `build_frontend` failed on {platform}");
   }
   Ok(())
+}
+
+fn get_makefile_args() -> Vec<&'static str> {
+  if cfg!(windows) {
+    vec!["-f", "Makefile.win.mk"]
+  } else {
+    vec![]
+  }
 }
 
 fn copy_frontend(bodhiapp_dir: &Path) -> Result<(), anyhow::Error> {
@@ -109,27 +90,5 @@ fn copy_frontend(bodhiapp_dir: &Path) -> Result<(), anyhow::Error> {
     options
   })
   .context("Failed to copy directory to OUT_DIR")?;
-  Ok(())
-}
-
-fn exec_command<I, S>(cwd: &Path, cmd: &str, args: I, err_msg: &str) -> anyhow::Result<()>
-where
-  I: IntoIterator<Item = S>,
-  S: AsRef<OsStr>,
-{
-  let mut command = Command::new(cmd);
-  command.current_dir(cwd).args(args);
-
-  // Print the command being executed for debugging
-  if cfg!(windows) {
-    println!("Executing in directory: {}", cwd.display());
-    println!("Command: {:?} with args: {:?}", cmd, command.get_args().collect::<Vec<_>>());
-  }
-
-  let status = command.status().context(err_msg.to_string())?;
-
-  if !status.success() {
-    bail!(err_msg.to_string());
-  }
   Ok(())
 }
