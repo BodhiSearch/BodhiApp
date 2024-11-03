@@ -36,23 +36,3 @@ runs:
       shell: pwsh
       run: |
         git config --global core.symlinks true
-
-    - name: Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Setup Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        targets: x86_64-pc-windows-msvc
-
-    - name: Cache Rust dependencies
-      uses: Swatinem/rust-cache@v2
-      with:
-        shared-key: "windows-msvc"
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: lts/iron

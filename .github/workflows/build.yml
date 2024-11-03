@@ -44,6 +44,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
       - name: setup-node
         uses: ./.github/actions/setup-node
       - name: clean

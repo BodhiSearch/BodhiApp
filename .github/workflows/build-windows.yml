@@ -45,6 +45,12 @@ jobs:
         with:
           GH_PAT: ${{ secrets.GH_PAT }}
 
+      - name: setup-rust
+        uses: ./.github/actions/setup-rust
+        with:
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
+
       # - name: Clean
       #   shell: pwsh
       #   run: |
