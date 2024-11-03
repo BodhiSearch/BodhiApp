@@ -61,8 +61,7 @@ jobs:
 
       - name: Generate code coverage
         shell: pwsh
-        run: |
-          make -f Makefile.win.mk ci.coverage
+        run: make -f Makefile.win.mk ci.coverage
         env:
           HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
           HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
