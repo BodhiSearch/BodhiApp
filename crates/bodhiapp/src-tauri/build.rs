@@ -56,16 +56,28 @@ fn copy_libs() -> anyhow::Result<PathBuf> {
 
 fn build_frontend(bodhiapp_dir: &Path) -> anyhow::Result<()> {
   if cfg!(windows) {
+    // Convert path to a Windows-friendly format
+    let dir_str = bodhiapp_dir.to_string_lossy().replace('/', "\\");
     exec_command(
       bodhiapp_dir,
       "pwsh",
-      ["-Command", "pnpm install"],
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        &format!("Set-Location '{}'; pnpm install", dir_str),
+      ],
       "error running `pnpm install` on bodhiapp",
     )?;
     exec_command(
       bodhiapp_dir,
       "pwsh",
-      ["-Command", "pnpm run build"],
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        &format!("Set-Location '{}'; pnpm run build", dir_str),
+      ],
       "error running `pnpm run build` on bodhiapp",
     )?;
   } else {
@@ -105,11 +117,16 @@ where
   I: IntoIterator<Item = S>,
   S: AsRef<OsStr>,
 {
-  let status = Command::new(cmd)
-    .current_dir(cwd)
-    .args(args)
-    .status()
-    .context(err_msg.to_string())?;
+  let mut command = Command::new(cmd);
+  command.current_dir(cwd).args(args);
+
+  // Print the command being executed for debugging
+  if cfg!(windows) {
+    println!("Executing in directory: {}", cwd.display());
+    println!("Command: {:?} with args: {:?}", cmd, command.get_args().collect::<Vec<_>>());
+  }
+
+  let status = command.status().context(err_msg.to_string())?;
 
   if !status.success() {
     bail!(err_msg.to_string());
