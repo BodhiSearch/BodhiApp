@@ -55,17 +55,6 @@ runs:
         shared-key: "windows-msvc"
 
     - name: Setup Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
-        node-version: '18'
-        cache: 'npm'
-
-    - name: Cache Node modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          node_modules
-          */*/node_modules
-        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-node-
+        node-version: lts/iron
