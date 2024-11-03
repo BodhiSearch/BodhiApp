@@ -22,10 +22,10 @@ ci.clean:
 
 ci.coverage:
 	cargo llvm-cov clean
-	$(MAKE) -f Makefile.win.mk coverage
+	$(MAKE) -f Makefile.win.mk coverage SHELL=pwsh
 
 coverage:
-	@powershell -Command "$$CRATES=''; \
+	powershell -Command "$$CRATES=''; \
 	Get-ChildItem -Path crates/* -Directory | ForEach-Object { \
 		if ((Test-Path \"$$_/Cargo.toml\") -and ((Split-Path -Leaf $$_) -ne 'integration-tests')) { \
 			$$CRATES=\"$$CRATES -p $$(Split-Path -Leaf $$_)\"; \
