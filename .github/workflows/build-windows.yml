@@ -26,7 +26,6 @@ jobs:
           $RUN_URL = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "RUN_URL=${RUN_URL}" >> $env:GITHUB_ENV
           echo "TARGET=${{ matrix.target }}" >> $env:GITHUB_ENV
-
       - name: Enable symlinks
         shell: pwsh
         run: |
@@ -50,6 +49,10 @@ jobs:
         with:
           platform: ${{ matrix.platform }}
           target: ${{ matrix.target }}
+      - name: setup-node
+        uses: ./.github/actions/setup-node
+        with:
+          platform: ${{ matrix.platform }}
 
       # - name: Clean
       #   shell: pwsh

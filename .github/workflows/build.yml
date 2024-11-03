@@ -32,14 +32,16 @@ jobs:
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo RUN_URL=${RUN_URL} >> $GITHUB_ENV
           echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
+      - name: Enable symlinks
+        shell: bash
+        run: |
+          git config --global core.symlinks true
       - uses: actions/checkout@v4
       - name: setup
         uses: ./.github/actions/setup
         with:
           GH_PAT: ${{ secrets.GH_PAT }}
           platform: ${{ matrix.platform }}
-          git-config: |
-            core.symlinks=true
       - name: setup-rust
         uses: ./.github/actions/setup-rust
         with:
@@ -47,6 +49,8 @@ jobs:
           target: ${{ matrix.target }}
       - name: setup-node
         uses: ./.github/actions/setup-node
+        with:
+          platform: ${{ matrix.platform }}
       - name: clean
         shell: bash
         run: |
