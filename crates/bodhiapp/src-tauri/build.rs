@@ -36,15 +36,13 @@ fn copy_libs() -> anyhow::Result<PathBuf> {
     .join("..")
     .join("..")
     .join("llamacpp-sys")
-    .join("libs")
-    .canonicalize()
-    .context("failed to canonicalize llamacpp-sys path")?;
-  if !llamacpp_sys.exists() {
-    bail!(
-      "{} directory does not exist, did you forget to checkout the submodule?",
-      llamacpp_sys.display()
-    );
-  }
+    .join("libs");
+  // if !llamacpp_sys.exists() {
+  //   bail!(
+  //     "{} directory does not exist, did you forget to checkout the submodule?",
+  //     llamacpp_sys.display()
+  //   );
+  // }
   let dest_dir = PathBuf::from(&project_dir).join("libs");
   fs_extra::dir::copy(&llamacpp_sys, &dest_dir, &{
     let mut options = CopyOptions::new();
