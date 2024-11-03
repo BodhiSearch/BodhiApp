@@ -69,8 +69,3 @@ runs:
         key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-node-
-
-    - name: Install Node dependencies
-      shell: pwsh
-      run: |
-        npm install
