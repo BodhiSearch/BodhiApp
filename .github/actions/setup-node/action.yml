@@ -12,14 +12,22 @@ runs:
       with:
         version: 9
         run_install: false
+
     - name: setup node
       uses: actions/setup-node@v4
       with:
         node-version: lts/iron
-    - name: Get pnpm store directory
+
+    - name: Get pnpm store directory (Windows)
+      if: inputs.platform == 'windows-latest'
+      shell: pwsh
+      run: echo "STORE_PATH=$(pnpm store path --silent)" >> $env:GITHUB_ENV
+
+    - name: Get pnpm store directory (Unix)
+      if: inputs.platform != 'windows-latest'
       shell: bash
-      run: |
-        echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
     - uses: actions/cache@v4
       name: Setup pnpm cache
       with:
@@ -27,9 +35,23 @@ runs:
         key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
         restore-keys: |
           ${{ runner.os }}-pnpm-store-
-    - name: Setup Vercel AI
-      shell: bash
+
+    - name: Setup Vercel AI (Windows)
+      if: inputs.platform == 'windows-latest'
+      shell: pwsh
       run: make ci.setup-vercel-ai
-    - name: Install app pnpm dependencies
+
+    - name: Setup Vercel AI (Unix)
+      if: inputs.platform != 'windows-latest'
       shell: bash
+      run: make -f Makefile.win.mk ci.setup-vercel-ai
+
+    - name: Install app pnpm dependencies (Windows)
+      if: inputs.platform == 'windows-latest'
+      shell: pwsh
       run: make ci.app-pnpm
+
+    - name: Install app pnpm dependencies (Unix)
+      if: inputs.platform != 'windows-latest'
+      shell: bash
+      run: make -f Makefile.win.mk ci.app-pnpm

@@ -35,27 +35,31 @@ runs:
         components: rustfmt,clippy,llvm-tools
     - uses: taiki-e/install-action@nextest
     - uses: taiki-e/install-action@cargo-llvm-cov
-    - name: Install Tauri CLI
-      shell: ${{ inputs.platform == 'windows-latest' && 'pwsh' || 'bash' }}
+    - name: Install Tauri CLI (Windows)
+      if: inputs.platform == 'windows-latest'
+      shell: pwsh
       run: |
-        if ($IsWindows) {
-          if (-not (Get-Command cargo-tauri -ErrorAction SilentlyContinue)) {
-            cargo install tauri-cli@^2.0.0
-          }
-        } else {
-          if ! cargo tauri -V &> /dev/null; then
-            cargo install tauri-cli@^2.0.0
-          fi
+        if (-not (Get-Command cargo-tauri -ErrorAction SilentlyContinue)) {
+          cargo install tauri-cli@^2.0.0
         }
-    - name: Install bindgen
-      shell: ${{ inputs.platform == 'windows-latest' && 'pwsh' || 'bash' }}
+    - name: Install Tauri CLI (Unix)
+      if: inputs.platform != 'windows-latest'
+      shell: bash
       run: |
-        if ($IsWindows) {
-          if (-not (Get-Command bindgen -ErrorAction SilentlyContinue)) {
-            cargo install bindgen-cli
-          }
-        } else {
-          if ! bindgen -V &> /dev/null; then
-            cargo install bindgen-cli
-          fi
+        if ! command -v cargo-tauri > /dev/null 2>&1; then
+          cargo install tauri-cli@^2.0.0
+        fi
+    - name: Install bindgen (Windows)
+      if: inputs.platform == 'windows-latest'
+      shell: pwsh
+      run: |
+        if (-not (Get-Command bindgen -ErrorAction SilentlyContinue)) {
+          cargo install bindgen-cli
         }
+    - name: Install bindgen (Unix)
+      if: inputs.platform != 'windows-latest'
+      shell: bash
+      run: |
+        if ! command -v bindgen > /dev/null 2>&1; then
+          cargo install bindgen-cli
+        fi
