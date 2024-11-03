@@ -44,3 +44,8 @@ runs:
       with:
         node-version: '18'
         cache: 'npm'
+
+    - name: Install Node dependencies
+      shell: pwsh
+      run: |
+        npm install

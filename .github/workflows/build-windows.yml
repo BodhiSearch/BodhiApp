@@ -26,10 +26,11 @@ jobs:
           $RUN_URL = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "RUN_URL=${RUN_URL}" >> $env:GITHUB_ENV
           echo "TARGET=${{ matrix.target }}" >> $env:GITHUB_ENV
-      - name: Windows Setup
-        uses: ./.github/actions/setup-win
-        with:
-          GH_PAT: ${{ secrets.GH_PAT }}
+
+      - name: Enable symlinks
+        shell: pwsh
+        run: |
+          git config --global core.symlinks true
       - uses: actions/checkout@v4
       - name: Setup Git with PAT
         shell: pwsh
@@ -39,10 +40,10 @@ jobs:
           git submodule update --init --recursive --depth=1
           git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
 
-      - name: Install Node dependencies
-        shell: pwsh
-        run: |
-          npm install
+      - name: Windows Setup
+        uses: ./.github/actions/setup-win
+        with:
+          GH_PAT: ${{ secrets.GH_PAT }}
 
       - name: Clean
         shell: pwsh
