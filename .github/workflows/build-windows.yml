@@ -30,6 +30,8 @@ jobs:
         shell: pwsh
         run: |
           git config --global core.symlinks true
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@v4
       - name: Setup Git with PAT
         shell: pwsh

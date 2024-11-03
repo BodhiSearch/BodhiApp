@@ -76,5 +76,8 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "prettier": {
+    "endOfLine": "lf"
   }
 }
