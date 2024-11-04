@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-llamacpp-sys = { workspace = true }
+llamacpp_sys = { workspace = true }
 objs = { workspace = true }
 errmeta_derive = { workspace = true }
 

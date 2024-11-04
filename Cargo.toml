@@ -20,7 +20,7 @@ resolver = "2"
 exclude = ["crates/chatapp/bodhi"]
 
 [workspace.dependencies]
-llamacpp-sys = { path = "llamacpp-sys" }
+llamacpp_sys = { path = "llamacpp-sys" }
 llamacpp_rs = { path = "crates/llamacpp_rs" }
 errmeta_derive = { path = "crates/errmeta_derive" }
 objs = { path = "crates/objs" }
