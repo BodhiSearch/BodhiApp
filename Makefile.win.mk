@@ -11,22 +11,10 @@ format:
 	pwsh -Command "Push-Location openai-pysdk-compat; poetry run ruff format .; Pop-Location"
 
 ci.clean:
-	@pwsh -NoProfile -Command "Write-Host 'Getting package list...'; \
-		$${packages} = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages.name; \
-		$${cmd} = \"cargo clean $$($$packages | ForEach-Object { \"-p $$_\" })\"; \
-		Write-Host 'Executing command:' $$cmd; \
-		Invoke-Expression $$cmd"
+	@pwsh -NoProfile -File scripts/clean.win.ps1
 
 ci.coverage:
-	pwsh -NoProfile -Command "Write-Host 'Getting package list...'; \
-		$${packages} = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages | \
-			Where-Object { $$_.name -ne 'integration-tests' } | \
-			Select-Object -ExpandProperty name; \
-		Write-Host 'Packages to test:' $$packages; \
-		$${crates} = $$packages | ForEach-Object { \"-p $$_\".Trim() }; \
-		$${cmd} = \"cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$crates\"; \
-		Write-Host 'Executing command:' $$cmd; \
-		Invoke-Expression $$cmd"
+	pwsh -NoProfile -File scripts/coverage.win.ps1
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
