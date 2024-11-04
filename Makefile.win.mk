@@ -1,17 +1,17 @@
-# Windows-specific Makefile for PowerShell
+# Windows-specific Makefile for pwsh
 
 test:
 	cargo test
-	powershell -Command "Push-Location crates/bodhiapp; npm test -- --run; Pop-Location"
-	powershell -Command "Push-Location openai-pysdk-compat; poetry run pytest; exit 0"
+	pwsh -Command "Push-Location crates/bodhiapp; npm test -- --run; Pop-Location"
+	pwsh -Command "Push-Location openai-pysdk-compat; poetry run pytest; exit 0"
 
 format:
-	powershell -Command "Push-Location crates/bodhiapp; npm run format; npm run lint; Pop-Location"
+	pwsh -Command "Push-Location crates/bodhiapp; npm run format; npm run lint; Pop-Location"
 	cargo fmt --all
-	powershell -Command "Push-Location openai-pysdk-compat; poetry run ruff format .; Pop-Location"
+	pwsh -Command "Push-Location openai-pysdk-compat; poetry run ruff format .; Pop-Location"
 
 ci.clean:
-	@powershell -Command "$$CRATES='llamacpp-sys'; \
+	@pwsh -Command "$$CRATES='llamacpp-sys'; \
 	Get-ChildItem -Path crates/* -Directory | ForEach-Object { \
 		if (Test-Path \"$$_/Cargo.toml\") { \
 			$$CRATES=\"$$CRATES $$(Split-Path -Leaf $$_)\"; \
@@ -32,7 +32,7 @@ ci.coverage:
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
-	@powershell -Command "\
+	@pwsh -Command "\
 	Get-ChildItem -Path crates/*,crates/bodhiapp/src-tauri -Directory | ForEach-Object { \
 		$$cargoFile = Join-Path $$_ 'Cargo.toml'; \
 		if (Test-Path $$cargoFile) { \
@@ -41,7 +41,7 @@ ci.update-version:
 	}"
 
 ci.build:
-	powershell -Command "Push-Location crates/bodhiapp/src-tauri; \
+	pwsh -Command "Push-Location crates/bodhiapp/src-tauri; \
 	if ($$env:TARGET) { \
 		cargo tauri build --target $$env:TARGET --ci --config '{\"tauri\": {\"updater\": {\"active\": false}}}'; \
 	} else { \
@@ -49,11 +49,11 @@ ci.build:
 	}"
 
 ci.setup-vercel-ai:
-	powershell -Command "Push-Location vercel-ai; pnpm recursive install --frozen-lockfile; \
+	pwsh -Command "Push-Location vercel-ai; pnpm recursive install --frozen-lockfile; \
 	Push-Location packages/core; pnpm install --frozen-lockfile; Pop-Location; \
 	pnpm run build --filter=ai...; Pop-Location"
 
 ci.app-pnpm:
-	powershell -Command "Push-Location crates/bodhiapp; pnpm install; Pop-Location"
+	pwsh -Command "Push-Location crates/bodhiapp; pnpm install; Pop-Location"
 
 .PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.app-pnpm
