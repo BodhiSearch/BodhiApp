@@ -5,7 +5,7 @@ $sourcePath = Join-Path $projectRoot 'llamacpp-sys' 'libs'
 $destPath = Join-Path $PSScriptRoot '..' 'libs'
 
 # Convert to absolute paths
-$sourcePath = Resolve-Path -Path $sourcePath -ErrorAction SilentlyContinue
+$sourcePath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($sourcePath)
 $destPath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($destPath)
 
 Write-Host "Source path (absolute): $sourcePath"
