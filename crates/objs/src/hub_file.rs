@@ -1,13 +1,7 @@
 use crate::{ObjValidationError, Repo};
-use once_cell::sync::Lazy;
-use regex::Regex;
 use serde::Serialize;
 use std::fmt;
 use std::{fs, path::PathBuf};
-
-pub static REGEX_HF_REPO_FILE: Lazy<Regex> = Lazy::new(|| {
-  Regex::new(r"^(?P<hf_cache>.+)/models--(?P<username>[^/]+)--(?P<repo_name>[^/]+)/snapshots/(?P<snapshot>[^/]+)/(?P<filename>.*)$").unwrap()
-});
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord, Serialize, derive_new::new)]
 #[cfg_attr(any(test, feature = "test-utils"), derive(derive_builder::Builder))]
@@ -33,21 +27,60 @@ impl HubFile {
 impl TryFrom<PathBuf> for HubFile {
   type Error = ObjValidationError;
 
-  fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-    let path = value.display().to_string();
-    let caps = REGEX_HF_REPO_FILE
-      .captures(&path)
-      .ok_or_else(|| ObjValidationError::FilePatternMismatch(path.clone()))?;
-    let size = match fs::metadata(&value) {
-      Ok(metadata) => Some(metadata.len()),
-      Err(_) => None,
-    };
-    let repo = Repo::try_from(format!("{}/{}", &caps["username"], &caps["repo_name"]))?;
+  fn try_from(mut value: PathBuf) -> Result<Self, Self::Error> {
+    let path_str = value.display().to_string();
+    let size = fs::metadata(&value).ok().map(|metadata| metadata.len());
+    // Get filename
+    let filename = value
+      .file_name()
+      .and_then(|f| f.to_str())
+      .ok_or_else(|| ObjValidationError::FilePatternMismatch(path_str.clone()))?
+      .to_string();
+
+    // Get snapshot hash
+    value.pop(); // move to parent
+    let snapshot = value
+      .file_name()
+      .and_then(|f| f.to_str())
+      .ok_or_else(|| ObjValidationError::FilePatternMismatch(path_str.clone()))?
+      .to_string();
+
+    // Verify "snapshots" directory
+    value.pop();
+    if value
+      .file_name()
+      .and_then(|f| f.to_str())
+      .map_or(true, |name| name != "snapshots")
+    {
+      return Err(ObjValidationError::FilePatternMismatch(path_str));
+    }
+    value.pop();
+
+    // Extract repo info from models--username--repo_name format
+    let repo_dir = value
+      .file_name()
+      .and_then(|f| f.to_str())
+      .ok_or_else(|| ObjValidationError::FilePatternMismatch(path_str.clone()))?
+      .to_string();
+
+    // Store repo parts before moving value
+    let repo_parts: Vec<&str> = repo_dir.split("--").collect();
+    if repo_parts.len() != 3 || repo_parts[0] != "models" {
+      return Err(ObjValidationError::FilePatternMismatch(path_str));
+    }
+
+    // Get hf_cache (parent directory of the repo directory)
+    value.pop();
+    let hf_cache = value;
+
+    // Construct repo from username/repo_name
+    let repo = Repo::try_from(format!("{}/{}", repo_parts[1], repo_parts[2]))?;
+
     Ok(HubFile {
-      hf_cache: PathBuf::from(caps["hf_cache"].to_string()),
+      hf_cache,
       repo,
-      filename: caps["filename"].to_string(),
-      snapshot: caps["snapshot"].to_string(),
+      filename,
+      snapshot,
       size,
     })
   }
