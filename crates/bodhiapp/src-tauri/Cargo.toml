@@ -8,6 +8,7 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
+llamacpp-sys = { workspace = true }
 llamacpp_rs = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
