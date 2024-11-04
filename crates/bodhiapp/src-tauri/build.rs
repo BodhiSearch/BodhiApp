@@ -18,7 +18,7 @@ fn _main() -> anyhow::Result<()> {
   let bodhiapp_dir = fs::canonicalize(PathBuf::from(project_dir).join(".."))
     .context("error canonicalizing bodhiapp path")?;
   if cfg!(debug_assertions) {
-    // build only if non-production build, as `tauri_build::build()` is already doing the job
+    // build only if production build `tauri_build::build()` is already running npm run build, so only run if not production
     println!("cargo:rerun-if-changed=../src");
     run_make_command("build_frontend")?;
   }

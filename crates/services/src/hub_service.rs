@@ -694,9 +694,10 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     };
     let expected = hf_service
       .hf_cache()
-      .join(format!(
-        "models--amir36--test-gated-repo/snapshots/{sha}/tokenizer_config.json"
-      ))
+      .join("models--amir36--test-gated-repo")
+      .join("snapshots")
+      .join(sha)
+      .join("tokenizer_config.json")
       .display()
       .to_string();
     assert_eq!(expected, path.display().to_string());
