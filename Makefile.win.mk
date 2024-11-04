@@ -11,26 +11,19 @@ format:
 	pwsh -Command "Push-Location openai-pysdk-compat; poetry run ruff format .; Pop-Location"
 
 ci.clean:
-	@pwsh -Command "$$CRATES='llamacpp-sys'; \
-	Get-ChildItem -Path crates/* -Directory | ForEach-Object { \
-		if (Test-Path \"$$_/Cargo.toml\") { \
-			$$CRATES=\"$$CRATES $$(Split-Path -Leaf $$_)\"; \
-		} \
-	}; \
-	$$CRATES_ARRAY = $$CRATES -split ' '; \
-	cargo clean $$($$CRATES_ARRAY | ForEach-Object { \"-p $$_\" })"
+	@pwsh -Command "$$packages = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages.name; \
+	cargo clean $($$packages | ForEach-Object { \"-p $_\" })"
 
 ci.coverage:
-	pwsh -Command "cargo llvm-cov clean"
-	pwsh -Command "@\"
-		$$crates = '';
-		Get-ChildItem -Path crates/* -Directory | ForEach-Object {
-			if ((Test-Path \"$$_/Cargo.toml\") -and ((Split-Path -Leaf $$_) -ne 'integration-tests')) {
-				$$crates += \"-p $$(Split-Path -Leaf $$_) \"
-			}
-		};
-		cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$crates
-	\"@"
+	pwsh -Command "Write-Host 'Getting package list...'; \
+		$$packages = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages | \
+			Where-Object { $$_.name -ne 'integration-tests' } | \
+			Select-Object -ExpandProperty name; \
+		Write-Host 'Packages to test:' $$packages; \
+		$$crates = $$packages | ForEach-Object { \"-p $$_\".Trim() }; \
+		$$cmd = \"cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$crates\"; \
+		Write-Host 'Executing command:' $$cmd; \
+		Invoke-Expression $$cmd"
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
