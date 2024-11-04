@@ -1,7 +1,16 @@
 .PHONY: build_frontend copy_libs
 
 build_frontend:
-	pwsh -NoProfile -NonInteractive -Command "Set-Item env:PRETTIER_DISABLE '1'; Set-Location ..; pnpm install; pnpm run build"
+	pwsh -NoProfile -NonInteractive -Command " \
+		Set-Item env:PRETTIER_DISABLE '1'; \
+		Set-Location ..; \
+		if (Test-Path .next) { \
+			Write-Host 'Cleaning up .next directory...'; \
+			Remove-Item -Recurse -Force .next; \
+		}; \
+		pnpm install; \
+		pnpm run build \
+	"
 
 copy_libs:
 	pwsh -NoProfile -NonInteractive -Command " \

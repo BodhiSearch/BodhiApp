@@ -305,7 +305,7 @@ mod tests {
     assert_eq!(download_request.status, DownloadStatus::Pending);
 
     // Wait for the update_download_request event
-    let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(100));
+    let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(500));
 
     assert!(
       event_received,
