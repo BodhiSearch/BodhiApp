@@ -22,13 +22,15 @@ ci.clean:
 
 ci.coverage:
 	pwsh -Command "cargo llvm-cov clean"
-	pwsh -Command "$$CRATES=''; \
-	Get-ChildItem -Path crates/* -Directory | ForEach-Object { \
-		if ((Test-Path \"$$_/Cargo.toml\") -and ((Split-Path -Leaf $$_) -ne 'integration-tests')) { \
-			$$CRATES=\"$$CRATES -p $$(Split-Path -Leaf $$_)\"; \
-		} \
-	}; \
-	cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$CRATES"
+	pwsh -Command "@\"
+		$$crates = '';
+		Get-ChildItem -Path crates/* -Directory | ForEach-Object {
+			if ((Test-Path \"$$_/Cargo.toml\") -and ((Split-Path -Leaf $$_) -ne 'integration-tests')) {
+				$$crates += \"-p $$(Split-Path -Leaf $$_) \"
+			}
+		};
+		cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$crates
+	\"@"
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
