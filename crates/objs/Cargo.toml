@@ -14,6 +14,7 @@ ctor = { workspace = true, optional = true }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
 derive-new = { workspace = true }
+fs_extra = { workspace = true, optional = true }
 fluent = { workspace = true }
 hf-hub = { workspace = true }
 http-body-util = { workspace = true, optional = true }
@@ -43,6 +44,7 @@ anyhow_trace = { workspace = true }
 axum-extra = { workspace = true }
 ctor = { workspace = true }
 dircpy = { workspace = true }
+fs_extra = { workspace = true }
 futures = { workspace = true }
 http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["full"] }
@@ -57,4 +59,12 @@ unic-langid = { workspace = true }
 
 
 [features]
-test-utils = ["rstest", "tempfile", "dircpy", "tracing-subscriber", "ctor", "http-body-util"]
+test-utils = [
+  "rstest",
+  "tempfile",
+  "dircpy",
+  "tracing-subscriber",
+  "ctor",
+  "http-body-util",
+  "fs_extra",
+]
