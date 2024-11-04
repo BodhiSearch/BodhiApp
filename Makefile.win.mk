@@ -11,17 +11,20 @@ format:
 	pwsh -Command "Push-Location openai-pysdk-compat; poetry run ruff format .; Pop-Location"
 
 ci.clean:
-	@pwsh -Command "$$packages = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages.name; \
-	cargo clean $($$packages | ForEach-Object { \"-p $_\" })"
+	@pwsh -NoProfile -Command "Write-Host 'Getting package list...'; \
+		$${packages} = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages.name; \
+		$${cmd} = \"cargo clean $$($$packages | ForEach-Object { \"-p $$_\" })\"; \
+		Write-Host 'Executing command:' $$cmd; \
+		Invoke-Expression $$cmd"
 
 ci.coverage:
-	pwsh -Command "Write-Host 'Getting package list...'; \
-		$$packages = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages | \
+	pwsh -NoProfile -Command "Write-Host 'Getting package list...'; \
+		$${packages} = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages | \
 			Where-Object { $$_.name -ne 'integration-tests' } | \
 			Select-Object -ExpandProperty name; \
 		Write-Host 'Packages to test:' $$packages; \
-		$$crates = $$packages | ForEach-Object { \"-p $$_\".Trim() }; \
-		$$cmd = \"cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$crates\"; \
+		$${crates} = $$packages | ForEach-Object { \"-p $$_\".Trim() }; \
+		$${cmd} = \"cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$crates\"; \
 		Write-Host 'Executing command:' $$cmd; \
 		Invoke-Expression $$cmd"
 
