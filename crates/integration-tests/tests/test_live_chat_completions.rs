@@ -195,9 +195,9 @@ async fn test_live_chat_completions_stream(
     .collect::<Vec<_>>();
   if std::env::var("CI").is_err() {
     assert_eq!(expected, actual);
-  }
-  let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
-  let last = streams.last().unwrap()["choices"].clone();
-  assert_eq!(expected, last);
+    let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
+    let last = streams.last().unwrap()["choices"].clone();
+    assert_eq!(expected, last);
+    }
   Ok(())
 }
