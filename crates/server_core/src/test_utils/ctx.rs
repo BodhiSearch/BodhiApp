@@ -1,5 +1,4 @@
 use std::path::PathBuf;
-
 use llamacpp_rs::MockServerContext;
 use mockall::predicate::{always, eq};
 use rstest::fixture;
