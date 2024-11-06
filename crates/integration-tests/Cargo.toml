@@ -7,8 +7,9 @@ edition = "2021"
 
 
 [dev-dependencies]
-objs = { workspace = true, features = ["test-utils"] }
 llamacpp_sys = { workspace = true }
+objs = { workspace = true, features = ["test-utils"] }
+llamacpp_rs = { workspace = true, features = ["test-utils"] }
 server_app = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
