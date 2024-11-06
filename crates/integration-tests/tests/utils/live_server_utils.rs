@@ -1,4 +1,4 @@
-use dircpy::CopyBuilder;
+use fs_extra::dir::{copy, CopyOptions};
 use mockall::predicate::eq;
 use objs::{test_utils::setup_l10n, AppType, EnvType, FluentLocalizationService};
 use rstest::fixture;
@@ -14,13 +14,18 @@ use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
 
+static COPY_OPTIONS: CopyOptions = CopyOptions {
+  overwrite: true,
+  skip_exist: false,
+  copy_inside: true,
+  content_only: false,
+  buffer_size: 64000,
+  depth: 0,
+};
+
 pub fn copy_test_dir(src: &str, dst_path: &Path) {
   let src_path = Path::new(env!("CARGO_MANIFEST_DIR")).join(src);
-  CopyBuilder::new(src_path, dst_path)
-    .overwrite(true)
-    .with_include_filter("")
-    .run()
-    .unwrap();
+  copy(src_path, dst_path, &COPY_OPTIONS).unwrap();
 }
 
 #[fixture]
@@ -32,11 +37,12 @@ pub fn tinyllama(
   let cache_dir = temp_dir.path().join(".cache");
   std::fs::create_dir_all(&cache_dir).unwrap();
 
-  copy_test_dir("tests/data/live", &cache_dir);
-
   let bodhi_home = cache_dir.join("bodhi");
-  let bodhi_logs = bodhi_home.join("logs");
   let hf_home = cache_dir.join("huggingface");
+  copy_test_dir("tests/data/live/bodhi", &bodhi_home);
+  copy_test_dir("tests/data/live/huggingface", &hf_home);
+
+  let bodhi_logs = bodhi_home.join("logs");
   let hf_cache = hf_home.join("hub");
   let libs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("..")

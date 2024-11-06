@@ -13,7 +13,7 @@ server_app = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
-dircpy = { workspace = true }
+fs_extra = { workspace = true }
 rstest = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
