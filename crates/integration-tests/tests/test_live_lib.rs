@@ -17,13 +17,13 @@ fn lib_path() -> PathBuf {
 }
 
 #[rstest]
-fn test_live_llama_server_load_library_for_current_platform(lib_path: PathBuf) {
+fn test_live_lib_llama_server_load_library_for_current_platform(lib_path: PathBuf) {
   let lib = unsafe { Library::new(&lib_path) };
   assert!(lib.is_ok(), "library loading failed with error: {:?}", lib);
 }
 
 #[rstest]
-fn test_live_llama_server_load_library_with_dynamic_bodhi_server(lib_path: PathBuf) {
+fn test_live_lib_llama_server_load_library_with_dynamic_bodhi_server(lib_path: PathBuf) {
   let server = DynamicBodhiServer::default();
   let result = server.load_library(&lib_path);
   assert!(
@@ -35,7 +35,7 @@ fn test_live_llama_server_load_library_with_dynamic_bodhi_server(lib_path: PathB
 
 #[rstest]
 #[tokio::test]
-async fn test_live_shared_rw_reload(lib_path: PathBuf) {
+async fn test_live_lib_shared_rw_reload(lib_path: PathBuf) {
   let shared_rw =
     DefaultSharedContextRw::new(true, Box::new(DefaultServerContextFactory), Some(lib_path));
   let result = shared_rw.reload(None).await;
