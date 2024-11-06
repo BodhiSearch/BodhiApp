@@ -42,9 +42,9 @@ tracing-subscriber = { workspace = true, features = [
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-commands = { workspace = true, features = ["test-utils"] }
-objs = { workspace = true, features = ["test-utils"] }
 llamacpp_rs = { workspace = true, features = ["test-utils"] }
+objs = { workspace = true, features = ["test-utils"] }
+commands = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
@@ -65,11 +65,14 @@ tower = { workspace = true, features = ["util"] }
 
 [features]
 test-utils = [
+  "llamacpp_rs/test-utils",
+  "objs/test-utils",
+  "commands/test-utils",
+  "services/test-utils",
   "anyhow",
   "tracing-subscriber",
   "mockall",
   "reqwest",
   "rstest",
   "http-body-util",
-  "commands/test-utils",
 ]
