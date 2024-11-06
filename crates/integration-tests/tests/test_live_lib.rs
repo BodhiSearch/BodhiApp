@@ -56,11 +56,34 @@ async fn test_live_lib_shared_rw_reload(lib_path: PathBuf) {
 
 #[rstest]
 #[tokio::test]
-async fn test_live_lib_shared_rw_reload_with_gpt_params(lib_path: PathBuf, tests_data: PathBuf) {
+async fn test_live_lib_shared_rw_reload_with_gpt_params_with_symlink(
+  lib_path: PathBuf,
+  tests_data: PathBuf,
+) {
   let shared_rw =
     DefaultSharedContextRw::new(true, Box::new(DefaultServerContextFactory), Some(lib_path));
   let gpt_params = CommonParams {
     model: tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61/llama-68m-chat-v1.q8_0.gguf").to_string_lossy().to_string(),
+    ..Default::default()
+  };
+  let result = shared_rw.reload(Some(gpt_params)).await;
+  assert!(
+    result.is_ok(),
+    "shared rw reload failed with error: {:?}",
+    result
+  );
+}
+
+#[rstest]
+#[tokio::test]
+async fn test_live_lib_shared_rw_reload_with_gpt_params_with_actual_file(
+  lib_path: PathBuf,
+  tests_data: PathBuf,
+) {
+  let shared_rw =
+    DefaultSharedContextRw::new(true, Box::new(DefaultServerContextFactory), Some(lib_path));
+  let gpt_params = CommonParams {
+    model: tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/blobs/cdd6bad08258f53c637c233309c3b41ccd91907359364aaa02e18df54c34b836").to_string_lossy().to_string(),
     ..Default::default()
   };
   let result = shared_rw.reload(Some(gpt_params)).await;
