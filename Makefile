@@ -16,13 +16,7 @@ ci.coverage:
 	$(MAKE) coverage
 
 coverage:
-	@CRATES=""; \
-	for dir in crates/*; do \
-		if [ -f $$dir/Cargo.toml ] && [ "$$(basename $$dir)" != "integration-tests" ]; then \
-			CRATES="$$CRATES -p $$(basename $$dir)"; \
-		fi \
-	done; \
-	cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info $$CRATES
+	cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"

@@ -2,7 +2,6 @@
 
 Write-Host 'Getting package list...'
 $packages = (cargo metadata --no-deps --format-version 1 | ConvertFrom-Json).packages |
-  Where-Object { $_.name -ne 'integration-tests' } |
   Select-Object -ExpandProperty name
 
 Write-Host 'Packages to test:' $packages
