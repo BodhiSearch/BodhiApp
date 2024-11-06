@@ -1,4 +1,6 @@
 mod utils;
+use std::env::VarError;
+
 use crate::utils::{live_server, TestServerHandle};
 use pretty_assertions::assert_eq;
 use serde_json::Value;
@@ -36,7 +38,7 @@ async fn test_live_chat_completions(
   // assert_eq!("", response.text().await?);
   let response = response.json::<Value>().await?;
   handle.shutdown().await?;
-  if std::env::var("CI").is_err() {
+  if let Err(VarError::NotPresent) = std::env::var("CI") {
     assert_eq!(
       r#"Monday was the day of the weekend, and then last Sunday it was Sunday. 
 
@@ -193,11 +195,12 @@ async fn test_live_chat_completions_stream(
     .iter()
     .map(|stream| stream["choices"][0]["delta"]["content"].as_str().unwrap())
     .collect::<Vec<_>>();
-  if std::env::var("CI").is_err() {
+  if let Err(VarError::NotPresent) = std::env::var("CI") {
     assert_eq!(expected, actual);
-    let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
+    let expected: Value =
+      serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
     let last = streams.last().unwrap()["choices"].clone();
     assert_eq!(expected, last);
-    }
+  }
   Ok(())
 }
