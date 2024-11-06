@@ -11,10 +11,12 @@ objs = { workspace = true, features = ["test-utils"] }
 llamacpp_sys = { workspace = true }
 server_app = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
+server_core = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 fs_extra = { workspace = true }
 rstest = { workspace = true }
+libloading = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
 serde_json = { workspace = true }

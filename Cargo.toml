@@ -73,6 +73,7 @@ indicatif = "0.17.8"
 jsonwebtoken = "9.3.0"
 keyring = { version = "3.2.0", default-features = false }
 libc = "0.2.161"
+libloading = "0.8.5"
 lazy_static = "1.4.0"
 log = "0.4"
 maplit = "1.0.2"
