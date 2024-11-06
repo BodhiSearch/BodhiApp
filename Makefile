@@ -9,13 +9,7 @@ format:
 	cd openai-pysdk-compat && poetry run ruff format .
 
 ci.clean:
-	@CRATES="llamacpp-sys"; \
-	for dir in crates/*; do \
-		if [ -f $$dir/Cargo.toml ]; then \
-			CRATES="$$CRATES $$(basename $$dir)"; \
-		fi \
-	done; \
-	cargo clean $$(echo $$CRATES | xargs -n1 echo -p)
+	cargo clean
 
 ci.coverage:
 	cargo llvm-cov clean
