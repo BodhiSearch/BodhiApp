@@ -1,8 +1,8 @@
 mod utils;
 use crate::utils::{live_server, TestServerHandle};
+use pretty_assertions::assert_eq;
 use serde_json::Value;
 
-#[cfg(not(ci))]
 #[rstest::rstest]
 #[awt]
 #[serial_test::serial(live)]
@@ -17,7 +17,7 @@ async fn test_live_chat_completions(
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
     .json(&serde_json::json!({
-      "model": "tinyllama:instruct",
+      "model": "llama68m",
       "seed": 42,
       "messages": [
         {
@@ -37,18 +37,22 @@ async fn test_live_chat_completions(
   let response = response.json::<Value>().await?;
   handle.shutdown().await?;
   assert_eq!(
-    "One word: Tuesday.",
+    r#"Monday was the day of the weekend, and then last Sunday it was Sunday. 
+
+Saturday: Saturday is Sunday
+The day of the weekend is Saturday,
+Monday: Saturday is Sunday
+Monday: Saturday is Sunday
+Monday: Saturday is Sunday
+Sunday: Saturday is Sunday
+Wednesday: Saturday is Sunday<|im_end|>"#,
     response["choices"][0]["message"]["content"]
   );
-  let expected: Value = serde_json::from_str(
-    r#"[{"finish_reason":"stop","index":0,"message":{"content":"One word: Tuesday.","role":"assistant"}}]"#,
-  )?;
-  assert_eq!(expected, response["choices"]);
-  assert_eq!("tinyllama:instruct", response["model"]);
+  assert_eq!("llama68m", response["model"]);
+  assert_eq!("stop", response["choices"][0]["finish_reason"]);
   Ok(())
 }
 
-#[cfg(not(ci))]
 #[rstest::rstest]
 #[awt]
 #[serial_test::serial(live)]
@@ -63,7 +67,7 @@ async fn test_live_chat_completions_stream(
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
     .json(&serde_json::json!({
-      "model": "tinyllama:instruct",
+      "model": "llama68m",
       "seed": 42,
       "stream": true,
       "messages": [
@@ -95,18 +99,101 @@ async fn test_live_chat_completions_stream(
     })
     .collect::<Vec<_>>();
   handle.shutdown().await?;
-  for (index, content) in ["One", " word", ":", " T", "ues", "day", "."]
+  let expected = [
+    "M",
+    "ond",
+    "ay",
+    " was",
+    " the",
+    " day",
+    " of",
+    " the",
+    " week",
+    "end",
+    ",",
+    " and",
+    " then",
+    " last",
+    " Sunday",
+    " it",
+    " was",
+    " Sunday",
+    ".",
+    " ",
+    "\n",
+    "\n",
+    "S",
+    "aturday",
+    ":",
+    " Saturday",
+    " is",
+    " Sunday",
+    "\n",
+    "The",
+    " day",
+    " of",
+    " the",
+    " week",
+    "end",
+    " is",
+    " Saturday",
+    ",",
+    "\n",
+    "M",
+    "ond",
+    "ay",
+    ":",
+    " Saturday",
+    " is",
+    " Sunday",
+    "\n",
+    "M",
+    "ond",
+    "ay",
+    ":",
+    " Saturday",
+    " is",
+    " Sunday",
+    "\n",
+    "M",
+    "ond",
+    "ay",
+    ":",
+    " Saturday",
+    " is",
+    " Sunday",
+    "\n",
+    "S",
+    "und",
+    "ay",
+    ":",
+    " Saturday",
+    " is",
+    " Sunday",
+    "\n",
+    "W",
+    "ed",
+    "nes",
+    "day",
+    ":",
+    " Saturday",
+    " is",
+    " Sunday",
+    "<",
+    "|",
+    "im",
+    "_",
+    "end",
+    "|",
+  ]
+  .as_slice();
+  let actual = streams[0..streams.len() - 2]
     .iter()
-    .enumerate()
-  {
-    // TODO: have index 0, 1, 2 ... from llama.cpp
-    let expected: Value = serde_json::from_str(&format!(
-      r#"[{{"delta":{{"content":"{}"}},"finish_reason":null,"index":0}}]"#,
-      content
-    ))?;
-    assert_eq!(expected, streams.get(index).unwrap()["choices"]);
-  }
+    .map(|stream| stream["choices"][0]["delta"]["content"].as_str().unwrap())
+    .collect::<Vec<_>>();
+  assert_eq!(expected, actual);
   let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
-  assert_eq!(expected, streams.get(7).unwrap()["choices"]);
+  let last = streams.last().unwrap()["choices"].clone();
+  assert_eq!(expected, last);
   Ok(())
 }
