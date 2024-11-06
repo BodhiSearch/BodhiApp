@@ -1,4 +1,4 @@
-# scripts/copy_libs.win.ps1
+# crates/bodhiapp/src-tauri/scripts/copy_libs.win.ps1
 
 $projectRoot = Join-Path $PSScriptRoot '..' '..' '..' '..'
 $sourcePath = Join-Path $projectRoot 'llamacpp-sys' 'libs'
