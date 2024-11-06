@@ -1,4 +1,4 @@
-use llamacpp_sys::BodhiServerError;
+use llamacpp_sys::LlamaCppSysError;
 use objs::ErrorType;
 use std::{ffi::NulError, str::Utf8Error};
 
@@ -15,8 +15,8 @@ pub enum LlamaCppError {
   #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   ContextNotInitialized,
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400, code = "bodhi_server_error", args_delegate = false)]
-  BodhiServerError(#[from] BodhiServerError),
+  #[error_meta(error_type = ErrorType::BadRequest, status = 400, code = "llama_cpp_error-llama_cpp_sys_error", args_delegate = false)]
+  LlamaCppSys(#[from] LlamaCppSysError),
   #[error("common_params_get_u32")]
   #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
   CommonParamsGetU32(u32),
@@ -74,7 +74,8 @@ pub type Result<T> = std::result::Result<T, LlamaCppError>;
 #[cfg(test)]
 mod tests {
   use crate::error::LlamaCppError;
-  use objs::test_utils::setup_l10n;
+  use llamacpp_sys::LlamaCppSysError;
+use objs::test_utils::setup_l10n;
   use objs::{test_utils::assert_error_message, AppError, FluentLocalizationService};
   use rstest::rstest;
   use std::ffi::CString;
@@ -93,6 +94,7 @@ mod tests {
   #[case::chat_completions(&LlamaCppError::BodhiServerChatCompletion("unknown error".to_string()), "bodhi_server_chat_completion: unknown error")]
   #[case::server_stop(&LlamaCppError::BodhiServerStop("unknown error".to_string()), "bodhi_server_stop: unknown error")]
   #[case::nul_error(&LlamaCppError::BodhiServerNullError(CString::new("nul\0error").unwrap_err()), "invalid cstring: nul byte found in provided data at position: 3")]
+  #[case::llamacppsys(&LlamaCppError::LlamaCppSys(LlamaCppSysError::LibraryNotLoaded), "llama_cpp_sys: Library not loaded")]
   fn test_error_messages_llama_cpp_rs(
     #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,

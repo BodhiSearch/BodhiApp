@@ -11,3 +11,4 @@ llama_cpp_error-bodhi_server_start = bodhi_server_start: {$var_0}
 llama_cpp_error-bodhi_server_chat_completion = bodhi_server_chat_completion: {$var_0}
 llama_cpp_error-bodhi_server_stop = bodhi_server_stop: {$var_0}
 bodhi_server_nul_error = invalid cstring: {$error}
+llama_cpp_error-llama_cpp_sys_error = llama_cpp_sys: {$error}
