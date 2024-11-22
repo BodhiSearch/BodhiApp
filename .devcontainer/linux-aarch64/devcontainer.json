@@ -56,5 +56,5 @@
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/vscode/.ssh,type=bind,readonly",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/dotfiles,target=/home/vscode/dotfiles,type=bind"
   ],
-  "postCreateCommand": "git submodule update --init --recursive && .devcontainer/postCreateCommand.sh"
+  "postCreateCommand": "git config --global --add safe.directory /workspaces/BodhiApp && git submodule update --init --recursive && .devcontainer/postCreateCommand.sh"
 }
