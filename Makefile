@@ -9,14 +9,16 @@ format:
 	cd openai-pysdk-compat && poetry run ruff format .
 
 ci.clean:
-	cargo clean
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
+	cargo clean $$PACKAGES
 
 ci.coverage:
 	cargo llvm-cov clean
 	$(MAKE) coverage
 
 coverage:
-	cargo llvm-cov nextest --no-fail-fast --all-features --lcov --output-path lcov.info
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | grep -v "llamacpp_sys" | sed 's/^/-p /'); \
+	cargo llvm-cov nextest --no-fail-fast --all-features $$PACKAGES --lcov --output-path lcov.info
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
