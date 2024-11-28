@@ -1,43 +1,12 @@
 name: setup-windows
 description: Sets up Windows build environment
 
-inputs:
-  GH_PAT:
-    description: Github token
-    required: true
-
 runs:
   using: composite
   steps:
-    - name: Cache Chocolatey packages
-      uses: actions/cache@v4
-      id: choco-cache
-      with:
-        path: |
-          C:\Users\runneradmin\AppData\Local\Temp\chocolatey
-          C:\ProgramData\chocolatey
-        key: ${{ runner.os }}-choco-${{ hashFiles('.github/actions/setup-win/action.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-choco-
-
-    - name: Install Visual Studio Build Tools
-      shell: pwsh
-      if: steps.choco-cache.outputs.cache-hit != 'true'
-      run: |
-        choco install visualstudio2022buildtools `
-          --package-parameters "--quiet --wait --norestart --nocache `
-          --add Microsoft.VisualStudio.Workload.VCTools `
-          --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-          --add Microsoft.VisualStudio.Component.Windows10SDK `
-          --includeRecommended" -y --force
-
     - name: Install other build dependencies
       shell: pwsh
       if: steps.choco-cache.outputs.cache-hit != 'true'
       run: |
-        choco install -y make cmake git
-
-    - name: Enable symlinks
-      shell: pwsh
-      run: |
-        git config --global core.symlinks true
+        choco install -y make --version=4.4.1
+        choco install -y curl --version=8.11.0
