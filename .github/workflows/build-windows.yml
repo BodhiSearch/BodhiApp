@@ -12,6 +12,7 @@ env:
 
 jobs:
   build-windows:
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -26,6 +27,8 @@ jobs:
           $RUN_URL = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "RUN_URL=${RUN_URL}" >> $env:GITHUB_ENV
           echo "TARGET=${{ matrix.target }}" >> $env:GITHUB_ENV
+          $USER_HOME = $HOME
+          echo "USER_HOME=${USER_HOME}" >> $env:GITHUB_ENV
       - name: Enable symlinks
         shell: pwsh
         run: |
@@ -41,11 +44,30 @@ jobs:
           git submodule update --init --recursive --depth=1
           git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
 
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        id: cache-hf
+        with:
+          path: ${{ env.USER_HOME }}\.cache\huggingface
+          key: hf-cache-Windows-llama2-7b-chat
+
+      - name: Check and Download Llama model
+        if: steps.cache-hf.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $HF_PATH = Join-Path $env:USERPROFILE ".cache\huggingface"
+          $SNAPSHOT_DIR = Join-Path $HF_PATH "hub\models--TheBloke--Llama-2-7B-Chat-GGUF\snapshots\191239b3e26b2882fb562ffccdd1cf0f65402adb"
+
+          New-Item -ItemType Directory -Force -Path $SNAPSHOT_DIR
+
+          $MODEL_PATH = Join-Path $SNAPSHOT_DIR "llama-2-7b-chat.Q4_K_M.gguf"
+          if (-not (Test-Path $MODEL_PATH)) {
+            $MODEL_URL = "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/191239b3e26b2882fb562ffccdd1cf0f65402adb/llama-2-7b-chat.Q4_K_M.gguf?download=true"
+            curl.exe -L $MODEL_URL -o $MODEL_PATH
+          }
+
       - name: Windows Setup
         uses: ./.github/actions/setup-win
-        with:
-          GH_PAT: ${{ secrets.GH_PAT }}
-
       - name: setup-rust
         uses: ./.github/actions/setup-rust
         with:

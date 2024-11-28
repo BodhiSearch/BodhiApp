@@ -12,6 +12,7 @@ env:
 
 jobs:
   build:
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -22,8 +23,8 @@ jobs:
             target: x86_64-unknown-linux-gnu
           # - platform: windows-latest
           #   target: x86_64-pc-windows-msvc
-          - platform: macos-13
-            target: x86_64-apple-darwin
+          # - platform: macos-13
+          #   target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform }}
     steps:
       - name: envs
@@ -36,12 +37,42 @@ jobs:
         shell: bash
         run: |
           git config --global core.symlinks true
+          git config --global core.autocrlf false
+          git config --global core.eol lf
       - uses: actions/checkout@v4
-      - name: setup
-        uses: ./.github/actions/setup
+      - name: Rewrite submodule URLs and checkout submodules
+        shell: bash
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
+
+      - name: Cache HuggingFace models
+        uses: actions/cache@v4
+        id: cache-hf
         with:
-          GH_PAT: ${{ secrets.GH_PAT }}
-          platform: ${{ matrix.platform }}
+          path: ~/.cache/huggingface
+          key: hf-cache-llama2-7b-chat
+          enableCrossOsArchive: true
+
+      - name: Check and Download Llama model
+        if: steps.cache-hf.outputs.cache-hit != 'true'
+        run: |
+          BLOB_DIR="$HOME/.cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/blobs"
+          SNAPSHOT_DIR="$HOME/.cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/191239b3e26b2882fb562ffccdd1cf0f65402adb"
+          BLOB_FILE="08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa"
+
+          mkdir -p "$BLOB_DIR"
+          mkdir -p "$SNAPSHOT_DIR"
+
+          if [ ! -f "$BLOB_DIR/$BLOB_FILE" ]; then
+            curl -L "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/191239b3e26b2882fb562ffccdd1cf0f65402adb/llama-2-7b-chat.Q4_K_M.gguf?download=true" -o "$BLOB_DIR/$BLOB_FILE"
+          fi
+
+          cd "$SNAPSHOT_DIR"
+          ln -sf "../../blobs/$BLOB_FILE" "llama-2-7b-chat.Q4_K_M.gguf"
+
       - name: setup-rust
         uses: ./.github/actions/setup-rust
         with:
