@@ -62,12 +62,14 @@ pub fn bodhi_server_ctx(common_params_default: CommonParams) -> BodhiServerConte
   let lib_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .join("../../llamacpp-sys/libs")
     .join(llamacpp_sys::BUILD_TARGET)
-    .join(
-      llamacpp_sys::BUILD_VARIANTS
-        .first()
-        .expect("no build variants found"),
-    )
-    .join("libbodhi-server.dylib");
+    .join(llamacpp_sys::DEFAULT_VARIANT)
+    .join(llamacpp_sys::LIBRARY_NAME);
+  assert!(
+    lib_path.exists(),
+    "library path does not exist: {}",
+    lib_path.display()
+  );
+  let lib_path = lib_path.canonicalize().unwrap();
   ctx
     .load_library(&lib_path)
     .expect("error while loading library");
