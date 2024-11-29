@@ -17,7 +17,7 @@ pub fn test_bodhi_server_completion(
   ctx.completions(
     &chat_completion_request,
     "",
-    Some(test_callback),
+    test_callback,
     &userdata as *const _ as *mut _,
   )?;
   let response: CreateChatCompletionResponse =

@@ -30,7 +30,7 @@ pub trait ServerContext: Send + Sync + std::fmt::Debug {
     &self,
     input: &str,
     chat_template: &str,
-    callback: Option<Callback>,
+    callback: Callback,
     userdata: *mut c_void,
   ) -> Result<()>;
 
@@ -139,13 +139,12 @@ impl ServerContext for BodhiServerContext {
     &self,
     input: &str,
     chat_template: &str,
-    callback: Option<Callback>,
+    callback: Callback,
     userdata: *mut c_void,
   ) -> Result<()> {
     let input_cstr = CString::new(input)?;
     let chat_template_cstr = CString::new(chat_template)?;
     let err = bodhi_error::default();
-    let callback = callback.ok_or(LlamaCppError::CallbackMissing)?;
     self.with_ctx(|ctx_ptr| {
       self.bodhi_server.bodhi_server_chat_completions(
         ctx_ptr,
