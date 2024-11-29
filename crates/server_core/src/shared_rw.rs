@@ -200,7 +200,7 @@ impl SharedContextRw for DefaultSharedContextRw {
           .completions(
             &input,
             "",
-            Some(callback_stream),
+            callback_stream,
             &callback_userdata as *const _ as *mut _,
           )?;
         Ok(())
@@ -219,7 +219,7 @@ impl SharedContextRw for DefaultSharedContextRw {
           .completions(
             &input,
             "",
-            Some(callback_stream),
+            callback_stream,
             &callback_userdata as *const _ as *mut _,
           )?;
         Ok(())
@@ -240,7 +240,7 @@ impl SharedContextRw for DefaultSharedContextRw {
           .completions(
             &input,
             "",
-            Some(callback_stream),
+            callback_stream,
             &callback_userdata as *const _ as *mut _,
           )?;
         Ok(())
