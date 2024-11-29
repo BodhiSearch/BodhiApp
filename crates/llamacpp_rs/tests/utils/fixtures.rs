@@ -34,7 +34,7 @@ pub fn chat_completion_request() -> String {
 #[fixture]
 pub fn common_params_default() -> CommonParams {
   let mut model_path = dirs::home_dir().expect("Home directory not found");
-  model_path.push(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa/llama-2-7b-chat.Q4_K_M.gguf");
+  model_path.push(".cache/huggingface/hub/models--TheBloke--Llama-2-7b-Chat-GGUF/snapshots/191239b3e26b2882fb562ffccdd1cf0f65402adb/llama-2-7b-chat.Q4_K_M.gguf");
   let model_path = model_path
     .canonicalize()
     .expect("error finding path for test LLM model file");
