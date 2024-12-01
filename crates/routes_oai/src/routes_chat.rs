@@ -37,14 +37,15 @@ pub async fn chat_completions_handler(
 ) -> Result<Response, ApiError> {
   let stream = request.stream.unwrap_or(false);
   let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
-  let handle = tokio::spawn(async move { state.chat_completions(request, tx).await });
+  let handle = state.chat_completions(request, tx).await;
+  if let Err(e) = handle {
+    tracing::warn!(?e, "error while processing reqeust");
+    return Err(e.into());
+  }
   if !stream {
     if let Some(message) = rx.recv().await {
       drop(rx);
       Ok(ChatCompletionsResponse::new(message).into_response())
-    } else if let Ok(Err(e)) = handle.await {
-      tracing::warn!(?e, "error while processing reqeust");
-      Err(e.into())
     } else {
       Err(InternalServerError::new("receiver stream abruptly closed".to_string()).into())
     }

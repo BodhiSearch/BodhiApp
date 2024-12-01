@@ -15,31 +15,45 @@ use validator::Validate;
 
 type Result<T> = std::result::Result<T, ContextError>;
 
+#[derive(Debug)]
+struct CallbackUserdata {
+  stream: bool,
+  sender: Sender<String>,
+  rx_state: Arc<AtomicBool>,
+}
+
+#[allow(clippy::unnecessary_cast)]
 extern "C" fn callback_stream(
   contents: *const c_char,
   size: usize,
   callback_userdata: *mut c_void,
 ) -> usize {
-  let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
-  let input_str = match std::str::from_utf8(slice) {
-    Ok(s) => s,
-    Err(_) => return 0,
-  }
-  .to_owned();
-  let userdata = unsafe { &mut *(callback_userdata as *mut (Sender<String>, Arc<AtomicBool>)) };
-  let sender = userdata.0.clone();
-  let receiver_status = userdata.1.clone();
-
-  if !receiver_status.load(Ordering::SeqCst) {
+  let userdata = unsafe { &mut *(callback_userdata as *mut CallbackUserdata) };
+  if !userdata.rx_state.load(Ordering::SeqCst) {
+    drop(unsafe { Box::from_raw(userdata) });
     return 0;
   }
 
+  let slice = unsafe { slice::from_raw_parts(contents as *const u8, size) };
+  let input_str = match std::str::from_utf8(slice) {
+    Ok(s) => s,
+    Err(_) => {
+      drop(unsafe { Box::from_raw(userdata) });
+      return 0;
+    }
+  }
+  .to_owned();
+
   tokio::spawn(async move {
-    if sender.send(input_str).await.is_err() {
+    let stream_done = input_str == "data: [DONE]\n\n";
+    if userdata.sender.send(input_str).await.is_err() {
       tracing::warn!(
         "error sending generated token using callback, receiver closed, closing sender"
       );
-      receiver_status.store(false, Ordering::SeqCst);
+      userdata.rx_state.store(false, Ordering::SeqCst);
+    }
+    if !userdata.stream || stream_done {
+      drop(unsafe { Box::from_raw(userdata) });
     }
   });
   size
@@ -179,7 +193,7 @@ impl SharedContextRw for DefaultSharedContextRw {
     alias: Alias,
     model_file: HubFile,
     tokenizer_file: HubFile,
-    userdata: Sender<String>,
+    sender: Sender<String>,
   ) -> crate::shared_rw::Result<()> {
     let lock = self.ctx.read().await;
     let ctx = lock.as_ref();
@@ -189,20 +203,21 @@ impl SharedContextRw for DefaultSharedContextRw {
     chat_template.validate()?;
     alias.request_params.update(&mut request);
     let prompt = chat_template.apply_chat_template(&request.messages)?;
+    let stream = request.stream.unwrap_or(false);
     let mut input_value = serde_json::to_value(request)?;
     input_value["prompt"] = serde_json::Value::String(prompt);
     let input = serde_json::to_string(&input_value)?;
-    let callback_userdata = (userdata, Arc::new(AtomicBool::new(true)));
+    let userdata = CallbackUserdata {
+      stream,
+      sender,
+      rx_state: Arc::new(AtomicBool::new(true)),
+    };
     match ModelLoadStrategy::choose(&loaded_model, &request_model) {
       ModelLoadStrategy::Continue => {
+        let userdata_ptr: *mut c_void = Box::into_raw(Box::new(userdata)) as *mut _;
         ctx
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .completions(
-            &input,
-            "",
-            callback_stream,
-            &callback_userdata as *const _ as *mut _,
-          )?;
+          .completions(&input, "", callback_stream, userdata_ptr)?;
         Ok(())
       }
       ModelLoadStrategy::DropAndLoad => {
@@ -214,14 +229,10 @@ impl SharedContextRw for DefaultSharedContextRw {
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
+        let userdata_ptr: *mut c_void = Box::into_raw(Box::new(userdata)) as *mut _;
         ctx
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .completions(
-            &input,
-            "",
-            callback_stream,
-            &callback_userdata as *const _ as *mut _,
-          )?;
+          .completions(&input, "", callback_stream, userdata_ptr)?;
         Ok(())
       }
       ModelLoadStrategy::Load => {
@@ -235,14 +246,10 @@ impl SharedContextRw for DefaultSharedContextRw {
         self.reload(Some(new_gpt_params)).await?;
         let lock = self.ctx.read().await;
         let ctx = lock.as_ref();
+        let userdata_ptr: *mut c_void = Box::into_raw(Box::new(userdata)) as *mut _;
         ctx
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
-          .completions(
-            &input,
-            "",
-            callback_stream,
-            &callback_userdata as *const _ as *mut _,
-          )?;
+          .completions(&input, "", callback_stream, userdata_ptr)?;
         Ok(())
       }
     }
@@ -294,27 +301,18 @@ mod test {
     test_utils::{mock_server_ctx, test_channel, BodhiServerFactoryStub},
     ServerContextFactory,
   };
-  use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
-  use llamacpp_rs::{CommonParams, CommonParamsBuilder, MockServerContext};
+  use llamacpp_rs::{
+    test_utils::llama2_7b_str, CommonParams, CommonParamsBuilder, MockServerContext,
+  };
   use mockall::predicate::{always, eq};
   use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder};
-  use rstest::{fixture, rstest};
+  use rstest::rstest;
   use serde_json::json;
   use serial_test::serial;
   use services::test_utils::{app_service_stub, AppServiceStub};
   use tempfile::TempDir;
-
-  #[fixture]
-  fn model_file() -> String {
-    let user_home = dirs::home_dir()
-      .ok_or_else(|| anyhow!("failed to get users home dir"))
-      .unwrap();
-    let model_file = user_home.join(".cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa/llama-2-7b-chat.Q4_K_M.gguf");
-    assert!(model_file.exists());
-    model_file.to_string_lossy().into_owned()
-  }
 
   #[ignore]
   #[tokio::test]
@@ -329,10 +327,10 @@ mod test {
   #[tokio::test]
   async fn test_shared_rw_new_reload(
     mock_server_ctx: MockServerContext,
-    model_file: String,
+    llama2_7b_str: String,
   ) -> anyhow::Result<()> {
     let gpt_params = CommonParams {
-      model: model_file,
+      model: llama2_7b_str,
       ..CommonParams::default()
     };
     let factory: Box<dyn ServerContextFactory> =
@@ -354,10 +352,10 @@ mod test {
   async fn test_shared_rw_reload_with_none(
     mock_server_ctx: MockServerContext,
     #[from(mock_server_ctx)] mock_server_ctx_2: MockServerContext,
-    model_file: String,
+    llama2_7b_str: String,
   ) -> anyhow::Result<()> {
     let gpt_params = CommonParams {
-      model: model_file.clone(),
+      model: llama2_7b_str.clone(),
       ..CommonParams::default()
     };
     let factory: Box<dyn ServerContextFactory> =
@@ -372,12 +370,12 @@ mod test {
     );
     ctx.reload(Some(gpt_params.clone())).await?;
     let model_params = ctx.get_common_params().await?.unwrap();
-    assert_eq!(model_file, model_params.model);
+    assert_eq!(llama2_7b_str, model_params.model);
     ctx.reload(None).await?;
     assert!(ctx.get_common_params().await?.is_none());
     ctx.reload(Some(gpt_params)).await?;
     let model_params = ctx.get_common_params().await?.unwrap();
-    assert_eq!(model_file, model_params.model);
+    assert_eq!(llama2_7b_str, model_params.model);
     ctx.try_stop().await?;
     Ok(())
   }
@@ -387,10 +385,10 @@ mod test {
   #[tokio::test]
   async fn test_shared_rw_try_stop(
     mock_server_ctx: MockServerContext,
-    model_file: String,
+    llama2_7b_str: String,
   ) -> anyhow::Result<()> {
     let gpt_params = CommonParams {
-      model: model_file,
+      model: llama2_7b_str,
       ..CommonParams::default()
     };
     let factory: Box<dyn ServerContextFactory> =

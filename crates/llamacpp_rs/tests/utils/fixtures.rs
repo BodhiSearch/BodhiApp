@@ -4,7 +4,7 @@ use async_openai::types::{
   ChatCompletionRequestMessage, ChatCompletionRequestSystemMessageArgs,
   ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs,
 };
-use llamacpp_rs::{BodhiServerContext, CommonParams, ServerContext};
+use llamacpp_rs::{test_utils::llama2_7b_str, BodhiServerContext, CommonParams, ServerContext};
 use rstest::fixture;
 
 #[fixture]
@@ -32,23 +32,12 @@ pub fn chat_completion_request() -> String {
 }
 
 #[fixture]
-pub fn common_params_default() -> CommonParams {
-  let mut model_path = dirs::home_dir().expect("Home directory not found");
-  model_path.push(".cache/huggingface/hub/models--TheBloke--Llama-2-7b-Chat-GGUF/snapshots/191239b3e26b2882fb562ffccdd1cf0f65402adb/llama-2-7b-chat.Q4_K_M.gguf");
-  let model_path = model_path
-    .canonicalize()
-    .expect("error finding path for test LLM model file");
-  if !model_path.exists() {
-    panic!("model file does not exists at: {}", model_path.display());
-  }
+pub fn common_params_default(llama2_7b_str: String) -> CommonParams {
   let params = CommonParams {
     seed: Some(42),
     n_predict: None,
     n_ctx: None,
-    model: model_path
-      .to_str()
-      .expect("error while unwrapping model_path")
-      .to_string(),
+    model: llama2_7b_str,
     embedding: Some(false),
     n_parallel: None,
     n_keep: None,
