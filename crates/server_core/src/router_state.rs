@@ -13,7 +13,7 @@ pub trait RouterState: std::fmt::Debug + Send + Sync {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    userdata: Sender<String>,
+    sender: Sender<String>,
   ) -> Result<()>;
 }
 
@@ -54,7 +54,7 @@ impl RouterState for DefaultRouterState {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    userdata: Sender<String>,
+    sender: Sender<String>,
   ) -> Result<()> {
     let alias = self
       .app_service
@@ -74,7 +74,7 @@ impl RouterState for DefaultRouterState {
     )?;
     self
       .ctx
-      .chat_completions(request, alias, model_file, tokenizer_file, userdata)
+      .chat_completions(request, alias, model_file, tokenizer_file, sender)
       .await?;
     Ok(())
   }

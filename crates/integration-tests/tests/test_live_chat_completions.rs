@@ -7,9 +7,9 @@ use serde_json::Value;
 
 #[rstest::rstest]
 #[awt]
-#[serial_test::serial(live)]
 #[tokio::test]
-async fn test_live_chat_completions(
+#[serial_test::serial(live)]
+async fn test_live_chat_completions_non_streamed(
   #[future] live_server: anyhow::Result<TestServerHandle>,
 ) -> anyhow::Result<()> {
   let TestServerHandle { host, port, handle } = live_server?;
