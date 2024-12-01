@@ -1,13 +1,14 @@
 mod utils;
-use std::env::VarError;
 
 use crate::utils::{live_server, TestServerHandle};
 use pretty_assertions::assert_eq;
 use serde_json::Value;
+use std::{env::VarError, time::Duration};
 
 #[rstest::rstest]
 #[awt]
 #[tokio::test]
+#[timeout(Duration::from_secs(5 * 60))]
 #[serial_test::serial(live)]
 async fn test_live_chat_completions_non_streamed(
   #[future] live_server: anyhow::Result<TestServerHandle>,
@@ -59,8 +60,9 @@ Wednesday: Saturday is Sunday<|im_end|>"#,
 
 #[rstest::rstest]
 #[awt]
-#[serial_test::serial(live)]
 #[tokio::test]
+#[timeout(Duration::from_secs(5 * 60))]
+#[serial_test::serial(live)]
 async fn test_live_chat_completions_stream(
   #[future] live_server: anyhow::Result<TestServerHandle>,
 ) -> anyhow::Result<()> {
