@@ -89,7 +89,11 @@ jobs:
       - name: Generate code coverage
         shell: bash
         run: |
-          make ci.coverage
+          if [ "${{ matrix.platform }}" = "macos-latest" ]; then
+            make ci.macos.coverage
+          else
+            make ci.coverage
+          fi
         env:
           HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
           HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
