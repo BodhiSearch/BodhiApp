@@ -44,7 +44,7 @@ async fn test_live_chat_completions_non_streamed(
   let response = response.json::<Value>().await?;
   handle.shutdown().await?;
 
-  let expected: &str = if cfg!(target_os = "macos") {
+  let expected = if cfg!(any(target_os = "macos", target_os = "windows")) {
     "  Tuesday"
   } else {
     "  Tuesday."
