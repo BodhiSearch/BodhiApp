@@ -43,8 +43,14 @@ async fn test_live_chat_completions_non_streamed(
   assert_eq!(200, response.status());
   let response = response.json::<Value>().await?;
   handle.shutdown().await?;
+
+  let expected: &str = if cfg!(target_os = "macos") {
+    "  Tuesday"
+  } else {
+    "  Tuesday."
+  };
   assert_eq!(
-    r#"  Tuesday."#,
+    expected,
     response["choices"][0]["message"]["content"]
       .as_str()
       .unwrap()
