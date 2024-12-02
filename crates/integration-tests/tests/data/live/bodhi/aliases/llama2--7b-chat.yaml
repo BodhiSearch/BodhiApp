@@ -1,0 +1,7 @@
+alias: llama2:7b-chat
+repo: TheBloke/Llama-2-7b-Chat-GGUF
+filename: llama-2-7b-chat.Q4_K_M.gguf
+snapshot: 191239b3e26b2882fb562ffccdd1cf0f65402adb
+features:
+- chat
+chat_template: llama2

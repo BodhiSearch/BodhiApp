@@ -10,7 +10,7 @@ use std::time::Duration;
 #[tokio::test]
 #[timeout(Duration::from_secs(5 * 60))]
 #[serial_test::serial(live)]
-async fn test_live_chat_completions_non_streamed(
+async fn test_live_chat_completions_stream(
   #[future] live_server: anyhow::Result<TestServerHandle>,
 ) -> anyhow::Result<()> {
   let TestServerHandle {
@@ -27,6 +27,7 @@ async fn test_live_chat_completions_non_streamed(
     .json(&serde_json::json!({
       "model": "llama2:7b-chat",
       "seed": 42,
+      "stream": true,
       "messages": [
         {
           "role": "system",
@@ -39,17 +40,31 @@ async fn test_live_chat_completions_non_streamed(
       ]
     }))
     .send()
+    .await?
+    .text()
     .await?;
-  assert_eq!(200, response.status());
-  let response = response.json::<Value>().await?;
+  let streams = response
+    .lines()
+    .filter_map(|line| {
+      if line.is_empty() || line == "data: [DONE]" {
+        None
+      } else if line.starts_with("data: ") {
+        let value: Value = serde_json::from_str(line.strip_prefix("data: ").unwrap()).unwrap();
+        Some(value)
+      } else {
+        None
+      }
+    })
+    .collect::<Vec<_>>();
   handle.shutdown().await?;
-  assert_eq!(
-    r#"  Tuesday."#,
-    response["choices"][0]["message"]["content"]
-      .as_str()
-      .unwrap()
-  );
-  assert_eq!("llama2:7b-chat", response["model"]);
-  assert_eq!("stop", response["choices"][0]["finish_reason"]);
+  let expected = [" ", " T", "ues", "day"].as_slice();
+  let actual = streams[0..streams.len() - 2]
+    .iter()
+    .map(|stream| stream["choices"][0]["delta"]["content"].as_str().unwrap())
+    .collect::<Vec<_>>();
+  assert_eq!(expected, actual);
+  let expected: Value = serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#)?;
+  let last = streams.last().unwrap()["choices"].clone();
+  assert_eq!(expected, last);
   Ok(())
 }
