@@ -30,9 +30,8 @@ jobs:
       - name: envs
         shell: bash
         run: |
-          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo RUN_URL=${RUN_URL} >> $GITHUB_ENV
-          echo TARGET=${{ matrix.target }} >> $GITHUB_ENV
+          echo "USER_HOME=$HOME" >> $GITHUB_ENV
+
       - name: Enable symlinks
         shell: bash
         run: |
@@ -52,26 +51,16 @@ jobs:
         uses: actions/cache@v4
         id: cache-hf
         with:
-          path: ~/.cache/huggingface
+          path: ${{ env.USER_HOME }}/.cache/huggingface
           key: hf-cache-llama2-7b-chat
           enableCrossOsArchive: true
 
       - name: Check and Download Llama model
         if: steps.cache-hf.outputs.cache-hit != 'true'
         run: |
-          BLOB_DIR="$HOME/.cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/blobs"
-          SNAPSHOT_DIR="$HOME/.cache/huggingface/hub/models--TheBloke--Llama-2-7B-Chat-GGUF/snapshots/191239b3e26b2882fb562ffccdd1cf0f65402adb"
-          BLOB_FILE="08a5566d61d7cb6b420c3e4387a39e0078e1f2fe5f055f3a03887385304d4bfa"
-
-          mkdir -p "$BLOB_DIR"
-          mkdir -p "$SNAPSHOT_DIR"
-
-          if [ ! -f "$BLOB_DIR/$BLOB_FILE" ]; then
-            curl -L "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/191239b3e26b2882fb562ffccdd1cf0f65402adb/llama-2-7b-chat.Q4_K_M.gguf?download=true" -o "$BLOB_DIR/$BLOB_FILE"
-          fi
-
-          cd "$SNAPSHOT_DIR"
-          ln -sf "../../blobs/$BLOB_FILE" "llama-2-7b-chat.Q4_K_M.gguf"
+          python -m pip install -U pip
+          pip install -U "huggingface_hub[cli]"
+          huggingface-cli download TheBloke/Llama-2-7b-Chat-GGUF llama-2-7b-chat.Q4_K_M.gguf
 
       - name: setup-rust
         uses: ./.github/actions/setup-rust

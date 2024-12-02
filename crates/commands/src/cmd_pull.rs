@@ -205,7 +205,7 @@ mod test {
   #[rstest]
   #[case(None)]
   #[case(Some("main".to_string()))]
-  #[case(Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()))]
+  #[case(Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string()))]
   #[anyhow_trace::anyhow_trace]
   fn test_pull_by_repo_file_only_pulls_the_model(
     #[case] snapshot: Option<String>,
