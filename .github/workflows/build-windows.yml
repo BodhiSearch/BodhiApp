@@ -94,10 +94,12 @@ jobs:
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
+        if: success()
+        continue-on-error: true
         with:
           name: BodhiApp-${{ matrix.target }}
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: BodhiSearch/BodhiApp
           files: lcov.info
-          fail_ci_if_error: true
+          fail_ci_if_error: false
           flags: ${{ matrix.target }},bodhi
