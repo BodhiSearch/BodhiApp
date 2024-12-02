@@ -754,7 +754,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     let result = service.find_local_file(&repo, filename, Some("non-main".to_string()));
     assert!(result.is_ok());
     let hub_file = result.unwrap();
-    let snapshot = "191239b3e26b2882fb562ffccdd1cf0f65402adb";
+    let snapshot = "9ca625120374ddaae21f067cb006517d14dc91a6";
     assert_eq!(
       HubFile::new(
         service.hf_cache(),
@@ -803,7 +803,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       service.hf_cache(),
       Repo::try_from("FakeFactory/fakemodel-gguf")?,
       "fakemodel.Q4_0.gguf".to_string(),
-      "191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string(),
+      "9ca625120374ddaae21f067cb006517d14dc91a6".to_string(),
       Some(25),
     );
     assert_eq!(6, models.len());

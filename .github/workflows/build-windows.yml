@@ -24,11 +24,7 @@ jobs:
       - name: Set environment variables
         shell: pwsh
         run: |
-          $RUN_URL = "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          echo "RUN_URL=${RUN_URL}" >> $env:GITHUB_ENV
-          echo "TARGET=${{ matrix.target }}" >> $env:GITHUB_ENV
-          $USER_HOME = $HOME
-          echo "USER_HOME=${USER_HOME}" >> $env:GITHUB_ENV
+          echo "USER_HOME=${HOME}" >> $env:GITHUB_ENV
       - name: Enable symlinks
         shell: pwsh
         run: |

@@ -293,11 +293,11 @@ For more information, try '--help'.
   #[case(vec![ "bodhi", "pull",
       "-r", "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
       "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-      "-s", "191239b3e26b2882fb562ffccdd1cf0f65402adb",
+      "-s", "b32046744d93031a26c8e925de2c8932c305f7b9",
     ],
     None,
     Some(String::from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")),
-    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")), Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()))]
+    Some(String::from("Meta-Llama-3-8B-Instruct.Q8_0.gguf")), Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string()))]
   fn test_cli_pull_valid(
     #[case] args: Vec<&str>,
     #[case] alias: Option<String>,

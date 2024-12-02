@@ -374,9 +374,9 @@ mod tests {
     filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
     snapshot: Some("main".to_string()),
   })]
-  #[case((None, Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()), Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()), Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string())) , PullCommand::ByRepoFile { repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
+  #[case((None, Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()), Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()), Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())) , PullCommand::ByRepoFile { repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
     filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-    snapshot: Some("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string()),
+    snapshot: Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string()),
   })]
   fn test_pull_command_try_from_command(
     #[case] input: (
