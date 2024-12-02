@@ -23,11 +23,6 @@ runs:
           librsvg2-dev \
           patchelf
     - uses: Swatinem/rust-cache@v2
-      with:
-        cache-directories: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          ~/.cargo/bin
     - name: install Rust 1.82.0
       uses: dtolnay/rust-toolchain@1.82.0
       with:
