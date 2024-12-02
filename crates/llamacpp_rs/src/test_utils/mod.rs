@@ -9,12 +9,7 @@ pub fn llama2_7b() -> PathBuf {
     "Model path does not exist: {}",
     model_path.display()
   );
-  model_path
-    .canonicalize()
-    .unwrap()
-    .to_str()
-    .unwrap()
-    .to_string()
+  model_path.canonicalize().unwrap()
 }
 
 #[fixture]

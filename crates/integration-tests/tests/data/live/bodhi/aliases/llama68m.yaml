@@ -1,7 +1,0 @@
-alias: llama68m
-repo: afrideva/Llama-68M-Chat-v1-GGUF
-filename: llama-68m-chat-v1.q8_0.gguf
-snapshot: 4bcbc666d2f0d2b04d06f046d6baccdab79eac61
-features:
-- chat
-chat_template: Felladrin/Llama-68M-Chat-v1

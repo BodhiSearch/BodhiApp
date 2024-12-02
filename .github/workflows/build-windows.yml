@@ -61,6 +61,12 @@ jobs:
             $MODEL_URL = "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/191239b3e26b2882fb562ffccdd1cf0f65402adb/llama-2-7b-chat.Q4_K_M.gguf?download=true"
             curl.exe -L $MODEL_URL -o $MODEL_PATH
           }
+      - name: Download tokenizer config
+        shell: pwsh
+        run: |
+          & python -m pip install -U pip
+          & python -m pip install -U huggingface_hub
+          & huggingface-cli download --revision a2cb7a712bb6e5e736ca7f8cd98167f81a0b5bd8 meta-llama/Llama-2-13b-chat-hf tokenizer_config.json
 
       - name: Windows Setup
         uses: ./.github/actions/setup-win

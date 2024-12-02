@@ -29,8 +29,7 @@ pub fn copy_test_dir(src: &str, dst_path: &Path) {
 }
 
 #[fixture]
-#[once]
-pub fn tinyllama(
+pub fn llama2_7b_setup(
   #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
 ) -> (TempDir, Arc<dyn AppService>) {
   let temp_dir = tempfile::tempdir().unwrap();
@@ -38,9 +37,8 @@ pub fn tinyllama(
   std::fs::create_dir_all(&cache_dir).unwrap();
 
   let bodhi_home = cache_dir.join("bodhi");
-  let hf_home = cache_dir.join("huggingface");
+  let hf_home = dirs::home_dir().unwrap().join(".cache").join("huggingface");
   copy_test_dir("tests/data/live/bodhi", &bodhi_home);
-  copy_test_dir("tests/data/live/huggingface", &hf_home);
 
   let bodhi_logs = bodhi_home.join("logs");
   let hf_cache = hf_home.join("hub");
@@ -128,11 +126,11 @@ pub fn tinyllama(
 #[fixture]
 #[awt]
 pub async fn live_server(
-  tinyllama: &(TempDir, Arc<dyn AppService>),
+  llama2_7b_setup: (TempDir, Arc<dyn AppService>),
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
   let port = rand::random::<u16>();
-  let (_temp_cache_dir, app_service) = tinyllama;
+  let (temp_cache_dir, app_service) = llama2_7b_setup;
   let serve_command = ServeCommand::ByParams {
     host: host.clone(),
     port,
@@ -141,10 +139,16 @@ pub async fn live_server(
     .get_server_handle(app_service.clone(), None)
     .await
     .unwrap();
-  Ok(TestServerHandle { host, port, handle })
+  Ok(TestServerHandle {
+    temp_cache_dir,
+    host,
+    port,
+    handle,
+  })
 }
 
 pub struct TestServerHandle {
+  pub temp_cache_dir: TempDir,
   pub host: String,
   pub port: u16,
   pub handle: ServerShutdownHandle,

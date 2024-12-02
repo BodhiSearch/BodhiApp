@@ -803,7 +803,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       service.hf_cache(),
       Repo::try_from("FakeFactory/fakemodel-gguf")?,
       "fakemodel.Q4_0.gguf".to_string(),
-      "9ca625120374ddaae21f067cb006517d14dc91a6".to_string(),
+      "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       Some(25),
     );
     assert_eq!(6, models.len());
