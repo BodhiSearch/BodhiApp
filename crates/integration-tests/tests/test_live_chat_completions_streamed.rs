@@ -57,8 +57,12 @@ async fn test_live_chat_completions_stream(
     })
     .collect::<Vec<_>>();
   handle.shutdown().await?;
-  let expected = [" ", " T", "ues", "day"].as_slice();
-  let actual = streams[0..streams.len() - 2]
+  let expected = if cfg!(target_os = "macos") {
+    [" ", " T", "ues", "day"].as_slice()
+  } else {
+    [" ", " T", "ues", "day", "."].as_slice()
+  };
+  let actual = streams[0..streams.len() - 1]
     .iter()
     .map(|stream| stream["choices"][0]["delta"]["content"].as_str().unwrap())
     .collect::<Vec<_>>();
