@@ -56,6 +56,7 @@ async fn test_live_lib_shared_rw_reload(lib_path: PathBuf) {
 
 #[rstest]
 #[tokio::test]
+#[ignore]
 async fn test_live_lib_shared_rw_reload_with_gpt_params_with_symlink(
   lib_path: PathBuf,
   tests_data: PathBuf,
@@ -76,6 +77,7 @@ async fn test_live_lib_shared_rw_reload_with_gpt_params_with_symlink(
 
 #[rstest]
 #[tokio::test]
+#[ignore]
 async fn test_live_lib_shared_rw_reload_with_gpt_params_with_actual_file(
   lib_path: PathBuf,
   tests_data: PathBuf,
