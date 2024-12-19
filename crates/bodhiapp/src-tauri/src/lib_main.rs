@@ -9,19 +9,30 @@ use std::sync::Arc;
 #[cfg(feature = "production")]
 mod env_config {
   use objs::EnvType;
+  use services::DefaultEnvWrapper;
 
   pub static ENV_TYPE: EnvType = EnvType::Production;
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
+
+  pub fn set_bodhi_library_lookup_path(env_wrapper: &mut DefaultEnvWrapper) {}
 }
 
 #[cfg(not(feature = "production"))]
 mod env_config {
   use objs::EnvType;
+  use services::{DefaultEnvWrapper, BODHI_LIBRARY_LOOKUP_PATH};
 
   pub static ENV_TYPE: EnvType = EnvType::Development;
   pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
+
+  pub fn set_bodhi_library_lookup_path(env_wrapper: &mut DefaultEnvWrapper) {
+    env_wrapper.set_var(
+      BODHI_LIBRARY_LOOKUP_PATH,
+      concat!(env!("CARGO_MANIFEST_DIR"), "/libs"),
+    );
+  }
 }
 
 pub use env_config::*;
@@ -33,7 +44,8 @@ pub const APP_TYPE: AppType = AppType::Native;
 pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
-  let env_wrapper = DefaultEnvWrapper::default();
+  let mut env_wrapper = DefaultEnvWrapper::default();
+  set_bodhi_library_lookup_path(&mut env_wrapper);
   let init_service = InitService::new(&env_wrapper, &ENV_TYPE);
   let bodhi_home = match init_service.setup_bodhi_home() {
     Ok(bodhi_home) => bodhi_home,
