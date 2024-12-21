@@ -3,6 +3,7 @@ members = [
   "xtask",
   "llamacpp-sys",
   "crates/llamacpp_rs",
+  "crates/llama_server_proc",
   "crates/errmeta_derive",
   "crates/objs",
   "crates/services",
@@ -86,6 +87,7 @@ mockito = "1.5.0"
 mousse = "0.1.1"
 oauth2 = "4.4.2"
 once_cell = "1.19.0"
+phf = "0.11.2"
 pin-project-lite = "0.2.14"
 pretty_assertions = "1.4.1"
 prettytable-rs = "0.10.0"
