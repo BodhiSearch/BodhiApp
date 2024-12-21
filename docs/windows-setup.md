@@ -1,5 +1,6 @@
 ## pwsh
 - install pwsh using msi installer
+https://github.com/PowerShell/PowerShell/releases/download/v7.4.6/PowerShell-7.4.6-win-x64.msi
 
 ## choco
 ```pwsh
@@ -28,6 +29,17 @@ npm install -g pnpm
 ## python
 ```pwsh
 choco install python3 --version=3.12.2
+```
+
+## visual studio
+
+```
+choco install visualstudio2022buildtools `
+  --package-parameters "--quiet --wait --norestart --nocache `
+  --add Microsoft.VisualStudio.Workload.VCTools `
+  --add Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+  --add Microsoft.VisualStudio.Component.Windows10SDK `
+  --includeRecommended" -y --force
 ```
 
 ## rust using rustup
