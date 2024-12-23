@@ -47,6 +47,10 @@ pub fn setup_l10n(
     ))
     .unwrap()
     .load_resource(&include_dir::include_dir!(
+      "$CARGO_MANIFEST_DIR/../llama_server_proc/src/resources"
+    ))
+    .unwrap()
+    .load_resource(&include_dir::include_dir!(
       "$CARGO_MANIFEST_DIR/../llamacpp_rs/src/resources"
     ))
     .unwrap()

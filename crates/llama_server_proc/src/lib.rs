@@ -1,14 +1,13 @@
-pub fn add(left: u64, right: u64) -> u64 {
-  left + right
-}
+mod build_envs;
+mod error;
+mod server;
 
-#[cfg(test)]
-mod tests {
-  use super::*;
+pub use build_envs::*;
+pub use error::*;
+pub use server::*;
 
-  #[test]
-  fn it_works() {
-    let result = add(2, 2);
-    assert_eq!(result, 4);
-  }
+pub mod l10n {
+  use include_dir::Dir;
+
+  pub const L10N_RESOURCES: &Dir = &include_dir::include_dir!("$CARGO_MANIFEST_DIR/src/resources");
 }
