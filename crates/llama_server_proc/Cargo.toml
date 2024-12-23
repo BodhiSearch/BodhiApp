@@ -7,9 +7,11 @@ edition = "2021"
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 
+async-trait = { workspace = true }
 derive_builder = { workspace = true }
 include_dir = { workspace = true }
 lazy_static = { workspace = true }
+mockall = { workspace = true, optional = true }
 portpicker = { workspace = true }
 reqwest = { workspace = true, features = ["json", "stream"] }
 serde_json = { workspace = true }
@@ -22,6 +24,7 @@ objs = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 dirs = { workspace = true }
+mockall = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 
@@ -30,4 +33,4 @@ anyhow = { workspace = true }
 once_cell = { workspace = true }
 
 [features]
-test-utils = []
+test-utils = ["mockall"]

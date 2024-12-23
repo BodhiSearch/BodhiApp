@@ -4,7 +4,7 @@ use reqwest::Response;
 use serde_json::Value;
 use std::{
   net::{IpAddr, Ipv4Addr},
-  path::{Path, PathBuf},
+  path::PathBuf,
   process::Stdio,
   time::Duration,
 };
@@ -70,28 +70,32 @@ impl LlamaServerArgs {
   }
 }
 
-pub struct LlamaCppServer {
-  process: TokioChild,
-  client: reqwest::Client,
-  base_url: String,
+#[async_trait::async_trait]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+pub trait Server {
+  async fn start(&mut self) -> Result<()>;
+
+  async fn shutdown(&mut self) -> Result<()>;
+
+  async fn chat_completions(&self, body: Value) -> Result<Response>;
+
+  async fn embeddings(&self, body: Value) -> Result<Response>;
+
+  async fn tokenize(&self, body: Value) -> Result<Response>;
+
+  async fn detokenize(&self, body: Value) -> Result<Response>;
 }
 
-impl LlamaCppServer {
-  pub async fn start_server(executable_path: &Path, server_args: LlamaServerArgs) -> Result<Self> {
-    let args = server_args.to_args();
-    let mut process = TokioCommand::new(executable_path)
-      .args(args)
-      .stdout(Stdio::piped())
-      .stderr(Stdio::piped())
-      .spawn()
-      .map_err(|e| ServerError::StartupError(e.to_string()))?;
+pub struct LlamaServer {
+  process: Option<TokioChild>,
+  client: reqwest::Client,
+  base_url: String,
+  executable_path: PathBuf,
+  server_args: LlamaServerArgs,
+}
 
-    // Set up stdout/stderr forwarding to tracing
-    let stdout = BufReader::new(process.stdout.take().unwrap());
-    let stderr = BufReader::new(process.stderr.take().unwrap());
-    // Start stdout/stderr monitoring tasks
-    LlamaCppServer::monitor_output(stdout, stderr);
-
+impl LlamaServer {
+  pub fn new(executable_path: PathBuf, server_args: LlamaServerArgs) -> Result<Self> {
     let port = server_args.port;
     let base_url = format!("http://127.0.0.1:{}", port);
     let client = reqwest::Client::builder()
@@ -102,16 +106,13 @@ impl LlamaCppServer {
       .local_address(Some(IpAddr::V4(Ipv4Addr::LOCALHOST)))
       .build()?;
 
-    let server = Self {
-      process,
+    Ok(Self {
+      process: None,
       client,
-      base_url: base_url.clone(),
-    };
-
-    // Wait for server to be ready via health check
-    server.wait_for_server_ready().await?;
-
-    Ok(server)
+      base_url,
+      executable_path,
+      server_args,
+    })
   }
 
   fn monitor_output<R1, R2>(stdout: R1, stderr: R2)
@@ -186,8 +187,60 @@ impl LlamaCppServer {
   }
 
   pub async fn shutdown(&mut self) -> Result<()> {
-    self.process.kill().await?;
-    self.process.wait().await?;
+    if let Some(mut process) = self.process.take() {
+      process.kill().await?;
+      process.wait().await?;
+    }
     Ok(())
+  }
+}
+
+#[async_trait::async_trait]
+impl Server for LlamaServer {
+  async fn start(&mut self) -> Result<()> {
+    let args = self.server_args.to_args();
+    let mut process = TokioCommand::new(&self.executable_path)
+      .args(args)
+      .stdout(Stdio::piped())
+      .stderr(Stdio::piped())
+      .spawn()
+      .map_err(|e| ServerError::StartupError(e.to_string()))?;
+
+    // Set up stdout/stderr forwarding to tracing
+    let stdout = BufReader::new(process.stdout.take().unwrap());
+    let stderr = BufReader::new(process.stderr.take().unwrap());
+    // Start stdout/stderr monitoring tasks
+    Self::monitor_output(stdout, stderr);
+
+    self.process = Some(process);
+
+    // Wait for server to be ready via health check
+    self.wait_for_server_ready().await?;
+
+    Ok(())
+  }
+
+  async fn shutdown(&mut self) -> Result<()> {
+    if let Some(mut process) = self.process.take() {
+      process.kill().await?;
+      process.wait().await?;
+    }
+    Ok(())
+  }
+
+  async fn chat_completions(&self, body: Value) -> Result<Response> {
+    self.proxy_request("/v1/chat/completions", body).await
+  }
+
+  async fn embeddings(&self, body: Value) -> Result<Response> {
+    self.proxy_request("/v1/embeddings", body).await
+  }
+
+  async fn tokenize(&self, body: Value) -> Result<Response> {
+    self.proxy_request("/v1/tokenize", body).await
+  }
+
+  async fn detokenize(&self, body: Value) -> Result<Response> {
+    self.proxy_request("/v1/detokenize", body).await
   }
 }
