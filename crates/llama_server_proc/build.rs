@@ -24,9 +24,9 @@ impl LlamaServerBuild {
 
   fn execname(&self) -> String {
     if self.extension.is_empty() {
-      "llama_server".to_string()
+      "llama-server".to_string()
     } else {
-      format!("llama_server{}", self.extension)
+      format!("llama-server{}", self.extension)
     }
   }
 }
