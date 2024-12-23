@@ -1,5 +1,5 @@
 use llama_server_proc::{
-  LlamaCppServer, LlamaServerArgsBuilder, Result, BUILD_TARGET, DEFAULT_VARIANT, EXEC_NAME,
+  LlamaServer, LlamaServerArgsBuilder, Result, Server, BUILD_TARGET, DEFAULT_VARIANT, EXEC_NAME,
 };
 use objs::{HubFile, Repo};
 use pretty_assertions::assert_eq;
@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::path::PathBuf;
 
 #[fixture]
-async fn server() -> LlamaCppServer {
+async fn server() -> LlamaServer {
   let executable_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .join("bin")
     .join(BUILD_TARGET)
@@ -42,9 +42,10 @@ async fn server() -> LlamaCppServer {
     .verbose(true)
     .build()
     .unwrap();
-  LlamaCppServer::start_server(&executable_path, args)
-    .await
-    .unwrap()
+
+  let mut server = LlamaServer::new(executable_path, args).unwrap();
+  server.start().await.unwrap();
+  server
 }
 
 fn chat_request(stream: bool) -> Value {
@@ -85,7 +86,7 @@ Answer in one word. What day comes after Monday? [/INST]"#,
 #[awt]
 #[tokio::test]
 async fn test_server_proc_chat_completions(
-  #[future] server: LlamaCppServer,
+  #[future] server: LlamaServer,
   #[case] request_body: Value,
   #[case] expected_content: &str,
 ) -> Result<()> {
@@ -113,7 +114,7 @@ async fn test_server_proc_chat_completions(
 #[awt]
 #[tokio::test]
 async fn test_server_proc_chat_completions_streamed(
-  #[future] server: LlamaCppServer,
+  #[future] server: LlamaServer,
   #[case] request_body: Value,
   #[case] expected_content: &[&str],
 ) -> Result<()> {
