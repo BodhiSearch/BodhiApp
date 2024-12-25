@@ -4,7 +4,7 @@ use commands::{
 use objs::{impl_error_from, AppError, BuilderError, ErrorType, IoError, LocalizationSetupError};
 use server_app::{RunCommandError, ServeError};
 use server_core::ContextError;
-use services::{db::DbError, DataServiceError, SessionServiceError};
+use services::{db::DbError, DataServiceError, SecretServiceError, SessionServiceError};
 
 use crate::convert::ConvertError;
 
@@ -45,6 +45,8 @@ pub enum BodhiError {
   ConvertError(#[from] ConvertError),
   #[error(transparent)]
   LocalizationSetup(#[from] LocalizationSetupError),
+  #[error(transparent)]
+  SecretService(#[from] SecretServiceError),
   #[error(transparent)]
   Serve(#[from] ServeError),
   #[cfg(feature = "native")]

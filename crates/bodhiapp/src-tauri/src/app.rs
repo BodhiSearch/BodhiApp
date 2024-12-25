@@ -35,7 +35,9 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
     " - Dev"
   };
   let app_name = format!("Bodhi App{app_suffix}");
-  let secret_service = KeyringSecretService::with_service_name(app_name);
+  let secrets_path = env_service.secrets_path();
+  let encryption_key = env_service.encryption_key();
+  let secret_service = KeyringSecretService::new(&app_name, &secrets_path, encryption_key)?;
 
   let dbpath = env_service.db_path();
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;

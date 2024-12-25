@@ -32,6 +32,10 @@ hub_api_error-transport = {$error}.
 hub_api_error-request = {$error}.
   An error occurred while requesting access to huggingface repo '{$repo}'.
 secret_service_error-keyring_error = {$var_0}
+secret_service_error-key_mismatch = passed encryption key and encryption key stored on platform do not match
+secret_service_error-key_not_found = encryption key not found on platform secure storage
+secret_service_error-decode_error = invalid format: {$var_0}
+secret_service_error-encryption_error = {$var_0}
 sqlx_error = {$source}
 sqlx_migrate_error = {$source}
 localization_error-rwlock_write = concurrency error setting up localization resource: {$source}

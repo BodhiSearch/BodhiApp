@@ -5,7 +5,7 @@ BUILD_DIR := llama.cpp/build
 BIN_DIR := bin
 
 # Common CMake flags
-CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_LLAMA_SERVER=ON
+CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF
 
 # Platform-specific variables
 ifeq ($(shell uname -s),Darwin)
@@ -13,7 +13,7 @@ ifeq ($(shell uname -s),Darwin)
 else
   NCPU := $(shell nproc)
 endif
-BIN_EXT := ""
+BIN_EXT :=
 
 all: configure build copy_exec
 
@@ -38,10 +38,10 @@ endef
 
 # Target-specific builds
 build-aarch64-apple-darwin-metal:
-	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=ON,,aarch64-apple-darwin,metal)
+	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=ON,UNAME_S=Darwin UNAME_P=arm64 UNAME_M=arm64,aarch64-apple-darwin,metal)
 
 build-aarch64-apple-darwin-cpu:
-	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=OFF -DGGML_METAL=OFF,,aarch64-apple-darwin,cpu)
+	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=OFF -DGGML_METAL=OFF,UNAME_S=Darwin UNAME_P=arm64 UNAME_M=arm64,aarch64-apple-darwin,cpu)
 
 build-aarch64-unknown-linux-gnu-cpu:
 	$(call build_target,-DGGML_NATIVE=OFF,UNAME_S=Linux UNAME_P=unknown UNAME_M=arm64,aarch64-unknown-linux-gnu,cpu)
