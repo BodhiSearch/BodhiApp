@@ -48,6 +48,8 @@ anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 
 [build-dependencies]
+llama_server_proc = { workspace = true }
+
 tauri-build = { version = "2.0.1", features = [] }
 anyhow = { workspace = true }
 fs_extra = { workspace = true }
