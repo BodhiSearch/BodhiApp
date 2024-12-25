@@ -1,18 +1,8 @@
 use crate::{
-  AppRegInfo, CacheService, KeyringSecretService, SecretService, SecretServiceError,
-  APP_AUTHZ_FALSE, APP_AUTHZ_TRUE, APP_STATUS_READY, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
-  KEY_APP_STATUS,
+  secret_service::Result, AppRegInfo, KeyringStore, SecretService, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE,
+  APP_STATUS_READY, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
 };
-use std::{
-  collections::HashMap,
-  sync::{Arc, Mutex},
-};
-
-impl KeyringSecretService {
-  pub fn with_cache(service_name: String, cache: Arc<dyn CacheService>) -> Self {
-    Self::new(service_name, cache)
-  }
-}
+use std::{collections::HashMap, sync::Mutex};
 
 #[derive(Debug)]
 pub struct SecretServiceStub {
@@ -71,18 +61,62 @@ impl SecretServiceStub {
 }
 
 impl SecretService for SecretServiceStub {
-  fn set_secret_string(&self, key: &str, value: &str) -> Result<(), SecretServiceError> {
+  fn set_secret_string(&self, key: &str, value: &str) -> Result<()> {
     let mut store = self.store.lock().unwrap();
     store.insert(key.to_string(), value.to_string());
     Ok(())
   }
 
-  fn get_secret_string(&self, key: &str) -> Result<Option<String>, SecretServiceError> {
+  fn get_secret_string(&self, key: &str) -> Result<Option<String>> {
     let value = self.store.lock().unwrap().get(key).map(|v| v.to_string());
     Ok(value)
   }
 
-  fn delete_secret(&self, key: &str) -> Result<(), SecretServiceError> {
+  fn delete_secret(&self, key: &str) -> Result<()> {
+    let mut store = self.store.lock().unwrap();
+    store.remove(key);
+    Ok(())
+  }
+}
+
+#[derive(Debug)]
+pub struct KeyringStoreStub {
+  store: Mutex<HashMap<String, String>>,
+}
+
+impl KeyringStoreStub {
+  pub fn new() -> Self {
+    Self {
+      store: Mutex::new(HashMap::new()),
+    }
+  }
+
+  pub fn with_map(map: HashMap<String, String>) -> Self {
+    Self {
+      store: Mutex::new(map),
+    }
+  }
+}
+
+impl Default for KeyringStoreStub {
+  fn default() -> Self {
+    Self::new()
+  }
+}
+
+impl KeyringStore for KeyringStoreStub {
+  fn set_password(&self, key: &str, value: &str) -> Result<()> {
+    let mut store = self.store.lock().unwrap();
+    store.insert(key.to_string(), value.to_string());
+    Ok(())
+  }
+
+  fn get_password(&self, key: &str) -> Result<Option<String>> {
+    let store = self.store.lock().unwrap();
+    Ok(store.get(key).map(|v| v.to_string()))
+  }
+
+  fn delete_password(&self, key: &str) -> Result<()> {
     let mut store = self.store.lock().unwrap();
     store.remove(key);
     Ok(())

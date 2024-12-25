@@ -32,6 +32,7 @@ pub static BODHI_PORT: &str = "BODHI_PORT";
 pub static BODHI_FRONTEND_URL: &str = "BODHI_FRONTEND_URL";
 pub static BODHI_EXEC_PATH: &str = "BODHI_EXEC_PATH";
 pub static BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
+pub static BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
 
 pub static SETTINGS_YAML: &str = "settings.yaml";
 
@@ -158,6 +159,12 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
       self.port()
     )
   }
+
+  fn secrets_path(&self) -> PathBuf {
+    self.bodhi_home().join("secrets.yaml")
+  }
+
+  fn encryption_key(&self) -> Option<String>;
 }
 
 #[derive(Debug, Clone)]
@@ -338,6 +345,10 @@ impl EnvService for DefaultEnvService {
       );
     }
     result
+  }
+
+  fn encryption_key(&self) -> Option<String> {
+    self.setting_service.get_env(BODHI_ENCRYPTION_KEY)
   }
 }
 

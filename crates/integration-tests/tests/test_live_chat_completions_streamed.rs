@@ -60,7 +60,7 @@ async fn test_live_chat_completions_stream(
   let expected = if cfg!(any(target_os = "macos", target_os = "windows")) {
     [" ", " T", "ues", "day", ""].as_slice()
   } else {
-    [" ", " T", "ues", "day", "."].as_slice()
+    [" ", " T", "ues", "day", ".", ""].as_slice()
   };
   let actual = streams[0..streams.len() - 1]
     .iter()

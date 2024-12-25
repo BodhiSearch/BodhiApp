@@ -8,9 +8,10 @@ objs = { workspace = true }
 errmeta_derive = { workspace = true }
 llama_server_proc = { workspace = true }
 
+aes-gcm = { workspace = true }
 anyhow = { workspace = true, optional = true }
 axum = { workspace = true }
-base64 = { workspace = true, optional = true }
+base64 = { workspace = true }
 derive-new = { workspace = true }
 async-trait = { workspace = true }
 cookie = { workspace = true }
@@ -19,6 +20,7 @@ derive_builder = { workspace = true }
 dirs = { workspace = true }
 dotenv = { workspace = true }
 fluent = { workspace = true }
+fs2 = { workspace = true }
 jsonwebtoken = { workspace = true }
 hf-hub = { workspace = true, features = ["tokio"] }
 include_dir = { workspace = true }
@@ -27,8 +29,9 @@ mini-moka = { workspace = true }
 mockall = { workspace = true, optional = true }
 oauth2 = { workspace = true }
 once_cell = { workspace = true, optional = true }
+pbkdf2 = { workspace = true, features = ["simple"] }
 reqwest = { workspace = true }
-rand = { workspace = true, optional = true }
+rand = { workspace = true }
 rsa = { workspace = true, optional = true }
 rstest = { workspace = true, optional = true }
 sha2 = { workspace = true }
@@ -64,6 +67,7 @@ axum-extra = { workspace = true }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 base64 = { workspace = true }
+fs2 = { workspace = true }
 fluent = { workspace = true }
 maplit = { workspace = true }
 mockall = { workspace = true }
@@ -92,10 +96,8 @@ keyring = { workspace = true, features = ["windows-native"] }
 test-utils = [
   "rstest",
   "mockall",
-  "base64",
   "once_cell",
   "rsa",
-  "rand",
   "tap",
   "tempfile",
   "anyhow",

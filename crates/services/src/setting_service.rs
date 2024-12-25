@@ -35,6 +35,8 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   fn home_dir(&self) -> Option<PathBuf>;
 
+  fn get_env(&self, key: &str) -> Option<String>;
+
   fn get_setting(&self, key: &str) -> Option<String>;
 
   fn get_setting_value(&self, key: &str) -> Option<Value>;
@@ -103,6 +105,10 @@ impl SettingService for DefaultSettingService {
 
   fn home_dir(&self) -> Option<PathBuf> {
     self.env_wrapper.home_dir()
+  }
+
+  fn get_env(&self, key: &str) -> Option<String> {
+    self.env_wrapper.var(key).ok()
   }
 
   fn get_setting(&self, key: &str) -> Option<String> {

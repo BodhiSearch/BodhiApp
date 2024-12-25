@@ -156,6 +156,10 @@ impl EnvService for EnvServiceStub {
   fn log_level(&self) -> LogLevel {
     LogLevel::Warn
   }
+
+  fn encryption_key(&self) -> Option<String> {
+    None
+  }
 }
 
 #[derive(Debug)]

@@ -33,6 +33,7 @@ server_app = { path = "crates/server_app" }
 # bodhi = { path = "app/bodhi" }
 bodhiapp = { path = "crates/bodhiapp/src-tauri" }
 
+aes-gcm = "0.10.3"
 anyhow = "1.0.81"
 anyhow_trace = "0.1.3"
 async-openai = "0.23.0"
@@ -56,6 +57,7 @@ dirs = "5.0.1"
 dotenv = "0.15.0"
 fluent = "0.16.1"
 fluent-resmgr = "0.0.7"
+fs2 = "0.4.3"
 fs_extra = "1.3.0"
 futures = "0.3.30"
 futures-core = "0.3.30"
@@ -84,6 +86,7 @@ mockito = "1.5.0"
 mousse = "0.1.1"
 oauth2 = "4.4.2"
 once_cell = "1.19.0"
+pbkdf2 = "0.12.2"
 phf = "0.11.2"
 pin-project-lite = "0.2.14"
 portpicker = "0.1.1"
