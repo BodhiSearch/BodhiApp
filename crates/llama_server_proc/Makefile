@@ -10,11 +10,10 @@ CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_LLAMA_
 # Platform-specific variables
 ifeq ($(shell uname -s),Darwin)
   NCPU := $(shell sysctl -n hw.logicalcpu)
-	BIN_EXT := ""
 else
   NCPU := $(shell nproc)
-	BIN_EXT := .exe
 endif
+BIN_EXT := ""
 
 all: configure build copy_exec
 
