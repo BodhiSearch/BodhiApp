@@ -6,7 +6,6 @@ pub mod test_utils;
 mod direct_sse;
 mod error;
 mod fwd_sse;
-pub mod obj_exts;
 mod objs;
 mod router_state;
 mod shared_rw;

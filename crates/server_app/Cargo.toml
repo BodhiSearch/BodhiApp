@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 errmeta_derive = { workspace = true }
-llamacpp_rs = { workspace = true }
+llama_server_proc = { workspace = true }
 objs = { workspace = true }
 services = { workspace = true }
 commands = { workspace = true }
@@ -17,9 +17,11 @@ async-trait = { workspace = true }
 axum = { workspace = true }
 derive-new = { workspace = true }
 dialoguer = { workspace = true, features = ["history"] }
+futures-util = { workspace = true }
 include_dir = { workspace = true }
 indicatif = { workspace = true, features = ["tokio"] }
 mockall = { workspace = true, optional = true }
+reqwest = { workspace = true }
 rstest = { workspace = true, optional = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

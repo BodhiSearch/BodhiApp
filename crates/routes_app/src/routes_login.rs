@@ -269,7 +269,7 @@ mod tests {
   use rstest::rstest;
   use serde_json::{json, Value};
   use server_core::{
-    test_utils::ResponseTestExt, DefaultRouterState, MockSharedContextRw, RouterState,
+    test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
   };
   use services::{
     test_utils::{
@@ -330,7 +330,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -414,7 +414,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -507,7 +507,7 @@ mod tests {
 
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
 
@@ -576,7 +576,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -636,7 +636,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -710,7 +710,7 @@ mod tests {
       .build()?;
     let app_service = Arc::new(app_service);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -769,7 +769,7 @@ mod tests {
     );
 
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
 
@@ -809,7 +809,7 @@ mod tests {
     let (_, token, _) = token;
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -838,7 +838,7 @@ mod tests {
   async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -872,7 +872,7 @@ mod tests {
   ) -> anyhow::Result<()> {
     let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router = Router::new()
@@ -1059,7 +1059,7 @@ mod tests {
     app_service: Arc<AppServiceStub>,
   ) -> Result<Response, anyhow::Error> {
     let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       app_service.clone(),
     ));
     let router: Router = Router::new()

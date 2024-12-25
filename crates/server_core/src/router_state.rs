@@ -1,10 +1,9 @@
-use crate::{shared_rw::SharedContextRw, ContextError};
+use crate::{shared_rw::SharedContext, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::async_trait;
 use objs::{ObjValidationError, Repo, TOKENIZER_CONFIG_JSON};
 use services::{AliasNotFoundError, AppService, HubServiceError};
 use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
 
 #[async_trait]
 pub trait RouterState: std::fmt::Debug + Send + Sync {
@@ -13,20 +12,24 @@ pub trait RouterState: std::fmt::Debug + Send + Sync {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    sender: Sender<String>,
-  ) -> Result<()>;
+  ) -> Result<reqwest::Response>;
 }
 
 #[derive(Debug, Clone)]
 pub struct DefaultRouterState {
-  pub(crate) ctx: Arc<dyn SharedContextRw>,
+  pub(crate) ctx: Arc<dyn SharedContext>,
 
   pub(crate) app_service: Arc<dyn AppService>,
 }
 
 impl DefaultRouterState {
-  pub fn new(ctx: Arc<dyn SharedContextRw>, app_service: Arc<dyn AppService>) -> Self {
+  pub fn new(ctx: Arc<dyn SharedContext>, app_service: Arc<dyn AppService>) -> Self {
     Self { ctx, app_service }
+  }
+
+  pub async fn stop(&self) -> Result<()> {
+    self.ctx.stop().await?;
+    Ok(())
   }
 }
 
@@ -54,8 +57,7 @@ impl RouterState for DefaultRouterState {
   async fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-    sender: Sender<String>,
-  ) -> Result<()> {
+  ) -> Result<reqwest::Response> {
     let alias = self
       .app_service
       .data_service()
@@ -72,31 +74,23 @@ impl RouterState for DefaultRouterState {
       TOKENIZER_CONFIG_JSON,
       None,
     )?;
-    self
+    let response = self
       .ctx
-      .chat_completions(request, alias, model_file, tokenizer_file, sender)
+      .chat_completions(request, alias, model_file, tokenizer_file)
       .await?;
-    Ok(())
-  }
-}
-
-impl DefaultRouterState {
-  pub async fn try_stop(&self) -> Result<()> {
-    self.ctx.try_stop().await?;
-    Ok(())
+    Ok(response)
   }
 }
 
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::test_channel, ContextError, DefaultRouterState, MockSharedContextRw, RouterState,
-    RouterStateError,
+    ContextError, DefaultRouterState, MockSharedContext, RouterState, RouterStateError,
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
-  use llamacpp_rs::LlamaCppError;
-  use mockall::predicate::{always, eq};
+  use llama_server_proc::{test_utils::mock_response, ServerError};
+  use mockall::predicate::eq;
   use objs::{test_utils::temp_dir, Alias, HubFileBuilder};
   use rstest::rstest;
   use serde_json::json;
@@ -111,15 +105,14 @@ mod test {
       .with_data_service()
       .build()?;
     let state =
-      DefaultRouterState::new(Arc::new(MockSharedContextRw::default()), Arc::new(service));
+      DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "not-found",
       "messages": [
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let (tx, _rx) = test_channel();
-    let result = state.chat_completions(request, tx).await;
+    let result = state.chat_completions(request).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     match err {
@@ -139,7 +132,7 @@ mod test {
   async fn test_router_state_chat_completions_delegate_to_context_with_alias(
     temp_dir: TempDir,
   ) -> anyhow::Result<()> {
-    let mut mock_ctx = MockSharedContextRw::default();
+    let mut mock_ctx = MockSharedContext::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias-exists:instruct",
       "messages": [
@@ -164,17 +157,15 @@ mod test {
         eq(Alias::testalias_exists()),
         eq(model_file),
         eq(llama3_tokenizer),
-        always(),
       )
-      .return_once(|_, _, _, _, _| Ok(()));
+      .return_once(|_, _, _, _| Ok(mock_response("")));
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
       .with_data_service()
       .with_hub_service()
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
-    let (tx, _rx) = test_channel();
-    state.chat_completions(request, tx).await?;
+    state.chat_completions(request).await?;
     Ok(())
   }
 
@@ -188,14 +179,13 @@ mod test {
       .join("huggingface")
       .join("hub")
       .to_path_buf();
-    let mut mock_ctx = MockSharedContextRw::default();
+    let mut mock_ctx = MockSharedContext::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias-exists:instruct",
       "messages": [
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let (tx, _rx) = test_channel();
     let model_file = HubFileBuilder::testalias_exists()
       .hf_cache(hf_cache.clone())
       .build()?;
@@ -210,12 +200,11 @@ mod test {
         eq(alias),
         eq(model_file),
         eq(llama3_tokenizer),
-        always(),
       )
-      .return_once(|_, _, _, _, _| {
-        Err(ContextError::LlamaCpp(
-          LlamaCppError::BodhiServerChatCompletion("test error".to_string()),
-        ))
+      .return_once(|_, _, _, _| {
+        Err(ContextError::Server(ServerError::StartupError(
+          "test error".to_string(),
+        )))
       });
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
@@ -223,13 +212,11 @@ mod test {
       .with_data_service()
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
-    let result = state.chat_completions(request, tx).await;
+    let result = state.chat_completions(request).await;
     assert!(result.is_err());
     let err = result.unwrap_err();
     match err {
-      RouterStateError::ContextError(ContextError::LlamaCpp(
-        LlamaCppError::BodhiServerChatCompletion(msg),
-      )) => {
+      RouterStateError::ContextError(ContextError::Server(ServerError::StartupError(msg))) => {
         assert_eq!("test error", msg);
       }
       err => {

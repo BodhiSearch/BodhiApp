@@ -60,7 +60,7 @@ mod tests {
   use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
-  use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContextRw};
+  use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
   use services::test_utils::AppServiceStubBuilder;
   use std::sync::Arc;
   use tower::ServiceExt;
@@ -72,7 +72,7 @@ mod tests {
       .build()
       .unwrap();
     let router_state =
-      DefaultRouterState::new(Arc::new(MockSharedContextRw::default()), Arc::new(service));
+      DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
     Router::new()
       .route("/v1/models", axum::routing::get(oai_models_handler))
       .route("/v1/models/:id", axum::routing::get(oai_model_handler))

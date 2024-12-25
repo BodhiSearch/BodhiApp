@@ -221,7 +221,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
-  use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContextRw};
+  use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
   use services::{
     db::{DbService, DownloadRequest, DownloadStatus},
     test_utils::{
@@ -250,7 +250,7 @@ mod tests {
   }
 
   fn test_router(service: Arc<dyn AppService>) -> Router {
-    let router_state = DefaultRouterState::new(Arc::new(MockSharedContextRw::new()), service);
+    let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), service);
     Router::new()
       .route("/modelfiles/pull", post(pull_by_repo_file_handler))
       .route("/modelfiles/pull/:alias", post(pull_by_alias_handler))

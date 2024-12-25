@@ -21,7 +21,7 @@ mod env_config {
 #[cfg(not(feature = "production"))]
 mod env_config {
   use objs::EnvType;
-  use services::{DefaultEnvWrapper, BODHI_LIBRARY_LOOKUP_PATH};
+  use services::{DefaultEnvWrapper, BODHI_EXEC_LOOKUP_PATH};
 
   pub static ENV_TYPE: EnvType = EnvType::Development;
   pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
@@ -29,8 +29,8 @@ mod env_config {
 
   pub fn set_bodhi_library_lookup_path(env_wrapper: &mut DefaultEnvWrapper) {
     env_wrapper.set_var(
-      BODHI_LIBRARY_LOOKUP_PATH,
-      concat!(env!("CARGO_MANIFEST_DIR"), "/libs"),
+      BODHI_EXEC_LOOKUP_PATH,
+      concat!(env!("CARGO_MANIFEST_DIR"), "/bin"),
     );
   }
 }

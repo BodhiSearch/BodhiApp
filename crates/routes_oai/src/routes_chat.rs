@@ -1,57 +1,30 @@
 use async_openai::types::CreateChatCompletionRequest;
-use axum::{
-  body::Body,
-  extract::State,
-  http::StatusCode,
-  response::{IntoResponse, Response},
-  Json,
-};
+use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, InternalServerError};
-use server_core::{fwd_sse, RouterState};
+use objs::{ApiError, AppError, ErrorType};
+use server_core::RouterState;
 use std::sync::Arc;
 
-#[derive(Debug, derive_new::new)]
-pub struct ChatCompletionsResponse {
-  pub message: String,
-}
-
-impl IntoResponse for ChatCompletionsResponse {
-  fn into_response(self) -> Response {
-    Response::builder()
-      .status(StatusCode::OK)
-      .body(Body::from(self.message))
-      .unwrap_or_else(|err| {
-        tracing::error!(?err, "error building response");
-        Response::builder()
-          .status(StatusCode::INTERNAL_SERVER_ERROR)
-          .body(Body::empty())
-          .unwrap()
-      })
-  }
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum HttpError {
+  #[error("http_error")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500, args_delegate = false)]
+  Http(#[from] http::Error),
 }
 
 pub async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<CreateChatCompletionRequest>, ApiError>,
 ) -> Result<Response, ApiError> {
-  let stream = request.stream.unwrap_or(false);
-  let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
-  let handle = state.chat_completions(request, tx).await;
-  if let Err(e) = handle {
-    tracing::warn!(?e, "error while processing reqeust");
-    return Err(e.into());
+  let response = state.chat_completions(request).await?;
+  let mut response_builder = Response::builder().status(response.status());
+  if let Some(headers) = response_builder.headers_mut() {
+    *headers = response.headers().clone();
   }
-  if !stream {
-    if let Some(message) = rx.recv().await {
-      drop(rx);
-      Ok(ChatCompletionsResponse::new(message).into_response())
-    } else {
-      Err(InternalServerError::new("receiver stream abruptly closed".to_string()).into())
-    }
-  } else {
-    Ok(fwd_sse(rx))
-  }
+  let stream = response.bytes_stream();
+  let body = Body::from_stream(stream);
+  Ok(response_builder.body(body).map_err(HttpError::Http)?)
 }
 
 #[cfg(test)]
@@ -64,21 +37,22 @@ mod test {
     CreateChatCompletionStreamResponse,
   };
   use axum::{extract::Request, routing::post, Router};
-  use mockall::predicate::{always, eq};
+  use futures_util::StreamExt;
+  use llama_server_proc::test_utils::mock_response;
+  use mockall::predicate::eq;
   use objs::{Alias, HubFileBuilder};
   use reqwest::StatusCode;
   use rstest::rstest;
   use serde_json::json;
   use server_core::{
     test_utils::{RequestTestExt, ResponseTestExt},
-    DefaultRouterState, MockSharedContextRw,
+    ContextError, DefaultRouterState, MockSharedContext,
   };
   use services::test_utils::{app_service_stub, AppServiceStub};
   use std::sync::Arc;
-  use tokio::sync::mpsc::Sender;
   use tower::ServiceExt;
 
-  async fn non_streamed_response(sender: Sender<String>) -> anyhow::Result<()> {
+  fn non_streamed_response() -> reqwest::Response {
     let response = json! {{
       "id": "testid",
       "model": "testalias-exists:instruct",
@@ -92,10 +66,8 @@ mod test {
         }],
       "created": 1704067200,
       "object": "chat.completion",
-    }}
-    .to_string();
-    sender.send(response).await?;
-    Ok(())
+    }};
+    mock_response(response.to_string())
   }
 
   #[rstest]
@@ -120,7 +92,7 @@ mod test {
     let tokenizer_file = HubFileBuilder::llama3_tokenizer()
       .hf_cache(app_service_stub.hf_cache())
       .build()?;
-    let mut ctx = MockSharedContextRw::default();
+    let mut ctx = MockSharedContext::default();
     ctx
       .expect_chat_completions()
       .with(
@@ -128,14 +100,8 @@ mod test {
         eq(alias),
         eq(model_file),
         eq(tokenizer_file),
-        always(),
       )
-      .return_once(move |_, _, _, _, sender: Sender<String>| {
-        tokio::spawn(async move {
-          non_streamed_response(sender).await.unwrap();
-        });
-        Ok(())
-      });
+      .return_once(move |_, _, _, _| Ok(non_streamed_response()));
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
     let app = Router::new()
       .route("/v1/chat/completions", post(chat_completions_handler))
@@ -160,13 +126,12 @@ mod test {
     Ok(())
   }
 
-  async fn streamed_response(sender: Sender<String>) -> anyhow::Result<()> {
-    for (i, value) in [
+  fn streamed_response() -> Result<reqwest::Response, ContextError> {
+    let stream = futures_util::stream::iter([
       " ", " After", " Monday", ",", " the", " next", " day", " is", " T", "ues", "day", ".",
-    ]
-    .into_iter()
+    ])
     .enumerate()
-    {
+    .map(|(i, value)| {
       let response = json! {{
         "id": format!("testid-{i}"),
         "model": "testalias-exists:instruct",
@@ -181,13 +146,24 @@ mod test {
         "created": 1704067200,
         "object": "chat.completion.chunk",
       }};
-      let response: CreateChatCompletionStreamResponse = serde_json::from_value(response)?;
-      let response = serde_json::to_string(&response)?;
-      sender.send(format!("data: {response}\n\n")).await?;
-    }
-    let end_delta = r#"{"choices":[{"finish_reason":"stop","index":0,"delta":{}}],"created":1717317061,"id":"chatcmpl-Twf1ixroh9WzY9Pvm4IGwNF4kB4EjTp4","model":"llama2:chat","object":"chat.completion.chunk","usage":{"completion_tokens":13,"prompt_tokens":15,"total_tokens":28}}"#.to_string();
-    sender.send(format!("data: {end_delta}\n\n")).await?;
-    Ok(())
+      let response: CreateChatCompletionStreamResponse = serde_json::from_value(response).unwrap();
+      let response = serde_json::to_string(&response).unwrap();
+      format!("data: {response}\n\n")
+    })
+    .chain(futures_util::stream::iter([format!("data: {}\n\n", r#"{"choices":[{"finish_reason":"stop","index":0,"delta":{}}],"created":1717317061,"id":"chatcmpl-Twf1ixroh9WzY9Pvm4IGwNF4kB4EjTp4","model":"llama2:chat","object":"chat.completion.chunk","usage":{"completion_tokens":13,"prompt_tokens":15,"total_tokens":28}}"#)]))
+    .then(|chunk| async move {
+      tokio::time::sleep(std::time::Duration::from_millis(1)).await;
+      Ok::<_, std::io::Error>(chunk)
+    });
+
+    let body = reqwest::Body::wrap_stream(stream);
+    Ok(reqwest::Response::from(
+      http::Response::builder()
+        .status(200)
+        .header("content-type", "text/event-stream")
+        .body(body)
+        .unwrap(),
+    ))
   }
 
   #[rstest]
@@ -213,7 +189,7 @@ mod test {
     let tokenizer_file = HubFileBuilder::llama3_tokenizer()
       .hf_cache(app_service_stub.hf_cache())
       .build()?;
-    let mut ctx = MockSharedContextRw::default();
+    let mut ctx = MockSharedContext::default();
     ctx
       .expect_chat_completions()
       .with(
@@ -221,15 +197,8 @@ mod test {
         eq(alias),
         eq(model_file),
         eq(tokenizer_file),
-        always(),
       )
-      .return_once(move |_, _, _, _, sender: Sender<String>| {
-        tokio::spawn(async move {
-          let res = streamed_response(sender).await;
-          assert!(res.is_ok());
-        });
-        Ok(())
-      });
+      .return_once(move |_, _, _, _| streamed_response());
 
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
     let app = Router::new()

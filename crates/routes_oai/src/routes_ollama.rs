@@ -7,8 +7,9 @@ use async_openai::types::{
   CreateChatCompletionStreamResponse, FinishReason, Role, Stop,
 };
 use axum::{
+  body::Body,
   extract::State,
-  http::{header, HeaderMap, HeaderValue, StatusCode},
+  http::StatusCode,
   response::{IntoResponse, Response},
   Json,
 };
@@ -16,9 +17,8 @@ use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
 use objs::{Alias, GGUF};
 use serde::{Deserialize, Serialize, Serializer};
-use server_core::{DirectEvent, DirectSse, RouterState};
+use server_core::RouterState;
 use std::{collections::HashMap, fs, sync::Arc, time::UNIX_EPOCH};
-use tokio_stream::wrappers::ReceiverStream;
 
 #[derive(Serialize, Deserialize)]
 pub struct ModelsResponse {
@@ -384,68 +384,72 @@ pub async fn ollama_model_chat_handler(
 ) -> Result<Response, Json<OllamaError>> {
   let request: CreateChatCompletionRequest = ollama_request.into();
   let stream = request.stream.unwrap_or(true);
-  let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
-  let handle = tokio::spawn(async move { state.chat_completions(request, tx).await });
-  if !stream {
-    if let Some(message) = rx.recv().await {
-      drop(rx);
-      let response: CreateChatCompletionResponse =
-        serde_json::from_str(&message).map_err(|err| {
-          Json(OllamaError {
-            error: format!("error serializing response {err}"),
-          })
-        })?;
-      let ollama_response: ChatResponse = response.into();
-      let mut headers = HeaderMap::new();
-      headers.insert(
-        header::CONTENT_TYPE,
-        HeaderValue::from_static(mime::APPLICATION_JSON.as_ref()),
-      );
-      Ok((StatusCode::OK, headers, Json(ollama_response)).into_response())
-    } else if let Ok(Err(e)) = handle.await {
-      tracing::warn!(?e, "error while processing reqeust");
-      Err(Json(OllamaError {
-        error: format!("internal server error {e}"),
-      }))
-    } else {
-      Err(Json(OllamaError {
-        error: "receiver stream abruptly closed".to_string(),
-      }))
-    }
-  } else {
-    let stream = ReceiverStream::new(rx).map::<Result<DirectEvent, String>, _>(move |msg| {
-      if msg.starts_with("data: ") {
-        let msg = msg
-          .strip_prefix("data: ")
-          .unwrap()
-          .strip_suffix("\n\n")
-          .unwrap();
-        let oai_chunk = serde_json::from_str::<CreateChatCompletionStreamResponse>(msg);
-        match oai_chunk {
-          Ok(oai_chunk) => {
-            let data: ResponseStream = oai_chunk.into();
-            let data = serde_json::to_string(&data)
-              .unwrap_or_else(|err| format!("{{\"error\": \"error serializing delta {err}\"}}"));
-            Ok(DirectEvent::default().data(data.trim_end_matches('\n')))
-          }
-          Err(err) => Ok(DirectEvent::default().data(format!(
-            "{{\"error\": \"error serializing delta '{msg}', {err}\"}}"
-          ))),
-        }
-      } else if msg.starts_with("error: ") {
-        let msg = msg
-          .strip_prefix("error: ")
-          .unwrap()
-          .strip_suffix("\n\n")
-          .unwrap();
-        Ok(DirectEvent::new().data(msg))
-      } else {
-        tracing::error!(msg, "unknown event type raised from bodhi_server");
-        Ok(DirectEvent::new().data(msg))
-      }
-    });
-    Ok(DirectSse::new(stream).into_response())
+
+  // Get raw response from chat_completions
+  let response = state.chat_completions(request).await.map_err(|e| {
+    Json(OllamaError {
+      error: format!("chat completion error: {e}"),
+    })
+  })?;
+
+  let mut response_builder = Response::builder().status(response.status());
+  if let Some(headers) = response_builder.headers_mut() {
+    *headers = response.headers().clone();
   }
+
+  // For non-streaming responses, we need to convert the entire response
+  if !stream {
+    let bytes = response.bytes().await.map_err(|e| {
+      Json(OllamaError {
+        error: format!("failed to read response bytes: {e}"),
+      })
+    })?;
+
+    let oai_response: CreateChatCompletionResponse =
+      serde_json::from_slice(&bytes).map_err(|e| {
+        Json(OllamaError {
+          error: format!("failed to parse response: {e}"),
+        })
+      })?;
+
+    let ollama_response: ChatResponse = oai_response.into();
+    return Ok((StatusCode::OK, Json(ollama_response)).into_response());
+  }
+
+  // For streaming, transform each SSE chunk into Ollama format
+  let stream = response.bytes_stream().map(move |chunk| {
+    let chunk = chunk.map_err(|e| format!("error reading chunk: {e}"))?;
+    let text = String::from_utf8_lossy(&chunk);
+
+    if text.starts_with("data: ") {
+      let msg = text
+        .strip_prefix("data: ")
+        .unwrap()
+        .strip_suffix("\n\n")
+        .unwrap();
+
+      if msg.is_empty() {
+        return Ok(String::new());
+      }
+
+      let oai_chunk: CreateChatCompletionStreamResponse =
+        serde_json::from_str(msg).map_err(|e| format!("error parsing chunk: {e}"))?;
+
+      let data: ResponseStream = oai_chunk.into();
+      serde_json::to_string(&data)
+        .map(|s| format!("data: {s}\n\n"))
+        .map_err(|e| format!("error serializing chunk: {e}"))
+    } else {
+      Ok(text.into_owned())
+    }
+  });
+
+  let body = Body::from_stream(stream);
+  response_builder.body(body).map_err(|e| {
+    Json(OllamaError {
+      error: format!("failed to build response: {e}"),
+    })
+  })
 }
 
 #[cfg(test)]

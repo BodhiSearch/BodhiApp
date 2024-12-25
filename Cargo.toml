@@ -1,8 +1,6 @@
 [workspace]
 members = [
   "xtask",
-  "llamacpp-sys",
-  "crates/llamacpp_rs",
   "crates/llama_server_proc",
   "crates/errmeta_derive",
   "crates/objs",
@@ -21,10 +19,9 @@ resolver = "2"
 exclude = ["crates/chatapp/bodhi"]
 
 [workspace.dependencies]
-llamacpp_sys = { path = "llamacpp-sys" }
-llamacpp_rs = { path = "crates/llamacpp_rs" }
 errmeta_derive = { path = "crates/errmeta_derive" }
 objs = { path = "crates/objs" }
+llama_server_proc = { path = "crates/llama_server_proc" }
 services = { path = "crates/services" }
 commands = { path = "crates/commands" }
 server_core = { path = "crates/server_core" }
@@ -114,6 +111,7 @@ tempfile = "3.10.1"
 thiserror = "1.0.61"
 time = "0.3.36"
 tokio = "1.36.0"
+tokio-util = "0.7.13"
 tokio-stream = "0.1.15"
 tower = "0.4.13"
 tower-cookies = "0.10.0"

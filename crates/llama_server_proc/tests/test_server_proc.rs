@@ -43,7 +43,7 @@ async fn server() -> LlamaServer {
     .build()
     .unwrap();
 
-  let mut server = LlamaServer::new(executable_path, args).unwrap();
+  let server = LlamaServer::new(executable_path, args).unwrap();
   server.start().await.unwrap();
   server
 }
@@ -90,7 +90,7 @@ async fn test_server_proc_chat_completions(
   #[case] request_body: Value,
   #[case] expected_content: &str,
 ) -> Result<()> {
-  let response = server.chat_completions(request_body).await?;
+  let response = server.chat_completions(&request_body).await?;
   assert_eq!(200, response.status());
   let response_body = response.json::<Value>().await.unwrap();
 
@@ -118,7 +118,7 @@ async fn test_server_proc_chat_completions_streamed(
   #[case] request_body: Value,
   #[case] expected_content: &[&str],
 ) -> Result<()> {
-  let response = server.chat_completions(request_body).await?;
+  let response = server.chat_completions(&request_body).await?;
   assert_eq!(200, response.status());
   let response_text = response.text().await.unwrap();
 

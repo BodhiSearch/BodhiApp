@@ -52,7 +52,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let localization_service = FluentLocalizationService::get_instance();
   localization_service
     .load_resource(objs::l10n::L10N_RESOURCES)?
-    .load_resource(llamacpp_rs::l10n::L10N_RESOURCES)?
+    .load_resource(llama_server_proc::l10n::L10N_RESOURCES)?
     .load_resource(services::l10n::L10N_RESOURCES)?
     .load_resource(commands::l10n::L10N_RESOURCES)?
     .load_resource(server_core::l10n::L10N_RESOURCES)?
@@ -108,7 +108,10 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
             .aexecute(Some(native::static_router()))
             .await?;
         } else {
-          Err(BodhiError::Unreachable(r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#.to_string()))?;
+          Err(BodhiError::Unreachable(
+            r#"env_service.is_native() returned true, but cfg!(feature = "native") is false"#
+              .to_string(),
+          ))?;
         }
       } else {
         Err(BodhiError::NativeNotSupported)?;

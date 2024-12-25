@@ -1,20 +1,17 @@
-use libloading::Library;
-use llamacpp_rs::CommonParams;
-use llamacpp_sys::{BodhiServer, DynamicBodhiServer};
+use llama_server_proc::{LlamaServer, LlamaServerArgsBuilder, Server};
 use rstest::{fixture, rstest};
-use server_core::{DefaultServerContextFactory, DefaultSharedContextRw, SharedContextRw};
+use server_core::{DefaultServerFactory, DefaultSharedContext, SharedContext};
 use std::path::PathBuf;
 
 #[fixture]
-fn lib_path() -> PathBuf {
+fn bin_path() -> PathBuf {
   PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     .join("..")
-    .join("..")
-    .join("llamacpp-sys")
-    .join("libs")
-    .join(llamacpp_sys::BUILD_TARGET)
-    .join(llamacpp_sys::DEFAULT_VARIANT)
-    .join(llamacpp_sys::LIBRARY_NAME)
+    .join("llama_server_proc")
+    .join("bin")
+    .join(llama_server_proc::BUILD_TARGET)
+    .join(llama_server_proc::DEFAULT_VARIANT)
+    .join(llama_server_proc::EXEC_NAME)
 }
 
 #[fixture]
@@ -24,74 +21,82 @@ fn tests_data() -> PathBuf {
     .join("data")
 }
 
-#[rstest]
-fn test_live_lib_llama_server_load_library_for_current_platform(lib_path: PathBuf) {
-  let lib = unsafe { Library::new(&lib_path) };
-  assert!(lib.is_ok(), "library loading failed with error: {:?}", lib);
-}
-
-#[rstest]
-fn test_live_lib_llama_server_load_library_with_dynamic_bodhi_server(lib_path: PathBuf) {
-  let server = DynamicBodhiServer::default();
-  let result = server.load_library(&lib_path);
-  assert!(
-    result.is_ok(),
-    "library loading failed with error: {:?}",
-    result
-  );
+#[fixture]
+fn llama_68m(tests_data: PathBuf) -> PathBuf {
+  tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61/llama-68m-chat-v1.q8_0.gguf")
 }
 
 #[rstest]
 #[tokio::test]
-async fn test_live_lib_shared_rw_reload(lib_path: PathBuf) {
-  let shared_rw =
-    DefaultSharedContextRw::new(true, Box::new(DefaultServerContextFactory), Some(lib_path));
+async fn test_live_llama_server_load_exec_with_server(
+  bin_path: PathBuf,
+  llama_68m: PathBuf,
+) -> anyhow::Result<()> {
+  let server = LlamaServer::new(
+    bin_path,
+    LlamaServerArgsBuilder::default()
+      .model(llama_68m)
+      .build()
+      .unwrap(),
+  )?;
+  let result = server.start().await;
+  server.stop_unboxed().await?;
+  assert!(
+    result.is_ok(),
+    "server start failed with error: {:?}",
+    result
+  );
+  Ok(())
+}
+
+#[rstest]
+#[tokio::test]
+async fn test_live_shared_rw_reload(bin_path: PathBuf) -> anyhow::Result<()> {
+  let shared_rw = DefaultSharedContext::with_args(Box::new(DefaultServerFactory), bin_path);
   let result = shared_rw.reload(None).await;
+  shared_rw.stop().await?;
   assert!(
     result.is_ok(),
     "shared rw reload failed with error: {:?}",
     result
   );
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-#[ignore]
-async fn test_live_lib_shared_rw_reload_with_gpt_params_with_symlink(
-  lib_path: PathBuf,
-  tests_data: PathBuf,
-) {
-  let shared_rw =
-    DefaultSharedContextRw::new(true, Box::new(DefaultServerContextFactory), Some(lib_path));
-  let gpt_params = CommonParams {
-    model: tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61/llama-68m-chat-v1.q8_0.gguf").to_string_lossy().to_string(),
-    ..Default::default()
-  };
-  let result = shared_rw.reload(Some(gpt_params)).await;
+async fn test_live_shared_rw_reload_with_model_as_symlink(
+  bin_path: PathBuf,
+  llama_68m: PathBuf,
+) -> anyhow::Result<()> {
+  let shared_rw = DefaultSharedContext::with_args(Box::new(DefaultServerFactory), bin_path);
+  let server_args = LlamaServerArgsBuilder::default().model(llama_68m).build()?;
+  let result = shared_rw.reload(Some(server_args)).await;
+  shared_rw.stop().await?;
   assert!(
     result.is_ok(),
     "shared rw reload failed with error: {:?}",
     result
   );
+  Ok(())
 }
 
 #[rstest]
 #[tokio::test]
-#[ignore]
-async fn test_live_lib_shared_rw_reload_with_gpt_params_with_actual_file(
-  lib_path: PathBuf,
+async fn test_live_shared_rw_reload_with_actual_file(
+  bin_path: PathBuf,
   tests_data: PathBuf,
-) {
-  let shared_rw =
-    DefaultSharedContextRw::new(true, Box::new(DefaultServerContextFactory), Some(lib_path));
-  let gpt_params = CommonParams {
-    model: tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/blobs/cdd6bad08258f53c637c233309c3b41ccd91907359364aaa02e18df54c34b836").to_string_lossy().to_string(),
-    ..Default::default()
-  };
-  let result = shared_rw.reload(Some(gpt_params)).await;
+) -> anyhow::Result<()> {
+  let shared_rw = DefaultSharedContext::with_args(Box::new(DefaultServerFactory), bin_path);
+  let server_params = LlamaServerArgsBuilder::default()
+    .model(tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/blobs/cdd6bad08258f53c637c233309c3b41ccd91907359364aaa02e18df54c34b836"))
+    .build()?;
+  let result = shared_rw.reload(Some(server_params)).await;
+  shared_rw.stop().await?;
   assert!(
     result.is_ok(),
     "shared rw reload failed with error: {:?}",
     result
   );
+  Ok(())
 }

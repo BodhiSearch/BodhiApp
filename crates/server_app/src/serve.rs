@@ -4,7 +4,7 @@ use crate::{
 use axum::Router;
 use objs::{impl_error_from, AppError};
 use routes_all::build_routes;
-use server_core::{ContextError, DefaultSharedContextRw, SharedContextRw};
+use server_core::{ContextError, DefaultSharedContext, SharedContext};
 use services::AppService;
 use std::{path::Path, sync::Arc};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
@@ -30,13 +30,13 @@ pub enum ServeCommand {
 }
 
 pub struct ShutdownContextCallback {
-  ctx: Arc<dyn SharedContextRw>,
+  ctx: Arc<dyn SharedContext>,
 }
 
 #[async_trait::async_trait]
 impl ShutdownCallback for ShutdownContextCallback {
   async fn shutdown(&self) {
-    if let Err(err) = self.ctx.try_stop().await {
+    if let Err(err) = self.ctx.stop().await {
       tracing::warn!(err = ?err, "error stopping llama context");
     }
   }
@@ -88,18 +88,20 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let library_path = service.env_service().library_path();
-    let library_lookup_path = service.env_service().library_lookup_path();
-    let library_path = Path::new(&library_lookup_path).join(library_path);
-    if !library_path.exists() {
-      return Err(ContextError::LibraryNotExists(
-        library_path.to_string_lossy().to_string(),
+    let exec_path = service.env_service().exec_path();
+    let exec_lookup_path = service.env_service().exec_lookup_path();
+    let exec_path = Path::new(&exec_lookup_path).join(exec_path);
+    if !exec_path.exists() {
+      println!(
+        "exec not found at {}",
+        exec_path.to_string_lossy().to_string()
+      );
+      return Err(ContextError::ExecNotExists(
+        exec_path.to_string_lossy().to_string(),
       ))?;
     }
-    let mut ctx = DefaultSharedContextRw::default();
-    // ctx.disable_logging();
-    ctx.set_library_path(library_path).await?;
-    let ctx: Arc<dyn SharedContextRw> = Arc::new(ctx);
+    let ctx = DefaultSharedContext::new(exec_path);
+    let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
     let app = build_routes(ctx.clone(), service, static_router);
 
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {

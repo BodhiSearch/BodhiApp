@@ -8,7 +8,8 @@ use services::{
   test_utils::EnvWrapperStub,
   AppService, DefaultAppService, DefaultEnvService, DefaultSettingService, HfHubService,
   InitService, KeycloakAuthService, LocalDataService, MockSecretService, MokaCacheService,
-  SqliteSessionService, KEY_APP_AUTHZ, KEY_APP_STATUS,
+  SqliteSessionService, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME, KEY_APP_AUTHZ,
+  KEY_APP_STATUS,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -42,11 +43,10 @@ pub fn llama2_7b_setup(
 
   let bodhi_logs = bodhi_home.join("logs");
   let hf_cache = hf_home.join("hub");
-  let libs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
+  let execs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("..")
-    .join("..")
-    .join("llamacpp-sys")
-    .join("libs")
+    .join("llama_server_proc")
+    .join("bin")
     .canonicalize()
     .unwrap();
   let envs = HashMap::from([
@@ -55,20 +55,17 @@ pub fn llama2_7b_setup(
       temp_dir.path().to_str().unwrap().to_string(),
     ),
     (
-      String::from("BODHI_HOME"),
+      String::from(BODHI_HOME),
       bodhi_home.to_str().unwrap().to_string(),
     ),
     (
-      String::from("BODHI_LOGS"),
+      String::from(BODHI_LOGS),
       bodhi_logs.to_str().unwrap().to_string(),
     ),
+    (String::from(HF_HOME), hf_home.to_str().unwrap().to_string()),
     (
-      String::from("HF_HOME"),
-      hf_home.to_str().unwrap().to_string(),
-    ),
-    (
-      String::from("BODHI_LIBRARY_LOOKUP_PATH"),
-      libs_dir.display().to_string(),
+      String::from(BODHI_EXEC_LOOKUP_PATH),
+      execs_dir.display().to_string(),
     ),
   ]);
   let env_wrapper = EnvWrapperStub::new(envs);
