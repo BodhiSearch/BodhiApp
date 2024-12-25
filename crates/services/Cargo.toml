@@ -4,9 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-llamacpp_sys = { workspace = true }
 objs = { workspace = true }
 errmeta_derive = { workspace = true }
+llama_server_proc = { workspace = true }
 
 anyhow = { workspace = true, optional = true }
 axum = { workspace = true }

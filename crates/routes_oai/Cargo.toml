@@ -15,6 +15,7 @@ chrono = { workspace = true }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
 futures-util = { workspace = true }
+http = { workspace = true }
 include_dir = { workspace = true }
 mime = { workspace = true }
 rstest = { workspace = true, optional = true }
@@ -24,7 +25,9 @@ serde_yaml = { workspace = true }
 server_core = { workspace = true }
 services = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+tokio-util = { workspace = true }
 tokio-stream = { workspace = true }
 tracing = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
@@ -34,9 +37,11 @@ objs = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 auth_middleware = { workspace = true, features = ["test-utils"] }
+llama_server_proc = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
+http = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
 reqwest = { workspace = true }

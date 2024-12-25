@@ -1,8 +1,8 @@
 # crates/bodhiapp/src-tauri/scripts/copy_libs.win.ps1
 
 $projectRoot = Join-Path $PSScriptRoot '..' '..' '..' '..'
-$sourcePath = Join-Path $projectRoot 'llamacpp-sys' 'libs'
-$destPath = Join-Path $PSScriptRoot '..' 'libs'
+$sourcePath = Join-Path $projectRoot 'crates' 'llama_server_proc' 'bin'
+$destPath = Join-Path $PSScriptRoot '..' 'bin'
 
 # Convert to absolute paths
 $sourcePath = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($sourcePath)

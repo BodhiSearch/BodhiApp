@@ -6,5 +6,4 @@ Write-Host "Executing command: $cleanCmd"
 Invoke-Expression $cleanCmd
 
 # Remove build folders if they exist
-Remove-Item -Path "llamacpp-sys/build" -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item -Path "llamacpp-sys/llama.cpp/build" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path "crates/llama_server_proc/llama.cpp/build" -Recurse -Force -ErrorAction SilentlyContinue

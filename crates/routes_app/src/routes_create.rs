@@ -123,7 +123,7 @@ mod tests {
   use serde_json::{json, Value};
   use server_core::{
     test_utils::ResponseTestExt, AliasResponse, AliasResponseBuilder, DefaultRouterState,
-    MockSharedContextRw,
+    MockSharedContext,
   };
   use services::test_utils::{app_service_stub, AppServiceStub};
   use std::collections::HashMap;
@@ -134,7 +134,7 @@ mod tests {
   #[awt]
   async fn app(#[future] app_service_stub: AppServiceStub) -> Router {
     let router_state = DefaultRouterState::new(
-      Arc::new(MockSharedContextRw::default()),
+      Arc::new(MockSharedContext::default()),
       Arc::new(app_service_stub),
     );
     Router::new()

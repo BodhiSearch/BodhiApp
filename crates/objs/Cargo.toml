@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 errmeta_derive = { workspace = true }
-llamacpp_sys = { workspace = true }
 
 axum = { workspace = true, features = ["json"] }
 async-openai = { workspace = true }

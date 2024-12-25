@@ -16,11 +16,11 @@ ci.coverage:
 	$(MAKE) coverage
 
 coverage:
-	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | grep -v "llamacpp_sys" | sed 's/^/-p /'); \
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
 	cargo llvm-cov test --no-fail-fast --all-features $$PACKAGES --lcov --output-path lcov.info
 
 ci.macos.coverage:
-	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | grep -v "llamacpp_sys" | sed 's/^/-p /'); \
+	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
 	cargo llvm-cov test --no-fail-fast --all-features $$PACKAGES --lcov --output-path lcov.info
 
 ci.update-version:

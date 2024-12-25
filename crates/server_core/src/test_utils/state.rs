@@ -1,39 +1,46 @@
-use crate::{DefaultRouterState, MockSharedContextRw, ServerContextFactory};
-use llamacpp_rs::ServerContext;
+use crate::{ContextError, DefaultRouterState, MockSharedContext, ServerFactory};
+use llama_server_proc::{LlamaServerArgs, Server};
 use rstest::fixture;
 use services::test_utils::{app_service_stub, AppServiceStub};
-use std::sync::{Arc, Mutex};
+use std::{
+  path::Path,
+  sync::{Arc, Mutex},
+};
 
 #[fixture]
 #[awt]
 pub async fn router_state_stub(#[future] app_service_stub: AppServiceStub) -> DefaultRouterState {
   DefaultRouterState::new(
-    Arc::new(MockSharedContextRw::default()),
+    Arc::new(MockSharedContext::default()),
     Arc::new(app_service_stub),
   )
 }
 
 #[derive(Debug)]
-pub struct BodhiServerFactoryStub {
-  pub bodhi_server: Mutex<Vec<Box<dyn ServerContext>>>,
+pub struct ServerFactoryStub {
+  pub servers: Mutex<Vec<Box<dyn Server>>>,
 }
 
-impl BodhiServerFactoryStub {
-  pub fn new(instance: Box<dyn ServerContext>) -> Self {
+impl ServerFactoryStub {
+  pub fn new(instance: Box<dyn Server>) -> Self {
     Self {
-      bodhi_server: Mutex::new(vec![instance]),
+      servers: Mutex::new(vec![instance]),
     }
   }
 
-  pub fn new_with_instances(instances: Vec<Box<dyn ServerContext>>) -> Self {
+  pub fn new_with_instances(instances: Vec<Box<dyn Server>>) -> Self {
     Self {
-      bodhi_server: Mutex::new(instances),
+      servers: Mutex::new(instances),
     }
   }
 }
 
-impl ServerContextFactory for BodhiServerFactoryStub {
-  fn create_server_context(&self) -> Box<dyn ServerContext> {
-    self.bodhi_server.lock().unwrap().pop().unwrap()
+impl ServerFactory for ServerFactoryStub {
+  fn create_server(
+    &self,
+    _executable_path: &Path,
+    _server_args: &LlamaServerArgs,
+  ) -> Result<Box<dyn Server>, ContextError> {
+    Ok(self.servers.lock().unwrap().pop().unwrap())
   }
 }

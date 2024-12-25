@@ -30,8 +30,8 @@ pub static BODHI_SCHEME: &str = "BODHI_SCHEME";
 pub static BODHI_HOST: &str = "BODHI_HOST";
 pub static BODHI_PORT: &str = "BODHI_PORT";
 pub static BODHI_FRONTEND_URL: &str = "BODHI_FRONTEND_URL";
-pub static BODHI_LIBRARY_PATH: &str = "BODHI_LIBRARY_PATH";
-pub static BODHI_LIBRARY_LOOKUP_PATH: &str = "BODHI_LIBRARY_LOOKUP_PATH";
+pub static BODHI_EXEC_PATH: &str = "BODHI_EXEC_PATH";
+pub static BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
 
 pub static SETTINGS_YAML: &str = "settings.yaml";
 
@@ -43,8 +43,8 @@ pub static SETTING_VARS: &[&str] = &[
   BODHI_HOST,
   BODHI_PORT,
   BODHI_FRONTEND_URL,
-  BODHI_LIBRARY_PATH,
-  BODHI_LIBRARY_LOOKUP_PATH,
+  BODHI_EXEC_PATH,
+  BODHI_EXEC_LOOKUP_PATH,
 ];
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -118,9 +118,9 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
 
   fn log_level(&self) -> LogLevel;
 
-  fn library_lookup_path(&self) -> String;
+  fn exec_lookup_path(&self) -> String;
 
-  fn library_path(&self) -> String;
+  fn exec_path(&self) -> String;
 
   fn set_setting(&self, key: &str, value: &str) -> Result<(), EnvServiceError>;
 
@@ -279,8 +279,8 @@ impl EnvService for DefaultEnvService {
     LogLevel::try_from(log_level.as_str()).unwrap_or(LogLevel::Warn)
   }
 
-  fn library_lookup_path(&self) -> String {
-    let lookup_path = self.setting_service.get_setting(BODHI_LIBRARY_LOOKUP_PATH);
+  fn exec_lookup_path(&self) -> String {
+    let lookup_path = self.setting_service.get_setting(BODHI_EXEC_LOOKUP_PATH);
     match lookup_path {
       Some(lookup_path) => lookup_path,
       None => std::env::current_dir()
@@ -295,17 +295,17 @@ impl EnvService for DefaultEnvService {
     }
   }
 
-  fn library_path(&self) -> String {
-    let library_path = self.setting_service.get_setting_or_default(
-      BODHI_LIBRARY_PATH,
+  fn exec_path(&self) -> String {
+    let exec_path = self.setting_service.get_setting_or_default(
+      BODHI_EXEC_PATH,
       &format!(
         "{}/{}/{}",
-        llamacpp_sys::BUILD_TARGET,
-        llamacpp_sys::DEFAULT_VARIANT,
-        llamacpp_sys::LIBRARY_NAME
+        llama_server_proc::BUILD_TARGET,
+        llama_server_proc::DEFAULT_VARIANT,
+        llama_server_proc::EXEC_NAME
       ),
     );
-    library_path.replace('/', std::path::MAIN_SEPARATOR_STR)
+    exec_path.replace('/', std::path::MAIN_SEPARATOR_STR)
   }
 
   fn set_setting(&self, key: &str, value: &str) -> Result<(), EnvServiceError> {

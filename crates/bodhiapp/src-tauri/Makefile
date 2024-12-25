@@ -3,13 +3,13 @@
 build_frontend:
 	cd .. && pnpm install && pnpm run build
 
-copy_libs:
-	@if [ ! -d "../../../llamacpp-sys/libs" ]; then \
-		echo "Error: Source directory '../../../llamacpp-sys/libs' not found"; \
+copy_bins:
+	@if [ ! -d "../../llama_server_proc/bin" ]; then \
+		echo "Error: Source directory '../../llama_server_proc/bin' not found"; \
 		exit 1; \
 	fi
-	@echo "Checking source directory: ../../../llamacpp-sys/libs"
-	@echo "Creating libs directory"
-	mkdir -p libs
-	@echo "Copying files from ../../../llamacpp-sys/libs to libs"
-	cp -r ../../../llamacpp-sys/libs/* libs/
+	@echo "Checking source directory: ../../llama_server_proc/bin"
+	@echo "Creating bin directory"
+	mkdir -p bin
+	@echo "Copying files from ../../llama_server_proc/bin to bin"
+	cp -r ../../llama_server_proc/bin/* bin/

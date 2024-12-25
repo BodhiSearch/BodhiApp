@@ -23,7 +23,7 @@ fn _main() -> anyhow::Result<()> {
     run_make_command("build_frontend")?;
   }
   copy_frontend(&bodhiapp_dir)?;
-  run_make_command("copy_libs")?;
+  run_make_command("copy_bins")?;
   Ok(())
 }
 

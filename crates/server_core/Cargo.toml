@@ -7,7 +7,7 @@ edition = "2021"
 commands = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
-llamacpp_rs = { workspace = true }
+llama_server_proc = { workspace = true }
 services = { workspace = true }
 
 anyhow = { workspace = true, optional = true }
@@ -27,7 +27,7 @@ mime = { workspace = true }
 minijinja = { workspace = true }
 mockall = { workspace = true, optional = true }
 pin-project-lite = { workspace = true }
-reqwest = { workspace = true, optional = true }
+reqwest = { workspace = true }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -42,7 +42,7 @@ tracing-subscriber = { workspace = true, features = [
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-llamacpp_rs = { workspace = true, features = ["test-utils"] }
+llama_server_proc = { workspace = true, features = ["test-utils"] }
 objs = { workspace = true, features = ["test-utils"] }
 commands = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
@@ -65,14 +65,13 @@ tower = { workspace = true, features = ["util"] }
 
 [features]
 test-utils = [
-  "llamacpp_rs/test-utils",
+  "llama_server_proc/test-utils",
   "objs/test-utils",
   "commands/test-utils",
   "services/test-utils",
   "anyhow",
   "tracing-subscriber",
   "mockall",
-  "reqwest",
   "rstest",
   "http-body-util",
 ]

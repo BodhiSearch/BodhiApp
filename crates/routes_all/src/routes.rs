@@ -17,14 +17,14 @@ use routes_oai::{
   ollama_model_chat_handler, ollama_model_show_handler, ollama_models_handler,
 };
 use serde_json::json;
-use server_core::{DefaultRouterState, RouterState, SharedContextRw};
+use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::AppService;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 
 pub fn build_routes(
-  ctx: Arc<dyn SharedContextRw>,
+  ctx: Arc<dyn SharedContext>,
   app_service: Arc<dyn AppService>,
   static_router: Option<Router>,
 ) -> Router {

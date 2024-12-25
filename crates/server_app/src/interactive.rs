@@ -9,25 +9,25 @@ use async_openai::{
 };
 use derive_new::new;
 use dialoguer::{theme::ColorfulTheme, BasicHistory, Input};
+use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use llamacpp_rs::{CommonParamsBuilder, CommonParamsBuilderError};
+use llama_server_proc::LlamaServerArgsBuilder;
 use objs::{
-  impl_error_from, Alias, AppError, BuilderError, ErrorType, ObjValidationError, SerdeJsonError,
+  impl_error_from, Alias, AppError, BuilderError, ErrorType, ObjValidationError, ReqwestError,
+  SerdeJsonError,
 };
 use server_core::{
-  obj_exts::update, ContextError, DefaultRouterState, DefaultSharedContextRw, RouterState,
-  RouterStateError, SharedContextRw,
+  ContextError, DefaultRouterState, DefaultSharedContext, RouterState, RouterStateError,
+  SharedContext,
 };
 use services::{AppService, DataServiceError, HubServiceError};
 use std::{
   io::{self, Write},
+  path::PathBuf,
   sync::Arc,
   time::Duration,
 };
-use tokio::{
-  sync::{mpsc::channel, Mutex},
-  task::JoinHandle,
-};
+use tokio::sync::Mutex;
 
 fn infinite_loading(msg: String) -> ProgressBar {
   let spinner_style = ProgressStyle::with_template("{spinner:.green} {wide_msg}")
@@ -65,12 +65,11 @@ pub enum InteractiveError {
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "interactive_error-gpt_params_builder_error", args_delegate = false)]
-  GptParamsBuilderError(#[from] CommonParamsBuilderError),
-  #[error(transparent)]
   ContextError(#[from] ContextError),
   #[error(transparent)]
   RouterStateError(#[from] RouterStateError),
+  #[error(transparent)]
+  Reqwest(#[from] ReqwestError),
 }
 
 impl_error_from!(
@@ -82,6 +81,11 @@ impl_error_from!(
   ::tokio::task::JoinError,
   InteractiveError::Join,
   crate::TaskJoinError
+);
+impl_error_from!(
+  ::reqwest::Error,
+  InteractiveError::Reqwest,
+  ::objs::ReqwestError
 );
 
 type Result<T> = std::result::Result<T, InteractiveError>;
@@ -95,12 +99,13 @@ impl Interactive {
       Some(alias.snapshot.clone()),
     )?;
     let pb = infinite_loading(String::from("Loading..."));
-    let mut gpt_params = CommonParamsBuilder::default()
-      .model(model.path().display().to_string())
+    let server_args = LlamaServerArgsBuilder::default()
+      .model(model.path())
+      .server_params(&alias.context_params)
       .build()?;
-    update(&alias.context_params, &mut gpt_params);
-    let shared_rw = DefaultSharedContextRw::default();
-    shared_rw.reload(Some(gpt_params)).await?;
+    let exec_path = service.env_service().exec_path();
+    let shared_rw = DefaultSharedContext::new(PathBuf::from(exec_path));
+    shared_rw.reload(Some(server_args)).await?;
     let router_state = DefaultRouterState::new(Arc::new(shared_rw), service);
     pb.finish_and_clear();
     let mut shell_history = BasicHistory::new().max_entries(100).no_duplicates(false);
@@ -133,7 +138,7 @@ impl Interactive {
       }
     }
     let pb = infinite_loading(String::from("Stopping..."));
-    router_state.try_stop().await?;
+    router_state.stop().await?;
     pb.finish_and_clear();
     Ok(())
   }
@@ -153,50 +158,53 @@ impl Interactive {
     ));
     let msgs_clone = (*lock).clone();
     drop(lock);
+
     let model = self.alias.alias.clone();
     let request = CreateChatCompletionRequestArgs::default()
       .model(model)
       .stream(true)
       .messages(msgs_clone)
       .build()?;
-    let (tx, mut rx) = channel::<String>(100);
-    let handle: JoinHandle<Result<()>> = tokio::spawn(async move {
-      let mut deltas = String::new();
-      while let Some(message) = rx.recv().await {
-        if message.trim() == "data: [DONE]" {
-          break;
-        }
-        let message = if message.starts_with("data: ") {
-          message.strip_prefix("data: ").unwrap()
-        } else {
-          message.as_ref()
-        };
-        let result = serde_json::from_str::<CreateChatCompletionStreamResponse>(message)?;
-        let delta = result.choices[0]
-          .delta
-          .content
-          .clone()
-          .unwrap_or_default()
-          .to_string();
-        deltas.push_str(&delta);
-        print!("{delta}");
-        _ = io::stdout().flush();
+
+    let response = router_state.chat_completions(request).await?;
+    let mut deltas = String::new();
+
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+      let chunk = chunk?;
+      let message = String::from_utf8_lossy(&chunk);
+
+      if message.trim() == "data: [DONE]" {
+        break;
       }
-      let mut msgs = chat_history.lock().await;
-      (*msgs).push(ChatCompletionRequestMessage::Assistant(
-        ChatCompletionRequestAssistantMessageArgs::default()
-          .content(deltas)
-          .build()
-          .unwrap(),
-      ));
-      Ok(())
-    });
-    let result = router_state.chat_completions(request, tx).await;
-    (handle.await?)?;
-    match result {
-      Ok(()) => {}
-      Err(err) => eprintln!("error: {err}"),
+
+      let message = if message.starts_with("data: ") {
+        message.strip_prefix("data: ").unwrap()
+      } else {
+        &message
+      };
+
+      let result = serde_json::from_str::<CreateChatCompletionStreamResponse>(message)?;
+      let delta = result.choices[0]
+        .delta
+        .content
+        .clone()
+        .unwrap_or_default()
+        .to_string();
+
+      deltas.push_str(&delta);
+      print!("{delta}");
+      _ = io::stdout().flush();
     }
+
+    let mut msgs = chat_history.lock().await;
+    (*msgs).push(ChatCompletionRequestMessage::Assistant(
+      ChatCompletionRequestAssistantMessageArgs::default()
+        .content(deltas)
+        .build()
+        .unwrap(),
+    ));
+
     println!();
     Ok(())
   }

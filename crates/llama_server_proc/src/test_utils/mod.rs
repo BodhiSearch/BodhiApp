@@ -1,5 +1,8 @@
+use http::response::Builder;
+use reqwest::{Response, ResponseBuilderExt};
 use rstest::fixture;
 use std::path::PathBuf;
+use url::Url;
 
 #[fixture]
 pub fn llama2_7b() -> PathBuf {
@@ -15,4 +18,11 @@ pub fn llama2_7b() -> PathBuf {
 #[fixture]
 pub fn llama2_7b_str(llama2_7b: PathBuf) -> String {
   llama2_7b.to_string_lossy().into_owned()
+}
+
+pub fn mock_response(body: impl Into<String>) -> Response {
+  let url = Url::parse("http://127.0.0.1:8080").unwrap();
+  let body: String = body.into();
+  let hyper_response = Builder::new().url(url).status(200).body(body).unwrap();
+  Response::from(hyper_response)
 }
