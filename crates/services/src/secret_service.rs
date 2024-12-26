@@ -121,7 +121,7 @@ asref_impl!(SecretService, KeyringSecretService);
 pub struct KeyringSecretService {
   secrets_path: PathBuf,
   cache: Arc<dyn CacheService>,
-  keyring: Arc<dyn KeyringStore>,
+  encryption_key: Vec<u8>,
 }
 
 impl KeyringSecretService {
@@ -141,64 +141,41 @@ impl KeyringSecretService {
     secrets_path: &Path,
     cache: Arc<dyn CacheService>,
   ) -> Result<Self> {
-    let service = Self {
-      secrets_path: secrets_path.to_path_buf(),
-      cache,
-      keyring,
-    };
-
-    match (encryption_key, service.keyring.get_password(SECRET_KEY)?) {
-      (Some(key), Some(stored_key)) => {
+    let encryption_key = match encryption_key {
+      Some(key) => {
         // Hash the provided key for uniform distribution
         let mut hasher = Sha256::new();
         hasher.update(key.as_bytes());
-        let hashed_key = hasher.finalize();
-        let key_str = BASE64.encode(hashed_key);
-
-        if stored_key != key_str {
-          return Err(SecretServiceError::KeyMismatch);
+        hasher.finalize().to_vec()
+      }
+      None => {
+        // Try to get existing key from keyring or generate new one
+        match keyring.get_password(SECRET_KEY)? {
+          Some(stored_key) => BASE64.decode(&stored_key)?,
+          None => {
+            let mut key = vec![0u8; 32];
+            OsRng.fill_bytes(&mut key);
+            // Store the new key in keyring
+            keyring.set_password(SECRET_KEY, &BASE64.encode(&key))?;
+            key
+          }
         }
       }
-      (Some(key), None) => {
-        // Hash and store the provided key
-        let mut hasher = Sha256::new();
-        hasher.update(key.as_bytes());
-        let hashed_key = hasher.finalize();
-        service.store_encryption_key(hashed_key.to_vec())?;
-      }
-      (None, None) => {
-        // Generate and store a new random key
-        let mut key = vec![0u8; 32];
-        OsRng.fill_bytes(&mut key);
-        service.store_encryption_key(key)?;
-      }
-      (None, Some(_)) => {
-        // Key exists, nothing to do
-      }
-    }
+    };
 
+    let service = Self {
+      secrets_path: secrets_path.to_path_buf(),
+      cache,
+      encryption_key,
+    };
+
+    service.validate()?;
     Ok(service)
   }
 
-  fn store_encryption_key(&self, key: Vec<u8>) -> Result<Vec<u8>> {
-    let key_str = BASE64.encode(&key);
-    self.keyring.set_password(SECRET_KEY, &key_str)?;
-    Ok(key)
-  }
-
-  fn get_encryption_key(&self) -> Result<Vec<u8>> {
-    let key_str = self
-      .keyring
-      .get_password(SECRET_KEY)?
-      .ok_or_else(|| SecretServiceError::KeyNotFound)?;
-
-    Ok(BASE64.decode(&key_str)?)
-  }
-
   fn derive_key(&self, salt: &[u8]) -> Result<Vec<u8>> {
-    let encryption_key = self.get_encryption_key()?;
     let mut key = vec![0u8; 32];
-    pbkdf2_hmac::<Sha256>(&encryption_key, salt, PBKDF2_ITERATIONS, &mut key);
+    pbkdf2_hmac::<Sha256>(&self.encryption_key, salt, PBKDF2_ITERATIONS, &mut key);
     Ok(key)
   }
 
@@ -268,6 +245,15 @@ impl KeyringSecretService {
 
     serde_yaml::to_writer(file, &encrypted)
       .map_err(|e| SecretServiceError::SerdeYamlError(e.into()))
+  }
+
+  fn validate(&self) -> Result<()> {
+    if !self.secrets_path.exists() {
+      return Ok(());
+    }
+    let file = OpenOptions::new().read(true).open(&self.secrets_path)?;
+    self.read_secrets(&file)?;
+    Ok(())
   }
 }
 
@@ -435,7 +421,7 @@ mod tests {
   }
 
   #[rstest]
-  fn test_secret_service_with_cache(temp_dir: TempDir) {
+  fn test_secret_service_with_cache(temp_dir: TempDir) -> anyhow::Result<()> {
     let cache = Arc::new(MokaCacheService::default());
     let service = KeyringSecretService::new_internal(
       Arc::new(KeyringStoreStub::default()),
@@ -449,11 +435,11 @@ mod tests {
     let value = service.get_secret_string("test_key").unwrap();
     assert_eq!(value, Some("test_value".to_string()));
     assert_eq!(cache.get("test_key"), Some("test_value".to_string()));
-    let cached_value = service.get_secret_string("test_key").unwrap();
-    assert_eq!(cached_value, Some("test_value".to_string()));
+
     service.delete_secret("test_key").unwrap();
-    assert!(matches!(service.get_secret_string("test_key"), Ok(None)));
+    assert_eq!(service.get_secret_string("test_key")?, None);
     assert_eq!(cache.as_ref().get("test_key"), None);
+    Ok(())
   }
 
   #[rstest]
@@ -490,7 +476,7 @@ mod tests {
   }
 
   #[rstest]
-  fn test_secret_service_with_new_encryption_key(temp_dir: TempDir) -> anyhow::Result<()> {
+  fn test_secret_service_with_encryption_key(temp_dir: TempDir) -> anyhow::Result<()> {
     let secrets_path = temp_dir.path().join("secrets.yaml");
     let keyring = Arc::new(KeyringStoreStub::default());
 
@@ -503,10 +489,11 @@ mod tests {
 
     // Store a secret
     service.set_secret_string("test-key", "test-value")?;
-
-    // Verify it can be retrieved
-    let value = service.get_secret_string("test-key")?;
-    assert_eq!(value, Some("test-value".to_string()));
+    assert_eq!(
+      service.get_secret_string("test-key")?,
+      Some("test-value".to_string())
+    );
+    drop(service);
 
     // Create new service instance with same key
     let service2 = KeyringSecretService::new_internal(
@@ -534,6 +521,11 @@ mod tests {
       secrets_path.as_ref(),
       Arc::new(MokaCacheService::default()),
     )?;
+    service.set_secret_string("test-key", "test-value")?;
+    assert_eq!(
+      service.get_secret_string("test-key")?,
+      Some("test-value".to_string())
+    );
     drop(service);
 
     let service = KeyringSecretService::new_internal(
@@ -543,7 +535,10 @@ mod tests {
       Arc::new(MokaCacheService::default()),
     );
 
-    assert!(matches!(service, Err(SecretServiceError::KeyMismatch)));
+    assert!(matches!(
+      service.unwrap_err(),
+      SecretServiceError::DecryptionError(_)
+    ));
 
     Ok(())
   }
@@ -561,8 +556,12 @@ mod tests {
 
     // Store and verify a secret
     service.set_secret_string("test-key", "test-value")?;
-    let value = service.get_secret_string("test-key")?;
-    assert_eq!(value, Some("test-value".to_string()));
+    assert_eq!(
+      service.get_secret_string("test-key")?,
+      Some("test-value".to_string())
+    );
+
+    drop(service);
 
     // Create new service instance without key
     let service2 = KeyringSecretService::new_internal(
