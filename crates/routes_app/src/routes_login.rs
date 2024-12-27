@@ -1,5 +1,5 @@
 use crate::LoginError;
-use auth_middleware::{app_status_or_default, generate_random_string};
+use auth_middleware::{app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN};
 use axum::{
   body::Body,
   extract::{Query, State},
@@ -18,10 +18,7 @@ use oauth2::{
 use objs::{ApiError, AppError, BadRequestError, ErrorType};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{
-  decode_access_token, get_secret, AppRegInfo, AppStatus, Claims, KEY_APP_REG_INFO, KEY_APP_STATUS,
-  KEY_RESOURCE_TOKEN,
-};
+use services::{decode_access_token, AppStatus, Claims, SecretServiceExt};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
@@ -49,7 +46,8 @@ pub async fn login_handler(
     }
     None => {
       let secret_service = app_service.secret_service();
-      let app_ref_info = get_secret::<_, AppRegInfo>(secret_service, KEY_APP_REG_INFO)?
+      let app_ref_info = secret_service
+        .app_reg_info()?
         .ok_or(LoginError::AppRegInfoNotFound)?;
       let callback_url = env_service.login_callback_url();
       let client_id = app_ref_info.client_id;
@@ -125,7 +123,8 @@ pub async fn login_callback_handler(
     .map_err(LoginError::from)?
     .ok_or(LoginError::SessionInfoNotFound)?;
 
-  let app_reg_info = get_secret::<_, AppRegInfo>(&secret_service, KEY_APP_REG_INFO)?
+  let app_reg_info = secret_service
+    .app_reg_info()?
     .ok_or(LoginError::AppRegInfoNotFound)?;
 
   let token_response = auth_service
@@ -153,7 +152,7 @@ pub async fn login_callback_handler(
     auth_service
       .make_resource_admin(&app_reg_info.client_id, &app_reg_info.client_secret, &email)
       .await?;
-    secret_service.set_secret_string(KEY_APP_STATUS, &AppStatus::Ready.to_string())?;
+    secret_service.set_app_status(&AppStatus::Ready)?;
     let (new_access_token, new_refresh_token) = auth_service
       .refresh_token(
         RefreshToken::new(refresh_token.to_string()),
@@ -248,7 +247,7 @@ mod tests {
     UserInfo,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::optional_auth_middleware;
+  use auth_middleware::{optional_auth_middleware, KEY_RESOURCE_TOKEN};
   use axum::{
     body::Body,
     http::{status::StatusCode, Request},
@@ -276,9 +275,8 @@ mod tests {
       expired_token, token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub,
       SecretServiceStub, SessionTestExt,
     },
-    AppRegInfo, AppService, AuthServiceError, MockAuthService, MockEnvService,
-    SqliteSessionService, APP_STATUS_READY, BODHI_FRONTEND_URL, KEY_APP_REG_INFO, KEY_APP_STATUS,
-    KEY_RESOURCE_TOKEN,
+    AppRegInfo, AppService, AuthServiceError, MockAuthService, MockEnvService, SecretServiceExt,
+    SqliteSessionService, BODHI_FRONTEND_URL,
   };
   use services::{AppStatus, KeycloakAuthService};
   use std::{collections::HashMap, sync::Arc};
@@ -294,16 +292,14 @@ mod tests {
 
   #[rstest]
   #[case(
-        SecretServiceStub::with_map(maplit::hashmap! {
-            KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+        SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
                 client_id: "test_client_id".to_string(),
                 client_secret: "test_client_secret".to_string(),
                 public_key: "test_public_key".to_string(),
                 alg: jsonwebtoken::Algorithm::RS256,
                 kid: "test_kid".to_string(),
                 issuer: "test_issuer".to_string(),
-            }).unwrap(),
-        }),
+            }),
         "http://localhost:3000/callback",
         "http://test-id.getbodhi.app/realms/test-realm/auth",
     )]
@@ -486,17 +482,16 @@ mod tests {
     let mock_env_service =
       EnvServiceStub::default().with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000");
 
-    let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
-      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+    let secret_service = SecretServiceStub::new()
+      .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
         public_key: "test_public_key".to_string(),
         alg: jsonwebtoken::Algorithm::RS256,
         kid: "test_kid".to_string(),
         issuer: "test_issuer".to_string(),
-      }).unwrap(),
-      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
-    });
+      })
+      .with_app_status(&AppStatus::Ready);
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let app_service = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
@@ -566,9 +561,8 @@ mod tests {
     temp_bodhi_home: TempDir,
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
-    let secret_service = Arc::new(SecretServiceStub::with_map(maplit::hashmap! {
-      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
-    }));
+    let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Ready);
+    let secret_service = Arc::new(secret_service);
     let app_service: AppServiceStub = AppServiceStubBuilder::default()
       .secret_service(secret_service)
       .build_session_service(temp_bodhi_home.path().join("test.db"))
@@ -618,17 +612,16 @@ mod tests {
     #[case] expected_error: &str,
   ) -> anyhow::Result<()> {
     let dbfile = temp_bodhi_home.path().join("test.db");
-    let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
-      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+    let secret_service = SecretServiceStub::new()
+      .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
         public_key: "test_public_key".to_string(),
         alg: jsonwebtoken::Algorithm::RS256,
         kid: "test_kid".to_string(),
         issuer: "test_issuer".to_string(),
-      }).unwrap(),
-      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
-    });
+      })
+      .with_app_status(&AppStatus::Ready);
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let app_service: AppServiceStub = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
@@ -683,17 +676,16 @@ mod tests {
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let dbfile = temp_bodhi_home.path().join("test.db");
-    let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
-      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+    let secret_service = SecretServiceStub::new()
+      .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
         public_key: "test_public_key".to_string(),
         alg: jsonwebtoken::Algorithm::RS256,
         kid: "test_kid".to_string(),
         issuer: "test_issuer".to_string(),
-      }).unwrap(),
-      KEY_APP_STATUS.to_string() => APP_STATUS_READY.to_string(),
-    });
+      })
+      .with_app_status(&AppStatus::Ready);
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let mut mock_auth_service = MockAuthService::new();
     mock_auth_service
@@ -937,17 +929,17 @@ mod tests {
     };
     session_service.session_store.create(&mut record).await?;
     let session_service = Arc::new(session_service);
-    let secret_service = Arc::new(SecretServiceStub::with_map(maplit::hashmap! {
-      KEY_APP_STATUS.to_string() => AppStatus::ResourceAdmin.to_string(),
-      KEY_APP_REG_INFO.to_string() => serde_json::to_string(&AppRegInfo {
+    let secret_service = SecretServiceStub::new()
+      .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
         public_key: "test_public_key".to_string(),
         alg: jsonwebtoken::Algorithm::RS256,
         kid: "test_kid".to_string(),
         issuer: "test_issuer".to_string(),
-      })?,
-    }));
+      })
+      .with_app_status(&AppStatus::ResourceAdmin);
+    let secret_service = Arc::new(secret_service);
     let auth_service = Arc::new(KeycloakAuthService::new(
       keycloak_url.to_string(),
       "test-realm".to_string(),
@@ -1084,11 +1076,8 @@ mod tests {
       "http://frontend.localhost:3000/ui/home"
     );
     let secret_service = app_service.secret_service();
-    let updated_status = secret_service
-      .get_secret_string(KEY_APP_STATUS)
-      .unwrap()
-      .unwrap();
-    assert_eq!("ready", updated_status);
+    let updated_status = secret_service.app_status().unwrap();
+    assert_eq!(AppStatus::Ready, updated_status);
     Ok(())
   }
 }

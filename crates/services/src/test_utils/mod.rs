@@ -4,6 +4,7 @@ mod data;
 mod db;
 mod envs;
 mod hf;
+mod objs;
 mod secret;
 mod session;
 
@@ -13,5 +14,6 @@ pub use data::*;
 pub use db::*;
 pub use envs::*;
 pub use hf::*;
+pub use objs::*;
 pub use secret::*;
 pub use session::*;
