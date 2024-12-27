@@ -9,8 +9,7 @@ use axum::{
   Router,
 };
 use routes_app::{
-  app_info_handler, chats_router, create_router, dev_secrets_handler, login_callback_handler,
-  login_handler, logout_handler, pull_router, setup_handler, user_info_handler,
+  app_info_handler, chats_router, create_router, dev_secrets_handler, login_callback_handler, login_handler, logout_handler, pull_router, setup_callback_handler, setup_handler, setup_login_redirect, user_info_handler
 };
 use routes_oai::{
   chat_completions_handler, models_router, oai_model_handler, oai_models_handler,
@@ -42,6 +41,7 @@ pub fn build_routes(
     .route("/app/info", get(app_info_handler))
     .route("/app/setup", post(setup_handler))
     .route("/app/login/callback", get(login_callback_handler))
+    .route("/app/setup/callback", get(setup_callback_handler))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
     .route("/api/ui/logout", post(logout_handler));
 
@@ -57,6 +57,8 @@ pub fn build_routes(
   let optional_auth = Router::new()
     .route("/app/login", get(login_handler))
     .route("/app/login/", get(login_handler))
+    .route("/app/setup", get(setup_login_redirect))
+    .route("/app/setup/", get(setup_login_redirect))
     .route("/api/ui/user", get(user_info_handler))
     .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware));
   let protected_apis = Router::new()

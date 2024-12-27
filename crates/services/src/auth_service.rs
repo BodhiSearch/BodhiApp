@@ -36,6 +36,7 @@ pub struct Claims {
   pub jti: String,
   pub exp: u64,
   pub email: String,
+  pub azp: String,
 }
 
 pub fn decode_access_token(
@@ -73,13 +74,13 @@ type Result<T> = std::result::Result<T, AuthServiceError>;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait]
 pub trait AuthService: Send + Sync + std::fmt::Debug {
-  async fn register_client(&self, redirect_uris: Vec<String>) -> Result<AppRegInfo>;
+  async fn register_client(&self, token: &str, redirect_uris: Vec<String>) -> Result<AppRegInfo>;
 
   async fn exchange_auth_code(
     &self,
     code: AuthorizationCode,
     client_id: ClientId,
-    client_secret: ClientSecret,
+    client_secret: Option<ClientSecret>,
     redirect_uri: RedirectUrl,
     code_verifier: PkceCodeVerifier,
   ) -> Result<(AccessToken, RefreshToken)>;
@@ -93,7 +94,10 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
 
   async fn exchange_for_resource_token(
     &self,
-    client_token: &str,
+    current_token: &str,
+    current_client_id: &str,
+    client_id: &str,
+    client_secret: &str,
   ) -> Result<(AccessToken, RefreshToken)>;
 
   async fn make_resource_admin(
@@ -174,10 +178,11 @@ pub struct RegisterClientRequest {
 
 #[async_trait]
 impl AuthService for KeycloakAuthService {
-  async fn register_client(&self, redirect_uris: Vec<String>) -> Result<AppRegInfo> {
+  async fn register_client(&self, token: &str, redirect_uris: Vec<String>) -> Result<AppRegInfo> {
     let client_endpoint = format!("{}/clients", self.auth_api_url());
     let response = reqwest::Client::new()
       .post(client_endpoint)
+      .bearer_auth(token)
       .json(&RegisterClientRequest { redirect_uris })
       .send()
       .await?;
@@ -193,18 +198,20 @@ impl AuthService for KeycloakAuthService {
     &self,
     code: AuthorizationCode,
     client_id: ClientId,
-    client_secret: ClientSecret,
+    client_secret: Option<ClientSecret>,
     redirect_uri: RedirectUrl,
     code_verifier: PkceCodeVerifier,
   ) -> Result<(AccessToken, RefreshToken)> {
-    let params = [
-      ("grant_type", "authorization_code"),
-      ("code", code.secret()),
-      ("client_id", client_id.as_str()),
-      ("client_secret", client_secret.secret()),
-      ("redirect_uri", redirect_uri.as_str()),
-      ("code_verifier", code_verifier.secret()),
+    let mut params = vec![
+      ("grant_type", "authorization_code".to_string()),
+      ("code", code.secret().to_string()),
+      ("client_id", client_id.as_str().to_string()),
+      ("redirect_uri", redirect_uri.as_str().to_string()),
+      ("code_verifier", code_verifier.secret().to_string()),
     ];
+    if let Some(client_secret) = client_secret {
+      params.push(("client_secret", client_secret.secret().to_owned()));
+    }
 
     let client = reqwest::Client::new();
     let response = client
@@ -260,9 +267,57 @@ impl AuthService for KeycloakAuthService {
   #[allow(unused_variables)]
   async fn exchange_for_resource_token(
     &self,
-    client_token: &str,
+    current_token: &str,
+    current_client_id: &str,
+    client_id: &str,
+    client_secret: &str,
   ) -> Result<(AccessToken, RefreshToken)> {
-    todo!()
+    let params = vec![
+      ("grant_type", "client_credentials".to_string()),
+      ("client_id", client_id.to_string()),
+      ("client_secret", client_secret.to_string()),
+    ];
+
+    let client = reqwest::Client::new();
+    let response = client
+      .post(self.auth_token_url())
+      .form(&params)
+      .send()
+      .await?;
+    if !response.status().is_success() {
+      let error = response.json::<KeycloakError>().await?;
+      return Err(error.into());
+    }
+    let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+      response.json().await?;
+    let resource_token = token_response.access_token().to_owned().secret().to_owned();
+
+    let params = vec![
+      (
+        "grant_type",
+        "urn:ietf:params:oauth:grant-type:token-exchange".to_string(),
+      ),
+      ("subject_token", current_token.to_string()),
+      ("audience", client_id.to_string()),
+      ("client_id", current_client_id.to_string()),
+    ];
+
+    let response = client
+      .post(self.auth_token_url())
+      .bearer_auth(resource_token)
+      .form(&params)
+      .send()
+      .await?;
+    if !response.status().is_success() {
+      let error = response.json::<KeycloakError>().await?;
+      return Err(error.into());
+    }
+    let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+      response.json().await?;
+    Ok((
+      token_response.access_token().to_owned(),
+      token_response.refresh_token().unwrap().to_owned(),
+    ))
   }
 
   async fn make_resource_admin(
@@ -353,7 +408,7 @@ mod tests {
 
     let service = KeycloakAuthService::new(url, "test-realm".to_string());
     let result = service
-      .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
+      .register_client("", vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
       .await;
     assert!(result.is_ok());
     let app_reg_info = result.unwrap();
@@ -385,7 +440,7 @@ mod tests {
 
     let service = KeycloakAuthService::new(url, "test-realm".to_string());
     let result = service
-      .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
+      .register_client("", vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
       .await;
     assert!(result.is_err());
     let err = result.unwrap_err();

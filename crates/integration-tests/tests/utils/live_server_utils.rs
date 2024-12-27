@@ -1,15 +1,13 @@
 use fs_extra::dir::{copy, CopyOptions};
-use mockall::predicate::eq;
 use objs::{test_utils::setup_l10n, AppType, EnvType, FluentLocalizationService};
 use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
-  test_utils::EnvWrapperStub,
+  test_utils::{EnvWrapperStub, SecretServiceStub},
   AppService, DefaultAppService, DefaultEnvService, DefaultSettingService, HfHubService,
-  InitService, KeycloakAuthService, LocalDataService, MockSecretService, MokaCacheService,
-  SqliteSessionService, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME, KEY_APP_AUTHZ,
-  KEY_APP_STATUS,
+  InitService, KeycloakAuthService, LocalDataService, MokaCacheService, SqliteSessionService,
+  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -94,15 +92,9 @@ pub fn llama2_7b_setup(
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
   let time_service = Arc::new(DefaultTimeService);
   let db_service = SqliteDbService::new(pool.clone(), time_service.clone());
-  let mut secret_service = MockSecretService::default();
-  secret_service
-    .expect_get_secret_string()
-    .with(eq(KEY_APP_AUTHZ))
-    .returning(|_| Ok(Some("false".to_string())));
-  secret_service
-    .expect_get_secret_string()
-    .with(eq(KEY_APP_STATUS))
-    .returning(|_| Ok(Some("ready".to_string())));
+  let secret_service = SecretServiceStub::new()
+    .with_app_authz_disabled()
+    .with_app_status_ready();
   let session_service = SqliteSessionService::new(pool);
   let cache_service = MokaCacheService::default();
   let service = DefaultAppService::new(

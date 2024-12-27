@@ -13,10 +13,11 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Bug, Loader2 } from 'lucide-react';
 import AppInitializer from '@/components/AppInitializer';
 import { useSetupApp } from '@/hooks/useQuery';
 import { AxiosError } from 'axios';
+import Link from 'next/link';
 
 function SetupContent() {
   const router = useRouter();
@@ -68,20 +69,17 @@ function SetupContent() {
             </Alert>
           )}
           <div className="space-y-4">
-            <Button
-              className="w-full"
-              onClick={() => handleSetup(true)}
-              disabled={isSettingUp}
-            >
-              {isSettingUp ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Setting up...
-                </>
-              ) : (
-                'Setup Authenticated Instance →'
-              )}
-            </Button>
+            <>
+              <Link
+                className="w-full"
+                href="/app/setup" passHref
+              >
+                <Button className="w-full">Setup Authenticated Instance →</Button>
+              </Link>
+              <p className="text-sm text-gray-500 text-center">
+                You will be asked to login
+              </p>
+            </>
             <Alert className="mb-4">
               <AlertTitle>Warning</AlertTitle>
               <AlertDescription>
@@ -113,7 +111,7 @@ function SetupContent() {
           </p>
         </CardFooter>
       </Card>
-    </div>
+    </div >
   );
 }
 

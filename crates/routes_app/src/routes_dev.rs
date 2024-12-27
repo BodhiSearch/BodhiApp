@@ -2,9 +2,7 @@ use axum::{body::Body, extract::State, response::Response};
 use objs::{ApiError, AppError, SerdeJsonError};
 use serde_json::json;
 use server_core::RouterState;
-use services::{
-  get_secret, AppRegInfo, SecretServiceError, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
-};
+use services::{AppStatus, SecretServiceError, SecretServiceExt};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -21,9 +19,9 @@ pub async fn dev_secrets_handler(
 ) -> Result<Response, ApiError> {
   let secret_service = state.app_service().secret_service();
   let value = json! {{
-    "authz": secret_service.get_secret_string(KEY_APP_AUTHZ)?,
-    "status": secret_service.get_secret_string(KEY_APP_STATUS)?,
-    "app_info": get_secret::<_, AppRegInfo>(secret_service.clone(), KEY_APP_REG_INFO)?,
+    "authz": secret_service.authz_or_default().to_string(),
+    "status": secret_service.app_status().unwrap_or(AppStatus::default()).to_string(),
+    "app_info": secret_service.app_reg_info().unwrap_or(None),
   }};
   Ok(
     Response::builder()

@@ -160,6 +160,19 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
     )
   }
 
+  fn setup_callback_url(&self) -> String {
+    format!(
+      "{}://{}:{}/app/setup/callback",
+      self.scheme(),
+      self.host(),
+      self.port()
+    )
+  }
+
+  fn client_id_bodhi_account(&self) -> String {
+    "bodhi-account".to_string()
+  }
+
   fn secrets_path(&self) -> PathBuf {
     self.bodhi_home().join("secrets.yaml")
   }

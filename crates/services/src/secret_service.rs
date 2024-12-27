@@ -4,24 +4,15 @@ use aes_gcm::{
   Aes256Gcm, Key, Nonce,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use fs2::FileExt;
 use keyring::Entry;
 use objs::{impl_error_from, AppError, ErrorType, IoError, SerdeYamlError};
 use pbkdf2::pbkdf2_hmac;
 use rand::{rngs::OsRng, RngCore};
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, fs::OpenOptions, path::PathBuf};
-use std::{path::Path, sync::Arc};
+use std::{path::Path, sync::Arc, sync::RwLock};
 
-pub const KEY_APP_STATUS: &str = "app_status";
-pub const APP_STATUS_READY: &str = "ready";
-pub const APP_STATUS_SETUP: &str = "setup";
-pub const KEY_APP_AUTHZ: &str = "app_authz";
-pub const APP_AUTHZ_TRUE: &str = "true";
-pub const APP_AUTHZ_FALSE: &str = "false";
-pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
-pub const KEY_APP_REG_INFO: &str = "app_reg_info";
 const SALT_SIZE: usize = 32;
 const NONCE_SIZE: usize = 12;
 const PBKDF2_ITERATIONS: u32 = 1000;
@@ -92,29 +83,6 @@ pub trait SecretService: Send + Sync + std::fmt::Debug {
   fn delete_secret(&self, key: &str) -> Result<()>;
 }
 
-pub fn set_secret<S, T>(slf: S, key: &str, value: T) -> Result<()>
-where
-  T: serde::Serialize,
-  S: AsRef<dyn SecretService>,
-{
-  let value_str = serde_yaml::to_string(&value)?;
-  slf.as_ref().set_secret_string(key, &value_str)
-}
-
-pub fn get_secret<S, T>(slf: S, key: &str) -> Result<Option<T>>
-where
-  T: DeserializeOwned,
-  S: AsRef<dyn SecretService>,
-{
-  match slf.as_ref().get_secret_string(key)? {
-    Some(value) => {
-      let result = serde_yaml::from_str::<T>(&value)?;
-      Ok(Some(result))
-    }
-    None => Ok(None),
-  }
-}
-
 asref_impl!(SecretService, KeyringSecretService);
 
 #[derive(Debug)]
@@ -122,6 +90,7 @@ pub struct KeyringSecretService {
   secrets_path: PathBuf,
   cache: Arc<dyn CacheService>,
   encryption_key: Vec<u8>,
+  file_lock: RwLock<()>,
 }
 
 impl KeyringSecretService {
@@ -167,6 +136,7 @@ impl KeyringSecretService {
       secrets_path: secrets_path.to_path_buf(),
       cache,
       encryption_key,
+      file_lock: RwLock::new(()),
     };
 
     service.validate()?;
@@ -259,6 +229,8 @@ impl KeyringSecretService {
 
 impl SecretService for KeyringSecretService {
   fn set_secret_string(&self, key: &str, value: &str) -> Result<()> {
+    let _lock = self.file_lock.write().unwrap();
+
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -266,15 +238,11 @@ impl SecretService for KeyringSecretService {
       .truncate(true)
       .open(&self.secrets_path)?;
 
-    file.lock_exclusive()?;
-
-    let result = (|| {
+    let result = {
       let mut data = self.read_secrets(&file)?;
       data.secrets.insert(key.to_string(), value.to_string());
       self.write_secrets(&data, &file)
-    })();
-
-    file.unlock()?;
+    };
 
     // Update cache only if write was successful
     if result.is_ok() {
@@ -290,15 +258,13 @@ impl SecretService for KeyringSecretService {
       return Ok(Some(cached_value));
     }
 
-    let file = OpenOptions::new().read(true).open(&self.secrets_path)?;
+    let _lock = self.file_lock.read().unwrap();
 
-    file.lock_shared()?;
+    let file = OpenOptions::new().read(true).open(&self.secrets_path)?;
 
     let result = self
       .read_secrets(&file)
       .map(|data| data.secrets.get(key).cloned());
-
-    file.unlock()?;
 
     // Update cache if value was found
     if let Ok(Some(value)) = &result {
@@ -309,6 +275,8 @@ impl SecretService for KeyringSecretService {
   }
 
   fn delete_secret(&self, key: &str) -> Result<()> {
+    let _lock = self.file_lock.write().unwrap();
+
     let file = OpenOptions::new()
       .read(true)
       .write(true)
@@ -316,15 +284,11 @@ impl SecretService for KeyringSecretService {
       .truncate(true)
       .open(&self.secrets_path)?;
 
-    file.lock_exclusive()?;
-
-    let result = (|| {
+    let result = {
       let mut data = self.read_secrets(&file)?;
       data.secrets.remove(key);
       self.write_secrets(&data, &file)
-    })();
-
-    file.unlock()?;
+    };
 
     // Remove from cache if delete was successful
     if result.is_ok() {

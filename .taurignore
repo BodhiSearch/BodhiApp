@@ -1,3 +1,3 @@
 *.o
-llamacpp-sys
-crates/bodhiapp/src-tauri/libs/
+crates/llama_server_proc
+crates/bodhiapp/src-tauri/bins/
