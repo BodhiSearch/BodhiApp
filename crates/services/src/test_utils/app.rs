@@ -169,8 +169,8 @@ impl AppServiceStubBuilder {
   }
 
   pub fn with_secret_service(&mut self) -> &mut Self {
-    let mut secret_service = SecretServiceStub::default();
-    secret_service.with_app_reg_info(&AppRegInfoBuilder::test_default().build().unwrap());
+    let secret_service = SecretServiceStub::default()
+      .with_app_reg_info(&AppRegInfoBuilder::test_default().build().unwrap());
     self.secret_service = Some(Some(Arc::new(secret_service)));
     self
   }

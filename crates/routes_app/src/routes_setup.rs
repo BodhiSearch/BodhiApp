@@ -9,10 +9,7 @@ use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{
-  set_secret, AppStatus, AuthServiceError, SecretServiceError, KEY_APP_AUTHZ, KEY_APP_REG_INFO,
-  KEY_APP_STATUS,
-};
+use services::{AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt};
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -38,16 +35,13 @@ pub async fn app_info_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<AppInfo>, ApiError> {
   let secret_service = &state.app_service().secret_service();
-  let authz = secret_service
-    .get_secret_string(KEY_APP_AUTHZ)
-    .unwrap_or(Some("true".to_string()))
-    .unwrap_or("true".to_string());
+  let authz = secret_service.authz()?;
   let status = app_status_or_default(secret_service);
   let env_service = &state.app_service().env_service();
   Ok(Json(AppInfo {
     version: env_service.version(),
     status,
-    authz: authz == "true",
+    authz,
   }))
 }
 
@@ -94,15 +88,15 @@ pub async fn setup_handler(
       .map(|host| format!("{scheme}://{host}:{port}/app/login/callback"))
       .collect::<Vec<String>>();
     let app_reg_info = auth_service.register_client(redirect_uris).await?;
-    set_secret(secret_service, KEY_APP_REG_INFO, &app_reg_info)?;
-    secret_service.set_secret_string(KEY_APP_AUTHZ, "true")?;
-    secret_service.set_secret_string(KEY_APP_STATUS, "resource-admin")?;
+    secret_service.set_app_reg_info(&app_reg_info)?;
+    secret_service.set_authz(true)?;
+    secret_service.set_app_status(&AppStatus::ResourceAdmin)?;
     Ok(SetupResponse {
       status: AppStatus::ResourceAdmin,
     })
   } else {
-    secret_service.set_secret_string(KEY_APP_AUTHZ, "false")?;
-    secret_service.set_secret_string(KEY_APP_STATUS, "ready")?;
+    secret_service.set_authz(false)?;
+    secret_service.set_app_status(&AppStatus::Ready)?;
     Ok(SetupResponse {
       status: AppStatus::Ready,
     })
@@ -125,10 +119,8 @@ mod tests {
   use serde_json::{json, Value};
   use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
   use services::{
-    get_secret,
     test_utils::{AppServiceStubBuilder, SecretServiceStub},
-    AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService, KEY_APP_AUTHZ,
-    KEY_APP_REG_INFO, KEY_APP_STATUS,
+    AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService, SecretServiceExt,
   };
   use std::sync::Arc;
   use tower::ServiceExt;
@@ -143,10 +135,7 @@ mod tests {
     }
   )]
   #[case(
-    SecretServiceStub::with_map(maplit::hashmap! {
-      KEY_APP_STATUS.to_string() => "setup".to_string(),
-      KEY_APP_AUTHZ.to_string() => "true".to_string(),
-    }),
+    SecretServiceStub::new().with_app_status(&AppStatus::Setup).with_authz(true),
     AppInfo {
       version: "0.0.0".to_string(),
       status: AppStatus::Setup,
@@ -154,10 +143,7 @@ mod tests {
     }
   )]
   #[case(
-    SecretServiceStub::with_map(maplit::hashmap! {
-      KEY_APP_STATUS.to_string() => "setup".to_string(),
-      KEY_APP_AUTHZ.to_string() => "false".to_string(),
-    }),
+    SecretServiceStub::new().with_app_status(&AppStatus::Setup).with_authz(false),
     AppInfo {
       version: "0.0.0".to_string(),
       status: AppStatus::Setup,
@@ -190,9 +176,7 @@ mod tests {
 
   #[rstest]
   #[case(
-      SecretServiceStub::with_map(maplit::hashmap! {
-          KEY_APP_STATUS.to_string() => "ready".to_string(),
-      }),
+      SecretServiceStub::new().with_app_status(&AppStatus::Ready),
       SetupRequest { authz: true },
   )]
   #[tokio::test]
@@ -238,15 +222,9 @@ mod tests {
     );
 
     let secret_service = app_service.secret_service();
-    assert!(secret_service
-      .get_secret_string(KEY_APP_AUTHZ)
-      .unwrap()
-      .is_none());
-    assert_eq!(
-      secret_service.get_secret_string(KEY_APP_STATUS).unwrap(),
-      Some("ready".to_string())
-    );
-    let app_reg_info = get_secret::<_, AppRegInfo>(secret_service, KEY_APP_REG_INFO)?;
+    assert_eq!(secret_service.authz().unwrap(), true);
+    assert_eq!(secret_service.app_status().unwrap(), AppStatus::Ready);
+    let app_reg_info = secret_service.app_reg_info().unwrap();
     assert!(app_reg_info.is_none());
     Ok(())
   }
@@ -263,16 +241,12 @@ mod tests {
       AppStatus::ResourceAdmin,
   )]
   #[case(
-      SecretServiceStub::with_map(maplit::hashmap! {
-          KEY_APP_STATUS.to_string() => "setup".to_string(),
-      }),
+      SecretServiceStub::new().with_app_status(&AppStatus::Setup),
       SetupRequest { authz: false },
       AppStatus::Ready,
   )]
   #[case(
-      SecretServiceStub::with_map(maplit::hashmap! {
-          KEY_APP_STATUS.to_string() => "setup".to_string(),
-      }),
+      SecretServiceStub::new().with_app_status(&AppStatus::Setup),
       SetupRequest { authz: true },
       AppStatus::ResourceAdmin,
   )]
@@ -319,15 +293,9 @@ mod tests {
 
     assert_eq!(StatusCode::OK, response.status());
     let secret_service = app_service.secret_service();
-    assert_eq!(
-      Some(expected_status.to_string()),
-      secret_service.get_secret_string(KEY_APP_STATUS).unwrap(),
-    );
-    assert_eq!(
-      secret_service.get_secret_string(KEY_APP_AUTHZ).unwrap(),
-      Some(request.authz.to_string())
-    );
-    let app_reg_info = get_secret::<_, AppRegInfo>(secret_service, KEY_APP_REG_INFO)?;
+    assert_eq!(expected_status, secret_service.app_status().unwrap(),);
+    assert_eq!(secret_service.authz().unwrap(), request.authz);
+    let app_reg_info = secret_service.app_reg_info().unwrap();
     assert_eq!(request.authz, app_reg_info.is_some());
     Ok(())
   }
@@ -337,9 +305,7 @@ mod tests {
   async fn test_setup_handler_register_resource_error(
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
-    let secret_service = SecretServiceStub::with_map(maplit::hashmap! {
-        KEY_APP_STATUS.to_string() => "setup".to_string(),
-    });
+    let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_register_client()

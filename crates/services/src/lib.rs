@@ -15,6 +15,7 @@ mod init_service;
 mod macros;
 mod objs;
 mod secret_service;
+mod service_ext;
 mod session_service;
 mod setting_service;
 
@@ -28,6 +29,7 @@ pub use hub_service::*;
 pub use init_service::*;
 pub use objs::*;
 pub use secret_service::*;
+pub use service_ext::*;
 pub use session_service::*;
 pub use setting_service::*;
 

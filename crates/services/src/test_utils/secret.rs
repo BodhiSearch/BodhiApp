@@ -1,6 +1,6 @@
 use crate::{
-  secret_service::Result, AppRegInfo, KeyringStore, SecretService, APP_AUTHZ_FALSE, APP_AUTHZ_TRUE,
-  APP_STATUS_READY, KEY_APP_AUTHZ, KEY_APP_REG_INFO, KEY_APP_STATUS,
+  asref_impl, secret_service::Result, AppRegInfo, AppStatus, KeyringStore, SecretService,
+  SecretServiceExt,
 };
 use std::{collections::HashMap, sync::Mutex};
 
@@ -21,36 +21,35 @@ impl SecretServiceStub {
       store: Mutex::new(map),
     }
   }
-}
 
-impl Default for SecretServiceStub {
-  fn default() -> Self {
-    let mut slf = Self::new();
-    slf.with_app_status_ready();
-    slf.with_app_authz_enabled();
-    slf
-  }
-}
-
-impl SecretServiceStub {
-  pub fn with_app_status_ready(&mut self) -> &mut Self {
-    self.with(KEY_APP_STATUS.to_string(), APP_STATUS_READY.to_string());
+  pub fn with_app_status(self, status: &AppStatus) -> Self {
+    self.set_app_status(&status).unwrap();
     self
   }
 
-  pub fn with_app_authz_disabled(&mut self) -> &mut Self {
-    self.with(KEY_APP_AUTHZ.to_string(), APP_AUTHZ_FALSE.to_string());
+  pub fn with_app_status_ready(self) -> Self {
+    self.with_app_status(&AppStatus::Ready)
+  }
+
+  pub fn with_app_status_setup(self) -> Self {
+    self.with_app_status(&AppStatus::Setup)
+  }
+
+  pub fn with_authz(self, authz: bool) -> Self {
+    self.set_authz(authz).unwrap();
     self
   }
 
-  pub fn with_app_authz_enabled(&mut self) -> &mut Self {
-    self.with(KEY_APP_AUTHZ.to_string(), APP_AUTHZ_TRUE.to_string());
-    self
+  pub fn with_authz_disabled(self) -> Self {
+    self.with_authz(false)
   }
 
-  pub fn with_app_reg_info(&mut self, app_reg_info: &AppRegInfo) -> &mut Self {
-    let value = serde_json::to_string(app_reg_info).unwrap();
-    self.with(KEY_APP_REG_INFO.to_string(), value);
+  pub fn with_authz_enabled(self) -> Self {
+    self.with_authz(true)
+  }
+
+  pub fn with_app_reg_info(self, app_reg_info: &AppRegInfo) -> Self {
+    self.set_app_reg_info(app_reg_info).unwrap();
     self
   }
 
@@ -59,6 +58,8 @@ impl SecretServiceStub {
     self
   }
 }
+
+asref_impl!(SecretService, SecretServiceStub);
 
 impl SecretService for SecretServiceStub {
   fn set_secret_string(&self, key: &str, value: &str) -> Result<()> {
@@ -76,6 +77,12 @@ impl SecretService for SecretServiceStub {
     let mut store = self.store.lock().unwrap();
     store.remove(key);
     Ok(())
+  }
+}
+
+impl Default for SecretServiceStub {
+  fn default() -> Self {
+    Self::new().with_app_status_ready().with_authz_enabled()
   }
 }
 
