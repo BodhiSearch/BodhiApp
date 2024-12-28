@@ -1,8 +1,10 @@
 use crate::{
-  asref_impl, secret_service::Result, AppRegInfo, AppStatus, KeyringStore, SecretService,
+  asref_impl, AppRegInfo, AppStatus, KeyringError, KeyringStore, SecretService, SecretServiceError,
   SecretServiceExt,
 };
 use std::{collections::HashMap, sync::Mutex};
+
+type Result<T> = std::result::Result<T, SecretServiceError>;
 
 #[derive(Debug)]
 pub struct SecretServiceStub {
@@ -112,18 +114,18 @@ impl Default for KeyringStoreStub {
 }
 
 impl KeyringStore for KeyringStoreStub {
-  fn set_password(&self, key: &str, value: &str) -> Result<()> {
+  fn set_password(&self, key: &str, value: &str) -> std::result::Result<(), KeyringError> {
     let mut store = self.store.lock().unwrap();
     store.insert(key.to_string(), value.to_string());
     Ok(())
   }
 
-  fn get_password(&self, key: &str) -> Result<Option<String>> {
+  fn get_password(&self, key: &str) -> std::result::Result<Option<String>, KeyringError> {
     let store = self.store.lock().unwrap();
     Ok(store.get(key).map(|v| v.to_string()))
   }
 
-  fn delete_password(&self, key: &str) -> Result<()> {
+  fn delete_password(&self, key: &str) -> std::result::Result<(), KeyringError> {
     let mut store = self.store.lock().unwrap();
     store.remove(key);
     Ok(())

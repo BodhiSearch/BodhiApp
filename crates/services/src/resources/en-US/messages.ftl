@@ -31,10 +31,8 @@ hub_api_error-transport = {$error}.
   An error occurred while connecting to huggingface.co. Check your internet connection and try again.
 hub_api_error-request = {$error}.
   An error occurred while requesting access to huggingface repo '{$repo}'.
-secret_service_error-keyring_error = {$var_0}
 secret_service_error-key_mismatch = passed encryption key and encryption key stored on platform do not match
 secret_service_error-key_not_found = encryption key not found on platform secure storage
-secret_service_error-decode_error = invalid format: {$var_0}
 secret_service_error-encryption_error = {$var_0}
 sqlx_error = {$source}
 sqlx_migrate_error = {$source}
@@ -50,3 +48,5 @@ env_service_error-bodhi_home_not_exists = BODHI_HOME does not exists: {$var_0}
 env_service_error-settings_update_error = failed to update settings: {$var_0}
 env_service_error-invalid_setting_key = Setting key is invalid: {$var_0}
 setting_error-lock_error = concurrency error accessing settings: {$var_0}
+keyring_error-keyring_error = {$var_0}
+keyring_error-decode_error = invalid format: {$var_0}

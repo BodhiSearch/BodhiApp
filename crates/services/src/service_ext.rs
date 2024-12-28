@@ -81,7 +81,8 @@ impl<T: AsRef<dyn SecretService>> SecretServiceExt for T {
 #[cfg(test)]
 mod tests {
   use crate::{
-    test_utils::app_reg_info, AppRegInfo, AppStatus, KeyringSecretService, SecretServiceExt,
+    generate_random_key, test_utils::app_reg_info, AppRegInfo, AppStatus, DefaultSecretService,
+    SecretServiceExt,
   };
   use anyhow_trace::anyhow_trace;
   use objs::test_utils::temp_dir;
@@ -92,11 +93,7 @@ mod tests {
   #[anyhow_trace]
   fn test_secret_service_ext(temp_dir: TempDir, app_reg_info: AppRegInfo) -> anyhow::Result<()> {
     let secrets_path = temp_dir.path().join("secrets.yaml");
-    let service = KeyringSecretService::new(
-      "test-service",
-      &secrets_path,
-      Some("test-encryption-key".to_string()),
-    )?;
+    let service = DefaultSecretService::new(generate_random_key(), &secrets_path)?;
 
     assert!(service.authz()?);
     service.set_authz(false)?;
