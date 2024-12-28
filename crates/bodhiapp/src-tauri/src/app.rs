@@ -13,11 +13,13 @@ use commands::{Cli, Command, DefaultStdoutWriter, EnvCommand};
 use objs::FluentLocalizationService;
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
-  DefaultAppService, DefaultEnvService, EnvService, HfHubService, KeycloakAuthService,
-  KeyringSecretService, LocalDataService, MokaCacheService, SqliteSessionService,
+  hash_key, DefaultAppService, DefaultEnvService, DefaultSecretService, EnvService, HfHubService,
+  KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService, SqliteSessionService,
+  SystemKeyringStore,
 };
 use std::{env, sync::Arc};
 use tokio::runtime::Builder;
+const SECRET_KEY: &str = "secret_key";
 
 pub fn main_internal(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let runtime = Builder::new_multi_thread().enable_all().build()?;
@@ -37,7 +39,11 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let app_name = format!("Bodhi App{app_suffix}");
   let secrets_path = env_service.secrets_path();
   let encryption_key = env_service.encryption_key();
-  let secret_service = KeyringSecretService::new(&app_name, &secrets_path, encryption_key)?;
+  let encryption_key = encryption_key
+    .map(|key| Ok(hash_key(&key)))
+    .unwrap_or_else(|| SystemKeyringStore::new(&app_name).get_or_generate(SECRET_KEY))?;
+
+  let secret_service = DefaultSecretService::new(encryption_key, &secrets_path)?;
 
   let dbpath = env_service.db_path();
   let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
