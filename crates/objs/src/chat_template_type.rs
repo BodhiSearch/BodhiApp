@@ -1,4 +1,5 @@
 use crate::Repo;
+use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use strum::{AsRefStr, EnumIter};
@@ -56,11 +57,50 @@ impl From<ChatTemplateId> for Repo {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Hash)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]
 pub enum ChatTemplateType {
+  Embedded,
   Id(ChatTemplateId),
   Repo(Repo),
+}
+
+impl<'de> Deserialize<'de> for ChatTemplateType {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+  where
+    D: serde::Deserializer<'de>,
+  {
+    let s = String::deserialize(deserializer)?;
+    if s == "embedded" {
+      return Ok(ChatTemplateType::Embedded);
+    }
+
+    // Try parsing as ChatTemplateId first
+    if let Ok(id) = serde_json::from_value(serde_json::Value::String(s.clone())) {
+      return Ok(ChatTemplateType::Id(id));
+    }
+
+    // Finally try parsing as Repo
+    match Repo::try_from(s) {
+      Ok(repo) => Ok(ChatTemplateType::Repo(repo)),
+      Err(e) => Err(serde::de::Error::custom(format!(
+        "Invalid chat template: {}",
+        e
+      ))),
+    }
+  }
+}
+
+impl Serialize for ChatTemplateType {
+  fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+  where
+    S: Serializer,
+  {
+    match self {
+      ChatTemplateType::Embedded => serializer.serialize_str("embedded"),
+      ChatTemplateType::Id(id) => id.serialize(serializer),
+      ChatTemplateType::Repo(repo) => repo.serialize(serializer),
+    }
+  }
 }
 
 impl Display for ChatTemplateType {
@@ -68,6 +108,7 @@ impl Display for ChatTemplateType {
     match self {
       ChatTemplateType::Id(id) => write!(f, "{}", id),
       ChatTemplateType::Repo(repo) => write!(f, "{}", repo),
+      ChatTemplateType::Embedded => write!(f, "embedded"),
     }
   }
 }
@@ -76,6 +117,7 @@ impl Display for ChatTemplateType {
 mod test {
   use crate::{ChatTemplateId, ChatTemplateType, Repo};
   use rstest::rstest;
+  use serde::{Deserialize, Serialize};
   use std::collections::HashSet;
 
   #[rstest]
@@ -114,5 +156,46 @@ mod test {
     set.insert(template1);
     assert!(set.contains(&template2));
     assert!(!set.contains(&template3));
+  }
+
+  #[rstest]
+  #[case("llama3", ChatTemplateType::Id(ChatTemplateId::Llama3))]
+  #[case(
+    "meta-llama/Meta-Llama-3-8B-Instruct",
+    ChatTemplateType::Repo(Repo::llama3())
+  )]
+  #[case("embedded", ChatTemplateType::Embedded)]
+  fn test_chat_template_deser(
+    #[case] input: &str,
+    #[case] expected: ChatTemplateType,
+  ) -> anyhow::Result<()> {
+    #[derive(Debug, Deserialize, PartialEq, Eq)]
+    struct Test {
+      template: ChatTemplateType,
+    }
+    let input = format!("{{\"template\": \"{input}\"}}");
+    let deser: Test = serde_json::from_str(&input)?;
+    assert_eq!(deser, Test { template: expected });
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(ChatTemplateType::Id(ChatTemplateId::Llama3), "\"llama3\"")]
+  #[case(
+    ChatTemplateType::Repo(Repo::llama3()),
+    "\"meta-llama/Meta-Llama-3-8B-Instruct\""
+  )]
+  #[case(ChatTemplateType::Embedded, "\"embedded\"")]
+  fn test_chat_template_ser(
+    #[case] input: ChatTemplateType,
+    #[case] expected: &str,
+  ) -> anyhow::Result<()> {
+    #[derive(Debug, Serialize)]
+    struct Test {
+      template: ChatTemplateType,
+    }
+    let ser = serde_json::to_string(&Test { template: input })?;
+    assert_eq!(ser, format!("{{\"template\":{}}}", expected));
+    Ok(())
   }
 }
