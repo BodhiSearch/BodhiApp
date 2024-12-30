@@ -39,103 +39,107 @@ impl PartialOrd for ChatTemplateId {
   }
 }
 
+impl From<ChatTemplateId> for Repo {
+  fn from(id: ChatTemplateId) -> Self {
+    let repo = match id {
+      ChatTemplateId::Llama3 => "meta-llama/Meta-Llama-3-8B-Instruct",
+      ChatTemplateId::Llama2 => "meta-llama/Llama-2-13b-chat-hf",
+      ChatTemplateId::Llama2Legacy => "mistralai/Mixtral-8x7B-Instruct-v0.1",
+      ChatTemplateId::Phi3 => "microsoft/Phi-3-mini-4k-instruct",
+      ChatTemplateId::Gemma => "google/gemma-7b-it",
+      ChatTemplateId::Deepseek => "deepseek-ai/deepseek-llm-67b-chat",
+      ChatTemplateId::CommandR => "CohereForAI/c4ai-command-r-plus",
+      ChatTemplateId::Openchat => "openchat/openchat-3.6-8b-20240522",
+      ChatTemplateId::Tinyllama => "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+    };
+    Repo::try_from(repo).unwrap()
+  }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, Eq, Hash)]
 #[serde(untagged)]
-pub enum ChatTemplate {
+pub enum ChatTemplateType {
   Id(ChatTemplateId),
   Repo(Repo),
 }
 
-impl TryFrom<ChatTemplate> for Repo {
+impl TryFrom<ChatTemplateType> for Repo {
   type Error = ObjValidationError;
 
-  fn try_from(value: ChatTemplate) -> Result<Self, Self::Error> {
+  fn try_from(value: ChatTemplateType) -> Result<Self, Self::Error> {
     let repo = match value {
-      ChatTemplate::Id(id) => {
-        let repo = match id {
-          ChatTemplateId::Llama3 => "meta-llama/Meta-Llama-3-8B-Instruct",
-          ChatTemplateId::Llama2 => "meta-llama/Llama-2-13b-chat-hf",
-          ChatTemplateId::Llama2Legacy => "mistralai/Mixtral-8x7B-Instruct-v0.1",
-          ChatTemplateId::Phi3 => "microsoft/Phi-3-mini-4k-instruct",
-          ChatTemplateId::Gemma => "google/gemma-7b-it",
-          ChatTemplateId::Deepseek => "deepseek-ai/deepseek-llm-67b-chat",
-          ChatTemplateId::CommandR => "CohereForAI/c4ai-command-r-plus",
-          ChatTemplateId::Openchat => "openchat/openchat-3.6-8b-20240522",
-          ChatTemplateId::Tinyllama => "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-        };
-        Repo::try_from(repo)?
-      }
-      ChatTemplate::Repo(repo) => repo,
+      ChatTemplateType::Id(id) => id.into(),
+      ChatTemplateType::Repo(repo) => repo,
     };
     Ok(repo)
   }
 }
 
-impl Display for ChatTemplate {
+impl Display for ChatTemplateType {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
-      ChatTemplate::Id(id) => write!(f, "{}", id),
-      ChatTemplate::Repo(repo) => write!(f, "{}", repo),
+      ChatTemplateType::Id(id) => write!(f, "{}", id),
+      ChatTemplateType::Repo(repo) => write!(f, "{}", repo),
     }
   }
 }
 
 #[cfg(test)]
 mod test {
-  use crate::{ChatTemplate, ChatTemplateId, Repo};
+  use crate::{ChatTemplateId, ChatTemplateType, Repo};
   use rstest::rstest;
   use std::collections::HashSet;
 
   #[rstest]
-  fn test_chat_template_id_partial_ord() {
+  fn test_chat_template_type_id_partial_ord() {
     assert!(ChatTemplateId::Llama3.gt(&ChatTemplateId::Llama2));
     assert!(ChatTemplateId::Openchat.gt(&ChatTemplateId::CommandR));
   }
 
   #[rstest]
   #[case(
-    ChatTemplate::Id(ChatTemplateId::Llama3),
+    ChatTemplateType::Id(ChatTemplateId::Llama3),
     "meta-llama/Meta-Llama-3-8B-Instruct"
   )]
   #[rstest]
   #[case(
-    ChatTemplate::Id(ChatTemplateId::Llama2),
+    ChatTemplateType::Id(ChatTemplateId::Llama2),
     "meta-llama/Llama-2-13b-chat-hf"
   )]
   #[rstest]
   #[case(
-    ChatTemplate::Id(ChatTemplateId::Llama2Legacy),
+    ChatTemplateType::Id(ChatTemplateId::Llama2Legacy),
     "mistralai/Mixtral-8x7B-Instruct-v0.1"
   )]
   #[rstest]
   #[case(
-    ChatTemplate::Id(ChatTemplateId::Phi3),
+    ChatTemplateType::Id(ChatTemplateId::Phi3),
     "microsoft/Phi-3-mini-4k-instruct"
   )]
   #[rstest]
-  #[case(ChatTemplate::Id(ChatTemplateId::Gemma), "google/gemma-7b-it")]
+  #[case(ChatTemplateType::Id(ChatTemplateId::Gemma), "google/gemma-7b-it")]
   #[rstest]
   #[case(
-    ChatTemplate::Id(ChatTemplateId::Deepseek),
+    ChatTemplateType::Id(ChatTemplateId::Deepseek),
     "deepseek-ai/deepseek-llm-67b-chat"
   )]
   #[rstest]
   #[case(
-    ChatTemplate::Id(ChatTemplateId::CommandR),
+    ChatTemplateType::Id(ChatTemplateId::CommandR),
     "CohereForAI/c4ai-command-r-plus"
   )]
   #[rstest]
   #[case(
-    ChatTemplate::Id(ChatTemplateId::Openchat),
+    ChatTemplateType::Id(ChatTemplateId::Openchat),
     "openchat/openchat-3.6-8b-20240522"
   )]
   #[rstest]
   #[case(
-    ChatTemplate::Repo(Repo::try_from("foo/bar").unwrap()),
+    ChatTemplateType::Repo(Repo::try_from("foo/bar").unwrap()),
     "foo/bar"
   )]
-  fn test_chat_template_to_repo_for_chat_template(
-    #[case] input: ChatTemplate,
+  fn test_chat_template_type_to_repo_for_chat_template_with_id(
+    #[case] input: ChatTemplateType,
     #[case] expected: String,
   ) -> anyhow::Result<()> {
     let repo: Repo = Repo::try_from(input)?;
@@ -144,10 +148,10 @@ mod test {
   }
 
   #[test]
-  fn test_chat_template_eq_and_hash() {
-    let template1 = ChatTemplate::Id(ChatTemplateId::Llama3);
-    let template2 = ChatTemplate::Id(ChatTemplateId::Llama3);
-    let template3 = ChatTemplate::Id(ChatTemplateId::Llama2);
+  fn test_chat_template_type_eq_and_hash() {
+    let template1 = ChatTemplateType::Id(ChatTemplateId::Llama3);
+    let template2 = ChatTemplateType::Id(ChatTemplateId::Llama3);
+    let template3 = ChatTemplateType::Id(ChatTemplateId::Llama2);
 
     assert_eq!(template1, template2);
     assert_ne!(template1, template3);

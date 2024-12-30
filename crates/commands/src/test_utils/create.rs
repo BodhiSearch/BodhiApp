@@ -1,5 +1,5 @@
 use crate::{CreateCommand, CreateCommandBuilder};
-use objs::{ChatTemplate, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
+use objs::{ChatTemplateType, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
 
 impl CreateCommand {
   pub fn testalias() -> CreateCommand {
@@ -14,7 +14,7 @@ impl CreateCommandBuilder {
       .repo(Repo::testalias())
       .filename(Repo::testalias_filename())
       .snapshot(None)
-      .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
+      .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .family(Some("testalias".to_string()))
       .oai_request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())

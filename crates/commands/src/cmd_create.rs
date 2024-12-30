@@ -1,5 +1,5 @@
 use objs::{
-  default_features, Alias, AppError, ChatTemplate, GptContextParams, OAIRequestParams,
+  default_features, Alias, AppError, ChatTemplateType, GptContextParams, OAIRequestParams,
   ObjValidationError, Repo, TOKENIZER_CONFIG_JSON,
 };
 use services::{
@@ -15,7 +15,7 @@ pub struct CreateCommand {
   pub repo: Repo,
   pub filename: String,
   pub snapshot: Option<String>,
-  pub chat_template: ChatTemplate,
+  pub chat_template: ChatTemplateType,
   pub family: Option<String>,
   #[builder(default = "true")]
   pub auto_download: bool,
@@ -132,7 +132,7 @@ mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplate, GptContextParams, GptContextParamsBuilder, HubFile,
+    test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, GptContextParamsBuilder, HubFile,
     OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
@@ -149,7 +149,7 @@ mod test {
       repo: Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())?,
       filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
       snapshot: Some("main".to_string()),
-      chat_template: ChatTemplate::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
+      chat_template: ChatTemplateType::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
       family: Some("tinyllama".to_string()),
       auto_download: false,
       update: true,
@@ -191,7 +191,7 @@ mod test {
       filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
       snapshot: "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
       features: vec!["chat".to_string()],
-      chat_template: ChatTemplate::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
+      chat_template: ChatTemplateType::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
       request_params: OAIRequestParamsBuilder::default()
         .frequency_penalty(1.0)
         .max_tokens(2048_u16)
@@ -249,7 +249,7 @@ mod test {
         filename: Repo::testalias_filename(),
         snapshot: SNAPSHOT.to_string(),
         features: vec!["chat".to_string()],
-        chat_template: ChatTemplate::Id(objs::ChatTemplateId::Llama3),
+        chat_template: ChatTemplateType::Id(objs::ChatTemplateId::Llama3),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default()
       },
@@ -263,7 +263,7 @@ mod test {
     mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
     let tokenizer_repo = Repo::try_from("MyFactory/testalias")?;
-    let chat_template = ChatTemplate::Repo(tokenizer_repo.clone());
+    let chat_template = ChatTemplateType::Repo(tokenizer_repo.clone());
     let create = CreateCommandBuilder::testalias()
       .chat_template(chat_template.clone())
       .build()
@@ -303,7 +303,7 @@ mod test {
         filename: "testalias.Q8_0.gguf".to_string(),
         snapshot: SNAPSHOT.to_string(),
         features: vec!["chat".to_string()],
-        chat_template: ChatTemplate::Repo(Repo::try_from("MyFactory/testalias")?),
+        chat_template: ChatTemplateType::Repo(Repo::try_from("MyFactory/testalias")?),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default()
       },
