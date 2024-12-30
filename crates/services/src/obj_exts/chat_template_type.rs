@@ -36,13 +36,25 @@ impl IntoChatTemplate for ChatTemplateType {
     &self,
     hub_service: Arc<dyn HubService>,
   ) -> Result<ChatTemplate, ObjExtsError> {
-    let repo = match self {
-      ChatTemplateType::Id(id) => (*id).into(),
-      ChatTemplateType::Repo(repo) => repo.clone(),
+    let chat_template = match self {
+      ChatTemplateType::Id(id) => {
+        let repo = (*id).into();
+        let file = hub_service.find_local_file(&repo, TOKENIZER_CONFIG_JSON, None)?;
+        let chat_template: ChatTemplate = ChatTemplate::try_from(file)?;
+        chat_template.validate()?;
+        chat_template
+      }
+      ChatTemplateType::Repo(repo) => {
+        let repo = repo.clone();
+        let file = hub_service.find_local_file(&repo, TOKENIZER_CONFIG_JSON, None)?;
+        let chat_template: ChatTemplate = ChatTemplate::try_from(file)?;
+        chat_template.validate()?;
+        chat_template
+      }
+      ChatTemplateType::Embedded => {
+        todo!()
+      }
     };
-    let file = hub_service.find_local_file(&repo, TOKENIZER_CONFIG_JSON, None)?;
-    let chat_template: ChatTemplate = ChatTemplate::try_from(file)?;
-    chat_template.validate()?;
     Ok(chat_template)
   }
 }
@@ -56,6 +68,7 @@ impl HubDownloadable for ChatTemplateType {
     let repo = match self {
       ChatTemplateType::Id(id) => (*id).into(),
       ChatTemplateType::Repo(repo) => repo.clone(),
+      ChatTemplateType::Embedded => todo!(),
     };
     let hub_file = hub_service.download(&repo, TOKENIZER_CONFIG_JSON, None)?;
     Ok(hub_file)

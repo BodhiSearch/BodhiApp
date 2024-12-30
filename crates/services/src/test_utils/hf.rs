@@ -1,6 +1,6 @@
 use crate::{HfHubService, HubService, HubServiceError, MockHubService};
 use derive_new::new;
-use objs::{test_utils::temp_hf_home, HubFile, Repo};
+use objs::{test_utils::temp_hf_home, Alias, ChatTemplate, HubFile, Repo};
 use rstest::fixture;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -94,6 +94,10 @@ impl HubService for TestHfService {
   fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
     self.inner.list_local_tokenizer_configs()
   }
+
+  fn model_chat_template(&self, alias: &Alias) -> Result<ChatTemplate> {
+    self.inner.model_chat_template(alias)
+  }
 }
 
 #[derive(Debug, new)]
@@ -103,7 +107,10 @@ pub struct OfflineHubService {
 
 impl HubService for OfflineHubService {
   fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
-    if !self.inner.local_file_exists(repo, filename, snapshot.clone())? {
+    if !self
+      .inner
+      .local_file_exists(repo, filename, snapshot.clone())?
+    {
       assert!(false, "tried to download file in test");
     }
     self.inner.download(repo, filename, snapshot)
@@ -133,5 +140,9 @@ impl HubService for OfflineHubService {
 
   fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
     self.inner.list_local_tokenizer_configs()
+  }
+
+  fn model_chat_template(&self, alias: &Alias) -> Result<ChatTemplate> {
+    self.inner.model_chat_template(alias)
   }
 }

@@ -1,5 +1,8 @@
 use hf_hub::Cache;
-use objs::{impl_error_from, AppError, ErrorType, HubFile, IoError, ObjValidationError, Repo};
+use objs::{
+  impl_error_from, Alias, AppError, ChatTemplate, ErrorType, HubFile, IoError, ObjValidationError,
+  Repo,
+};
 use std::{
   collections::HashSet,
   fmt::{Debug, Formatter},
@@ -99,6 +102,8 @@ pub trait HubService: std::fmt::Debug + Send + Sync {
   ) -> Result<bool>;
 
   fn list_local_tokenizer_configs(&self) -> Vec<Repo>;
+
+  fn model_chat_template(&self, alias: &Alias) -> Result<ChatTemplate>;
 }
 
 impl HfHubService {
@@ -284,6 +289,10 @@ impl HubService for HfHubService {
       }
     }
     unique_repos.into_iter().collect()
+  }
+
+  fn model_chat_template(&self, _alias: &Alias) -> Result<ChatTemplate> {
+    todo!()
   }
 }
 
