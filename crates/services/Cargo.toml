@@ -56,6 +56,7 @@ tracing = { workspace = true, features = ["async-await", "log"] }
 ureq = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 unic-langid = { workspace = true }
+validator = { workspace = true, features = ["derive"] }
 walkdir = { workspace = true }
 tokio = { workspace = true, optional = true }
 

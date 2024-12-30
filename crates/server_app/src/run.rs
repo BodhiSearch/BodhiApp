@@ -65,8 +65,8 @@ mod test {
   use crate::{test_utils::MockInteractiveRuntime, RunCommand, RunCommandError};
   use mockall::predicate::{always, eq};
   use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplateType, ChatTemplateId, GptContextParams, HubFile,
-    OAIRequestParams, Repo,
+    test_utils::SNAPSHOT, Alias, ChatTemplateId, ChatTemplateType, GptContextParams, HubFile,
+    OAIRequestParams, Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
   use services::{
@@ -107,6 +107,10 @@ mod test {
       .expect_download()
       .with(eq(Repo::testalias()), eq(Repo::testalias_q4()), eq(None))
       .return_once(|_, _, _| Ok(HubFile::testalias_q4()));
+    test_hf_service
+      .expect_download()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
+      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let mut mock_interactive = MockInteractiveRuntime::default();
     mock_interactive
       .expect_execute()

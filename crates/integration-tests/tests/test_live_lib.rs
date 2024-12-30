@@ -1,7 +1,7 @@
 use llama_server_proc::{LlamaServer, LlamaServerArgsBuilder, Server};
 use rstest::{fixture, rstest};
 use server_core::{DefaultServerFactory, DefaultSharedContext, SharedContext};
-use services::HfHubService;
+use services::{test_utils::OfflineHubService, HfHubService};
 use std::{path::PathBuf, sync::Arc};
 
 #[fixture]
@@ -50,11 +50,11 @@ async fn test_live_llama_server_load_exec_with_server(
 #[rstest]
 #[tokio::test]
 async fn test_live_shared_rw_reload(bin_path: PathBuf, tests_data: PathBuf) -> anyhow::Result<()> {
-  let hub_service = HfHubService::new(
+  let hub_service = OfflineHubService::new(HfHubService::new(
     PathBuf::from(tests_data.join("live/huggingface/hub")),
     false,
     None,
-  );
+  ));
   let shared_rw = DefaultSharedContext::with_args(
     Arc::new(hub_service),
     Box::new(DefaultServerFactory),
@@ -77,11 +77,11 @@ async fn test_live_shared_rw_reload_with_model_as_symlink(
   bin_path: PathBuf,
 ) -> anyhow::Result<()> {
   let llama_68m = tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61/llama-68m-chat-v1.q8_0.gguf");
-  let hub_service = HfHubService::new(
+  let hub_service = OfflineHubService::new(HfHubService::new(
     PathBuf::from(tests_data.join("live/huggingface/hub")),
     false,
     None,
-  );
+  ));
   let shared_rw = DefaultSharedContext::with_args(
     Arc::new(hub_service),
     Box::new(DefaultServerFactory),
@@ -107,11 +107,11 @@ async fn test_live_shared_rw_reload_with_actual_file(
   bin_path: PathBuf,
   tests_data: PathBuf,
 ) -> anyhow::Result<()> {
-  let hub_service = HfHubService::new(
+  let hub_service = OfflineHubService::new(HfHubService::new(
     PathBuf::from(tests_data.join("live/huggingface/hub")),
     false,
     None,
-  );
+  ));
   let shared_rw = DefaultSharedContext::with_args(
     Arc::new(hub_service),
     Box::new(DefaultServerFactory),

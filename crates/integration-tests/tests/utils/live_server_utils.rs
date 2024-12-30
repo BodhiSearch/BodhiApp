@@ -4,7 +4,7 @@ use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
-  test_utils::{EnvWrapperStub, SecretServiceStub},
+  test_utils::{EnvWrapperStub, OfflineHubService, SecretServiceStub},
   AppService, DefaultAppService, DefaultEnvService, DefaultSettingService, HfHubService,
   InitService, KeycloakAuthService, LocalDataService, MokaCacheService, SqliteSessionService,
   BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
@@ -84,7 +84,7 @@ pub fn llama2_7b_setup(
   // TODO: fix this
   // env_service.set_library_path(library_path().display().to_string());
   let data_service = LocalDataService::new(bodhi_home.clone());
-  let hub_service = HfHubService::new(hf_cache, false, None);
+  let hub_service = OfflineHubService::new(HfHubService::new(hf_cache, false, None));
   let auth_service = KeycloakAuthService::new(
     String::from("http://id.localhost:8080"),
     String::from("bodhi"),

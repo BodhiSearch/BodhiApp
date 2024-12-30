@@ -1,6 +1,7 @@
-use objs::{Alias, AppError, HubFile, ObjValidationError, Repo, TOKENIZER_CONFIG_JSON};
+use objs::{Alias, AppError, ObjValidationError, Repo};
 use services::{
-  AliasExistsError, AppService, DataServiceError, HubServiceError, RemoteModelNotFoundError,
+  AliasExistsError, AppService, DataServiceError, HubDownloadable, HubServiceError, ObjExtsError,
+  RemoteModelNotFoundError,
 };
 use std::sync::Arc;
 
@@ -19,6 +20,8 @@ pub enum PullCommand {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum PullCommandError {
+  #[error(transparent)]
+  ObjExts(#[from] ObjExtsError),
   #[error(transparent)]
   HubServiceError(#[from] HubServiceError),
   #[error(transparent)]
@@ -45,13 +48,10 @@ impl PullCommand {
           return Err(RemoteModelNotFoundError::new(alias.clone()))?;
         };
         let local_model_file =
-          self.download_file_if_missing(&service, &model.repo, &model.filename, None)?;
-        _ = self.download_file_if_missing(
-          &service,
-          &Repo::try_from(model.chat_template.clone())?,
-          TOKENIZER_CONFIG_JSON,
-          None,
-        )?;
+          service
+            .hub_service()
+            .download(&model.repo, &model.filename, None)?;
+        let _ = model.chat_template.download(service.hub_service())?;
         let alias = Alias::new(
           model.alias,
           Some(model.family),
@@ -92,38 +92,6 @@ impl PullCommand {
       }
     }
   }
-
-  fn download_file_if_missing(
-    &self,
-    service: &Arc<dyn AppService>,
-    repo: &Repo,
-    filename: &str,
-    snapshot: Option<String>,
-  ) -> Result<HubFile> {
-    let file_exists = service
-      .hub_service()
-      .local_file_exists(repo, filename, snapshot.clone())?;
-    match file_exists {
-      true => {
-        println!(
-          "repo: '{}', filename: '{}' already exists in $HF_HOME",
-          &repo, &filename
-        );
-        let local_model_file = service
-          .hub_service()
-          .find_local_file(repo, filename, snapshot)?;
-        Ok(local_model_file)
-      }
-      _ => {
-        let local_model_file = service.hub_service().download(repo, filename, snapshot)?;
-        println!(
-          "repo: '{}', filename: '{}' downloaded into $HF_HOME",
-          repo, filename
-        );
-        Ok(local_model_file)
-      }
-    }
-  }
 }
 
 #[cfg(test)]
@@ -132,7 +100,7 @@ mod test {
   use mockall::predicate::eq;
   use objs::{
     test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, HubFile, OAIRequestParams,
-    RemoteModel, Repo,
+    RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
   use services::{
@@ -172,6 +140,10 @@ mod test {
         eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
+    test_hf_service
+      .expect_download()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
+      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .hub_service(Arc::new(test_hf_service))

@@ -1,4 +1,4 @@
-use crate::{ObjValidationError, Repo};
+use crate::Repo;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use strum::{AsRefStr, EnumIter};
@@ -63,18 +63,6 @@ pub enum ChatTemplateType {
   Repo(Repo),
 }
 
-impl TryFrom<ChatTemplateType> for Repo {
-  type Error = ObjValidationError;
-
-  fn try_from(value: ChatTemplateType) -> Result<Self, Self::Error> {
-    let repo = match value {
-      ChatTemplateType::Id(id) => id.into(),
-      ChatTemplateType::Repo(repo) => repo,
-    };
-    Ok(repo)
-  }
-}
-
 impl Display for ChatTemplateType {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
@@ -97,53 +85,19 @@ mod test {
   }
 
   #[rstest]
-  #[case(
-    ChatTemplateType::Id(ChatTemplateId::Llama3),
-    "meta-llama/Meta-Llama-3-8B-Instruct"
-  )]
-  #[rstest]
-  #[case(
-    ChatTemplateType::Id(ChatTemplateId::Llama2),
-    "meta-llama/Llama-2-13b-chat-hf"
-  )]
-  #[rstest]
-  #[case(
-    ChatTemplateType::Id(ChatTemplateId::Llama2Legacy),
-    "mistralai/Mixtral-8x7B-Instruct-v0.1"
-  )]
-  #[rstest]
-  #[case(
-    ChatTemplateType::Id(ChatTemplateId::Phi3),
-    "microsoft/Phi-3-mini-4k-instruct"
-  )]
-  #[rstest]
-  #[case(ChatTemplateType::Id(ChatTemplateId::Gemma), "google/gemma-7b-it")]
-  #[rstest]
-  #[case(
-    ChatTemplateType::Id(ChatTemplateId::Deepseek),
-    "deepseek-ai/deepseek-llm-67b-chat"
-  )]
-  #[rstest]
-  #[case(
-    ChatTemplateType::Id(ChatTemplateId::CommandR),
-    "CohereForAI/c4ai-command-r-plus"
-  )]
-  #[rstest]
-  #[case(
-    ChatTemplateType::Id(ChatTemplateId::Openchat),
-    "openchat/openchat-3.6-8b-20240522"
-  )]
-  #[rstest]
-  #[case(
-    ChatTemplateType::Repo(Repo::try_from("foo/bar").unwrap()),
-    "foo/bar"
-  )]
+  #[case(ChatTemplateId::Llama3, "meta-llama/Meta-Llama-3-8B-Instruct")]
+  #[case(ChatTemplateId::Llama2, "meta-llama/Llama-2-13b-chat-hf")]
+  #[case(ChatTemplateId::Llama2Legacy, "mistralai/Mixtral-8x7B-Instruct-v0.1")]
+  #[case(ChatTemplateId::Phi3, "microsoft/Phi-3-mini-4k-instruct")]
+  #[case(ChatTemplateId::Gemma, "google/gemma-7b-it")]
+  #[case(ChatTemplateId::Deepseek, "deepseek-ai/deepseek-llm-67b-chat")]
+  #[case(ChatTemplateId::CommandR, "CohereForAI/c4ai-command-r-plus")]
+  #[case(ChatTemplateId::Openchat, "openchat/openchat-3.6-8b-20240522")]
   fn test_chat_template_type_to_repo_for_chat_template_with_id(
-    #[case] input: ChatTemplateType,
+    #[case] id: ChatTemplateId,
     #[case] expected: String,
   ) -> anyhow::Result<()> {
-    let repo: Repo = Repo::try_from(input)?;
-    assert_eq!(expected, repo.to_string());
+    assert_eq!(Repo::try_from(expected)?, Repo::from(id));
     Ok(())
   }
 

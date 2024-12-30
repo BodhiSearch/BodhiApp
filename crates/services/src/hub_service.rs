@@ -121,6 +121,9 @@ impl HfHubService {
 
 impl HubService for HfHubService {
   fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+    if self.local_file_exists(repo, filename, snapshot.clone())? {
+      return self.find_local_file(repo, filename, snapshot.clone());
+    }
     let snapshot = snapshot.unwrap_or(SNAPSHOT_MAIN.to_string());
     let model_repo =
       hf_hub::Repo::with_revision(repo.to_string(), hf_hub::RepoType::Model, snapshot);
@@ -409,7 +412,7 @@ mod test {
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::{assert_error_message, setup_l10n, temp_hf_home},
+    test_utils::{assert_error_message, setup_l10n, temp_hf_home, SNAPSHOT},
     AppError, FluentLocalizationService, HubFile, Repo,
   };
   use rstest::rstest;
@@ -725,6 +728,17 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     let local_model_file = service.find_local_file(&repo, filename, snapshot)?;
     let content = fs::read_to_string(local_model_file.path())?;
     assert_eq!(expected, content);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_hf_hub_service_does_not_download_if_file_exists(
+    #[from(test_hf_service)] service: TestHfService,
+  ) -> anyhow::Result<()> {
+    let repo = Repo::fakemodel();
+    let filename = "fakemodel.Q4_0.gguf";
+    let local_model_file = service.find_local_file(&repo, filename, Some(SNAPSHOT.to_string()));
+    assert!(local_model_file.is_ok());
     Ok(())
   }
 
