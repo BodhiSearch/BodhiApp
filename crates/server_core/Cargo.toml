@@ -24,7 +24,6 @@ http-body = { workspace = true }
 http-body-util = { workspace = true, optional = true }
 include_dir = { workspace = true }
 mime = { workspace = true }
-minijinja = { workspace = true }
 mockall = { workspace = true, optional = true }
 pin-project-lite = { workspace = true }
 reqwest = { workspace = true }

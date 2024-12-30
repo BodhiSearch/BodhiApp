@@ -39,6 +39,7 @@ async fn server() -> LlamaServer {
   );
   let args = LlamaServerArgsBuilder::default()
     .model(model_file)
+    .alias("llama2:7b-chat")
     .verbose(true)
     .build()
     .unwrap();

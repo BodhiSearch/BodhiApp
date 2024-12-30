@@ -104,7 +104,7 @@ impl Interactive {
       .server_params(&alias.context_params)
       .build()?;
     let exec_path = service.env_service().exec_path();
-    let shared_rw = DefaultSharedContext::new(PathBuf::from(exec_path));
+    let shared_rw = DefaultSharedContext::new(service.hub_service(), PathBuf::from(exec_path));
     shared_rw.reload(Some(server_args)).await?;
     let router_state = DefaultRouterState::new(Arc::new(shared_rw), service);
     pb.finish_and_clear();

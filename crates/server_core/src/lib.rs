@@ -9,7 +9,6 @@ mod fwd_sse;
 mod objs;
 mod router_state;
 mod shared_rw;
-mod tokenizer_config;
 
 pub use direct_sse::*;
 pub use error::*;
@@ -17,7 +16,6 @@ pub use fwd_sse::*;
 pub use objs::*;
 pub use router_state::*;
 pub use shared_rw::*;
-pub use tokenizer_config::*;
 
 pub mod l10n {
   use include_dir::Dir;
