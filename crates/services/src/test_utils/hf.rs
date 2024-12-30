@@ -1,4 +1,5 @@
 use crate::{HfHubService, HubService, HubServiceError, MockHubService};
+use derive_new::new;
 use objs::{test_utils::temp_hf_home, HubFile, Repo};
 use rstest::fixture;
 use std::path::PathBuf;
@@ -66,6 +67,50 @@ impl HubService for TestHfService {
     } else {
       self.inner_mock.download(repo, filename, snapshot)
     }
+  }
+
+  fn list_local_models(&self) -> Vec<HubFile> {
+    self.inner.list_local_models()
+  }
+
+  fn find_local_file(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+  ) -> Result<HubFile> {
+    self.inner.find_local_file(repo, filename, snapshot)
+  }
+
+  fn local_file_exists(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+  ) -> Result<bool> {
+    self.inner.local_file_exists(repo, filename, snapshot)
+  }
+
+  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
+    self.inner.model_file_path(repo, filename, snapshot)
+  }
+
+  fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
+    self.inner.list_local_tokenizer_configs()
+  }
+}
+
+#[derive(Debug, new)]
+pub struct OfflineHubService {
+  inner: HfHubService,
+}
+
+impl HubService for OfflineHubService {
+  fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+    if !self.inner.local_file_exists(repo, filename, snapshot.clone())? {
+      assert!(false, "tried to download file in test");
+    }
+    self.inner.download(repo, filename, snapshot)
   }
 
   fn list_local_models(&self) -> Vec<HubFile> {

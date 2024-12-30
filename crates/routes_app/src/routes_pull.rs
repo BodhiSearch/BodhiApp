@@ -217,7 +217,9 @@ mod tests {
     Router,
   };
   use mockall::predicate::eq;
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo};
+  use objs::{
+    test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo, TOKENIZER_CONFIG_JSON,
+  };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -431,6 +433,10 @@ mod tests {
       .expect_download()
       .with(eq(Repo::testalias()), eq(Repo::testalias_q4()), eq(None))
       .returning(|_, _, _| Ok(HubFile::testalias()));
+    test_hf_service
+      .expect_download()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
+      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
     let app_service = app_service_stub_builder

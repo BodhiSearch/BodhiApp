@@ -12,7 +12,7 @@ use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 
-use super::FrozenTimeService;
+use super::{FrozenTimeService, OfflineHubService};
 
 #[fixture]
 #[awt]
@@ -132,7 +132,7 @@ impl AppServiceStubBuilder {
     let hf_home = temp_home.path().join("huggingface");
     copy_test_dir("tests/data/huggingface", &hf_home);
     let hf_cache = hf_home.join("hub");
-    let hub_service = HfHubService::new(hf_cache, false, None);
+    let hub_service = OfflineHubService::new(HfHubService::new(hf_cache, false, None));
     self.hub_service = Some(Some(Arc::new(hub_service)));
     self
   }

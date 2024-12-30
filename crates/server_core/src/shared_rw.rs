@@ -1,8 +1,8 @@
-use crate::{ContextError, IntoChatTemplate};
+use crate::ContextError;
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use objs::Alias;
-use services::HubService;
+use services::{HubService, IntoChatTemplate};
 use std::{
   path::{Path, PathBuf},
   sync::Arc,

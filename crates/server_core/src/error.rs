@@ -3,13 +3,15 @@ use objs::{
   impl_error_from, AppError, BuilderError, ChatTemplateError, ErrorType, ObjValidationError,
   SerdeJsonError,
 };
-use services::{DataServiceError, HubServiceError};
+use services::{DataServiceError, HubServiceError, ObjExtsError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ContextError {
   #[error(transparent)]
   HubService(#[from] HubServiceError),
+  #[error(transparent)]
+  ObjExts(#[from] ObjExtsError),
   #[error(transparent)]
   Builder(#[from] BuilderError),
   #[error(transparent)]

@@ -1,10 +1,10 @@
 use objs::{
   default_features, Alias, AppError, ChatTemplateType, GptContextParams, OAIRequestParams,
-  ObjValidationError, Repo, TOKENIZER_CONFIG_JSON,
+  ObjValidationError, Repo,
 };
 use services::{
-  AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,
-  SNAPSHOT_MAIN,
+  AliasExistsError, AppService, DataServiceError, HubDownloadable, HubFileNotFoundError,
+  HubServiceError, ObjExtsError, SNAPSHOT_MAIN,
 };
 use std::sync::Arc;
 
@@ -28,6 +28,8 @@ pub struct CreateCommand {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum CreateCommandError {
+  #[error(transparent)]
+  ObjExts(#[from] ObjExtsError),
   #[error(transparent)]
   AliasExists(#[from] AliasExistsError),
   #[error(transparent)]
@@ -85,28 +87,7 @@ impl CreateCommand {
         }
       }
     };
-    let chat_template_repo = Repo::try_from(self.chat_template.clone())?;
-    let file_exists =
-      service
-        .hub_service()
-        .local_file_exists(&chat_template_repo, TOKENIZER_CONFIG_JSON, None)?;
-    match file_exists {
-      true => {
-        println!(
-          "tokenizer from repo: '{}', filename: '{}' already exists in $HF_HOME",
-          &self.repo, &self.filename
-        );
-      }
-      _ => {
-        service
-          .hub_service()
-          .download(&chat_template_repo, TOKENIZER_CONFIG_JSON, None)?;
-        println!(
-          "tokenizer from repo: '{}', filename: '{}' downloaded into $HF_HOME",
-          &self.repo, &self.filename
-        );
-      }
-    }
+    let _ = self.chat_template.download(service.hub_service())?;
     let alias: Alias = Alias::new(
       self.alias,
       self.family,
@@ -132,8 +113,8 @@ mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, GptContextParamsBuilder, HubFile,
-    OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
+    test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, GptContextParamsBuilder,
+    HubFile, OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
   };
   use rstest::rstest;
   use services::{
@@ -230,6 +211,10 @@ mod test {
         eq(snapshot.clone()),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
+    test_hf_service
+      .expect_download()
+      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
+      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let service = Arc::new(
       AppServiceStubBuilder::default()
         .hub_service(Arc::new(test_hf_service))
