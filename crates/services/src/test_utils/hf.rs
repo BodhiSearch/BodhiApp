@@ -91,10 +91,6 @@ impl HubService for TestHfService {
     self.inner.local_file_exists(repo, filename, snapshot)
   }
 
-  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
-    self.inner.model_file_path(repo, filename, snapshot)
-  }
-
   fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
     self.inner.list_local_tokenizer_configs()
   }
@@ -133,10 +129,6 @@ impl HubService for OfflineHubService {
     snapshot: Option<String>,
   ) -> Result<bool> {
     self.inner.local_file_exists(repo, filename, snapshot)
-  }
-
-  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
-    self.inner.model_file_path(repo, filename, snapshot)
   }
 
   fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
