@@ -1,5 +1,5 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParams,
+  test_utils::SNAPSHOT, Alias, AliasBuilder, ChatTemplateType, ChatTemplateId, GptContextParams,
   GptContextParamsBuilder, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder,
   RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
@@ -7,9 +7,9 @@ use std::path::PathBuf;
 
 const DEFAULT_CHAT_TEMPLATE: ChatTemplateId = ChatTemplateId::Llama3;
 
-impl Default for ChatTemplate {
+impl Default for ChatTemplateType {
   fn default() -> Self {
-    ChatTemplate::Id(DEFAULT_CHAT_TEMPLATE)
+    ChatTemplateType::Id(DEFAULT_CHAT_TEMPLATE)
   }
 }
 
@@ -137,7 +137,7 @@ impl RemoteModel {
       "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
       None,
       vec!["chat".to_string()],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
+      ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
       GptContextParams::default(),
     )
@@ -151,7 +151,7 @@ impl RemoteModel {
       Repo::testalias_filename(),
       None,
       vec![String::from("chat")],
-      ChatTemplate::Id(ChatTemplateId::Llama3),
+      ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
       GptContextParams::default(),
     )
@@ -167,7 +167,7 @@ impl AliasBuilder {
       .filename(Repo::testalias_filename())
       .snapshot(SNAPSHOT.to_string())
       .features(vec!["chat".to_string()])
-      .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
+      .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .to_owned()
@@ -206,7 +206,7 @@ impl AliasBuilder {
       .filename("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())
       .features(vec!["chat".to_string()])
-      .chat_template(ChatTemplate::Id(ChatTemplateId::Llama3))
+      .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(request_params)
       .context_params(gpt_params)
       .to_owned()
@@ -219,7 +219,7 @@ impl AliasBuilder {
       .filename("tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string())
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
       .features(vec!["chat".to_string()])
-      .chat_template(ChatTemplate::Repo(
+      .chat_template(ChatTemplateType::Repo(
         Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
       ))
       .request_params(OAIRequestParams::default())

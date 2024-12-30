@@ -1,4 +1,4 @@
-use crate::{is_default, to_safe_filename, ChatTemplate, GptContextParams, OAIRequestParams, Repo};
+use crate::{is_default, to_safe_filename, ChatTemplateType, GptContextParams, OAIRequestParams, Repo};
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
@@ -22,7 +22,7 @@ pub struct Alias {
   pub filename: String,
   pub snapshot: String,
   pub features: Vec<String>,
-  pub chat_template: ChatTemplate,
+  pub chat_template: ChatTemplateType,
   #[serde(default, skip_serializing_if = "is_default")]
   pub request_params: OAIRequestParams,
   #[serde(default, skip_serializing_if = "is_default")]
@@ -55,7 +55,7 @@ impl std::fmt::Display for Alias {
 #[cfg(test)]
 mod test {
   use crate::{
-    Alias, AliasBuilder, ChatTemplate, ChatTemplateId, GptContextParamsBuilder,
+    Alias, AliasBuilder, ChatTemplateType, ChatTemplateId, GptContextParamsBuilder,
     OAIRequestParamsBuilder, Repo,
   };
   use rstest::rstest;
@@ -84,7 +84,7 @@ chat_template: llama3
   )]
   #[case::full(
     AliasBuilder::tinyllama()
-      .chat_template(ChatTemplate::Repo(
+      .chat_template(ChatTemplateType::Repo(
         Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
       ))
       .request_params(OAIRequestParamsBuilder::default()
@@ -120,7 +120,7 @@ context_params:
   )]
   #[case::chat_template_id(
     AliasBuilder::tinyllama()
-      .chat_template(ChatTemplate::Id(ChatTemplateId::Tinyllama))
+      .chat_template(ChatTemplateType::Id(ChatTemplateId::Tinyllama))
       .build()
       .unwrap(),
     r#"alias: tinyllama:instruct
@@ -155,7 +155,7 @@ context_params:
   n_predict: 256
 "#,
   AliasBuilder::tinyllama()
-    .chat_template(ChatTemplate::Repo(
+    .chat_template(ChatTemplateType::Repo(
       Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
     ))
   .request_params(OAIRequestParamsBuilder::default()
@@ -182,7 +182,7 @@ features:
 - chat
 chat_template: tinyllama
 "#, AliasBuilder::tinyllama()
-.chat_template(ChatTemplate::Id(ChatTemplateId::Tinyllama))
+.chat_template(ChatTemplateType::Id(ChatTemplateId::Tinyllama))
 .build()
 .unwrap())]
   fn test_alias_deserialized(

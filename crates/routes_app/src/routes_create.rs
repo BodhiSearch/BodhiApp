@@ -6,7 +6,7 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
-use objs::{ApiError, AppError, ChatTemplate, ErrorType, GptContextParams, OAIRequestParams, Repo};
+use objs::{ApiError, AppError, ChatTemplateType, ErrorType, GptContextParams, OAIRequestParams, Repo};
 use serde::{Deserialize, Serialize};
 use server_core::{AliasResponse, RouterState};
 use services::AliasNotFoundError;
@@ -25,7 +25,7 @@ pub struct CreateAliasRequest {
   repo: Repo,
   filename: String,
   snapshot: Option<String>,
-  chat_template: ChatTemplate,
+  chat_template: ChatTemplateType,
   family: Option<String>,
   request_params: Option<OAIRequestParams>,
   context_params: Option<GptContextParams>,

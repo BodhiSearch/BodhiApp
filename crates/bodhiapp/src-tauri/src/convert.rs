@@ -1,5 +1,5 @@
 use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
-use objs::{AppError, ChatTemplate, ErrorType, Repo};
+use objs::{AppError, ChatTemplateType, ErrorType, Repo};
 use server_app::{RunCommand, ServeCommand};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -66,7 +66,7 @@ pub fn build_create_command(command: Command) -> Result<CreateCommand, ConvertEr
       context_params,
     } => {
       let chat_template = match (chat_template, tokenizer_config) {
-        (Some(chat_template), None) => ChatTemplate::Id(chat_template),
+        (Some(chat_template), None) => ChatTemplateType::Id(chat_template),
         (None, Some(tokenizer_config)) => {
           let repo =
             Repo::try_from(tokenizer_config.clone()).map_err(|err| ConvertError::InvalidRepo {
@@ -75,7 +75,7 @@ pub fn build_create_command(command: Command) -> Result<CreateCommand, ConvertEr
               repo: tokenizer_config.clone(),
               error: err.to_string(),
             })?;
-          ChatTemplate::Repo(repo)
+          ChatTemplateType::Repo(repo)
         }
         _ => {
           return Err(ConvertBadRequestError::new(
@@ -162,7 +162,7 @@ mod tests {
   use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
   use objs::test_utils::{assert_error_message, setup_l10n};
   use objs::FluentLocalizationService;
-  use objs::{AppError, ChatTemplate, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
+  use objs::{AppError, ChatTemplateType, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
   use rstest::rstest;
   use server_app::ServeCommand;
   use std::sync::Arc;
@@ -237,7 +237,7 @@ mod tests {
     repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
     filename: "testalias.Q8_0.gguf".to_string(),
     snapshot: Some("main".to_string()),
-    chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+    chat_template: ChatTemplateType::Id(ChatTemplateId::Llama3),
     family: Some("testalias".to_string()),
     auto_download: true,
     update: true,

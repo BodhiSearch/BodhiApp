@@ -131,7 +131,7 @@ mod test {
   use crate::{PullCommand, PullCommandError};
   use mockall::predicate::eq;
   use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplate, GptContextParams, HubFile, OAIRequestParams,
+    test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, HubFile, OAIRequestParams,
     RemoteModel, Repo,
   };
   use rstest::rstest;
@@ -193,7 +193,7 @@ mod test {
         filename: "testalias.Q8_0.gguf".to_string(),
         snapshot: SNAPSHOT.to_string(),
         features: vec!["chat".to_string()],
-        chat_template: ChatTemplate::Id(objs::ChatTemplateId::Llama3),
+        chat_template: ChatTemplateType::Id(objs::ChatTemplateId::Llama3),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default()
       },

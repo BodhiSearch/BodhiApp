@@ -1,4 +1,4 @@
-use crate::{ChatTemplate, GptContextParams, OAIRequestParams, Repo};
+use crate::{ChatTemplateType, GptContextParams, OAIRequestParams, Repo};
 use serde::Deserialize;
 
 #[allow(clippy::too_many_arguments)]
@@ -11,7 +11,7 @@ pub struct RemoteModel {
   pub filename: String,
   pub snapshot: Option<String>,
   pub features: Vec<String>,
-  pub chat_template: ChatTemplate,
+  pub chat_template: ChatTemplateType,
   #[serde(default)]
   pub request_params: OAIRequestParams,
   #[serde(default)]

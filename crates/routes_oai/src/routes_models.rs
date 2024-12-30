@@ -3,7 +3,7 @@ use axum::{
   routing::get,
   Json, Router,
 };
-use objs::{Alias, ApiError, ChatTemplate, ChatTemplateId, HubFile};
+use objs::{Alias, ApiError, ChatTemplateType, ChatTemplateId, HubFile};
 use server_core::{
   AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, RouterState,
 };
@@ -117,17 +117,17 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
 
 pub async fn list_chat_templates_handler(
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Json<Vec<ChatTemplate>>, ApiError> {
+) -> Result<Json<Vec<ChatTemplateType>>, ApiError> {
   let mut responses = Vec::new();
   for chat_template in ChatTemplateId::iter() {
-    responses.push(ChatTemplate::Id(chat_template));
+    responses.push(ChatTemplateType::Id(chat_template));
   }
   let local_repos = state
     .app_service()
     .hub_service()
     .list_local_tokenizer_configs();
   for repo in local_repos {
-    responses.push(ChatTemplate::Repo(repo));
+    responses.push(ChatTemplateType::Repo(repo));
   }
   Ok(Json(responses))
 }
@@ -154,7 +154,7 @@ mod tests {
     Router,
   };
   use objs::{
-    test_utils::setup_l10n, ChatTemplate, ChatTemplateId, FluentLocalizationService,
+    test_utils::setup_l10n, ChatTemplateType, ChatTemplateId, FluentLocalizationService,
     GptContextParamsBuilder, OAIRequestParamsBuilder, Repo,
   };
   use pretty_assertions::assert_eq;
@@ -371,11 +371,11 @@ mod tests {
       )
       .await?;
     assert_eq!(response.status(), StatusCode::OK);
-    let response = response.json::<Vec<ChatTemplate>>().await?;
+    let response = response.json::<Vec<ChatTemplateType>>().await?;
 
     assert_eq!(14, response.len());
     for template_id in ChatTemplateId::iter() {
-      assert!(response.iter().any(|t| t == &ChatTemplate::Id(template_id)));
+      assert!(response.iter().any(|t| t == &ChatTemplateType::Id(template_id)));
     }
     let expected_chat_templates = vec![
       "meta-llama/Llama-2-70b-chat-hf",
@@ -387,7 +387,7 @@ mod tests {
     for repo in expected_chat_templates {
       assert!(response
         .iter()
-        .any(|t| t == &ChatTemplate::Repo(Repo::try_from(repo).unwrap())));
+        .any(|t| t == &ChatTemplateType::Repo(Repo::try_from(repo).unwrap())));
     }
     Ok(())
   }

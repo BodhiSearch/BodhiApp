@@ -65,7 +65,7 @@ mod test {
   use crate::{test_utils::MockInteractiveRuntime, RunCommand, RunCommandError};
   use mockall::predicate::{always, eq};
   use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplate, ChatTemplateId, GptContextParams, HubFile,
+    test_utils::SNAPSHOT, Alias, ChatTemplateType, ChatTemplateId, GptContextParams, HubFile,
     OAIRequestParams, Repo,
   };
   use rstest::rstest;
@@ -133,7 +133,7 @@ mod test {
         filename: Repo::testalias_q4(),
         snapshot: SNAPSHOT.to_string(),
         features: vec!["chat".to_string()],
-        chat_template: ChatTemplate::Id(ChatTemplateId::Llama3),
+        chat_template: ChatTemplateType::Id(ChatTemplateId::Llama3),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default(),
       },
