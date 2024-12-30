@@ -18,6 +18,7 @@ use tracing::{debug, warn};
 #[builder(pattern = "owned", setter(into, strip_option), build_fn(error = BuilderError))]
 pub struct LlamaServerArgs {
   pub model: PathBuf,
+  pub alias: String,
   #[builder(default)]
   api_key: Option<String>,
   #[builder(default = "portpicker::pick_unused_port().unwrap_or(8080)")]
@@ -56,10 +57,12 @@ impl LlamaServerArgsBuilder {
 impl LlamaServerArgs {
   // Convert the struct into command line arguments
   pub fn to_args(&self) -> Vec<String> {
-    let mut args = Vec::new();
-
-    args.push("--model".to_string());
-    args.push(self.model.to_string_lossy().to_string());
+    let mut args = vec![
+      "--alias".to_string(),
+      self.alias.clone(),
+      "--model".to_string(),
+      self.model.to_string_lossy().to_string(),
+    ];
 
     if let Some(seed) = &self.seed {
       args.push("--seed".to_string());

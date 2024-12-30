@@ -100,7 +100,7 @@ impl ServeCommand {
         exec_path.to_string_lossy().to_string(),
       ))?;
     }
-    let ctx = DefaultSharedContext::new(exec_path);
+    let ctx = DefaultSharedContext::new(service.hub_service(), exec_path);
     let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
     let app = build_routes(ctx.clone(), service, static_router);
 

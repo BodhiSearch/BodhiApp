@@ -1,9 +1,12 @@
-use crate::tokenizer_config::TokenizerConfig;
 use crate::ContextError;
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
-use objs::{Alias, HubFile};
-use std::path::{Path, PathBuf};
+use objs::{Alias, ChatTemplate, HubFile};
+use services::HubService;
+use std::{
+  path::{Path, PathBuf},
+  sync::Arc,
+};
 use tokio::sync::RwLock;
 use validator::Validate;
 
@@ -52,18 +55,24 @@ impl ServerFactory for DefaultServerFactory {
 
 #[derive(Debug)]
 pub struct DefaultSharedContext {
+  hub_service: Arc<dyn HubService>,
   factory: Box<dyn ServerFactory>,
   exec_path: PathBuf,
   server: RwLock<Option<Box<dyn Server>>>,
 }
 
 impl DefaultSharedContext {
-  pub fn new(exec_path: PathBuf) -> Self {
-    Self::with_args(Box::new(DefaultServerFactory), exec_path)
+  pub fn new(hub_service: Arc<dyn HubService>, exec_path: PathBuf) -> Self {
+    Self::with_args(hub_service, Box::new(DefaultServerFactory), exec_path)
   }
 
-  pub fn with_args(factory: Box<dyn ServerFactory>, exec_path: PathBuf) -> Self {
+  pub fn with_args(
+    hub_service: Arc<dyn HubService>,
+    factory: Box<dyn ServerFactory>,
+    exec_path: PathBuf,
+  ) -> Self {
     Self {
+      hub_service,
       exec_path,
       factory,
       server: RwLock::new(None),
@@ -121,16 +130,21 @@ impl SharedContext for DefaultSharedContext {
   ) -> Result<reqwest::Response> {
     let lock = self.server.read().await;
     let server = lock.as_ref();
-    let loaded_model = server.map(|server| server.get_server_args().model);
-    let request_model = model_file.path();
-    let chat_template: TokenizerConfig = TokenizerConfig::try_from(tokenizer_file)?;
+    let loaded_alias = server.map(|server| server.get_server_args().alias);
+    let request_alias = &alias.alias;
+    let model_file = self
+      .hub_service
+      .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot))?
+      .path();
+
+    let chat_template: ChatTemplate = ChatTemplate::try_from(tokenizer_file)?;
     chat_template.validate()?;
     alias.request_params.update(&mut request);
     let prompt = chat_template.apply_chat_template(&request.messages)?;
     let mut input_value = serde_json::to_value(request)?;
     input_value["prompt"] = serde_json::Value::String(prompt);
     // TODO: instead of comparing model path, compare server args
-    match ModelLoadStrategy::choose(loaded_model, &request_model) {
+    match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
         let response = server
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
@@ -141,7 +155,8 @@ impl SharedContext for DefaultSharedContext {
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
         let server_args = LlamaServerArgsBuilder::default()
-          .model(request_model)
+          .alias(alias.alias)
+          .model(model_file.to_string_lossy().to_string())
           .server_params(&alias.context_params)
           .build()?;
         self.reload(Some(server_args)).await?;
@@ -157,7 +172,8 @@ impl SharedContext for DefaultSharedContext {
         // TODO: take context params from alias
         // TODO: reload keeping lock and doing completions operation
         let server_args = LlamaServerArgsBuilder::default()
-          .model(request_model)
+          .alias(alias.alias)
+          .model(model_file.to_string_lossy().to_string())
           .server_params(&alias.context_params)
           .build()?;
         drop(lock);
@@ -182,9 +198,9 @@ enum ModelLoadStrategy {
 }
 
 impl ModelLoadStrategy {
-  fn choose(loaded_model: Option<PathBuf>, request_model: &Path) -> ModelLoadStrategy {
-    if let Some(loaded_model) = loaded_model {
-      if loaded_model.eq(request_model) {
+  fn choose(loaded_alias: Option<String>, request_alias: &str) -> ModelLoadStrategy {
+    if let Some(loaded_model) = loaded_alias {
+      if loaded_model.eq(request_alias) {
         ModelLoadStrategy::Continue
       } else {
         ModelLoadStrategy::DropAndLoad
@@ -200,123 +216,34 @@ mod test {
   use crate::{
     shared_rw::{DefaultSharedContext, ModelLoadStrategy, SharedContext},
     test_utils::{mock_server, ServerFactoryStub},
-    ServerFactory,
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
   use futures::FutureExt;
-  use llama_server_proc::{
-    test_utils::{llama2_7b, mock_response},
-    LlamaServerArgsBuilder, MockServer,
-  };
+  use llama_server_proc::{test_utils::mock_response, LlamaServerArgsBuilder, MockServer};
   use mockall::predicate::eq;
   use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder};
   use rstest::rstest;
   use serde_json::{json, Value};
   use serial_test::serial;
-  use services::test_utils::{app_service_stub, AppServiceStub};
+  use services::{
+    test_utils::{app_service_stub, AppServiceStub},
+    AppService,
+  };
   use std::path::PathBuf;
   use tempfile::TempDir;
 
-  #[ignore]
-  #[tokio::test]
-  async fn test_shared_rw_new() -> anyhow::Result<()> {
-    let ctx = DefaultSharedContext::new(PathBuf::from("/tmp/test_server.exe"));
-    assert!(!ctx.is_loaded().await);
-    Ok(())
-  }
-
-  #[ignore]
   #[rstest]
-  #[tokio::test]
-  async fn test_shared_rw_new_reload(
-    mock_server: MockServer,
-    llama2_7b: PathBuf,
+  #[case(Some("testalias".to_string()), "testalias", ModelLoadStrategy::Continue)]
+  #[case(Some("testalias".to_string()), "testalias2", ModelLoadStrategy::DropAndLoad)]
+  #[case(None, "testalias", ModelLoadStrategy::Load)]
+  fn test_model_load_strategy(
+    #[case] loaded_alias: Option<String>,
+    #[case] request_alias: &str,
+    #[case] expected: ModelLoadStrategy,
   ) -> anyhow::Result<()> {
-    let server_args = LlamaServerArgsBuilder::default()
-      .model(llama2_7b)
-      .build()
-      .unwrap();
-    let factory: Box<dyn ServerFactory> = Box::new(ServerFactoryStub::new(Box::new(mock_server)));
-    let ctx = DefaultSharedContext::with_args(factory, PathBuf::from("/tmp/test_server.exe"));
-    ctx.reload(Some(server_args)).await?;
-    assert!(ctx.is_loaded().await);
-    ctx.stop().await?;
-    Ok(())
-  }
-
-  #[ignore]
-  #[rstest]
-  #[tokio::test]
-  async fn test_shared_rw_reload_with_none(
-    mock_server: MockServer,
-    #[from(mock_server)] mock_server_2: MockServer,
-    llama2_7b: PathBuf,
-  ) -> anyhow::Result<()> {
-    let server_args = LlamaServerArgsBuilder::default()
-      .model(&llama2_7b)
-      .build()
-      .unwrap();
-    let factory: Box<dyn ServerFactory> = Box::new(ServerFactoryStub::new_with_instances(vec![
-      Box::new(mock_server),
-      Box::new(mock_server_2),
-    ]));
-    let ctx = DefaultSharedContext::with_args(factory, PathBuf::from("/tmp/test_server.exe"));
-    ctx.reload(Some(server_args.clone())).await?;
-    let model_params = ctx.get_server_args().await.unwrap();
-    assert_eq!(llama2_7b, model_params.model);
-    ctx.reload(None).await?;
-    assert!(ctx.get_server_args().await.is_none());
-    ctx.reload(Some(server_args)).await?;
-    let server_args = ctx.get_server_args().await.unwrap();
-    assert_eq!(llama2_7b, server_args.model);
-    ctx.stop().await?;
-    Ok(())
-  }
-
-  #[ignore]
-  #[rstest]
-  #[tokio::test]
-  async fn test_shared_rw_try_stop(
-    mock_server: MockServer,
-    llama2_7b: PathBuf,
-  ) -> anyhow::Result<()> {
-    let server_args = LlamaServerArgsBuilder::default()
-      .model(llama2_7b)
-      .build()
-      .unwrap();
-    let factory: Box<dyn ServerFactory> = Box::new(ServerFactoryStub::new(Box::new(mock_server)));
-    let ctx = DefaultSharedContext::with_args(factory, PathBuf::from("/tmp/test_server.exe"));
-    ctx.reload(Some(server_args)).await?;
-    ctx.stop().await?;
-    assert!(!ctx.is_loaded().await);
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_model_load_strategy_continue_if_request_and_model_file_same() -> anyhow::Result<()> {
-    let loaded_model = PathBuf::from("/path/to/loaded_model.gguf");
-    let request_model = loaded_model.clone();
-    let result = ModelLoadStrategy::choose(Some(loaded_model), &request_model);
-    assert_eq!(result, ModelLoadStrategy::Continue);
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_model_load_strategy_drop_and_load_if_loaded_model_different_from_request_model(
-  ) -> anyhow::Result<()> {
-    let loaded_model = PathBuf::from("/path/to/loaded_model.gguf");
-    let request_model = PathBuf::from("/path/to/request_model.gguf");
-    let result = ModelLoadStrategy::choose(Some(loaded_model), &request_model);
-    assert_eq!(result, ModelLoadStrategy::DropAndLoad);
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_model_load_strategy_load_if_no_model_loaded() -> anyhow::Result<()> {
-    let request_model = PathBuf::from("/path/to/request_model.gguf");
-    let result = ModelLoadStrategy::choose(None, &request_model);
-    assert_eq!(result, ModelLoadStrategy::Load);
+    let result = ModelLoadStrategy::choose(loaded_alias, request_alias);
+    assert_eq!(result, expected);
     Ok(())
   }
 
@@ -346,6 +273,7 @@ mod test {
       .with(eq(expected_input))
       .return_once(|_| async { Ok(mock_response("")) }.boxed());
     let server_args = LlamaServerArgsBuilder::default()
+      .alias("testalias:instruct")
       .model(model_file.path())
       .build()?;
     let server_args_cl = server_args.clone();
@@ -358,6 +286,7 @@ mod test {
 
     let server_factory = ServerFactoryStub::new(Box::new(mock_server));
     let shared_ctx = DefaultSharedContext::with_args(
+      app_service_stub.hub_service(),
       Box::new(server_factory),
       PathBuf::from("/tmp/test_server.exe"),
     );
@@ -374,10 +303,12 @@ mod test {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
   async fn test_chat_completions_load_strategy(
+    #[future] app_service_stub: AppServiceStub,
     mut mock_server: MockServer,
     temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
@@ -400,6 +331,7 @@ mod test {
 
     let bodhi_server_factory = ServerFactoryStub::new(Box::new(mock_server));
     let shared_ctx = DefaultSharedContext::with_args(
+      app_service_stub.hub_service(),
       Box::new(bodhi_server_factory),
       PathBuf::from("/tmp/test_library.dylib"),
     );
@@ -414,12 +346,14 @@ mod test {
   }
 
   #[rstest]
+  #[awt]
   #[tokio::test]
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
   async fn test_chat_completions_drop_and_load_strategy(
     mut mock_server: MockServer,
     #[from(mock_server)] mut request_server: MockServer,
+    #[future] app_service_stub: AppServiceStub,
     temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
@@ -428,6 +362,7 @@ mod test {
       .build()
       .unwrap();
     let loaded_params = LlamaServerArgsBuilder::default()
+      .alias("testalias:instruct")
       .model(loaded_model.path())
       .build()?;
     let loaded_params_cl = loaded_params.clone();
@@ -449,6 +384,7 @@ mod test {
       .hf_cache(hf_cache.clone())
       .build()?;
     let request_params = LlamaServerArgsBuilder::default()
+      .alias("fakemodel:instruct")
       .model(request_model.path())
       .build()?;
     request_server
@@ -465,6 +401,7 @@ mod test {
     let server_factory =
       ServerFactoryStub::new_with_instances(vec![Box::new(mock_server), Box::new(request_server)]);
     let shared_ctx = DefaultSharedContext::with_args(
+      app_service_stub.hub_service(),
       Box::new(server_factory),
       PathBuf::from("/tmp/test_server.exe"),
     );

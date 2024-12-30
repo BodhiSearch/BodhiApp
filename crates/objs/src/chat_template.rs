@@ -1,4 +1,7 @@
-use crate::ContextError;
+use crate::{
+  impl_error_from, validation_errors, AppError, ErrorType, HubFile, IoWithPathError,
+  ObjValidationError, SerdeJsonError,
+};
 use async_openai::types::{
   ChatCompletionRequestMessage,
   ChatCompletionRequestUserMessageContent::{Array, Text},
@@ -6,9 +9,6 @@ use async_openai::types::{
 };
 use derive_new::new;
 use minijinja::{Environment, ErrorKind};
-use objs::{
-  impl_error_from, validation_errors, AppError, HubFile, IoWithPathError, SerdeJsonError,
-};
 use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
@@ -103,7 +103,7 @@ impl ChatTemplateVersions {
 }
 
 #[derive(Debug, Clone, Deserialize, PartialEq, new, Validate)]
-pub struct TokenizerConfig {
+pub struct ChatTemplate {
   #[validate(custom(function = "validate_chat_template"))]
   pub chat_template: ChatTemplateVersions,
   #[serde(deserialize_with = "deserialize_token", default)]
@@ -121,9 +121,9 @@ fn validate_chat_template(chat_template: &ChatTemplateVersions) -> Result<(), Va
   }
 }
 
-impl TokenizerConfig {
+impl ChatTemplate {
   #[allow(clippy::result_large_err)]
-  pub fn apply_chat_template<T>(&self, messages: &[T]) -> Result<String, ContextError>
+  pub fn apply_chat_template<T>(&self, messages: &[T]) -> Result<String, ChatTemplateError>
   where
     for<'a> &'a T: Into<ChatMessage>,
   {
@@ -192,39 +192,69 @@ where
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum TokenizerConfigError {
+pub enum ChatTemplateError {
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
   #[error(transparent)]
   IoWithPathError(#[from] IoWithPathError),
+  #[error(transparent)]
+  ObjValidationError(#[from] ObjValidationError),
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "chat_template_error-minijina_error", args_delegate = false)]
+  Minijina(#[from] minijinja::Error),
 }
 
 impl_error_from!(
   ::serde_json::Error,
-  TokenizerConfigError::SerdeJson,
-  ::objs::SerdeJsonError
+  ChatTemplateError::SerdeJson,
+  crate::SerdeJsonError
 );
 
-impl TryFrom<HubFile> for TokenizerConfig {
-  type Error = TokenizerConfigError;
+impl_error_from!(
+  ::validator::ValidationErrors,
+  ChatTemplateError::ObjValidationError,
+  crate::ObjValidationError
+);
+
+impl TryFrom<HubFile> for ChatTemplate {
+  type Error = ChatTemplateError;
 
   fn try_from(value: HubFile) -> Result<Self, Self::Error> {
     let path = value.path();
     let content = std::fs::read_to_string(path.clone())
       .map_err(|err| IoWithPathError::new(err, path.display().to_string()))?;
-    let tokenizer_config: TokenizerConfig = serde_json::from_str(&content)?;
-    Ok(tokenizer_config)
+    let chat_template: ChatTemplate = serde_json::from_str(&content)?;
+    Ok(chat_template)
   }
 }
 
 #[cfg(test)]
 mod test {
-  use crate::{ChatMessage, ChatTemplateVersions, TokenizerConfig};
+  use crate::{
+    test_utils::{assert_error_message, setup_l10n, temp_hf_home},
+    AppError, ChatMessage, ChatTemplate, ChatTemplateError, ChatTemplateVersions,
+    FluentLocalizationService, HubFileBuilder,
+  };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
-  use objs::{test_utils::temp_hf_home, HubFileBuilder};
   use rstest::rstest;
+  use std::sync::Arc;
   use tempfile::TempDir;
+
+  #[rstest]
+  #[case(&ChatTemplateError::Minijina(minijinja::Error::new(minijinja::ErrorKind::NonKey, "error")), "error rendering template: not a key type: error")]
+  fn test_error_messages_chat_template(
+    #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
+    #[case] error: &dyn AppError,
+    #[case] expected_message: &str,
+  ) {
+    assert_error_message(
+      localization_service,
+      &error.code(),
+      error.args(),
+      expected_message,
+    );
+  }
 
   #[anyhow_trace]
   #[rstest]
@@ -238,7 +268,7 @@ mod test {
   #[case("openchat", "openchat/openchat-3.6-8b-20240522")]
   #[case("tinyllama", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")]
   // #[case("zephyr", "HuggingFaceH4/zephyr-7b-beta")]
-  fn test_tokenizer_config_apply_chat_template(
+  fn test_chat_template_apply_chat_template(
     #[case] format: String,
     #[case] model: String,
     #[values(
@@ -254,7 +284,7 @@ mod test {
   ) -> anyhow::Result<()> {
     let filename = format!("tests/data/tokenizers/{}/tokenizer_config.json", model);
     let content = std::fs::read_to_string(filename)?;
-    let config = serde_json::from_str::<TokenizerConfig>(&content)?;
+    let config = serde_json::from_str::<ChatTemplate>(&content)?;
 
     let input_filename = concat!(
       env!("CARGO_MANIFEST_DIR"),
@@ -303,53 +333,53 @@ mod test {
 
   #[rstest]
   #[case("simple.json", 
-  TokenizerConfig::new(
+  ChatTemplate::new(
     ChatTemplateVersions::Single("{{ bos_token }} {%- for message in messages %} message['role']: {{ message['content'] }} {% endfor %} {{ eos_token }}".to_string()),
     Some("<s>".to_string()),
     Some("</s>".to_string()),
   ))]
-  #[case("bos_eos_objs.json", TokenizerConfig::new(
+  #[case("bos_eos_objs.json", ChatTemplate::new(
     ChatTemplateVersions::Single("{{ bos_token }} {% for message in messages %}{{ message['role'] }}: {{ message['content'] }}{% endfor %} {{ eos_token }}".to_string()),
     Some("<s>".to_string()),
     Some("</s>".to_string()),
   ))]
-  fn test_tokenizer_config_from_json_str_empty(
+  fn test_chat_template_from_json_str_empty(
     #[case] input: String,
-    #[case] expected: TokenizerConfig,
+    #[case] expected: ChatTemplate,
   ) -> anyhow::Result<()> {
     let content = std::fs::read_to_string(format!("tests/data/tokenizer_configs/{}", input))?;
-    let empty = serde_json::from_str::<TokenizerConfig>(&content)?;
+    let empty = serde_json::from_str::<ChatTemplate>(&content)?;
     assert_eq!(expected, empty);
     Ok(())
   }
 
   #[rstest]
   #[case("invalid.json", "invalid type: boolean `true`, expected a string or a map with a 'content' key at line 2 column 19")]
-  fn test_tokenizer_config_invalid(
+  fn test_chat_template_invalid(
     #[case] input: String,
     #[case] expected: String,
   ) -> anyhow::Result<()> {
     let content = std::fs::read_to_string(format!("tests/data/tokenizer_configs/{}", input))?;
-    let config = serde_json::from_str::<TokenizerConfig>(&content);
+    let config = serde_json::from_str::<ChatTemplate>(&content);
     assert!(config.is_err());
     assert_eq!(expected, config.unwrap_err().to_string());
     Ok(())
   }
 
   #[rstest]
-  fn test_tokenizer_config_from_hub_file(temp_hf_home: TempDir) -> anyhow::Result<()> {
+  fn test_chat_template_from_hub_file(temp_hf_home: TempDir) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let tokenizer_file = HubFileBuilder::testalias_tokenizer()
       .hf_cache(hf_cache)
       .build()
       .unwrap();
-    let tokenizer_config = TokenizerConfig::try_from(tokenizer_file)?;
-    let expected = TokenizerConfig::new(
+    let chat_template = ChatTemplate::try_from(tokenizer_file)?;
+    let expected = ChatTemplate::new(
       ChatTemplateVersions::Single("{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + content %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}".to_string()),
       Some("<|begin_of_text|>".to_string()),
       Some("<|eot_id|>".to_string()),
     );
-    assert_eq!(expected, tokenizer_config);
+    assert_eq!(expected, chat_template);
     Ok(())
   }
 }
