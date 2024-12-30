@@ -98,8 +98,6 @@ pub trait HubService: std::fmt::Debug + Send + Sync {
     snapshot: Option<String>,
   ) -> Result<bool>;
 
-  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf;
-
   fn list_local_tokenizer_configs(&self) -> Vec<Repo>;
 }
 
@@ -244,16 +242,6 @@ impl HubService for HfHubService {
     } else {
       Err(HubFileNotFoundError::new(filename.to_string(), repo.to_string(), snapshot).into())
     }
-  }
-
-  fn model_file_path(&self, repo: &Repo, filename: &str, snapshot: &str) -> PathBuf {
-    let model_repo = hf_hub::Repo::model(repo.to_string());
-    self
-      .hf_cache()
-      .join(model_repo.folder_name())
-      .join("snapshots")
-      .join(snapshot)
-      .join(filename)
   }
 
   fn list_local_tokenizer_configs(&self) -> Vec<Repo> {
