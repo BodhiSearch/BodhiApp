@@ -1,7 +1,7 @@
 use crate::{shared_rw::SharedContext, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use axum::async_trait;
-use objs::{ObjValidationError, Repo, TOKENIZER_CONFIG_JSON};
+use objs::ObjValidationError;
 use services::{AliasNotFoundError, AppService, HubServiceError};
 use std::sync::Arc;
 
@@ -63,35 +63,19 @@ impl RouterState for DefaultRouterState {
       .data_service()
       .find_alias(&request.model)
       .ok_or_else(|| AliasNotFoundError(request.model.clone()))?;
-    let model_file = self.app_service.hub_service().find_local_file(
-      &alias.repo,
-      &alias.filename,
-      Some(alias.snapshot.clone()),
-    )?;
-    let tokenizer_repo = Repo::try_from(alias.chat_template.clone())?;
-    let tokenizer_file = self.app_service.hub_service().find_local_file(
-      &tokenizer_repo,
-      TOKENIZER_CONFIG_JSON,
-      None,
-    )?;
-    let response = self
-      .ctx
-      .chat_completions(request, alias, model_file, tokenizer_file)
-      .await?;
+    let response = self.ctx.chat_completions(request, alias).await?;
     Ok(response)
   }
 }
 
 #[cfg(test)]
 mod test {
-  use crate::{
-    ContextError, DefaultRouterState, MockSharedContext, RouterState, RouterStateError,
-  };
+  use crate::{ContextError, DefaultRouterState, MockSharedContext, RouterState, RouterStateError};
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
   use llama_server_proc::{test_utils::mock_response, ServerError};
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_dir, Alias, HubFileBuilder};
+  use objs::{test_utils::temp_dir, Alias};
   use rstest::rstest;
   use serde_json::json;
   use services::test_utils::AppServiceStubBuilder;
@@ -104,8 +88,7 @@ mod test {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .build()?;
-    let state =
-      DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
+    let state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "not-found",
       "messages": [
@@ -139,26 +122,10 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let hf_cache = temp_dir
-      .path()
-      .join("huggingface")
-      .join("hub")
-      .to_path_buf();
-    let model_file = HubFileBuilder::testalias_exists()
-      .hf_cache(hf_cache.clone())
-      .build()?;
-    let llama3_tokenizer = HubFileBuilder::llama3_tokenizer()
-      .hf_cache(hf_cache.clone())
-      .build()?;
     mock_ctx
       .expect_chat_completions()
-      .with(
-        eq(request.clone()),
-        eq(Alias::testalias_exists()),
-        eq(model_file),
-        eq(llama3_tokenizer),
-      )
-      .return_once(|_, _, _, _| Ok(mock_response("")));
+      .with(eq(request.clone()), eq(Alias::testalias_exists()))
+      .return_once(|_, _| Ok(mock_response("")));
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
       .with_data_service()
@@ -174,11 +141,6 @@ mod test {
   async fn test_router_state_chat_completions_returns_context_err(
     temp_dir: TempDir,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_dir
-      .path()
-      .join("huggingface")
-      .join("hub")
-      .to_path_buf();
     let mut mock_ctx = MockSharedContext::default();
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias-exists:instruct",
@@ -186,22 +148,11 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let model_file = HubFileBuilder::testalias_exists()
-      .hf_cache(hf_cache.clone())
-      .build()?;
-    let llama3_tokenizer = HubFileBuilder::llama3_tokenizer()
-      .hf_cache(hf_cache.clone())
-      .build()?;
     let alias = Alias::testalias_exists();
     mock_ctx
       .expect_chat_completions()
-      .with(
-        eq(request.clone()),
-        eq(alias),
-        eq(model_file),
-        eq(llama3_tokenizer),
-      )
-      .return_once(|_, _, _, _| {
+      .with(eq(request.clone()), eq(alias))
+      .return_once(|_, _| {
         Err(ContextError::Server(ServerError::StartupError(
           "test error".to_string(),
         )))

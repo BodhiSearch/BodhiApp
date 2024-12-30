@@ -40,7 +40,7 @@ mod test {
   use futures_util::StreamExt;
   use llama_server_proc::test_utils::mock_response;
   use mockall::predicate::eq;
-  use objs::{Alias, HubFileBuilder};
+  use objs::Alias;
   use reqwest::StatusCode;
   use rstest::rstest;
   use serde_json::json;
@@ -86,22 +86,11 @@ mod test {
       )])
       .build()?;
     let alias = Alias::testalias_exists();
-    let model_file = HubFileBuilder::testalias_exists()
-      .hf_cache(app_service_stub.hf_cache())
-      .build()?;
-    let tokenizer_file = HubFileBuilder::llama3_tokenizer()
-      .hf_cache(app_service_stub.hf_cache())
-      .build()?;
     let mut ctx = MockSharedContext::default();
     ctx
       .expect_chat_completions()
-      .with(
-        eq(request.clone()),
-        eq(alias),
-        eq(model_file),
-        eq(tokenizer_file),
-      )
-      .return_once(move |_, _, _, _| Ok(non_streamed_response()));
+      .with(eq(request.clone()), eq(alias))
+      .return_once(move |_, _| Ok(non_streamed_response()));
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
     let app = Router::new()
       .route("/v1/chat/completions", post(chat_completions_handler))
@@ -183,22 +172,11 @@ mod test {
       )])
       .build()?;
     let alias = Alias::testalias_exists();
-    let model_file = HubFileBuilder::testalias_exists()
-      .hf_cache(app_service_stub.hf_cache())
-      .build()?;
-    let tokenizer_file = HubFileBuilder::llama3_tokenizer()
-      .hf_cache(app_service_stub.hf_cache())
-      .build()?;
     let mut ctx = MockSharedContext::default();
     ctx
       .expect_chat_completions()
-      .with(
-        eq(request.clone()),
-        eq(alias),
-        eq(model_file),
-        eq(tokenizer_file),
-      )
-      .return_once(move |_, _, _, _| streamed_response());
+      .with(eq(request.clone()), eq(alias))
+      .return_once(move |_, _| streamed_response());
 
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
     let app = Router::new()

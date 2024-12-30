@@ -1,14 +1,13 @@
-use crate::ContextError;
+use crate::{ContextError, IntoChatTemplate};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
-use objs::{Alias, ChatTemplate, HubFile};
+use objs::Alias;
 use services::HubService;
 use std::{
   path::{Path, PathBuf},
   sync::Arc,
 };
 use tokio::sync::RwLock;
-use validator::Validate;
 
 type Result<T> = std::result::Result<T, ContextError>;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -26,8 +25,6 @@ pub trait SharedContext: std::fmt::Debug + Send + Sync {
     &self,
     mut request: CreateChatCompletionRequest,
     alias: Alias,
-    model_file: HubFile,
-    tokenizer_file: HubFile,
   ) -> Result<reqwest::Response>;
 }
 
@@ -125,8 +122,6 @@ impl SharedContext for DefaultSharedContext {
     &self,
     mut request: CreateChatCompletionRequest,
     alias: Alias,
-    model_file: HubFile,
-    tokenizer_file: HubFile,
   ) -> Result<reqwest::Response> {
     let lock = self.server.read().await;
     let server = lock.as_ref();
@@ -136,9 +131,9 @@ impl SharedContext for DefaultSharedContext {
       .hub_service
       .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot))?
       .path();
-
-    let chat_template: ChatTemplate = ChatTemplate::try_from(tokenizer_file)?;
-    chat_template.validate()?;
+    let chat_template = alias
+      .chat_template
+      .into_chat_template(self.hub_service.clone())?;
     alias.request_params.update(&mut request);
     let prompt = chat_template.apply_chat_template(&request.messages)?;
     let mut input_value = serde_json::to_value(request)?;
@@ -261,10 +256,6 @@ mod test {
       .hf_cache(hf_cache.clone())
       .build()
       .unwrap();
-    let tokenizer_file = HubFileBuilder::testalias_tokenizer()
-      .hf_cache(hf_cache.clone())
-      .build()
-      .unwrap();
     let expected_input: Value = serde_json::from_str(
       r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#,
     )?;
@@ -296,7 +287,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, Alias::testalias(), model_file, tokenizer_file)
+      .chat_completions(request, Alias::testalias())
       .await?;
     shared_ctx.stop().await?;
     Ok(())
@@ -310,17 +301,7 @@ mod test {
   async fn test_chat_completions_load_strategy(
     #[future] app_service_stub: AppServiceStub,
     mut mock_server: MockServer,
-    temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
-    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
-    let model_file = HubFileBuilder::testalias()
-      .hf_cache(hf_cache.clone())
-      .build()
-      .unwrap();
-    let tokenizer_file = HubFileBuilder::testalias_tokenizer()
-      .hf_cache(hf_cache.clone())
-      .build()
-      .unwrap();
     let expected_input: Value = serde_json::from_str(
       r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#,
     )?;
@@ -340,7 +321,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, Alias::testalias(), model_file, tokenizer_file)
+      .chat_completions(request, Alias::testalias())
       .await?;
     Ok(())
   }
@@ -393,11 +374,6 @@ mod test {
     request_server
       .expect_stop()
       .return_once(|| async { Ok(()) }.boxed());
-    let tokenizer_file = HubFileBuilder::testalias_tokenizer()
-      .hf_cache(hf_cache.clone())
-      .build()
-      .unwrap();
-
     let server_factory =
       ServerFactoryStub::new_with_instances(vec![Box::new(mock_server), Box::new(request_server)]);
     let shared_ctx = DefaultSharedContext::with_args(
@@ -411,7 +387,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, Alias::testalias(), loaded_model, tokenizer_file)
+      .chat_completions(request, Alias::testalias())
       .await?;
     shared_ctx.stop().await?;
     Ok(())
