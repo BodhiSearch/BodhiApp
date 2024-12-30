@@ -4,14 +4,14 @@ use objs::{BuilderError, GptContextParams};
 use reqwest::Response;
 use serde_json::Value;
 use std::{
+  io::{BufRead, BufReader},
   net::{IpAddr, Ipv4Addr},
   path::PathBuf,
-  process::Stdio,
+  process::{Child, ChildStderr, ChildStdout, Command, Stdio},
   sync::Mutex,
+  thread,
   time::Duration,
 };
-use tokio::io::{AsyncBufReadExt, AsyncRead, BufReader};
-use tokio::process::{Child as TokioChild, Command as TokioCommand};
 use tracing::{debug, warn};
 
 #[derive(Debug, Clone, Builder)]
@@ -140,7 +140,7 @@ pub trait Server: std::fmt::Debug + Send + Sync {
 
 #[derive(Debug)]
 pub struct LlamaServer {
-  process: Mutex<Option<TokioChild>>,
+  process: Mutex<Option<Child>>,
   client: reqwest::Client,
   base_url: String,
   executable_path: PathBuf,
@@ -168,26 +168,32 @@ impl LlamaServer {
     })
   }
 
-  fn monitor_output<R1, R2>(stdout: R1, stderr: R2)
-  where
-    R1: AsyncRead + Unpin + Send + 'static,
-    R2: AsyncRead + Unpin + Send + 'static,
-  {
-    // Monitor stdout
-    tokio::spawn(async move {
-      let mut stdout = BufReader::new(stdout).lines();
-      while let Ok(Some(line)) = stdout.next_line().await {
-        debug!(target: "bodhi_server", "{}", line);
-      }
-    });
+  fn monitor_output(stdout: Option<ChildStdout>, stderr: Option<ChildStderr>) {
+    // Monitor stdout in a separate thread
+    if let Some(stdout) = stdout {
+      thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+          match line {
+            Ok(line) => debug!(target: "bodhi_server", "{}", line),
+            Err(e) => warn!(target: "bodhi_server", "Error reading stdout: {}", e),
+          }
+        }
+      });
 
-    // Monitor stderr
-    tokio::spawn(async move {
-      let mut stderr = BufReader::new(stderr).lines();
-      while let Ok(Some(line)) = stderr.next_line().await {
-        warn!(target: "bodhi_server", "{}", line);
+      // Monitor stderr in a separate thread
+      if let Some(stderr) = stderr {
+        thread::spawn(move || {
+          let reader = BufReader::new(stderr);
+          for line in reader.lines() {
+            match line {
+              Ok(line) => warn!(target: "bodhi_server", "{}", line),
+              Err(e) => warn!(target: "bodhi_server", "Error reading stderr: {}", e),
+            }
+          }
+        });
       }
-    });
+    }
   }
 
   async fn wait_for_server_ready(&self) -> Result<()> {
@@ -224,25 +230,36 @@ impl LlamaServer {
   }
 }
 
+impl Drop for LlamaServer {
+  fn drop(&mut self) {
+    let mut lock = self.process.lock().unwrap();
+    if let Some(mut process) = lock.take() {
+      if let Err(e) = process.kill() {
+        warn!("failed to kill process: {}", e);
+      }
+      if let Err(e) = process.wait() {
+        warn!("failed to wait for process: {}", e);
+      }
+    }
+  }
+}
+
 #[async_trait::async_trait]
 impl Server for LlamaServer {
   async fn start(&self) -> Result<()> {
     let args = self.server_args.to_args();
-    let mut process = TokioCommand::new(&self.executable_path)
+    let mut process = Command::new(&self.executable_path)
       .args(args)
       .stdout(Stdio::piped())
       .stderr(Stdio::piped())
       .spawn()
       .map_err(|e| ServerError::StartupError(e.to_string()))?;
-
-    // Set up stdout/stderr forwarding to tracing
-    let stdout = BufReader::new(process.stdout.take().unwrap());
-    let stderr = BufReader::new(process.stderr.take().unwrap());
-    // Start stdout/stderr monitoring tasks
-    Self::monitor_output(stdout, stderr);
+    let stdout = process.stdout.take();
+    let stderr = process.stderr.take();
 
     *self.process.lock().unwrap() = Some(process);
 
+    Self::monitor_output(stdout, stderr);
     self.wait_for_server_ready().await?;
     Ok(())
   }
@@ -262,8 +279,8 @@ impl Server for LlamaServer {
     };
 
     if let Some(mut process) = process {
-      process.kill().await?;
-      process.wait().await?;
+      process.kill()?;
+      process.wait()?;
     }
     Ok(())
   }
