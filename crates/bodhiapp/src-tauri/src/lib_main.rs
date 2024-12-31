@@ -15,7 +15,7 @@ mod env_config {
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
-  pub fn set_bodhi_library_lookup_path(env_wrapper: &mut DefaultEnvWrapper) {}
+  pub fn set_bodhi_exec_lookup_path(env_wrapper: &mut DefaultEnvWrapper) {}
 }
 
 #[cfg(not(feature = "production"))]
