@@ -3,7 +3,7 @@ from gguf import GGUFEndian, GGUFWriter
 
 def create_writer(filename: str, endianess: GGUFEndian = GGUFEndian.LITTLE) -> GGUFWriter:
   """Create a GGUFWriter with common settings"""
-  return GGUFWriter(f"tests/data/{filename}", "llama", endianess=endianess)
+  return GGUFWriter(f"tests/data/gguf/{filename}", "llama", endianess=endianess)
 
 
 def write_and_close(writer: GGUFWriter) -> None:
@@ -92,7 +92,14 @@ def create_gguf_sample_tokens(endianess: GGUFEndian = GGUFEndian.LITTLE) -> None
 if __name__ == "__main__":
   import os
 
-  os.makedirs("tests/data", exist_ok=True)
+  if os.path.basename(os.getcwd()) == "BodhiApp":
+    os.chdir("crates/objs")
+  if os.path.basename(os.getcwd()) != "objs":
+    raise Exception(
+      "Could not locate objs directory, either run from the project root (BodhiApp) or the module root (crates/objs)"
+    )
+
+  os.makedirs("tests/data/gguf", exist_ok=True)
 
   # Create all sample files
   create_gguf_sample0(GGUFEndian.LITTLE)

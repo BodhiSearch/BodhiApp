@@ -1,7 +1,7 @@
 use hf_hub::Cache;
 use objs::{
-  impl_error_from, Alias, AppError, ChatTemplate, ErrorType, HubFile, IoError, ObjValidationError,
-  Repo,
+  impl_error_from, Alias, AppError, ChatTemplate, ChatTemplateError, ErrorType, HubFile, IoError,
+  ObjValidationError, Repo,
 };
 use std::{
   collections::HashSet,
@@ -66,6 +66,8 @@ pub enum HubApiErrorKind {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum HubServiceError {
+  #[error(transparent)]
+  ChatTemplate(#[from] ChatTemplateError),
   #[error(transparent)]
   HubApiError(#[from] HubApiError),
   #[error(transparent)]
@@ -291,8 +293,10 @@ impl HubService for HfHubService {
     unique_repos.into_iter().collect()
   }
 
-  fn model_chat_template(&self, _alias: &Alias) -> Result<ChatTemplate> {
-    todo!()
+  fn model_chat_template(&self, alias: &Alias) -> Result<ChatTemplate> {
+    let file = self.find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot.clone()))?;
+    let chat_template: ChatTemplate = ChatTemplate::try_from(file)?;
+    Ok(chat_template)
   }
 }
 

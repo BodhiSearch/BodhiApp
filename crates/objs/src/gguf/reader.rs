@@ -1,4 +1,4 @@
-use crate::{GGUFError, GGUFValue, GGUFValueType, GGUF_MAGIC_LE, GGUF_VERSION};
+use crate::gguf::{GGUFMetadataError, GGUFValue, GGUFValueType, GGUF_MAGIC_LE, GGUF_VERSION};
 use byteorder::{ByteOrder, ReadBytesExt, BE, LE};
 use memmap2::Mmap;
 use std::{collections::BTreeMap, fs::File, marker::PhantomData, path::Path};
@@ -12,17 +12,17 @@ pub struct GGUFMetadata {
 }
 
 impl GGUFMetadata {
-  pub fn new(path: &Path) -> Result<GGUFMetadata, GGUFError> {
+  pub fn new(path: &Path) -> Result<GGUFMetadata, GGUFMetadataError> {
     let file = File::open(path)?;
     let mmap = unsafe { Mmap::map(&file).unwrap() };
     let mut cursor = 0;
     let magic = (&mmap[cursor..cursor + 4]).read_u32::<LE>()?;
     if magic != GGUF_MAGIC_LE {
-      return Err(GGUFError::InvalidMagic(magic));
+      return Err(GGUFMetadataError::InvalidMagic(magic));
     }
     cursor += 4;
     if cursor + 4 > mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let version = (&mmap[cursor..cursor + 4]).read_u32::<LE>()?;
     let known_versions_be = KNOWN_VERSIONS
@@ -32,7 +32,7 @@ impl GGUFMetadata {
     match version {
       v if KNOWN_VERSIONS.contains(&v) => GGUFReader::<LE>::parse(mmap, cursor, magic),
       v if known_versions_be.contains(&v) => GGUFReader::<BE>::parse(mmap, cursor, magic),
-      _ => Err(GGUFError::MalformedVersion(version)),
+      _ => Err(GGUFMetadataError::MalformedVersion(version)),
     }
   }
 
@@ -59,11 +59,11 @@ pub struct GGUFReader<T: ByteOrder> {
 }
 
 impl<T: ByteOrder> GGUFReader<T> {
-  fn parse(mmap: Mmap, mut cursor: usize, magic: u32) -> Result<GGUFMetadata, GGUFError> {
+  fn parse(mmap: Mmap, mut cursor: usize, magic: u32) -> Result<GGUFMetadata, GGUFMetadataError> {
     let version = (&mmap[cursor..cursor + 4]).read_u32::<T>()?;
     cursor += 4;
     if !Self::is_version_supported(version) {
-      return Err(GGUFError::UnsupportedVersion(version));
+      return Err(GGUFMetadataError::UnsupportedVersion(version));
     }
     let mut reader = Self {
       mmap,
@@ -93,26 +93,26 @@ impl<T: ByteOrder> GGUFReader<T> {
     version == GGUF_VERSION
   }
 
-  fn read_u64(&mut self) -> Result<u64, GGUFError> {
+  fn read_u64(&mut self) -> Result<u64, GGUFMetadataError> {
     if self.cursor + 8 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_u64(&self.mmap[self.cursor..self.cursor + 8]);
     self.cursor += 8;
     Ok(value)
   }
 
-  fn read_string(&mut self) -> Result<String, GGUFError> {
+  fn read_string(&mut self) -> Result<String, GGUFMetadataError> {
     let len = self.read_u64()? as usize;
     if self.cursor + len > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let bytes = &self.mmap[self.cursor..self.cursor + len];
     self.cursor += len;
     Ok(String::from_utf8(bytes.to_vec())?)
   }
 
-  fn read_value(&mut self) -> Result<GGUFValue, GGUFError> {
+  fn read_value(&mut self) -> Result<GGUFValue, GGUFMetadataError> {
     let type_id = self.read_u32()?;
     let value_type = GGUFValueType::try_from(type_id)?;
 
@@ -133,87 +133,87 @@ impl<T: ByteOrder> GGUFReader<T> {
     }
   }
 
-  fn read_u8(&mut self) -> Result<u8, GGUFError> {
+  fn read_u8(&mut self) -> Result<u8, GGUFMetadataError> {
     if self.cursor + 1 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = self.mmap[self.cursor];
     self.cursor += 1;
     Ok(value)
   }
 
-  fn read_i8(&mut self) -> Result<i8, GGUFError> {
+  fn read_i8(&mut self) -> Result<i8, GGUFMetadataError> {
     Ok(self.read_u8()? as i8)
   }
 
-  fn read_u16(&mut self) -> Result<u16, GGUFError> {
+  fn read_u16(&mut self) -> Result<u16, GGUFMetadataError> {
     if self.cursor + 2 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_u16(&self.mmap[self.cursor..self.cursor + 2]);
     self.cursor += 2;
     Ok(value)
   }
 
-  fn read_i16(&mut self) -> Result<i16, GGUFError> {
+  fn read_i16(&mut self) -> Result<i16, GGUFMetadataError> {
     if self.cursor + 2 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_i16(&self.mmap[self.cursor..self.cursor + 2]);
     self.cursor += 2;
     Ok(value)
   }
 
-  fn read_u32(&mut self) -> Result<u32, GGUFError> {
+  fn read_u32(&mut self) -> Result<u32, GGUFMetadataError> {
     if self.cursor + 4 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_u32(&self.mmap[self.cursor..self.cursor + 4]);
     self.cursor += 4;
     Ok(value)
   }
 
-  fn read_i32(&mut self) -> Result<i32, GGUFError> {
+  fn read_i32(&mut self) -> Result<i32, GGUFMetadataError> {
     if self.cursor + 4 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_i32(&self.mmap[self.cursor..self.cursor + 4]);
     self.cursor += 4;
     Ok(value)
   }
 
-  fn read_i64(&mut self) -> Result<i64, GGUFError> {
+  fn read_i64(&mut self) -> Result<i64, GGUFMetadataError> {
     if self.cursor + 8 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_i64(&self.mmap[self.cursor..self.cursor + 8]);
     self.cursor += 8;
     Ok(value)
   }
 
-  fn read_f32(&mut self) -> Result<f32, GGUFError> {
+  fn read_f32(&mut self) -> Result<f32, GGUFMetadataError> {
     if self.cursor + 4 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_f32(&self.mmap[self.cursor..self.cursor + 4]);
     self.cursor += 4;
     Ok(value)
   }
 
-  fn read_f64(&mut self) -> Result<f64, GGUFError> {
+  fn read_f64(&mut self) -> Result<f64, GGUFMetadataError> {
     if self.cursor + 8 > self.mmap.len() {
-      return Err(GGUFError::UnexpectedEOF);
+      return Err(GGUFMetadataError::UnexpectedEOF);
     }
     let value = T::read_f64(&self.mmap[self.cursor..self.cursor + 8]);
     self.cursor += 8;
     Ok(value)
   }
 
-  fn read_bool(&mut self) -> Result<bool, GGUFError> {
+  fn read_bool(&mut self) -> Result<bool, GGUFMetadataError> {
     Ok(self.read_u8()? != 0)
   }
 
-  fn read_array(&mut self) -> Result<GGUFValue, GGUFError> {
+  fn read_array(&mut self) -> Result<GGUFValue, GGUFMetadataError> {
     let item_type: GGUFValueType = self.read_u32()?.try_into()?;
     let len = self.read_u64()? as usize;
     let mut values = Vec::with_capacity(len);
@@ -232,7 +232,7 @@ impl<T: ByteOrder> GGUFReader<T> {
         GGUFValueType::UINT64 => GGUFValue::U64(self.read_u64()?),
         GGUFValueType::INT64 => GGUFValue::I64(self.read_i64()?),
         GGUFValueType::FLOAT64 => GGUFValue::F64(self.read_f64()?),
-        _ => return Err(GGUFError::InvalidArrayValueType(item_type as u32)),
+        _ => return Err(GGUFMetadataError::InvalidArrayValueType(item_type as u32)),
       };
       values.push(value);
     }
@@ -242,7 +242,7 @@ impl<T: ByteOrder> GGUFReader<T> {
 
 #[cfg(test)]
 mod tests {
-  use crate::{GGUFMetadata, GGUFValue, GGUF_MAGIC_LE};
+  use crate::gguf::{GGUFMetadata, GGUFValue, GGUF_MAGIC_LE};
   use anyhow_trace::anyhow_trace;
   use rstest::*;
   use std::path::PathBuf;
@@ -252,17 +252,18 @@ mod tests {
   #[once]
   fn generate_test_data() -> () {
     let cwd = env!("CARGO_MANIFEST_DIR");
-    let status = Command::new("python")
-      .arg("scripts/test_data.py")
+    let output = Command::new("python")
+      .arg("tests/scripts/test_data.py")
       .current_dir(cwd)
-      .status()
+      .output()
       .expect("Failed to execute Python script");
 
-    if !status.success() {
+    if !output.status.success() {
       assert!(
         false,
-        "Python script to generate test data failed with status: {}",
-        status
+        "Python script failed with status: {}, stderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
       );
     }
     ()
@@ -285,9 +286,9 @@ mod tests {
 
   #[anyhow_trace]
   #[rstest]
-  #[case::le("tests/data/sample0_le.gguf", 3)]
-  #[case::be("tests/data/sample0_be.gguf", 3)]
-  fn test_gguf_reader_endian(
+  #[case::le("tests/data/gguf/sample0_le.gguf", 3)]
+  #[case::be("tests/data/gguf/sample0_be.gguf", 3)]
+  fn test_gguf_metadata_endian(
     #[from(generate_test_data)] _setup: &(),
     #[case] input: &str,
     #[case] version: u32,
@@ -302,9 +303,9 @@ mod tests {
 
   #[anyhow_trace]
   #[rstest]
-  fn test_sample0_files(
+  fn test_gguf_metadata_sample0_files(
     #[from(generate_test_data)] _setup: &(),
-    #[files("tests/data/sample0_*.gguf")] input: PathBuf,
+    #[files("tests/data/gguf/sample0_*.gguf")] input: PathBuf,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(input.as_path())?;
     verify_basic_metadata(&metadata);
@@ -315,9 +316,9 @@ mod tests {
 
   #[anyhow_trace]
   #[rstest]
-  fn test_sample1_files(
+  fn test_gguf_metadatasample1_files(
     #[from(generate_test_data)] _setup: &(),
-    #[files("tests/data/sample1_*.gguf")] input: PathBuf,
+    #[files("tests/data/gguf/sample1_*.gguf")] input: PathBuf,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(input.as_path())?;
     verify_basic_metadata(&metadata);
@@ -369,9 +370,9 @@ mod tests {
 
   #[anyhow_trace]
   #[rstest]
-  fn test_sample_tokens_files(
+  fn test_gguf_metadata_sample_tokens_files(
     #[from(generate_test_data)] _setup: &(),
-    #[files("tests/data/sample_tokens*.gguf")] input: PathBuf,
+    #[files("tests/data/gguf/sample_tokens*.gguf")] input: PathBuf,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(input.as_path())?;
     verify_basic_metadata(&metadata);
