@@ -216,7 +216,7 @@ async fn validate_token_from_header(
   }
   let app_reg_info: AppRegInfo = secret_service
     .app_reg_info()?
-    .ok_or_else(|| AuthError::AppRegInfoMissing)?;
+    .ok_or(AuthError::AppRegInfoMissing)?;
   let header = jsonwebtoken::decode_header(&token)?;
   if header.kid != Some(app_reg_info.kid.clone()) {
     return Err(AuthError::KidMismatch(

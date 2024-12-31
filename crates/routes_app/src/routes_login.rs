@@ -100,7 +100,7 @@ pub async fn login_callback_handler(
     .get::<String>("oauth_state")
     .await
     .map_err(LoginError::from)?
-    .ok_or_else(|| LoginError::SessionInfoNotFound)?;
+    .ok_or(LoginError::SessionInfoNotFound)?;
   let received_state = params
     .get("state")
     .ok_or_else(|| BadRequestError::new("missing state parameter".to_string()))?;

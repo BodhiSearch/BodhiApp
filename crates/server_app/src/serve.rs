@@ -94,7 +94,7 @@ impl ServeCommand {
     if !exec_path.exists() {
       println!(
         "exec not found at {}",
-        exec_path.to_string_lossy().to_string()
+        exec_path.to_string_lossy()
       );
       return Err(ContextError::ExecNotExists(
         exec_path.to_string_lossy().to_string(),

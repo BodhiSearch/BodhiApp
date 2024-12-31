@@ -5,10 +5,12 @@ use tokio::{
   sync::oneshot::{self, Receiver, Sender},
 };
 
-/// Server encapsulates the parameters to start, broadcast ready lifecycle, and receive shutdown request for a server
-/// It contains the parameters to start the server on given host, port etc. and
-/// contains a ready sender channel to notify the requester when the server is ready to receive connection and
-/// contains the shutdown receiver channel to listen to shutdown request from requester
+/**
+Server encapsulates the parameters to start, broadcast ready lifecycle, and receive shutdown request for a server
+It contains the parameters to start the server on given host, port etc. and
+contains a ready sender channel to notify the requester when the server is ready to receive connection and
+contains the shutdown receiver channel to listen to shutdown request from requester
+*/
 pub struct Server {
   host: String,
   port: u16,

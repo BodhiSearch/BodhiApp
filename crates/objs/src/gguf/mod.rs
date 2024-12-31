@@ -1,10 +1,10 @@
 mod constants;
 mod error;
-mod reader;
+mod metadata;
 
 pub use constants::*;
 pub use error::*;
-pub use reader::*;
+pub use metadata::*;
 
 pub mod l10n {
   use include_dir::Dir;

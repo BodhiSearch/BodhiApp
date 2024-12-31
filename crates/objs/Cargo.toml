@@ -13,6 +13,7 @@ clap = { workspace = true, features = ["derive"] }
 ctor = { workspace = true, optional = true }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
+dirs = { workspace = true, optional = true }
 derive-new = { workspace = true }
 fs_extra = { workspace = true, optional = true }
 fluent = { workspace = true }
@@ -46,6 +47,7 @@ anyhow_trace = { workspace = true }
 axum-extra = { workspace = true }
 ctor = { workspace = true }
 dircpy = { workspace = true }
+dirs = { workspace = true }
 fs_extra = { workspace = true }
 futures = { workspace = true }
 http-body-util = { workspace = true }
@@ -62,11 +64,12 @@ unic-langid = { workspace = true }
 
 [features]
 test-utils = [
+  "ctor",
+  "dircpy",
+  "dirs",
+  "fs_extra",
+  "http-body-util",
   "rstest",
   "tempfile",
-  "dircpy",
   "tracing-subscriber",
-  "ctor",
-  "http-body-util",
-  "fs_extra",
 ]

@@ -1,5 +1,5 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, ChatTemplateType, ChatTemplateId, GptContextParams,
+  test_utils::SNAPSHOT, Alias, AliasBuilder, ChatTemplateId, ChatTemplateType, GptContextParams,
   GptContextParamsBuilder, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder,
   RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
@@ -16,6 +16,10 @@ impl Default for ChatTemplateType {
 impl Repo {
   pub fn llama3() -> Repo {
     Repo::try_from("meta-llama/Meta-Llama-3-8B-Instruct").unwrap()
+  }
+
+  pub fn llama2_70b_chat() -> Repo {
+    Repo::try_from("meta-llama/Llama-2-70b-chat-hf").unwrap()
   }
 
   pub fn testalias() -> Repo {
@@ -86,6 +90,21 @@ impl HubFileBuilder {
       .filename(TOKENIZER_CONFIG_JSON.to_string())
       .snapshot("c4a54320a52ed5f88b7a2f84496903ea4ff07b45".to_string())
       .size(Some(50977))
+      .to_owned()
+  }
+
+  pub fn live_llama2_7b_chat() -> HubFileBuilder {
+    let hf_cache = dirs::home_dir()
+      .unwrap()
+      .join(".cache")
+      .join("huggingface")
+      .join("hub");
+    HubFileBuilder::default()
+      .hf_cache(hf_cache)
+      .repo(Repo::try_from("TheBloke/Llama-2-7B-Chat-GGUF").unwrap())
+      .filename("llama-2-7b-chat.Q4_K_M.gguf".to_string())
+      .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string())
+      .size(Some(1000))
       .to_owned()
   }
 }
