@@ -292,12 +292,13 @@ mod test {
   use crate::{
     test_utils::{assert_error_message, setup_l10n, temp_hf_home},
     AppError, ChatMessage, ChatTemplate, ChatTemplateError, ChatTemplateVersions,
-    FluentLocalizationService, HubFileBuilder,
+    FluentLocalizationService, HubFileBuilder, Repo,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
-  use rstest::rstest;
-  use std::sync::Arc;
+  use dirs::home_dir;
+  use rstest::{fixture, rstest};
+  use std::{path::PathBuf, process::Command, sync::Arc};
   use tempfile::TempDir;
 
   #[rstest]
@@ -438,6 +439,200 @@ mod test {
       ChatTemplateVersions::Single("{% set loop_messages = messages %}{% for message in loop_messages %}{% set content = '<|start_header_id|>' + message['role'] + '<|end_header_id|>\n\n'+ message['content'] | trim + '<|eot_id|>' %}{% if loop.index0 == 0 %}{% set content = bos_token + content %}{% endif %}{{ content }}{% endfor %}{% if add_generation_prompt %}{{ '<|start_header_id|>assistant<|end_header_id|>\n\n' }}{% endif %}".to_string()),
       Some("<|begin_of_text|>".to_string()),
       Some("<|eot_id|>".to_string()),
+    );
+    assert_eq!(expected, chat_template);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_chat_template_parse_from_unknown_extension(temp_hf_home: TempDir) -> anyhow::Result<()> {
+    let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
+    let tokenizer_model = HubFileBuilder::testalias()
+      .repo(Repo::llama2_70b_chat())
+      .filename("tokenizer.model".to_string())
+      .snapshot("e9149a12809580e8602995856f8098ce973d1080".to_string())
+      .hf_cache(hf_cache)
+      .size(Some(1000))
+      .build()
+      .unwrap();
+    let chat_template = ChatTemplate::try_from(tokenizer_model);
+    assert!(chat_template.is_err());
+    assert!(matches!(
+      chat_template.unwrap_err(),
+      ChatTemplateError::UnknownFileExtension(ext) if ext == "model"
+    ));
+    Ok(())
+  }
+
+  #[fixture]
+  #[once]
+  fn generate_chat_template_test_data() -> () {
+    let cwd = env!("CARGO_MANIFEST_DIR");
+    let output = Command::new("python")
+      .arg("tests/scripts/test_chat_template_data.py")
+      .current_dir(cwd)
+      .output()
+      .expect("Failed to execute Python script");
+
+    if !output.status.success() {
+      assert!(
+        false,
+        "Python script failed with status: {}, stderr: {}",
+        output.status,
+        String::from_utf8_lossy(&output.stderr)
+      );
+    }
+    ()
+  }
+
+  fn chat_template_version() -> ChatTemplateVersions {
+    ChatTemplateVersions::Single(
+      "{% for message in messages %}{{ message.role }}: {{ message.content }}{% endfor %}"
+        .to_string(),
+    )
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  fn test_chat_template_from_valid_gguf(
+    #[from(generate_chat_template_test_data)] _setup: &(),
+  ) -> anyhow::Result<()> {
+    let file = HubFileBuilder::fakemodel()
+      .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
+      .filename("valid_complete.gguf".to_string())
+      .build()
+      .unwrap();
+    let chat_template = ChatTemplate::try_from(file)?;
+
+    let expected = ChatTemplate::new(
+      chat_template_version(),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
+    assert_eq!(expected, chat_template);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  fn test_chat_template_from_missing_template(
+    #[from(generate_chat_template_test_data)] _setup: &(),
+  ) -> anyhow::Result<()> {
+    let file = HubFileBuilder::fakemodel()
+      .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
+      .filename("missing_chat_template.gguf".to_string())
+      .build()
+      .unwrap();
+
+    let result = ChatTemplate::try_from(file);
+
+    assert!(matches!(
+      result.unwrap_err(),
+      ChatTemplateError::EmbedChatTemplateNotFound
+    ));
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  fn test_chat_template_from_missing_tokens(
+    #[from(generate_chat_template_test_data)] _setup: &(),
+  ) -> anyhow::Result<()> {
+    let file = HubFileBuilder::fakemodel()
+      .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
+      .filename("missing_tokens.gguf".to_string())
+      .build()
+      .unwrap();
+    let chat_template = ChatTemplate::try_from(file)?;
+
+    let expected = ChatTemplate::new(chat_template_version(), None, None);
+    assert_eq!(expected, chat_template);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  fn test_chat_template_from_invalid_token_ids(
+    #[from(generate_chat_template_test_data)] _setup: &(),
+  ) -> anyhow::Result<()> {
+    let file = HubFileBuilder::fakemodel()
+      .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
+      .filename("invalid_token_ids.gguf".to_string())
+      .build()
+      .unwrap();
+    let chat_template = ChatTemplate::try_from(file)?;
+    let expected = ChatTemplate::new(chat_template_version(), None, None);
+    assert_eq!(expected, chat_template);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  fn test_chat_template_from_empty_template(
+    #[from(generate_chat_template_test_data)] _setup: &(),
+  ) -> anyhow::Result<()> {
+    let file = HubFileBuilder::fakemodel()
+      .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
+      .filename("empty_template.gguf".to_string())
+      .build()
+      .unwrap();
+    let chat_template = ChatTemplate::try_from(file);
+
+    assert!(chat_template.is_err());
+    assert!(matches!(
+      chat_template.unwrap_err(),
+      ChatTemplateError::EmbedChatTemplateNotFound
+    ));
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  fn test_chat_template_from_unicode_tokens(
+    #[from(generate_chat_template_test_data)] _setup: &(),
+  ) -> anyhow::Result<()> {
+    let file = HubFileBuilder::fakemodel()
+      .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
+      .filename("unicode_tokens.gguf".to_string())
+      .build()
+      .unwrap();
+    let chat_template = ChatTemplate::try_from(file)?;
+
+    let expected = ChatTemplate::new(
+      chat_template_version(),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
+    );
+    assert_eq!(expected, chat_template);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[ignore]
+  fn test_chat_template_llama3() -> anyhow::Result<()> {
+    let hf_cache = home_dir()
+      .unwrap()
+      .join(".cache")
+      .join("huggingface")
+      .join("hub");
+    let file = HubFileBuilder::default()
+      .hf_cache(hf_cache)
+      .repo(Repo::try_from("unsloth/Llama-3.2-1B-Instruct-GGUF")?)
+      .snapshot("952f952526368e61a6393b1a65684e0824fba86c".to_string())
+      .filename("Llama-3.2-1B-Instruct-Q4_K_M.gguf".to_string())
+      .size(Some(1000))
+      .build()
+      .unwrap();
+    let chat_template = ChatTemplate::try_from(file)?;
+    let expected = ChatTemplate::new(
+      ChatTemplateVersions::Single(
+        "{% for message in messages %}{{ message.role }}: {{ message.content }}{% endfor %}"
+          .to_string(),
+      ),
+      Some("<s>".to_string()),
+      Some("</s>".to_string()),
     );
     assert_eq!(expected, chat_template);
     Ok(())

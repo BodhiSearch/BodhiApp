@@ -1,7 +1,7 @@
 use crate::gguf::GGUFMetadataError;
 use strum::Display;
 
-pub const GGUF_MAGIC_LE: u32 = 0x46554747;
+pub const GGUF_MAGIC: u32 = 0x46554747;
 pub const GGUF_VERSION: u32 = 3;
 
 pub const GGUF_LE: u32 = 0;

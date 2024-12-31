@@ -1,4 +1,4 @@
-use crate::gguf::{GGUFMetadataError, GGUFValue, GGUFValueType, GGUF_MAGIC_LE, GGUF_VERSION};
+use crate::gguf::{GGUFMetadataError, GGUFValue, GGUFValueType, GGUF_MAGIC};
 use byteorder::{ByteOrder, ReadBytesExt, BE, LE};
 use memmap2::Mmap;
 use std::{collections::BTreeMap, fs::File, marker::PhantomData, path::Path};
@@ -17,7 +17,7 @@ impl GGUFMetadata {
     let mmap = unsafe { Mmap::map(&file).unwrap() };
     let mut cursor = 0;
     let magic = (&mmap[cursor..cursor + 4]).read_u32::<LE>()?;
-    if magic != GGUF_MAGIC_LE {
+    if magic != GGUF_MAGIC {
       return Err(GGUFMetadataError::InvalidMagic(magic));
     }
     cursor += 4;
@@ -49,7 +49,7 @@ impl GGUFMetadata {
   }
 }
 
-pub struct GGUFReader<T: ByteOrder> {
+struct GGUFReader<T: ByteOrder> {
   mmap: Mmap,
   version: u32,
   magic: u32,
@@ -90,7 +90,7 @@ impl<T: ByteOrder> GGUFReader<T> {
   }
 
   fn is_version_supported(version: u32) -> bool {
-    version == GGUF_VERSION
+    (2..=3).contains(&version)
   }
 
   fn read_u64(&mut self) -> Result<u64, GGUFMetadataError> {
@@ -242,7 +242,7 @@ impl<T: ByteOrder> GGUFReader<T> {
 
 #[cfg(test)]
 mod tests {
-  use crate::gguf::{GGUFMetadata, GGUFValue, GGUF_MAGIC_LE};
+  use crate::gguf::{GGUFMetadata, GGUFValue, GGUF_MAGIC};
   use anyhow_trace::anyhow_trace;
   use rstest::*;
   use std::path::PathBuf;
@@ -271,7 +271,7 @@ mod tests {
 
   // Common test helper to verify basic metadata
   fn verify_basic_metadata(metadata: &GGUFMetadata) {
-    assert_eq!(metadata.magic(), GGUF_MAGIC_LE);
+    assert_eq!(metadata.magic(), GGUF_MAGIC);
     assert_eq!(metadata.version(), 3);
     assert_eq!(
       metadata
@@ -294,7 +294,7 @@ mod tests {
     #[case] version: u32,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(PathBuf::from(input).as_path())?;
-    assert_eq!(metadata.magic(), GGUF_MAGIC_LE);
+    assert_eq!(metadata.magic(), GGUF_MAGIC);
     assert_eq!(metadata.version(), version);
     assert_eq!(metadata.metadata().len(), 1);
 
