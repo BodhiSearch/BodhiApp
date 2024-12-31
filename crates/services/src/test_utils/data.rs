@@ -1,12 +1,24 @@
-use crate::{DataService, DataServiceError, LocalDataService};
-use objs::{test_utils::temp_bodhi_home, Alias, RemoteModel};
+use crate::{
+  test_utils::{test_hf_service, TestHfService},
+  DataService, DataServiceError, LocalDataService,
+};
+use objs::{
+  test_utils::temp_bodhi_home,
+  Alias, RemoteModel,
+};
 use rstest::fixture;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 
 #[fixture]
-pub fn test_data_service(temp_bodhi_home: TempDir) -> TestDataService {
-  let inner = LocalDataService::new(temp_bodhi_home.path().join("bodhi"));
+pub fn test_data_service(
+  temp_bodhi_home: TempDir,
+  test_hf_service: TestHfService,
+) -> TestDataService {
+  let inner = LocalDataService::new(
+    temp_bodhi_home.path().join("bodhi"),
+    Arc::new(test_hf_service),
+  );
   TestDataService {
     temp_bodhi_home,
     inner,

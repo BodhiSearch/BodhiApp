@@ -29,8 +29,8 @@ pub fn main_internal(env_service: Arc<DefaultEnvService>) -> Result<()> {
 async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
   let bodhi_home = env_service.bodhi_home();
   let hf_cache = env_service.hf_cache();
-  let data_service = LocalDataService::new(bodhi_home.clone());
-  let hub_service = HfHubService::new_from_hf_cache(hf_cache, true);
+  let hub_service = Arc::new(HfHubService::new_from_hf_cache(hf_cache, true));
+  let data_service = LocalDataService::new(bodhi_home.clone(), hub_service.clone());
   let app_suffix = if env_service.is_production() {
     ""
   } else {
@@ -74,7 +74,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
 
   let app_service = DefaultAppService::new(
     env_service.clone(),
-    Arc::new(hub_service),
+    hub_service,
     Arc::new(data_service),
     Arc::new(auth_service),
     Arc::new(db_service),

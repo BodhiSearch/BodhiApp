@@ -1,10 +1,9 @@
-use crate::{ALIASES_DIR, MODELS_YAML};
-use derive_new::new;
+use crate::{HubService, ALIASES_DIR, MODELS_YAML};
 use objs::{
   impl_error_from, Alias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
   IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
 };
-use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf};
+use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error("alias_exists")]
@@ -86,12 +85,20 @@ pub trait DataService: Send + Sync + std::fmt::Debug {
   fn find_file(&self, folder: Option<String>, filename: &str) -> Result<PathBuf>;
 }
 
-#[derive(Debug, Clone, PartialEq, new)]
+#[derive(Debug, Clone)]
 pub struct LocalDataService {
   bodhi_home: PathBuf,
+  hub_service: Arc<dyn HubService>,
 }
 
 impl LocalDataService {
+  pub fn new(bodhi_home: PathBuf, hub_service: Arc<dyn HubService>) -> Self {
+    Self {
+      bodhi_home,
+      hub_service,
+    }
+  }
+
   fn aliases_dir(&self) -> PathBuf {
     self.bodhi_home.join(ALIASES_DIR)
   }
