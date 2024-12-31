@@ -1,0 +1,22 @@
+[package]
+name = "gguf_fast"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+errmeta_derive = { workspace = true }
+objs = { workspace = true }
+
+byteorder = { workspace = true }
+include_dir = { workspace = true }
+memmap2 = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
+rstest = { workspace = true }
+tempfile = { workspace = true }
