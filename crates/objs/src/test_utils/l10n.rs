@@ -51,6 +51,10 @@ pub fn setup_l10n(
     ))
     .unwrap()
     .load_resource(&include_dir::include_dir!(
+      "$CARGO_MANIFEST_DIR/../gguf_fast/src/resources"
+    ))
+    .unwrap()
+    .load_resource(&include_dir::include_dir!(
       "$CARGO_MANIFEST_DIR/../services/src/resources"
     ))
     .unwrap()
