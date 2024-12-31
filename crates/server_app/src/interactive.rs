@@ -244,8 +244,8 @@ mod test {
   async fn test_interactive_non_remote_model_alias_local_model_not_found_raises_error(
   ) -> anyhow::Result<()> {
     let service = AppServiceStubBuilder::default()
-      .with_data_service()
       .with_hub_service()
+      .with_data_service()
       .build()?;
     let result = Interactive::new(
       AliasBuilder::default()

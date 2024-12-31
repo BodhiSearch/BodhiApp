@@ -150,8 +150,8 @@ mod test {
     };
     let service = Arc::new(
       AppServiceStubBuilder::default()
-        .with_data_service()
         .with_hub_service()
+        .with_data_service()
         .build()?,
     );
     let repo_alias = service

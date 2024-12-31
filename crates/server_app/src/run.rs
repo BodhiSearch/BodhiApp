@@ -118,8 +118,8 @@ mod test {
       .return_once(|_, _| Ok(()));
     let service = Arc::new(
       AppServiceStubBuilder::default()
-        .with_data_service()
         .hub_service(Arc::new(test_hf_service))
+        .with_data_service()
         .build()?,
     );
     let ctx = MockInteractiveRuntime::new_context();

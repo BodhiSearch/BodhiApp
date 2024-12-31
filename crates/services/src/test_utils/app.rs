@@ -128,6 +128,9 @@ impl AppServiceStubBuilder {
   }
 
   pub fn with_hub_service(&mut self) -> &mut Self {
+    if let Some(Some(_)) = self.hub_service.clone() {
+      return self;
+    }
     let temp_home = self.setup_temp_home();
     let hf_home = temp_home.path().join("huggingface");
     copy_test_dir("tests/data/huggingface", &hf_home);
@@ -139,9 +142,16 @@ impl AppServiceStubBuilder {
 
   pub fn with_data_service(&mut self) -> &mut Self {
     let temp_home = self.setup_temp_home();
+    let hub_service = self
+      .with_hub_service()
+      .hub_service
+      .clone()
+      .unwrap()
+      .unwrap()
+      .clone();
     let bodhi_home = temp_home.path().join("bodhi");
     copy_test_dir("tests/data/bodhi", &bodhi_home);
-    let data_service = LocalDataService::new(bodhi_home);
+    let data_service = LocalDataService::new(bodhi_home, hub_service);
     self.data_service = Some(Some(Arc::new(data_service)));
     self
   }

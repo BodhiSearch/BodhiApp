@@ -83,8 +83,10 @@ pub fn llama2_7b_setup(
   .unwrap();
   // TODO: fix this
   // env_service.set_library_path(library_path().display().to_string());
-  let data_service = LocalDataService::new(bodhi_home.clone());
-  let hub_service = OfflineHubService::new(HfHubService::new(hf_cache, false, None));
+  let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
+    hf_cache, false, None,
+  )));
+  let data_service = LocalDataService::new(bodhi_home.clone(), hub_service.clone());
   let auth_service = KeycloakAuthService::new(
     String::from("http://id.localhost:8080"),
     String::from("bodhi"),
@@ -99,7 +101,7 @@ pub fn llama2_7b_setup(
   let cache_service = MokaCacheService::default();
   let service = DefaultAppService::new(
     Arc::new(env_service),
-    Arc::new(hub_service),
+    hub_service,
     Arc::new(data_service),
     Arc::new(auth_service),
     Arc::new(db_service),

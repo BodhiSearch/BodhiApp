@@ -204,8 +204,8 @@ mod test {
   #[rstest]
   fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file() -> anyhow::Result<()> {
     let service = AppServiceStubBuilder::default()
-      .with_data_service()
       .with_hub_service()
+      .with_data_service()
       .build()?;
     let service = Arc::new(service);
     let command = PullCommand::ByAlias {

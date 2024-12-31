@@ -128,8 +128,8 @@ mod test {
       .return_once(|_, _| Ok(mock_response("")));
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
-      .with_data_service()
       .with_hub_service()
+      .with_data_service()
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     state.chat_completions(request).await?;
@@ -159,8 +159,8 @@ mod test {
       });
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
-      .with_hub_service()
       .with_data_service()
+      .with_hub_service()
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
     let result = state.chat_completions(request).await;
