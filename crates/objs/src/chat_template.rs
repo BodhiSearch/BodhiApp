@@ -1,4 +1,5 @@
 use crate::{
+  gguf::{GGUFMetadata, GGUFMetadataError, GGUFValue},
   impl_error_from, validation_errors, AppError, ErrorType, HubFile, IoWithPathError,
   ObjValidationError, SerdeJsonError,
 };
@@ -193,6 +194,11 @@ where
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ChatTemplateError {
+  #[error("unknown_file_extension")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  UnknownFileExtension(String),
+  #[error(transparent)]
+  GGUFMetadata(#[from] GGUFMetadataError),
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
   #[error(transparent)]
@@ -202,6 +208,9 @@ pub enum ChatTemplateError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "chat_template_error-minijina_error", args_delegate = false)]
   Minijina(#[from] minijinja::Error),
+  #[error("embed_chat_template_not_found")]
+  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  EmbedChatTemplateNotFound,
 }
 
 impl_error_from!(
@@ -221,10 +230,60 @@ impl TryFrom<HubFile> for ChatTemplate {
 
   fn try_from(value: HubFile) -> Result<Self, Self::Error> {
     let path = value.path();
-    let content = std::fs::read_to_string(path.clone())
-      .map_err(|err| IoWithPathError::new(err, path.display().to_string()))?;
-    let chat_template: ChatTemplate = serde_json::from_str(&content)?;
-    Ok(chat_template)
+    match path.extension() {
+      Some(ext) if ext == "json" => {
+        let content = std::fs::read_to_string(path.clone())
+          .map_err(|err| IoWithPathError::new(err, path.display().to_string()))?;
+        let chat_template: ChatTemplate = serde_json::from_str(&content)?;
+        Ok(chat_template)
+      }
+      Some(ext) if ext == "gguf" => {
+        let metadata = GGUFMetadata::new(&path)?;
+        let chat_template = metadata
+          .metadata()
+          .get("tokenizer.chat_template")
+          .ok_or(ChatTemplateError::EmbedChatTemplateNotFound)?
+          .as_str()?;
+        let tokens = metadata
+          .metadata()
+          .get("tokenizer.ggml.tokens")
+          .map(|tokens| tokens.as_array());
+        let (bos_token, eos_token) = if let Some(Ok(tokens)) = tokens {
+          (
+            extract_token(&metadata, tokens, "tokenizer.ggml.bos_token_id"),
+            extract_token(&metadata, tokens, "tokenizer.ggml.eos_token_id"),
+          )
+        } else {
+          (None, None)
+        };
+        Ok(ChatTemplate {
+          chat_template: ChatTemplateVersions::Single(chat_template.to_string()),
+          bos_token,
+          eos_token,
+        })
+      }
+      _ => Err(ChatTemplateError::UnknownFileExtension(
+        path
+          .extension()
+          .unwrap_or_default()
+          .to_string_lossy()
+          .to_string(),
+      )),
+    }
+  }
+}
+
+fn extract_token(metadata: &GGUFMetadata, tokens: &[GGUFValue], key: &str) -> Option<String> {
+  let token_id = metadata.metadata().get(key).map(|eos| eos.as_u32());
+  if let Some(Ok(token_id)) = token_id {
+    let token_val = tokens.get(token_id as usize).map(|token| token.as_str());
+    if let Some(Ok(token_val)) = token_val {
+      Some(token_val.to_string())
+    } else {
+      None
+    }
+  } else {
+    None
   }
 }
 
@@ -243,6 +302,7 @@ mod test {
 
   #[rstest]
   #[case(&ChatTemplateError::Minijina(minijinja::Error::new(minijinja::ErrorKind::NonKey, "error")), "error rendering template: not a key type: error")]
+  #[case(&ChatTemplateError::EmbedChatTemplateNotFound, "chat template not found in gguf file")]
   fn test_error_messages_chat_template(
     #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,

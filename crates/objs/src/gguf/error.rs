@@ -1,8 +1,8 @@
-use objs::{impl_error_from, AppError, ErrorType, IoError};
+use crate::{impl_error_from, AppError, ErrorType, IoError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum GGUFError {
+pub enum GGUFMetadataError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
   FileOpenError(#[from] IoError),
@@ -40,25 +40,31 @@ pub enum GGUFError {
   TypeMismatch { expected: String, actual: String },
 }
 
-impl_error_from!(::std::io::Error, GGUFError::FileOpenError, ::objs::IoError);
+impl_error_from!(
+  ::std::io::Error,
+  GGUFMetadataError::FileOpenError,
+  crate::IoError
+);
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use objs::test_utils::{assert_error_message, setup_l10n};
-  use objs::FluentLocalizationService;
+  use crate::{
+    test_utils::{assert_error_message, setup_l10n},
+    FluentLocalizationService,
+  };
   use rstest::rstest;
   use std::sync::Arc;
 
   #[rstest]
-  #[case(&GGUFError::InvalidMagic(123), "Invalid magic number in GGUF file: 123")]
-  #[case(&GGUFError::MalformedVersion(123), "Malformed GGUF version: 123")]
-  #[case(&GGUFError::UnexpectedEOF, "Encountered unexpected end of file")]
-  #[case(&GGUFError::UnsupportedVersion(123), "Unsupported GGUF version: 123")]
-  #[case(&GGUFError::InvalidString(String::from_utf8(vec![0xE0, 0x80]).unwrap_err()), "Error converting bytes to UTF-8: invalid utf-8 sequence of 1 bytes from index 0")]
-  #[case(&GGUFError::InvalidValueType(123), "Invalid value type: 123")]
-  #[case(&GGUFError::InvalidArrayValueType(123), "Invalid value type in array: 123")]
-  #[case(&GGUFError::TypeMismatch { expected: "expected".to_string(), actual: "actual".to_string() }, "Type mismatch: expected expected, got actual")]
+  #[case(&GGUFMetadataError::InvalidMagic(123), "Invalid magic number in GGUF file: 123")]
+  #[case(&GGUFMetadataError::MalformedVersion(123), "Malformed GGUF version: 123")]
+  #[case(&GGUFMetadataError::UnexpectedEOF, "Encountered unexpected end of file")]
+  #[case(&GGUFMetadataError::UnsupportedVersion(123), "Unsupported GGUF version: 123")]
+  #[case(&GGUFMetadataError::InvalidString(String::from_utf8(vec![0xE0, 0x80]).unwrap_err()), "Error converting bytes to UTF-8: invalid utf-8 sequence of 1 bytes from index 0")]
+  #[case(&GGUFMetadataError::InvalidValueType(123), "Invalid value type: 123")]
+  #[case(&GGUFMetadataError::InvalidArrayValueType(123), "Invalid value type in array: 123")]
+  #[case(&GGUFMetadataError::TypeMismatch { expected: "expected".to_string(), actual: "actual".to_string() }, "Type mismatch: expected expected, got actual")]
   fn test_error_messages(
     #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,

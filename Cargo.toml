@@ -3,7 +3,6 @@ members = [
   "xtask",
   "crates/llama_server_proc",
   "crates/errmeta_derive",
-  "crates/gguf_fast",
   "crates/objs",
   "crates/services",
   "crates/commands",
@@ -23,7 +22,6 @@ exclude = ["crates/chatapp/bodhi"]
 errmeta_derive = { path = "crates/errmeta_derive" }
 objs = { path = "crates/objs" }
 llama_server_proc = { path = "crates/llama_server_proc" }
-gguf_fast = { path = "crates/gguf_fast" }
 services = { path = "crates/services" }
 commands = { path = "crates/commands" }
 server_core = { path = "crates/server_core" }

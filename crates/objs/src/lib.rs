@@ -16,6 +16,7 @@ mod oai;
 mod remote_file;
 mod repo;
 mod utils;
+pub mod gguf;
 
 pub use alias::*;
 pub use app_error::*;

@@ -1,6 +1,6 @@
 use crate::{HubService, HubServiceError};
 use objs::{
-  impl_error_from, AppError, ChatTemplate, ChatTemplateError, ChatTemplateType, HubFile,
+  impl_error_from, Alias, AppError, ChatTemplate, ChatTemplateError, ChatTemplateType, HubFile,
   ObjValidationError, TOKENIZER_CONFIG_JSON,
 };
 use std::sync::Arc;
@@ -28,6 +28,7 @@ pub trait IntoChatTemplate {
   fn into_chat_template(
     &self,
     hub_service: Arc<dyn HubService>,
+    alias: &Alias,
   ) -> Result<ChatTemplate, ObjExtsError>;
 }
 
@@ -35,6 +36,7 @@ impl IntoChatTemplate for ChatTemplateType {
   fn into_chat_template(
     &self,
     hub_service: Arc<dyn HubService>,
+    alias: &Alias,
   ) -> Result<ChatTemplate, ObjExtsError> {
     let chat_template = match self {
       ChatTemplateType::Id(id) => {
@@ -51,9 +53,7 @@ impl IntoChatTemplate for ChatTemplateType {
         chat_template.validate()?;
         chat_template
       }
-      ChatTemplateType::Embedded => {
-        todo!()
-      }
+      ChatTemplateType::Embedded => hub_service.model_chat_template(alias)?,
     };
     Ok(chat_template)
   }

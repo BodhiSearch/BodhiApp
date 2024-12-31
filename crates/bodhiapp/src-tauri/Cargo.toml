@@ -11,7 +11,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 llama_server_proc = { workspace = true }
-gguf_fast = { workspace = true }
 services = { workspace = true }
 commands = { workspace = true }
 server_core = { workspace = true }

@@ -7,9 +7,7 @@ edition = "2021"
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 
-byteorder = { workspace = true }
 include_dir = { workspace = true }
-memmap2 = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 

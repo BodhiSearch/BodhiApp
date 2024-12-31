@@ -129,11 +129,11 @@ impl SharedContext for DefaultSharedContext {
     let request_alias = &alias.alias;
     let model_file = self
       .hub_service
-      .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot))?
+      .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot.clone()))?
       .path();
     let chat_template = alias
       .chat_template
-      .into_chat_template(self.hub_service.clone())?;
+      .into_chat_template(self.hub_service.clone(), &alias)?;
     alias.request_params.update(&mut request);
     let prompt = chat_template.apply_chat_template(&request.messages)?;
     let mut input_value = serde_json::to_value(request)?;
