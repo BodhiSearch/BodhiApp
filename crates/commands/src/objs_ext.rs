@@ -9,10 +9,9 @@ impl IntoRow for Alias {
   fn into_row(self) -> Row {
     Row::from(vec![
       Cell::new(&self.alias),
-      Cell::new(&self.family.unwrap_or_default()),
       Cell::new(&self.repo.to_string()),
       Cell::new(&self.filename),
-      Cell::new(&self.features.join(",")),
+      Cell::new(&self.snapshot[..8]),
       Cell::new(&self.chat_template.to_string()),
     ])
   }
@@ -56,6 +55,7 @@ impl IntoRow for RemoteModel {
 mod test {
   use crate::objs_ext::IntoRow;
   use objs::{Alias, HubFile, RemoteModel, Repo};
+  use pretty_assertions::assert_eq;
   use prettytable::{Cell, Row};
   use rstest::rstest;
   use std::path::PathBuf;
@@ -67,10 +67,9 @@ mod test {
     assert_eq!(
       Row::from(vec![
         Cell::new("testalias:instruct"),
-        Cell::new("testalias"),
         Cell::new("MyFactory/testalias-gguf"),
         Cell::new("testalias.Q8_0.gguf"),
-        Cell::new("chat"),
+        Cell::new("5007652f"),
         Cell::new("llama3"),
       ]),
       row

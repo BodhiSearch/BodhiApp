@@ -27,7 +27,7 @@ mod env_config {
   pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
-  pub fn set_bodhi_library_lookup_path(env_wrapper: &mut DefaultEnvWrapper) {
+  pub fn set_bodhi_exec_lookup_path(env_wrapper: &mut DefaultEnvWrapper) {
     env_wrapper.set_var(
       BODHI_EXEC_LOOKUP_PATH,
       concat!(env!("CARGO_MANIFEST_DIR"), "/bin"),
@@ -45,7 +45,7 @@ pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
   let mut env_wrapper = DefaultEnvWrapper::default();
-  set_bodhi_library_lookup_path(&mut env_wrapper);
+  set_bodhi_exec_lookup_path(&mut env_wrapper);
   let init_service = InitService::new(&env_wrapper, &ENV_TYPE);
   let bodhi_home = match init_service.setup_bodhi_home() {
     Ok(bodhi_home) => bodhi_home,

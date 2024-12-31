@@ -1,10 +1,12 @@
 mod constants;
 mod error;
 mod metadata;
+mod value;
 
 pub use constants::*;
 pub use error::*;
 pub use metadata::*;
+pub use value::*;
 
 pub mod l10n {
   use include_dir::Dir;

@@ -1,7 +1,7 @@
 use hf_hub::Cache;
 use objs::{
-  impl_error_from, Alias, AppError, ChatTemplate, ChatTemplateError, ErrorType, HubFile, IoError,
-  ObjValidationError, Repo,
+  impl_error_from, Alias, AppError, ChatTemplate, ChatTemplateError, ChatTemplateType, ErrorType,
+  HubFile, IoError, ObjValidationError, Repo,
 };
 use std::{
   collections::HashSet,
@@ -104,6 +104,8 @@ pub trait HubService: std::fmt::Debug + Send + Sync {
   ) -> Result<bool>;
 
   fn list_local_tokenizer_configs(&self) -> Vec<Repo>;
+
+  fn list_model_aliases(&self) -> Result<Vec<Alias>>;
 
   fn model_chat_template(&self, alias: &Alias) -> Result<ChatTemplate>;
 }
@@ -298,6 +300,72 @@ impl HubService for HfHubService {
     let chat_template: ChatTemplate = ChatTemplate::try_from(file)?;
     Ok(chat_template)
   }
+
+  fn list_model_aliases(&self) -> Result<Vec<Alias>> {
+    let cache = self.hf_cache();
+    let mut aliases = WalkDir::new(&cache)
+      .follow_links(true)
+      .into_iter()
+      .filter_map(|e| e.ok())
+      .filter(|entry| entry.file_type().is_file())
+      .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "gguf"))
+      .filter(|entry| {
+        entry
+          .path()
+          .parent()
+          .and_then(|p| p.parent())
+          .map_or(false, |p| p.ends_with("snapshots"))
+      })
+      .filter_map(|entry| {
+        let path = entry.path();
+        let models_dir = path.ancestors().find(|p| {
+          p.file_name()
+            .and_then(|n| n.to_str())
+            .map_or(false, |name| name.starts_with("models--"))
+        })?;
+
+        let dir_name = models_dir.file_name()?.to_str()?;
+        let repo_path = dir_name.strip_prefix("models--")?;
+        let (owner, repo_name) = repo_path.split_once("--")?;
+        let repo = Repo::try_from(format!("{}/{}", owner, repo_name)).ok()?;
+
+        let filename = path.file_name()?.to_str()?.to_string();
+        let snapshot = path.parent()?.file_name()?.to_str()?.to_string();
+
+        Some(HubFile::new(cache.clone(), repo, filename, snapshot, None))
+      })
+      .filter_map(|hub_file| {
+        if ChatTemplate::extract_embed_chat_template(&hub_file.path()).is_ok() {
+          let qualifier = hub_file
+            .filename
+            .split('.')
+            .nth_back(1)
+            .and_then(|s| s.split('-').nth_back(0))
+            .unwrap_or_else(|| &hub_file.filename);
+
+          Some(Alias::new(
+            format!("{}:{}", hub_file.repo, qualifier),
+            None,
+            hub_file.repo,
+            hub_file.filename,
+            hub_file.snapshot,
+            vec!["chat".to_string()],
+            ChatTemplateType::Embedded,
+            Default::default(),
+            Default::default(),
+          ))
+        } else {
+          None
+        }
+      })
+      .collect::<Vec<_>>();
+
+    // Sort by alias name and then by snapshot, remove duplicates keeping latest snapshot
+    aliases.sort_by(|a, b| (&a.alias, &b.snapshot).cmp(&(&b.alias, &a.snapshot)));
+    aliases.dedup_by(|a, b| a.alias == b.alias);
+
+    Ok(aliases)
+  }
 }
 
 #[derive(Clone)]
@@ -413,9 +481,12 @@ mod test {
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::{assert_error_message, setup_l10n, temp_hf_home, SNAPSHOT},
-    AppError, FluentLocalizationService, HubFile, Repo,
+    test_utils::{
+      assert_error_message, generate_test_data_gguf_files, setup_l10n, temp_hf_home, SNAPSHOT,
+    },
+    Alias, AppError, ChatTemplateType, FluentLocalizationService, HubFile, Repo,
   };
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::{collections::HashSet, fs, sync::Arc};
   use strfmt::strfmt;
@@ -776,20 +847,9 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         repo.clone(),
         filename.to_string(),
         snapshot.to_string(),
-        Some(25),
+        Some(704),
       ),
       hub_file
-    );
-    assert_eq!(
-      "this is a non-main model\n",
-      fs::read_to_string(
-        service
-          .hf_cache()
-          .join(repo.path())
-          .join("snapshots")
-          .join(snapshot)
-          .join(filename)
-      )?
     );
     Ok(())
   }
@@ -805,7 +865,8 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     assert!(matches!(
       result.unwrap_err(),
       HubServiceError::HubFileNotFound(error)
-      if error == HubFileNotFoundError::new(filename.to_string(), repo.to_string(), SNAPSHOT_MAIN.to_string())));
+      if error == HubFileNotFoundError::new(filename.to_string(), repo.to_string(), SNAPSHOT_MAIN.to_string())
+    ));
     Ok(())
   }
 
@@ -819,7 +880,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       Repo::try_from("FakeFactory/fakemodel-gguf")?,
       "fakemodel.Q4_0.gguf".to_string(),
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
-      Some(25),
+      Some(704),
     );
     assert_eq!(6, models.len());
     models.sort();
@@ -892,6 +953,56 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
 
     let exists = service.local_file_exists(&repo, filename, Some(snapshot.to_string()))?;
     assert!(!exists);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_list_model_aliases(
+    #[from(generate_test_data_gguf_files)] _setup: &(),
+    #[from(test_hf_service)] service: TestHfService,
+  ) -> anyhow::Result<()> {
+    let aliases = service.list_model_aliases()?;
+
+    let expected = vec![
+      // FakeFactory/fakemodel-gguf has chat template in both snapshots
+      Alias::new(
+        "FakeFactory/fakemodel-gguf:Q4_0".to_string(),
+        None,
+        Repo::try_from("FakeFactory/fakemodel-gguf")?,
+        "fakemodel.Q4_0.gguf".to_string(),
+        "9ca625120374ddaae21f067cb006517d14dc91a6".to_string(),
+        vec!["chat".to_string()],
+        ChatTemplateType::Embedded,
+        Default::default(),
+        Default::default(),
+      ),
+      // Llama-2 has chat template
+      Alias::new(
+        "TheBloke/Llama-2-7B-Chat-GGUF:Q8_0".to_string(),
+        None,
+        Repo::try_from("TheBloke/Llama-2-7B-Chat-GGUF")?,
+        "llama-2-7b-chat.Q8_0.gguf".to_string(),
+        "191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string(),
+        vec!["chat".to_string()],
+        ChatTemplateType::Embedded,
+        Default::default(),
+        Default::default(),
+      ),
+      // TinyLlama has chat template
+      Alias::new(
+        "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K".to_string(),
+        None,
+        Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF")?,
+        "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
+        "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
+        vec!["chat".to_string()],
+        ChatTemplateType::Embedded,
+        Default::default(),
+        Default::default(),
+      ),
+    ];
+
+    assert_eq!(expected, aliases);
     Ok(())
   }
 }

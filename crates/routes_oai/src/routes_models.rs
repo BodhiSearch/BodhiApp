@@ -3,7 +3,7 @@ use axum::{
   routing::get,
   Json, Router,
 };
-use objs::{Alias, ApiError, ChatTemplateType, ChatTemplateId, HubFile};
+use objs::{Alias, ApiError, ChatTemplateId, ChatTemplateType, HubFile};
 use server_core::{
   AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, RouterState,
 };
@@ -154,7 +154,7 @@ mod tests {
     Router,
   };
   use objs::{
-    test_utils::setup_l10n, ChatTemplateType, ChatTemplateId, FluentLocalizationService,
+    test_utils::setup_l10n, ChatTemplateId, ChatTemplateType, FluentLocalizationService,
     GptContextParamsBuilder, OAIRequestParamsBuilder, Repo,
   };
   use pretty_assertions::assert_eq;
@@ -191,12 +191,12 @@ mod tests {
       .await?;
     assert_eq!(response["page"], 1);
     assert_eq!(response["page_size"], 30);
-    assert_eq!(response["total"], 3);
+    assert_eq!(response["total"], 6);
     let data = response["data"].as_array().unwrap();
     assert!(!data.is_empty());
     assert_eq!(
       data.first().unwrap()["alias"].as_str().unwrap(),
-      "llama3:instruct"
+      "FakeFactory/fakemodel-gguf:Q4_0"
     );
     Ok(())
   }
@@ -209,7 +209,7 @@ mod tests {
   ) -> anyhow::Result<()> {
     let response = test_router(router_state_stub)
       .oneshot(
-        Request::get("/api/models?page=2&page_size=2")
+        Request::get("/api/models?page=2&page_size=4")
           .body(Body::empty())
           .unwrap(),
       )
@@ -217,10 +217,10 @@ mod tests {
       .json::<Value>()
       .await?;
     assert_eq!(response["page"], 2);
-    assert_eq!(response["page_size"], 2);
-    assert_eq!(response["total"], 3);
+    assert_eq!(response["page_size"], 4);
+    assert_eq!(response["total"], 6);
     let data = response["data"].as_array().unwrap();
-    assert_eq!(data.len(), 1);
+    assert_eq!(data.len(), 2);
     Ok(())
   }
 
@@ -257,7 +257,11 @@ mod tests {
       .await?;
 
     assert!(!response.data.is_empty());
-    let first_alias = &response.data[0];
+    let first_alias = response
+      .data
+      .iter()
+      .find(|a| a.alias == "llama3:instruct")
+      .unwrap();
     let expected = AliasResponse {
       alias: "llama3:instruct".to_string(),
       family: Some("llama3".to_string()),
@@ -281,7 +285,7 @@ mod tests {
         .unwrap(),
     };
 
-    assert_eq!(first_alias, &expected);
+    assert_eq!(expected, *first_alias);
     Ok(())
   }
 
@@ -375,7 +379,9 @@ mod tests {
 
     assert_eq!(14, response.len());
     for template_id in ChatTemplateId::iter() {
-      assert!(response.iter().any(|t| t == &ChatTemplateType::Id(template_id)));
+      assert!(response
+        .iter()
+        .any(|t| t == &ChatTemplateType::Id(template_id)));
     }
     let expected_chat_templates = vec![
       "meta-llama/Llama-2-70b-chat-hf",

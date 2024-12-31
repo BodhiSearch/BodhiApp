@@ -242,32 +242,13 @@ impl<T: ByteOrder> GGUFReader<T> {
 
 #[cfg(test)]
 mod tests {
-  use crate::gguf::{GGUFMetadata, GGUFValue, GGUF_MAGIC};
+  use crate::{
+    gguf::{GGUFMetadata, GGUFValue, GGUF_MAGIC},
+    test_utils::generate_test_data_gguf_metadata,
+  };
   use anyhow_trace::anyhow_trace;
-  use rstest::*;
+  use rstest::rstest;
   use std::path::PathBuf;
-  use std::process::Command;
-
-  #[fixture]
-  #[once]
-  fn generate_test_data() -> () {
-    let cwd = env!("CARGO_MANIFEST_DIR");
-    let output = Command::new("python")
-      .arg("tests/scripts/test_data.py")
-      .current_dir(cwd)
-      .output()
-      .expect("Failed to execute Python script");
-
-    if !output.status.success() {
-      assert!(
-        false,
-        "Python script failed with status: {}, stderr: {}",
-        output.status,
-        String::from_utf8_lossy(&output.stderr)
-      );
-    }
-    ()
-  }
 
   // Common test helper to verify basic metadata
   fn verify_basic_metadata(metadata: &GGUFMetadata) {
@@ -289,7 +270,7 @@ mod tests {
   #[case::le("tests/data/gguf/sample0_le.gguf", 3)]
   #[case::be("tests/data/gguf/sample0_be.gguf", 3)]
   fn test_gguf_metadata_endian(
-    #[from(generate_test_data)] _setup: &(),
+    #[from(generate_test_data_gguf_metadata)] _setup: &(),
     #[case] input: &str,
     #[case] version: u32,
   ) -> anyhow::Result<()> {
@@ -304,7 +285,7 @@ mod tests {
   #[anyhow_trace]
   #[rstest]
   fn test_gguf_metadata_sample0_files(
-    #[from(generate_test_data)] _setup: &(),
+    #[from(generate_test_data_gguf_metadata)] _setup: &(),
     #[files("tests/data/gguf/sample0_*.gguf")] input: PathBuf,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(input.as_path())?;
@@ -317,7 +298,7 @@ mod tests {
   #[anyhow_trace]
   #[rstest]
   fn test_gguf_metadatasample1_files(
-    #[from(generate_test_data)] _setup: &(),
+    #[from(generate_test_data_gguf_metadata)] _setup: &(),
     #[files("tests/data/gguf/sample1_*.gguf")] input: PathBuf,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(input.as_path())?;
@@ -371,7 +352,7 @@ mod tests {
   #[anyhow_trace]
   #[rstest]
   fn test_gguf_metadata_sample_tokens_files(
-    #[from(generate_test_data)] _setup: &(),
+    #[from(generate_test_data_gguf_metadata)] _setup: &(),
     #[files("tests/data/gguf/sample_tokens*.gguf")] input: PathBuf,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(input.as_path())?;

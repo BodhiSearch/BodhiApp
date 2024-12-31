@@ -58,6 +58,7 @@ mod tests {
     Router,
   };
   use objs::{test_utils::setup_l10n, FluentLocalizationService};
+  use pretty_assertions::assert_eq;
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
   use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
@@ -111,7 +112,25 @@ mod tests {
             "object": "model",
             "created": 0,
             "owned_by": "system"
-          }
+          },
+          {
+            "id": "FakeFactory/fakemodel-gguf:Q4_0",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
+          {
+            "id": "TheBloke/Llama-2-7B-Chat-GGUF:Q8_0",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
+          {
+            "id": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
         ]
       }}
     );

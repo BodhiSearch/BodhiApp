@@ -30,6 +30,7 @@ services = { workspace = true, features = ["test-utils"] }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 mockall = { workspace = true }
+pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 
 [features]

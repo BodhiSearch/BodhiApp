@@ -98,6 +98,10 @@ impl HubService for TestHfService {
   fn model_chat_template(&self, alias: &Alias) -> Result<ChatTemplate> {
     self.inner.model_chat_template(alias)
   }
+
+  fn list_model_aliases(&self) -> Result<Vec<Alias>> {
+    self.inner.list_model_aliases()
+  }
 }
 
 #[derive(Debug, new)]
@@ -144,5 +148,9 @@ impl HubService for OfflineHubService {
 
   fn model_chat_template(&self, alias: &Alias) -> Result<ChatTemplate> {
     self.inner.model_chat_template(alias)
+  }
+
+  fn list_model_aliases(&self) -> Result<Vec<Alias>> {
+    self.inner.list_model_aliases()
   }
 }

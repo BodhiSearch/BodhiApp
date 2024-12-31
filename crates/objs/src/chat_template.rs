@@ -14,7 +14,7 @@ use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
-use std::{fmt, ops::Deref};
+use std::{fmt, ops::Deref, path::Path};
 use validator::{Validate, ValidationError};
 
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
@@ -152,6 +152,46 @@ impl ChatTemplate {
     let result = template.render(inputs)?;
     Ok(result)
   }
+
+  fn extract_token(metadata: &GGUFMetadata, tokens: &[GGUFValue], key: &str) -> Option<String> {
+    let token_id = metadata.metadata().get(key).map(|eos| eos.as_u32());
+    if let Some(Ok(token_id)) = token_id {
+      let token_val = tokens.get(token_id as usize).map(|token| token.as_str());
+      if let Some(Ok(token_val)) = token_val {
+        Some(token_val.to_string())
+      } else {
+        None
+      }
+    } else {
+      None
+    }
+  }
+
+  pub fn extract_embed_chat_template(path: &Path) -> Result<ChatTemplate, ChatTemplateError> {
+    let metadata = GGUFMetadata::new(path)?;
+    let chat_template = metadata
+      .metadata()
+      .get("tokenizer.chat_template")
+      .ok_or(ChatTemplateError::EmbedChatTemplateNotFound)?
+      .as_str()?;
+    let tokens = metadata
+      .metadata()
+      .get("tokenizer.ggml.tokens")
+      .map(|tokens| tokens.as_array());
+    let (bos_token, eos_token) = if let Some(Ok(tokens)) = tokens {
+      (
+        Self::extract_token(&metadata, tokens, "tokenizer.ggml.bos_token_id"),
+        Self::extract_token(&metadata, tokens, "tokenizer.ggml.eos_token_id"),
+      )
+    } else {
+      (None, None)
+    };
+    Ok(ChatTemplate {
+      chat_template: ChatTemplateVersions::Single(chat_template.to_string()),
+      bos_token,
+      eos_token,
+    })
+  }
 }
 
 fn deserialize_token<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
@@ -237,31 +277,7 @@ impl TryFrom<HubFile> for ChatTemplate {
         let chat_template: ChatTemplate = serde_json::from_str(&content)?;
         Ok(chat_template)
       }
-      Some(ext) if ext == "gguf" => {
-        let metadata = GGUFMetadata::new(&path)?;
-        let chat_template = metadata
-          .metadata()
-          .get("tokenizer.chat_template")
-          .ok_or(ChatTemplateError::EmbedChatTemplateNotFound)?
-          .as_str()?;
-        let tokens = metadata
-          .metadata()
-          .get("tokenizer.ggml.tokens")
-          .map(|tokens| tokens.as_array());
-        let (bos_token, eos_token) = if let Some(Ok(tokens)) = tokens {
-          (
-            extract_token(&metadata, tokens, "tokenizer.ggml.bos_token_id"),
-            extract_token(&metadata, tokens, "tokenizer.ggml.eos_token_id"),
-          )
-        } else {
-          (None, None)
-        };
-        Ok(ChatTemplate {
-          chat_template: ChatTemplateVersions::Single(chat_template.to_string()),
-          bos_token,
-          eos_token,
-        })
-      }
+      Some(ext) if ext == "gguf" => Self::extract_embed_chat_template(&path),
       _ => Err(ChatTemplateError::UnknownFileExtension(
         path
           .extension()
@@ -273,32 +289,20 @@ impl TryFrom<HubFile> for ChatTemplate {
   }
 }
 
-fn extract_token(metadata: &GGUFMetadata, tokens: &[GGUFValue], key: &str) -> Option<String> {
-  let token_id = metadata.metadata().get(key).map(|eos| eos.as_u32());
-  if let Some(Ok(token_id)) = token_id {
-    let token_val = tokens.get(token_id as usize).map(|token| token.as_str());
-    if let Some(Ok(token_val)) = token_val {
-      Some(token_val.to_string())
-    } else {
-      None
-    }
-  } else {
-    None
-  }
-}
-
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::{assert_error_message, setup_l10n, temp_hf_home},
+    test_utils::{
+      assert_error_message, generate_test_data_chat_template, setup_l10n, temp_hf_home,
+    },
     AppError, ChatMessage, ChatTemplate, ChatTemplateError, ChatTemplateVersions,
     FluentLocalizationService, HubFileBuilder, Repo,
   };
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
   use dirs::home_dir;
-  use rstest::{fixture, rstest};
-  use std::{path::PathBuf, process::Command, sync::Arc};
+  use rstest::rstest;
+  use std::{path::PathBuf, sync::Arc};
   use tempfile::TempDir;
 
   #[rstest]
@@ -464,27 +468,6 @@ mod test {
     Ok(())
   }
 
-  #[fixture]
-  #[once]
-  fn generate_chat_template_test_data() -> () {
-    let cwd = env!("CARGO_MANIFEST_DIR");
-    let output = Command::new("python")
-      .arg("tests/scripts/test_chat_template_data.py")
-      .current_dir(cwd)
-      .output()
-      .expect("Failed to execute Python script");
-
-    if !output.status.success() {
-      assert!(
-        false,
-        "Python script failed with status: {}, stderr: {}",
-        output.status,
-        String::from_utf8_lossy(&output.stderr)
-      );
-    }
-    ()
-  }
-
   fn chat_template_version() -> ChatTemplateVersions {
     ChatTemplateVersions::Single(
       "{% for message in messages %}{{ message.role }}: {{ message.content }}{% endfor %}"
@@ -495,7 +478,7 @@ mod test {
   #[anyhow_trace]
   #[rstest]
   fn test_chat_template_from_valid_gguf(
-    #[from(generate_chat_template_test_data)] _setup: &(),
+    #[from(generate_test_data_chat_template)] _setup: &(),
   ) -> anyhow::Result<()> {
     let file = HubFileBuilder::fakemodel()
       .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
@@ -516,7 +499,7 @@ mod test {
   #[anyhow_trace]
   #[rstest]
   fn test_chat_template_from_missing_template(
-    #[from(generate_chat_template_test_data)] _setup: &(),
+    #[from(generate_test_data_chat_template)] _setup: &(),
   ) -> anyhow::Result<()> {
     let file = HubFileBuilder::fakemodel()
       .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
@@ -537,7 +520,7 @@ mod test {
   #[anyhow_trace]
   #[rstest]
   fn test_chat_template_from_missing_tokens(
-    #[from(generate_chat_template_test_data)] _setup: &(),
+    #[from(generate_test_data_chat_template)] _setup: &(),
   ) -> anyhow::Result<()> {
     let file = HubFileBuilder::fakemodel()
       .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
@@ -554,7 +537,7 @@ mod test {
   #[anyhow_trace]
   #[rstest]
   fn test_chat_template_from_invalid_token_ids(
-    #[from(generate_chat_template_test_data)] _setup: &(),
+    #[from(generate_test_data_chat_template)] _setup: &(),
   ) -> anyhow::Result<()> {
     let file = HubFileBuilder::fakemodel()
       .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
@@ -570,7 +553,7 @@ mod test {
   #[anyhow_trace]
   #[rstest]
   fn test_chat_template_from_empty_template(
-    #[from(generate_chat_template_test_data)] _setup: &(),
+    #[from(generate_test_data_chat_template)] _setup: &(),
   ) -> anyhow::Result<()> {
     let file = HubFileBuilder::fakemodel()
       .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))
@@ -590,7 +573,7 @@ mod test {
   #[anyhow_trace]
   #[rstest]
   fn test_chat_template_from_unicode_tokens(
-    #[from(generate_chat_template_test_data)] _setup: &(),
+    #[from(generate_test_data_chat_template)] _setup: &(),
   ) -> anyhow::Result<()> {
     let file = HubFileBuilder::fakemodel()
       .hf_cache(PathBuf::from("tests/data/gguf-chat-template"))

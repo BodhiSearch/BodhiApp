@@ -1,4 +1,4 @@
-use crate::{HubService, ALIASES_DIR, MODELS_YAML};
+use crate::{HubService, HubServiceError, ALIASES_DIR, MODELS_YAML};
 use objs::{
   impl_error_from, Alias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
   IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
@@ -49,6 +49,8 @@ pub enum DataServiceError {
   SerdeYamlErrorWithPath(#[from] SerdeYamlWithPathError),
   #[error(transparent)]
   SerdeYamlError(#[from] SerdeYamlError),
+  #[error(transparent)]
+  HubService(#[from] HubServiceError),
 }
 
 impl_error_from!(
@@ -131,9 +133,11 @@ impl DataService for LocalDataService {
   }
 
   fn list_aliases(&self) -> Result<Vec<Alias>> {
-    let hashamp = self._list_aliases()?;
-    let mut result = hashamp.into_values().collect::<Vec<_>>();
+    let user_aliases = self._list_aliases()?;
+    let mut result = user_aliases.into_values().collect::<Vec<_>>();
     result.sort_by(|a, b| a.alias.cmp(&b.alias));
+    let model_aliases = self.hub_service.list_model_aliases()?;
+    result.extend(model_aliases);
     Ok(result)
   }
 
@@ -380,7 +384,7 @@ chat_template: llama3
     #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
     let result = service.list_aliases()?;
-    assert_eq!(3, result.len());
+    assert_eq!(6, result.len());
     assert!(result.contains(&Alias::llama3()));
     assert!(result.contains(&Alias::testalias_exists()));
     Ok(())

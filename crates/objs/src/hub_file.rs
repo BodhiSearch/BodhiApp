@@ -118,7 +118,7 @@ mod test {
       Repo::try_from("MyFactory/testalias-gguf")?,
       "testalias.Q8_0.gguf".to_string(),
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
-      Some(21),
+      Some(96),
     );
     assert_eq!(expected, local_model);
     Ok(())
