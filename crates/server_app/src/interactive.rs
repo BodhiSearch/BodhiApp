@@ -101,10 +101,13 @@ impl Interactive {
     let pb = infinite_loading(String::from("Loading..."));
     let server_args = LlamaServerArgsBuilder::default()
       .model(model.path())
+      .alias(&alias.alias)
       .server_params(&alias.context_params)
       .build()?;
+    let lookup_path = service.env_service().exec_lookup_path();
     let exec_path = service.env_service().exec_path();
-    let shared_rw = DefaultSharedContext::new(service.hub_service(), PathBuf::from(exec_path));
+    let exec_path = PathBuf::from(lookup_path).join(exec_path);
+    let shared_rw = DefaultSharedContext::new(service.hub_service(), exec_path);
     shared_rw.reload(Some(server_args)).await?;
     let router_state = DefaultRouterState::new(Arc::new(shared_rw), service);
     pb.finish_and_clear();

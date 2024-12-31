@@ -38,10 +38,9 @@ impl ListCommand {
     let mut table = Table::new();
     table.add_row(row![
       "ALIAS",
-      "FAMILY",
       "REPO",
       "FILENAME",
-      "FEATURES",
+      "SHA",
       "CHAT TEMPLATE"
     ]);
     let aliases = service.data_service().list_aliases()?;

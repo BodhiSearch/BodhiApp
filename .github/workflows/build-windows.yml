@@ -65,6 +65,7 @@ jobs:
         shell: pwsh
         run: |
           & python -m pip install -U pip
+          & python -m pip install -r crates/objs/tests/scripts/requirements.txt
           & python -m pip install -U huggingface_hub
           & huggingface-cli download --revision main --token ${{ secrets.CI_HF_TOKEN }} meta-llama/Llama-2-13b-chat-hf tokenizer_config.json
 

@@ -74,6 +74,7 @@ maplit = { workspace = true }
 mockall = { workspace = true }
 mockito = { workspace = true }
 once_cell = { workspace = true }
+pretty_assertions = { workspace = true }
 rand = { workspace = true }
 reqwest = { workspace = true }
 rstest = { workspace = true }

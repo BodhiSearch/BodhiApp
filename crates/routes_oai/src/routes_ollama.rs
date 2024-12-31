@@ -486,7 +486,7 @@ mod test {
       .await?
       .json::<Value>()
       .await?;
-    assert_eq!(3, response["models"].as_array().length().unwrap());
+    assert_eq!(6, response["models"].as_array().length().unwrap());
     let llama3 = response["models"]
       .as_array()
       .unwrap()
