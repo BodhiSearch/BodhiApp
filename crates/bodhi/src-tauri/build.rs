@@ -11,8 +11,6 @@ fn main() {
 }
 
 fn _main() -> anyhow::Result<()> {
-  #[cfg(feature = "native")]
-  tauri_build::build();
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
   let bodhiapp_dir = fs::canonicalize(PathBuf::from(project_dir).join(".."))
@@ -24,6 +22,8 @@ fn _main() -> anyhow::Result<()> {
   }
   copy_frontend(&bodhiapp_dir)?;
   run_make_command("copy_bins")?;
+  #[cfg(feature = "native")]
+  tauri_build::build();
   Ok(())
 }
 
