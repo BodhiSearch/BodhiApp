@@ -1,4 +1,4 @@
-# crates/bodhiapp/src-tauri/scripts/build_frontend.win.ps1
+# crates/bodhi/src-tauri/scripts/build_frontend.win.ps1
 
 $env:PRETTIER_DISABLE = '1'
 Set-Location ..

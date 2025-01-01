@@ -87,7 +87,7 @@ pub fn setup_l10n(
     ))
     .unwrap()
     .load_resource(&include_dir::include_dir!(
-      "$CARGO_MANIFEST_DIR/../bodhiapp/src-tauri/src/resources"
+      "$CARGO_MANIFEST_DIR/../bodhi/src-tauri/src/resources"
     ))
     .unwrap();
   set_mock_localization_service(localization_service.clone());

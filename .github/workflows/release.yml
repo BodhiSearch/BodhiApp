@@ -146,7 +146,7 @@ jobs:
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'actions@github.com'
-          git add crates/*/Cargo.toml crates/bodhiapp/src-tauri/Cargo.toml
+          git add crates/*/Cargo.toml crates/bodhi/src-tauri/Cargo.toml
           git commit -m "[Github Bot] Bump up minor version to ${NEXT_VERSION}, url: ${{ env.RUN_URL }}"
       - name: Update update.json for aarch64-apple-darwin
         if: matrix.target == 'aarch64-apple-darwin' && env.TAG_BUILD == 'false'

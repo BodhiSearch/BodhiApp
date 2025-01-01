@@ -1,10 +1,10 @@
 test:
 	cargo test
-	cd crates/bodhiapp && npm test -- --run
+	cd crates/bodhi && npm test -- --run
 	cd openai-pysdk-compat && poetry run pytest || true
 
 format:
-	cd crates/bodhiapp && npm run format && npm run lint
+	cd crates/bodhi && npm run format && npm run lint
 	cargo fmt --all
 	cd openai-pysdk-compat && poetry run ruff format .
 
@@ -22,7 +22,7 @@ coverage:
 
 ci.update-version:
 	@echo "Updating version to $(VERSION) in Cargo.toml files"
-	@for dir in crates/* crates/bodhiapp/src-tauri; do \
+	@for dir in crates/* crates/bodhi/src-tauri; do \
 		if [ -f $$dir/Cargo.toml ]; then \
 			sed -i.bak "s/^version = .*/version = \"$(VERSION)\"/" $$dir/Cargo.toml && \
 			rm $$dir/Cargo.toml.bak; \
@@ -30,7 +30,7 @@ ci.update-version:
 	done
 
 ci.build:
-	cd crates/bodhiapp/src-tauri && \
+	cd crates/bodhi/src-tauri && \
 	cargo tauri build $${TARGET:+--target $${TARGET}} --ci --config '{"tauri": {"updater": {"active": false}}}'
 
 ci.setup-vercel-ai:
@@ -39,6 +39,6 @@ ci.setup-vercel-ai:
 	cd vercel-ai && pnpm run build --filter=ai...
 
 ci.app-pnpm:
-	cd crates/bodhiapp && pnpm install
+	cd crates/bodhi && pnpm install
 
 .PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai
