@@ -1,4 +1,4 @@
-# crates/bodhiapp/src-tauri/scripts/copy_libs.win.ps1
+# crates/bodhi/src-tauri/scripts/copy_libs.win.ps1
 
 $projectRoot = Join-Path $PSScriptRoot '..' '..' '..' '..'
 $sourcePath = Join-Path $projectRoot 'crates' 'llama_server_proc' 'bin'

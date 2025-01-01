@@ -16,7 +16,7 @@ fn _main() -> anyhow::Result<()> {
   let project_dir =
     std::env::var("CARGO_MANIFEST_DIR").context("failed to get CARGO_MANIFEST_DIR")?;
   let bodhiapp_dir = fs::canonicalize(PathBuf::from(project_dir).join(".."))
-    .context("error canonicalizing bodhiapp path")?;
+    .context("error canonicalizing bodhi project path")?;
   if cfg!(debug_assertions) {
     // build only if production build `tauri_build::build()` is already running npm run build, so only run if not production
     println!("cargo:rerun-if-changed=../src");

@@ -1,9 +1,10 @@
 mod utils;
 
 use crate::utils::{live_server, TestServerHandle};
+use axum::http::StatusCode;
 use pretty_assertions::assert_eq;
 use serde_json::Value;
-use std::time::Duration;
+use std::{cmp::max, time::Duration};
 
 #[rstest::rstest]
 #[awt]
@@ -40,9 +41,9 @@ async fn test_live_chat_completions_stream(
       ]
     }))
     .send()
-    .await?
-    .text()
     .await?;
+  assert_eq!(response.status(), StatusCode::OK);
+  let response = response.text().await?;
   let streams = response
     .lines()
     .filter_map(|line| {
@@ -62,7 +63,7 @@ async fn test_live_chat_completions_stream(
   } else {
     [" ", " T", "ues", "day", ".", ""].as_slice()
   };
-  let actual = streams[0..streams.len() - 1]
+  let actual = streams[0..max(streams.len() - 1, 0)]
     .iter()
     .map(|stream| stream["choices"][0]["delta"]["content"].as_str().unwrap())
     .collect::<Vec<_>>();
