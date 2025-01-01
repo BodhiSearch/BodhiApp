@@ -1,3 +1,4 @@
 *.o
 llamacpp-sys
 crates/bodhi/src-tauri/bin/
+crates/llama_server_proc/llama.cpp/

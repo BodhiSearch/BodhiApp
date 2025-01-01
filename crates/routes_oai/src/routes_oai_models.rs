@@ -88,10 +88,9 @@ mod tests {
       .oneshot(Request::builder().uri("/v1/models").body(Body::empty())?)
       .await?;
 
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "object": "list",
         "data": [
@@ -132,7 +131,8 @@ mod tests {
             "owned_by": "system"
           },
         ]
-      }}
+      }},
+      response
     );
     Ok(())
   }
@@ -149,16 +149,16 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "id": "llama3:instruct",
         "object": "model",
         "created": 0,
         "owned_by": "system",
-      }}
+      }},
+      response
     );
     Ok(())
   }
@@ -178,7 +178,7 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
     Ok(())
   }
 }

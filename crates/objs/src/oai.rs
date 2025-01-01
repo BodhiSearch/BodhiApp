@@ -183,17 +183,17 @@ mod tests {
 
     params.update(&mut request);
 
-    assert_eq!(request.frequency_penalty, Some(0.5));
-    assert_eq!(request.max_tokens, Some(100));
-    assert_eq!(request.presence_penalty, Some(0.2));
-    assert_eq!(request.seed, Some(42));
+    assert_eq!(Some(0.5), request.frequency_penalty);
+    assert_eq!(Some(100), request.max_tokens);
+    assert_eq!(Some(0.2), request.presence_penalty);
+    assert_eq!(Some(42), request.seed);
     assert_eq!(
-      request.stop,
-      Some(Stop::StringArray(vec!["END".to_string()]))
+      Some(Stop::StringArray(vec!["END".to_string()])),
+      request.stop
     );
-    assert_eq!(request.temperature, Some(0.7));
-    assert_eq!(request.top_p, Some(0.9));
-    assert_eq!(request.user, Some("test_user".to_string()));
+    assert_eq!(Some(0.7), request.temperature);
+    assert_eq!(Some(0.9), request.top_p);
+    assert_eq!(Some("test_user".to_string()), request.user);
   }
 
   #[test]
@@ -217,28 +217,28 @@ mod tests {
 
     params.update(&mut request);
 
-    assert_eq!(request.frequency_penalty, Some(0.5));
-    assert_eq!(request.max_tokens, Some(50)); // Should not be updated
-    assert_eq!(request.presence_penalty, None);
-    assert_eq!(request.seed, None);
-    assert_eq!(request.stop, None);
-    assert_eq!(request.temperature, Some(0.5)); // Should not be updated
-    assert_eq!(request.top_p, Some(0.9));
-    assert_eq!(request.user, None);
+    assert_eq!(Some(0.5), request.frequency_penalty);
+    assert_eq!(Some(50), request.max_tokens);
+    assert_eq!(None, request.presence_penalty);
+    assert_eq!(None, request.seed);
+    assert_eq!(None, request.stop);
+    assert_eq!(Some(0.5), request.temperature);
+    assert_eq!(Some(0.9), request.top_p);
+    assert_eq!(None, request.user);
   }
 
   #[test]
   fn test_validate_range_error_messages() {
     let result = validate_range("2.5", 0.0, 2.0);
     assert_eq!(
-      result.unwrap_err(),
-      "The value 2.5 is out of range. It must be between 0.0 and 2.0 inclusive."
+      "The value 2.5 is out of range. It must be between 0.0 and 2.0 inclusive.",
+      result.unwrap_err()
     );
 
     let result = validate_range("invalid", 0, 10);
     assert_eq!(
+      "'invalid' is not a valid number. Please enter a number between 0 and 10.",
       result.unwrap_err(),
-      "'invalid' is not a valid number. Please enter a number between 0 and 10."
     );
   }
 }

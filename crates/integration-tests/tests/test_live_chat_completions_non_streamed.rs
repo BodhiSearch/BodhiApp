@@ -1,6 +1,7 @@
 mod utils;
 
 use crate::utils::{live_server, TestServerHandle};
+use axum::http::StatusCode;
 use pretty_assertions::assert_eq;
 use serde_json::Value;
 use std::time::Duration;
@@ -40,7 +41,7 @@ async fn test_live_chat_completions_non_streamed(
     }))
     .send()
     .await?;
-  assert_eq!(200, response.status());
+  assert_eq!(StatusCode::OK, response.status());
   let response = response.json::<Value>().await?;
   handle.shutdown().await?;
 

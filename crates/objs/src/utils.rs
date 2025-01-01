@@ -37,6 +37,6 @@ mod tests {
   #[case("file\nwith\nnewlines.txt", "filewithnewlines.txt")]
   #[case("file\twith\ttabs.txt", "filewithtabs.txt")]
   fn test_to_safe_filename(#[case] input: &str, #[case] expected: &str) {
-    assert_eq!(to_safe_filename(input), expected);
+    assert_eq!(expected, to_safe_filename(input));
   }
 }

@@ -493,7 +493,7 @@ mod test {
       .iter()
       .find(|item| item["model"] == "llama3:instruct")
       .unwrap();
-    assert_eq!(llama3["digest"], "5007652f7a641fe7170e0bad4f63839419bd9213");
+    assert_eq!("5007652f7a641fe7170e0bad4f63839419bd9213", llama3["digest"]);
     Ok(())
   }
 

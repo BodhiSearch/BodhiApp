@@ -37,6 +37,7 @@ pub type Result<T> = std::result::Result<T, ServerError>;
 #[cfg(test)]
 mod tests {
   use super::*;
+  use axum::http::StatusCode;
   use objs::{
     test_utils::assert_error_message, test_utils::setup_l10n, AppError, FluentLocalizationService,
   };
@@ -91,7 +92,13 @@ mod tests {
 
   #[test]
   fn test_error_status_codes() {
-    assert_eq!(ServerError::ServerNotReady.status(), 500);
-    assert_eq!(ServerError::StartupError("test".to_string()).status(), 500);
+    assert_eq!(
+      StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+      ServerError::ServerNotReady.status() as u16
+    );
+    assert_eq!(
+      StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+      ServerError::StartupError("test".to_string()).status() as u16
+    );
   }
 }

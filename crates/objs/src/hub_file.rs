@@ -134,8 +134,8 @@ mod test {
       size: Some(1000),
     };
     assert_eq!(
-      format!("{}", hub_file),
-      "HubFile { repo: test/repo, filename: test.gguf, snapshot: abc123 }"
+      "HubFile { repo: test/repo, filename: test.gguf, snapshot: abc123 }",
+      format!("{}", hub_file)
     );
   }
 }

@@ -181,5 +181,5 @@ impl From<&TestError> for ErrorMetas {
 )]
 fn test_error_metadata(#[case] error: TestError, #[case] expected: ErrorMetas) {
   let error_metas = ErrorMetas::from(&error);
-  assert_eq!(error_metas, expected);
+  assert_eq!(expected, error_metas);
 }

@@ -238,7 +238,7 @@ mod test {
     #[case] expected: ModelLoadStrategy,
   ) -> anyhow::Result<()> {
     let result = ModelLoadStrategy::choose(loaded_alias, request_alias);
-    assert_eq!(result, expected);
+    assert_eq!(expected, result);
     Ok(())
   }
 

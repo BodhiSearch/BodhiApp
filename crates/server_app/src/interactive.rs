@@ -269,9 +269,9 @@ mod test {
           snapshot,
         },
       )) => {
-        assert_eq!(filename, "notexists.Q8_0.gguf");
-        assert_eq!(repo, "MyFactory/testalias-gguf");
-        assert_eq!(snapshot, "5007652f7a641fe7170e0bad4f63839419bd9213");
+        assert_eq!("notexists.Q8_0.gguf", filename);
+        assert_eq!("MyFactory/testalias-gguf", repo);
+        assert_eq!("5007652f7a641fe7170e0bad4f63839419bd9213", snapshot);
       }
       err => panic!("expecting InteractiveError::HubServiceError, found {}", err),
     };

@@ -11,11 +11,11 @@ pub fn assert_error_message(
 ) {
   let message = service.get_message(&EN_US, code, Some(args)).unwrap();
   assert_eq!(
+    expected,
     message
       .to_string()
       .replace("\u{2068}", "")
-      .replace("\u{2069}", ""),
-    expected
+      .replace("\u{2069}", "")
   );
 }
 

@@ -168,7 +168,7 @@ mod tests {
     let resp = router
       .oneshot(Request::get("/app/info").body(Body::empty())?)
       .await?;
-    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, resp.status());
     let value = resp.json::<AppInfo>().await?;
     assert_eq!(expected, value);
     Ok(())
@@ -208,22 +208,22 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(StatusCode::BAD_REQUEST, resp.status());
     let body = resp.json::<Value>().await?;
     assert_eq!(
-      body,
       json! {{
         "error": {
           "message": "app is already setup",
           "code": "app_service_error-already_setup",
           "type": "invalid_request_error",
         }
-      }}
+      }},
+      body
     );
 
     let secret_service = app_service.secret_service();
-    assert_eq!(secret_service.authz().unwrap(), true);
-    assert_eq!(secret_service.app_status().unwrap(), AppStatus::Ready);
+    assert!(secret_service.authz().unwrap());
+    assert_eq!(AppStatus::Ready, secret_service.app_status().unwrap());
     let app_reg_info = secret_service.app_reg_info().unwrap();
     assert!(app_reg_info.is_none());
     Ok(())
@@ -339,17 +339,17 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
     let body = resp.json::<Value>().await?;
     assert_eq!(
-      body,
       json! {{
         "error": {
           "message": "error connecting to internal service: \u{2068}failed to register as resource server\u{2069}",
           "code": "reqwest_error",
           "type": "internal_server_error",
         }
-      }}
+      }},
+      body
     );
     Ok(())
   }
@@ -389,17 +389,17 @@ mod tests {
           .body(Body::from(body.to_string()))?,
       )
       .await?;
-    assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(StatusCode::BAD_REQUEST, resp.status());
     let body = resp.json::<Value>().await?;
     assert_eq!(
-      body,
       json! {{
         "error": {
           "message": expected_error,
           "type": "invalid_request_error",
           "code": "json_rejection_error"
         }
-      }}
+      }},
+      body
     );
     Ok(())
   }

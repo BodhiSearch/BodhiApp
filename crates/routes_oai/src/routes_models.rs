@@ -189,14 +189,14 @@ mod tests {
       .await?
       .json::<Value>()
       .await?;
-    assert_eq!(response["page"], 1);
-    assert_eq!(response["page_size"], 30);
-    assert_eq!(response["total"], 6);
+    assert_eq!(1, response["page"]);
+    assert_eq!(30, response["page_size"]);
+    assert_eq!(6, response["total"]);
     let data = response["data"].as_array().unwrap();
     assert!(!data.is_empty());
     assert_eq!(
+      "FakeFactory/fakemodel-gguf:Q4_0",
       data.first().unwrap()["alias"].as_str().unwrap(),
-      "FakeFactory/fakemodel-gguf:Q4_0"
     );
     Ok(())
   }
@@ -216,11 +216,11 @@ mod tests {
       .await?
       .json::<Value>()
       .await?;
-    assert_eq!(response["page"], 2);
-    assert_eq!(response["page_size"], 4);
-    assert_eq!(response["total"], 6);
+    assert_eq!(2, response["page"]);
+    assert_eq!(4, response["page_size"]);
+    assert_eq!(6, response["total"]);
     let data = response["data"].as_array().unwrap();
-    assert_eq!(data.len(), 2);
+    assert_eq!(2, data.len());
     Ok(())
   }
 
@@ -240,7 +240,7 @@ mod tests {
       .json::<Value>()
       .await?;
 
-    assert_eq!(response["page_size"], 100);
+    assert_eq!(100, response["page_size"]);
     Ok(())
   }
 
@@ -325,7 +325,7 @@ mod tests {
           .unwrap(),
       )
       .await?;
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, response.status());
     let alias_response = response.json::<AliasResponse>().await?;
     let expected = AliasResponse::llama3();
     assert_eq!(expected, alias_response);
@@ -346,17 +346,17 @@ mod tests {
           .unwrap(),
       )
       .await?;
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "message": "alias '\u{2068}non_existent_alias\u{2069}' not found in $BODHI_HOME/aliases",
           "code": "alias_not_found_error",
           "type": "not_found_error"
         }
-      }}
+      }},
+      response
     );
     Ok(())
   }
@@ -374,7 +374,7 @@ mod tests {
           .unwrap(),
       )
       .await?;
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, response.status());
     let response = response.json::<Vec<ChatTemplateType>>().await?;
 
     assert_eq!(14, response.len());

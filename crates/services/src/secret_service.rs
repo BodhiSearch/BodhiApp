@@ -318,12 +318,12 @@ mod tests {
 
     service.set_secret_string("test_key", "test_value").unwrap();
     let value = service.get_secret_string("test_key").unwrap();
-    assert_eq!(value, Some("test_value".to_string()));
-    assert_eq!(cache.get("test_key"), Some("test_value".to_string()));
+    assert_eq!(Some("test_value".to_string()), value);
+    assert_eq!(Some("test_value".to_string()), cache.get("test_key"));
 
     service.delete_secret("test_key").unwrap();
-    assert_eq!(service.get_secret_string("test_key")?, None);
-    assert_eq!(cache.as_ref().get("test_key"), None);
+    assert_eq!(None, service.get_secret_string("test_key")?);
+    assert_eq!(None, cache.as_ref().get("test_key"));
     Ok(())
   }
 

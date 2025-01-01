@@ -252,16 +252,16 @@ mod tests {
 
   // Common test helper to verify basic metadata
   fn verify_basic_metadata(metadata: &GGUFMetadata) {
-    assert_eq!(metadata.magic(), GGUF_MAGIC);
-    assert_eq!(metadata.version(), 3);
+    assert_eq!(GGUF_MAGIC, metadata.magic());
+    assert_eq!(3, metadata.version());
     assert_eq!(
+      "llama",
       metadata
         .metadata()
         .get("general.architecture")
         .unwrap()
         .as_str()
-        .unwrap(),
-      "llama"
+        .unwrap()
     );
   }
 
@@ -275,9 +275,9 @@ mod tests {
     #[case] version: u32,
   ) -> anyhow::Result<()> {
     let metadata = GGUFMetadata::new(PathBuf::from(input).as_path())?;
-    assert_eq!(metadata.magic(), GGUF_MAGIC);
-    assert_eq!(metadata.version(), version);
-    assert_eq!(metadata.metadata().len(), 1);
+    assert_eq!(GGUF_MAGIC, metadata.magic());
+    assert_eq!(version, metadata.version());
+    assert_eq!(1, metadata.metadata().len());
 
     Ok(())
   }
@@ -291,7 +291,7 @@ mod tests {
     let metadata = GGUFMetadata::new(input.as_path())?;
     verify_basic_metadata(&metadata);
     // Sample0 should only have the architecture field
-    assert_eq!(metadata.metadata().len(), 1);
+    assert_eq!(1, metadata.metadata().len());
     Ok(())
   }
 
@@ -306,46 +306,46 @@ mod tests {
 
     let md = metadata.metadata();
     // Test all KV data types
-    assert_eq!(md.get("test_uint8").unwrap().as_u8()?, 255);
-    assert_eq!(md.get("test_int8").unwrap().as_i8()?, -128);
-    assert_eq!(md.get("test_uint16").unwrap().as_u16()?, 65535);
-    assert_eq!(md.get("test_int16").unwrap().as_i16()?, -32768);
-    assert_eq!(md.get("test_uint32").unwrap().as_u32()?, 4294967295);
-    assert_eq!(md.get("test_int32").unwrap().as_i32()?, -2147483648);
+    assert_eq!(255, md.get("test_uint8").unwrap().as_u8()?);
+    assert_eq!(-128, md.get("test_int8").unwrap().as_i8()?);
+    assert_eq!(65535, md.get("test_uint16").unwrap().as_u16()?);
+    assert_eq!(-32768, md.get("test_int16").unwrap().as_i16()?);
+    assert_eq!(4294967295, md.get("test_uint32").unwrap().as_u32()?);
+    assert_eq!(-2147483648, md.get("test_int32").unwrap().as_i32()?);
     assert_eq!(
+      18446744073709551615,
       md.get("test_uint64").unwrap().as_u64()?,
-      18446744073709551615
     );
     assert_eq!(
-      md.get("test_int64").unwrap().as_i64()?,
-      -9223372036854775808
+      -9223372036854775808,
+      md.get("test_int64").unwrap().as_i64()?
     );
     assert!((md.get("test_float32").unwrap().as_f32()? - 3.14159).abs() < f32::EPSILON);
     assert!((md.get("test_float64").unwrap().as_f64()? - 2.718281828459045).abs() < f64::EPSILON);
-    assert_eq!(md.get("test_bool").unwrap().as_bool()?, true);
-    assert_eq!(md.get("test_string").unwrap().as_str()?, "Hello GGUF!");
+    assert_eq!(true, md.get("test_bool").unwrap().as_bool()?);
+    assert_eq!("Hello GGUF!", md.get("test_string").unwrap().as_str()?);
 
     // Test arrays
     if let GGUFValue::Array(arr) = md.get("test_array_int").unwrap() {
-      assert_eq!(arr.len(), 5);
+      assert_eq!(5, arr.len());
       for (i, val) in arr.iter().enumerate() {
-        assert_eq!(val.as_i32()?, (i + 1) as i32);
+        assert_eq!((i + 1) as i32, val.as_i32()?);
       }
     }
 
     if let GGUFValue::Array(arr) = md.get("test_array_str").unwrap() {
-      assert_eq!(arr.len(), 3);
-      assert_eq!(arr[0].as_str()?, "a");
-      assert_eq!(arr[1].as_str()?, "b");
-      assert_eq!(arr[2].as_str()?, "c");
+      assert_eq!(3, arr.len());
+      assert_eq!("a", arr[0].as_str()?);
+      assert_eq!("b", arr[1].as_str()?);
+      assert_eq!("c", arr[2].as_str()?);
     }
 
     // Test original KV data
-    assert_eq!(md.get("context_length").unwrap().as_u32()?, 2048);
+    assert_eq!(2048, md.get("context_length").unwrap().as_u32()?);
     assert!((md.get("rope_freq_base").unwrap().as_f32()? - 10000.0).abs() < f32::EPSILON);
 
     // Total number of KV pairs (including general.architecture)
-    assert_eq!(metadata.metadata().len(), 17);
+    assert_eq!(17, metadata.metadata().len());
     Ok(())
   }
 
@@ -360,55 +360,55 @@ mod tests {
 
     let md = metadata.metadata();
     // Basic token info
-    assert_eq!(md.get("vocab_size").unwrap().as_u32()?, 100);
+    assert_eq!(100, md.get("vocab_size").unwrap().as_u32()?);
 
     // Special tokens
-    assert_eq!(md.get("tokenizer.ggml.bos_token_id").unwrap().as_u32()?, 1);
-    assert_eq!(md.get("tokenizer.ggml.eos_token_id").unwrap().as_u32()?, 2);
+    assert_eq!(1, md.get("tokenizer.ggml.bos_token_id").unwrap().as_u32()?);
+    assert_eq!(2, md.get("tokenizer.ggml.eos_token_id").unwrap().as_u32()?);
     assert_eq!(
+      3,
       md.get("tokenizer.ggml.padding_token_id")
         .unwrap()
-        .as_u32()?,
-      3
+        .as_u32()?
     );
     assert_eq!(
+      4,
       md.get("tokenizer.ggml.seperator_token_id")
         .unwrap()
-        .as_u32()?,
-      4
+        .as_u32()?
     );
 
     // Token list
     if let GGUFValue::Array(tokens) = md.get("tokenizer.ggml.tokens").unwrap() {
-      assert_eq!(tokens.len(), 3);
-      assert_eq!(tokens[0].as_str()?, "<s>");
-      assert_eq!(tokens[1].as_str()?, "</s>");
-      assert_eq!(tokens[2].as_str()?, "<pad>");
+      assert_eq!(3, tokens.len());
+      assert_eq!("<s>", tokens[0].as_str()?);
+      assert_eq!("</s>", tokens[1].as_str()?);
+      assert_eq!("<pad>", tokens[2].as_str()?);
     }
 
     // Token settings
     assert_eq!(
-      md.get("tokenizer.ggml.add_bos_token").unwrap().as_bool()?,
-      true
+      true,
+      md.get("tokenizer.ggml.add_bos_token").unwrap().as_bool()?
     );
     assert_eq!(
-      md.get("tokenizer.ggml.add_eos_token").unwrap().as_bool()?,
-      true
+      true,
+      md.get("tokenizer.ggml.add_eos_token").unwrap().as_bool()?
     );
     assert_eq!(
+      true,
       md.get("tokenizer.ggml.add_space_prefix")
         .unwrap()
-        .as_bool()?,
-      true
+        .as_bool()?
     );
 
     // Tokenizer settings
-    assert_eq!(md.get("tokenizer.ggml.model").unwrap().as_str()?, "llama");
+    assert_eq!("llama", md.get("tokenizer.ggml.model").unwrap().as_str()?);
     assert_eq!(
+      true,
       md.get("tokenizer.ggml.remove_extra_whitespaces")
         .unwrap()
-        .as_bool()?,
-      true
+        .as_bool()?
     );
 
     Ok(())

@@ -123,10 +123,10 @@ mod test {
     let err = result.unwrap_err();
     match err {
       ObjValidationError::ValidationErrors(errors) => {
-        assert_eq!(errors.errors().len(), 1);
+        assert_eq!(1, errors.errors().len());
         assert_eq!(
-          errors.to_string(),
-          "value: does not match the huggingface repo pattern 'username/repo'"
+          "value: does not match the huggingface repo pattern 'username/repo'",
+          errors.to_string()
         );
       }
       _ => {

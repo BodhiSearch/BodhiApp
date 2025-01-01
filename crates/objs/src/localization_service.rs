@@ -292,7 +292,7 @@ mod tests {
       .unwrap();
     let lang_id: LanguageIdentifier = locale.parse()?;
     let result = localization_service.get_message(&lang_id, message_key, args)?;
-    assert_eq!(result, expected.to_string());
+    assert_eq!(expected.to_string(), result);
     Ok(())
   }
 
@@ -326,7 +326,7 @@ mod tests {
       .unwrap();
     let lang_id: LanguageIdentifier = locale.parse()?;
     let result = localization_service.get_message(&lang_id, message_key, args)?;
-    assert_eq!(result, expected.to_string());
+    assert_eq!(expected.to_string(), result);
     Ok(())
   }
 
@@ -371,7 +371,7 @@ mod tests {
 
     let lang_id: LanguageIdentifier = locale.parse()?;
     let result = localization_service.get_message(&lang_id, message_key, args)?;
-    assert_eq!(result, expected.to_string());
+    assert_eq!(expected.to_string(), result);
 
     Ok(())
   }
@@ -398,8 +398,8 @@ mod tests {
     let result = localization_service.load_locale(lang_id, resources);
     assert!(result.is_err());
     assert_eq!(
-      result.unwrap_err(),
-      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string()))
+      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string())),
+      result.unwrap_err()
     );
   }
 
@@ -410,8 +410,8 @@ mod tests {
     let result = localization_service.load_resource(&RESOURCES_UNSUPPORTED);
     assert!(result.is_err());
     assert_eq!(
-      result.unwrap_err(),
-      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string()))
+      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string())),
+      result.unwrap_err()
     );
   }
 
@@ -465,7 +465,7 @@ mod tests {
     assert!(result.is_err());
     match result.unwrap_err() {
       LocalizationMessageError::MessageNotFound(message) => {
-        assert_eq!(message, "missing-pattern");
+        assert_eq!("missing-pattern", message);
       }
       err => {
         panic!("expected MessageNotFound error, got {:?}", err);
@@ -492,7 +492,7 @@ mod tests {
     assert!(result.is_err());
     match result.unwrap_err() {
       LocalizationMessageError::FormatPattern(message) => {
-        assert_eq!(message, "Resolver error: Unknown variable: $nonexistent");
+        assert_eq!("Resolver error: Unknown variable: $nonexistent", message);
       }
       err => {
         panic!("expected FormatPattern error, got {:?}", err);
@@ -518,7 +518,7 @@ mod tests {
 
     let results = futures::future::join_all(tasks).await;
     for result in results {
-      assert_eq!(result.unwrap(), "Hello, World!".to_string());
+      assert_eq!("Hello, World!", &result.unwrap());
     }
   }
 

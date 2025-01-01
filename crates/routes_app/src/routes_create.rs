@@ -6,7 +6,9 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
-use objs::{ApiError, AppError, ChatTemplateType, ErrorType, GptContextParams, OAIRequestParams, Repo};
+use objs::{
+  ApiError, AppError, ChatTemplateType, ErrorType, GptContextParams, OAIRequestParams, Repo,
+};
 use serde::{Deserialize, Serialize};
 use server_core::{AliasResponse, RouterState};
 use services::AliasNotFoundError;
@@ -246,9 +248,9 @@ mod tests {
           .unwrap(),
       )
       .await?;
-    assert_eq!(response.status(), StatusCode::CREATED);
+    assert_eq!(StatusCode::CREATED, response.status());
     let response = response.json::<AliasResponse>().await?;
-    assert_eq!(response, expected);
+    assert_eq!(expected, response);
     Ok(())
   }
 
@@ -281,17 +283,17 @@ mod tests {
           .unwrap(),
       )
       .await?;
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "type": "not_found_error",
           "code": "hub_file_not_found_error",
           "message": "file '\u{2068}fakemodel.Q4_0.gguf\u{2069}' not found in huggingface repo '\u{2068}FakeFactory/not-exists\u{2069}', snapshot '\u{2068}main\u{2069}'"
         }
-      }}
+      }},
+      response
     );
     Ok(())
   }
@@ -325,28 +327,26 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(response.status(), StatusCode::OK);
-    let updated_alias = response.json::<AliasResponse>().await?;
-    assert_eq!(
-      AliasResponseBuilder::tinyllama_builder()
-        .family(Some("tinyllama".to_string()))
-        .request_params(
-          OAIRequestParamsBuilder::default()
-            .temperature(0.8)
-            .max_tokens(2000_u16)
-            .build()
-            .unwrap()
-        )
-        .context_params(
-          GptContextParamsBuilder::default()
-            .n_ctx(4096)
-            .build()
-            .unwrap()
-        )
-        .build()
-        .unwrap(),
-      updated_alias
-    );
+    assert_eq!(StatusCode::OK, response.status());
+    let updated_alias: AliasResponse = response.json::<AliasResponse>().await?;
+    let expected = AliasResponseBuilder::tinyllama_builder()
+      .family(Some("tinyllama".to_string()))
+      .request_params(
+        OAIRequestParamsBuilder::default()
+          .temperature(0.8)
+          .max_tokens(2000_u16)
+          .build()
+          .unwrap(),
+      )
+      .context_params(
+        GptContextParamsBuilder::default()
+          .n_ctx(4096)
+          .build()
+          .unwrap(),
+      )
+      .build()
+      .unwrap();
+    assert_eq!(expected, updated_alias);
     Ok(())
   }
 
@@ -375,17 +375,17 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "type": "invalid_request_error",
           "code": "create_alias_error-alias_mismatch",
           "message": "alias in path '\u{2068}llama3:instruct\u{2069}' does not match alias in request '\u{2068}llama3:different\u{2069}'"
         }
-      }}
+      }},
+      response
     );
     Ok(())
   }
@@ -419,17 +419,17 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    assert_eq!(StatusCode::BAD_REQUEST, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "type": "invalid_request_error",
           "code": "create_alias_error-alias_not_present",
           "message": "alias is not present in request"
         }
-      }}
+      }},
+      response
     );
     Ok(())
   }
@@ -483,17 +483,17 @@ mod tests {
       )
       .await?;
 
-    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "type": "not_found_error",
           "code": "hub_file_not_found_error",
           "message": "file '\u{2068}tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf\u{2069}' not found in huggingface repo '\u{2068}TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF\u{2069}', snapshot '\u{2068}main\u{2069}'"
         }
-      }}
+      }},
+      response
     );
     Ok(())
   }

@@ -191,7 +191,7 @@ mod tests {
     let bytes = response.into_body().collect().await.unwrap().to_bytes();
     let str = String::from_utf8_lossy(&bytes);
     let response_json = serde_json::from_str::<Value>(&str)?;
-    assert_eq!(response_json, expected);
+    assert_eq!(expected, response_json);
     Ok(())
   }
 }
