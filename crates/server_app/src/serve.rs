@@ -114,6 +114,7 @@ impl ServeCommand {
     match ready_rx.await {
       Ok(()) => {
         println!("server started on http://{host}:{port}");
+        tracing::info!(addr = format!("{host}:{port}"), "server started");
       }
       Err(err) => tracing::warn!(?err, "ready channel closed before could receive signal"),
     }

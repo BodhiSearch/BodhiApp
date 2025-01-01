@@ -115,7 +115,7 @@ fn setup_logs(
   env_service: &DefaultEnvService,
 ) -> Result<tracing_appender::non_blocking::WorkerGuard, crate::error::BodhiError> {
   use crate::error::Result;
-  use services::EnvService;
+  use services::{EnvService, BODHI_LOG_STDOUT};
   use std::path::Path;
   use tracing::level_filters::LevelFilter;
   use tracing_appender::non_blocking::WorkerGuard;
@@ -127,12 +127,36 @@ fn setup_logs(
     let log_level: LevelFilter = env_service.log_level().into();
     let filter = EnvFilter::new(log_level.to_string());
     let filter = filter.add_directive("hf_hub=error".parse().unwrap());
-    tracing_subscriber::registry()
-      .with(filter)
-      .with(fmt::layer().with_writer(non_blocking))
-      .init();
+
+    // Check if we should output to stdout
+    let enable_stdout = cfg!(debug_assertions)
+      || env_service
+        .get_setting(BODHI_LOG_STDOUT)
+        .map(|v| v == "1" || v.to_lowercase() == "true")
+        .unwrap_or(false);
+
+    let subscriber = tracing_subscriber::registry().with(filter);
+
+    if enable_stdout {
+      subscriber
+        .with(fmt::layer().with_writer(std::io::stdout))
+        .with(fmt::layer().with_writer(non_blocking))
+        .init();
+    } else {
+      subscriber
+        .with(fmt::layer().with_writer(non_blocking))
+        .init();
+    }
+    #[cfg(debug_assertions)]
+    {
+      println!(
+        "logging to stdout: {}, log_level: {}",
+        enable_stdout, log_level
+      );
+    }
     Ok(guard)
   }
+
   let logs_dir = env_service.logs_dir();
   let result = setup_logs(env_service, &logs_dir);
   if result.is_err() {

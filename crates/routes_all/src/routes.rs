@@ -21,7 +21,8 @@ use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::AppService;
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
-use tower_http::trace::TraceLayer;
+use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tracing::Level;
 
 pub fn build_routes(
   ctx: Arc<dyn SharedContext>,
@@ -69,11 +70,13 @@ pub fn build_routes(
     .route("/v1/chat/completions", post(chat_completions_handler))
     .route_layer(from_fn_with_state(state.clone(), auth_middleware));
 
+  let info_trace = TraceLayer::new_for_http()
+    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
+    .on_response(DefaultOnResponse::new().level(Level::INFO));
   let router = Router::<Arc<dyn RouterState>>::new()
     .merge(public_apis)
     .merge(optional_auth)
     .merge(protected_apis)
-    // TODO: check CORS
     .layer(
       CorsLayer::new()
         .allow_origin(Any)
@@ -81,7 +84,8 @@ pub fn build_routes(
         .allow_headers(Any)
         .allow_credentials(false),
     )
-    .with_state(state);
+    .with_state(state)
+    .layer(info_trace);
   let router = if app_service.env_service().is_production() {
     if let Some(static_router) = static_router {
       router.merge(static_router)
@@ -91,7 +95,5 @@ pub fn build_routes(
   } else {
     router.merge(proxy_router("http://localhost:3000".to_string()))
   };
-  router
-    .layer(app_service.session_service().session_layer())
-    .layer(TraceLayer::new_for_http())
+  router.layer(app_service.session_service().session_layer())
 }
