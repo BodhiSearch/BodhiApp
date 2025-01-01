@@ -96,3 +96,19 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
           flags: ${{ matrix.target }},bodhi
+      - name: Run UI Tests
+        run: |
+          make ci.ui
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        if: success()
+        continue-on-error: true
+        with:
+          name: BodhiApp-${{ matrix.target }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: BodhiSearch/BodhiApp
+          files: |
+            crates/bodhi/coverage/coverage-final.json
+            crates/bodhi/coverage/clover.xml
+          fail_ci_if_error: false
+          flags: ${{ matrix.target }},bodhi,ui
