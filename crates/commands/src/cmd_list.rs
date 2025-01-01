@@ -36,13 +36,7 @@ impl ListCommand {
 
   fn list_local_model_alias(self, service: Arc<dyn AppService>) -> Result<()> {
     let mut table = Table::new();
-    table.add_row(row![
-      "ALIAS",
-      "REPO",
-      "FILENAME",
-      "SHA",
-      "CHAT TEMPLATE"
-    ]);
+    table.add_row(row!["ALIAS", "REPO", "FILENAME", "SHA", "CHAT TEMPLATE"]);
     let aliases = service.data_service().list_aliases()?;
     for row in aliases.into_iter().map(IntoRow::into_row) {
       table.add_row(row);

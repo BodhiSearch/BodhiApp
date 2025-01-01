@@ -2,10 +2,7 @@ use crate::{
   test_utils::{test_hf_service, TestHfService},
   DataService, DataServiceError, LocalDataService,
 };
-use objs::{
-  test_utils::temp_bodhi_home,
-  Alias, RemoteModel,
-};
+use objs::{test_utils::temp_bodhi_home, Alias, RemoteModel};
 use rstest::fixture;
 use std::{path::PathBuf, sync::Arc};
 use tempfile::TempDir;

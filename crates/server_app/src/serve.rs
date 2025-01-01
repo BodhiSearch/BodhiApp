@@ -92,10 +92,7 @@ impl ServeCommand {
     let exec_lookup_path = service.env_service().exec_lookup_path();
     let exec_path = Path::new(&exec_lookup_path).join(exec_path);
     if !exec_path.exists() {
-      println!(
-        "exec not found at {}",
-        exec_path.to_string_lossy()
-      );
+      println!("exec not found at {}", exec_path.to_string_lossy());
       return Err(ContextError::ExecNotExists(
         exec_path.to_string_lossy().to_string(),
       ))?;

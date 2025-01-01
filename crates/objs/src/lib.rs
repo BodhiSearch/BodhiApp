@@ -9,6 +9,7 @@ mod chat_template;
 mod chat_template_type;
 mod envs;
 mod error;
+pub mod gguf;
 mod gpt_params;
 mod hub_file;
 mod localization_service;
@@ -16,7 +17,6 @@ mod oai;
 mod remote_file;
 mod repo;
 mod utils;
-pub mod gguf;
 
 pub use alias::*;
 pub use app_error::*;

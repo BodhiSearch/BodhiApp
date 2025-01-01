@@ -1,8 +1,8 @@
 mod alias_response;
-mod server;
 mod http;
+mod server;
 mod state;
 
-pub use server::*;
 pub use http::*;
+pub use server::*;
 pub use state::*;
