@@ -54,7 +54,7 @@ pub enum InteractiveError {
   #[error(transparent)]
   Join(#[from] TaskJoinError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400, code = "interactive_error-openai_error", args_delegate = false)]
+  #[error_meta(error_type = ErrorType::BadRequest, code = "interactive_error-openai_error", args_delegate = false)]
   OpenAIError(#[from] OpenAIError),
   #[error(transparent)]
   BuilderError(#[from] BuilderError),

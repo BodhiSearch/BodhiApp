@@ -2,7 +2,7 @@ use objs::{AppError, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("sqlx_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SqlxError {
   #[from]
   pub source: sqlx::Error,
@@ -18,7 +18,7 @@ impl Eq for SqlxError {}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("sqlx_migrate_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SqlxMigrateError {
   #[from]
   source: sqlx::migrate::MigrateError,
@@ -34,7 +34,7 @@ impl Eq for SqlxMigrateError {}
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("item_not_found")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct ItemNotFound {
   id: String,
   item_type: String,

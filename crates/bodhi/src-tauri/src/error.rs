@@ -14,10 +14,10 @@ use crate::convert::ConvertError;
 #[error_meta(trait_to_impl = AppError)]
 pub enum BodhiError {
   #[error("unreachable")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   Unreachable(String),
   #[error("native_not_supported")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   NativeNotSupported,
   #[error(transparent)]
   Context(#[from] ContextError),

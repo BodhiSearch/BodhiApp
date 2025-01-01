@@ -7,17 +7,17 @@ use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error("alias_exists")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct AliasExistsError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error("alias_not_found")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct AliasNotFoundError(pub String);
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("data_file_missing")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct DataFileNotFoundError {
   filename: String,
   dirname: String,
@@ -27,7 +27,7 @@ pub struct DataFileNotFoundError {
 #[error_meta(trait_to_impl = AppError)]
 pub enum DataServiceError {
   #[error("dir_missing")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   DirMissing { dirname: String },
   #[error(transparent)]
   DataFileNotFound(#[from] DataFileNotFoundError),

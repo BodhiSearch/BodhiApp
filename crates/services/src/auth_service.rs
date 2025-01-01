@@ -10,7 +10,7 @@ use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, status = 401, code=self.code())]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, code=self.code())]
 #[error("json_web_token_error")]
 pub struct JsonWebTokenError {
   #[from]
@@ -58,7 +58,7 @@ pub enum AuthServiceError {
   #[error(transparent)]
   Reqwest(#[from] ReqwestError),
   #[error("auth_service_api_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   AuthServiceApiError(String),
 }
 

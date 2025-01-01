@@ -33,23 +33,23 @@ struct SecretsData {
 #[error_meta(trait_to_impl = AppError)]
 pub enum SecretServiceError {
   #[error("key_mismatch")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   KeyMismatch,
   #[error("key_not_found")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   KeyNotFound,
   #[error(transparent)]
   SerdeYamlError(#[from] SerdeYamlError),
   #[error(transparent)]
   IoError(#[from] IoError),
   #[error("encryption_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   EncryptionError(String),
   #[error("decryption_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   DecryptionError(String),
   #[error("invalid_format")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidFormat(String),
 }
 

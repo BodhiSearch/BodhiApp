@@ -46,7 +46,7 @@ pub enum DbError {
   #[error(transparent)]
   SqlxMigrateError(#[from] SqlxMigrateError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400, code="db_error-strum_parse", args_delegate = false)]
+  #[error_meta(error_type = ErrorType::BadRequest, code="db_error-strum_parse", args_delegate = false)]
   StrumParse(#[from] strum::ParseError),
 }
 

@@ -40,7 +40,7 @@ pub struct PullRepoFileRequest {
 #[error_meta(trait_to_impl = AppError)]
 pub enum PullError {
   #[error("file_already_exists")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   FileAlreadyExists {
     repo: String,
     filename: String,

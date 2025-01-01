@@ -6,18 +6,18 @@ use services::{AppStatus, AuthServiceError, JsonWebTokenError, SecretServiceErro
 #[error_meta(trait_to_impl = AppError)]
 pub enum LoginError {
   #[error("app_reg_info_not_found")]
-  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
+  #[error_meta(error_type = ErrorType::InvalidAppState)]
   AppRegInfoNotFound,
   #[error("app_status_invalid")]
-  #[error_meta(error_type = ErrorType::InvalidAppState, status = 500)]
+  #[error_meta(error_type = ErrorType::InvalidAppState)]
   AppStatusInvalid(AppStatus),
   #[error(transparent)]
   SecretServiceError(#[from] SecretServiceError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Authentication, status = 401, code = "login_error-session_error", args_delegate = false)]
+  #[error_meta(error_type = ErrorType::Authentication, code = "login_error-session_error", args_delegate = false)]
   SessionError(#[from] tower_sessions::session::Error),
   #[error("session_info_not_found")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   SessionInfoNotFound,
   #[error(transparent)]
   AuthServiceError(#[from] AuthServiceError),
@@ -25,7 +25,7 @@ pub enum LoginError {
   BadRequest(#[from] BadRequestError),
 
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "login_error-parse_error", args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "login_error-parse_error", args_delegate = false)]
   ParseError(#[from] ParseError),
   #[error(transparent)]
   JsonWebToken(#[from] JsonWebTokenError),

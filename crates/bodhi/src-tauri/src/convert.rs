@@ -4,7 +4,7 @@ use server_app::{RunCommand, ServeCommand};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("convert_error_bad_request")]
-#[error_meta(error_type = ErrorType::BadRequest, status = 400, code = self.error_code)]
+#[error_meta(error_type = ErrorType::BadRequest, code = self.error_code)]
 pub struct ConvertBadRequestError {
   input: String,
   output: String,
@@ -15,12 +15,12 @@ pub struct ConvertBadRequestError {
 #[error_meta(trait_to_impl = AppError)]
 pub enum ConvertError {
   #[error("convert")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   Convert { input: String, output: String },
   #[error(transparent)]
   ConvertBadRequest(#[from] ConvertBadRequestError),
   #[error("invalid_repo")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidRepo {
     input: String,
     output: String,

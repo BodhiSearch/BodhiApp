@@ -37,14 +37,14 @@ pub struct CreateAliasRequest {
 #[error_meta(trait_to_impl = AppError)]
 pub enum CreateAliasError {
   #[error("alias_not_present")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   AliasNotPresent,
   #[error(transparent)]
   AliasNotFound(#[from] AliasNotFoundError),
   #[error(transparent)]
   CreateCommand(#[from] CreateCommandError),
   #[error("alias_mismatch")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   AliasMismatch { path: String, request: String },
 }
 

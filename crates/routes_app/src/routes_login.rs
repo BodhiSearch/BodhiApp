@@ -193,7 +193,7 @@ pub fn generate_pkce() -> (String, String) {
 #[error_meta(trait_to_impl = AppError)]
 pub enum LogoutError {
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "logout_error-session_delete_error", args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "logout_error-session_delete_error", args_delegate = false)]
   SessionDelete(#[from] tower_sessions::session::Error),
 }
 

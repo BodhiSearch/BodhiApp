@@ -16,7 +16,7 @@ use std::sync::Arc;
 #[error_meta(trait_to_impl = AppError)]
 pub enum AppServiceError {
   #[error("already_setup")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   AlreadySetup,
   #[error(transparent)]
   SecretServiceError(#[from] SecretServiceError),

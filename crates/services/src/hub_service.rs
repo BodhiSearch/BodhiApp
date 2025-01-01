@@ -15,7 +15,7 @@ pub static SNAPSHOT_MAIN: &str = "main";
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("hub_file_missing")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct HubFileNotFoundError {
   pub filename: String,
   pub repo: String,
@@ -24,14 +24,14 @@ pub struct HubFileNotFoundError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("remote_model_not_found")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound, status = 404)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::NotFound)]
 pub struct RemoteModelNotFoundError {
   pub alias: String,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("hub_api_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = self.error_status, code = self.error_code())]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, code = self.error_code())]
 pub struct HubApiError {
   error: String,
   error_status: u16,

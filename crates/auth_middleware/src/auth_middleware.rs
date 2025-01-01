@@ -23,31 +23,31 @@ pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 #[error_meta(trait_to_impl = AppError)]
 pub enum AuthError {
   #[error("auth_header_not_found")]
-  #[error_meta(error_type = ErrorType::Authentication, status = 401)]
+  #[error_meta(error_type = ErrorType::Authentication)]
   AuthHeaderNotFound,
   #[error(transparent)]
   JsonWebToken(#[from] JsonWebTokenError),
   #[error("kid_mismatch")]
-  #[error_meta(error_type = ErrorType::Authentication, status = 401)]
+  #[error_meta(error_type = ErrorType::Authentication)]
   KidMismatch(String, String),
   #[error("alg_mismatch")]
-  #[error_meta(error_type = ErrorType::Authentication, status = 401)]
+  #[error_meta(error_type = ErrorType::Authentication)]
   AlgMismatch(String, String),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Authentication, status = 401)]
+  #[error_meta(error_type = ErrorType::Authentication)]
   AuthService(#[from] AuthServiceError),
   #[error("app_reg_info_missing")]
-  #[error_meta(error_type = ErrorType::Authentication, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   AppRegInfoMissing,
   #[error("refresh_token_not_found")]
-  #[error_meta(error_type = ErrorType::Authentication, status = 500)]
+  #[error_meta(error_type = ErrorType::Authentication)]
   RefreshTokenNotFound,
   #[error(transparent)]
   BadRequest(#[from] BadRequestError),
   #[error(transparent)]
   SecretService(#[from] SecretServiceError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Authentication, status = 401, code = "auth_error-tower_sessions", args_delegate = false)]
+  #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
   TowerSession(#[from] tower_sessions::session::Error),
 }
 
@@ -663,7 +663,7 @@ mod tests {
       json! {{
         "error": {
           "message": "app registration info is missing, not found in secure storage",
-          "type": "authentication_error",
+          "type": "internal_server_error",
           "code": "auth_error-app_reg_info_missing"
         }
       }},

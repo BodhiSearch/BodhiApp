@@ -20,14 +20,14 @@ pub trait LocalizationService: std::fmt::Debug + Send + Sync {
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("locale_not_supported")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct LocaleNotSupportedError {
   locale: String,
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("l10n_rwlock_read")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct RwLockReadError {
   reason: String,
 }
@@ -38,10 +38,10 @@ pub enum LocalizationMessageError {
   #[error(transparent)]
   RwLockRead(#[from] RwLockReadError),
   #[error("message_not_found")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-message_not_found")]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-message_not_found")]
   MessageNotFound(String),
   #[error("format_pattern")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-format_pattern")]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-format_pattern")]
   FormatPattern(String),
   #[error(transparent)]
   LocaleNotSupported(#[from] LocaleNotSupportedError),
@@ -51,7 +51,7 @@ pub enum LocalizationMessageError {
 #[error_meta(trait_to_impl = AppError)]
 pub enum LocalizationSetupError {
   #[error("rwlock_write")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "localization_error-rwlock_write")]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-rwlock_write")]
   RwLockWrite(String),
   #[error(transparent)]
   RwLockRead(#[from] RwLockReadError),

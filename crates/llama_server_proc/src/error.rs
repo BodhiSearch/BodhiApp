@@ -4,11 +4,11 @@ use objs::{impl_error_from, AppError, ErrorType, IoError, ReqwestError};
 #[error_meta(trait_to_impl = AppError)]
 pub enum ServerError {
   #[error("server_not_ready")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   ServerNotReady,
 
   #[error("startup_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   StartupError(String),
 
   #[error(transparent)]
@@ -18,11 +18,11 @@ pub enum ServerError {
   ClientError(#[from] ReqwestError),
 
   #[error("health_check_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   HealthCheckError(String),
 
   #[error("timeout_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   TimeoutError(u64),
 }
 
@@ -94,11 +94,11 @@ mod tests {
   fn test_error_status_codes() {
     assert_eq!(
       StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
-      ServerError::ServerNotReady.status() as u16
+      ServerError::ServerNotReady.status()
     );
     assert_eq!(
       StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
-      ServerError::StartupError("test".to_string()).status() as u16
+      ServerError::StartupError("test".to_string()).status()
     );
   }
 }
