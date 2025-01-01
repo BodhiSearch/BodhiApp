@@ -26,14 +26,12 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
       }
 
       let error_type_body = generate_attribute_method(name, variants, "error_type");
-      let status_body = generate_attribute_method(name, variants, "status");
       let code_body = generate_attribute_method(name, variants, "code");
       let args_method = generate_args_method(name, &input.data);
 
       generate_impl(
         name,
         error_type_body,
-        status_body,
         code_body,
         args_method,
         &error_meta_header.trait_to_impl,
@@ -48,10 +46,6 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
           |error_type_value| quote! { <_ as AsRef<str>>::as_ref(&#error_type_value).to_string() },
         )
         .unwrap_or_else(|| panic!("error_type attribute missing for struct {}", name));
-      let status = error_meta
-        .status
-        .map(|status| quote! { <_ as Into<i32>>::into(#status) })
-        .unwrap_or_else(|| panic!("status attribute missing for struct {}", name));
       let code = error_meta
         .code
         .map(|code| quote! { <_ as AsRef<str>>::as_ref(&#code).to_string() })
@@ -63,7 +57,6 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
       generate_impl(
         name,
         error_type,
-        status,
         code,
         args_method,
         &error_meta.trait_to_impl,
@@ -76,7 +69,6 @@ fn impl_error_metadata(input: &DeriveInput) -> TokenStream2 {
 fn generate_impl(
   name: &Ident,
   error_type_body: TokenStream2,
-  status_body: TokenStream2,
   code_body: TokenStream2,
   args_method: TokenStream2,
   trait_to_impl: &Option<syn::Path>,
@@ -90,17 +82,6 @@ fn generate_impl(
   let impl_block = quote! {
     #visibility fn error_type(&self) -> String {
       #error_type_body
-    }
-
-    #visibility fn status(&self) -> i32 {
-      #status_body
-    }
-
-    #visibility fn status_u16(&self) -> u16 {
-      match self.status() {
-        status if status <= u16::MAX as i32 => status as u16,
-        _ => panic!("Status code is out of range for u16"),
-      }
     }
 
     #visibility fn code(&self) -> String {
@@ -129,7 +110,6 @@ fn generate_impl(
 fn empty_enum(name: &Ident, trait_to_impl: &Option<syn::Path>) -> TokenStream2 {
   generate_impl(
     name,
-    quote! { unreachable!("Empty enum has no variants") },
     quote! { unreachable!("Empty enum has no variants") },
     quote! { unreachable!("Empty enum has no variants") },
     quote! { unreachable!("Empty enum has no variants") },
@@ -206,7 +186,6 @@ fn parse_enum_meta_header(attrs: &[Attribute]) -> EnumMetaHeader {
 #[derive(Debug, PartialEq)]
 struct EnumMetaAttrs {
   error_type: Option<syn::Expr>,
-  status: Option<syn::Expr>,
   code: Option<syn::Expr>,
   args_delegate: Option<bool>,
 }
@@ -214,7 +193,6 @@ struct EnumMetaAttrs {
 impl Parse for EnumMetaAttrs {
   fn parse(input: ParseStream) -> syn::Result<Self> {
     let mut error_type = None;
-    let mut status = None;
     let mut code = None;
     let mut args_delegate = None;
 
@@ -225,9 +203,6 @@ impl Parse for EnumMetaAttrs {
       match ident.to_string().as_str() {
         "error_type" => {
           error_type = Some(input.parse()?);
-        }
-        "status" => {
-          status = Some(input.parse()?);
         }
         "code" => {
           code = Some(input.parse()?);
@@ -251,7 +226,6 @@ impl Parse for EnumMetaAttrs {
 
     Ok(EnumMetaAttrs {
       error_type,
-      status,
       code,
       args_delegate,
     })
@@ -273,7 +247,6 @@ fn parse_enum_meta_attrs(attrs: &[Attribute]) -> Option<EnumMetaAttrs> {
 #[derive(Debug, PartialEq)]
 struct StructMetaAttrs {
   error_type: Option<syn::Expr>,
-  status: Option<syn::Expr>,
   code: Option<syn::Expr>,
   trait_to_impl: Option<syn::Path>,
 }
@@ -281,7 +254,6 @@ struct StructMetaAttrs {
 impl Parse for StructMetaAttrs {
   fn parse(input: ParseStream) -> syn::Result<Self> {
     let mut error_type = None;
-    let mut status = None;
     let mut code = None;
     let mut trait_to_impl = None;
 
@@ -292,9 +264,6 @@ impl Parse for StructMetaAttrs {
       match ident.to_string().as_str() {
         "error_type" => {
           error_type = Some(input.parse()?);
-        }
-        "status" => {
-          status = Some(input.parse()?);
         }
         "code" => {
           code = Some(input.parse()?);
@@ -317,7 +286,6 @@ impl Parse for StructMetaAttrs {
 
     Ok(StructMetaAttrs {
       error_type,
-      status,
       code,
       trait_to_impl,
     })
@@ -352,7 +320,6 @@ fn generate_attribute_method(
       "error_type" => {
         generate_error_type_arm(name, variant_name, &pattern, is_transparent, &error_meta)
       }
-      "status" => generate_status_arm(name, variant_name, &pattern, is_transparent, &error_meta),
       "code" => generate_code_arm(name, variant_name, &pattern, is_transparent, &error_meta),
       _ => unreachable!(),
     }
@@ -386,33 +353,6 @@ fn generate_error_type_arm(
     }
   } else {
     let msg = format!("error_type not specified for variant '{}'", variant_name);
-    quote! {
-      #name::#variant_name #pattern => compile_error!(#msg),
-    }
-  }
-}
-
-fn generate_status_arm(
-  name: &Ident,
-  variant_name: &Ident,
-  pattern: &TokenStream2,
-  is_transparent: bool,
-  error_meta: &Option<EnumMetaAttrs>,
-) -> TokenStream2 {
-  if let Some(error_meta) = error_meta {
-    if let Some(status) = &error_meta.status {
-      return quote! {
-        #name::#variant_name #pattern => <_ as Into<i32>>::into(#status),
-      };
-    }
-  }
-
-  if is_transparent {
-    quote! {
-      #name::#variant_name(err) => err.status(),
-    }
-  } else {
-    let msg = format!("status not specified for variant '{}'", variant_name);
     quote! {
       #name::#variant_name #pattern => compile_error!(#msg),
     }
@@ -591,37 +531,33 @@ mod tests {
 
   #[rstest]
   #[case::all_provided(
-    parse_quote!(#[error_meta(error_type = "TestError", status = 400, code = "test_code")]),
+    parse_quote!(#[error_meta(error_type = "TestError", code = "test_code")]),
     Some(EnumMetaAttrs {
       error_type: Some(parse_quote!("TestError")),
-      status: Some(parse_quote!(400)),
       code: Some(parse_quote!("test_code")),
       args_delegate: None,
     }),
   )]
   #[case::code_fallback(
-    parse_quote!(#[error_meta(error_type = "PartialError", status = 500)]),
+    parse_quote!(#[error_meta(error_type = "PartialError")]),
     Some(EnumMetaAttrs {
       error_type: Some(parse_quote!("PartialError")),
-      status: Some(parse_quote!(500)),
       code: None,
       args_delegate: None,
     }),
   )]
   #[case::as_expr(
-    parse_quote!(#[error_meta(error_type = internal_server_error(), status = status_500(), code = generate_code())]),
+    parse_quote!(#[error_meta(error_type = internal_server_error(), code = generate_code())]),
     Some(EnumMetaAttrs {
       error_type: Some(parse_quote!(internal_server_error())),
-      status: Some(parse_quote!(status_500())),
       code: Some(parse_quote!(generate_code())),
       args_delegate: None,
     }),
   )]
   #[case::as_enum(
-    parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = ErrorCode::InternalServerError)]),
+    parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, code = ErrorCode::InternalServerError)]),
     Some(EnumMetaAttrs {
       error_type: Some(parse_quote!(ErrorType::InternalServerError)),
-      status: Some(parse_quote!(StatusCode::InternalServerError)),
       code: Some(parse_quote!(ErrorCode::InternalServerError)),
       args_delegate: None,
     }),
@@ -637,37 +573,33 @@ mod tests {
 
   #[rstest]
   #[case::all_provided(
-    parse_quote!(#[error_meta(error_type = "TestError", status = 400, code = "test_code", trait_to_impl = ErrorMetadata)]),
+    parse_quote!(#[error_meta(error_type = "TestError", code = "test_code", trait_to_impl = ErrorMetadata)]),
     Some(StructMetaAttrs {
       error_type: Some(parse_quote!("TestError")),
-      status: Some(parse_quote!(400)),
       code: Some(parse_quote!("test_code")),
       trait_to_impl: Some(parse_quote!(ErrorMetadata)),
     }),
   )]
   #[case::minimal(
-    parse_quote!(#[error_meta(error_type = "PartialError", status = 500)]),
+    parse_quote!(#[error_meta(error_type = "PartialError")]),
     Some(StructMetaAttrs {
       error_type: Some(parse_quote!("PartialError")),
-      status: Some(parse_quote!(500)),
       code: None,
       trait_to_impl: None,
     }),
   )]
   #[case::as_expr(
-    parse_quote!(#[error_meta(error_type = internal_server_error(), status = status_500(), code = generate_code(), trait_to_impl = ErrorMetadata)]),
+    parse_quote!(#[error_meta(error_type = internal_server_error(), code = generate_code(), trait_to_impl = ErrorMetadata)]),
     Some(StructMetaAttrs {
       error_type: Some(parse_quote!(internal_server_error())),
-      status: Some(parse_quote!(status_500())),
       code: Some(parse_quote!(generate_code())),
       trait_to_impl: Some(parse_quote!(ErrorMetadata)),
     }),
   )]
   #[case::as_enum(
-    parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = ErrorCode::InternalServerError, trait_to_impl = ErrorMetadata)]),
+    parse_quote!(#[error_meta(error_type = ErrorType::InternalServerError, code = ErrorCode::InternalServerError, trait_to_impl = ErrorMetadata)]),
     Some(StructMetaAttrs {
       error_type: Some(parse_quote!(ErrorType::InternalServerError)),
-      status: Some(parse_quote!(StatusCode::InternalServerError)),
       code: Some(parse_quote!(ErrorCode::InternalServerError)),
       trait_to_impl: Some(parse_quote!(ErrorMetadata)),
     }),
@@ -693,14 +625,6 @@ mod tests {
       TestEnum::Variant4 => <_ as AsRef<str>>::as_ref(&ErrorType::InternalServerError).to_string(),
     }
   })]
-  #[case("status", quote! {
-    match self {
-      TestEnum::Variant1 => <_ as Into<i32>>::into(status_400()),
-      TestEnum::Variant2 => <_ as Into<i32>>::into(500),
-      TestEnum::Variant3(err) => err.status(),
-      TestEnum::Variant4 => <_ as Into<i32>>::into(StatusCode::InternalServerError),
-    }
-  })]
   #[case("code", quote! {
     match self {
       TestEnum::Variant1 => <_ as AsRef<str>>::as_ref(&error_code()).to_string(),
@@ -712,13 +636,13 @@ mod tests {
   fn test_generate_attribute_method_for_enum(#[case] method: &str, #[case] expected: TokenStream2) {
     let name: Ident = parse_quote!(TestEnum);
     let variants: syn::punctuated::Punctuated<syn::Variant, syn::token::Comma> = parse_quote! {
-      #[error_meta(error_type = internal_server_error(), status = status_400(), code = error_code())]
+      #[error_meta(error_type = internal_server_error(), code = error_code())]
       Variant1,
-      #[error_meta(error_type = "Error2", status = 500, code = "error_2")]
+      #[error_meta(error_type = "Error2", code = "error_2")]
       Variant2,
       #[error(transparent)]
       Variant3(std::io::Error),
-      #[error_meta(error_type = ErrorType::InternalServerError, status = StatusCode::InternalServerError, code = ErrorCode::InternalServerError)]
+      #[error_meta(error_type = ErrorType::InternalServerError, code = ErrorCode::InternalServerError)]
       Variant4
     };
 
@@ -770,20 +694,6 @@ mod tests {
         }
       }
 
-      #visibility fn status(&self) -> i32 {
-        match self {
-          TestEnum::Variant1{..} => <_ as Into<i32>>::into(400),
-          TestEnum::Variant2(..) => <_ as Into<i32>>::into(500),
-        }
-      }
-
-      #visibility fn status_u16(&self) -> u16 {
-        match self.status() {
-          status if status <= u16::MAX as i32 => status as u16,
-          _ => panic!("Status code is out of range for u16"),
-        }
-      }
-
       #visibility fn code(&self) -> String {
         match self {
           TestEnum::Variant1{..} => <_ as AsRef<str>>::as_ref(&"error_1").to_string(),
@@ -815,9 +725,9 @@ mod tests {
     let input: DeriveInput = parse_quote! {
       #[derive(ErrorMeta)]
       enum TestEnum {
-        #[error_meta(error_type = "Error1", status = 400, code = "error_1")]
+        #[error_meta(error_type = "Error1", code = "error_1")]
         Variant1 { field1: String, field2: i32 },
-        #[error_meta(error_type = "Error2", status = 500)]
+        #[error_meta(error_type = "Error2")]
         Variant2(String, i32),
       }
     };
@@ -841,9 +751,9 @@ mod tests {
       #[derive(ErrorMeta)]
       #[error_meta(trait_to_impl = ErrorMetadata)]
       enum TestEnum {
-        #[error_meta(error_type = "Error1", status = 400, code = "error_1")]
+        #[error_meta(error_type = "Error1", code = "error_1")]
         Variant1 { field1: String, field2: i32 },
-        #[error_meta(error_type = "Error2", status = 500)]
+        #[error_meta(error_type = "Error2")]
         Variant2(String, i32),
       }
     };
@@ -865,17 +775,6 @@ mod tests {
         <_ as AsRef<str>>::as_ref(&"StructError").to_string()
       }
 
-      #visibility fn status(&self) -> i32 {
-        <_ as Into<i32>>::into(422)
-      }
-
-      #visibility fn status_u16(&self) -> u16 {
-        match self.status() {
-          status if status <= u16::MAX as i32 => status as u16,
-          _ => panic!("Status code is out of range for u16"),
-        }
-      }
-
       #visibility fn code(&self) -> String {
         <_ as AsRef<str>>::as_ref(&"invalid_input").to_string()
       }
@@ -893,7 +792,7 @@ mod tests {
   fn test_impl_error_metadata_for_struct() {
     let input: DeriveInput = parse_quote! {
       #[derive(ErrorMeta)]
-      #[error_meta(error_type = "StructError", status = 422, code = "invalid_input")]
+      #[error_meta(error_type = "StructError", code = "invalid_input")]
       struct MyError {
         field1: String,
         field2: i32,
@@ -914,7 +813,7 @@ mod tests {
   fn test_impl_error_metadata_for_struct_with_trait_to_impl() {
     let input: DeriveInput = parse_quote! {
       #[derive(ErrorMeta)]
-      #[error_meta(trait_to_impl = ErrorMetadata, error_type = "StructError", status = 422, code = "invalid_input")]
+      #[error_meta(trait_to_impl = ErrorMetadata, error_type = "StructError", code = "invalid_input")]
       struct MyError {
         field1: String,
         field2: i32,
@@ -934,7 +833,7 @@ mod tests {
   fn test_impl_error_metadata_for_struct_with_default_code() {
     let input: DeriveInput = parse_quote! {
       #[derive(ErrorMeta)]
-      #[error_meta(error_type = "AnotherError", status = 500)]
+      #[error_meta(error_type = "AnotherError")]
       struct AnotherError {
         message: String,
       }
@@ -945,17 +844,6 @@ mod tests {
       impl AnotherError {
         pub fn error_type(&self) -> String {
           <_ as AsRef<str>>::as_ref(&"AnotherError").to_string()
-        }
-
-        pub fn status(&self) -> i32 {
-          <_ as Into<i32>>::into(500)
-        }
-
-        pub fn status_u16(&self) -> u16 {
-          match self.status() {
-            status if status <= u16::MAX as i32 => status as u16,
-            _ => panic!("Status code is out of range for u16"),
-          }
         }
 
         pub fn code(&self) -> String {
@@ -1033,7 +921,7 @@ mod tests {
       #[derive(ErrorMeta)]
       enum TestEnum {
         #[error(transparent)]
-        #[error_meta(error_type = "Error1", status = 400, code = self.generate_code())]
+        #[error_meta(error_type = "Error1", code = self.generate_code())]
         Variant1(std::io::Error)
       }
     };
@@ -1044,19 +932,6 @@ mod tests {
         pub fn error_type(&self) -> String {
           match self {
             TestEnum::Variant1(..) => <_ as AsRef<str>>::as_ref(&"Error1").to_string(),
-          }
-        }
-
-        pub fn status(&self) -> i32 {
-          match self {
-            TestEnum::Variant1(..) => <_ as Into<i32>>::into(400),
-          }
-        }
-
-        pub fn status_u16(&self) -> u16 {
-          match self.status() {
-            status if status <= u16::MAX as i32 => status as u16,
-            _ => panic!("Status code is out of range for u16"),
           }
         }
 
