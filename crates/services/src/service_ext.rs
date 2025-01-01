@@ -105,14 +105,14 @@ mod tests {
 
     service.set_app_reg_info(&app_reg_info)?;
     let retrieved_info = service.app_reg_info()?.expect("Should have app reg info");
-    assert_eq!(retrieved_info, app_reg_info);
+    assert_eq!(app_reg_info, retrieved_info);
 
     let initial_status = service.app_status()?;
-    assert_eq!(initial_status, AppStatus::default());
+    assert_eq!(AppStatus::default(), initial_status);
 
     let new_status = AppStatus::Setup;
     service.set_app_status(&new_status)?;
-    assert_eq!(service.app_status()?, new_status);
+    assert_eq!(new_status, service.app_status()?);
 
     Ok(())
   }

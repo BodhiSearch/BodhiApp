@@ -73,5 +73,5 @@ enum TestArgsDelegateFalse {
   ("error".to_string(), "inner error dup".to_string()),
 ]))]
 fn test_args_delegate(#[case] error: TestArgsDelegate, #[case] args: HashMap<String, String>) {
-  assert_eq!(error.args(), args);
+  assert_eq!(args, error.args());
 }

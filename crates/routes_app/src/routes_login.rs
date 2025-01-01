@@ -349,13 +349,13 @@ mod tests {
 
     let url = Url::parse(location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-    assert_eq!(query_params.get("response_type").unwrap(), "code");
-    assert_eq!(query_params.get("client_id").unwrap(), "test_client_id");
-    assert_eq!(query_params.get("redirect_uri").unwrap(), callback_url);
+    assert_eq!("code", query_params.get("response_type").unwrap());
+    assert_eq!("test_client_id", query_params.get("client_id").unwrap());
+    assert_eq!(callback_url, query_params.get("redirect_uri").unwrap());
     assert!(query_params.contains_key("state"));
     assert!(query_params.contains_key("code_challenge"));
-    assert_eq!(query_params.get("code_challenge_method").unwrap(), "S256");
-    assert_eq!(query_params.get("scope").unwrap(), "openid email profile");
+    assert_eq!("S256", query_params.get("code_challenge_method").unwrap());
+    assert_eq!("openid email profile", query_params.get("scope").unwrap());
 
     Ok(())
   }
@@ -455,8 +455,8 @@ mod tests {
   #[rstest]
   fn test_generate_pkce() {
     let (generated_verifier, challenge) = generate_pkce();
-    assert_eq!(generated_verifier.len(), 43);
-    assert_eq!(challenge.len(), 43);
+    assert_eq!(43, generated_verifier.len());
+    assert_eq!(43, challenge.len());
   }
 
   #[rstest]
@@ -535,8 +535,8 @@ mod tests {
     let resp = client.get(&format!("/login/callback?{}", query)).await;
     resp.assert_status(StatusCode::FOUND);
     assert_eq!(
+      "http://frontend.localhost:3000/ui/home",
       resp.headers().get(LOCATION).unwrap(),
-      "http://frontend.localhost:3000/ui/home"
     );
     let session_id = resp.cookie("bodhiapp_session_id");
     let access_token = session_service
@@ -544,13 +544,13 @@ mod tests {
       .await
       .unwrap();
     let access_token = access_token.as_str().unwrap();
-    assert_eq!(access_token, token);
+    assert_eq!(token, access_token);
     let refresh_token = session_service
       .get_session_value(session_id.value(), "refresh_token")
       .await
       .unwrap();
     let refresh_token = refresh_token.as_str().unwrap();
-    assert_eq!(refresh_token, "test_refresh_token");
+    assert_eq!("test_refresh_token", refresh_token);
     Ok(())
   }
 
@@ -580,17 +580,17 @@ mod tests {
     let resp = router
       .oneshot(Request::get("/login/callback?code=test_code&state=test_state").body(Body::empty())?)
       .await?;
-    assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
     let json = resp.json::<Value>().await?;
     assert_eq!(
-      json,
       json! {{
         "error": {
           "message": "login info not found in session, are cookies enabled?",
           "code": "login_error-session_info_not_found",
           "type": "internal_server_error"
         }
-      }}
+      }},
+      json
     );
     Ok(())
   }
@@ -657,14 +657,14 @@ mod tests {
     let expected_message =
       "invalid request, reason: \u{2068}".to_string() + expected_error + "\u{2069}";
     assert_eq!(
-      error,
       json! {{
         "error": {
           "message": expected_message,
           "code": "bad_request_error",
           "type": "invalid_request_error"
-        }}
-      }
+        }
+      }},
+      error
     );
     Ok(())
   }
@@ -731,14 +731,14 @@ mod tests {
     resp.assert_status(StatusCode::INTERNAL_SERVER_ERROR);
     let error = resp.json::<Value>();
     assert_eq!(
-      error,
       json! {{
         "error": {
           "message": "error from auth service: \u{2068}network error\u{2069}",
           "code": "auth_service_error-auth_service_api_error",
           "type": "internal_server_error"
         }
-      }}
+      }},
+      error
     );
     Ok(())
   }
@@ -816,7 +816,7 @@ mod tests {
       )
       .await
       .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, response.status());
     let response_json = response.json::<Value>().await.unwrap();
     assert_eq!(
       "testuser@email.com",
@@ -845,7 +845,7 @@ mod tests {
       )
       .await
       .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(StatusCode::OK, response.status());
     let response_json = response.json::<UserInfo>().await?;
     assert_eq!(
       UserInfo {
@@ -879,17 +879,17 @@ mod tests {
       )
       .await
       .unwrap();
-    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "message": "authentication token is invalid",
           "code": "json_web_token_error-InvalidToken",
           "type": "authentication_error"
         }
-      }}
+      }},
+      response
     );
     Ok(())
   }
@@ -1070,10 +1070,10 @@ mod tests {
     response: Response,
     app_service: Arc<AppServiceStub>,
   ) -> anyhow::Result<()> {
-    assert_eq!(response.status(), StatusCode::FOUND);
+    assert_eq!(StatusCode::FOUND, response.status());
     assert_eq!(
+      "http://frontend.localhost:3000/ui/home",
       response.headers().get("Location").unwrap(),
-      "http://frontend.localhost:3000/ui/home"
     );
     let secret_service = app_service.secret_service();
     let updated_status = secret_service.app_status().unwrap();

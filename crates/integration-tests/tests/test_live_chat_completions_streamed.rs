@@ -42,7 +42,7 @@ async fn test_live_chat_completions_stream(
     }))
     .send()
     .await?;
-  assert_eq!(response.status(), StatusCode::OK);
+  assert_eq!(StatusCode::OK, response.status());
   let response = response.text().await?;
   let streams = response
     .lines()

@@ -62,8 +62,8 @@ mod tests {
     let request = Request::builder().uri("/sse").body(Body::empty())?;
     let response = app.oneshot(request).await?;
 
-    assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(response.headers()["content-type"], "text/event-stream");
+    assert_eq!(StatusCode::OK, response.status());
+    assert_eq!("text/event-stream", response.headers()["content-type"]);
     let response = response.direct_sse().await?;
     assert_eq!(6, response.len());
     assert_eq!(

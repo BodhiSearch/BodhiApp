@@ -309,14 +309,14 @@ mod test {
     assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
     let response = response.json::<Value>().await?;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "message": "no rows returned by a query that expected to return at least one row",
           "code": "sqlx_error",
           "type": "internal_server_error"
         }
-      }}
+      }},
+      response
     );
     Ok(())
   }

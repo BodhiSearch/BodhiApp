@@ -1,3 +1,4 @@
+use axum::http::StatusCode;
 use llama_server_proc::{
   LlamaServer, LlamaServerArgsBuilder, Result, Server, BUILD_TARGET, DEFAULT_VARIANT, EXEC_NAME,
 };
@@ -92,7 +93,7 @@ async fn test_server_proc_chat_completions(
   #[case] expected_content: &str,
 ) -> Result<()> {
   let response = server.chat_completions(&request_body).await?;
-  assert_eq!(200, response.status());
+  assert_eq!(StatusCode::OK, response.status());
   let response_body = response.json::<Value>().await.unwrap();
 
   assert_eq!(

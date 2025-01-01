@@ -278,14 +278,14 @@ mod tests {
     assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     let response = parse::<Value>(response).await;
     assert_eq!(
-      response,
       json! {{
         "error": {
           "message": "failed to parse the request body as JSON, error: \u{2068}Expected request with `Content-Type: application/json`\u{2069}",
           "type": "invalid_request_error",
           "code": "json_rejection_error"
         }
-      }}
+      }},
+      response
     );
   }
 }

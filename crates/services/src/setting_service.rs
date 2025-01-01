@@ -200,8 +200,8 @@ mod tests {
       .return_const(Err(std::env::VarError::NotPresent));
     let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
     assert_eq!(
+      Some("file_value".to_string()),
       service.get_setting("TEST_KEY"),
-      Some("file_value".to_string())
     );
     Ok(())
   }
@@ -217,8 +217,8 @@ mod tests {
       .return_const(Ok("env_value".to_string()));
     let service = DefaultSettingService::new(Arc::new(mock_env), path);
     assert_eq!(
-      service.get_setting("TEST_KEY"),
-      Some("env_value".to_string())
+      Some("env_value".to_string()),
+      service.get_setting("TEST_KEY")
     );
     Ok(())
   }
@@ -248,7 +248,7 @@ mod tests {
     };
 
     let retrieved: Option<TestConfig> = get_setting(&service, "TEST_CONFIG")?;
-    assert_eq!(retrieved, Some(test_config));
+    assert_eq!(Some(test_config), retrieved);
     Ok(())
   }
 
@@ -274,12 +274,12 @@ mod tests {
     {
       let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
       assert_eq!(
+        Some("test_value".to_string()),
         service.get_setting("TEST_KEY"),
-        Some("test_value".to_string())
       );
     }
     let contents = std::fs::read_to_string(path)?;
-    assert_eq!(contents, "TEST_KEY: test_value\n");
+    assert_eq!("TEST_KEY: test_value\n", contents);
     Ok(())
   }
 
@@ -297,12 +297,12 @@ mod tests {
 
     service.set_setting("TEST_KEY", "test_value")?;
     assert_eq!(
-      service.get_setting("TEST_KEY"),
-      Some("test_value".to_string())
+      Some("test_value".to_string()),
+      service.get_setting("TEST_KEY")
     );
 
     service.delete_setting("TEST_KEY")?;
-    assert_eq!(service.get_setting("TEST_KEY"), None);
+    assert_eq!(None, service.get_setting("TEST_KEY"));
     let contents = std::fs::read_to_string(path)?;
     assert_eq!("{}\n", contents);
 
@@ -332,14 +332,14 @@ mod tests {
 
     // Verify it exists
     let retrieved: Option<TestConfig> = get_setting(&service, "TEST_CONFIG").unwrap();
-    assert_eq!(retrieved, Some(test_config));
+    assert_eq!(Some(test_config), retrieved);
 
     // Delete it
     service.delete_setting("TEST_CONFIG").unwrap();
 
     // Verify it's gone
     let deleted: Option<TestConfig> = get_setting(&service, "TEST_CONFIG").unwrap();
-    assert_eq!(deleted, None);
+    assert_eq!(None, deleted);
     Ok(())
   }
 }

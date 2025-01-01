@@ -301,7 +301,7 @@ mod tests {
     let setting_service: Arc<dyn SettingService> = Arc::new(mock);
     let result = InitService::setup_hf_home(&setting_service)?;
 
-    assert_eq!(result, expected_hf_home);
+    assert_eq!(expected_hf_home, result);
     assert!(expected_hf_home.join("hub").exists());
     Ok(())
   }
@@ -345,7 +345,7 @@ mod tests {
     let setting_service: Arc<dyn SettingService> = Arc::new(mock);
     let result = InitService::setup_logs_dir(&setting_service, &bodhi_home)?;
 
-    assert_eq!(result, expected_logs_dir);
+    assert_eq!(expected_logs_dir, result);
     assert!(expected_logs_dir.exists());
     Ok(())
   }

@@ -586,7 +586,7 @@ mod tests {
     false
   )]
   fn test_is_transparent(#[case] variant: Variant, #[case] expected: bool) {
-    assert_eq!(is_transparent(&variant), expected);
+    assert_eq!(expected, is_transparent(&variant));
   }
 
   #[rstest]
@@ -632,7 +632,7 @@ mod tests {
   )]
   fn test_parse_error_meta(#[case] attr: Attribute, #[case] expected: Option<EnumMetaAttrs>) {
     let error_meta = parse_enum_meta_attrs(&[attr]);
-    assert_eq!(error_meta, expected);
+    assert_eq!(expected, error_meta);
   }
 
   #[rstest]
@@ -681,7 +681,7 @@ mod tests {
     #[case] expected: Option<StructMetaAttrs>,
   ) {
     let error_meta = parse_struct_meta_attrs(&[attr]);
-    assert_eq!(error_meta, expected);
+    assert_eq!(expected, error_meta);
   }
 
   #[rstest]
@@ -723,7 +723,7 @@ mod tests {
     };
 
     let generated = generate_attribute_method(&name, &variants, method);
-    assert_eq!(generated.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), generated.to_string());
   }
 
   #[rstest]
@@ -739,7 +739,6 @@ mod tests {
     let name = &input.ident;
     let args_method = generate_args_method(name, &input.data);
     assert_eq!(
-      args_method.to_string(),
       quote! {
         match self {
           TestEnum::Variant1 { field1, field2 } => {
@@ -757,7 +756,8 @@ mod tests {
           TestEnum::Variant3 => ::std::collections::HashMap::new(),
         }
       }
-      .to_string()
+      .to_string(),
+      args_method.to_string(),
     );
   }
 
@@ -825,13 +825,13 @@ mod tests {
     let output = impl_error_metadata(&input);
     let method_impls = enum_method_impls(quote! { pub });
     assert_eq!(
-      output.to_string(),
       quote! {
         impl TestEnum {
           #method_impls
         }
       }
-      .to_string()
+      .to_string(),
+      output.to_string(),
     );
   }
 
@@ -856,7 +856,7 @@ mod tests {
       }
     };
 
-    assert_eq!(output.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), output.to_string());
   }
 
   fn struct_method_impls(visibility: TokenStream2) -> TokenStream2 {
@@ -907,7 +907,7 @@ mod tests {
       }
     };
 
-    assert_eq!(output.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), output.to_string());
   }
 
   #[test]
@@ -927,7 +927,7 @@ mod tests {
         #method_impls
       }
     };
-    assert_eq!(output.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), output.to_string());
   }
 
   #[test]
@@ -970,7 +970,7 @@ mod tests {
       }
     };
 
-    assert_eq!(output.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), output.to_string());
   }
 
   #[test]
@@ -991,7 +991,7 @@ mod tests {
       map
     };
 
-    assert_eq!(args_method.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), args_method.to_string());
   }
 
   #[test]
@@ -1009,7 +1009,7 @@ mod tests {
       map
     };
 
-    assert_eq!(args_method.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), args_method.to_string());
   }
 
   #[test]
@@ -1024,7 +1024,7 @@ mod tests {
       ::std::collections::HashMap::new()
     };
 
-    assert_eq!(args_method.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), args_method.to_string());
   }
 
   #[rstest]
@@ -1073,7 +1073,7 @@ mod tests {
         }
       }
     };
-    assert_eq!(output.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), output.to_string());
   }
 
   #[test]
@@ -1109,7 +1109,7 @@ mod tests {
       }
     };
 
-    assert_eq!(args_method.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), args_method.to_string());
   }
 
   #[test]
@@ -1137,6 +1137,6 @@ mod tests {
       }
     };
 
-    assert_eq!(args_method.to_string(), expected.to_string());
+    assert_eq!(expected.to_string(), args_method.to_string());
   }
 }

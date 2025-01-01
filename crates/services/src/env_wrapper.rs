@@ -61,7 +61,7 @@ mod tests {
   fn test_var_from_env() {
     let wrapper = DefaultEnvWrapper::default();
     std::env::set_var("TEST_KEY", "test_value");
-    assert_eq!(wrapper.var("TEST_KEY").unwrap(), "test_value");
+    assert_eq!("test_value", wrapper.var("TEST_KEY").unwrap());
     std::env::remove_var("TEST_KEY");
   }
 
@@ -69,7 +69,7 @@ mod tests {
   fn test_var_from_wrapper() {
     let mut wrapper = DefaultEnvWrapper::default();
     wrapper.set_var("CUSTOM_KEY", "custom_value");
-    assert_eq!(wrapper.var("CUSTOM_KEY").unwrap(), "custom_value");
+    assert_eq!("custom_value", wrapper.var("CUSTOM_KEY").unwrap());
   }
 
   #[test]
@@ -93,7 +93,7 @@ mod tests {
     let mut temp_file = NamedTempFile::new().unwrap();
     writeln!(temp_file, "TEST_ENV_VAR=test_value").unwrap();
     wrapper.load(temp_file.path());
-    assert_eq!(std::env::var("TEST_ENV_VAR").unwrap(), "test_value");
+    assert_eq!("test_value", std::env::var("TEST_ENV_VAR").unwrap());
     std::env::remove_var("TEST_ENV_VAR");
   }
 
@@ -101,8 +101,8 @@ mod tests {
   fn test_set_var_overwrites() {
     let mut wrapper = DefaultEnvWrapper::default();
     wrapper.set_var("OVERWRITE_KEY", "first_value");
-    assert_eq!(wrapper.var("OVERWRITE_KEY").unwrap(), "first_value");
+    assert_eq!("first_value", wrapper.var("OVERWRITE_KEY").unwrap());
     wrapper.set_var("OVERWRITE_KEY", "second_value");
-    assert_eq!(wrapper.var("OVERWRITE_KEY").unwrap(), "second_value");
+    assert_eq!("second_value", wrapper.var("OVERWRITE_KEY").unwrap());
   }
 }

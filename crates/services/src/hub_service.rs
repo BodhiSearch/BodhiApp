@@ -639,10 +639,10 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         repo: actual_repo,
         kind,
       }) => {
-        assert_eq!(actual_error.to_string(), error);
-        assert_eq!(error_status, 401);
-        assert_eq!(actual_repo, repo);
-        assert_eq!(kind, HubApiErrorKind::MayBeNotExists);
+        assert_eq!(error, actual_error.to_string());
+        assert_eq!(401, error_status);
+        assert_eq!(repo, actual_repo);
+        assert_eq!(HubApiErrorKind::MayBeNotExists, kind);
       }
       _ => panic!("Expected HubServiceError::MayBeNotExists, got {}", err),
     }
@@ -687,10 +687,10 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         repo,
         kind,
       }) => {
-        assert_eq!(actual_error.to_string(), error);
-        assert_eq!(error_status, 403);
-        assert_eq!(repo.to_string(), "amir36/test-gated-repo".to_string());
-        assert_eq!(kind, HubApiErrorKind::GatedAccess);
+        assert_eq!(error, actual_error.to_string());
+        assert_eq!(403, error_status);
+        assert_eq!("amir36/test-gated-repo", repo.to_string());
+        assert_eq!(HubApiErrorKind::GatedAccess, kind);
       }
       _ => panic!("Expected HubServiceError::GatedAccess, got {}", err),
     }
@@ -733,10 +733,10 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         repo: actual_repo,
         kind,
       }) => {
-        assert_eq!(actual_error.to_string(), error);
-        assert_eq!(error_status, 404);
-        assert_eq!(actual_repo, "amir36/not-exists");
-        assert_eq!(kind, HubApiErrorKind::NotExists);
+        assert_eq!(error, actual_error.to_string());
+        assert_eq!(404, error_status);
+        assert_eq!("amir36/not-exists", actual_repo.to_string());
+        assert_eq!(HubApiErrorKind::NotExists, kind);
       }
       err => panic!("Expected HubServiceError::MayBeNotExists, got {}", err),
     }

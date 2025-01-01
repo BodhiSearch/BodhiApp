@@ -89,8 +89,8 @@ mod tests {
       .unwrap();
 
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "Test response");
+    assert_eq!(StatusCode::OK, res.status());
+    assert_eq!("Test response", res.text().await.unwrap());
 
     // response handled by proxy backend
     let res = app
@@ -103,8 +103,8 @@ mod tests {
       )
       .await
       .unwrap();
-    assert_eq!(res.status(), StatusCode::OK);
-    assert_eq!(res.text().await.unwrap(), "Proxied response");
+    assert_eq!(StatusCode::OK, res.status());
+    assert_eq!("Proxied response", res.text().await.unwrap());
 
     // response not handled by proxy backend
     let req = Request::builder()
@@ -112,7 +112,7 @@ mod tests {
       .body(Body::empty())
       .unwrap();
     let res = app.oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::NOT_FOUND);
+    assert_eq!(StatusCode::NOT_FOUND, res.status());
 
     shutdown_tx.send(()).unwrap();
     Ok(())

@@ -88,7 +88,7 @@ mod test {
     assert!(result.is_err());
     match result.unwrap_err() {
       RunCommandError::RemoteModelNotFound(RemoteModelNotFoundError { alias }) => {
-        assert_eq!(alias, "testalias:notexists");
+        assert_eq!("testalias:notexists", alias);
       }
       err => panic!("expecting RemoteModelNotFoundError, found {}", err),
     }

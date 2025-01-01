@@ -577,14 +577,14 @@ mod tests {
     let value: Value = response.json_obj().await?;
     assert_eq!(StatusCode::UNAUTHORIZED, status);
     assert_eq!(
-      value,
       json! {{
         "error": {
           "message": "the algorithm in the token does not match the expected algorithm, expected: \u{2068}HS256\u{2069}, found: \u{2068}RS256\u{2069}",
           "type": "authentication_error",
           "code": "auth_error-alg_mismatch"
         }
-      }}
+      }},
+      value
     );
 
     assert_optional_auth_passthrough(&router).await?;
@@ -622,14 +622,14 @@ mod tests {
     let value: Value = response.json_obj().await?;
     assert_eq!(StatusCode::UNAUTHORIZED, status);
     assert_eq!(
-      value,
       json! {{
         "error": {
           "message": "the secure key id in the token does not match the expected key id, expected: \u{2068}other-kid\u{2069}, found: \u{2068}test-kid\u{2069}",
           "type": "authentication_error",
           "code": "auth_error-kid_mismatch"
         }
-      }}
+      }},
+      value
     );
     assert_optional_auth_passthrough(&router).await?;
     Ok(())
@@ -660,14 +660,14 @@ mod tests {
     assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
     let actual: Value = response.json_obj().await?;
     assert_eq!(
-      actual,
       json! {{
         "error": {
           "message": "app registration info is missing, not found in secure storage",
           "type": "authentication_error",
           "code": "auth_error-app_reg_info_missing"
         }
-      }}
+      }},
+      actual
     );
     assert_optional_auth_passthrough(&router).await?;
     Ok(())
@@ -708,14 +708,14 @@ mod tests {
     let value: Value = response.json_obj().await?;
     assert_eq!(StatusCode::UNAUTHORIZED, status);
     assert_eq!(
-      value,
       json! {{
         "error": {
           "message": "authentication token issuer is invalid",
           "type": "authentication_error",
           "code": "json_web_token_error-InvalidIssuer"
         }
-      }}
+      }},
+      value
     );
     assert_optional_auth_passthrough(&router).await?;
     Ok(())
@@ -1054,14 +1054,14 @@ mod tests {
     assert_eq!(StatusCode::UNAUTHORIZED, response.status());
     let actual: Value = response.json().await?;
     assert_eq!(
-      actual,
       json! {{
         "error": {
           "message": "error connecting to internal service: \u{2068}Failed to refresh token\u{2069}",
           "type": "authentication_error",
           "code": "reqwest_error"
         }
-      }}
+      }},
+      actual
     );
     // Verify that the session was not updated
     let updated_record = session_service.session_store.load(&id).await?.unwrap();
