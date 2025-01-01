@@ -42,4 +42,7 @@ ci.setup-vercel-ai:
 ci.app-pnpm:
 	pwsh -Command "Push-Location crates/bodhi; pnpm install; Pop-Location"
 
-.PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.app-pnpm
+ci.ui:
+	pwsh -Command "Push-Location crates/bodhi; pnpm run test run --coverage; Pop-Location"
+
+.PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.app-pnpm ci.ui

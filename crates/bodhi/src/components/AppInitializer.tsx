@@ -2,7 +2,7 @@
 
 import { useAppInfo, useUser } from '@/hooks/useQuery';
 import { useRouter } from 'next/navigation';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import { ApiError } from '@/types/models';
@@ -31,6 +31,31 @@ export default function AppInitializer({
   } = authenticated // eslint-disable-next-line react-hooks/rules-of-hooks
     ? useUser()
     : { data: { logged_in: false }, error: null, isLoading: false };
+
+  useEffect(() => {
+    if (!appLoading && appInfo) {
+      const { status } = appInfo;
+      if (!allowedStatus || status !== allowedStatus) {
+        switch (status) {
+          case 'setup':
+            router.push('/ui/setup');
+            break;
+          case 'ready':
+            router.push('/ui/home');
+            break;
+          case 'resource-admin':
+            router.push('/ui/setup/resource-admin');
+            break;
+        }
+      }
+    }
+  }, [appInfo, appLoading, allowedStatus, router]);
+
+  useEffect(() => {
+    if (authenticated && !userLoading && !userInfo?.logged_in) {
+      router.push('/ui/login');
+    }
+  }, [authenticated, userInfo, userLoading, router]);
 
   if (appLoading || (authenticated && userLoading)) {
     return (
@@ -63,33 +88,35 @@ export default function AppInitializer({
     );
   }
 
-  if (appInfo) {
-    const { status } = appInfo;
-    if (!allowedStatus || status !== allowedStatus) {
-      switch (status) {
-        case 'setup':
-          router.push('/ui/setup');
-          return null;
-        case 'ready':
-          router.push('/ui/home');
-          return null;
-        case 'resource-admin':
-          router.push('/ui/setup/resource-admin');
-          return null;
-        default:
-          return (
-            <Alert variant="destructive">
-              <h2>Error</h2>
-              <p>{`unexpected status from /app/info endpoint - '${status}'`}</p>
-            </Alert>
-          );
-      }
+  if (appInfo?.status) {
+    if (!['setup', 'ready', 'resource-admin'].includes(appInfo.status)) {
+      return (
+        <Alert variant="destructive">
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>
+            {`unexpected status from /app/info endpoint - '${appInfo.status}'`}
+          </AlertDescription>
+        </Alert>
+      );
+    }
+
+    if (!allowedStatus || appInfo.status !== allowedStatus) {
+      return (
+        <div className="flex flex-col items-center justify-center">
+          <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
+          <p className="mt-4 text-gray-600">Redirecting...</p>
+        </div>
+      );
     }
   }
 
   if (authenticated && !userInfo?.logged_in) {
-    router.push('/ui/login');
-    return null;
+    return (
+      <div className="flex flex-col items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
+        <p className="mt-4 text-gray-600">Redirecting to login...</p>
+      </div>
+    );
   }
 
   return <>{children}</>;
