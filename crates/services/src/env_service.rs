@@ -26,6 +26,7 @@ pub static BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
 pub static HF_HOME: &str = "HF_HOME";
 pub static BODHI_LOGS: &str = "BODHI_LOGS";
 pub static BODHI_LOG_LEVEL: &str = "BODHI_LOG_LEVEL";
+pub static BODHI_LOG_STDOUT: &str = "BODHI_LOG_STDOUT";
 pub static BODHI_SCHEME: &str = "BODHI_SCHEME";
 pub static BODHI_HOST: &str = "BODHI_HOST";
 pub static BODHI_PORT: &str = "BODHI_PORT";
@@ -39,6 +40,7 @@ pub static SETTINGS_YAML: &str = "settings.yaml";
 pub static SETTING_VARS: &[&str] = &[
   BODHI_LOGS,
   BODHI_LOG_LEVEL,
+  BODHI_LOG_STDOUT,
   HF_HOME,
   BODHI_SCHEME,
   BODHI_HOST,
@@ -124,6 +126,8 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
   fn exec_path(&self) -> String;
 
   fn set_setting(&self, key: &str, value: &str) -> Result<(), EnvServiceError>;
+
+  fn get_setting(&self, key: &str) -> Option<String>;
 
   fn list(&self) -> HashMap<String, String>;
 
@@ -321,6 +325,13 @@ impl EnvService for DefaultEnvService {
     }
     self.setting_service.set_setting(key, value)?;
     Ok(())
+  }
+
+  fn get_setting(&self, key: &str) -> Option<String> {
+    if !SETTING_VARS.contains(&key) {
+      return None;
+    }
+    self.setting_service.get_setting(key)
   }
 
   fn list(&self) -> HashMap<String, String> {

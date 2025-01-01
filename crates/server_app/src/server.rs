@@ -75,7 +75,6 @@ impl Server {
     } = self;
     let addr = format!("{}:{}", host, port);
     let listener = TcpListener::bind(&addr).await?;
-    tracing::info!(addr = addr, "server started");
     let axum_server = axum::serve(listener, app).with_graceful_shutdown(async move {
       match shutdown_rx.await {
         Ok(()) => {
