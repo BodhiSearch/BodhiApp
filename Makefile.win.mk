@@ -45,4 +45,4 @@ ci.app-pnpm:
 ci.ui:
 	pwsh -Command "Push-Location crates/bodhi; pnpm run test run --coverage; Pop-Location"
 
-.PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.app-pnpm ci.ui
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.app-pnpm ci.ui

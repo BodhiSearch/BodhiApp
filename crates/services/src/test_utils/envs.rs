@@ -160,6 +160,10 @@ impl EnvService for EnvServiceStub {
   fn encryption_key(&self) -> Option<String> {
     None
   }
+
+  fn get_setting(&self, key: &str) -> Option<String> {
+    None
+  }
 }
 
 #[derive(Debug)]
