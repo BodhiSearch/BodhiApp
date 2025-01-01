@@ -1,4 +1,6 @@
-use crate::{is_default, to_safe_filename, ChatTemplateType, GptContextParams, OAIRequestParams, Repo};
+use crate::{
+  is_default, to_safe_filename, ChatTemplateType, GptContextParams, OAIRequestParams, Repo,
+};
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
@@ -55,7 +57,7 @@ impl std::fmt::Display for Alias {
 #[cfg(test)]
 mod test {
   use crate::{
-    Alias, AliasBuilder, ChatTemplateType, ChatTemplateId, GptContextParamsBuilder,
+    Alias, AliasBuilder, ChatTemplateId, ChatTemplateType, GptContextParamsBuilder,
     OAIRequestParamsBuilder, Repo,
   };
   use rstest::rstest;

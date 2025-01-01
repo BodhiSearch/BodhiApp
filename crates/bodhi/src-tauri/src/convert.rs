@@ -162,7 +162,9 @@ mod tests {
   use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
   use objs::test_utils::{assert_error_message, setup_l10n};
   use objs::FluentLocalizationService;
-  use objs::{AppError, ChatTemplateType, ChatTemplateId, GptContextParams, OAIRequestParams, Repo};
+  use objs::{
+    AppError, ChatTemplateId, ChatTemplateType, GptContextParams, OAIRequestParams, Repo,
+  };
   use rstest::rstest;
   use server_app::ServeCommand;
   use std::sync::Arc;
