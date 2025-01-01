@@ -320,9 +320,11 @@ mod tests {
       -9223372036854775808,
       md.get("test_int64").unwrap().as_i64()?
     );
-    assert!((md.get("test_float32").unwrap().as_f32()? - 3.14159).abs() < f32::EPSILON);
-    assert!((md.get("test_float64").unwrap().as_f64()? - 2.718281828459045).abs() < f64::EPSILON);
-    assert_eq!(true, md.get("test_bool").unwrap().as_bool()?);
+    let expected_pi = 3.14159;
+    let expected_e = 2.718281828459045;
+    assert!((md.get("test_float32").unwrap().as_f32()? - expected_pi).abs() < f32::EPSILON);
+    assert!((md.get("test_float64").unwrap().as_f64()? - expected_e).abs() < f64::EPSILON);
+    assert!(md.get("test_bool").unwrap().as_bool()?);
     assert_eq!("Hello GGUF!", md.get("test_string").unwrap().as_str()?);
 
     // Test arrays
@@ -387,16 +389,13 @@ mod tests {
     }
 
     // Token settings
-    assert_eq!(
-      true,
+    assert!(
       md.get("tokenizer.ggml.add_bos_token").unwrap().as_bool()?
     );
-    assert_eq!(
-      true,
+    assert!(
       md.get("tokenizer.ggml.add_eos_token").unwrap().as_bool()?
     );
-    assert_eq!(
-      true,
+    assert!(
       md.get("tokenizer.ggml.add_space_prefix")
         .unwrap()
         .as_bool()?
@@ -404,8 +403,7 @@ mod tests {
 
     // Tokenizer settings
     assert_eq!("llama", md.get("tokenizer.ggml.model").unwrap().as_str()?);
-    assert_eq!(
-      true,
+    assert!(
       md.get("tokenizer.ggml.remove_extra_whitespaces")
         .unwrap()
         .as_bool()?

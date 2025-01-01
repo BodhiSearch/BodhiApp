@@ -9,8 +9,7 @@ pub fn exec_py_script(cwd: &str, script: &str) {
     .expect("Failed to execute Python script");
 
   if !output.status.success() {
-    assert!(
-      false,
+    panic!(
       "Python script {}/{} failed with status: {}, stderr: {}",
       cwd,
       script,

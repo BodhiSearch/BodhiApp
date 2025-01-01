@@ -25,7 +25,7 @@ impl SecretServiceStub {
   }
 
   pub fn with_app_status(self, status: &AppStatus) -> Self {
-    self.set_app_status(&status).unwrap();
+    self.set_app_status(status).unwrap();
     self
   }
 
