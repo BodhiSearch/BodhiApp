@@ -4,39 +4,39 @@ use crate::{impl_error_from, AppError, ErrorType, IoError};
 #[error_meta(trait_to_impl = AppError)]
 pub enum GGUFMetadataError {
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   FileOpenError(#[from] IoError),
 
   #[error("invalid_magic")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidMagic(u32),
 
   #[error("malformed_version")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   MalformedVersion(u32),
 
   #[error("unexpected_eof")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   UnexpectedEOF,
 
   #[error("invalid_string")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   InvalidString(#[from] std::string::FromUtf8Error),
 
   #[error("unsupported_version")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   UnsupportedVersion(u32),
 
   #[error("invalid_value_type")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidValueType(u32),
 
   #[error("invalid_array_value_type")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   InvalidArrayValueType(u32),
 
   #[error("type_mismatch")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   TypeMismatch { expected: String, actual: String },
 }
 

@@ -21,14 +21,14 @@ pub enum ContextError {
   #[error(transparent)]
   DataServiceError(#[from] DataServiceError),
   #[error("unreachable")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   Unreachable(String),
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
   ChatTemplate(#[from] ChatTemplateError),
   #[error("exec_not_exists")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   ExecNotExists(String),
 }
 

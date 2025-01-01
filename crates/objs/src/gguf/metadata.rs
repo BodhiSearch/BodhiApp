@@ -389,25 +389,19 @@ mod tests {
     }
 
     // Token settings
-    assert!(
-      md.get("tokenizer.ggml.add_bos_token").unwrap().as_bool()?
-    );
-    assert!(
-      md.get("tokenizer.ggml.add_eos_token").unwrap().as_bool()?
-    );
-    assert!(
-      md.get("tokenizer.ggml.add_space_prefix")
-        .unwrap()
-        .as_bool()?
-    );
+    assert!(md.get("tokenizer.ggml.add_bos_token").unwrap().as_bool()?);
+    assert!(md.get("tokenizer.ggml.add_eos_token").unwrap().as_bool()?);
+    assert!(md
+      .get("tokenizer.ggml.add_space_prefix")
+      .unwrap()
+      .as_bool()?);
 
     // Tokenizer settings
     assert_eq!("llama", md.get("tokenizer.ggml.model").unwrap().as_str()?);
-    assert!(
-      md.get("tokenizer.ggml.remove_extra_whitespaces")
-        .unwrap()
-        .as_bool()?
-    );
+    assert!(md
+      .get("tokenizer.ggml.remove_extra_whitespaces")
+      .unwrap()
+      .as_bool()?);
 
     Ok(())
   }

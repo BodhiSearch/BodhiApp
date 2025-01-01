@@ -1,6 +1,6 @@
-use crate::AppError;
 use axum::{extract::rejection::JsonRejection, http::StatusCode};
 use derive_builder::UninitializedFieldError;
+use std::{collections::HashMap, str::FromStr};
 use validator::{ValidationError, ValidationErrors};
 
 pub fn validation_errors(field: &'static str, error: ValidationError) -> ValidationErrors {
@@ -10,7 +10,7 @@ pub fn validation_errors(field: &'static str, error: ValidationError) -> Validat
 }
 
 // https://help.openai.com/en/articles/6897213-openai-library-error-types-guidance
-#[derive(Debug, strum::Display, strum::AsRefStr)]
+#[derive(Debug, strum::Display, strum::AsRefStr, strum::EnumString, Default)]
 #[strum(serialize_all = "snake_case")]
 pub enum ErrorType {
   #[strum(serialize = "validation_error")]
@@ -25,37 +25,73 @@ pub enum ErrorType {
   Authentication,
   #[strum(serialize = "not_found_error")]
   NotFound,
+  #[default]
+  #[strum(serialize = "unknown_error")]
+  Unknown,
+}
+
+impl ErrorType {
+  pub fn status(&self) -> u16 {
+    match self {
+      ErrorType::InternalServer => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+      ErrorType::Validation => StatusCode::BAD_REQUEST.as_u16(),
+      ErrorType::BadRequest => StatusCode::BAD_REQUEST.as_u16(),
+      ErrorType::InvalidAppState => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+      ErrorType::Authentication => StatusCode::UNAUTHORIZED.as_u16(),
+      ErrorType::NotFound => StatusCode::NOT_FOUND.as_u16(),
+      ErrorType::Unknown => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+    }
+  }
+}
+
+pub trait AppError: std::error::Error {
+  fn error_type(&self) -> String;
+
+  fn status(&self) -> u16 {
+    let error_type: Result<ErrorType, _> = FromStr::from_str(self.error_type().as_str());
+    error_type.unwrap_or_default().status()
+  }
+
+  fn code(&self) -> String;
+
+  fn args(&self) -> HashMap<String, String>;
+}
+
+impl<T: AppError + 'static> From<T> for Box<dyn AppError> {
+  fn from(error: T) -> Self {
+    Box::new(error)
+  }
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ObjValidationError {
   #[error("validation_errors")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   ValidationErrors(#[from] ValidationErrors),
 
   #[error("file_pattern_mismatch")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 400)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   FilePatternMismatch(String),
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("bad_request_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = 400)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct BadRequestError {
   reason: String,
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("internal_server_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct InternalServerError {
   reason: String,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("io_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct IoError {
   #[from]
   source: std::io::Error,
@@ -63,7 +99,7 @@ pub struct IoError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("io_with_path_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct IoWithPathError {
   #[source]
   source: std::io::Error,
@@ -72,7 +108,7 @@ pub struct IoWithPathError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("io_dir_create_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct IoDirCreateError {
   #[source]
   source: std::io::Error,
@@ -81,7 +117,7 @@ pub struct IoDirCreateError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("io_file_read_failed")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct IoFileReadError {
   #[source]
   source: std::io::Error,
@@ -90,7 +126,7 @@ pub struct IoFileReadError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("io_file_write_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct IoFileWriteError {
   #[source]
   source: std::io::Error,
@@ -99,7 +135,7 @@ pub struct IoFileWriteError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("io_file_delete_failed")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct IoFileDeleteError {
   #[source]
   source: std::io::Error,
@@ -108,7 +144,7 @@ pub struct IoFileDeleteError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("serde_json_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SerdeJsonError {
   #[from]
   source: serde_json::Error,
@@ -116,7 +152,7 @@ pub struct SerdeJsonError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("serde_json_with_path_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SerdeJsonWithPathError {
   #[source]
   source: serde_json::Error,
@@ -125,7 +161,7 @@ pub struct SerdeJsonWithPathError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("serde_yaml_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SerdeYamlError {
   #[from]
   source: serde_yaml::Error,
@@ -133,7 +169,7 @@ pub struct SerdeYamlError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("serde_yaml_with_path_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct SerdeYamlWithPathError {
   #[source]
   source: serde_yaml::Error,
@@ -144,7 +180,6 @@ pub struct SerdeYamlWithPathError {
 #[error("internal_network_error")]
 #[error_meta(trait_to_impl = AppError,
   error_type = ErrorType::InternalServer,
-  status = 500,
 )]
 pub struct ReqwestError {
   error: String,
@@ -163,9 +198,9 @@ impl From<reqwest::Error> for ReqwestError {
 #[error_meta(trait_to_impl = AppError)]
 #[non_exhaustive]
 pub enum BuilderError {
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   UninitializedField(&'static str),
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   ValidationError(String),
 }
 
@@ -183,7 +218,7 @@ impl From<String> for BuilderError {
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("json_rejection_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest, status = StatusCode::BAD_REQUEST.as_u16())]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct JsonRejectionError {
   #[from]
   source: JsonRejection,

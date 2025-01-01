@@ -8,10 +8,10 @@ use sha2::{Digest, Sha256};
 #[error_meta(trait_to_impl = AppError)]
 pub enum KeyringError {
   #[error("keyring_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   KeyringError(#[from] keyring::Error),
   #[error("decode_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   DecodeError(#[from] base64::DecodeError),
 }
 

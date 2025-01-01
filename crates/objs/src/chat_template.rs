@@ -235,7 +235,7 @@ where
 #[error_meta(trait_to_impl = AppError)]
 pub enum ChatTemplateError {
   #[error("unknown_file_extension")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   UnknownFileExtension(String),
   #[error(transparent)]
   GGUFMetadata(#[from] GGUFMetadataError),
@@ -246,10 +246,10 @@ pub enum ChatTemplateError {
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "chat_template_error-minijina_error", args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "chat_template_error-minijina_error", args_delegate = false)]
   Minijina(#[from] minijinja::Error),
   #[error("embed_chat_template_not_found")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   EmbedChatTemplateNotFound,
 }
 

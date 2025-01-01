@@ -9,7 +9,7 @@ use std::sync::Arc;
 #[error_meta(trait_to_impl = AppError)]
 pub enum HttpError {
   #[error("http_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, args_delegate = false)]
   Http(#[from] http::Error),
 }
 

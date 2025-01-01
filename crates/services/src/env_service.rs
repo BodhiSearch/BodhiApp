@@ -52,15 +52,15 @@ pub static SETTING_VARS: &[&str] = &[
 #[error_meta(trait_to_impl= AppError)]
 pub enum EnvServiceError {
   #[error("bodhi_home_not_exists")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   BodhiHomeNotExists(String),
   #[error("invalid_setting_key")]
-  #[error_meta(error_type = ErrorType::BadRequest, status = 400)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidSettingKey(String),
   #[error(transparent)]
   DirCreate(#[from] IoDirCreateError),
   #[error("settings_update_error")]
-  #[error_meta(error_type=ErrorType::InternalServer, status=500)]
+  #[error_meta(error_type=ErrorType::InternalServer)]
   SettingsUpdateError(String),
   #[error(transparent)]
   IoError(#[from] IoError),

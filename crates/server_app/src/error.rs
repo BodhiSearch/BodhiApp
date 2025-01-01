@@ -3,7 +3,7 @@ use tokio::task::JoinError;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("task_join_error")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer, status = 500)]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::InternalServer)]
 pub struct TaskJoinError {
   #[from]
   source: JoinError,

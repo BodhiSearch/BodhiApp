@@ -29,7 +29,7 @@ type ServerHandleState = Arc<Mutex<Option<ServerShutdownHandle>>>;
 #[error_meta(trait_to_impl = AppError)]
 pub enum NativeError {
   #[error(transparent)]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500, code = "tauri",  args_delegate = false)]
+  #[error_meta(error_type = ErrorType::InternalServer, code = "tauri",  args_delegate = false)]
   Tauri(#[from] tauri::Error),
   #[error(transparent)]
   Serve(#[from] ServeError),

@@ -14,7 +14,7 @@ pub enum SettingServiceError {
   #[error(transparent)]
   SerdeYaml(#[from] SerdeYamlError),
   #[error("lock_error")]
-  #[error_meta(error_type = ErrorType::InternalServer, status = 500)]
+  #[error_meta(error_type = ErrorType::InternalServer)]
   LockError(String),
 }
 

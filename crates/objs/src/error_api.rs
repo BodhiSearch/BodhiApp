@@ -1,59 +1,10 @@
-use crate::{FluentLocalizationService, JsonRejectionError, LocalizationService};
-use axum::{
-  body::Body,
-  extract::rejection::JsonRejection,
-  response::{IntoResponse, Response},
-};
+use crate::{AppError, JsonRejectionError};
+use axum::extract::rejection::JsonRejection;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::{borrow::Borrow, str::FromStr};
 use unic_langid::LanguageIdentifier;
-
-#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
-pub struct ErrorBody {
-  pub message: String,
-  pub r#type: String,
-  pub code: Option<String>,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub param: Option<String>,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
-pub struct OpenAIApiError {
-  pub error: ErrorBody,
-  #[serde(skip)]
-  pub status: u16,
-}
-
-impl std::fmt::Display for OpenAIApiError {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(
-      f,
-      "status: {}, {}",
-      self.status,
-      serde_json::to_string(self).unwrap()
-    )
-  }
-}
-
-pub trait AppError: std::error::Error {
-  fn error_type(&self) -> String;
-
-  fn status(&self) -> i32;
-
-  fn status_u16(&self) -> u16;
-
-  fn code(&self) -> String;
-
-  fn args(&self) -> HashMap<String, String>;
-}
-
-impl<T: AppError + 'static> From<T> for Box<dyn AppError> {
-  fn from(error: T) -> Self {
-    Box::new(error)
-  }
-}
 
 #[derive(Debug, Serialize, Deserialize, thiserror::Error)]
 pub struct ApiError {
@@ -80,50 +31,6 @@ impl From<JsonRejection> for ApiError {
 // use the request locale
 pub static EN_US: Lazy<LanguageIdentifier> =
   Lazy::new(|| LanguageIdentifier::from_str("en-US").unwrap());
-const DEFAULT_ERR_MSG: &str = "something went wrong, try again later";
-
-impl From<ApiError> for OpenAIApiError {
-  fn from(value: ApiError) -> Self {
-    let ApiError {
-      error_type,
-      status,
-      code,
-      args,
-      ..
-    } = value;
-    let instance = FluentLocalizationService::get_instance();
-    let message = instance
-      .get_message(&EN_US, &code, Some(args))
-      .unwrap_or_else(|err| {
-        tracing::warn!(
-          "failed to get message: err: {}, code={}, args={:?}",
-          err,
-          err.code(),
-          err.args()
-        );
-        DEFAULT_ERR_MSG.to_string()
-      });
-    OpenAIApiError {
-      error: ErrorBody {
-        message,
-        r#type: error_type,
-        code: Some(code),
-        param: None,
-      },
-      status,
-    }
-  }
-}
-
-impl IntoResponse for ApiError {
-  fn into_response(self) -> Response {
-    let openai_error: OpenAIApiError = self.into();
-    Response::builder()
-      .status(openai_error.status)
-      .body(Body::from(serde_json::to_string(&openai_error).unwrap()))
-      .unwrap()
-  }
-}
 
 impl<T: AppError + 'static> From<T> for ApiError {
   fn from(value: T) -> Self {
@@ -131,7 +38,7 @@ impl<T: AppError + 'static> From<T> for ApiError {
     ApiError {
       name: value.to_string(),
       error_type: value.error_type(),
-      status: value.status_u16(),
+      status: value.status(),
       code: value.code(),
       args: value.args(),
     }
@@ -140,9 +47,11 @@ impl<T: AppError + 'static> From<T> for ApiError {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::{test_utils::setup_l10n, BadRequestError, InternalServerError};
-  use axum::{body::Body, extract::Path, http::Request, routing::get, Router};
+  use crate::{
+    test_utils::setup_l10n, ApiError, BadRequestError, FluentLocalizationService,
+    InternalServerError,
+  };
+  use axum::{body::Body, extract::Path, http::Request, response::Response, routing::get, Router};
   use http_body_util::BodyExt;
   use pretty_assertions::assert_eq;
   use rstest::rstest;
