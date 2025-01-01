@@ -115,7 +115,7 @@ impl HubService for OfflineHubService {
       .inner
       .local_file_exists(repo, filename, snapshot.clone())?
     {
-      assert!(false, "tried to download file in test");
+      panic!("tried to download file in test");
     }
     self.inner.download(repo, filename, snapshot)
   }

@@ -6,30 +6,23 @@ pub struct DbPool {}
 
 impl DbPool {
   pub async fn connect(url: &str) -> Result<SqlitePool, DbError> {
-    let pool = SqlitePool::connect(url).await?;
-    Ok(pool)
+    Ok(SqlitePool::connect(url).await?)
   }
 }
 
 #[cfg(test)]
 mod test {
-  use crate::db::{DbError, DbPool, SqlxError};
+  use crate::db::{DbError, DbPool};
+  use std::error::Error;
 
   #[tokio::test]
   async fn test_db_pool_raises_error() -> anyhow::Result<()> {
     let pool = DbPool::connect("sqlite:non-existing-db.sqlite").await;
-    assert!(pool.is_err());
-    match pool.unwrap_err() {
-      DbError::SqlxError(SqlxError { source }) => {
-        assert_eq!(
-          source.to_string(),
-          "error returned from database: (code: 14) unable to open database file"
-        );
-      }
-      err => {
-        panic!("expected DbError::SqlxError, found {:?}", err);
-      }
-    }
+    assert!(matches!(pool, Err(DbError::SqlxError(_))));
+    assert_eq!(
+      "error returned from database: (code: 14) unable to open database file",
+      pool.unwrap_err().source().unwrap().to_string()
+    );
     Ok(())
   }
 }

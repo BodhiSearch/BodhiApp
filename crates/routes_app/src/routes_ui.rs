@@ -186,7 +186,7 @@ mod test {
     let router = chats_router().with_state(Arc::new(router_state));
     let response = router
       .oneshot(
-        Request::get(&format!("/chats/{}", &convo.id))
+        Request::get(format!("/chats/{}", &convo.id))
           .body(Body::empty())
           .unwrap(),
       )
@@ -229,7 +229,7 @@ mod test {
     let response = router
       .clone()
       .oneshot(
-        Request::delete(&format!("/chats/{}", &convo.id))
+        Request::delete(format!("/chats/{}", &convo.id))
           .body(Body::empty())
           .unwrap(),
       )
@@ -301,7 +301,7 @@ mod test {
     let response = router
       .clone()
       .oneshot(
-        Request::get(&format!("/chats/{}", Uuid::new_v4()))
+        Request::get(format!("/chats/{}", Uuid::new_v4()))
           .body(Body::empty())
           .unwrap(),
       )
