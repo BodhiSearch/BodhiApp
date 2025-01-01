@@ -44,4 +44,4 @@ ci.app-pnpm:
 ci.ui:
 	cd crates/bodhi && pnpm run test run --coverage
 
-.PHONY: test format ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.ui
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.ui
