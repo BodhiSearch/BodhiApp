@@ -125,7 +125,7 @@ function ModelFilesContent() {
 
 export default function ModelFilesPage() {
   return (
-    <AppInitializer allowedStatus="ready" authenticated={true}>
+    <AppInitializer allowedStatus="ready" authenticated={false}>
       <ModelFilesContent />
     </AppInitializer>
   );

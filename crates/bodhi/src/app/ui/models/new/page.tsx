@@ -7,7 +7,7 @@ import AppInitializer from '@/components/AppInitializer';
 
 export default function CreateAliasPage() {
   return (
-    <AppInitializer allowedStatus="ready" authenticated={true}>
+    <AppInitializer allowedStatus="ready" authenticated={false}>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <AppHeader />
         <AliasForm isEditMode={false} />
