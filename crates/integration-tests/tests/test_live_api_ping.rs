@@ -24,6 +24,7 @@ async fn test_live_api_ping(
   let ping_endpoint = format!("http://{host}:{port}/ping");
   let client = Client::new();
   let response = client.get(ping_endpoint).send().await?;
+  handle.shutdown().await?;
   assert_eq!(StatusCode::OK, response.status());
   Ok(())
 }

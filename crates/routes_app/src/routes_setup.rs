@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt};
 use std::sync::Arc;
+use tracing::info;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -95,6 +96,7 @@ pub async fn setup_handler(
       status: AppStatus::ResourceAdmin,
     })
   } else {
+    info!("setting authz to false");
     secret_service.set_authz(false)?;
     secret_service.set_app_status(&AppStatus::Ready)?;
     Ok(SetupResponse {

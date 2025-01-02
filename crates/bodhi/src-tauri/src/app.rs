@@ -12,10 +12,7 @@ use clap::Parser;
 use commands::{Cli, Command, DefaultStdoutWriter, EnvCommand};
 use objs::FluentLocalizationService;
 use services::{
-  db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
-  hash_key, DefaultAppService, DefaultEnvService, DefaultSecretService, EnvService, HfHubService,
-  KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService, SqliteSessionService,
-  SystemKeyringStore,
+  db::{DbPool, DbService, DefaultTimeService, SqliteDbService}, hash_key, AppService, DefaultAppService, DefaultEnvService, DefaultSecretService, EnvService, HfHubService, KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService, SqliteSessionService, SystemKeyringStore
 };
 use std::{env, sync::Arc};
 use tokio::runtime::Builder;
@@ -92,7 +89,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
       // the app was launched executing the executable, launch the native app with system tray
       #[cfg(feature = "native")]
       native::NativeCommand::new(service.clone(), true)
-        .aexecute(Some(native::static_router()))
+        .aexecute(Some(crate::ui::router()))
         .await?;
     } else {
       Err(BodhiError::Unreachable(
@@ -114,7 +111,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
         if cfg!(feature = "native") {
           #[cfg(feature = "native")]
           native::NativeCommand::new(service, _ui)
-            .aexecute(Some(native::static_router()))
+            .aexecute(Some(crate::ui::router()))
             .await?;
         } else {
           Err(BodhiError::Unreachable(
@@ -128,7 +125,9 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
     }
     Command::Serve { host, port } => {
       let serve_command = build_serve_command(host, port)?;
-      serve_command.aexecute(service, None).await?;
+      serve_command
+        .aexecute(service, Some(crate::ui::router()))
+        .await?;
     }
     Command::List { remote, models } => {
       let list_command = build_list_command(remote, models)?;
@@ -157,6 +156,10 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
     | Command::Rm { .. }) => {
       let manage_alias_command = build_manage_alias_command(cmd)?;
       manage_alias_command.execute(service, &mut DefaultStdoutWriter::default())?;
+    }
+    #[cfg(debug_assertions)]
+    Command::Secrets {} => {
+      println!("{}", service.secret_service().dump()?);
     }
   }
   Ok(())

@@ -22,6 +22,7 @@ pub async fn dev_secrets_handler(
     "authz": secret_service.authz()?,
     "status": secret_service.app_status()?,
     "app_info": secret_service.app_reg_info()?,
+    "dump": secret_service.dump()?,
   }};
   Ok(
     Response::builder()

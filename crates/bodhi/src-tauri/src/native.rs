@@ -1,5 +1,3 @@
-use axum::Router;
-use include_dir::{include_dir, Dir};
 use objs::{AppError, ErrorType, LogLevel};
 use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
 use services::AppService;
@@ -9,14 +7,6 @@ use tauri::{
   tray::TrayIconBuilder,
   AppHandle, Manager, Window, WindowEvent,
 };
-use tower_serve_static::ServeDir;
-
-static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
-
-pub fn static_router() -> Router {
-  let static_service = ServeDir::new(&ASSETS).append_index_html_on_directories(true);
-  Router::new().fallback_service(static_service)
-}
 
 pub struct NativeCommand {
   service: Arc<dyn AppService>,
