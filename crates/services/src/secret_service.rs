@@ -1,4 +1,4 @@
-use crate::{asref_impl, CacheService, MokaCacheService};
+use crate::asref_impl;
 use aes_gcm::{
   aead::{Aead, KeyInit},
   Aes256Gcm, Key, Nonce,
@@ -10,8 +10,8 @@ use pbkdf2::pbkdf2_hmac;
 use rand::{rngs::OsRng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
+use std::path::Path;
 use std::{collections::HashMap, fs::OpenOptions, path::PathBuf};
-use std::{path::Path, sync::Arc};
 
 const SALT_SIZE: usize = 32;
 const NONCE_SIZE: usize = 12;
@@ -24,9 +24,24 @@ struct EncryptedData {
   data: String,
 }
 
-#[derive(Default, Serialize, Deserialize)]
-struct SecretsData {
+struct DecryptedData {
+  salt: Vec<u8>,
+  nonce: Vec<u8>,
   secrets: HashMap<String, String>,
+}
+
+impl Default for DecryptedData {
+  fn default() -> Self {
+    let mut salt = vec![0u8; SALT_SIZE];
+    let mut nonce = vec![0u8; NONCE_SIZE];
+    OsRng.fill_bytes(&mut salt);
+    OsRng.fill_bytes(&mut nonce);
+    Self {
+      salt,
+      nonce,
+      secrets: HashMap::new(),
+    }
+  }
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -74,6 +89,9 @@ pub trait SecretService: Send + Sync + std::fmt::Debug {
   fn get_secret_string(&self, key: &str) -> Result<Option<String>>;
 
   fn delete_secret(&self, key: &str) -> Result<()>;
+
+  #[cfg(debug_assertions)]
+  fn dump(&self) -> Result<String>;
 }
 
 asref_impl!(SecretService, DefaultSecretService);
@@ -82,26 +100,14 @@ asref_impl!(SecretService, DefaultSecretService);
 pub struct DefaultSecretService {
   encryption_key: Vec<u8>,
   secrets_path: PathBuf,
-  cache: Arc<dyn CacheService>,
 }
 
 impl DefaultSecretService {
-  pub fn new(encryption_key: Vec<u8>, secrets_path: &Path) -> Result<Self> {
-    let cache = Arc::new(MokaCacheService::default());
-    Self::new_internal(encryption_key, secrets_path, cache)
-  }
-
-  fn new_internal(
-    encryption_key: Vec<u8>,
-    secrets_path: &Path,
-    cache: Arc<dyn CacheService>,
-  ) -> Result<Self> {
+  pub fn new(encryption_key: impl AsRef<[u8]>, secrets_path: &Path) -> Result<Self> {
     let service = Self {
       secrets_path: secrets_path.to_path_buf(),
-      cache,
-      encryption_key,
+      encryption_key: encryption_key.as_ref().to_vec(),
     };
-
     service.validate()?;
     Ok(service)
   }
@@ -112,170 +118,135 @@ impl DefaultSecretService {
     Ok(key)
   }
 
-  fn read_secrets(&self, file: &std::fs::File) -> Result<SecretsData> {
-    if !self.secrets_path.exists()
-      || self.secrets_path.metadata().map(|m| m.len()).unwrap_or(0) == 0
-    {
-      return Ok(SecretsData::default());
+  fn read_secrets(&self) -> Result<DecryptedData> {
+    if !self.secrets_path.exists() {
+      return Ok(DecryptedData::default());
     }
 
-    let mut content = String::new();
-    use std::io::Read;
-    file.try_clone()?.read_to_string(&mut content)?;
+    let mut file = OpenOptions::new().read(true).open(&self.secrets_path)?;
+    file.lock_shared()?;
 
-    if content.trim().is_empty() {
-      return Ok(SecretsData::default());
-    }
+    let result = (|| {
+      let mut content = String::new();
+      use std::io::Read;
+      file.read_to_string(&mut content)?;
 
-    let encrypted: EncryptedData = serde_yaml::from_str(&content)?;
+      if content.trim().is_empty() {
+        return Ok(DecryptedData::default());
+      }
 
-    let salt = BASE64
-      .decode(&encrypted.salt)
-      .map_err(|_| SecretServiceError::InvalidFormat("Invalid salt format".into()))?;
-    let nonce = BASE64
-      .decode(&encrypted.nonce)
-      .map_err(|_| SecretServiceError::InvalidFormat("Invalid nonce format".into()))?;
-    let encrypted_data = BASE64
-      .decode(&encrypted.data)
-      .map_err(|_| SecretServiceError::InvalidFormat("Invalid data format".into()))?;
+      let encrypted: EncryptedData = serde_yaml::from_str(&content)?;
 
-    let key = self.derive_key(&salt)?;
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
-    let nonce = Nonce::from_slice(&nonce);
+      let salt = BASE64
+        .decode(&encrypted.salt)
+        .map_err(|_| SecretServiceError::InvalidFormat("Invalid salt format".into()))?;
+      let nonce = BASE64
+        .decode(&encrypted.nonce)
+        .map_err(|_| SecretServiceError::InvalidFormat("Invalid nonce format".into()))?;
+      let encrypted_data = BASE64
+        .decode(&encrypted.data)
+        .map_err(|_| SecretServiceError::InvalidFormat("Invalid data format".into()))?;
 
-    let decrypted_data = cipher
-      .decrypt(nonce, encrypted_data.as_ref())
-      .map_err(|_| SecretServiceError::DecryptionError("Failed to decrypt data".into()))?;
+      let key = self.derive_key(&salt)?;
+      let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
+      let nonce_slice = Nonce::from_slice(&nonce);
 
-    let json_str = String::from_utf8(decrypted_data)
-      .map_err(|_| SecretServiceError::DecryptionError("Invalid UTF-8 in decrypted data".into()))?;
+      let decrypted_data = cipher
+        .decrypt(nonce_slice, encrypted_data.as_ref())
+        .map_err(|_| SecretServiceError::DecryptionError("Failed to decrypt data".into()))?;
 
-    serde_yaml::from_str(&json_str).map_err(|e| SecretServiceError::InvalidFormat(e.to_string()))
+      let yaml_str = String::from_utf8(decrypted_data).map_err(|_| {
+        SecretServiceError::DecryptionError("Invalid UTF-8 in decrypted data".into())
+      })?;
+
+      let secrets: HashMap<String, String> = serde_yaml::from_str(&yaml_str)
+        .map_err(|e| SecretServiceError::InvalidFormat(e.to_string()))?;
+
+      Ok(DecryptedData {
+        salt,
+        nonce,
+        secrets,
+      })
+    })();
+
+    file.unlock()?;
+    result
   }
 
-  fn write_secrets(&self, data: &SecretsData, file: &std::fs::File) -> Result<()> {
-    let mut salt = vec![0u8; SALT_SIZE];
-    let mut nonce = vec![0u8; NONCE_SIZE];
-    OsRng.fill_bytes(&mut salt);
-    OsRng.fill_bytes(&mut nonce);
+  fn write_secrets(&self, data: &DecryptedData) -> Result<()> {
+    let file = OpenOptions::new()
+      .write(true)
+      .create(true)
+      .truncate(true)
+      .open(&self.secrets_path)?;
 
-    let key = self.derive_key(&salt)?;
-    let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
-    let nonce_slice = Nonce::from_slice(&nonce);
+    file.lock_exclusive()?;
 
-    let json_str =
-      serde_yaml::to_string(data).map_err(|e| SecretServiceError::SerdeYamlError(e.into()))?;
+    let result = (|| {
+      let key = self.derive_key(&data.salt)?;
+      let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&key));
+      let nonce_slice = Nonce::from_slice(&data.nonce);
 
-    let encrypted_data = cipher
-      .encrypt(nonce_slice, json_str.as_bytes())
-      .map_err(|_| SecretServiceError::EncryptionError("Failed to encrypt data".into()))?;
+      let yaml_str = serde_yaml::to_string(&data.secrets)
+        .map_err(|e| SecretServiceError::SerdeYamlError(e.into()))?;
 
-    let encrypted = EncryptedData {
-      salt: BASE64.encode(salt),
-      nonce: BASE64.encode(nonce),
-      data: BASE64.encode(encrypted_data),
-    };
+      let encrypted_data = cipher
+        .encrypt(nonce_slice, yaml_str.as_bytes())
+        .map_err(|_| SecretServiceError::EncryptionError("Failed to encrypt data".into()))?;
 
-    serde_yaml::to_writer(file, &encrypted)
-      .map_err(|e| SecretServiceError::SerdeYamlError(e.into()))
+      let encrypted = EncryptedData {
+        salt: BASE64.encode(&data.salt),
+        nonce: BASE64.encode(&data.nonce),
+        data: BASE64.encode(encrypted_data),
+      };
+
+      serde_yaml::to_writer(&file, &encrypted)
+        .map_err(|e| SecretServiceError::SerdeYamlError(e.into()))
+    })();
+
+    file.unlock()?;
+    result
   }
 
   fn validate(&self) -> Result<()> {
     if !self.secrets_path.exists() {
       return Ok(());
     }
-    let file = OpenOptions::new().read(true).open(&self.secrets_path)?;
-    self.read_secrets(&file)?;
+    self.read_secrets()?;
     Ok(())
   }
 }
 
 impl SecretService for DefaultSecretService {
   fn set_secret_string(&self, key: &str, value: &str) -> Result<()> {
-    let file = OpenOptions::new()
-      .read(true)
-      .write(true)
-      .create(true)
-      .truncate(true)
-      .open(&self.secrets_path)?;
-
-    file.lock_exclusive()?;
-
-    let result = (|| {
-      let mut data = self.read_secrets(&file)?;
-      data.secrets.insert(key.to_string(), value.to_string());
-      self.write_secrets(&data, &file)
-    })();
-
-    file.unlock()?;
-
-    // Update cache only if write was successful
-    if result.is_ok() {
-      self.cache.set(key, value);
-    }
-
-    result
+    let mut data = self.read_secrets()?;
+    data.secrets.insert(key.to_string(), value.to_string());
+    self.write_secrets(&data)
   }
 
   fn get_secret_string(&self, key: &str) -> Result<Option<String>> {
-    if !self.secrets_path.exists() {
-      return Ok(None);
-    }
-    // First check the cache
-    if let Some(cached_value) = self.cache.get(key) {
-      return Ok(Some(cached_value));
-    }
-
-    let file = OpenOptions::new().read(true).open(&self.secrets_path)?;
-
-    file.lock_shared()?;
-
-    let result = self
-      .read_secrets(&file)
-      .map(|data| data.secrets.get(key).cloned());
-
-    file.unlock()?;
-
-    // Update cache if value was found
-    if let Ok(Some(value)) = &result {
-      self.cache.set(key, value);
-    }
-
-    result
+    let data = self.read_secrets()?;
+    Ok(data.secrets.get(key).cloned())
   }
 
   fn delete_secret(&self, key: &str) -> Result<()> {
-    let file = OpenOptions::new()
-      .read(true)
-      .write(true)
-      .create(true)
-      .truncate(true)
-      .open(&self.secrets_path)?;
+    let mut data = self.read_secrets()?;
+    data.secrets.remove(key);
+    self.write_secrets(&data)
+  }
 
-    file.lock_exclusive()?;
-
-    let result = (|| {
-      let mut data = self.read_secrets(&file)?;
-      data.secrets.remove(key);
-      self.write_secrets(&data, &file)
-    })();
-
-    file.unlock()?;
-
-    // Remove from cache if delete was successful
-    if result.is_ok() {
-      self.cache.remove(key);
-    }
-
-    result
+  #[cfg(debug_assertions)]
+  fn dump(&self) -> Result<String> {
+    let data = self.read_secrets()?;
+    Ok(serde_yaml::to_string(&data.secrets)?)
   }
 }
 
 #[cfg(test)]
 mod tests {
   use crate::{
-    generate_random_key, get_secret, set_secret, CacheService, DefaultSecretService,
-    MokaCacheService, SecretService, SecretServiceError,
+    generate_random_key, get_secret, set_secret, DefaultSecretService, SecretService,
+    SecretServiceError,
   };
   use objs::{
     test_utils::{assert_error_message, setup_l10n, temp_dir},
@@ -304,27 +275,6 @@ mod tests {
       temp_dir.path().join("secrets.yaml").as_ref(),
     )
     .unwrap()
-  }
-
-  #[rstest]
-  fn test_secret_service_with_cache(temp_dir: TempDir) -> anyhow::Result<()> {
-    let cache = Arc::new(MokaCacheService::default());
-    let service = DefaultSecretService::new_internal(
-      generate_random_key(),
-      temp_dir.path().join("secrets.yaml").as_ref(),
-      cache.clone(),
-    )
-    .unwrap();
-
-    service.set_secret_string("test_key", "test_value").unwrap();
-    let value = service.get_secret_string("test_key").unwrap();
-    assert_eq!(Some("test_value".to_string()), value);
-    assert_eq!(Some("test_value".to_string()), cache.get("test_key"));
-
-    service.delete_secret("test_key").unwrap();
-    assert_eq!(None, service.get_secret_string("test_key")?);
-    assert_eq!(None, cache.as_ref().get("test_key"));
-    Ok(())
   }
 
   #[rstest]

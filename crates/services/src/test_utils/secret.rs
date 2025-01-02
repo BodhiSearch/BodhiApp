@@ -80,6 +80,12 @@ impl SecretService for SecretServiceStub {
     store.remove(key);
     Ok(())
   }
+
+  #[cfg(debug_assertions)]
+  fn dump(&self) -> Result<String> {
+    let store = self.store.lock().unwrap();
+    Ok(serde_yaml::to_string(&(*store))?)
+  }
 }
 
 impl Default for SecretServiceStub {

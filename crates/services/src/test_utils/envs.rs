@@ -161,7 +161,7 @@ impl EnvService for EnvServiceStub {
     None
   }
 
-  fn get_setting(&self, key: &str) -> Option<String> {
+  fn get_setting(&self, _key: &str) -> Option<String> {
     None
   }
 }
