@@ -134,10 +134,8 @@ describe('ModelFilesPage access control', () => {
   it('should redirect to /ui/login if user is not logged in', async () => {
     server.use(
       rest.get('*/app/info', (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
-    server.use(
+        return res(ctx.json({ status: 'ready', authz: true }));
+      }),
       rest.get('*/api/ui/user', (_, res, ctx) => {
         return res(ctx.json({ logged_in: false }));
       })

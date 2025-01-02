@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import { ApiError } from '@/types/models';
+import { ApiError, AppStatus } from '@/types/models';
 
 interface AppInitializerProps {
   children?: ReactNode;
-  allowedStatus?: 'setup' | 'ready' | 'resource-admin';
+  allowedStatus?: AppStatus;
   authenticated?: boolean;
 }
 
@@ -28,9 +28,9 @@ export default function AppInitializer({
     data: userInfo,
     error: userError,
     isLoading: userLoading,
-  } = authenticated // eslint-disable-next-line react-hooks/rules-of-hooks
-    ? useUser()
-    : { data: { logged_in: false }, error: null, isLoading: false };
+  } = useUser({
+    enabled: authenticated || !!appInfo?.authz,
+  });
 
   useEffect(() => {
     if (!appLoading && appInfo) {
@@ -52,12 +52,13 @@ export default function AppInitializer({
   }, [appInfo, appLoading, allowedStatus, router]);
 
   useEffect(() => {
-    if (authenticated && !userLoading && !userInfo?.logged_in) {
+    if (appLoading || userLoading || appError || userError) return;
+    if (authenticated && (appInfo?.authz && !userInfo?.logged_in)) {
       router.push('/ui/login');
     }
-  }, [authenticated, userInfo, userLoading, router]);
+  }, [appInfo?.authz, authenticated, userInfo, router, appLoading, userLoading, appError, userError]);
 
-  if (appLoading || (authenticated && userLoading)) {
+  if (appLoading || userLoading) {
     return (
       <div className="flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
@@ -77,7 +78,7 @@ export default function AppInitializer({
     );
   }
 
-  if (authenticated && userError) {
+  if (userError) {
     return (
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
@@ -110,7 +111,7 @@ export default function AppInitializer({
     }
   }
 
-  if (authenticated && !userInfo?.logged_in) {
+  if (authenticated && (appInfo?.authz && !userInfo?.logged_in)) {
     return (
       <div className="flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
