@@ -131,7 +131,7 @@ function ModelsPageContent() {
 
 export default function ModelsPage() {
   return (
-    <AppInitializer allowedStatus="ready" authenticated={false}>
+    <AppInitializer allowedStatus="ready" authenticated={true}>
       <ModelsPageContent />
     </AppInitializer>
   );

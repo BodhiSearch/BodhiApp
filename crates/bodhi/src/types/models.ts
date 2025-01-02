@@ -1,5 +1,8 @@
+export type AppStatus = 'setup' | 'ready' | 'resource-admin';
+
 export interface AppInfo {
-  status: 'setup' | 'ready' | 'resource-admin' | string;
+  status: AppStatus;
+  authz: boolean;
 }
 
 export interface ApiError {

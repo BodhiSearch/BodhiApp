@@ -167,11 +167,9 @@ export function useLogout(
   });
 }
 
-export function useUser() {
+export function useUser(options?: { enabled: boolean }) {
   return useQuery<UserInfo | null>('user', '/api/ui/user', undefined, {
     retry: false,
-    onError: (error) => {
-      throw error;
-    },
+    enabled: options?.enabled,
   });
 }

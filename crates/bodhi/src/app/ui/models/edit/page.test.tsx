@@ -211,7 +211,7 @@ describe('EditAliasPage access control', () => {
   it('should redirect to /ui/login if user is not logged in', async () => {
     server.use(
       rest.get('*/app/info', (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
+        return res(ctx.json({ status: 'ready', authz: true }));
       })
     );
     server.use(

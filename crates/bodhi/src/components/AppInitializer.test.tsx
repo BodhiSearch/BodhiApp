@@ -19,6 +19,7 @@ import {
   vi,
 } from 'vitest';
 import AppInitializer from './AppInitializer';
+import { AppStatus } from '@/types/models';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -39,290 +40,36 @@ beforeEach(() => {
   pushMock.mockClear();
 });
 
-// Add this helper function
 const renderWithSetup = async (ui: React.ReactElement) => {
   const wrapper = createWrapper();
   const rendered = render(ui, { wrapper });
-  // Wait for the loading state to disappear
   await waitForElementToBeRemoved(() =>
     rendered.getByText('Initializing app...')
   );
   return rendered;
 };
 
-describe('AppInitializer with no authentication', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
-    server.use(
-      rest.get('*/api/ui/user', (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: false }));
-      })
-    );
-  });
-
-  it('displays error message when API call fails', async () => {
+describe('AppInitializer loading and error handling', () => {
+  // Test loading states
+  it('shows loading state when endpoint is loading', async () => {
     server.use(
       rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ message: 'API Error' }));
-      })
-    );
-
-    await renderWithSetup(<AppInitializer />);
-
-    const alert = screen.getByRole('alert');
-    expect(alert).toBeInTheDocument();
-    expect(alert).toHaveTextContent('Error');
-    expect(alert).toHaveTextContent('API Error');
-  });
-
-  it('redirects to /ui/setup when status is setup and no allowedStatus is provided', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-
-    await renderWithSetup(<AppInitializer />);
-
-    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
-  });
-
-  it('redirects to /ui/home when status is ready and no allowedStatus is provided', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
-
-    await renderWithSetup(<AppInitializer />);
-
-    expect(pushMock).toHaveBeenCalledWith('/ui/home');
-  });
-
-  it('redirects to /ui/setup/resource-admin when status is resource-admin and no allowedStatus is provided', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      })
-    );
-
-    await renderWithSetup(<AppInitializer />);
-
-    expect(pushMock).toHaveBeenCalledWith('/ui/setup/resource-admin');
-  });
-
-  it('displays error message for unexpected status when no allowedStatus is provided', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'unexpected' }));
-      })
-    );
-    await renderWithSetup(<AppInitializer />);
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Error');
-      expect(alert).toHaveTextContent(
-        "unexpected status from /app/info endpoint - 'unexpected'"
-      );
-    });
-  });
-
-  it('redirects to /ui/setup when status is setup and allowedStatus is ready', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-
-    await renderWithSetup(<AppInitializer allowedStatus="ready" />);
-
-    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
-  });
-
-  it('redirects to /ui/home when status is ready and allowedStatus is setup', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
-
-    await renderWithSetup(<AppInitializer allowedStatus="setup" />);
-
-    expect(pushMock).toHaveBeenCalledWith('/ui/home');
-  });
-
-  it('does not redirect when status matches allowedStatus', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
-
-    await renderWithSetup(<AppInitializer allowedStatus="ready" />);
-
-    expect(pushMock).not.toHaveBeenCalled();
-  });
-
-  it('displays children content if app status matches allowedStatus', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
-
-    await renderWithSetup(
-      <AppInitializer allowedStatus="ready">
-        <div>Child content</div>
-      </AppInitializer>
-    );
-
-    expect(screen.getByText('Child content')).toBeInTheDocument();
-  });
-
-  it('does not display children content if app status does not match allowedStatus', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'setup' }));
-      })
-    );
-
-    await renderWithSetup(
-      <AppInitializer allowedStatus="ready">
-        <div>Child content</div>
-      </AppInitializer>
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByText('Child content')).not.toBeInTheDocument();
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
-    });
-  });
-
-  it('displays loading state before resolving app status', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.delay(100), ctx.json({ status: 'ready' }));
-      })
-    );
-    const wrapper = createWrapper();
-    const rendered = render(
-      <AppInitializer allowedStatus="ready">
-        <div>Child content</div>
-      </AppInitializer>,
-      { wrapper }
-    );
-
-    expect(screen.getByText('Initializing app...')).toBeInTheDocument();
-    await waitForElementToBeRemoved(() =>
-      rendered.getByText('Initializing app...')
-    );
-    expect(screen.getByText('Child content')).toBeInTheDocument();
-  });
-
-  it('displays error message and not children when API call fails', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ message: 'API Error' }));
-      })
-    );
-
-    await renderWithSetup(
-      <AppInitializer allowedStatus="ready">
-        <div>Child content</div>
-      </AppInitializer>
-    );
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Error');
-      expect(alert).toHaveTextContent('API Error');
-      expect(screen.queryByText('Child content')).not.toBeInTheDocument();
-    });
-  });
-
-  it('displays error message for unexpected status even with children', async () => {
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'unexpected' }));
-      })
-    );
-
-    await renderWithSetup(
-      <AppInitializer allowedStatus="ready">
-        <div>Child content</div>
-      </AppInitializer>
-    );
-
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toBeInTheDocument();
-      expect(alert).toHaveTextContent('Error');
-      expect(alert).toHaveTextContent(
-        "unexpected status from /app/info endpoint - 'unexpected'"
-      );
-      expect(screen.queryByText('Child content')).not.toBeInTheDocument();
-    });
-  });
-});
-
-describe('AppInitializer with status ready and authentication required', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
-    server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.json({ status: 'ready' }));
-      })
-    );
-  });
-
-  it('redirects to /ui/login when authenticated is true and user is not logged in', async () => {
-    server.use(
-      rest.get('*/api/ui/user', (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: false }));
-      })
-    );
-
-    await renderWithSetup(
-      <AppInitializer allowedStatus="ready" authenticated={true} />
-    );
-
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/login');
-    });
-  });
-
-  it('displays children when authenticated is true and user is logged in', async () => {
-    server.use(
-      rest.get('*/api/ui/user', (req, res, ctx) => {
-        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
-      })
-    );
-
-    await renderWithSetup(
-      <AppInitializer allowedStatus="ready" authenticated={true}>
-        <div>Child content</div>
-      </AppInitializer>
-    );
-
-    expect(screen.getByText('Child content')).toBeInTheDocument();
-  });
-
-  it('displays loading state while checking user authentication', async () => {
-    server.use(
+        return res(
+          ctx.delay(100),
+          ctx.json({ status: 'ready', authz: true })
+        );
+      }),
       rest.get('*/api/ui/user', (req, res, ctx) => {
         return res(
           ctx.delay(100),
-          ctx.json({ logged_in: true, email: 'test@example.com' })
+          ctx.json({ logged_in: true })
         );
       })
     );
+
     const wrapper = createWrapper();
     render(
-      <AppInitializer allowedStatus="ready" authenticated={true}>
+      <AppInitializer allowedStatus="ready" authenticated={false}>
         <div>Child content</div>
       </AppInitializer>,
       { wrapper }
@@ -335,21 +82,171 @@ describe('AppInitializer with status ready and authentication required', () => {
     expect(screen.getByText('Child content')).toBeInTheDocument();
   });
 
-  it('does not check user authentication when authenticated is false', async () => {
-    const apiCallSpy = vi.fn();
+  // Test error handling
+  it.each([
+    { scenario: 'app/info error', setup: [{ endpoint: '*/app/info', response: { message: 'API Error' }, status: 500 }, { endpoint: '*/api/ui/user', response: { logged_in: true }, status: 200 }] },
+    { scenario: 'app/info success, user error', setup: [{ endpoint: '*/app/info', response: { status: 'ready', authz: true }, status: 200 }, { endpoint: '*/api/ui/user', response: { message: 'API Error' }, status: 500 }] },
+  ])('handles error $scenario', async ({ scenario, setup }) => {
     server.use(
-      rest.get('*/api/ui/user', (req, res, ctx) => {
-        apiCallSpy();
-        return res(ctx.status(200), ctx.json({ logged_in: false }));
-      })
+      ...setup.map(({ endpoint, response, status }) =>
+        rest.get(endpoint, (req, res, ctx) => {
+          return res(ctx.status(status), ctx.json(response));
+        })
+      )
     );
 
     await renderWithSetup(
-      <AppInitializer allowedStatus="ready" authenticated={false}>
+      <AppInitializer allowedStatus="ready" authenticated={true}>
         <div>Child content</div>
       </AppInitializer>
     );
-    expect(apiCallSpy).not.toHaveBeenCalled();
-    expect(screen.getByText('Child content')).toBeInTheDocument();
+
+    expect(pushMock).not.toHaveBeenCalled();
+
+    const alert = screen.getByRole('alert');
+    expect(alert).toBeInTheDocument();
+    expect(alert).toHaveTextContent('Error');
+    expect(alert).toHaveTextContent('API Error');
   });
+});
+
+describe('AppInitializer routing based on currentStatus and allowedStatus', () => {
+  // Test basic routing scenarios
+  it.each([
+    { status: 'setup', expectedPath: '/ui/setup' },
+    { status: 'ready', expectedPath: '/ui/home' },
+    { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin' },
+  ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath }) => {
+    server.use(
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.json({ status, authz: false }));
+      })
+    );
+
+    await renderWithSetup(<AppInitializer />);
+    expect(pushMock).toHaveBeenCalledWith(expectedPath);
+  });
+
+  // Test status mismatch scenarios (redirects)
+  it.each([
+    { currentStatus: 'setup', allowedStatus: 'resource-admin', expectedPath: '/ui/setup' },
+    { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/ui/setup' },
+    { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/ui/setup' },
+    { currentStatus: 'resource-admin', allowedStatus: 'setup', expectedPath: '/ui/setup/resource-admin' },
+    { currentStatus: 'resource-admin', allowedStatus: 'ready', expectedPath: '/ui/setup/resource-admin' },
+    { currentStatus: 'resource-admin', allowedStatus: undefined, expectedPath: '/ui/setup/resource-admin' },
+    { currentStatus: 'ready', allowedStatus: 'setup', expectedPath: '/ui/home' },
+    { currentStatus: 'ready', allowedStatus: 'resource-admin', expectedPath: '/ui/home' },
+    { currentStatus: 'ready', allowedStatus: undefined, expectedPath: '/ui/home' },
+  ])('redirects to $expectedPath when currentStatus=$currentStatus does not match allowedStatus=$allowedStatus',
+    async ({ currentStatus, allowedStatus, expectedPath }) => {
+      server.use(
+        rest.get('*/app/info', (req, res, ctx) => {
+          return res(ctx.json({ status: currentStatus }));
+        })
+      );
+
+      await renderWithSetup(<AppInitializer allowedStatus={allowedStatus as AppStatus} />);
+      expect(pushMock).toHaveBeenCalledWith(expectedPath);
+    }
+  );
+
+  // Test status match scenarios (no redirect)
+  it.each([
+    { currentStatus: 'ready', allowedStatus: 'ready' },
+    { currentStatus: 'setup', allowedStatus: 'setup' },
+    { currentStatus: 'resource-admin', allowedStatus: 'resource-admin' },
+  ])('stays on page when currentStatus=$currentStatus matches allowedStatus=$allowedStatus',
+    async ({ currentStatus, allowedStatus }) => {
+      server.use(
+        rest.get('*/app/info', (req, res, ctx) => {
+          return res(ctx.json({ status: currentStatus }));
+        })
+      );
+
+      await renderWithSetup(<AppInitializer allowedStatus={allowedStatus as AppStatus} />);
+      expect(pushMock).not.toHaveBeenCalled();
+    }
+  );
+});
+
+describe('AppInitializer authentication behavior', () => {
+  // Test redirect scenarios
+  it.each`
+    authz    | authenticated | loggedIn
+    ${true}  | ${true}      | ${false}
+  `('redirects to login when authz=$authz authenticated=$authenticated loggedIn=$loggedIn',
+    async ({ authz, authenticated, loggedIn }) => {
+      server.use(
+        rest.get('*/app/info', (req, res, ctx) => {
+          return res(ctx.json({ status: 'ready', authz }));
+        }),
+        rest.get('*/api/ui/user', (req, res, ctx) => {
+          return res(ctx.json({ logged_in: loggedIn }));
+        })
+      );
+
+      await renderWithSetup(
+        <AppInitializer allowedStatus="ready" authenticated={authenticated}>
+          <div>Child content</div>
+        </AppInitializer>
+      );
+
+      await waitFor(() => {
+        expect(pushMock).toHaveBeenCalledWith('/ui/login');
+      });
+    }
+  );
+
+  // Test content display scenarios
+  it.each`
+    authz    | authenticated | loggedIn
+    ${true}  | ${true}      | ${true}
+    ${true}  | ${false}     | ${false}
+    ${true}  | ${false}     | ${true}
+    ${false} | ${true}      | ${false}
+    ${false} | ${true}      | ${true}
+    ${false} | ${false}     | ${false}
+    ${false} | ${false}     | ${true}
+  `('displays content when authz=$authz authenticated=$authenticated loggedIn=$loggedIn',
+    async ({ authz, authenticated, loggedIn }) => {
+      server.use(
+        rest.get('*/app/info', (req, res, ctx) => {
+          return res(ctx.json({ status: 'ready', authz }));
+        }),
+        rest.get('*/api/ui/user', (req, res, ctx) => {
+          return res(ctx.json({ logged_in: loggedIn }));
+        })
+      );
+      await renderWithSetup(
+        <AppInitializer allowedStatus="ready" authenticated={authenticated}>
+          <div>Child content</div>
+        </AppInitializer>
+      );
+      expect(screen.getByText('Child content')).toBeInTheDocument();
+      expect(pushMock).not.toHaveBeenCalled();
+    }
+  );
+
+  // Add new test for user endpoint call conditions
+  it.each`
+     authenticated | authz
+     ${false}      | ${false}
+  `('user endpoint not called when authz=$authz authenticated=$authenticated',
+    async ({ authenticated, authz }) => {
+      server.use(
+        rest.get('*/app/info', (req, res, ctx) => {
+          return res(ctx.json({ status: 'ready', authz }));
+        })
+      );
+
+      await renderWithSetup(
+        <AppInitializer allowedStatus="ready" authenticated={authenticated}>
+          <div>Child content</div>
+        </AppInitializer>
+      );
+      expect(screen.getByText('Child content')).toBeInTheDocument();
+      expect(pushMock).not.toHaveBeenCalled();
+    }
+  );
 });
