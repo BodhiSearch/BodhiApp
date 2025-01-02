@@ -12,10 +12,14 @@ use clap::Parser;
 use commands::{Cli, Command, DefaultStdoutWriter, EnvCommand};
 use objs::FluentLocalizationService;
 use services::{
-  db::{DbPool, DbService, DefaultTimeService, SqliteDbService}, hash_key, AppService, DefaultAppService, DefaultEnvService, DefaultSecretService, EnvService, HfHubService, KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService, SqliteSessionService, SystemKeyringStore
+  db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
+  hash_key, AppService, DefaultAppService, DefaultEnvService, DefaultSecretService, EnvService,
+  HfHubService, KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService,
+  SqliteSessionService, SystemKeyringStore,
 };
 use std::{env, sync::Arc};
 use tokio::runtime::Builder;
+
 const SECRET_KEY: &str = "secret_key";
 
 pub fn main_internal(env_service: Arc<DefaultEnvService>) -> Result<()> {
