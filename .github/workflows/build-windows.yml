@@ -40,6 +40,13 @@ jobs:
           git submodule update --init --recursive --depth=1
           git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
 
+      - name: Setup Python packages
+        shell: pwsh
+        run: |
+          & python -m pip install -U pip
+          & python -m pip install -r crates/objs/tests/scripts/requirements.txt
+          & python -m pip install -U huggingface_hub
+
       - name: Cache HuggingFace models
         uses: actions/cache@v4
         id: cache-hf
@@ -64,9 +71,6 @@ jobs:
       - name: Download tokenizer config
         shell: pwsh
         run: |
-          & python -m pip install -U pip
-          & python -m pip install -r crates/objs/tests/scripts/requirements.txt
-          & python -m pip install -U huggingface_hub
           & huggingface-cli download --revision main --token ${{ secrets.CI_HF_TOKEN }} meta-llama/Llama-2-13b-chat-hf tokenizer_config.json
 
       - name: Windows Setup
