@@ -47,18 +47,12 @@ pub trait SecretServiceExt {
 
 impl<T: AsRef<dyn SecretService>> SecretServiceExt for T {
   fn authz(&self) -> Result<bool> {
-    let value = self
-      .as_ref()
-      .get_secret_string(KEY_APP_AUTHZ)?
-      .map(|value| value.parse::<bool>().unwrap_or(true))
-      .unwrap_or(true);
-    Ok(value)
+    let authz = get_secret::<_, bool>(self, KEY_APP_AUTHZ)?;
+    Ok(authz.unwrap_or(true))
   }
 
   fn set_authz(&self, authz: bool) -> Result<()> {
-    self
-      .as_ref()
-      .set_secret_string(KEY_APP_AUTHZ, authz.to_string().as_str())
+    set_secret(self, KEY_APP_AUTHZ, authz)
   }
 
   fn app_reg_info(&self) -> Result<Option<AppRegInfo>> {
@@ -89,17 +83,19 @@ mod tests {
   use rstest::rstest;
   use tempfile::TempDir;
 
-  #[rstest]
   #[anyhow_trace]
+  #[rstest]
   fn test_secret_service_ext(temp_dir: TempDir, app_reg_info: AppRegInfo) -> anyhow::Result<()> {
     let secrets_path = temp_dir.path().join("secrets.yaml");
-    let service = DefaultSecretService::new(generate_random_key(), &secrets_path)?;
+    let key = generate_random_key();
+    let service = DefaultSecretService::new(&key, &secrets_path)?;
 
     assert!(service.authz()?);
     service.set_authz(false)?;
     assert!(!service.authz()?);
     service.set_authz(true)?;
     assert!(service.authz()?);
+    service.set_authz(false)?; //to test later
 
     assert!(service.app_reg_info()?.is_none());
 
@@ -114,6 +110,16 @@ mod tests {
     service.set_app_status(&new_status)?;
     assert_eq!(new_status, service.app_status()?);
 
+    assert!(!service.authz()?);
+    assert_eq!(service.app_reg_info()?.unwrap(), app_reg_info);
+    assert_eq!(service.app_status()?, AppStatus::Setup);
+    assert!(!service.authz()?);
+    drop(service);
+
+    let service = DefaultSecretService::new(&key, &secrets_path)?;
+    assert!(!service.authz()?);
+    assert_eq!(service.app_reg_info()?.unwrap(), app_reg_info);
+    assert_eq!(service.app_status()?, AppStatus::Setup);
     Ok(())
   }
 }
