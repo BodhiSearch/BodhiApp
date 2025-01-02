@@ -9,6 +9,7 @@ pub mod test_utils;
 mod app;
 mod convert;
 mod error;
+mod ui;
 pub mod lib_main;
 
 pub mod l10n {

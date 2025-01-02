@@ -92,6 +92,8 @@ pub fn build_routes(
     } else {
       router
     }
+  } else if let Some(static_router) = static_router {
+    router.merge(static_router)
   } else {
     router.merge(proxy_router("http://localhost:3000".to_string()))
   };

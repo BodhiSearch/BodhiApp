@@ -132,6 +132,8 @@ pub enum Command {
     /// Model alias to delete, run `bodhi list` to list the existing model aliases
     alias: String,
   },
+  #[cfg(debug_assertions)]
+  Secrets {},
 }
 
 fn repo_parser(repo: &str) -> Result<String, String> {
