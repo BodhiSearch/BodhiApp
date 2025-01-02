@@ -26,7 +26,7 @@ function EditAliasContent() {
 
 export default function EditAliasPage() {
   return (
-    <AppInitializer allowedStatus="ready" authenticated={true}>
+    <AppInitializer allowedStatus="ready" authenticated={false}>
       <EditAliasContent />
     </AppInitializer>
   );
