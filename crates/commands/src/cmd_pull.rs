@@ -54,11 +54,9 @@ impl PullCommand {
         let _ = model.chat_template.download(service.hub_service())?;
         let alias = Alias::new(
           model.alias,
-          Some(model.family),
           model.repo,
           model.filename,
           local_model_file.snapshot.clone(),
-          model.features,
           model.chat_template,
           model.request_params,
           model.context_params,
@@ -160,11 +158,9 @@ mod test {
     assert_eq!(
       Alias {
         alias: "testalias:instruct".to_string(),
-        family: Some("testalias".to_string()),
         repo: Repo::try_from("MyFactory/testalias-gguf")?,
         filename: "testalias.Q8_0.gguf".to_string(),
         snapshot: SNAPSHOT.to_string(),
-        features: vec!["chat".to_string()],
         chat_template: ChatTemplateType::Id(objs::ChatTemplateId::Llama3),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default()
@@ -220,12 +216,9 @@ mod test {
     let content = fs::read_to_string(alias)?;
     assert_eq!(
       r#"alias: testalias:instruct
-family: testalias
 repo: MyFactory/testalias-gguf
 filename: testalias.Q8_0.gguf
 snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213
-features:
-- chat
 chat_template: llama3
 "#,
       content

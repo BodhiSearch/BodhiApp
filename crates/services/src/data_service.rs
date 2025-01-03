@@ -326,11 +326,8 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
       &models_file,
       r#"
 # alias is missing
-- family: testalias
 repo: MyFactory/testalias-gguf
 filename: testalias.Q8_0.gguf
-features:
-  - chat
 chat_template: llama3
 "#,
     )?;

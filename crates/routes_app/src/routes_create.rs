@@ -28,7 +28,6 @@ pub struct CreateAliasRequest {
   filename: String,
   snapshot: Option<String>,
   chat_template: ChatTemplateType,
-  family: Option<String>,
   request_params: Option<OAIRequestParams>,
   context_params: Option<GptContextParams>,
 }
@@ -59,7 +58,6 @@ impl TryFrom<CreateAliasRequest> for CreateCommand {
       filename: value.filename,
       snapshot: value.snapshot,
       chat_template: value.chat_template,
-      family: value.family,
       auto_download: false,
       update: false,
       oai_request_params: value.request_params.unwrap_or_default(),
@@ -167,9 +165,7 @@ mod tests {
       .repo("MyFactory/testalias-gguf")
       .filename("testalias.Q8_0.gguf")
       .chat_template("llama3")
-      .family(Some("testalias".to_string()))
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
-      .features(vec!["chat".to_string()])
       .model_params(HashMap::new())
       .request_params(
         OAIRequestParamsBuilder::default()
@@ -210,9 +206,7 @@ mod tests {
       .repo("MyFactory/testalias-gguf")
       .filename("testalias.Q8_0.gguf")
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
-      .family(Some("testalias".to_string()))
       .chat_template("llama3")
-      .features(vec!["chat".to_string()])
       .model_params(HashMap::new())
       .request_params(
         OAIRequestParamsBuilder::default()
@@ -330,7 +324,6 @@ mod tests {
     assert_eq!(StatusCode::OK, response.status());
     let updated_alias: AliasResponse = response.json::<AliasResponse>().await?;
     let expected = AliasResponseBuilder::tinyllama_builder()
-      .family(Some("tinyllama".to_string()))
       .request_params(
         OAIRequestParamsBuilder::default()
           .temperature(0.8)

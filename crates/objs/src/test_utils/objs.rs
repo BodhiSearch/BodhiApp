@@ -151,11 +151,9 @@ impl RemoteModel {
   pub fn llama3() -> RemoteModel {
     RemoteModel::new(
       "llama3:instruct".to_string(),
-      "llama3".to_string(),
       Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
       "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
       None,
-      vec!["chat".to_string()],
       ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
       GptContextParams::default(),
@@ -165,11 +163,9 @@ impl RemoteModel {
   pub fn testalias() -> RemoteModel {
     RemoteModel::new(
       String::from("testalias:instruct"),
-      String::from("testalias"),
       Repo::testalias(),
       Repo::testalias_filename(),
       None,
-      vec![String::from("chat")],
       ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
       GptContextParams::default(),
@@ -181,11 +177,9 @@ impl AliasBuilder {
   pub fn testalias() -> AliasBuilder {
     AliasBuilder::default()
       .alias("testalias:instruct".to_string())
-      .family("testalias")
       .repo(Repo::testalias())
       .filename(Repo::testalias_filename())
       .snapshot(SNAPSHOT.to_string())
-      .features(vec!["chat".to_string()])
       .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
@@ -220,11 +214,9 @@ impl AliasBuilder {
       .unwrap();
     AliasBuilder::default()
       .alias("llama3:instruct".to_string())
-      .family("llama3")
       .repo(Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap())
       .filename("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string())
       .snapshot(SNAPSHOT.to_string())
-      .features(vec!["chat".to_string()])
       .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(request_params)
       .context_params(gpt_params)
@@ -237,7 +229,6 @@ impl AliasBuilder {
       .repo(Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF").unwrap())
       .filename("tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string())
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
-      .features(vec!["chat".to_string()])
       .chat_template(ChatTemplateType::Repo(
         Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
       ))

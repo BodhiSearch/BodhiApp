@@ -87,9 +87,8 @@ fn to_ollama_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
     details: ModelDetails {
       parent_model: None,
       format: GGUF.to_string(),
-      family: alias.family.unwrap_or_else(|| "unknown".to_string()),
+      family: "unknown".to_string(),
       families: None,
-      // TODO: have alias contain parameter size and quantizaiton level
       parameter_size: "".to_string(),
       quantization_level: "".to_string(),
     },
@@ -516,7 +515,7 @@ mod test {
       json! {
       {
         "families": null,
-        "family": "llama3",
+        "family": "unknown",
         "format": "gguf",
         "parameter_size": "",
         "parent_model": null,

@@ -132,11 +132,9 @@ mod test {
     assert_eq!(
       Alias {
         alias: "testalias:q4_instruct".to_string(),
-        family: Some("testalias".to_string()),
         repo: Repo::testalias(),
         filename: Repo::testalias_q4(),
         snapshot: SNAPSHOT.to_string(),
-        features: vec!["chat".to_string()],
         chat_template: ChatTemplateType::Id(ChatTemplateId::Llama3),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default(),

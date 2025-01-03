@@ -43,10 +43,8 @@ const mockModelsResponse = {
   data: [
     {
       alias: 'test-model',
-      family: 'test-family',
       repo: 'test-repo',
       filename: 'test-file.bin',
-      features: ['feature1', 'feature2'],
       snapshot: 'abc123',
       chat_template: 'test-template',
       request_params: {},
@@ -90,10 +88,8 @@ describe('ModelsPage', () => {
       expect(screen.getByTestId('app-header')).toBeInTheDocument();
       expect(screen.getByText('test-model')).toBeInTheDocument();
     });
-    expect(screen.getByText('test-family')).toBeInTheDocument();
     expect(screen.getByText('test-repo')).toBeInTheDocument();
     expect(screen.getByText('test-file.bin')).toBeInTheDocument();
-    expect(screen.getByText('feature1, feature2')).toBeInTheDocument();
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
     expect(screen.getByText('Displaying 1 items of 1')).toBeInTheDocument();
   });

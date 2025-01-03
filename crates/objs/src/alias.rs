@@ -18,12 +18,9 @@ use serde::{Deserialize, Serialize};
     build_fn(error = crate::BuilderError)))]
 pub struct Alias {
   pub alias: String,
-  #[serde(skip_serializing_if = "Option::is_none")]
-  pub family: Option<String>,
   pub repo: Repo,
   pub filename: String,
   pub snapshot: String,
-  pub features: Vec<String>,
   pub chat_template: ChatTemplateType,
   #[serde(default, skip_serializing_if = "is_default")]
   pub request_params: OAIRequestParams,
@@ -37,11 +34,6 @@ impl Alias {
     let filename = to_safe_filename(&filename);
     format!("{}.yaml", filename)
   }
-}
-
-// TODO: hard coding for time being
-pub fn default_features() -> Vec<String> {
-  vec!["chat".to_string()]
 }
 
 impl std::fmt::Display for Alias {
@@ -80,7 +72,6 @@ mod test {
 repo: ''
 filename: ''
 snapshot: ''
-features: []
 chat_template: llama3
 "#
   )]
@@ -108,8 +99,6 @@ chat_template: llama3
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-features:
-- chat
 chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 request_params:
   temperature: 0.7
@@ -129,8 +118,6 @@ context_params:
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-features:
-- chat
 chat_template: tinyllama
 "#)]
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: &str) -> anyhow::Result<()> {
@@ -145,8 +132,6 @@ chat_template: tinyllama
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-features:
-- chat
 chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 request_params:
   temperature: 0.7
@@ -180,8 +165,6 @@ context_params:
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-features:
-- chat
 chat_template: tinyllama
 "#, AliasBuilder::tinyllama()
 .chat_template(ChatTemplateType::Id(ChatTemplateId::Tinyllama))
