@@ -66,20 +66,9 @@ mod test {
   }
 
   #[rstest]
-  #[case::default(
-    Alias::default(),
-    r#"alias: ''
-repo: ''
-filename: ''
-snapshot: ''
-chat_template: llama3
-"#
-  )]
   #[case::full(
     AliasBuilder::tinyllama()
-      .chat_template(ChatTemplateType::Repo(
-        Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
-      ))
+      .chat_template(ChatTemplateType::tinyllama())
       .request_params(OAIRequestParamsBuilder::default()
         .temperature(0.7)
         .top_p(0.95)
@@ -142,9 +131,7 @@ context_params:
   n_predict: 256
 "#,
   AliasBuilder::tinyllama()
-    .chat_template(ChatTemplateType::Repo(
-      Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
-    ))
+    .chat_template(ChatTemplateType::tinyllama())
   .request_params(OAIRequestParamsBuilder::default()
   .temperature(0.7)
   .top_p(0.95)

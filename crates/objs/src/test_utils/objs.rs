@@ -3,7 +3,7 @@ use crate::{
   GptContextParamsBuilder, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder,
   RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
-use std::path::PathBuf;
+use std::{path::PathBuf, str::FromStr};
 
 const DEFAULT_CHAT_TEMPLATE: ChatTemplateId = ChatTemplateId::Llama3;
 
@@ -14,36 +14,63 @@ impl Default for ChatTemplateType {
 }
 
 impl Repo {
+  pub const LLAMA3: &str = "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF";
+  pub const LLAMA3_Q8: &str = "Meta-Llama-3-8B-Instruct.Q8_0.gguf";
+  pub const LLAMA3_TOKENIZER: &str = "meta-llama/Meta-Llama-3-8B-Instruct";
+  pub const LLAMA2: &str = "TheBloke/Llama-2-7B-Chat-GGUF";
+  pub const LLAMA2_TOKENIZER: &str = "meta-llama/Llama-2-70b-chat-hf";
+  pub const LLAMA2_FILENAME: &str = "llama-2-7b-chat.Q4_K_M.gguf";
+  pub const TINYLLAMA: &str = "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF";
+  pub const TINYLLAMA_TOKENIZER: &str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0";
+  pub const TINYLLAMA_FILENAME: &str = "tinyllama-1.1b-chat-v0.3.Q2_K.gguf";
+  pub const TESTALIAS_FILENAME: &str = "testalias.Q8_0.gguf";
+  pub const TESTALIAS_Q4_FILENAME: &str = "testalias.Q4_0.gguf";
+  pub const TESTALIAS: &str = "MyFactory/testalias-gguf";
+  pub const TESTALIAS_TOKENIZER: &str = "MyFactory/testalias";
+  pub const FAKEMODEL: &str = "FakeFactory/fakemodel-gguf";
+
   pub fn llama3() -> Repo {
-    Repo::try_from("meta-llama/Meta-Llama-3-8B-Instruct").unwrap()
+    Repo::from_str(Self::LLAMA3).unwrap()
   }
 
-  pub fn llama2_70b_chat() -> Repo {
-    Repo::try_from("meta-llama/Llama-2-70b-chat-hf").unwrap()
+  pub fn llama3_tokenizer() -> Repo {
+    Repo::from_str(Self::LLAMA3_TOKENIZER).unwrap()
+  }
+
+  pub fn llama2() -> Repo {
+    Repo::from_str(Self::LLAMA2).unwrap()
+  }
+
+  pub fn llama2_tokenizer() -> Repo {
+    Repo::from_str(Self::LLAMA2_TOKENIZER).unwrap()
   }
 
   pub fn testalias() -> Repo {
-    Repo::try_from("MyFactory/testalias-gguf").unwrap()
+    Repo::from_str(Self::TESTALIAS).unwrap()
+  }
+
+  pub fn testalias_tokenizer() -> Repo {
+    Repo::from_str(Self::TESTALIAS_TOKENIZER).unwrap()
   }
 
   pub fn testalias_filename() -> String {
-    "testalias.Q8_0.gguf".to_string()
-  }
-
-  pub fn testalias_exists() -> Repo {
-    Repo::try_from("MyFactory/testalias-gguf").unwrap()
+    Self::TESTALIAS_FILENAME.to_string()
   }
 
   pub fn fakemodel() -> Repo {
-    Repo::try_from("FakeFactory/fakemodel-gguf").unwrap()
-  }
-
-  pub fn testalias_exists_filename() -> String {
-    "testalias.Q8_0.gguf".to_string()
+    Repo::from_str(Self::FAKEMODEL).unwrap()
   }
 
   pub fn testalias_q4() -> String {
-    "testalias.Q4_0.gguf".to_string()
+    Self::TESTALIAS_Q4_FILENAME.to_string()
+  }
+
+  pub fn tinyllama() -> Repo {
+    Repo::from_str(Self::TINYLLAMA).unwrap()
+  }
+
+  pub fn tinyllama_tokenizer() -> Repo {
+    Repo::from_str(Self::TINYLLAMA_TOKENIZER).unwrap()
   }
 }
 
@@ -59,8 +86,8 @@ impl HubFileBuilder {
 
   pub fn testalias_exists() -> HubFileBuilder {
     HubFileBuilder::default()
-      .repo(Repo::testalias_exists())
-      .filename(Repo::testalias_exists_filename())
+      .repo(Repo::testalias())
+      .filename(Repo::testalias_filename())
       .snapshot(SNAPSHOT.to_string())
       .size(Some(21))
       .to_owned()
@@ -86,7 +113,7 @@ impl HubFileBuilder {
 
   pub fn llama3_tokenizer() -> HubFileBuilder {
     HubFileBuilder::default()
-      .repo(Repo::llama3())
+      .repo(Repo::llama3_tokenizer())
       .filename(TOKENIZER_CONFIG_JSON.to_string())
       .snapshot("c4a54320a52ed5f88b7a2f84496903ea4ff07b45".to_string())
       .size(Some(50977))
@@ -101,8 +128,8 @@ impl HubFileBuilder {
       .join("hub");
     HubFileBuilder::default()
       .hf_cache(hf_cache)
-      .repo(Repo::try_from("TheBloke/Llama-2-7B-Chat-GGUF").unwrap())
-      .filename("llama-2-7b-chat.Q4_K_M.gguf".to_string())
+      .repo(Repo::llama2())
+      .filename(Repo::LLAMA2_FILENAME.to_string())
       .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string())
       .size(Some(1000))
       .to_owned()
@@ -151,8 +178,8 @@ impl RemoteModel {
   pub fn llama3() -> RemoteModel {
     RemoteModel::new(
       "llama3:instruct".to_string(),
-      Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+      Repo::llama3(),
+      Repo::LLAMA3_Q8.to_string(),
       None,
       ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
@@ -214,8 +241,8 @@ impl AliasBuilder {
       .unwrap();
     AliasBuilder::default()
       .alias("llama3:instruct".to_string())
-      .repo(Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap())
-      .filename("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string())
+      .repo(Repo::llama3())
+      .filename(Repo::LLAMA3_Q8.to_string())
       .snapshot(SNAPSHOT.to_string())
       .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(request_params)
@@ -226,12 +253,10 @@ impl AliasBuilder {
   pub fn tinyllama() -> AliasBuilder {
     AliasBuilder::default()
       .alias("tinyllama:instruct".to_string())
-      .repo(Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF").unwrap())
-      .filename("tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string())
+      .repo(Repo::tinyllama())
+      .filename(Repo::TINYLLAMA_FILENAME.to_string())
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
-      .chat_template(ChatTemplateType::Repo(
-        Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0").unwrap(),
-      ))
+      .chat_template(ChatTemplateType::tinyllama())
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .to_owned()
@@ -257,5 +282,19 @@ impl Alias {
 
   pub fn tinyllama() -> Alias {
     AliasBuilder::tinyllama().build().unwrap()
+  }
+}
+
+impl ChatTemplateType {
+  pub fn tinyllama() -> ChatTemplateType {
+    ChatTemplateType::Repo(Repo::tinyllama_tokenizer())
+  }
+
+  pub fn llama3() -> ChatTemplateType {
+    ChatTemplateType::Repo(Repo::llama3_tokenizer())
+  }
+
+  pub fn testalias() -> ChatTemplateType {
+    ChatTemplateType::Repo(Repo::testalias_tokenizer())
   }
 }

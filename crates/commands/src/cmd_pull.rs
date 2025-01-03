@@ -133,14 +133,18 @@ mod test {
     test_hf_service
       .expect_download()
       .with(
-        eq(Repo::try_from("MyFactory/testalias-gguf").unwrap()),
-        eq("testalias.Q8_0.gguf"),
+        eq(Repo::testalias()),
+        eq(Repo::TESTALIAS_FILENAME),
         eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     test_hf_service
       .expect_download()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
+      .with(
+        eq(Repo::llama3_tokenizer()),
+        eq(TOKENIZER_CONFIG_JSON),
+        eq(None),
+      )
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let service = AppServiceStubBuilder::default()
       .with_data_service()
@@ -158,8 +162,8 @@ mod test {
     assert_eq!(
       Alias {
         alias: "testalias:instruct".to_string(),
-        repo: Repo::try_from("MyFactory/testalias-gguf")?,
-        filename: "testalias.Q8_0.gguf".to_string(),
+        repo: Repo::testalias(),
+        filename: Repo::TESTALIAS_FILENAME.to_string(),
         snapshot: SNAPSHOT.to_string(),
         chat_template: ChatTemplateType::Id(objs::ChatTemplateId::Llama3),
         request_params: OAIRequestParams::default(),

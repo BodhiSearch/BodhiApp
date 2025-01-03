@@ -30,7 +30,7 @@ impl IntoRow for HubFile {
       .map(|size| format!("{:.2} GB", size as f64 / 2_f64.powf(30.0)))
       .unwrap_or_else(|| String::from("Unknown"));
     Row::from(vec![
-      Cell::new(&repo),
+      Cell::new(&repo.to_string()),
       Cell::new(&filename),
       Cell::new(&snapshot[..8]),
       Cell::new(&human_size),
@@ -42,7 +42,7 @@ impl IntoRow for RemoteModel {
   fn into_row(self) -> Row {
     Row::from(vec![
       &self.alias,
-      &self.repo,
+      &self.repo.to_string(),
       &self.filename,
       &self.chat_template.to_string(),
     ])
@@ -79,8 +79,8 @@ mod test {
   fn test_local_model_to_row() -> anyhow::Result<()> {
     let local_model = HubFile::new(
       PathBuf::from("."),
-      Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF")?,
-      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+      Repo::llama3(),
+      Repo::LLAMA3_Q8.to_string(),
       "1234567890".to_string(),
       Some(1024 * 1024 * 1024 * 10),
     );

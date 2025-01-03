@@ -162,7 +162,7 @@ mod test {
   #[case("llama3", ChatTemplateType::Id(ChatTemplateId::Llama3))]
   #[case(
     "meta-llama/Meta-Llama-3-8B-Instruct",
-    ChatTemplateType::Repo(Repo::llama3())
+    ChatTemplateType::llama3()
   )]
   #[case("embedded", ChatTemplateType::Embedded)]
   fn test_chat_template_deser(
@@ -182,7 +182,7 @@ mod test {
   #[rstest]
   #[case(ChatTemplateType::Id(ChatTemplateId::Llama3), "\"llama3\"")]
   #[case(
-    ChatTemplateType::Repo(Repo::llama3()),
+    ChatTemplateType::llama3(),
     "\"meta-llama/Meta-Llama-3-8B-Instruct\""
   )]
   #[case(ChatTemplateType::Embedded, "\"embedded\"")]
