@@ -45,7 +45,7 @@ impl ServerFactory for DefaultServerFactory {
     executable_path: &Path,
     server_args: &LlamaServerArgs,
   ) -> Result<Box<dyn Server>> {
-    let server = LlamaServer::new(executable_path.to_path_buf(), server_args.clone())?;
+    let server = LlamaServer::new(executable_path, server_args.clone())?;
     Ok(Box::new(server))
   }
 }

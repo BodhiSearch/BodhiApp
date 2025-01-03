@@ -4,9 +4,10 @@ use objs::{BuilderError, GptContextParams};
 use reqwest::Response;
 use serde_json::Value;
 use std::{
+  fmt::Display,
   io::{BufRead, BufReader},
   net::{IpAddr, Ipv4Addr},
-  path::PathBuf,
+  path::{Path, PathBuf},
   process::{Child, ChildStderr, ChildStdout, Command, Stdio},
   sync::Mutex,
   thread,
@@ -51,6 +52,12 @@ impl LlamaServerArgsBuilder {
     self.n_parallel = Some(slf.n_parallel);
     self.n_keep = Some(slf.n_keep);
     self
+  }
+}
+
+impl Display for LlamaServerArgs {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{}", self.to_args().join(" "))
   }
 }
 
@@ -148,7 +155,8 @@ pub struct LlamaServer {
 }
 
 impl LlamaServer {
-  pub fn new(executable_path: PathBuf, server_args: LlamaServerArgs) -> Result<Self> {
+  pub fn new<T: Into<LlamaServerArgs>>(executable_path: &Path, server_args: T) -> Result<Self> {
+    let server_args = server_args.into();
     let port = server_args.port;
     let base_url = format!("http://127.0.0.1:{}", port);
     let client = reqwest::Client::builder()
@@ -163,7 +171,7 @@ impl LlamaServer {
       process: Mutex::new(None),
       client,
       base_url,
-      executable_path,
+      executable_path: executable_path.into(),
       server_args,
     })
   }
@@ -299,5 +307,11 @@ impl Server for LlamaServer {
 
   async fn detokenize(&self, body: &Value) -> Result<Response> {
     self.proxy_request("/v1/detokenize", body).await
+  }
+}
+
+impl From<&LlamaServerArgs> for LlamaServerArgs {
+  fn from(args: &LlamaServerArgs) -> Self {
+    args.clone()
   }
 }

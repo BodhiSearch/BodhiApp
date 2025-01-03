@@ -45,10 +45,11 @@ async fn server() -> LlamaServer {
     .build()
     .unwrap();
 
-  let server = LlamaServer::new(executable_path, args).unwrap();
-  server.start().await.expect(format!(
+  let server = LlamaServer::new(&executable_path, &args).unwrap();
+  server.start().await.expect(&format!(
     "failed to start server, executable_path={}, args={}",
-    executable_path, args
+    executable_path.display(),
+    args
   ));
   server
 }
