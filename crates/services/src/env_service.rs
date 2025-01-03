@@ -34,6 +34,7 @@ pub static BODHI_FRONTEND_URL: &str = "BODHI_FRONTEND_URL";
 pub static BODHI_EXEC_PATH: &str = "BODHI_EXEC_PATH";
 pub static BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
 pub static BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
+pub static BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 
 pub static SETTINGS_YAML: &str = "settings.yaml";
 
@@ -129,6 +130,8 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
 
   fn get_setting(&self, key: &str) -> Option<String>;
 
+  fn get_env(&self, key: &str) -> Option<String>;
+
   fn list(&self) -> HashMap<String, String>;
 
   fn hf_cache(&self) -> PathBuf {
@@ -169,6 +172,16 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
   }
 
   fn encryption_key(&self) -> Option<String>;
+
+  #[cfg(not(debug_assertions))]
+  fn get_dev_env(&self) -> Option<String> {
+    None
+  }
+
+  #[cfg(debug_assertions)]
+  fn get_dev_env(&self, key: &str) -> Option<String> {
+    self.get_env(key)
+  }
 }
 
 #[derive(Debug, Clone)]
@@ -332,6 +345,10 @@ impl EnvService for DefaultEnvService {
       return None;
     }
     self.setting_service.get_setting(key)
+  }
+
+  fn get_env(&self, key: &str) -> Option<String> {
+    self.setting_service.get_env(key)
   }
 
   fn list(&self) -> HashMap<String, String> {

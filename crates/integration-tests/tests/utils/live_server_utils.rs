@@ -1,5 +1,6 @@
 use fs_extra::dir::{copy, CopyOptions};
 use objs::{test_utils::setup_l10n, AppType, EnvType, FluentLocalizationService};
+use rand::Rng;
 use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
@@ -10,7 +11,7 @@ use services::{
   BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
 use sqlx::SqlitePool;
-use std::{cmp::min, collections::HashMap, path::Path, sync::Arc};
+use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
 
 static COPY_OPTIONS: CopyOptions = CopyOptions {
@@ -120,7 +121,7 @@ pub async fn live_server(
   llama2_7b_setup: (TempDir, Arc<dyn AppService>),
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
-  let port = min(rand::random::<u16>() + 2000, 65535);
+  let port = rand::thread_rng().gen_range(2000..60000);
   let (temp_cache_dir, app_service) = llama2_7b_setup;
   let serve_command = ServeCommand::ByParams {
     host: host.clone(),

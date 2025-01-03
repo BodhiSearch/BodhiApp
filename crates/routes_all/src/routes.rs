@@ -18,11 +18,11 @@ use routes_oai::{
 };
 use serde_json::json;
 use server_core::{DefaultRouterState, RouterState, SharedContext};
-use services::AppService;
+use services::{AppService, EnvService, BODHI_DEV_PROXY_UI};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
-use tracing::Level;
+use tracing::{debug, info, Level};
 
 pub fn build_routes(
   ctx: Arc<dyn SharedContext>,
@@ -86,16 +86,203 @@ pub fn build_routes(
     )
     .with_state(state)
     .layer(info_trace);
-  let router = if app_service.env_service().is_production() {
-    if let Some(static_router) = static_router {
-      router.merge(static_router)
-    } else {
-      router
-    }
-  } else if let Some(static_router) = static_router {
-    router.merge(static_router)
-  } else {
-    router.merge(proxy_router("http://localhost:3000".to_string()))
-  };
+  let router = apply_ui_router(
+    &app_service.env_service(),
+    router,
+    static_router,
+    proxy_router("http://localhost:3000".to_string()),
+  );
   router.layer(app_service.session_service().session_layer())
+}
+
+fn apply_ui_router(
+  env_service: &Arc<dyn EnvService>,
+  router: Router,
+  static_router: Option<Router>,
+  proxy_router: Router,
+) -> Router {
+  let proxy_ui = env_service
+    .get_dev_env(BODHI_DEV_PROXY_UI)
+    .map(|val| val.parse::<bool>().unwrap_or_default())
+    .unwrap_or_default();
+
+  match env_service.is_production() {
+    true => {
+      if let Some(static_router) = static_router {
+        debug!("serving ui from embedded assets");
+        router.merge(static_router)
+      } else {
+        router
+      }
+    }
+    false if proxy_ui => {
+      info!("proxying the ui to localhost:3000");
+      router.merge(proxy_router)
+    }
+    false => {
+      if let Some(static_router) = static_router {
+        info!("serving ui from embedded assets");
+        router.merge(static_router)
+      } else {
+        router
+      }
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::apply_ui_router;
+  use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+    routing::get,
+    Router,
+  };
+  use mockall::predicate::*;
+  use rstest::{fixture, rstest};
+  use server_core::test_utils::ResponseTestExt;
+  use services::{EnvService, MockEnvService, BODHI_DEV_PROXY_UI};
+  use std::sync::Arc;
+  use tower::ServiceExt;
+
+  // Helper to create a stub router that returns a specific path
+  fn create_stub_router(path: &'static str) -> Router {
+    let result = path.to_string();
+    Router::new().route(path, get(|| async { result }))
+  }
+
+  // Helper to make a test request to the router
+  async fn test_request(router: Router, path: &str) -> (StatusCode, String) {
+    let response = router
+      .oneshot(Request::builder().uri(path).body(Body::empty()).unwrap())
+      .await
+      .unwrap();
+
+    let status = response.status();
+    let body = response.text().await.unwrap();
+    (status, body)
+  }
+
+  #[fixture]
+  fn base_router() -> Router {
+    create_stub_router("/api")
+  }
+
+  #[fixture]
+  fn static_router() -> Router {
+    create_stub_router("/static")
+  }
+
+  #[fixture]
+  fn proxy_router() -> Router {
+    create_stub_router("/proxy")
+  }
+
+  struct EnvConfig {
+    is_production: bool,
+    proxy_ui: Option<String>,
+  }
+
+  fn env_service(config: EnvConfig) -> Arc<dyn EnvService> {
+    let mut mock_env = MockEnvService::new();
+
+    mock_env
+      .expect_is_production()
+      .return_const(config.is_production);
+
+    mock_env
+      .expect_get_dev_env()
+      .with(eq(BODHI_DEV_PROXY_UI))
+      .return_const(config.proxy_ui);
+
+    Arc::new(mock_env)
+  }
+
+  #[rstest]
+  #[case::production_with_static(
+    EnvConfig {
+      is_production: true,
+      proxy_ui: None
+    },
+    Some(static_router()),
+    vec![
+      ("/api", true),
+      ("/static", true),
+      ("/proxy", false),
+    ]
+  )]
+  #[case::production_without_static(
+    EnvConfig {
+      is_production: true,
+      proxy_ui: None
+    },
+    None,
+    vec![
+      ("/api", true),
+      ("/static", false),
+      ("/proxy", false),
+    ]
+  )]
+  #[case::dev_with_proxy(
+    EnvConfig {
+      is_production: false,
+      proxy_ui: Some("true".to_string())
+    },
+    Some(static_router()),
+    vec![
+      ("/api", true),
+      ("/static", false),
+      ("/proxy", true),
+    ]
+  )]
+  #[case::dev_with_static(
+    EnvConfig {
+      is_production: false,
+      proxy_ui: Some("false".to_string())
+    },
+    Some(static_router()),
+    vec![
+      ("/api", true),
+      ("/static", true),
+      ("/proxy", false),
+    ]
+  )]
+  #[case::dev_without_static(
+    EnvConfig {
+      is_production: false,
+      proxy_ui: Some("false".to_string())
+    },
+    None,
+    vec![
+      ("/api", true),
+      ("/static", false),
+      ("/proxy", false),
+    ]
+  )]
+  #[tokio::test]
+  async fn test_ui_router_scenarios(
+    #[case] config: EnvConfig,
+    #[case] static_router: Option<Router>,
+    #[case] test_paths: Vec<(&str, bool)>,
+  ) {
+    let env_service = env_service(config);
+    let router = apply_ui_router(&env_service, base_router(), static_router, proxy_router());
+
+    for (path, should_exist) in test_paths {
+      let (status, body) = test_request(router.clone(), path).await;
+
+      if should_exist {
+        assert_eq!(status, StatusCode::OK, "Path {} should exist", path);
+        assert_eq!(body, path);
+      } else {
+        assert_eq!(
+          status,
+          StatusCode::NOT_FOUND,
+          "Path {} should not exist",
+          path
+        );
+      }
+    }
+  }
 }

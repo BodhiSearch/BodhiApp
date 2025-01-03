@@ -164,6 +164,11 @@ impl EnvService for EnvServiceStub {
   fn get_setting(&self, _key: &str) -> Option<String> {
     None
   }
+
+  fn get_env(&self, key: &str) -> Option<String> {
+    let lock = self.envs.read().unwrap();
+    lock.get(key).cloned()
+  }
 }
 
 #[derive(Debug)]
