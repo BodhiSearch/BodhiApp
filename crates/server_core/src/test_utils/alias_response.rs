@@ -1,5 +1,5 @@
 use crate::{AliasResponse, AliasResponseBuilder};
-use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder};
+use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder, Repo};
 use std::collections::HashMap;
 
 impl AliasResponse {
@@ -35,10 +35,10 @@ impl AliasResponseBuilder {
   pub fn tinyllama_builder() -> Self {
     AliasResponseBuilder::default()
       .alias("tinyllama:instruct".to_string())
-      .repo("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())
-      .filename("tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string())
+      .repo(Repo::TINYLLAMA)
+      .filename(Repo::TINYLLAMA_FILENAME)
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
-      .chat_template("TinyLlama/TinyLlama-1.1B-Chat-v1.0".to_string())
+      .chat_template(Repo::TINYLLAMA_TOKENIZER)
       .model_params(HashMap::new())
       .request_params(OAIRequestParamsBuilder::default().build().unwrap())
       .context_params(GptContextParamsBuilder::default().build().unwrap())

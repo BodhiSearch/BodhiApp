@@ -27,8 +27,8 @@ async fn server() -> LlamaServer {
     .join("hub");
   let model_file = HubFile::new(
     hf_cache,
-    Repo::try_from("TheBloke/Llama-2-7B-Chat-GGUF").unwrap(),
-    "llama-2-7b-chat.Q4_K_M.gguf".to_string(),
+    Repo::llama2(),
+    Repo::LLAMA2_FILENAME.to_string(),
     "191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string(),
     Some(1000),
   )

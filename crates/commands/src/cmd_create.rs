@@ -112,6 +112,7 @@ mod test {
     test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, GptContextParamsBuilder,
     HubFile, OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
   };
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
     test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
@@ -123,10 +124,10 @@ mod test {
   fn test_create_execute_updates_if_exists() -> anyhow::Result<()> {
     let create_cmd = CreateCommand {
       alias: "tinyllama:instruct".to_string(),
-      repo: Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())?,
-      filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
+      repo: Repo::tinyllama(),
+      filename: Repo::TINYLLAMA_FILENAME.to_string(),
       snapshot: Some("main".to_string()),
-      chat_template: ChatTemplateType::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
+      chat_template: ChatTemplateType::tinyllama(),
       auto_download: false,
       update: true,
       oai_request_params: OAIRequestParamsBuilder::default()
@@ -162,10 +163,10 @@ mod test {
     assert_ne!(repo_alias, updated_alias);
     let expected = Alias {
       alias: "tinyllama:instruct".to_string(),
-      repo: Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())?,
-      filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
+      repo: Repo::tinyllama(),
+      filename: Repo::TINYLLAMA_FILENAME.to_string(),
       snapshot: "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
-      chat_template: ChatTemplateType::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
+      chat_template: ChatTemplateType::tinyllama(),
       request_params: OAIRequestParamsBuilder::default()
         .frequency_penalty(1.0)
         .max_tokens(2048_u16)
@@ -206,7 +207,11 @@ mod test {
       .return_once(|_, _, _| Ok(HubFile::testalias()));
     test_hf_service
       .expect_download()
-      .with(eq(Repo::llama3()), eq(TOKENIZER_CONFIG_JSON), eq(None))
+      .with(
+        eq(Repo::llama3_tokenizer()),
+        eq(TOKENIZER_CONFIG_JSON),
+        eq(None),
+      )
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let service = Arc::new(
       AppServiceStubBuilder::default()
@@ -238,7 +243,7 @@ mod test {
   fn test_cmd_create_with_tokenizer_config_downloads_tokenizer_saves_alias(
     mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
-    let tokenizer_repo = Repo::try_from("MyFactory/testalias")?;
+    let tokenizer_repo = Repo::testalias_tokenizer();
     let chat_template = ChatTemplateType::Repo(tokenizer_repo.clone());
     let create = CreateCommandBuilder::testalias()
       .chat_template(chat_template.clone())
@@ -274,10 +279,10 @@ mod test {
     assert_eq!(
       Alias {
         alias: "testalias:instruct".to_string(),
-        repo: Repo::try_from("MyFactory/testalias-gguf").unwrap(),
-        filename: "testalias.Q8_0.gguf".to_string(),
+        repo: Repo::testalias(),
+        filename: Repo::TESTALIAS_FILENAME.to_string(),
         snapshot: SNAPSHOT.to_string(),
-        chat_template: ChatTemplateType::Repo(Repo::try_from("MyFactory/testalias")?),
+        chat_template: ChatTemplateType::testalias(),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default()
       },

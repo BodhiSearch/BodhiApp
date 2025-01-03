@@ -115,8 +115,8 @@ mod test {
     let local_model = HubFile::try_from(filepath)?;
     let expected = HubFile::new(
       hf_cache,
-      Repo::try_from("MyFactory/testalias-gguf")?,
-      "testalias.Q8_0.gguf".to_string(),
+      Repo::testalias(),
+      Repo::TESTALIAS_FILENAME.to_string(),
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       Some(96),
     );

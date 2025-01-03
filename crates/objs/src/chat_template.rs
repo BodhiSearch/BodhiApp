@@ -452,7 +452,7 @@ mod test {
   fn test_chat_template_parse_from_unknown_extension(temp_hf_home: TempDir) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let tokenizer_model = HubFileBuilder::testalias()
-      .repo(Repo::llama2_70b_chat())
+      .repo(Repo::llama2_tokenizer())
       .filename("tokenizer.model".to_string())
       .snapshot("e9149a12809580e8602995856f8098ce973d1080".to_string())
       .hf_cache(hf_cache)

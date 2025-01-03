@@ -1,5 +1,10 @@
+use std::str::FromStr;
+
 use clap::{ArgGroup, Parser, Subcommand};
-use objs::{ChatTemplateId, GptContextParams, OAIRequestParams, GGUF_EXTENSION, REGEX_REPO};
+use objs::{
+  ApiError, ChatTemplateId, GptContextParams, OAIRequestParams, OpenAIApiError, Repo,
+  GGUF_EXTENSION,
+};
 use services::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use strum::Display;
 
@@ -53,7 +58,7 @@ pub enum Command {
 
     /// The hugging face repo to pull the model from, e.g. `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`
     #[clap(long, short = 'r', requires = "filename", group = "pull", value_parser = repo_parser)]
-    repo: Option<String>,
+    repo: Option<Repo>,
 
     /// The GGUF model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
     #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
@@ -73,7 +78,7 @@ pub enum Command {
 
     /// The hugging face repo to pull the model from, e.g. `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF`
     #[clap(long, short = 'r', value_parser = repo_parser)]
-    repo: String,
+    repo: Repo,
 
     /// The gguf model file to pull from the repo, e.g. `tinyllama-1.1b-chat-v1.0.Q4_0.gguf`,
     #[clap(long, short = 'f', requires = "repo", value_parser = gguf_filename_parser)]
@@ -89,7 +94,7 @@ pub enum Command {
 
     /// Repo containing tokenizer_config.json file to convert chat messages to LLM prompt. e.g. `TinyLlama/TinyLlama-1.1B-Chat-v1.0`
     #[clap(long, group = "template", value_parser = repo_parser)]
-    tokenizer_config: Option<String>,
+    tokenizer_config: Option<Repo>,
 
     /// Update the existing alias if it already exists
     #[clap(long)]
@@ -132,11 +137,20 @@ pub enum Command {
   Secrets {},
 }
 
-fn repo_parser(repo: &str) -> Result<String, String> {
-  if REGEX_REPO.is_match(repo) {
-    Ok(repo.to_string())
-  } else {
-    Err("does not match huggingface repo format - `owner/repo`".to_string())
+fn repo_parser(repo: &str) -> Result<Repo, String> {
+  match Repo::from_str(repo) {
+    Ok(repo) => Ok(repo),
+    Err(err) => {
+      let api_error: ApiError = err.into();
+      let oai_error: OpenAIApiError = api_error.into();
+      Err(
+        oai_error
+          .error
+          .message
+          .replace("\u{2068}", "")
+          .replace("\u{2069}", ""),
+      )
+    }
   }
 }
 
@@ -153,8 +167,12 @@ fn gguf_filename_parser(filename: &str) -> Result<String, String> {
 mod test {
   use crate::{Cli, Command};
   use clap::{CommandFactory, Parser};
-  use objs::{ChatTemplateId, GptContextParams, OAIRequestParams};
+  use objs::{
+    test_utils::setup_l10n, ChatTemplateId, FluentLocalizationService, GptContextParams,
+    OAIRequestParams, Repo,
+  };
   use rstest::rstest;
+  use std::{str::FromStr, sync::Arc};
 
   #[test]
   fn test_cli_debug_assert() -> anyhow::Result<()> {
@@ -306,7 +324,7 @@ For more information, try '--help'.
     let actual = Cli::try_parse_from(args)?.command;
     let expected = Command::Pull {
       alias,
-      repo,
+      repo: repo.map(|r| Repo::from_str(&r).unwrap()),
       filename,
       snapshot,
     };
@@ -315,7 +333,7 @@ For more information, try '--help'.
   }
 
   #[rstest]
-  #[case(
+  #[case::alias_and_repo(
     vec!["bodhi", "pull", "llama3:instruct", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
 r#"error: the argument '[ALIAS]' cannot be used with '--repo <REPO>'
 
@@ -323,22 +341,26 @@ Usage: bodhi pull --filename <FILENAME> <ALIAS|--repo <REPO>>
 
 For more information, try '--help'.
 "#)]
-  #[case(
+  #[case::invalid_repo(
     vec!["bodhi", "pull", "-r", "meta-llama$Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.gguf"],
-r#"error: invalid value 'meta-llama$Meta-Llama-3-8B' for '--repo <REPO>': does not match huggingface repo format - `owner/repo`
+r#"error: invalid value 'meta-llama$Meta-Llama-3-8B' for '--repo <REPO>': repo does not match the huggingface repo pattern 'username/repo', path: meta-llama$Meta-Llama-3-8B
 
 For more information, try '--help'.
 "#)]
-  #[case(
+  #[case::invalid_ext(
     vec!["bodhi", "pull", "-r", "meta-llama/Meta-Llama-3-8B", "-f", "Meta-Llama-3-8B-Instruct.Q8_0.safetensor"],
 r#"error: invalid value 'Meta-Llama-3-8B-Instruct.Q8_0.safetensor' for '--filename <FILENAME>': only GGUF file extension supported
 
 For more information, try '--help'.
 "#)]
-  fn test_cli_pull_invalid(#[case] args: Vec<&str>, #[case] err_msg: &str) -> anyhow::Result<()> {
+  fn test_cli_pull_invalid(
+    #[from(setup_l10n)] _setup: &Arc<FluentLocalizationService>,
+    #[case] args: Vec<&str>,
+    #[case] expected: &str,
+  ) -> anyhow::Result<()> {
     let cli = Cli::try_parse_from(args);
     assert!(cli.is_err());
-    assert_eq!(err_msg, cli.unwrap_err().to_string());
+    assert_eq!(expected, cli.unwrap_err().to_string());
     Ok(())
   }
 
@@ -438,7 +460,7 @@ For more information, try '--help'.
     let actual = Cli::try_parse_from(args)?.command;
     let expected = Command::Create {
       alias,
-      repo,
+      repo: Repo::from_str(&repo)?,
       filename,
       snapshot,
       chat_template: Some(chat_template),
@@ -472,7 +494,7 @@ For more information, try '--help'.
     "--filename", "testalias.Q8_0.gguf",
     "--chat-template", "llama3",
     "--tokenizer-config", "My:Factory/testalias-gguf",
-  ], r#"error: invalid value 'My:Factory/testalias-gguf' for '--tokenizer-config <TOKENIZER_CONFIG>': does not match huggingface repo format - `owner/repo`
+  ], r#"error: invalid value 'My:Factory/testalias-gguf' for '--tokenizer-config <TOKENIZER_CONFIG>': user: repo contains invalid characters
 
 For more information, try '--help'.
 "#)]
@@ -494,11 +516,12 @@ For more information, try '--help'.
     "--filename", "testalias.Q8_0.gguf",
     "--chat-template", "llama3",
     "--tokenizer-config", "MyFactory/testalias-gguf",
-  ], r#"error: invalid value 'MyFactory$testalias-gguf' for '--repo <REPO>': does not match huggingface repo format - `owner/repo`
+  ], r#"error: invalid value 'MyFactory$testalias-gguf' for '--repo <REPO>': repo does not match the huggingface repo pattern 'username/repo', path: MyFactory$testalias-gguf
 
 For more information, try '--help'.
 "#)]
   fn test_cli_create_invalid(
+    #[from(setup_l10n)] _setup: &Arc<FluentLocalizationService>,
     #[case] args: Vec<&str>,
     #[case] message: String,
   ) -> anyhow::Result<()> {

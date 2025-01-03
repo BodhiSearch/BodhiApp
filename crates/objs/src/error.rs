@@ -226,12 +226,14 @@ pub struct JsonRejectionError {
 
 #[cfg(test)]
 mod tests {
-  use super::*;
   use crate::{
     test_utils::{assert_error_message, parse, setup_l10n},
-    ApiError, FluentLocalizationService, Repo,
+    ApiError, AppError, BadRequestError, BuilderError, FluentLocalizationService,
+    InternalServerError, IoDirCreateError, IoError, IoFileDeleteError, IoFileReadError,
+    IoFileWriteError, IoWithPathError, ObjValidationError, ReqwestError, SerdeJsonError,
+    SerdeJsonWithPathError, SerdeYamlError, SerdeYamlWithPathError,
   };
-  use axum::{body::Body, response::Response, routing::get, Json, Router};
+  use axum::{body::Body, http::StatusCode, response::Response, routing::get, Json, Router};
   use axum_extra::extract::WithRejection;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
@@ -243,10 +245,9 @@ mod tests {
     sync::Arc,
   };
   use tower::ServiceExt;
-  use validator::ValidationErrorsKind;
+  use validator::{ValidationErrors, ValidationErrorsKind};
 
   #[rstest]
-  #[case(&Repo::try_from("invalid-repo").unwrap_err(), "validation_error: value: does not match the huggingface repo pattern 'username/repo'")]
   #[case(&IoWithPathError::new(StdIoError::new(ErrorKind::NotFound, "file not found"), "test.txt".to_string()), "io_error: path: test.txt, file not found")]
   #[case(&IoDirCreateError::new(StdIoError::new(ErrorKind::AlreadyExists, "already exists"), "model-home".to_string()), "io_error: failed to create directory $BODHI_HOME/model-home, error: already exists")]
   #[case(&IoFileWriteError::new(StdIoError::new(ErrorKind::NotFound, "file not found"), "test.txt".to_string()), "io_error: failed to update file $BODHI_HOME/test.txt, error: file not found")]
@@ -259,8 +260,8 @@ mod tests {
   #[case(&BadRequestError::new("invalid input".to_string()), "invalid request, reason: invalid input")]
   #[case(&InternalServerError::new("unexpected server error".to_string()), "internal_server_error: unexpected server error")]
   #[case(&IoError::new(StdIoError::new(ErrorKind::PermissionDenied, "test io error")), "io_error: test io error")]
-  #[case(&ObjValidationError::ValidationErrors(ValidationErrors(HashMap::from([("field", ValidationErrorsKind::Field(vec![validator::ValidationError::new("value").with_message(Cow::Borrowed("validation failed"))]))]))), "validation_error: field: validation failed")]
-  #[case(&ObjValidationError::FilePatternMismatch("huggingface/hub/models--invalid-repo/snapshots/model.gguf".to_string()), "file pattern does not match huggingface repo pattern, path: huggingface/hub/models--invalid-repo/snapshots/model.gguf")]
+  #[case(&ObjValidationError::ValidationErrors(ValidationErrors(HashMap::from([("field", ValidationErrorsKind::Field(vec![validator::ValidationError::new("value").with_message(Cow::Borrowed("validation failed"))]))]))), "field: validation failed")]
+  #[case::file_pattern(&ObjValidationError::FilePatternMismatch("huggingface/hub/models--invalid-repo/snapshots/model.gguf".to_string()), "repo does not match the huggingface repo pattern 'username/repo', path: huggingface/hub/models--invalid-repo/snapshots/model.gguf")]
   #[case(&ReqwestError {
     error: "error sending request for url (http://foobar.nohost/)".to_string(),
   }, "error connecting to internal service: error sending request for url (http://foobar.nohost/)")]
@@ -269,7 +270,6 @@ mod tests {
     "builder_error: uninitialized field: field_name"
   )]
   #[case::validation_error(&BuilderError::ValidationError("validation failed".to_string()), "builder_error: validation error: validation failed")]
-  #[case::file_pattern_mismatch(&ObjValidationError::FilePatternMismatch("test.txt".to_string()), "file pattern does not match huggingface repo pattern, path: test.txt")]
   fn test_error_messages_objs(
     #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,

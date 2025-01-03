@@ -19,14 +19,6 @@ pub enum ConvertError {
   Convert { input: String, output: String },
   #[error(transparent)]
   ConvertBadRequest(#[from] ConvertBadRequestError),
-  #[error("invalid_repo")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  InvalidRepo {
-    input: String,
-    output: String,
-    repo: String,
-    error: String,
-  },
 }
 
 pub fn build_list_command(remote: bool, models: bool) -> Result<ListCommand, ConvertError> {
@@ -66,16 +58,7 @@ pub fn build_create_command(command: Command) -> Result<CreateCommand, ConvertEr
     } => {
       let chat_template = match (chat_template, tokenizer_config) {
         (Some(chat_template), None) => ChatTemplateType::Id(chat_template),
-        (None, Some(tokenizer_config)) => {
-          let repo =
-            Repo::try_from(tokenizer_config.clone()).map_err(|err| ConvertError::InvalidRepo {
-              input: "create".to_string(),
-              output: "CreateCommand".to_string(),
-              repo: tokenizer_config.clone(),
-              error: err.to_string(),
-            })?;
-          ChatTemplateType::Repo(repo)
-        }
+        (None, Some(tokenizer_config)) => ChatTemplateType::Repo(tokenizer_config),
         _ => {
           return Err(ConvertBadRequestError::new(
             "create".to_string(),
@@ -84,12 +67,6 @@ pub fn build_create_command(command: Command) -> Result<CreateCommand, ConvertEr
           ))?;
         }
       };
-      let repo = Repo::try_from(repo.clone()).map_err(|err| ConvertError::InvalidRepo {
-        input: "create".to_string(),
-        output: "CreateCommand".to_string(),
-        repo,
-        error: err.to_string(),
-      })?;
       Ok(CreateCommand {
         alias,
         repo,
@@ -124,25 +101,17 @@ pub fn build_manage_alias_command(command: Command) -> Result<ManageAliasCommand
 
 pub fn build_pull_command(
   alias: Option<String>,
-  repo: Option<String>,
+  repo: Option<Repo>,
   filename: Option<String>,
   snapshot: Option<String>,
 ) -> Result<PullCommand, ConvertError> {
   match (alias, repo, filename) {
     (Some(alias), None, None) => Ok(PullCommand::ByAlias { alias }),
-    (None, Some(repo), Some(filename)) => {
-      let repo = Repo::try_from(repo.clone()).map_err(|err| ConvertError::InvalidRepo {
-        input: "pull".to_string(),
-        output: "PullCommand".to_string(),
-        repo,
-        error: err.to_string(),
-      })?;
-      Ok(PullCommand::ByRepoFile {
-        repo,
-        filename,
-        snapshot,
-      })
-    }
+    (None, Some(repo), Some(filename)) => Ok(PullCommand::ByRepoFile {
+      repo,
+      filename,
+      snapshot,
+    }),
     _ => Err(ConvertBadRequestError::new(
       "pull".to_string(),
       "PullCommand".to_string(),
@@ -158,10 +127,10 @@ mod tests {
     build_serve_command,
   };
   use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
-  use objs::test_utils::{assert_error_message, setup_l10n};
-  use objs::FluentLocalizationService;
   use objs::{
-    AppError, ChatTemplateId, ChatTemplateType, GptContextParams, OAIRequestParams, Repo,
+    test_utils::{assert_error_message, setup_l10n},
+    AppError, ChatTemplateId, ChatTemplateType, FluentLocalizationService, GptContextParams,
+    OAIRequestParams, Repo,
   };
   use rstest::rstest;
   use server_app::ServeCommand;
@@ -222,8 +191,8 @@ mod tests {
   #[case(
   Command::Create {
     alias: "testalias:instruct".to_string(),
-    repo: "MyFactory/testalias-gguf".to_string(),
-    filename: "testalias.Q8_0.gguf".to_string(),
+    repo: Repo::testalias(),
+    filename: Repo::testalias_filename(),
     snapshot: Some("main".to_string()),
     chat_template: Some(ChatTemplateId::Llama3),
     tokenizer_config: None,
@@ -233,8 +202,8 @@ mod tests {
   },
   CreateCommand {
     alias: "testalias:instruct".to_string(),
-    repo: Repo::try_from("MyFactory/testalias-gguf".to_string())?,
-    filename: "testalias.Q8_0.gguf".to_string(),
+    repo: Repo::testalias(),
+    filename: Repo::testalias_filename(),
     snapshot: Some("main".to_string()),
     chat_template: ChatTemplateType::Id(ChatTemplateId::Llama3),
     auto_download: true,
@@ -259,36 +228,8 @@ mod tests {
   #[case(
     Command::Create {
       alias: "test".to_string(),
-      repo: "valid/repo".to_string(),
-      filename: "model.gguf".to_string(),
-      snapshot: None,
-      chat_template: None,
-      tokenizer_config: Some("invalid-chat/repo/pattern".to_string()),
-      update: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    },
-    "Command 'create' cannot be converted into command 'CreateCommand', repo invalid-chat/repo/pattern is invalid: validation_errors"
-  )]
-  #[case(
-    Command::Create {
-      alias: "test".to_string(),
-      repo: "invalid-repo".to_string(),
-      filename: "model.gguf".to_string(),
-      snapshot: None,
-      chat_template: Some(ChatTemplateId::Llama3),
-      tokenizer_config: None,
-      update: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    },
-    "Command 'create' cannot be converted into command 'CreateCommand', repo invalid-repo is invalid: validation_errors"
-  )]
-  #[case(
-    Command::Create {
-      alias: "test".to_string(),
-      repo: "invalid-repo".to_string(),
-      filename: "model.gguf".to_string(),
+      repo: Repo::testalias(),
+      filename: Repo::testalias_filename(),
       snapshot: None,
       chat_template: None,
       tokenizer_config: None,
@@ -361,25 +302,20 @@ mod tests {
 
   #[rstest]
   #[case((Some("llama3:instruct".to_string()), None, None, None) , PullCommand::ByAlias { alias: "llama3:instruct".to_string(), })]
-  #[case((None, Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()), Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()), None) , PullCommand::ByRepoFile { repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+  #[case((None, Some(Repo::llama3()), Some(Repo::LLAMA3_Q8.to_string()), None) , PullCommand::ByRepoFile { repo: Repo::llama3(),
+    filename: Repo::LLAMA3_Q8.to_string(),
     snapshot: None,
   })]
-  #[case((None, Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()), Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()), Some("main".to_string())) , PullCommand::ByRepoFile { repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+  #[case((None, Some(Repo::llama3()), Some(Repo::LLAMA3_Q8.to_string()), Some("main".to_string())) , PullCommand::ByRepoFile { repo: Repo::llama3(),
+    filename: Repo::LLAMA3_Q8.to_string(),
     snapshot: Some("main".to_string()),
   })]
-  #[case((None, Some("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string()), Some("Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string()), Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())) , PullCommand::ByRepoFile { repo: Repo::try_from("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF").unwrap(),
-    filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
+  #[case((None, Some(Repo::llama3()), Some(Repo::LLAMA3_Q8.to_string()), Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())) , PullCommand::ByRepoFile { repo: Repo::llama3(),
+    filename: Repo::LLAMA3_Q8.to_string(),
     snapshot: Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string()),
   })]
   fn test_pull_command_try_from_command(
-    #[case] input: (
-      Option<String>,
-      Option<String>,
-      Option<String>,
-      Option<String>,
-    ),
+    #[case] input: (Option<String>, Option<Repo>, Option<String>, Option<String>),
     #[case] expected: PullCommand,
   ) -> anyhow::Result<()> {
     let pull_command: PullCommand = build_pull_command(input.0, input.1, input.2, input.3)?;
