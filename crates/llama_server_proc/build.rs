@@ -11,6 +11,7 @@ struct LlamaServerBuild {
   variants: Vec<String>,
   default: String,
 }
+
 impl LlamaServerBuild {
   fn new(target: &str, extension: &str, variants: Vec<&str>) -> Self {
     let default = variants.first().unwrap().to_string();
@@ -26,7 +27,7 @@ impl LlamaServerBuild {
     if self.extension.is_empty() {
       "llama-server".to_string()
     } else {
-      format!("llama-server{}", self.extension)
+      format!("llama-server.{}", self.extension)
     }
   }
 }
