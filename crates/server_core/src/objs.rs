@@ -32,6 +32,7 @@ pub struct AliasResponse {
   pub repo: String,
   pub filename: String,
   pub snapshot: String,
+  pub source: String,
   pub chat_template: String,
   pub model_params: HashMap<String, Value>,
   pub request_params: OAIRequestParams,
@@ -62,10 +63,11 @@ impl From<HubFile> for LocalModelResponse {
 impl From<Alias> for AliasResponse {
   fn from(alias: Alias) -> Self {
     AliasResponse {
-      alias: alias.alias,
       repo: alias.repo.to_string(),
       filename: alias.filename,
       snapshot: alias.snapshot,
+      alias: alias.alias,
+      source: alias.source.to_string(),
       chat_template: alias.chat_template.to_string(),
       model_params: HashMap::new(),
       request_params: alias.request_params,

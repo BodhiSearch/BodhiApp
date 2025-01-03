@@ -87,6 +87,7 @@ fn sort_aliases(aliases: &mut [Alias], sort: &str, sort_order: &str) {
       "name" => a.alias.cmp(&b.alias),
       "repo" => a.repo.cmp(&b.repo),
       "filename" => a.filename.cmp(&b.filename),
+      "source" => a.source.cmp(&b.source),
       _ => a.alias.cmp(&b.alias),
     };
     if sort_order.to_lowercase() == "desc" {
