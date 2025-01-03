@@ -18,12 +18,16 @@ pub async fn dev_secrets_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Response, ApiError> {
   let secret_service = state.app_service().secret_service();
-  let value = json! {{
+  #[allow(unused_mut)]
+  let mut value = json! {{
     "authz": secret_service.authz()?,
     "status": secret_service.app_status()?,
     "app_info": secret_service.app_reg_info()?,
-    "dump": secret_service.dump()?,
   }};
+  #[cfg(debug_assertions)]
+  {
+    value["dump"] = serde_json::Value::String(secret_service.dump()?);
+  }
   Ok(
     Response::builder()
       .header("Content-Type", "application/json")
