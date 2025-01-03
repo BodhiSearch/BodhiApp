@@ -174,7 +174,7 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
   fn encryption_key(&self) -> Option<String>;
 
   #[cfg(not(debug_assertions))]
-  fn get_dev_env(&self) -> Option<String> {
+  fn get_dev_env(&self, _key: &str) -> Option<String> {
     None
   }
 

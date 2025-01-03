@@ -13,9 +13,9 @@ use commands::{Cli, Command, DefaultStdoutWriter, EnvCommand};
 use objs::FluentLocalizationService;
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService},
-  hash_key, AppService, DefaultAppService, DefaultEnvService, DefaultSecretService, EnvService,
-  HfHubService, KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService,
-  SqliteSessionService, SystemKeyringStore,
+  hash_key, DefaultAppService, DefaultEnvService, DefaultSecretService, EnvService, HfHubService,
+  KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService, SqliteSessionService,
+  SystemKeyringStore,
 };
 use std::{env, sync::Arc};
 use tokio::runtime::Builder;
@@ -163,6 +163,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
     }
     #[cfg(debug_assertions)]
     Command::Secrets {} => {
+      use services::AppService;
       println!("{}", service.secret_service().dump()?);
     }
   }
