@@ -4,27 +4,35 @@ use crate::{
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, strum::Display)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum AliasSource {
+  #[default]
+  User,
+  Model,
+}
+
 #[allow(clippy::too_many_arguments)]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, new)]
-#[cfg_attr(
-  any(test, feature = "test-utils"),
-  derive(Default, derive_builder::Builder)
-)]
-#[cfg_attr(
-  any(test, feature = "test-utils"),
-  builder(
-    default,
-    setter(into, strip_option),
-    build_fn(error = crate::BuilderError)))]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder, new)]
+#[builder(
+  setter(into, strip_option),
+  build_fn(error = crate::BuilderError))]
+#[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct Alias {
   pub alias: String,
   pub repo: Repo,
   pub filename: String,
   pub snapshot: String,
+  #[serde(default, skip_serializing_if = "is_default")]
+  #[builder(default)]
+  pub source: AliasSource,
   pub chat_template: ChatTemplateType,
   #[serde(default, skip_serializing_if = "is_default")]
+  #[builder(default)]
   pub request_params: OAIRequestParams,
   #[serde(default, skip_serializing_if = "is_default")]
+  #[builder(default)]
   pub context_params: GptContextParams,
 }
 
@@ -52,6 +60,7 @@ mod test {
     Alias, AliasBuilder, ChatTemplateId, ChatTemplateType, GptContextParamsBuilder,
     OAIRequestParamsBuilder, Repo,
   };
+  use anyhow_trace::anyhow_trace;
   use rstest::rstest;
 
   #[rstest]
@@ -65,10 +74,10 @@ mod test {
     assert_eq!(expected, alias.config_filename());
   }
 
+  #[anyhow_trace]
   #[rstest]
   #[case::full(
     AliasBuilder::tinyllama()
-      .chat_template(ChatTemplateType::tinyllama())
       .request_params(OAIRequestParamsBuilder::default()
         .temperature(0.7)
         .top_p(0.95)

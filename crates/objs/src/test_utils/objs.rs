@@ -1,7 +1,7 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, ChatTemplateId, ChatTemplateType, GptContextParams,
-  GptContextParamsBuilder, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder,
-  RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
+  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, ChatTemplateId, ChatTemplateType,
+  GptContextParams, GptContextParamsBuilder, HubFile, HubFileBuilder, OAIRequestParams,
+  OAIRequestParamsBuilder, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
 use std::{path::PathBuf, str::FromStr};
 
@@ -20,6 +20,7 @@ impl Repo {
   pub const LLAMA2: &str = "TheBloke/Llama-2-7B-Chat-GGUF";
   pub const LLAMA2_TOKENIZER: &str = "meta-llama/Llama-2-70b-chat-hf";
   pub const LLAMA2_FILENAME: &str = "llama-2-7b-chat.Q4_K_M.gguf";
+  pub const LLAMA2_Q8: &str = "llama-2-7b-chat.Q8_0.gguf";
   pub const TINYLLAMA: &str = "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF";
   pub const TINYLLAMA_TOKENIZER: &str = "TinyLlama/TinyLlama-1.1B-Chat-v1.0";
   pub const TINYLLAMA_FILENAME: &str = "tinyllama-1.1b-chat-v0.3.Q2_K.gguf";
@@ -28,6 +29,8 @@ impl Repo {
   pub const TESTALIAS: &str = "MyFactory/testalias-gguf";
   pub const TESTALIAS_TOKENIZER: &str = "MyFactory/testalias";
   pub const FAKEMODEL: &str = "FakeFactory/fakemodel-gguf";
+
+  pub const SNAPSHOT_LATEST: &str = "b32046744d93031a26c8e925de2c8932c305f7b9";
 
   pub fn llama3() -> Repo {
     Repo::from_str(Self::LLAMA3).unwrap()
@@ -191,7 +194,7 @@ impl RemoteModel {
     RemoteModel::new(
       String::from("testalias:instruct"),
       Repo::testalias(),
-      Repo::testalias_filename(),
+      Repo::TESTALIAS_FILENAME.to_string(),
       None,
       ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
@@ -203,10 +206,11 @@ impl RemoteModel {
 impl AliasBuilder {
   pub fn testalias() -> AliasBuilder {
     AliasBuilder::default()
-      .alias("testalias:instruct".to_string())
+      .alias("testalias:instruct")
       .repo(Repo::testalias())
       .filename(Repo::testalias_filename())
-      .snapshot(SNAPSHOT.to_string())
+      .snapshot(SNAPSHOT)
+      .source(AliasSource::User)
       .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
@@ -244,6 +248,7 @@ impl AliasBuilder {
       .repo(Repo::llama3())
       .filename(Repo::LLAMA3_Q8.to_string())
       .snapshot(SNAPSHOT.to_string())
+      .source(AliasSource::User)
       .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(request_params)
       .context_params(gpt_params)
@@ -254,8 +259,9 @@ impl AliasBuilder {
     AliasBuilder::default()
       .alias("tinyllama:instruct".to_string())
       .repo(Repo::tinyllama())
-      .filename(Repo::TINYLLAMA_FILENAME.to_string())
-      .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
+      .filename(Repo::TINYLLAMA_FILENAME)
+      .snapshot(Repo::SNAPSHOT_LATEST)
+      .source(AliasSource::User)
       .chat_template(ChatTemplateType::tinyllama())
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
@@ -282,6 +288,48 @@ impl Alias {
 
   pub fn tinyllama() -> Alias {
     AliasBuilder::tinyllama().build().unwrap()
+  }
+
+  pub fn tinyllama_model() -> Alias {
+    AliasBuilder::default()
+      .alias("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K")
+      .repo(Repo::tinyllama())
+      .filename(Repo::TINYLLAMA_FILENAME)
+      .snapshot(Repo::SNAPSHOT_LATEST)
+      .source(AliasSource::Model)
+      .chat_template(ChatTemplateType::Embedded)
+      .request_params(OAIRequestParams::default())
+      .context_params(GptContextParams::default())
+      .build()
+      .unwrap()
+  }
+
+  pub fn llama2_model() -> Alias {
+    AliasBuilder::default()
+      .alias("TheBloke/Llama-2-7B-Chat-GGUF:Q8_0")
+      .repo(Repo::llama2())
+      .filename(Repo::LLAMA2_Q8)
+      .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb")
+      .source(AliasSource::Model)
+      .chat_template(ChatTemplateType::Embedded)
+      .request_params(OAIRequestParams::default())
+      .context_params(GptContextParams::default())
+      .build()
+      .unwrap()
+  }
+
+  pub fn fakefactory_model() -> Alias {
+    AliasBuilder::default()
+      .alias("FakeFactory/fakemodel-gguf:Q4_0")
+      .repo(Repo::fakemodel())
+      .filename("fakemodel.Q4_0.gguf")
+      .snapshot("9ca625120374ddaae21f067cb006517d14dc91a6")
+      .source(AliasSource::Model)
+      .chat_template(ChatTemplateType::Embedded)
+      .request_params(OAIRequestParams::default())
+      .context_params(GptContextParams::default())
+      .build()
+      .unwrap()
   }
 }
 

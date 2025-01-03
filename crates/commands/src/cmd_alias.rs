@@ -128,16 +128,26 @@ impl ManageAliasCommand {
 #[cfg(test)]
 mod test {
   use crate::{ManageAliasCommand, MockStdoutWriter};
+  use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
-  use rstest::rstest;
-  use services::test_utils::AppServiceStubBuilder;
+  use rstest::{fixture, rstest};
+  use services::{test_utils::AppServiceStubBuilder, AppService};
   use std::sync::Arc;
 
+  #[fixture]
+  fn service() -> Arc<dyn AppService> {
+    Arc::new(
+      AppServiceStubBuilder::default()
+        .with_hub_service()
+        .with_data_service()
+        .build()
+        .unwrap(),
+    )
+  }
+
+  #[anyhow_trace]
   #[rstest]
-  fn test_manage_alias_show() -> anyhow::Result<()> {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .build()?;
+  fn test_manage_alias_show(service: Arc<dyn AppService>) -> anyhow::Result<()> {
     let show = ManageAliasCommand::Show {
       alias: "tinyllama:instruct".to_string(),
     };
@@ -153,15 +163,13 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 "#,
       ))
       .return_once(|input| Ok(input.len()));
-    show.execute(Arc::new(service), &mut mock)?;
+    show.execute(service, &mut mock)?;
     Ok(())
   }
 
+  #[anyhow_trace]
   #[rstest]
-  fn test_manage_alias_delete() -> anyhow::Result<()> {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .build()?;
+  fn test_manage_alias_delete(service: Arc<dyn AppService>) -> anyhow::Result<()> {
     let delete = ManageAliasCommand::Delete {
       alias: "tinyllama:instruct".to_string(),
     };
@@ -170,16 +178,13 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
       .expect_write()
       .with(eq("alias 'tinyllama:instruct' deleted.\n"))
       .return_once(|input| Ok(input.len()));
-    delete.execute(Arc::new(service), &mut mock)?;
+    delete.execute(service, &mut mock)?;
     Ok(())
   }
 
+  #[anyhow_trace]
   #[rstest]
-  fn test_manage_alias_copy() -> anyhow::Result<()> {
-    let service = AppServiceStubBuilder::default()
-      .with_data_service()
-      .build()?;
-    let service = Arc::new(service);
+  fn test_manage_alias_copy(service: Arc<dyn AppService>) -> anyhow::Result<()> {
     let copy = ManageAliasCommand::Copy {
       alias: "tinyllama:instruct".to_string(),
       new_alias: "tinyllama:myconfig".to_string(),
@@ -193,10 +198,9 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
       .return_once(|input| Ok(input.len()));
     copy.execute(service.clone(), &mut mock)?;
     assert!(service
-      .bodhi_home()
-      .join("aliases")
-      .join("tinyllama--myconfig.yaml")
-      .exists());
+      .data_service()
+      .find_alias("tinyllama:myconfig")
+      .is_some());
     Ok(())
   }
 }

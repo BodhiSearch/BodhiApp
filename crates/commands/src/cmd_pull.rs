@@ -1,4 +1,4 @@
-use objs::{Alias, AppError, ObjValidationError, Repo};
+use objs::{AliasBuilder, AliasSource, AppError, BuilderError, ObjValidationError, Repo};
 use services::{
   AliasExistsError, AppService, DataServiceError, HubDownloadable, HubServiceError, ObjExtsError,
   RemoteModelNotFoundError,
@@ -20,6 +20,8 @@ pub enum PullCommand {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum PullCommandError {
+  #[error(transparent)]
+  Builder(#[from] BuilderError),
   #[error(transparent)]
   ObjExts(#[from] ObjExtsError),
   #[error(transparent)]
@@ -52,15 +54,16 @@ impl PullCommand {
             .hub_service()
             .download(&model.repo, &model.filename, None)?;
         let _ = model.chat_template.download(service.hub_service())?;
-        let alias = Alias::new(
-          model.alias,
-          model.repo,
-          model.filename,
-          local_model_file.snapshot.clone(),
-          model.chat_template,
-          model.request_params,
-          model.context_params,
-        );
+        let alias = AliasBuilder::default()
+          .alias(model.alias)
+          .repo(model.repo)
+          .filename(model.filename)
+          .snapshot(local_model_file.snapshot)
+          .source(AliasSource::User)
+          .chat_template(model.chat_template)
+          .request_params(model.request_params)
+          .context_params(model.context_params)
+          .build()?;
         service.data_service().save_alias(&alias)?;
         println!(
           "model alias: '{}' saved to $BODHI_HOME/aliases",
@@ -96,10 +99,8 @@ impl PullCommand {
 mod test {
   use crate::{PullCommand, PullCommandError};
   use mockall::predicate::eq;
-  use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, HubFile, OAIRequestParams,
-    RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
-  };
+  use objs::{Alias, HubFile, RemoteModel, Repo, TOKENIZER_CONFIG_JSON};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
     test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
@@ -147,8 +148,8 @@ mod test {
       )
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let service = AppServiceStubBuilder::default()
-      .with_data_service()
       .hub_service(Arc::new(test_hf_service))
+      .with_data_service()
       .build()?;
     let pull = PullCommand::ByAlias {
       alias: remote_model.alias,
@@ -159,18 +160,7 @@ mod test {
       .data_service()
       .find_alias("testalias:instruct")
       .ok_or(anyhow::anyhow!("alias not found"))?;
-    assert_eq!(
-      Alias {
-        alias: "testalias:instruct".to_string(),
-        repo: Repo::testalias(),
-        filename: Repo::TESTALIAS_FILENAME.to_string(),
-        snapshot: SNAPSHOT.to_string(),
-        chat_template: ChatTemplateType::Id(objs::ChatTemplateId::Llama3),
-        request_params: OAIRequestParams::default(),
-        context_params: GptContextParams::default()
-      },
-      created_alias
-    );
+    assert_eq!(Alias::testalias(), created_alias);
     Ok(())
   }
 

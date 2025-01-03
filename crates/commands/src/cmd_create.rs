@@ -1,5 +1,6 @@
 use objs::{
-  Alias, AppError, ChatTemplateType, GptContextParams, OAIRequestParams, ObjValidationError, Repo,
+  AliasBuilder, AliasSource, AppError, BuilderError, ChatTemplateType, GptContextParams,
+  OAIRequestParams, ObjValidationError, Repo,
 };
 use services::{
   AliasExistsError, AppService, DataServiceError, HubDownloadable, HubFileNotFoundError,
@@ -26,6 +27,8 @@ pub struct CreateCommand {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum CreateCommandError {
+  #[error(transparent)]
+  Builder(#[from] BuilderError),
   #[error(transparent)]
   ObjExts(#[from] ObjExtsError),
   #[error(transparent)]
@@ -86,15 +89,16 @@ impl CreateCommand {
       }
     };
     let _ = self.chat_template.download(service.hub_service())?;
-    let alias: Alias = Alias::new(
-      self.alias,
-      self.repo,
-      self.filename,
-      local_model_file.snapshot.clone(),
-      self.chat_template,
-      self.oai_request_params,
-      self.context_params,
-    );
+    let alias = AliasBuilder::default()
+      .alias(self.alias)
+      .repo(self.repo)
+      .filename(self.filename)
+      .snapshot(local_model_file.snapshot)
+      .source(AliasSource::User)
+      .chat_template(self.chat_template)
+      .request_params(self.oai_request_params)
+      .context_params(self.context_params)
+      .build()?;
     service.data_service().save_alias(&alias)?;
     println!(
       "model alias: '{}' saved to $BODHI_HOME/aliases",
@@ -109,8 +113,8 @@ mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplateType, GptContextParams, GptContextParamsBuilder,
-    HubFile, OAIRequestParams, OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
+    Alias, AliasBuilder, ChatTemplateType, GptContextParamsBuilder, HubFile,
+    OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -161,26 +165,26 @@ mod test {
       .find_alias("tinyllama:instruct")
       .unwrap();
     assert_ne!(repo_alias, updated_alias);
-    let expected = Alias {
-      alias: "tinyllama:instruct".to_string(),
-      repo: Repo::tinyllama(),
-      filename: Repo::TINYLLAMA_FILENAME.to_string(),
-      snapshot: "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
-      chat_template: ChatTemplateType::tinyllama(),
-      request_params: OAIRequestParamsBuilder::default()
-        .frequency_penalty(1.0)
-        .max_tokens(2048_u16)
-        .build()
-        .unwrap(),
-      context_params: GptContextParamsBuilder::default()
-        .n_ctx(2048)
-        .n_keep(2048)
-        .n_parallel(2)
-        .n_seed(42_u32)
-        .n_threads(8_u32)
-        .build()
-        .unwrap(),
-    };
+    let expected = AliasBuilder::tinyllama()
+      .request_params(
+        OAIRequestParamsBuilder::default()
+          .frequency_penalty(1.0)
+          .max_tokens(2048_u16)
+          .build()
+          .unwrap(),
+      )
+      .context_params(
+        GptContextParamsBuilder::default()
+          .n_ctx(2048)
+          .n_keep(2048)
+          .n_parallel(2)
+          .n_seed(42_u32)
+          .n_threads(8_u32)
+          .build()
+          .unwrap(),
+      )
+      .build()
+      .unwrap();
     assert_eq!(expected, updated_alias);
     Ok(())
   }
@@ -224,18 +228,7 @@ mod test {
       .data_service()
       .find_alias("testalias:instruct")
       .unwrap();
-    assert_eq!(
-      Alias {
-        alias: "testalias:instruct".to_string(),
-        repo: Repo::testalias(),
-        filename: Repo::testalias_filename(),
-        snapshot: SNAPSHOT.to_string(),
-        chat_template: ChatTemplateType::Id(objs::ChatTemplateId::Llama3),
-        request_params: OAIRequestParams::default(),
-        context_params: GptContextParams::default()
-      },
-      created
-    );
+    assert_eq!(Alias::testalias(), created);
     Ok(())
   }
 
@@ -277,15 +270,10 @@ mod test {
       .find_alias("testalias:instruct")
       .unwrap();
     assert_eq!(
-      Alias {
-        alias: "testalias:instruct".to_string(),
-        repo: Repo::testalias(),
-        filename: Repo::TESTALIAS_FILENAME.to_string(),
-        snapshot: SNAPSHOT.to_string(),
-        chat_template: ChatTemplateType::testalias(),
-        request_params: OAIRequestParams::default(),
-        context_params: GptContextParams::default()
-      },
+      AliasBuilder::testalias()
+        .chat_template(chat_template)
+        .build()
+        .unwrap(),
       created
     );
     Ok(())

@@ -142,11 +142,9 @@ impl DataService for LocalDataService {
   }
 
   fn find_alias(&self, alias: &str) -> Option<Alias> {
-    self
-      .list_aliases()
-      .unwrap_or_default()
-      .into_iter()
-      .find(|obj| obj.alias.eq(&alias))
+    let aliases = self.list_aliases();
+    let aliases = aliases.unwrap_or_default();
+    aliases.into_iter().find(|obj| obj.alias.eq(&alias))
   }
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
