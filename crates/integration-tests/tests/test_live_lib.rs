@@ -30,7 +30,7 @@ async fn test_live_llama_server_load_exec_with_server(
 ) -> anyhow::Result<()> {
   let llama_68m = tests_data.join("live/huggingface/hub/models--afrideva--Llama-68M-Chat-v1-GGUF/snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61/llama-68m-chat-v1.q8_0.gguf");
   let server = LlamaServer::new(
-    bin_path,
+    &bin_path,
     LlamaServerArgsBuilder::default()
       .alias("testalias")
       .model(llama_68m)
