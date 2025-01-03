@@ -160,10 +160,7 @@ mod test {
 
   #[rstest]
   #[case("llama3", ChatTemplateType::Id(ChatTemplateId::Llama3))]
-  #[case(
-    "meta-llama/Meta-Llama-3-8B-Instruct",
-    ChatTemplateType::llama3()
-  )]
+  #[case("meta-llama/Meta-Llama-3-8B-Instruct", ChatTemplateType::llama3())]
   #[case("embedded", ChatTemplateType::Embedded)]
   fn test_chat_template_deser(
     #[case] input: &str,
@@ -181,10 +178,7 @@ mod test {
 
   #[rstest]
   #[case(ChatTemplateType::Id(ChatTemplateId::Llama3), "\"llama3\"")]
-  #[case(
-    ChatTemplateType::llama3(),
-    "\"meta-llama/Meta-Llama-3-8B-Instruct\""
-  )]
+  #[case(ChatTemplateType::llama3(), "\"meta-llama/Meta-Llama-3-8B-Instruct\"")]
   #[case(ChatTemplateType::Embedded, "\"embedded\"")]
   fn test_chat_template_ser(
     #[case] input: ChatTemplateType,

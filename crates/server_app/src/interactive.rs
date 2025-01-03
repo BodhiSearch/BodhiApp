@@ -233,15 +233,15 @@ impl InteractiveRuntime {
 
 #[cfg(test)]
 mod test {
-  use crate::Interactive;
+  use crate::{Interactive, InteractiveError};
+  use anyhow_trace::anyhow_trace;
   use core::panic;
-  use objs::{AliasBuilder, Repo};
+  use objs::{AliasBuilder, ChatTemplateType, Repo};
   use rstest::rstest;
   use services::{test_utils::AppServiceStubBuilder, HubFileNotFoundError, HubServiceError};
   use std::sync::Arc;
 
-  use super::InteractiveError;
-
+  #[anyhow_trace]
   #[rstest]
   #[tokio::test]
   async fn test_interactive_non_remote_model_alias_local_model_not_found_raises_error(
@@ -256,6 +256,7 @@ mod test {
         .repo(Repo::testalias())
         .filename("notexists.Q8_0.gguf")
         .snapshot("main")
+        .chat_template(ChatTemplateType::tinyllama())
         .build()?,
     )
     .execute(Arc::new(service))

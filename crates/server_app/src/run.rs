@@ -64,10 +64,8 @@ impl RunCommand {
 mod test {
   use crate::{test_utils::MockInteractiveRuntime, RunCommand, RunCommandError};
   use mockall::predicate::{always, eq};
-  use objs::{
-    test_utils::SNAPSHOT, Alias, ChatTemplateId, ChatTemplateType, GptContextParams, HubFile,
-    OAIRequestParams, Repo, TOKENIZER_CONFIG_JSON,
-  };
+  use objs::{Alias, HubFile, Repo, TOKENIZER_CONFIG_JSON};
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
     test_utils::{test_hf_service, AppServiceStubBuilder, TestHfService},
@@ -109,7 +107,11 @@ mod test {
       .return_once(|_, _, _| Ok(HubFile::testalias_q4()));
     test_hf_service
       .expect_download()
-      .with(eq(Repo::llama3_tokenizer()), eq(TOKENIZER_CONFIG_JSON), eq(None))
+      .with(
+        eq(Repo::llama3_tokenizer()),
+        eq(TOKENIZER_CONFIG_JSON),
+        eq(None),
+      )
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let mut mock_interactive = MockInteractiveRuntime::default();
     mock_interactive
@@ -129,18 +131,7 @@ mod test {
       .data_service()
       .find_alias("testalias:q4_instruct")
       .unwrap();
-    assert_eq!(
-      Alias {
-        alias: "testalias:q4_instruct".to_string(),
-        repo: Repo::testalias(),
-        filename: Repo::testalias_q4(),
-        snapshot: SNAPSHOT.to_string(),
-        chat_template: ChatTemplateType::Id(ChatTemplateId::Llama3),
-        request_params: OAIRequestParams::default(),
-        context_params: GptContextParams::default(),
-      },
-      created
-    );
+    assert_eq!(Alias::testalias_q4(), created);
     Ok(())
   }
 }
