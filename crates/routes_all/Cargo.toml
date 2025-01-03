@@ -26,6 +26,7 @@ routes_app = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 rstest = { workspace = true }
+mockall = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true, features = ["util"] }
 
