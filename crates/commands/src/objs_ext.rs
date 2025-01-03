@@ -42,10 +42,8 @@ impl IntoRow for RemoteModel {
   fn into_row(self) -> Row {
     Row::from(vec![
       &self.alias,
-      &self.family,
       &self.repo,
       &self.filename,
-      &self.features.join(","),
       &self.chat_template.to_string(),
     ])
   }
@@ -103,10 +101,8 @@ mod test {
     let row: Row = model.into_row();
     let expected = Row::from(vec![
       Cell::new("llama3:instruct"),
-      Cell::new("llama3"),
       Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
       Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-      Cell::new("chat"),
       Cell::new("llama3"),
     ]);
     assert_eq!(expected, row);

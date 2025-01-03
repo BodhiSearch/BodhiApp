@@ -9,8 +9,6 @@ impl AliasResponse {
       "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string(),
       "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
       "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
-      Some("llama3".to_string()),
-      vec!["chat".to_string()],
       "llama3".to_string(),
       HashMap::new(),
       OAIRequestParamsBuilder::default()
@@ -40,7 +38,6 @@ impl AliasResponseBuilder {
       .repo("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())
       .filename("tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string())
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
-      .features(vec!["chat".to_string()])
       .chat_template("TinyLlama/TinyLlama-1.1B-Chat-v1.0".to_string())
       .model_params(HashMap::new())
       .request_params(OAIRequestParamsBuilder::default().build().unwrap())

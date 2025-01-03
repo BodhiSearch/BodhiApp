@@ -85,7 +85,6 @@ fn sort_aliases(aliases: &mut [Alias], sort: &str, sort_order: &str) {
   aliases.sort_by(|a, b| {
     let cmp = match sort {
       "name" => a.alias.cmp(&b.alias),
-      "family" => a.family.cmp(&b.family),
       "repo" => a.repo.cmp(&b.repo),
       "filename" => a.filename.cmp(&b.filename),
       _ => a.alias.cmp(&b.alias),
@@ -264,10 +263,8 @@ mod tests {
       .unwrap();
     let expected = AliasResponse {
       alias: "llama3:instruct".to_string(),
-      family: Some("llama3".to_string()),
       repo: "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string(),
       filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      features: vec!["chat".to_string()],
       chat_template: "llama3".to_string(),
       snapshot: "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
       model_params: HashMap::new(),
@@ -306,9 +303,6 @@ mod tests {
       .await?;
 
     assert!(!response.data.is_empty());
-    let families: Vec<_> = response.data.iter().map(|a| &a.family).collect();
-    assert!(families.windows(2).all(|w| w[0] >= w[1]));
-
     Ok(())
   }
 

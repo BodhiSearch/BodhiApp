@@ -10,7 +10,7 @@ use services::{
   BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
 use sqlx::SqlitePool;
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{cmp::min, collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
 
 static COPY_OPTIONS: CopyOptions = CopyOptions {
@@ -120,7 +120,7 @@ pub async fn live_server(
   llama2_7b_setup: (TempDir, Arc<dyn AppService>),
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
-  let port = rand::random::<u16>();
+  let port = min(rand::random::<u16>() + 2000, 65535);
   let (temp_cache_dir, app_service) = llama2_7b_setup;
   let serve_command = ServeCommand::ByParams {
     host: host.clone(),

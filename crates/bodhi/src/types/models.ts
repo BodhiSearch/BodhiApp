@@ -18,11 +18,9 @@ export interface FeaturedModel {
 
 export interface Model {
   alias: string;
-  family?: string;
   repo: string;
   filename: string;
   snapshot: string;
-  features: string[];
   chat_template: string;
   request_params: OAIRequestParams;
   context_params: GptContextParams;

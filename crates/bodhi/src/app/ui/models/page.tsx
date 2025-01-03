@@ -57,10 +57,8 @@ function ModelsPageContent() {
   const renderRow = (model: Model) => (
     <>
       <TableCell>{model.alias}</TableCell>
-      <TableCell>{model.family || ''}</TableCell>
       <TableCell>{model.repo}</TableCell>
       <TableCell>{model.filename}</TableCell>
-      <TableCell>{model.features.join(', ')}</TableCell>
       <TableCell>
         <Button
           variant="ghost"

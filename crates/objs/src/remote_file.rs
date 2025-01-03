@@ -6,11 +6,9 @@ use serde::Deserialize;
 #[cfg_attr(test, derive(Default))]
 pub struct RemoteModel {
   pub alias: String,
-  pub family: String,
   pub repo: Repo,
   pub filename: String,
   pub snapshot: Option<String>,
-  pub features: Vec<String>,
   pub chat_template: ChatTemplateType,
   #[serde(default)]
   pub request_params: OAIRequestParams,

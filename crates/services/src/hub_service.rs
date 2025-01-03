@@ -345,11 +345,9 @@ impl HubService for HfHubService {
 
           Some(Alias::new(
             format!("{}:{}", hub_file.repo, qualifier),
-            None,
             hub_file.repo,
             hub_file.filename,
             hub_file.snapshot,
-            vec!["chat".to_string()],
             ChatTemplateType::Embedded,
             Default::default(),
             Default::default(),
@@ -967,11 +965,9 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       // FakeFactory/fakemodel-gguf has chat template in both snapshots
       Alias::new(
         "FakeFactory/fakemodel-gguf:Q4_0".to_string(),
-        None,
         Repo::try_from("FakeFactory/fakemodel-gguf")?,
         "fakemodel.Q4_0.gguf".to_string(),
         "9ca625120374ddaae21f067cb006517d14dc91a6".to_string(),
-        vec!["chat".to_string()],
         ChatTemplateType::Embedded,
         Default::default(),
         Default::default(),
@@ -979,11 +975,9 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       // Llama-2 has chat template
       Alias::new(
         "TheBloke/Llama-2-7B-Chat-GGUF:Q8_0".to_string(),
-        None,
         Repo::try_from("TheBloke/Llama-2-7B-Chat-GGUF")?,
         "llama-2-7b-chat.Q8_0.gguf".to_string(),
         "191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string(),
-        vec!["chat".to_string()],
         ChatTemplateType::Embedded,
         Default::default(),
         Default::default(),
@@ -991,11 +985,9 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       // TinyLlama has chat template
       Alias::new(
         "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K".to_string(),
-        None,
         Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF")?,
         "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
         "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
-        vec!["chat".to_string()],
         ChatTemplateType::Embedded,
         Default::default(),
         Default::default(),

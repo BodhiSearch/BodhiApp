@@ -1,6 +1,5 @@
 use objs::{
-  default_features, Alias, AppError, ChatTemplateType, GptContextParams, OAIRequestParams,
-  ObjValidationError, Repo,
+  Alias, AppError, ChatTemplateType, GptContextParams, OAIRequestParams, ObjValidationError, Repo,
 };
 use services::{
   AliasExistsError, AppService, DataServiceError, HubDownloadable, HubFileNotFoundError,
@@ -16,7 +15,6 @@ pub struct CreateCommand {
   pub filename: String,
   pub snapshot: Option<String>,
   pub chat_template: ChatTemplateType,
-  pub family: Option<String>,
   #[builder(default = "true")]
   pub auto_download: bool,
   #[builder(default = "false")]
@@ -90,11 +88,9 @@ impl CreateCommand {
     let _ = self.chat_template.download(service.hub_service())?;
     let alias: Alias = Alias::new(
       self.alias,
-      self.family,
       self.repo,
       self.filename,
       local_model_file.snapshot.clone(),
-      default_features(),
       self.chat_template,
       self.oai_request_params,
       self.context_params,
@@ -131,7 +127,6 @@ mod test {
       filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
       snapshot: Some("main".to_string()),
       chat_template: ChatTemplateType::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
-      family: Some("tinyllama".to_string()),
       auto_download: false,
       update: true,
       oai_request_params: OAIRequestParamsBuilder::default()
@@ -167,11 +162,9 @@ mod test {
     assert_ne!(repo_alias, updated_alias);
     let expected = Alias {
       alias: "tinyllama:instruct".to_string(),
-      family: Some("tinyllama".to_string()),
       repo: Repo::try_from("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF".to_string())?,
       filename: "tinyllama-1.1b-chat-v0.3.Q2_K.gguf".to_string(),
       snapshot: "b32046744d93031a26c8e925de2c8932c305f7b9".to_string(),
-      features: vec!["chat".to_string()],
       chat_template: ChatTemplateType::Repo(Repo::try_from("TinyLlama/TinyLlama-1.1B-Chat-v1.0")?),
       request_params: OAIRequestParamsBuilder::default()
         .frequency_penalty(1.0)
@@ -229,11 +222,9 @@ mod test {
     assert_eq!(
       Alias {
         alias: "testalias:instruct".to_string(),
-        family: Some("testalias".to_string()),
         repo: Repo::testalias(),
         filename: Repo::testalias_filename(),
         snapshot: SNAPSHOT.to_string(),
-        features: vec!["chat".to_string()],
         chat_template: ChatTemplateType::Id(objs::ChatTemplateId::Llama3),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default()
@@ -283,11 +274,9 @@ mod test {
     assert_eq!(
       Alias {
         alias: "testalias:instruct".to_string(),
-        family: Some("testalias".to_string()),
         repo: Repo::try_from("MyFactory/testalias-gguf").unwrap(),
         filename: "testalias.Q8_0.gguf".to_string(),
         snapshot: SNAPSHOT.to_string(),
-        features: vec!["chat".to_string()],
         chat_template: ChatTemplateType::Repo(Repo::try_from("MyFactory/testalias")?),
         request_params: OAIRequestParams::default(),
         context_params: GptContextParams::default()

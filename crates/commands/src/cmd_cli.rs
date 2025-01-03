@@ -91,10 +91,6 @@ pub enum Command {
     #[clap(long, group = "template", value_parser = repo_parser)]
     tokenizer_config: Option<String>,
 
-    /// Optional meta information, family of the model
-    #[clap(long)]
-    family: Option<String>,
-
     /// Update the existing alias if it already exists
     #[clap(long)]
     update: bool,
@@ -352,14 +348,12 @@ For more information, try '--help'.
     "testalias:instruct",
     "--repo", "MyFactory/testalias-gguf",
     "--filename", "testalias.Q8_0.gguf",
-    "--family", "testalias",
     "--chat-template", "llama3"
   ],
     "testalias:instruct",
     "MyFactory/testalias-gguf",
     "testalias.Q8_0.gguf",
     None,
-    "testalias",
     ChatTemplateId::Llama3,
     false,
     OAIRequestParams::default(),
@@ -370,7 +364,6 @@ For more information, try '--help'.
     "testalias:instruct",
     "--repo", "MyFactory/testalias-gguf",
     "--filename", "testalias.Q8_0.gguf",
-    "--family", "testalias",
     "--chat-template", "llama3",
     "--frequency-penalty", "0.8",
     "--max-tokens", "512",
@@ -391,7 +384,6 @@ For more information, try '--help'.
     "MyFactory/testalias-gguf".to_string(),
     "testalias.Q8_0.gguf".to_string(),
     None,
-    "testalias".to_string(),
     ChatTemplateId::Llama3,
     false,
     OAIRequestParams {
@@ -420,7 +412,6 @@ For more information, try '--help'.
     "--repo", "MyFactory/testalias-gguf",
     "--filename", "testalias.Q8_0.gguf",
     "--snapshot", "abcdsha1",
-    "--family", "testalias",
     "--chat-template", "llama3",
     "--update"
   ],
@@ -428,7 +419,6 @@ For more information, try '--help'.
     "MyFactory/testalias-gguf",
     "testalias.Q8_0.gguf",
     Some("abcdsha1".to_string()),
-    "testalias",
     ChatTemplateId::Llama3,
     true,
     OAIRequestParams::default(),
@@ -440,7 +430,6 @@ For more information, try '--help'.
     #[case] repo: String,
     #[case] filename: String,
     #[case] snapshot: Option<String>,
-    #[case] family: String,
     #[case] chat_template: ChatTemplateId,
     #[case] update: bool,
     #[case] oai_request_params: OAIRequestParams,
@@ -454,7 +443,6 @@ For more information, try '--help'.
       snapshot,
       chat_template: Some(chat_template),
       tokenizer_config: None,
-      family: Some(family),
       update,
       oai_request_params,
       context_params,
@@ -532,7 +520,6 @@ For more information, try '--help'.
       snapshot: None,
       chat_template: None,
       tokenizer_config: None,
-      family: None,
       update: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),
