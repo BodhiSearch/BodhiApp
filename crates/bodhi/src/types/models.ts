@@ -21,6 +21,7 @@ export interface Model {
   repo: string;
   filename: string;
   snapshot: string;
+  source?: string;
   chat_template: string;
   request_params: OAIRequestParams;
   context_params: GptContextParams;

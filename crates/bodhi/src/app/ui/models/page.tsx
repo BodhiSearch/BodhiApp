@@ -14,10 +14,9 @@ import AppInitializer from '@/components/AppInitializer';
 
 const columns = [
   { id: 'alias', name: 'Name', sorted: true },
-  { id: 'family', name: 'Family', sorted: true },
+  { id: 'source', name: 'Source', sorted: true },
   { id: 'repo', name: 'Repo', sorted: true },
   { id: 'filename', name: 'Filename', sorted: true },
-  { id: 'features', name: 'Features', sorted: false },
   { id: 'actions', name: 'Actions', sorted: false },
 ];
 
@@ -54,12 +53,11 @@ function ModelsPageContent() {
     router.push(`/ui/models/edit?alias=${alias}`);
   };
 
-  const renderRow = (model: Model) => (
-    <>
-      <TableCell>{model.alias}</TableCell>
-      <TableCell>{model.repo}</TableCell>
-      <TableCell>{model.filename}</TableCell>
-      <TableCell>
+  const actionUi = (model: Model) => {
+    if (model.source === "model") {
+      return <></>
+    } else {
+      return <>
         <Button
           variant="ghost"
           size="sm"
@@ -68,7 +66,16 @@ function ModelsPageContent() {
         >
           <Pencil className="h-4 w-4" />
         </Button>
-      </TableCell>
+      </>;
+    }
+  }
+  const renderRow = (model: Model) => (
+    <>
+      <TableCell>{model.alias}</TableCell>
+      <TableCell>{model.source}</TableCell>
+      <TableCell>{model.repo}</TableCell>
+      <TableCell>{model.filename}</TableCell>
+      <TableCell>{actionUi(model)}</TableCell>
     </>
   );
 
