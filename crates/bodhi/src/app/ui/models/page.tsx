@@ -54,21 +54,23 @@ function ModelsPageContent() {
   };
 
   const actionUi = (model: Model) => {
-    if (model.source === "model") {
-      return <></>
+    if (model.source === 'model') {
+      return <></>;
     } else {
-      return <>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleEdit(model.alias)}
-          title={`Edit ${model.alias}`}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-      </>;
+      return (
+        <>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(model.alias)}
+            title={`Edit ${model.alias}`}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </>
+      );
     }
-  }
+  };
   const renderRow = (model: Model) => (
     <>
       <TableCell>{model.alias}</TableCell>

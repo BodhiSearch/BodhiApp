@@ -53,10 +53,19 @@ export default function AppInitializer({
 
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;
-    if (authenticated && (appInfo?.authz && !userInfo?.logged_in)) {
+    if (authenticated && appInfo?.authz && !userInfo?.logged_in) {
       router.push('/ui/login');
     }
-  }, [appInfo?.authz, authenticated, userInfo, router, appLoading, userLoading, appError, userError]);
+  }, [
+    appInfo?.authz,
+    authenticated,
+    userInfo,
+    router,
+    appLoading,
+    userLoading,
+    appError,
+    userError,
+  ]);
 
   if (appLoading || userLoading) {
     return (
@@ -111,7 +120,7 @@ export default function AppInitializer({
     }
   }
 
-  if (authenticated && (appInfo?.authz && !userInfo?.logged_in)) {
+  if (authenticated && appInfo?.authz && !userInfo?.logged_in) {
     return (
       <div className="flex flex-col items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
