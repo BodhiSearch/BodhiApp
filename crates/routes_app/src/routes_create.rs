@@ -166,6 +166,7 @@ mod tests {
       .filename("testalias.Q8_0.gguf")
       .chat_template("llama3")
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
+      .source("user")
       .model_params(HashMap::new())
       .request_params(
         OAIRequestParamsBuilder::default()
@@ -206,6 +207,7 @@ mod tests {
       .repo("MyFactory/testalias-gguf")
       .filename("testalias.Q8_0.gguf")
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
+      .source("user")
       .chat_template("llama3")
       .model_params(HashMap::new())
       .request_params(

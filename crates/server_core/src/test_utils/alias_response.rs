@@ -4,26 +4,32 @@ use std::collections::HashMap;
 
 impl AliasResponse {
   pub fn llama3() -> Self {
-    AliasResponse::new(
-      "llama3:instruct".to_string(),
-      "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string(),
-      "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
-      "llama3".to_string(),
-      HashMap::new(),
-      OAIRequestParamsBuilder::default()
-        .stop(vec![
-          "<|start_header_id|>".to_string(),
-          "<|end_header_id|>".to_string(),
-          "<|eot_id|>".to_string(),
-        ])
-        .build()
-        .unwrap(),
-      GptContextParamsBuilder::default()
-        .n_keep(24)
-        .build()
-        .unwrap(),
-    )
+    AliasResponseBuilder::default()
+      .alias("llama3:instruct")
+      .repo(Repo::LLAMA3)
+      .filename(Repo::LLAMA3_Q8)
+      .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
+      .source("user")
+      .chat_template("llama3")
+      .model_params(HashMap::new())
+      .request_params(
+        OAIRequestParamsBuilder::default()
+          .stop(vec![
+            "<|start_header_id|>".to_string(),
+            "<|end_header_id|>".to_string(),
+            "<|eot_id|>".to_string(),
+          ])
+          .build()
+          .unwrap(),
+      )
+      .context_params(
+        GptContextParamsBuilder::default()
+          .n_keep(24)
+          .build()
+          .unwrap(),
+      )
+      .build()
+      .unwrap()
   }
 
   pub fn tinyllama() -> Self {
@@ -37,6 +43,7 @@ impl AliasResponseBuilder {
       .alias("tinyllama:instruct".to_string())
       .repo(Repo::TINYLLAMA)
       .filename(Repo::TINYLLAMA_FILENAME)
+      .source("user")
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
       .chat_template(Repo::TINYLLAMA_TOKENIZER)
       .model_params(HashMap::new())

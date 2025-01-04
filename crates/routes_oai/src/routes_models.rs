@@ -154,18 +154,15 @@ mod tests {
     Router,
   };
   use objs::{
-    test_utils::setup_l10n, ChatTemplateId, ChatTemplateType, FluentLocalizationService,
-    GptContextParamsBuilder, OAIRequestParamsBuilder, Repo,
+    test_utils::setup_l10n, ChatTemplateId, ChatTemplateType, FluentLocalizationService, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
   use server_core::{
     test_utils::{router_state_stub, ResponseTestExt},
-    DefaultRouterState,
+    AliasResponse, DefaultRouterState, PaginatedResponse,
   };
-  use server_core::{AliasResponse, PaginatedResponse};
-  use std::collections::HashMap;
   use std::sync::Arc;
   use strum::IntoEnumIterator;
   use tower::ServiceExt;
@@ -262,27 +259,7 @@ mod tests {
       .iter()
       .find(|a| a.alias == "llama3:instruct")
       .unwrap();
-    let expected = AliasResponse {
-      alias: "llama3:instruct".to_string(),
-      repo: "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF".to_string(),
-      filename: "Meta-Llama-3-8B-Instruct.Q8_0.gguf".to_string(),
-      chat_template: "llama3".to_string(),
-      snapshot: "5007652f7a641fe7170e0bad4f63839419bd9213".to_string(),
-      model_params: HashMap::new(),
-      request_params: OAIRequestParamsBuilder::default()
-        .stop(vec![
-          "<|start_header_id|>".to_string(),
-          "<|end_header_id|>".to_string(),
-          "<|eot_id|>".to_string(),
-        ])
-        .build()
-        .unwrap(),
-      context_params: GptContextParamsBuilder::default()
-        .n_keep(24)
-        .build()
-        .unwrap(),
-    };
-
+    let expected = AliasResponse::llama3();
     assert_eq!(expected, *first_alias);
     Ok(())
   }
