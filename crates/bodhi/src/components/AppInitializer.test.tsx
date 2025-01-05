@@ -18,7 +18,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import AppInitializer from './AppInitializer';
+import AppInitializer from '@/components/AppInitializer';
 import { AppStatus } from '@/types/models';
 
 const pushMock = vi.fn();

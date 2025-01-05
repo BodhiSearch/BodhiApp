@@ -11,7 +11,7 @@ import {
   vi,
   beforeEach,
 } from 'vitest';
-import ModelsPage from './page';
+import ModelsPage from '@/app/ui/models/page';
 import { createWrapper } from '@/tests/wrapper';
 
 // Mock components

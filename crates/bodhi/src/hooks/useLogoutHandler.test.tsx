@@ -14,7 +14,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import { useLogoutHandler } from './useLogoutHandler';
+import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 
 // Mock useToast hook
 const toastMock = vi.fn();

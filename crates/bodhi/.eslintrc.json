@@ -23,6 +23,7 @@
   "ignorePatterns": [
     "src/**/*.test.tsx",
     "tests/**/*.test.tsx",
-    "src/components/ui/**/*"
+    "src/components/ui/**/*",
+    "src/hooks/use-toast.ts"
   ]
 }

@@ -13,7 +13,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import CreateAliasPage from './page';
+import CreateAliasPage from '@/app/ui/models/new/page';
 
 const mockToast = vi.fn();
 

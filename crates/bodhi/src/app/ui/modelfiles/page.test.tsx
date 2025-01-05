@@ -12,7 +12,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import ModelFilesPage from './page';
+import ModelFilesPage from '@/app/ui/modelfiles/page';
 
 // Mock components
 vi.mock('@/components/AppHeader', () => ({

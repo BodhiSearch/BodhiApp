@@ -14,7 +14,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import ResourceAdminPage from './page';
+import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
 
 // Mock the router
 const pushMock = vi.fn();
