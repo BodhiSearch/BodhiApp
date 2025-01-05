@@ -1,120 +1,80 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { AliasSelector } from '@/components/settings/AliasSelector';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
 import { createWrapper } from '@/tests/wrapper';
+import * as chatSettings from '@/lib/hooks/use-chat-settings';
 
-const server = setupServer();
+// Mock useChatSettings
+vi.mock('@/lib/hooks/use-chat-settings', () => ({
+  useChatSettings: vi.fn()
+}));
 
-beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
-afterAll(() => server.close());
-
-const mockModels = {
-  data: [
-    {
-      alias: 'gpt-4',
-      model_file: 'gpt-4.gguf',
-      parameters: {}
-    },
-    {
-      alias: 'tinyllama-chat',
-      model_file: 'chat-v1.0.Q4_K_M.gguf',
-      parameters: {}
-    }
-  ],
-  total: 2,
-  page: 1,
-  page_size: 100
-};
+const mockModels = [
+  {
+    alias: 'gpt-4',
+  },
+  {
+    alias: 'tinyllama-chat',
+  }
+];
 
 describe('AliasSelector', () => {
-  it('calls isLoadingCallback with true when loading starts', () => {
-    const mockLoadingCallback = vi.fn();
-    server.use(
-      rest.get('*/api/ui/models', (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.json(mockModels));
-      })
-    );
-
-    render(<AliasSelector isLoadingCallback={mockLoadingCallback} />, {
-      wrapper: createWrapper()
-    });
-
-    expect(mockLoadingCallback).toHaveBeenCalledWith(true);
-  });
-
-  it('calls isLoadingCallback with false when loading completes', async () => {
-    const mockLoadingCallback = vi.fn();
-    server.use(
-      rest.get('*/api/ui/models', (_, res, ctx) => {
-        return res(ctx.json(mockModels));
-      })
-    );
-
-    render(<AliasSelector isLoadingCallback={mockLoadingCallback} />, {
-      wrapper: createWrapper()
-    });
-
-    await waitFor(() => {
-      expect(mockLoadingCallback).toHaveBeenLastCalledWith(false);
-    });
-  });
-
-  it('handles missing isLoadingCallback gracefully', () => {
-    render(<AliasSelector />, { wrapper: createWrapper() });
-    // Should not throw any errors
-  });
-});
-
-describe('AliasSelector loaded', () => {
   beforeEach(() => {
-    server.use(
-      rest.get('*/api/ui/models', (_, res, ctx) => {
-        return res(ctx.json(mockModels));
-      })
-    );
+    // Reset mock before each test
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      model: '',
+      setModel: vi.fn(),
+    } as any);
   });
 
-  it('becomes enabled when data is loaded', async () => {
-    render(<AliasSelector />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      const select = screen.getByRole('combobox');
-      expect(select).not.toBeDisabled();
+  it('renders in disabled state when loading', () => {
+    render(<AliasSelector models={mockModels} isLoading={true} />, {
+      wrapper: createWrapper()
     });
+
+    const select = screen.getByRole('combobox');
+    expect(select).toBeDisabled();
   });
 
-  it('shows placeholder text in select when no initial value', async () => {
-    render(<AliasSelector />, { wrapper: createWrapper() });
+  it('renders in enabled state when not loading', () => {
+    render(<AliasSelector models={mockModels} isLoading={false} />, {
+      wrapper: createWrapper()
+    });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('model-selector-loaded')).toBeInTheDocument();
+    const select = screen.getByRole('combobox');
+    expect(select).not.toBeDisabled();
+  });
+
+  it('shows placeholder text when no model is selected', () => {
+    render(<AliasSelector models={mockModels} />, {
+      wrapper: createWrapper()
     });
 
     expect(screen.getByText('Select alias')).toBeInTheDocument();
   });
 
-  it('initializes with provided initial alias', async () => {
-    render(<AliasSelector initialAlias="gpt-4" />, { wrapper: createWrapper() });
+  it('displays the current model from chat settings', () => {
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      model: 'gpt-4',
+      setModel: vi.fn(),
+    } as any);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('model-selector-loaded')).toBeInTheDocument();
+    render(<AliasSelector models={mockModels} />, {
+      wrapper: createWrapper()
     });
 
     expect(screen.getByText('gpt-4')).toBeInTheDocument();
   });
 
-  it('calls onAliasChange when selection changes', async () => {
-    const handleChange = vi.fn();
-    render(
-      <AliasSelector initialAlias="gpt-4" onAliasChange={handleChange} />,
-      { wrapper: createWrapper() }
-    );
+  it('calls setModel when selection changes', () => {
+    const mockSetModel = vi.fn();
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      model: '',
+      setModel: mockSetModel,
+    } as any);
 
-    await waitFor(() => {
-      expect(screen.getByTestId('model-selector-loaded')).toBeInTheDocument();
+    render(<AliasSelector models={mockModels} />, {
+      wrapper: createWrapper()
     });
 
     const select = screen.getByRole('combobox');
@@ -123,20 +83,19 @@ describe('AliasSelector loaded', () => {
     const option = screen.getByText('tinyllama-chat');
     fireEvent.click(option);
 
-    expect(handleChange).toHaveBeenCalledWith('tinyllama-chat');
+    expect(mockSetModel).toHaveBeenCalledWith('tinyllama-chat');
   });
 
-  it('handles missing onAliasChange prop gracefully', async () => {
-    render(<AliasSelector initialAlias="gpt-4" />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('model-selector-loaded')).toBeInTheDocument();
+  it('renders all provided model options', () => {
+    render(<AliasSelector models={mockModels} />, {
+      wrapper: createWrapper()
     });
 
     const select = screen.getByRole('combobox');
     fireEvent.click(select);
 
-    const option = screen.getByText('tinyllama-chat');
-    expect(() => fireEvent.click(option)).not.toThrow();
+    mockModels.forEach(model => {
+      expect(screen.getByText(model.alias)).toBeInTheDocument();
+    });
   });
 });

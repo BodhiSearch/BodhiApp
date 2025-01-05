@@ -5,6 +5,7 @@ import { AliasSelector } from '@/components/settings/AliasSelector';
 import { SystemPrompt } from '@/components/settings/SystemPrompt';
 import { StopWords } from '@/components/settings/StopWords';
 import { TokenSlider } from '@/components/settings/TokenSlider';
+import { useModels } from '@/hooks/useQuery';
 import {
   SidebarContent,
   SidebarHeader,
@@ -13,7 +14,8 @@ import {
 } from '@/components/ui/sidebar';
 
 export function SettingsSidebar() {
-  const [isLoading, setIsLoading] = useState(false);
+  const { data: modelsResponse, isLoading } = useModels(1, 100, 'alias', 'asc');
+  const models = modelsResponse?.data || [];
 
   return (
     <Sidebar side="right" variant="floating">
@@ -23,7 +25,8 @@ export function SettingsSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <AliasSelector
-            isLoadingCallback={setIsLoading}
+            models={models}
+            isLoading={isLoading}
           />
           <SystemPrompt
             isLoading={isLoading}

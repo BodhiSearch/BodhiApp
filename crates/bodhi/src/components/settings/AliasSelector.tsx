@@ -8,33 +8,28 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { useModels } from '@/hooks/useQuery';
-import { useEffect } from 'react';
+import { useChatSettings } from '@/lib/hooks/use-chat-settings';
 
 interface AliasSelectorProps {
-  initialAlias?: string;
-  onAliasChange?: (alias: string) => void;
-  isLoadingCallback?: (isLoading: boolean) => void;
+  models: Array<{ alias: string }>;
+  isLoading?: boolean;
 }
 
-export function AliasSelector({ 
-  initialAlias, 
-  onAliasChange,
-  isLoadingCallback 
+export function AliasSelector({
+  models,
+  isLoading = false
 }: AliasSelectorProps) {
-  const { data: modelsResponse, isLoading } = useModels(1, 100, 'alias', 'asc');
-  const models = modelsResponse?.data || [];
-
-  // Notify parent component about loading state changes
-  useEffect(() => {
-    isLoadingCallback?.(isLoading);
-  }, [isLoading, isLoadingCallback]);
+  const { model, setModel } = useChatSettings();
 
   return (
     <div className="space-y-4" data-testid="model-selector-loaded">
       <div className="space-y-2">
         <Label>Alias</Label>
-        <Select defaultValue={initialAlias} onValueChange={onAliasChange} disabled={isLoading}>
+        <Select
+          defaultValue={model}
+          onValueChange={setModel}
+          disabled={isLoading}
+        >
           <SelectTrigger>
             <SelectValue placeholder="Select alias" />
           </SelectTrigger>
