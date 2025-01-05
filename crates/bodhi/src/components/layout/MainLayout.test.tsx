@@ -46,80 +46,43 @@ describe('MainLayout', () => {
     expect(screen.getByText('Navigation Sidebar')).toBeInTheDocument();
   });
 
-  it('renders settings sidebar when provided', () => {
-    render(
-      <MainLayout
-        settingsSidebar={<div>Settings Sidebar</div>}
-      >
-        <div>Test Content</div>
-      </MainLayout>
-    );
-
-    expect(screen.getByText('Settings Sidebar')).toBeInTheDocument();
-  });
-
-  it('renders both navigation and settings sidebars when provided', () => {
-    render(
-      <MainLayout
-        navigationSidebar={<div>Navigation Sidebar</div>}
-        settingsSidebar={<div>Settings Sidebar</div>}
-      >
-        <div>Test Content</div>
-      </MainLayout>
-    );
-
-    expect(screen.getByText('Navigation Sidebar')).toBeInTheDocument();
-    expect(screen.getByText('Settings Sidebar')).toBeInTheDocument();
-  });
-
-  it('renders both sidebar triggers', () => {
+  it('renders navigation sidebar trigger', () => {
     render(
       <MainLayout
         navigationSidebar={<div>Navigation</div>}
-        settingsSidebar={<div>Settings</div>}
       >
         <div>Test Content</div>
       </MainLayout>
     );
 
-    const buttons = screen.getAllByTestId('sidebar-button');
-    expect(buttons).toHaveLength(2);
+    const button = screen.getByTestId('sidebar-button');
+    expect(button).toBeInTheDocument();
   });
 
-  it('positions triggers correctly based on side prop', () => {
+  it('positions navigation trigger correctly', () => {
     render(
       <MainLayout
         navigationSidebar={<div>Navigation</div>}
-        settingsSidebar={<div>Settings</div>}
       >
         <div>Test Content</div>
       </MainLayout>
     );
 
-    const [leftTrigger, rightTrigger] = screen.getAllByTestId('sidebar-button')
-      .map(button => button.parentElement);
-
-    expect(leftTrigger).toHaveClass('fixed');
-    expect(rightTrigger).toHaveClass('fixed');
-
-    // Check left trigger positioning
-    expect(leftTrigger).toHaveClass('left-[16rem]');
-
-    // Check right trigger positioning
-    expect(rightTrigger).toHaveClass('right-[16rem]');
+    const trigger = screen.getByTestId('sidebar-button').parentElement;
+    expect(trigger).toHaveClass('fixed');
+    expect(trigger).toHaveClass('left-[16rem]');
   });
 
-  it('renders sidebar providers', () => {
+  it('renders sidebar provider', () => {
     render(
       <MainLayout
         navigationSidebar={<div>Navigation</div>}
-        settingsSidebar={<div>Settings</div>}
       >
         <div>Test Content</div>
       </MainLayout>
     );
 
-    const providers = screen.getAllByTestId('sidebar-provider');
-    expect(providers).toHaveLength(2);
+    const provider = screen.getByTestId('sidebar-provider');
+    expect(provider).toBeInTheDocument();
   });
 });
