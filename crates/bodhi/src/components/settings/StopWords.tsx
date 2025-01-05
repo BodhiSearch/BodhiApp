@@ -6,38 +6,44 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { X } from 'lucide-react';
+import { useChatSettings } from '@/lib/hooks/use-chat-settings';
 
 interface StopWordsProps {
-  initialStopWords?: string[];
-  initialEnabled?: boolean;
   isLoading?: boolean;
 }
 
 export function StopWords({
-  initialStopWords = [],
-  initialEnabled = true,
   isLoading = false
 }: StopWordsProps) {
-  const [isEnabled, setIsEnabled] = useState(initialEnabled);
-  const [stopWords, setStopWords] = useState<string[]>(initialStopWords);
+  const { 
+    stop,
+    stop_enabled,
+    setStop,
+    setStopEnabled
+  } = useChatSettings();
   const [inputValue, setInputValue] = useState('');
+
+  // Convert stop to array if it's a string or undefined
+  const stopWords = Array.isArray(stop) ? stop : stop ? [stop] : [];
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim()) {
       e.preventDefault();
       if (!stopWords.includes(inputValue.trim())) {
-        setStopWords([...stopWords, inputValue.trim()]);
+        const newStopWords = [...stopWords, inputValue.trim()];
+        setStop(newStopWords);
         setInputValue('');
       }
     }
   };
 
   const removeStopWord = (wordToRemove: string) => {
-    setStopWords(stopWords.filter((word) => word !== wordToRemove));
+    const newStopWords = stopWords.filter((word) => word !== wordToRemove);
+    setStop(newStopWords);
   };
 
   // Determine if interactions should be disabled
-  const isDisabled = isLoading || !isEnabled;
+  const isDisabled = isLoading || !stop_enabled;
 
   return (
     <div className="space-y-2">
@@ -47,8 +53,8 @@ export function StopWords({
         </Label>
         <Switch
           id="stop-words-toggle"
-          checked={isEnabled}
-          onCheckedChange={setIsEnabled}
+          checked={stop_enabled}
+          onCheckedChange={setStopEnabled}
           disabled={isLoading}
         />
       </div>

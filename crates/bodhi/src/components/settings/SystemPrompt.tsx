@@ -3,22 +3,24 @@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { useState } from 'react';
+import { useChatSettings } from '@/lib/hooks/use-chat-settings';
 
 interface SystemPromptProps {
   isLoading?: boolean;
-  initialEnabled?: boolean;
 }
 
 export function SystemPrompt({ 
-  isLoading = false,
-  initialEnabled = true
+  isLoading = false
 }: SystemPromptProps) {
-  const [isEnabled, setIsEnabled] = useState(initialEnabled);
-  const [prompt, setPrompt] = useState('');
+  const { 
+    systemPrompt,
+    systemPrompt_enabled,
+    setSystemPrompt,
+    setSystemPromptEnabled
+  } = useChatSettings();
 
   // Determine if interactions should be disabled
-  const isDisabled = isLoading || !isEnabled;
+  const isDisabled = isLoading || !systemPrompt_enabled;
 
   return (
     <div className="space-y-4">
@@ -28,16 +30,16 @@ export function SystemPrompt({
         </Label>
         <Switch
           id="system-prompt-toggle"
-          checked={isEnabled}
-          onCheckedChange={setIsEnabled}
+          checked={systemPrompt_enabled}
+          onCheckedChange={setSystemPromptEnabled}
           disabled={isLoading}
         />
       </div>
       <Textarea
         id="system-prompt"
         placeholder="Enter system prompt..."
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
+        value={systemPrompt || ''}
+        onChange={(e) => setSystemPrompt(e.target.value || undefined)}
         disabled={isDisabled}
         className={`min-h-[100px] ${isDisabled ? 'opacity-50' : ''}`}
       />
