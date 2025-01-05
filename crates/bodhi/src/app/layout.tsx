@@ -4,6 +4,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
+import '@/styles/syntax-highlighter.css'
 
 const fontSans = FontSans({
   subsets: ['latin'],
