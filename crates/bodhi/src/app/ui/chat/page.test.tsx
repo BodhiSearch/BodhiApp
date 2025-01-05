@@ -20,6 +20,10 @@ vi.mock('@/components/layout/MainLayout', () => ({
   ),
 }));
 
+vi.mock('@/components/chat/ChatContainer', () => ({
+  ChatContainer: () => <div data-testid="chat-container">Chat Content</div>
+}));
+
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -87,7 +91,7 @@ describe('ChatPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('main-layout')).toBeInTheDocument();
-      expect(screen.getByText('Chat Content')).toBeInTheDocument();
+      expect(screen.getByTestId('chat-container')).toBeInTheDocument();
     });
   });
 });
