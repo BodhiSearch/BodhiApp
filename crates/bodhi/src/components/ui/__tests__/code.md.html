@@ -1,0 +1,40 @@
+<h1>Code Examples</h1>
+<h2>Inline Code</h2>
+<p>Here is some `inline code` in a sentence.</p>
+<h2>Code Block</h2>
+<pre><code class="language-typescript">interface User {
+  id: number;
+  name: string;
+  email?: string;
+}
+
+function greetUser(user: User) {
+  console.log(\`Hello, \${user.name}!\`);
+}
+</code></pre>
+<h2>Multiple Languages</h2>
+<pre><code class="language-python">def factorial(n: int) -&gt; int:
+    return 1 if n &lt;= 1 else n * factorial(n - 1)
+</code></pre>
+<pre><code class="language-css">.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+</code></pre>
+<h2>With Line Highlights</h2>
+<pre><code class="language-typescript">import { useState } from 'react';
+
+// This line will be highlighted
+function Counter() {
+  // These lines will be highlighted
+  const [count, setCount] = useState(0);
+  const increment = () =&gt; setCount(c =&gt; c + 1);
+  
+  return (
+    &lt;button onClick={increment}&gt;
+      Count: {count}
+    &lt;/button&gt;
+  );
+}
+</code></pre>

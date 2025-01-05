@@ -1,0 +1,51 @@
+/* Base styles for the syntax highlighter */
+.syntax-highlighter {
+  background: transparent !important;
+  margin: 0 !important;
+  padding: 1.5rem 1rem !important;
+  width: 100% !important;
+}
+
+.syntax-highlighter-code {
+  font-size: 0.9rem !important;
+  font-family: var(--font-mono) !important;
+}
+
+/* Line numbers */
+.syntax-highlighter .linenumber {
+  display: inline-block;
+  min-width: 2.25em;
+  padding-right: 1em;
+  text-align: right;
+  user-select: none;
+  color: rgb(141, 161, 185);
+}
+
+/* Token colors based on coldarkDark theme */
+.syntax-highlighter .keyword {
+  color: rgb(233, 174, 126);
+}
+
+.syntax-highlighter .function {
+  color: rgb(198, 153, 227);
+}
+
+.syntax-highlighter .punctuation {
+  color: rgb(227, 234, 242);
+}
+
+.syntax-highlighter .parameter {
+  color: rgb(108, 184, 230);
+}
+
+.syntax-highlighter .string {
+  color: rgb(145, 208, 118);
+}
+
+.syntax-highlighter .template-string {
+  color: rgb(145, 208, 118);
+}
+
+.syntax-highlighter .interpolation {
+  color: rgb(227, 234, 242);
+} 
