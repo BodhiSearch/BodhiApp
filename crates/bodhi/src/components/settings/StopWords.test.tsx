@@ -1,6 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { StopWords } from '@/components/settings/StopWords';
+import * as chatSettings from '@/lib/hooks/use-chat-settings';
+
+// Mock useChatSettings
+vi.mock('@/lib/hooks/use-chat-settings', () => ({
+  useChatSettings: vi.fn()
+}));
 
 // Example of mocking Input component with proper disabled state handling
 vi.mock('@/components/ui/input', () => ({
@@ -29,199 +35,189 @@ vi.mock('@/components/ui/switch', () => ({
 }));
 
 describe('StopWords', () => {
-  // New test for loading state
+  beforeEach(() => {
+    // Reset mock before each test with default values
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: [],
+      stop_enabled: true,
+      setStop: vi.fn(),
+      setStopEnabled: vi.fn(),
+    } as any);
+  });
+
   describe('loading state', () => {
     it('disables all interactive elements when loading', () => {
-      render(<StopWords isLoading={true} initialStopWords={['test']} />);
-
-      // Check input is disabled
-      const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-      expect(input).toBeDisabled();
-
-      // Check switch is disabled
-      const switchElement = screen.getByRole('switch');
-      expect(switchElement).toBeDisabled();
-
-      // Check remove buttons are disabled
-      const removeButton = screen.getByLabelText('Remove test');
-      expect(removeButton).toBeDisabled();
-    });
-
-    it('prevents interactions while loading', () => {
       render(<StopWords isLoading={true} />);
 
       const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
       const switchElement = screen.getByRole('switch');
 
-      // Try to add a word
-      fireEvent.change(input, { target: { value: 'test' } });
-      fireEvent.keyDown(input, { key: 'Enter' });
-      expect(screen.queryByText('test')).not.toBeInTheDocument();
-
-      // Try to toggle switch
-      const initialState = switchElement.getAttribute('aria-checked');
-      fireEvent.click(switchElement);
-      expect(switchElement.getAttribute('aria-checked')).toBe(initialState);
-    });
-
-    it('enables interactions when loading completes', () => {
-      const { rerender } = render(<StopWords isLoading={true} />);
-
-      // Initially disabled
-      const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
       expect(input).toBeDisabled();
+      expect(switchElement).toBeDisabled();
+    });
 
-      // Rerender with loading complete
-      rerender(<StopWords isLoading={false} />);
+    it('prevents interactions while loading', () => {
+      const mockSetStop = vi.fn();
+      const mockSetEnabled = vi.fn();
 
-      // Should now be enabled
+      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+        stop: ['test'],
+        stop_enabled: true,
+        setStop: mockSetStop,
+        setStopEnabled: mockSetEnabled,
+      } as any);
+
+      render(<StopWords isLoading={true} />);
+
+      const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
+      const switchElement = screen.getByRole('switch');
+      const removeButton = screen.getByLabelText('Remove test');
+
+      // Try interactions
+      fireEvent.click(switchElement);
+      fireEvent.click(removeButton);
+      fireEvent.change(input, { target: { value: 'new' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      expect(mockSetEnabled).not.toHaveBeenCalled();
+      expect(mockSetStop).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('enabled state', () => {
+    it('reflects enabled state from chat settings', () => {
+      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+        stop: [],
+        stop_enabled: true,
+        setStop: vi.fn(),
+        setStopEnabled: vi.fn(),
+      } as any);
+
+      render(<StopWords />);
+
+      const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
+      const switchElement = screen.getByRole('switch');
+
+      expect(switchElement).toHaveAttribute('aria-checked', 'true');
       expect(input).not.toBeDisabled();
-      expect(screen.getByRole('switch')).not.toBeDisabled();
+    });
+
+    it('reflects disabled state from chat settings', () => {
+      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+        stop: [],
+        stop_enabled: false,
+        setStop: vi.fn(),
+        setStopEnabled: vi.fn(),
+      } as any);
+
+      render(<StopWords />);
+
+      const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
+      const switchElement = screen.getByRole('switch');
+
+      expect(switchElement).toHaveAttribute('aria-checked', 'false');
+      expect(input).toBeDisabled();
     });
   });
 
-  it('renders input with label and toggle switch', () => {
+  it('displays existing stop words from chat settings', () => {
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: ['word1', 'word2'],
+      stop_enabled: true,
+      setStop: vi.fn(),
+      setStopEnabled: vi.fn(),
+    } as any);
+
     render(<StopWords />);
 
-    expect(screen.getByText('Stop Words')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Type and press Enter to add stop words...')).toBeInTheDocument();
-    expect(screen.getByRole('switch')).toBeInTheDocument();
+    expect(screen.getByText('word1')).toBeInTheDocument();
+    expect(screen.getByText('word2')).toBeInTheDocument();
   });
 
-  it('renders with initial stop words', () => {
-    const initialWords = ['hello', 'world'];
-    render(<StopWords initialStopWords={initialWords} />);
+  it('adds new stop word to chat settings', () => {
+    const mockSetStop = vi.fn();
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: [],
+      stop_enabled: true,
+      setStop: mockSetStop,
+      setStopEnabled: vi.fn(),
+    } as any);
 
-    initialWords.forEach(word => {
-      expect(screen.getByText(word)).toBeInTheDocument();
-      expect(screen.getByLabelText(`Remove ${word}`)).toBeInTheDocument();
-    });
-  });
-
-  it('initializes with initialEnabled prop', () => {
-    render(<StopWords initialEnabled={false} />);
+    render(<StopWords />);
 
     const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    expect(input).toBeDisabled();
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+    fireEvent.change(input, { target: { value: 'test' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockSetStop).toHaveBeenCalledWith(['test']);
   });
 
-  it('allows removing initial stop words when enabled', () => {
-    const initialWords = ['hello', 'world'];
-    render(<StopWords initialStopWords={initialWords} />);
+  it('adds to existing stop words in chat settings', () => {
+    const mockSetStop = vi.fn();
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: ['existing'],
+      stop_enabled: true,
+      setStop: mockSetStop,
+      setStopEnabled: vi.fn(),
+    } as any);
 
-    const removeButton = screen.getByLabelText('Remove hello');
+    render(<StopWords />);
+
+    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
+    fireEvent.change(input, { target: { value: 'test' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(mockSetStop).toHaveBeenCalledWith(['existing', 'test']);
+  });
+
+  it('removes stop word from chat settings', () => {
+    const mockSetStop = vi.fn();
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: ['word1', 'word2'],
+      stop_enabled: true,
+      setStop: mockSetStop,
+      setStopEnabled: vi.fn(),
+    } as any);
+
+    render(<StopWords />);
+
+    const removeButton = screen.getByLabelText('Remove word1');
     fireEvent.click(removeButton);
 
-    expect(screen.queryByText('hello')).not.toBeInTheDocument();
-    expect(screen.getByText('world')).toBeInTheDocument();
+    expect(mockSetStop).toHaveBeenCalledWith(['word2']);
   });
 
-  it('is enabled by default', () => {
+  it('sets empty array when removing last stop word', () => {
+    const mockSetStop = vi.fn();
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: ['word1'],
+      stop_enabled: true,
+      setStop: mockSetStop,
+      setStopEnabled: vi.fn(),
+    } as any);
+
     render(<StopWords />);
 
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    expect(input).not.toBeDisabled();
-    expect(screen.getByRole('switch')).toHaveAttribute('aria-checked', 'true');
-  });
-
-  it('disables input when toggle is switched off', () => {
-    render(<StopWords />);
-
-    const switchElement = screen.getByRole('switch');
-    fireEvent.click(switchElement);
-
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    expect(input).toBeDisabled();
-    expect(switchElement).toHaveAttribute('aria-checked', 'false');
-  });
-
-  it('maintains stop words when toggling enabled state', () => {
-    const initialWords = ['initial'];
-    render(<StopWords initialStopWords={initialWords} />);
-
-    // Add another word
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    // Disable
-    const switchElement = screen.getByRole('switch');
-    fireEvent.click(switchElement);
-
-    // Words should still be visible
-    expect(screen.getByText('initial')).toBeInTheDocument();
-    expect(screen.getByText('test')).toBeInTheDocument();
-    expect(screen.getByLabelText('Remove initial')).toBeDisabled();
-    expect(screen.getByLabelText('Remove test')).toBeDisabled();
-
-    // Enable again
-    fireEvent.click(switchElement);
-    expect(screen.getByText('initial')).toBeInTheDocument();
-    expect(screen.getByText('test')).toBeInTheDocument();
-    expect(screen.getByLabelText('Remove initial')).not.toBeDisabled();
-    expect(screen.getByLabelText('Remove test')).not.toBeDisabled();
-  });
-
-  it('prevents adding stop words when disabled', () => {
-    render(<StopWords />);
-
-    // Disable the component
-    const switchElement = screen.getByRole('switch');
-    fireEvent.click(switchElement);
-
-    // Try to add a word
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    // Word should not be added
-    expect(screen.queryByText('test')).not.toBeInTheDocument();
-  });
-
-  it('adds new stop word on Enter when enabled', () => {
-    render(<StopWords />);
-
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    expect(screen.getByText('test')).toBeInTheDocument();
-    expect(input).toHaveValue('');
-  });
-
-  it('prevents duplicate stop words', () => {
-    render(<StopWords initialStopWords={['test']} />);
-
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    expect(screen.getAllByText('test')).toHaveLength(1);
-  });
-
-  it('removes stop word when clicking X button while enabled', () => {
-    render(<StopWords />);
-
-    // Add a stop word
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
-
-    // Click remove button
-    const removeButton = screen.getByLabelText('Remove test');
+    const removeButton = screen.getByLabelText('Remove word1');
     fireEvent.click(removeButton);
 
-    expect(screen.queryByText('test')).not.toBeInTheDocument();
+    expect(mockSetStop).toHaveBeenCalledWith([]);
   });
 
-  it('ignores empty input', () => {
+  it('updates enabled state in chat settings', () => {
+    const mockSetEnabled = vi.fn();
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: [],
+      stop_enabled: true,
+      setStop: vi.fn(),
+      setStopEnabled: mockSetEnabled,
+    } as any);
+
     render(<StopWords />);
 
-    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    fireEvent.change(input, { target: { value: '   ' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
+    const switchElement = screen.getByRole('switch');
+    fireEvent.click(switchElement);
 
-    expect(screen.queryByRole('button', { name: /Remove/ })).not.toBeInTheDocument();
+    expect(mockSetEnabled).toHaveBeenCalledWith(false);
   });
 });
