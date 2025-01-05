@@ -13,7 +13,7 @@ import {
 } from 'vitest';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import UiPage from './page';
+import UiPage from '@/app/ui/page';
 import { createWrapper } from '@/tests/wrapper';
 
 const pushMock = vi.fn();

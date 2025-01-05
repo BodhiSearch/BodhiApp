@@ -14,7 +14,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import UserMenu from './UserMenu';
+import UserMenu from '@/components/UserMenu';
 
 // Mock the Next.js router
 const routerPushMock = vi.fn();

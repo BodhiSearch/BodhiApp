@@ -16,7 +16,7 @@ import {
   afterAll,
   afterEach,
 } from 'vitest';
-import LoginContent from './page';
+import LoginContent from '@/app/ui/login/page';
 import { createWrapper } from '@/tests/wrapper';
 import { setupServer } from 'msw/node';
 import { rest } from 'msw';

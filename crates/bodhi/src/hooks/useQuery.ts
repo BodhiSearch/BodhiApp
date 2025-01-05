@@ -88,13 +88,19 @@ export function useSetupApp() {
 }
 
 export function useModelFiles(
-  page: number,
-  pageSize: number,
-  sort: string,
-  sortOrder: string
+  page?: number,
+  pageSize?: number,
+  sort: string = 'repo',
+  sortOrder: string = 'asc'
 ) {
   return useQuery<PagedApiResponse<ModelFile[]>>(
-    ['modelFiles', page.toString(), pageSize.toString(), sort, sortOrder],
+    [
+      'modelFiles',
+      page?.toString() ?? '-1',
+      pageSize?.toString() ?? '-1',
+      sort,
+      sortOrder,
+    ],
     '/api/ui/modelfiles',
     { page, page_size: pageSize, sort, sort_order: sortOrder }
   );

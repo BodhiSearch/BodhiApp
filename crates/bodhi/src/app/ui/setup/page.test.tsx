@@ -14,7 +14,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import Setup from './page';
+import Setup from '@/app/ui/setup/page';
 
 // Mock the router
 const pushMock = vi.fn();

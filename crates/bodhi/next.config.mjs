@@ -7,7 +7,7 @@ const withPWA = withPWAInit({
   register: true,
   workboxOptions: {
     disableDevLogs: true,
-  },
+  }
 });
 
 /** @type {import('next').NextConfig} */
@@ -21,6 +21,12 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  webpack: (config) => {
+    config.watchOptions = {
+      ignored: ['**/node_modules/', 'old-chat-app/**'],
+    };
+    return config;
   },
 };
 

@@ -1,4 +1,4 @@
-import PageNavigation from './PageNavigation';
+import PageNavigation from '@/components/PageNavigation';
 import UserMenu from '@/components/UserMenu';
 import Logo from '@/components/Logo';
 
