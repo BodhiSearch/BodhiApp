@@ -26,13 +26,13 @@ vi.mock('@/components/settings/StopWords', () => ({
   ),
 }));
 
-vi.mock('@/components/settings/TokenSlider', () => ({
-  TokenSlider: ({ isLoading }: { isLoading: boolean }) => (
-    <div data-testid="token-slider" data-loading={isLoading} />
+vi.mock('@/components/settings/SettingSlider', () => ({
+  SettingSlider: ({ label, isLoading }: { label: string, isLoading: boolean }) => (
+    <div data-testid={`setting-slider-${label.toLowerCase().replace(' ', '-')}`} data-loading={isLoading} />
   ),
 }));
 
-// Mock sidebar components
+// Mock UI components
 vi.mock('@/components/ui/sidebar', () => ({
   Sidebar: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="sidebar">{children}</div>
@@ -46,6 +46,50 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarGroup: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="sidebar-group">{children}</div>
   ),
+}));
+
+vi.mock('@/components/ui/switch', () => ({
+  Switch: ({ id }: { id: string }) => <div data-testid={`switch-${id}`} />,
+}));
+
+vi.mock('@/components/ui/label', () => ({
+  Label: ({ children }: { children: React.ReactNode }) => <div data-testid="label">{children}</div>,
+}));
+
+vi.mock('@/components/ui/separator', () => ({
+  Separator: () => <div data-testid="separator" />,
+}));
+
+// Mock hooks
+vi.mock('@/lib/hooks/use-chat-settings', () => ({
+  useChatSettings: () => ({
+    stream: false,
+    setStream: vi.fn(),
+    seed: 0,
+    seed_enabled: false,
+    setSeed: vi.fn(),
+    setSeedEnabled: vi.fn(),
+    temperature: 1,
+    temperature_enabled: true,
+    setTemperature: vi.fn(),
+    setTemperatureEnabled: vi.fn(),
+    top_p: 1,
+    top_p_enabled: true,
+    setTopP: vi.fn(),
+    setTopPEnabled: vi.fn(),
+    max_tokens: 2048,
+    max_tokens_enabled: true,
+    setMaxTokens: vi.fn(),
+    setMaxTokensEnabled: vi.fn(),
+    presence_penalty: 0,
+    presence_penalty_enabled: true,
+    setPresencePenalty: vi.fn(),
+    setPresencePenaltyEnabled: vi.fn(),
+    frequency_penalty: 0,
+    frequency_penalty_enabled: true,
+    setFrequencyPenalty: vi.fn(),
+    setFrequencyPenaltyEnabled: vi.fn(),
+  }),
 }));
 
 // Setup MSW server
@@ -92,12 +136,28 @@ describe('SettingsSidebar', () => {
     const aliasSelector = screen.getByTestId('alias-selector');
     const systemPrompt = screen.getByTestId('system-prompt');
     const stopWords = screen.getByTestId('stop-words');
-    const tokenSlider = screen.getByTestId('token-slider');
+    
+    // Check new components
+    const streamSwitch = screen.getByTestId('switch-stream-mode');
+    const seedSwitch = screen.getByTestId('switch-seed-enabled');
+    const temperatureSlider = screen.getByTestId('setting-slider-temperature');
+    const topPSlider = screen.getByTestId('setting-slider-top-p');
+    const maxTokensSlider = screen.getByTestId('setting-slider-max-tokens');
+    const presencePenaltySlider = screen.getByTestId('setting-slider-presence-penalty');
+    const frequencyPenaltySlider = screen.getByTestId('setting-slider-frequency-penalty');
+    const separator = screen.getByTestId('separator');
 
     expect(aliasSelector).toHaveAttribute('data-loading', 'true');
     expect(systemPrompt).toHaveAttribute('data-loading', 'true');
     expect(stopWords).toHaveAttribute('data-loading', 'true');
-    expect(tokenSlider).toHaveAttribute('data-loading', 'true');
+    expect(streamSwitch).toBeInTheDocument();
+    expect(seedSwitch).toBeInTheDocument();
+    expect(temperatureSlider).toHaveAttribute('data-loading', 'true');
+    expect(topPSlider).toHaveAttribute('data-loading', 'true');
+    expect(maxTokensSlider).toHaveAttribute('data-loading', 'true');
+    expect(presencePenaltySlider).toHaveAttribute('data-loading', 'true');
+    expect(frequencyPenaltySlider).toHaveAttribute('data-loading', 'true');
+    expect(separator).toBeInTheDocument();
   });
 
   it('passes models data to AliasSelector after loading', async () => {
