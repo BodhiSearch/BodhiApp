@@ -12,13 +12,13 @@ describe('useChatSettings', () => {
   );
 
   describe('initialization', () => {
-    it('should initialize with default enabled states as false', () => {
+    it('should initialize with default enabled states', () => {
       const { result } = renderHook(() => useChatSettings(), { wrapper });
 
       expect(result.current).toMatchObject({
         model: '',
         temperature_enabled: false,
-        stream_enabled: false,
+        stream_enabled: true,
         max_tokens_enabled: false
         // ... other enabled states
       });
@@ -92,7 +92,8 @@ describe('useChatSettings', () => {
       const requestSettings = result.current.getRequestSettings();
       expect(requestSettings).toEqual({
         model: 'gpt-4',
-        temperature: 0.7
+        temperature: 0.7,
+        stream: true
       });
       expect(requestSettings).not.toHaveProperty('top_p');
     });
@@ -173,9 +174,9 @@ describe('useChatSettings', () => {
       expect(result.current.temperature).toBe(0.7);
       // Should have default enabled state
       expect(result.current.temperature_enabled).toBe(false);
-      // Other enabled states should be false
+      // Other enabled states should match defaults
       expect(result.current.top_p_enabled).toBe(false);
-      expect(result.current.stream_enabled).toBe(false);
+      expect(result.current.stream_enabled).toBe(true);
     });
 
     it('should handle invalid localStorage data gracefully', () => {
@@ -187,7 +188,7 @@ describe('useChatSettings', () => {
       // Should fall back to defaults
       expect(result.current.model).toBe('');
       expect(result.current.temperature_enabled).toBe(false);
-      expect(result.current.stream_enabled).toBe(false);
+      expect(result.current.stream_enabled).toBe(true);
     });
   });
 }); 

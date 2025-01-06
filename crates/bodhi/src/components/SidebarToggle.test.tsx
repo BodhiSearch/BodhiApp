@@ -32,15 +32,15 @@ describe('SidebarToggle', () => {
     const { container } = render(
       <SidebarToggle open={true} onOpenChange={() => { }} side="left" />
     );
-    const div = container.firstChild as HTMLElement;
-    expect(div.className).toContain('left-[16rem]');
+    const div = container.querySelector('div');
+    expect(div?.className).toContain('left-[16rem]');
   });
 
   it('applies correct positioning classes for right side', () => {
     const { container } = render(
       <SidebarToggle open={true} onOpenChange={() => { }} side="right" />
     );
-    const div = container.firstChild as HTMLElement;
-    expect(div.className).toContain('right-[16rem]');
+    const div = container.querySelector('div');
+    expect(div?.className).toContain('right-[16rem]');
   });
 });
