@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { MainLayout } from '@/components/layout/MainLayout';
 
-// Mock useLocalStorage hook
+// Mock useLocalStorage hook - no longer needed but keeping for reference
 vi.mock('@/hooks/useLocalStorage', () => ({
   useLocalStorage: () => [true, vi.fn()],
 }));
@@ -12,14 +12,27 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="sidebar-provider">{children}</div>
   ),
+  SidebarInset: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sidebar-inset">{children}</div>
+  ),
+  SidebarTrigger: () => <button data-testid="sidebar-trigger">Toggle</button>,
 }));
 
-// Mock the Button component
-vi.mock('@/components/ui/button', () => ({
-  Button: ({ children, ...props }: { children: React.ReactNode }) => (
-    <button {...props} data-testid="sidebar-button">
-      {children}
-    </button>
+// Mock the separator component
+vi.mock('@/components/ui/separator', () => ({
+  Separator: () => <div data-testid="separator" />,
+}));
+
+// Mock the breadcrumb components
+vi.mock('@/components/ui/breadcrumb', () => ({
+  Breadcrumb: ({ children }: { children: React.ReactNode }) => (
+    <nav data-testid="breadcrumb">{children}</nav>
+  ),
+  BreadcrumbItem: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="breadcrumb-item">{children}</div>
+  ),
+  BreadcrumbLink: ({ children }: { children: React.ReactNode }) => (
+    <a data-testid="breadcrumb-link">{children}</a>
   ),
 }));
 
@@ -46,43 +59,45 @@ describe('MainLayout', () => {
     expect(screen.getByText('Navigation Sidebar')).toBeInTheDocument();
   });
 
-  it('renders navigation sidebar trigger', () => {
+  it('renders header with sidebar trigger and breadcrumbs', () => {
     render(
-      <MainLayout
-        navigationSidebar={<div>Navigation</div>}
-      >
+      <MainLayout>
         <div>Test Content</div>
       </MainLayout>
     );
 
-    const button = screen.getByTestId('sidebar-button');
-    expect(button).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-trigger')).toBeInTheDocument();
+    expect(screen.getByTestId('separator')).toBeInTheDocument();
+    expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
+    expect(screen.getByText('Chat')).toBeInTheDocument();
   });
 
-  it('positions navigation trigger correctly', () => {
+  it('renders sidebar inset with proper structure', () => {
     render(
-      <MainLayout
-        navigationSidebar={<div>Navigation</div>}
-      >
+      <MainLayout>
         <div>Test Content</div>
       </MainLayout>
     );
 
-    const trigger = screen.getByTestId('sidebar-button').parentElement;
-    expect(trigger).toHaveClass('fixed');
-    expect(trigger).toHaveClass('left-[16rem]');
+    const sidebarInset = screen.getByTestId('sidebar-inset');
+    expect(sidebarInset).toBeInTheDocument();
+    
+    // Check for header
+    const header = sidebarInset.querySelector('header');
+    expect(header).toHaveClass('flex', 'h-16', 'shrink-0');
+
+    // Check for main content wrapper
+    const contentWrapper = sidebarInset.querySelector('div');
+    expect(contentWrapper).toHaveClass('flex', 'items-center');
   });
 
   it('renders sidebar provider', () => {
     render(
-      <MainLayout
-        navigationSidebar={<div>Navigation</div>}
-      >
+      <MainLayout>
         <div>Test Content</div>
       </MainLayout>
     );
 
-    const provider = screen.getByTestId('sidebar-provider');
-    expect(provider).toBeInTheDocument();
+    expect(screen.getByTestId('sidebar-provider')).toBeInTheDocument();
   });
 });
