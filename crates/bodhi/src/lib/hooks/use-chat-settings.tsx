@@ -4,28 +4,28 @@ import { createContext, useContext, useCallback, useEffect, useState } from 'rea
 
 interface ChatSettings {
   model: string;
+  stream?: boolean;
+  stream_enabled: boolean;
+  seed?: number;
+  seed_enabled: boolean;
+  systemPrompt?: string;
+  systemPrompt_enabled: boolean;
+  stop?: string[] | string;
+  stop_enabled: boolean;
+  max_tokens?: number;
+  max_tokens_enabled: boolean;
+  n?: number;
+  n_enabled: boolean;
   temperature?: number;
   temperature_enabled: boolean;
   top_p?: number;
   top_p_enabled: boolean;
-  n?: number;
-  n_enabled: boolean;
-  stream?: boolean;
-  stream_enabled: boolean;
-  max_tokens?: number;
-  max_tokens_enabled: boolean;
   presence_penalty?: number;
   presence_penalty_enabled: boolean;
   frequency_penalty?: number;
   frequency_penalty_enabled: boolean;
   logit_bias?: Record<string, number>;
   logit_bias_enabled: boolean;
-  stop?: string[] | string;
-  stop_enabled: boolean;
-  seed?: number;
-  seed_enabled: boolean;
-  systemPrompt?: string;
-  systemPrompt_enabled: boolean;
   response_format?: {
     type: 'text' | 'json_object';
     schema?: object;
@@ -35,10 +35,11 @@ interface ChatSettings {
 
 const defaultSettings: ChatSettings = {
   model: '',
+  stream: true,
   temperature_enabled: false,
   top_p_enabled: false,
   n_enabled: false,
-  stream_enabled: false,
+  stream_enabled: true,
   max_tokens_enabled: false,
   presence_penalty_enabled: false,
   frequency_penalty_enabled: false,
