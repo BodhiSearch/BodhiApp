@@ -31,7 +31,7 @@ const navigationItems = [
 
 export function NavigationSidebar() {
   return (
-    <Sidebar variant="sidebar">
+    <Sidebar variant="inset">
       <SidebarHeader>
         <Link href="/ui/home">Bodhi</Link>
       </SidebarHeader>

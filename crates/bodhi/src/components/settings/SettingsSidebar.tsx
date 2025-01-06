@@ -20,7 +20,7 @@ export function SettingsSidebar() {
   return (
     <Sidebar side="right" variant="floating">
       <SidebarHeader>
-        <h2 className="text-lg font-semibold">Settings</h2>
+        <h2>Settings</h2>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -30,15 +30,12 @@ export function SettingsSidebar() {
           />
           <SystemPrompt
             isLoading={isLoading}
-            initialEnabled={true}
           />
           <StopWords
             isLoading={isLoading}
-            initialEnabled={true}
           />
           <TokenSlider
             isLoading={isLoading}
-            initialEnabled={true}
           />
         </SidebarGroup>
       </SidebarContent>
