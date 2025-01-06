@@ -4,6 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import AppInitializer from '@/components/AppInitializer';
 import { NavigationSidebar } from '@/components/navigation/NavigationSidebar';
 import { ChatContainer } from '@/components/chat/ChatContainer';
+import { ChatsProvider } from '@/lib/hooks/use-chats';
 
 function ChatPageContent() {
   return (
@@ -16,7 +17,9 @@ function ChatPageContent() {
 export default function ChatPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true}>
-      <ChatPageContent />
+      <ChatsProvider>
+        <ChatPageContent />
+      </ChatsProvider>
     </AppInitializer>
   );
 }

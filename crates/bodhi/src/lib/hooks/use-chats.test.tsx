@@ -1,7 +1,7 @@
 import { renderHook, act } from '@testing-library/react';
 import { useChats, ChatsProvider } from './use-chats';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { Chat, Message } from '@/types/chat';
+import { Chat } from '@/types/chat';
 
 describe('useChats', () => {
   beforeEach(() => {

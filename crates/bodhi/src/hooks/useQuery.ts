@@ -16,6 +16,7 @@ import {
   UserInfo,
 } from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
+import { Message } from '@/types/chat';
 
 type PagedApiResponse<T> = {
   data: T;
@@ -178,4 +179,110 @@ export function useUser(options?: { enabled: boolean }) {
     retry: false,
     enabled: options?.enabled,
   });
+}
+
+// Add types for chat completion
+interface ChatCompletionRequest {
+  messages: Message[];
+  stream?: boolean;
+  model: string;
+  temperature?: number;
+  stop?: string[];
+  max_tokens?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+}
+
+interface ChatCompletionResponse {
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: {
+    index: number;
+    message: Message;
+    finish_reason: string;
+  }[];
+}
+
+// Add the chat completion hooks
+export function useChatCompletion() {
+  const queryClient = useQueryClient();
+
+  const completionMutation = useMutation<
+    ChatCompletionResponse,
+    AxiosError,
+    ChatCompletionRequest
+  >(
+    async (request) => {
+      const { data } = await apiClient.post(
+        '/v1/chat/completions',
+        request,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      return data;
+    }
+  );
+
+  // TODO: make this configurable
+  const streamingMutation = useMutation<
+    void,
+    AxiosError,
+    ChatCompletionRequest & { onMessage: (message: string) => void }
+  >(
+    async ({ onMessage, ...request }) => {
+      const baseUrl = apiClient.defaults.baseURL || (typeof window !== 'undefined'
+        ? window.location.origin
+        : 'http://localhost');
+
+      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ...request, stream: true }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      while (reader) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk
+          .split('\n')
+          .filter(line => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+
+        for (const line of lines) {
+          try {
+            const jsonStr = line.replace(/^data: /, '');
+            const json = JSON.parse(jsonStr);
+            if (json.choices?.[0]?.delta?.content) {
+              onMessage(json.choices[0].delta.content);
+            }
+          } catch (e) {
+            console.warn('Failed to parse SSE message:', e);
+          }
+        }
+      }
+    }
+  );
+
+  return {
+    complete: completionMutation.mutateAsync,
+    stream: streamingMutation.mutateAsync,
+    isLoading: completionMutation.isLoading || streamingMutation.isLoading,
+    error: completionMutation.error || streamingMutation.error,
+  };
 }

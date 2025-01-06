@@ -24,11 +24,11 @@ export function SidebarToggle({
         'fixed top-4 z-40 transition-all duration-300',
         // Left side positioning
         side === 'left' && 'left-0',
-        side === 'left' && open && 'left-[16rem]', // Adjust based on sidebar width
+        side === 'left' && open && 'left-[16rem]',
         side === 'left' && !open && 'left-4',
         // Right side positioning
         side === 'right' && 'right-0',
-        side === 'right' && open && 'right-[16rem]', // Adjust based on sidebar width
+        side === 'right' && open && 'right-[16rem]',
         side === 'right' && !open && 'right-4'
       )}
     >
@@ -37,6 +37,7 @@ export function SidebarToggle({
         size="icon"
         className={cn('h-7 w-7', className)}
         onClick={() => onOpenChange(!open)}
+        aria-label="Toggle settings"
       >
         {icon || <PanelLeft />}
         <span className="sr-only">Toggle Sidebar</span>
