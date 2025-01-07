@@ -1,6 +1,6 @@
 'use client';
 
-import { useChat } from '@/lib/hooks/use-chat-context';
+import { useChat } from '@/lib/hooks/use-chat';
 import { cn } from '@/lib/utils';
 import { Message } from '@/types/chat';
 import { FormEvent } from 'react';
