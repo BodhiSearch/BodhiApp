@@ -10,7 +10,7 @@ import { Chat } from '@/types/chat';
 import { Settings2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ChatProvider } from '@/lib/hooks/use-chat-context';
+import { ChatProvider } from '@/lib/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
