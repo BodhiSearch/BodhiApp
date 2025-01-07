@@ -6,7 +6,7 @@ import { Chat } from '@/types/chat';
 const CHATS_STORAGE_KEY = 'chats';
 const MAX_CHATS = 100;
 
-interface ChatsContextType {
+interface ChatDBContextType {
   getChat: (id: string) => Promise<{ data: Chat; status: number }>;
   createOrUpdateChat: (chat: Chat) => Promise<string>;
   deleteChat: (id: string) => Promise<void>;
@@ -14,9 +14,9 @@ interface ChatsContextType {
   listChats: () => Promise<Chat[]>;
 }
 
-const ChatsContext = createContext<ChatsContextType | undefined>(undefined);
+const ChatDBContext = createContext<ChatDBContextType | undefined>(undefined);
 
-export function ChatsProvider({ children }: { children: React.ReactNode }) {
+export function ChatDBProvider({ children }: { children: React.ReactNode }) {
   const [chats, setChats] = useState<Chat[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(CHATS_STORAGE_KEY);
@@ -90,7 +90,7 @@ export function ChatsProvider({ children }: { children: React.ReactNode }) {
   }, [chats]);
 
   return (
-    <ChatsContext.Provider
+    <ChatDBContext.Provider
       value={{
         getChat,
         createOrUpdateChat,
@@ -100,14 +100,14 @@ export function ChatsProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
-    </ChatsContext.Provider>
+    </ChatDBContext.Provider>
   );
 }
 
-export function useChats() {
-  const context = useContext(ChatsContext);
+export function useChatDB() {
+  const context = useContext(ChatDBContext);
   if (context === undefined) {
-    throw new Error('useChats must be used within a ChatsProvider');
+    throw new Error('useChatDB must be used within a ChatDBProvider');
   }
   return context;
 }

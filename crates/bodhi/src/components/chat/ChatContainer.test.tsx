@@ -1,7 +1,7 @@
 import { render, screen, act } from '@testing-library/react';
 import { ChatContainer } from './ChatContainer';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useChats } from '@/lib/hooks/use-chats';
+import { useChatDB } from '@/lib/hooks/use-chat-db';
 import { nanoid } from '@/lib/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWrapper } from '@/tests/wrapper';
@@ -16,8 +16,8 @@ vi.mock('next/navigation', () => ({
   }))
 }));
 
-vi.mock('@/lib/hooks/use-chats', () => ({
-  useChats: vi.fn()
+vi.mock('@/lib/hooks/use-chat-db', () => ({
+  useChatDB: vi.fn()
 }));
 
 // Mock utils with cn function
@@ -57,7 +57,7 @@ describe('ChatContainer', () => {
 
     // Setup default mocks
     (useRouter as any).mockImplementation(() => mockRouter);
-    (useChats as any).mockImplementation(() => ({
+    (useChatDB as any).mockImplementation(() => ({
       getChat: mockGetChat
     }));
     (nanoid as any).mockImplementation(() => 'mock-id');
