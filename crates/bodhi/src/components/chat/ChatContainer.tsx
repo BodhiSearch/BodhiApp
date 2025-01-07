@@ -4,7 +4,7 @@ import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
 import { SidebarToggle } from '@/components/SidebarToggle';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useChats } from '@/lib/hooks/use-chats';
+import { useChatDB } from '@/lib/hooks/use-chat-db';
 import { nanoid } from '@/lib/utils';
 import { Chat } from '@/types/chat';
 import { Settings2 } from 'lucide-react';
@@ -19,7 +19,7 @@ export function ChatContainer() {
   const [settingsOpen, setSettingsOpen] = useLocalStorage(SETTINGS_SIDEBAR_KEY, true);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { getChat } = useChats();
+  const { getChat } = useChatDB();
   const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);

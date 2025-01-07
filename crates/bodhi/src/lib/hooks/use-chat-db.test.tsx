@@ -1,20 +1,20 @@
 import { renderHook, act } from '@testing-library/react';
-import { useChats, ChatsProvider } from './use-chats';
+import { useChatDB, ChatDBProvider } from './use-chat-db';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Chat } from '@/types/chat';
 
-describe('useChats', () => {
+describe('useChatDB', () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <ChatsProvider>{children}</ChatsProvider>
+    <ChatDBProvider>{children}</ChatDBProvider>
   );
 
   describe('initialization', () => {
     it('should initialize with empty chats', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       const response = await result.current.listChats();
       expect(response).toHaveLength(0);
@@ -30,7 +30,7 @@ describe('useChats', () => {
 
       localStorage.setItem('chats', JSON.stringify([mockChat]));
 
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       let response;
       await act(async () => {
@@ -44,7 +44,7 @@ describe('useChats', () => {
 
   describe('chat operations', () => {
     it('should create a new chat at the beginning of the list', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       const chat1: Chat = {
         id: crypto.randomUUID(),
@@ -71,7 +71,7 @@ describe('useChats', () => {
     });
 
     it('should update existing chat and move to beginning', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       const chat1: Chat = {
         id: crypto.randomUUID(),
@@ -109,7 +109,7 @@ describe('useChats', () => {
     });
 
     it('should delete a chat', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       const chat: Chat = {
         id: crypto.randomUUID(),
@@ -128,7 +128,7 @@ describe('useChats', () => {
     });
 
     it('should clear all chats', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       const chats: Chat[] = Array.from({ length: 2 }, (_, i) => ({
         id: crypto.randomUUID(),
@@ -149,7 +149,7 @@ describe('useChats', () => {
     });
 
     it('should maintain chat order with most recent first', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       // Create three chats
       const chats: Chat[] = Array.from({ length: 3 }, (_, i) => ({
@@ -184,7 +184,7 @@ describe('useChats', () => {
     });
 
     it('should preserve order after localStorage reload', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       const chats: Chat[] = Array.from({ length: 3 }, (_, i) => ({
         id: crypto.randomUUID(),
@@ -200,7 +200,7 @@ describe('useChats', () => {
       });
 
       // Force reload from localStorage
-      const { result: reloadedResult } = renderHook(() => useChats(), { wrapper });
+      const { result: reloadedResult } = renderHook(() => useChatDB(), { wrapper });
 
       const response = await reloadedResult.current.listChats();
       expect(response.map(chat => chat.id)).toEqual([
@@ -211,7 +211,7 @@ describe('useChats', () => {
     });
 
     it('should maintain maximum of 100 chats', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       // Create 105 chats
       const chats: Chat[] = Array.from({ length: 105 }, (_, i) => ({
@@ -236,7 +236,7 @@ describe('useChats', () => {
     });
 
     it('should not remove existing chat when updating if at max capacity', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       // Create 100 chats
       const chats: Chat[] = Array.from({ length: 100 }, (_, i) => ({
@@ -271,7 +271,7 @@ describe('useChats', () => {
 
   describe('chat listing', () => {
     it('should list all chats', async () => {
-      const { result } = renderHook(() => useChats(), { wrapper });
+      const { result } = renderHook(() => useChatDB(), { wrapper });
 
       const chats: Chat[] = Array.from({ length: 5 }, (_, i) => ({
         id: crypto.randomUUID(),

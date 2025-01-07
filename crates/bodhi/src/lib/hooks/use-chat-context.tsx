@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback } from 'react';
 import { Message, Chat } from '@/types/chat';
 import { useChatCompletion } from '@/hooks/useQuery';
-import { useChats } from '@/lib/hooks/use-chats';
+import { useChatDB } from '@/lib/hooks/use-chat-db';
 import { useChatSettings } from '@/lib/hooks/use-chat-settings';
 
 interface ChatContextType {
@@ -32,7 +32,7 @@ export function ChatProvider({
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   const { complete, stream, isLoading } = useChatCompletion();
-  const { createOrUpdateChat } = useChats();
+  const { createOrUpdateChat } = useChatDB();
   const chatSettings = useChatSettings();
 
   const stop = useCallback(() => {
