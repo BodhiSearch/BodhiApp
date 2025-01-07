@@ -191,4 +191,30 @@ describe('useChatSettings', () => {
       expect(result.current.stream_enabled).toBe(true);
     });
   });
+
+  describe('stop parameter handling', () => {
+    it('should always store stop as string array', () => {
+      const { result } = renderHook(() => useChatSettings(), { wrapper });
+
+      // Test with single string
+      act(() => {
+        result.current.setStop('stop');
+      });
+      expect(Array.isArray(result.current.stop)).toBe(true);
+      expect(result.current.stop).toEqual(['stop']);
+
+      // Test with array
+      act(() => {
+        result.current.setStop(['stop1', 'stop2']);
+      });
+      expect(result.current.stop).toEqual(['stop1', 'stop2']);
+
+      // Test with undefined
+      act(() => {
+        result.current.setStop(undefined);
+      });
+      expect(result.current.stop).toBeUndefined();
+      expect(result.current.stop_enabled).toBe(false);
+    });
+  });
 }); 

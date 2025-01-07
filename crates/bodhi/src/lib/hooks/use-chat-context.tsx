@@ -59,14 +59,14 @@ export function ChatProvider({
           assistantMessage += chunk;
           setMessages([
             ...newMessages,
-            { role: 'assistant', content: assistantMessage }
+            { role: 'assistant' as const, content: assistantMessage }
           ]);
         }
       });
 
       const finalMessages = [
         ...newMessages,
-        { role: 'assistant', content: assistantMessage }
+        { role: 'assistant' as const, content: assistantMessage }
       ];
 
       await createOrUpdateChat({

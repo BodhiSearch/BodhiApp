@@ -7,6 +7,7 @@ import fs from 'fs'
 import path from 'path'
 import prettier from 'prettier'
 import remarkGfm from 'remark-gfm'
+import { parse as parseHTML } from 'node-html-parser'
 
 const TEST_FILES_DIR = path.join(__dirname, '__tests__')
 
@@ -29,12 +30,20 @@ async function formatHTML(html: string): Promise<string> {
   })
 }
 
+// Add this helper function at the top with other helpers
+async function writeFailedTestOutput(filename: string, content: string) {
+  const outputPath = path.join(TEST_FILES_DIR, `${filename}.actual.html`)
+  await fs.promises.writeFile(outputPath, content)
+  console.log(`Wrote failed test output to: ${outputPath}`)
+}
+
 describe('MemoizedReactMarkdown', () => {
   const testFiles = [
     { file: 'basic.md' },
     { file: 'lists.md' },
     { file: 'tables.md' },
     { file: 'code.md' },
+    { file: 'tic-tac-toe.non-stream.txt' },
   ]
 
   beforeEach(() => {
@@ -42,12 +51,12 @@ describe('MemoizedReactMarkdown', () => {
   })
 
   testFiles.forEach(({ file }) => {
-    it(`renders ${file} markdown correctly`, async () => {
+    it(`renders ${file} markdown correctly in block mode`, async () => {
       const input = readTestFile(file)
       const expected = readTestFile(`${file}.html`)
 
       const { container } = render(
-        <MemoizedReactMarkdown 
+        <MemoizedReactMarkdown
           className="markdown-body"
           remarkPlugins={[remarkGfm]}
         >
@@ -55,19 +64,18 @@ describe('MemoizedReactMarkdown', () => {
         </MemoizedReactMarkdown>
       )
 
-      const markdownContent = container.firstChild?.innerHTML || ''
+      const markdownContent = (container.firstChild as HTMLElement)?.innerHTML || ''
 
       // Format both expected and actual HTML through the same prettier config
       const formattedExpected = await formatHTML(expected)
       const formattedActual = await formatHTML(markdownContent)
 
-      // Log formatted HTML for easier debugging
-      if (formattedExpected !== formattedActual) {
-        console.log('Expected:\n', formattedExpected)
-        console.log('\nActual:\n', formattedActual)
+      try {
+        expect(formattedActual).toBe(formattedExpected)
+      } catch (error) {
+        await writeFailedTestOutput(file, formattedActual)
+        throw error
       }
-
-      expect(formattedActual).toBe(formattedExpected)
     })
   })
 
@@ -118,5 +126,96 @@ describe('MemoizedReactMarkdown', () => {
     const secondRender = container.innerHTML
 
     expect(firstRender).not.toBe(secondRender)
+  })
+})
+
+describe('MemoizedReactMarkdown Streaming', () => {
+  const testFiles = [
+    { file: 'basic.md' },
+    { file: 'lists.md' },
+    { file: 'tables.md' },
+    { file: 'code.md' },
+    { file: 'tic-tac-toe.non-stream.txt' },
+  ]
+
+  testFiles.forEach(({ file }) => {
+    it(`renders ${file} markdown correctly in streaming mode`, async () => {
+      const input = readTestFile(file)
+      const words = input.match(/\S+|\s+/g) || []
+      let accumulatedContent = ''
+
+      for (const word of words) {
+        accumulatedContent += word
+
+        const { container } = render(
+          <MemoizedReactMarkdown
+            className="markdown-body"
+            remarkPlugins={[remarkGfm]}
+          >
+            {accumulatedContent.trim()}
+          </MemoizedReactMarkdown>
+        )
+
+        const markdownContent = (container.firstChild as HTMLElement)?.innerHTML || ''
+
+        // Parse HTML with strict options
+        const root = parseHTML(markdownContent, {
+          comment: false,
+          blockTextElements: {
+            script: true,
+            noscript: true,
+            style: true,
+            pre: true,
+          },
+          lowerCaseTagName: true,
+          parseNoneClosedTags: false,  // Don't auto-close tags
+          voidTag: {
+            tags: ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']
+          },
+        })
+
+        // Log the HTML content and structure for debugging
+        if (!root || !root.firstChild) {
+          console.log('Current accumulated content:', accumulatedContent)
+          console.log('Generated HTML:', markdownContent)
+          throw new Error('Invalid HTML structure - no root or first child')
+        }
+
+        try {
+          // Check that all opening tags have matching closing tags
+          const elements = root.querySelectorAll('*')
+          elements.forEach(el => {
+            const tagName = el.tagName.toLowerCase()
+            const validTags = /^(h[1-6]|p|strong|em|code|pre|ul|ol|li|table|thead|tbody|tr|th|td|blockquote|a|br|hr)$/
+
+            if (!validTags.test(tagName)) {
+              console.log('Invalid tag found:', tagName)
+              console.log('Current HTML:', markdownContent)
+              console.log('Current accumulated content:', accumulatedContent)
+              throw new Error(`Invalid HTML tag: ${tagName}`)
+            }
+          })
+
+        } catch (error) {
+          console.log('Error in word:', word)
+          console.log('Accumulated content:', accumulatedContent)
+          console.log('Current HTML state:', markdownContent)
+          throw error
+        }
+      }
+    })
+  })
+
+  it('handles empty lines in streaming content', () => {
+    const { container } = render(
+      <MemoizedReactMarkdown
+        className="markdown-body"
+        remarkPlugins={[remarkGfm]}
+      >
+        {'\n'}
+      </MemoizedReactMarkdown>
+    )
+
+    expect(container.firstChild).toBeTruthy()
   })
 }) 

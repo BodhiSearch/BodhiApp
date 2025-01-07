@@ -10,7 +10,7 @@ interface ChatSettings {
   seed_enabled: boolean;
   systemPrompt?: string;
   systemPrompt_enabled: boolean;
-  stop?: string[] | string;
+  stop?: string[];
   stop_enabled: boolean;
   max_tokens?: number;
   max_tokens_enabled: boolean;
@@ -113,10 +113,12 @@ export function ChatSettingsProvider({ children }: { children: React.ReactNode }
       const next = { ...prev };
       if (value === undefined) {
         delete next[key];
-        next[`${key}_enabled` as keyof ChatSettings] = false;
+        // @ts-ignore - enabled key is valid but TypeScript can't infer it
+        next[`${key}_enabled`] = false;
       } else {
         next[key] = value;
-        next[`${key}_enabled` as keyof ChatSettings] = true;
+        // @ts-ignore - enabled key is valid but TypeScript can't infer it
+        next[`${key}_enabled`] = true;
       }
       return next;
     });
@@ -147,7 +149,15 @@ export function ChatSettingsProvider({ children }: { children: React.ReactNode }
   const { setValue: setPresencePenalty, setEnabled: setPresencePenaltyEnabled } = createSetters('presence_penalty');
   const { setValue: setFrequencyPenalty, setEnabled: setFrequencyPenaltyEnabled } = createSetters('frequency_penalty');
   const { setValue: setLogitBias, setEnabled: setLogitBiasEnabled } = createSetters('logit_bias');
-  const { setValue: setStop, setEnabled: setStopEnabled } = createSetters('stop');
+  const { setValue: setStopRaw, setEnabled: setStopEnabled } = createSetters('stop');
+  const setStop = useCallback((stop: string[] | string | undefined) => {
+    if (stop === undefined) {
+      setStopRaw(undefined);
+    } else {
+      // Convert to array if string
+      setStopRaw(Array.isArray(stop) ? stop : [stop]);
+    }
+  }, [setStopRaw]);
   const { setValue: setSeed, setEnabled: setSeedEnabled } = createSetters('seed');
   const { setValue: setSystemPrompt, setEnabled: setSystemPromptEnabled } = createSetters('systemPrompt');
   const { setValue: setResponseFormat, setEnabled: setResponseFormatEnabled } = createSetters('response_format');

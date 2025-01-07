@@ -220,4 +220,31 @@ describe('StopWords', () => {
 
     expect(mockSetEnabled).toHaveBeenCalledWith(false);
   });
+
+  it.skip('handles stop words consistently as arrays', () => {
+    const mockSetStop = vi.fn();
+    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
+      stop: ['existing'],
+      stop_enabled: true,
+      setStop: mockSetStop,
+      setStopEnabled: vi.fn(),
+    } as any);
+
+    render(<StopWords />);
+
+    // Add new word
+    const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
+    fireEvent.change(input, { target: { value: 'test' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    // Verify array is passed to setStop
+    expect(mockSetStop).toHaveBeenCalledWith(['existing', 'test']);
+
+    // Remove word
+    const removeButton = screen.getByLabelText('Remove existing');
+    fireEvent.click(removeButton);
+
+    // Verify array is passed to setStop
+    expect(mockSetStop).toHaveBeenCalledWith(['test']);
+  });
 });

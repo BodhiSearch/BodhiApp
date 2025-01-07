@@ -24,7 +24,7 @@ const nextConfig = {
   },
   webpack: (config) => {
     config.watchOptions = {
-      ignored: ['**/node_modules/', 'old-chat-app/**'],
+      ignored: ['**/node_modules/', '**/old-chat-app/**'],
     };
     return config;
   },
