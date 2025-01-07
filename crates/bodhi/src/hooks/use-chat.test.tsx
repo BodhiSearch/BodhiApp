@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Chat, Message } from '@/types/chat';
 
 // Mock use-chat-settings
-vi.mock('@/lib/hooks/use-chat-settings', () => ({
+vi.mock('@/hooks/use-chat-settings', () => ({
   useChatSettings: () => ({
     getRequestSettings: () => ({
       model: 'test-model',
@@ -43,7 +43,7 @@ class InMemoryChatDB {
 const chatDB = new InMemoryChatDB();
 
 // Mock use-chat-db with in-memory implementation
-vi.mock('@/lib/hooks/use-chat-db', () => ({
+vi.mock('@/hooks/use-chat-db', () => ({
   useChatDB: () => ({
     createOrUpdateChat: (chat: Chat) => chatDB.createOrUpdateChat(chat),
     getChat: (id: string) => chatDB.getChat(id),

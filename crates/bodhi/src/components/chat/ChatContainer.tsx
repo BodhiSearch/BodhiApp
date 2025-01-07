@@ -4,13 +4,13 @@ import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
 import { SidebarToggle } from '@/components/SidebarToggle';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { useChatDB } from '@/lib/hooks/use-chat-db';
+import { useChatDB } from '@/hooks/use-chat-db';
 import { nanoid } from '@/lib/utils';
 import { Chat } from '@/types/chat';
 import { Settings2 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ChatProvider } from '@/lib/hooks/use-chat';
+import { ChatProvider } from '@/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';

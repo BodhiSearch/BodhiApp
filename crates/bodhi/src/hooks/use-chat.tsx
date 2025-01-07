@@ -1,8 +1,8 @@
 'use client';
 
 import { useChatCompletion } from '@/hooks/use-chat-completions';
-import { useChatDB } from '@/lib/hooks/use-chat-db';
-import { useChatSettings } from '@/lib/hooks/use-chat-settings';
+import { useChatDB } from '@/hooks/use-chat-db';
+import { useChatSettings } from '@/hooks/use-chat-settings';
 import { Chat, Message } from '@/types/chat';
 import { createContext, useCallback, useContext, useState } from 'react';
 

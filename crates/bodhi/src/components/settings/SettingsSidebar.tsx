@@ -4,7 +4,7 @@ import { AliasSelector } from '@/components/settings/AliasSelector';
 import { SystemPrompt } from '@/components/settings/SystemPrompt';
 import { StopWords } from '@/components/settings/StopWords';
 import { useModels } from '@/hooks/useQuery';
-import { useChatSettings } from '@/lib/hooks/use-chat-settings';
+import { useChatSettings } from '@/hooks/use-chat-settings';
 import {
   SidebarContent,
   SidebarHeader,

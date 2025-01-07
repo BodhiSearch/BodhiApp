@@ -3,13 +3,13 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { CodeBlock } from './codeblock'
-import * as hooks from '@/lib/hooks/use-copy-to-clipboard'
+import * as hooks from '@/hooks/use-copy-to-clipboard'
 import fs from 'fs'
 import path from 'path'
 import prettier from 'prettier'
 
 // Mock the copy-to-clipboard hook with a default implementation
-vi.mock('@/lib/hooks/use-copy-to-clipboard', () => ({
+vi.mock('@/hooks/use-copy-to-clipboard', () => ({
   useCopyToClipboard: () => ({
     isCopied: false,
     copyToClipboard: vi.fn()

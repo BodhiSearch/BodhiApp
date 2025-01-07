@@ -4,7 +4,7 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import AppInitializer from '@/components/AppInitializer';
 import { NavigationSidebar } from '@/components/navigation/NavigationSidebar';
 import { ChatContainer } from '@/components/chat/ChatContainer';
-import { ChatDBProvider } from '@/lib/hooks/use-chat-db';
+import { ChatDBProvider } from '@/hooks/use-chat-db';
 
 function ChatPageContent() {
   return (

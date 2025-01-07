@@ -61,7 +61,7 @@ vi.mock('@/components/ui/separator', () => ({
 }));
 
 // Mock hooks
-vi.mock('@/lib/hooks/use-chat-settings', () => ({
+vi.mock('@/hooks/use-chat-settings', () => ({
   useChatSettings: () => ({
     stream: false,
     setStream: vi.fn(),
