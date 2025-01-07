@@ -1,10 +1,10 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback } from 'react';
-import { Message, Chat } from '@/types/chat';
-import { useChatCompletion } from '@/hooks/useQuery';
+import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/lib/hooks/use-chat-db';
 import { useChatSettings } from '@/lib/hooks/use-chat-settings';
+import { Chat, Message } from '@/types/chat';
+import { createContext, useCallback, useContext, useState } from 'react';
 
 interface ChatContextType {
   messages: Message[];
@@ -31,7 +31,7 @@ export function ChatProvider({
   const [input, setInput] = useState('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
 
-  const { complete, stream, isLoading } = useChatCompletion();
+  const { append, isLoading } = useChatCompletion();
   const { createOrUpdateChat } = useChatDB();
   const chatSettings = useChatSettings();
 
@@ -42,7 +42,41 @@ export function ChatProvider({
     }
   }, [abortController]);
 
-  const append = useCallback(async (userMessage: Message) => {
+  const processCompletion = useCallback(async (requestMessages: Message[]) => {
+    let assistantMessage = '';
+
+    try {
+      await append({
+        request: {
+          ...chatSettings.getRequestSettings(),
+          messages: requestMessages,
+        },
+        onDelta: (chunk) => {
+          assistantMessage += chunk;
+          setMessages([
+            ...requestMessages,
+            { role: 'assistant' as const, content: assistantMessage }
+          ]);
+        },
+        onMessage: (message) => {
+          const finalMessages = [...requestMessages, message];
+          setMessages(finalMessages);
+
+          createOrUpdateChat({
+            ...chat,
+            messages: finalMessages,
+            title: finalMessages[0].content.substring(0, 100),
+            updatedAt: Date.now()
+          });
+        }
+      });
+    } catch (error) {
+      console.error('Chat completion error:', error);
+      throw error; // Let the caller handle the error
+    }
+  }, [chatSettings, chat, append, createOrUpdateChat]);
+
+  const appendMessage = useCallback(async (userMessage: Message) => {
     const newMessages = [...messages, userMessage];
     setMessages(newMessages);
 
@@ -50,38 +84,11 @@ export function ChatProvider({
     setAbortController(controller);
 
     try {
-      let assistantMessage = '';
-
-      await stream({
-        messages: newMessages,
-        ...chatSettings.getRequestSettings(),
-        onMessage: (chunk) => {
-          assistantMessage += chunk;
-          setMessages([
-            ...newMessages,
-            { role: 'assistant' as const, content: assistantMessage }
-          ]);
-        }
-      });
-
-      const finalMessages = [
-        ...newMessages,
-        { role: 'assistant' as const, content: assistantMessage }
-      ];
-
-      await createOrUpdateChat({
-        ...chat,
-        messages: finalMessages,
-        title: finalMessages[0].content.substring(0, 100),
-        updatedAt: Date.now()
-      });
-
-    } catch (error) {
-      console.error('Chat completion error:', error);
+      await processCompletion(newMessages);
     } finally {
       setAbortController(null);
     }
-  }, [messages, chatSettings, chat, stream, createOrUpdateChat]);
+  }, [messages, processCompletion]);
 
   const reload = useCallback(async () => {
     if (messages.length < 2) return;
@@ -93,10 +100,8 @@ export function ChatProvider({
     const messagesToKeep = messages.slice(0, lastUserMessageIndex + 1);
     setMessages(messagesToKeep);
 
-    // Re-send the last user message
-    const lastUserMessage = messages[lastUserMessageIndex];
-    await append(lastUserMessage);
-  }, [messages, append]);
+    await processCompletion(messagesToKeep);
+  }, [messages, processCompletion]);
 
   return (
     <ChatContext.Provider value={{
@@ -104,7 +109,7 @@ export function ChatProvider({
       input,
       setInput,
       isLoading,
-      append,
+      append: appendMessage,
       stop,
       reload
     }}>
