@@ -1,0 +1,68 @@
+<p>Sure! Here is a simple implementation of Tic-Tac-Toe in Python:</p>
+<pre><div class="relative w-full font-sans codeblock"><div class="flex items-center justify-between w-full px-6 py-2 pr-4 codeblock-header"><span class="text-xs lowercase"></span><div class="flex items-center space-x-1"><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-10 w-10 codeblock-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download h-4 w-4"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg><span class="sr-only">Download</span></button><button class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&amp;_svg]:pointer-events-none [&amp;_svg]:size-4 [&amp;_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-10 w-10 text-xs codeblock-button"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy h-4 w-4" data-testid="copy-icon"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg><span class="sr-only">Copy code</span></button></div></div><div class="prismjs syntax-highlighter" style="margin: 0px; width: 100%; background: transparent; padding: 1.5rem 1rem;"><code class="syntax-highlighter-code" style="white-space: pre;"><span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">1</span><span class=""># Importing necessary libraries
+</span><span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">2</span>import numpy as np
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">3</span>
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">4</span># Function to play game
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">5</span>def play_game(game):
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">6</span>    # Checking for win
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">7</span>    if check_win(game):
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">8</span>        print(\"Game Over! You won!\")
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">9</span>    else:
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">10</span>        print(\"It's your turn!\")
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">11</span>        # Asking user to make a move
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">12</span>        move = input(\"Enter a row and column to make a move (e.g. '1,1' or '1,3'): \")
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">13</span>        row, col = map(int, move.split(\",\"))
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">14</span>        # Updating game state
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">15</span>        game[row][col] = \"X\" if game[row][col] == \"O\" else \"O\"
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">16</span>        # Recursively calling itself
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">17</span>        play_game(game)
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">18</span>
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">19</span># Function to check for win
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">20</span>def check_win(game):
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">21</span>    # Checking for vertical win
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">22</span>    if game[0][0] == game[0][1] and game[0][1] == game[0][2]:
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">23</span>        return True
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">24</span>    # Checking for horizontal win
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">25</span>    elif game[0][0] == game[1][0] and game[1][0] == game[2][0]:
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">26</span>        return True
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">27</span>    # Checking for diagonal win
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">28</span>    elif game[0][0] == game[1][1] and game[1][1] == game[2][1]:
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">29</span>        return True
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">30</span>    # Checking for corner win
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">31</span>    elif game[0][0] == game[0][1] and game[0][1] == game[0][2] or
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">32</span>            game[1][0] == game[1][1] and game[1][1] == game[1][2] or
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">33</span>            game[2][0] == game[2][1] and game[2][1] == game[2][2]:
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">34</span>        return True
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">35</span>    else:
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">36</span>        return False
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">37</span>
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">38</span># Initializing game state
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">39</span>game = np.zeros((3, 3))
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">40</span>
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">41</span># Playing game
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">42</span>play_game(game)
+<span class="comment linenumber react-syntax-highlighter-line-number" style="display: inline-block; min-width: 2.25em; padding-right: 1em; text-align: right; user-select: none;">43</span></code></div></div></pre>
+<p>
+  This implementation uses the NumPy library to create a 2D array to store the
+  game state. The
+  <code>play_game</code>
+  function takes the current game state as input, checks for a win, and then
+  recursively calls itself until the game is over. The
+  <code>check_win</code>
+  function checks for a win by comparing the current state to a list of possible
+  win conditions.
+</p>
+<p>
+  You can run this code by saving it to a file with a
+  <code>.py</code>
+  extension and running it in a Python interpreter. For example, you can run it
+  by opening a terminal and typing
+  <code>python tic_tac_toe.py</code>
+  .
+</p>
+<p>
+  Note that this is a very basic implementation of Tic-Tac-Toe, and you may want
+  to add additional features such as displaying the current game state, allowing
+  the user to reset the game, or keeping track of the number of moves made by
+  each player.
+</p>

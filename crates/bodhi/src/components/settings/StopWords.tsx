@@ -23,8 +23,7 @@ export function StopWords({
   } = useChatSettings();
   const [inputValue, setInputValue] = useState('');
 
-  // Convert stop to array if it's a string or undefined
-  const stopWords = Array.isArray(stop) ? stop : stop ? [stop] : [];
+  const stopWords = stop || [];
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim()) {

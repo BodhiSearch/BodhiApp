@@ -1,7 +1,7 @@
 # Code Examples
 
 ## Inline Code
-Here is some \`inline code\` in a sentence.
+Here is some `inline code` in a sentence.
 
 ## Code Block
 ```typescript

@@ -1,0 +1,51 @@
+  Sure! Here is a simple implementation of Tic-Tac-Toe in Python:
+
+```
+# Importing necessary libraries
+import numpy as np
+
+# Function to play game
+def play_game(game):
+    # Checking for win
+    if check_win(game):
+        print(\"Game Over! You won!\")
+    else:
+        print(\"It's your turn!\")
+        # Asking user to make a move
+        move = input(\"Enter a row and column to make a move (e.g. '1,1' or '1,3'): \")
+        row, col = map(int, move.split(\",\"))
+        # Updating game state
+        game[row][col] = \"X\" if game[row][col] == \"O\" else \"O\"
+        # Recursively calling itself
+        play_game(game)
+
+# Function to check for win
+def check_win(game):
+    # Checking for vertical win
+    if game[0][0] == game[0][1] and game[0][1] == game[0][2]:
+        return True
+    # Checking for horizontal win
+    elif game[0][0] == game[1][0] and game[1][0] == game[2][0]:
+        return True
+    # Checking for diagonal win
+    elif game[0][0] == game[1][1] and game[1][1] == game[2][1]:
+        return True
+    # Checking for corner win
+    elif game[0][0] == game[0][1] and game[0][1] == game[0][2] or
+            game[1][0] == game[1][1] and game[1][1] == game[1][2] or
+            game[2][0] == game[2][1] and game[2][1] == game[2][2]:
+        return True
+    else:
+        return False
+
+# Initializing game state
+game = np.zeros((3, 3))
+
+# Playing game
+play_game(game)
+```
+This implementation uses the NumPy library to create a 2D array to store the game state. The `play_game` function takes the current game state as input, checks for a win, and then recursively calls itself until the game is over. The `check_win` function checks for a win by comparing the current state to a list of possible win conditions.
+
+You can run this code by saving it to a file with a `.py` extension and running it in a Python interpreter. For example, you can run it by opening a terminal and typing `python tic_tac_toe.py`.
+
+Note that this is a very basic implementation of Tic-Tac-Toe, and you may want to add additional features such as displaying the current game state, allowing the user to reset the game, or keeping track of the number of moves made by each player.
