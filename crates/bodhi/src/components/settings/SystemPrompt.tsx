@@ -3,7 +3,7 @@
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { useChatSettings } from '@/lib/hooks/use-chat-settings';
+import { useChatSettings } from '@/hooks/use-chat-settings';
 
 interface SystemPromptProps {
   isLoading?: boolean;

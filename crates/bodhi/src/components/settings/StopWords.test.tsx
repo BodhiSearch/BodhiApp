@@ -1,10 +1,10 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { StopWords } from '@/components/settings/StopWords';
-import * as chatSettings from '@/lib/hooks/use-chat-settings';
+import * as chatSettings from '@/hooks/use-chat-settings';
 
 // Mock useChatSettings
-vi.mock('@/lib/hooks/use-chat-settings', () => ({
+vi.mock('@/hooks/use-chat-settings', () => ({
   useChatSettings: vi.fn()
 }));
 

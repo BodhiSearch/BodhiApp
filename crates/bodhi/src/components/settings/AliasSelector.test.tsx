@@ -2,10 +2,10 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { AliasSelector } from '@/components/settings/AliasSelector';
 import { createWrapper } from '@/tests/wrapper';
-import * as chatSettings from '@/lib/hooks/use-chat-settings';
+import * as chatSettings from '@/hooks/use-chat-settings';
 
 // Mock useChatSettings
-vi.mock('@/lib/hooks/use-chat-settings', () => ({
+vi.mock('@/hooks/use-chat-settings', () => ({
   useChatSettings: vi.fn()
 }));
 

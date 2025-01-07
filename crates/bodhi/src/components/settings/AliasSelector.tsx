@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { useChatSettings } from '@/lib/hooks/use-chat-settings';
+import { useChatSettings } from '@/hooks/use-chat-settings';
 
 interface AliasSelectorProps {
   models: Array<{ alias: string }>;

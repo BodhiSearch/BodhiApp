@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { ChatSettingsProvider } from '@/lib/hooks/use-chat-settings';
+import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 
 export const metadata: Metadata = {
   title: 'Chat | AI Assistant',

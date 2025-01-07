@@ -1,11 +1,11 @@
 import { render, screen, act } from '@testing-library/react';
 import { ChatContainer } from './ChatContainer';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useChatDB } from '@/lib/hooks/use-chat-db';
+import { useChatDB } from '@/hooks/use-chat-db';
 import { nanoid } from '@/lib/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWrapper } from '@/tests/wrapper';
-import { ChatSettingsProvider } from '@/lib/hooks/use-chat-settings';
+import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
   }))
 }));
 
-vi.mock('@/lib/hooks/use-chat-db', () => ({
+vi.mock('@/hooks/use-chat-db', () => ({
   useChatDB: vi.fn()
 }));
 
