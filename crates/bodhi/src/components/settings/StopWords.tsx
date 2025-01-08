@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { X } from 'lucide-react';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { Button } from '../ui/button';
 
 interface StopWordsProps {
   isLoading?: boolean;
@@ -68,14 +69,14 @@ export function StopWords({ isLoading = false }: StopWordsProps) {
                 className={`group flex items-center gap-1 pr-1 ${isDisabled ? 'opacity-50' : ''}`}
               >
                 {word}
-                <button
+                <Button
                   onClick={() => removeStopWord(word)}
                   className="ml-1 rounded-full p-1 hover:bg-secondary"
                   aria-label={`Remove ${word}`}
                   disabled={isDisabled}
                 >
                   <X className="h-3 w-3" />
-                </button>
+                </Button>
               </Badge>
             ))}
           </div>
