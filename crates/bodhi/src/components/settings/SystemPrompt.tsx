@@ -9,14 +9,12 @@ interface SystemPromptProps {
   isLoading?: boolean;
 }
 
-export function SystemPrompt({ 
-  isLoading = false
-}: SystemPromptProps) {
-  const { 
+export function SystemPrompt({ isLoading = false }: SystemPromptProps) {
+  const {
     systemPrompt,
     systemPrompt_enabled,
     setSystemPrompt,
-    setSystemPromptEnabled
+    setSystemPromptEnabled,
   } = useChatSettings();
 
   // Determine if interactions should be disabled

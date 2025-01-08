@@ -5,9 +5,9 @@ import { vi, beforeAll, afterEach, afterAll } from 'vitest';
 
 // Mock ResizeObserver
 class MockResizeObserver {
-  observe() { }
-  unobserve() { }
-  disconnect() { }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 }
 
 global.ResizeObserver = MockResizeObserver;
@@ -15,7 +15,7 @@ global.ResizeObserver = MockResizeObserver;
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation(query => ({
+  value: vi.fn().mockImplementation((query) => ({
     matches: false,
     media: query,
     onchange: null,
@@ -32,15 +32,17 @@ const originalError = console.error;
 beforeAll(() => {
   console.error = (...args) => {
     // Check if any of the arguments contain our expected error messages
-    const errorString = args.map(arg =>
-      typeof arg === 'string' ? arg :
-        arg instanceof Error ? arg.message :
-          arg?.toString?.()
-    ).join(' ');
+    const errorString = args
+      .map((arg) =>
+        typeof arg === 'string'
+          ? arg
+          : arg instanceof Error
+            ? arg.message
+            : arg?.toString?.()
+      )
+      .join(' ');
 
-    if (
-      errorString.includes('Request failed with status code 500')
-    ) {
+    if (errorString.includes('Request failed with status code 500')) {
       return;
     }
     originalError.call(console, ...args);

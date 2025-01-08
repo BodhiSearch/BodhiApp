@@ -18,9 +18,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         {message.role === 'user' ? 'You' : 'Assistant'}
       </div>
 
-      <MemoizedReactMarkdown
-        className="prose break-words prose-p:leading-relaxed prose-pre:p-0"
-      >
+      <MemoizedReactMarkdown className="prose break-words prose-p:leading-relaxed prose-pre:p-0">
         {message.content}
       </MemoizedReactMarkdown>
     </div>

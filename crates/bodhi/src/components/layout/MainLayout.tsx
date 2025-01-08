@@ -1,6 +1,10 @@
 'use client';
 
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar';
 import * as React from 'react';
 import { Separator } from '../ui/separator';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '../ui/breadcrumb';
@@ -10,10 +14,7 @@ interface MainLayoutProps {
   navigationSidebar?: React.ReactNode;
 }
 
-export function MainLayout({
-  children,
-  navigationSidebar,
-}: MainLayoutProps) {
+export function MainLayout({ children, navigationSidebar }: MainLayoutProps) {
   return (
     <SidebarProvider>
       {navigationSidebar}
@@ -29,9 +30,7 @@ export function MainLayout({
             </Breadcrumb>
           </div>
         </header>
-        <main className="flex flex-1 flex-col overflow-hidden">
-          {children}
-        </main>
+        <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

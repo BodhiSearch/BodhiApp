@@ -22,18 +22,19 @@ export function SettingsSidebar() {
   const models = modelsResponse?.data || [];
 
   return (
-    <Sidebar inner={true} side="right" variant="floating" data-testid="settings-sidebar">
+    <Sidebar
+      inner={true}
+      side="right"
+      variant="floating"
+      data-testid="settings-sidebar"
+    >
       <SidebarHeader>
         <h2>Settings</h2>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <div className="space-y-4">
-            <AliasSelector
-              models={models}
-              isLoading={isLoading}
-            />
-
+            <AliasSelector models={models} isLoading={isLoading} />
             <div className="flex items-center justify-between">
               <Label htmlFor="stream-mode">Stream Response</Label>
               <Switch
@@ -60,14 +61,16 @@ export function SettingsSidebar() {
                 id="seed-input"
                 className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
                 value={settings.seed}
-                onChange={(e) => settings.setSeed(parseInt(e.target.value) || 0)}
+                onChange={(e) =>
+                  settings.setSeed(parseInt(e.target.value) || 0)
+                }
                 min={0}
                 max={999999}
                 disabled={isLoading || !settings.seed_enabled}
               />
-            </div>            <SystemPrompt isLoading={isLoading} />
+            </div>{' '}
+            <SystemPrompt isLoading={isLoading} />
             <StopWords isLoading={isLoading} />
-
             <SettingSlider
               label="Temperature"
               value={settings.temperature}
@@ -80,7 +83,6 @@ export function SettingsSidebar() {
               defaultValue={1}
               isLoading={isLoading}
             />
-
             <SettingSlider
               label="Top P"
               value={settings.top_p}
@@ -93,9 +95,7 @@ export function SettingsSidebar() {
               defaultValue={1}
               isLoading={isLoading}
             />
-
             <Separator />
-
             <SettingSlider
               label="Max Tokens"
               value={settings.max_tokens}
@@ -108,7 +108,6 @@ export function SettingsSidebar() {
               defaultValue={2048}
               isLoading={isLoading}
             />
-
             {/* Penalties */}
             <SettingSlider
               label="Presence Penalty"
@@ -122,7 +121,6 @@ export function SettingsSidebar() {
               defaultValue={0}
               isLoading={isLoading}
             />
-
             <SettingSlider
               label="Frequency Penalty"
               value={settings.frequency_penalty}
@@ -135,7 +133,6 @@ export function SettingsSidebar() {
               defaultValue={0}
               isLoading={isLoading}
             />
-
           </div>
         </SidebarGroup>
       </SidebarContent>

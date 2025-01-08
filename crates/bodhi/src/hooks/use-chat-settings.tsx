@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useContext, useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useEffect,
+  useState,
+} from 'react';
 
 interface ChatSettings {
   model: string;
@@ -47,7 +53,7 @@ const defaultSettings: ChatSettings = {
   stop_enabled: false,
   seed_enabled: false,
   systemPrompt_enabled: false,
-  response_format_enabled: false
+  response_format_enabled: false,
 };
 
 interface ChatSettingsContextType extends ChatSettings {
@@ -74,15 +80,31 @@ interface ChatSettingsContextType extends ChatSettings {
   setSeedEnabled: (enabled: boolean) => void;
   setSystemPrompt: (prompt: string | undefined) => void;
   setSystemPromptEnabled: (enabled: boolean) => void;
-  setResponseFormat: (format: ChatSettings['response_format'] | undefined) => void;
+  setResponseFormat: (
+    format: ChatSettings['response_format'] | undefined
+  ) => void;
   setResponseFormatEnabled: (enabled: boolean) => void;
-  getRequestSettings: () => Omit<ChatSettings, 'systemPrompt' | keyof { [K in keyof ChatSettings as K extends `${string}_enabled` ? K : never]: never }>;
+  getRequestSettings: () => Omit<
+    ChatSettings,
+    | 'systemPrompt'
+    | keyof {
+        [K in keyof ChatSettings as K extends `${string}_enabled`
+          ? K
+          : never]: never;
+      }
+  >;
   reset: () => void;
 }
 
-const ChatSettingsContext = createContext<ChatSettingsContextType | undefined>(undefined);
+const ChatSettingsContext = createContext<ChatSettingsContextType | undefined>(
+  undefined
+);
 
-export function ChatSettingsProvider({ children }: { children: React.ReactNode }) {
+export function ChatSettingsProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [settings, setSettings] = useState<ChatSettings>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('chat-settings');
@@ -105,62 +127,91 @@ export function ChatSettingsProvider({ children }: { children: React.ReactNode }
   }, [settings]);
 
   // Generic setter that handles both value and enabled state
-  const setSetting = useCallback(<K extends keyof Omit<ChatSettings, `${string}_enabled`>>(
-    key: K,
-    value: ChatSettings[K] | undefined
-  ) => {
-    setSettings(prev => {
-      const next = { ...prev };
-      if (value === undefined) {
-        delete next[key];
-        // @ts-ignore - enabled key is valid but TypeScript can't infer it
-        next[`${key}_enabled`] = false;
-      } else {
-        next[key] = value;
-        // @ts-ignore - enabled key is valid but TypeScript can't infer it
-        next[`${key}_enabled`] = true;
-      }
-      return next;
-    });
-  }, []);
+  const setSetting = useCallback(
+    <K extends keyof Omit<ChatSettings, `${string}_enabled`>>(
+      key: K,
+      value: ChatSettings[K] | undefined
+    ) => {
+      setSettings((prev) => {
+        const next = { ...prev };
+        if (value === undefined) {
+          delete next[key];
+          // @ts-ignore - enabled key is valid but TypeScript can't infer it
+          next[`${key}_enabled`] = false;
+        } else {
+          next[key] = value;
+          // @ts-ignore - enabled key is valid but TypeScript can't infer it
+          next[`${key}_enabled`] = true;
+        }
+        return next;
+      });
+    },
+    []
+  );
 
   // Create setters for both value and enabled state
-  const createSetters = useCallback(<K extends keyof Omit<ChatSettings, 'model' | `${string}_enabled`>>(
-    key: K
-  ) => {
-    return {
-      setValue: (value: ChatSettings[K] | undefined) => setSetting(key, value),
-      setEnabled: (enabled: boolean) => setSettings(prev => ({
-        ...prev,
-        [`${key}_enabled`]: enabled
-      }))
-    };
-  }, [setSetting]);
+  const createSetters = useCallback(
+    <K extends keyof Omit<ChatSettings, 'model' | `${string}_enabled`>>(
+      key: K
+    ) => {
+      return {
+        setValue: (value: ChatSettings[K] | undefined) =>
+          setSetting(key, value),
+        setEnabled: (enabled: boolean) =>
+          setSettings((prev) => ({
+            ...prev,
+            [`${key}_enabled`]: enabled,
+          })),
+      };
+    },
+    [setSetting]
+  );
 
-  const setModel = useCallback((model: string) => {
-    setSetting('model', model);
-  }, [setSetting]);
+  const setModel = useCallback(
+    (model: string) => {
+      setSetting('model', model);
+    },
+    [setSetting]
+  );
 
-  const { setValue: setTemperature, setEnabled: setTemperatureEnabled } = createSetters('temperature');
-  const { setValue: setTopP, setEnabled: setTopPEnabled } = createSetters('top_p');
+  const { setValue: setTemperature, setEnabled: setTemperatureEnabled } =
+    createSetters('temperature');
+  const { setValue: setTopP, setEnabled: setTopPEnabled } =
+    createSetters('top_p');
   const { setValue: setN, setEnabled: setNEnabled } = createSetters('n');
-  const { setValue: setStream, setEnabled: setStreamEnabled } = createSetters('stream');
-  const { setValue: setMaxTokens, setEnabled: setMaxTokensEnabled } = createSetters('max_tokens');
-  const { setValue: setPresencePenalty, setEnabled: setPresencePenaltyEnabled } = createSetters('presence_penalty');
-  const { setValue: setFrequencyPenalty, setEnabled: setFrequencyPenaltyEnabled } = createSetters('frequency_penalty');
-  const { setValue: setLogitBias, setEnabled: setLogitBiasEnabled } = createSetters('logit_bias');
-  const { setValue: setStopRaw, setEnabled: setStopEnabled } = createSetters('stop');
-  const setStop = useCallback((stop: string[] | string | undefined) => {
-    if (stop === undefined) {
-      setStopRaw(undefined);
-    } else {
-      // Convert to array if string
-      setStopRaw(Array.isArray(stop) ? stop : [stop]);
-    }
-  }, [setStopRaw]);
-  const { setValue: setSeed, setEnabled: setSeedEnabled } = createSetters('seed');
-  const { setValue: setSystemPrompt, setEnabled: setSystemPromptEnabled } = createSetters('systemPrompt');
-  const { setValue: setResponseFormat, setEnabled: setResponseFormatEnabled } = createSetters('response_format');
+  const { setValue: setStream, setEnabled: setStreamEnabled } =
+    createSetters('stream');
+  const { setValue: setMaxTokens, setEnabled: setMaxTokensEnabled } =
+    createSetters('max_tokens');
+  const {
+    setValue: setPresencePenalty,
+    setEnabled: setPresencePenaltyEnabled,
+  } = createSetters('presence_penalty');
+  const {
+    setValue: setFrequencyPenalty,
+    setEnabled: setFrequencyPenaltyEnabled,
+  } = createSetters('frequency_penalty');
+  const { setValue: setLogitBias, setEnabled: setLogitBiasEnabled } =
+    createSetters('logit_bias');
+  const { setValue: setStopRaw, setEnabled: setStopEnabled } =
+    createSetters('stop');
+  const setStop = useCallback(
+    (stop: string[] | string | undefined) => {
+      if (stop === undefined) {
+        setStopRaw(undefined);
+      } else {
+        // Convert to array if string
+        setStopRaw(Array.isArray(stop) ? stop : [stop]);
+      }
+    },
+    [setStopRaw]
+  );
+  const { setValue: setSeed, setEnabled: setSeedEnabled } =
+    createSetters('seed');
+  const { setValue: setSystemPrompt, setEnabled: setSystemPromptEnabled } =
+    createSetters('systemPrompt');
+  const { setValue: setResponseFormat, setEnabled: setResponseFormatEnabled } =
+    createSetters('response_format');
 
   const getRequestSettings = useCallback(() => {
     const requestSettings: any = {};
@@ -178,13 +229,24 @@ export function ChatSettingsProvider({ children }: { children: React.ReactNode }
     }
 
     // Include other settings only if they're enabled and defined
-    const settingsToCheck: (keyof Omit<ChatSettings, 'model' | `${string}_enabled`>)[] = [
-      'temperature', 'top_p', 'n', 'stream', 'max_tokens',
-      'presence_penalty', 'frequency_penalty', 'logit_bias',
-      'stop', 'seed', 'response_format'
+    const settingsToCheck: (keyof Omit<
+      ChatSettings,
+      'model' | `${string}_enabled`
+    >)[] = [
+      'temperature',
+      'top_p',
+      'n',
+      'stream',
+      'max_tokens',
+      'presence_penalty',
+      'frequency_penalty',
+      'logit_bias',
+      'stop',
+      'seed',
+      'response_format',
     ];
 
-    settingsToCheck.forEach(key => {
+    settingsToCheck.forEach((key) => {
       if (shouldInclude(key)) {
         requestSettings[key] = settings[key];
       }
@@ -227,7 +289,7 @@ export function ChatSettingsProvider({ children }: { children: React.ReactNode }
         setResponseFormat,
         setResponseFormatEnabled,
         getRequestSettings,
-        reset
+        reset,
       }}
     >
       {children}
@@ -238,7 +300,9 @@ export function ChatSettingsProvider({ children }: { children: React.ReactNode }
 export function useChatSettings() {
   const context = useContext(ChatSettingsContext);
   if (context === undefined) {
-    throw new Error('useChatSettings must be used within a ChatSettingsProvider');
+    throw new Error(
+      'useChatSettings must be used within a ChatSettingsProvider'
+    );
   }
   return context;
-} 
+}

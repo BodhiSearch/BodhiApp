@@ -1,6 +1,12 @@
 'use client';
 
-import { createContext, useContext, useCallback, useState, useEffect } from 'react';
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useState,
+  useEffect,
+} from 'react';
 import { Chat } from '@/types/chat';
 
 const CHATS_STORAGE_KEY = 'chats';
@@ -39,20 +45,23 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chats));
   }, [chats]);
 
-  const getChat = useCallback(async (id: string) => {
-    const chat = chats.find(c => c.id === id);
-    if (!chat) {
-      return { data: {} as Chat, status: 404 };
-    }
-    return { data: chat, status: 200 };
-  }, [chats]);
+  const getChat = useCallback(
+    async (id: string) => {
+      const chat = chats.find((c) => c.id === id);
+      if (!chat) {
+        return { data: {} as Chat, status: 404 };
+      }
+      return { data: chat, status: 200 };
+    },
+    [chats]
+  );
 
   const createOrUpdateChat = useCallback(async (chat: Chat) => {
-    setChats(prev => {
-      const index = prev.findIndex(c => c.id === chat.id);
+    setChats((prev) => {
+      const index = prev.findIndex((c) => c.id === chat.id);
       const updatedChat = {
         ...chat,
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       let newChats: Chat[];
@@ -68,7 +77,7 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
         newChats = [
           updatedChat,
           ...prev.slice(0, index),
-          ...prev.slice(index + 1)
+          ...prev.slice(index + 1),
         ];
       }
       return newChats;
@@ -78,7 +87,7 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const deleteChat = useCallback(async (id: string) => {
-    setChats(prev => prev.filter(c => c.id !== id));
+    setChats((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
   const clearChats = useCallback(async () => {
@@ -96,7 +105,7 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
         createOrUpdateChat,
         deleteChat,
         clearChats,
-        listChats
+        listChats,
       }}
     >
       {children}
