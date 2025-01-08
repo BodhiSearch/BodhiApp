@@ -2,18 +2,13 @@
 
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import * as React from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { SidebarToggle } from '@/components/SidebarToggle';
 import { Separator } from '../ui/separator';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '../ui/breadcrumb';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '../ui/breadcrumb';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   navigationSidebar?: React.ReactNode;
 }
-
-// Constants for localStorage keys
-const NAV_SIDEBAR_KEY = 'nav-sidebar-state';
 
 export function MainLayout({
   children,
@@ -29,16 +24,14 @@ export function MainLayout({
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbItem>
-                <BreadcrumbLink href="#">
-                  Chat
-                </BreadcrumbLink>
+                <BreadcrumbLink href="#">Chat</BreadcrumbLink>
               </BreadcrumbItem>
             </Breadcrumb>
           </div>
         </header>
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <main>{children}</main>
-        </div>
+        <main className="flex flex-1 flex-col overflow-hidden">
+          {children}
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

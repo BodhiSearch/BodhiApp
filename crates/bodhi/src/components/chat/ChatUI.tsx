@@ -35,7 +35,7 @@ export function ChatUI({ isLoading: chatLoading }: ChatUIProps) {
   };
 
   return (
-    <div data-testid="chat-ui" className="flex flex-col h-screen">
+    <div data-testid="chat-ui" className="flex flex-col flex-1 min-h-0">
       {/* Messages area */}
       <div className="flex-1 overflow-auto p-4">
         {chatLoading ? (

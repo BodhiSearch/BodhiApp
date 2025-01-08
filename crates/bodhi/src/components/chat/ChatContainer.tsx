@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChatProvider } from '@/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
+import { cn } from '@/lib/utils';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
 
@@ -83,8 +84,23 @@ export function ChatContainer() {
   }
 
   return (
-    <>
-      <SidebarProvider open={settingsOpen} onOpenChange={setSettingsOpen}>
+    <SidebarProvider inner open={settingsOpen} onOpenChange={setSettingsOpen} className="flex-1 flex flex-col">
+      <div className={cn(
+        "flex-1 flex flex-col min-w-0",
+        "transition-[margin] duration-300 ease-in-out",
+        settingsOpen && "mr-64"
+      )}>
+        <ChatProvider chat={currentChat!}>
+          <ChatUI isLoading={isLoading} />
+        </ChatProvider>
+      </div>
+
+      <div className={cn(
+        'fixed top-4 z-40 transition-all duration-300',
+        'right-0',
+        settingsOpen && 'right-[16rem]',
+        !settingsOpen && 'right-4'
+      )}>
         <SidebarToggle
           className="-ml-1"
           open={settingsOpen}
@@ -92,12 +108,9 @@ export function ChatContainer() {
           side='right'
           icon={<Settings2 />}
         />
-        <SettingsSidebar />
-      </SidebarProvider>
+      </div>
 
-      <ChatProvider chat={currentChat!}>
-        <ChatUI isLoading={isLoading} />
-      </ChatProvider>
-    </>
+      <SettingsSidebar />
+    </SidebarProvider>
   );
 }

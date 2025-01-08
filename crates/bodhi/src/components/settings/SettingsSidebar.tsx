@@ -22,7 +22,7 @@ export function SettingsSidebar() {
   const models = modelsResponse?.data || [];
 
   return (
-    <Sidebar side="right" variant="floating" data-testid="settings-sidebar">
+    <Sidebar inner={true} side="right" variant="floating" data-testid="settings-sidebar">
       <SidebarHeader>
         <h2>Settings</h2>
       </SidebarHeader>
