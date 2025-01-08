@@ -69,6 +69,21 @@ const pages: Page[] = [
     url: '/ui/chat',
     iconName: 'messageSquareText',
   },
+  {
+    title: 'Model Aliases',
+    url: '/ui/models',
+    iconName: 'file',
+  },
+  {
+    title: 'New Model Alias',
+    url: '/ui/models/new',
+    iconName: 'file',
+  },
+  {
+    title: 'Model Files',
+    url: '/ui/modelfiles',
+    iconName: 'file',
+  },
 ];
 
 export default function RootLayout({
