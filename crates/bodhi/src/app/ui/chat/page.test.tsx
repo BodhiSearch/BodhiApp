@@ -90,7 +90,6 @@ describe('ChatPage', () => {
     render(<ChatPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(screen.getByTestId('main-layout')).toBeInTheDocument();
       expect(screen.getByTestId('chat-container')).toBeInTheDocument();
     });
   });

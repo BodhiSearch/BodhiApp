@@ -5,6 +5,9 @@ import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
 import '@/styles/syntax-highlighter.css';
+import { MainLayout } from '@/components/layout/MainLayout';
+import { NavigationProvider } from '@/hooks/use-navigation';
+import type { Page } from '@/types/models';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -55,6 +58,19 @@ export const viewport: Viewport = {
   themeColor: '#f69435',
 };
 
+const pages: Page[] = [
+  {
+    title: 'Home',
+    url: '/ui/home',
+    iconName: 'home',
+  },
+  {
+    title: 'Chat',
+    url: '/ui/chat',
+    iconName: 'messageSquareText',
+  },
+];
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -69,8 +85,12 @@ export default function RootLayout({
         )}
       >
         <ClientProviders>
-          {children}
-          <Toaster />
+          <NavigationProvider pages={pages}>
+            <MainLayout>
+              {children}
+              <Toaster />
+            </MainLayout>
+          </NavigationProvider>
         </ClientProviders>
       </body>
     </html>
