@@ -15,7 +15,7 @@ global.ResizeObserver = MockResizeObserver;
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
-  value: vi.fn().mockImplementation((query) => ({
+  value: vi.fn().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
@@ -52,5 +52,3 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError;
 });
-
-config({ path: resolve(__dirname, '../.env.test') });

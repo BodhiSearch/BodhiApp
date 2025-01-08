@@ -102,9 +102,10 @@ const MessageList = ({ messages }: MessageListProps) => (
 
 interface ChatUIProps {
   isLoading: boolean;
+  onFinish?: () => void;
 }
 
-export function ChatUI({ isLoading: chatLoading }: ChatUIProps) {
+export function ChatUI({ isLoading, onFinish }: ChatUIProps) {
   const {
     messages = [],
     input,
@@ -134,13 +135,16 @@ export function ChatUI({ isLoading: chatLoading }: ChatUIProps) {
 
     setInput('');
     await append(userMessage);
+
+    // After the chat response is received and saved
+    onFinish?.();
   };
 
   return (
     <div data-testid="chat-ui" className="flex flex-col h-full">
       <div className="flex-1 min-h-0 relative">
         <div className="absolute inset-0 overflow-y-auto p-4">
-          {chatLoading ? (
+          {isLoading ? (
             <LoadingSkeletons />
           ) : messages.length === 0 ? (
             <EmptyState />

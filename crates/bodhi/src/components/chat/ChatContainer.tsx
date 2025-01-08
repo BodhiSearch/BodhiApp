@@ -13,6 +13,7 @@ import { ChatProvider } from '@/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
 const CURRENT_CHAT_KEY = 'current-chat';
@@ -30,6 +31,7 @@ export function ChatContainer() {
   const router = useRouter();
   const { getChat } = useChatDB();
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const initializeChat = async () => {
@@ -46,11 +48,22 @@ export function ChatContainer() {
             return;
           }
 
-          router.replace('/ui/chat?error=chat-not-found');
+          // Show error toast and redirect
+          toast({
+            variant: 'destructive',
+            title: 'Chat not found',
+            description: 'The requested chat could not be found.',
+          });
+          router.push('/ui/chat');
           return;
         } catch (err) {
-          console.error('Failed to load chat:', err);
-          router.replace('/ui/chat?error=failed-to-load');
+          // Show error toast and redirect
+          toast({
+            variant: 'destructive',
+            title: 'Error loading chat',
+            description: 'Failed to load the requested chat. Please try again.',
+          });
+          router.push('/ui/chat');
           return;
         }
       }
@@ -80,7 +93,15 @@ export function ChatContainer() {
     };
 
     initializeChat();
-  }, [searchParams, router, getChat, currentChat, setCurrentChat]);
+  }, [searchParams, router, getChat, currentChat, setCurrentChat, toast]);
+
+  const handleChatFinish = () => {
+    const id = searchParams.get('id');
+    // Only update URL if we don't already have an ID and there's a current chat
+    if (!id && currentChat) {
+      router.push(`/ui/chat/?id=${currentChat.id}`);
+    }
+  };
 
   if (isLoading) {
     return null;
@@ -101,7 +122,7 @@ export function ChatContainer() {
         )}
       >
         <ChatProvider chat={currentChat!}>
-          <ChatUI isLoading={isLoading} />
+          <ChatUI isLoading={isLoading} onFinish={handleChatFinish} />
         </ChatProvider>
       </div>
 
