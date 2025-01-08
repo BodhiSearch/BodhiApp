@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import AliasForm from '@/components/AliasForm';
 import { useModel } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
+import { MainLayout } from '@/components/layout/MainLayout';
 
 function EditAliasContent() {
   const searchParams = useSearchParams();
@@ -16,9 +17,11 @@ function EditAliasContent() {
   if (!modelData) return <div>No model data found</div>;
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-      {modelData && <AliasForm isEditMode={true} initialData={modelData} />}
-    </div>
+    <MainLayout>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        {modelData && <AliasForm isEditMode={true} initialData={modelData} />}
+      </div>
+    </MainLayout>
   );
 }
 

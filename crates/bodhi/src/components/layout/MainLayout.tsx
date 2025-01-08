@@ -12,14 +12,17 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '../ui/breadcrumb';
 import { NavigationSidebar } from '../navigation/NavigationSidebar';
 
 interface MainLayoutProps {
+  sidebarContent?: React.ReactNode;
   children: React.ReactNode;
 }
 
-export function MainLayout({ children }: MainLayoutProps) {
+export function MainLayout({ sidebarContent, children }: MainLayoutProps) {
   const { currentPage } = useNavigation();
   return (
     <SidebarProvider>
-      <NavigationSidebar />
+      <NavigationSidebar>
+        {sidebarContent}
+      </NavigationSidebar>
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">

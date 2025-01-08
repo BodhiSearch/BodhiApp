@@ -17,7 +17,11 @@ import { useRouter } from 'next/navigation';
 import { IconMapper } from '../ui/icon-mapper';
 import { useNavigation } from '@/hooks/use-navigation';
 
-export function NavigationSidebar() {
+type NavigationSidebarProps = {
+  children?: React.ReactNode;
+};
+
+export function NavigationSidebar({ children }: NavigationSidebarProps) {
   const router = useRouter();
   const { pages, currentPage } = useNavigation();
 
@@ -59,6 +63,7 @@ export function NavigationSidebar() {
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
+      {children}
     </Sidebar>
   );
 }

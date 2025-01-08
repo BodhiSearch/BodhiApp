@@ -101,10 +101,8 @@ export default function RootLayout({
       >
         <ClientProviders>
           <NavigationProvider pages={pages}>
-            <MainLayout>
-              {children}
-              <Toaster />
-            </MainLayout>
+            {children}
+            <Toaster />
           </NavigationProvider>
         </ClientProviders>
       </body>

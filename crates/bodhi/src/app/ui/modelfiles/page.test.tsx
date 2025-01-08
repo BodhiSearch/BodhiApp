@@ -14,6 +14,12 @@ import {
 } from 'vitest';
 import ModelFilesPage from '@/app/ui/modelfiles/page';
 
+vi.mock('@/components/layout/MainLayout', () => ({
+  MainLayout: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
 vi.mock('@/components/DataTable', () => ({
   DataTable: ({ data, renderRow }: any) => (
     <table>
