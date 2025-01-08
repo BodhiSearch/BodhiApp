@@ -1,7 +1,7 @@
 import { config } from 'dotenv';
 import { resolve } from 'path';
 import '@testing-library/jest-dom';
-import { vi, beforeAll, afterEach, afterAll } from 'vitest';
+import { vi, beforeAll, afterAll } from 'vitest';
 
 // Mock ResizeObserver
 class MockResizeObserver {

@@ -136,11 +136,11 @@ export function ChatSettingsProvider({
         const next = { ...prev };
         if (value === undefined) {
           delete next[key];
-          // @ts-ignore - enabled key is valid but TypeScript can't infer it
+          // @ts-expect-error - enabled key is valid but TypeScript can't infer it
           next[`${key}_enabled`] = false;
         } else {
           next[key] = value;
-          // @ts-ignore - enabled key is valid but TypeScript can't infer it
+          // @ts-expect-error - enabled key is valid but TypeScript can't infer it
           next[`${key}_enabled`] = true;
         }
         return next;
@@ -214,7 +214,7 @@ export function ChatSettingsProvider({
     createSetters('response_format');
 
   const getRequestSettings = useCallback(() => {
-    const requestSettings: any = {};
+    const requestSettings: Record<string, unknown> = {};
 
     // Helper to check if a setting should be included
     const shouldInclude = (key: keyof ChatSettings) => {

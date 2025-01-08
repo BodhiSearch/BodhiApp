@@ -24,7 +24,7 @@ interface ChatProviderProps {
 }
 
 export function ChatProvider({ children, chat }: ChatProviderProps) {
-  const [messages, setMessages] = useState<Message[]>(chat.messages);
+  const [messages, setMessages] = useState<Message[]>(chat?.messages || []);
   const [input, setInput] = useState('');
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
@@ -57,10 +57,9 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
               { role: 'assistant' as const, content: assistantMessage },
             ]);
           },
-          onMessage: (message) => {
+          onFinish: (message) => {
             const finalMessages = [...requestMessages, message];
             setMessages(finalMessages);
-
             createOrUpdateChat({
               ...chat,
               messages: finalMessages,
@@ -71,7 +70,7 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
         });
       } catch (error) {
         console.error('Chat completion error:', error);
-        throw error; // Let the caller handle the error
+        throw error;
       }
     },
     [chatSettings, chat, append, createOrUpdateChat]

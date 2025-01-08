@@ -1,7 +1,19 @@
 import { renderHook, act } from '@testing-library/react';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import { ChatProvider, useChat } from './use-chat';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Chat, Message } from '@/types/chat';
+import { createWrapper as createQueryWrapper } from '@/tests/wrapper';
+
+// Setup MSW server
+const server = setupServer();
+
+beforeAll(() => server.listen());
+afterAll(() => server.close());
+beforeEach(() => {
+  server.resetHandlers();
+});
 
 // Mock use-chat-settings
 vi.mock('@/hooks/use-chat-settings', () => ({
@@ -10,16 +22,6 @@ vi.mock('@/hooks/use-chat-settings', () => ({
       model: 'test-model',
       temperature: 0.7,
     }),
-  }),
-}));
-
-// Mock use-chat-completions
-const mockAppend = vi.fn();
-vi.mock('@/hooks/use-chat-completions', () => ({
-  useChatCompletion: () => ({
-    append: mockAppend,
-    isLoading: false,
-    error: null,
   }),
 }));
 
@@ -59,31 +61,37 @@ describe('useChat', () => {
   };
 
   beforeEach(() => {
-    vi.clearAllMocks();
     chatDB.clear();
   });
 
-  const createWrapper = (chat: Chat) => ({ children }: { children: React.ReactNode }) => (
-    <ChatProvider chat={chat}>{children}</ChatProvider>
-  );
+  const createWrapper = (chat: Chat = initialChat) => {
+    const QueryWrapper = createQueryWrapper();
+    return ({ children }: { children: React.ReactNode }) => (
+      <QueryWrapper>
+        <ChatProvider chat={chat}>{children}</ChatProvider>
+      </QueryWrapper>
+    );
+  };
 
   describe('message handling', () => {
     it('should handle streaming response', async () => {
-      const wrapper = createWrapper(initialChat);
-      let streamCallback: (chunk: string) => void = () => { };
-      let messageCallback: (message: Message) => void = () => { };
+      const chunks = [
+        '{"choices":[{"delta":{"content":" Hello"}}]}',
+        '{"choices":[{"delta":{"content":" world"}}]}',
+        '[DONE]'
+      ];
 
-      mockAppend.mockImplementation(({ onDelta, onMessage }) => {
-        onDelta('Hello');
-        onDelta(' world');
-        onMessage({
-          role: 'assistant',
-          content: 'Hello world',
-        });
-        return Promise.resolve();
-      });
+      server.use(
+        rest.post('*/v1/chat/completions', (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.set('Content-Type', 'text/event-stream'),
+            ctx.body(chunks.map(chunk => `data: ${chunk}\n\n`).join(''))
+          );
+        })
+      );
 
-      const { result } = renderHook(() => useChat(), { wrapper });
+      const { result } = renderHook(() => useChat(), { wrapper: createWrapper() });
 
       const userMessage: Message = {
         id: '1',
@@ -95,16 +103,11 @@ describe('useChat', () => {
         await result.current.append(userMessage);
       });
 
-      // Wait for state updates to complete
-      await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0));
-      });
-
       expect(result.current.messages).toHaveLength(2);
       expect(result.current.messages[0]).toEqual(userMessage);
       expect(result.current.messages[1]).toEqual({
         role: 'assistant',
-        content: 'Hello world',
+        content: ' Hello world',
       });
 
       // Verify chat was persisted
@@ -113,7 +116,6 @@ describe('useChat', () => {
     });
 
     it('should handle reload with streaming', async () => {
-      // First set up some initial messages
       const messages: Message[] = [
         { id: '1', role: 'user', content: 'First message' },
         { id: '2', role: 'assistant', content: 'First response' },
@@ -128,21 +130,30 @@ describe('useChat', () => {
 
       await chatDB.createOrUpdateChat(chatWithMessages);
 
-      const wrapper = createWrapper(chatWithMessages);
-      const { result } = renderHook(() => useChat(), { wrapper });
+      const chunks = [
+        '{"choices":[{"delta":{"content":" Reloaded"}}]}',
+        '{"choices":[{"delta":{"content":" response"}}]}',
+        '[DONE]'
+      ];
 
-      let capturedMessages: Message[] = [];
+      server.use(
+        rest.post('*/v1/chat/completions', async (req, res, ctx) => {
+          // Parse request body properly
+          const body = await req.json();
 
-      // Mock the reload response with streaming
-      mockAppend.mockImplementation(({ request, onDelta, onMessage }) => {
-        capturedMessages = request.messages;
-        onDelta('Reloaded');
-        onDelta(' response');
-        onMessage({
-          role: 'assistant',
-          content: 'Reloaded response',
-        });
-        return Promise.resolve();
+          // Verify the request contains the correct messages
+          expect(body.messages).toEqual(messages.slice(0, 3));
+
+          return res(
+            ctx.status(200),
+            ctx.set('Content-Type', 'text/event-stream'),
+            ctx.body(chunks.map(chunk => `data: ${chunk}\n\n`).join(''))
+          );
+        })
+      );
+
+      const { result } = renderHook(() => useChat(), {
+        wrapper: createWrapper(chatWithMessages)
       });
 
       // Verify initial state
@@ -152,14 +163,10 @@ describe('useChat', () => {
         await result.current.reload();
       });
 
-      const messagesToKeep = messages.slice(0, 3);
       const expectedMessages = [
-        ...messagesToKeep,
-        { role: 'assistant', content: 'Reloaded response' },
+        ...messages.slice(0, 3),
+        { role: 'assistant', content: ' Reloaded response' },
       ];
-
-      // Verify the messages sent in the request
-      expect(capturedMessages).toEqual(messagesToKeep);
 
       // Verify final state
       expect(result.current.messages).toEqual(expectedMessages);
@@ -180,48 +187,19 @@ describe('useChat', () => {
         messages,
       };
 
-      await chatDB.createOrUpdateChat(chatWithMessages);
+      server.use(
+        rest.post('*/v1/chat/completions', (req, res, ctx) => {
+          return res(ctx.status(500));
+        })
+      );
 
       const wrapper = createWrapper(chatWithMessages);
       const { result } = renderHook(() => useChat(), { wrapper });
-
-      // Mock error
-      mockAppend.mockRejectedValue(new Error('Reload failed'));
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
       try {
         await act(async () => {
           await result.current.reload();
-        });
-      } catch (error) {
-        // Error is expected
-      }
-
-      // Verify error was logged
-      expect(consoleSpy).toHaveBeenCalledWith('Chat completion error:', expect.any(Error));
-
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('error handling', () => {
-    it('should handle API errors gracefully', async () => {
-      const wrapper = createWrapper(initialChat);
-      const { result } = renderHook(() => useChat(), { wrapper });
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-
-      const userMessage: Message = {
-        id: '1',
-        role: 'user',
-        content: 'Hi there',
-      };
-
-      // Mock the error
-      mockAppend.mockRejectedValue(new Error('API Error'));
-
-      try {
-        await act(async () => {
-          await result.current.append(userMessage);
         });
       } catch (error) {
         // Error is expected

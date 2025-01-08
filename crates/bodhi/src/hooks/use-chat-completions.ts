@@ -27,16 +27,20 @@ interface ChatCompletionResponse {
   }[];
 }
 
+interface ChatCompletionCallbacks {
+  onDelta?: (content: string) => void;
+  onMessage?: (message: Message) => void;
+  onFinish?: (message: Message) => void;
+}
+
 export function useChatCompletion() {
   const appendMutation = useMutation<
     void,
     AxiosError,
     {
       request: ChatCompletionRequest;
-      onDelta?: (content: string) => void;
-      onMessage?: (message: Message) => void;
-    }
-  >(async ({ request, onDelta, onMessage }) => {
+    } & ChatCompletionCallbacks
+  >(async ({ request, onDelta, onMessage, onFinish }) => {
     const baseUrl =
       apiClient.defaults.baseURL ||
       (typeof window !== 'undefined'
@@ -45,9 +49,7 @@ export function useChatCompletion() {
 
     const response = await fetch(`${baseUrl}/v1/chat/completions`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
     });
 
@@ -60,6 +62,7 @@ export function useChatCompletion() {
     if (contentType.includes('text/event-stream')) {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
+      let fullContent = '';
 
       while (reader) {
         const { done, value } = await reader.read();
@@ -77,17 +80,28 @@ export function useChatCompletion() {
             const jsonStr = line.replace(/^data: /, '');
             const json = JSON.parse(jsonStr);
             if (json.choices?.[0]?.delta?.content) {
-              onDelta?.(json.choices[0].delta.content);
+              const content = json.choices[0].delta.content;
+              fullContent += content;
+              onDelta?.(content);
             }
           } catch (e) {
             console.warn('Failed to parse SSE message:', e);
           }
         }
       }
+
+      // Call onFinish with the complete message after streaming is done
+      const finalMessage: Message = {
+        role: 'assistant',
+        content: fullContent,
+      };
+      onFinish?.(finalMessage);
     } else {
       const data: ChatCompletionResponse = await response.json();
       if (data.choices?.[0]?.message) {
-        onMessage?.(data.choices[0].message);
+        const message = data.choices[0].message;
+        onMessage?.(message);
+        onFinish?.(message);
       }
     }
   });

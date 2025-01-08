@@ -59,6 +59,7 @@ describe('useChatCompletion', () => {
 
       const { result } = renderHook(() => useChatCompletion(), { wrapper });
       const onMessage = vi.fn();
+      const onFinish = vi.fn();
 
       await act(async () => {
         await result.current.append({
@@ -72,18 +73,20 @@ describe('useChatCompletion', () => {
               }
             ]
           },
-          onMessage
+          onMessage,
+          onFinish
         });
       });
 
       expect(onMessage).toHaveBeenCalledWith(mockResponse.choices[0].message);
+      expect(onFinish).toHaveBeenCalledWith(mockResponse.choices[0].message);
       expect(result.current.isLoading).toBe(false);
       expect(result.current.error).toBeNull();
     });
   });
 
   describe('streaming completion', () => {
-    it('should handle streaming response with callback', async () => {
+    it('should handle streaming response with callbacks', async () => {
       const chunks = [
         '{"choices":[{"delta":{"content":" The"}}]}',
         '{"choices":[{"delta":{"content":" day"}}]}',
@@ -107,6 +110,7 @@ describe('useChatCompletion', () => {
       );
 
       const onDelta = vi.fn();
+      const onFinish = vi.fn();
       const { result } = renderHook(() => useChatCompletion(), { wrapper });
 
       await act(async () => {
@@ -122,7 +126,8 @@ describe('useChatCompletion', () => {
             ],
             stream: true
           },
-          onDelta
+          onDelta,
+          onFinish
         });
       });
 
@@ -134,6 +139,10 @@ describe('useChatCompletion', () => {
       expect(onDelta).toHaveBeenCalledWith(' Monday');
       expect(onDelta).toHaveBeenCalledWith(' is');
       expect(onDelta).toHaveBeenCalledWith(' Tuesday.');
+      expect(onFinish).toHaveBeenCalledWith({
+        role: 'assistant',
+        content: ' The day that comes after Monday is Tuesday.'
+      });
     });
   });
 });

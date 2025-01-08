@@ -16,7 +16,6 @@ import {
   UserInfo,
 } from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
-import { Message } from '@/types/chat';
 
 type PagedApiResponse<T> = {
   data: T;
