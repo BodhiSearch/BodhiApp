@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
-import AppHeader from '@/components/AppHeader';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
 import { ApiError, Model, SortState } from '@/types/models';
@@ -107,7 +106,6 @@ function ModelsPageContent() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-      <AppHeader />
       <DataTable
         data={data?.data || []}
         columns={columns}

@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import AppInitializer from '@/components/AppInitializer';
-import AppHeader from '@/components/AppHeader';
 import {
   Card,
   CardContent,
@@ -38,7 +37,6 @@ function HomeContent() {
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-      <AppHeader />
       <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 mt-8">
         Featured Models
       </h2>

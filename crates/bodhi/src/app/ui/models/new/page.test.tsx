@@ -1,5 +1,5 @@
 import { createWrapper } from '@/tests/wrapper';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -16,10 +16,6 @@ import {
 import CreateAliasPage from '@/app/ui/models/new/page';
 
 const mockToast = vi.fn();
-
-vi.mock('@/components/AppHeader', () => ({
-  default: () => <div data-testid="app-header">Mocked AppHeader</div>,
-}));
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -88,10 +84,8 @@ describe('CreateAliasPage', () => {
   });
 
   it('renders the page with all form elements', async () => {
-    render(<CreateAliasPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('app-header')).toBeInTheDocument();
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
 
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
@@ -115,11 +109,11 @@ describe('CreateAliasPage', () => {
   it('submits the form with correct data', async () => {
     const user = userEvent.setup();
 
-    render(<CreateAliasPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
+
+    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/alias/i), 'test-alias');
     await user.type(
@@ -160,10 +154,10 @@ describe('CreateAliasPage access control', () => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       })
     );
-    render(<CreateAliasPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -177,9 +171,9 @@ describe('CreateAliasPage access control', () => {
         return res(ctx.json({ logged_in: false }));
       })
     );
-    render(<CreateAliasPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/login');
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/login');
   });
 });

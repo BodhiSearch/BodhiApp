@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import {
@@ -13,11 +13,6 @@ import {
 } from 'vitest';
 import ModelsPage from '@/app/ui/models/page';
 import { createWrapper } from '@/tests/wrapper';
-
-// Mock components
-vi.mock('@/components/AppHeader', () => ({
-  default: () => <div data-testid="app-header">Mocked AppHeader</div>,
-}));
 
 vi.mock('@/components/DataTable', () => ({
   DataTable: ({ data, renderRow }: any) => (
@@ -82,12 +77,11 @@ describe('ModelsPage', () => {
   });
 
   it('renders models data successfully', async () => {
-    render(<ModelsPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('app-header')).toBeInTheDocument();
-      expect(screen.getByText('test-model')).toBeInTheDocument();
+    await act(async () => {
+      render(<ModelsPage />, { wrapper: createWrapper() });
     });
+
+    expect(screen.getByText('test-model')).toBeInTheDocument();
     expect(screen.getByText('test-repo')).toBeInTheDocument();
     expect(screen.getByText('test-file.bin')).toBeInTheDocument();
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
@@ -103,14 +97,13 @@ describe('ModelsPage', () => {
         );
       })
     );
-
-    render(<ModelsPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('An error occurred: Internal Server Error')
-      ).toBeInTheDocument();
+    await act(async () => {
+      render(<ModelsPage />, { wrapper: createWrapper() });
     });
+
+    expect(
+      screen.getByText('An error occurred: Internal Server Error')
+    ).toBeInTheDocument();
   });
 });
 
@@ -126,10 +119,11 @@ describe('ModelsPage access control', () => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       })
     );
-    render(<ModelsPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
+
+    await act(async () => {
+      render(<ModelsPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -141,9 +135,9 @@ describe('ModelsPage access control', () => {
         return res(ctx.json({ logged_in: false }));
       })
     );
-    render(<ModelsPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/login');
+    await act(async () => {
+      render(<ModelsPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/login');
   });
 });

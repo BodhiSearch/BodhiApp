@@ -1,5 +1,5 @@
 import { createWrapper } from '@/tests/wrapper';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -16,10 +16,6 @@ import {
 import EditAliasPage from '@/app/ui/models/edit/page';
 
 const mockToast = vi.fn();
-
-vi.mock('@/components/AppHeader', () => ({
-  default: () => <div data-testid="app-header">Mocked AppHeader</div>,
-}));
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -98,10 +94,8 @@ describe('EditAliasPage', () => {
   });
 
   it('renders the page with all form elements pre-filled with model data', async () => {
-    render(<EditAliasPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('app-header')).toBeInTheDocument();
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
@@ -121,28 +115,26 @@ describe('EditAliasPage', () => {
       screen.getByRole('button', { name: /update model alias/i })
     ).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
-      expect(screen.getByRole('textbox', { name: /repo/i })).toHaveValue(
-        'owner1/repo1'
-      );
-      expect(screen.getByRole('textbox', { name: /filename/i })).toHaveValue(
-        'file1.gguf'
-      );
-      expect(
-        screen.getByRole('textbox', { name: /chat template/i })
-      ).toHaveValue('llama2');
-    });
+    expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
+    expect(screen.getByRole('textbox', { name: /repo/i })).toHaveValue(
+      'owner1/repo1'
+    );
+    expect(screen.getByRole('textbox', { name: /filename/i })).toHaveValue(
+      'file1.gguf'
+    );
+    expect(
+      screen.getByRole('textbox', { name: /chat template/i })
+    ).toHaveValue('llama2');
   });
 
   it('submits the form with updated data', async () => {
     const user = userEvent.setup();
 
-    render(<EditAliasPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
     });
+
+    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
 
     await user.clear(screen.getByRole('textbox', { name: /repo/i }));
     await user.type(
@@ -182,11 +174,11 @@ describe('EditAliasPage', () => {
       })
     );
 
-    render(<EditAliasPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByText('Error loading model data')).toBeInTheDocument();
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
     });
+
+    expect(screen.getByText('Error loading model data')).toBeInTheDocument();
   });
 });
 
@@ -202,10 +194,10 @@ describe('EditAliasPage access control', () => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       })
     );
-    render(<EditAliasPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -219,9 +211,9 @@ describe('EditAliasPage access control', () => {
         return res(ctx.json({ logged_in: false }));
       })
     );
-    render(<EditAliasPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/login');
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/login');
   });
 });

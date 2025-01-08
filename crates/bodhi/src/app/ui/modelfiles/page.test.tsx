@@ -1,5 +1,5 @@
 import { createWrapper } from '@/tests/wrapper';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import {
@@ -13,11 +13,6 @@ import {
   vi,
 } from 'vitest';
 import ModelFilesPage from '@/app/ui/modelfiles/page';
-
-// Mock components
-vi.mock('@/components/AppHeader', () => ({
-  default: () => <div data-testid="app-header">Mocked AppHeader</div>,
-}));
 
 vi.mock('@/components/DataTable', () => ({
   DataTable: ({ data, renderRow }: any) => (
@@ -80,17 +75,15 @@ describe('ModelFilesPage', () => {
   });
 
   it('renders model files data successfully', async () => {
-    render(<ModelFilesPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('app-header')).toBeInTheDocument();
-      expect(screen.getByText('test-repo')).toBeInTheDocument();
-      expect(screen.getByText('test-file.txt')).toBeInTheDocument();
-      expect(screen.getByText('1.00 GB')).toBeInTheDocument();
-      expect(screen.getByText('abc123')).toBeInTheDocument();
-      expect(screen.getByTestId('pagination')).toBeInTheDocument();
-      expect(screen.getByText('Displaying 1 items of 1')).toBeInTheDocument();
+    await act(async () => {
+      render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
+    expect(screen.getByText('test-repo')).toBeInTheDocument();
+    expect(screen.getByText('test-file.txt')).toBeInTheDocument();
+    expect(screen.getByText('1.00 GB')).toBeInTheDocument();
+    expect(screen.getByText('abc123')).toBeInTheDocument();
+    expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    expect(screen.getByText('Displaying 1 items of 1')).toBeInTheDocument();
   });
 
   it('handles API error', async () => {
@@ -102,14 +95,13 @@ describe('ModelFilesPage', () => {
         );
       })
     );
-
-    render(<ModelFilesPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(
-        screen.getByText('An error occurred: Internal Server Error')
-      ).toBeInTheDocument();
+    await act(async () => {
+      render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
+
+    expect(
+      screen.getByText('An error occurred: Internal Server Error')
+    ).toBeInTheDocument();
   });
 });
 
@@ -125,10 +117,11 @@ describe('ModelFilesPage access control', () => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       })
     );
-    render(<ModelFilesPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup');
+
+    await act(async () => {
+      render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
   it('should redirect to /ui/login if user is not logged in', async () => {
@@ -140,9 +133,9 @@ describe('ModelFilesPage access control', () => {
         return res(ctx.json({ logged_in: false }));
       })
     );
-    render(<ModelFilesPage />, { wrapper: createWrapper() });
-    await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/login');
+    await act(async () => {
+      render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
+    expect(pushMock).toHaveBeenCalledWith('/ui/login');
   });
 });
