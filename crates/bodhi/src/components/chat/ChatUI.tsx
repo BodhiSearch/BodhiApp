@@ -27,7 +27,7 @@ export function ChatUI({ isLoading: chatLoading }: ChatUIProps) {
 
     const userMessage: Message = {
       role: 'user',
-      content: input.trim()
+      content: input.trim(),
     };
 
     setInput('');

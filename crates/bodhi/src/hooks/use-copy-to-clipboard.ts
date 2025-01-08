@@ -12,7 +12,7 @@ interface UseCopyToClipboardReturn {
 }
 
 export function useCopyToClipboard({
-  timeout = 2000
+  timeout = 2000,
 }: UseCopyToClipboardProps = {}): UseCopyToClipboardReturn {
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
@@ -39,4 +39,4 @@ export function useCopyToClipboard({
   );
 
   return { isCopied, copyToClipboard };
-} 
+}

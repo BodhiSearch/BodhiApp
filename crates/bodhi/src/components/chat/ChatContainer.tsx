@@ -17,7 +17,10 @@ import { cn } from '@/lib/utils';
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
 
 export function ChatContainer() {
-  const [settingsOpen, setSettingsOpen] = useLocalStorage(SETTINGS_SIDEBAR_KEY, true);
+  const [settingsOpen, setSettingsOpen] = useLocalStorage(
+    SETTINGS_SIDEBAR_KEY,
+    true
+  );
   const searchParams = useSearchParams();
   const router = useRouter();
   const { getChat } = useChatDB();
@@ -36,7 +39,7 @@ export function ChatContainer() {
           title: 'New Chat',
           messages: [],
           createdAt: Date.now(),
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
         };
 
         setCurrentChat(newChat);
@@ -50,13 +53,16 @@ export function ChatContainer() {
 
       try {
         const { data, status } = await getChat(id);
-        const chatData = status === 200 ? data : {
-          id,
-          title: 'New Chat',
-          messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        };
+        const chatData =
+          status === 200
+            ? data
+            : {
+                id,
+                title: 'New Chat',
+                messages: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              };
         setCurrentChat(chatData);
       } catch (err) {
         console.error('Failed to load chat:', err);
@@ -65,7 +71,7 @@ export function ChatContainer() {
           title: 'New Chat',
           messages: [],
           createdAt: Date.now(),
-          updatedAt: Date.now()
+          updatedAt: Date.now(),
         });
       } finally {
         setIsLoading(false);
@@ -84,28 +90,37 @@ export function ChatContainer() {
   }
 
   return (
-    <SidebarProvider inner open={settingsOpen} onOpenChange={setSettingsOpen} className="flex-1 flex flex-col">
-      <div className={cn(
-        "flex-1 flex flex-col min-w-0",
-        "transition-[margin] duration-300 ease-in-out",
-        settingsOpen && "mr-64"
-      )}>
+    <SidebarProvider
+      inner
+      open={settingsOpen}
+      onOpenChange={setSettingsOpen}
+      className="flex-1 flex flex-col"
+    >
+      <div
+        className={cn(
+          'flex-1 flex flex-col min-w-0',
+          'transition-[margin] duration-300 ease-in-out',
+          settingsOpen && 'mr-64'
+        )}
+      >
         <ChatProvider chat={currentChat!}>
           <ChatUI isLoading={isLoading} />
         </ChatProvider>
       </div>
 
-      <div className={cn(
-        'fixed top-4 z-40 transition-all duration-300',
-        'right-0',
-        settingsOpen && 'right-[16rem]',
-        !settingsOpen && 'right-4'
-      )}>
+      <div
+        className={cn(
+          'fixed top-4 z-40 transition-all duration-300',
+          'right-0',
+          settingsOpen && 'right-[16rem]',
+          !settingsOpen && 'right-4'
+        )}
+      >
         <SidebarToggle
           className="-ml-1"
           open={settingsOpen}
           onOpenChange={setSettingsOpen}
-          side='right'
+          side="right"
           icon={<Settings2 />}
         />
       </div>

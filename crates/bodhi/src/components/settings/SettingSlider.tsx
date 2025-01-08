@@ -27,7 +27,7 @@ export function SettingSlider({
   max = 100,
   step = 1,
   defaultValue,
-  isLoading = false
+  isLoading = false,
 }: SettingSliderProps) {
   // Use provided value or default
   const currentValue = value ?? defaultValue ?? max;
@@ -44,7 +44,9 @@ export function SettingSlider({
       <div className="flex items-center justify-between">
         <Label htmlFor={`setting-${label}`}>{label}</Label>
         <div className="flex items-center gap-4">
-          <span className={`text-sm text-muted-foreground ${isDisabled ? 'opacity-50' : ''}`}>
+          <span
+            className={`text-sm text-muted-foreground ${isDisabled ? 'opacity-50' : ''}`}
+          >
             {currentValue}
           </span>
           <Switch
@@ -68,4 +70,4 @@ export function SettingSlider({
       />
     </div>
   );
-} 
+}

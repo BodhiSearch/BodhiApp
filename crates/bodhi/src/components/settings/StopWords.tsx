@@ -12,15 +12,8 @@ interface StopWordsProps {
   isLoading?: boolean;
 }
 
-export function StopWords({
-  isLoading = false
-}: StopWordsProps) {
-  const { 
-    stop,
-    stop_enabled,
-    setStop,
-    setStopEnabled
-  } = useChatSettings();
+export function StopWords({ isLoading = false }: StopWordsProps) {
+  const { stop, stop_enabled, setStop, setStopEnabled } = useChatSettings();
   const [inputValue, setInputValue] = useState('');
 
   const stopWords = stop || [];

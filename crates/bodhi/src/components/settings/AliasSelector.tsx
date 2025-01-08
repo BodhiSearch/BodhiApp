@@ -17,7 +17,7 @@ interface AliasSelectorProps {
 
 export function AliasSelector({
   models,
-  isLoading = false
+  isLoading = false,
 }: AliasSelectorProps) {
   const { model, setModel } = useChatSettings();
 
