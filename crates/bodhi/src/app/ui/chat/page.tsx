@@ -2,13 +2,12 @@
 
 import { MainLayout } from '@/components/layout/MainLayout';
 import AppInitializer from '@/components/AppInitializer';
-import { NavigationSidebar } from '@/components/navigation/NavigationSidebar';
 import { ChatContainer } from '@/components/chat/ChatContainer';
 import { ChatDBProvider } from '@/hooks/use-chat-db';
 
 function ChatPageContent() {
   return (
-    <MainLayout navigationSidebar={<NavigationSidebar />}>
+    <MainLayout>
       <ChatContainer />
     </MainLayout>
   );

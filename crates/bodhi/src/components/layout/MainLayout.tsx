@@ -8,16 +8,17 @@ import {
 import * as React from 'react';
 import { Separator } from '../ui/separator';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink } from '../ui/breadcrumb';
+import { NavigationSidebar } from '../navigation/NavigationSidebar';
 
 interface MainLayoutProps {
   children: React.ReactNode;
   navigationSidebar?: React.ReactNode;
 }
 
-export function MainLayout({ children, navigationSidebar }: MainLayoutProps) {
+export function MainLayout({ children }: MainLayoutProps) {
   return (
     <SidebarProvider>
-      {navigationSidebar}
+      <NavigationSidebar />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">

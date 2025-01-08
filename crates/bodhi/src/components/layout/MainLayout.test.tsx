@@ -36,6 +36,11 @@ vi.mock('@/components/ui/breadcrumb', () => ({
   ),
 }));
 
+// Add NavigationSidebar to the mock components
+vi.mock('@/components/navigation/NavigationSidebar', () => ({
+  NavigationSidebar: () => <div data-testid="navigation-sidebar">Navigation Sidebar</div>,
+}));
+
 describe('MainLayout', () => {
   it('renders children content', () => {
     render(
@@ -47,16 +52,14 @@ describe('MainLayout', () => {
     expect(screen.getByText('Test Content')).toBeInTheDocument();
   });
 
-  it('renders navigation sidebar when provided', () => {
+  it('renders navigation sidebar', () => {
     render(
-      <MainLayout
-        navigationSidebar={<div>Navigation Sidebar</div>}
-      >
+      <MainLayout>
         <div>Test Content</div>
       </MainLayout>
     );
 
-    expect(screen.getByText('Navigation Sidebar')).toBeInTheDocument();
+    expect(screen.getByTestId('navigation-sidebar')).toBeInTheDocument();
   });
 
   it('renders header with sidebar trigger and breadcrumbs', () => {
