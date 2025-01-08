@@ -8,6 +8,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Chat } from '@/types/chat';
+import { useToast } from '@/hooks/use-toast';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -32,6 +33,10 @@ vi.mock('@/hooks/useLocalStorage', () => ({
   useLocalStorage: vi.fn(() => [true, vi.fn()])
 }));
 
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: vi.fn(),
+}));
+
 // Create a wrapper that combines QueryClient and ChatSettings providers
 function createTestWrapper() {
   const QueryWrapper = createWrapper();
@@ -52,25 +57,54 @@ describe('ChatContainer', () => {
   };
 
   const mockGetChat = vi.fn();
+  const mockToast = vi.fn();
   const Wrapper = createTestWrapper();
 
   beforeEach(() => {
     vi.clearAllMocks();
 
+    // Mock scrollIntoView
+    Element.prototype.scrollIntoView = vi.fn();
+
+    // Mock matchMedia
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(query => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(), // Deprecated
+        removeListener: vi.fn(), // Deprecated
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
     // Setup default mocks
-    (useRouter as any).mockImplementation(() => mockRouter);
-    (useChatDB as any).mockImplementation(() => ({
-      getChat: mockGetChat
+    vi.mocked(useRouter).mockReturnValue(mockRouter as any);
+    vi.mocked(useChatDB).mockImplementation(() => ({
+      getChat: mockGetChat,
+      createOrUpdateChat: vi.fn(),
+      deleteChat: vi.fn(),
+      clearChats: vi.fn(),
+      listChats: vi.fn()
     }));
-    (nanoid as any).mockImplementation(() => 'mock-id');
+    vi.mocked(nanoid).mockImplementation(() => 'mock-id');
+    vi.mocked(useToast).mockReturnValue({ toast: mockToast } as any);
+  });
+
+  afterEach(() => {
+    // Clean up all mocks
+    vi.restoreAllMocks();
   });
 
   describe('New Chat Initialization', () => {
     it('should create a new chat when no id is provided and no current chat exists', async () => {
       // Mock empty search params and no current chat
-      (useSearchParams as any).mockImplementation(() => ({
+      vi.mocked(useSearchParams).mockImplementation(() => ({
         get: () => null
-      }));
+      } as any));
 
       await act(async () => {
         render(<ChatContainer />, { wrapper: Wrapper });
@@ -147,40 +181,56 @@ describe('ChatContainer', () => {
       expect(mockRouter.push).not.toHaveBeenCalled();
     });
 
-    it('should redirect to error page when chat is not found', async () => {
-      (useSearchParams as any).mockImplementation(() => ({
+    it('should redirect to chat page and show toast when chat is not found', async () => {
+      vi.mocked(useSearchParams).mockImplementation(() => ({
         get: () => 'non-existent-id'
+      } as any));
+
+      vi.mocked(useChatDB).mockImplementation(() => ({
+        getChat: vi.fn().mockResolvedValue({ status: 404 }),
+        createOrUpdateChat: vi.fn(),
+        deleteChat: vi.fn(),
+        clearChats: vi.fn(),
+        listChats: vi.fn()
       }));
 
-      mockGetChat.mockResolvedValue({ status: 404 });
+      render(<ChatContainer />, { wrapper: Wrapper });
 
-      await act(async () => {
-        render(<ChatContainer />, { wrapper: Wrapper });
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          variant: "destructive",
+          title: "Chat not found",
+          description: "The requested chat could not be found.",
+        });
+        expect(mockRouter.push).toHaveBeenCalledWith('/ui/chat');
       });
-
-      expect(mockGetChat).toHaveBeenCalledWith('non-existent-id');
-      expect(mockRouter.replace).toHaveBeenCalledWith('/ui/chat?error=chat-not-found');
     });
 
     it('should handle chat loading errors gracefully', async () => {
-      (useSearchParams as any).mockImplementation(() => ({
-        get: () => 'error-chat-id'
+      const mockError = new Error('Failed to load');
+
+      vi.mocked(useSearchParams).mockImplementation(() => ({
+        get: () => 'error-id'
+      } as any));
+
+      vi.mocked(useChatDB).mockImplementation(() => ({
+        getChat: vi.fn().mockRejectedValue(mockError),
+        createOrUpdateChat: vi.fn(),
+        deleteChat: vi.fn(),
+        clearChats: vi.fn(),
+        listChats: vi.fn()
       }));
 
-      mockGetChat.mockRejectedValue(new Error('Failed to load chat'));
-      const consoleSpy = vi.spyOn(console, 'error');
+      render(<ChatContainer />, { wrapper: Wrapper });
 
-      await act(async () => {
-        render(<ChatContainer />, { wrapper: Wrapper });
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          variant: "destructive",
+          title: "Error loading chat",
+          description: "Failed to load the requested chat. Please try again.",
+        });
+        expect(mockRouter.push).toHaveBeenCalledWith('/ui/chat');
       });
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Failed to load chat:',
-        expect.any(Error)
-      );
-
-      expect(mockRouter.replace).toHaveBeenCalledWith('/ui/chat?error=failed-to-load');
-      consoleSpy.mockRestore();
     });
   });
 });
