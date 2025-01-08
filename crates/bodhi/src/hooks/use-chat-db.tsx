@@ -13,11 +13,11 @@ const CHATS_STORAGE_KEY = 'chats';
 const MAX_CHATS = 100;
 
 interface ChatDBContextType {
+  chats: Chat[];
   getChat: (id: string) => Promise<{ data: Chat; status: number }>;
   createOrUpdateChat: (chat: Chat) => Promise<string>;
   deleteChat: (id: string) => Promise<void>;
   clearChats: () => Promise<void>;
-  listChats: () => Promise<Chat[]>;
 }
 
 const ChatDBContext = createContext<ChatDBContextType | undefined>(undefined);
@@ -94,18 +94,14 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
     setChats([]);
   }, []);
 
-  const listChats = useCallback(async () => {
-    return chats;
-  }, [chats]);
-
   return (
     <ChatDBContext.Provider
       value={{
+        chats,
         getChat,
         createOrUpdateChat,
         deleteChat,
         clearChats,
-        listChats,
       }}
     >
       {children}

@@ -5,9 +5,9 @@ import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
 import '@/styles/syntax-highlighter.css';
-import { MainLayout } from '@/components/layout/MainLayout';
 import { NavigationProvider } from '@/hooks/use-navigation';
 import type { Page } from '@/types/models';
+import { SidebarProvider } from '@/components/ui/sidebar';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -101,8 +101,10 @@ export default function RootLayout({
       >
         <ClientProviders>
           <NavigationProvider pages={pages}>
-            {children}
-            <Toaster />
+            <SidebarProvider>
+              {children}
+              <Toaster />
+            </SidebarProvider>
           </NavigationProvider>
         </ClientProviders>
       </body>
