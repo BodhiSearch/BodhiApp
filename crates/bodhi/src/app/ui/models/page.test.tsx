@@ -14,6 +14,12 @@ import {
 import ModelsPage from '@/app/ui/models/page';
 import { createWrapper } from '@/tests/wrapper';
 
+vi.mock('@/components/layout/MainLayout', () => ({
+  MainLayout: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
 vi.mock('@/components/DataTable', () => ({
   DataTable: ({ data, renderRow }: any) => (
     <table>

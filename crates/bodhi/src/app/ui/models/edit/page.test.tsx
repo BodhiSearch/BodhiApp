@@ -35,6 +35,12 @@ vi.mock('@/components/ui/toaster', () => ({
   Toaster: () => null,
 }));
 
+vi.mock('@/components/layout/MainLayout', () => ({
+  MainLayout: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
 const mockModelData = {
   alias: 'test-alias',
   repo: 'owner1/repo1',
