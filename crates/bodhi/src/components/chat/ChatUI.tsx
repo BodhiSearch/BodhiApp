@@ -13,7 +13,7 @@ interface ChatUIProps {
 
 export function ChatUI({ isLoading: chatLoading }: ChatUIProps) {
   const {
-    messages,
+    messages = [],
     input,
     setInput,
     isLoading: streamLoading,

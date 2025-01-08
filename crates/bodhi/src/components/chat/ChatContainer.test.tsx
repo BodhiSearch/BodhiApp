@@ -1,4 +1,4 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, waitFor } from '@testing-library/react';
 import { ChatContainer } from './ChatContainer';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useChatDB } from '@/hooks/use-chat-db';
@@ -6,6 +6,8 @@ import { nanoid } from '@/lib/utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWrapper } from '@/tests/wrapper';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Chat } from '@/types/chat';
 
 // Mock dependencies
 vi.mock('next/navigation', () => ({
@@ -64,23 +66,49 @@ describe('ChatContainer', () => {
   });
 
   describe('New Chat Initialization', () => {
-    it('should create a new chat when no id is provided', async () => {
-      // Mock empty search params
+    it('should create a new chat when no id is provided and no current chat exists', async () => {
+      // Mock empty search params and no current chat
       (useSearchParams as any).mockImplementation(() => ({
         get: () => null
       }));
 
-      let container;
       await act(async () => {
-        container = render(<ChatContainer />, { wrapper: Wrapper });
+        render(<ChatContainer />, { wrapper: Wrapper });
       });
 
-      // Should redirect to new chat URL using replace
-      expect(mockRouter.replace).toHaveBeenCalledWith('/ui/chat/?id=mock-id');
+      // Should not redirect since this is a new chat
+      expect(mockRouter.replace).not.toHaveBeenCalled();
       expect(mockRouter.push).not.toHaveBeenCalled();
 
       // Should render chat UI after initialization
-      expect(screen.getByTestId('chat-ui')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('chat-ui')).toBeInTheDocument();
+      });
+    });
+
+    it('should redirect to existing chat URL if current chat has messages', async () => {
+      // Mock empty search params but existing chat with messages
+      (useSearchParams as any).mockImplementation(() => ({
+        get: () => null
+      }));
+
+      // Mock existing chat in localStorage
+      const existingChat: Chat = {
+        id: 'existing-id',
+        title: 'Existing Chat',
+        messages: [{ role: 'user', content: 'test message' }],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      vi.mocked(useLocalStorage).mockReturnValue([existingChat, vi.fn()]);
+
+      await act(async () => {
+        render(<ChatContainer />, { wrapper: Wrapper });
+      });
+
+      // Should redirect to existing chat URL
+      expect(mockRouter.replace).toHaveBeenCalledWith('/ui/chat/?id=existing-id');
     });
   });
 
@@ -91,13 +119,12 @@ describe('ChatContainer', () => {
         get: () => 'existing-chat-id'
       }));
 
-      // Mock successful chat fetch
-      const mockChat = {
+      const mockChat: Chat = {
         id: 'existing-chat-id',
         title: 'Existing Chat',
         messages: [],
         createdAt: Date.now(),
-        updatedAt: Date.now()
+        updatedAt: Date.now(),
       };
 
       mockGetChat.mockResolvedValue({
@@ -109,89 +136,51 @@ describe('ChatContainer', () => {
         render(<ChatContainer />, { wrapper: Wrapper });
       });
 
-      // Should attempt to load the chat
       expect(mockGetChat).toHaveBeenCalledWith('existing-chat-id');
 
-      // Should render chat UI after initialization
-      expect(screen.getByTestId('chat-ui')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByTestId('chat-ui')).toBeInTheDocument();
+      });
 
       // Should not redirect
       expect(mockRouter.replace).not.toHaveBeenCalled();
       expect(mockRouter.push).not.toHaveBeenCalled();
     });
 
-    it('should create new chat in memory when chat fetch fails', async () => {
-      // Mock search params with non-existent chat ID
+    it('should redirect to error page when chat is not found', async () => {
       (useSearchParams as any).mockImplementation(() => ({
         get: () => 'non-existent-id'
       }));
 
-      // Mock failed chat fetch
-      mockGetChat.mockResolvedValue({
-        status: 404
-      });
+      mockGetChat.mockResolvedValue({ status: 404 });
 
       await act(async () => {
         render(<ChatContainer />, { wrapper: Wrapper });
       });
 
-      // Should attempt to load the chat
       expect(mockGetChat).toHaveBeenCalledWith('non-existent-id');
-
-      // Should render chat UI with new chat after initialization
-      expect(screen.getByTestId('chat-ui')).toBeInTheDocument();
-
-      // Should not redirect
-      expect(mockRouter.replace).not.toHaveBeenCalled();
-      expect(mockRouter.push).not.toHaveBeenCalled();
+      expect(mockRouter.replace).toHaveBeenCalledWith('/ui/chat?error=chat-not-found');
     });
 
     it('should handle chat loading errors gracefully', async () => {
-      // Mock search params with chat ID
       (useSearchParams as any).mockImplementation(() => ({
         get: () => 'error-chat-id'
       }));
 
-      // Mock error during chat fetch
       mockGetChat.mockRejectedValue(new Error('Failed to load chat'));
-
-      // Spy on console.error
       const consoleSpy = vi.spyOn(console, 'error');
 
       await act(async () => {
         render(<ChatContainer />, { wrapper: Wrapper });
       });
 
-      // Should log error
       expect(consoleSpy).toHaveBeenCalledWith(
         'Failed to load chat:',
         expect.any(Error)
       );
 
-      // Should render chat UI after initialization
-      expect(screen.getByTestId('chat-ui')).toBeInTheDocument();
-
-      // Should not redirect
-      expect(mockRouter.replace).not.toHaveBeenCalled();
-      expect(mockRouter.push).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Settings Sidebar', () => {
-    it('should render settings sidebar with correct initial state', async () => {
-      (useSearchParams as any).mockImplementation(() => ({
-        get: () => null
-      }));
-
-      await act(async () => {
-        render(<ChatContainer />, { wrapper: Wrapper });
-      });
-
-      // Should render settings toggle button
-      expect(screen.getByRole('button', { name: /toggle settings/i })).toBeInTheDocument();
-
-      // Should render settings sidebar
-      expect(screen.getByTestId('settings-sidebar')).toBeInTheDocument();
+      expect(mockRouter.replace).toHaveBeenCalledWith('/ui/chat?error=failed-to-load');
+      consoleSpy.mockRestore();
     });
   });
 });

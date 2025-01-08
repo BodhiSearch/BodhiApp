@@ -1,7 +1,6 @@
 'use client';
 
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
-import { SidebarToggle } from '@/components/SidebarToggle';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useChatDB } from '@/hooks/use-chat-db';
@@ -13,79 +12,77 @@ import { useEffect, useState } from 'react';
 import { ChatProvider } from '@/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
 import { cn } from '@/lib/utils';
+import { Button } from '../ui/button';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
+const CURRENT_CHAT_KEY = 'current-chat';
 
 export function ChatContainer() {
   const [settingsOpen, setSettingsOpen] = useLocalStorage(
     SETTINGS_SIDEBAR_KEY,
     true
   );
+  const [currentChat, setCurrentChat] = useLocalStorage<Chat | null>(
+    CURRENT_CHAT_KEY,
+    null
+  );
   const searchParams = useSearchParams();
   const router = useRouter();
   const { getChat } = useChatDB();
-  const [currentChat, setCurrentChat] = useState<Chat | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const initializeChat = async () => {
       const id = searchParams.get('id');
 
-      if (!id) {
-        const newId = nanoid();
-        const newChat: Chat = {
-          id: newId,
-          title: 'New Chat',
-          messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        };
+      // Case 1: URL has an ID
+      if (id) {
+        try {
+          const { data, status } = await getChat(id);
 
-        setCurrentChat(newChat);
+          if (status === 200) {
+            setCurrentChat(data);
+            setIsLoading(false);
+            return;
+          }
+
+          router.replace('/ui/chat?error=chat-not-found');
+          return;
+        } catch (err) {
+          console.error('Failed to load chat:', err);
+          router.replace('/ui/chat?error=failed-to-load');
+          return;
+        }
+      }
+
+      // Case 2: No ID in URL - Check current chat
+      if (currentChat) {
+        if (currentChat.messages?.length > 0) {
+          router.replace(`/ui/chat/?id=${currentChat.id}`);
+          return;
+        }
+
         setIsLoading(false);
-        setIsInitialized(true);
-
-        // Use replace instead of push to avoid navigation loop
-        router.replace(`/ui/chat/?id=${newId}`);
         return;
       }
 
-      try {
-        const { data, status } = await getChat(id);
-        const chatData =
-          status === 200
-            ? data
-            : {
-                id,
-                title: 'New Chat',
-                messages: [],
-                createdAt: Date.now(),
-                updatedAt: Date.now(),
-              };
-        setCurrentChat(chatData);
-      } catch (err) {
-        console.error('Failed to load chat:', err);
-        setCurrentChat({
-          id,
-          title: 'New Chat',
-          messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        });
-      } finally {
-        setIsLoading(false);
-        setIsInitialized(true);
-      }
+      // Case 3: Create new chat
+      const newChat: Chat = {
+        id: nanoid(),
+        title: 'New Chat',
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      setCurrentChat(newChat);
+      setIsLoading(false);
     };
 
-    if (!isInitialized) {
-      initializeChat();
-    }
-  }, [searchParams, router, getChat, isInitialized]);
+    initializeChat();
+  }, [searchParams, router, getChat, currentChat, setCurrentChat]);
 
-  // Show loading state or nothing while initializing
-  if (!isInitialized) {
+  if (isLoading) {
     return null;
   }
 
@@ -116,15 +113,16 @@ export function ChatContainer() {
           !settingsOpen && 'right-4'
         )}
       >
-        <SidebarToggle
-          className="-ml-1"
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          side="right"
-          icon={<Settings2 />}
-        />
+        <Button
+          onClick={() => setSettingsOpen(!settingsOpen)}
+          className={cn('p-2 rounded-lg hover:bg-accent mr-2 -ml-1')}
+          aria-label="Toggle settings sidebar"
+          aria-expanded={settingsOpen}
+          variant="ghost"
+        >
+          <Settings2 />
+        </Button>
       </div>
-
       <SettingsSidebar />
     </SidebarProvider>
   );
