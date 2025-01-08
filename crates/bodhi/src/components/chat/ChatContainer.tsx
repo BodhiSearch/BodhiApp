@@ -14,6 +14,9 @@ import { ChatUI } from '@/components/chat/ChatUI';
 import { cn } from '@/lib/utils';
 import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { MainLayout } from '@/components/layout/MainLayout';
+import { ChatHistory } from './ChatHistory';
+import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
 const CURRENT_CHAT_KEY = 'current-chat';
@@ -106,45 +109,48 @@ export function ChatContainer() {
   if (isLoading) {
     return null;
   }
-
   return (
-    <SidebarProvider
-      inner
-      open={settingsOpen}
-      onOpenChange={setSettingsOpen}
-      className="flex-1 flex flex-col"
-    >
-      <div
-        className={cn(
-          'flex-1 flex flex-col min-w-0',
-          'transition-[margin] duration-300 ease-in-out',
-          settingsOpen && 'mr-64'
-        )}
-      >
-        <ChatProvider chat={currentChat!}>
-          <ChatUI isLoading={isLoading} onFinish={handleChatFinish} />
-        </ChatProvider>
-      </div>
-
-      <div
-        className={cn(
-          'fixed top-4 z-40 transition-all duration-300',
-          'right-0',
-          settingsOpen && 'right-[16rem]',
-          !settingsOpen && 'right-4'
-        )}
-      >
-        <Button
-          onClick={() => setSettingsOpen(!settingsOpen)}
-          className={cn('p-2 rounded-lg hover:bg-accent mr-2 -ml-1')}
-          aria-label="Toggle settings sidebar"
-          aria-expanded={settingsOpen}
-          variant="ghost"
+    <MainLayout sidebarContent={<ChatHistory />}>
+      <ChatSettingsProvider>
+        <SidebarProvider
+          inner
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          className="flex-1 flex flex-col"
         >
-          <Settings2 />
-        </Button>
-      </div>
-      <SettingsSidebar />
-    </SidebarProvider>
+          <div
+            className={cn(
+              'flex-1 flex flex-col min-w-0',
+              'transition-[margin] duration-300 ease-in-out',
+              settingsOpen && 'mr-64'
+            )}
+          >
+            <ChatProvider chat={currentChat!}>
+              <ChatUI isLoading={isLoading} onFinish={handleChatFinish} />
+            </ChatProvider>
+          </div>
+
+          <div
+            className={cn(
+              'fixed top-4 z-40 transition-all duration-300',
+              'right-0',
+              settingsOpen && 'right-[16rem]',
+              !settingsOpen && 'right-4'
+            )}
+          >
+            <Button
+              onClick={() => setSettingsOpen(!settingsOpen)}
+              className={cn('p-2 rounded-lg hover:bg-accent mr-2 -ml-1')}
+              aria-label="Toggle settings sidebar"
+              aria-expanded={settingsOpen}
+              variant="ghost"
+            >
+              <Settings2 />
+            </Button>
+          </div>
+          <SettingsSidebar />
+        </SidebarProvider>
+      </ChatSettingsProvider>
+    </MainLayout>
   );
 }

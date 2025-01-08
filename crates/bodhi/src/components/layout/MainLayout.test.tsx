@@ -9,9 +9,6 @@ vi.mock('@/hooks/useLocalStorage', () => ({
 
 // Mock the sidebar components
 vi.mock('@/components/ui/sidebar', () => ({
-  SidebarProvider: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-provider">{children}</div>
-  ),
   SidebarInset: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="sidebar-inset">{children}</div>
   ),
@@ -83,7 +80,7 @@ describe('MainLayout', () => {
 
     const sidebarInset = screen.getByTestId('sidebar-inset');
     expect(sidebarInset).toBeInTheDocument();
-    
+
     // Check for header
     const header = sidebarInset.querySelector('header');
     expect(header).toHaveClass('flex', 'h-16', 'shrink-0');
@@ -91,15 +88,5 @@ describe('MainLayout', () => {
     // Check for main content wrapper
     const contentWrapper = sidebarInset.querySelector('div');
     expect(contentWrapper).toHaveClass('flex', 'items-center');
-  });
-
-  it('renders sidebar provider', () => {
-    render(
-      <MainLayout>
-        <div>Test Content</div>
-      </MainLayout>
-    );
-
-    expect(screen.getByTestId('sidebar-provider')).toBeInTheDocument();
   });
 });

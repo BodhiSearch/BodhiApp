@@ -16,7 +16,7 @@ describe('useChatDB', () => {
     it('should initialize with empty chats', async () => {
       const { result } = renderHook(() => useChatDB(), { wrapper });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response).toHaveLength(0);
     });
 
@@ -65,7 +65,7 @@ describe('useChatDB', () => {
         await result.current.createOrUpdateChat(chat2);
       });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response[0].id).toBe(chat2.id);
       expect(response[1].id).toBe(chat1.id);
     });
@@ -101,7 +101,7 @@ describe('useChatDB', () => {
         await result.current.createOrUpdateChat(updatedChat1 as Chat);
       });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response[0].id).toBe(chat1.id);
       expect(response[1].id).toBe(chat2.id);
       expect(response[0].messages).toEqual(updatedChat1.messages);
@@ -144,7 +144,7 @@ describe('useChatDB', () => {
         await result.current.clearChats();
       });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response).toHaveLength(0);
     });
 
@@ -175,7 +175,7 @@ describe('useChatDB', () => {
         await result.current.createOrUpdateChat(updatedChat as Chat);
       });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response.map(chat => chat.id)).toEqual([
         chats[1].id, // Updated chat
         chats[2].id, // Most recently created
@@ -202,7 +202,7 @@ describe('useChatDB', () => {
       // Force reload from localStorage
       const { result: reloadedResult } = renderHook(() => useChatDB(), { wrapper });
 
-      const response = await reloadedResult.current.listChats();
+      const response = reloadedResult.current.chats;
       expect(response.map(chat => chat.id)).toEqual([
         chats[2].id, // Most recent first
         chats[1].id,
@@ -227,7 +227,7 @@ describe('useChatDB', () => {
         }
       });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response).toHaveLength(100);
       // Should have the most recent 100 chats (last 100 from the array)
       expect(response.map(c => c.id)).toEqual(
@@ -262,7 +262,7 @@ describe('useChatDB', () => {
         await result.current.createOrUpdateChat(updatedChat as Chat);
       });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response).toHaveLength(100);
       expect(response[0].id).toBe(chats[0].id); // Updated chat should be first
       expect(response[0].messages).toEqual(updatedChat.messages);
@@ -286,7 +286,7 @@ describe('useChatDB', () => {
         }
       });
 
-      const response = await result.current.listChats();
+      const response = result.current.chats;
       expect(response).toHaveLength(5);
       expect(response.map(c => c.id)).toEqual(
         chats.reverse().map(c => c.id)
