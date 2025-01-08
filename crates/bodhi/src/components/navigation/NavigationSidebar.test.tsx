@@ -1,69 +1,95 @@
+'use client';
+
+import { createWrapper } from '@/tests/wrapper';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
-import { NavigationSidebar } from '@/components/navigation/NavigationSidebar';
+import userEvent from '@testing-library/user-event';
+import { vi } from 'vitest';
+import { NavigationSidebar } from './NavigationSidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
+import { Check } from 'lucide-react';
 
+const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/ui/home'
+  useRouter: () => ({
+    push: pushMock,
+  }),
 }));
 
-// Mock the sidebar components
-vi.mock('@/components/ui/sidebar', () => ({
-  Sidebar: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar">{children}</div>
-  ),
-  SidebarHeader: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-header">{children}</div>
-  ),
-  SidebarContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-content">{children}</div>
-  ),
-  SidebarGroup: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-group">{children}</div>
-  ),
-  SidebarGroupContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-group-content">{children}</div>
-  ),
-  SidebarGroupLabel: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-group-label">{children}</div>
-  ),
-  SidebarMenu: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-menu">{children}</div>
-  ),
-  SidebarMenuItem: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-menu-item">{children}</div>
-  ),
-  SidebarMenuButton: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-menu-button">{children}</div>
-  ),
+// Mock the useNavigation hook
+vi.mock('@/hooks/use-navigation', () => ({
+  useNavigation: () => ({
+    pages: [
+      { url: '/ui/chat', title: 'Chat', iconName: 'messageSquare' },
+      { url: '/ui/models', title: 'Models', iconName: 'boxes' },
+      { url: '/ui/settings', title: 'Settings', iconName: 'settings' },
+    ],
+    currentPage: {
+      url: '/ui/chat',
+      title: 'Chat',
+      iconName: 'messageSquare'
+    }
+  })
 }));
 
-// Mock RecentChats component
-vi.mock('@/components/navigation/RecentChats', () => ({
-  RecentChats: () => <div data-testid="recent-chats">Recent Chats Mock</div>
+// Mock the lucide-react Check component
+vi.mock('lucide-react', () => ({
+  Check: () => <svg data-testid="check-icon" />,
+  ChevronsUpDown: () => <svg data-testid="chevrons-icon" />,
+  MessageSquare: () => <svg data-testid="chevrons-icon" />
 }));
+
+const renderWithProviders = (ui: React.ReactElement) => {
+  const Wrapper = ({ children }: { children: React.ReactNode }) => {
+    const BaseWrapper = createWrapper();
+    return (
+      <BaseWrapper>
+        <SidebarProvider>
+          {children}
+        </SidebarProvider>
+      </BaseWrapper>
+    );
+  };
+  return render(ui, { wrapper: Wrapper });
+};
 
 describe('NavigationSidebar', () => {
-  it('renders navigation items', () => {
-    render(<NavigationSidebar />);
+  it('renders current page with correct icon and title', () => {
+    renderWithProviders(<NavigationSidebar />);
 
-    expect(screen.getByText('Bodhi')).toBeInTheDocument();
-    expect(screen.getByText('New Chat')).toBeInTheDocument();
-    expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('Assistants')).toBeInTheDocument();
+    // Check if current page title is displayed in the button
+    const button = screen.getByRole('button');
+    expect(button).toHaveTextContent('Chat');
+
+    // Check if icon container exists
+    const iconContainer = button.querySelector('.size-8');
+    expect(iconContainer).toBeInTheDocument();
   });
 
-  it('uses shadcn sidebar components', () => {
-    render(<NavigationSidebar />);
+  it('shows all pages in dropdown and allows navigation', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<NavigationSidebar />);
 
-    expect(screen.getByTestId('sidebar')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-header')).toBeInTheDocument();
-    expect(screen.getByTestId('sidebar-content')).toBeInTheDocument();
-    expect(screen.getAllByTestId('sidebar-group').length).toBeGreaterThan(0);
-  });
+    // Open dropdown
+    const trigger = screen.getByRole('button');
+    await user.click(trigger);
 
-  it('renders recent chats component', () => {
-    render(<NavigationSidebar />);
+    // Get all menu items
+    const menuItems = screen.getAllByRole('menuitem');
 
-    expect(screen.getByTestId('recent-chats')).toBeInTheDocument();
+    // Verify all pages are listed in the dropdown
+    expect(menuItems).toHaveLength(3);
+    expect(menuItems[0]).toHaveTextContent('Chat');
+    expect(menuItems[1]).toHaveTextContent('Models');
+    expect(menuItems[2]).toHaveTextContent('Settings');
+
+    // Current page (Chat) should have a check mark
+    const checkIcon = screen.getByTestId('check-icon');
+    expect(checkIcon).toBeInTheDocument();
+
+    // Click on Models option
+    await user.click(menuItems[1]);
+
+    // Verify navigation was triggered
+    expect(pushMock).toHaveBeenCalledWith('/ui/models');
   });
 });

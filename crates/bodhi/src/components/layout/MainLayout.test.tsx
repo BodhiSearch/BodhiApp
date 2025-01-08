@@ -72,7 +72,6 @@ describe('MainLayout', () => {
     expect(screen.getByTestId('sidebar-trigger')).toBeInTheDocument();
     expect(screen.getByTestId('separator')).toBeInTheDocument();
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
-    expect(screen.getByText('Chat')).toBeInTheDocument();
   });
 
   it('renders sidebar inset with proper structure', () => {

@@ -1,75 +1,64 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
-import { PlusCircle, Home, Users } from 'lucide-react';
-import Link from 'next/link';
-import { RecentChats } from '@/components/navigation/RecentChats';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Sidebar,
-  SidebarContent,
-  SidebarHeader,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuItem,
 } from '@/components/ui/sidebar';
-
-const navigationItems = [
-  {
-    name: 'Home',
-    href: '/ui/home',
-    icon: Home,
-  },
-  {
-    name: 'Assistants',
-    href: '/ui/assistants',
-    icon: Users,
-  },
-];
+import { ChevronsUpDown, Check } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { IconMapper } from '../ui/icon-mapper';
+import { useNavigation } from '@/hooks/use-navigation';
 
 export function NavigationSidebar() {
+  const router = useRouter();
+  const { pages, currentPage } = useNavigation();
+
   return (
-    <Sidebar variant="inset">
-      <SidebarHeader>
-        <Link href="/ui/home">Bodhi</Link>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <Link href="/ui/chat" passHref>
-              <Button>
-                <PlusCircle />
-                New Chat
-              </Button>
-            </Link>
-
-            <SidebarMenu>
-              {navigationItems.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild>
-                      <Link href={item.href}>
-                        <Icon />
-                        <span>{item.name}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarGroupLabel>Recent Chats</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <RecentChats />
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+    <Sidebar variant="inset" collapsible="icon">
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton
+                size="lg"
+                className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              >
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <IconMapper name={currentPage.iconName} className="size-4" />
+                </div>
+                <div className="flex flex-col gap-0.5 leading-none">
+                  <span>{currentPage.title}</span>
+                </div>
+                <ChevronsUpDown className="ml-auto" />
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="w-[--radix-dropdown-menu-trigger-width]"
+              align="start"
+            >
+              {pages.map((page) => (
+                <DropdownMenuItem
+                  key={page.url}
+                  onSelect={() => router.push(page.url)}
+                >
+                  {page.title}
+                  {currentPage.url === page.url && (
+                    <Check className="ml-auto" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
     </Sidebar>
   );
 }

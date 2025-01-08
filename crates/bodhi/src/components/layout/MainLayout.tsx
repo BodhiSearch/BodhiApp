@@ -1,5 +1,6 @@
 'use client';
 
+import { useNavigation } from '@/hooks/use-navigation';
 import {
   SidebarInset,
   SidebarProvider,
@@ -12,10 +13,10 @@ import { NavigationSidebar } from '../navigation/NavigationSidebar';
 
 interface MainLayoutProps {
   children: React.ReactNode;
-  navigationSidebar?: React.ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const { currentPage } = useNavigation();
   return (
     <SidebarProvider>
       <NavigationSidebar />
@@ -26,7 +27,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             <Separator orientation="vertical" className="mr-2 h-4" />
             <Breadcrumb>
               <BreadcrumbItem>
-                <BreadcrumbLink href="#">Chat</BreadcrumbLink>
+                <BreadcrumbLink href="#">{currentPage.title}</BreadcrumbLink>
               </BreadcrumbItem>
             </Breadcrumb>
           </div>
