@@ -24,7 +24,7 @@ export function AliasSelector({
   return (
     <div className="space-y-4" data-testid="model-selector-loaded">
       <div className="space-y-2">
-        <Label>Alias</Label>
+        <Label>Alias/Model</Label>
         <Select
           defaultValue={model}
           onValueChange={setModel}
