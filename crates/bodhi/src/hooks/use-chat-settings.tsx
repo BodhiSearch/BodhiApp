@@ -288,6 +288,7 @@ export function ChatSettingsProvider({
         setSystemPromptEnabled,
         setResponseFormat,
         setResponseFormatEnabled,
+        // @ts-expect-error - ignore
         getRequestSettings,
         reset,
       }}
