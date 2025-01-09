@@ -41,10 +41,18 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
   }, [abortController]);
 
   const processCompletion = useCallback(
-    async (requestMessages: Message[]) => {
+    async (userMessages: Message[]) => {
       let assistantMessage = '';
 
       try {
+        let requestMessages = [...userMessages];
+        if (chatSettings.systemPrompt_enabled && chatSettings.systemPrompt) {
+          requestMessages = [
+            { role: 'system', content: chatSettings.systemPrompt },
+            ...requestMessages,
+          ];
+        }
+
         await append({
           request: {
             ...chatSettings.getRequestSettings(),
@@ -53,12 +61,12 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
           onDelta: (chunk) => {
             assistantMessage += chunk;
             setMessages([
-              ...requestMessages,
+              ...userMessages, // Keep original messages in UI
               { role: 'assistant' as const, content: assistantMessage },
             ]);
           },
           onFinish: (message) => {
-            const finalMessages = [...requestMessages, message];
+            const finalMessages = [...userMessages, message]; // Keep original messages in storage
             setMessages(finalMessages);
             createOrUpdateChat({
               ...chat,
