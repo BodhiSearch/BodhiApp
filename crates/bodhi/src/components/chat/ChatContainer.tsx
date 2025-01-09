@@ -1,7 +1,7 @@
 'use client';
 
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { nanoid } from '@/lib/utils';
@@ -12,7 +12,6 @@ import { useEffect, useState } from 'react';
 import { ChatProvider } from '@/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
 import { cn } from '@/lib/utils';
-import { Button } from '../ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ChatHistory } from './ChatHistory';
@@ -129,7 +128,6 @@ export function ChatContainer() {
               <ChatUI isLoading={isLoading} onFinish={handleChatFinish} />
             </ChatProvider>
           </div>
-
           <div
             className={cn(
               'fixed top-4 z-40 transition-all duration-300',
@@ -138,15 +136,7 @@ export function ChatContainer() {
               !settingsOpen && 'right-4'
             )}
           >
-            <Button
-              onClick={() => setSettingsOpen(!settingsOpen)}
-              className={cn('p-2 rounded-lg hover:bg-accent mr-2 -ml-1')}
-              aria-label="Toggle settings sidebar"
-              aria-expanded={settingsOpen}
-              variant="ghost"
-            >
-              <Settings2 />
-            </Button>
+            <SidebarTrigger icon={<Settings2 />} />
           </div>
           <SettingsSidebar />
         </SidebarProvider>
