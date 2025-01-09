@@ -16,6 +16,7 @@ import {
   UserInfo,
 } from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
+import { ListDownloadsResponse, DownloadRequest, PullModelRequest } from '@/types/api';
 
 type PagedApiResponse<T> = {
   data: T;
@@ -178,4 +179,16 @@ export function useUser(options?: { enabled: boolean }) {
     retry: false,
     enabled: options?.enabled,
   });
+}
+
+export function useDownloads(page: number, pageSize: number) {
+  return useQuery<ListDownloadsResponse>(
+    ['downloads', page.toString(), pageSize.toString()],
+    '/api/ui/modelfiles/pull/downloads',
+    { page, page_size: pageSize }
+  );
+}
+
+export function usePullModel() {
+  return useMutationQuery<DownloadRequest, PullModelRequest>('/modelfiles/pull');
 }
