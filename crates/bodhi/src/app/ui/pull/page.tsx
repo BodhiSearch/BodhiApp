@@ -9,6 +9,7 @@ import { SortState } from '@/types/models';
 import AppInitializer from '@/components/AppInitializer';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Badge } from '@/components/ui/badge';
+import { PullForm } from '@/components/PullForm';
 
 const columns = [
   { id: 'repo', name: 'Repo', sorted: true },
@@ -79,6 +80,9 @@ function PullPageContent() {
   return (
     <MainLayout>
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="mb-8">
+          <PullForm />
+        </div>
         <DataTable
           data={data?.data || []}
           columns={columns}

@@ -16,7 +16,11 @@ import {
   UserInfo,
 } from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
-import { ListDownloadsResponse, DownloadRequest, PullModelRequest } from '@/types/api';
+import {
+  ListDownloadsResponse,
+  DownloadRequest,
+  PullModelRequest,
+} from '@/types/api';
 
 type PagedApiResponse<T> = {
   data: T;
@@ -190,5 +194,7 @@ export function useDownloads(page: number, pageSize: number) {
 }
 
 export function usePullModel() {
-  return useMutationQuery<DownloadRequest, PullModelRequest>('/modelfiles/pull');
+  return useMutationQuery<DownloadRequest, PullModelRequest>(
+    '/api/ui/modelfiles/pull'
+  );
 }
