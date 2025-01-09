@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use axum::{
-  extract::{Path, State},
+  extract::{Path, Query, State},
   routing::{get, post},
   Json, Router,
 };
@@ -22,6 +22,7 @@ use validator::Validate;
 
 pub fn pull_router() -> Router<Arc<dyn RouterState>> {
   Router::new()
+    .route("/modelfiles/pull/downloads", get(list_downloads_handler))
     .route("/modelfiles/pull", post(pull_by_repo_file_handler))
     .route("/modelfiles/pull/:alias", post(pull_by_alias_handler))
     .route(
@@ -50,6 +51,54 @@ pub enum PullError {
   PullCommand(#[from] PullCommandError),
   #[error(transparent)]
   ObjValidation(#[from] ObjValidationError),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListDownloadsQuery {
+  #[serde(default = "default_page")]
+  pub page: u32,
+  #[serde(default = "default_page_size")]
+  pub page_size: u32,
+}
+
+fn default_page() -> u32 {
+  1
+}
+
+fn default_page_size() -> u32 {
+  30
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListDownloadsResponse {
+  pub data: Vec<DownloadRequest>,
+  pub total: u32,
+  pub page: u32,
+  pub page_size: u32,
+}
+
+async fn list_downloads_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Query(query): Query<ListDownloadsQuery>,
+) -> Result<Json<ListDownloadsResponse>, ApiError> {
+  let downloads = state
+    .app_service()
+    .db_service()
+    .list_pending_downloads()
+    .await?;
+
+  // Calculate pagination
+  let total = downloads.len() as u32;
+  let start = ((query.page - 1) * query.page_size) as usize;
+  let end = (start + query.page_size as usize).min(downloads.len());
+  let paged_downloads = downloads[start..end].to_vec();
+
+  Ok(Json(ListDownloadsResponse {
+    data: paged_downloads,
+    total,
+    page: query.page,
+    page_size: query.page_size,
+  }))
 }
 
 async fn pull_by_repo_file_handler(
@@ -209,7 +258,12 @@ async fn update_download_status(
 
 #[cfg(test)]
 mod tests {
-  use super::{get_download_status_handler, pull_by_alias_handler, pull_by_repo_file_handler};
+  use crate::ListDownloadsResponse;
+
+  use super::{
+    get_download_status_handler, list_downloads_handler, pull_by_alias_handler,
+    pull_by_repo_file_handler,
+  };
   use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
@@ -260,6 +314,7 @@ mod tests {
         "/modelfiles/pull/status/:id",
         get(get_download_status_handler),
       )
+      .route("/modelfiles/pull/downloads", get(list_downloads_handler))
       .with_state(Arc::new(router_state))
   }
 
@@ -596,6 +651,60 @@ mod tests {
         }
       }}
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_downloads(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
+  ) -> anyhow::Result<()> {
+    // Create some test downloads
+    let download1 =
+      DownloadRequest::new_pending("test/repo1".to_string(), "file1.gguf".to_string());
+    let download2 =
+      DownloadRequest::new_pending("test/repo2".to_string(), "file2.gguf".to_string());
+
+    let db_service = Arc::new(db_service);
+    db_service.create_download_request(&download1).await?;
+    db_service.create_download_request(&download2).await?;
+
+    let app_service = app_service_stub_builder.db_service(db_service).build()?;
+
+    let router = test_router(Arc::new(app_service));
+
+    let response = router
+      .oneshot(
+        Request::builder()
+          .method(Method::GET)
+          .uri("/modelfiles/pull/downloads?page=1&page_size=10")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = response.json::<ListDownloadsResponse>().await?;
+    assert_eq!(body.data.len(), 2);
+    assert_eq!(body.total, 2);
+    assert_eq!(body.page, 1);
+    assert_eq!(body.page_size, 10);
+
+    // Verify download details
+    let downloads = body.data;
+    assert_eq!(downloads[0].repo, "test/repo1");
+    assert_eq!(downloads[0].filename, "file1.gguf");
+    assert_eq!(downloads[0].status, DownloadStatus::Pending);
+
+    assert_eq!(downloads[1].repo, "test/repo2");
+    assert_eq!(downloads[1].filename, "file2.gguf");
+    assert_eq!(downloads[1].status, DownloadStatus::Pending);
+
     Ok(())
   }
 }
