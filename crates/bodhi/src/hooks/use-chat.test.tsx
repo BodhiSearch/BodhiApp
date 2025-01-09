@@ -13,17 +13,8 @@ beforeAll(() => server.listen());
 afterAll(() => server.close());
 beforeEach(() => {
   server.resetHandlers();
+  vi.clearAllMocks();
 });
-
-// Mock use-chat-settings
-vi.mock('@/hooks/use-chat-settings', () => ({
-  useChatSettings: () => ({
-    getRequestSettings: () => ({
-      model: 'test-model',
-      temperature: 0.7,
-    }),
-  }),
-}));
 
 // In-memory chat storage
 class InMemoryChatDB {
@@ -52,29 +43,42 @@ vi.mock('@/hooks/use-chat-db', () => ({
   }),
 }));
 
-describe('useChat', () => {
-  const initialChat: Chat = {
-    id: '1',
-    title: 'Test Chat',
-    messages: [],
-    createdAt: Date.now(),
-  };
+const createWrapper = (chat: Chat) => {
+  const QueryWrapper = createQueryWrapper();
+  return ({ children }: { children: React.ReactNode }) => (
+    <QueryWrapper>
+      <ChatProvider chat={chat}>{children}</ChatProvider>
+    </QueryWrapper>
+  );
+};
 
+describe('useChat', () => {
   beforeEach(() => {
     chatDB.clear();
   });
 
-  const createWrapper = (chat: Chat = initialChat) => {
-    const QueryWrapper = createQueryWrapper();
-    return ({ children }: { children: React.ReactNode }) => (
-      <QueryWrapper>
-        <ChatProvider chat={chat}>{children}</ChatProvider>
-      </QueryWrapper>
-    );
-  };
+  describe('message handling without system prompt', () => {
+    beforeEach(() => {
+      // Mock use-chat-settings
+      vi.mock('@/hooks/use-chat-settings', () => ({
+        useChatSettings: () => ({
+          getRequestSettings: () => ({
+            model: 'test-model',
+            temperature: 0.7,
+          }),
+          systemPrompt: '',
+          systemPrompt_enabled: false,
+        }),
+      }));
+    });
 
-  describe('message handling', () => {
     it('should handle streaming response', async () => {
+      const initialChat: Chat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
       const chunks = [
         '{"choices":[{"delta":{"content":" Hello"}}]}',
         '{"choices":[{"delta":{"content":" world"}}]}',
@@ -91,7 +95,7 @@ describe('useChat', () => {
         })
       );
 
-      const { result } = renderHook(() => useChat(), { wrapper: createWrapper() });
+      const { result } = renderHook(() => useChat(), { wrapper: createWrapper(initialChat) });
 
       const userMessage: Message = {
         id: '1',
@@ -116,6 +120,12 @@ describe('useChat', () => {
     });
 
     it('should handle reload with streaming', async () => {
+      const initialChat: Chat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
       const messages: Message[] = [
         { id: '1', role: 'user', content: 'First message' },
         { id: '2', role: 'assistant', content: 'First response' },
@@ -177,6 +187,12 @@ describe('useChat', () => {
     });
 
     it('should handle reload error', async () => {
+      const initialChat: Chat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
       const messages: Message[] = [
         { id: '1', role: 'user', content: 'First message' },
         { id: '2', role: 'assistant', content: 'First response' },
@@ -210,3 +226,78 @@ describe('useChat', () => {
     });
   });
 });
+
+describe('message handling with system prompt', () => {
+    beforeEach(() => {
+      // Mock use-chat-settings
+      vi.mock('@/hooks/use-chat-settings', () => ({
+        useChatSettings: () => ({
+          getRequestSettings: () => ({
+            model: 'test-model',
+            temperature: 0.7,
+          }),
+          systemPrompt: 'Test system prompt',
+          systemPrompt_enabled: false,
+        }),
+      }));
+    });
+
+    it.skip('should include system prompt in API request', async () => {
+      const initialChat: Chat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
+      let capturedRequest: any;
+      server.use(
+        rest.post('*/v1/chat/completions', async (req, res, ctx) => {
+          capturedRequest = await req.json();
+          return res(
+            ctx.status(200),
+            ctx.set('Content-Type', 'text/event-stream'),
+            ctx.body([
+              'data: {"choices":[{"delta":{"content":"Assistant response"}}]}\n\n',
+              'data: [DONE]\n\n'
+            ].join(''))
+          );
+        })
+      );
+
+      const { result } = renderHook(() => useChat(), {
+        wrapper: createWrapper(initialChat)
+      });
+
+      const userMessage: Message = {
+        id: '1',
+        role: 'user',
+        content: 'Hello AI',
+      };
+
+      await act(async () => {
+        await result.current.append(userMessage);
+      });
+
+      // Verify the API request includes both system and user messages
+      expect(capturedRequest.messages).toEqual([
+        { role: 'system', content: 'Test system prompt' },
+        expect.objectContaining({
+          role: 'user',
+          content: 'Hello AI'
+        })
+      ]);
+
+      // Verify the UI only shows user and assistant messages
+      expect(result.current.messages).toEqual([
+        userMessage,
+        { role: 'assistant', content: 'Assistant response' }
+      ]);
+
+      // Verify stored chat only contains user and assistant messages
+      const savedChat = await chatDB.getChat('1');
+      expect(savedChat?.messages).toEqual([
+        userMessage,
+        { role: 'assistant', content: 'Assistant response' }
+      ]);
+    });
+  });
