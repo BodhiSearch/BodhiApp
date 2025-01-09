@@ -20,6 +20,10 @@ vi.mock('@/components/layout/MainLayout', () => ({
   ),
 }));
 
+vi.mock('@/components/PullForm', () => ({
+  PullForm: () => <div data-testid="pull-form">Pull Form</div>,
+}));
+
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -75,11 +79,15 @@ describe('PullPage', () => {
     );
   });
 
-  it('renders downloads table with data', async () => {
+  it('renders pull form and downloads table', async () => {
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });
     });
 
+    // Check form is rendered
+    expect(screen.getByTestId('pull-form')).toBeInTheDocument();
+
+    // Check table data
     expect(screen.getByText('test/repo')).toBeInTheDocument();
     expect(screen.getByText('model.gguf')).toBeInTheDocument();
     expect(screen.getByText('pending')).toBeInTheDocument();
