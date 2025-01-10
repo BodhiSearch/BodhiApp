@@ -1,10 +1,7 @@
 'use client';
 
 import { Plus } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { CURRENT_CHAT_KEY } from '@/lib/constants';
-import { Chat } from '@/types/chat';
+import { useChatDB } from '@/hooks/use-chat-db';
 import {
   SidebarMenu,
   SidebarMenuItem,
@@ -12,23 +9,13 @@ import {
 } from '@/components/ui/sidebar';
 
 export const NewChatButton = () => {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [currentChat, setCurrentChat] = useLocalStorage<Chat | null>(CURRENT_CHAT_KEY, null);
-
-  const handleNewChat = () => {
-    if (!currentChat || currentChat.messages.length === 0) {
-      return;
-    }
-    setCurrentChat(null);
-    router.replace('/ui/chat');
-  };
+  const { createNewChat } = useChatDB();
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <SidebarMenuButton
-          onClick={handleNewChat}
+          onClick={createNewChat}
           className="bg-primary hover:bg-primary/90 text-primary-foreground"
           data-testid="new-chat-button"
         >
@@ -38,4 +25,4 @@ export const NewChatButton = () => {
       </SidebarMenuItem>
     </SidebarMenu>
   );
-}; 
+};

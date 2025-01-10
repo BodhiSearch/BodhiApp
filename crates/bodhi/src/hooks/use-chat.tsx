@@ -3,34 +3,16 @@
 import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
-import { Chat, Message } from '@/types/chat';
-import { createContext, useCallback, useContext, useState } from 'react';
+import { Message } from '@/types/chat';
+import { useCallback, useState } from 'react';
 
-interface ChatContextType {
-  messages: Message[];
-  input: string;
-  setInput: (input: string) => void;
-  isLoading: boolean;
-  append: (message: Message) => Promise<void>;
-  stop: () => void;
-  reload: () => Promise<void>;
-}
-
-const ChatContext = createContext<ChatContextType | undefined>(undefined);
-
-interface ChatProviderProps {
-  children: React.ReactNode;
-  chat: Chat;
-}
-
-export function ChatProvider({ children, chat }: ChatProviderProps) {
-  const [messages, setMessages] = useState<Message[]>(chat?.messages || []);
+export function useChat() {
   const [input, setInput] = useState('');
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
 
   const { append, isLoading } = useChatCompletion();
-  const { createOrUpdateChat } = useChatDB();
+  const { currentChat, createOrUpdateChat } = useChatDB();
   const chatSettings = useChatSettings();
 
   const stop = useCallback(() => {
@@ -42,6 +24,8 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
 
   const processCompletion = useCallback(
     async (userMessages: Message[]) => {
+      if (!currentChat) return;
+
       let assistantMessage = '';
 
       try {
@@ -60,20 +44,17 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
           },
           onDelta: (chunk) => {
             assistantMessage += chunk;
-            setMessages([
-              ...userMessages, // Keep original messages in UI
-              { role: 'assistant' as const, content: assistantMessage },
-            ]);
-          },
-          onFinish: (message) => {
-            const finalMessages = [...userMessages, message]; // Keep original messages in storage
-            setMessages(finalMessages);
             createOrUpdateChat({
-              ...chat,
-              messages: finalMessages,
-              title: finalMessages[0].content.substring(0, 100),
+              ...currentChat,
+              messages: [
+                ...userMessages,
+                { role: 'assistant' as const, content: assistantMessage },
+              ],
               updatedAt: Date.now(),
             });
+          },
+          onFinish: (message) => {
+            console.log('Chat completion finished');
           },
         });
       } catch (error) {
@@ -81,13 +62,24 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
         throw error;
       }
     },
-    [chatSettings, chat, append, createOrUpdateChat]
+    [chatSettings, currentChat, append, createOrUpdateChat]
   );
 
   const appendMessage = useCallback(
     async (userMessage: Message) => {
-      const newMessages = [...messages, userMessage];
-      setMessages(newMessages);
+      if (!currentChat) return;
+
+      const newMessages = [...currentChat.messages, userMessage];
+
+      const title = newMessages[0].content.substring(0, 100);
+      currentChat.title = title;
+      // Update chat with user message immediately
+      await createOrUpdateChat({
+        ...currentChat,
+        messages: newMessages,
+        title,
+        updatedAt: Date.now(),
+      });
 
       const controller = new AbortController();
       setAbortController(controller);
@@ -98,45 +90,39 @@ export function ChatProvider({ children, chat }: ChatProviderProps) {
         setAbortController(null);
       }
     },
-    [messages, processCompletion]
+    [currentChat, processCompletion, createOrUpdateChat]
   );
 
   const reload = useCallback(async () => {
-    if (messages.length < 2) return;
+    if (!currentChat || currentChat.messages.length < 2) return;
 
     // Remove the last assistant message
-    const lastUserMessageIndex = messages
+    const lastUserMessageIndex = currentChat.messages
       .map((m) => m.role)
       .lastIndexOf('user');
     if (lastUserMessageIndex === -1) return;
 
-    const messagesToKeep = messages.slice(0, lastUserMessageIndex + 1);
-    setMessages(messagesToKeep);
+    const messagesToKeep = currentChat.messages.slice(
+      0,
+      lastUserMessageIndex + 1
+    );
+
+    // Update chat with removed assistant message
+    await createOrUpdateChat({
+      ...currentChat,
+      messages: messagesToKeep,
+      updatedAt: Date.now(),
+    });
 
     await processCompletion(messagesToKeep);
-  }, [messages, processCompletion]);
+  }, [currentChat, processCompletion, createOrUpdateChat]);
 
-  return (
-    <ChatContext.Provider
-      value={{
-        messages,
-        input,
-        setInput,
-        isLoading,
-        append: appendMessage,
-        stop,
-        reload,
-      }}
-    >
-      {children}
-    </ChatContext.Provider>
-  );
-}
-
-export function useChat() {
-  const context = useContext(ChatContext);
-  if (!context) {
-    throw new Error('useChat must be used within a ChatProvider');
-  }
-  return context;
+  return {
+    input,
+    setInput,
+    isLoading,
+    append: appendMessage,
+    stop,
+    reload,
+  };
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useChat } from '@/hooks/use-chat';
+import { useChatDB } from '@/hooks/use-chat-db';
 import { Message } from '@/types/chat';
 import { FormEvent, useRef, useEffect, RefObject } from 'react';
 import { ChatMessage } from './ChatMessage';
@@ -102,18 +103,11 @@ const MessageList = ({ messages }: MessageListProps) => (
 
 interface ChatUIProps {
   isLoading: boolean;
-  onFinish?: () => void;
 }
 
-export function ChatUI({ isLoading, onFinish }: ChatUIProps) {
-  const {
-    messages = [],
-    input,
-    setInput,
-    isLoading: streamLoading,
-    append,
-    stop,
-  } = useChat();
+export function ChatUI({ isLoading }: ChatUIProps) {
+  const { currentChat } = useChatDB();
+  const { input, setInput, isLoading: streamLoading, append, stop } = useChat();
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -135,9 +129,6 @@ export function ChatUI({ isLoading, onFinish }: ChatUIProps) {
 
     setInput('');
     await append(userMessage);
-
-    // After the chat response is received and saved
-    onFinish?.();
   };
 
   return (
@@ -146,10 +137,10 @@ export function ChatUI({ isLoading, onFinish }: ChatUIProps) {
         <div className="absolute inset-0 overflow-y-auto p-4">
           {isLoading ? (
             <LoadingSkeletons />
-          ) : messages.length === 0 ? (
+          ) : !currentChat?.messages?.length ? (
             <EmptyState />
           ) : (
-            <MessageList messages={messages} />
+            <MessageList messages={currentChat.messages} />
           )}
         </div>
       </div>

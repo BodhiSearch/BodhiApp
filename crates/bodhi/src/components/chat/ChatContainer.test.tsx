@@ -1,172 +1,118 @@
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, act, waitFor } from '@testing-library/react';
 import { ChatContainer } from './ChatContainer';
-import { useSearchParams, useRouter } from 'next/navigation';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createWrapper } from '@/tests/wrapper';
-import { Chat } from '@/types/chat';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { renderHook } from '@testing-library/react';
 
-// Consolidate all mocks
-const mockRouter = { push: vi.fn(), replace: vi.fn() };
-const mockGetChat = vi.fn();
-const mockToast = vi.fn();
+// Mock hooks
 const mockSetLocalStorage = vi.fn();
+const mockInitializeCurrentChatId = vi.fn();
 
-// Setup all mocks
+// Mock Next.js router
 vi.mock('next/navigation', () => ({
-  useSearchParams: vi.fn(),
-  useRouter: vi.fn(() => mockRouter)
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+  }),
+  useSearchParams: () => ({
+    get: vi.fn(),
+  }),
+}));
+
+vi.mock('@/hooks/useLocalStorage', () => ({
+  useLocalStorage: vi.fn(() => [true, mockSetLocalStorage]),
 }));
 
 vi.mock('@/hooks/use-chat-db', () => ({
   useChatDB: vi.fn(() => ({
-    getChat: mockGetChat,
-    createOrUpdateChat: vi.fn(),
-    deleteChat: vi.fn(),
-    clearChats: vi.fn(),
-    chats: []
+    initializeCurrentChatId: mockInitializeCurrentChatId,
   })),
-  ChatDBProvider: ({ children }: { children: React.ReactNode }) => children
 }));
 
-vi.mock('@/lib/utils', () => ({
-  nanoid: vi.fn(() => 'mock-id'),
-  cn: (...inputs: any) => inputs.filter(Boolean).join(' ')
+// Mock child components to avoid testing their implementation
+vi.mock('@/components/chat/ChatUI', () => ({
+  ChatUI: ({ isLoading }: { isLoading: boolean }) => <div data-testid="chat-ui" data-loading={isLoading.toString()} />,
 }));
 
-vi.mock('@/hooks/useLocalStorage', () => ({
-  useLocalStorage: vi.fn(() => [null, mockSetLocalStorage])
+vi.mock('@/components/chat/ChatHistory', () => ({
+  ChatHistory: () => <div data-testid="chat-history" />,
 }));
 
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: vi.fn(() => ({ toast: mockToast }))
+vi.mock('@/components/settings/SettingsSidebar', () => ({
+  SettingsSidebar: () => <div data-testid="settings-sidebar" />,
 }));
 
+// Mock MainLayout
 vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: { children: React.ReactNode }) => children
+  MainLayout: ({ children }: { children: React.ReactNode }) => <div data-testid="main-layout">{children}</div>,
 }));
 
-// Simplified wrapper
-const Wrapper = createWrapper();
+// Mock SidebarProvider
+vi.mock('@/components/ui/sidebar', () => ({
+  SidebarProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-provider">{children}</div>,
+  SidebarTrigger: () => <button data-testid="sidebar-trigger">Settings</button>,
+}));
+
+// Mock ChatSettingsProvider
+vi.mock('@/hooks/use-chat-settings', () => ({
+  ChatSettingsProvider: ({ children }: { children: React.ReactNode }) => <div data-testid="chat-settings-provider">{children}</div>,
+}));
 
 describe('ChatContainer', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
 
-    // Mock scrollIntoView
-    Element.prototype.scrollIntoView = vi.fn();
+  describe('Initialization', () => {
+    it('should initialize current chat ID on mount', async () => {
+      render(<ChatContainer />, { wrapper: createWrapper() });
 
-    // Mock matchMedia (often needed with scroll behavior)
-    Object.defineProperty(window, 'matchMedia', {
-      writable: true,
-      value: vi.fn().mockImplementation(query => ({
-        matches: false,
-        media: query,
-        onchange: null,
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-        dispatchEvent: vi.fn(),
-      })),
+      await waitFor(() => {
+        expect(mockInitializeCurrentChatId).toHaveBeenCalled();
+      });
+    });
+
+    it('should show loading state during initialization', async () => {
+      let resolveInitialize: () => void;
+      mockInitializeCurrentChatId.mockImplementation(
+        () => new Promise((resolve) => {
+          resolveInitialize = resolve as () => void;
+        })
+      );
+
+      const { getByTestId } = render(<ChatContainer />, {
+        wrapper: createWrapper(),
+      });
+
+      await act(async () => {
+        resolveInitialize!();
+      });
+      expect(getByTestId('chat-ui').getAttribute('data-loading')).toBe('false');
     });
   });
 
-  describe('New Chat Initialization', () => {
-    it('creates new chat when no id or current chat exists', async () => {
-      vi.mocked(useSearchParams).mockImplementation(() => ({
-        get: () => null
-      } as any));
-
-      await act(async () => {
-        render(<ChatContainer />, { wrapper: Wrapper });
-      });
-
-      expect(mockRouter.push).not.toHaveBeenCalled();
-      expect(screen.getByText('Welcome to Chat')).toBeInTheDocument();
-    });
-
-    it('redirects to existing chat URL if current chat has messages', async () => {
-      vi.mocked(useSearchParams).mockImplementation(() => ({
-        get: () => null
-      } as any));
-
-      const existingChat: Chat = {
-        id: 'existing-id',
-        title: 'Existing Chat',
-        messages: [{ role: 'user', content: 'test message' }],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      vi.mocked(useLocalStorage).mockReturnValue([existingChat, mockSetLocalStorage]);
-
-      await act(async () => {
-        render(<ChatContainer />, { wrapper: Wrapper });
-      });
-
-      expect(mockRouter.replace).toHaveBeenCalledWith('/ui/chat/?id=existing-id');
-    });
-  });
-
-  describe('Existing Chat Loading', () => {
-    it('loads existing chat when valid id is provided', async () => {
-      vi.mocked(useSearchParams).mockImplementation(() => ({
-        get: () => 'existing-chat-id'
-      } as any));
-
-      mockGetChat.mockResolvedValue({
-        status: 200,
-        data: {
-          id: 'existing-chat-id',
-          title: 'Existing Chat',
-          messages: [],
-          createdAt: Date.now(),
-          updatedAt: Date.now(),
-        }
-      });
-
-      await act(async () => {
-        render(<ChatContainer />, { wrapper: Wrapper });
-      });
-
-      expect(mockGetChat).toHaveBeenCalledWith('existing-chat-id');
-    });
-
-    it('shows error toast and redirects when chat not found', async () => {
-      vi.mocked(useSearchParams).mockImplementation(() => ({
-        get: () => 'non-existent-id'
-      } as any));
-
-      mockGetChat.mockResolvedValue({ status: 404 });
-
-      render(<ChatContainer />, { wrapper: Wrapper });
+  describe('Settings sidebar state', () => {
+    it('should persist settings sidebar state', async () => {
+      render(<ChatContainer />, { wrapper: createWrapper() });
 
       await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          variant: "destructive",
-          title: "Chat not found",
-          description: "The requested chat could not be found.",
-        });
-        expect(mockRouter.push).toHaveBeenCalledWith('/ui/chat');
+        expect(useLocalStorage).toHaveBeenCalledWith('settings-sidebar-state', true);
       });
     });
 
-    it('handles loading errors gracefully', async () => {
-      vi.mocked(useSearchParams).mockImplementation(() => ({
-        get: () => 'error-id'
-      } as any));
+    it('should handle settings sidebar state changes', async () => {
+      const { result } = renderHook(() => useLocalStorage('settings-sidebar-state', true));
+      const [, setSettingsOpen] = result.current;
 
-      mockGetChat.mockRejectedValue(new Error('Failed to load'));
+      render(<ChatContainer />, { wrapper: createWrapper() });
 
-      render(<ChatContainer />, { wrapper: Wrapper });
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith({
-          variant: "destructive",
-          title: "Error loading chat",
-          description: "Failed to load the requested chat. Please try again.",
-        });
-        expect(mockRouter.push).toHaveBeenCalledWith('/ui/chat');
+      await act(async () => {
+        setSettingsOpen(false);
       });
+
+      expect(mockSetLocalStorage).toHaveBeenCalledWith(false);
     });
   });
 });

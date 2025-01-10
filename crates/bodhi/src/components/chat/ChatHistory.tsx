@@ -8,20 +8,19 @@ import {
   SidebarMenuAction,
 } from '@/components/ui/sidebar';
 import { Trash2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
 
 export function ChatHistory() {
-  const { chats, deleteChat } = useChatDB();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const currentChatId = searchParams.get('id');
+  const { chats, deleteChat, currentChatId, setCurrentChatId } = useChatDB();
+
+  // Filter out empty chats
+  const nonEmptyChats = chats.filter((chat) => chat.messages.length > 0);
 
   return (
     <SidebarMenu>
-      {chats.map((chat) => (
+      {nonEmptyChats.map((chat) => (
         <SidebarMenuItem key={chat.id}>
           <SidebarMenuButton
-            onClick={() => router.push(`/ui/chat/?id=${chat.id}`)}
+            onClick={() => setCurrentChatId(chat.id)}
             isActive={chat.id === currentChatId}
           >
             {chat.title || 'Untitled Chat'}
