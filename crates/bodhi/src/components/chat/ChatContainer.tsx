@@ -7,12 +7,10 @@ import { useChatDB } from '@/hooks/use-chat-db';
 import { nanoid } from '@/lib/utils';
 import { Chat } from '@/types/chat';
 import { Settings2 } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChatProvider } from '@/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ChatHistory } from './ChatHistory';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
@@ -31,59 +29,18 @@ export function ChatContainer() {
     CURRENT_CHAT_KEY,
     null
   );
-  const searchParams = useSearchParams();
-  const router = useRouter();
   const { getChat } = useChatDB();
   const [isLoading, setIsLoading] = useState(true);
-  const { toast } = useToast();
 
   useEffect(() => {
     const initializeChat = async () => {
-      const id = searchParams.get('id');
-
-      // Case 1: URL has an ID
-      if (id) {
-        try {
-          const { data, status } = await getChat(id);
-
-          if (status === 200) {
-            setCurrentChat(data);
-            setIsLoading(false);
-            return;
-          }
-
-          // Show error toast and redirect
-          toast({
-            variant: 'destructive',
-            title: 'Chat not found',
-            description: 'The requested chat could not be found.',
-          });
-          router.push('/ui/chat');
-          return;
-        } catch (err) {
-          // Show error toast and redirect
-          toast({
-            variant: 'destructive',
-            title: 'Error loading chat',
-            description: 'Failed to load the requested chat. Please try again.',
-          });
-          router.push('/ui/chat');
-          return;
-        }
-      }
-
-      // Case 2: No ID in URL - Check current chat
+      // If there's a current chat with messages, just use it
       if (currentChat) {
-        if (currentChat.messages?.length > 0) {
-          router.replace(`/ui/chat/?id=${currentChat.id}`);
-          return;
-        }
-
         setIsLoading(false);
         return;
       }
 
-      // Case 3: Create new chat
+      // Create new chat if none exists
       const newChat: Chat = {
         id: nanoid(),
         title: 'New Chat',
@@ -97,19 +54,12 @@ export function ChatContainer() {
     };
 
     initializeChat();
-  }, [searchParams, router, getChat, currentChat, setCurrentChat, toast]);
-
-  const handleChatFinish = () => {
-    const id = searchParams.get('id');
-    // Only update URL if we don't already have an ID and there's a current chat
-    if (!id && currentChat) {
-      router.push(`/ui/chat/?id=${currentChat.id}`);
-    }
-  };
+  }, [currentChat, setCurrentChat]);
 
   if (isLoading) {
     return null;
   }
+
   return (
     <MainLayout 
       sidebarContent={
@@ -139,7 +89,7 @@ export function ChatContainer() {
             )}
           >
             <ChatProvider chat={currentChat!}>
-              <ChatUI isLoading={isLoading} onFinish={handleChatFinish} />
+              <ChatUI isLoading={isLoading} />
             </ChatProvider>
           </div>
           <div
