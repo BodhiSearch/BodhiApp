@@ -54,7 +54,7 @@ pub struct Message {
 pub enum DownloadStatus {
   Pending,
   Completed,
-  Error(String),
+  Error,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -63,6 +63,7 @@ pub struct DownloadRequest {
   pub repo: String,
   pub filename: String,
   pub status: DownloadStatus,
+  pub error: Option<String>,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
 }
@@ -74,6 +75,7 @@ impl DownloadRequest {
       repo,
       filename,
       status: DownloadStatus::Pending,
+      error: None,
       created_at: Utc::now(),
       updated_at: Utc::now(),
     }
