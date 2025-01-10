@@ -4,11 +4,8 @@ import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useChatDB } from '@/hooks/use-chat-db';
-import { nanoid } from '@/lib/utils';
-import { Chat } from '@/types/chat';
 import { Settings2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ChatProvider } from '@/hooks/use-chat';
 import { ChatUI } from '@/components/chat/ChatUI';
 import { cn } from '@/lib/utils';
 import { MainLayout } from '@/components/layout/MainLayout';
@@ -16,7 +13,6 @@ import { ChatHistory } from './ChatHistory';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { NewChatButton } from './NewChatButton';
 import { Separator } from '@/components/ui/separator';
-import { CURRENT_CHAT_KEY } from '@/lib/constants';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
 
@@ -25,43 +21,24 @@ export function ChatContainer() {
     SETTINGS_SIDEBAR_KEY,
     true
   );
-  const [currentChat, setCurrentChat] = useLocalStorage<Chat | null>(
-    CURRENT_CHAT_KEY,
-    null
-  );
-  const { getChat } = useChatDB();
+  const { initializeCurrentChatId } = useChatDB();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initializeChat = async () => {
-      // If there's a current chat with messages, just use it
-      if (currentChat) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Create new chat if none exists
-      const newChat: Chat = {
-        id: nanoid(),
-        title: 'New Chat',
-        messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      };
-
-      setCurrentChat(newChat);
+    const initialize = async () => {
+      await initializeCurrentChatId();
       setIsLoading(false);
     };
 
-    initializeChat();
-  }, [currentChat, setCurrentChat]);
+    initialize();
+  }, [initializeCurrentChatId]);
 
   if (isLoading) {
     return null;
   }
 
   return (
-    <MainLayout 
+    <MainLayout
       sidebarContent={
         <div className="flex flex-col h-full">
           <div className="p-2">
@@ -88,9 +65,7 @@ export function ChatContainer() {
               settingsOpen && 'mr-64'
             )}
           >
-            <ChatProvider chat={currentChat!}>
-              <ChatUI isLoading={isLoading} />
-            </ChatProvider>
+            <ChatUI isLoading={isLoading} />
           </div>
           <div
             className={cn(

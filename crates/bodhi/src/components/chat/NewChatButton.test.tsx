@@ -3,20 +3,12 @@ import { NewChatButton } from './NewChatButton';
 import { vi } from 'vitest';
 import { SidebarProvider } from '@/components/ui/sidebar';
 
-const mockReplace = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    replace: mockReplace,
+// Mock hooks
+const mockCreateNewChat = vi.fn();
+vi.mock('@/hooks/use-chat-db', () => ({
+  useChatDB: () => ({
+    createNewChat: mockCreateNewChat,
   }),
-  useSearchParams: () => ({
-    get: () => null,
-  }),
-}));
-
-const mockSetItem = vi.fn();
-let mockCurrentChat: any = null;
-vi.mock('@/hooks/useLocalStorage', () => ({
-  useLocalStorage: () => [mockCurrentChat, mockSetItem],
 }));
 
 // Test wrapper component
@@ -31,7 +23,6 @@ const renderWithSidebar = (component: React.ReactNode) => {
 describe('NewChatButton', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockCurrentChat = null;
   });
 
   it('renders the button with icon and text', () => {
@@ -41,35 +32,12 @@ describe('NewChatButton', () => {
     expect(button).toHaveTextContent('New Chat');
   });
 
-  it('does nothing when current chat is null', () => {
+  it('calls createNewChat when clicked', () => {
     renderWithSidebar(<NewChatButton />);
     const button = screen.getByTestId('new-chat-button');
     
     fireEvent.click(button);
     
-    expect(mockSetItem).not.toHaveBeenCalled();
-    expect(mockReplace).not.toHaveBeenCalled();
-  });
-
-  it('does nothing when current chat has no messages', () => {
-    mockCurrentChat = { id: '1', messages: [] };
-    renderWithSidebar(<NewChatButton />);
-    const button = screen.getByTestId('new-chat-button');
-    
-    fireEvent.click(button);
-    
-    expect(mockSetItem).not.toHaveBeenCalled();
-    expect(mockReplace).not.toHaveBeenCalled();
-  });
-
-  it('creates new chat when current chat has messages', () => {
-    mockCurrentChat = { id: '1', messages: [{ id: '1', content: 'test' }] };
-    renderWithSidebar(<NewChatButton />);
-    const button = screen.getByTestId('new-chat-button');
-    
-    fireEvent.click(button);
-    
-    expect(mockSetItem).toHaveBeenCalledWith(null);
-    expect(mockReplace).toHaveBeenCalledWith('/ui/chat');
+    expect(mockCreateNewChat).toHaveBeenCalled();
   });
 }); 
