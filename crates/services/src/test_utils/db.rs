@@ -152,12 +152,12 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("update_download_request"))
   }
 
-  async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
+  async fn list_all_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
     self
       .inner
-      .list_pending_downloads()
+      .list_all_downloads()
       .await
-      .tap(|_| self.notify("list_pending_downloads"))
+      .tap(|_| self.notify("list_all_downloads"))
   }
 
   async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError> {

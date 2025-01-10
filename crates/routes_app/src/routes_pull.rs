@@ -84,7 +84,7 @@ async fn list_downloads_handler(
   let downloads = state
     .app_service()
     .db_service()
-    .list_pending_downloads()
+    .list_all_downloads()
     .await?;
 
   // Calculate pagination
@@ -125,8 +125,11 @@ async fn pull_by_repo_file_handler(
   let pending_downloads = state
     .app_service()
     .db_service()
-    .list_pending_downloads()
-    .await?;
+    .list_all_downloads()
+    .await?
+    .into_iter()
+    .filter(|r| r.status == DownloadStatus::Pending)
+    .collect::<Vec<_>>();
 
   if let Some(existing_request) = pending_downloads
     .into_iter()
@@ -187,8 +190,11 @@ async fn pull_by_alias_handler(
   let pending_downloads = state
     .app_service()
     .db_service()
-    .list_pending_downloads()
-    .await?;
+    .list_all_downloads()
+    .await?
+    .into_iter()
+    .filter(|r| r.status == DownloadStatus::Pending)
+    .collect::<Vec<_>>();
 
   if let Some(existing_request) = pending_downloads
     .into_iter()
@@ -243,10 +249,15 @@ async fn update_download_status(
     .expect("Failed to get download request")
     .expect("Download request not found");
 
-  download_request.status = match result {
-    Ok(_) => DownloadStatus::Completed,
-    Err(e) => DownloadStatus::Error(e.to_string()),
+  let (status, error) = match result {
+    Ok(_) => (DownloadStatus::Completed, None),
+    Err(e) => {
+      let api_error: ApiError = e.into();
+      (DownloadStatus::Error, Some(api_error.to_string()))
+    }
   };
+  download_request.status = status;
+  download_request.error = error;
   download_request.updated_at = Utc::now();
 
   app_service
@@ -663,15 +674,25 @@ mod tests {
     db_service: TestDbService,
     #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
-    // Create some test downloads
+    // Create test downloads with different statuses
     let download1 =
       DownloadRequest::new_pending("test/repo1".to_string(), "file1.gguf".to_string());
-    let download2 =
+    let mut download2 =
       DownloadRequest::new_pending("test/repo2".to_string(), "file2.gguf".to_string());
+    let mut download3 =
+      DownloadRequest::new_pending("test/repo3".to_string(), "file3.gguf".to_string());
 
     let db_service = Arc::new(db_service);
     db_service.create_download_request(&download1).await?;
     db_service.create_download_request(&download2).await?;
+    db_service.create_download_request(&download3).await?;
+
+    // Update status of download2 to completed and download3 to error
+    download2.status = DownloadStatus::Completed;
+    download3.status = DownloadStatus::Error;
+    download3.error = Some("test error".to_string());
+    db_service.update_download_request(&download2).await?;
+    db_service.update_download_request(&download3).await?;
 
     let app_service = app_service_stub_builder.db_service(db_service).build()?;
 
@@ -690,20 +711,27 @@ mod tests {
     assert_eq!(response.status(), StatusCode::OK);
 
     let body = response.json::<ListDownloadsResponse>().await?;
-    assert_eq!(body.data.len(), 2);
-    assert_eq!(body.total, 2);
+    assert_eq!(body.data.len(), 3);
+    assert_eq!(body.total, 3);
     assert_eq!(body.page, 1);
     assert_eq!(body.page_size, 10);
 
-    // Verify download details
+    // Verify download details - should be sorted by updated_at DESC
     let downloads = body.data;
-    assert_eq!(downloads[0].repo, "test/repo1");
-    assert_eq!(downloads[0].filename, "file1.gguf");
-    assert_eq!(downloads[0].status, DownloadStatus::Pending);
+    assert_eq!(downloads[2].repo, "test/repo3");
+    assert_eq!(downloads[2].filename, "file3.gguf");
+    assert_eq!(downloads[2].status, DownloadStatus::Error);
+    assert_eq!(downloads[2].error, Some("test error".to_string()));
 
     assert_eq!(downloads[1].repo, "test/repo2");
     assert_eq!(downloads[1].filename, "file2.gguf");
-    assert_eq!(downloads[1].status, DownloadStatus::Pending);
+    assert_eq!(downloads[1].status, DownloadStatus::Completed);
+    assert_eq!(downloads[1].error, None);
+
+    assert_eq!(downloads[0].repo, "test/repo1");
+    assert_eq!(downloads[0].filename, "file1.gguf");
+    assert_eq!(downloads[0].status, DownloadStatus::Pending);
+    assert_eq!(downloads[0].error, None);
 
     Ok(())
   }

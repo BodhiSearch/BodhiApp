@@ -12,6 +12,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import PullPage from './page';
 
 vi.mock('@/components/layout/MainLayout', () => ({
@@ -35,21 +36,30 @@ const mockDownloadsResponse = {
   data: [
     {
       id: '1',
-      repo: 'test/repo',
-      filename: 'model.gguf',
+      repo: 'test/repo1',
+      filename: 'model1.gguf',
       status: 'pending',
+      error: null,
       updated_at: '2024-01-01T00:00:00Z',
     },
     {
       id: '2',
       repo: 'test/repo2',
       filename: 'model2.gguf',
+      status: 'completed',
+      error: null,
+      updated_at: '2024-01-01T00:00:00Z',
+    },
+    {
+      id: '3',
+      repo: 'test/repo3',
+      filename: 'model3.gguf',
       status: 'error',
-      error_message: 'Download failed',
+      error: 'Download failed',
       updated_at: '2024-01-01T00:00:00Z',
     },
   ],
-  total: 2,
+  total: 3,
   page: 1,
   page_size: 30,
 };
@@ -79,7 +89,9 @@ describe('PullPage', () => {
     );
   });
 
-  it('renders pull form and downloads table', async () => {
+  it('renders pull form and downloads table with error details in expanded row', async () => {
+    const user = userEvent.setup();
+
     await act(async () => {
       render(<PullPage />, { wrapper: createWrapper() });
     });
@@ -87,13 +99,35 @@ describe('PullPage', () => {
     // Check form is rendered
     expect(screen.getByTestId('pull-form')).toBeInTheDocument();
 
-    // Check table data
-    expect(screen.getByText('test/repo')).toBeInTheDocument();
-    expect(screen.getByText('model.gguf')).toBeInTheDocument();
+    // Check pending download
+    expect(screen.getByText('test/repo1')).toBeInTheDocument();
+    expect(screen.getByText('model1.gguf')).toBeInTheDocument();
     expect(screen.getByText('pending')).toBeInTheDocument();
+
+    // Check completed download
     expect(screen.getByText('test/repo2')).toBeInTheDocument();
     expect(screen.getByText('model2.gguf')).toBeInTheDocument();
+    expect(screen.getByText('completed')).toBeInTheDocument();
+
+    // Check error download
+    expect(screen.getByText('test/repo3')).toBeInTheDocument();
+    expect(screen.getByText('model3.gguf')).toBeInTheDocument();
     expect(screen.getByText('error')).toBeInTheDocument();
+
+    // Error message should not be visible initially
+    expect(screen.queryByText('Error:')).not.toBeInTheDocument();
+    expect(screen.queryByText('Download failed')).not.toBeInTheDocument();
+
+    // Find and click the expand button for the error row
+    const rows = screen.getAllByRole('row');
+    const errorRow = rows.find(row => row.textContent?.includes('test/repo3'));
+    const expandButton = errorRow?.querySelector('button');
+    expect(expandButton).toBeInTheDocument();
+    await user.click(expandButton!);
+
+    // Now error message should be visible
+    expect(screen.getByText('Error:')).toBeInTheDocument();
+    expect(screen.getByText('Download failed')).toBeInTheDocument();
   });
 
   it('handles API error', async () => {

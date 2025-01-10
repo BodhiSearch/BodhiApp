@@ -3,7 +3,7 @@ export interface DownloadRequest {
   repo: string;
   filename: string;
   status: 'pending' | 'completed' | 'error';
-  error_message?: string;
+  error?: string;
   updated_at: string;
 }
 

@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS download_requests (
     repo TEXT NOT NULL,
     filename TEXT NOT NULL,
     status TEXT NOT NULL,
+    error TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );

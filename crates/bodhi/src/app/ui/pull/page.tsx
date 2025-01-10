@@ -64,10 +64,10 @@ function PullPageContent() {
 
   const renderExpandedRow = (download: DownloadRequest) => (
     <div className="p-4 bg-gray-50">
-      {download.error_message && (
+      {download.status === 'error' && download.error && (
         <>
-          <h4 className="font-semibold">Error Details:</h4>
-          <p className="text-red-600">{download.error_message}</p>
+          <h4 className="font-semibold">Error:</h4>
+          <p className="text-red-600">{download.error}</p>
         </>
       )}
     </div>

@@ -84,6 +84,11 @@ const pages: Page[] = [
     url: '/ui/modelfiles',
     iconName: 'file',
   },
+  {
+    title: 'Download Models',
+    url: '/ui/pull',
+    iconName: 'file',
+  },
 ];
 
 export default function RootLayout({

@@ -80,7 +80,7 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
 
-  async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError>;
+  async fn list_all_downloads(&self) -> Result<Vec<DownloadRequest>, DbError>;
 
   async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError>;
 
@@ -247,13 +247,14 @@ impl DbService for SqliteDbService {
 
   async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
     sqlx::query(
-      "INSERT INTO download_requests (id, repo, filename, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO download_requests (id, repo, filename, status, error, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&request.id)
     .bind(&request.repo)
     .bind(&request.filename)
     .bind(request.status.to_string())
+    .bind(&request.error)
     .bind(request.created_at.timestamp())
     .bind(request.updated_at.timestamp())
     .execute(&self.pool)
@@ -262,15 +263,15 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {
-    let result = query_as::<_, (String, String, String, String, i64, i64)>(
-      "SELECT id, repo, filename, status, created_at, updated_at FROM download_requests WHERE id = ?",
+    let result = query_as::<_, (String, String, String, String, Option<String>, i64, i64)>(
+      "SELECT id, repo, filename, status, error, created_at, updated_at FROM download_requests WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
     match result {
-      Some((id, repo, filename, status, created_at, updated_at)) => {
+      Some((id, repo, filename, status, error, created_at, updated_at)) => {
         let Ok(status) = DownloadStatus::from_str(&status) else {
           tracing::warn!("unknown download status: {status} for id: {id}");
           return Ok(None);
@@ -281,6 +282,7 @@ impl DbService for SqliteDbService {
           repo,
           filename,
           status,
+          error,
           created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
           updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
         }))
@@ -290,8 +292,9 @@ impl DbService for SqliteDbService {
   }
 
   async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
-    sqlx::query("UPDATE download_requests SET status = ?, updated_at = ? WHERE id = ?")
+    sqlx::query("UPDATE download_requests SET status = ?, error = ?, updated_at = ? WHERE id = ?")
       .bind(request.status.to_string())
+      .bind(&request.error)
       .bind(request.updated_at.timestamp())
       .bind(&request.id)
       .execute(&self.pool)
@@ -299,23 +302,23 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
-  async fn list_pending_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
-    let results = query_as::<_, (String, String, String, String, i64, i64)>(
-      "SELECT id, repo, filename, status, created_at, updated_at FROM download_requests WHERE status = ?",
+  async fn list_all_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
+    let results = query_as::<_, (String, String, String, String, Option<String>, i64, i64)>(
+      "SELECT id, repo, filename, status, error, created_at, updated_at FROM download_requests ORDER BY updated_at DESC",
     )
-    .bind(DownloadStatus::Pending.to_string())
     .fetch_all(&self.pool)
     .await?;
 
     let results = results
       .into_iter()
-      .filter_map(|(id, repo, filename, status, created_at, updated_at)| {
+      .filter_map(|(id, repo, filename, status, error, created_at, updated_at)| {
         let status = DownloadStatus::from_str(&status).ok()?;
         Some(DownloadRequest {
           id,
           repo,
           filename,
           status,
+          error,
           created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
           updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
         })
@@ -618,6 +621,7 @@ mod test {
       repo: "test/repo".to_string(),
       filename: "test_file.gguf".to_string(),
       status: DownloadStatus::Pending,
+      error: None,
       created_at: now,
       updated_at: now,
     };
@@ -643,6 +647,7 @@ mod test {
       repo: "test/repo".to_string(),
       filename: "test_file.gguf".to_string(),
       status: DownloadStatus::Pending,
+      error: None,
       created_at: now,
       updated_at: now,
     };
@@ -659,46 +664,12 @@ mod test {
         repo: "test/repo".to_string(),
         filename: "test_file.gguf".to_string(),
         status: DownloadStatus::Completed,
+        error: None,
         created_at: now,
         updated_at: now + chrono::Duration::hours(1),
       },
       fetched
     );
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_db_service_list_pending_downloads(
-    #[future]
-    #[from(test_db_service)]
-    service: TestDbService,
-  ) -> anyhow::Result<()> {
-    let now = service.now();
-    let pending_request = DownloadRequest {
-      id: Uuid::new_v4().to_string(),
-      repo: "test/repo1".to_string(),
-      filename: "test_file1.gguf".to_string(),
-      status: DownloadStatus::Pending,
-      created_at: now,
-      updated_at: now,
-    };
-    let completed_request = DownloadRequest {
-      id: Uuid::new_v4().to_string(),
-      repo: "test/repo2".to_string(),
-      filename: "test_file2.gguf".to_string(),
-      status: DownloadStatus::Completed,
-      created_at: now,
-      updated_at: now,
-    };
-
-    service.create_download_request(&pending_request).await?;
-    service.create_download_request(&completed_request).await?;
-
-    let pending_downloads = service.list_pending_downloads().await?;
-    assert_eq!(1, pending_downloads.len());
-    assert_eq!(pending_request, pending_downloads[0]);
     Ok(())
   }
 
@@ -758,9 +729,9 @@ mod test {
       service.insert_pending_request(email.clone()).await?;
     }
     let page1 = service.list_pending_requests(1, 2).await?;
-    assert_eq!(page1.len(), 2);
+    assert_eq!(2, page1.len());
     let page2 = service.list_pending_requests(2, 2).await?;
-    assert_eq!(page2.len(), 1);
+    assert_eq!(1, page2.len());
     for (i, request) in page1.iter().chain(page2.iter()).enumerate() {
       let expected_request = AccessRequest {
         id: request.id,
