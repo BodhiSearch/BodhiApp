@@ -16,9 +16,11 @@ import { useToast } from '@/hooks/use-toast';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { ChatHistory } from './ChatHistory';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
+import { NewChatButton } from './NewChatButton';
+import { Separator } from '@/components/ui/separator';
+import { CURRENT_CHAT_KEY } from '@/lib/constants';
 
 const SETTINGS_SIDEBAR_KEY = 'settings-sidebar-state';
-const CURRENT_CHAT_KEY = 'current-chat';
 
 export function ChatContainer() {
   const [settingsOpen, setSettingsOpen] = useLocalStorage(
@@ -109,7 +111,19 @@ export function ChatContainer() {
     return null;
   }
   return (
-    <MainLayout sidebarContent={<ChatHistory />}>
+    <MainLayout 
+      sidebarContent={
+        <div className="flex flex-col h-full">
+          <div className="p-2">
+            <NewChatButton />
+          </div>
+          <Separator className="my-2" />
+          <div className="flex-1 overflow-auto">
+            <ChatHistory />
+          </div>
+        </div>
+      }
+    >
       <ChatSettingsProvider>
         <SidebarProvider
           inner
