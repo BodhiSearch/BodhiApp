@@ -1,6 +1,3 @@
-[submodule "vercel-ai"]
-	path = vercel-ai
-	url = git@github.com:BodhiSearch/ai.git
 [submodule "crates/llama_server_proc/llama.cpp"]
 	path = crates/llama_server_proc/llama.cpp
 	url = git@github.com:BodhiSearch/llama.cpp.git
