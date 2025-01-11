@@ -22,21 +22,21 @@ export function ChatHistory() {
           <SidebarMenuButton
             onClick={() => setCurrentChatId(chat.id)}
             isActive={chat.id === currentChatId}
-            className="w-full justify-between"
+            className="flex-1"
             tooltip={chat.title || 'Untitled Chat'}
           >
             <span className="truncate">{chat.title || 'Untitled Chat'}</span>
-            <SidebarMenuAction
-              data-testid={`delete-chat-${chat.id}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteChat(chat.id);
-              }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Trash2 className="h-4 w-4" />
-            </SidebarMenuAction>
           </SidebarMenuButton>
+          <SidebarMenuAction
+            data-testid={`delete-chat-${chat.id}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteChat(chat.id);
+            }}
+            className="ml-2 opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
+          >
+            <Trash2 className="h-4 w-4" />
+          </SidebarMenuAction>
         </SidebarMenuItem>
       ))}
     </SidebarMenu>
