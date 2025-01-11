@@ -34,15 +34,10 @@ ci.build:
 		cargo tauri build --ci --config '{\"tauri\": {\"updater\": {\"active\": false}}}'; \
 	}"
 
-ci.setup-vercel-ai:
-	pwsh -Command "Push-Location vercel-ai; pnpm recursive install --frozen-lockfile; \
-	Push-Location packages/core; pnpm install --frozen-lockfile; Pop-Location; \
-	pnpm run build --filter=ai...; Pop-Location"
-
 ci.app-pnpm:
 	pwsh -Command "Push-Location crates/bodhi; pnpm install; Pop-Location"
 
 ci.ui:
 	pwsh -Command "Push-Location crates/bodhi; pnpm run test run --coverage; Pop-Location"
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.app-pnpm ci.ui
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui
