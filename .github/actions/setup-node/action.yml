@@ -36,16 +36,6 @@ runs:
         restore-keys: |
           ${{ runner.os }}-pnpm-store-
 
-    - name: Setup Vercel AI (Windows)
-      if: inputs.platform == 'windows-latest'
-      shell: pwsh
-      run: make -f Makefile.win.mk ci.setup-vercel-ai
-
-    - name: Setup Vercel AI (Unix)
-      if: inputs.platform != 'windows-latest'
-      shell: bash
-      run: make ci.setup-vercel-ai
-
     - name: Install app pnpm dependencies (Windows)
       if: inputs.platform == 'windows-latest'
       shell: pwsh

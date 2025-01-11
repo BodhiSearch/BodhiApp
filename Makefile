@@ -33,15 +33,10 @@ ci.build:
 	cd crates/bodhi/src-tauri && \
 	cargo tauri build $${TARGET:+--target $${TARGET}} --ci --config '{"tauri": {"updater": {"active": false}}}'
 
-ci.setup-vercel-ai:
-	cd vercel-ai && pnpm recursive install --frozen-lockfile
-	cd vercel-ai/packages/core && pnpm install --frozen-lockfile
-	cd vercel-ai && pnpm run build --filter=ai...
-
 ci.app-pnpm:
 	cd crates/bodhi && pnpm install
 
 ci.ui:
 	cd crates/bodhi && pnpm run test run --coverage
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.setup-vercel-ai ci.ui
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.ui
