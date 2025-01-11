@@ -10,10 +10,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuGroup,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuPortal,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -32,7 +30,7 @@ export function AppNavigation() {
     <div
       className={cn(
         'flex items-center p-2',
-        !isMobile && 'w-64' // Set width to 256px only for desktop
+        !isMobile && 'w-64'
       )}
     >
       <DropdownMenu>
@@ -70,70 +68,60 @@ export function AppNavigation() {
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-64" align="start">
           <DropdownMenuGroup>
-            {navigationItems.map((item) => {
-              if (item.items) {
-                return (
-                  <DropdownMenuSub key={item.title}>
-                    <DropdownMenuSubTrigger
+            {navigationItems.map((item) => (
+              <React.Fragment key={item.title}>
+                {item.items ? (
+                  <>
+                    <DropdownMenuLabel 
+                      className="flex items-center gap-2 px-2 py-1.5"
+                    >
+                      {item.icon && <item.icon className="h-4 w-4" />}
+                      <span className="font-medium">{item.title}</span>
+                    </DropdownMenuLabel>
+                    {item.items.map((subItem) => (
+                      <Link key={subItem.title} href={subItem.href || '#'}>
+                        <DropdownMenuItem
+                          className={cn(
+                            'flex items-center gap-2 cursor-pointer pl-8',
+                            isSelected(subItem) && 'bg-accent'
+                          )}
+                        >
+                          {subItem.icon && <subItem.icon className="h-4 w-4" />}
+                          <div className="flex flex-col gap-1">
+                            <span>{subItem.title}</span>
+                            {subItem.description && (
+                              <span className="text-xs text-muted-foreground">
+                                {subItem.description}
+                              </span>
+                            )}
+                          </div>
+                        </DropdownMenuItem>
+                      </Link>
+                    ))}
+                    <DropdownMenuSeparator />
+                  </>
+                ) : (
+                  <Link href={item.href || '#'}>
+                    <DropdownMenuItem
                       className={cn(
-                        'flex items-center gap-2',
+                        'flex items-center gap-2 cursor-pointer',
                         isSelected(item) && 'bg-accent'
                       )}
                     >
                       {item.icon && <item.icon className="h-4 w-4" />}
-                      <span>{item.title}</span>
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {item.items.map((subItem) => (
-                          <Link key={subItem.title} href={subItem.href || '#'}>
-                            <DropdownMenuItem
-                              className={cn(
-                                'flex items-center gap-2 cursor-pointer',
-                                isSelected(subItem) && 'bg-accent'
-                              )}
-                            >
-                              {subItem.icon && (
-                                <subItem.icon className="h-4 w-4" />
-                              )}
-                              <div className="flex flex-col gap-1">
-                                <span>{subItem.title}</span>
-                                {subItem.description && (
-                                  <span className="text-xs text-muted-foreground">
-                                    {subItem.description}
-                                  </span>
-                                )}
-                              </div>
-                            </DropdownMenuItem>
-                          </Link>
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                );
-              }
-
-              return (
-                <Link key={item.title} href={item.href || '#'}>
-                  <DropdownMenuItem
-                    className={cn(
-                      'flex items-center gap-2 cursor-pointer',
-                      isSelected(item) && 'bg-accent'
-                    )}
-                  >
-                    {item.icon && <item.icon className="h-4 w-4" />}
-                    <div className="flex flex-col gap-1">
-                      <span>{item.title}</span>
-                      {item.description && (
-                        <span className="text-xs text-muted-foreground">
-                          {item.description}
-                        </span>
-                      )}
-                    </div>
-                  </DropdownMenuItem>
-                </Link>
-              );
-            })}
+                      <div className="flex flex-col gap-1">
+                        <span>{item.title}</span>
+                        {item.description && (
+                          <span className="text-xs text-muted-foreground">
+                            {item.description}
+                          </span>
+                        )}
+                      </div>
+                    </DropdownMenuItem>
+                  </Link>
+                )}
+              </React.Fragment>
+            ))}
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
