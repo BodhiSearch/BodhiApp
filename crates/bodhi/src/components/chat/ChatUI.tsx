@@ -7,7 +7,6 @@ import { FormEvent, useRef, useEffect, RefObject } from 'react';
 import { ChatMessage } from './ChatMessage';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 
 // Extracted components outside the main component
@@ -26,8 +25,8 @@ const LoadingSkeletons = () => (
 );
 
 const EmptyState = () => (
-  <div className="flex h-full items-center justify-center text-center">
-    <div className="space-y-4">
+  <div className="flex-1 flex items-center justify-center">
+    <div className="space-y-4 text-center">
       <h3 className="text-lg font-semibold">Welcome to Chat</h3>
       <p className="text-muted-foreground">
         Start a conversation by typing a message below.
@@ -53,16 +52,15 @@ const ChatInput = ({
   stop,
   inputRef,
 }: ChatInputProps) => (
-  <form onSubmit={handleSubmit} className="border-t p-4">
-    <div className="flex gap-2 max-w-2xl mx-auto">
-      <Textarea
+  <div className="sticky bottom-0 border-t bg-background">
+    <form onSubmit={handleSubmit} className="flex gap-2 max-w-2xl mx-auto p-4">
+      <textarea
         ref={inputRef}
+        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm flex-1 min-h-[44px] resize-none"
         rows={1}
+        placeholder="Type your message..."
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Type your message..."
-        className="flex-1 min-h-[44px] resize-none"
-        disabled={streamLoading}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -73,8 +71,8 @@ const ChatInput = ({
       <div className="flex gap-2">
         <Button
           type="submit"
-          disabled={streamLoading || !input.trim()}
-          variant="default"
+          disabled={!input.trim() || streamLoading}
+          onClick={handleSubmit}
         >
           Send
         </Button>
@@ -84,8 +82,8 @@ const ChatInput = ({
           </Button>
         )}
       </div>
-    </div>
-  </form>
+    </form>
+  </div>
 );
 
 interface MessageListProps {
@@ -132,29 +130,28 @@ export function ChatUI({ isLoading }: ChatUIProps) {
   };
 
   return (
-    <div data-testid="chat-ui" className="flex flex-col h-full">
-      <div className="flex-1 min-h-0 relative">
-        <div className="absolute inset-0 overflow-y-auto p-4">
-          {isLoading ? (
-            <LoadingSkeletons />
-          ) : !currentChat?.messages?.length ? (
-            <EmptyState />
-          ) : (
-            <MessageList messages={currentChat.messages} />
-          )}
+    <div data-testid="chat-ui" className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 overflow-hidden relative">
+        <div className="absolute inset-0 overflow-y-auto">
+          <div className="p-4">
+            {isLoading ? (
+              <LoadingSkeletons />
+            ) : !currentChat?.messages?.length ? (
+              <EmptyState />
+            ) : (
+              <MessageList messages={currentChat.messages} />
+            )}
+          </div>
         </div>
       </div>
-
-      <div className="flex-none border-t bg-background">
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          handleSubmit={handleSubmit}
-          streamLoading={streamLoading}
-          stop={stop}
-          inputRef={inputRef}
-        />
-      </div>
+      <ChatInput
+        input={input}
+        setInput={setInput}
+        handleSubmit={handleSubmit}
+        streamLoading={streamLoading}
+        stop={stop}
+        inputRef={inputRef}
+      />
     </div>
   );
 }

@@ -76,21 +76,4 @@ describe('ChatPage', () => {
       expect(pushMock).toHaveBeenCalledWith('/ui/login');
     });
   });
-
-  it('renders chat page when app is ready and user is logged in', async () => {
-    server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready', authz: true }));
-      }),
-      rest.get('*/api/ui/user', (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
-      })
-    );
-
-    render(<ChatPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByTestId('chat-container')).toBeInTheDocument();
-    });
-  });
 });

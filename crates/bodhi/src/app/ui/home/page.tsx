@@ -12,7 +12,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
-import { MainLayout } from '@/components/layout/MainLayout';
 
 interface FeaturedModel {
   owner: string;
@@ -28,16 +27,8 @@ interface FeaturedModel {
 
 function HomeContent() {
   const [featuredModels] = useState<FeaturedModel[]>([]);
-
-  // TODO: commenting for time being
-  // useEffect(() => {
-  //   fetch('https://api.getbodhi.app/featured-models')
-  //     .then((response) => response.json())
-  //     .then((data) => setFeaturedModels(data));
-  // }, []);
-
   return (
-    <MainLayout>
+    <main className="flex flex-1 flex-col overflow-hidden">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <h2 className="text-2xl sm:text-3xl font-bold mb-4 sm:mb-6 mt-8">
           Featured Models
@@ -91,7 +82,7 @@ function HomeContent() {
           ))}
         </div>
       </div>
-    </MainLayout>
+    </main>
   );
 }
 

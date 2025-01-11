@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
-import { MainLayout } from '@/components/layout/MainLayout';
 
 const columns = [
   { id: 'alias', name: 'Name', sorted: true },
@@ -106,34 +105,32 @@ function ModelsPageContent() {
   }
 
   return (
-    <MainLayout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <DataTable
-          data={data?.data || []}
-          columns={columns}
-          loading={isLoading}
-          sort={sort}
-          onSortChange={toggleSort}
-          renderRow={renderRow}
-          renderExpandedRow={renderExpandedRow}
-          getItemId={getItemId}
-        />
-        <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
-          <div className="mb-2 sm:mb-0">
-            Displaying {data?.data.length || 0} items of {data?.total || 0}
-          </div>
-          <Pagination
-            page={page}
-            totalPages={
-              data
-                ? Math.ceil((data.total as number) / (data.page_size as number))
-                : 1
-            }
-            onPageChange={setPage}
-          />
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <DataTable
+        data={data?.data || []}
+        columns={columns}
+        loading={isLoading}
+        sort={sort}
+        onSortChange={toggleSort}
+        renderRow={renderRow}
+        renderExpandedRow={renderExpandedRow}
+        getItemId={getItemId}
+      />
+      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
+        <div className="mb-2 sm:mb-0">
+          Displaying {data?.data.length || 0} items of {data?.total || 0}
         </div>
+        <Pagination
+          page={page}
+          totalPages={
+            data
+              ? Math.ceil((data.total as number) / (data.page_size as number))
+              : 1
+          }
+          onPageChange={setPage}
+        />
       </div>
-    </MainLayout>
+    </div>
   );
 }
 

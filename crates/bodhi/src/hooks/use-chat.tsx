@@ -53,7 +53,7 @@ export function useChat() {
               updatedAt: Date.now(),
             });
           },
-          onFinish: (message) => {
+          onFinish: () => {
             console.log('Chat completion finished');
           },
         });
