@@ -2,4 +2,4 @@
 
 This is a basic markdown test.
 
-**Bold text** and *italic text*. 
+**Bold text** and *italic text*.

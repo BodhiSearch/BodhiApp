@@ -15,12 +15,6 @@ import {
 import userEvent from '@testing-library/user-event';
 import PullPage from './page';
 
-vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
-
 vi.mock('@/components/PullForm', () => ({
   PullForm: () => <div data-testid="pull-form">Pull Form</div>,
 }));

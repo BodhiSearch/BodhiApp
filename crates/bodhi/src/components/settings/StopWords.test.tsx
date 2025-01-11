@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { StopWords } from '@/components/settings/StopWords';
 import * as chatSettings from '@/hooks/use-chat-settings';
+import userEvent from '@testing-library/user-event';
 
 // Mock useChatSettings
 vi.mock('@/hooks/use-chat-settings', () => ({
@@ -221,30 +222,43 @@ describe('StopWords', () => {
     expect(mockSetEnabled).toHaveBeenCalledWith(false);
   });
 
-  it.skip('handles stop words consistently as arrays', () => {
+  it('handles stop words consistently as arrays', async () => {
+    const user = userEvent.setup();
     const mockSetStop = vi.fn();
-    vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-      stop: ['existing'],
+    let currentStop = ['existing'];
+
+    // Update mock to track state changes
+    mockSetStop.mockImplementation((newStop) => {
+      currentStop = newStop;
+    });
+
+    vi.mocked(chatSettings.useChatSettings).mockImplementation(() => ({
+      stop: currentStop,
       stop_enabled: true,
       setStop: mockSetStop,
       setStopEnabled: vi.fn(),
-    } as any);
+    } as any));
 
     render(<StopWords />);
 
-    // Add new word
+    // Add new word using userEvent
     const input = screen.getByPlaceholderText('Type and press Enter to add stop words...');
-    fireEvent.change(input, { target: { value: 'test' } });
-    fireEvent.keyDown(input, { key: 'Enter' });
+    await user.type(input, 'test{Enter}');
 
-    // Verify array is passed to setStop
+    // Verify first array update
     expect(mockSetStop).toHaveBeenCalledWith(['existing', 'test']);
 
-    // Remove word
+    // Re-render to get updated state
     const removeButton = screen.getByLabelText('Remove existing');
-    fireEvent.click(removeButton);
+    await user.click(removeButton);
 
-    // Verify array is passed to setStop
+    // Verify second array update
     expect(mockSetStop).toHaveBeenCalledWith(['test']);
+
+    // Add another word
+    await user.type(input, 'another{Enter}');
+    
+    // Verify final array state
+    expect(mockSetStop).toHaveBeenCalledWith(['test', 'another']);
   });
 });
