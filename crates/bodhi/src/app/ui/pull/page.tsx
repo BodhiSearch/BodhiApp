@@ -7,7 +7,6 @@ import { TableCell } from '@/components/ui/table';
 import { DownloadRequest } from '@/types/api';
 import { SortState } from '@/types/models';
 import AppInitializer from '@/components/AppInitializer';
-import { MainLayout } from '@/components/layout/MainLayout';
 import { Badge } from '@/components/ui/badge';
 import { PullForm } from '@/components/PullForm';
 
@@ -78,33 +77,31 @@ function PullPageContent() {
   }
 
   return (
-    <MainLayout>
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <PullForm />
-        </div>
-        <DataTable
-          data={data?.data || []}
-          columns={columns}
-          loading={isLoading}
-          sort={sort}
-          onSortChange={toggleSort}
-          renderRow={renderRow}
-          renderExpandedRow={renderExpandedRow}
-          getItemId={(item) => item.id}
-        />
-        <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
-          <div className="mb-2 sm:mb-0">
-            Displaying {data?.data.length || 0} items of {data?.total || 0}
-          </div>
-          <Pagination
-            page={page}
-            totalPages={data ? Math.ceil(data.total / data.page_size) : 1}
-            onPageChange={setPage}
-          />
-        </div>
+    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-8">
+        <PullForm />
       </div>
-    </MainLayout>
+      <DataTable
+        data={data?.data || []}
+        columns={columns}
+        loading={isLoading}
+        sort={sort}
+        onSortChange={toggleSort}
+        renderRow={renderRow}
+        renderExpandedRow={renderExpandedRow}
+        getItemId={(item) => item.id}
+      />
+      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
+        <div className="mb-2 sm:mb-0">
+          Displaying {data?.data.length || 0} items of {data?.total || 0}
+        </div>
+        <Pagination
+          page={page}
+          totalPages={data ? Math.ceil(data.total / data.page_size) : 1}
+          onPageChange={setPage}
+        />
+      </div>
+    </div>
   );
 }
 

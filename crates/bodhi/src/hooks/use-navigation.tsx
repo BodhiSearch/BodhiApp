@@ -2,43 +2,109 @@
 
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
-import type { Page } from '@/types/models';
 import { useContext, useMemo } from 'react';
+import { NavigationItem } from '@/types/navigation';
+import {
+  Home,
+  MessageSquare,
+  Database,
+  Settings2,
+  Files,
+  Download,
+} from 'lucide-react';
+
+const navigationItems: NavigationItem[] = [
+  {
+    title: 'Home',
+    href: '/ui/home/',
+    description: 'Dashboard and overview',
+    icon: Home,
+  },
+  {
+    title: 'Chat',
+    href: '/ui/chat/',
+    description: 'AI Chat Interface',
+    icon: MessageSquare,
+  },
+  {
+    title: 'Models',
+    icon: Database,
+    items: [
+      {
+        title: 'Model Aliases',
+        href: '/ui/models/',
+        description: 'Configure and manage model aliases',
+        icon: Settings2,
+      },
+      {
+        title: 'Model Files',
+        href: '/ui/modelfiles/',
+        description: 'Browse and manage model files',
+        icon: Files,
+      },
+      {
+        title: 'Download Models',
+        href: '/ui/pull/',
+        description: 'Download new models',
+        icon: Download,
+      },
+    ],
+  },
+];
 
 interface NavigationContextType {
   currentPath: string;
-  currentPage: Page;
-  pages: Page[];
+  currentItem: {
+    item: NavigationItem;
+    parent: NavigationItem | null;
+  };
+  navigationItems: NavigationItem[];
 }
 
 const NavigationContext = React.createContext<NavigationContextType>({
   currentPath: '',
-  currentPage: {} as Page,
-  pages: [],
+  currentItem: {
+    item: {} as NavigationItem,
+    parent: null,
+  },
+  navigationItems: [],
 });
 
 interface NavigationProviderProps {
   children: React.ReactNode;
-  pages: Page[];
 }
 
-export function NavigationProvider({
-  children,
-  pages,
-}: NavigationProviderProps) {
+export function NavigationProvider({ children }: NavigationProviderProps) {
   const pathname = usePathname();
 
-  const currentPage = useMemo(() => {
-    return pages.find((page) => pathname.startsWith(page.url)) || pages[0];
-  }, [pathname, pages]);
+  const currentItem = useMemo(() => {
+    // First check top-level items
+    const topLevelItem = navigationItems.find((item) => item.href === pathname);
+    if (topLevelItem) {
+      return { item: topLevelItem, parent: null };
+    }
+
+    // Then check sub-items
+    for (const item of navigationItems) {
+      if (item.items) {
+        const subItem = item.items.find((subItem) => subItem.href === pathname);
+        if (subItem) {
+          return { item: subItem, parent: item };
+        }
+      }
+    }
+
+    // Default to Home if no match found
+    return { item: navigationItems[0], parent: null };
+  }, [pathname]);
 
   const value = useMemo(
     () => ({
       currentPath: pathname,
-      currentPage,
-      pages,
+      currentItem,
+      navigationItems,
     }),
-    [pathname, currentPage, pages]
+    [pathname, currentItem]
   );
 
   return (

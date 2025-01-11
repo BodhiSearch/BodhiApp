@@ -1,6 +1,5 @@
 'use client';
 
-import { Plus } from 'lucide-react';
 import { useChatDB } from '@/hooks/use-chat-db';
 import {
   SidebarMenu,
@@ -16,11 +15,10 @@ export const NewChatButton = () => {
       <SidebarMenuItem>
         <SidebarMenuButton
           onClick={createNewChat}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
           data-testid="new-chat-button"
+          tooltip="New Chat"
         >
-          <Plus className="h-4 w-4 shrink-0" />
-          <span className="sidebar-expanded:inline hidden ml-2">New Chat</span>
+          <span>New Chat</span>
         </SidebarMenuButton>
       </SidebarMenuItem>
     </SidebarMenu>

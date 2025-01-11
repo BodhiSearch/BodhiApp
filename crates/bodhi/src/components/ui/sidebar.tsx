@@ -144,7 +144,7 @@ const SidebarProvider = React.forwardRef<
             }
             className={cn(
               "group/sidebar-wrapper flex w-full has-[[data-variant=inset]]:bg-sidebar",
-              !inner && "min-h-svh",
+              !inner && "h-[calc(100vh-4rem)]",
               className
             )}
             ref={ref}
@@ -229,7 +229,7 @@ const Sidebar = React.forwardRef<
         <div
           className={cn(
             "duration-200 relative bg-transparent transition-[width] ease-linear",
-            !inner && "h-svh",
+            !inner && "h-[calc(100vh-4rem)]",
             "w-[--sidebar-width]",
             "group-data-[collapsible=offcanvas]:w-0",
             "group-data-[side=right]:rotate-180",
@@ -240,8 +240,8 @@ const Sidebar = React.forwardRef<
         />
         <div
           className={cn(
-            "duration-200 fixed inset-y-0 z-10 hidden w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
-            !inner && "h-svh",
+            "duration-200 fixed inset-y-16 z-10 hidden w-[--sidebar-width] transition-[left,right,width] ease-linear md:flex",
+            !inner && "h-[calc(100vh-4rem)]",
             inner && "h-full",
             side === "left"
               ? "left-0 group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]"
@@ -270,9 +270,9 @@ Sidebar.displayName = "Sidebar"
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button> & {
-    icon?: React.ReactNode
+    children?: React.ReactNode
   }
->(({ className, onClick, icon, ...props }, ref) => {
+>(({ className, onClick, children, ...props }, ref) => {
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -288,7 +288,7 @@ const SidebarTrigger = React.forwardRef<
       }}
       {...props}
     >
-      {icon || <PanelLeft />}
+      {children || <PanelLeft />}
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
