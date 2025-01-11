@@ -92,10 +92,10 @@ describe('ChatHistory', () => {
 
   it('marks current chat as active', () => {
     render(<ChatHistory />, { wrapper: Wrapper });
-    
+
     const currentChat = screen.getByText('Chat 1').closest('button');
     const otherChat = screen.getByText('Chat 2').closest('button');
-    
+
     expect(currentChat).toHaveAttribute('data-active', 'true');
     expect(otherChat).toHaveAttribute('data-active', 'false');
   });
@@ -106,7 +106,7 @@ describe('ChatHistory', () => {
 
     const deleteButton = screen.getByTestId('delete-chat-1');
     await user.click(deleteButton);
-    
+
     expect(mockDeleteChat).toHaveBeenCalledWith('1');
   });
 

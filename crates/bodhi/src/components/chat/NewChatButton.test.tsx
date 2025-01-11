@@ -35,9 +35,7 @@ describe('NewChatButton', () => {
   it('calls createNewChat when clicked', () => {
     renderWithSidebar(<NewChatButton />);
     const button = screen.getByTestId('new-chat-button');
-    
     fireEvent.click(button);
-    
     expect(mockCreateNewChat).toHaveBeenCalled();
   });
-}); 
+});

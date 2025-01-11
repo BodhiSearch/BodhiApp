@@ -21,7 +21,7 @@ describe('useChatDB', () => {
   describe('initialization', () => {
     it('should initialize with empty state', () => {
       const { result } = renderHook(() => useChatDB(), { wrapper });
-      
+
       expect(result.current.chats).toHaveLength(0);
       expect(result.current.currentChat).toBeNull();
       expect(result.current.currentChatId).toBeNull();

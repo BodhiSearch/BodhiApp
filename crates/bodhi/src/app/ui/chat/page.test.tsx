@@ -14,12 +14,6 @@ import {
 import ChatPage from '@/app/ui/chat/page';
 
 // Mock the components
-vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="main-layout">{children}</div>
-  ),
-}));
-
 vi.mock('@/components/chat/ChatContainer', () => ({
   ChatContainer: () => <div data-testid="chat-container">Chat Content</div>
 }));

@@ -136,7 +136,7 @@ describe('SettingsSidebar', () => {
     const aliasSelector = screen.getByTestId('alias-selector');
     const systemPrompt = screen.getByTestId('system-prompt');
     const stopWords = screen.getByTestId('stop-words');
-    
+
     // Check new components
     const streamSwitch = screen.getByTestId('switch-stream-mode');
     const seedSwitch = screen.getByTestId('switch-seed-enabled');
@@ -222,4 +222,4 @@ describe('SettingsSidebar', () => {
       expect(aliasSelector).toHaveTextContent('Models count: 0');
     });
   });
-}); 
+});

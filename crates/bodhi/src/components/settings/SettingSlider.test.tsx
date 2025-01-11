@@ -144,15 +144,5 @@ describe('SettingSlider', () => {
       fireEvent.click(switchElement);
       expect(onEnabledChange).not.toHaveBeenCalled();
     });
-
-    it.skip('applies opacity styling when disabled', () => {
-      render(<SettingSlider {...defaultProps} enabled={false} />);
-
-      const slider = screen.getByRole('group');
-      const valueDisplay = screen.getByText('50');
-
-      expect(slider.className).toContain('opacity-50');
-      expect(valueDisplay.className).toContain('opacity-50');
-    });
   });
 }); 

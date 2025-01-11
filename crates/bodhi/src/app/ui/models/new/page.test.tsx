@@ -32,12 +32,6 @@ vi.mock('@/components/ui/toaster', () => ({
   Toaster: () => null,
 }));
 
-vi.mock('@/components/layout/MainLayout', () => ({
-  MainLayout: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-}));
-
 const mockModelsResponse = {
   data: [
     { repo: 'owner1/repo1', filename: 'file1.gguf' },

@@ -29,31 +29,6 @@ describe('SystemPrompt', () => {
       expect(textarea).toBeDisabled();
       expect(switchElement).toBeDisabled();
     });
-
-    it.skip('prevents interactions while loading', () => {
-      const mockSetSystemPrompt = vi.fn();
-      const mockSetEnabled = vi.fn();
-
-      vi.mocked(chatSettings.useChatSettings).mockReturnValue({
-        systemPrompt: '',
-        systemPrompt_enabled: true,
-        setSystemPrompt: mockSetSystemPrompt,
-        setSystemPromptEnabled: mockSetEnabled,
-      } as any);
-
-      render(<SystemPrompt isLoading={true} />);
-
-      const switchElement = screen.getByRole('switch');
-      const textarea = screen.getByRole('textbox');
-
-      // Try to toggle switch
-      fireEvent.click(switchElement);
-      expect(mockSetEnabled).not.toHaveBeenCalled();
-
-      // Try to input text
-      fireEvent.change(textarea, { target: { value: 'Test input' } });
-      expect(mockSetSystemPrompt).not.toHaveBeenCalled();
-    });
   });
 
   describe('enabled state', () => {
