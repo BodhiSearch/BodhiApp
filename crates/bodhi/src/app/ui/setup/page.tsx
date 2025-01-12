@@ -47,7 +47,7 @@ function SetupContent() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-gray-100">
+    <div className="flex flex-col w-full items-center justify-center min-h-screen p-4 bg-gray-100">
       <Image
         src="/bodhi-logo.png"
         alt="Bodhi App Logo"
