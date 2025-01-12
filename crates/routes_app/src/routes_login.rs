@@ -46,11 +46,11 @@ pub async fn login_handler(
     }
     None => {
       let secret_service = app_service.secret_service();
-      let app_ref_info = secret_service
+      let app_reg_info = secret_service
         .app_reg_info()?
         .ok_or(LoginError::AppRegInfoNotFound)?;
       let callback_url = env_service.login_callback_url();
-      let client_id = app_ref_info.client_id;
+      let client_id = app_reg_info.client_id;
       let state = generate_random_string(32);
       // TODO: use `impl_error_from!`
       session
@@ -217,12 +217,17 @@ pub async fn logout_handler(
 pub struct UserInfo {
   pub logged_in: bool,
   pub email: Option<String>,
+  pub roles: Vec<String>,
 }
 
-pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, ApiError> {
+pub async fn user_info_handler(
+  headers: HeaderMap,
+  State(state): State<Arc<dyn RouterState>>,
+) -> Result<Json<UserInfo>, ApiError> {
   let not_loggedin = UserInfo {
     logged_in: false,
     email: None,
+    roles: Vec::new(),
   };
   let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
     return Ok(Json(not_loggedin));
@@ -234,9 +239,21 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
     return Ok(Json(not_loggedin));
   }
   let token_data: TokenData<Claims> = decode_access_token(token_str)?;
+  let roles = if let Ok(Some(reg_info)) = state.app_service().secret_service().app_reg_info() {
+    token_data
+      .claims
+      .resource_access
+      .get(&reg_info.client_id)
+      .map(|resource| resource.roles.clone())
+      .unwrap_or_default()
+  } else {
+    vec![]
+  };
+
   Ok(Json(UserInfo {
     logged_in: true,
     email: Some(token_data.claims.email),
+    roles,
   }))
 }
 
@@ -257,6 +274,7 @@ mod tests {
     Json, Router,
   };
   use axum_test::TestServer;
+  use chrono::Utc;
   use hyper::header::LOCATION;
   use mockito::{Matcher, Server};
   use oauth2::{AccessToken, PkceCodeVerifier, RefreshToken};
@@ -272,8 +290,8 @@ mod tests {
   };
   use services::{
     test_utils::{
-      expired_token, token, AppServiceStub, AppServiceStubBuilder, EnvServiceStub,
-      SecretServiceStub, SessionTestExt,
+      app_reg_info, build_token, expired_token, token, AppServiceStub, AppServiceStubBuilder,
+      EnvServiceStub, SecretServiceStub, SessionTestExt, TEST_CLIENT_ID,
     },
     AppRegInfo, AppService, AuthServiceError, MockAuthService, MockEnvService, SecretServiceExt,
     SqliteSessionService, BODHI_FRONTEND_URL,
@@ -289,6 +307,7 @@ mod tests {
     Session, SessionStore,
   };
   use url::Url;
+  use uuid::Uuid;
 
   #[rstest]
   #[case(
@@ -310,6 +329,8 @@ mod tests {
     #[case] login_url: &str,
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
+    use axum::routing::get;
+
     let mut mock_env_service = MockEnvService::new();
     mock_env_service
       .expect_login_callback_url()
@@ -364,9 +385,9 @@ mod tests {
   #[tokio::test]
   async fn test_login_handler_logged_in_redirects_to_home(
     temp_bodhi_home: TempDir,
-    token: (String, String, String),
+    token: (String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
+    let (token, _) = token;
     test_login_handler_with_token(
       temp_bodhi_home,
       token,
@@ -380,9 +401,9 @@ mod tests {
   #[tokio::test]
   async fn test_login_handler_for_expired_token_redirects_to_login(
     temp_bodhi_home: TempDir,
-    expired_token: (String, String, String),
+    expired_token: (String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = expired_token;
+    let (token, _) = expired_token;
     test_login_handler_with_token(
       temp_bodhi_home,
       token,
@@ -464,9 +485,9 @@ mod tests {
   #[tokio::test]
   async fn test_login_callback_handler(
     temp_bodhi_home: TempDir,
-    token: (String, String, String),
+    token: (String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
+    let (token, _) = token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let mut mock_auth_service = MockAuthService::default();
     let token_clone = token.clone();
@@ -795,11 +816,17 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_user_info_handler_valid_token(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-    token: (String, String, String),
+    token: (String, String),
+    app_reg_info: AppRegInfo,
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
-    let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
+    let (token, _) = token;
+    let app_service: Arc<dyn AppService> = Arc::new(
+      AppServiceStubBuilder::default()
+        .secret_service(Arc::new(
+          SecretServiceStub::default().with_app_reg_info(&app_reg_info),
+        ))
+        .build()?,
+    );
     let state = Arc::new(DefaultRouterState::new(
       Arc::new(MockSharedContext::default()),
       app_service.clone(),
@@ -819,8 +846,84 @@ mod tests {
     assert_eq!(StatusCode::OK, response.status());
     let response_json = response.json::<Value>().await.unwrap();
     assert_eq!(
-      "testuser@email.com",
-      response_json["email"].as_str().unwrap(),
+      json! {{
+        "email": "testuser@email.com",
+        "roles": ["resource_manager", "resource_power_user", "resource_user", "resource_admin"],
+        "logged_in": true
+      }},
+      response_json,
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[case::resource_access_field_missing(json!{{}})]
+  #[case::resource_access_field_null(json!{{"resource_access": {}}})]
+  #[case::resource_access_some_other_resource_roles(json!{{"resource_access": {
+        "some-other-test-resource": {
+          "roles": ["resource_manager", "resource_power_user", "resource_user", "resource_admin"]
+        }
+      }}})]
+  #[tokio::test]
+  async fn test_user_info_handler_resource_access_invalid(
+    #[case] claims: Value,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
+    app_reg_info: AppRegInfo,
+  ) -> anyhow::Result<()> {
+    let mut final_claims = json! {{
+      "exp": (Utc::now() + chrono::Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": "https://id.mydomain.com/realms/myapp".to_string(),
+      "sub": Uuid::new_v4().to_string(),
+      "typ": "Bearer",
+      "azp": TEST_CLIENT_ID,
+      "session_state": Uuid::new_v4().to_string(),
+      "scope": "openid profile email",
+      "sid": Uuid::new_v4().to_string(),
+      "email_verified": true,
+      "name": "Test User",
+      "preferred_username": "testuser@email.com",
+      "given_name": "Test",
+      "family_name": "User",
+      "email": "testuser@email.com",
+    }};
+    if !claims["resource_access"].is_null() {
+      final_claims["resource_access"] = claims["resource_access"].clone();
+    }
+    let (token, _) = build_token(final_claims).unwrap();
+    let app_service: Arc<dyn AppService> = Arc::new(
+      AppServiceStubBuilder::default()
+        .secret_service(Arc::new(
+          SecretServiceStub::default().with_app_reg_info(&app_reg_info),
+        ))
+        .build()?,
+    );
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/app/user", get(user_info_handler))
+      .with_state(state);
+    let response = router
+      .oneshot(
+        Request::get("/app/user")
+          .header(KEY_RESOURCE_TOKEN, token)
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await
+      .unwrap();
+    assert_eq!(StatusCode::OK, response.status());
+    let response_json = response.json::<Value>().await.unwrap();
+    assert_eq!(
+      json! {{
+        "email": "testuser@email.com",
+        "roles": [],
+        "logged_in": true
+      }},
+      response_json,
     );
     Ok(())
   }
@@ -851,6 +954,7 @@ mod tests {
       UserInfo {
         logged_in: false,
         email: None,
+        roles: Vec::new(),
       },
       response_json
     );
@@ -898,9 +1002,9 @@ mod tests {
   #[tokio::test]
   async fn test_login_callback_handler_resource_admin(
     temp_bodhi_home: TempDir,
-    token: (String, String, String),
+    token: (String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
+    let (token, _) = token;
     let mut server = Server::new_async().await;
     let keycloak_url = server.url();
     let id = Id::default();

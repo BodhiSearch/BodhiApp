@@ -8,6 +8,7 @@ use oauth2::{
 };
 use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, code=self.code())]
@@ -32,10 +33,20 @@ impl JsonWebTokenError {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct ResourceClaim {
+  pub roles: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
+  pub iss: String,
+  pub sub: String,
+  pub iat: u64,
   pub jti: String,
   pub exp: u64,
   pub email: String,
+  #[serde(default)]
+  pub resource_access: HashMap<String, ResourceClaim>,
 }
 
 pub fn decode_access_token(

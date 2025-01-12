@@ -323,6 +323,7 @@ mod tests {
     test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
   };
   use services::{
+    decode_access_token,
     test_utils::{expired_token, token, AppServiceStubBuilder, SecretServiceStub},
     AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MokaCacheService,
     SqliteSessionService,
@@ -550,9 +551,9 @@ mod tests {
   #[tokio::test]
   async fn test_auth_middleware_algorithm_mismatch(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    token: (String, String, String),
+    token: (String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
+    let (token, _) = token;
     let secret_service = SecretServiceStub::default().with_app_reg_info(
       &AppRegInfoBuilder::test_default()
         .alg(Algorithm::HS256)
@@ -594,10 +595,10 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_auth_middleware_kid_mismatch(
-    token: (String, String, String),
+    token: (String, String),
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
+    let (token, _) = token;
     let secret_service = SecretServiceStub::default().with_app_reg_info(
       &AppRegInfoBuilder::test_default()
         .kid("other-kid".to_string())
@@ -639,9 +640,9 @@ mod tests {
   #[tokio::test]
   async fn test_auth_middleware_public_key_missing(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    token: (String, String, String),
+    token: (String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
+    let (token, _) = token;
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(SecretServiceStub::default()))
       .with_session_service()
@@ -678,9 +679,9 @@ mod tests {
   #[tokio::test]
   async fn test_auth_middleware_token_issuer_error(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    token: (String, String, String),
+    token: (String, String),
   ) -> anyhow::Result<()> {
-    let (_, token, public_key) = token;
+    let (token, public_key) = token;
     let secret_service = SecretServiceStub::default().with_app_reg_info(
       &AppRegInfoBuilder::test_default()
         .public_key(public_key)
@@ -727,10 +728,11 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_no_exchange_if_present_in_cache(
-    token: (String, String, String),
+    token: (String, String),
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (jti, token, _) = token;
+    let (token, _) = token;
+    let jti = decode_access_token(&token).unwrap().claims.jti;
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_exchange_for_resource_token()
@@ -786,10 +788,10 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_exchange_if_exchange_token_not_in_cache(
-    token: (String, String, String),
+    token: (String, String),
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (_, token, public_key) = token;
+    let (token, public_key) = token;
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_exchange_for_resource_token()
@@ -843,11 +845,11 @@ mod tests {
   #[case("/with_optional_auth")]
   #[tokio::test]
   async fn test_auth_middleware_with_valid_session_token(
-    token: (String, String, String),
+    token: (String, String),
     temp_bodhi_home: TempDir,
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (_, token, _) = token;
+    let (token, _) = token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let app_service = AppServiceStubBuilder::default()
@@ -894,11 +896,11 @@ mod tests {
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    expired_token: (String, String, String),
+    expired_token: (String, String),
     temp_bodhi_home: TempDir,
     #[case] path: &str,
   ) -> anyhow::Result<()> {
-    let (_, expired_token, _) = expired_token;
+    let (expired_token, _) = expired_token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
 
@@ -993,10 +995,10 @@ mod tests {
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token_and_failed_refresh(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    expired_token: (String, String, String),
+    expired_token: (String, String),
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
-    let (_, expired_token, _) = expired_token;
+    let (expired_token, _) = expired_token;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
 
