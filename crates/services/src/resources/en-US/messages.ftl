@@ -50,3 +50,4 @@ env_service_error-invalid_setting_key = Setting key is invalid: {$var_0}
 setting_error-lock_error = concurrency error accessing settings: {$var_0}
 keyring_error-keyring_error = {$var_0}
 keyring_error-decode_error = invalid format: {$var_0}
+auth_service_error-token_exchange_error = token exchange failed: {$var_0}

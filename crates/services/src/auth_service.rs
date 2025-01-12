@@ -72,7 +72,7 @@ pub enum AuthServiceError {
   #[error_meta(error_type = ErrorType::InternalServer)]
   AuthServiceApiError(String),
   #[error("token_exchange_error")]
-  #[error_meta(error_type = ErrorType::Authentication)]
+  #[error_meta(error_type = ErrorType::BadRequest)]
   TokenExchangeError(String),
 }
 
@@ -706,10 +706,19 @@ mod tests {
       .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
       .match_header("content-type", "application/x-www-form-urlencoded")
       .match_body(Matcher::AllOf(vec![
-        Matcher::UrlEncoded("grant_type".into(), "urn:ietf:params:oauth:grant-type:token-exchange".into()),
+        Matcher::UrlEncoded(
+          "grant_type".into(),
+          "urn:ietf:params:oauth:grant-type:token-exchange".into(),
+        ),
         Matcher::UrlEncoded("subject_token".into(), "test_token".into()),
-        Matcher::UrlEncoded("requested_token_type".into(), "urn:ietf:params:oauth:grant-type:refresh_token".into()),
-        Matcher::UrlEncoded("scope".into(), "openid offline_access scope_token_user".into()),
+        Matcher::UrlEncoded(
+          "requested_token_type".into(),
+          "urn:ietf:params:oauth:grant-type:refresh_token".into(),
+        ),
+        Matcher::UrlEncoded(
+          "scope".into(),
+          "openid offline_access scope_token_user".into(),
+        ),
         Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
         Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
       ]))
@@ -761,9 +770,15 @@ mod tests {
       .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
       .match_header("content-type", "application/x-www-form-urlencoded")
       .match_body(Matcher::AllOf(vec![
-        Matcher::UrlEncoded("grant_type".into(), "urn:ietf:params:oauth:grant-type:token-exchange".into()),
+        Matcher::UrlEncoded(
+          "grant_type".into(),
+          "urn:ietf:params:oauth:grant-type:token-exchange".into(),
+        ),
         Matcher::UrlEncoded("subject_token".into(), "test_token".into()),
-        Matcher::UrlEncoded("requested_token_type".into(), "urn:ietf:params:oauth:token-type:access_token".into()),
+        Matcher::UrlEncoded(
+          "requested_token_type".into(),
+          "urn:ietf:params:oauth:token-type:access_token".into(),
+        ),
         Matcher::UrlEncoded("scope".into(), "openid scope_token_user".into()),
         Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
         Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
@@ -811,7 +826,10 @@ mod tests {
       .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
       .match_header("content-type", "application/x-www-form-urlencoded")
       .match_body(Matcher::AllOf(vec![
-        Matcher::UrlEncoded("grant_type".into(), "urn:ietf:params:oauth:grant-type:token-exchange".into()),
+        Matcher::UrlEncoded(
+          "grant_type".into(),
+          "urn:ietf:params:oauth:grant-type:token-exchange".into(),
+        ),
         Matcher::UrlEncoded("subject_token".into(), "invalid_token".into()),
         Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
         Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
