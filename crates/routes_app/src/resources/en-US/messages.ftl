@@ -8,3 +8,6 @@ pull_error-file_already_exists = file {$filename} already exists in repo {$repo}
 create_alias_error-alias_mismatch = alias in path '{$path}' does not match alias in request '{$request}'
 create_alias_error-alias_not_present = alias is not present in request
 logout_error-session_delete_error = failed to delete session, error: {$error}
+api_token_error-app_reg_missing = app is not registered, cannot create api tokens
+api_token_error-access_token_missing = access token is not present in request
+api_token_error-refresh_token_missing = refresh token not received from auth server
