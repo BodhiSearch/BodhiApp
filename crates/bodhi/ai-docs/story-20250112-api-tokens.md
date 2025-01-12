@@ -7,16 +7,23 @@ So that I can access the application programmatically from external applications
 
 ## Background
 - Users need programmatic access to Bodhi App via API tokens
-- Tokens are micro-JWT tokens signed by the auth server
-- Tokens have a default validity of 30 days
+- Tokens are generated using OAuth2 token exchange with offline_access and scope_token_user scopes
+- Offline tokens do not expire but have an idle timeout of 30 days
+- Tokens are stateless and session-independent
 - App must be in authenticated mode to generate tokens
 - All tokens are created with user scope by default
+
+## Token Characteristics
+- Offline tokens can be used repeatedly to obtain new access tokens
+- Tokens remain valid even when user is logged out
+- Tokens must be used at least once every 30 days to prevent idle timeout
+- Tokens are scoped to user-level access only via scope_token_user
 
 ## Acceptance Criteria
 
 ### Navigation & Access
 - [ ] Add "API Tokens" menu item in the navigation
-- [ ] Show message "Cannot create Auth Tokens if app setup in non-authenticated mode" when app is in non-authenticated mode
+- [ ] Show message "Non-authenticated setup don't need API Tokens. Either ignore the Auth header or pass an empty/random Bearer token. They are not validated." when app is in non-authenticated mode
 - [ ] Only show API tokens page when user is authenticated
 
 ### Token Generation Form
@@ -24,6 +31,7 @@ So that I can access the application programmatically from external applications
 - [ ] Create button to generate new token
 - [ ] Dialog to display newly generated token with copy functionality
 - [ ] Clear warning that token will not be shown again
+- [ ] Warning that tokens must be used at least once every 30 days
 
 ### Token Management Table
 - [ ] Display table of user's API tokens with columns:
@@ -31,31 +39,26 @@ So that I can access the application programmatically from external applications
   - Name (editable)
   - Status (active/invalid)
   - Created Date
-  - Expiry Date
+  - Last Used Date
   - Actions (invalidate)
-- [ ] Visual warning for tokens expiring in next 3 days
+- [ ] Visual warning for tokens inactive for 25+ days
 - [ ] Confirmation dialog before invalidating tokens
 
 ### Backend Implementation
 - [ ] Create database table `api_tokens` with fields:
   - id (primary key)
   - user_id (foreign key)
-  - token_id (unique identifier)
+  - token_id (jti)
   - name
   - status
   - create_date
-  - expires_at
+  - last_used_date
   - created_at
   - updated_at
 - [ ] API endpoint to create new token:
-  - Generate token_id
-  - Request auth server to create JWT with claims:
-    - sub: user_id
-    - aud: resource server
-    - iss: id server
-    - exp: 30 days from now
-    - scope: "user"
-  - Store token metadata in database
+  - Exchange user's access token for offline token using token exchange
+  - Store token jti and metadata in database
+  - Cache token permissions against jti
 - [ ] API endpoint to list user's tokens
 - [ ] API endpoint to update token name
 - [ ] API endpoint to invalidate token
@@ -68,13 +71,14 @@ So that I can access the application programmatically from external applications
 3. Add token service in `crates/services`
 
 ### Backend API Changes
-1. Add token routes in `crates/routes_app`:
+1. Add token routes in `routes_token.rs`:
    - POST /api/tokens/create
    - GET /api/tokens
    - PUT /api/tokens/:id/name
    - POST /api/tokens/:id/invalidate
-2. Add auth server client method to sign tokens
+2. Implement token exchange in auth_service for offline token generation
 3. Implement token service methods
+4. Add cache for token permissions
 
 ### Frontend Changes
 1. Add API token page in `crates/bodhi/src/app/ui/tokens`:
@@ -91,7 +95,7 @@ So that I can access the application programmatically from external applications
 4. Update navigation to include API tokens menu item
 
 ## Not In Scope
-- Custom token expiry
+- Custom token scopes
 - Role-based token access control
 - Custom claims in token
 - Rate limiting for token generation
@@ -105,18 +109,18 @@ So that I can access the application programmatically from external applications
    - Role-based access control
    - Model-specific access restrictions
    - API endpoint restrictions
-2. Allow custom token expiry
-3. Add token usage tracking
-4. Implement rate limiting
-5. Add audit logging for token operations
+2. Add token usage tracking
+3. Implement rate limiting
+4. Add audit logging for token operations
 
 ## Technical Considerations
-- JWT tokens will be signed by auth server using client credentials
+- Tokens are generated through OAuth2 token exchange
 - Token invalidation only marks tokens as invalid in database
 - Token names can be updated after creation
-- Visual warning for tokens expiring in 3 days
+- Visual warning for tokens inactive for 25+ days
 - No limit on number of active tokens per user
-- All tokens are created with user scope, allowing access to all non-admin APIs
+- All tokens are created with user scope via scope_token_user
+- Token permissions are cached against jti for performance
 
 ## Testing Requirements
 - [ ] Unit tests for token service
@@ -125,4 +129,4 @@ So that I can access the application programmatically from external applications
 - [ ] Integration tests for token flow
 - [ ] Test token invalidation
 - [ ] Test non-authenticated mode message
-- [ ] Test expiry warnings
+- [ ] Test inactivity warnings

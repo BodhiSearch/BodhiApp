@@ -377,7 +377,7 @@ mod tests {
     assert!(query_params.contains_key("state"));
     assert!(query_params.contains_key("code_challenge"));
     assert_eq!("S256", query_params.get("code_challenge_method").unwrap());
-    assert_eq!("openid email profile", query_params.get("scope").unwrap());
+    assert_eq!("openid email profile roles", query_params.get("scope").unwrap());
 
     Ok(())
   }
