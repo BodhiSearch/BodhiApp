@@ -65,9 +65,10 @@ pub async fn login_handler(
         .await
         .map_err(LoginError::from)?;
 
+      let scope = ["openid", "email", "profile", "roles"].join("%20"); // manual url encoding for space
       let login_url = format!(
-          "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope=openid+email+profile",
-          env_service.login_url(), client_id, callback_url, state, code_challenge
+          "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope={}",
+          env_service.login_url(), client_id, callback_url, state, code_challenge, scope
       );
 
       let response = Response::builder()
