@@ -8,7 +8,7 @@ use rsa::{
   RsaPrivateKey, RsaPublicKey,
 };
 use rstest::fixture;
-use serde_json::json;
+use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::AppRegInfoBuilder;
@@ -20,6 +20,8 @@ static PUBLIC_KEY: Lazy<RsaPublicKey> = Lazy::new(|| {
   )))
   .expect("Failed to parse public key")
 });
+
+pub static TEST_CLIENT_ID: &str = "test-client";
 
 static PUBLIC_KEY_BASE64: Lazy<String> = Lazy::new(|| {
   let public_key_der = PUBLIC_KEY
@@ -50,25 +52,35 @@ impl AppRegInfoBuilder {
 }
 
 #[fixture]
-pub fn token() -> (String, String, String) {
-  build_token((Utc::now() + Duration::hours(1)).timestamp()).unwrap()
+pub fn token() -> (String, String) {
+  build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp()).unwrap()
 }
 
 #[fixture]
-pub fn expired_token() -> (String, String, String) {
-  build_token((Utc::now() - Duration::hours(1)).timestamp()).unwrap()
+pub fn expired_token() -> (String, String) {
+  build_token_with_exp((Utc::now() - Duration::hours(1)).timestamp()).unwrap()
 }
 
-pub fn build_token(exp: i64) -> anyhow::Result<(String, String, String)> {
-  let jti = Uuid::new_v4().to_string();
+pub fn build_token_with_exp(exp: i64) -> anyhow::Result<(String, String)> {
   let claims = json!({
       "exp": exp,
-      "jti": jti,
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
       "iss": "https://id.mydomain.com/realms/myapp".to_string(),
       "sub": Uuid::new_v4().to_string(),
       "typ": "Bearer",
-      "azp": "test-client",
+      "azp": TEST_CLIENT_ID,
       "session_state": Uuid::new_v4().to_string(),
+      "resource_access": {
+        TEST_CLIENT_ID: {
+          "roles": [
+            "resource_manager",
+            "resource_power_user",
+            "resource_user",
+            "resource_admin"
+          ]
+        }
+      },
       "scope": "openid scope_user profile email scope_power_user",
       "sid": Uuid::new_v4().to_string(),
       "email_verified": true,
@@ -78,7 +90,10 @@ pub fn build_token(exp: i64) -> anyhow::Result<(String, String, String)> {
       "family_name": "User",
       "email": "testuser@email.com"
   });
+  build_token(claims)
+}
 
+pub fn build_token(claims: Value) -> anyhow::Result<(String, String)> {
   let header = Header {
     kid: Some("test-kid".to_string()),
     alg: jsonwebtoken::Algorithm::RS256,
@@ -93,5 +108,5 @@ pub fn build_token(exp: i64) -> anyhow::Result<(String, String, String)> {
   )?;
 
   let output = STANDARD.encode(PUBLIC_KEY.to_pkcs1_der()?);
-  Ok((jti, token, output))
+  Ok((token, output))
 }

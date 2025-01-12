@@ -100,4 +100,5 @@ export interface ChatTemplate {
 export interface UserInfo {
   logged_in: boolean;
   email?: string;
+  roles: string[];
 }
