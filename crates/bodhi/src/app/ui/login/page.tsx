@@ -9,32 +9,36 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import Link from 'next/link';
-import Logo from '@/components/Logo';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 import AppInitializer from '@/components/AppInitializer';
 import { useUser } from '@/hooks/useQuery';
 import { path_app_login, path_home } from '@/lib/utils';
+import { useAppInfo } from '@/hooks/useQuery';
 
-function LoginContent() {
-  const { data: userInfo, isLoading } = useUser();
+export function LoginContent() {
+  const { data: userInfo, isLoading: userLoading } = useUser();
+  const { data: appInfo, isLoading: appLoading } = useAppInfo();
   const { logout, isLoading: isLoggingOut } = useLogoutHandler();
 
-  if (isLoading) {
+  if (userLoading || appLoading) {
     return <div className="text-center">Loading...</div>;
   }
 
+  const isNonAuthz = appInfo && !appInfo.authz;
+  const loginTitle = userInfo?.logged_in ? 'Welcome' : 'Login';
+  const loginMessage = userInfo?.logged_in
+    ? `You are logged in as ${userInfo?.email}`
+    : isNonAuthz
+      ? <>This app is setup in non-authenticated mode.<br />User login is not available.</>
+      : 'You need to login to use the Bodhi App';
+
   return (
-    <>
-      <div className="my-6">
-        <Logo />
-      </div>
-      <Card className="w-full max-w-md mx-auto mt-10">
+    <div className="w-full max-w-md mx-auto mt-8 h-fit text-center">
+      <Card>
         <CardHeader className="text-center">
-          <CardTitle>{userInfo?.logged_in ? 'Welcome' : 'Login'}</CardTitle>
+          <CardTitle>{loginTitle}</CardTitle>
           <CardDescription>
-            {userInfo?.logged_in
-              ? `You are logged in as ${userInfo?.email}`
-              : 'You need to login to use the Bodhi App'}
+            {loginMessage}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -54,13 +58,17 @@ function LoginContent() {
               </Button>
             </>
           ) : (
-            <Link href={path_app_login} passHref>
-              <Button className="w-full">Log In</Button>
-            </Link>
+            <div className={`${isNonAuthz ? 'opacity-50 pointer-events-none' : ''}`}>
+              <Link href={path_app_login} passHref>
+                <Button className="w-full" variant="default" disabled={isNonAuthz}>
+                  Login
+                </Button>
+              </Link>
+            </div>
           )}
         </CardContent>
       </Card>
-    </>
+    </div>
   );
 }
 

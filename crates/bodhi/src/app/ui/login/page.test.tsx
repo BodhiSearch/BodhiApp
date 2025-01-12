@@ -6,6 +6,7 @@ import {
   waitForElementToBeRemoved,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { act } from '@testing-library/react';
 import {
   describe,
   it,
@@ -16,7 +17,8 @@ import {
   afterAll,
   afterEach,
 } from 'vitest';
-import LoginContent from '@/app/ui/login/page';
+import { LoginContent } from '@/app/ui/login/page';
+import LoginPage from '@/app/ui/login/page';
 import { createWrapper } from '@/tests/wrapper';
 import { setupServer } from 'msw/node';
 import { rest } from 'msw';
@@ -38,6 +40,35 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('LoginContent loading states', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    pushMock.mockClear();
+    server.use(
+      rest.get('*/api/ui/user', (req, res, ctx) => {
+        return res(
+          ctx.delay(100),
+          ctx.status(200),
+          ctx.json({ logged_in: false })
+        );
+      }),
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(
+          ctx.delay(100),
+          ctx.status(200),
+          ctx.json({ status: 'ready', authz: true })
+        );
+      })
+    );
+  });
+
+  it('shows loading indicator while fetching data', async () => {
+    render(<LoginContent />, { wrapper: createWrapper() });
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument());
+  });
+});
+
 describe('LoginContent with user not Logged In', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -47,35 +78,20 @@ describe('LoginContent with user not Logged In', () => {
         return res(ctx.status(200), ctx.json({ logged_in: false }));
       }),
       rest.get('*/app/info', (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready' }));
+        return res(ctx.status(200), ctx.json({ status: 'ready', authz: true }));
       })
-    );
-  });
-
-  it('renders loading state', async () => {
-    server.use(
-      rest.get('*/api/ui/user', (req, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.json({ logged_in: false })
-        );
-      })
-    );
-    render(<LoginContent />, { wrapper: createWrapper() });
-    await waitForElementToBeRemoved(() =>
-      screen.getByText('Initializing app...')
     );
   });
 
   it('renders login button when user is not logged in', async () => {
-    render(<LoginContent />, { wrapper: createWrapper() });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Log In' })));
-    const loginButton = screen.getByRole('button', { name: 'Log In' });
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+    const loginButton = screen.getByRole('button', { name: 'Login' });
     expect(loginButton).toBeDefined();
     expect(
       screen.getByText('You need to login to use the Bodhi App')
-    ).toBeDefined();
+    ).toBeInTheDocument();
   });
 });
 
@@ -84,29 +100,28 @@ describe('LoginContent with user Logged In', () => {
     vi.resetAllMocks();
     pushMock.mockClear();
     server.use(
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get('*/api/ui/user', (req, res, ctx) => {
         return res(
           ctx.status(200),
           ctx.json({ logged_in: true, email: 'test@example.com' })
         );
       }),
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get('*/app/info', (req, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));
       })
     );
   });
 
   it('renders welcome message and logout button when user is logged in', async () => {
-    render(<LoginContent />, { wrapper: createWrapper() });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Log Out' }))
-    );
-    expect(screen.getByText('Welcome')).toBeDefined();
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+    expect(screen.getByText('Welcome')).toBeInTheDocument();
     expect(
       screen.getByText('You are logged in as test@example.com')
-    ).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Go to Home' })).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Log Out' })).toBeDefined();
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Home' })).toBeInTheDocument();
   });
 
   it('calls logout function when logout button is clicked and pushes the route in location', async () => {
@@ -119,10 +134,9 @@ describe('LoginContent with user Logged In', () => {
         );
       })
     );
-    render(<LoginContent />, { wrapper: createWrapper() });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Log Out' }))
-    );
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
     const logoutButton = screen.getByRole('button', { name: 'Log Out' });
     await userEvent.click(logoutButton);
     expect(pushMock).toHaveBeenCalledWith(
@@ -142,15 +156,38 @@ describe('LoginContent with user Logged In', () => {
       })
     );
 
-    render(<LoginContent />, { wrapper: createWrapper() });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Log Out' }))
-    );
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
     const logoutButton = screen.getByRole('button', { name: 'Log Out' });
     await userEvent.click(logoutButton);
     const loggingOut = screen.getByRole('button', { name: 'Logging out...' });
     expect(loggingOut).toBeInTheDocument();
     expect(loggingOut).toHaveAttribute('disabled');
+  });
+});
+
+describe('LoginContent with non-authz mode', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    pushMock.mockClear();
+    server.use(
+      rest.get('*/api/ui/user', (req, res, ctx) => {
+        return res(ctx.status(200), ctx.json({ logged_in: false }));
+      }),
+      rest.get('*/app/info', (req, res, ctx) => {
+        return res(ctx.status(200), ctx.json({ status: 'ready', authz: false }));
+      })
+    );
+  });
+
+  it('should display non-authz warning and disable login button', async () => {
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+    expect(screen.getByText('This app is setup in non-authenticated mode.User login is not available.')).toBeInTheDocument();
+    const loginButton = screen.getByRole('button', { name: /login/i });
+    expect(loginButton).toBeDisabled();
   });
 });
 
@@ -161,10 +198,9 @@ describe('LoginContent access control', () => {
         return res(ctx.status(200), ctx.json({ status: 'setup' }));
       })
     );
-    render(<LoginContent />, { wrapper: createWrapper() });
-    await waitForElementToBeRemoved(() =>
-      screen.getByText('Initializing app...')
-    );
+    await act(async () => {
+      render(<LoginPage />, { wrapper: createWrapper() });
+    });
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/ui/setup'));
   });
 });
