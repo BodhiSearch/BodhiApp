@@ -242,15 +242,21 @@ async fn validate_token_from_header(
   let (access_token, refresh_token) = state
     .app_service()
     .auth_service()
-    .exchange_for_resource_token(&token)
+    .exchange_token(
+      &app_reg_info.client_id,
+      &app_reg_info.client_secret,
+      &token,
+      "urn:ietf:params:oauth:token-type:refresh_token",
+      vec!["openid".to_string(), "scope_user".to_string()],
+    )
     .await?;
-  let cache_value = format!("{}:{}", access_token.secret(), token_hash);
+  let cache_value = format!("{}:{}", access_token, token_hash);
   cache_service.set(&cache_key, &cache_value);
   cache_service.set(
     &format!("exchange-refresh-token-{}", jti),
-    refresh_token.secret(),
+    &refresh_token.unwrap(),
   );
-  Ok(access_token.secret().to_string())
+  Ok(access_token)
 }
 
 async fn validate_access_token(
@@ -734,9 +740,7 @@ mod tests {
     let (token, _) = token;
     let jti = decode_access_token(&token).unwrap().claims.jti;
     let mut mock_auth_service = MockAuthService::default();
-    mock_auth_service
-      .expect_exchange_for_resource_token()
-      .never();
+    mock_auth_service.expect_exchange_token().never();
 
     let cache_service = MokaCacheService::default();
     let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
@@ -787,6 +791,7 @@ mod tests {
   #[case("/with_auth")]
   #[case("/with_optional_auth")]
   #[tokio::test]
+  // TODO: fix the test before implementing API tokens
   async fn test_auth_middleware_exchange_if_exchange_token_not_in_cache(
     token: (String, String),
     #[case] path: &str,
@@ -794,12 +799,12 @@ mod tests {
     let (token, public_key) = token;
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
-      .expect_exchange_for_resource_token()
-      .with(eq(token.clone()))
-      .return_once(|_| {
+      .expect_exchange_token()
+      .with(always(), always(), always(), always(), always())
+      .return_once(|_, _, _, _, _| {
         Ok((
-          AccessToken::new("token-from-exchange".to_string()),
-          RefreshToken::new("refresh-token-from-exchange".to_string()),
+          "token-from-exchange".to_string(),
+          Some("refresh-token-from-exchange".to_string()),
         ))
       });
     let secret_service = SecretServiceStub::default().with_app_reg_info(

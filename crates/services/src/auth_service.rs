@@ -71,6 +71,9 @@ pub enum AuthServiceError {
   #[error("auth_service_api_error")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   AuthServiceApiError(String),
+  #[error("token_exchange_error")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  TokenExchangeError(String),
 }
 
 impl_error_from!(
@@ -102,10 +105,14 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     client_secret: ClientSecret,
   ) -> Result<(AccessToken, RefreshToken)>;
 
-  async fn exchange_for_resource_token(
+  async fn exchange_token(
     &self,
-    client_token: &str,
-  ) -> Result<(AccessToken, RefreshToken)>;
+    client_id: &str,
+    client_secret: &str,
+    subject_token: &str,
+    token_type: &str,
+    scopes: Vec<String>,
+  ) -> Result<(String, Option<String>)>;
 
   async fn make_resource_admin(
     &self,
@@ -268,12 +275,52 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
-  #[allow(unused_variables)]
-  async fn exchange_for_resource_token(
+  async fn exchange_token(
     &self,
-    client_token: &str,
-  ) -> Result<(AccessToken, RefreshToken)> {
-    todo!()
+    client_id: &str,
+    client_secret: &str,
+    subject_token: &str,
+    token_type: &str,
+    scopes: Vec<String>,
+  ) -> Result<(String, Option<String>)> {
+    let client = reqwest::Client::new();
+    let scope = scopes.join(" ");
+
+    let params = [
+      (
+        "grant_type",
+        "urn:ietf:params:oauth:grant-type:token-exchange",
+      ),
+      ("subject_token", subject_token),
+      ("requested_token_type", token_type),
+      ("scope", &scope),
+      ("client_id", client_id),
+      ("client_secret", client_secret),
+    ];
+
+    let response = client
+      .post(self.auth_token_url())
+      .form(&params)
+      .send()
+      .await?;
+
+    if response.status().is_success() {
+      let token_response: serde_json::Value = response.json().await?;
+
+      let access_token = token_response["access_token"]
+        .as_str()
+        .ok_or_else(|| AuthServiceError::TokenExchangeError("access_token not found".to_string()))?
+        .to_string();
+
+      let refresh_token = token_response["refresh_token"]
+        .as_str()
+        .map(|s| s.to_string());
+
+      Ok((access_token, refresh_token))
+    } else {
+      let error = response.json::<KeycloakError>().await?;
+      Err(AuthServiceError::TokenExchangeError(error.error))
+    }
   }
 
   async fn make_resource_admin(
@@ -503,7 +550,10 @@ mod tests {
 
     assert!(result.is_err());
     let error = result.unwrap_err();
-    assert!(matches!(error, AuthServiceError::AuthServiceApiError(msg) if msg == "invalid_grant"));
+    assert!(matches!(
+      error,
+      AuthServiceError::AuthServiceApiError(msg) if msg == "invalid_grant"
+    ));
     mock.assert();
     Ok(())
   }
@@ -643,6 +693,159 @@ mod tests {
     token_mock.assert();
     admin_mock.assert();
 
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_exchange_for_resource_token_success() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_header("content-type", "application/x-www-form-urlencoded")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "urn:ietf:params:oauth:grant-type:token-exchange".into()),
+        Matcher::UrlEncoded("subject_token".into(), "test_token".into()),
+        Matcher::UrlEncoded("requested_token_type".into(), "urn:ietf:params:oauth:grant-type:refresh_token".into()),
+        Matcher::UrlEncoded("scope".into(), "openid offline_access scope_token_user".into()),
+        Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
+        Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
+      ]))
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "access_token": "new_access_token",
+          "refresh_token": "new_refresh_token",
+          "token_type": "Bearer",
+          "expires_in": 3600,
+          "scope": "openid offline_access scope_token_user"
+        })
+        .to_string(),
+      )
+      .create();
+
+    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let result = service
+      .exchange_token(
+        "test_client_id",
+        "test_client_secret",
+        "test_token",
+        "urn:ietf:params:oauth:grant-type:refresh_token",
+        vec![
+          "openid".to_string(),
+          "offline_access".to_string(),
+          "scope_token_user".to_string(),
+        ],
+      )
+      .await;
+
+    assert!(result.is_ok());
+    let (access_token, refresh_token) = result.unwrap();
+    assert_eq!(access_token, "new_access_token");
+    assert_eq!(refresh_token, Some("new_refresh_token".to_string()));
+
+    mock.assert();
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_exchange_for_resource_token_access_token_only() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_header("content-type", "application/x-www-form-urlencoded")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "urn:ietf:params:oauth:grant-type:token-exchange".into()),
+        Matcher::UrlEncoded("subject_token".into(), "test_token".into()),
+        Matcher::UrlEncoded("requested_token_type".into(), "urn:ietf:params:oauth:token-type:access_token".into()),
+        Matcher::UrlEncoded("scope".into(), "openid scope_token_user".into()),
+        Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
+        Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
+      ]))
+      .with_status(200)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "access_token": "new_access_token",
+          "token_type": "Bearer",
+          "expires_in": 3600,
+          "scope": "openid scope_token_user"
+        })
+        .to_string(),
+      )
+      .create();
+
+    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let result = service
+      .exchange_token(
+        "test_client_id",
+        "test_client_secret",
+        "test_token",
+        "urn:ietf:params:oauth:token-type:access_token",
+        vec!["openid".to_string(), "scope_token_user".to_string()],
+      )
+      .await;
+
+    assert!(result.is_ok());
+    let (access_token, refresh_token) = result.unwrap();
+    assert_eq!(access_token, "new_access_token");
+    assert_eq!(refresh_token, None);
+
+    mock.assert();
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_exchange_for_resource_token_error() -> anyhow::Result<()> {
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    let mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_header("content-type", "application/x-www-form-urlencoded")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "urn:ietf:params:oauth:grant-type:token-exchange".into()),
+        Matcher::UrlEncoded("subject_token".into(), "invalid_token".into()),
+        Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
+        Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
+      ]))
+      .with_status(400)
+      .with_header("content-type", "application/json")
+      .with_body(
+        json!({
+          "error": "invalid_token",
+          "error_description": "Token validation failed"
+        })
+        .to_string(),
+      )
+      .create();
+
+    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let result = service
+      .exchange_token(
+        "test_client_id",
+        "test_client_secret",
+        "invalid_token",
+        "urn:ietf:params:oauth:grant-type:refresh_token",
+        vec!["openid".to_string()],
+      )
+      .await;
+
+    assert!(result.is_err());
+    let error = result.unwrap_err();
+    assert!(matches!(
+      error,
+      AuthServiceError::TokenExchangeError(msg) if msg == "invalid_token"
+    ));
+
+    mock.assert();
     Ok(())
   }
 }
