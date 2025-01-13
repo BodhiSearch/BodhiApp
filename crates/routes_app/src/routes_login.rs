@@ -12,9 +12,7 @@ use axum::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use jsonwebtoken::TokenData;
-use oauth2::{
-  AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl, RefreshToken,
-};
+use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use objs::{ApiError, AppError, BadRequestError, ErrorType};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
@@ -156,13 +154,13 @@ pub async fn login_callback_handler(
     secret_service.set_app_status(&AppStatus::Ready)?;
     let (new_access_token, new_refresh_token) = auth_service
       .refresh_token(
-        RefreshToken::new(refresh_token.to_string()),
-        ClientId::new(app_reg_info.client_id.clone()),
-        ClientSecret::new(app_reg_info.client_secret.clone()),
+        &app_reg_info.client_id,
+        &app_reg_info.client_secret,
+        &refresh_token,
       )
       .await?;
-    access_token = new_access_token.secret().to_string();
-    refresh_token = new_refresh_token.secret().to_string();
+    access_token = new_access_token;
+    refresh_token = new_refresh_token.unwrap();
   }
   session
     .insert("access_token", access_token)
@@ -377,7 +375,10 @@ mod tests {
     assert!(query_params.contains_key("state"));
     assert!(query_params.contains_key("code_challenge"));
     assert_eq!("S256", query_params.get("code_challenge_method").unwrap());
-    assert_eq!("openid email profile roles", query_params.get("scope").unwrap());
+    assert_eq!(
+      "openid email profile roles",
+      query_params.get("scope").unwrap()
+    );
 
     Ok(())
   }

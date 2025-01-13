@@ -100,10 +100,10 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
 
   async fn refresh_token(
     &self,
-    refresh_token: RefreshToken,
-    client_id: ClientId,
-    client_secret: ClientSecret,
-  ) -> Result<(AccessToken, RefreshToken)>;
+    client_id: &str,
+    client_secret: &str,
+    refresh_token: &str,
+  ) -> Result<(String, Option<String>)>;
 
   async fn exchange_token(
     &self,
@@ -245,15 +245,15 @@ impl AuthService for KeycloakAuthService {
 
   async fn refresh_token(
     &self,
-    refresh_token: RefreshToken,
-    client_id: ClientId,
-    client_secret: ClientSecret,
-  ) -> Result<(AccessToken, RefreshToken)> {
+    client_id: &str,
+    client_secret: &str,
+    refresh_token: &str,
+  ) -> Result<(String, Option<String>)> {
     let params = [
       ("grant_type", "refresh_token"),
-      ("refresh_token", refresh_token.secret()),
-      ("client_id", client_id.as_str()),
-      ("client_secret", client_secret.secret()),
+      ("refresh_token", refresh_token),
+      ("client_id", client_id),
+      ("client_secret", client_secret),
     ];
     let client = reqwest::Client::new();
     let response = client
@@ -266,8 +266,10 @@ impl AuthService for KeycloakAuthService {
       let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
         response.json().await?;
       Ok((
-        token_response.access_token().to_owned(),
-        token_response.refresh_token().unwrap().to_owned(),
+        token_response.access_token().secret().to_string(),
+        token_response
+          .refresh_token()
+          .map(|s| s.secret().to_string()),
       ))
     } else {
       let error = response.json::<KeycloakError>().await?;
@@ -359,7 +361,6 @@ mod tests {
   use crate::{AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError, KeycloakAuthService};
   use jsonwebtoken::{errors::ErrorKind, Algorithm};
   use mockito::{Matcher, Server};
-  use oauth2::{ClientId, ClientSecret, RefreshToken};
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
     AppError, FluentLocalizationService,
@@ -494,17 +495,13 @@ mod tests {
 
     let service = KeycloakAuthService::new(url, "test-realm".to_string());
     let result = service
-      .refresh_token(
-        RefreshToken::new(old_refresh_token.to_string()),
-        ClientId::new(client_id.to_string()),
-        ClientSecret::new(client_secret.to_string()),
-      )
+      .refresh_token(client_id, client_secret, old_refresh_token)
       .await;
 
     assert!(result.is_ok());
     let (access_token, refresh_token) = result.unwrap();
-    assert_eq!(access_token.secret(), new_access_token);
-    assert_eq!(refresh_token.secret(), new_refresh_token);
+    assert_eq!(access_token, new_access_token);
+    assert_eq!(refresh_token, Some(new_refresh_token.to_string()));
 
     mock.assert();
     Ok(())
@@ -542,11 +539,7 @@ mod tests {
 
     let service = KeycloakAuthService::new(url, "test-realm".to_string());
     let result = service
-      .refresh_token(
-        RefreshToken::new(invalid_refresh_token.to_string()),
-        ClientId::new(client_id.to_string()),
-        ClientSecret::new(client_secret.to_string()),
-      )
+      .refresh_token(client_id, client_secret, invalid_refresh_token)
       .await;
 
     assert!(result.is_err());
