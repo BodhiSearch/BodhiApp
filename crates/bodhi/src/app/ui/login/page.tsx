@@ -26,20 +26,24 @@ export function LoginContent() {
 
   const isNonAuthz = appInfo && !appInfo.authz;
   const loginTitle = userInfo?.logged_in ? 'Welcome' : 'Login';
-  const loginMessage = userInfo?.logged_in
-    ? `You are logged in as ${userInfo?.email}`
-    : isNonAuthz
-      ? <>This app is setup in non-authenticated mode.<br />User login is not available.</>
-      : 'You need to login to use the Bodhi App';
+  const loginMessage = userInfo?.logged_in ? (
+    `You are logged in as ${userInfo?.email}`
+  ) : isNonAuthz ? (
+    <>
+      This app is setup in non-authenticated mode.
+      <br />
+      User login is not available.
+    </>
+  ) : (
+    'You need to login to use the Bodhi App'
+  );
 
   return (
     <div className="w-full max-w-md mx-auto mt-8 h-fit text-center">
       <Card>
         <CardHeader className="text-center">
           <CardTitle>{loginTitle}</CardTitle>
-          <CardDescription>
-            {loginMessage}
-          </CardDescription>
+          <CardDescription>{loginMessage}</CardDescription>
         </CardHeader>
         <CardContent>
           {userInfo?.logged_in ? (
@@ -58,9 +62,15 @@ export function LoginContent() {
               </Button>
             </>
           ) : (
-            <div className={`${isNonAuthz ? 'opacity-50 pointer-events-none' : ''}`}>
+            <div
+              className={`${isNonAuthz ? 'opacity-50 pointer-events-none' : ''}`}
+            >
               <Link href={path_app_login} passHref>
-                <Button className="w-full" variant="default" disabled={isNonAuthz}>
+                <Button
+                  className="w-full"
+                  variant="default"
+                  disabled={isNonAuthz}
+                >
                   Login
                 </Button>
               </Link>

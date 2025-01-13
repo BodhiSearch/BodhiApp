@@ -285,27 +285,28 @@ impl AuthService for KeycloakAuthService {
   ) -> Result<(String, Option<String>)> {
     let client = reqwest::Client::new();
     let scope = scopes.join(" ");
-
     let params = [
       (
         "grant_type",
         "urn:ietf:params:oauth:grant-type:token-exchange",
       ),
+      ("client_id", client_id),
+      ("client_secret", client_secret),
       ("subject_token", subject_token),
       ("requested_token_type", token_type),
       ("scope", &scope),
-      ("client_id", client_id),
-      ("client_secret", client_secret),
     ];
 
     let response = client
       .post(self.auth_token_url())
       .form(&params)
+      .header("Authorization", format!("Berarer {}", subject_token))
       .send()
       .await?;
 
     if response.status().is_success() {
       let token_response: serde_json::Value = response.json().await?;
+      tracing::info!("received: {}", token_response.to_string());
 
       let access_token = token_response["access_token"]
         .as_str()

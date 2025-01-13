@@ -22,6 +22,9 @@ import {
   PullModelRequest,
 } from '@/types/api';
 
+export const ENDPOINT_APP_INFO = '/app/info';
+export const ENDPOINT_USER_INFO = '/api/ui/user';
+
 type PagedApiResponse<T> = {
   data: T;
   total?: number;
@@ -81,7 +84,7 @@ export function useMutationQuery<T, V>(
 }
 
 export function useAppInfo() {
-  return useQuery<AppInfo>('appInfo', '/app/info');
+  return useQuery<AppInfo>('appInfo', ENDPOINT_APP_INFO);
 }
 
 type SetupRequest = {
@@ -179,7 +182,7 @@ export function useLogout(
 }
 
 export function useUser(options?: { enabled: boolean }) {
-  return useQuery<UserInfo | null>('user', '/api/ui/user', undefined, {
+  return useQuery<UserInfo | null>('user', ENDPOINT_USER_INFO, undefined, {
     retry: false,
     enabled: options?.enabled,
   });

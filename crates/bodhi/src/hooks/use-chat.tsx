@@ -53,9 +53,7 @@ export function useChat() {
               updatedAt: Date.now(),
             });
           },
-          onFinish: () => {
-            console.log('Chat completion finished');
-          },
+          onFinish: () => {},
         });
       } catch (error) {
         console.error('Chat completion error:', error);

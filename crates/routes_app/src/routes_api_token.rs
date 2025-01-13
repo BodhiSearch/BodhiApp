@@ -2,8 +2,7 @@ use auth_middleware::KEY_RESOURCE_TOKEN;
 use axum::{
   extract::State,
   http::{HeaderMap, StatusCode},
-  routing::post,
-  Json, Router,
+  Json,
 };
 use axum_extra::extract::WithRejection;
 use chrono::{DateTime, Utc};
@@ -12,10 +11,6 @@ use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{AuthServiceError, SecretServiceExt};
 use std::sync::Arc;
-
-pub fn create_api_tokens_router() -> Router<Arc<dyn RouterState>> {
-  Router::new().route("/api/tokens/create", post(create_token_handler))
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateApiTokenRequest {

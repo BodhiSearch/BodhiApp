@@ -40,7 +40,10 @@ beforeAll(() => {
       )
       .join(' ');
 
-    if (errorString.includes('Request failed with status code 500')) {
+    if (
+      errorString.includes('Request failed with status code ') ||
+      errorString.includes('Network Error')
+    ) {
       return;
     }
     originalError.call(console, ...args);
