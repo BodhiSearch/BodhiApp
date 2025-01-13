@@ -12,6 +12,7 @@ services = { workspace = true }
 server_core = { workspace = true }
 time = { workspace = true }
 
+async-trait = { workspace = true }
 axum = { workspace = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true }
