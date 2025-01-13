@@ -26,9 +26,12 @@ impl CachedToken {
     Self { token, hash }
   }
 
-  pub fn new_with_token_and_hash(token: String, original_token: &str) -> Self {
+  pub fn new_with_token_and_hash(token: &str, original_token: &str) -> Self {
     let hash = format!("{:x}", Sha256::digest(original_token.as_bytes()));
-    Self { token, hash }
+    Self {
+      token: token.to_string(),
+      hash,
+    }
   }
 
   fn to_cache_value(&self) -> String {

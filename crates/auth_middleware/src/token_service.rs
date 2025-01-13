@@ -1,5 +1,5 @@
 use crate::AuthError;
-use axum::http::HeaderValue;
+use axum::http::{header::AUTHORIZATION, HeaderMap};
 use jsonwebtoken::{DecodingKey, Validation};
 use objs::BadRequestError;
 use services::{AppRegInfo, AuthService, Claims, SecretService, SecretServiceExt};
@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 #[async_trait::async_trait]
 pub trait TokenService {
-  fn extract_token(&self, header: &HeaderValue) -> Result<String, AuthError>;
+  fn extract_token(&self, headers: &HeaderMap) -> Result<String, AuthError>;
 
   fn validate_token(&self, token: &str) -> Result<Claims, AuthError>;
 
@@ -37,7 +37,11 @@ impl DefaultTokenService {
 
 #[async_trait::async_trait]
 impl TokenService for DefaultTokenService {
-  fn extract_token(&self, header: &HeaderValue) -> Result<String, AuthError> {
+  fn extract_token(&self, headers: &HeaderMap) -> Result<String, AuthError> {
+    let header = headers
+      .get(AUTHORIZATION)
+      .ok_or(AuthError::AuthHeaderNotFound)?;
+
     let token = header
       .to_str()
       .map_err(|e| {
@@ -118,15 +122,16 @@ impl TokenService for DefaultTokenService {
 #[cfg(test)]
 mod tests {
   use crate::{DefaultTokenService, TokenService};
-  use axum::http::HeaderValue;
+  use axum::http::{header::AUTHORIZATION, HeaderMap, HeaderValue};
   use services::{MockAuthService, MockSecretService};
   use std::sync::Arc;
 
   #[tokio::test]
   async fn test_extract_token_valid() {
     let service = create_test_service();
-    let header = HeaderValue::from_static("Bearer test-token");
-    let result = service.extract_token(&header);
+    let mut headers = HeaderMap::new();
+    headers.insert(AUTHORIZATION, HeaderValue::from_static("Bearer test-token"));
+    let result = service.extract_token(&headers);
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), "test-token");
   }
@@ -134,16 +139,29 @@ mod tests {
   #[tokio::test]
   async fn test_extract_token_invalid_format() {
     let service = create_test_service();
-    let header = HeaderValue::from_static("InvalidFormat test-token");
-    let result = service.extract_token(&header);
+    let mut headers = HeaderMap::new();
+    headers.insert(
+      AUTHORIZATION,
+      HeaderValue::from_static("InvalidFormat test-token"),
+    );
+    let result = service.extract_token(&headers);
     assert!(result.is_err());
   }
 
   #[tokio::test]
   async fn test_extract_token_empty() {
     let service = create_test_service();
-    let header = HeaderValue::from_static("Bearer ");
-    let result = service.extract_token(&header);
+    let mut headers = HeaderMap::new();
+    headers.insert(AUTHORIZATION, HeaderValue::from_static("Bearer "));
+    let result = service.extract_token(&headers);
+    assert!(result.is_err());
+  }
+
+  #[tokio::test]
+  async fn test_extract_token_missing_header() {
+    let service = create_test_service();
+    let headers = HeaderMap::new();
+    let result = service.extract_token(&headers);
     assert!(result.is_err());
   }
 
