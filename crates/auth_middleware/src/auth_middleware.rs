@@ -1,4 +1,8 @@
-use crate::{app_status_or_default, DefaultTokenService, TokenService};
+use crate::{
+  app_status_or_default,
+  token_cache::{DefaultTokenCache, TokenCacheError},
+  DefaultTokenService, TokenCache, TokenService,
+};
 use axum::{
   extract::{Request, State},
   http::{header::AUTHORIZATION, HeaderMap, HeaderValue},
@@ -49,6 +53,8 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
   TowerSession(#[from] tower_sessions::session::Error),
+  #[error(transparent)]
+  TokenCache(#[from] TokenCacheError),
 }
 
 impl_error_from!(
@@ -77,6 +83,7 @@ async fn _auth_middleware(
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
+  let token_cache = DefaultTokenCache::new(app_service.cache_service());
 
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
@@ -116,33 +123,28 @@ async fn _auth_middleware(
 
   // Extract token
   let token = token_service.extract_token(token)?;
-  
-  // Check cache first
-  let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
-  let cache_service = app_service.cache_service();
-  
+
   // Try to get claims without validation first to get JTI
   let claims = decode_access_token(&token)?;
-  let cache_key = format!("exchange-access-token-{}", claims.claims.jti);
-  
-  if let Some(cached_data) = cache_service.get(&cache_key) {
-    if let Some((cached_token, cached_hash)) = cached_data.split_once(':') {
-      if cached_hash == token_hash {
-        req.headers_mut()
-          .insert(KEY_RESOURCE_TOKEN, cached_token.parse().unwrap());
-        return Ok(next.run(req).await);
-      }
-    } else {
-      tracing::warn!("malformed cached key: '{cache_key}', deleting from cache");
-      cache_service.remove(&cache_key);
+
+  // Check cache using TokenCache
+  if let Some(cached_token) = token_cache.get_access_token(&claims.claims.jti)? {
+    if cached_token.verify_hash(&token) {
+      req
+        .headers_mut()
+        .insert(KEY_RESOURCE_TOKEN, cached_token.token.parse().unwrap());
+      return Ok(next.run(req).await);
     }
   }
 
   // If not in cache, validate and exchange token
   let claims = token_service.validate_token(&token)?;
   let (access_token, refresh_token) = token_service.exchange_token(&token).await?;
-  
-  // Cache the new tokens
+
+  // Cache the new tokens (still using old cache_service for now)
+  let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
+  let cache_service = app_service.cache_service();
+  let cache_key = format!("exchange-access-token-{}", claims.jti);
   let cache_value = format!("{}:{}", access_token, token_hash);
   cache_service.set(&cache_key, &cache_value);
   if let Some(refresh) = refresh_token {
@@ -1083,8 +1085,8 @@ mod tests {
     let mut record = Record {
       id,
       data: maplit::hashmap! {
-        "access_token".to_string() => Value::String(expired_token.clone()),
-        "refresh_token".to_string() => Value::String("refresh_token".to_string()),
+          "access_token".to_string() => Value::String(expired_token.clone()),
+          "refresh_token".to_string() => Value::String("refresh_token".to_string()),
       },
       expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
     };

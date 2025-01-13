@@ -9,8 +9,8 @@ mod token_service;
 mod utils;
 
 pub use auth_middleware::*;
-pub use token_cache::{TokenCache, DefaultTokenCache, CachedToken};
-pub use token_service::{TokenService, DefaultTokenService};
+pub use token_cache::{CachedToken, DefaultTokenCache, TokenCache};
+pub use token_service::{DefaultTokenService, TokenService};
 pub use utils::*;
 
 pub mod l10n {
