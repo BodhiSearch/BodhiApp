@@ -11,6 +11,7 @@ import {
   Settings2,
   Files,
   Download,
+  Key,
 } from 'lucide-react';
 
 const navigationItems: NavigationItem[] = [
@@ -49,6 +50,13 @@ const navigationItems: NavigationItem[] = [
         icon: Download,
       },
     ],
+  },
+  {
+    title: 'API Tokens',
+    href: '/ui/tokens/',
+    description: 'Manage API access tokens',
+    icon: Key,
+    authRequired: true,
   },
 ];
 

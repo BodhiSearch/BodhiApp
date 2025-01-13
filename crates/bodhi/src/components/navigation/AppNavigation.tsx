@@ -27,12 +27,7 @@ export function AppNavigation() {
   };
 
   return (
-    <div
-      className={cn(
-        'flex items-center p-2',
-        !isMobile && 'w-64'
-      )}
-    >
+    <div className={cn('flex items-center p-2', !isMobile && 'w-64')}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -72,9 +67,7 @@ export function AppNavigation() {
               <React.Fragment key={item.title}>
                 {item.items ? (
                   <>
-                    <DropdownMenuLabel 
-                      className="flex items-center gap-2 px-2 py-1.5"
-                    >
+                    <DropdownMenuLabel className="flex items-center gap-2 px-2 py-1.5">
                       {item.icon && <item.icon className="h-4 w-4" />}
                       <span className="font-medium">{item.title}</span>
                     </DropdownMenuLabel>
