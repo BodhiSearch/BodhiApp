@@ -4,10 +4,12 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod auth_middleware;
+mod token_cache;
 mod token_service;
 mod utils;
 
 pub use auth_middleware::*;
+pub use token_cache::{TokenCache, DefaultTokenCache, CachedToken};
 pub use token_service::{TokenService, DefaultTokenService};
 pub use utils::*;
 
