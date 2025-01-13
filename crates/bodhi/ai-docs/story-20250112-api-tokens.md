@@ -63,6 +63,58 @@ So that I can access the application programmatically from external applications
 - [ ] API endpoint to update token name
 - [ ] API endpoint to invalidate token
 
+## Progress Update (2025-01-13)
+
+### Completed Features
+
+#### Navigation & Access 
+- [x] Add "API Tokens" menu item in the navigation
+- [x] Show message "Non-authenticated setup don't need API Tokens..." in non-authenticated mode
+- [x] Only show API tokens page when user is authenticated
+
+#### Token Generation Form 
+- [x] Form with input field for token name
+- [x] Create button to generate new token
+- [x] Dialog to display newly generated token with copy functionality
+- [x] Clear warning that token will not be shown again
+- [x] Warning that tokens must be used at least once every 30 days
+
+#### Frontend Implementation Details
+1. Created token management UI components:
+   - `page.tsx`: Main token page with loading states and authentication checks
+   - `TokenForm.tsx`: Form for token creation with validation
+   - `TokenDialog.tsx`: Modal for displaying new tokens with copy/show/hide functionality
+   - Tests for all components with MSW for API mocking
+
+2. Added token-related hooks:
+   - `useCreateToken`: Hook for token creation with error handling
+   - Tests for hooks with proper error cases and network conditions
+
+3. UI/UX Features:
+   - Loading states with skeletons
+   - Error handling with toast notifications
+   - Security warnings and instructions
+   - Copy to clipboard functionality
+   - Show/hide token toggle
+   - Responsive layout with cards
+
+### Next Steps
+
+#### Backend Implementation (Pending)
+- [ ] Create database table `api_tokens`
+- [ ] Implement token storage and retrieval
+- [ ] Add token validation and expiry checks
+
+#### Token Management Table (Pending)
+- [ ] Implement token listing UI
+- [ ] Add token status management
+- [ ] Create token invalidation flow
+
+#### Testing & Documentation
+- [ ] Add integration tests for token flow
+- [ ] Document API endpoints
+- [ ] Add user documentation for token management
+
 ## Technical Implementation Steps
 
 ### Database Changes

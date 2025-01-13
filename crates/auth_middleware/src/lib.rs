@@ -4,9 +4,11 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod auth_middleware;
+mod token_service;
 mod utils;
 
 pub use auth_middleware::*;
+pub use token_service::{TokenService, DefaultTokenService};
 pub use utils::*;
 
 pub mod l10n {

@@ -1,4 +1,4 @@
-use crate::app_status_or_default;
+use crate::{app_status_or_default, DefaultTokenService, TokenService};
 use axum::{
   extract::{Request, State},
   http::{header::AUTHORIZATION, HeaderMap, HeaderValue},
@@ -75,8 +75,8 @@ async fn _auth_middleware(
   next: Next,
 ) -> Result<Response, AuthError> {
   let app_service = state.app_service();
-  let auth_service = app_service.auth_service();
   let secret_service = app_service.secret_service();
+  let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
 
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
@@ -96,8 +96,13 @@ async fn _auth_middleware(
 
   // Check for token in session
   if let Some(access_token) = session.get::<String>("access_token").await? {
-    let validated_token =
-      validate_access_token(session, &auth_service, &secret_service, access_token).await?;
+    let validated_token = validate_access_token(
+      session,
+      &app_service.auth_service(),
+      &secret_service,
+      access_token,
+    )
+    .await?;
     req
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
@@ -108,13 +113,46 @@ async fn _auth_middleware(
   let token = headers
     .get(AUTHORIZATION)
     .ok_or(AuthError::AuthHeaderNotFound)?;
-  let validated_token =
-    validate_token_from_header(token, app_service, secret_service, state).await?;
+
+  // Extract token
+  let token = token_service.extract_token(token)?;
+  
+  // Check cache first
+  let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
+  let cache_service = app_service.cache_service();
+  
+  // Try to get claims without validation first to get JTI
+  let claims = decode_access_token(&token)?;
+  let cache_key = format!("exchange-access-token-{}", claims.claims.jti);
+  
+  if let Some(cached_data) = cache_service.get(&cache_key) {
+    if let Some((cached_token, cached_hash)) = cached_data.split_once(':') {
+      if cached_hash == token_hash {
+        req.headers_mut()
+          .insert(KEY_RESOURCE_TOKEN, cached_token.parse().unwrap());
+        return Ok(next.run(req).await);
+      }
+    } else {
+      tracing::warn!("malformed cached key: '{cache_key}', deleting from cache");
+      cache_service.remove(&cache_key);
+    }
+  }
+
+  // If not in cache, validate and exchange token
+  let claims = token_service.validate_token(&token)?;
+  let (access_token, refresh_token) = token_service.exchange_token(&token).await?;
+  
+  // Cache the new tokens
+  let cache_value = format!("{}:{}", access_token, token_hash);
+  cache_service.set(&cache_key, &cache_value);
+  if let Some(refresh) = refresh_token {
+    cache_service.set(&format!("exchange-refresh-token-{}", claims.jti), &refresh);
+  }
 
   // Set header and continue
   req
     .headers_mut()
-    .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
+    .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
 
   Ok(next.run(req).await)
 }
