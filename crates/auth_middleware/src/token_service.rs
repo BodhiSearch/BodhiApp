@@ -1,27 +1,40 @@
-use crate::AuthError;
+use crate::{AuthError, DefaultTokenCache, TokenCache};
 use axum::http::{header::AUTHORIZATION, HeaderMap};
 use jsonwebtoken::{DecodingKey, Validation};
 use objs::BadRequestError;
-use services::{AppRegInfo, AuthService, Claims, SecretService, SecretServiceExt};
+use services::{
+  AppRegInfo, AuthService, CacheService, Claims, JsonWebTokenError, SecretService, SecretServiceExt,
+};
 use std::sync::Arc;
+use tower_sessions::Session;
 
 #[async_trait::async_trait]
 pub trait TokenService {
   fn extract_token(&self, headers: &HeaderMap) -> Result<String, AuthError>;
   fn validate_token(&self, token: &str) -> Result<Claims, AuthError>;
   async fn exchange_token(&self, token: &str) -> Result<(String, Option<String>), AuthError>;
+  fn decode_access_token_no_validation(
+    &self,
+    token: &str,
+  ) -> Result<jsonwebtoken::TokenData<Claims>, JsonWebTokenError>;
 }
 
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
   secret_service: Arc<dyn SecretService>,
+  cache_service: Arc<dyn CacheService>,
 }
 
 impl DefaultTokenService {
-  pub fn new(auth_service: Arc<dyn AuthService>, secret_service: Arc<dyn SecretService>) -> Self {
+  pub fn new(
+    auth_service: Arc<dyn AuthService>,
+    secret_service: Arc<dyn SecretService>,
+    cache_service: Arc<dyn CacheService>,
+  ) -> Self {
     Self {
       auth_service,
       secret_service,
+      cache_service,
     }
   }
 
@@ -30,6 +43,60 @@ impl DefaultTokenService {
       .secret_service
       .app_reg_info()?
       .ok_or(AuthError::AppRegInfoMissing)
+  }
+
+  pub async fn get_valid_session_token(
+    &self,
+    session: Session,
+    access_token: String,
+  ) -> Result<String, AuthError> {
+    // Validate session token
+    let claims = self.decode_access_token_no_validation(&access_token)?;
+    // Check if token is expired
+    let now = time::OffsetDateTime::now_utc();
+    if now.unix_timestamp() < claims.claims.exp as i64 {
+      return Ok(access_token);
+    }
+
+    let Some(refresh_token) = session.get::<String>("refresh_token").await? else {
+      return Err(AuthError::RefreshTokenNotFound);
+    };
+
+    // Token is expired, try to refresh
+    let app_reg_info: AppRegInfo = self
+      .secret_service
+      .app_reg_info()?
+      .ok_or(AuthError::AppRegInfoMissing)?;
+
+    let (new_access_token, new_refresh_token) = self
+      .auth_service
+      .refresh_token(
+        &app_reg_info.client_id,
+        &app_reg_info.client_secret,
+        &refresh_token,
+      )
+      .await?;
+
+    // Store new tokens in session
+    session.insert("access_token", &new_access_token).await?;
+    if let Some(refresh_token) = new_refresh_token.as_ref() {
+      session.insert("refresh_token", refresh_token).await?;
+    }
+
+    Ok(new_access_token)
+  }
+
+  pub async fn get_valid_bearer_token(&self, headers: HeaderMap) -> Result<String, AuthError> {
+    let request_token = self.extract_token(&headers)?;
+    let claims = self.decode_access_token_no_validation(&request_token)?;
+    let token_cache = DefaultTokenCache::new(self.cache_service.clone());
+    if token_cache.is_token_in_cache(&claims.claims.jti, &request_token)? {
+      return Ok(request_token);
+    }
+    let claims = self.validate_token(&request_token)?;
+    let (access_token, refresh_token) = self.exchange_token(&request_token).await?;
+    token_cache.store_token_pair(&claims.jti, &access_token, refresh_token);
+    Ok(access_token)
   }
 }
 
@@ -115,13 +182,28 @@ impl TokenService for DefaultTokenService {
 
     Ok((access_token, refresh_token))
   }
+
+  fn decode_access_token_no_validation(
+    &self,
+    access_token: &str,
+  ) -> Result<jsonwebtoken::TokenData<Claims>, JsonWebTokenError> {
+    let mut validation = Validation::default();
+    validation.insecure_disable_signature_validation();
+    validation.validate_exp = false;
+    let token_data = jsonwebtoken::decode::<Claims>(
+      access_token,
+      &DecodingKey::from_secret(&[]), // dummy key for parsing
+      &validation,
+    )?;
+    Ok(token_data)
+  }
 }
 
 #[cfg(test)]
 mod tests {
   use crate::{DefaultTokenService, TokenService};
   use axum::http::{header::AUTHORIZATION, HeaderMap, HeaderValue};
-  use services::{MockAuthService, MockSecretService};
+  use services::{MockAuthService, MockSecretService, MokaCacheService};
   use std::sync::Arc;
 
   #[tokio::test]
@@ -167,6 +249,10 @@ mod tests {
   fn create_test_service() -> DefaultTokenService {
     let app_service = Arc::new(MockAuthService::default());
     let secret_service = Arc::new(MockSecretService::default());
-    DefaultTokenService::new(app_service, secret_service)
+    DefaultTokenService::new(
+      app_service,
+      secret_service,
+      Arc::new(MokaCacheService::default()),
+    )
   }
 }
