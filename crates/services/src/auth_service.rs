@@ -41,6 +41,11 @@ pub struct ResourceClaim {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct MinClaims {
+  pub jti: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
   pub exp: u64,
   pub iat: u64,
@@ -67,13 +72,13 @@ pub struct OfflineClaims {
   pub scope: String,
 }
 
-pub fn decode_access_token(
+pub fn decode_access_token<T: for<'de> Deserialize<'de>>(
   access_token: &str,
-) -> std::result::Result<jsonwebtoken::TokenData<Claims>, JsonWebTokenError> {
+) -> std::result::Result<jsonwebtoken::TokenData<T>, JsonWebTokenError> {
   let mut validation = Validation::default();
   validation.insecure_disable_signature_validation();
   validation.validate_exp = false;
-  let token_data = jsonwebtoken::decode::<Claims>(
+  let token_data = jsonwebtoken::decode::<T>(
     access_token,
     &DecodingKey::from_secret(&[]), // dummy key for parsing
     &validation,

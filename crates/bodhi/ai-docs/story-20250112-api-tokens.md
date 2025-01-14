@@ -9,9 +9,9 @@ So that I can access the application programmatically from external applications
 - Users need programmatic access to Bodhi App via API tokens
 - Tokens are generated using OAuth2 token exchange with offline_access and scope_token_user scopes
 - Offline tokens do not expire but have an idle timeout of 30 days
-- Tokens are stateless and session-independent
-- App must be in authenticated mode to generate tokens
-- All tokens are created with user scope by default
+- Tokens are stateless and user session-independent
+- App must be in authenticated mode to generate tokens, authz: true
+- All tokens are created with user scope by default, scope: scope_token_user
 
 ## Token Characteristics
 - Offline tokens can be used repeatedly to obtain new access tokens
@@ -22,18 +22,19 @@ So that I can access the application programmatically from external applications
 ## Acceptance Criteria
 
 ### Navigation & Access
-- [ ] Add "API Tokens" menu item in the navigation
-- [ ] Show message "Non-authenticated setup don't need API Tokens. Either ignore the Auth header or pass an empty/random Bearer token. They are not validated." when app is in non-authenticated mode
-- [ ] Only show API tokens page when user is authenticated
+- [x] Add "API Tokens" menu item in the navigation
+- [x] Show message "Non-authenticated setup don't need API Tokens. Either ignore the Auth header or pass an empty/random Bearer token. They are not validated." when app is in non-authenticated mode
+- [x] Only show API tokens page when user is authenticated and authz: true
 
 ### Token Generation Form
-- [ ] Form with input field for token name
-- [ ] Create button to generate new token
-- [ ] Dialog to display newly generated token with copy functionality
-- [ ] Clear warning that token will not be shown again
-- [ ] Warning that tokens must be used at least once every 30 days
+- [x] Form with input field for token name
+- [x] Create button to generate new token
+- [x] Dialog to display newly generated token with copy functionality
+- [x] Clear warning that token will not be shown again
+- [x] Warning that tokens must be used at least once every 30 days
 
 ### Token Management Table
+- [ ] update the auth backend to latest version allowing for offline token delete
 - [ ] Display table of user's API tokens with columns:
   - Token ID
   - Name (editable)
@@ -188,6 +189,58 @@ So that I can access the application programmatically from external applications
   - Caching behavior
   - Error cases
   - Integration with auth service
+
+## Token Caching Story
+
+## Overview
+Implement token caching to optimize token validation and reduce unnecessary calls to the auth service.
+
+## Implementation Details
+
+### Token Caching Strategy
+- Cache key format: `token:<jti>:<token_hash_prefix>`
+  - `jti`: Unique token identifier from claims
+  - `token_hash_prefix`: First 12 chars of SHA256 hash of the token
+- Cache value: JSON serialized `CachedToken` containing:
+  - `access_token`: The exchanged access token
+  - `exp`: Token expiration timestamp
+
+### Optimization Flow
+1. Extract token from authorization header
+2. Get `jti` and calculate token hash without full validation
+3. Check cache using composite key
+4. If cache hit and token not expired:
+   - Return cached access token
+5. If cache miss or token expired:
+   - Validate token signature and claims
+   - Exchange token with auth service
+   - Cache new access token with expiry
+   - Return new access token
+
+### Security Considerations
+- Token hash in cache key ensures cache miss if token is tampered
+- Expiry check prevents use of expired tokens
+- No sensitive data stored in cache besides access token
+- Cache automatically invalidates on token changes
+
+### Code Changes
+- Added `TokenCache` struct to encapsulate caching logic
+- Updated `DefaultTokenService` to use token cache
+- Added tests for cache hit and miss scenarios
+- Integrated with existing auth middleware
+
+### Performance Impact
+- Reduces auth service calls for valid tokens
+- Minimal overhead for cache misses
+- Efficient key lookup using token hash
+
+## Status
+- [x] Design caching strategy
+- [x] Implement token caching
+- [x] Add cache hit/miss tests
+- [x] Update auth middleware
+- [x] Code review changes
+- [ ] Documentation
 
 ## Not In Scope
 - Custom token scopes

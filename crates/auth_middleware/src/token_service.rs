@@ -2,26 +2,42 @@ use crate::AuthError;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
 use services::{
-  AppRegInfo, AuthService, Claims, JsonWebTokenError, OfflineClaims, SecretService,
-  SecretServiceExt, GRANT_REFRESH_TOKEN, TOKEN_TYPE_OFFLINE,
+  decode_access_token, AppRegInfo, AuthService, CacheService, Claims, JsonWebTokenError, MinClaims,
+  OfflineClaims, SecretService, SecretServiceExt, GRANT_REFRESH_TOKEN, TOKEN_TYPE_OFFLINE,
 };
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
 const SCOPE_TOKEN_USER: &str = "scope_token_user";
 const LEEWAY_SECONDS: i64 = 60; // 1 minute leeway for clock skew
+const TOKEN_CACHE_PREFIX: &str = "token:";
+const TOKEN_HASH_LENGTH: usize = 12;
+const CACHE_KEY_SEPARATOR: &str = ":";
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct CachedToken {
+  access_token: String,
+  exp: u64,
+}
 
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
   secret_service: Arc<dyn SecretService>,
+  cache_service: Arc<dyn CacheService>,
 }
 
 impl DefaultTokenService {
-  pub fn new(auth_service: Arc<dyn AuthService>, secret_service: Arc<dyn SecretService>) -> Self {
+  pub fn new(
+    auth_service: Arc<dyn AuthService>,
+    secret_service: Arc<dyn SecretService>,
+    cache_service: Arc<dyn CacheService>,
+  ) -> Self {
     Self {
       auth_service,
       secret_service,
+      cache_service,
     }
   }
 
@@ -37,19 +53,29 @@ impl DefaultTokenService {
       ));
     }
 
-    // Get app registration info
+    let cache_key = build_cache_key(token)?;
+    // Check cache first
+    if let Some(cached_json) = self.cache_service.get(&cache_key) {
+      if let Ok(cached) = serde_json::from_str::<CachedToken>(&cached_json) {
+        // If not expired, return cached access token
+        let now = Utc::now().timestamp() as u64;
+        if cached.exp > now {
+          return Ok(cached.access_token);
+        }
+      }
+    }
+
+    // If not in cache or expired, proceed with full validation
     let app_reg_info: AppRegInfo = self
       .secret_service
       .app_reg_info()?
       .ok_or(AuthError::AppRegInfoMissing)?;
 
-    // Validate token signature and decode claims
+    // Validate token signature and claims
     let claims = self.validate_token_signature(token, &app_reg_info)?;
-
-    // Validate claims
     self.validate_token_claims(&claims, &app_reg_info.client_id)?;
 
-    // Exchange token for access token
+    // Exchange token
     let (access_token, _) = self
       .auth_service
       .exchange_token(
@@ -61,6 +87,14 @@ impl DefaultTokenService {
       )
       .await?;
 
+    // Cache the new token
+    let cached = CachedToken {
+      access_token: access_token.clone(),
+      exp: claims.exp,
+    };
+    if let Ok(cache_token) = serde_json::to_string(&cached) {
+      self.cache_service.set(&cache_key, &cache_token);
+    }
     Ok(access_token)
   }
 
@@ -218,9 +252,27 @@ impl DefaultTokenService {
   }
 }
 
+fn build_cache_key(token: &str) -> Result<String, AuthError> {
+  let token_data = decode_access_token::<MinClaims>(token)
+    .map_err(|_| AuthError::TokenValidation("invalid token format".to_string()))?;
+  let jti = token_data.claims.jti;
+  let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
+  let cache_key = format!(
+    "{}{}{}{}",
+    TOKEN_CACHE_PREFIX,
+    jti,
+    CACHE_KEY_SEPARATOR,
+    &token_hash[..TOKEN_HASH_LENGTH]
+  );
+  Ok(cache_key)
+}
+
 #[cfg(test)]
 mod tests {
-  use crate::{token_service::SCOPE_TOKEN_USER, AuthError, DefaultTokenService};
+  use crate::{
+    token_service::{build_cache_key, CachedToken, SCOPE_TOKEN_USER},
+    AuthError, DefaultTokenService,
+  };
   use chrono::Utc;
   use mockall::predicate::*;
   use objs::{test_utils::setup_l10n, FluentLocalizationService};
@@ -231,8 +283,8 @@ mod tests {
       build_token, offline_token_claims, SecretServiceStub, ISSUER, TEST_CLIENT_ID,
       TEST_CLIENT_SECRET,
     },
-    AppRegInfoBuilder, AuthServiceError, MockAuthService, MockSecretService, GRANT_REFRESH_TOKEN,
-    TOKEN_TYPE_OFFLINE,
+    AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MockSecretService,
+    MokaCacheService, GRANT_REFRESH_TOKEN, TOKEN_TYPE_OFFLINE,
   };
   use std::sync::Arc;
 
@@ -241,6 +293,7 @@ mod tests {
     Arc::new(DefaultTokenService::new(
       Arc::new(MockAuthService::default()),
       Arc::new(MockSecretService::default()),
+      Arc::new(MokaCacheService::default()),
     ))
   }
 
@@ -291,6 +344,7 @@ mod tests {
     let token_service = Arc::new(DefaultTokenService::new(
       Arc::new(mock_auth),
       Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
     ));
 
     // When
@@ -324,6 +378,7 @@ mod tests {
     let token_service = Arc::new(DefaultTokenService::new(
       Arc::new(MockAuthService::default()),
       Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
     ));
     let mut claims = offline_token_claims();
     claims
@@ -374,7 +429,11 @@ mod tests {
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let auth_service = MockAuthService::new();
-    let token_service = DefaultTokenService::new(Arc::new(auth_service), Arc::new(secret_service));
+    let token_service = DefaultTokenService::new(
+      Arc::new(auth_service),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+    );
 
     // When
     let result = token_service
@@ -419,16 +478,19 @@ mod tests {
       )
       .times(1)
       .returning(|_, _, _, _, _| Ok(("new_access_token".to_string(), None)));
-    let token_service = DefaultTokenService::new(Arc::new(auth_service), Arc::new(secret_service));
+    let token_service = DefaultTokenService::new(
+      Arc::new(auth_service),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+    );
 
     // When
     let result = token_service
       .validate_bearer_token(&format!("Bearer {}", token))
-      .await;
+      .await?;
 
     // Then
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), "new_access_token");
+    assert_eq!(result, "new_access_token");
     Ok(())
   }
 
@@ -458,7 +520,11 @@ mod tests {
           "server unreachable".to_string(),
         ))
       });
-    let token_service = DefaultTokenService::new(Arc::new(auth_service), Arc::new(secret_service));
+    let token_service = DefaultTokenService::new(
+      Arc::new(auth_service),
+      Arc::new(secret_service),
+      Arc::new(MokaCacheService::default()),
+    );
 
     // When
     let result = token_service
@@ -468,6 +534,81 @@ mod tests {
     // Then
     assert!(result.is_err());
     assert!(matches!(result, Err(AuthError::AuthService(_))));
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_token_validation_with_cache_hit(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    // Given
+    let claims = offline_token_claims();
+    let (token, _) = build_token(claims)?;
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let auth_service = MockAuthService::new(); // Should not be called
+    let cache_service = MokaCacheService::default();
+    let cache_key = build_cache_key(&token)?;
+    let serialized = serde_json::to_string(&CachedToken {
+      access_token: "cached_access_token".to_string(),
+      exp: (Utc::now().timestamp() + 3600) as u64,
+    })?;
+    cache_service.set(&cache_key, &serialized);
+    let token_service = DefaultTokenService::new(
+      Arc::new(auth_service),
+      Arc::new(secret_service),
+      Arc::new(cache_service),
+    );
+
+    // When
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", token))
+      .await?;
+
+    // Then
+    assert_eq!(result, "cached_access_token");
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_token_validation_with_cache_miss(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    // Given
+    let claims = offline_token_claims();
+    let (token, _) = build_token(claims)?;
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut auth_service = MockAuthService::new();
+    let cache_service = MokaCacheService::default();
+    // Auth service call
+    auth_service
+      .expect_exchange_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq(token.clone()),
+        eq(GRANT_REFRESH_TOKEN),
+        eq(Vec::<String>::new()),
+      )
+      .times(1)
+      .returning(|_, _, _, _, _| Ok(("new_access_token".to_string(), None)));
+
+    let token_service = DefaultTokenService::new(
+      Arc::new(auth_service),
+      Arc::new(secret_service),
+      Arc::new(cache_service),
+    );
+
+    // When
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", token))
+      .await?;
+
+    // Then
+    assert_eq!(result, "new_access_token");
     Ok(())
   }
 }

@@ -146,7 +146,7 @@ pub async fn login_callback_handler(
     .map_err(LoginError::from)?;
   let mut access_token = token_response.0.secret().to_string();
   let mut refresh_token = token_response.1.secret().to_string();
-  let email = decode_access_token(&access_token)?.claims.email;
+  let email = decode_access_token::<Claims>(&access_token)?.claims.email;
   if status_resource_admin {
     auth_service
       .make_resource_admin(&app_reg_info.client_id, &app_reg_info.client_secret, &email)
@@ -238,7 +238,7 @@ pub async fn user_info_handler(
   if token_str.is_empty() {
     return Ok(Json(not_loggedin));
   }
-  let token_data: TokenData<Claims> = decode_access_token(token_str)?;
+  let token_data: TokenData<Claims> = decode_access_token::<Claims>(token_str)?;
   let roles = if let Ok(Some(reg_info)) = state.app_service().secret_service().app_reg_info() {
     token_data
       .claims

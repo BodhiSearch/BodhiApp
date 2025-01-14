@@ -58,7 +58,11 @@ pub async fn auth_middleware(
 ) -> Result<Response, ApiError> {
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
-  let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
+  let token_service = DefaultTokenService::new(
+    app_service.auth_service(),
+    secret_service.clone(),
+    app_service.cache_service(),
+  );
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
     return Ok(
@@ -102,7 +106,11 @@ pub async fn optional_auth_middleware(
 ) -> Result<Response, ApiError> {
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
-  let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
+  let token_service = DefaultTokenService::new(
+    app_service.auth_service(),
+    secret_service.clone(),
+    app_service.cache_service(),
+  );
 
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
