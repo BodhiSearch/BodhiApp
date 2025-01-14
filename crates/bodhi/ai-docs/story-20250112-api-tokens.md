@@ -146,6 +146,49 @@ So that I can access the application programmatically from external applications
 3. Add token types in `crates/bodhi/src/types`
 4. Update navigation to include API tokens menu item
 
+## Token Validation & Middleware Implementation
+
+#### Auth Middleware Enhancement
+- [ ] Modify `auth_middleware` to handle both session and token-based authentication:
+  1. Check for Authorization header first
+  2. If header exists, validate using Bearer token
+  3. If no header, fallback to session validation
+  4. Return invalid access if both validations fail
+
+#### Token Validation Process
+- [ ] Validate offline tokens with following checks:
+  - Token type is "Offline"
+  - Authorized party (azp) matches client_id
+  - Scope includes "scope_token_user"
+  - Signature verification using public key
+- [ ] Exchange valid offline token for access token
+- [ ] Inject new access token in request header
+- [ ] Simplified error handling:
+  - Return generic "auth token validation failed" message
+  - Log detailed validation failures (kid mismatch, algorithm mismatch, etc.) at WARN level
+
+#### Token Caching
+- [ ] Implement token caching mechanism:
+  - Cache validated tokens using JTI and token hash
+  - Store corresponding access tokens with expiration
+  - Return cached access token if valid
+  - Refresh and cache new access token if expired/missing
+
+#### Implementation Components
+- [ ] Update `auth_middleware.rs`:
+  - Add token validation logic
+  - Implement caching mechanism
+  - Update error handling
+- [ ] Enhance `token_service.rs`:
+  - Add token validation methods
+  - Implement caching interface
+  - Update service facade pattern
+- [ ] Add comprehensive tests for:
+  - Token validation scenarios
+  - Caching behavior
+  - Error cases
+  - Integration with auth service
+
 ## Not In Scope
 - Custom token scopes
 - Role-based token access control

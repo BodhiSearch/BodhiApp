@@ -10,6 +10,9 @@ use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+pub const GRANT_REFRESH_TOKEN: &str = "refresh_token";
+pub const TOKEN_TYPE_OFFLINE: &str = "Offline";
+
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, code=self.code())]
 #[error("json_web_token_error")]
@@ -39,14 +42,29 @@ pub struct ResourceClaim {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-  pub iss: String,
-  pub sub: String,
+  pub exp: u64,
   pub iat: u64,
   pub jti: String,
-  pub exp: u64,
+  pub iss: String,
+  pub sub: String,
+  pub typ: String,
+  pub azp: String,
+  pub scope: String,
   pub email: String,
   #[serde(default)]
   pub resource_access: HashMap<String, ResourceClaim>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OfflineClaims {
+  pub exp: u64,
+  pub iat: u64,
+  pub jti: String,
+  pub iss: String,
+  pub sub: String,
+  pub typ: String,
+  pub azp: String,
+  pub scope: String,
 }
 
 pub fn decode_access_token(

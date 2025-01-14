@@ -4,14 +4,19 @@ use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
 use once_cell::sync::Lazy;
 use rsa::{
   pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey},
-  pkcs8::{DecodePrivateKey, DecodePublicKey, EncodePublicKey},
+  pkcs8::{DecodePrivateKey, DecodePublicKey},
   RsaPrivateKey, RsaPublicKey,
 };
 use rstest::fixture;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::AppRegInfoBuilder;
+use crate::{AppRegInfoBuilder, TOKEN_TYPE_OFFLINE};
+
+pub const TEST_CLIENT_ID: &str = "test-client";
+pub const TEST_CLIENT_SECRET: &str = "test-client-secret";
+pub const ISSUER: &str = "https://id.mydomain.com/realms/myapp";
+pub const TEST_KID: &str = "test-kid";
 
 static PUBLIC_KEY: Lazy<RsaPublicKey> = Lazy::new(|| {
   RsaPublicKey::from_public_key_pem(include_str!(concat!(
@@ -21,13 +26,9 @@ static PUBLIC_KEY: Lazy<RsaPublicKey> = Lazy::new(|| {
   .expect("Failed to parse public key")
 });
 
-pub static TEST_CLIENT_ID: &str = "test-client";
-
-static PUBLIC_KEY_BASE64: Lazy<String> = Lazy::new(|| {
-  let public_key_der = PUBLIC_KEY
-    .to_public_key_der()
-    .expect("Failed to convert to DER");
-  STANDARD.encode(public_key_der.as_ref())
+pub static PUBLIC_KEY_BASE64: Lazy<String> = Lazy::new(|| {
+  let input = PUBLIC_KEY.to_pkcs1_der().expect("failed to convert to DER");
+  STANDARD.encode(input)
 });
 
 static PRIVATE_KEY: Lazy<RsaPrivateKey> = Lazy::new(|| {
@@ -42,11 +43,11 @@ impl AppRegInfoBuilder {
   pub fn test_default() -> Self {
     Self::default()
       .public_key(PUBLIC_KEY_BASE64.to_string())
-      .issuer("https://id.mydomain.com/realms/myapp".to_string())
-      .client_id("test-client".to_string())
-      .client_secret("test-client-secret".to_string())
+      .issuer(ISSUER.to_string())
+      .client_id(TEST_CLIENT_ID.to_string())
+      .client_secret(TEST_CLIENT_SECRET.to_string())
       .alg(Algorithm::RS256)
-      .kid("test-kid".to_string())
+      .kid(TEST_KID.to_string())
       .to_owned()
   }
 }
@@ -109,4 +110,19 @@ pub fn build_token(claims: Value) -> anyhow::Result<(String, String)> {
 
   let output = STANDARD.encode(PUBLIC_KEY.to_pkcs1_der()?);
   Ok((token, output))
+}
+
+pub fn offline_token_cliams() -> Value {
+  json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": ISSUER.to_string(),
+      "sub": Uuid::new_v4().to_string(),
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": TEST_CLIENT_ID,
+      "session_state": Uuid::new_v4().to_string(),
+      "scope": "openid offline_access scope_token_user",
+      "sid": Uuid::new_v4().to_string(),
+  })
 }
