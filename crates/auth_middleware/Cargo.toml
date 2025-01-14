@@ -21,6 +21,7 @@ rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 oauth2 = { workspace = true }
+serde_json = { workspace = true, features = ["preserve_order"] }
 sha2 = { workspace = true }
 tower-sessions = { workspace = true }
 tracing = { workspace = true, features = ["async-await", "log"] }
@@ -34,7 +35,6 @@ anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 mockall = { workspace = true }
 rstest = { workspace = true }
-serde_json = { workspace = true, features = ["preserve_order"] }
 tempfile = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 tokio = { workspace = true, features = ["full"] }
