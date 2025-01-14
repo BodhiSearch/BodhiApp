@@ -1,19 +1,19 @@
 use crate::{
   app_status_or_default,
   token_cache::{DefaultTokenCache, TokenCacheError},
-  CachedToken, DefaultTokenService, TokenCache, TokenService,
+  DefaultTokenService, TokenCache, TokenService,
 };
 use axum::{
   extract::{Request, State},
-  http::{header::AUTHORIZATION, HeaderMap, HeaderValue},
+  http::HeaderMap,
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
 };
 use objs::{impl_error_from, ApiError, AppError, BadRequestError, ErrorType};
 use server_core::RouterState;
 use services::{
-  decode_access_token, AppRegInfo, AppService, AppStatus, AuthService, AuthServiceError,
-  JsonWebTokenError, SecretService, SecretServiceError, SecretServiceExt,
+  decode_access_token, AppRegInfo, AppStatus, AuthService, AuthServiceError, JsonWebTokenError,
+  SecretService, SecretServiceError, SecretServiceExt,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -64,19 +64,9 @@ pub async fn auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   headers: HeaderMap,
-  req: Request,
-  next: Next,
-) -> Result<Response, ApiError> {
-  Ok(_auth_middleware(session, State(state), headers, req, next).await?)
-}
-
-async fn _auth_middleware(
-  session: Session,
-  State(state): State<Arc<dyn RouterState>>,
-  headers: HeaderMap,
   mut req: Request,
   next: Next,
-) -> Result<Response, AuthError> {
+) -> Result<Response, ApiError> {
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
@@ -99,7 +89,11 @@ async fn _auth_middleware(
   }
 
   // Check for token in session
-  if let Some(access_token) = session.get::<String>("access_token").await? {
+  if let Some(access_token) = session
+    .get::<String>("access_token")
+    .await
+    .map_err(AuthError::from)?
+  {
     let validated_token = validate_access_token(
       session,
       &app_service.auth_service(),
@@ -120,14 +114,12 @@ async fn _auth_middleware(
   // Try to get claims without validation first to get JTI
   let claims = decode_access_token(&request_token)?;
 
-  // Check cache using TokenCache
-  if let Some(cached_token) = token_cache.get_access_token(&claims.claims.jti)? {
-    if cached_token.verify_hash(&request_token) {
-      req
-        .headers_mut()
-        .insert(KEY_RESOURCE_TOKEN, cached_token.token.parse().unwrap());
-      return Ok(next.run(req).await);
-    }
+  // Check if token is in cache and valid
+  if token_cache.is_token_in_cache(&claims.claims.jti, &request_token)? {
+    req
+      .headers_mut()
+      .insert(KEY_RESOURCE_TOKEN, request_token.parse().unwrap());
+    return Ok(next.run(req).await);
   }
 
   // If not in cache, validate and exchange token
@@ -135,11 +127,7 @@ async fn _auth_middleware(
   let (access_token, refresh_token) = token_service.exchange_token(&request_token).await?;
 
   // Cache the new tokens
-  let cached_token = CachedToken::new_with_token_and_hash(&access_token, &request_token);
-  token_cache.store_access_token(&claims.jti, cached_token)?;
-  if let Some(refresh) = refresh_token {
-    token_cache.store_refresh_token(&claims.jti, &refresh)?;
-  }
+  token_cache.store_token_pair(&claims.jti, &access_token, refresh_token);
 
   // Set header and continue
   req
@@ -153,23 +141,14 @@ pub async fn optional_auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   headers: HeaderMap,
-  req: Request,
-  next: Next,
-) -> Result<Response, ApiError> {
-  Ok(_optional_auth_middleware(session, State(state), headers, req, next).await?)
-}
-
-async fn _optional_auth_middleware(
-  session: Session,
-  State(state): State<Arc<dyn RouterState>>,
-  headers: HeaderMap,
   mut req: Request,
   next: Next,
-) -> Result<Response, AuthError> {
+) -> Result<Response, ApiError> {
   let app_service = state.app_service();
   let auth_service = app_service.auth_service();
   let secret_service = app_service.secret_service();
   let token_cache = DefaultTokenCache::new(app_service.cache_service());
+  let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
 
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
@@ -182,7 +161,11 @@ async fn _optional_auth_middleware(
   }
 
   // Try to get token from session
-  if let Some(access_token) = session.get::<String>("access_token").await? {
+  if let Some(access_token) = session
+    .get::<String>("access_token")
+    .await
+    .map_err(AuthError::from)?
+  {
     if let Ok(validated_token) = validate_access_token(
       session.clone(),
       &auth_service,
@@ -200,55 +183,35 @@ async fn _optional_auth_middleware(
   }
 
   // Try to get token from header
-  if let Some(token) = headers.get(AUTHORIZATION) {
-    if let Ok(validated_token) =
-      validate_token_from_header(token, app_service, secret_service).await
-    {
-      req
-        .headers_mut()
-        .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
+  let token_service = token_service;
+  if let Ok(token) = token_service.extract_token(&headers) {
+    // Validate token and check cache
+    if let Ok(token_data) = decode_access_token(&token) {
+      let jti = &token_data.claims.jti;
+
+      // Check if token is in cache
+      if token_cache.is_token_in_cache(jti, &token)? {
+        req
+          .headers_mut()
+          .insert(KEY_RESOURCE_TOKEN, token.parse().unwrap());
+        return Ok(next.run(req).await);
+      }
+
+      // If not in cache, validate and exchange token
+      if let Ok(claims) = token_service.validate_token(&token) {
+        if let Ok((access_token, refresh_token)) = token_service.exchange_token(&token).await {
+          // Store in cache
+          token_cache.store_token_pair(&claims.jti, &access_token, refresh_token);
+          req
+            .headers_mut()
+            .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+          return Ok(next.run(req).await);
+        }
+      }
     }
   }
   // Continue with the request, even if no valid token was found
   Ok(next.run(req).await)
-}
-
-async fn validate_token_from_header(
-  header: &HeaderValue,
-  app_service: Arc<dyn AppService>,
-  secret_service: Arc<dyn SecretService>,
-) -> Result<String, AuthError> {
-  let token = header
-    .to_str()
-    .map_err(|e| BadRequestError::new(format!("authorization header is not valid utf-8: {e}")))?
-    .strip_prefix("Bearer ")
-    .ok_or(BadRequestError::new(
-      "authorization header is malformed".to_string(),
-    ))?
-    .to_string();
-  if token.is_empty() {
-    return Err(BadRequestError::new("token not found in authorization header".to_string()).into());
-  }
-  let token_data = decode_access_token(&token)?;
-  let jti = &token_data.claims.jti;
-
-  let token_cache = DefaultTokenCache::new(app_service.cache_service());
-  if let Some(cached_token) = token_cache.get_access_token(jti)? {
-    if cached_token.verify_hash(&token) {
-      return Ok(cached_token.token);
-    }
-  }
-
-  // If not in cache, validate and exchange token
-  let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
-  let claims = token_service.validate_token(&token)?;
-  let (access_token, refresh_token) = token_service.exchange_token(&token).await?;
-
-  // Store in cache
-  let cached_token = CachedToken::new_with_token_and_hash(&access_token, &token);
-  token_cache.store_token_pair(&claims.jti, cached_token, refresh_token)?;
-
-  Ok(access_token)
 }
 
 async fn validate_access_token(
@@ -290,8 +253,7 @@ async fn validate_access_token(
   }
 
   // Store in cache
-  let cached_token = CachedToken::new_with_token_and_hash(&new_access_token, &access_token);
-  token_cache.store_token_pair(&claims.claims.jti, cached_token, new_refresh_token)?;
+  token_cache.store_token_pair(&claims.claims.jti, &new_access_token, new_refresh_token);
 
   Ok(new_access_token)
 }
@@ -303,7 +265,7 @@ fn authz_status(secret_service: &Arc<dyn SecretService>) -> bool {
 #[cfg(test)]
 mod tests {
   use super::KEY_RESOURCE_TOKEN;
-  use crate::{auth_middleware, optional_auth_middleware};
+  use crate::{auth_middleware, optional_auth_middleware, TokenCache};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -331,7 +293,6 @@ mod tests {
     AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MokaCacheService,
     SqliteSessionService,
   };
-  use sha2::{Digest, Sha256};
   use std::sync::Arc;
   use tempfile::TempDir;
   use time::{Duration, OffsetDateTime};
@@ -731,25 +692,23 @@ mod tests {
     token: (String, String),
     #[case] path: &str,
   ) -> anyhow::Result<()> {
+    use crate::DefaultTokenCache;
+
     let (token, _) = token;
     let jti = decode_access_token(&token).unwrap().claims.jti;
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service.expect_exchange_token().never();
 
-    let cache_service = MokaCacheService::default();
-    let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
-    let cached_token = "token-from-cache";
-    cache_service.set(
-      &format!("exchange-access-token-{}", jti),
-      &format!("{}:{}", cached_token, token_hash),
-    );
+    let cache_service: Arc<dyn CacheService> = Arc::new(MokaCacheService::default());
+    let token_cache = DefaultTokenCache::new(cache_service.clone());
+    token_cache.store_access_token(&jti, &token);
 
     let secret_service =
       SecretServiceStub::default().with_app_reg_info(&AppRegInfoBuilder::test_default().build()?);
     let app_service = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
-      .cache_service(Arc::new(cache_service))
+      .cache_service(cache_service)
       .with_session_service()
       .await
       .build()?;
@@ -773,7 +732,7 @@ mod tests {
       TestResponse {
         path: path.to_string(),
         authorization_header: Some(format!("Bearer {token}")),
-        x_resource_token: Some(cached_token.to_string()),
+        x_resource_token: Some(token),
       },
       response_json
     );
