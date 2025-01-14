@@ -235,7 +235,10 @@ impl AuthService for KeycloakAuthService {
         response.json().await?;
       Ok((
         token_response.access_token().to_owned(),
-        token_response.refresh_token().unwrap().to_owned(),
+        token_response
+          .refresh_token()
+          .expect("refresh token is not present when exchaging for auth code")
+          .to_owned(),
       ))
     } else {
       let error = response.json::<KeycloakError>().await?;

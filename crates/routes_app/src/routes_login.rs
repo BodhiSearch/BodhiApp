@@ -160,7 +160,8 @@ pub async fn login_callback_handler(
       )
       .await?;
     access_token = new_access_token;
-    refresh_token = new_refresh_token.unwrap();
+    refresh_token =
+      new_refresh_token.expect("refresh token is missing when refreshing an existing token");
   }
   session
     .insert("access_token", access_token)
