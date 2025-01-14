@@ -1,11 +1,11 @@
-use crate::{app_status_or_default, token_cache::TokenCacheError, DefaultTokenService};
+use crate::{app_status_or_default, DefaultTokenService};
 use axum::{
   extract::{Request, State},
   http::HeaderMap,
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
 };
-use objs::{impl_error_from, ApiError, AppError, BadRequestError, ErrorType};
+use objs::{impl_error_from, ApiError, AppError, ErrorType};
 use server_core::RouterState;
 use services::{
   AppStatus, AuthServiceError, JsonWebTokenError, SecretService, SecretServiceError,
@@ -19,17 +19,11 @@ pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AuthError {
-  #[error("auth_header_not_found")]
+  #[error("invalid_access")]
   #[error_meta(error_type = ErrorType::Authentication)]
-  AuthHeaderNotFound,
+  InvalidAccess,
   #[error(transparent)]
   JsonWebToken(#[from] JsonWebTokenError),
-  #[error("kid_mismatch")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  KidMismatch(String, String),
-  #[error("alg_mismatch")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  AlgMismatch(String, String),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication)]
   AuthService(#[from] AuthServiceError),
@@ -40,14 +34,10 @@ pub enum AuthError {
   #[error_meta(error_type = ErrorType::Authentication)]
   RefreshTokenNotFound,
   #[error(transparent)]
-  BadRequest(#[from] BadRequestError),
-  #[error(transparent)]
   SecretService(#[from] SecretServiceError),
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
   TowerSession(#[from] tower_sessions::session::Error),
-  #[error(transparent)]
-  TokenCache(#[from] TokenCacheError),
 }
 
 impl_error_from!(
@@ -65,11 +55,7 @@ pub async fn auth_middleware(
 ) -> Result<Response, ApiError> {
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
-  let token_service = DefaultTokenService::new(
-    app_service.auth_service(),
-    secret_service.clone(),
-    app_service.cache_service(),
-  );
+  let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
     return Ok(
@@ -98,9 +84,10 @@ pub async fn auth_middleware(
     req
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
-    return Ok(next.run(req).await);
+    Ok(next.run(req).await)
+  } else {
+    Err(AuthError::InvalidAccess)?
   }
-  Ok(next.run(req).await)
 }
 
 pub async fn optional_auth_middleware(
@@ -112,11 +99,7 @@ pub async fn optional_auth_middleware(
 ) -> Result<Response, ApiError> {
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
-  let token_service = DefaultTokenService::new(
-    app_service.auth_service(),
-    secret_service.clone(),
-    app_service.cache_service(),
-  );
+  let token_service = DefaultTokenService::new(app_service.auth_service(), secret_service.clone());
 
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
@@ -580,6 +563,41 @@ mod tests {
     );
 
     assert_optional_auth_passthrough(&router).await?;
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_returns_invalid_access_when_no_token_in_session(
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(SecretServiceStub::default()))
+      .session_service(session_service.clone())
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      app_service.clone(),
+    ));
+
+    let req = Request::get("/with_auth").body(Body::empty())?;
+    let router = test_router(state);
+    let response = router.oneshot(req).await?;
+    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+    let body: Value = response.json().await?;
+    assert_eq!(
+      json! {{
+        "error": {
+          "code": "auth_error-invalid_access",
+          "type": "authentication_error",
+          "message": "access denied"
+        }
+      }},
+      body
+    );
     Ok(())
   }
 }
