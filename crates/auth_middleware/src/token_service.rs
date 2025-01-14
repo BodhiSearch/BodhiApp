@@ -1,4 +1,5 @@
 use crate::AuthError;
+use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
 use services::{
   AppRegInfo, AuthService, Claims, JsonWebTokenError, OfflineClaims, SecretService,
@@ -9,6 +10,7 @@ use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
 const SCOPE_TOKEN_USER: &str = "scope_token_user";
+const LEEWAY_SECONDS: i64 = 60; // 1 minute leeway for clock skew
 
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
@@ -110,6 +112,26 @@ impl DefaultTokenService {
     claims: &OfflineClaims,
     client_id: &str,
   ) -> Result<(), AuthError> {
+    // Validate token expiration
+    let now = Utc::now().timestamp();
+    let leeway = Duration::seconds(LEEWAY_SECONDS);
+
+    // Check if token is expired (with leeway)
+    if claims.exp <= (now - leeway.num_seconds()) as u64 {
+      return Err(AuthError::TokenValidation(format!(
+        "token has expired at {}",
+        claims.exp
+      )));
+    }
+
+    // Check if token is not yet valid (with leeway)
+    if claims.iat > (now + leeway.num_seconds()) as u64 {
+      return Err(AuthError::TokenValidation(format!(
+        "token is not yet valid, issued at {}",
+        claims.iat
+      )));
+    }
+
     // Check token type
     if claims.typ != TOKEN_TYPE_OFFLINE {
       return Err(AuthError::TokenValidation(
@@ -148,8 +170,8 @@ impl DefaultTokenService {
     // Validate session token
     let claims = Self::decode_access_token_no_validation(&access_token)?;
     // Check if token is expired
-    let now = time::OffsetDateTime::now_utc();
-    if now.unix_timestamp() < claims.claims.exp as i64 {
+    let now = Utc::now().timestamp();
+    if now < claims.claims.exp as i64 {
       return Ok(access_token);
     }
 
@@ -198,17 +220,19 @@ impl DefaultTokenService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{AuthError, DefaultTokenService};
+  use crate::{token_service::SCOPE_TOKEN_USER, AuthError, DefaultTokenService};
+  use chrono::Utc;
   use mockall::predicate::*;
-  use objs::test_utils::setup_l10n;
-  use objs::FluentLocalizationService;
+  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use rstest::{fixture, rstest};
   use serde_json::json;
   use services::{
     test_utils::{
-      build_token, offline_token_cliams, SecretServiceStub, TEST_CLIENT_ID, TEST_CLIENT_SECRET,
+      build_token, offline_token_claims, SecretServiceStub, ISSUER, TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
     },
-    AppRegInfoBuilder, MockAuthService, MockSecretService, GRANT_REFRESH_TOKEN,
+    AppRegInfoBuilder, AuthServiceError, MockAuthService, MockSecretService, GRANT_REFRESH_TOKEN,
+    TOKEN_TYPE_OFFLINE,
   };
   use std::sync::Arc;
 
@@ -243,7 +267,7 @@ mod tests {
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     // Given
-    let claims = offline_token_cliams();
+    let claims = offline_token_claims();
     let (token, _) = build_token(claims)?;
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
@@ -301,7 +325,7 @@ mod tests {
       Arc::new(MockAuthService::default()),
       Arc::new(secret_service),
     ));
-    let mut claims = offline_token_cliams();
+    let mut claims = offline_token_claims();
     claims
       .as_object_mut()
       .unwrap()
@@ -316,6 +340,134 @@ mod tests {
     // Then
     assert!(result.is_err());
     assert!(matches!(result, Err(AuthError::TokenValidation(_))));
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(json!({
+    "exp": Utc::now().timestamp() - 3600, // expired 1 hour ago
+    "iat": Utc::now().timestamp() - 7200,  // issued 2 hours ago
+    "jti": "test-jti",
+    "iss": ISSUER,
+    "sub": "test-sub",
+    "typ": TOKEN_TYPE_OFFLINE,
+    "azp": TEST_CLIENT_ID,
+    "scope": SCOPE_TOKEN_USER
+  }))]
+  #[case( json!({
+    "exp": Utc::now().timestamp() + 7200, // expires in 2 hours
+    "iat": Utc::now().timestamp() + 3600,  // issued 1 hour in future
+    "jti": "test-jti",
+    "iss": ISSUER,
+    "sub": "test-sub",
+    "typ": TOKEN_TYPE_OFFLINE,
+    "azp": TEST_CLIENT_ID,
+    "scope": SCOPE_TOKEN_USER
+  }))]
+  #[tokio::test]
+  async fn test_token_time_validation_failures(
+    #[case] claims: serde_json::Value,
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    // Given
+    let (token, _) = build_token(claims)?;
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let auth_service = MockAuthService::new();
+    let token_service = DefaultTokenService::new(Arc::new(auth_service), Arc::new(secret_service));
+
+    // When
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", token))
+      .await;
+
+    // Then
+    assert!(result.is_err());
+    assert!(matches!(result, Err(AuthError::TokenValidation(_))));
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_token_validation_success_with_leeway(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    // Given
+    let now = Utc::now().timestamp();
+    let claims = json!({
+      "exp": now + 30, // expires in 30 seconds
+      "iat": now - 30, // issued 30 seconds ago
+      "jti": "test-jti",
+      "iss": ISSUER,
+      "sub": "test-sub",
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": TEST_CLIENT_ID,
+      "scope": SCOPE_TOKEN_USER
+    });
+    let (token, _) = build_token(claims)?;
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut auth_service = MockAuthService::new();
+    auth_service
+      .expect_exchange_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq(token.clone()),
+        eq(GRANT_REFRESH_TOKEN),
+        eq(Vec::<String>::new()),
+      )
+      .times(1)
+      .returning(|_, _, _, _, _| Ok(("new_access_token".to_string(), None)));
+    let token_service = DefaultTokenService::new(Arc::new(auth_service), Arc::new(secret_service));
+
+    // When
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", token))
+      .await;
+
+    // Then
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), "new_access_token");
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_token_validation_auth_service_error(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    // Given
+    let claims = offline_token_claims();
+    let (token, _) = build_token(claims)?;
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut auth_service = MockAuthService::new();
+    auth_service
+      .expect_exchange_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq(token.clone()),
+        eq(GRANT_REFRESH_TOKEN),
+        eq(Vec::<String>::new()),
+      )
+      .times(1)
+      .returning(|_, _, _, _, _| {
+        Err(AuthServiceError::AuthServiceApiError(
+          "server unreachable".to_string(),
+        ))
+      });
+    let token_service = DefaultTokenService::new(Arc::new(auth_service), Arc::new(secret_service));
+
+    // When
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", token))
+      .await;
+
+    // Then
+    assert!(result.is_err());
+    assert!(matches!(result, Err(AuthError::AuthService(_))));
     Ok(())
   }
 }

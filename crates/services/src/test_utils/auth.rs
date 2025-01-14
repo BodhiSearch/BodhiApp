@@ -112,7 +112,7 @@ pub fn build_token(claims: Value) -> anyhow::Result<(String, String)> {
   Ok((token, output))
 }
 
-pub fn offline_token_cliams() -> Value {
+pub fn offline_token_claims() -> Value {
   json!({
       "exp": (Utc::now() + Duration::hours(1)).timestamp(),
       "iat": Utc::now().timestamp(),
