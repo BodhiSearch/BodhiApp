@@ -8,9 +8,7 @@ use std::sync::Arc;
 #[async_trait::async_trait]
 pub trait TokenService {
   fn extract_token(&self, headers: &HeaderMap) -> Result<String, AuthError>;
-
   fn validate_token(&self, token: &str) -> Result<Claims, AuthError>;
-
   async fn exchange_token(&self, token: &str) -> Result<(String, Option<String>), AuthError>;
 }
 

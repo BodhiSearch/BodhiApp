@@ -14,58 +14,13 @@ pub enum TokenCacheError {
   MalformedCacheValue(String),
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct CachedToken {
-  pub token: String,
-  pub hash: String,
-}
-
-impl CachedToken {
-  pub fn new(token: String) -> Self {
-    let hash = format!("{:x}", Sha256::digest(token.as_bytes()));
-    Self { token, hash }
-  }
-
-  pub fn new_with_token_and_hash(token: &str, original_token: &str) -> Self {
-    let hash = format!("{:x}", Sha256::digest(original_token.as_bytes()));
-    Self {
-      token: token.to_string(),
-      hash,
-    }
-  }
-
-  fn to_cache_value(&self) -> String {
-    format!("{}:{}", self.token, self.hash)
-  }
-
-  fn from_cache_value(value: &str) -> Result<Self, TokenCacheError> {
-    let (token, hash) = value.split_once(':').ok_or_else(|| {
-      TokenCacheError::MalformedCacheValue("Invalid token:hash format".to_string())
-    })?;
-
-    Ok(Self {
-      token: token.to_string(),
-      hash: hash.to_string(),
-    })
-  }
-
-  pub fn verify_hash(&self, token: &str) -> bool {
-    let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
-    self.hash == token_hash
-  }
-}
-
 pub trait TokenCache {
-  fn get_access_token(&self, jti: &str) -> Result<Option<CachedToken>, TokenCacheError>;
-  fn store_access_token(&self, jti: &str, token: CachedToken) -> Result<(), TokenCacheError>;
+  fn get_access_token(&self, jti: &str) -> Result<Option<String>, TokenCacheError>;
+  fn is_token_in_cache(&self, jti: &str, token: &str) -> Result<bool, TokenCacheError>;
+  fn store_access_token(&self, jti: &str, token: &str);
   fn get_refresh_token(&self, jti: &str) -> Result<Option<String>, TokenCacheError>;
-  fn store_refresh_token(&self, jti: &str, token: &str) -> Result<(), TokenCacheError>;
-  fn store_token_pair(
-    &self,
-    jti: &str,
-    access_token: CachedToken,
-    refresh_token: Option<String>,
-  ) -> Result<(), TokenCacheError>;
+  fn store_refresh_token(&self, jti: &str, token: &str);
+  fn store_token_pair(&self, jti: &str, access_token: &str, refresh_token: Option<String>);
 }
 
 pub struct DefaultTokenCache {
@@ -84,23 +39,57 @@ impl DefaultTokenCache {
   fn refresh_token_key(&self, jti: &str) -> String {
     format!("{}{}", REFRESH_TOKEN_PREFIX, jti)
   }
+
+  fn compute_hash(token: &str) -> String {
+    format!("{:x}", Sha256::digest(token.as_bytes()))
+  }
+
+  fn to_cache_value(token: &str) -> String {
+    format!("{}:{}", token, Self::compute_hash(token))
+  }
+
+  fn from_cache_value(value: &str) -> Result<String, TokenCacheError> {
+    let (token, hash) = value.split_once(':').ok_or_else(|| {
+      TokenCacheError::MalformedCacheValue("Invalid token:hash format".to_string())
+    })?;
+
+    let computed_hash = Self::compute_hash(token);
+    if computed_hash != hash {
+      return Err(TokenCacheError::MalformedCacheValue(
+        "Token hash mismatch".to_string(),
+      ));
+    }
+
+    Ok(token.to_string())
+  }
 }
 
 impl TokenCache for DefaultTokenCache {
-  fn get_access_token(&self, jti: &str) -> Result<Option<CachedToken>, TokenCacheError> {
+  fn get_access_token(&self, jti: &str) -> Result<Option<String>, TokenCacheError> {
     let key = self.access_token_key(jti);
-    Ok(
-      self
-        .cache_service
-        .get(&key)
-        .and_then(|value| CachedToken::from_cache_value(&value).ok()),
-    )
+    if let Some(value) = self.cache_service.get(&key) {
+      Ok(Some(Self::from_cache_value(&value)?))
+    } else {
+      Ok(None)
+    }
   }
 
-  fn store_access_token(&self, jti: &str, token: CachedToken) -> Result<(), TokenCacheError> {
+  fn is_token_in_cache(&self, jti: &str, token: &str) -> Result<bool, TokenCacheError> {
     let key = self.access_token_key(jti);
-    self.cache_service.set(&key, &token.to_cache_value());
-    Ok(())
+    if let Some(value) = self.cache_service.get(&key) {
+      let (_, hash) = value.split_once(':').ok_or_else(|| {
+        TokenCacheError::MalformedCacheValue("Invalid token:hash format".to_string())
+      })?;
+      Ok(Self::compute_hash(token) == hash)
+    } else {
+      Ok(false)
+    }
+  }
+
+  fn store_access_token(&self, jti: &str, token: &str) {
+    let key = self.access_token_key(jti);
+    let value = Self::to_cache_value(token);
+    self.cache_service.set(&key, &value);
   }
 
   fn get_refresh_token(&self, jti: &str) -> Result<Option<String>, TokenCacheError> {
@@ -108,30 +97,28 @@ impl TokenCache for DefaultTokenCache {
     Ok(self.cache_service.get(&key))
   }
 
-  fn store_refresh_token(&self, jti: &str, token: &str) -> Result<(), TokenCacheError> {
+  fn store_refresh_token(&self, jti: &str, token: &str) {
     let key = self.refresh_token_key(jti);
     self.cache_service.set(&key, token);
-    Ok(())
   }
 
-  fn store_token_pair(
-    &self,
-    jti: &str,
-    access_token: CachedToken,
-    refresh_token: Option<String>,
-  ) -> Result<(), TokenCacheError> {
-    self.store_access_token(jti, access_token)?;
-    if let Some(refresh) = refresh_token {
-      self.store_refresh_token(jti, &refresh)?;
+  fn store_token_pair(&self, jti: &str, access_token: &str, refresh_token: Option<String>) {
+    self.store_access_token(jti, access_token);
+    if let Some(refresh_token) = refresh_token {
+      self.store_refresh_token(jti, &refresh_token);
     }
-    Ok(())
   }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::*;
+  use std::sync::Arc;
+
   use services::MokaCacheService;
+
+  use crate::{TokenCache, TokenCacheError};
+
+  use super::DefaultTokenCache;
 
   fn create_test_cache() -> (DefaultTokenCache, Arc<MokaCacheService>) {
     let cache_service = Arc::new(MokaCacheService::default());
@@ -140,38 +127,25 @@ mod tests {
   }
 
   #[test]
-  fn test_cached_token_new() {
-    let token = "test-token".to_string();
-    let cached = CachedToken::new(token.clone());
-    assert_eq!(cached.token, token);
-    assert!(cached.verify_hash(&token));
+  fn test_token_hash_verification() {
+    let token = "test-token";
+    let cache_value = DefaultTokenCache::to_cache_value(token);
+    let retrieved = DefaultTokenCache::from_cache_value(&cache_value).unwrap();
+    assert_eq!(retrieved, token);
   }
 
   #[test]
-  fn test_cached_token_verify_hash() {
-    let token = "test-token".to_string();
-    let cached = CachedToken::new(token.clone());
-    assert!(cached.verify_hash(&token));
-    assert!(!cached.verify_hash("different-token"));
-  }
-
-  #[test]
-  fn test_cached_token_serialization() {
-    let token = "test-token".to_string();
-    let cached = CachedToken::new(token.clone());
-    let cache_value = cached.to_cache_value();
-    let deserialized = CachedToken::from_cache_value(&cache_value).unwrap();
-    assert_eq!(cached.token, deserialized.token);
-    assert_eq!(cached.hash, deserialized.hash);
-  }
-
-  #[test]
-  fn test_cached_token_invalid_format() {
-    let result = CachedToken::from_cache_value("invalid-format");
-    assert!(result.is_err());
+  fn test_token_invalid_format() {
+    let result = DefaultTokenCache::from_cache_value("invalid_format");
     assert!(matches!(
-      result.unwrap_err(),
-      TokenCacheError::MalformedCacheValue(_)
+      result,
+      Err(TokenCacheError::MalformedCacheValue(_))
+    ));
+
+    let result = DefaultTokenCache::from_cache_value("token:invalid_hash");
+    assert!(matches!(
+      result,
+      Err(TokenCacheError::MalformedCacheValue(_))
     ));
   }
 
@@ -179,13 +153,11 @@ mod tests {
   async fn test_store_and_get_access_token() {
     let (token_cache, _) = create_test_cache();
     let jti = "test-jti";
-    let token = CachedToken::new("test-token".to_string());
+    let token = "test-token";
 
-    token_cache.store_access_token(jti, token.clone()).unwrap();
-
+    token_cache.store_access_token(jti, token);
     let retrieved = token_cache.get_access_token(jti).unwrap().unwrap();
-    assert_eq!(token.token, retrieved.token);
-    assert_eq!(token.hash, retrieved.hash);
+    assert_eq!(retrieved, token);
   }
 
   #[tokio::test]
@@ -194,36 +166,61 @@ mod tests {
     let jti = "test-jti";
     let token = "refresh-token";
 
-    token_cache.store_refresh_token(jti, token).unwrap();
-
+    token_cache.store_refresh_token(jti, token);
     let retrieved = token_cache.get_refresh_token(jti).unwrap().unwrap();
-    assert_eq!(token, retrieved);
+    assert_eq!(retrieved, token);
   }
 
   #[tokio::test]
   async fn test_store_token_pair() {
     let (token_cache, _) = create_test_cache();
     let jti = "test-jti";
-    let access_token = CachedToken::new("access-token".to_string());
+    let access_token = "access-token";
     let refresh_token = Some("refresh-token".to_string());
 
-    token_cache
-      .store_token_pair(jti, access_token.clone(), refresh_token.clone())
-      .unwrap();
+    token_cache.store_token_pair(jti, access_token, refresh_token.clone());
 
     let retrieved_access = token_cache.get_access_token(jti).unwrap().unwrap();
-    assert_eq!(access_token.token, retrieved_access.token);
+    assert_eq!(retrieved_access, access_token);
 
-    let retrieved_refresh = token_cache.get_refresh_token(jti).unwrap().unwrap();
-    assert_eq!(refresh_token.unwrap(), retrieved_refresh);
+    let retrieved_refresh = token_cache.get_refresh_token(jti).unwrap();
+    assert_eq!(retrieved_refresh, refresh_token);
   }
 
   #[tokio::test]
   async fn test_nonexistent_tokens() {
     let (token_cache, _) = create_test_cache();
-    let jti = "nonexistent-jti";
+    let jti = "nonexistent";
 
     assert!(token_cache.get_access_token(jti).unwrap().is_none());
     assert!(token_cache.get_refresh_token(jti).unwrap().is_none());
+  }
+
+  #[tokio::test]
+  async fn test_is_token_in_cache_success() {
+    let (token_cache, _) = create_test_cache();
+    let jti = "test-jti";
+    let token = "test-token";
+
+    // Store token
+    token_cache.store_access_token(jti, token);
+
+    // Verify with correct token
+    let is_in_cache = token_cache.is_token_in_cache(jti, token).unwrap();
+    assert!(is_in_cache);
+  }
+
+  #[tokio::test]
+  async fn test_is_token_in_cache_fail() {
+    let (token_cache, _) = create_test_cache();
+    let jti = "test-jti";
+    let token = "test-token";
+
+    // Store token
+    token_cache.store_access_token(jti, token);
+
+    // Verify with incorrect token
+    let is_in_cache = token_cache.is_token_in_cache(jti, "wrong-token").unwrap();
+    assert!(!is_in_cache);
   }
 }
