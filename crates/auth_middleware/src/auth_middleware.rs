@@ -22,6 +22,9 @@ pub enum AuthError {
   #[error("invalid_access")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAccess,
+  #[error("token_validation")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  TokenValidation(String),
   #[error(transparent)]
   JsonWebToken(#[from] JsonWebTokenError),
   #[error(transparent)]

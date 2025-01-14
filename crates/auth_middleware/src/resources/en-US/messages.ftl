@@ -2,3 +2,4 @@ auth_error-invalid_access = access denied
 auth_error-app_reg_info_missing = app registration info is missing, not found in secure storage
 auth_error-refresh_token_not_found = refresh token not found in session, logout and login again to continue
 auth_error-tower_sessions = session is not available, please try again later, error: {$error}
+auth_error-token_validation = token validation failed, error: {$var_0}
