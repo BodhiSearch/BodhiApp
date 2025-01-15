@@ -96,7 +96,11 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
 
-  async fn list_api_tokens(&self, page: u32, per_page: u32) -> Result<Vec<ApiToken>, DbError>;
+  async fn list_api_tokens(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<ApiToken>, u32), DbError>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -464,7 +468,11 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
-  async fn list_api_tokens(&self, page: u32, per_page: u32) -> Result<Vec<ApiToken>, DbError> {
+  async fn list_api_tokens(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<ApiToken>, u32), DbError> {
     let offset = (page - 1) * per_page;
     let results = query_as::<_, (String, String, String, String, String, i64, i64)>(
       "SELECT id, user_id, name, token_id, status, created_at, updated_at
@@ -497,8 +505,12 @@ impl DbService for SqliteDbService {
         },
       )
       .collect();
-
-    Ok(tokens)
+    let total: u32 = query_as::<_, (i64,)>("SELECT COUNT(*) FROM api_tokens")
+      .fetch_one(&self.pool)
+      .await
+      .map_err(SqlxError::from)?
+      .0 as u32;
+    Ok((tokens, total))
   }
 }
 
@@ -854,7 +866,7 @@ mod test {
     service.create_api_token(&mut token).await?;
 
     // List tokens
-    let tokens = service.list_api_tokens(1, 10).await?;
+    let (tokens, _) = service.list_api_tokens(1, 10).await?;
     assert_eq!(1, tokens.len());
 
     assert_eq!(token, tokens[0]);
