@@ -43,6 +43,7 @@ pub struct ResourceClaim {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MinClaims {
   pub jti: String,
+  pub sub: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

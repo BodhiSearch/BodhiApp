@@ -104,19 +104,19 @@ pub enum RequestStatus {
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TokenStatus {
-    Active,
-    Inactive,
+  Active,
+  Inactive,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ApiToken {
-    pub id: String,
-    pub user_id: String,
-    pub name: String,
-    pub token_id: String,
-    pub status: TokenStatus,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
+  pub id: String,
+  pub user_id: String,
+  pub name: String,
+  pub token_id: String,
+  pub status: TokenStatus,
+  pub created_at: DateTime<Utc>,
+  pub updated_at: DateTime<Utc>,
 }
 
 #[cfg(test)]

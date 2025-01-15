@@ -10,7 +10,6 @@ export interface TokenResponse {
   offline_token: string;
   name?: string;
   status: string;
-  last_used: string | null;
   created_at: string;
   updated_at: string;
 }
