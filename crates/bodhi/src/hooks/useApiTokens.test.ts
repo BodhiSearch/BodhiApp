@@ -29,7 +29,7 @@ const mockListResponse: ListTokensResponse = {
       status: 'active',
       created_at: '2024-01-01T00:00:00Z',
       updated_at: '2024-01-01T00:00:00Z',
-    }
+    },
   ],
   total: 1,
   page: 1,
@@ -129,9 +129,11 @@ describe('useCreateToken', () => {
 
   it('invalidates tokens query on successful creation', async () => {
     const wrapper = createWrapper();
-    
+
     // Setup list tokens hook and wait for initial data
-    const { result: listResult } = renderHook(() => useListTokens(), { wrapper });
+    const { result: listResult } = renderHook(() => useListTokens(), {
+      wrapper,
+    });
     await waitFor(() => {
       expect(listResult.current.isSuccess).toBe(true);
       expect(listResult.current.data).toEqual(mockListResponse);
@@ -164,14 +166,18 @@ describe('useCreateToken', () => {
     );
 
     // Create new token
-    const { result: createResult } = renderHook(() => useCreateToken(), { wrapper });
+    const { result: createResult } = renderHook(() => useCreateToken(), {
+      wrapper,
+    });
     await act(async () => {
       await createResult.current.mutateAsync({ name: 'New Token' });
     });
 
     // Verify list query was invalidated and refetched with new data
     await waitFor(() => {
-      expect(listResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
+      expect(listResult.current.dataUpdatedAt).toBeGreaterThan(
+        initialDataUpdatedAt
+      );
       expect(listResult.current.data?.data.length).toBe(2);
       expect(listResult.current.data?.total).toBe(2);
     });

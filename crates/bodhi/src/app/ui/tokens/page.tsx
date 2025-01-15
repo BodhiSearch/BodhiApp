@@ -12,14 +12,41 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { TokenResponse } from '@/hooks/useCreateToken';
 import { useAppInfo } from '@/hooks/useQuery';
+import { ApiToken, useListTokens } from '@/hooks/useApiTokens';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
+import { DataTable, Pagination, SortState } from '@/components/DataTable';
+import { TableCell } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { TokenResponse } from '@/hooks/useApiTokens';
+
+const columns = [
+  { id: 'name', name: 'Name', sorted: false },
+  { id: 'status', name: 'Status', sorted: false },
+  { id: 'created_at', name: 'Created At', sorted: true },
+  { id: 'updated_at', name: 'Updated At', sorted: false },
+];
+
+function StatusBadge({ status }: { status: string }) {
+  const variant = status === 'active' ? 'default' : 'secondary';
+  return <Badge variant={variant}>{status}</Badge>;
+}
 
 export function TokenPageContent() {
   const [token, setToken] = useState<TokenResponse | null>(null);
   const { data: appInfo, isLoading: appLoading } = useAppInfo();
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
+  const [sort] = useState<SortState>({
+    column: 'created_at',
+    direction: 'desc',
+  });
+
+  const { data: tokensData, isLoading: tokensLoading } = useListTokens(
+    page,
+    pageSize
+  );
 
   const handleTokenCreated = (newToken: TokenResponse) => {
     setToken(newToken);
@@ -74,6 +101,17 @@ export function TokenPageContent() {
     );
   }
 
+  const renderRow = (token: ApiToken) => (
+    <>
+      <TableCell>{token.name || '-'}</TableCell>
+      <TableCell>
+        <StatusBadge status={token.status} />
+      </TableCell>
+      <TableCell>{new Date(token.created_at).toLocaleString()}</TableCell>
+      <TableCell>{new Date(token.updated_at).toLocaleString()}</TableCell>
+    </>
+  );
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <Card>
@@ -97,11 +135,36 @@ export function TokenPageContent() {
           <div className="mt-6">
             <TokenForm onTokenCreated={handleTokenCreated} />
           </div>
+          <div className="mt-8">
+            <DataTable
+              data={tokensData?.data || []}
+              columns={columns}
+              loading={tokensLoading}
+              renderRow={renderRow}
+              getItemId={(item) => item.id}
+              sort={sort}
+              onSortChange={() => { }}
+            />
+            {tokensData && (
+              <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
+                <div className="mb-2 sm:mb-0">
+                  Displaying {tokensData.data.length} items of{' '}
+                  {tokensData.total}
+                </div>
+                <Pagination
+                  page={page}
+                  totalPages={Math.ceil(
+                    tokensData.total / tokensData.page_size
+                  )}
+                  onPageChange={setPage}
+                />
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
-
       {token && (
-        <TokenDialog token={token} open={!!token} onClose={handleDialogClose} />
+        <TokenDialog token={token} onClose={handleDialogClose} open={!!token} />
       )}
     </div>
   );

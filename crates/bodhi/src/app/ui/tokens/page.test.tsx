@@ -1,5 +1,5 @@
 import TokenPage, { TokenPageContent } from '@/app/ui/tokens/page';
-import { CREATE_TOKEN_ENDPOINT } from '@/hooks/useCreateToken';
+import { API_TOKENS_ENDPOINT } from '@/hooks/useApiTokens';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
@@ -90,7 +90,7 @@ describe('TokenPageContent', () => {
   it('handles complete token creation flow', async () => {
     const user = userEvent.setup();
     server.use(
-      rest.post(`*${CREATE_TOKEN_ENDPOINT}`, (_, res, ctx) => {
+      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
         return res(ctx.status(201), ctx.json(mockTokenResponse));
       })
     );

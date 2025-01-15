@@ -1,5 +1,5 @@
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
-import { CREATE_TOKEN_ENDPOINT, TokenResponse } from '@/hooks/useCreateToken';
+import { API_TOKENS_ENDPOINT, TokenResponse } from '@/hooks/useApiTokens';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('TokenForm', () => {
   beforeEach(() => {
     server.use(
-      rest.post(`*${CREATE_TOKEN_ENDPOINT}`, (_, res, ctx) => {
+      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
         return res(ctx.status(201), ctx.json(mockToken));
       })
     );
@@ -104,7 +104,7 @@ describe('TokenDialog', () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
     server.use(
-      rest.post(`*${CREATE_TOKEN_ENDPOINT}`, (_, res, ctx) => {
+      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
         return res(ctx.delay(100), ctx.status(201), ctx.json({ message: 'Failed to generate token. Please try again.' }));
       })
     );
@@ -132,7 +132,7 @@ describe('TokenDialog', () => {
     const user = userEvent.setup();
     const onTokenCreated = vi.fn();
     server.use(
-      rest.post(`*${CREATE_TOKEN_ENDPOINT}`, (_, res, ctx) => {
+      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
         return res(ctx.status(400), ctx.json({ message: 'Failed to generate token. Please try again.' }));
       })
     );

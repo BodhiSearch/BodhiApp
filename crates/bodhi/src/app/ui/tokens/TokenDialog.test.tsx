@@ -1,5 +1,5 @@
 import { TokenDialog } from '@/app/ui/tokens/TokenDialog';
-import { TokenResponse } from '@/hooks/useCreateToken';
+import { TokenResponse } from '@/hooks/useApiTokens';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

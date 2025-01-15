@@ -230,9 +230,20 @@ mod tests {
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     let mut rx = test_db_service.subscribe();
-    let (offline_token, _) = build_token(
-      json! {{"jti": "test-jti", "sub": "test-user", "exp": Utc::now().timestamp() + 3600}},
-    )?;
+    let (offline_token, _) = build_token(json! {
+      {
+        "iat": Utc::now(),
+        "jti": "test-jti",
+        "iss": "https://test-id.app/realms/test",
+        "aud": "https://test-id.app/realms/test",
+        "sub": "test-user-id",
+        "typ": "Offline",
+        "azp": "test-resource",
+        "session_state": "test-session-id",
+        "scope": "openid offline_access scope_token_user",
+        "sid": "test-session-id"
+      }
+    })?;
     let offline_token_cl = offline_token.clone();
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
@@ -327,7 +338,7 @@ mod tests {
     assert_eq!(1, tokens.len());
     let created_token = &tokens[0];
     assert_eq!("test-jti", created_token.token_id);
-    assert_eq!("test-user", created_token.user_id);
+    assert_eq!("test-user-id", created_token.user_id);
     assert_eq!("My API Token", created_token.name);
     assert_eq!(TokenStatus::Active, created_token.status);
     Ok(())
@@ -339,9 +350,7 @@ mod tests {
   async fn test_create_token_handler_no_name(
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
-    let (offline_token, _) = build_token(
-      json! {{"jti": "test-jti", "sub": "test-user", "exp": Utc::now().timestamp() + 3600}},
-    )?;
+    let (offline_token, _) = build_token(json! {{"jti": "test-jti", "sub": "test-user"}})?;
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_exchange_token()
