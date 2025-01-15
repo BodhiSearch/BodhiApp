@@ -1,6 +1,6 @@
 use crate::db::{
-  AccessRequest, Conversation, DbError, DbService, DownloadRequest, Message, RequestStatus,
-  SqliteDbService, TimeService,
+  AccessRequest, ApiToken, Conversation, DbError, DbService, DownloadRequest, Message,
+  RequestStatus, SqliteDbService, TimeService,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -194,5 +194,21 @@ impl DbService for TestDbService {
       .update_request_status(id, status)
       .await
       .tap(|_| self.notify("update_request_status"))
+  }
+
+  async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
+    self
+      .inner
+      .create_api_token(token)
+      .await
+      .tap(|_| self.notify("create_api_token"))
+  }
+
+  async fn list_api_tokens(&self, page: u32, per_page: u32) -> Result<Vec<ApiToken>, DbError> {
+    self
+      .inner
+      .list_api_tokens(page, per_page)
+      .await
+      .tap(|_| self.notify("list_api_tokens"))
   }
 }
