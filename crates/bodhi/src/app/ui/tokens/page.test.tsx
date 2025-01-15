@@ -2,7 +2,7 @@ import TokenPage, { TokenPageContent } from '@/app/ui/tokens/page';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useApiTokens';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -24,6 +24,13 @@ vi.mock('next/navigation', () => ({
   }),
 }));
 
+const toast = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast,
+  }),
+}));
+
 const mockTokenResponse = {
   offline_token: 'test-token-123',
   name: 'Test Token',
@@ -32,7 +39,32 @@ const mockTokenResponse = {
   updated_at: '2024-01-01T00:00:00Z',
 };
 
-const server = setupServer();
+const mockListResponse = {
+  data: [
+    {
+      id: 'token-1',
+      name: 'Test Token 1',
+      status: 'active',
+      created_at: '2024-01-01T00:00:00Z',
+      updated_at: '2024-01-01T00:00:00Z',
+    },
+  ],
+  total: 1,
+  page: 1,
+  page_size: 10,
+};
+
+const server = setupServer(
+  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+    return res(ctx.json({ status: 'ready', authz: true }));
+  }),
+  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
+    return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+  }),
+  rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
+    return res(ctx.status(200), ctx.json(mockListResponse));
+  }),
+);
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
@@ -45,9 +77,9 @@ beforeEach(() => {
 describe('TokenPageContent', () => {
   it('shows loading skeleton initially', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.json({ status: 'ready', authz: true }));
-      })
+      rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
+        return res(ctx.status(200), ctx.json(mockListResponse));
+      }),
     );
 
     render(<TokenPageContent />, { wrapper: createWrapper() });
@@ -59,11 +91,25 @@ describe('TokenPageContent', () => {
 describe('TokenPageContent', () => {
   beforeEach(() => {
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready', authz: true }));
+      rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
+        return res(
+          ctx.status(201),
+          ctx.json({
+            offline_token: 'test-token-123',
+          })
+        );
       }),
-      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
+      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
+        return res(
+          ctx.status(200),
+          ctx.json({
+            id: 'token-1',
+            name: 'Test Token 1',
+            status: 'inactive',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:01Z',
+          })
+        );
       })
     );
   });
@@ -151,5 +197,75 @@ describe('TokenPage', () => {
     });
 
     expect(pushMock).toHaveBeenCalledWith('/ui/login');
+  });
+});
+
+describe('token status updates', () => {
+  beforeEach(() => {
+    server.use(
+      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
+        return res(
+          ctx.status(200),
+          ctx.json({
+            id: 'token-1',
+            name: 'Test Token 1',
+            status: 'inactive',
+            created_at: '2024-01-01T00:00:00Z',
+            updated_at: '2024-01-01T00:00:01Z',
+          })
+        );
+      })
+    );
+  });
+
+  it('successfully updates token status', async () => {
+    const user = userEvent.setup();
+
+    render(<TokenPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toBeInTheDocument();
+    });
+
+    const switchElement = screen.getByRole('switch');
+    expect(switchElement).toBeChecked();
+
+    await user.click(switchElement);
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith({
+        title: 'Token Updated',
+        description: 'Token status changed to inactive',
+      });
+    });
+  });
+})
+
+describe('token status update', () => {
+  it('handles token status update error', async () => {
+    server.use(
+      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
+        return res(ctx.status(500));
+      })
+    );
+
+    const user = userEvent.setup();
+
+    render(<TokenPage />, { wrapper: createWrapper() });
+
+    await waitFor(() => {
+      expect(screen.getByRole('switch')).toBeInTheDocument();
+    });
+
+    const switchElement = screen.getByRole('switch');
+    await user.click(switchElement);
+
+    await waitFor(() => {
+      expect(toast).toHaveBeenCalledWith({
+        title: 'Error',
+        description: 'Failed to update token status',
+        variant: 'destructive',
+      });
+    });
   });
 });

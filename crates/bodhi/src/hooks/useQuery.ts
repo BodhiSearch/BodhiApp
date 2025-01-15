@@ -55,7 +55,7 @@ export function useQuery<T>(
 }
 
 export function useMutationQuery<T, V>(
-  endpoint: string,
+  endpoint: string | ((variables: V) => string),
   method: 'post' | 'put' | 'delete' = 'post',
   options?: UseMutationOptions<AxiosResponse<T>, AxiosError, V>
 ): UseMutationResult<AxiosResponse<T>, AxiosError, V> {
@@ -63,7 +63,9 @@ export function useMutationQuery<T, V>(
 
   return useMutation<AxiosResponse<T>, AxiosError, V>(
     async (variables) => {
-      const response = await apiClient[method]<T>(endpoint, variables, {
+      const _endpoint =
+        typeof endpoint === 'function' ? endpoint(variables) : endpoint;
+      const response = await apiClient[method]<T>(_endpoint, variables, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -74,7 +76,9 @@ export function useMutationQuery<T, V>(
     {
       ...options,
       onSuccess: (data, variables, context) => {
-        queryClient.invalidateQueries(endpoint);
+        const _endpoint =
+          typeof endpoint === 'function' ? endpoint(variables) : endpoint;
+        queryClient.invalidateQueries(_endpoint);
         if (options?.onSuccess) {
           options.onSuccess(data, variables, context);
         }

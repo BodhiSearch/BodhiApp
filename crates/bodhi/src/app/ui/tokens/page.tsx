@@ -13,13 +13,15 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppInfo } from '@/hooks/useQuery';
-import { ApiToken, useListTokens } from '@/hooks/useApiTokens';
+import { ApiToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
 import { DataTable, Pagination, SortState } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { TokenResponse } from '@/hooks/useApiTokens';
+import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/hooks/use-toast';
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
@@ -42,11 +44,32 @@ export function TokenPageContent() {
     column: 'created_at',
     direction: 'desc',
   });
-
+  const { toast } = useToast();
+  const updateToken = useUpdateToken();
   const { data: tokensData, isLoading: tokensLoading } = useListTokens(
     page,
     pageSize
   );
+
+  const handleStatusChange = async (token: ApiToken, checked: boolean) => {
+    try {
+      await updateToken.mutateAsync({
+        id: token.id,
+        name: token.name,
+        status: checked ? 'active' : 'inactive',
+      });
+      toast({
+        title: 'Token Updated',
+        description: `Token status changed to ${checked ? 'active' : 'inactive'}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to update token status',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const handleTokenCreated = (newToken: TokenResponse) => {
     setToken(newToken);
@@ -105,7 +128,14 @@ export function TokenPageContent() {
     <>
       <TableCell>{token.name || '-'}</TableCell>
       <TableCell>
-        <StatusBadge status={token.status} />
+        <div className="flex items-center gap-2">
+          <Switch
+            checked={token.status === 'active'}
+            onCheckedChange={(checked) => handleStatusChange(token, checked)}
+            aria-label="Toggle token status"
+          />
+          <StatusBadge status={token.status} />
+        </div>
       </TableCell>
       <TableCell>{new Date(token.created_at).toLocaleString()}</TableCell>
       <TableCell>{new Date(token.updated_at).toLocaleString()}</TableCell>
@@ -143,7 +173,7 @@ export function TokenPageContent() {
               renderRow={renderRow}
               getItemId={(item) => item.id}
               sort={sort}
-              onSortChange={() => {}}
+              onSortChange={() => { }}
             />
             {tokensData && (
               <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">

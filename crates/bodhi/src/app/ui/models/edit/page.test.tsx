@@ -84,6 +84,9 @@ describe('EditAliasPage', () => {
       rest.get('*/api/ui/chat_templates', (_, res, ctx) => {
         return res(ctx.json(mockChatTemplatesResponse));
       }),
+      rest.get('*/api/ui/modelfiles', (_, res, ctx) => {
+        return res(ctx.json({ data: [] }));
+      }),
       rest.put('*/api/ui/models/:alias', (_, res, ctx) => {
         return res(
           ctx.status(200),

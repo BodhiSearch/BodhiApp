@@ -27,6 +27,12 @@ export interface ListTokensResponse {
   page_size: number;
 }
 
+export interface UpdateTokenRequest {
+  id: string;
+  name?: string;
+  status: 'active' | 'inactive';
+}
+
 // Hooks
 export function useListTokens(page: number = 1, pageSize: number = 10) {
   return useQuery<ListTokensResponse>(
@@ -42,6 +48,21 @@ export function useCreateToken() {
   return useMutationQuery<TokenResponse, CreateTokenRequest>(
     API_TOKENS_ENDPOINT,
     'post',
+    {
+      onSuccess: () => {
+        // Invalidate all token list queries
+        queryClient.invalidateQueries(['tokens']);
+      },
+    }
+  );
+}
+
+export function useUpdateToken() {
+  const queryClient = useQueryClient();
+
+  return useMutationQuery<ApiToken, UpdateTokenRequest>(
+    (params) => `${API_TOKENS_ENDPOINT}/${params.id}`,
+    'put',
     {
       onSuccess: () => {
         // Invalidate all token list queries
