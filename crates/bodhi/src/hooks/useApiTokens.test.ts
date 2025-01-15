@@ -15,10 +15,6 @@ import { ApiError } from '@/types/models';
 
 const mockTokenResponse: TokenResponse = {
   offline_token: 'test-token-123',
-  name: 'Test Token',
-  status: 'active',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
 };
 
 const mockListResponse: ListTokensResponse = {

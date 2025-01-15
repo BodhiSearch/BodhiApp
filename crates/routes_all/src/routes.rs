@@ -5,13 +5,13 @@ use axum::{
   http::StatusCode,
   middleware::from_fn_with_state,
   response::Response,
-  routing::{get, post},
+  routing::{get, post, put},
   Router,
 };
 use routes_app::{
   app_info_handler, chats_router, create_router, create_token_handler, dev_secrets_handler,
   list_tokens_handler, login_callback_handler, login_handler, logout_handler, pull_router,
-  setup_handler, user_info_handler,
+  setup_handler, update_token_handler, user_info_handler,
 };
 use routes_oai::{
   chat_completions_handler, models_router, oai_model_handler, oai_models_handler,
@@ -67,6 +67,7 @@ pub fn build_routes(
     .route("/api/chat", post(ollama_model_chat_handler))
     .nest("/api/ui", api_ui_router)
     .route("/api/tokens", post(create_token_handler))
+    .route("/api/tokens/:token_id", put(update_token_handler))
     .route("/api/tokens", get(list_tokens_handler))
     .route("/api/tokens/", get(list_tokens_handler))
     .route("/v1/models", get(oai_models_handler))

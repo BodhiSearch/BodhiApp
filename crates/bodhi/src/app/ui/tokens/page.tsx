@@ -143,7 +143,7 @@ export function TokenPageContent() {
               renderRow={renderRow}
               getItemId={(item) => item.id}
               sort={sort}
-              onSortChange={() => { }}
+              onSortChange={() => {}}
             />
             {tokensData && (
               <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">

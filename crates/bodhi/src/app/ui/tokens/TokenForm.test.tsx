@@ -9,10 +9,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 const mockToken: TokenResponse = {
   offline_token: 'test-token-123',
-  name: 'Test Token',
-  status: 'active',
-  created_at: '2024-01-01T00:00:00Z',
-  updated_at: '2024-01-01T00:00:00Z',
 };
 
 const server = setupServer();

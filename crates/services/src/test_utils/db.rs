@@ -215,4 +215,20 @@ impl DbService for TestDbService {
       .await
       .tap(|_| self.notify("list_api_tokens"))
   }
+
+  async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError> {
+    self
+      .inner
+      .get_api_token(id)
+      .await
+      .tap(|_| self.notify("get_api_token"))
+  }
+
+  async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
+    self
+      .inner
+      .update_api_token(token)
+      .await
+      .tap(|_| self.notify("update_api_token"))
+  }
 }

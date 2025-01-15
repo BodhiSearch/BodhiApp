@@ -101,6 +101,10 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     page: u32,
     per_page: u32,
   ) -> Result<(Vec<ApiToken>, u32), DbError>;
+
+  async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError>;
+
+  async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -291,8 +295,8 @@ impl DbService for SqliteDbService {
           filename,
           status,
           error,
-          created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
-          updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+          created_at: chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
+          updated_at: chrono::DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
         }))
       }
       None => Ok(None),
@@ -328,8 +332,8 @@ impl DbService for SqliteDbService {
             filename,
             status,
             error,
-            created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
-            updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+            created_at: chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
+            updated_at: chrono::DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
           })
         },
       )
@@ -474,18 +478,38 @@ impl DbService for SqliteDbService {
     per_page: u32,
   ) -> Result<(Vec<ApiToken>, u32), DbError> {
     let offset = (page - 1) * per_page;
-    let results = query_as::<_, (String, String, String, String, String, i64, i64)>(
-      "SELECT id, user_id, name, token_id, status, created_at, updated_at
-       FROM api_tokens
-       ORDER BY created_at DESC
-       LIMIT ? OFFSET ?",
+    let results = query_as::<
+      _,
+      (
+        String,
+        String,
+        String,
+        String,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
+      r#"
+      SELECT
+        id,
+        user_id,
+        name,
+        token_id,
+        status,
+        created_at,
+        updated_at
+      FROM api_tokens
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+      "#,
     )
     .bind(per_page as i64)
     .bind(offset as i64)
     .fetch_all(&self.pool)
     .await?;
 
-    let tokens = results
+    let tokens: Vec<_> = results
       .into_iter()
       .filter_map(
         |(id, user_id, name, token_id, status, created_at, updated_at)| {
@@ -493,24 +517,96 @@ impl DbService for SqliteDbService {
             tracing::warn!("unknown token status: {} for id: {}", status, id);
             return None;
           };
+
           Some(ApiToken {
             id,
             user_id,
             name,
             token_id,
             status,
-            created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
-            updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+            created_at,
+            updated_at,
           })
         },
       )
       .collect();
-    let total: u32 = query_as::<_, (i64,)>("SELECT COUNT(*) FROM api_tokens")
+
+    let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM api_tokens")
       .fetch_one(&self.pool)
-      .await
-      .map_err(SqlxError::from)?
-      .0 as u32;
-    Ok((tokens, total))
+      .await?;
+    Ok((tokens, total as u32))
+  }
+
+  async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError> {
+    let result = query_as::<
+      _,
+      (
+        String,
+        String,
+        String,
+        String,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(
+      r#"
+      SELECT
+        id,
+        user_id,
+        name,
+        token_id,
+        status,
+        created_at,
+        updated_at
+      FROM api_tokens
+      WHERE id = ?
+      "#,
+    )
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    match result {
+      Some((id, user_id, name, token_id, status, created_at, updated_at)) => {
+        let Ok(status) = TokenStatus::from_str(&status) else {
+          tracing::warn!("unknown token status: {status} for id: {id}");
+          return Ok(None);
+        };
+
+        let result = ApiToken {
+          id,
+          user_id,
+          name,
+          token_id,
+          status,
+          created_at,
+          updated_at,
+        };
+        Ok(Some(result))
+      }
+      None => Ok(None),
+    }
+  }
+
+  async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
+    token.updated_at = self.time_service.utc_now();
+    sqlx::query(
+      r#"
+      UPDATE api_tokens
+      SET name = ?,
+          status = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+      "#,
+    )
+    .bind(&token.name)
+    .bind(token.status.to_string())
+    .bind(&token.id)
+    .execute(&self.pool)
+    .await?;
+
+    Ok(())
   }
 }
 
@@ -523,7 +619,7 @@ mod test {
     },
     test_utils::{test_db_service, TestDbService},
   };
-  use chrono::{Days, Timelike};
+  use chrono::{Days, Timelike, Utc};
   use rstest::rstest;
   use uuid::Uuid;
 
@@ -870,6 +966,44 @@ mod test {
     assert_eq!(1, tokens.len());
 
     assert_eq!(token, tokens[0]);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_api_token(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create initial token
+    let mut token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: "test_user".to_string(),
+      name: "Initial Name".to_string(),
+      token_id: "token123".to_string(),
+      status: TokenStatus::Active,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    };
+    service.create_api_token(&mut token).await?;
+
+    // Update token
+    token.name = "Updated Name".to_string();
+    token.status = TokenStatus::Inactive;
+    token.updated_at = Utc::now();
+    service.update_api_token(&mut token).await?;
+    // Verify update
+    let updated = service.get_api_token(&token.id).await?.unwrap();
+    assert_eq!(updated.name, "Updated Name");
+    assert_eq!(updated.status, TokenStatus::Inactive);
+    assert_eq!(updated.id, token.id);
+    assert_eq!(updated.user_id, token.user_id);
+    assert_eq!(updated.token_id, token.token_id);
+    assert_eq!(updated.created_at, token.created_at);
+    assert!(updated.updated_at >= token.updated_at);
 
     Ok(())
   }

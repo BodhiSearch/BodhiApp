@@ -7,6 +7,6 @@ CREATE TABLE api_tokens (
     name TEXT DEFAULT '',
     token_id TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL CHECK (status IN ('active', 'inactive')),
-    created_at INTEGER NOT NULL,
-    updated_at INTEGER NOT NULL
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
