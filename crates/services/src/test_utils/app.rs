@@ -6,7 +6,7 @@ use crate::{
   SessionService, SqliteSessionService, BODHI_HOME, HF_HOME,
 };
 use derive_builder::Builder;
-use objs::test_utils::{build_temp_dir, copy_test_dir};
+use objs::test_utils::{build_temp_dir, copy_test_dir, temp_dir};
 use objs::LocalizationService;
 use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
@@ -160,6 +160,11 @@ impl AppServiceStubBuilder {
     let temp_home = self.setup_temp_home();
     let dbfile = temp_home.path().join("test.db");
     self.build_session_service(dbfile).await;
+    self
+  }
+
+  pub async fn with_db_service(&mut self) -> &mut Self {
+    self.db_service = Some(Some(Arc::new(test_db_service(temp_dir()).await)));
     self
   }
 

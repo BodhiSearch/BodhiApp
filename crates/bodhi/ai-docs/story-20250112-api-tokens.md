@@ -1,5 +1,167 @@
 # API Token Management Feature
 
+## Requirements
+
+### User Story
+As a User of Bodhi App  
+I want to generate and manage API tokens  
+So that I can access the application programmatically from external applications
+
+### Core Requirements
+
+#### Token Characteristics
+- Tokens are generated using OAuth2 token exchange with offline_access and scope_token_user scopes
+- Offline tokens do not expire but have an idle timeout of 30 days
+- Tokens are stateless and user session-independent
+- Tokens must be used at least once every 30 days to prevent idle timeout
+- All tokens are created with user scope by default (scope_token_user)
+- Tokens remain valid even when user is logged out
+- App must be in authenticated mode to generate tokens (authz: true)
+- Tokens can be exchanged for new access tokens repeatedly
+
+#### Security Requirements
+- Tokens are generated through OAuth2 token exchange only
+- Token invalidation only marks tokens as invalid in database
+- No limit on number of active tokens per user
+- Token permissions are cached against jti for performance
+- Token names can be updated after creation
+- Token validation includes signature and claims verification
+- Authorized party (azp) must match client_id
+- Token hash verification required for additional security
+
+#### User Interface Requirements
+1. Navigation & Access
+   - API Tokens menu item in navigation
+   - Show message in non-authenticated mode: "Non-authenticated setup don't need API Tokens. Either ignore the Auth header or pass an empty/random Bearer token. They are not validated." [ADDED EXACT MESSAGE]
+   - Only show API tokens page when user is authenticated
+
+2. Token Generation
+   - Form with input field for token name
+   - Create button to generate new token
+   - Dialog to display newly generated token
+   - Copy functionality for new tokens
+   - Clear warning that token will not be shown again
+   - Warning about 30-day usage requirement
+   - Success/error feedback for token creation
+
+3. Token Management
+   - Table display with columns: Name, Status, Created Date, Updated Date
+   - Visual warning for tokens inactive for 25+ days
+   - Sorting functionality
+   - Confirmation dialog for token invalidation
+   - Responsive design for all screen sizes
+
+#### Database Schema
+```sql
+CREATE TABLE api_tokens (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    name TEXT DEFAULT '',
+    token_id TEXT NOT NULL UNIQUE,
+    token_hash TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('active', 'inactive')),
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL
+);
+CREATE INDEX idx_api_tokens_token_id ON api_tokens(token_id);
+```
+
+#### Cache Management [ADDED SECTION]
+- Cache key format: `token:<jti>:<token_hash_prefix>`
+- Token hash prefix uses first 12 chars of SHA256 hash
+- Cache value contains:
+  - access_token: The exchanged access token
+  - exp: Token expiration timestamp
+- Automatic cache invalidation on token status changes
+
+### Not In Scope
+- Custom token scopes
+- Role-based token access control
+- Custom claims in token
+- Rate limiting for token generation
+- Token usage tracking
+- Token audit logging
+- Password confirmation for token generation
+- Token search/filtering
+
+## Implementation Tasks
+
+### Backend Tasks
+
+#### Database Layer
+- [x] Create api_tokens table with schema
+- [x] Add token status enum (active/inactive)
+- [x] Add token hash for verification
+- [x] Add index for faster token lookups
+- [ ] ~Add last used timestamp~
+- [ ] ~Add token usage counter~
+
+#### Service Layer
+- [x] Implement create_api_token method
+- [x] Implement list_api_tokens with pagination
+- [x] Add update_token method
+- [x] Add get_token_by_id method
+- [x] Add total count to list response
+
+#### API Endpoints
+- [x] POST /api/tokens
+- [x] GET /api/tokens?page=1&per_page=10
+- [x] PUT /api/tokens/:id
+
+#### Token Validation & Middleware
+- [x] Check token exists in database
+- [x] Verify token hash
+- [x] Check token status is active
+- [x] Validate token signature and claims
+- [x] Check access token expiry
+- [x] Auto refresh expired access tokens
+- [ ] ~Track token usage~
+- [x] Add comprehensive error logging
+
+#### Caching Implementation
+- [x] Cache access tokens by token_id
+- [x] Validate cached token expiry
+- [x] Invalidate cache on token deactivation
+- [x] Clean up expired cache entries
+- [ ] ~Implement cache monitoring metrics~
+
+### Frontend Tasks
+
+#### Token List Component
+- [x] Table with columns: Name, Status, Created Date, Updated Date
+- [x] Pagination controls
+- [x] Loading states and error handling
+- [x] Empty state design
+- [x] Status badges (Active/Inactive)
+- [x] Created/Updated date formatting
+- [ ] ~Visual indicators for token age~
+- [x] Responsive design for mobile
+- [x] Add skeleton loading state
+
+#### Token Actions
+- [ ] ~Edit name with inline editing~
+- [x] Status toggle
+- [x] Copy token ID functionality
+- [x] Action tooltips and feedback
+- [x] Toast notifications for actions
+
+#### React Query Integration
+- [x] Combined useCreateToken and useListTokens into useApiTokens
+- [x] Added cache invalidation after token creation
+- [x] Proper error handling and loading states
+- [x] Type-safe API responses
+
+### Testing Tasks
+- [x] Unit tests for token service
+- [x] API endpoint tests
+- [x] UI component tests
+- [x] Integration tests for token flow
+- [x] Test token invalidation
+- [x] Test non-authenticated mode message
+- [ ] ~Test inactivity warnings~
+- [ ] ~Performance tests for token validation~
+- [ ] ~Cache behavior tests~
+
 ## File Overview
 
 ### Frontend (React/TypeScript)
@@ -33,428 +195,124 @@
 - `crates/routes_app/src/resources/en-US/messages.ftl`: API endpoint error messages
 - `crates/services/src/resources/en-US/messages.ftl`: Service layer error messages
 
-## User Story
-As a User of Bodhi App  
-I want to generate and manage API tokens  
-So that I can access the application programmatically from external applications
+## Recommendations for Implementation
+1. Start with implementing core token validation before UI features
+2. Implement caching early to ensure good performance
+3. Consider adding monitoring for:
+   - Token creation rate
+   - Token usage patterns
+   - Cache hit/miss ratio
+   - Token invalidation events
+4. Plan for future scaling:
+   - Consider token bucket implementation for rate limiting
+   - Plan database partitioning strategy
+   - Design audit logging structure
 
-## Background
-- Users need programmatic access to Bodhi App via API tokens
-- Tokens are generated using OAuth2 token exchange with offline_access and scope_token_user scopes
-- Offline tokens do not expire but have an idle timeout of 30 days
-- Tokens are stateless and user session-independent
-- App must be in authenticated mode to generate tokens, authz: true
-- All tokens are created with user scope by default, scope: scope_token_user
-
-## Token Characteristics
-- Offline tokens can be used repeatedly to obtain new access tokens
-- Tokens remain valid even when user is logged out
-- Tokens must be used at least once every 30 days to prevent idle timeout
-- Tokens are scoped to user-level access only via scope_token_user
-
-## Acceptance Criteria
-
-### Navigation & Access
-- [x] Add "API Tokens" menu item in the navigation
-- [x] Show message "Non-authenticated setup don't need API Tokens. Either ignore the Auth header or pass an empty/random Bearer token. They are not validated." when app is in non-authenticated mode
-- [x] Only show API tokens page when user is authenticated and authz: true
-
-### Token Generation Form
-- [x] Form with input field for token name
-- [x] Create button to generate new token
-- [x] Dialog to display newly generated token with copy functionality
-- [x] Clear warning that token will not be shown again
-- [x] Warning that tokens must be used at least once every 30 days
-
-### Token Management Table
-- [ ] update the auth backend to latest version allowing for offline token delete
-- [x] Display table of user's API tokens with columns:
-  - Name
-  - Status (active/inactive)
-  - Created Date
-  - Updated Date
-- [ ] Add sorting functionality
-- [ ] Visual warning for tokens inactive for 25+ days
-- [ ] Confirmation dialog before invalidating tokens
-
-### Backend Implementation
-- [x] Create database table `api_tokens` with fields:
-  - id (primary key)
-  - user_id (foreign key)
-  - token_id (jti)
-  - name
-  - status
-  - created_at
-  - updated_at
-- [x] API endpoint to create new token:
-  - Exchange user's access token for offline token using token exchange
-  - Store token jti and metadata in database
-  - Cache token permissions against jti
-- [x] API endpoint to list user's tokens with pagination
-- [ ] API endpoint to update token name
-- [ ] API endpoint to invalidate token
+## Migration Plan
+1. Deploy database changes first
+2. Add new endpoints with feature flag
+3. Deploy UI changes
+4. Enable feature for beta testing
+5. Roll out to all users
+6. Monitor for issues
 
 ## Progress Update (2025-01-13)
 
-### Completed Features
+### Completed Tasks
 
-#### Navigation & Access 
-- [x] Add "API Tokens" menu item in the navigation
-- [x] Show message "Non-authenticated setup don't need API Tokens..." in non-authenticated mode
-- [x] Only show API tokens page when user is authenticated
-
-#### Token Generation Form 
-- [x] Form with input field for token name
-- [x] Create button to generate new token
-- [x] Dialog to display newly generated token with copy functionality
-- [x] Clear warning that token will not be shown again
-- [x] Warning that tokens must be used at least once every 30 days
-
-#### Frontend Implementation Details
-1. Created token management UI components:
-   - `page.tsx`: Main token page with loading states and authentication checks
-   - `TokenForm.tsx`: Form for token creation with validation
-   - `TokenDialog.tsx`: Modal for displaying new tokens with copy/show/hide functionality
-   - Tests for all components with MSW for API mocking
-
-2. Added token-related hooks:
-   - `useCreateToken`: Hook for token creation with error handling
-   - Tests for hooks with proper error cases and network conditions
-
-3. UI/UX Features:
-   - Loading states with skeletons
-   - Error handling with toast notifications
-   - Security warnings and instructions
-   - Copy to clipboard functionality
-   - Show/hide token toggle
-   - Responsive layout with cards
-
-### Next Steps
-
-#### Backend Implementation (Completed)
-- [x] Create database table `api_tokens`
+#### Backend Tasks
+- [x] Create api_tokens table with schema
+- [x] Add token status enum and token hash
+- [x] Add index for faster token lookups
 - [x] Implement token storage and retrieval
 - [x] Add token validation and expiry checks
 
-#### Token Management Table (In Progress)
-- [x] Implement token listing UI with pagination
-- [x] Add status badges
-- [x] Display creation and update times
-- [ ] Add sorting functionality
-- [ ] Create token invalidation flow
-
-#### Testing & Documentation
-- [x] Add integration tests for token flow
-- [x] Document API endpoints
-- [ ] Add user documentation for token management
-
-## Progress Update (2025-01-15)
-
-### Database Implementation Progress
-
-1. Created `api_tokens` table with schema:
-   ```sql
-   CREATE TABLE api_tokens (
-       id TEXT PRIMARY KEY NOT NULL,
-       user_id TEXT NOT NULL,
-       name TEXT DEFAULT '',
-       token_id TEXT NOT NULL UNIQUE,
-       status TEXT NOT NULL CHECK (status IN ('active', 'inactive')),
-       created_at INTEGER NOT NULL,
-       updated_at INTEGER NOT NULL
-   );
-   ```
-
-2. Added Data Models:
-   - `TokenStatus` enum with Active/Inactive variants using serde for serialization
-   - `ApiToken` struct with all required fields
-   - Implemented PartialEq for comparison in tests
-   - Added string conversion methods using kebab-case format
-
-3. Database Service Implementation:
-   - Extended DbService trait with token operations:
-     - create_api_token: Creates new API tokens
-     - list_api_tokens: Lists tokens with pagination
-   - Added comprehensive tests for token creation and listing
-   - Implemented test notification system for tracking DB operations
-
-### Frontend Integration Progress
-
+#### Frontend Tasks
 1. Token List Component:
-   - Implemented DataTable for displaying tokens
-   - Added pagination with page size of 10
-   - Created StatusBadge component for token status
-   - Added formatted dates for created_at and updated_at
-   - Responsive layout for all screen sizes
-
-2. React Query Integration:
-   - Combined useCreateToken and useListTokens into useApiTokens
-   - Added cache invalidation after token creation
-   - Proper error handling and loading states
-   - Type-safe API responses
-
-3. Testing Updates:
-   - Updated all test files to use new API endpoint constant
-   - Added MSW handlers for token listing
-   - Added test cases for pagination
-   - Verified cache invalidation in tests
-
-### Phase-wise Implementation Plan
-
-#### Phase 1: Token Management Backend (Completed)
-1. Database Layer 
-   - API tokens table with schema 
-   - TokenStatus enum and ApiToken struct 
-   - Basic CRUD operations 
-
-2. Service Layer Extensions
-   - Add update_token_status method
-   - Add update_token_name method
-   - Add total count to list_api_tokens response
-   - Add get_token_by_id method for validation
-
-3. API Endpoints
-   - [x] POST /api/tokens
-   - [x] GET /api/tokens?page=1&per_page=10
-   - [ ] PUT /api/tokens/:id/status
-   - [ ] PUT /api/tokens/:id/name
-   - [x] Response DTOs with token metadata
-
-#### Phase 2: Token Management UI (In Progress)
-1. Token List Component
    - [x] Table with columns: Name, Status, Created Date, Updated Date
    - [x] Pagination controls
    - [x] Loading states and error handling
-   - [x] Empty state design
-
-2. Token Actions
-   - [ ] Edit name with inline editing
-   - [ ] Status toggle with confirmation
-   - [ ] Copy token ID functionality
-   - [ ] Action tooltips and feedback
-
-3. Token Status Visualization
    - [x] Status badges (Active/Inactive)
    - [x] Created/Updated date formatting
-   - [ ] Visual indicators for token age
    - [x] Responsive design for mobile
 
-#### Phase 3: Auth Middleware Enhancement
-1. Token Validation Updates
-   - [x] Disable unnecessary JWT validations
-   - [x] Handle offline token claims
-   - [ ] Cache token status in Redis/memory
-   - [ ] Add token status to validation response
-
-2. Token Deactivation Flow
-   - [ ] Update cache on token status change
-   - [ ] Invalidate existing sessions
-   - [ ] Clear cached permissions
-   - [ ] Audit logging for status changes
-
-3. Error Handling
-   - Specific error for inactive tokens
-   - Clear error messages for UI
-   - Logging for debugging
-   - Metrics for monitoring
+2. React Query Integration:
+   - [x] Combined useCreateToken and useListTokens into useApiTokens
+   - [x] Added cache invalidation after token creation
+   - [x] Proper error handling and loading states
+   - [x] Type-safe API responses
 
 ### Next Steps
-1. Implement sorting functionality for token list
-2. Add token name editing capability
-3. Implement token invalidation flow
-4. Add visual indicators for token age
-5. Set up Redis caching for token status
+1. Complete token management UI features
+2. Implement token invalidation flow
+3. Add sorting functionality
+4. Add user documentation
 
-#### Phase 4: Testing & Documentation
-1. Backend Testing
-   - Integration tests for token flow
+## Progress Update (2025-01-15)
+
+### Completed Tasks
+
+#### Backend Tasks
+1. Database Service:
+   - [x] Extended DbService trait with token operations
+   - [x] Implemented create_api_token and list_api_tokens
+   - [x] Added comprehensive test coverage
+   - [x] Added test notification system
+
+2. Token Validation:
+   - [x] Implemented token hash verification
+   - [x] Added token status validation
+   - [x] Set up token expiry checks
+
+#### Frontend Tasks
+1. Token List Enhancements:
+   - [x] Implemented DataTable with pagination
+   - [x] Added status badge component
+   - [x] Improved date formatting
+   - [x] Enhanced responsive layout
+
+2. Testing Infrastructure:
+   - [x] Updated API endpoint constants
+   - [x] Added MSW handlers for token listing
+   - [x] Added pagination test cases
+   - [x] Verified cache invalidation
+
+### Next Steps
+1. Implement token name updates
+2. Add token invalidation endpoint
+3. Enhance error handling
+4. Complete cache monitoring
+
+## Progress Update (2025-01-16)
+
+### Documentation Improvements
+1. Requirements Clarification:
+   - [x] Added token exchange capability details
+   - [x] Expanded security requirements with signature and claims verification
+   - [x] Added exact non-authenticated mode message
+   - [x] Added success/error feedback requirement for token creation
+   - [x] Specified responsive design requirement
+
+2. Technical Documentation:
+   - [x] Added detailed Cache Management section
+   - [x] Added Implementation Recommendations section
+   - [x] Added Migration Plan section
+
+### New Tasks Added
+1. Backend:
+   - Add comprehensive error logging
+   - Implement cache monitoring metrics
+
+2. Frontend:
+   - Add skeleton loading state
+   - Add toast notifications for actions
+
+3. Testing:
+   - Performance tests for token validation
    - Cache behavior tests
-   - Performance testing
-   - Error scenario coverage
 
-2. Frontend Testing
-   - Component tests
-   - User interaction tests
-   - Error handling tests
-   - Visual regression tests
-
-3. Documentation
-   - API documentation updates
-   - UI component documentation
-   - Token lifecycle documentation
-   - Deployment notes
-
-### Current Sprint Focus
-- Implementing token status update endpoint
-- Adding token name update functionality
-- Preparing UI components for token listing
-- Setting up token validation caching
-
-### Next Implementation Tasks
-1. Add token status update functionality
-2. Implement token name update method
-3. Add token invalidation endpoint
-4. Integrate with token validation service
-
-## Technical Implementation Steps
-
-### Database Changes
-1. Create new migration for `api_tokens` table
-2. Add token entity and repository in `crates/db`
-3. Add token service in `crates/services`
-
-### Backend API Changes
-1. Add token routes in `routes_token.rs`:
-   - POST /api/tokens/create
-   - GET /api/tokens
-   - PUT /api/tokens/:id/name
-   - POST /api/tokens/:id/invalidate
-2. Implement token exchange in auth_service for offline token generation
-3. Implement token service methods
-4. Add cache for token permissions
-
-### Frontend Changes
-1. Add API token page in `crates/bodhi/src/app/ui/tokens`:
-   - page.tsx for main layout
-   - components/TokenForm.tsx for token creation
-   - components/TokenTable.tsx for listing tokens
-   - components/TokenDialog.tsx for displaying new token
-2. Add token-related hooks in `crates/bodhi/src/hooks`:
-   - useCreateToken
-   - useTokens
-   - useUpdateToken
-   - useInvalidateToken
-3. Add token types in `crates/bodhi/src/types`
-4. Update navigation to include API tokens menu item
-
-## Token Validation & Middleware Implementation
-
-#### Auth Middleware Enhancement
-- [ ] Modify `auth_middleware` to handle both session and token-based authentication:
-  1. Check for Authorization header first
-  2. If header exists, validate using Bearer token
-  3. If no header, fallback to session validation
-  4. Return invalid access if both validations fail
-
-#### Token Validation Process
-- [ ] Validate offline tokens with following checks:
-  - Token type is "Offline"
-  - Authorized party (azp) matches client_id
-  - Scope includes "scope_token_user"
-  - Signature verification using public key
-- [ ] Exchange valid offline token for access token
-- [ ] Inject new access token in request header
-   - [ ] Simplified error handling:
-     - Return generic "auth token validation failed" message
-  - Log detailed validation failures (kid mismatch, algorithm mismatch, etc.) at WARN level
-
-#### Token Caching
-- [ ] Implement token caching mechanism:
-  - Cache validated tokens using JTI and token hash
-  - Store corresponding access tokens with expiration
-  - Return cached access token if valid
-  - Refresh and cache new access token if expired/missing
-
-#### Implementation Components
-- [ ] Update `auth_middleware.rs`:
-  - Add token validation logic
-  - Implement caching mechanism
-  - Update error handling
-- [ ] Enhance `token_service.rs`:
-  - Add token validation methods
-  - Implement caching interface
-  - Update service facade pattern
-- [ ] Add comprehensive tests for:
-  - Token validation scenarios
-  - Caching behavior
-  - Error cases
-  - Integration with auth service
-
-## Token Caching Story
-
-## Overview
-Implement token caching to optimize token validation and reduce unnecessary calls to the auth service.
-
-## Implementation Details
-
-### Token Caching Strategy
-- Cache key format: `token:<jti>:<token_hash_prefix>`
-  - `jti`: Unique token identifier from claims
-  - `token_hash_prefix`: First 12 chars of SHA256 hash of the token
-- Cache value: JSON serialized `CachedToken` containing:
-  - `access_token`: The exchanged access token
-  - `exp`: Token expiration timestamp
-
-### Optimization Flow
-1. Extract token from authorization header
-2. Get `jti` and calculate token hash without full validation
-3. Check cache using composite key
-4. If cache hit and token not expired:
-   - Return cached access token
-5. If cache miss or token expired:
-   - Validate token signature and claims
-   - Exchange token with auth service
-   - Cache new access token with expiry
-   - Return new access token
-
-### Security Considerations
-- Token hash in cache key ensures cache miss if token is tampered
-- Expiry check prevents use of expired tokens
-- No sensitive data stored in cache besides access token
-- Cache automatically invalidates on token changes
-
-### Code Changes
-- Added `TokenCache` struct to encapsulate caching logic
-- Updated `DefaultTokenService` to use token cache
-- Added tests for cache hit and miss scenarios
-- Integrated with existing auth middleware
-
-### Performance Impact
-- Reduces auth service calls for valid tokens
-- Minimal overhead for cache misses
-- Efficient key lookup using token hash
-
-## Status
-- [x] Design caching strategy
-- [x] Implement token caching
-- [x] Add cache hit/miss tests
-- [x] Update auth middleware
-- [x] Code review changes
-- [ ] Documentation
-
-## Not In Scope
-- Custom token scopes
-- Role-based token access control
-- Custom claims in token
-- Rate limiting for token generation
-- Token usage tracking
-- Token audit logging
-- Password confirmation for token generation
-- Token search/filtering
-
-## Follow-up Stories
-1. Add custom claims to tokens for:
-   - Role-based access control
-   - Model-specific access restrictions
-   - API endpoint restrictions
-2. Add token usage tracking
-3. Implement rate limiting
-4. Add audit logging for token operations
-
-## Technical Considerations
-- Tokens are generated through OAuth2 token exchange
-- Token invalidation only marks tokens as invalid in database
-- Token names can be updated after creation
-- Visual warning for tokens inactive for 25+ days
-- No limit on number of active tokens per user
-- All tokens are created with user scope via scope_token_user
-- Token permissions are cached against jti for performance
-
-## Testing Requirements
-- [ ] Unit tests for token service
-- [ ] API endpoint tests
-- [ ] UI component tests
-- [ ] Integration tests for token flow
-- [ ] Test token invalidation
-- [ ] Test non-authenticated mode message
-- [ ] Test inactivity warnings
+### Next Focus Areas
+1. Implement core token validation
+2. Set up caching infrastructure
+3. Add monitoring metrics
+4. Begin UI development with skeleton loading

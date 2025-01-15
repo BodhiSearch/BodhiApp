@@ -1,6 +1,9 @@
-use crate::db::{
-  AccessRequest, ApiToken, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus,
-  SqlxError, SqlxMigrateError, TokenStatus,
+use crate::{
+  db::{
+    AccessRequest, ApiToken, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus,
+    SqlxError, SqlxMigrateError, TokenStatus,
+  },
+  decode_access_token,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
@@ -48,6 +51,9 @@ pub enum DbError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::BadRequest, code="db_error-strum_parse", args_delegate = false)]
   StrumParse(#[from] strum::ParseError),
+  #[error("token_validation")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  TokenValidation(String),
 }
 
 impl_error_from!(::sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
@@ -96,6 +102,8 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
 
+  async fn create_api_token_from(&self, name: &str, token: &str) -> Result<ApiToken, DbError>;
+
   async fn list_api_tokens(
     &self,
     page: u32,
@@ -104,6 +112,8 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError>;
 
+  async fn get_valid_api_token(&self, token: &str) -> Result<Option<ApiToken>, DbError>;
+
   async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
 }
 
@@ -111,6 +121,49 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 pub struct SqliteDbService {
   pool: SqlitePool,
   time_service: Arc<dyn TimeService>,
+}
+
+impl SqliteDbService {
+  async fn get_by_col(&self, query: &str, id: &str) -> Result<Option<ApiToken>, DbError> {
+    let result = query_as::<
+      _,
+      (
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        DateTime<Utc>,
+        DateTime<Utc>,
+      ),
+    >(query)
+    .bind(id)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    match result {
+      Some((id, user_id, name, token_id, token_hash, status, created_at, updated_at)) => {
+        let Ok(status) = TokenStatus::from_str(&status) else {
+          tracing::warn!("unknown token status: {status} for id: {id}");
+          return Ok(None);
+        };
+
+        let result = ApiToken {
+          id,
+          user_id,
+          name,
+          token_id,
+          token_hash,
+          status,
+          created_at,
+          updated_at,
+        };
+        Ok(Some(result))
+      }
+      None => Ok(None),
+    }
+  }
 }
 
 #[async_trait::async_trait]
@@ -455,14 +508,15 @@ impl DbService for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO api_tokens (id, user_id, name, token_id, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO api_tokens (id, user_id, name, token_id, token_hash, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       "#,
     )
     .bind(&token.id)
     .bind(&token.user_id)
     .bind(&token.name)
     .bind(&token.token_id)
+    .bind(&token.token_hash)
     .bind(token.status.to_string())
     .bind(token.created_at.timestamp())
     .bind(token.updated_at.timestamp())
@@ -470,6 +524,50 @@ impl DbService for SqliteDbService {
     .await?;
 
     Ok(())
+  }
+
+  async fn create_api_token_from(&self, name: &str, token: &str) -> Result<ApiToken, DbError> {
+    use crate::MinClaims;
+    use sha2::{Digest, Sha256};
+
+    let token_data = decode_access_token::<MinClaims>(token)
+      .map_err(|e| DbError::TokenValidation(e.to_string()))?;
+
+    let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
+    let token_hash = token_hash[..12].to_string();
+
+    let now = self.time_service.utc_now();
+    let id = Uuid::new_v4().to_string();
+
+    let api_token = ApiToken {
+      id,
+      user_id: token_data.claims.sub,
+      name: name.to_string(),
+      token_id: token_data.claims.jti,
+      token_hash,
+      status: TokenStatus::Active,
+      created_at: now,
+      updated_at: now,
+    };
+
+    sqlx::query(
+      r#"
+      INSERT INTO api_tokens (id, user_id, name, token_id, token_hash, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      "#,
+    )
+    .bind(&api_token.id)
+    .bind(&api_token.user_id)
+    .bind(&api_token.name)
+    .bind(&api_token.token_id)
+    .bind(&api_token.token_hash)
+    .bind(api_token.status.to_string())
+    .bind(api_token.created_at.timestamp())
+    .bind(api_token.updated_at.timestamp())
+    .execute(&self.pool)
+    .await?;
+
+    Ok(api_token)
   }
 
   async fn list_api_tokens(
@@ -486,6 +584,7 @@ impl DbService for SqliteDbService {
         String,
         String,
         String,
+        String,
         DateTime<Utc>,
         DateTime<Utc>,
       ),
@@ -496,6 +595,7 @@ impl DbService for SqliteDbService {
         user_id,
         name,
         token_id,
+        token_hash,
         status,
         created_at,
         updated_at
@@ -512,7 +612,7 @@ impl DbService for SqliteDbService {
     let tokens: Vec<_> = results
       .into_iter()
       .filter_map(
-        |(id, user_id, name, token_id, status, created_at, updated_at)| {
+        |(id, user_id, name, token_id, token_hash, status, created_at, updated_at)| {
           let Ok(status) = TokenStatus::from_str(&status) else {
             tracing::warn!("unknown token status: {} for id: {}", status, id);
             return None;
@@ -523,6 +623,7 @@ impl DbService for SqliteDbService {
             user_id,
             name,
             token_id,
+            token_hash,
             status,
             created_at,
             updated_at,
@@ -538,54 +639,52 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError> {
-    let result = query_as::<
-      _,
-      (
-        String,
-        String,
-        String,
-        String,
-        String,
-        DateTime<Utc>,
-        DateTime<Utc>,
-      ),
-    >(
-      r#"
+    let query = r#"
       SELECT
         id,
         user_id,
         name,
         token_id,
+        token_hash,
         status,
         created_at,
         updated_at
       FROM api_tokens
       WHERE id = ?
-      "#,
-    )
-    .bind(id)
-    .fetch_optional(&self.pool)
-    .await?;
+      "#;
+    self.get_by_col(query, id).await
+  }
 
-    match result {
-      Some((id, user_id, name, token_id, status, created_at, updated_at)) => {
-        let Ok(status) = TokenStatus::from_str(&status) else {
-          tracing::warn!("unknown token status: {status} for id: {id}");
-          return Ok(None);
-        };
-
-        let result = ApiToken {
-          id,
-          user_id,
-          name,
-          token_id,
-          status,
-          created_at,
-          updated_at,
-        };
-        Ok(Some(result))
-      }
+  async fn get_valid_api_token(&self, token: &str) -> Result<Option<ApiToken>, DbError> {
+    use crate::MinClaims;
+    use sha2::{Digest, Sha256};
+    let token_data = decode_access_token::<MinClaims>(token)
+      .map_err(|e| DbError::TokenValidation(e.to_string()))?;
+    let query = r#"
+      SELECT
+        id,
+        user_id,
+        name,
+        token_id,
+        token_hash,
+        status,
+        created_at,
+        updated_at
+      FROM api_tokens
+      WHERE token_id = ?
+      "#;
+    let api_token = self.get_by_col(query, &token_data.claims.jti).await?;
+    match api_token {
       None => Ok(None),
+      Some(api_token) => {
+        let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
+        let token_hash = token_hash[..12].to_string();
+        if api_token.token_hash == token_hash {
+          Ok(Some(api_token))
+        } else {
+          Ok(None)
+        }
+      }
     }
   }
 
@@ -617,7 +716,7 @@ mod test {
       AccessRequest, ApiToken, ConversationBuilder, DbError, DbService, DownloadRequest,
       DownloadStatus, MessageBuilder, RequestStatus, SqlxError, TokenStatus,
     },
-    test_utils::{test_db_service, TestDbService},
+    test_utils::{build_token, test_db_service, TestDbService},
   };
   use chrono::{Days, Timelike, Utc};
   use rstest::rstest;
@@ -954,6 +1053,7 @@ mod test {
       user_id: Uuid::new_v4().to_string(),
       name: "".to_string(),
       token_id: Uuid::new_v4().to_string(),
+      token_hash: "token_hash".to_string(),
       status: TokenStatus::Active,
       created_at: now,
       updated_at: now,
@@ -984,6 +1084,7 @@ mod test {
       user_id: "test_user".to_string(),
       name: "Initial Name".to_string(),
       token_id: "token123".to_string(),
+      token_hash: "token_hash".to_string(),
       status: TokenStatus::Active,
       created_at: Utc::now(),
       updated_at: Utc::now(),
@@ -1004,6 +1105,43 @@ mod test {
     assert_eq!(updated.token_id, token.token_id);
     assert_eq!(updated.created_at, token.created_at);
     assert!(updated.updated_at >= token.updated_at);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_api_token_from(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create a test token with known claims
+    let test_jti = Uuid::new_v4().to_string();
+    let test_sub = Uuid::new_v4().to_string();
+    let (token, _) = build_token(serde_json::json!({
+      "jti": test_jti,
+      "sub": test_sub,
+    }))?;
+
+    // Create API token
+    let name = "Test Token";
+    let api_token = db_service.create_api_token_from(name, &token).await?;
+
+    // Verify the created token
+    assert_eq!(api_token.name, name);
+    assert_eq!(api_token.token_id, test_jti);
+    assert_eq!(api_token.user_id, test_sub);
+    assert_eq!(api_token.status, TokenStatus::Active);
+
+    // Verify we can retrieve it
+    let retrieved = db_service.get_api_token(&api_token.id).await?;
+    assert!(retrieved.is_some());
+    let retrieved = retrieved.unwrap();
+    assert_eq!(retrieved.token_id, test_jti);
+    assert_eq!(retrieved.user_id, test_sub);
+    assert_eq!(retrieved.token_hash, api_token.token_hash);
 
     Ok(())
   }

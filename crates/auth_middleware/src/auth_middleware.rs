@@ -22,6 +22,12 @@ pub enum AuthError {
   #[error("invalid_access")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAccess,
+  #[error("token_inactive")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  TokenInactive,
+  #[error("token_not_found")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  TokenNotFound,
   #[error("token_validation")]
   #[error_meta(error_type = ErrorType::Authentication)]
   TokenValidation(String),
@@ -62,6 +68,7 @@ pub async fn auth_middleware(
     app_service.auth_service(),
     secret_service.clone(),
     app_service.cache_service(),
+    app_service.db_service(),
   );
   // Check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
@@ -110,6 +117,7 @@ pub async fn optional_auth_middleware(
     app_service.auth_service(),
     secret_service.clone(),
     app_service.cache_service(),
+    app_service.db_service(),
   );
 
   // Check app status
@@ -274,6 +282,8 @@ mod tests {
       .secret_service(Arc::new(secret_service))
       .with_session_service()
       .await
+      .with_db_service()
+      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -307,6 +317,8 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
       .with_session_service()
+      .await
+      .with_db_service()
       .await
       .with_envs(maplit::hashmap! {"BODHI_FRONTEND_URL" => "https://bodhi.app"})
       .build()?;
@@ -342,6 +354,8 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(SecretServiceStub::default()))
       .session_service(session_service.clone())
+      .with_db_service()
+      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -419,6 +433,8 @@ mod tests {
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(mock_auth_service))
       .session_service(session_service.clone())
+      .with_db_service()
+      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -516,6 +532,8 @@ mod tests {
       .secret_service(Arc::new(secret_service))
       .auth_service(Arc::new(mock_auth_service))
       .session_service(session_service.clone())
+      .with_db_service()
+      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -587,6 +605,8 @@ mod tests {
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(SecretServiceStub::default()))
       .session_service(session_service.clone())
+      .with_db_service()
+      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(

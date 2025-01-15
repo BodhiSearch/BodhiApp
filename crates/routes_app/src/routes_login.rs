@@ -431,6 +431,8 @@ mod tests {
       ))
       .with_sqlite_session_service(Arc::new(session_service))
       .with_secret_service()
+      .with_db_service()
+      .await
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
