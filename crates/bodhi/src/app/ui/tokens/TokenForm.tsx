@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { TokenResponse, useCreateToken } from '@/hooks/useCreateToken';
+import { TokenResponse, useCreateToken } from '@/hooks/useApiTokens';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AxiosError } from 'axios';
 import { Loader2 } from 'lucide-react';

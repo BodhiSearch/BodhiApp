@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { TokenResponse } from '@/hooks/useCreateToken';
+import { TokenResponse } from '@/hooks/useApiTokens';
 import { Check, Copy, Eye, EyeOff, Shield } from 'lucide-react';
 import { useState } from 'react';
 

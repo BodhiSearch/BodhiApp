@@ -79,6 +79,9 @@ pub fn decode_access_token<T: for<'de> Deserialize<'de>>(
   let mut validation = Validation::default();
   validation.insecure_disable_signature_validation();
   validation.validate_exp = false;
+  validation.validate_aud = false;
+  let items: &[String] = &[];
+  validation.set_required_spec_claims(items);
   let token_data = jsonwebtoken::decode::<T>(
     access_token,
     &DecodingKey::from_secret(&[]), // dummy key for parsing
