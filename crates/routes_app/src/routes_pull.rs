@@ -269,12 +269,11 @@ async fn update_download_status(
 
 #[cfg(test)]
 mod tests {
-  use crate::ListDownloadsResponse;
-
   use super::{
     get_download_status_handler, list_downloads_handler, pull_by_alias_handler,
     pull_by_repo_file_handler,
   };
+  use crate::ListDownloadsResponse;
   use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
