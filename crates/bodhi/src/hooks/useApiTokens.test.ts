@@ -7,6 +7,7 @@ import {
   TokenResponse,
   useCreateToken,
   useListTokens,
+  useUpdateToken,
   ListTokensResponse,
 } from './useApiTokens';
 import { createWrapper } from '@/tests/wrapper';
@@ -32,6 +33,14 @@ const mockListResponse: ListTokensResponse = {
   page_size: 10,
 };
 
+const mockUpdatedToken = {
+  id: 'token-1',
+  name: 'Updated Token',
+  status: 'inactive',
+  created_at: '2024-01-01T00:00:00Z',
+  updated_at: '2024-01-01T00:00:01Z',
+};
+
 const server = setupServer(
   rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
     return res(ctx.status(201), ctx.json(mockTokenResponse));
@@ -47,6 +56,9 @@ const server = setupServer(
         page_size: parseInt(pageSize),
       })
     );
+  }),
+  rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
+    return res(ctx.status(200), ctx.json(mockUpdatedToken));
   })
 );
 
@@ -205,5 +217,56 @@ describe('useCreateToken', () => {
         expect(axiosError.response?.data.message).toBe('Invalid token name');
       }
     });
+  });
+});
+
+describe('useUpdateToken', () => {
+  it('updates a token successfully', async () => {
+    const { result } = renderHook(() => useUpdateToken(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      result.current.mutate({
+        id: 'token-1',
+        status: 'inactive',
+        name: 'Updated Token',
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data?.data).toEqual(mockUpdatedToken);
+  });
+
+  it('handles error response', async () => {
+    server.use(
+      rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
+        return res(
+          ctx.status(400),
+          ctx.json({
+            error: 'Bad Request',
+            message: 'Invalid token status',
+          })
+        );
+      })
+    );
+
+    const { result } = renderHook(() => useUpdateToken(), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      result.current.mutate({ id: 'token-1', status: 'inactive' });
+    });
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    const error = result.current.error as AxiosError<ApiError>;
+    expect(error.response?.data.message).toBe('Invalid token status');
   });
 });

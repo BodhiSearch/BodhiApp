@@ -196,7 +196,7 @@ mod tests {
     DefaultRouterState, MockSharedContext,
   };
   use services::{
-    db::{ApiToken, DbService, TimeService, TokenStatus},
+    db::{ApiToken, DbService, TokenStatus},
     test_utils::{
       build_token, test_db_service, AppServiceStub, AppServiceStubBuilder, FrozenTimeService,
       SecretServiceStub, TestDbService,
