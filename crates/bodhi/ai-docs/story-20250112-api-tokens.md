@@ -116,6 +116,125 @@ So that I can access the application programmatically from external applications
 - [ ] Document API endpoints
 - [ ] Add user documentation for token management
 
+## Progress Update (2025-01-15)
+
+### Database Implementation Progress
+
+1. Created `api_tokens` table with schema:
+   ```sql
+   CREATE TABLE api_tokens (
+       id TEXT PRIMARY KEY NOT NULL,
+       user_id TEXT NOT NULL,
+       name TEXT DEFAULT '',
+       token_id TEXT NOT NULL UNIQUE,
+       status TEXT NOT NULL CHECK (status IN ('active', 'inactive')),
+       created_at INTEGER NOT NULL,
+       updated_at INTEGER NOT NULL
+   );
+   ```
+
+2. Added Data Models:
+   - `TokenStatus` enum with Active/Inactive variants using serde for serialization
+   - `ApiToken` struct with all required fields
+   - Implemented PartialEq for comparison in tests
+   - Added string conversion methods using kebab-case format
+
+3. Database Service Implementation:
+   - Extended DbService trait with token operations:
+     - create_api_token: Creates new API tokens
+     - list_api_tokens: Lists tokens with pagination
+   - Added comprehensive tests for token creation and listing
+   - Implemented test notification system for tracking DB operations
+
+### Phase-wise Implementation Plan
+
+#### Phase 1: Token Management Backend (Current)
+1. Database Layer 
+   - API tokens table with schema 
+   - TokenStatus enum and ApiToken struct 
+   - Basic CRUD operations 
+
+2. Service Layer Extensions
+   - Add update_token_status method
+   - Add update_token_name method
+   - Add total count to list_api_tokens response
+   - Add get_token_by_id method for validation
+
+3. API Endpoints
+   - GET /api/tokens?page=1&per_page=10
+   - PUT /api/tokens/:id/status
+   - PUT /api/tokens/:id/name
+   - Response DTOs with token metadata
+
+#### Phase 2: Token Management UI
+1. Token List Component
+   - Table with columns: Name, Status, Created Date, Actions
+   - Pagination controls
+   - Loading states and error handling
+   - Empty state design
+
+2. Token Actions
+   - Edit name with inline editing
+   - Status toggle with confirmation
+   - Copy token ID functionality
+   - Action tooltips and feedback
+
+3. Token Status Visualization
+   - Status badges (Active/Inactive)
+   - Created date formatting
+   - Visual indicators for token age
+   - Responsive design for mobile
+
+#### Phase 3: Auth Middleware Enhancement
+1. Token Validation Updates
+   - Cache token status in Redis/memory
+   - Check token status during validation
+   - Add token status to validation response
+   - Log token validation attempts
+
+2. Token Deactivation Flow
+   - Update cache on token status change
+   - Invalidate existing sessions
+   - Clear cached permissions
+   - Audit logging for status changes
+
+3. Error Handling
+   - Specific error for inactive tokens
+   - Clear error messages for UI
+   - Logging for debugging
+   - Metrics for monitoring
+
+#### Phase 4: Testing & Documentation
+1. Backend Testing
+   - Integration tests for token flow
+   - Cache behavior tests
+   - Performance testing
+   - Error scenario coverage
+
+2. Frontend Testing
+   - Component tests
+   - User interaction tests
+   - Error handling tests
+   - Visual regression tests
+
+3. Documentation
+   - API documentation updates
+   - UI component documentation
+   - Token lifecycle documentation
+   - Deployment notes
+
+### Current Sprint Focus
+- Implementing token status update endpoint
+- Adding token name update functionality
+- Preparing UI components for token listing
+- Setting up token validation caching
+
+### Next Implementation Tasks
+1. Add token status update functionality
+2. Implement token name update method
+3. Add token invalidation endpoint
+4. Integrate with token validation service
+
 ## Technical Implementation Steps
 
 ### Database Changes

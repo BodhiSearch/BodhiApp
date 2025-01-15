@@ -100,6 +100,25 @@ pub enum RequestStatus {
   Rejected,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[serde(rename_all = "kebab-case")]
+#[strum(serialize_all = "kebab-case")]
+pub enum TokenStatus {
+    Active,
+    Inactive,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ApiToken {
+    pub id: String,
+    pub user_id: String,
+    pub name: String,
+    pub token_id: String,
+    pub status: TokenStatus,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
 #[cfg(test)]
 mod test {
   use crate::db::{Conversation, ConversationBuilder, Message, MessageBuilder};

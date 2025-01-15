@@ -1,6 +1,6 @@
 use crate::db::{
-  AccessRequest, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus, SqlxError,
-  SqlxMigrateError,
+  AccessRequest, ApiToken, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus,
+  SqlxError, SqlxMigrateError, TokenStatus,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
@@ -93,6 +93,10 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   ) -> Result<Vec<AccessRequest>, DbError>;
 
   async fn update_request_status(&self, id: i64, status: RequestStatus) -> Result<(), DbError>;
+
+  async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
+
+  async fn list_api_tokens(&self, page: u32, per_page: u32) -> Result<Vec<ApiToken>, DbError>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -311,18 +315,20 @@ impl DbService for SqliteDbService {
 
     let results = results
       .into_iter()
-      .filter_map(|(id, repo, filename, status, error, created_at, updated_at)| {
-        let status = DownloadStatus::from_str(&status).ok()?;
-        Some(DownloadRequest {
-          id,
-          repo,
-          filename,
-          status,
-          error,
-          created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
-          updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
-        })
-      })
+      .filter_map(
+        |(id, repo, filename, status, error, created_at, updated_at)| {
+          let status = DownloadStatus::from_str(&status).ok()?;
+          Some(DownloadRequest {
+            id,
+            repo,
+            filename,
+            status,
+            error,
+            created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
+            updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+          })
+        },
+      )
       .collect::<Vec<DownloadRequest>>();
     Ok(results)
   }
@@ -433,14 +439,75 @@ impl DbService for SqliteDbService {
     .await?;
     Ok(())
   }
+
+  async fn create_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
+    let now = self.time_service.utc_now();
+    token.created_at = now;
+    token.updated_at = now;
+
+    sqlx::query(
+      r#"
+      INSERT INTO api_tokens (id, user_id, name, token_id, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      "#,
+    )
+    .bind(&token.id)
+    .bind(&token.user_id)
+    .bind(&token.name)
+    .bind(&token.token_id)
+    .bind(token.status.to_string())
+    .bind(token.created_at.timestamp())
+    .bind(token.updated_at.timestamp())
+    .execute(&self.pool)
+    .await?;
+
+    Ok(())
+  }
+
+  async fn list_api_tokens(&self, page: u32, per_page: u32) -> Result<Vec<ApiToken>, DbError> {
+    let offset = (page - 1) * per_page;
+    let results = query_as::<_, (String, String, String, String, String, i64, i64)>(
+      "SELECT id, user_id, name, token_id, status, created_at, updated_at
+       FROM api_tokens
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?",
+    )
+    .bind(per_page as i64)
+    .bind(offset as i64)
+    .fetch_all(&self.pool)
+    .await?;
+
+    let tokens = results
+      .into_iter()
+      .filter_map(
+        |(id, user_id, name, token_id, status, created_at, updated_at)| {
+          let Ok(status) = TokenStatus::from_str(&status) else {
+            tracing::warn!("unknown token status: {} for id: {}", status, id);
+            return None;
+          };
+          Some(ApiToken {
+            id,
+            user_id,
+            name,
+            token_id,
+            status,
+            created_at: DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
+            updated_at: DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+          })
+        },
+      )
+      .collect();
+
+    Ok(tokens)
+  }
 }
 
 #[cfg(test)]
 mod test {
   use crate::{
     db::{
-      AccessRequest, ConversationBuilder, DbError, DbService, DownloadRequest, DownloadStatus,
-      MessageBuilder, RequestStatus, SqlxError,
+      AccessRequest, ApiToken, ConversationBuilder, DbError, DbService, DownloadRequest,
+      DownloadStatus, MessageBuilder, RequestStatus, SqlxError, TokenStatus,
     },
     test_utils::{test_db_service, TestDbService},
   };
@@ -760,6 +827,38 @@ mod test {
       .await?;
     let updated_request = service.get_pending_request(email).await?;
     assert!(updated_request.is_none());
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_api_token(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Create token
+    let mut token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: Uuid::new_v4().to_string(),
+      name: "".to_string(),
+      token_id: Uuid::new_v4().to_string(),
+      status: TokenStatus::Active,
+      created_at: now,
+      updated_at: now,
+    };
+
+    service.create_api_token(&mut token).await?;
+
+    // List tokens
+    let tokens = service.list_api_tokens(1, 10).await?;
+    assert_eq!(1, tokens.len());
+
+    assert_eq!(token, tokens[0]);
+
     Ok(())
   }
 }
