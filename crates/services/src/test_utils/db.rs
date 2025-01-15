@@ -204,7 +204,11 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("create_api_token"))
   }
 
-  async fn list_api_tokens(&self, page: u32, per_page: u32) -> Result<Vec<ApiToken>, DbError> {
+  async fn list_api_tokens(
+    &self,
+    page: u32,
+    per_page: u32,
+  ) -> Result<(Vec<ApiToken>, u32), DbError> {
     self
       .inner
       .list_api_tokens(page, per_page)

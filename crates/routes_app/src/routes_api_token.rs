@@ -1,6 +1,6 @@
 use auth_middleware::KEY_RESOURCE_TOKEN;
 use axum::{
-  extract::State,
+  extract::{Query, State},
   http::{HeaderMap, StatusCode},
   Json,
 };
@@ -13,7 +13,7 @@ use services::{
   db::{ApiToken, TokenStatus},
   decode_access_token, AuthServiceError, MinClaims, SecretServiceExt,
 };
-use std::sync::Arc;
+use std::{cmp::min, sync::Arc};
 use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -110,14 +110,59 @@ pub async fn create_token_handler(
   Ok((StatusCode::CREATED, Json(response)))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ListApiTokensQuery {
+  #[serde(default = "default_page")]
+  pub page: u32,
+  #[serde(default = "default_page_size")]
+  pub page_size: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListApiTokensResponse {
+  pub data: Vec<ApiToken>,
+  pub total: u32,
+  pub page: u32,
+  pub page_size: u32,
+}
+
+fn default_page() -> u32 {
+  1
+}
+
+fn default_page_size() -> u32 {
+  10
+}
+
+pub async fn list_tokens_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Query(query): Query<ListApiTokensQuery>,
+) -> Result<Json<ListApiTokensResponse>, ApiError> {
+  let per_page = min(query.page_size, 100);
+  let (tokens, total) = state
+    .app_service()
+    .db_service()
+    .list_api_tokens(query.page, per_page)
+    .await?;
+
+  Ok(Json(ListApiTokensResponse {
+    data: tokens,
+    total,
+    page: query.page,
+    page_size: per_page,
+  }))
+}
+
 #[cfg(test)]
 mod tests {
-  use crate::{create_token_handler, wait_for_event, ApiTokenError, ApiTokenResponse};
+  use crate::{
+    create_token_handler, wait_for_event, ApiTokenError, ApiTokenResponse, ListApiTokensResponse,
+  };
   use auth_middleware::KEY_RESOURCE_TOKEN;
   use axum::{
     body::Body,
     http::{Method, Request},
-    routing::post,
+    routing::{get, post},
     Router,
   };
   use chrono::{DateTime, Utc};
@@ -132,15 +177,18 @@ mod tests {
   use serde_json::{json, Value};
   use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
   use services::{
-    db::{DbService, TimeService, TokenStatus},
+    db::{ApiToken, DbService, TimeService, TokenStatus},
     test_utils::{
       build_token, test_db_service, AppServiceStub, AppServiceStubBuilder, FrozenTimeService,
       SecretServiceStub, TestDbService,
     },
-    AppRegInfo, AppStatus, AuthServiceError, MockAuthService,
+    AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService,
   };
   use std::{sync::Arc, time::Duration};
   use tower::ServiceExt;
+  use uuid::Uuid;
+
+  use super::list_tokens_handler;
 
   #[rstest]
   #[case::app_reg_missing(
@@ -170,6 +218,7 @@ mod tests {
     );
     Router::new()
       .route("/api/tokens", post(create_token_handler))
+      .route("/api/tokens", get(list_tokens_handler))
       .with_state(Arc::new(router_state))
   }
 
@@ -274,7 +323,7 @@ mod tests {
     );
 
     // List tokens to verify creation
-    let tokens = test_db_service.list_api_tokens(1, 10).await?;
+    let (tokens, _) = test_db_service.list_api_tokens(1, 10).await?;
     assert_eq!(1, tokens.len());
     let created_token = &tokens[0];
     assert_eq!("test-jti", created_token.token_id);
@@ -421,6 +470,111 @@ mod tests {
       }),
       response
     );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_tokens_pagination(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(db_service.clone())
+      .build()?;
+
+    // Create multiple tokens
+    for i in 1..=15 {
+      let mut token = ApiToken {
+        id: Uuid::new_v4().to_string(),
+        user_id: "test-user".to_string(),
+        name: format!("Test Token {}", i),
+        token_id: Uuid::new_v4().to_string(),
+        status: TokenStatus::Active,
+        created_at: app_service.time_service().utc_now(),
+        updated_at: app_service.time_service().utc_now(),
+      };
+      db_service.create_api_token(&mut token).await?;
+    }
+
+    let router = app(app_service).await;
+
+    // Test first page
+    let response = router
+      .clone()
+      .oneshot(
+        Request::builder()
+          .method(Method::GET)
+          .uri("/api/tokens?page=1&page_size=10")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let list_response = response.json::<ListApiTokensResponse>().await?;
+    assert_eq!(list_response.data.len(), 10);
+    assert_eq!(list_response.total, 15);
+    assert_eq!(list_response.page, 1);
+    assert_eq!(list_response.page_size, 10);
+
+    // Test second page
+    let response = router
+      .oneshot(
+        Request::builder()
+          .method(Method::GET)
+          .uri("/api/tokens?page=2&page_size=10")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let list_response = response.json::<ListApiTokensResponse>().await?;
+    assert_eq!(list_response.data.len(), 5);
+    assert_eq!(list_response.total, 15);
+    assert_eq!(list_response.page, 2);
+    assert_eq!(list_response.page_size, 10);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_tokens_empty(
+    #[future]
+    #[from(test_db_service)]
+    db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(db_service);
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(db_service.clone())
+      .build()?;
+
+    let router = app(app_service).await;
+
+    // Test empty results
+    let response = router
+      .oneshot(
+        Request::builder()
+          .method(Method::GET)
+          .uri("/api/tokens")
+          .body(Body::empty())
+          .unwrap(),
+      )
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let list_response = response.json::<ListApiTokensResponse>().await?;
+    assert_eq!(list_response.data.len(), 0);
+    assert_eq!(list_response.total, 0);
+    assert_eq!(list_response.page, 1); // Default page
+    assert_eq!(list_response.page_size, 10); // Default page size
 
     Ok(())
   }
