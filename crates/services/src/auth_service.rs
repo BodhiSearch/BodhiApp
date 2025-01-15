@@ -47,6 +47,11 @@ pub struct MinClaims {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct ExpClaims {
+  pub exp: u64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
   pub exp: u64,
   pub iat: u64,
@@ -63,7 +68,6 @@ pub struct Claims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OfflineClaims {
-  pub exp: u64,
   pub iat: u64,
   pub jti: String,
   pub iss: String,

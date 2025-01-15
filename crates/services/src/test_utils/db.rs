@@ -12,6 +12,7 @@ use tempfile::TempDir;
 use tokio::sync::broadcast::{channel, Receiver, Sender};
 
 #[fixture]
+#[awt]
 pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
   let dbfile = temp_dir.path().join("testdb.sqlite");
   File::create(&dbfile).unwrap();
@@ -204,6 +205,14 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("create_api_token"))
   }
 
+  async fn create_api_token_from(&self, name: &str, token: &str) -> Result<ApiToken, DbError> {
+    self
+      .inner
+      .create_api_token_from(name, token)
+      .await
+      .tap(|_| self.notify("create_api_token_from"))
+  }
+
   async fn list_api_tokens(
     &self,
     page: u32,
@@ -222,6 +231,14 @@ impl DbService for TestDbService {
       .get_api_token(id)
       .await
       .tap(|_| self.notify("get_api_token"))
+  }
+
+  async fn get_valid_api_token(&self, token_id: &str) -> Result<Option<ApiToken>, DbError> {
+    self
+      .inner
+      .get_valid_api_token(token_id)
+      .await
+      .tap(|_| self.notify("get_api_token_with_jti"))
   }
 
   async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {

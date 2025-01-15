@@ -51,3 +51,4 @@ setting_error-lock_error = concurrency error accessing settings: {$var_0}
 keyring_error-keyring_error = {$var_0}
 keyring_error-decode_error = invalid format: {$var_0}
 auth_service_error-token_exchange_error = token exchange failed: {$var_0}
+db_error-token_validation = token is not valid: {$var_0}

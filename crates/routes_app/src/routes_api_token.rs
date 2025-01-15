@@ -10,10 +10,9 @@ use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
   db::{ApiToken, TokenStatus},
-  decode_access_token, AuthServiceError, MinClaims, SecretServiceExt,
+  AuthServiceError, SecretServiceExt,
 };
 use std::{cmp::min, sync::Arc};
-use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateApiTokenRequest {
@@ -82,24 +81,10 @@ pub async fn create_token_handler(
     .await?;
 
   let offline_token = offline_token.ok_or(ApiTokenError::RefreshTokenMissing)?;
-  let token_data = decode_access_token::<MinClaims>(&offline_token)?;
-
-  let now = state.app_service().time_service().utc_now();
-  // Create API token record
-  let mut api_token = ApiToken {
-    id: Uuid::new_v4().to_string(),
-    user_id: token_data.claims.sub,
-    name: payload.name.unwrap_or_default(),
-    token_id: token_data.claims.jti,
-    status: TokenStatus::Active,
-    created_at: now,
-    updated_at: now,
-  };
-
-  db_service.create_api_token(&mut api_token).await?;
-
+  let _ = db_service
+    .create_api_token_from(payload.name.unwrap_or_default().as_str(), &offline_token)
+    .await?;
   let response = ApiTokenResponse { offline_token };
-
   Ok((StatusCode::CREATED, Json(response)))
 }
 
@@ -174,7 +159,8 @@ mod tests {
     create_token_handler, wait_for_event, ApiTokenError, ListApiTokensResponse,
     UpdateApiTokenRequest,
   };
-  use auth_middleware::KEY_RESOURCE_TOKEN;
+  use anyhow_trace::anyhow_trace;
+use auth_middleware::KEY_RESOURCE_TOKEN;
   use axum::{
     body::Body,
     http::{Method, Request},
@@ -322,10 +308,10 @@ mod tests {
       offline_token,
       response_obj.get("offline_token").unwrap().as_str().unwrap()
     );
-    let event_received = wait_for_event!(rx, "create_api_token", Duration::from_millis(500));
+    let event_received = wait_for_event!(rx, "create_api_token_from", Duration::from_millis(500));
     assert!(
       event_received,
-      "Timed out waiting for create_api_token event"
+      "Timed out waiting for create_api_token_from event"
     );
 
     // List tokens to verify creation
@@ -343,6 +329,7 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_no_name(
+    #[from(setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     let (offline_token, _) = build_token(json! {{"jti": "test-jti", "sub": "test-user"}})?;
@@ -470,6 +457,7 @@ mod tests {
     Ok(())
   }
 
+  #[anyhow_trace]
   #[rstest]
   #[awt]
   #[tokio::test]
@@ -490,6 +478,7 @@ mod tests {
         user_id: "test-user".to_string(),
         name: format!("Test Token {}", i),
         token_id: Uuid::new_v4().to_string(),
+        token_hash: "token_hash".to_string(),
         status: TokenStatus::Active,
         created_at: app_service.time_service().utc_now(),
         updated_at: app_service.time_service().utc_now(),
@@ -588,6 +577,7 @@ mod tests {
       user_id: "test_user".to_string(),
       name: "Initial Name".to_string(),
       token_id: "token123".to_string(),
+      token_hash: "token_hash".to_string(),
       status: TokenStatus::Active,
       created_at: Utc::now(),
       updated_at: Utc::now(),

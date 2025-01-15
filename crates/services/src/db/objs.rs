@@ -114,6 +114,7 @@ pub struct ApiToken {
   pub user_id: String,
   pub name: String,
   pub token_id: String,
+  pub token_hash: String,
   pub status: TokenStatus,
   pub created_at: DateTime<Utc>,
   pub updated_at: DateTime<Utc>,
