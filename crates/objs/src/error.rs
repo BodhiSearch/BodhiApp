@@ -65,6 +65,14 @@ impl<T: AppError + 'static> From<T> for Box<dyn AppError> {
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
+pub enum EntityError {
+  #[error("not_found")]
+  #[error_meta(error_type = ErrorType::NotFound)]
+  NotFound(String),
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
 pub enum ObjValidationError {
   #[error("validation_errors")]
   #[error_meta(error_type = ErrorType::BadRequest)]

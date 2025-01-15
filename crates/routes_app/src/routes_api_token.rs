@@ -1,12 +1,11 @@
 use auth_middleware::KEY_RESOURCE_TOKEN;
 use axum::{
-  extract::{Query, State},
+  extract::{Path, Query, State},
   http::{HeaderMap, StatusCode},
   Json,
 };
 use axum_extra::extract::WithRejection;
-use chrono::{DateTime, Utc};
-use objs::{ApiError, AppError, ErrorType};
+use objs::{ApiError, AppError, EntityError, ErrorType};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
@@ -23,12 +22,13 @@ pub struct CreateApiTokenRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ApiTokenResponse {
-  id: String,
+  offline_token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateApiTokenRequest {
   name: String,
   status: TokenStatus,
-  offline_token: String,
-  created_at: DateTime<Utc>,
-  updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -98,16 +98,31 @@ pub async fn create_token_handler(
 
   db_service.create_api_token(&mut api_token).await?;
 
-  let response = ApiTokenResponse {
-    id: api_token.id,
-    name: api_token.name,
-    status: api_token.status,
-    offline_token,
-    created_at: api_token.created_at,
-    updated_at: api_token.updated_at,
-  };
+  let response = ApiTokenResponse { offline_token };
 
   Ok((StatusCode::CREATED, Json(response)))
+}
+
+pub async fn update_token_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(token_id): Path<String>,
+  WithRejection(Json(payload), _): WithRejection<Json<UpdateApiTokenRequest>, ApiError>,
+) -> Result<Json<ApiToken>, ApiError> {
+  let app_service = state.app_service();
+  let db_service = app_service.db_service();
+
+  let mut token = db_service
+    .get_api_token(&token_id)
+    .await?
+    .ok_or_else(|| EntityError::NotFound("Token".to_string()))?;
+
+  // Update mutable fields
+  token.name = payload.name;
+  token.status = payload.status;
+
+  db_service.update_api_token(&mut token).await?;
+
+  Ok(Json(token))
 }
 
 #[derive(Debug, Deserialize)]
@@ -156,16 +171,17 @@ pub async fn list_tokens_handler(
 #[cfg(test)]
 mod tests {
   use crate::{
-    create_token_handler, wait_for_event, ApiTokenError, ApiTokenResponse, ListApiTokensResponse,
+    create_token_handler, wait_for_event, ApiTokenError, ListApiTokensResponse,
+    UpdateApiTokenRequest,
   };
   use auth_middleware::KEY_RESOURCE_TOKEN;
   use axum::{
     body::Body,
     http::{Method, Request},
-    routing::{get, post},
+    routing::{get, post, put},
     Router,
   };
-  use chrono::{DateTime, Utc};
+  use chrono::Utc;
   use hyper::StatusCode;
   use mockall::predicate::eq;
   use objs::{
@@ -175,7 +191,10 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
-  use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
+  use server_core::{
+    test_utils::{RequestTestExt, ResponseTestExt},
+    DefaultRouterState, MockSharedContext,
+  };
   use services::{
     db::{ApiToken, DbService, TimeService, TokenStatus},
     test_utils::{
@@ -188,7 +207,7 @@ mod tests {
   use tower::ServiceExt;
   use uuid::Uuid;
 
-  use super::list_tokens_handler;
+  use super::{list_tokens_handler, update_token_handler};
 
   #[rstest]
   #[case::app_reg_missing(
@@ -219,6 +238,7 @@ mod tests {
     Router::new()
       .route("/api/tokens", post(create_token_handler))
       .route("/api/tokens", get(list_tokens_handler))
+      .route("/api/tokens/:token_id", put(update_token_handler))
       .with_state(Arc::new(router_state))
   }
 
@@ -274,7 +294,6 @@ mod tests {
 
     let time_service = FrozenTimeService::default();
     let test_db_service = Arc::new(test_db_service);
-    let now = time_service.utc_now();
     let app_service = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
       .secret_service(Arc::new(secret_service))
@@ -291,41 +310,17 @@ mod tests {
         Request::builder()
           .method(Method::POST)
           .uri("/api/tokens")
-          .header("Content-Type", "application/json")
           .header(KEY_RESOURCE_TOKEN, "test_token")
-          .body(Body::from(serde_json::to_string(&payload)?))
-          .unwrap(),
+          .json(&payload)?,
       )
       .await?;
 
     assert_eq!(StatusCode::CREATED, response.status());
     let response = response.json::<Value>().await?;
     let response_obj = response.as_object().unwrap();
-    assert_eq!("My API Token", response_obj.get("name").unwrap());
-    assert_eq!("active", response_obj.get("status").unwrap());
     assert_eq!(
       offline_token,
       response_obj.get("offline_token").unwrap().as_str().unwrap()
-    );
-    assert_eq!(
-      now,
-      response_obj
-        .get("created_at")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .parse::<DateTime<Utc>>()
-        .unwrap()
-    );
-    assert_eq!(
-      now,
-      response_obj
-        .get("updated_at")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .parse::<DateTime<Utc>>()
-        .unwrap()
     );
     let event_received = wait_for_event!(rx, "create_api_token", Duration::from_millis(500));
     assert!(
@@ -392,17 +387,11 @@ mod tests {
         Request::builder()
           .method(Method::POST)
           .uri("/api/tokens")
-          .header("Content-Type", "application/json")
           .header(KEY_RESOURCE_TOKEN, "test_token")
-          .body(Body::from(serde_json::to_string(&payload)?))
-          .unwrap(),
+          .json(&payload)?,
       )
       .await?;
     assert_eq!(StatusCode::CREATED, response.status());
-    let response = response.json::<ApiTokenResponse>().await?;
-    assert_eq!("", response.name);
-    assert_eq!(TokenStatus::Active, response.status);
-
     Ok(())
   }
 
@@ -460,10 +449,8 @@ mod tests {
         Request::builder()
           .method(Method::POST)
           .uri("/api/tokens")
-          .header("Content-Type", "application/json")
           .header(KEY_RESOURCE_TOKEN, "invalid_token")
-          .body(Body::from(serde_json::to_string(&payload)?))
-          .unwrap(),
+          .json(&payload)?,
       )
       .await?;
 
@@ -585,6 +572,89 @@ mod tests {
     assert_eq!(list_response.page, 1); // Default page
     assert_eq!(list_response.page_size, 10); // Default page size
 
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_token_handler_success(
+    #[from(setup_l10n)] _l18n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Create initial token
+    let mut token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: "test_user".to_string(),
+      name: "Initial Name".to_string(),
+      token_id: "token123".to_string(),
+      status: TokenStatus::Active,
+      created_at: Utc::now(),
+      updated_at: Utc::now(),
+    };
+    test_db_service.create_api_token(&mut token).await?;
+    let test_db_service = Arc::new(test_db_service);
+
+    // Setup app with router
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(test_db_service.clone())
+      .build()?;
+    let app = app(app_service).await;
+
+    // Make update request
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::PUT)
+          .uri(format!("/api/tokens/{}", token.id))
+          .json(&UpdateApiTokenRequest {
+            name: "Updated Name".to_string(),
+            status: TokenStatus::Inactive,
+          })?,
+      )
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let updated_token = response.json::<ApiToken>().await?;
+    assert_eq!(updated_token.name, "Updated Name");
+    assert_eq!(updated_token.status, TokenStatus::Inactive);
+    assert_eq!(updated_token.id, token.id);
+
+    // Verify DB was updated
+    let db_token = test_db_service.get_api_token(&token.id).await?.unwrap();
+    assert_eq!(db_token.name, "Updated Name");
+    assert_eq!(db_token.status, TokenStatus::Inactive);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_token_handler_not_found(
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Setup app with router
+    let app_service = AppServiceStubBuilder::default()
+      .db_service(Arc::new(test_db_service))
+      .build()?;
+    let app = app(app_service).await;
+
+    // Make update request with non-existent ID
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method(Method::PUT)
+          .uri("/api/tokens/non-existent-id")
+          .json(&UpdateApiTokenRequest {
+            name: "Updated Name".to_string(),
+            status: TokenStatus::Inactive,
+          })?,
+      )
+      .await?;
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
     Ok(())
   }
 }

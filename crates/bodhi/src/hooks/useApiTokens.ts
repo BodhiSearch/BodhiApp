@@ -10,10 +10,6 @@ export interface CreateTokenRequest {
 
 export interface TokenResponse {
   offline_token: string;
-  name?: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
 }
 
 export interface ApiToken {

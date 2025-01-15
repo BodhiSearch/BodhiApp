@@ -19,3 +19,4 @@ json_rejection_error = failed to parse the request body as JSON, error: {$source
 chat_template_error-minijina_error = error rendering template: {$error}
 chat_template_error-embed_chat_template_not_found = chat template not found in gguf file
 chat_template_error-unknown_file_extension = unknown file extension for chat template: {$error}
+entity_error-not_found = {$var_0} with given id not found
