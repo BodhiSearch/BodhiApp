@@ -52,3 +52,4 @@ keyring_error-keyring_error = {$var_0}
 keyring_error-decode_error = invalid format: {$var_0}
 auth_service_error-token_exchange_error = token exchange failed: {$var_0}
 db_error-token_validation = token is not valid: {$var_0}
+token_error-invalid_token = token is invalid: {$var_0}

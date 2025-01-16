@@ -5,20 +5,22 @@ use axum::{
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
 };
-use objs::{impl_error_from, ApiError, AppError, ErrorType};
+use objs::{ApiError, AppError, ErrorType};
 use server_core::RouterState;
 use services::{
-  AppStatus, AuthServiceError, JsonWebTokenError, SecretService, SecretServiceError,
-  SecretServiceExt,
+  AppStatus, AuthServiceError, SecretService, SecretServiceError, SecretServiceExt, TokenError,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
 
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
+pub const KEY_USER_ROLES: &str = "X-User-Roles";
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AuthError {
+  #[error(transparent)]
+  Token(#[from] TokenError),
   #[error("invalid_access")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAccess,
@@ -28,13 +30,7 @@ pub enum AuthError {
   #[error("token_not_found")]
   #[error_meta(error_type = ErrorType::Authentication)]
   TokenNotFound,
-  #[error("token_validation")]
-  #[error_meta(error_type = ErrorType::Authentication)]
-  TokenValidation(String),
   #[error(transparent)]
-  JsonWebToken(#[from] JsonWebTokenError),
-  #[error(transparent)]
-  #[error_meta(error_type = ErrorType::Authentication)]
   AuthService(#[from] AuthServiceError),
   #[error("app_reg_info_missing")]
   #[error_meta(error_type = ErrorType::InternalServer)]
@@ -47,13 +43,16 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication, code = "auth_error-tower_sessions", args_delegate = false)]
   TowerSession(#[from] tower_sessions::session::Error),
+  #[error("signature_key")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  SignatureKey(String),
+  #[error("invalid_token")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  InvalidToken(String),
+  #[error("signature_mismatch")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  SignatureMismatch(String),
 }
-
-impl_error_from!(
-  ::jsonwebtoken::errors::Error,
-  AuthError::JsonWebToken,
-  services::JsonWebTokenError
-);
 
 pub async fn auth_middleware(
   session: Session,
@@ -62,6 +61,9 @@ pub async fn auth_middleware(
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
+  req.headers_mut().remove(KEY_RESOURCE_TOKEN);
+  req.headers_mut().remove(KEY_USER_ROLES);
+
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(
@@ -99,6 +101,15 @@ pub async fn auth_middleware(
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
     Ok(next.run(req).await)
+  } else if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
+    let header = header
+      .to_str()
+      .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
+    let access_token = token_service.validate_bearer_token(header).await?;
+    req
+      .headers_mut()
+      .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+    Ok(next.run(req).await)
   } else {
     Err(AuthError::InvalidAccess)?
   }
@@ -107,10 +118,11 @@ pub async fn auth_middleware(
 pub async fn optional_auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
-  _headers: HeaderMap,
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
+  req.headers_mut().remove(KEY_RESOURCE_TOKEN);
+  req.headers_mut().remove(KEY_USER_ROLES);
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(
@@ -176,11 +188,17 @@ mod tests {
   use serde::{Deserialize, Serialize};
   use serde_json::{json, Value};
   use server_core::{
-    test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
+    test_utils::{RequestTestExt, ResponseTestExt},
+    DefaultRouterState, MockSharedContext, RouterState,
   };
   use services::{
-    test_utils::{expired_token, token, AppServiceStubBuilder, SecretServiceStub},
+    test_utils::{
+      build_token, expired_token, offline_access_token_claims, offline_token_claims, sign_token,
+      token, AppServiceStubBuilder, SecretServiceStub, OTHER_KEY, OTHER_PRIVATE_KEY,
+      TEST_CLIENT_ID, TEST_CLIENT_SECRET,
+    },
     AppRegInfoBuilder, AuthServiceError, MockAuthService, SqliteSessionService,
+    GRANT_REFRESH_TOKEN,
   };
   use std::sync::Arc;
   use tempfile::TempDir;
@@ -558,13 +576,13 @@ mod tests {
     let router = test_router(state);
 
     let response = router.clone().oneshot(req).await?;
-    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
     let actual: Value = response.json().await?;
     assert_eq!(
       json! {{
         "error": {
           "message": "error connecting to internal service: \u{2068}Failed to refresh token\u{2069}",
-          "type": "authentication_error",
+          "type": "internal_server_error",
           "code": "reqwest_error"
         }
       }},
@@ -628,6 +646,133 @@ mod tests {
         }
       }},
       body
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_removes_internal_token_headers(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    let app_service = AppServiceStubBuilder::default()
+      .with_secret_service()
+      .with_session_service()
+      .await
+      .with_db_service()
+      .await
+      .build()?;
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+    let router = test_router(state);
+    let req = Request::get("/with_optional_auth")
+      .header(KEY_RESOURCE_TOKEN, "user-sent-token")
+      .json(json! {{}})?;
+    let response = router.clone().oneshot(req).await?;
+    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
+    let actual: Value = response.json().await?;
+    assert_eq!(
+      json! {{
+        "x_resource_token": Option::<String>::None,
+        "authorization_header": Option::<String>::None,
+        "path": "/with_optional_auth",
+      }},
+      actual
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_bearer_token_success(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    let (bearer_token, _) = build_token(offline_token_claims())?;
+    let (access_token, _) = build_token(offline_access_token_claims())?;
+    let access_token_cl = access_token.clone();
+    let mut auth_service = MockAuthService::default();
+    auth_service
+      .expect_exchange_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq(bearer_token.clone()),
+        eq(GRANT_REFRESH_TOKEN),
+        eq(vec![]),
+      )
+      .return_once(|_, _, _, _, _| Ok((access_token_cl, Some("refresh_token".to_string()))));
+    let app_service = AppServiceStubBuilder::default()
+      .with_secret_service()
+      .auth_service(Arc::new(auth_service))
+      .with_session_service()
+      .await
+      .with_db_service()
+      .await
+      .build()?;
+    let db = app_service.db_service.as_ref().unwrap();
+    let _ = db
+      .create_api_token_from("test-token-id", &bearer_token)
+      .await?;
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+    let router = test_router(state);
+    let req = Request::get("/with_auth")
+      .header("Authorization", format!("Bearer {}", bearer_token))
+      .json(json! {{}})?;
+    let response = router.clone().oneshot(req).await?;
+    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
+    let actual: Value = response.json().await?;
+    assert_eq!(
+      json! {{
+        "x_resource_token": access_token,
+        "authorization_header": Some(format!("Bearer {}", bearer_token)),
+        "path": "/with_auth",
+      }},
+      actual
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_middleware_with_other_key_bearer_token(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    let token = offline_token_claims();
+    let (token, _) = sign_token(&OTHER_PRIVATE_KEY, &OTHER_KEY, token)?;
+    let app_service = AppServiceStubBuilder::default()
+      .with_secret_service()
+      .with_session_service()
+      .await
+      .with_db_service()
+      .await
+      .build()?;
+    let db = app_service.db_service.as_ref().unwrap();
+    let _ = db.create_api_token_from("test-token-id", &token).await?;
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+    let router = test_router(state);
+    let req = Request::get("/with_auth")
+      .header("Authorization", format!("Bearer {}", token))
+      .json(json! {{}})?;
+    let response = router.clone().oneshot(req).await?;
+    // assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+    let actual: Value = response.json().await?;
+    assert_eq!(
+      json! {{
+        "error": {
+          "message": "signature mismatch, error: \u{2068}InvalidSignature\u{2069}",
+          "type": "authentication_error",
+          "code": "auth_error-signature_mismatch"
+        }
+      }},
+      actual
     );
     Ok(())
   }

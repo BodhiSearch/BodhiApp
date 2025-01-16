@@ -1,6 +1,5 @@
 use crate::AppRegInfo;
 use async_trait::async_trait;
-use jsonwebtoken::{errors::ErrorKind, DecodingKey, Validation};
 use oauth2::{
   basic::BasicTokenType, AccessToken, AuthorizationCode, ClientId, ClientSecret,
   EmptyExtraTokenFields, PkceCodeVerifier, RedirectUrl, RefreshToken, StandardTokenResponse,
@@ -8,91 +7,10 @@ use oauth2::{
 };
 use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 pub const GRANT_REFRESH_TOKEN: &str = "refresh_token";
 pub const TOKEN_TYPE_OFFLINE: &str = "Offline";
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::Authentication, code=self.code())]
-#[error("json_web_token_error")]
-pub struct JsonWebTokenError {
-  #[from]
-  source: jsonwebtoken::errors::Error,
-}
-
-impl JsonWebTokenError {
-  fn code(&self) -> String {
-    match self.source.kind() {
-      ErrorKind::InvalidToken
-      | ErrorKind::InvalidSignature
-      | ErrorKind::InvalidIssuer
-      | ErrorKind::InvalidAudience => {
-        format!("json_web_token_error-{:?}", self.source.kind())
-      }
-      _ => "json_web_token_error-Unknown".to_string(),
-    }
-  }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ResourceClaim {
-  pub roles: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MinClaims {
-  pub jti: String,
-  pub sub: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ExpClaims {
-  pub exp: u64,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-  pub exp: u64,
-  pub iat: u64,
-  pub jti: String,
-  pub iss: String,
-  pub sub: String,
-  pub typ: String,
-  pub azp: String,
-  pub scope: String,
-  pub email: String,
-  #[serde(default)]
-  pub resource_access: HashMap<String, ResourceClaim>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OfflineClaims {
-  pub iat: u64,
-  pub jti: String,
-  pub iss: String,
-  pub sub: String,
-  pub typ: String,
-  pub azp: String,
-  pub scope: String,
-}
-
-pub fn decode_access_token<T: for<'de> Deserialize<'de>>(
-  access_token: &str,
-) -> std::result::Result<jsonwebtoken::TokenData<T>, JsonWebTokenError> {
-  let mut validation = Validation::default();
-  validation.insecure_disable_signature_validation();
-  validation.validate_exp = false;
-  validation.validate_aud = false;
-  let items: &[String] = &[];
-  validation.set_required_spec_claims(items);
-  let token_data = jsonwebtoken::decode::<T>(
-    access_token,
-    &DecodingKey::from_secret(&[]), // dummy key for parsing
-    &validation,
-  )?;
-  Ok(token_data)
-}
+pub const TOKEN_TYPE_BEARER: &str = "Bearer";
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
