@@ -8,3 +8,4 @@ auth_error-token_not_found = API token not found
 auth_error-signature_key = signature key is invalid, error: {$var_0}
 auth_error-invalid_token = invalid token, error: {$var_0}
 auth_error-signature_mismatch = signature mismatch, error: {$var_0}
+auth_error-missing_roles = no valid roles found for current user

@@ -4,8 +4,7 @@ use jsonwebtoken::{DecodingKey, Validation};
 use objs::Role;
 use services::{
   db::{DbService, TokenStatus},
-  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
-  ScopeClaims, SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN,
+  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims, ScopeClaims, SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN,
   TOKEN_TYPE_OFFLINE,
 };
 use std::sync::Arc;
@@ -195,13 +194,23 @@ impl DefaultTokenService {
     &self,
     session: Session,
     access_token: String,
-  ) -> Result<String, AuthError> {
+  ) -> Result<(String, Role), AuthError> {
     // Validate session token
     let claims = extract_claims::<Claims>(&access_token)?;
     // Check if token is expired
     let now = Utc::now().timestamp();
     if now < claims.exp as i64 {
-      return Ok(access_token);
+      let client_id = self
+        .secret_service
+        .app_reg_info()?
+        .ok_or(AuthError::AppRegInfoMissing)?
+        .client_id;
+      let roles = claims
+        .resource_access
+        .get(&client_id)
+        .ok_or(AuthError::MissingRoles)?;
+      let role = Role::from_resource_role(&roles.roles)?;
+      return Ok((access_token, role));
     }
 
     let Some(refresh_token) = session.get::<String>("refresh_token").await? else {
@@ -228,8 +237,18 @@ impl DefaultTokenService {
     if let Some(refresh_token) = new_refresh_token.as_ref() {
       session.insert("refresh_token", refresh_token).await?;
     }
-
-    Ok(new_access_token)
+    let claims = extract_claims::<Claims>(&new_access_token)?;
+    let client_id = self
+      .secret_service
+      .app_reg_info()?
+      .ok_or(AuthError::AppRegInfoMissing)?
+      .client_id;
+    let resource_claims = claims
+      .resource_access
+      .get(&client_id)
+      .ok_or(AuthError::MissingRoles)?;
+    let role = Role::from_resource_role(&resource_claims.roles)?;
+    Ok((new_access_token, role))
   }
 }
 

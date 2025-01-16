@@ -24,6 +24,9 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication)]
   Role(#[from] RoleError),
+  #[error("missing_roles")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  MissingRoles,
   #[error("invalid_access")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAccess,
@@ -97,12 +100,15 @@ pub async fn auth_middleware(
     .await
     .map_err(AuthError::from)?
   {
-    let access_token = token_service
+    let (access_token, role) = token_service
       .get_valid_session_token(session, access_token)
       .await?;
     req
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+    req
+      .headers_mut()
+      .insert(KEY_USER_ROLES, role.to_string().parse().unwrap());
     Ok(next.run(req).await)
   } else if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     let header = header
@@ -154,13 +160,16 @@ pub async fn optional_auth_middleware(
     .await
     .map_err(AuthError::from)?
   {
-    if let Ok(validated_token) = token_service
+    if let Ok((validated_token, role)) = token_service
       .get_valid_session_token(session, access_token)
       .await
     {
       req
         .headers_mut()
         .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
+      req
+        .headers_mut()
+        .insert(KEY_USER_ROLES, role.to_string().parse().unwrap());
       return Ok(next.run(req).await);
     }
   }
@@ -199,9 +208,9 @@ mod tests {
   };
   use services::{
     test_utils::{
-      build_token, expired_token, offline_access_token_claims, offline_token_claims, sign_token,
-      token, AppServiceStubBuilder, SecretServiceStub, OTHER_KEY, OTHER_PRIVATE_KEY,
-      TEST_CLIENT_ID, TEST_CLIENT_SECRET,
+      access_token_claims, build_token, expired_token, offline_access_token_claims,
+      offline_token_claims, sign_token, AppServiceStubBuilder, SecretServiceStub, OTHER_KEY,
+      OTHER_PRIVATE_KEY, TEST_CLIENT_ID, TEST_CLIENT_SECRET,
     },
     AppRegInfoBuilder, AuthServiceError, MockAuthService, SqliteSessionService,
     GRANT_REFRESH_TOKEN,
@@ -371,28 +380,32 @@ mod tests {
   }
 
   #[rstest]
-  #[case("/with_auth")]
-  #[case("/with_optional_auth")]
+  #[case::with_auth_role_admin("/with_auth", &["resource_admin"], "admin")]
+  #[case::with_auth_role_user("/with_auth", &["resource_user"], "user")]
+  #[case::with_auth_role_manager("/with_auth", &["resource_manager"], "manager")]
+  #[case::with_auth_role_power_user("/with_auth", &["resource_power_user"], "power_user")]
+  #[case::with_auth_role_user_admin("/with_auth", &["resource_user", "resource_admin"], "admin")]
+  #[case::with_auth_role_user_manager("/with_auth", &["resource_user", "resource_manager"], "manager")]
+  #[case::with_optional_auth_role_admin("/with_optional_auth", &["resource_admin"], "admin")]
+  #[case::with_optional_auth_role_user("/with_optional_auth", &["resource_user"], "user")]
+  #[case::with_optional_auth_role_manager("/with_optional_auth", &["resource_manager"], "manager")]
+  #[case::with_optional_auth_role_power_user("/with_optional_auth", &["resource_power_user"], "power_user")]
+  #[case::with_optional_auth_role_user_admin("/with_optional_auth", &["resource_user", "resource_admin"], "admin")]
+  #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "manager")]
   #[tokio::test]
   async fn test_auth_middleware_with_valid_session_token(
-    token: (String, String),
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     temp_bodhi_home: TempDir,
     #[case] path: &str,
+    #[case] roles: &[&str],
+    #[case] expected_role: &str,
   ) -> anyhow::Result<()> {
-    let (token, _) = token;
+    let mut claims = access_token_claims();
+    claims["resource_access"][TEST_CLIENT_ID]["roles"] =
+      Value::Array(roles.iter().map(|r| Value::String(r.to_string())).collect());
+    let (token, _) = build_token(claims)?;
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
-    let app_service = AppServiceStubBuilder::default()
-      .secret_service(Arc::new(SecretServiceStub::default()))
-      .session_service(session_service.clone())
-      .with_db_service()
-      .await
-      .build()?;
-    let app_service = Arc::new(app_service);
-    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
-      app_service.clone(),
-    ));
     let id = Id::default();
     let mut record = Record {
       id,
@@ -402,6 +415,17 @@ mod tests {
       expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
     };
     session_service.session_store.create(&mut record).await?;
+    let app_service = AppServiceStubBuilder::default()
+      .with_secret_service()
+      .session_service(session_service.clone())
+      .with_db_service()
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      app_service.clone(),
+    ));
 
     let req = Request::get(path)
       .header("Cookie", format!("bodhiapp_session_id={}", id))
@@ -409,6 +433,7 @@ mod tests {
     let router = test_router(state);
 
     let response = router.oneshot(req).await?;
+    // assert_eq!("", response.text().await?);
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
     let body = response.json::<TestResponse>().await?;
     assert_eq!(
@@ -416,7 +441,7 @@ mod tests {
         path: path.to_string(),
         authorization_header: None,
         x_resource_token: Some(token),
-        x_user_roles: None,
+        x_user_roles: Some(expected_role.to_string()),
       },
       body
     );
@@ -424,45 +449,59 @@ mod tests {
   }
 
   #[rstest]
-  #[case("/with_auth")]
-  #[case("/with_optional_auth")]
+  #[case::with_auth_role_user("/with_auth", &["resource_user"], "user")]
+  #[case::with_auth_role_manager("/with_auth", &["resource_manager"], "manager")]
+  #[case::with_auth_role_power_user("/with_auth", &["resource_power_user"], "power_user")]
+  #[case::with_auth_role_admin("/with_auth", &["resource_admin"], "admin")]
+  #[case::with_auth_role_user_admin("/with_auth", &["resource_user", "resource_admin"], "admin")]
+  #[case::with_auth_role_user_manager("/with_auth", &["resource_user", "resource_manager"], "manager")]
+  #[case::with_optional_auth_role_user("/with_optional_auth", &["resource_user"], "user")]
+  #[case::with_optional_auth_role_manager("/with_optional_auth", &["resource_manager"], "manager")]
+  #[case::with_optional_auth_role_power_user("/with_optional_auth", &["resource_power_user"], "power_user")]
+  #[case::with_optional_auth_role_admin("/with_optional_auth", &["resource_admin"], "admin")]
+  #[case::with_optional_auth_role_user_admin("/with_optional_auth", &["resource_user", "resource_admin"], "admin")]
+  #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "manager")]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     expired_token: (String, String),
     temp_bodhi_home: TempDir,
     #[case] path: &str,
+    #[case] roles: &[&str],
+    #[case] expected_role: &str,
   ) -> anyhow::Result<()> {
     let (expired_token, _) = expired_token;
+    let mut access_token_claims = access_token_claims();
+    access_token_claims["resource_access"][TEST_CLIENT_ID]["roles"] =
+      Value::Array(roles.iter().map(|r| Value::String(r.to_string())).collect());
+    let (exchanged_token, _) = build_token(access_token_claims)?;
+    let exchanged_token_cl = exchanged_token.clone();
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
-
+    let id = Id::default();
+    let mut record = Record {
+      id,
+      data: maplit::hashmap! {
+          "access_token".to_string() => Value::String(expired_token.clone()),
+          "refresh_token".to_string() => Value::String("valid_refresh_token".to_string()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
     // Create mock auth service
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_refresh_token()
       .with(
-        eq("test_client_id"),
-        eq("test_client_secret"),
-        eq("refresh_token"),
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq("valid_refresh_token".to_string()),
       )
-      .return_once(|_, _, _| {
-        Ok((
-          "new_access_token".to_string(),
-          Some("new_refresh_token".to_string()),
-        ))
-      });
+      .return_once(|_, _, _| Ok((exchanged_token_cl, Some("new_refresh_token".to_string()))));
 
     // Setup app service with mocks
-    let secret_service = SecretServiceStub::default().with_app_reg_info(
-      &AppRegInfoBuilder::test_default()
-        .client_id("test_client_id".to_string())
-        .client_secret("test_client_secret".to_string())
-        .build()?,
-    );
-
     let app_service = AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
+      .with_secret_service()
       .auth_service(Arc::new(mock_auth_service))
       .session_service(session_service.clone())
       .with_db_service()
@@ -473,17 +512,6 @@ mod tests {
       Arc::new(MockSharedContext::new()),
       app_service.clone(),
     ));
-
-    let id = Id::default();
-    let mut record = Record {
-      id,
-      data: maplit::hashmap! {
-          "access_token".to_string() => Value::String(expired_token.clone()),
-          "refresh_token".to_string() => Value::String("refresh_token".to_string()),
-      },
-      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
-    };
-    session_service.session_store.create(&mut record).await?;
 
     let req = Request::get(path)
       .header("Cookie", format!("bodhiapp_session_id={}", id))
@@ -497,8 +525,8 @@ mod tests {
       TestResponse {
         path: path.to_string(),
         authorization_header: None,
-        x_resource_token: Some("new_access_token".to_string()),
-        x_user_roles: None,
+        x_resource_token: Some(exchanged_token.clone()),
+        x_user_roles: Some(expected_role.to_string()),
       },
       body
     );
@@ -506,7 +534,7 @@ mod tests {
     // Verify that the session was updated with the new tokens
     let updated_record = session_service.session_store.load(&id).await?.unwrap();
     assert_eq!(
-      "new_access_token",
+      exchanged_token,
       updated_record
         .data
         .get("access_token")
