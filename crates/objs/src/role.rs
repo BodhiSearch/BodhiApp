@@ -89,6 +89,56 @@ impl Role {
 
     highest_role.ok_or(RoleError::MissingRoleScope)
   }
+
+  /// Parse the highest role from a slice of resource role strings
+  /// Returns the highest valid role found, or an error if no valid roles are present
+  pub fn from_resource_role<T: AsRef<str>>(resource_roles: &[T]) -> Result<Self, RoleError> {
+    let mut highest_role = None;
+    for resource_role in resource_roles {
+      match resource_role.as_ref() {
+        "resource_user" => {
+          highest_role = Some(highest_role.map_or(Role::User, |current: Role| {
+            if Role::User > current {
+              Role::User
+            } else {
+              current
+            }
+          }));
+        }
+        "resource_power_user" => {
+          highest_role = Some(highest_role.map_or(Role::PowerUser, |current: Role| {
+            if Role::PowerUser > current {
+              Role::PowerUser
+            } else {
+              current
+            }
+          }));
+        }
+        "resource_manager" => {
+          highest_role = Some(highest_role.map_or(Role::Manager, |current: Role| {
+            if Role::Manager > current {
+              Role::Manager
+            } else {
+              current
+            }
+          }));
+        }
+        "resource_admin" => {
+          highest_role = Some(highest_role.map_or(Role::Admin, |current: Role| {
+            if Role::Admin > current {
+              Role::Admin
+            } else {
+              current
+            }
+          }));
+        }
+        _ => continue,
+      }
+    }
+
+    highest_role
+      .ok_or_else(|| RoleError::InvalidRoleName("no valid resource roles found".to_string()))
+  }
 }
 
 impl FromStr for Role {
@@ -334,5 +384,41 @@ mod tests {
       Role::from_scope(scope).map_err(|e| e.to_string()),
       expected.map_err(|e| e.to_string())
     );
+  }
+
+  #[rstest]
+  #[case(&["resource_user"], Role::User)]
+  #[case(&["resource_power_user"], Role::PowerUser)]
+  #[case(&["resource_manager"], Role::Manager)]
+  #[case(&["resource_admin"], Role::Admin)]
+  #[case(&["resource_user", "resource_power_user"], Role::PowerUser)]
+  #[case(&["resource_user", "resource_manager"], Role::Manager)]
+  #[case(&["resource_power_user", "resource_admin"], Role::Admin)]
+  #[case(&["resource_user", "resource_power_user", "resource_manager"], Role::Manager)]
+  #[case(&["resource_user", "resource_admin", "resource_manager"], Role::Admin)]
+  fn test_role_from_resource_role_success(#[case] input: &[&str], #[case] expected: Role) {
+    assert_eq!(Role::from_resource_role(input).unwrap(), expected);
+  }
+
+  #[rstest]
+  #[case(&["user"])]
+  #[case(&["power_user", "manager"])]
+  #[case(&["resource_invalid", "invalid_role"])]
+  #[case(&["RESOURCE_USER", "Resource_Manager"])]
+  #[case(&[])]
+  fn test_role_from_resource_role_failure(#[case] input: &[&str]) {
+    assert_eq!(
+      Role::from_resource_role(input).unwrap_err(),
+      RoleError::InvalidRoleName("no valid resource roles found".to_string())
+    );
+  }
+
+  #[rstest]
+  #[case(&["resource_user", "invalid_role"], Role::User)]
+  #[case(&["invalid_role", "resource_manager", "bad_role"], Role::Manager)]
+  #[case(&["resource_power_user", "RESOURCE_ADMIN"], Role::PowerUser)]
+  #[case(&["bad_role", "resource_admin", "invalid"], Role::Admin)]
+  fn test_role_from_resource_role_mixed(#[case] input: &[&str], #[case] expected: Role) {
+    assert_eq!(Role::from_resource_role(input).unwrap(), expected);
   }
 }

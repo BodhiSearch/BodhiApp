@@ -73,6 +73,10 @@ impl AppRegInfoBuilder {
   }
 }
 
+pub fn access_token_claims() -> Value {
+  access_token_with_exp(Utc::now().timestamp() + 3600)
+}
+
 #[fixture]
 pub fn token() -> (String, String) {
   build_token_with_exp((Utc::now() + Duration::hours(1)).timestamp()).unwrap()
