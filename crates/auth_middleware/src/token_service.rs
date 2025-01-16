@@ -3,8 +3,8 @@ use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
 use services::{
   db::{DbService, TokenStatus},
-  AppRegInfo, AuthService, CacheService, Claims, ExpClaims, JsonWebTokenError, OfflineClaims,
-  SecretService, SecretServiceExt, GRANT_REFRESH_TOKEN, TOKEN_TYPE_OFFLINE,
+  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
+  SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN, TOKEN_TYPE_OFFLINE,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -39,12 +39,12 @@ impl DefaultTokenService {
     // Extract token from header
     let offline_token = header
       .strip_prefix(BEARER_PREFIX)
-      .ok_or_else(|| AuthError::TokenValidation("authorization header is malformed".to_string()))?
+      .ok_or_else(|| TokenError::InvalidToken("authorization header is malformed".to_string()))?
       .trim();
     if offline_token.is_empty() {
-      return Err(AuthError::TokenValidation(
+      return Err(TokenError::InvalidToken(
         "token not found in authorization header".to_string(),
-      ));
+      ))?;
     }
 
     // Check token is found and active
@@ -90,7 +90,7 @@ impl DefaultTokenService {
       .ok_or(AuthError::AppRegInfoMissing)?;
 
     // Validate token signature and claims
-    let claims = self.validate_token_signature(offline_token, &app_reg_info)?;
+    let claims = self.validate_offline_token_signature(offline_token, &app_reg_info)?;
     self.validate_token_claims(&claims, &app_reg_info.client_id)?;
 
     // Exchange token
@@ -112,48 +112,29 @@ impl DefaultTokenService {
     Ok(access_token)
   }
 
-  fn validate_token_signature(
+  fn validate_offline_token_signature(
     &self,
     token: &str,
     app_reg_info: &AppRegInfo,
   ) -> Result<OfflineClaims, AuthError> {
-    // Decode header first to validate kid and alg
-    let header = jsonwebtoken::decode_header(token)
-      .map_err(|_| AuthError::TokenValidation("invalid token header format".to_string()))?;
-
-    // Check header values
-    if header.kid.as_deref() != Some(&app_reg_info.kid) {
-      return Err(AuthError::TokenValidation(
-        "invalid token key identifier".to_string(),
-      ));
-    }
-
-    if header.alg != app_reg_info.alg {
-      return Err(AuthError::TokenValidation(
-        "invalid token signing algorithm".to_string(),
-      ));
-    }
-
     // Setup validation
     let key_pem = format!(
       "-----BEGIN RSA PUBLIC KEY-----\n{}\n-----END RSA PUBLIC KEY-----",
       app_reg_info.public_key
     );
     let key = DecodingKey::from_rsa_pem(key_pem.as_bytes())
-      .map_err(|err| AuthError::TokenValidation(format!("invalid token public key: {err}")))?;
+      .map_err(|err| AuthError::SignatureKey(err.to_string()))?;
 
-    let mut validation = Validation::new(header.alg);
+    let mut validation = Validation::new(app_reg_info.alg);
     validation.set_issuer(&[&app_reg_info.issuer]);
-    validation.validate_exp = false;
+    validation.validate_exp = false; // offline tokens do not have expiration
     validation.validate_aud = false;
     let items: &[String] = &[];
     validation.set_required_spec_claims(items);
 
     // Validate and decode token
-    let token_data =
-      jsonwebtoken::decode::<OfflineClaims>(token, &key, &validation).map_err(|err| {
-        AuthError::TokenValidation(format!("token signature validation failed, err: {err}"))
-      })?;
+    let token_data = jsonwebtoken::decode::<OfflineClaims>(token, &key, &validation)
+      .map_err(|err| AuthError::SignatureMismatch(err.to_string()))?;
 
     Ok(token_data.claims)
   }
@@ -169,7 +150,7 @@ impl DefaultTokenService {
 
     // Check if token is not yet valid (with leeway)
     if claims.iat > (now + leeway.num_seconds()) as u64 {
-      return Err(AuthError::TokenValidation(format!(
+      return Err(AuthError::InvalidToken(format!(
         "token is not yet valid, issued at {}",
         claims.iat
       )));
@@ -177,14 +158,14 @@ impl DefaultTokenService {
 
     // Check token type
     if claims.typ != TOKEN_TYPE_OFFLINE {
-      return Err(AuthError::TokenValidation(
+      return Err(AuthError::InvalidToken(
         "token type must be Offline".to_string(),
       ));
     }
 
     // Check authorized party
     if claims.azp != client_id {
-      return Err(AuthError::TokenValidation(
+      return Err(AuthError::InvalidToken(
         "invalid token authorized party".to_string(),
       ));
     }
@@ -197,7 +178,7 @@ impl DefaultTokenService {
       .collect::<Vec<_>>()
       .contains(&SCOPE_TOKEN_USER.to_string())
     {
-      return Err(AuthError::TokenValidation(
+      return Err(AuthError::InvalidToken(
         "token missing required scope: scope_token_user".to_string(),
       ));
     }
@@ -211,10 +192,10 @@ impl DefaultTokenService {
     access_token: String,
   ) -> Result<String, AuthError> {
     // Validate session token
-    let claims = Self::decode_access_token_no_validation(&access_token)?;
+    let claims = extract_claims::<Claims>(&access_token)?;
     // Check if token is expired
     let now = Utc::now().timestamp();
-    if now < claims.claims.exp as i64 {
+    if now < claims.exp as i64 {
       return Ok(access_token);
     }
 
@@ -244,20 +225,6 @@ impl DefaultTokenService {
     }
 
     Ok(new_access_token)
-  }
-
-  fn decode_access_token_no_validation(
-    access_token: &str,
-  ) -> Result<jsonwebtoken::TokenData<Claims>, JsonWebTokenError> {
-    let mut validation = Validation::default();
-    validation.insecure_disable_signature_validation();
-    validation.validate_exp = false;
-    let token_data = jsonwebtoken::decode::<Claims>(
-      access_token,
-      &DecodingKey::from_secret(&[]), // dummy key for parsing
-      &validation,
-    )?;
-    Ok(token_data)
   }
 }
 
@@ -300,7 +267,7 @@ mod tests {
     ));
     let result = token_service.validate_bearer_token(header).await;
     assert!(result.is_err());
-    assert_eq!(matches!(result, Err(AuthError::TokenValidation(_))), true);
+    assert_eq!(matches!(result, Err(AuthError::Token(_))), true);
     Ok(())
   }
 
@@ -355,19 +322,20 @@ mod tests {
 
   #[rstest]
   #[case::invalid_type(
-    json!({"typ": "Invalid"}),
+    json!({"typ": "Invalid"}),"token type must be Offline"
   )]
   #[case::wrong_azp(
-    json!({"azp": "wrong-client"}),
+    json!({"azp": "wrong-client"}),"invalid token authorized party"
   )]
   #[case::missing_scope(
-    json!({"scope": "openid profile"}),
+    json!({"scope": "openid profile"}),"token missing required scope: scope_token_user"
   )]
   #[awt]
   #[tokio::test]
   async fn test_validate_bearer_token_validation_errors(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] claims_override: serde_json::Value,
+    #[case] expected: &str,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
     // Given
@@ -396,7 +364,9 @@ mod tests {
 
     // Then
     assert!(result.is_err());
-    assert!(matches!(result, Err(AuthError::TokenValidation(_))));
+    let api_error = objs::ApiError::from(result.unwrap_err());
+    assert_eq!(expected, api_error.args["var_0"]);
+    assert_eq!("auth_error-invalid_token", api_error.code);
     Ok(())
   }
 
@@ -439,7 +409,9 @@ mod tests {
 
     // Then
     assert!(result.is_err());
-    assert!(matches!(result, Err(AuthError::TokenValidation(_))));
+    assert!(
+      matches!(result, Err(AuthError::InvalidToken(msg)) if msg.starts_with("token is not yet valid"))
+    );
     Ok(())
   }
 

@@ -5,3 +5,6 @@ auth_error-tower_sessions = session is not available, please try again later, er
 auth_error-token_validation = token validation failed, error: {$var_0}
 auth_error-token_inactive = API token is inactive
 auth_error-token_not_found = API token not found
+auth_error-signature_key = signature key is invalid, error: {$var_0}
+auth_error-invalid_token = invalid token, error: {$var_0}
+auth_error-signature_mismatch = signature mismatch, error: {$var_0}

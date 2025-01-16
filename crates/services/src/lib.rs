@@ -20,6 +20,7 @@ mod secret_service;
 mod service_ext;
 mod session_service;
 mod setting_service;
+mod token;
 
 pub use app_service::*;
 pub use auth_service::*;
@@ -36,6 +37,7 @@ pub use secret_service::*;
 pub use service_ext::*;
 pub use session_service::*;
 pub use setting_service::*;
+pub use token::*;
 
 pub mod l10n {
   use include_dir::Dir;

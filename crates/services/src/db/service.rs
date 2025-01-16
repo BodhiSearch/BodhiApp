@@ -3,7 +3,7 @@ use crate::{
     AccessRequest, ApiToken, Conversation, DownloadRequest, DownloadStatus, Message, RequestStatus,
     SqlxError, SqlxMigrateError, TokenStatus,
   },
-  decode_access_token,
+  extract_claims,
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
@@ -527,11 +527,11 @@ impl DbService for SqliteDbService {
   }
 
   async fn create_api_token_from(&self, name: &str, token: &str) -> Result<ApiToken, DbError> {
-    use crate::MinClaims;
+    use crate::IdClaims;
     use sha2::{Digest, Sha256};
 
-    let token_data = decode_access_token::<MinClaims>(token)
-      .map_err(|e| DbError::TokenValidation(e.to_string()))?;
+    let claims =
+      extract_claims::<IdClaims>(token).map_err(|e| DbError::TokenValidation(e.to_string()))?;
 
     let token_hash = format!("{:x}", Sha256::digest(token.as_bytes()));
     let token_hash = token_hash[..12].to_string();
@@ -541,9 +541,9 @@ impl DbService for SqliteDbService {
 
     let api_token = ApiToken {
       id,
-      user_id: token_data.claims.sub,
+      user_id: claims.sub,
       name: name.to_string(),
-      token_id: token_data.claims.jti,
+      token_id: claims.jti,
       token_hash,
       status: TokenStatus::Active,
       created_at: now,
@@ -656,10 +656,10 @@ impl DbService for SqliteDbService {
   }
 
   async fn get_valid_api_token(&self, token: &str) -> Result<Option<ApiToken>, DbError> {
-    use crate::MinClaims;
+    use crate::IdClaims;
     use sha2::{Digest, Sha256};
-    let token_data = decode_access_token::<MinClaims>(token)
-      .map_err(|e| DbError::TokenValidation(e.to_string()))?;
+    let claims =
+      extract_claims::<IdClaims>(token).map_err(|e| DbError::TokenValidation(e.to_string()))?;
     let query = r#"
       SELECT
         id,
@@ -673,7 +673,7 @@ impl DbService for SqliteDbService {
       FROM api_tokens
       WHERE token_id = ?
       "#;
-    let api_token = self.get_by_col(query, &token_data.claims.jti).await?;
+    let api_token = self.get_by_col(query, &claims.jti).await?;
     match api_token {
       None => Ok(None),
       Some(api_token) => {

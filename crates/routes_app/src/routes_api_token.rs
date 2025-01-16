@@ -160,7 +160,7 @@ mod tests {
     UpdateApiTokenRequest,
   };
   use anyhow_trace::anyhow_trace;
-use auth_middleware::KEY_RESOURCE_TOKEN;
+  use auth_middleware::KEY_RESOURCE_TOKEN;
   use axum::{
     body::Body,
     http::{Method, Request},

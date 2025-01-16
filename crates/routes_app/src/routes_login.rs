@@ -11,12 +11,11 @@ use axum::{
   Json,
 };
 use base64::{engine::general_purpose, Engine as _};
-use jsonwebtoken::TokenData;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use objs::{ApiError, AppError, BadRequestError, ErrorType};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{decode_access_token, AppStatus, Claims, SecretServiceExt};
+use services::{extract_claims, AppStatus, Claims, SecretServiceExt};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
@@ -146,7 +145,7 @@ pub async fn login_callback_handler(
     .map_err(LoginError::from)?;
   let mut access_token = token_response.0.secret().to_string();
   let mut refresh_token = token_response.1.secret().to_string();
-  let email = decode_access_token::<Claims>(&access_token)?.claims.email;
+  let email = extract_claims::<Claims>(&access_token)?.email;
   if status_resource_admin {
     auth_service
       .make_resource_admin(&app_reg_info.client_id, &app_reg_info.client_secret, &email)
@@ -238,10 +237,9 @@ pub async fn user_info_handler(
   if token_str.is_empty() {
     return Ok(Json(not_loggedin));
   }
-  let token_data: TokenData<Claims> = decode_access_token::<Claims>(token_str)?;
+  let claims: Claims = extract_claims::<Claims>(token_str)?;
   let roles = if let Ok(Some(reg_info)) = state.app_service().secret_service().app_reg_info() {
-    token_data
-      .claims
+    claims
       .resource_access
       .get(&reg_info.client_id)
       .map(|resource| resource.roles.clone())
@@ -252,7 +250,7 @@ pub async fn user_info_handler(
 
   Ok(Json(UserInfo {
     logged_in: true,
-    email: Some(token_data.claims.email),
+    email: Some(claims.email),
     roles,
   }))
 }
@@ -993,8 +991,8 @@ mod tests {
     assert_eq!(
       json! {{
         "error": {
-          "message": "authentication token is invalid",
-          "code": "json_web_token_error-InvalidToken",
+          "message": "token is invalid: \u{2068}malformed token format\u{2069}",
+          "code": "token_error-invalid_token",
           "type": "authentication_error"
         }
       }},
