@@ -145,13 +145,14 @@ impl FromStr for Role {
   type Err = RoleError;
 
   fn from_str(s: &str) -> Result<Self, Self::Err> {
-    // Try to match both scope token and resource role formats
-    for role in Role::iter() {
-      if s == role.scope_token() || s == role.resource_role() {
-        return Ok(role);
-      }
+    // Match base role names first
+    match s {
+      "user" => Ok(Role::User),
+      "power_user" => Ok(Role::PowerUser),
+      "manager" => Ok(Role::Manager),
+      "admin" => Ok(Role::Admin),
+      _ => Err(RoleError::InvalidRoleName(s.to_string())),
     }
-    Err(RoleError::InvalidRoleName(s.to_string()))
   }
 }
 
@@ -287,23 +288,6 @@ mod tests {
   }
 
   #[rstest]
-  #[case("resource_user", Ok(Role::User))]
-  #[case("scope_token_user", Ok(Role::User))]
-  #[case("resource_power_user", Ok(Role::PowerUser))]
-  #[case("scope_token_power_user", Ok(Role::PowerUser))]
-  #[case("resource_manager", Ok(Role::Manager))]
-  #[case("scope_token_manager", Ok(Role::Manager))]
-  #[case("resource_admin", Ok(Role::Admin))]
-  #[case("scope_token_admin", Ok(Role::Admin))]
-  #[case("invalid_role", Err(RoleError::InvalidRoleName("invalid_role".to_string())))]
-  fn test_role_from_str(#[case] input: &str, #[case] expected: Result<Role, RoleError>) {
-    assert_eq!(
-      Role::from_str(input).map_err(|e| e.to_string()),
-      expected.map_err(|e| e.to_string())
-    );
-  }
-
-  #[rstest]
   #[case(Role::User, vec![Role::User])]
   #[case(Role::PowerUser, vec![Role::PowerUser, Role::User])]
   #[case(Role::Manager, vec![Role::Manager, Role::PowerUser, Role::User])]
@@ -420,5 +404,44 @@ mod tests {
   #[case(&["bad_role", "resource_admin", "invalid"], Role::Admin)]
   fn test_role_from_resource_role_mixed(#[case] input: &[&str], #[case] expected: Role) {
     assert_eq!(Role::from_resource_role(input).unwrap(), expected);
+  }
+
+  #[rstest]
+  #[case("user", Ok(Role::User))]
+  #[case("power_user", Ok(Role::PowerUser))]
+  #[case("manager", Ok(Role::Manager))]
+  #[case("admin", Ok(Role::Admin))]
+  fn test_role_parse_valid(#[case] input: &str, #[case] expected: Result<Role, RoleError>) {
+    assert_eq!(input.parse::<Role>(), expected);
+  }
+
+  #[rstest]
+  #[case("")]
+  #[case("scope_token_user")]
+  #[case("scope_token_power_user")]
+  #[case("scope_token_manager")]
+  #[case("scope_token_admin")]
+  #[case("resource_user")]
+  #[case("resource_power_user")]
+  #[case("resource_manager")]
+  #[case("resource_admin")]
+  #[case("invalid")]
+  #[case("USER")]
+  #[case("ADMIN")]
+  #[case("Resource_User")]
+  #[case("Scope_Token_Admin")]
+  #[case("resource-user")]
+  #[case("scope-token-admin")]
+  #[case("resource_")]
+  #[case("scope_token_")]
+  #[case("_user")]
+  #[case("_admin")]
+  #[case("resource_unknown")]
+  #[case("scope_token_unknown")]
+  fn test_role_parse_invalid(#[case] input: &str) {
+    let result = input.parse::<Role>();
+    assert!(result.is_err());
+    assert!(matches!(result, Err(RoleError::InvalidRoleName(_))));
+    assert_eq!(result.unwrap_err().to_string(), "invalid_role_name");
   }
 }

@@ -23,6 +23,8 @@ pub enum ErrorType {
   InternalServer,
   #[strum(serialize = "authentication_error")]
   Authentication,
+  #[strum(serialize = "forbidden_error")]
+  Forbidden,
   #[strum(serialize = "not_found_error")]
   NotFound,
   #[default]
@@ -40,6 +42,7 @@ impl ErrorType {
       ErrorType::Authentication => StatusCode::UNAUTHORIZED.as_u16(),
       ErrorType::NotFound => StatusCode::NOT_FOUND.as_u16(),
       ErrorType::Unknown => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
+      ErrorType::Forbidden => StatusCode::FORBIDDEN.as_u16(),
     }
   }
 }
