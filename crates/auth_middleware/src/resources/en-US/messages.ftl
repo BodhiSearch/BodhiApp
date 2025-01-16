@@ -9,3 +9,7 @@ auth_error-signature_key = signature key is invalid, error: {$var_0}
 auth_error-invalid_token = invalid token, error: {$var_0}
 auth_error-signature_mismatch = signature mismatch, error: {$var_0}
 auth_error-missing_roles = no valid roles found for current user
+api_auth_error-forbidden = insufficient privileges to access this resource
+api_auth_error-missing_role = role information not found
+api_auth_error-invalid_role = invalid role format: {$var_0}
+api_auth_error-malformed_role = error parsing role: {$var_0}
