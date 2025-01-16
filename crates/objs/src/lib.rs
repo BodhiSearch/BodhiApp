@@ -17,6 +17,7 @@ mod localization_service;
 mod oai;
 mod remote_file;
 mod repo;
+mod role;
 mod utils;
 
 pub use alias::*;
@@ -32,6 +33,7 @@ pub use localization_service::*;
 pub use oai::*;
 pub use remote_file::*;
 pub use repo::*;
+pub use role::*;
 pub use utils::*;
 
 #[macro_export]

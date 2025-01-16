@@ -1,16 +1,18 @@
 use crate::AuthError;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
+use objs::Role;
 use services::{
   db::{DbService, TokenStatus},
   extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
-  SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN, TOKEN_TYPE_OFFLINE,
+  ScopeClaims, SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN,
+  TOKEN_TYPE_OFFLINE,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
-const SCOPE_TOKEN_USER: &str = "scope_token_user";
+const SCOPE_OFFLINE_ACCESS: &str = "offline_access";
 const LEEWAY_SECONDS: i64 = 60; // 1 minute leeway for clock skew
 
 pub struct DefaultTokenService {
@@ -35,7 +37,7 @@ impl DefaultTokenService {
     }
   }
 
-  pub async fn validate_bearer_token(&self, header: &str) -> Result<String, AuthError> {
+  pub async fn validate_bearer_token(&self, header: &str) -> Result<(String, Role), AuthError> {
     // Extract token from header
     let offline_token = header
       .strip_prefix(BEARER_PREFIX)
@@ -68,14 +70,15 @@ impl DefaultTokenService {
       validation.insecure_disable_signature_validation();
       validation.validate_exp = true;
       validation.validate_aud = false;
-      if jsonwebtoken::decode::<ExpClaims>(
+      let token_data = jsonwebtoken::decode::<ExpClaims>(
         &access_token,
         &DecodingKey::from_secret(&[]), // dummy key for parsing
         &validation,
-      )
-      .is_ok()
-      {
-        return Ok(access_token);
+      );
+      if let Ok(token_data) = token_data {
+        let offline_scope = token_data.claims.scope;
+        let role = Role::from_scope(&offline_scope)?;
+        return Ok((access_token, role));
       } else {
         self
           .cache_service
@@ -109,7 +112,9 @@ impl DefaultTokenService {
     self
       .cache_service
       .set(&format!("token:{}", api_token.token_id), &access_token);
-    Ok(access_token)
+    let scope = extract_claims::<ScopeClaims>(&access_token)?;
+    let role = Role::from_scope(&scope.scope)?;
+    Ok((access_token, role))
   }
 
   fn validate_offline_token_signature(
@@ -176,10 +181,10 @@ impl DefaultTokenService {
       .split(' ')
       .map(|s| s.to_string())
       .collect::<Vec<_>>()
-      .contains(&SCOPE_TOKEN_USER.to_string())
+      .contains(&SCOPE_OFFLINE_ACCESS.to_string())
     {
       return Err(AuthError::InvalidToken(
-        "token missing required scope: scope_token_user".to_string(),
+        "token missing required scope: offline_access".to_string(),
       ));
     }
 
@@ -230,10 +235,11 @@ impl DefaultTokenService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{token_service::SCOPE_TOKEN_USER, AuthError, DefaultTokenService};
+  use crate::{token_service::SCOPE_OFFLINE_ACCESS, AuthError, DefaultTokenService};
+  use anyhow_trace::anyhow_trace;
   use chrono::Utc;
   use mockall::predicate::*;
-  use objs::{test_utils::setup_l10n, FluentLocalizationService};
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, Role};
   use rstest::rstest;
   use serde_json::{json, Value};
   use services::{
@@ -271,19 +277,29 @@ mod tests {
     Ok(())
   }
 
+  #[anyhow_trace]
   #[rstest]
+  #[case::scope_token_user("offline_access scope_token_user", Role::User)]
+  #[case::scope_token_user_power_user("offline_access scope_token_power_user", Role::PowerUser)]
+  #[case::scope_token_user_manager("offline_access scope_token_manager", Role::Manager)]
+  #[case::scope_token_user_admin("offline_access scope_token_admin", Role::Admin)]
   #[awt]
   #[tokio::test]
   async fn test_validate_bearer_token_success(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
+    #[case] scope: &str,
+    #[case] expected_role: Role,
   ) -> anyhow::Result<()> {
     // Given
     let claims = offline_token_claims();
-    let (token, _) = build_token(claims)?;
+    let (offline_token, _) = build_token(claims)?;
     test_db_service
-      .create_api_token_from("test_token", &token)
+      .create_api_token_from("test_token", &offline_token)
       .await?;
+    let (exchanged_token, _) =
+      build_token(json! {{"exp": Utc::now().timestamp() + 3600, "scope": scope}})?;
+    let exchanged_token_cl = exchanged_token.clone();
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let mut mock_auth = MockAuthService::new();
@@ -292,16 +308,11 @@ mod tests {
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
-        eq(token.clone()),
+        eq(offline_token.clone()),
         eq(GRANT_REFRESH_TOKEN),
         eq(vec![]),
       )
-      .returning(|_, _, _, _, _| {
-        Ok((
-          "new_access_token".to_string(),
-          Some("new_refresh_token".to_string()),
-        ))
-      });
+      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, Some("new_refresh_token".to_string()))));
 
     let token_service = Arc::new(DefaultTokenService::new(
       Arc::new(mock_auth),
@@ -311,12 +322,63 @@ mod tests {
     ));
 
     // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", token))
+    let (result, role) = token_service
+      .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await?;
 
     // Then
-    assert_eq!(result, "new_access_token");
+    assert_eq!(exchanged_token, result);
+    assert_eq!(expected_role, role);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[case::scope_token_user("", "missing_offline_access")]
+  #[case::scope_token_user("scope_token_user", "missing_offline_access")]
+  #[case::scope_token_user("offline_access", "missing_role_scope")]
+  #[awt]
+  #[tokio::test]
+  async fn test_token_service_bearer_token_exchanged_token_scope_invalid(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+    #[case] scope: &str,
+    #[case] err_msg: &str,
+  ) -> anyhow::Result<()> {
+    // Given
+    let claims = offline_token_claims();
+    let (offline_token, _) = build_token(claims)?;
+    test_db_service
+      .create_api_token_from("test_token", &offline_token)
+      .await?;
+    let (exchanged_token, _) =
+      build_token(json! {{"exp": Utc::now().timestamp() + 3600, "scope": scope}})?;
+    let exchanged_token_cl = exchanged_token.clone();
+    let mut mock_auth = MockAuthService::new();
+    mock_auth
+      .expect_exchange_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq(offline_token.clone()),
+        eq(GRANT_REFRESH_TOKEN),
+        eq(vec![]),
+      )
+      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, Some("new_refresh_token".to_string()))));
+
+    let token_service = Arc::new(DefaultTokenService::new(
+      Arc::new(mock_auth),
+      Arc::new(SecretServiceStub::default().with_app_reg_info_default()),
+      Arc::new(MokaCacheService::default()),
+      Arc::new(test_db_service),
+    ));
+
+    // When
+    let result = token_service
+      .validate_bearer_token(&format!("Bearer {}", offline_token))
+      .await;
+    assert!(result.is_err());
+    assert_eq!(err_msg, result.unwrap_err().to_string());
     Ok(())
   }
 
@@ -327,8 +389,8 @@ mod tests {
   #[case::wrong_azp(
     json!({"azp": "wrong-client"}),"invalid token authorized party"
   )]
-  #[case::missing_scope(
-    json!({"scope": "openid profile"}),"token missing required scope: scope_token_user"
+  #[case::no_offline_access_scope(
+    json!({"scope": "openid profile"}),"token missing required scope: offline_access"
   )]
   #[awt]
   #[tokio::test]
@@ -344,9 +406,9 @@ mod tests {
       .as_object_mut()
       .unwrap()
       .extend(claims_override.as_object().unwrap().clone());
-    let (token, _) = build_token(claims)?;
+    let (offline_token, _) = build_token(claims)?;
     test_db_service
-      .create_api_token_from("test_token", &token)
+      .create_api_token_from("test_token", &offline_token)
       .await?;
     let secret_service =
       SecretServiceStub::default().with_app_reg_info(&AppRegInfoBuilder::test_default().build()?);
@@ -359,7 +421,7 @@ mod tests {
 
     // When
     let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", token))
+      .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await;
 
     // Then
@@ -378,7 +440,7 @@ mod tests {
     "sub": "test-sub",
     "typ": TOKEN_TYPE_OFFLINE,
     "azp": TEST_CLIENT_ID,
-    "scope": SCOPE_TOKEN_USER
+    "scope": SCOPE_OFFLINE_ACCESS
   }))]
   #[awt]
   #[tokio::test]
@@ -432,12 +494,16 @@ mod tests {
       "sub": "test-sub",
       "typ": TOKEN_TYPE_OFFLINE,
       "azp": TEST_CLIENT_ID,
-      "scope": SCOPE_TOKEN_USER
+      "scope": SCOPE_OFFLINE_ACCESS
     });
-    let (token, _) = build_token(claims)?;
+    let (offline_token, _) = build_token(claims)?;
     test_db_service
-      .create_api_token_from("test_token", &token)
+      .create_api_token_from("test_token", &offline_token)
       .await?;
+    let (exchanged_token, _) = build_token(
+      json! {{"exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
+    )?;
+    let exchanged_token_cl = exchanged_token.clone();
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let mut auth_service = MockAuthService::new();
@@ -446,12 +512,12 @@ mod tests {
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
-        eq(token.clone()),
+        eq(offline_token.clone()),
         eq(GRANT_REFRESH_TOKEN),
         eq(Vec::<String>::new()),
       )
       .times(1)
-      .returning(|_, _, _, _, _| Ok(("new_access_token".to_string(), None)));
+      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, None)));
     let token_service = DefaultTokenService::new(
       Arc::new(auth_service),
       Arc::new(secret_service),
@@ -460,12 +526,13 @@ mod tests {
     );
 
     // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", token))
+    let (result, role) = token_service
+      .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await?;
 
     // Then
-    assert_eq!(result, "new_access_token");
+    assert_eq!(exchanged_token, result);
+    assert_eq!(Role::User, role);
     Ok(())
   }
 
@@ -527,10 +594,12 @@ mod tests {
   ) -> anyhow::Result<()> {
     // Given
     let claims = offline_token_claims();
-    let (token, _) = build_token(claims)?;
-    let (access_token, _) = build_token(json! {{"exp": Utc::now().timestamp() + 3600}})?;
+    let (offline_token, _) = build_token(claims)?;
+    let (access_token, _) = build_token(
+      json! {{"exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
+    )?;
     let api_token = test_db_service
-      .create_api_token_from("test-token", &token)
+      .create_api_token_from("test-token", &offline_token)
       .await?;
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
@@ -546,12 +615,13 @@ mod tests {
     );
 
     // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", token))
+    let (result, role) = token_service
+      .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await?;
 
     // Then
-    assert_eq!(result, access_token);
+    assert_eq!(access_token, result);
+    assert_eq!(Role::User, role);
     Ok(())
   }
 
@@ -564,11 +634,14 @@ mod tests {
   ) -> anyhow::Result<()> {
     // Given
     let claims = offline_token_claims();
-    let (token, _) = build_token(claims)?;
+    let (offline_token, _) = build_token(claims)?;
     let api_token = test_db_service
-      .create_api_token_from("test_token", &token)
+      .create_api_token_from("test_token", &offline_token)
       .await?;
-
+    let (exchanged_token, _) = build_token(
+      json! {{"exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
+    )?;
+    let exchanged_token_cl = exchanged_token.clone();
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let mut mock_auth = MockAuthService::new();
@@ -593,12 +666,12 @@ mod tests {
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
-        eq(token.clone()),
+        eq(offline_token.clone()),
         eq(GRANT_REFRESH_TOKEN),
         eq(Vec::<String>::new()),
       )
       .times(1)
-      .returning(|_, _, _, _, _| Ok(("new_access_token".to_string(), None)));
+      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, None)));
 
     let token_service = DefaultTokenService::new(
       Arc::new(mock_auth),
@@ -608,12 +681,13 @@ mod tests {
     );
 
     // When
-    let result = token_service
-      .validate_bearer_token(&format!("Bearer {}", token))
+    let (result, role) = token_service
+      .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await?;
 
     // Then
-    assert_eq!(result, "new_access_token");
+    assert_eq!(exchanged_token, result);
+    assert_eq!(Role::User, role);
     Ok(())
   }
 }

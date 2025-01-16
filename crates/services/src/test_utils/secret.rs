@@ -1,6 +1,5 @@
 use crate::{
-  asref_impl, AppRegInfo, AppStatus, KeyringError, KeyringStore, SecretService, SecretServiceError,
-  SecretServiceExt,
+  asref_impl, AppRegInfo, AppRegInfoBuilder, AppStatus, KeyringError, KeyringStore, SecretService, SecretServiceError, SecretServiceExt
 };
 use std::{collections::HashMap, sync::Mutex};
 
@@ -52,6 +51,13 @@ impl SecretServiceStub {
 
   pub fn with_app_reg_info(self, app_reg_info: &AppRegInfo) -> Self {
     self.set_app_reg_info(app_reg_info).unwrap();
+    self
+  }
+
+  pub fn with_app_reg_info_default(self) -> Self {
+    self
+      .set_app_reg_info(&AppRegInfoBuilder::test_default().build().unwrap())
+      .unwrap();
     self
   }
 
