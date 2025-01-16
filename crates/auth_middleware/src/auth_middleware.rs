@@ -5,7 +5,7 @@ use axum::{
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
 };
-use objs::{ApiError, AppError, ErrorType};
+use objs::{ApiError, AppError, ErrorType, RoleError};
 use server_core::RouterState;
 use services::{
   AppStatus, AuthServiceError, SecretService, SecretServiceError, SecretServiceExt, TokenError,
@@ -21,6 +21,9 @@ pub const KEY_USER_ROLES: &str = "X-User-Roles";
 pub enum AuthError {
   #[error(transparent)]
   Token(#[from] TokenError),
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  Role(#[from] RoleError),
   #[error("invalid_access")]
   #[error_meta(error_type = ErrorType::Authentication)]
   InvalidAccess,
@@ -105,10 +108,13 @@ pub async fn auth_middleware(
     let header = header
       .to_str()
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
-    let access_token = token_service.validate_bearer_token(header).await?;
+    let (access_token, role) = token_service.validate_bearer_token(header).await?;
     req
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+    req
+      .headers_mut()
+      .insert(KEY_USER_ROLES, role.to_string().parse().unwrap());
     Ok(next.run(req).await)
   } else {
     Err(AuthError::InvalidAccess)?
@@ -168,7 +174,7 @@ fn authz_status(secret_service: &Arc<dyn SecretService>) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::KEY_RESOURCE_TOKEN;
+  use super::{KEY_RESOURCE_TOKEN, KEY_USER_ROLES};
   use crate::{auth_middleware, optional_auth_middleware};
   use anyhow_trace::anyhow_trace;
   use axum::{
@@ -212,6 +218,7 @@ mod tests {
   #[derive(Debug, Serialize, Deserialize, PartialEq)]
   struct TestResponse {
     x_resource_token: Option<String>,
+    x_user_roles: Option<String>,
     authorization_header: Option<String>,
     path: String,
   }
@@ -223,10 +230,14 @@ mod tests {
     let authorization_bearer_token = headers
       .get("Authorization")
       .map(|v| v.to_str().unwrap().to_string());
+    let x_user_roles = headers
+      .get(KEY_USER_ROLES)
+      .map(|v| v.to_str().unwrap().to_string());
     (
       StatusCode::IM_A_TEAPOT,
       Json(TestResponse {
         x_resource_token,
+        x_user_roles,
         authorization_header: authorization_bearer_token,
         path: path.to_string(),
       }),
@@ -278,6 +289,7 @@ mod tests {
     assert_eq!(
       TestResponse {
         x_resource_token,
+        x_user_roles: None,
         authorization_header,
         path: "/with_optional_auth".to_string(),
       },
@@ -316,6 +328,7 @@ mod tests {
     assert_eq!(
       TestResponse {
         x_resource_token: None,
+        x_user_roles: None,
         authorization_header: None,
         path: path.to_string(),
       },
@@ -403,6 +416,7 @@ mod tests {
         path: path.to_string(),
         authorization_header: None,
         x_resource_token: Some(token),
+        x_user_roles: None,
       },
       body
     );
@@ -484,6 +498,7 @@ mod tests {
         path: path.to_string(),
         authorization_header: None,
         x_resource_token: Some("new_access_token".to_string()),
+        x_user_roles: None,
       },
       body
     );
@@ -672,25 +687,36 @@ mod tests {
       .json(json! {{}})?;
     let response = router.clone().oneshot(req).await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
-    let actual: Value = response.json().await?;
+    let actual: TestResponse = response.json().await?;
     assert_eq!(
-      json! {{
-        "x_resource_token": Option::<String>::None,
-        "authorization_header": Option::<String>::None,
-        "path": "/with_optional_auth",
-      }},
+      TestResponse {
+        path: "/with_optional_auth".to_string(),
+        x_resource_token: None,
+        authorization_header: None,
+        x_user_roles: None,
+      },
       actual
     );
     Ok(())
   }
 
   #[rstest]
+  #[case::scope_token_user("offline_access scope_token_user", "user")]
+  #[case::scope_token_user("offline_access scope_token_power_user", "power_user")]
+  #[case::scope_token_user("offline_access scope_token_manager", "manager")]
+  #[case::scope_token_user("offline_access scope_token_admin", "admin")]
+  #[case::scope_token_user("offline_access scope_token_user scope_token_manager", "manager")]
+  #[case::scope_token_user("offline_access scope_token_user scope_token_power_user", "power_user")]
   #[tokio::test]
   async fn test_auth_middleware_bearer_token_success(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[case] scope: &str,
+    #[case] expected_role: &str,
   ) -> anyhow::Result<()> {
     let (bearer_token, _) = build_token(offline_token_claims())?;
-    let (access_token, _) = build_token(offline_access_token_claims())?;
+    let mut access_token_claims = offline_access_token_claims();
+    access_token_claims["scope"] = Value::String(scope.to_string());
+    let (access_token, _) = build_token(access_token_claims)?;
     let access_token_cl = access_token.clone();
     let mut auth_service = MockAuthService::default();
     auth_service
@@ -725,13 +751,14 @@ mod tests {
       .json(json! {{}})?;
     let response = router.clone().oneshot(req).await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
-    let actual: Value = response.json().await?;
+    let actual: TestResponse = response.json().await?;
     assert_eq!(
-      json! {{
-        "x_resource_token": access_token,
-        "authorization_header": Some(format!("Bearer {}", bearer_token)),
-        "path": "/with_auth",
-      }},
+      TestResponse {
+        path: "/with_auth".to_string(),
+        x_resource_token: Some(access_token),
+        x_user_roles: Some(expected_role.to_string()),
+        authorization_header: Some(format!("Bearer {}", bearer_token)),
+      },
       actual
     );
     Ok(())

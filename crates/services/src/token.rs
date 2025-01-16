@@ -48,6 +48,11 @@ pub struct ResourceClaims {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct ScopeClaims {
+  pub scope: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct IdClaims {
   pub jti: String,
   pub sub: String,
@@ -56,6 +61,7 @@ pub struct IdClaims {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExpClaims {
   pub exp: u64,
+  pub scope: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
