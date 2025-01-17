@@ -15,6 +15,7 @@ import {
   vi,
 } from 'vitest';
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
+import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 
 // Mock the router
 const pushMock = vi.fn();
@@ -34,7 +35,7 @@ vi.mock('next/image', () => ({
 
 // Setup MSW server
 const server = setupServer(
-  rest.get('*/app/info', (req, res, ctx) => {
+  rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
     return res(ctx.json({ status: 'resource-admin' }));
   })
 );
@@ -51,7 +52,7 @@ describe('ResourceAdminPage', () => {
 
   it('renders the resource admin page when status is resource-admin', async () => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
       })
     );
@@ -66,7 +67,7 @@ describe('ResourceAdminPage', () => {
 
   it('redirects to /ui/setup when status is setup', async () => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
       })
     );
@@ -80,7 +81,7 @@ describe('ResourceAdminPage', () => {
 
   it('redirects to /ui/home when status is ready', async () => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
       })
     );

@@ -1,9 +1,10 @@
-import { renderHook, act } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
+import { act, renderHook } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useChatCompletion } from './use-chat-completions';
-import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Reuse the same server setup pattern as AppInitializer.test.tsx
 const server = setupServer();
@@ -49,7 +50,7 @@ describe('useChatCompletion', () => {
       };
 
       server.use(
-        rest.post('*/v1/chat/completions', (req, res, ctx) => {
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
           return res(
             ctx.set('Content-Type', 'application/json'),
             ctx.json(mockResponse)
@@ -100,7 +101,7 @@ describe('useChatCompletion', () => {
       ];
 
       server.use(
-        rest.post('*/v1/chat/completions', (req, res, ctx) => {
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
           return res(
             ctx.status(200),
             ctx.set('Content-Type', 'text/event-stream'),

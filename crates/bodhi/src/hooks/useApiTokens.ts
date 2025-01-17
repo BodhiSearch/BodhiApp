@@ -34,11 +34,16 @@ export interface UpdateTokenRequest {
 }
 
 // Hooks
-export function useListTokens(page: number = 1, pageSize: number = 10) {
+export function useListTokens(
+  page: number = 1,
+  pageSize: number = 10,
+  options?: { enabled?: boolean }
+) {
   return useQuery<ListTokensResponse>(
     ['tokens', page.toString(), pageSize.toString()],
     API_TOKENS_ENDPOINT,
-    { page, page_size: pageSize }
+    { page, page_size: pageSize },
+    options
   );
 }
 

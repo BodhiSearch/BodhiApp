@@ -28,6 +28,24 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::{debug, info, Level};
 
+pub const ENDPOINT_PING: &str = "/ping";
+pub const ENDPOINT_APP_INFO: &str = "/api/ui/info";
+pub const ENDPOINT_APP_SETUP: &str = "/api/ui/setup";
+pub const ENDPOINT_LOGIN_CALLBACK: &str = "/app/login/callback";
+pub const ENDPOINT_LOGOUT: &str = "/api/ui/logout";
+pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
+pub const ENDPOINT_MODEL_FILES: &str = "/api/ui/modelfiles";
+pub const ENDPOINT_MODEL_PULL: &str = "/api/ui/modelfiles/pull";
+pub const ENDPOINT_MODELS: &str = "/api/ui/models";
+pub const ENDPOINT_CHAT_TEMPLATES: &str = "/api/ui/chat_templates";
+pub const ENDPOINT_TOKENS: &str = "/api/ui/tokens";
+
+pub const ENDPOINT_OAI_MODELS: &str = "/v1/models";
+pub const ENDPOINT_OAI_CHAT_COMPLETIONS: &str = "/v1/chat/completions";
+pub const ENDPOINT_OLLAMA_TAGS: &str = "/api/tags";
+pub const ENDPOINT_OLLAMA_SHOW: &str = "/api/show";
+pub const ENDPOINT_OLLAMA_CHAT: &str = "/api/chat";
+
 pub fn build_routes(
   ctx: Arc<dyn SharedContext>,
   app_service: Arc<dyn AppService>,
@@ -38,7 +56,7 @@ pub fn build_routes(
   // Public APIs (no auth required)
   let mut public_apis = Router::new()
     .route(
-      "/ping",
+      ENDPOINT_PING,
       get(|| async {
         Response::builder()
           .status(StatusCode::OK)
@@ -46,16 +64,16 @@ pub fn build_routes(
           .unwrap()
       }),
     )
-    .route("/app/info", get(app_info_handler))
-    .route("/app/setup", post(setup_handler))
-    .route("/app/login/callback", get(login_callback_handler))
+    .route(ENDPOINT_APP_INFO, get(app_info_handler))
+    .route(ENDPOINT_APP_SETUP, post(setup_handler))
+    .route(ENDPOINT_LOGIN_CALLBACK, get(login_callback_handler))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
-    .route("/api/ui/logout", post(logout_handler));
+    .route(ENDPOINT_LOGOUT, post(logout_handler));
 
   // Dev-only admin routes
   if !app_service.env_service().is_production() {
     let dev_apis = Router::new()
-      .route("/dev/secrets", get(dev_secrets_handler))
+      .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
       .route_layer(from_fn_with_state(
         state.clone(),
         move |state, req, next| api_auth_middleware(Role::Admin, None, state, req, next),
@@ -64,27 +82,35 @@ pub fn build_routes(
   }
 
   // Optional auth APIs
+  const ENDPOINT_LOGIN: &str = "/app/login";
+  const ENDPOINT_USER_INFO: &str = "/api/ui/user";
   let optional_auth = Router::new()
-    .route("/app/login", get(login_handler))
-    .route("/app/login/", get(login_handler))
-    .route("/api/ui/user", get(user_info_handler))
+    .route(ENDPOINT_LOGIN, get(login_handler))
+    .route(&format!("{ENDPOINT_LOGIN}/"), get(login_handler))
+    .route(ENDPOINT_USER_INFO, get(user_info_handler))
     .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info));
 
   // User level APIs (role=user & scope=scope_token_user)
   let user_apis = Router::new()
     // OpenAI Compatible APIs
-    .route("/v1/models", get(oai_models_handler))
-    .route("/v1/models/:id", get(oai_model_handler))
-    .route("/v1/chat/completions", post(chat_completions_handler))
+    .route(ENDPOINT_OAI_MODELS, get(oai_models_handler))
+    .route(
+      &format!("{ENDPOINT_OAI_MODELS}/:id"),
+      get(oai_model_handler),
+    )
+    .route(
+      ENDPOINT_OAI_CHAT_COMPLETIONS,
+      post(chat_completions_handler),
+    )
     // Ollama APIs
-    .route("/api/tags", get(ollama_models_handler))
-    .route("/api/show", post(ollama_model_show_handler))
-    .route("/api/chat", post(ollama_model_chat_handler))
+    .route(ENDPOINT_OLLAMA_TAGS, get(ollama_models_handler))
+    .route(ENDPOINT_OLLAMA_SHOW, post(ollama_model_show_handler))
+    .route(ENDPOINT_OLLAMA_CHAT, post(ollama_model_chat_handler))
     // Basic Bodhi APIs
-    .route("/api/ui/models", get(list_local_aliases_handler))
-    .route("/api/ui/models/:id", get(get_alias_handler))
-    .route("/api/ui/modelfiles", get(list_local_modelfiles_handler))
-    .route("/api/ui/chat_templates", get(list_chat_templates_handler))
+    .route(ENDPOINT_MODELS, get(list_local_aliases_handler))
+    .route(&format!("{ENDPOINT_MODELS}/:id"), get(get_alias_handler))
+    .route(ENDPOINT_MODEL_FILES, get(list_local_modelfiles_handler))
+    .route(ENDPOINT_CHAT_TEMPLATES, get(list_chat_templates_handler))
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
@@ -94,19 +120,16 @@ pub fn build_routes(
 
   // Power user APIs (role=power_user or scope=scope_token_power_user)
   let power_user_apis = Router::new()
-    .route("/api/ui/models", post(create_alias_handler))
-    .route("/api/ui/models/:id", put(update_alias_handler))
+    .route(ENDPOINT_MODELS, post(create_alias_handler))
+    .route(&format!("{ENDPOINT_MODELS}/:id"), put(update_alias_handler))
+    .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
+    .route(ENDPOINT_MODEL_PULL, post(pull_by_repo_file_handler))
     .route(
-      "/api/ui/modelfiles/pull/downloads",
-      get(list_downloads_handler),
-    )
-    .route("/api/ui/modelfiles/pull", post(pull_by_repo_file_handler))
-    .route(
-      "/api/ui/modelfiles/pull/:alias",
+      &format!("{ENDPOINT_MODEL_PULL}/:alias"),
       post(pull_by_alias_handler),
     )
     .route(
-      "/api/ui/modelfiles/pull/status/:id",
+      &format!("{ENDPOINT_MODEL_PULL}/status/:id"),
       get(get_download_status_handler),
     )
     .route_layer(from_fn_with_state(
@@ -124,10 +147,12 @@ pub fn build_routes(
 
   // Session-only power user APIs (token management)
   let power_user_session_apis = Router::new()
-    .route("/api/ui/tokens", post(create_token_handler))
-    .route("/api/ui/tokens", get(list_tokens_handler))
-    .route("/api/ui/tokens/", get(list_tokens_handler))
-    .route("/api/ui/tokens/:token_id", put(update_token_handler))
+    .route(ENDPOINT_TOKENS, post(create_token_handler))
+    .route(ENDPOINT_TOKENS, get(list_tokens_handler))
+    .route(
+      &format!("{ENDPOINT_TOKENS}/:token_id"),
+      put(update_token_handler),
+    )
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| api_auth_middleware(Role::PowerUser, None, state, req, next),

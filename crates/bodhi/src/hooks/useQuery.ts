@@ -22,8 +22,16 @@ import {
   PullModelRequest,
 } from '@/types/api';
 
-export const ENDPOINT_APP_INFO = '/app/info';
+export const ENDPOINT_APP_INFO = '/api/ui/info';
+export const ENDPOINT_APP_SETUP = '/api/ui/setup';
 export const ENDPOINT_USER_INFO = '/api/ui/user';
+export const ENDPOINT_LOGOUT = '/api/ui/logout';
+export const ENDPOINT_MODEL_FILES = '/api/ui/modelfiles';
+export const ENDPOINT_MODEL_FILES_PULL = '/api/ui/modelfiles/pull';
+export const ENDPOINT_MODELS = '/api/ui/models';
+export const ENDPOINT_CHAT_TEMPLATES = '/api/ui/chat_templates';
+
+export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
 
 type PagedApiResponse<T> = {
   data: T;
@@ -96,7 +104,7 @@ type SetupRequest = {
 };
 
 export function useSetupApp() {
-  return useMutationQuery<AppInfo, SetupRequest>('/app/setup');
+  return useMutationQuery<AppInfo, SetupRequest>(ENDPOINT_APP_SETUP);
 }
 
 export function useModelFiles(
@@ -113,7 +121,7 @@ export function useModelFiles(
       sort,
       sortOrder,
     ],
-    '/api/ui/modelfiles',
+    ENDPOINT_MODEL_FILES,
     { page, page_size: pageSize, sort, sort_order: sortOrder }
   );
 }
@@ -126,7 +134,7 @@ export function useModels(
 ) {
   return useQuery<PagedApiResponse<Model[]>>(
     ['models', page.toString(), pageSize.toString(), sort, sortOrder],
-    '/api/ui/models',
+    ENDPOINT_MODELS,
     { page, page_size: pageSize, sort, sort_order: sortOrder }
   );
 }
@@ -134,7 +142,7 @@ export function useModels(
 export function useModel(alias: string) {
   return useQuery<Model>(
     ['model', alias],
-    `/api/ui/models/${alias}`,
+    `${ENDPOINT_MODELS}/${alias}`,
     undefined,
     {
       enabled: !!alias,
@@ -143,13 +151,13 @@ export function useModel(alias: string) {
 }
 
 export function useCreateModel() {
-  return useMutationQuery<Model, AliasFormData>('/api/ui/models');
+  return useMutationQuery<Model, AliasFormData>(ENDPOINT_MODELS);
 }
 
 export function useUpdateModel(alias: string) {
   const queryClient = useQueryClient();
   return useMutationQuery<Model, AliasFormData>(
-    `/api/ui/models/${alias}`,
+    `${ENDPOINT_MODELS}/${alias}`,
     'put',
     {
       onSuccess: () => {
@@ -160,7 +168,7 @@ export function useUpdateModel(alias: string) {
 }
 
 export function useChatTemplates() {
-  return useQuery<string[]>('chatTemplates', '/api/ui/chat_templates');
+  return useQuery<string[]>('chatTemplates', ENDPOINT_CHAT_TEMPLATES);
 }
 
 export function useFeaturedModels() {
@@ -174,7 +182,7 @@ export function useLogout(
   options?: UseMutationOptions<AxiosResponse, AxiosError, void, unknown>
 ): UseMutationResult<AxiosResponse, AxiosError, void, unknown> {
   const queryClient = useQueryClient();
-  return useMutationQuery<AxiosResponse, void>('/api/ui/logout', 'post', {
+  return useMutationQuery<AxiosResponse, void>(ENDPOINT_LOGOUT, 'post', {
     ...options,
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries();
@@ -195,13 +203,13 @@ export function useUser(options?: { enabled: boolean }) {
 export function useDownloads(page: number, pageSize: number) {
   return useQuery<ListDownloadsResponse>(
     ['downloads', page.toString(), pageSize.toString()],
-    '/api/ui/modelfiles/pull/downloads',
+    ENDPOINT_MODEL_FILES_PULL,
     { page, page_size: pageSize }
   );
 }
 
 export function usePullModel() {
   return useMutationQuery<DownloadRequest, PullModelRequest>(
-    '/api/ui/modelfiles/pull'
+    ENDPOINT_MODEL_FILES_PULL
   );
 }

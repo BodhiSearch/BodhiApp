@@ -9,6 +9,7 @@ export interface Page {
 export interface AppInfo {
   status: AppStatus;
   authz: boolean;
+  version: string,
 }
 
 export interface ApiError {

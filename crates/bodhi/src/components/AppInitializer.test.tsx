@@ -1,6 +1,9 @@
 'use client';
 
+import AppInitializer from '@/components/AppInitializer';
+import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
+import { AppStatus } from '@/types/models';
 import {
   render,
   screen,
@@ -18,8 +21,6 @@ import {
   it,
   vi,
 } from 'vitest';
-import AppInitializer from '@/components/AppInitializer';
-import { AppStatus } from '@/types/models';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -53,13 +54,13 @@ describe('AppInitializer loading and error handling', () => {
   // Test loading states
   it('shows loading state when endpoint is loading', async () => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(
           ctx.delay(100),
           ctx.json({ status: 'ready', authz: true })
         );
       }),
-      rest.get('*/api/ui/user', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
         return res(
           ctx.delay(100),
           ctx.json({ logged_in: true })
@@ -84,8 +85,8 @@ describe('AppInitializer loading and error handling', () => {
 
   // Test error handling
   it.each([
-    { scenario: 'app/info error', setup: [{ endpoint: '*/app/info', response: { message: 'API Error' }, status: 500 }, { endpoint: '*/api/ui/user', response: { logged_in: true }, status: 200 }] },
-    { scenario: 'app/info success, user error', setup: [{ endpoint: '*/app/info', response: { status: 'ready', authz: true }, status: 200 }, { endpoint: '*/api/ui/user', response: { message: 'API Error' }, status: 500 }] },
+    { scenario: 'app/info error', setup: [{ endpoint: `*${ENDPOINT_APP_INFO}`, response: { message: 'API Error' }, status: 500 }, { endpoint: `*${ENDPOINT_USER_INFO}`, response: { logged_in: true }, status: 200 }] },
+    { scenario: 'app/info success, user error', setup: [{ endpoint: `*${ENDPOINT_APP_INFO}`, response: { status: 'ready', authz: true }, status: 200 }, { endpoint: `*${ENDPOINT_USER_INFO}`, response: { message: 'API Error' }, status: 500 }] },
   ])('handles error $scenario', async ({ scenario, setup }) => {
     server.use(
       ...setup.map(({ endpoint, response, status }) =>
@@ -118,7 +119,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin' },
   ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath }) => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status, authz: false }));
       })
     );
@@ -141,7 +142,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   ])('redirects to $expectedPath when currentStatus=$currentStatus does not match allowedStatus=$allowedStatus',
     async ({ currentStatus, allowedStatus, expectedPath }) => {
       server.use(
-        rest.get('*/app/info', (req, res, ctx) => {
+        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ status: currentStatus }));
         })
       );
@@ -159,7 +160,7 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
   ])('stays on page when currentStatus=$currentStatus matches allowedStatus=$allowedStatus',
     async ({ currentStatus, allowedStatus }) => {
       server.use(
-        rest.get('*/app/info', (req, res, ctx) => {
+        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ status: currentStatus }));
         })
       );
@@ -178,10 +179,10 @@ describe('AppInitializer authentication behavior', () => {
   `('redirects to login when authz=$authz authenticated=$authenticated loggedIn=$loggedIn',
     async ({ authz, authenticated, loggedIn }) => {
       server.use(
-        rest.get('*/app/info', (req, res, ctx) => {
+        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ status: 'ready', authz }));
         }),
-        rest.get('*/api/ui/user', (req, res, ctx) => {
+        rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ logged_in: loggedIn }));
         })
       );
@@ -211,10 +212,10 @@ describe('AppInitializer authentication behavior', () => {
   `('displays content when authz=$authz authenticated=$authenticated loggedIn=$loggedIn',
     async ({ authz, authenticated, loggedIn }) => {
       server.use(
-        rest.get('*/app/info', (req, res, ctx) => {
+        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ status: 'ready', authz }));
         }),
-        rest.get('*/api/ui/user', (req, res, ctx) => {
+        rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ logged_in: loggedIn }));
         })
       );
@@ -235,7 +236,7 @@ describe('AppInitializer authentication behavior', () => {
   `('user endpoint not called when authz=$authz authenticated=$authenticated',
     async ({ authenticated, authz }) => {
       server.use(
-        rest.get('*/app/info', (req, res, ctx) => {
+        rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ status: 'ready', authz }));
         })
       );

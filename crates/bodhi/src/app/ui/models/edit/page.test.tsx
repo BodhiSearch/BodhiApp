@@ -1,3 +1,5 @@
+import EditAliasPage from '@/app/ui/models/edit/page';
+import { ENDPOINT_APP_INFO, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -13,7 +15,6 @@ import {
   it,
   vi,
 } from 'vitest';
-import EditAliasPage from '@/app/ui/models/edit/page';
 
 const mockToast = vi.fn();
 
@@ -69,25 +70,25 @@ beforeEach(() => {
 describe('EditAliasPage', () => {
   beforeEach(() => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
       }),
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       }),
-      rest.get('*/api/ui/models/:alias', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODELS}/:alias`, (_, res, ctx) => {
         return res(ctx.json(mockModelData));
       }),
-      rest.get('*/api/ui/models', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
         return res(ctx.json(mockModelsResponse));
       }),
-      rest.get('*/api/ui/chat_templates', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_CHAT_TEMPLATES}`, (_, res, ctx) => {
         return res(ctx.json(mockChatTemplatesResponse));
       }),
-      rest.get('*/api/ui/modelfiles', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
         return res(ctx.json({ data: [] }));
       }),
-      rest.put('*/api/ui/models/:alias', (_, res, ctx) => {
+      rest.put(`*${ENDPOINT_MODELS}/:alias`, (_, res, ctx) => {
         return res(
           ctx.status(200),
           ctx.json({ message: 'Model updated successfully' })
@@ -172,7 +173,7 @@ describe('EditAliasPage', () => {
 
   it('displays error message when model data fails to load', async () => {
     server.use(
-      rest.get('*/api/ui/models/:alias', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODELS}/:alias`, (req, res, ctx) => {
         return res(ctx.status(500));
       })
     );
@@ -188,12 +189,12 @@ describe('EditAliasPage', () => {
 describe('EditAliasPage access control', () => {
   it('should redirect to /ui/setup if status is setup', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
       })
     );
     server.use(
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       })
     );
@@ -205,12 +206,12 @@ describe('EditAliasPage access control', () => {
 
   it('should redirect to /ui/login if user is not logged in', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready', authz: true }));
       })
     );
     server.use(
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: false }));
       })
     );
