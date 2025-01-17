@@ -16,7 +16,6 @@ members = [
   "crates/integration-tests",
 ]
 resolver = "2"
-exclude = ["crates/chatapp/bodhi"]
 
 [workspace.dependencies]
 errmeta_derive = { path = "crates/errmeta_derive" }
