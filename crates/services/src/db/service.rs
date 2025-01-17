@@ -106,15 +106,17 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn list_api_tokens(
     &self,
+    user_id: &str,
     page: u32,
     per_page: u32,
   ) -> Result<(Vec<ApiToken>, u32), DbError>;
 
-  async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError>;
+  async fn get_api_token_by_id(&self, user_id: &str, id: &str)
+    -> Result<Option<ApiToken>, DbError>;
 
-  async fn get_valid_api_token(&self, token: &str) -> Result<Option<ApiToken>, DbError>;
+  async fn get_api_token_by_token_id(&self, token: &str) -> Result<Option<ApiToken>, DbError>;
 
-  async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError>;
+  async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -124,7 +126,12 @@ pub struct SqliteDbService {
 }
 
 impl SqliteDbService {
-  async fn get_by_col(&self, query: &str, id: &str) -> Result<Option<ApiToken>, DbError> {
+  async fn get_by_col(
+    &self,
+    query: &str,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ApiToken>, DbError> {
     let result = query_as::<
       _,
       (
@@ -138,6 +145,7 @@ impl SqliteDbService {
         DateTime<Utc>,
       ),
     >(query)
+    .bind(user_id)
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
@@ -264,7 +272,7 @@ impl DbService for SqliteDbService {
 
   async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError> {
     let messages = query_as::<_, Message>(
-      "SELECT id, conversation_id, role, name, content, created_at FROM messages WHERE conversation_id = ?"
+      "SELECT id, conversation_id, role, name, content, created_at FROM messages WHERE conversation_id = ?",
     )
     .bind(id)
     .fetch_all(&self.pool)
@@ -572,6 +580,7 @@ impl DbService for SqliteDbService {
 
   async fn list_api_tokens(
     &self,
+    user_id: &str,
     page: u32,
     per_page: u32,
   ) -> Result<(Vec<ApiToken>, u32), DbError> {
@@ -600,10 +609,12 @@ impl DbService for SqliteDbService {
         created_at,
         updated_at
       FROM api_tokens
+      WHERE user_id = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
       "#,
     )
+    .bind(user_id)
     .bind(per_page as i64)
     .bind(offset as i64)
     .fetch_all(&self.pool)
@@ -632,13 +643,18 @@ impl DbService for SqliteDbService {
       )
       .collect();
 
-    let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM api_tokens")
+    let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM api_tokens WHERE user_id = ?")
+      .bind(user_id)
       .fetch_one(&self.pool)
       .await?;
     Ok((tokens, total as u32))
   }
 
-  async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError> {
+  async fn get_api_token_by_id(
+    &self,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ApiToken>, DbError> {
     let query = r#"
       SELECT
         id,
@@ -650,12 +666,12 @@ impl DbService for SqliteDbService {
         created_at,
         updated_at
       FROM api_tokens
-      WHERE id = ?
+      WHERE user_id = ? AND id = ?
       "#;
-    self.get_by_col(query, id).await
+    self.get_by_col(query, user_id, id).await
   }
 
-  async fn get_valid_api_token(&self, token: &str) -> Result<Option<ApiToken>, DbError> {
+  async fn get_api_token_by_token_id(&self, token: &str) -> Result<Option<ApiToken>, DbError> {
     use crate::IdClaims;
     use sha2::{Digest, Sha256};
     let claims =
@@ -671,9 +687,9 @@ impl DbService for SqliteDbService {
         created_at,
         updated_at
       FROM api_tokens
-      WHERE token_id = ?
+      WHERE user_id = ? AND token_id = ?
       "#;
-    let api_token = self.get_by_col(query, &claims.jti).await?;
+    let api_token = self.get_by_col(query, &claims.sub, &claims.jti).await?;
     match api_token {
       None => Ok(None),
       Some(api_token) => {
@@ -688,22 +704,29 @@ impl DbService for SqliteDbService {
     }
   }
 
-  async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
+  async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError> {
     token.updated_at = self.time_service.utc_now();
-    sqlx::query(
+    let result = sqlx::query(
       r#"
       UPDATE api_tokens
       SET name = ?,
           status = ?,
           updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = ? AND user_id = ?
       "#,
     )
     .bind(&token.name)
     .bind(token.status.to_string())
     .bind(&token.id)
+    .bind(user_id)
     .execute(&self.pool)
     .await?;
+
+    if result.rows_affected() == 0 {
+      return Err(DbError::SqlxError(SqlxError::from(
+        sqlx::Error::RowNotFound,
+      )));
+    }
 
     Ok(())
   }
@@ -1048,9 +1071,10 @@ mod test {
     let now = service.now();
 
     // Create token
+    let user_id = Uuid::new_v4().to_string();
     let mut token = ApiToken {
       id: Uuid::new_v4().to_string(),
-      user_id: Uuid::new_v4().to_string(),
+      user_id: user_id.clone(),
       name: "".to_string(),
       token_id: Uuid::new_v4().to_string(),
       token_hash: "token_hash".to_string(),
@@ -1062,7 +1086,7 @@ mod test {
     service.create_api_token(&mut token).await?;
 
     // List tokens
-    let (tokens, _) = service.list_api_tokens(1, 10).await?;
+    let (tokens, _) = service.list_api_tokens(&user_id, 1, 10).await?;
     assert_eq!(1, tokens.len());
 
     assert_eq!(token, tokens[0]);
@@ -1095,9 +1119,12 @@ mod test {
     token.name = "Updated Name".to_string();
     token.status = TokenStatus::Inactive;
     token.updated_at = Utc::now();
-    service.update_api_token(&mut token).await?;
+    service.update_api_token("test_user", &mut token).await?;
     // Verify update
-    let updated = service.get_api_token(&token.id).await?.unwrap();
+    let updated = service
+      .get_api_token_by_id("test_user", &token.id)
+      .await?
+      .unwrap();
     assert_eq!(updated.name, "Updated Name");
     assert_eq!(updated.status, TokenStatus::Inactive);
     assert_eq!(updated.id, token.id);
@@ -1136,12 +1163,127 @@ mod test {
     assert_eq!(api_token.status, TokenStatus::Active);
 
     // Verify we can retrieve it
-    let retrieved = db_service.get_api_token(&api_token.id).await?;
+    let retrieved = db_service
+      .get_api_token_by_id(&test_sub, &api_token.id)
+      .await?;
     assert!(retrieved.is_some());
     let retrieved = retrieved.unwrap();
     assert_eq!(retrieved.token_id, test_jti);
     assert_eq!(retrieved.user_id, test_sub);
     assert_eq!(retrieved.token_hash, api_token.token_hash);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_api_tokens_user_scoped(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Create tokens for two different users
+    let user1_id = "user1";
+    let user2_id = "user2";
+
+    // Create token for user1
+    let mut token1 = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: user1_id.to_string(),
+      name: "User1 Token".to_string(),
+      token_id: Uuid::new_v4().to_string(),
+      token_hash: "hash1".to_string(),
+      status: TokenStatus::Active,
+      created_at: now,
+      updated_at: now,
+    };
+    service.create_api_token(&mut token1).await?;
+
+    // Create token for user2
+    let mut token2 = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: user2_id.to_string(),
+      name: "User2 Token".to_string(),
+      token_id: Uuid::new_v4().to_string(),
+      token_hash: "hash2".to_string(),
+      status: TokenStatus::Active,
+      created_at: now,
+      updated_at: now,
+    };
+    service.create_api_token(&mut token2).await?;
+
+    // List tokens for user1
+    let (tokens, total) = service.list_api_tokens(user1_id, 1, 10).await?;
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(total, 1);
+    assert_eq!(tokens[0].user_id, user1_id);
+    assert_eq!(tokens[0].name, "User1 Token");
+
+    // List tokens for user2
+    let (tokens, total) = service.list_api_tokens(user2_id, 1, 10).await?;
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(total, 1);
+    assert_eq!(tokens[0].user_id, user2_id);
+    assert_eq!(tokens[0].name, "User2 Token");
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_api_token_user_scoped(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Create a token for user1
+    let user1_id = "user1";
+    let mut token = ApiToken {
+      id: Uuid::new_v4().to_string(),
+      user_id: user1_id.to_string(),
+      name: "Initial Name".to_string(),
+      token_id: Uuid::new_v4().to_string(),
+      token_hash: "hash".to_string(),
+      status: TokenStatus::Active,
+      created_at: now,
+      updated_at: now,
+    };
+    service.create_api_token(&mut token).await?;
+
+    // Try to update token as user2 (should fail)
+    let user2_id = "user2";
+    token.name = "Updated Name".to_string();
+    let result = service.update_api_token(user2_id, &mut token).await;
+    assert!(matches!(
+      result,
+      Err(DbError::SqlxError(SqlxError { source })) if source.to_string() == sqlx::Error::RowNotFound.to_string()
+    ));
+
+    // Verify token was not updated
+    let unchanged = service
+      .get_api_token_by_id(user1_id, &token.id)
+      .await?
+      .unwrap();
+    assert_eq!(unchanged.name, "Initial Name");
+    assert_eq!(unchanged.user_id, user1_id);
+
+    // Update token as user1 (should succeed)
+    let result = service.update_api_token(user1_id, &mut token).await;
+    assert!(result.is_ok());
+
+    // Verify the update succeeded
+    let updated = service
+      .get_api_token_by_id(user1_id, &token.id)
+      .await?
+      .unwrap();
+    assert_eq!(updated.name, "Updated Name");
+    assert_eq!(updated.user_id, user1_id);
 
     Ok(())
   }

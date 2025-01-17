@@ -53,16 +53,19 @@ impl DefaultTokenService {
     }
 
     // Check token is found and active
-    let api_token =
-      if let Ok(Some(api_token)) = self.db_service.get_valid_api_token(offline_token).await {
-        if api_token.status == TokenStatus::Inactive {
-          return Err(AuthError::TokenInactive);
-        } else {
-          api_token
-        }
+    let api_token = if let Ok(Some(api_token)) = self
+      .db_service
+      .get_api_token_by_token_id(offline_token)
+      .await
+    {
+      if api_token.status == TokenStatus::Inactive {
+        return Err(AuthError::TokenInactive);
       } else {
-        return Err(AuthError::TokenNotFound);
-      };
+        api_token
+      }
+    } else {
+      return Err(AuthError::TokenNotFound);
+    };
 
     // Check if token is in cache and not expired
     if let Some(access_token) = self
