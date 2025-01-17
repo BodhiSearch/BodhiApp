@@ -1,11 +1,11 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { PullForm } from '@/components/PullForm';
+import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useQuery';
+import { createWrapper } from '@/tests/wrapper';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { vi, describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
-import { PullForm } from './PullForm';
-import { createWrapper } from '@/tests/wrapper';
-import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useQuery';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({

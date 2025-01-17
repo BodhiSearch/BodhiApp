@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/hooks/use-navigation';
 import { NavigationItem } from '@/types/navigation';
+import { LoginMenu } from '@/components/LoginMenu';
 
 export function AppNavigation() {
   const isMobile = useIsMobile();
@@ -116,6 +117,8 @@ export function AppNavigation() {
               </React.Fragment>
             ))}
           </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <LoginMenu />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

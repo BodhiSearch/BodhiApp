@@ -1,7 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react';
-import { NewChatButton } from './NewChatButton';
-import { vi } from 'vitest';
+import { NewChatButton } from '@/components/chat/NewChatButton';
 import { SidebarProvider } from '@/components/ui/sidebar';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 
 // Mock hooks
 const mockCreateNewChat = vi.fn();

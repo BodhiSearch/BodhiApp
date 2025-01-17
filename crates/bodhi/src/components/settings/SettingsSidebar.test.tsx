@@ -1,10 +1,10 @@
+import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
+import { ENDPOINT_MODELS } from '@/hooks/useQuery';
+import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { SettingsSidebar } from './SettingsSidebar';
-import { createWrapper } from '@/tests/wrapper';
-import { ENDPOINT_MODELS } from '@/hooks/useQuery';
 
 // Mock the child components
 vi.mock('@/components/settings/AliasSelector', () => ({

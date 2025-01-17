@@ -1,5 +1,6 @@
 'use client';
 
+import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -8,13 +9,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import Link from 'next/link';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import AppInitializer from '@/components/AppInitializer';
-import { useUser } from '@/hooks/useQuery';
+import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
 import { PATH_UI_HOME } from '@/lib/utils';
-import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
-import { useAppInfo } from '@/hooks/useQuery';
+import Link from 'next/link';
 
 export function LoginContent() {
   const { data: userInfo, isLoading: userLoading } = useUser();
@@ -22,50 +20,59 @@ export function LoginContent() {
   const { logout, isLoading: isLoggingOut } = useLogoutHandler();
 
   if (userLoading || appLoading) {
-    return <div className="text-center">Loading...</div>;
+    return (
+      <div className="w-full max-w-md mx-auto mt-8 h-fit text-center">
+        <div className="text-center">Loading...</div>
+      </div>
+    );
   }
 
   const isNonAuthz = appInfo && !appInfo.authz;
-  const loginTitle = userInfo?.logged_in ? 'Welcome' : 'Login';
-  const loginMessage = userInfo?.logged_in ? (
-    `You are logged in as ${userInfo?.email}`
-  ) : isNonAuthz ? (
-    <>
-      This app is setup in non-authenticated mode.
-      <br />
-      User login is not available.
-    </>
-  ) : (
-    'You need to login to use the Bodhi App'
-  );
 
   return (
     <div className="w-full max-w-md mx-auto mt-8 h-fit text-center">
-      <Card>
-        <CardHeader className="text-center">
-          <CardTitle>{loginTitle}</CardTitle>
-          <CardDescription>{loginMessage}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {userInfo?.logged_in ? (
-            <>
-              <Link href={PATH_UI_HOME} passHref>
-                <Button className="w-full mb-2" variant="secondary">
-                  Go to Home
-                </Button>
-              </Link>
-              <Button
-                className="w-full"
-                onClick={() => logout()}
-                disabled={isLoggingOut}
-              >
-                {isLoggingOut ? 'Logging out...' : 'Log Out'}
+      {userInfo?.logged_in ? (
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>Welcome</CardTitle>
+            <CardDescription>
+              You are logged in as {userInfo.email}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Link href={PATH_UI_HOME} passHref>
+              <Button className="w-full mb-2" variant="secondary">
+                Go to Home
               </Button>
-            </>
-          ) : (
+            </Link>
+            <Button
+              className="w-full"
+              onClick={() => logout()}
+              disabled={isLoggingOut}
+            >
+              {isLoggingOut ? 'Logging out...' : 'Log Out'}
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="text-center">
+            <CardTitle>Login</CardTitle>
+            {!isNonAuthz && (
+              <CardDescription>Login to use the Bodhi App</CardDescription>
+            )}
+          </CardHeader>
+          <CardContent>
             <div
               className={`${isNonAuthz ? 'opacity-50 pointer-events-none' : ''}`}
             >
+              {isNonAuthz && (
+                <div className="mb-4 text-sm text-muted-foreground">
+                  This app is setup in non-authenticated mode.
+                  <br />
+                  User login is not available.
+                </div>
+              )}
               <Link href={ENDPOINT_APP_LOGIN} passHref>
                 <Button
                   className="w-full"
@@ -76,9 +83,9 @@ export function LoginContent() {
                 </Button>
               </Link>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

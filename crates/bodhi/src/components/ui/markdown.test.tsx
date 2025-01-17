@@ -1,13 +1,13 @@
 'use client'
 
+import { MemoizedReactMarkdown } from '@/components/ui/markdown'
 import { render } from '@testing-library/react'
-import { describe, expect, it, beforeEach } from 'vitest'
-import { MemoizedReactMarkdown } from './markdown'
 import fs from 'fs'
+import { parse as parseHTML } from 'node-html-parser'
 import path from 'path'
 import prettier from 'prettier'
 import remarkGfm from 'remark-gfm'
-import { parse as parseHTML } from 'node-html-parser'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 const TEST_FILES_DIR = path.join(__dirname, '__tests__')
 

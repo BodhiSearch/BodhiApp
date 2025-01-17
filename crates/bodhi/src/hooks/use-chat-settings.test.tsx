@@ -1,5 +1,5 @@
-import { renderHook, act } from '@testing-library/react';
-import { useChatSettings, ChatSettingsProvider } from './use-chat-settings';
+import { ChatSettingsProvider, useChatSettings } from '@/hooks/use-chat-settings';
+import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('useChatSettings', () => {

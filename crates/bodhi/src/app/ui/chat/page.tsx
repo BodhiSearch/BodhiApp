@@ -45,7 +45,7 @@ function ChatWithSettings() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initializeCurrentChatId]);
 
   return (
     <>

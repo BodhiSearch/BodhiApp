@@ -1,4 +1,4 @@
-import { useQuery, useMutationQuery } from './useQuery';
+import { useMutationQuery, useQuery } from '@/hooks/useQuery';
 import { useQueryClient } from 'react-query';
 
 export const API_TOKENS_ENDPOINT = '/api/ui/tokens';

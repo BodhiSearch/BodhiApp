@@ -54,7 +54,7 @@ export function TokenPageContent() {
     page,
     pageSize,
     {
-      enabled: !appLoading && appInfo?.authz === true
+      enabled: !appLoading && appInfo?.authz === true,
     }
   );
 
@@ -121,8 +121,8 @@ export function TokenPageContent() {
               API Tokens Not Available
             </CardTitle>
             <CardDescription>
-              API tokens are not available when authentication is disabled. 
-              You can make API calls without tokens in this mode.
+              API tokens are not available when authentication is disabled. You
+              can make API calls without tokens in this mode.
             </CardDescription>
           </CardHeader>
         </Card>
