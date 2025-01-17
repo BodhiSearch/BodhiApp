@@ -1,7 +1,7 @@
 use crate::AuthError;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
-use objs::{Role, TokenScope};
+use objs::{AppRegInfoMissingError, Role, TokenScope};
 use services::{
   db::{DbService, TokenStatus},
   extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
@@ -93,7 +93,7 @@ impl DefaultTokenService {
     let app_reg_info: AppRegInfo = self
       .secret_service
       .app_reg_info()?
-      .ok_or(AuthError::AppRegInfoMissing)?;
+      .ok_or(AppRegInfoMissingError)?;
 
     // Validate token signature and claims
     let claims = self.validate_offline_token_signature(offline_token, &app_reg_info)?;
@@ -207,7 +207,7 @@ impl DefaultTokenService {
       let client_id = self
         .secret_service
         .app_reg_info()?
-        .ok_or(AuthError::AppRegInfoMissing)?
+        .ok_or(AppRegInfoMissingError)?
         .client_id;
       let roles = claims
         .resource_access
@@ -225,7 +225,7 @@ impl DefaultTokenService {
     let app_reg_info: AppRegInfo = self
       .secret_service
       .app_reg_info()?
-      .ok_or(AuthError::AppRegInfoMissing)?;
+      .ok_or(AppRegInfoMissingError)?;
 
     let (new_access_token, new_refresh_token) = self
       .auth_service
@@ -245,7 +245,7 @@ impl DefaultTokenService {
     let client_id = self
       .secret_service
       .app_reg_info()?
-      .ok_or(AuthError::AppRegInfoMissing)?
+      .ok_or(AppRegInfoMissingError)?
       .client_id;
     let resource_claims = claims
       .resource_access

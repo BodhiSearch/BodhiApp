@@ -4,8 +4,6 @@ use strum::IntoEnumIterator;
 
 use crate::{AppError, ErrorType};
 
-const RESOURCE_PREFIX: &str = "resource_";
-
 #[derive(
   Debug,
   Clone,
@@ -14,17 +12,25 @@ const RESOURCE_PREFIX: &str = "resource_";
   Eq,
   PartialOrd,
   Ord,
-  Serialize,
-  Deserialize,
   strum::Display,
   strum::EnumIter,
+  Serialize,
+  Deserialize,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum Role {
+  #[serde(rename = "resource_user")]
+  #[strum(serialize = "resource_user")]
   User,
+  #[serde(rename = "resource_power_user")]
+  #[strum(serialize = "resource_power_user")]
   PowerUser,
+  #[serde(rename = "resource_manager")]
+  #[strum(serialize = "resource_manager")]
   Manager,
+  #[serde(rename = "resource_admin")]
+  #[strum(serialize = "resource_admin")]
   Admin,
 }
 
@@ -47,7 +53,7 @@ impl Role {
 
   /// Get the resource role name for this role
   pub fn resource_role(&self) -> String {
-    format!("{}{}", RESOURCE_PREFIX, self)
+    self.to_string()
   }
 
   /// Get all roles that this role has access to (including itself)
@@ -105,7 +111,8 @@ impl Role {
       }
     }
 
-    highest_role.ok_or_else(|| RoleError::InvalidRoleName("no valid resource roles found".to_string()))
+    highest_role
+      .ok_or_else(|| RoleError::InvalidRoleName("no valid resource roles found".to_string()))
   }
 }
 
@@ -115,10 +122,10 @@ impl FromStr for Role {
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     // Match base role names first
     match s {
-      "user" => Ok(Role::User),
-      "power_user" => Ok(Role::PowerUser),
-      "manager" => Ok(Role::Manager),
-      "admin" => Ok(Role::Admin),
+      "resource_user" => Ok(Role::User),
+      "resource_power_user" => Ok(Role::PowerUser),
+      "resource_manager" => Ok(Role::Manager),
+      "resource_admin" => Ok(Role::Admin),
       _ => Err(RoleError::InvalidRoleName(s.to_string())),
     }
   }
@@ -164,28 +171,20 @@ mod tests {
   }
 
   #[rstest]
-  #[case(Role::User, "user", "resource_user")]
-  #[case(
-    Role::PowerUser,
-    "power_user",
-        "resource_power_user"
-  )]
-  #[case(Role::Manager, "manager", "resource_manager")]
-  #[case(Role::Admin, "admin", "resource_admin")]
-  fn test_role_string_formats(
-    #[case] role: Role,
-    #[case] display: &str,
-    #[case] resource_role: &str,
-  ) {
+  #[case(Role::User, "resource_user")]
+  #[case(Role::PowerUser, "resource_power_user")]
+  #[case(Role::Manager, "resource_manager")]
+  #[case(Role::Admin, "resource_admin")]
+  fn test_role_string_formats(#[case] role: Role, #[case] as_str: &str) {
     // Test Display format
-    assert_eq!(role.to_string(), display);
+    assert_eq!(role.to_string(), as_str);
 
     // Test resource role format
-    assert_eq!(role.resource_role(), resource_role);
+    assert_eq!(role.resource_role(), as_str);
 
     // Test serialization
     let serialized = serde_json::to_string(&role).unwrap();
-    assert_eq!(serialized, format!("\"{}\"", display));
+    assert_eq!(serialized, format!("\"{}\"", as_str));
 
     // Test deserialization
     let deserialized: Role = serde_json::from_str(&serialized).unwrap();
@@ -251,10 +250,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case(Role::User, "\"user\"")]
-  #[case(Role::PowerUser, "\"power_user\"")]
-  #[case(Role::Manager, "\"manager\"")]
-  #[case(Role::Admin, "\"admin\"")]
+  #[case(Role::User, "\"resource_user\"")]
+  #[case(Role::PowerUser, "\"resource_power_user\"")]
+  #[case(Role::Manager, "\"resource_manager\"")]
+  #[case(Role::Admin, "\"resource_admin\"")]
   fn test_role_serde_format(#[case] role: Role, #[case] expected_json: &str) {
     // Test serialization
     let serialized = serde_json::to_string(&role).unwrap();
@@ -302,10 +301,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case("user", Ok(Role::User))]
-  #[case("power_user", Ok(Role::PowerUser))]
-  #[case("manager", Ok(Role::Manager))]
-  #[case("admin", Ok(Role::Admin))]
+  #[case("resource_user", Ok(Role::User))]
+  #[case("resource_power_user", Ok(Role::PowerUser))]
+  #[case("resource_manager", Ok(Role::Manager))]
+  #[case("resource_admin", Ok(Role::Admin))]
   fn test_role_parse_valid(#[case] input: &str, #[case] expected: Result<Role, RoleError>) {
     assert_eq!(input.parse::<Role>(), expected);
   }
@@ -316,10 +315,10 @@ mod tests {
   #[case("scope_token_power_user")]
   #[case("scope_token_manager")]
   #[case("scope_token_admin")]
-  #[case("resource_user")]
-  #[case("resource_power_user")]
-  #[case("resource_manager")]
-  #[case("resource_admin")]
+  #[case("user")]
+  #[case("power_user")]
+  #[case("manager")]
+  #[case("admin")]
   #[case("invalid")]
   #[case("USER")]
   #[case("ADMIN")]
@@ -338,5 +337,45 @@ mod tests {
     assert!(result.is_err());
     assert!(matches!(result, Err(RoleError::InvalidRoleName(_))));
     assert_eq!(result.unwrap_err().to_string(), "invalid_role_name");
+  }
+
+  #[test]
+  fn test_role_serialization() {
+    assert_eq!(
+      serde_json::to_string(&Role::User).unwrap(),
+      "\"resource_user\""
+    );
+    assert_eq!(
+      serde_json::to_string(&Role::PowerUser).unwrap(),
+      "\"resource_power_user\""
+    );
+    assert_eq!(
+      serde_json::to_string(&Role::Manager).unwrap(),
+      "\"resource_manager\""
+    );
+    assert_eq!(
+      serde_json::to_string(&Role::Admin).unwrap(),
+      "\"resource_admin\""
+    );
+  }
+
+  #[test]
+  fn test_role_deserialization() {
+    assert_eq!(
+      serde_json::from_str::<Role>("\"resource_user\"").unwrap(),
+      Role::User
+    );
+    assert_eq!(
+      serde_json::from_str::<Role>("\"resource_power_user\"").unwrap(),
+      Role::PowerUser
+    );
+    assert_eq!(
+      serde_json::from_str::<Role>("\"resource_manager\"").unwrap(),
+      Role::Manager
+    );
+    assert_eq!(
+      serde_json::from_str::<Role>("\"resource_admin\"").unwrap(),
+      Role::Admin
+    );
   }
 }

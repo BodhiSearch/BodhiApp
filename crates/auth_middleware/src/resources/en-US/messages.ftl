@@ -1,5 +1,4 @@
 auth_error-invalid_access = access denied
-auth_error-app_reg_info_missing = app registration info is missing, not found in secure storage
 auth_error-refresh_token_not_found = refresh token not found in session, logout and login again to continue
 auth_error-tower_sessions = session is not available, please try again later, error: {$error}
 auth_error-token_validation = token validation failed, error: {$var_0}
@@ -10,6 +9,8 @@ auth_error-invalid_token = invalid token, error: {$var_0}
 auth_error-signature_mismatch = signature mismatch, error: {$var_0}
 auth_error-missing_roles = no valid roles found for current user
 api_auth_error-forbidden = insufficient privileges to access this resource
-api_auth_error-missing_role = role information not found
-api_auth_error-invalid_role = invalid role format: {$var_0}
+api_auth_error-missing_auth = missing authentication header
 api_auth_error-malformed_role = error parsing role: {$var_0}
+api_auth_error-malformed_scope = error parsing scope: {$var_0}
+api_auth_error-invalid_role = invalid role format: {$var_0}
+api_auth_error-invalid_scope = invalid scope format: {$var_0}
