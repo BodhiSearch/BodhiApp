@@ -4,6 +4,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsSidebar } from './SettingsSidebar';
 import { createWrapper } from '@/tests/wrapper';
+import { ENDPOINT_MODELS } from '@/hooks/useQuery';
 
 // Mock the child components
 vi.mock('@/components/settings/AliasSelector', () => ({
@@ -99,7 +100,7 @@ const mockModels = [
 ];
 
 const server = setupServer(
-  rest.get('*/api/ui/models', (req, res, ctx) => {
+  rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
     return res(
       ctx.json({
         data: mockModels,
@@ -177,7 +178,7 @@ describe('SettingsSidebar', () => {
 
   it('handles API error gracefully', async () => {
     server.use(
-      rest.get('*/api/ui/models', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
         return res(
           ctx.status(500),
           ctx.json({
@@ -201,7 +202,7 @@ describe('SettingsSidebar', () => {
 
   it('handles empty models response', async () => {
     server.use(
-      rest.get('*/api/ui/models', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
         return res(
           ctx.json({
             data: [],

@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node';
 import { vi, describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { PullForm } from './PullForm';
 import { createWrapper } from '@/tests/wrapper';
+import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useQuery';
 
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
@@ -23,10 +24,10 @@ const mockModelsResponse = {
 };
 
 const server = setupServer(
-  rest.get('*/api/ui/modelfiles', (_, res, ctx) => {
+  rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
     return res(ctx.json(mockModelsResponse));
   }),
-  rest.post('*/modelfiles/pull', (_, res, ctx) => {
+  rest.post(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
     return res(
       ctx.status(201),
       ctx.json({
@@ -91,7 +92,7 @@ describe('PullForm', () => {
 
   it('handles API error and shows error message', async () => {
     server.use(
-      rest.post('*/modelfiles/pull', (_, res, ctx) => {
+      rest.post(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(
           ctx.status(400),
           ctx.json({
@@ -140,7 +141,7 @@ describe('PullForm', () => {
 
     // Submit with errors to show error state
     server.use(
-      rest.post('*/modelfiles/pull', (_, res, ctx) => {
+      rest.post(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(
           ctx.status(400),
           ctx.json({

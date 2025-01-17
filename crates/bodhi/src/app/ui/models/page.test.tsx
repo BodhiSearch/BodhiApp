@@ -1,18 +1,19 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import ModelsPage from '@/app/ui/models/page';
+import { ENDPOINT_APP_INFO, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { createWrapper } from '@/tests/wrapper';
+import { act, render, screen } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import {
   afterAll,
   afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
   vi,
-  beforeEach,
 } from 'vitest';
-import ModelsPage from '@/app/ui/models/page';
-import { createWrapper } from '@/tests/wrapper';
 
 vi.mock('@/components/DataTable', () => ({
   DataTable: ({ data, renderRow }: any) => (
@@ -64,13 +65,13 @@ beforeEach(() => {
 describe('ModelsPage', () => {
   beforeEach(() => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
       }),
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       }),
-      rest.get('*/api/ui/models', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
         return res(ctx.json(mockModelsResponse));
       })
     );
@@ -90,7 +91,7 @@ describe('ModelsPage', () => {
 
   it('handles API error', async () => {
     server.use(
-      rest.get('*/api/ui/models', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
         return res(
           ctx.status(500),
           ctx.json({ message: 'Internal Server Error' })
@@ -110,12 +111,12 @@ describe('ModelsPage', () => {
 describe('ModelsPage access control', () => {
   it('should redirect to /ui/setup if status is setup', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
       })
     );
     server.use(
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       })
     );
@@ -128,10 +129,10 @@ describe('ModelsPage access control', () => {
 
   it('should redirect to /ui/login if user is not logged in', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready', authz: true }));
       }),
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: false }));
       })
     );

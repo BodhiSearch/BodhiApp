@@ -15,6 +15,7 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import UiPage from '@/app/ui/page';
 import { createWrapper } from '@/tests/wrapper';
+import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -28,7 +29,7 @@ vi.mock('next/navigation', () => ({
 
 // Setup MSW server
 const server = setupServer(
-  rest.get('*/app/info', (req, res, ctx) => {
+  rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
     return res(ctx.json({ status: 'setup' }));
   })
 );
@@ -46,7 +47,7 @@ describe('UiPage', () => {
 
   it('redirects to /ui/setup when status is setup', async () => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
       })
     );
@@ -60,7 +61,7 @@ describe('UiPage', () => {
 
   it('redirects to /ui/home when status is ready', async () => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
       })
     );
@@ -74,7 +75,7 @@ describe('UiPage', () => {
 
   it('redirects to /ui/setup/resource-admin when status is resource-admin', async () => {
     server.use(
-      rest.get('*/app/info', (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
       })
     );

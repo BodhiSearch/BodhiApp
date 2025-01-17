@@ -14,3 +14,5 @@ macro_rules! wait_for_event {
     }
   }};
 }
+
+pub const TEST_ENDPOINT_APP_INFO: &str = "/test/app/info";

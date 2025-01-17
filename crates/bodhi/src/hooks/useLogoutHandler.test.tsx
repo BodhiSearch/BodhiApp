@@ -1,4 +1,6 @@
 import { Button } from '@/components/ui/button';
+import { useLogoutHandler } from '@/hooks/useLogoutHandler';
+import { ENDPOINT_LOGOUT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -14,7 +16,6 @@ import {
   it,
   vi,
 } from 'vitest';
-import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 
 // Mock useToast hook
 const toastMock = vi.fn();
@@ -58,7 +59,7 @@ describe('useLogoutHandler', () => {
 
   it('renders logout button and handles successful logout', async () => {
     server.use(
-      rest.post('*/api/ui/logout', (_, res, ctx) => {
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
         return res(
           ctx.delay(100),
           ctx.status(200),
@@ -92,7 +93,7 @@ describe('useLogoutHandler', () => {
 
   it('handles logout API error and shows toast message', async () => {
     server.use(
-      rest.post('*/api/ui/logout', (req, res, ctx) => {
+      rest.post(`*${ENDPOINT_LOGOUT}`, (req, res, ctx) => {
         return res(
           ctx.status(500),
           ctx.json({ message: 'Internal Server Error' })

@@ -159,7 +159,7 @@ describe('TokenPageContent', () => {
 
   it('shows non-authenticated setup message in card layout', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready', authz: false }));
       })
     );

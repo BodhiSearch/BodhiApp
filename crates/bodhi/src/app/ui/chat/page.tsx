@@ -25,17 +25,27 @@ function ChatWithSettings() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
     const initialize = async () => {
-      await initializeCurrentChatId();
-      setIsLoading(false);
+      try {
+        await initializeCurrentChatId();
+        if (mounted) {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Failed to initialize chat:', error);
+        if (mounted) {
+          setIsLoading(false);
+        }
+      }
     };
 
     initialize();
-  }, [initializeCurrentChatId]);
 
-  if (isLoading) {
-    return null;
-  }
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <>

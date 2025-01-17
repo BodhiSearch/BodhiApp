@@ -107,7 +107,9 @@ pub async fn setup_handler(
 
 #[cfg(test)]
 mod tests {
-  use crate::{app_info_handler, setup_handler, AppInfo, SetupRequest};
+  use crate::{
+    app_info_handler, setup_handler, test_utils::TEST_ENDPOINT_APP_INFO, AppInfo, SetupRequest,
+  };
   use axum::{
     body::Body,
     http::{Request, StatusCode},
@@ -165,10 +167,10 @@ mod tests {
       Arc::new(app_service),
     ));
     let router = Router::new()
-      .route("/app/info", get(app_info_handler))
+      .route(TEST_ENDPOINT_APP_INFO, get(app_info_handler))
       .with_state(state);
     let resp = router
-      .oneshot(Request::get("/app/info").body(Body::empty())?)
+      .oneshot(Request::get(TEST_ENDPOINT_APP_INFO).body(Body::empty())?)
       .await?;
     assert_eq!(StatusCode::OK, resp.status());
     let value = resp.json::<AppInfo>().await?;

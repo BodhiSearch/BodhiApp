@@ -1,10 +1,11 @@
-import { renderHook, act } from '@testing-library/react';
+import { useChat } from '@/hooks/use-chat';
+import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
+import { createWrapper } from '@/tests/wrapper';
+import { Chat, Message } from '@/types/chat';
+import { act, renderHook } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { useChat } from '@/hooks/use-chat';
-import { beforeAll, afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Chat, Message } from '@/types/chat';
-import { createWrapper } from '@/tests/wrapper';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Setup MSW server
 const server = setupServer();
@@ -87,7 +88,7 @@ describe('useChat', () => {
       ];
 
       server.use(
-        rest.post('*/v1/chat/completions', (req, res, ctx) => {
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
           return res(
             ctx.status(200),
             ctx.set('Content-Type', 'text/event-stream'),
@@ -140,7 +141,7 @@ describe('useChat', () => {
       chatDB.setCurrentChat(initialChat);
 
       server.use(
-        rest.post('*/v1/chat/completions', (req, res, ctx) => {
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
           return res(
             ctx.status(200),
             ctx.set('Content-Type', 'text/event-stream'),
@@ -187,7 +188,7 @@ describe('useChat', () => {
 
       let capturedRequest: any;
       server.use(
-        rest.post('*/v1/chat/completions', async (req, res, ctx) => {
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, async (req, res, ctx) => {
           capturedRequest = await req.json();
           return res(
             ctx.status(200),

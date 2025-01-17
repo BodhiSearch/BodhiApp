@@ -1,5 +1,7 @@
+import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import {
@@ -12,7 +14,6 @@ import {
   it,
   vi,
 } from 'vitest';
-import userEvent from '@testing-library/user-event';
 import PullPage from './page';
 
 vi.mock('@/components/PullForm', () => ({
@@ -71,13 +72,13 @@ beforeEach(() => {
 describe('PullPage', () => {
   beforeEach(() => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
       }),
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       }),
-      rest.get('*/modelfiles/pull/downloads', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(ctx.json(mockDownloadsResponse));
       })
     );
@@ -126,7 +127,7 @@ describe('PullPage', () => {
 
   it('handles API error', async () => {
     server.use(
-      rest.get('*/modelfiles/pull/downloads', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(
           ctx.status(500),
           ctx.json({ message: 'Internal Server Error' })
@@ -145,12 +146,12 @@ describe('PullPage', () => {
 describe('PullPage access control', () => {
   it('should redirect to /ui/setup if status is setup', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
       })
     );
     server.use(
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
       })
     );
@@ -162,10 +163,10 @@ describe('PullPage access control', () => {
 
   it('should redirect to /ui/login if user is not logged in', async () => {
     server.use(
-      rest.get('*/app/info', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'ready', authz: true }));
       }),
-      rest.get('*/api/ui/user', (_, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: false }));
       })
     );

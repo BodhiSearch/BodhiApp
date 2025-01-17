@@ -3,7 +3,9 @@
 import { TokenDialog } from '@/app/ui/tokens/TokenDialog';
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
 import AppInitializer from '@/components/AppInitializer';
+import { DataTable, Pagination, SortState } from '@/components/DataTable';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import {
   Card,
   CardContent,
@@ -12,16 +14,18 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
+import { TableCell } from '@/components/ui/table';
+import { useToast } from '@/hooks/use-toast';
+import {
+  ApiToken,
+  TokenResponse,
+  useListTokens,
+  useUpdateToken,
+} from '@/hooks/useApiTokens';
 import { useAppInfo } from '@/hooks/useQuery';
-import { ApiToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
-import { DataTable, Pagination, SortState } from '@/components/DataTable';
-import { TableCell } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { TokenResponse } from '@/hooks/useApiTokens';
-import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
 
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
@@ -48,7 +52,10 @@ export function TokenPageContent() {
   const updateToken = useUpdateToken();
   const { data: tokensData, isLoading: tokensLoading } = useListTokens(
     page,
-    pageSize
+    pageSize,
+    {
+      enabled: !appLoading && appInfo?.authz === true
+    }
   );
 
   const handleStatusChange = async (token: ApiToken, checked: boolean) => {
@@ -111,12 +118,11 @@ export function TokenPageContent() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              API Tokens Not Supported
+              API Tokens Not Available
             </CardTitle>
             <CardDescription>
-              Non-authenticated setup doesn&apos;t need API Tokens. Either
-              ignore the Auth header or pass an empty/random Bearer token. They
-              are not validated.
+              API tokens are not available when authentication is disabled. 
+              You can make API calls without tokens in this mode.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -173,7 +179,7 @@ export function TokenPageContent() {
               renderRow={renderRow}
               getItemId={(item) => item.id}
               sort={sort}
-              onSortChange={() => { }}
+              onSortChange={() => {}}
             />
             {tokensData && (
               <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
