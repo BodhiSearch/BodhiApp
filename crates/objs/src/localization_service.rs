@@ -82,21 +82,19 @@ impl std::fmt::Debug for FluentLocalizationService {
 #[cfg(all(not(test), not(feature = "test-utils")))]
 mod impl_localization_service {
   use super::*;
-  use std::sync::{Arc, Once};
+  use once_cell::sync::Lazy;
+  use std::sync::{Arc, Mutex};
+
+  static INSTANCE: Lazy<Mutex<Option<Arc<FluentLocalizationService>>>> =
+    Lazy::new(|| Mutex::new(None));
 
   impl FluentLocalizationService {
     pub fn get_instance() -> Arc<FluentLocalizationService> {
-      static INSTANCE: Once = Once::new();
-      static mut SERVICE: Option<Arc<FluentLocalizationService>> = None;
-
-      INSTANCE.call_once(|| {
-        let service = Arc::new(FluentLocalizationService::new());
-        unsafe {
-          SERVICE = Some(Arc::clone(&service));
-        }
-      });
-
-      unsafe { Arc::clone(SERVICE.as_ref().unwrap()) }
+      let mut instance = INSTANCE.lock().expect("Failed to acquire lock");
+      if instance.is_none() {
+        *instance = Some(Arc::new(FluentLocalizationService::new()));
+      }
+      Arc::clone(instance.as_ref().unwrap())
     }
   }
 }

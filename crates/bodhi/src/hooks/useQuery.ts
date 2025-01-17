@@ -22,6 +22,9 @@ import {
   PullModelRequest,
 } from '@/types/api';
 
+// backend endpoints
+export const ENDPOINT_APP_LOGIN = '/app/login';
+
 export const ENDPOINT_APP_INFO = '/api/ui/info';
 export const ENDPOINT_APP_SETUP = '/api/ui/setup';
 export const ENDPOINT_USER_INFO = '/api/ui/user';

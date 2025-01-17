@@ -12,7 +12,8 @@ import Link from 'next/link';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 import AppInitializer from '@/components/AppInitializer';
 import { useUser } from '@/hooks/useQuery';
-import { path_app_login, path_home } from '@/lib/utils';
+import { PATH_UI_HOME } from '@/lib/utils';
+import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
 import { useAppInfo } from '@/hooks/useQuery';
 
 export function LoginContent() {
@@ -48,7 +49,7 @@ export function LoginContent() {
         <CardContent>
           {userInfo?.logged_in ? (
             <>
-              <Link href={path_home} passHref>
+              <Link href={PATH_UI_HOME} passHref>
                 <Button className="w-full mb-2" variant="secondary">
                   Go to Home
                 </Button>
@@ -65,7 +66,7 @@ export function LoginContent() {
             <div
               className={`${isNonAuthz ? 'opacity-50 pointer-events-none' : ''}`}
             >
-              <Link href={path_app_login} passHref>
+              <Link href={ENDPOINT_APP_LOGIN} passHref>
                 <Button
                   className="w-full"
                   variant="default"

@@ -169,13 +169,11 @@ describe('TokenPageContent', () => {
     });
 
     // Check for card title and icon
-    expect(screen.getByText(/API Tokens Not Supported/)).toBeInTheDocument();
+    expect(screen.getByText(/API Tokens Not Available/)).toBeInTheDocument();
 
     // Check for description message
     const description = screen.getByText((content) => {
-      return content.includes("Non-authenticated setup doesn't need API Tokens") &&
-        content.includes("Either ignore the Auth header or pass an empty/random Bearer token") &&
-        content.includes("They are not validated");
+      return content.includes("API tokens are not available when authentication is disabled.")
     });
     expect(description).toBeInTheDocument();
   });

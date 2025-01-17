@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { path_app_login } from '@/lib/utils';
+import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
 import Link from 'next/link';
 
 function ResourceAdminContent() {
@@ -22,7 +22,7 @@ function ResourceAdminContent() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Link href={path_app_login} passHref>
+        <Link href={ENDPOINT_APP_LOGIN} passHref>
           <Button className="w-full">Log In</Button>
         </Link>
       </CardContent>

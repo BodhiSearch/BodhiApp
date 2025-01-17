@@ -29,11 +29,15 @@ use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::{debug, info, Level};
 
 pub const ENDPOINT_PING: &str = "/ping";
+// sent by frontend to redirect to oauth server login
+pub const ENDPOINT_LOGIN: &str = "/app/login";
+// redirected by oauth server for auth code exchange
+pub const ENDPOINT_LOGIN_CALLBACK: &str = "/app/login/callback";
+
+pub const ENDPOINT_LOGOUT: &str = "/api/ui/logout";
 pub const ENDPOINT_APP_INFO: &str = "/api/ui/info";
 pub const ENDPOINT_APP_SETUP: &str = "/api/ui/setup";
-pub const ENDPOINT_LOGIN_CALLBACK: &str = "/app/login/callback";
-pub const ENDPOINT_LOGOUT: &str = "/api/ui/logout";
-pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
+pub const ENDPOINT_USER_INFO: &str = "/api/ui/user";
 pub const ENDPOINT_MODEL_FILES: &str = "/api/ui/modelfiles";
 pub const ENDPOINT_MODEL_PULL: &str = "/api/ui/modelfiles/pull";
 pub const ENDPOINT_MODELS: &str = "/api/ui/models";
@@ -45,6 +49,9 @@ pub const ENDPOINT_OAI_CHAT_COMPLETIONS: &str = "/v1/chat/completions";
 pub const ENDPOINT_OLLAMA_TAGS: &str = "/api/tags";
 pub const ENDPOINT_OLLAMA_SHOW: &str = "/api/show";
 pub const ENDPOINT_OLLAMA_CHAT: &str = "/api/chat";
+
+// dev-only debugging info endpoint
+pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
 
 pub fn build_routes(
   ctx: Arc<dyn SharedContext>,
@@ -81,9 +88,6 @@ pub fn build_routes(
     public_apis = public_apis.merge(dev_apis);
   }
 
-  // Optional auth APIs
-  const ENDPOINT_LOGIN: &str = "/app/login";
-  const ENDPOINT_USER_INFO: &str = "/api/ui/user";
   let optional_auth = Router::new()
     .route(ENDPOINT_LOGIN, get(login_handler))
     .route(&format!("{ENDPOINT_LOGIN}/"), get(login_handler))
