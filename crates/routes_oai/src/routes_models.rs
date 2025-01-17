@@ -1,7 +1,6 @@
 use axum::{
   extract::{Query, State},
-  routing::get,
-  Json, Router,
+  Json,
 };
 use objs::{Alias, ApiError, ChatTemplateId, ChatTemplateType, HubFile};
 use server_core::{
@@ -10,14 +9,6 @@ use server_core::{
 use services::AliasNotFoundError;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
-
-pub fn models_router() -> Router<Arc<dyn RouterState>> {
-  Router::new()
-    .route("/models", get(list_local_aliases_handler))
-    .route("/models/:id", get(get_alias_handler))
-    .route("/modelfiles", get(list_local_modelfiles_handler))
-    .route("/chat_templates", get(list_chat_templates_handler))
-}
 
 pub async fn list_local_aliases_handler(
   State(state): State<Arc<dyn RouterState>>,

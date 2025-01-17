@@ -1,5 +1,7 @@
 # API Authorization Feature
 
+Status: Complete
+
 ## Requirements
 
 ### User Story
@@ -117,12 +119,12 @@ So that users can only access resources appropriate for their role level
 - [x] Implement role and scope precedence logic
 
 #### Route Integration
-- [ ] Group routes by minimum role requirement
-- [ ] Add role-based middleware to protected routes
-- [ ] Update route registration to support role requirements
-- [ ] Add proper error responses for authorization failures
-- [ ] Document role requirements for each route group
-- [ ] Add TokenScope requirements to routes
+- [x] Group routes by minimum role requirement
+- [x] Add role-based middleware to protected routes
+- [x] Update route registration to support role requirements
+- [x] Add proper error responses for authorization failures
+- [x] Document role requirements for each route group
+- [x] Add TokenScope requirements to routes
 
 #### Error Handling
 - [x] Add authorization error types
@@ -173,14 +175,16 @@ So that users can only access resources appropriate for their role level
 - `crates/auth_middleware/src/token_service.rs` - Token validation and scope extraction
 - `crates/auth_middleware/Cargo.toml` - Dependencies for auth middleware
 
+### Route Integration
+- `crates/routes_all/src/routes.rs` - Route configuration and role-based grouping
+- `crates/routes_app/src/routes_create.rs` - Create/update alias routes with auth
+- `crates/routes_app/src/routes_pull.rs` - Model pull routes with auth
+- `crates/routes_oai/src/routes_models.rs` - OpenAI compatible routes with auth
+
 ### Service Layer
 - `crates/services/src/service_ext.rs` - Service extensions for auth and token handling
 - `crates/services/src/app_service.rs` - Core application service integration
 - `crates/services/src/test_utils/secret.rs` - Test utilities for secret service
-
-### Route Integration
-- `crates/routes_all/src/routes.rs` - Route configuration and grouping
-- `crates/routes_app/src/routes_login.rs` - Authentication flow routes
 
 ### Localization
 - `crates/auth_middleware/src/resources/en-US/messages.ftl` - Auth middleware error messages
@@ -337,59 +341,109 @@ pub enum TokenScope {
 scope: "openid offline_access scope_token_user"
 ```
 
+### Current APIs
+
+1. Public APIs (No Auth Required):
+```
+GET  /ping                  # Health check
+GET  /app/info             # App info
+POST /app/setup            # App setup
+GET  /app/login/callback   # Login callback
+POST /api/ui/logout        # Logout
+GET  /dev/secrets          # (Dev mode only) Secrets
+```
+
+2. Optional Auth APIs:
+```
+GET  /app/login            # Login page
+GET  /app/login/           # Login page (with trailing slash)
+GET  /api/ui/user         # User info
+```
+
+3. Ollama APIs (Protected):
+```
+GET  /api/tags            # List Ollama models
+POST /api/show           # Show Ollama model details
+POST /api/chat           # Ollama chat
+```
+
+4. OpenAI Compatible APIs (Protected):
+```
+GET  /v1/models           # List models
+GET  /v1/models/:id       # Get model details
+POST /v1/chat/completions # Chat completions
+```
+
+5. Bodhi APIs (Protected, under /api/ui/):
+```
+GET  /models                         # List local aliases
+GET  /models/:id                     # Get alias details
+GET  /modelfiles                     # List local modelfiles
+GET  /chat_templates                 # List chat templates
+POST /models                         # Create alias
+PUT  /models/:id                     # Update alias
+GET  /modelfiles/pull/downloads      # List downloads
+POST /modelfiles/pull                # Pull by repo file
+POST /modelfiles/pull/:alias         # Pull by alias
+GET  /modelfiles/pull/status/:id     # Get download status
+POST /tokens                         # Create token
+PUT  /tokens/:token_id              # Update token
+GET  /tokens                        # List tokens
+GET  /tokens/                       # List tokens (with trailing slash)
+```
+
 ### Route Authorization Matrix
 
 **role=anon** (No Authentication Required)
 ```
-GET  /ping
-GET  /app/info
-GET  /app/setup
-GET  /app/login
-GET  /app/login/callback
-POST /api/ui/logout
-GET  /api/ui/user
-GET  /* (UI fallback routes)
+GET  /ping                  # Health check
+GET  /app/info             # App info
+POST /app/setup            # App setup
+GET  /app/login            # Login page
+GET  /app/login/           # Login page (with trailing slash)
+GET  /app/login/callback   # Login callback
+POST /api/ui/logout        # Logout
+GET  /api/ui/user         # User info
+GET  /*                    # UI fallback routes
 ```
 
 **role=user & scope=scope_token_user**
 ```
-GET   /api/ui/models
-GET   /api/ui/models/:id
-POST  /v1/chat/completions
-GET   /api/tags                    # Ollama models list
-POST  /api/show                    # Ollama model show
-POST  /api/chat                    # Ollama chat
-GET   /api/ui/chats
-GET   /api/ui/chats/:id
-POST  /api/ui/chats
-PUT   /api/ui/chats/:id
-```
-
-**role=power_user**
-- should only be allowed to access (list) and update his own tokens
-```
-POST /api/ui/tokens             # Create token (session only)
-POST /api/ui/create             # Create operations (session only)
-PUT  /api/ui/create/:id         # (session only)
+GET  /v1/models            # OpenAI List models
+GET  /v1/models/:id        # OpenAI Get model details
+POST /v1/chat/completions  # OpenAI Chat completions
+GET  /api/tags            # Ollama list models
+POST /api/show            # Ollama show model details
+POST /api/chat            # Ollama chat completions
+GET  /api/ui/models       # List local aliases
+GET  /api/ui/models/:id   # Get alias details
+GET  /api/ui/modelfiles   # List local modelfiles
+GET  /api/ui/chat_templates # List chat templates
 ```
 
 **role=power_user or scope=scope_token_power_user**
 ```
-GET  /api/ui/pull              # Pull operations
-POST /api/ui/pull
+POST /api/ui/models       # Create alias
+PUT  /api/ui/models/:id   # Update alias
+GET  /api/ui/modelfiles/pull/downloads      # List downloads
+POST /api/ui/modelfiles/pull                # Pull by repo file
+POST /api/ui/modelfiles/pull/:alias         # Pull by alias
+GET  /api/ui/modelfiles/pull/status/:id     # Get download status
 ```
 
-**role=manager**
-- should be allowed to access and update app-wide tokens
+**role=power_user & scope=None**
+- not available via the API tokens, only through app session
+- should only be allowed to access (list) and update his own tokens
 ```
-GET  /api/ui/tokens            # List all tokens (session only)
-GET  /api/ui/tokens/:id       # Get token details (session only)
-PUT  /api/ui/tokens/:id      # Update token (session only)
+POST /api/ui/tokens             # Create token (session only)
+GET  /api/ui/tokens            # List tokens
+GET  /api/ui/tokens/:id        # Get token details
+PUT  /api/ui/tokens/:id        # Update token
 ```
 
 **role=admin**
 ```
-GET  /dev/secrets            # Only in non-production (session only)
+GET  /dev/secrets            # Dev secrets (Dev mode only)
 ```
 
 ### Implementation Notes
@@ -556,6 +610,43 @@ impl TokenScope {
    - [x] Implemented TokenScope hierarchy validation
    - [x] Added support for offline_access requirement
 
+
+### Recently Completed
+1. Route Integration:
+   - [x] Grouped all routes by role requirements (public, user, power_user)
+   - [x] Added TokenScope support to protected routes
+   - [x] Implemented session-only routes for token management
+   - [x] Added proper middleware layers for each route group
+   - [x] Documented role/scope requirements in code
+
+2. Code Organization:
+   - [x] Refactored route handlers into logical groups
+   - [x] Removed redundant router creation functions
+   - [x] Improved code readability with clear route grouping
+   - [x] Added comments explaining route authorization levels
+
+3. New Features:
+   - [x] Added support for dev-only admin routes
+   - [x] Implemented proper error handling for auth failures
+   - [x] Added TokenScope validation to relevant routes
+   - [x] Improved route organization and documentation
+
+### Remaining Tasks
+1. Monitoring & Logging Enhancement:
+   - [ ] Add structured logging for authorization events
+   - [ ] Add metrics for authorization failures
+   - [ ] Implement audit trail for role/scope changes
+
+2. Performance Optimization:
+   - [ ] Consider role/scope caching strategies
+   - [ ] Optimize header parsing
+   - [ ] Add performance metrics
+
+3. Security Enhancements:
+   - [ ] Add rate limiting for failed auth attempts
+   - [ ] Implement role change auditing
+   - [ ] Add security headers
+
 ### Key Achievements
 - Successfully implemented core role-based authorization
 - Added comprehensive test coverage
@@ -570,18 +661,7 @@ impl TokenScope {
 - Improved error handling and messages
 
 ### Remaining Tasks
-1. Route Integration:
-   - [ ] Group routes by minimum role requirement
-   - [ ] Add role-based middleware to protected routes
-   - [ ] Update route registration
-   - [ ] Document role requirements
-
-2. Monitoring & Logging:
-   - [ ] Add WARN level logging for authorization failures
-   - [ ] Include request path in log messages
-   - [ ] Set up monitoring for auth failures
-
-3. Documentation:
+1. Documentation:
    - [ ] Update API documentation with role requirements
    - [ ] Document migration process
    - [ ] Add usage examples

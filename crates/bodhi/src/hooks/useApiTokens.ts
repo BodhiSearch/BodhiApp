@@ -1,7 +1,7 @@
 import { useQuery, useMutationQuery } from './useQuery';
 import { useQueryClient } from 'react-query';
 
-export const API_TOKENS_ENDPOINT = '/api/tokens';
+export const API_TOKENS_ENDPOINT = '/api/ui/tokens';
 
 // Types
 export interface CreateTokenRequest {

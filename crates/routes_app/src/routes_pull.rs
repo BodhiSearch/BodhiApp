@@ -1,8 +1,7 @@
 use axum::http::StatusCode;
 use axum::{
   extract::{Path, Query, State},
-  routing::{get, post},
-  Json, Router,
+  Json,
 };
 use axum_extra::extract::WithRejection;
 use chrono::Utc;
@@ -19,17 +18,6 @@ use services::{
 use std::sync::Arc;
 use tokio::spawn;
 use validator::Validate;
-
-pub fn pull_router() -> Router<Arc<dyn RouterState>> {
-  Router::new()
-    .route("/modelfiles/pull/downloads", get(list_downloads_handler))
-    .route("/modelfiles/pull", post(pull_by_repo_file_handler))
-    .route("/modelfiles/pull/:alias", post(pull_by_alias_handler))
-    .route(
-      "/modelfiles/pull/status/:id",
-      get(get_download_status_handler),
-    )
-}
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct PullRepoFileRequest {
@@ -77,7 +65,7 @@ pub struct ListDownloadsResponse {
   pub page_size: u32,
 }
 
-async fn list_downloads_handler(
+pub async fn list_downloads_handler(
   State(state): State<Arc<dyn RouterState>>,
   Query(query): Query<ListDownloadsQuery>,
 ) -> Result<Json<ListDownloadsResponse>, ApiError> {
@@ -101,7 +89,7 @@ async fn list_downloads_handler(
   }))
 }
 
-async fn pull_by_repo_file_handler(
+pub async fn pull_by_repo_file_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(payload), _): WithRejection<Json<PullRepoFileRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
@@ -162,7 +150,7 @@ async fn pull_by_repo_file_handler(
   Ok((StatusCode::CREATED, Json(download_request)))
 }
 
-async fn pull_by_alias_handler(
+pub async fn pull_by_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(alias): Path<String>,
 ) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
@@ -223,7 +211,7 @@ async fn pull_by_alias_handler(
   Ok((StatusCode::CREATED, Json(download_request)))
 }
 
-async fn get_download_status_handler(
+pub async fn get_download_status_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<DownloadRequest>, ApiError> {

@@ -1,9 +1,5 @@
 use axum::http::StatusCode;
-use axum::{
-  extract::State,
-  routing::{post, put},
-  Json, Router,
-};
+use axum::{extract::State, Json};
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
 use objs::{
@@ -14,12 +10,6 @@ use server_core::{AliasResponse, RouterState};
 use services::AliasNotFoundError;
 use std::sync::Arc;
 use validator::Validate;
-
-pub fn create_router() -> Router<Arc<dyn RouterState>> {
-  Router::new()
-    .route("/models", post(create_alias_handler))
-    .route("/models/:id", put(update_alias_handler))
-}
 
 #[derive(Debug, Serialize, Deserialize, Validate)]
 pub struct CreateAliasRequest {
