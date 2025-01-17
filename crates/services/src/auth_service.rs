@@ -260,8 +260,6 @@ impl AuthService for KeycloakAuthService {
 
     if response.status().is_success() {
       let token_response: serde_json::Value = response.json().await?;
-      tracing::info!("received: {}", token_response.to_string());
-
       let access_token = token_response["access_token"]
         .as_str()
         .ok_or_else(|| AuthServiceError::TokenExchangeError("access_token not found".to_string()))?

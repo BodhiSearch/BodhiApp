@@ -1,5 +1,6 @@
 use crate::{
-  asref_impl, AppRegInfo, AppRegInfoBuilder, AppStatus, KeyringError, KeyringStore, SecretService, SecretServiceError, SecretServiceExt
+  asref_impl, AppRegInfo, AppRegInfoBuilder, AppStatus, KeyringError, KeyringStore, SecretService,
+  SecretServiceError, SecretServiceExt,
 };
 use std::{collections::HashMap, sync::Mutex};
 
