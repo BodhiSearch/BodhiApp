@@ -11,7 +11,7 @@ use rstest::fixture;
 use serde_json::{json, Value};
 use uuid::Uuid;
 
-use crate::{AppRegInfoBuilder, TOKEN_TYPE_BEARER, TOKEN_TYPE_OFFLINE};
+use crate::{AppRegInfoBuilder, KeycloakAuthService, TOKEN_TYPE_BEARER, TOKEN_TYPE_OFFLINE};
 
 pub const TEST_CLIENT_ID: &str = "test-client";
 pub const TEST_CLIENT_SECRET: &str = "test-client-secret";
@@ -177,4 +177,8 @@ pub fn offline_access_token_claims() -> Value {
       "scope": "offline_access scope_token_user",
       "sid": Uuid::new_v4().to_string(),
   })
+}
+
+pub fn test_auth_service(url: &str) -> KeycloakAuthService {
+  KeycloakAuthService::new("test-version", url.to_string(), "test-realm".to_string())
 }
