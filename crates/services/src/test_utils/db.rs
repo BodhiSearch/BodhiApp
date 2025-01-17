@@ -215,36 +215,41 @@ impl DbService for TestDbService {
 
   async fn list_api_tokens(
     &self,
+    user_id: &str,
     page: u32,
     per_page: u32,
   ) -> Result<(Vec<ApiToken>, u32), DbError> {
     self
       .inner
-      .list_api_tokens(page, per_page)
+      .list_api_tokens(user_id, page, per_page)
       .await
       .tap(|_| self.notify("list_api_tokens"))
   }
 
-  async fn get_api_token(&self, id: &str) -> Result<Option<ApiToken>, DbError> {
+  async fn get_api_token_by_id(
+    &self,
+    user_id: &str,
+    id: &str,
+  ) -> Result<Option<ApiToken>, DbError> {
     self
       .inner
-      .get_api_token(id)
+      .get_api_token_by_id(user_id, id)
       .await
-      .tap(|_| self.notify("get_api_token"))
+      .tap(|_| self.notify("get_api_token_by_id"))
   }
 
-  async fn get_valid_api_token(&self, token_id: &str) -> Result<Option<ApiToken>, DbError> {
+  async fn get_api_token_by_token_id(&self, token_id: &str) -> Result<Option<ApiToken>, DbError> {
     self
       .inner
-      .get_valid_api_token(token_id)
+      .get_api_token_by_token_id(token_id)
       .await
-      .tap(|_| self.notify("get_api_token_with_jti"))
+      .tap(|_| self.notify("get_api_token_by_token_id"))
   }
 
-  async fn update_api_token(&self, token: &mut ApiToken) -> Result<(), DbError> {
+  async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError> {
     self
       .inner
-      .update_api_token(token)
+      .update_api_token(user_id, token)
       .await
       .tap(|_| self.notify("update_api_token"))
   }

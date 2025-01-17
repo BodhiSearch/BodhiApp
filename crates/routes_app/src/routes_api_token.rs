@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
   db::{ApiToken, TokenStatus},
-  AuthServiceError, SecretServiceExt,
+  extract_claims, AuthServiceError, IdClaims, SecretServiceExt, TokenError,
 };
 use std::{cmp::min, sync::Arc};
 
@@ -33,6 +33,8 @@ pub struct UpdateApiTokenRequest {
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ApiTokenError {
+  #[error(transparent)]
+  Token(#[from] TokenError),
   #[error("app_reg_info_missing")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   AppRegMissing,
@@ -89,15 +91,21 @@ pub async fn create_token_handler(
 }
 
 pub async fn update_token_handler(
+  headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
-  Path(token_id): Path<String>,
+  Path(id): Path<String>,
   WithRejection(Json(payload), _): WithRejection<Json<UpdateApiTokenRequest>, ApiError>,
 ) -> Result<Json<ApiToken>, ApiError> {
   let app_service = state.app_service();
   let db_service = app_service.db_service();
 
+  let resource_token = headers.get(KEY_RESOURCE_TOKEN).map(|token| token.to_str());
+  let Some(Ok(resource_token)) = resource_token else {
+    return Err(ApiTokenError::AccessTokenMissing)?;
+  };
+  let user_id = extract_claims::<IdClaims>(resource_token)?.sub;
   let mut token = db_service
-    .get_api_token(&token_id)
+    .get_api_token_by_id(&user_id, &id)
     .await?
     .ok_or_else(|| EntityError::NotFound("Token".to_string()))?;
 
@@ -105,7 +113,7 @@ pub async fn update_token_handler(
   token.name = payload.name;
   token.status = payload.status;
 
-  db_service.update_api_token(&mut token).await?;
+  db_service.update_api_token(&user_id, &mut token).await?;
 
   Ok(Json(token))
 }
@@ -135,14 +143,21 @@ fn default_page_size() -> u32 {
 }
 
 pub async fn list_tokens_handler(
+  headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
   Query(query): Query<ListApiTokensQuery>,
 ) -> Result<Json<ListApiTokensResponse>, ApiError> {
   let per_page = min(query.page_size, 100);
+  let resource_token = headers.get(KEY_RESOURCE_TOKEN).map(|token| token.to_str());
+  let Some(Ok(resource_token)) = resource_token else {
+    return Err(ApiTokenError::AccessTokenMissing)?;
+  };
+  let user_id = extract_claims::<IdClaims>(resource_token)?.sub;
+
   let (tokens, total) = state
     .app_service()
     .db_service()
-    .list_api_tokens(query.page, per_page)
+    .list_api_tokens(&user_id, query.page, per_page)
     .await?;
 
   Ok(Json(ListApiTokensResponse {
@@ -155,6 +170,7 @@ pub async fn list_tokens_handler(
 
 #[cfg(test)]
 mod tests {
+  use super::{list_tokens_handler, update_token_handler};
   use crate::{
     create_token_handler, wait_for_event, ApiTokenError, ListApiTokensResponse,
     UpdateApiTokenRequest,
@@ -184,16 +200,14 @@ mod tests {
   use services::{
     db::{ApiToken, DbService, TokenStatus},
     test_utils::{
-      build_token, test_db_service, AppServiceStub, AppServiceStubBuilder, FrozenTimeService,
-      SecretServiceStub, TestDbService,
+      access_token_claims, build_token, test_db_service, AppServiceStub, AppServiceStubBuilder,
+      FrozenTimeService, SecretServiceStub, TestDbService,
     },
     AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService,
   };
   use std::{sync::Arc, time::Duration};
   use tower::ServiceExt;
   use uuid::Uuid;
-
-  use super::{list_tokens_handler, update_token_handler};
 
   #[rstest]
   #[case::app_reg_missing(
@@ -315,7 +329,9 @@ mod tests {
     );
 
     // List tokens to verify creation
-    let (tokens, _) = test_db_service.list_api_tokens(1, 10).await?;
+    let (tokens, _) = test_db_service
+      .list_api_tokens("test-user-id", 1, 10)
+      .await?;
     assert_eq!(1, tokens.len());
     let created_token = &tokens[0];
     assert_eq!("test-jti", created_token.token_id);
@@ -462,10 +478,14 @@ mod tests {
   #[awt]
   #[tokio::test]
   async fn test_list_tokens_pagination(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future]
     #[from(test_db_service)]
     db_service: TestDbService,
   ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let user_id = claims["sub"].as_str().unwrap().to_string();
+    let (token, _) = build_token(claims)?;
     let db_service = Arc::new(db_service);
     let app_service = AppServiceStubBuilder::default()
       .db_service(db_service.clone())
@@ -475,7 +495,7 @@ mod tests {
     for i in 1..=15 {
       let mut token = ApiToken {
         id: Uuid::new_v4().to_string(),
-        user_id: "test-user".to_string(),
+        user_id: user_id.to_string(),
         name: format!("Test Token {}", i),
         token_id: Uuid::new_v4().to_string(),
         token_hash: "token_hash".to_string(),
@@ -494,6 +514,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method(Method::GET)
+          .header(KEY_RESOURCE_TOKEN, &token)
           .uri("/api/tokens?page=1&page_size=10")
           .body(Body::empty())
           .unwrap(),
@@ -512,6 +533,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method(Method::GET)
+          .header(KEY_RESOURCE_TOKEN, &token)
           .uri("/api/tokens?page=2&page_size=10")
           .body(Body::empty())
           .unwrap(),
@@ -536,6 +558,7 @@ mod tests {
     #[from(test_db_service)]
     db_service: TestDbService,
   ) -> anyhow::Result<()> {
+    let (token, _) = build_token(access_token_claims())?;
     let db_service = Arc::new(db_service);
     let app_service = AppServiceStubBuilder::default()
       .db_service(db_service.clone())
@@ -548,6 +571,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method(Method::GET)
+          .header(KEY_RESOURCE_TOKEN, &token)
           .uri("/api/tokens")
           .body(Body::empty())
           .unwrap(),
@@ -571,10 +595,13 @@ mod tests {
     #[from(setup_l10n)] _l18n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
+    let claims = access_token_claims();
+    let user_id = claims["sub"].as_str().unwrap().to_string();
+    let (access_token, _) = build_token(claims)?;
     // Create initial token
     let mut token = ApiToken {
       id: Uuid::new_v4().to_string(),
-      user_id: "test_user".to_string(),
+      user_id: user_id.to_string(),
       name: "Initial Name".to_string(),
       token_id: "token123".to_string(),
       token_hash: "token_hash".to_string(),
@@ -597,6 +624,7 @@ mod tests {
         Request::builder()
           .method(Method::PUT)
           .uri(format!("/api/tokens/{}", token.id))
+          .header(KEY_RESOURCE_TOKEN, &access_token)
           .json(&UpdateApiTokenRequest {
             name: "Updated Name".to_string(),
             status: TokenStatus::Inactive,
@@ -612,7 +640,10 @@ mod tests {
     assert_eq!(updated_token.id, token.id);
 
     // Verify DB was updated
-    let db_token = test_db_service.get_api_token(&token.id).await?.unwrap();
+    let db_token = test_db_service
+      .get_api_token_by_id(&user_id, &token.id)
+      .await?
+      .unwrap();
     assert_eq!(db_token.name, "Updated Name");
     assert_eq!(db_token.status, TokenStatus::Inactive);
 
@@ -625,6 +656,7 @@ mod tests {
   async fn test_update_token_handler_not_found(
     #[future] test_db_service: TestDbService,
   ) -> anyhow::Result<()> {
+    let (token, _) = build_token(access_token_claims())?;
     // Setup app with router
     let app_service = AppServiceStubBuilder::default()
       .db_service(Arc::new(test_db_service))
@@ -637,6 +669,7 @@ mod tests {
         Request::builder()
           .method(Method::PUT)
           .uri("/api/tokens/non-existent-id")
+          .header(KEY_RESOURCE_TOKEN, &token)
           .json(&UpdateApiTokenRequest {
             name: "Updated Name".to_string(),
             status: TokenStatus::Inactive,
