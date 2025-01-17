@@ -53,7 +53,14 @@ export function useChat() {
               updatedAt: Date.now(),
             });
           },
-          onFinish: () => {},
+          onMessage: (message) => {
+            createOrUpdateChat({
+              ...currentChat,
+              messages: [...userMessages, { role: 'assistant' as const, content: message.content }],
+              updatedAt: Date.now(),
+            });
+          },
+          onFinish: () => { },
         });
       } catch (error) {
         console.error('Chat completion error:', error);
