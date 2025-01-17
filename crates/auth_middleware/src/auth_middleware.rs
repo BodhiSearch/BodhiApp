@@ -5,7 +5,7 @@ use axum::{
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
 };
-use objs::{ApiError, AppError, ErrorType, RoleError, TokenScopeError};
+use objs::{ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError};
 use server_core::RouterState;
 use services::{
   AppStatus, AuthServiceError, SecretService, SecretServiceError, SecretServiceExt, TokenError,
@@ -14,7 +14,8 @@ use std::sync::Arc;
 use tower_sessions::Session;
 
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
-pub const KEY_RESOURCE_ACCESS: &str = "X-Resource-Access";
+pub const KEY_RESOURCE_ROLE: &str = "X-Resource-Access";
+pub const KEY_RESOURCE_SCOPE: &str = "X-Resource-Scope";
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -41,9 +42,8 @@ pub enum AuthError {
   TokenNotFound,
   #[error(transparent)]
   AuthService(#[from] AuthServiceError),
-  #[error("app_reg_info_missing")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
-  AppRegInfoMissing,
+  #[error(transparent)]
+  AppRegInfoMissing(#[from] AppRegInfoMissingError),
   #[error("refresh_token_not_found")]
   #[error_meta(error_type = ErrorType::Authentication)]
   RefreshTokenNotFound,
@@ -71,7 +71,8 @@ pub async fn auth_middleware(
   next: Next,
 ) -> Result<Response, ApiError> {
   req.headers_mut().remove(KEY_RESOURCE_TOKEN);
-  req.headers_mut().remove(KEY_RESOURCE_ACCESS);
+  req.headers_mut().remove(KEY_RESOURCE_ROLE);
+  req.headers_mut().remove(KEY_RESOURCE_SCOPE);
 
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
@@ -106,10 +107,9 @@ pub async fn auth_middleware(
     req
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
-    req.headers_mut().insert(
-      KEY_RESOURCE_ACCESS,
-      token_scope.to_string().parse().unwrap(),
-    );
+    req
+      .headers_mut()
+      .insert(KEY_RESOURCE_SCOPE, token_scope.to_string().parse().unwrap());
     Ok(next.run(req).await)
   } else if let Some(access_token) = session
     .get::<String>("access_token")
@@ -124,7 +124,7 @@ pub async fn auth_middleware(
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
     req
       .headers_mut()
-      .insert(KEY_RESOURCE_ACCESS, role.to_string().parse().unwrap());
+      .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
     Ok(next.run(req).await)
   } else {
     Err(AuthError::InvalidAccess)?
@@ -138,7 +138,8 @@ pub async fn inject_session_auth_info(
   next: Next,
 ) -> Result<Response, ApiError> {
   req.headers_mut().remove(KEY_RESOURCE_TOKEN);
-  req.headers_mut().remove(KEY_RESOURCE_ACCESS);
+  req.headers_mut().remove(KEY_RESOURCE_ROLE);
+  req.headers_mut().remove(KEY_RESOURCE_SCOPE);
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(
@@ -173,7 +174,7 @@ pub async fn inject_session_auth_info(
         .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
       req
         .headers_mut()
-        .insert(KEY_RESOURCE_ACCESS, role.to_string().parse().unwrap());
+        .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
       return Ok(next.run(req).await);
     }
   }
@@ -187,8 +188,8 @@ fn authz_status(secret_service: &Arc<dyn SecretService>) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::{KEY_RESOURCE_ACCESS, KEY_RESOURCE_TOKEN};
-  use crate::{auth_middleware, inject_session_auth_info};
+  use super::{KEY_RESOURCE_ROLE, KEY_RESOURCE_TOKEN};
+  use crate::{auth_middleware, inject_session_auth_info, KEY_RESOURCE_SCOPE};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -203,6 +204,7 @@ mod tests {
     test_utils::{setup_l10n, temp_bodhi_home},
     FluentLocalizationService, ReqwestError,
   };
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use serde_json::{json, Value};
@@ -231,27 +233,32 @@ mod tests {
   #[derive(Debug, Serialize, Deserialize, PartialEq)]
   struct TestResponse {
     x_resource_token: Option<String>,
-    x_user_roles: Option<String>,
+    x_resource_role: Option<String>,
+    x_resource_scope: Option<String>,
     authorization_header: Option<String>,
     path: String,
   }
 
   async fn test_handler_teapot(headers: HeaderMap, path: &str) -> Response {
+    let authorization_header = headers
+      .get("Authorization")
+      .map(|v| v.to_str().unwrap().to_string());
     let x_resource_token = headers
       .get(KEY_RESOURCE_TOKEN)
       .map(|v| v.to_str().unwrap().to_string());
-    let authorization_bearer_token = headers
-      .get("Authorization")
+    let x_resource_role = headers
+      .get(KEY_RESOURCE_ROLE)
       .map(|v| v.to_str().unwrap().to_string());
-    let x_user_roles = headers
-      .get(KEY_RESOURCE_ACCESS)
+    let x_resource_scope = headers
+      .get(KEY_RESOURCE_SCOPE)
       .map(|v| v.to_str().unwrap().to_string());
     (
       StatusCode::IM_A_TEAPOT,
       Json(TestResponse {
         x_resource_token,
-        x_user_roles,
-        authorization_header: authorization_bearer_token,
+        x_resource_role,
+        x_resource_scope,
+        authorization_header,
         path: path.to_string(),
       }),
     )
@@ -302,7 +309,8 @@ mod tests {
     assert_eq!(
       TestResponse {
         x_resource_token,
-        x_user_roles: None,
+        x_resource_role: None,
+        x_resource_scope: None,
         authorization_header,
         path: "/with_optional_auth".to_string(),
       },
@@ -341,7 +349,8 @@ mod tests {
     assert_eq!(
       TestResponse {
         x_resource_token: None,
-        x_user_roles: None,
+        x_resource_role: None,
+        x_resource_scope: None,
         authorization_header: None,
         path: path.to_string(),
       },
@@ -384,18 +393,18 @@ mod tests {
   }
 
   #[rstest]
-  #[case::with_auth_role_admin("/with_auth", &["resource_admin"], "admin")]
-  #[case::with_auth_role_user("/with_auth", &["resource_user"], "user")]
-  #[case::with_auth_role_manager("/with_auth", &["resource_manager"], "manager")]
-  #[case::with_auth_role_power_user("/with_auth", &["resource_power_user"], "power_user")]
-  #[case::with_auth_role_user_admin("/with_auth", &["resource_user", "resource_admin"], "admin")]
-  #[case::with_auth_role_user_manager("/with_auth", &["resource_user", "resource_manager"], "manager")]
-  #[case::with_optional_auth_role_admin("/with_optional_auth", &["resource_admin"], "admin")]
-  #[case::with_optional_auth_role_user("/with_optional_auth", &["resource_user"], "user")]
-  #[case::with_optional_auth_role_manager("/with_optional_auth", &["resource_manager"], "manager")]
-  #[case::with_optional_auth_role_power_user("/with_optional_auth", &["resource_power_user"], "power_user")]
-  #[case::with_optional_auth_role_user_admin("/with_optional_auth", &["resource_user", "resource_admin"], "admin")]
-  #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "manager")]
+  #[case::with_auth_role_admin("/with_auth", &["resource_admin"], "resource_admin")]
+  #[case::with_auth_role_user("/with_auth", &["resource_user"], "resource_user")]
+  #[case::with_auth_role_manager("/with_auth", &["resource_manager"], "resource_manager")]
+  #[case::with_auth_role_power_user("/with_auth", &["resource_power_user"], "resource_power_user")]
+  #[case::with_auth_role_user_admin("/with_auth", &["resource_user", "resource_admin"], "resource_admin")]
+  #[case::with_auth_role_user_manager("/with_auth", &["resource_user", "resource_manager"], "resource_manager")]
+  #[case::with_optional_auth_role_admin("/with_optional_auth", &["resource_admin"], "resource_admin")]
+  #[case::with_optional_auth_role_user("/with_optional_auth", &["resource_user"], "resource_user")]
+  #[case::with_optional_auth_role_manager("/with_optional_auth", &["resource_manager"], "resource_manager")]
+  #[case::with_optional_auth_role_power_user("/with_optional_auth", &["resource_power_user"], "resource_power_user")]
+  #[case::with_optional_auth_role_user_admin("/with_optional_auth", &["resource_user", "resource_admin"], "resource_admin")]
+  #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "resource_manager")]
   #[tokio::test]
   async fn test_auth_middleware_with_valid_session_token(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
@@ -445,7 +454,8 @@ mod tests {
         path: path.to_string(),
         authorization_header: None,
         x_resource_token: Some(token),
-        x_user_roles: Some(expected_role.to_string()),
+        x_resource_role: Some(expected_role.to_string()),
+        x_resource_scope: None,
       },
       body
     );
@@ -453,18 +463,18 @@ mod tests {
   }
 
   #[rstest]
-  #[case::with_auth_role_user("/with_auth", &["resource_user"], "user")]
-  #[case::with_auth_role_manager("/with_auth", &["resource_manager"], "manager")]
-  #[case::with_auth_role_power_user("/with_auth", &["resource_power_user"], "power_user")]
-  #[case::with_auth_role_admin("/with_auth", &["resource_admin"], "admin")]
-  #[case::with_auth_role_user_admin("/with_auth", &["resource_user", "resource_admin"], "admin")]
-  #[case::with_auth_role_user_manager("/with_auth", &["resource_user", "resource_manager"], "manager")]
-  #[case::with_optional_auth_role_user("/with_optional_auth", &["resource_user"], "user")]
-  #[case::with_optional_auth_role_manager("/with_optional_auth", &["resource_manager"], "manager")]
-  #[case::with_optional_auth_role_power_user("/with_optional_auth", &["resource_power_user"], "power_user")]
-  #[case::with_optional_auth_role_admin("/with_optional_auth", &["resource_admin"], "admin")]
-  #[case::with_optional_auth_role_user_admin("/with_optional_auth", &["resource_user", "resource_admin"], "admin")]
-  #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "manager")]
+  #[case::with_auth_role_user("/with_auth", &["resource_user"], "resource_user")]
+  #[case::with_auth_role_manager("/with_auth", &["resource_manager"], "resource_manager")]
+  #[case::with_auth_role_power_user("/with_auth", &["resource_power_user"], "resource_power_user")]
+  #[case::with_auth_role_admin("/with_auth", &["resource_admin"], "resource_admin")]
+  #[case::with_auth_role_user_admin("/with_auth", &["resource_user", "resource_admin"], "resource_admin")]
+  #[case::with_auth_role_user_manager("/with_auth", &["resource_user", "resource_manager"], "resource_manager")]
+  #[case::with_optional_auth_role_user("/with_optional_auth", &["resource_user"], "resource_user")]
+  #[case::with_optional_auth_role_manager("/with_optional_auth", &["resource_manager"], "resource_manager")]
+  #[case::with_optional_auth_role_power_user("/with_optional_auth", &["resource_power_user"], "resource_power_user")]
+  #[case::with_optional_auth_role_admin("/with_optional_auth", &["resource_admin"], "resource_admin")]
+  #[case::with_optional_auth_role_user_admin("/with_optional_auth", &["resource_user", "resource_admin"], "resource_admin")]
+  #[case::with_optional_auth_role_user_manager("/with_optional_auth", &["resource_user", "resource_manager"], "resource_manager")]
   #[tokio::test]
   async fn test_auth_middleware_with_expired_session_token(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
@@ -530,7 +540,8 @@ mod tests {
         path: path.to_string(),
         authorization_header: None,
         x_resource_token: Some(exchanged_token.clone()),
-        x_user_roles: Some(expected_role.to_string()),
+        x_resource_role: Some(expected_role.to_string()),
+        x_resource_scope: None,
       },
       body
     );
@@ -716,6 +727,8 @@ mod tests {
     let router = test_router(state);
     let req = Request::get("/with_optional_auth")
       .header(KEY_RESOURCE_TOKEN, "user-sent-token")
+      .header(KEY_RESOURCE_ROLE, "user-sent-role")
+      .header(KEY_RESOURCE_SCOPE, "user-sent-scope")
       .json(json! {{}})?;
     let response = router.clone().oneshot(req).await?;
     assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
@@ -725,7 +738,8 @@ mod tests {
         path: "/with_optional_auth".to_string(),
         x_resource_token: None,
         authorization_header: None,
-        x_user_roles: None,
+        x_resource_role: None,
+        x_resource_scope: None,
       },
       actual
     );
@@ -733,17 +747,23 @@ mod tests {
   }
 
   #[rstest]
-  #[case::scope_token_user("offline_access scope_token_user", "user")]
-  #[case::scope_token_user("offline_access scope_token_power_user", "power_user")]
-  #[case::scope_token_user("offline_access scope_token_manager", "manager")]
-  #[case::scope_token_user("offline_access scope_token_admin", "admin")]
-  #[case::scope_token_user("offline_access scope_token_user scope_token_manager", "manager")]
-  #[case::scope_token_user("offline_access scope_token_user scope_token_power_user", "power_user")]
+  #[case::scope_token_user("offline_access scope_token_user", "scope_token_user")]
+  #[case::scope_token_user("offline_access scope_token_power_user", "scope_token_power_user")]
+  #[case::scope_token_user("offline_access scope_token_manager", "scope_token_manager")]
+  #[case::scope_token_user("offline_access scope_token_admin", "scope_token_admin")]
+  #[case::scope_token_user(
+    "offline_access scope_token_user scope_token_manager",
+    "scope_token_manager"
+  )]
+  #[case::scope_token_user(
+    "offline_access scope_token_user scope_token_power_user",
+    "scope_token_power_user"
+  )]
   #[tokio::test]
   async fn test_auth_middleware_bearer_token_success(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] scope: &str,
-    #[case] expected_role: &str,
+    #[case] expected_header: &str,
   ) -> anyhow::Result<()> {
     let (bearer_token, _) = build_token(offline_token_claims())?;
     let mut access_token_claims = offline_access_token_claims();
@@ -788,7 +808,8 @@ mod tests {
       TestResponse {
         path: "/with_auth".to_string(),
         x_resource_token: Some(access_token),
-        x_user_roles: Some(expected_role.to_string()),
+        x_resource_role: None,
+        x_resource_scope: Some(expected_header.to_string()),
         authorization_header: Some(format!("Bearer {}", bearer_token)),
       },
       actual
@@ -890,7 +911,8 @@ mod tests {
       TestResponse {
         path: "/with_auth".to_string(),
         x_resource_token: Some(offline_access_token),
-        x_user_roles: Some("user".to_string()),
+        x_resource_role: None,
+        x_resource_scope: Some("scope_token_user".to_string()),
         authorization_header: Some(format!("Bearer {}", offline_token)),
       },
       actual

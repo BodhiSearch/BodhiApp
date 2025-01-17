@@ -90,22 +90,31 @@ So that users can only access resources appropriate for their role level
 ### Backend Tasks
 
 #### Role Implementation
-- [ ] Create Role enum with variants: User, PowerUser, Manager, Admin
-- [ ] Implement role hierarchy checking
-- [ ] Add role parsing from token claims
-- [ ] Add role parsing from scope strings
-- [ ] Implement role comparison logic
+- [x] Create Role enum with variants: User, PowerUser, Manager, Admin
+- [x] Implement role hierarchy checking
+- [x] Add role parsing from token claims
+- [x] Add role parsing from scope strings
+- [x] Implement role comparison logic
 - [ ] Add comprehensive error logging
 
+#### TokenScope Implementation
+- [x] Create TokenScope enum with variants matching Role
+- [x] Implement TokenScope hierarchy checking
+- [x] Add TokenScope parsing from JWT scope claims
+- [x] Add offline_access scope validation
+- [x] Implement TokenScope comparison logic
+
 #### Middleware Implementation
-- [ ] Create api_auth middleware with role requirement parameter
-- [ ] Extract roles from X-Resource-Token header
-- [ ] Implement client ID validation for resource_access
-- [ ] Add role validation logic
-- [ ] Implement non-authenticated mode bypass
-- [ ] Add error handling with generic messages
+- [x] Create api_auth middleware with role requirement parameter
+- [x] Extract roles from X-Resource-Token header
+- [x] Implement client ID validation for resource_access
+- [x] Add role validation logic
+- [x] Implement non-authenticated mode bypass
+- [x] Add error handling with generic messages
 - [ ] Add WARN level logging for authorization failures
-- [ ] Set up localization for error messages
+- [x] Set up localization for error messages
+- [x] Add TokenScope support to middleware
+- [x] Implement role and scope precedence logic
 
 #### Route Integration
 - [ ] Group routes by minimum role requirement
@@ -113,42 +122,161 @@ So that users can only access resources appropriate for their role level
 - [ ] Update route registration to support role requirements
 - [ ] Add proper error responses for authorization failures
 - [ ] Document role requirements for each route group
+- [ ] Add TokenScope requirements to routes
 
 #### Error Handling
-- [ ] Add authorization error types
-- [ ] Implement localized error messages
+- [x] Add authorization error types
+- [x] Implement localized error messages
 - [ ] Add warning level logging for authorization failures
 - [ ] Include request path in log messages
 
 ### Testing Tasks
-- [ ] Unit tests for Role enum and hierarchy
-- [ ] Tests for token claim parsing
-- [ ] Tests for scope parsing
-- [ ] Integration tests for middleware
-- [ ] Test non-authenticated mode bypass
-- [ ] Test error responses
-- [ ] Test logging behavior
-- [ ] Cache behavior tests
-- [ ] Localization tests for error messages
+- [x] Unit tests for Role enum and hierarchy
+- [x] Tests for token claim parsing
+- [x] Tests for scope parsing
+- [x] Integration tests for middleware
+- [x] Test non-authenticated mode bypass
+- [x] Test error responses
+- ~~Test logging behavior~~ (Moved to Monitoring & Logging phase)
+- ~~Cache behavior tests~~ (Not needed - using direct validation)
+- [x] Localization tests for error messages
+- [x] TokenScope validation tests
+- [x] Role and TokenScope precedence tests
+
+### New Tasks Discovered
+1. Monitoring & Logging Enhancement:
+   - [ ] Add structured logging for authorization events
+   - [ ] Add metrics for authorization failures
+   - [ ] Implement audit trail for role/scope changes
+
+2. Performance Optimization:
+   - [ ] Consider role/scope caching strategies
+   - [ ] Optimize header parsing
+   - [ ] Add performance metrics
+
+3. Security Enhancements:
+   - [ ] Add rate limiting for failed auth attempts
+   - [ ] Implement role change auditing
+   - [ ] Add security headers
 
 ## File Overview
 
-### Backend (Rust)
-- `crates/auth_middleware/src/api_auth_middleware.rs` - Role-based authorization middleware
-- `crates/auth_middleware/src/auth_middleware.rs` - Base authentication middleware
-- `crates/auth_middleware/src/lib.rs` - Middleware exports
-- `crates/auth_middleware/src/resources/en-US/messages.ftl`: Error messages for authorization
-- `crates/objs/src/role.rs` - Role enum and hierarchy implementation
-- `crates/routes_all/src/routes.rs`: Route configuration with role groups
-- `crates/routes_app/src/routes_ui.rs` - UI-related routes
-- `crates/routes_oai/src/routes_models.rs` - Model-related routes
+### Core Implementation
+- `crates/objs/src/role.rs` - Role enum with hierarchy implementation and serialization
+- `crates/objs/src/token_scope.rs` - TokenScope enum matching Role with scope validation
+- `crates/objs/src/error.rs` - Error types for authorization and validation
+- `crates/objs/src/lib.rs` - Public exports for Role and TokenScope
 
-### Tests
-- `crates/auth_middleware/tests/test_api_auth.rs`: Authorization middleware tests
-- `crates/auth_middleware/tests/test_role.rs`: Role validation tests
-- `crates/auth_middleware/tests/test_cache.rs`: Cache behavior tests
+### Authorization Middleware
+- `crates/auth_middleware/src/api_auth_middleware.rs` - Role and TokenScope based authorization middleware
+- `crates/auth_middleware/src/auth_middleware.rs` - Base authentication with session/bearer token support
+- `crates/auth_middleware/src/token_service.rs` - Token validation and scope extraction
+- `crates/auth_middleware/Cargo.toml` - Dependencies for auth middleware
+
+### Service Layer
+- `crates/services/src/service_ext.rs` - Service extensions for auth and token handling
+- `crates/services/src/app_service.rs` - Core application service integration
+- `crates/services/src/test_utils/secret.rs` - Test utilities for secret service
+
+### Route Integration
+- `crates/routes_all/src/routes.rs` - Route configuration and grouping
+- `crates/routes_app/src/routes_login.rs` - Authentication flow routes
+
+### Localization
+- `crates/auth_middleware/src/resources/en-US/messages.ftl` - Auth middleware error messages
+- `crates/objs/src/resources/en-US/messages.ftl` - Core error messages
 
 ## Technical Details
+
+### Authorization Flow
+
+1. **Request Processing**
+```rust
+// In api_auth_middleware.rs
+pub async fn api_auth_middleware(
+  required_role: Role,
+  required_scope: Option<TokenScope>,
+  State(state): State<Arc<dyn RouterState>>,
+  req: Request,
+  next: Next,
+) -> Result<Response, ApiError>
+```
+
+2. **Authorization Headers**
+- `X-Resource-Role`: Role-based authorization header
+- `X-Resource-Scope`: Scope-based authorization header
+- `X-Resource-Token`: Token validation header
+
+3. **Authorization Logic**
+```rust
+match (role_header, scope_header, required_scope) {
+  // Role header present - validate against required role
+  (Some(role_header), _, _) => {
+    // Role takes precedence
+  }
+  // No role header but scope allowed and present
+  (None, Some(scope_header), Some(required_scope)) => {
+    // Fallback to scope validation
+  }
+  // No valid auth headers found
+  _ => return Err(ApiAuthError::MissingAuth),
+}
+```
+
+4. **Service Integration**
+```rust
+// Service extensions for auth
+pub trait SecretServiceExt {
+  fn authz(&self) -> Result<bool, SecretServiceError>;
+  fn app_reg_info(&self) -> Result<Option<AppRegInfo>, SecretServiceError>;
+}
+
+// App service integration
+pub trait AppService: Send + Sync {
+  fn secret_service(&self) -> &Arc<dyn SecretService>;
+  fn auth_service(&self) -> &Arc<dyn AuthService>;
+}
+```
+
+5. **Token Validation**
+```rust
+// In token_service.rs
+impl DefaultTokenService {
+  pub async fn validate_bearer_token(
+    &self,
+    header: &str
+  ) -> Result<(String, TokenScope), AuthError>
+}
+```
+
+### Error Handling
+
+1. **Error Types**
+```rust
+pub enum ApiAuthError {
+  SecretService(#[from] SecretServiceError),
+  Forbidden,
+  MissingAuth,
+  MalformedRole(String),
+  MalformedScope(String),
+  InvalidRole(#[from] RoleError),
+  InvalidScope(#[from] TokenScopeError),
+}
+```
+
+2. **Localized Messages**
+```ftl
+api_auth_error-forbidden = insufficient privileges to access this resource
+api_auth_error-missing_auth = missing authentication header
+api_auth_error-malformed_role = error parsing role: {$var_0}
+api_auth_error-malformed_scope = error parsing scope: {$var_0}
+```
+
+### Testing Support
+- Comprehensive test utilities in `services/test_utils/secret.rs`
+- Mock implementations for services
+- Test helpers for token generation and validation
+- Authorization bypass testing support
 
 ### Authorization Types
 
@@ -415,17 +543,48 @@ impl TokenScope {
    - Support for optional authentication
    - Proper error responses
 
+4. **API Authorization Middleware**
+   - [x] Added TokenScope support to api_auth_middleware
+   - [x] Implemented role and scope hierarchy validation
+   - [x] Added support for both Role and TokenScope based authorization
+   - [x] Implemented authorization bypass when authz is disabled
+   - [x] Added comprehensive test coverage for all authorization scenarios
+
+5. **TokenScope Enhancements**
+   - [x] Updated TokenScope serialization to use prefixed format (scope_token_*)
+   - [x] Added proper serialization/deserialization tests
+   - [x] Implemented TokenScope hierarchy validation
+   - [x] Added support for offline_access requirement
+
 ### Key Achievements
 - Successfully implemented core role-based authorization
 - Added comprehensive test coverage
 - Improved security with better token handling
 - Enhanced error handling and validation
 
-### Next Steps
-1. Complete route integration with role requirements
-2. Add monitoring and logging
-3. Update documentation
-4. Plan production rollout
+### Summary of Changes
+- Implemented dual authorization system with Role and TokenScope
+- Added proper serialization for both Role and TokenScope with prefixes
+- Enhanced middleware to handle both authorization types
+- Added comprehensive test coverage for all scenarios
+- Improved error handling and messages
+
+### Remaining Tasks
+1. Route Integration:
+   - [ ] Group routes by minimum role requirement
+   - [ ] Add role-based middleware to protected routes
+   - [ ] Update route registration
+   - [ ] Document role requirements
+
+2. Monitoring & Logging:
+   - [ ] Add WARN level logging for authorization failures
+   - [ ] Include request path in log messages
+   - [ ] Set up monitoring for auth failures
+
+3. Documentation:
+   - [ ] Update API documentation with role requirements
+   - [ ] Document migration process
+   - [ ] Add usage examples
 
 ### Technical Debt
 None identified - implementation follows best practices and includes comprehensive testing.

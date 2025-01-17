@@ -4,8 +4,6 @@ use strum::IntoEnumIterator;
 
 use crate::{AppError, ErrorType};
 
-const SCOPE_TOKEN_PREFIX: &str = "scope_token_";
-
 #[derive(
   Debug,
   Clone,
@@ -14,17 +12,25 @@ const SCOPE_TOKEN_PREFIX: &str = "scope_token_";
   Eq,
   PartialOrd,
   Ord,
-  Serialize,
-  Deserialize,
   strum::Display,
   strum::EnumIter,
+  Serialize,
+  Deserialize,
 )]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum TokenScope {
+  #[strum(serialize = "scope_token_user")]
+  #[serde(rename = "scope_token_user")]
   User,
+  #[strum(serialize = "scope_token_power_user")]
+  #[serde(rename = "scope_token_power_user")]
   PowerUser,
+  #[strum(serialize = "scope_token_manager")]
+  #[serde(rename = "scope_token_manager")]
   Manager,
+  #[strum(serialize = "scope_token_admin")]
+  #[serde(rename = "scope_token_admin")]
   Admin,
 }
 
@@ -53,7 +59,7 @@ impl TokenScope {
 
   /// Get the scope token string for this scope
   pub fn scope_token(&self) -> String {
-    format!("{}{}", SCOPE_TOKEN_PREFIX, self)
+    self.to_string()
   }
 
   /// Get all scopes that this scope has access to (including itself)
@@ -88,10 +94,10 @@ impl FromStr for TokenScope {
   fn from_str(s: &str) -> Result<Self, Self::Err> {
     // Match base scope names first
     match s {
-      "user" => Ok(TokenScope::User),
-      "power_user" => Ok(TokenScope::PowerUser),
-      "manager" => Ok(TokenScope::Manager),
-      "admin" => Ok(TokenScope::Admin),
+      "scope_token_user" => Ok(TokenScope::User),
+      "scope_token_power_user" => Ok(TokenScope::PowerUser),
+      "scope_token_manager" => Ok(TokenScope::Manager),
+      "scope_token_admin" => Ok(TokenScope::Admin),
       _ => Err(TokenScopeError::InvalidTokenScope(s.to_string())),
     }
   }
@@ -130,24 +136,20 @@ mod tests {
   }
 
   #[rstest]
-  #[case(TokenScope::User, "user", "scope_token_user")]
-  #[case(TokenScope::PowerUser, "power_user", "scope_token_power_user")]
-  #[case(TokenScope::Manager, "manager", "scope_token_manager")]
-  #[case(TokenScope::Admin, "admin", "scope_token_admin")]
-  fn test_token_scope_string_formats(
-    #[case] scope: TokenScope,
-    #[case] display: &str,
-    #[case] scope_token: &str,
-  ) {
+  #[case(TokenScope::User, "scope_token_user")]
+  #[case(TokenScope::PowerUser, "scope_token_power_user")]
+  #[case(TokenScope::Manager, "scope_token_manager")]
+  #[case(TokenScope::Admin, "scope_token_admin")]
+  fn test_token_scope_string_formats(#[case] scope: TokenScope, #[case] as_str: &str) {
     // Test Display format
-    assert_eq!(scope.to_string(), display);
+    assert_eq!(scope.to_string(), as_str);
 
     // Test scope token format
-    assert_eq!(scope.scope_token(), scope_token);
+    assert_eq!(scope.scope_token(), as_str);
 
     // Test serialization
     let serialized = serde_json::to_string(&scope).unwrap();
-    assert_eq!(serialized, format!("\"{}\"", display));
+    assert_eq!(serialized, format!("\"{}\"", as_str));
 
     // Test deserialization
     let deserialized: TokenScope = serde_json::from_str(&serialized).unwrap();
@@ -187,7 +189,10 @@ mod tests {
     "offline_access scope_token_admin scope_token_manager scope_token_power_user scope_token_user",
     Ok(TokenScope::Admin)
   )]
-  #[case("offline_access scope_token_user openid profile email", Ok(TokenScope::User))]
+  #[case(
+    "offline_access scope_token_user openid profile email",
+    Ok(TokenScope::User)
+  )]
   #[case(
     "offline_access openid profile email",
     Err(TokenScopeError::MissingTokenScope)
@@ -204,12 +209,18 @@ mod tests {
   }
 
   #[rstest]
-  #[case("offline_access SCOPE_TOKEN_ADMIN", Err(TokenScopeError::MissingTokenScope))]
+  #[case(
+    "offline_access SCOPE_TOKEN_ADMIN",
+    Err(TokenScopeError::MissingTokenScope)
+  )]
   #[case(
     "OFFLINE_ACCESS scope_token_admin",
     Err(TokenScopeError::MissingOfflineAccess)
   )]
-  #[case("offline_access Scope_Token_User", Err(TokenScopeError::MissingTokenScope))]
+  #[case(
+    "offline_access Scope_Token_User",
+    Err(TokenScopeError::MissingTokenScope)
+  )]
   #[case(
     "Offline_Access SCOPE_TOKEN_MANAGER",
     Err(TokenScopeError::MissingOfflineAccess)
@@ -222,10 +233,10 @@ mod tests {
   }
 
   #[rstest]
-  #[case("user", Ok(TokenScope::User))]
-  #[case("power_user", Ok(TokenScope::PowerUser))]
-  #[case("manager", Ok(TokenScope::Manager))]
-  #[case("admin", Ok(TokenScope::Admin))]
+  #[case("scope_token_user", Ok(TokenScope::User))]
+  #[case("scope_token_power_user", Ok(TokenScope::PowerUser))]
+  #[case("scope_token_manager", Ok(TokenScope::Manager))]
+  #[case("scope_token_admin", Ok(TokenScope::Admin))]
   fn test_token_scope_parse_valid(
     #[case] input: &str,
     #[case] expected: Result<TokenScope, TokenScopeError>,
@@ -235,6 +246,10 @@ mod tests {
 
   #[rstest]
   #[case("")]
+  #[case("user")]
+  #[case("power_user")]
+  #[case("manager")]
+  #[case("admin")]
   #[case("invalid")]
   #[case("USER")]
   #[case("ADMIN")]
@@ -254,4 +269,44 @@ mod tests {
     assert!(matches!(result, Err(TokenScopeError::InvalidTokenScope(_))));
     assert_eq!(result.unwrap_err().to_string(), "invalid_token_scope");
   }
-} 
+
+  #[test]
+  fn test_token_scope_serialization() {
+    assert_eq!(
+      serde_json::to_string(&TokenScope::User).unwrap(),
+      "\"scope_token_user\""
+    );
+    assert_eq!(
+      serde_json::to_string(&TokenScope::PowerUser).unwrap(),
+      "\"scope_token_power_user\""
+    );
+    assert_eq!(
+      serde_json::to_string(&TokenScope::Manager).unwrap(),
+      "\"scope_token_manager\""
+    );
+    assert_eq!(
+      serde_json::to_string(&TokenScope::Admin).unwrap(),
+      "\"scope_token_admin\""
+    );
+  }
+
+  #[test]
+  fn test_token_scope_deserialization() {
+    assert_eq!(
+      serde_json::from_str::<TokenScope>("\"scope_token_user\"").unwrap(),
+      TokenScope::User
+    );
+    assert_eq!(
+      serde_json::from_str::<TokenScope>("\"scope_token_power_user\"").unwrap(),
+      TokenScope::PowerUser
+    );
+    assert_eq!(
+      serde_json::from_str::<TokenScope>("\"scope_token_manager\"").unwrap(),
+      TokenScope::Manager
+    );
+    assert_eq!(
+      serde_json::from_str::<TokenScope>("\"scope_token_admin\"").unwrap(),
+      TokenScope::Admin
+    );
+  }
+}
