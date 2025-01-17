@@ -1,10 +1,11 @@
 use crate::AuthError;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, Validation};
-use objs::Role;
+use objs::{Role, TokenScope};
 use services::{
   db::{DbService, TokenStatus},
-  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims, ScopeClaims, SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN,
+  extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
+  ScopeClaims, SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN,
   TOKEN_TYPE_OFFLINE,
 };
 use std::sync::Arc;
@@ -36,7 +37,10 @@ impl DefaultTokenService {
     }
   }
 
-  pub async fn validate_bearer_token(&self, header: &str) -> Result<(String, Role), AuthError> {
+  pub async fn validate_bearer_token(
+    &self,
+    header: &str,
+  ) -> Result<(String, TokenScope), AuthError> {
     // Extract token from header
     let offline_token = header
       .strip_prefix(BEARER_PREFIX)
@@ -76,8 +80,8 @@ impl DefaultTokenService {
       );
       if let Ok(token_data) = token_data {
         let offline_scope = token_data.claims.scope;
-        let role = Role::from_scope(&offline_scope)?;
-        return Ok((access_token, role));
+        let scope = TokenScope::from_scope(&offline_scope)?;
+        return Ok((access_token, scope));
       } else {
         self
           .cache_service
@@ -107,13 +111,13 @@ impl DefaultTokenService {
       )
       .await?;
 
-    // store the retrieved access token in cache to avoid going back to auth server next time on
+    // store the retrieved access token in cache
     self
       .cache_service
       .set(&format!("token:{}", api_token.token_id), &access_token);
     let scope = extract_claims::<ScopeClaims>(&access_token)?;
-    let role = Role::from_scope(&scope.scope)?;
-    Ok((access_token, role))
+    let token_scope = TokenScope::from_scope(&scope.scope)?;
+    Ok((access_token, token_scope))
   }
 
   fn validate_offline_token_signature(
@@ -258,7 +262,7 @@ mod tests {
   use anyhow_trace::anyhow_trace;
   use chrono::Utc;
   use mockall::predicate::*;
-  use objs::{test_utils::setup_l10n, FluentLocalizationService, Role};
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, TokenScope};
   use rstest::rstest;
   use serde_json::{json, Value};
   use services::{
@@ -298,17 +302,20 @@ mod tests {
 
   #[anyhow_trace]
   #[rstest]
-  #[case::scope_token_user("offline_access scope_token_user", Role::User)]
-  #[case::scope_token_user_power_user("offline_access scope_token_power_user", Role::PowerUser)]
-  #[case::scope_token_user_manager("offline_access scope_token_manager", Role::Manager)]
-  #[case::scope_token_user_admin("offline_access scope_token_admin", Role::Admin)]
+  #[case::scope_token_user("offline_access scope_token_user", TokenScope::User)]
+  #[case::scope_token_user_power_user(
+    "offline_access scope_token_power_user",
+    TokenScope::PowerUser
+  )]
+  #[case::scope_token_user_manager("offline_access scope_token_manager", TokenScope::Manager)]
+  #[case::scope_token_user_admin("offline_access scope_token_admin", TokenScope::Admin)]
   #[awt]
   #[tokio::test]
   async fn test_validate_bearer_token_success(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[future] test_db_service: TestDbService,
     #[case] scope: &str,
-    #[case] expected_role: Role,
+    #[case] expected_role: TokenScope,
   ) -> anyhow::Result<()> {
     // Given
     let claims = offline_token_claims();
@@ -355,7 +362,7 @@ mod tests {
   #[rstest]
   #[case::scope_token_user("", "missing_offline_access")]
   #[case::scope_token_user("scope_token_user", "missing_offline_access")]
-  #[case::scope_token_user("offline_access", "missing_role_scope")]
+  #[case::scope_token_user("offline_access", "missing_token_scope")]
   #[awt]
   #[tokio::test]
   async fn test_token_service_bearer_token_exchanged_token_scope_invalid(
@@ -545,13 +552,13 @@ mod tests {
     );
 
     // When
-    let (result, role) = token_service
+    let (result, token_scope) = token_service
       .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await?;
 
     // Then
     assert_eq!(exchanged_token, result);
-    assert_eq!(Role::User, role);
+    assert_eq!(TokenScope::User, token_scope);
     Ok(())
   }
 
@@ -634,13 +641,13 @@ mod tests {
     );
 
     // When
-    let (result, role) = token_service
+    let (result, scope) = token_service
       .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await?;
 
     // Then
     assert_eq!(access_token, result);
-    assert_eq!(Role::User, role);
+    assert_eq!(TokenScope::User, scope);
     Ok(())
   }
 
@@ -700,13 +707,13 @@ mod tests {
     );
 
     // When
-    let (result, role) = token_service
+    let (result, token_scope) = token_service
       .validate_bearer_token(&format!("Bearer {}", offline_token))
       .await?;
 
     // Then
     assert_eq!(exchanged_token, result);
-    assert_eq!(Role::User, role);
+    assert_eq!(TokenScope::User, token_scope);
     Ok(())
   }
 }

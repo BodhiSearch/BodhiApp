@@ -18,6 +18,7 @@ mod oai;
 mod remote_file;
 mod repo;
 mod role;
+mod token_scope;
 mod utils;
 
 pub use alias::*;
@@ -34,6 +35,7 @@ pub use oai::*;
 pub use remote_file::*;
 pub use repo::*;
 pub use role::*;
+pub use token_scope::*;
 pub use utils::*;
 
 #[macro_export]

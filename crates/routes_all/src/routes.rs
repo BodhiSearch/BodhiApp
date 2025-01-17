@@ -1,5 +1,5 @@
 use crate::proxy_router;
-use auth_middleware::{auth_middleware, optional_auth_middleware};
+use auth_middleware::{auth_middleware, inject_session_auth_info};
 use axum::{
   body::Body,
   http::StatusCode,
@@ -60,7 +60,7 @@ pub fn build_routes(
     .route("/app/login", get(login_handler))
     .route("/app/login/", get(login_handler))
     .route("/api/ui/user", get(user_info_handler))
-    .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware));
+    .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info));
   let protected_apis = Router::new()
     .route("/api/tags", get(ollama_models_handler))
     .route("/api/show", post(ollama_model_show_handler))

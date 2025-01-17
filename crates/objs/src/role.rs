@@ -4,8 +4,6 @@ use strum::IntoEnumIterator;
 
 use crate::{AppError, ErrorType};
 
-// Add constants for prefixes
-const SCOPE_TOKEN_PREFIX: &str = "scope_token_";
 const RESOURCE_PREFIX: &str = "resource_";
 
 #[derive(
@@ -36,14 +34,6 @@ pub enum RoleError {
   #[error("invalid_role_name")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   InvalidRoleName(String),
-
-  #[error("missing_offline_access")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  MissingOfflineAccess,
-
-  #[error("missing_role_scope")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
-  MissingRoleScope,
 }
 
 impl Role {
@@ -53,11 +43,6 @@ impl Role {
     // Since we derive PartialOrd, we can use >= for comparison
     // Admin > Manager > PowerUser > User
     self >= required
-  }
-
-  /// Get the scope token name for this role
-  pub fn scope_token(&self) -> String {
-    format!("{}{}", SCOPE_TOKEN_PREFIX, self)
   }
 
   /// Get the resource role name for this role
@@ -72,22 +57,6 @@ impl Role {
       .filter(|r| r <= self)
       .rev() // Reverse to get highest role first
       .collect()
-  }
-
-  /// Parse the highest role from a space-separated scope string
-  pub fn from_scope(scope: &str) -> Result<Self, RoleError> {
-    let scopes: Vec<&str> = scope.split_whitespace().collect();
-
-    if !scopes.contains(&"offline_access") {
-      return Err(RoleError::MissingOfflineAccess);
-    }
-
-    // Find the highest role scope by checking all possible roles
-    let highest_role = Role::iter()
-      .filter(|role| scopes.contains(&role.scope_token().as_str()))
-      .max();
-
-    highest_role.ok_or(RoleError::MissingRoleScope)
   }
 
   /// Parse the highest role from a slice of resource role strings
@@ -136,8 +105,7 @@ impl Role {
       }
     }
 
-    highest_role
-      .ok_or_else(|| RoleError::InvalidRoleName("no valid resource roles found".to_string()))
+    highest_role.ok_or_else(|| RoleError::InvalidRoleName("no valid resource roles found".to_string()))
   }
 }
 
@@ -196,26 +164,21 @@ mod tests {
   }
 
   #[rstest]
-  #[case(Role::User, "user", "scope_token_user", "resource_user")]
+  #[case(Role::User, "user", "resource_user")]
   #[case(
     Role::PowerUser,
     "power_user",
-    "scope_token_power_user",
-    "resource_power_user"
+        "resource_power_user"
   )]
-  #[case(Role::Manager, "manager", "scope_token_manager", "resource_manager")]
-  #[case(Role::Admin, "admin", "scope_token_admin", "resource_admin")]
+  #[case(Role::Manager, "manager", "resource_manager")]
+  #[case(Role::Admin, "admin", "resource_admin")]
   fn test_role_string_formats(
     #[case] role: Role,
     #[case] display: &str,
-    #[case] scope_token: &str,
     #[case] resource_role: &str,
   ) {
     // Test Display format
     assert_eq!(role.to_string(), display);
-
-    // Test scope token format
-    assert_eq!(role.scope_token(), scope_token);
 
     // Test resource role format
     assert_eq!(role.resource_role(), resource_role);
@@ -270,15 +233,6 @@ mod tests {
   }
 
   #[rstest]
-  #[case(Role::User, "scope_token_user")]
-  #[case(Role::PowerUser, "scope_token_power_user")]
-  #[case(Role::Manager, "scope_token_manager")]
-  #[case(Role::Admin, "scope_token_admin")]
-  fn test_scope_token(#[case] role: Role, #[case] expected: &str) {
-    assert_eq!(role.scope_token(), expected);
-  }
-
-  #[rstest]
   #[case(Role::User, "resource_user")]
   #[case(Role::PowerUser, "resource_power_user")]
   #[case(Role::Manager, "resource_manager")]
@@ -309,65 +263,6 @@ mod tests {
     // Test deserialization
     let deserialized: Role = serde_json::from_str(&serialized).unwrap();
     assert_eq!(deserialized, role);
-  }
-
-  #[rstest]
-  #[case("offline_access scope_token_user", Ok(Role::User))]
-  #[case(
-    "offline_access scope_token_power_user scope_token_user",
-    Ok(Role::PowerUser)
-  )]
-  #[case(
-    "offline_access scope_token_manager scope_token_power_user scope_token_user",
-    Ok(Role::Manager)
-  )]
-  #[case(
-    "offline_access scope_token_admin scope_token_manager scope_token_power_user scope_token_user",
-    Ok(Role::Admin)
-  )]
-  #[case("offline_access scope_token_user openid profile email", Ok(Role::User))]
-  #[case(
-    "offline_access openid profile email",
-    Err(RoleError::MissingRoleScope)
-  )]
-  #[case(
-    "scope_token_admin scope_token_user",
-    Err(RoleError::MissingOfflineAccess)
-  )]
-  #[case(
-    "offline_access scope_token_power_user scope_token_admin",
-    Ok(Role::Admin)
-  )]
-  #[case(
-    "offline_access scope_token_user scope_token_manager",
-    Ok(Role::Manager)
-  )]
-  fn test_role_from_scope(#[case] scope: &str, #[case] expected: Result<Role, RoleError>) {
-    assert_eq!(
-      Role::from_scope(scope).map_err(|e| e.to_string()),
-      expected.map_err(|e| e.to_string())
-    );
-  }
-
-  #[rstest]
-  #[case("offline_access SCOPE_TOKEN_ADMIN", Err(RoleError::MissingRoleScope))]
-  #[case(
-    "OFFLINE_ACCESS scope_token_admin",
-    Err(RoleError::MissingOfflineAccess)
-  )]
-  #[case("offline_access Scope_Token_User", Err(RoleError::MissingRoleScope))]
-  #[case(
-    "Offline_Access SCOPE_TOKEN_MANAGER",
-    Err(RoleError::MissingOfflineAccess)
-  )]
-  fn test_role_from_scope_case_sensitivity(
-    #[case] scope: &str,
-    #[case] expected: Result<Role, RoleError>,
-  ) {
-    assert_eq!(
-      Role::from_scope(scope).map_err(|e| e.to_string()),
-      expected.map_err(|e| e.to_string())
-    );
   }
 
   #[rstest]

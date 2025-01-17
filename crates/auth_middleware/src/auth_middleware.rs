@@ -5,7 +5,7 @@ use axum::{
   middleware::Next,
   response::{IntoResponse, Redirect, Response},
 };
-use objs::{ApiError, AppError, ErrorType, RoleError};
+use objs::{ApiError, AppError, ErrorType, RoleError, TokenScopeError};
 use server_core::RouterState;
 use services::{
   AppStatus, AuthServiceError, SecretService, SecretServiceError, SecretServiceExt, TokenError,
@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tower_sessions::Session;
 
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
-pub const KEY_USER_ROLES: &str = "X-User-Roles";
+pub const KEY_RESOURCE_ACCESS: &str = "X-Resource-Access";
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -24,6 +24,9 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication)]
   Role(#[from] RoleError),
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  TokenScope(#[from] TokenScopeError),
   #[error("missing_roles")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingRoles,
@@ -68,7 +71,7 @@ pub async fn auth_middleware(
   next: Next,
 ) -> Result<Response, ApiError> {
   req.headers_mut().remove(KEY_RESOURCE_TOKEN);
-  req.headers_mut().remove(KEY_USER_ROLES);
+  req.headers_mut().remove(KEY_RESOURCE_ACCESS);
 
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
@@ -95,7 +98,20 @@ pub async fn auth_middleware(
   }
 
   // Check for token in session
-  if let Some(access_token) = session
+  if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
+    let header = header
+      .to_str()
+      .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
+    let (access_token, token_scope) = token_service.validate_bearer_token(header).await?;
+    req
+      .headers_mut()
+      .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+    req.headers_mut().insert(
+      KEY_RESOURCE_ACCESS,
+      token_scope.to_string().parse().unwrap(),
+    );
+    Ok(next.run(req).await)
+  } else if let Some(access_token) = session
     .get::<String>("access_token")
     .await
     .map_err(AuthError::from)?
@@ -108,33 +124,21 @@ pub async fn auth_middleware(
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
     req
       .headers_mut()
-      .insert(KEY_USER_ROLES, role.to_string().parse().unwrap());
-    Ok(next.run(req).await)
-  } else if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
-    let header = header
-      .to_str()
-      .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
-    let (access_token, role) = token_service.validate_bearer_token(header).await?;
-    req
-      .headers_mut()
-      .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
-    req
-      .headers_mut()
-      .insert(KEY_USER_ROLES, role.to_string().parse().unwrap());
+      .insert(KEY_RESOURCE_ACCESS, role.to_string().parse().unwrap());
     Ok(next.run(req).await)
   } else {
     Err(AuthError::InvalidAccess)?
   }
 }
 
-pub async fn optional_auth_middleware(
+pub async fn inject_session_auth_info(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   mut req: Request,
   next: Next,
 ) -> Result<Response, ApiError> {
   req.headers_mut().remove(KEY_RESOURCE_TOKEN);
-  req.headers_mut().remove(KEY_USER_ROLES);
+  req.headers_mut().remove(KEY_RESOURCE_ACCESS);
   let app_service = state.app_service();
   let secret_service = app_service.secret_service();
   let token_service = DefaultTokenService::new(
@@ -169,7 +173,7 @@ pub async fn optional_auth_middleware(
         .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
       req
         .headers_mut()
-        .insert(KEY_USER_ROLES, role.to_string().parse().unwrap());
+        .insert(KEY_RESOURCE_ACCESS, role.to_string().parse().unwrap());
       return Ok(next.run(req).await);
     }
   }
@@ -183,8 +187,8 @@ fn authz_status(secret_service: &Arc<dyn SecretService>) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::{KEY_RESOURCE_TOKEN, KEY_USER_ROLES};
-  use crate::{auth_middleware, optional_auth_middleware};
+  use super::{KEY_RESOURCE_ACCESS, KEY_RESOURCE_TOKEN};
+  use crate::{auth_middleware, inject_session_auth_info};
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
@@ -209,7 +213,7 @@ mod tests {
   use services::{
     test_utils::{
       access_token_claims, build_token, expired_token, offline_access_token_claims,
-      offline_token_claims, sign_token, AppServiceStubBuilder, SecretServiceStub, OTHER_KEY,
+      offline_token_claims, sign_token, token, AppServiceStubBuilder, SecretServiceStub, OTHER_KEY,
       OTHER_PRIVATE_KEY, TEST_CLIENT_ID, TEST_CLIENT_SECRET,
     },
     AppRegInfoBuilder, AuthServiceError, MockAuthService, SqliteSessionService,
@@ -240,7 +244,7 @@ mod tests {
       .get("Authorization")
       .map(|v| v.to_str().unwrap().to_string());
     let x_user_roles = headers
-      .get(KEY_USER_ROLES)
+      .get(KEY_RESOURCE_ACCESS)
       .map(|v| v.to_str().unwrap().to_string());
     (
       StatusCode::IM_A_TEAPOT,
@@ -273,7 +277,7 @@ mod tests {
       .merge(router_with_auth().route_layer(from_fn_with_state(state.clone(), auth_middleware)))
       .merge(
         router_with_optional_auth()
-          .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware)),
+          .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info)),
       )
       .layer(state.app_service().session_service().session_layer())
       .with_state(state)
@@ -827,6 +831,68 @@ mod tests {
           "code": "auth_error-signature_mismatch"
         }
       }},
+      actual
+    );
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_auth_middleware_gives_precedence_to_token_over_session(
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let (token, _) = token();
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let id = Id::default();
+    let mut record = Record {
+      id,
+      data: maplit::hashmap! {
+        "access_token".to_string() => Value::String(token.clone()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+    let offline_token_claims = offline_token_claims();
+    let (offline_token, _) = build_token(offline_token_claims)?;
+    let (offline_access_token, _) = build_token(offline_access_token_claims())?;
+    let app_service = AppServiceStubBuilder::default()
+      .with_secret_service()
+      .session_service(session_service.clone())
+      .with_db_service()
+      .await
+      .build()?;
+    let api_token = app_service
+      .db_service
+      .as_ref()
+      .unwrap()
+      .create_api_token_from("test-token", &offline_token)
+      .await?;
+    app_service.cache_service.as_ref().unwrap().set(
+      &format!("token:{}", api_token.token_id),
+      &offline_access_token,
+    );
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+    let router = test_router(state);
+    let req = Request::get("/with_auth")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Authorization", format!("Bearer {}", offline_token))
+      .body(Body::empty())?;
+    let response = router.oneshot(req).await?;
+    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
+    let actual: TestResponse = response.json().await?;
+    assert_eq!(
+      TestResponse {
+        path: "/with_auth".to_string(),
+        x_resource_token: Some(offline_access_token),
+        x_user_roles: Some("user".to_string()),
+        authorization_header: Some(format!("Bearer {}", offline_token)),
+      },
       actual
     );
     Ok(())
