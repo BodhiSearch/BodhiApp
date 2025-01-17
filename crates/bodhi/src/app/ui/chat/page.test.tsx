@@ -1,9 +1,10 @@
 import ChatPage from '@/app/ui/chat/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO, ENDPOINT_MODELS } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
+import userEvent from '@testing-library/user-event';
 import {
   afterAll,
   beforeAll,
@@ -19,10 +20,22 @@ vi.mock('@/components/chat/ChatContainer', () => ({
   ChatContainer: () => <div data-testid="chat-container">Chat Content</div>
 }));
 
+// Mock use-mobile hook
+vi.mock('@/hooks/use-mobile', () => ({
+  useMobile: () => ({ isMobile: false }),
+}));
+
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
+  }),
+}));
+
+const toastMock = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: toastMock,
   }),
 }));
 
@@ -33,6 +46,10 @@ afterAll(() => server.close());
 beforeEach(() => {
   server.resetHandlers();
   pushMock.mockClear();
+  toastMock.mockClear();
+});
+afterEach(() => {
+  vi.resetAllMocks();
 });
 
 describe('ChatPage', () => {
@@ -48,7 +65,9 @@ describe('ChatPage', () => {
       })
     );
 
-    render(<ChatPage />, { wrapper: createWrapper() });
+    await act(async () => {
+      render(<ChatPage />, { wrapper: createWrapper() });
+    });
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith('/ui/setup');

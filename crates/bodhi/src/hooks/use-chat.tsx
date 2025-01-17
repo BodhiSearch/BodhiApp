@@ -3,6 +3,7 @@
 import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { useToast } from '@/hooks/use-toast';
 import { Message } from '@/types/chat';
 import { useCallback, useState } from 'react';
 
@@ -10,6 +11,7 @@ export function useChat() {
   const [input, setInput] = useState('');
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
+  const { toast } = useToast();
 
   const { append, isLoading } = useChatCompletion();
   const { currentChat, createOrUpdateChat } = useChatDB();
@@ -37,11 +39,17 @@ export function useChat() {
           ];
         }
 
+        const headers: Record<string, string> = {};
+        if (chatSettings.api_token_enabled && chatSettings.api_token) {
+          headers.Authorization = `Bearer ${chatSettings.api_token}`;
+        }
+
         await append({
           request: {
             ...chatSettings.getRequestSettings(),
             messages: requestMessages,
           },
+          headers,
           onDelta: (chunk) => {
             assistantMessage += chunk;
             createOrUpdateChat({
@@ -56,18 +64,57 @@ export function useChat() {
           onMessage: (message) => {
             createOrUpdateChat({
               ...currentChat,
-              messages: [...userMessages, { role: 'assistant' as const, content: message.content }],
+              messages: [
+                ...userMessages,
+                { role: 'assistant' as const, content: message.content },
+              ],
               updatedAt: Date.now(),
             });
           },
-          onFinish: () => { },
+          onFinish: () => {},
+          onError: (error) => {
+            let errorMessage = 'Error sending message to AI assistant.';
+
+            if (typeof error === 'object' && error !== null) {
+              if (
+                'error' in error &&
+                typeof error.error === 'object' &&
+                error.error !== null
+              ) {
+                errorMessage =
+                  (error.error as { message?: string }).message || errorMessage;
+              }
+            } else if (typeof error === 'string') {
+              errorMessage = error;
+            } else if (typeof error === 'object' && error !== null) {
+              errorMessage =
+                (error as { message?: string }).message || errorMessage;
+            }
+
+            toast({
+              title: 'Error',
+              description: errorMessage,
+              variant: 'destructive',
+              duration: 5000,
+            });
+          },
         });
       } catch (error) {
-        console.error('Chat completion error:', error);
-        throw error;
+        // Handle any unexpected errors that weren't caught by onError
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : 'An unexpected error occurred';
+
+        toast({
+          title: 'Error',
+          description: errorMessage,
+          variant: 'destructive',
+          duration: 5000,
+        });
       }
     },
-    [chatSettings, currentChat, append, createOrUpdateChat]
+    [chatSettings, currentChat, append, createOrUpdateChat, toast]
   );
 
   const appendMessage = useCallback(
