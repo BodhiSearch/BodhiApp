@@ -217,13 +217,13 @@ impl LlamaServer {
           return Ok(());
         }
         Ok(_) => {
-          tokio::time::sleep(Duration::from_millis(100)).await;
+          tokio::time::sleep(Duration::from_millis(1000)).await;
         }
         Err(e) if attempt == max_attempts - 1 => {
           return Err(ServerError::HealthCheckError(e.to_string()));
         }
         Err(_) => {
-          tokio::time::sleep(Duration::from_millis(100)).await;
+          tokio::time::sleep(Duration::from_millis(1000)).await;
         }
       }
     }
