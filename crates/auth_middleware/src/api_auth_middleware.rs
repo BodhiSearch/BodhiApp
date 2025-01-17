@@ -1,4 +1,4 @@
-use crate::KEY_USER_ROLES;
+use crate::KEY_RESOURCE_ACCESS;
 use axum::{
   extract::{Request, State},
   middleware::Next,
@@ -34,7 +34,7 @@ pub async fn api_auth_middleware(
   // Get role from header
   let user_role = req
     .headers()
-    .get(KEY_USER_ROLES)
+    .get(KEY_RESOURCE_ACCESS)
     .ok_or(ApiAuthError::MissingRole)?
     .to_str()
     .map_err(|e| ApiAuthError::MalformedRole(e.to_string()))?;
@@ -53,7 +53,7 @@ pub async fn api_auth_middleware(
 #[cfg(test)]
 mod tests {
   use super::api_auth_middleware;
-  use crate::KEY_USER_ROLES;
+  use crate::KEY_RESOURCE_ACCESS;
   use axum::{
     body::Body,
     http::{header::HeaderValue, Request, StatusCode},
@@ -117,7 +117,7 @@ mod tests {
     let router = test_router(required_role);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_USER_ROLES, user_role.to_string())
+      .header(KEY_RESOURCE_ACCESS, user_role.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -141,7 +141,7 @@ mod tests {
     let router = test_router(required_role);
     let req = Request::builder()
       .uri("/test")
-      .header(KEY_USER_ROLES, user_role.to_string())
+      .header(KEY_RESOURCE_ACCESS, user_role.to_string())
       .body(Body::empty())?;
 
     let response = router.oneshot(req).await?;
@@ -193,7 +193,7 @@ mod tests {
     let req = Request::builder()
       .uri("/test")
       .header(
-        KEY_USER_ROLES,
+        KEY_RESOURCE_ACCESS,
         HeaderValue::from_bytes(b"some_invalid_role")?,
       )
       .body(Body::empty())?;

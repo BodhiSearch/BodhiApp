@@ -11,30 +11,48 @@ So that users can only access resources appropriate for their role level
 
 #### Role Hierarchy
 - Roles are hierarchical in descending order: admin > manager > power_user > user
-  1. Admin (`resource_admin`, `scope_token_admin`)
-  2. Manager (`resource_manager`, `scope_token_manager`)
-  3. Power User (`resource_power_user`, `scope_token_power_user`)
-  4. User (`resource_user`, `scope_token_user`)
+  1. Admin (`resource_admin`)
+  2. Manager (`resource_manager`)
+  3. Power User (`resource_power_user`)
+  4. User (`resource_user`)
 - Higher roles automatically have access to lower role endpoints
 - Role hierarchy must be implemented as a reusable function
-- Roles are included in JWT token claims
-- No configuration file needed for hierarchy
-- All role checks skipped in non-authenticated mode
+- Roles are included in JWT token claims resource_access
 - Each endpoint is configured with minimum required role level
 
-#### Token Validation
+#### Token Scope Hierarchy
+- TokenScope similar to Role are hierarchical in descending order: admin > manager > power_user > user
+  1. Admin (`scope_token_admin`)
+  2. Manager (`scope_token_manager`)
+  3. Power User (`scope_token_power_user`)
+  4. User (`scope_token_user`)
+- Higher TokenScope automatically have access to lower role endpoints
+- TokenScope hierarchy must be implemented as a reusable function
+- TokenScope are included in JWT token claims "scope"
+- A TokenScope JTW should also have scope "offline_access"
+- No configuration file needed for hierarchy
+- Each endpoint is configured with minimum required TokenScope level
+- API call with TokenScope will not have access to authorized endpoints not configured with TokenScope level 
+
+#### Common
+- No configuration file needed for Role or TokenScope hierarchy
+- No customizations possible for Role or TokenScope hierarchy
+- All checks skipped in non-authenticated mode
+
+#### Token Claim Extraction
 - Session tokens: validate roles in resource_access.[client-id].roles
-- Bearer tokens: validate roles in scope claim (e.g., scope_token_user)
 - Client ID in resource_access must match app's client ID
+- Bearer tokens: validate TokenScope in scope claim (e.g., scope_token_user)
+- Bearer tokens: should also have scope `offline_access`, otherwise not parsed
 - Rely solely on token claims for role validation
 - Authorization must be enforced after authentication
 
 #### Authorization Flow
 1. Auth middleware injects active access token in header
 2. API auth middleware extracts role information:
-   - Session tokens: Check `resource_access.[client-id].roles` array
-   - Bearer tokens: Check `scope` field for role-specific scopes
-3. Validate minimum required role access
+   - For Session tokens: Check `resource_access.[client-id].roles` array and inject the role in header `X-Resource-Role`
+   - For Bearer tokens: Check `scope` field for token-scope-specific claims and inject the token scope in header `X-Resource-Token-Scope`
+3. At API endpoints, validate minimum required role or token_scope access
 4. Allow or deny request with appropriate response
 
 #### Security Requirements
@@ -116,10 +134,14 @@ So that users can only access resources appropriate for their role level
 ## File Overview
 
 ### Backend (Rust)
-- `crates/auth_middleware/src/api_auth.rs`: API authorization middleware
-- `crates/auth_middleware/src/role.rs`: Role hierarchy and validation logic
-- `crates/routes_all/src/routes.rs`: Route configuration with role groups
+- `crates/auth_middleware/src/api_auth_middleware.rs` - Role-based authorization middleware
+- `crates/auth_middleware/src/auth_middleware.rs` - Base authentication middleware
+- `crates/auth_middleware/src/lib.rs` - Middleware exports
 - `crates/auth_middleware/src/resources/en-US/messages.ftl`: Error messages for authorization
+- `crates/objs/src/role.rs` - Role enum and hierarchy implementation
+- `crates/routes_all/src/routes.rs`: Route configuration with role groups
+- `crates/routes_app/src/routes_ui.rs` - UI-related routes
+- `crates/routes_oai/src/routes_models.rs` - Model-related routes
 
 ### Tests
 - `crates/auth_middleware/tests/test_api_auth.rs`: Authorization middleware tests
@@ -128,7 +150,9 @@ So that users can only access resources appropriate for their role level
 
 ## Technical Details
 
-### Role Hierarchy Implementation
+### Authorization Types
+
+1. **Role-Based (Session)**
 ```rust
 pub enum Role {
     User,
@@ -142,6 +166,16 @@ impl Role {
         // Implement hierarchy check
     }
 }
+
+let admin_apis = Router::new().route("/api/settings", get(settings_handler))
+   .route("/api/admin", get(admin_handler))
+   .route_layer(from_fn_with_state(state.clone(), api_auth_middleware(Some(Role::Admin), None)));
+let manager_apis = Router::new().route("/api/users",
+    get(user_handler))
+   .route("/api/billing",
+    get(billing_handler))
+    .route_layer(from_fn_with_state(state.clone(), api_auth_middleware(Some(Role::Manager), Some(TokenScope::Manager))));
+let app_router = admin_apis.merge(manager_apis).merge(...);
 ```
 
 ### Token Claims Structure
@@ -160,25 +194,131 @@ impl Role {
 }
 ```
 
-### Bearer Token Scope
+2. **Token Scope-Based (API Token)**
+```rust
+pub enum TokenScope {
+    User,
+    PowerUser,
+    Manager,
+    Admin,
+}
 ```
+
+### Bearer Token Scope
+```json
 scope: "openid offline_access scope_token_user"
 ```
 
-### Route Configuration
-```rust
-let admin_apis = Router::new().route("/api/settings", 
-    get(settings_handler))
-.route("/api/admin", 
-    get(admin_handler))
-    .route_layer(from_fn_with_state(state.clone(), api_auth_middleware(Role::Admin)));
-let manager_apis = Router::new().route("/api/users", 
-    get(user_handler))
-   .route("/api/billing", 
-    get(billing_handler))
-    .route_layer(from_fn_with_state(state.clone(), api_auth_middleware(Role::Manager)));
-let app_router = admin_apis.merge(manager_apis).merge(...);
+### Route Authorization Matrix
+
+**role=anon** (No Authentication Required)
 ```
+GET  /ping
+GET  /app/info
+GET  /app/setup
+GET  /app/login
+GET  /app/login/callback
+POST /api/ui/logout
+GET  /api/ui/user
+GET  /* (UI fallback routes)
+```
+
+**role=user & scope=scope_token_user**
+```
+GET   /api/ui/models
+GET   /api/ui/models/:id
+POST  /v1/chat/completions
+GET   /api/tags                    # Ollama models list
+POST  /api/show                    # Ollama model show
+POST  /api/chat                    # Ollama chat
+GET   /api/ui/chats
+GET   /api/ui/chats/:id
+POST  /api/ui/chats
+PUT   /api/ui/chats/:id
+```
+
+**role=power_user**
+- should only be allowed to access (list) and update his own tokens
+```
+POST /api/ui/tokens             # Create token (session only)
+POST /api/ui/create             # Create operations (session only)
+PUT  /api/ui/create/:id         # (session only)
+```
+
+**role=power_user or scope=scope_token_power_user**
+```
+GET  /api/ui/pull              # Pull operations
+POST /api/ui/pull
+```
+
+**role=manager**
+- should be allowed to access and update app-wide tokens
+```
+GET  /api/ui/tokens            # List all tokens (session only)
+GET  /api/ui/tokens/:id       # Get token details (session only)
+PUT  /api/ui/tokens/:id      # Update token (session only)
+```
+
+**role=admin**
+```
+GET  /dev/secrets            # Only in non-production (session only)
+```
+
+### Implementation Notes
+
+1. **Session vs Token Authorization**
+- Session authentication uses Role enum
+- API token authentication uses TokenScope enum
+- Some operations restricted to session-only
+- TokenScope cannot perform token management operations
+
+2. **Hierarchy Implementation**
+```rust
+impl Role {
+      fn has_access_to(&self, required: &Role) -> bool {
+         // Session role hierarchy check
+      }
+}
+
+impl TokenScope {
+      fn has_access_to(&self, required: &TokenScope) -> bool {
+         // Token scope hierarchy check
+      }
+
+}
+```
+
+3. **Token Claims**
+   ```json
+   {
+     "scope": "offline_access scope_token_power_user",
+     "resource_access": {
+       "resource-id": {
+         "roles": ["resource_power_user", "resource_user"]
+       }
+     }
+   }
+   ```
+
+4. **Authorization Flow**
+- Check authentication type (session vs token)
+- Apply appropriate authorization type
+- Check additional restrictions for token-based auth
+- Validate operation permissions
+
+### Security Considerations
+
+1. **Token Restrictions**
+- API tokens cannot create other tokens
+- API tokens cannot manage other tokens
+- API tokens cannot access admin routes
+- Some operations require session authentication
+
+2. **Session Privileges**
+- Full access based on role level
+- Can perform token management
+- Can access admin features
+- No additional restrictions
 
 ## Migration Plan
 1. Deploy core role implementation

@@ -262,7 +262,7 @@ mod tests {
     UserInfo,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::{optional_auth_middleware, KEY_RESOURCE_TOKEN};
+  use auth_middleware::{inject_session_auth_info, KEY_RESOURCE_TOKEN};
   use axum::{
     body::Body,
     http::{status::StatusCode, Request},
@@ -439,7 +439,7 @@ mod tests {
     ));
     let router = Router::new()
       .route("/login", get(login_handler))
-      .route_layer(from_fn_with_state(state.clone(), optional_auth_middleware))
+      .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info))
       .with_state(state)
       .layer(app_service.session_service().session_layer());
     let resp = router
