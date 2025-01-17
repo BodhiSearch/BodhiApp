@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 pub const GRANT_REFRESH_TOKEN: &str = "refresh_token";
 pub const TOKEN_TYPE_OFFLINE: &str = "Offline";
 pub const TOKEN_TYPE_BEARER: &str = "Bearer";
+pub const HEADER_BODHI_APP_VERSION: &str = "x-bodhi-app-version";
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -73,6 +74,7 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
 
 #[derive(Debug)]
 pub struct KeycloakAuthService {
+  app_version: String,
   auth_url: String,
   realm: String,
 }
@@ -89,8 +91,12 @@ impl From<KeycloakError> for AuthServiceError {
 }
 
 impl KeycloakAuthService {
-  pub fn new(auth_url: String, realm: String) -> Self {
-    Self { auth_url, realm }
+  pub fn new(app_version: &str, auth_url: String, realm: String) -> Self {
+    Self {
+      app_version: app_version.to_string(),
+      auth_url,
+      realm,
+    }
   }
 
   fn auth_url(&self) -> String {
@@ -120,6 +126,7 @@ impl KeycloakAuthService {
     let response = client
       .post(self.auth_token_url())
       .form(&params)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
 
@@ -146,6 +153,7 @@ impl AuthService for KeycloakAuthService {
     let response = reqwest::Client::new()
       .post(client_endpoint)
       .json(&RegisterClientRequest { redirect_uris })
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
     if response.status().is_success() {
@@ -177,6 +185,7 @@ impl AuthService for KeycloakAuthService {
     let response = client
       .post(self.auth_token_url())
       .form(&params)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
     if response.status().is_success() {
@@ -211,6 +220,7 @@ impl AuthService for KeycloakAuthService {
     let response = client
       .post(self.auth_token_url())
       .form(&params)
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
 
@@ -255,6 +265,7 @@ impl AuthService for KeycloakAuthService {
       .post(self.auth_token_url())
       .form(&params)
       .header("Authorization", format!("Berarer {}", subject_token))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
 
@@ -294,6 +305,7 @@ impl AuthService for KeycloakAuthService {
       .post(endpoint)
       .bearer_auth(access_token.secret())
       .json(&serde_json::json!({ "username": email }))
+      .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
 
@@ -308,7 +320,9 @@ impl AuthService for KeycloakAuthService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError, KeycloakAuthService};
+  use crate::{
+    test_utils::test_auth_service, AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError,
+  };
   use jsonwebtoken::{errors::ErrorKind, Algorithm};
   use mockito::{Matcher, Server};
   use objs::{
@@ -361,7 +375,7 @@ mod tests {
       )
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
       .await;
@@ -393,7 +407,7 @@ mod tests {
       .with_body(r#"{"error": "cannot complete request"}"#)
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
       .await;
@@ -443,7 +457,7 @@ mod tests {
       )
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .refresh_token(client_id, client_secret, old_refresh_token)
       .await;
@@ -487,7 +501,7 @@ mod tests {
       )
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .refresh_token(client_id, client_secret, invalid_refresh_token)
       .await;
@@ -544,7 +558,7 @@ mod tests {
       .with_body("{}")
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .make_resource_admin(client_id, client_secret, email)
       .await;
@@ -574,7 +588,7 @@ mod tests {
       .with_body(json!({"error": "invalid_client"}).to_string())
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .make_resource_admin(client_id, client_secret, email)
       .await;
@@ -624,7 +638,7 @@ mod tests {
       .with_body(json!({"error": "user_not_found"}).to_string())
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .make_resource_admin(client_id, client_secret, email)
       .await;
@@ -680,7 +694,7 @@ mod tests {
       )
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .exchange_token(
         "test_client_id",
@@ -740,7 +754,7 @@ mod tests {
       )
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .exchange_token(
         "test_client_id",
@@ -789,7 +803,7 @@ mod tests {
       )
       .create();
 
-    let service = KeycloakAuthService::new(url, "test-realm".to_string());
+    let service = test_auth_service(&url);
     let result = service
       .exchange_token(
         "test_client_id",

@@ -5,10 +5,10 @@ use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
-  test_utils::{EnvWrapperStub, OfflineHubService, SecretServiceStub},
+  test_utils::{test_auth_service, EnvWrapperStub, OfflineHubService, SecretServiceStub},
   AppService, DefaultAppService, DefaultEnvService, DefaultSettingService, HfHubService,
-  InitService, KeycloakAuthService, LocalDataService, MokaCacheService, SqliteSessionService,
-  BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
+  InitService, LocalDataService, MokaCacheService, SqliteSessionService, BODHI_EXEC_LOOKUP_PATH,
+  BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
 use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
@@ -88,10 +88,7 @@ pub fn llama2_7b_setup(
     hf_cache, false, None,
   )));
   let data_service = LocalDataService::new(bodhi_home.clone(), hub_service.clone());
-  let auth_service = KeycloakAuthService::new(
-    String::from("http://id.localhost:8080"),
-    String::from("bodhi"),
-  );
+  let auth_service = test_auth_service("http://id.localhost:8080");
   let pool = SqlitePool::connect_lazy("sqlite::memory:").unwrap();
   let time_service = Arc::new(DefaultTimeService);
   let db_service = SqliteDbService::new(pool.clone(), time_service.clone());

@@ -286,15 +286,15 @@ mod tests {
   use server_core::{
     test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
   };
+  use services::AppStatus;
   use services::{
     test_utils::{
-      app_reg_info, build_token, expired_token, token, AppServiceStub, AppServiceStubBuilder,
-      EnvServiceStub, SecretServiceStub, SessionTestExt, TEST_CLIENT_ID,
+      app_reg_info, build_token, expired_token, test_auth_service, token, AppServiceStub,
+      AppServiceStubBuilder, EnvServiceStub, SecretServiceStub, SessionTestExt, TEST_CLIENT_ID,
     },
     AppRegInfo, AppService, AuthServiceError, MockAuthService, MockEnvService, SecretServiceExt,
     SqliteSessionService, BODHI_FRONTEND_URL,
   };
-  use services::{AppStatus, KeycloakAuthService};
   use std::{collections::HashMap, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;
@@ -1047,10 +1047,7 @@ mod tests {
       })
       .with_app_status(&AppStatus::ResourceAdmin);
     let secret_service = Arc::new(secret_service);
-    let auth_service = Arc::new(KeycloakAuthService::new(
-      keycloak_url.to_string(),
-      "test-realm".to_string(),
-    ));
+    let auth_service = Arc::new(test_auth_service(&keycloak_url));
     let mock_env_service = Arc::new(
       EnvServiceStub::default()
         .with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000")

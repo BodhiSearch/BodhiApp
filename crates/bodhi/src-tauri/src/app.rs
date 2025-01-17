@@ -57,7 +57,7 @@ async fn aexecute(env_service: Arc<DefaultEnvService>) -> Result<()> {
 
   let auth_url = env_service.auth_url();
   let auth_realm = env_service.auth_realm();
-  let auth_service = KeycloakAuthService::new(auth_url, auth_realm);
+  let auth_service = KeycloakAuthService::new(&env_service.version(), auth_url, auth_realm);
   let localization_service = FluentLocalizationService::get_instance();
   localization_service
     .load_resource(objs::l10n::L10N_RESOURCES)?
