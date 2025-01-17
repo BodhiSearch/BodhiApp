@@ -138,7 +138,6 @@ impl SharedContext for DefaultSharedContext {
     let prompt = chat_template.apply_chat_template(&request.messages)?;
     let mut input_value = serde_json::to_value(request)?;
     input_value["prompt"] = serde_json::Value::String(prompt);
-    // TODO: instead of comparing model path, compare server args
     match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
         let response = server

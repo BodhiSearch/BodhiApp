@@ -6,9 +6,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const path_home = '/ui/home';
-export const path_app_login = '/app/login';
-
+export const PATH_UI_HOME = '/ui/home';
 export const nanoid = customAlphabet(
   '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz',
   7
