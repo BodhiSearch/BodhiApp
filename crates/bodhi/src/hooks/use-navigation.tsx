@@ -12,6 +12,8 @@ import {
   Files,
   Download,
   Key,
+  FlaskRound,
+  Settings,
 } from 'lucide-react';
 
 const navigationItems: NavigationItem[] = [
@@ -20,12 +22,6 @@ const navigationItems: NavigationItem[] = [
     href: '/ui/home/',
     description: 'Dashboard and overview',
     icon: Home,
-  },
-  {
-    title: 'Chat',
-    href: '/ui/chat/',
-    description: 'AI Chat Interface',
-    icon: MessageSquare,
   },
   {
     title: 'Models',
@@ -52,11 +48,29 @@ const navigationItems: NavigationItem[] = [
     ],
   },
   {
-    title: 'API Tokens',
-    href: '/ui/tokens/',
-    description: 'Manage API access tokens',
-    icon: Key,
-    authRequired: true,
+    title: 'Playground',
+    icon: FlaskRound,
+    items: [
+      {
+        title: 'Chat',
+        href: '/ui/chat/',
+        description: 'AI Chat Interface',
+        icon: MessageSquare,
+      },
+    ],
+  },
+  {
+    title: 'Settings',
+    icon: Settings,
+    items: [
+      {
+        title: 'API Tokens',
+        href: '/ui/tokens/',
+        description: 'Manage API access tokens',
+        icon: Key,
+        authRequired: true,
+      },
+    ],
   },
 ];
 
