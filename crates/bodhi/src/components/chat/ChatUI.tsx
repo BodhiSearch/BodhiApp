@@ -1,13 +1,13 @@
 'use client';
 
+import { ChatMessage } from '@/components/chat/ChatMessage';
+import { Button } from '@/components/ui/button';
+import { ScrollAnchor } from '@/components/ui/scroll-anchor';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useChat } from '@/hooks/use-chat';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { Message } from '@/types/chat';
-import { FormEvent, useRef, useEffect, RefObject } from 'react';
-import { ChatMessage } from './ChatMessage';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { ScrollAnchor } from '@/components/ui/scroll-anchor';
+import { FormEvent, RefObject, useEffect, useRef } from 'react';
 
 // Extracted components outside the main component
 const LoadingSkeletons = () => (

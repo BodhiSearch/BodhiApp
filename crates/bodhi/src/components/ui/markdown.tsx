@@ -1,7 +1,7 @@
-import { FC, memo } from 'react'
-import ReactMarkdown, { type Components, type Options } from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import { CodeBlock } from './codeblock';
+import { CodeBlock } from '@/components/ui/codeblock';
+import { FC, memo } from 'react';
+import ReactMarkdown, { type Components, type Options } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 
 

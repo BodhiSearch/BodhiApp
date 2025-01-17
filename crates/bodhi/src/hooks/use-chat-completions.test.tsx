@@ -1,10 +1,10 @@
+import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
 import { act, renderHook } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useChatCompletion } from './use-chat-completions';
 
 // Reuse the same server setup pattern as AppInitializer.test.tsx
 const server = setupServer();

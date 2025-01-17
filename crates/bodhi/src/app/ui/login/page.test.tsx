@@ -64,6 +64,12 @@ describe('LoginContent loading states', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument());
   });
+
+  it('shows loading state in centered container', async () => {
+    render(<LoginContent />, { wrapper: createWrapper() });
+    const loadingDiv = screen.getByText('Loading...');
+    expect(loadingDiv.parentElement).toHaveClass('w-full max-w-md mx-auto mt-8 h-fit text-center');
+  });
 });
 
 describe('LoginContent with user not Logged In', () => {
@@ -87,8 +93,17 @@ describe('LoginContent with user not Logged In', () => {
     const loginButton = screen.getByRole('button', { name: 'Login' });
     expect(loginButton).toBeDefined();
     expect(
-      screen.getByText('You need to login to use the Bodhi App')
+      screen.getByText('Login to use the Bodhi App')
     ).toBeInTheDocument();
+  });
+
+  it('renders login button with correct styling', async () => {
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+    const loginButton = screen.getByRole('button', { name: 'Login' });
+    expect(loginButton).toHaveClass('w-full');
+    expect(loginButton).not.toBeDisabled();
   });
 });
 
@@ -113,7 +128,6 @@ describe('LoginContent with user Logged In', () => {
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
     });
-    expect(screen.getByText('Welcome')).toBeInTheDocument();
     expect(
       screen.getByText('You are logged in as test@example.com')
     ).toBeInTheDocument();
@@ -162,6 +176,17 @@ describe('LoginContent with user Logged In', () => {
     expect(loggingOut).toBeInTheDocument();
     expect(loggingOut).toHaveAttribute('disabled');
   });
+
+  it('renders buttons with correct styling', async () => {
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+    const homeButton = screen.getByRole('button', { name: 'Go to Home' });
+    const logoutButton = screen.getByRole('button', { name: 'Log Out' });
+    
+    expect(homeButton).toHaveClass('w-full mb-2');
+    expect(logoutButton).toHaveClass('w-full');
+  });
 });
 
 describe('LoginContent with non-authz mode', () => {
@@ -185,6 +210,14 @@ describe('LoginContent with non-authz mode', () => {
     expect(screen.getByText('This app is setup in non-authenticated mode.User login is not available.')).toBeInTheDocument();
     const loginButton = screen.getByRole('button', { name: /login/i });
     expect(loginButton).toBeDisabled();
+  });
+
+  it('applies correct styling to disabled state', async () => {
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+    const container = screen.getByRole('button', { name: /login/i }).closest('div');
+    expect(container).toHaveClass('opacity-50 pointer-events-none');
   });
 });
 

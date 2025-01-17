@@ -1,7 +1,7 @@
-import { renderHook, act } from '@testing-library/react';
-import { useChatDB, ChatDBProvider } from './use-chat-db';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatDBProvider, useChatDB } from '@/hooks/use-chat-db';
 import { Chat } from '@/types/chat';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock nanoid to have predictable IDs
 vi.mock('@/lib/utils', () => ({
