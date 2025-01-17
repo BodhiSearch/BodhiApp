@@ -37,6 +37,8 @@ interface ChatSettings {
     schema?: object;
   };
   response_format_enabled: boolean;
+  api_token?: string;
+  api_token_enabled: boolean;
 }
 
 const defaultSettings: ChatSettings = {
@@ -54,6 +56,7 @@ const defaultSettings: ChatSettings = {
   seed_enabled: false,
   systemPrompt_enabled: false,
   response_format_enabled: false,
+  api_token_enabled: false,
 };
 
 interface ChatSettingsContextType extends ChatSettings {
@@ -94,6 +97,8 @@ interface ChatSettingsContextType extends ChatSettings {
       }
   >;
   reset: () => void;
+  setApiToken: (token: string | undefined) => void;
+  setApiTokenEnabled: (enabled: boolean) => void;
 }
 
 const ChatSettingsContext = createContext<ChatSettingsContextType | undefined>(
@@ -212,6 +217,8 @@ export function ChatSettingsProvider({
     createSetters('systemPrompt');
   const { setValue: setResponseFormat, setEnabled: setResponseFormatEnabled } =
     createSetters('response_format');
+  const { setValue: setApiToken, setEnabled: setApiTokenEnabled } =
+    createSetters('api_token');
 
   const getRequestSettings = useCallback(() => {
     const requestSettings: Record<string, unknown> = {};
@@ -288,6 +295,8 @@ export function ChatSettingsProvider({
         setSystemPromptEnabled,
         setResponseFormat,
         setResponseFormatEnabled,
+        setApiToken,
+        setApiTokenEnabled,
         // @ts-expect-error - ignore
         getRequestSettings,
         reset,

@@ -72,6 +72,7 @@ impl IntoResponse for ApiError {
     let openai_error: OpenAIApiError = self.into();
     Response::builder()
       .status(openai_error.status)
+      .header("Content-Type", "application/json")
       .body(Body::from(serde_json::to_string(&openai_error).unwrap()))
       .unwrap()
   }

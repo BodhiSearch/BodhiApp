@@ -55,6 +55,14 @@ vi.mock('@/hooks/use-chat-db', () => ({
   }),
 }));
 
+// Mock toast
+const mockToast = vi.fn();
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: mockToast,
+  }),
+}));
+
 describe('useChat', () => {
   beforeEach(() => {
     chatDB.clear();
@@ -67,6 +75,8 @@ describe('useChat', () => {
         }),
         systemPrompt: '',
         systemPrompt_enabled: false,
+        api_token: 'test-token',
+        api_token_enabled: true,
       }),
     }));
   });
@@ -214,6 +224,106 @@ describe('useChat', () => {
         role: 'system',
         content: 'Test system prompt',
       });
+    });
+  });
+
+  describe('error handling', () => {
+    it('should handle API errors with error message', async () => {
+      const initialChat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
+      chatDB.setCurrentChat(initialChat);
+
+      // Mock API error response
+      server.use(
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
+          return res(
+            ctx.status(500),
+            ctx.json({
+              error: {
+                message: 'Invalid API key provided',
+                type: 'invalid_request_error',
+              }
+            })
+          );
+        })
+      );
+
+      const { result } = renderHook(() => useChat(), {
+        wrapper: createWrapper()
+      });
+
+      const userMessage = {
+        id: '1',
+        role: 'user' as const,
+        content: 'Hello',
+      };
+
+      await act(async () => {
+        try {
+          await result.current.append(userMessage);
+        } catch (error) {
+        }
+      });
+
+      // Verify toast was called with error message
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Error',
+        description: 'Invalid API key provided',
+        variant: 'destructive',
+        duration: 5000,
+      });
+
+      // Verify the user message was still saved
+      const savedChat = await chatDB.getChat('1');
+      expect(savedChat?.messages).toHaveLength(1);
+      expect(savedChat?.messages[0]).toEqual(userMessage);
+    });
+
+    it('should handle network errors', async () => {
+      const initialChat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
+      chatDB.setCurrentChat(initialChat);
+
+      // Mock network error
+      server.use(
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res) => {
+          return res.networkError('Failed to connect');
+        })
+      );
+
+      const { result } = renderHook(() => useChat(), {
+        wrapper: createWrapper()
+      });
+
+      const userMessage = {
+        id: '1',
+        role: 'user' as const,
+        content: 'Hello',
+      };
+
+      await act(async () => {
+        await result.current.append(userMessage);
+      });
+
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Error',
+        description: 'Failed to fetch',
+        variant: 'destructive',
+        duration: 5000,
+      });
+
+      // Verify the user message was still saved
+      const savedChat = await chatDB.getChat('1');
+      expect(savedChat?.messages).toHaveLength(1);
+      expect(savedChat?.messages[0]).toEqual(userMessage);
     });
   });
 });

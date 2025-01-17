@@ -46,6 +46,28 @@ export function SettingsSidebar() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
+                <Label htmlFor="api-token">API Token</Label>
+                <Switch
+                  id="api-token-enabled"
+                  checked={settings.api_token_enabled}
+                  onCheckedChange={settings.setApiTokenEnabled}
+                  disabled={isLoading}
+                />
+              </div>
+              <input
+                type="password"
+                id="api-token"
+                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+                value={settings.api_token || ''}
+                onChange={(e) =>
+                  settings.setApiToken(e.target.value || undefined)
+                }
+                disabled={isLoading || !settings.api_token_enabled}
+                placeholder="Enter your API token"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
                 <Label htmlFor="seed-input">Seed</Label>
                 <div className="flex items-center gap-4">
                   <Switch
