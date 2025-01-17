@@ -69,7 +69,7 @@ export default function AppInitializer({
 
   if (appLoading || userLoading) {
     return (
-      <div className="flex flex-col items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
         <p className="mt-4 text-gray-600">Initializing app...</p>
       </div>
@@ -112,7 +112,7 @@ export default function AppInitializer({
 
     if (!allowedStatus || appInfo.status !== allowedStatus) {
       return (
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center w-full">
           <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
           <p className="mt-4 text-gray-600">Redirecting...</p>
         </div>
@@ -122,7 +122,7 @@ export default function AppInitializer({
 
   if (authenticated && appInfo?.authz && !userInfo?.logged_in) {
     return (
-      <div className="flex flex-col items-center justify-center">
+      <div className="flex flex-1 flex-col items-center justify-center w-full">
         <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
         <p className="mt-4 text-gray-600">Redirecting to login...</p>
       </div>
