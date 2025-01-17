@@ -35,7 +35,7 @@ export default function RootLayout({
                 <AppNavigation />
                 <AppBreadcrumb />
               </header>
-              <main className="flex flex-1">{children}</main>
+              <main className="flex flex-1 w-full">{children}</main>
               <Toaster />
             </div>
           </NavigationProvider>
