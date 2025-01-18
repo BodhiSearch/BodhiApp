@@ -5,8 +5,7 @@ use objs::{AppRegInfoMissingError, Role, TokenScope};
 use services::{
   db::{DbService, TokenStatus},
   extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
-  ScopeClaims, SecretService, SecretServiceExt, TokenError, GRANT_REFRESH_TOKEN,
-  TOKEN_TYPE_OFFLINE,
+  ScopeClaims, SecretService, SecretServiceExt, TokenError, TOKEN_TYPE_OFFLINE,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -98,19 +97,17 @@ impl DefaultTokenService {
       .app_reg_info()?
       .ok_or(AppRegInfoMissingError)?;
 
-    // Validate token signature and claims
-    let claims = self.validate_offline_token_signature(offline_token, &app_reg_info)?;
+    // Validate claims - iat, expiry, tpe, azp, scope: offline_access
+    let claims = extract_claims::<OfflineClaims>(offline_token)?;
     self.validate_token_claims(&claims, &app_reg_info.client_id)?;
 
     // Exchange token
     let (access_token, _) = self
       .auth_service
-      .exchange_token(
+      .refresh_token(
         &app_reg_info.client_id,
         &app_reg_info.client_secret,
         offline_token,
-        GRANT_REFRESH_TOKEN,
-        vec![],
       )
       .await?;
 
@@ -121,33 +118,6 @@ impl DefaultTokenService {
     let scope = extract_claims::<ScopeClaims>(&access_token)?;
     let token_scope = TokenScope::from_scope(&scope.scope)?;
     Ok((access_token, token_scope))
-  }
-
-  fn validate_offline_token_signature(
-    &self,
-    token: &str,
-    app_reg_info: &AppRegInfo,
-  ) -> Result<OfflineClaims, AuthError> {
-    // Setup validation
-    let key_pem = format!(
-      "-----BEGIN RSA PUBLIC KEY-----\n{}\n-----END RSA PUBLIC KEY-----",
-      app_reg_info.public_key
-    );
-    let key = DecodingKey::from_rsa_pem(key_pem.as_bytes())
-      .map_err(|err| AuthError::SignatureKey(err.to_string()))?;
-
-    let mut validation = Validation::new(app_reg_info.alg);
-    validation.set_issuer(&[&app_reg_info.issuer]);
-    validation.validate_exp = false; // offline tokens do not have expiration
-    validation.validate_aud = false;
-    let items: &[String] = &[];
-    validation.set_required_spec_claims(items);
-
-    // Validate and decode token
-    let token_data = jsonwebtoken::decode::<OfflineClaims>(token, &key, &validation)
-      .map_err(|err| AuthError::SignatureMismatch(err.to_string()))?;
-
-    Ok(token_data.claims)
   }
 
   fn validate_token_claims(
@@ -275,7 +245,7 @@ mod tests {
       TEST_CLIENT_ID, TEST_CLIENT_SECRET,
     },
     AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MockSecretService,
-    MokaCacheService, GRANT_REFRESH_TOKEN, TOKEN_TYPE_OFFLINE,
+    MokaCacheService, TOKEN_TYPE_OFFLINE,
   };
   use std::sync::Arc;
 
@@ -326,22 +296,20 @@ mod tests {
     test_db_service
       .create_api_token_from("test_token", &offline_token)
       .await?;
-    let (exchanged_token, _) =
+    let (refreshed_token, _) =
       build_token(json! {{"exp": Utc::now().timestamp() + 3600, "scope": scope}})?;
-    let exchanged_token_cl = exchanged_token.clone();
+    let refreshed_token_cl = refreshed_token.clone();
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let mut mock_auth = MockAuthService::new();
     mock_auth
-      .expect_exchange_token()
+      .expect_refresh_token()
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
         eq(offline_token.clone()),
-        eq(GRANT_REFRESH_TOKEN),
-        eq(vec![]),
       )
-      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, Some("new_refresh_token".to_string()))));
+      .return_once(|_, _, _| Ok((refreshed_token_cl, Some("new_refresh_token".to_string()))));
 
     let token_service = Arc::new(DefaultTokenService::new(
       Arc::new(mock_auth),
@@ -356,7 +324,7 @@ mod tests {
       .await?;
 
     // Then
-    assert_eq!(exchanged_token, result);
+    assert_eq!(refreshed_token, result);
     assert_eq!(expected_role, role);
     Ok(())
   }
@@ -380,20 +348,18 @@ mod tests {
     test_db_service
       .create_api_token_from("test_token", &offline_token)
       .await?;
-    let (exchanged_token, _) =
+    let (refreshed_token, _) =
       build_token(json! {{"exp": Utc::now().timestamp() + 3600, "scope": scope}})?;
-    let exchanged_token_cl = exchanged_token.clone();
+    let refreshed_token_cl = refreshed_token.clone();
     let mut mock_auth = MockAuthService::new();
     mock_auth
-      .expect_exchange_token()
+      .expect_refresh_token()
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
         eq(offline_token.clone()),
-        eq(GRANT_REFRESH_TOKEN),
-        eq(vec![]),
       )
-      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, Some("new_refresh_token".to_string()))));
+      .return_once(|_, _, _| Ok((refreshed_token_cl, Some("new_refresh_token".to_string()))));
 
     let token_service = Arc::new(DefaultTokenService::new(
       Arc::new(mock_auth),
@@ -529,24 +495,22 @@ mod tests {
     test_db_service
       .create_api_token_from("test_token", &offline_token)
       .await?;
-    let (exchanged_token, _) = build_token(
+    let (refreshed_token, _) = build_token(
       json! {{"exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
     )?;
-    let exchanged_token_cl = exchanged_token.clone();
+    let refreshed_token_cl = refreshed_token.clone();
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let mut auth_service = MockAuthService::new();
     auth_service
-      .expect_exchange_token()
+      .expect_refresh_token()
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
         eq(offline_token.clone()),
-        eq(GRANT_REFRESH_TOKEN),
-        eq(Vec::<String>::new()),
       )
       .times(1)
-      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, None)));
+      .return_once(|_, _, _| Ok((refreshed_token_cl, None)));
     let token_service = DefaultTokenService::new(
       Arc::new(auth_service),
       Arc::new(secret_service),
@@ -560,7 +524,7 @@ mod tests {
       .await?;
 
     // Then
-    assert_eq!(exchanged_token, result);
+    assert_eq!(refreshed_token, result);
     assert_eq!(TokenScope::User, token_scope);
     Ok(())
   }
@@ -582,16 +546,14 @@ mod tests {
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let mut auth_service = MockAuthService::new();
     auth_service
-      .expect_exchange_token()
+      .expect_refresh_token()
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
         eq(token.clone()),
-        eq(GRANT_REFRESH_TOKEN),
-        eq(Vec::<String>::new()),
       )
       .times(1)
-      .returning(|_, _, _, _, _| {
+      .returning(|_, _, _| {
         Err(AuthServiceError::AuthServiceApiError(
           "server unreachable".to_string(),
         ))
@@ -667,10 +629,10 @@ mod tests {
     let api_token = test_db_service
       .create_api_token_from("test_token", &offline_token)
       .await?;
-    let (exchanged_token, _) = build_token(
+    let (refreshed_token, _) = build_token(
       json! {{"exp": Utc::now().timestamp() + 3600, "scope": "offline_access scope_token_user"}},
     )?;
-    let exchanged_token_cl = exchanged_token.clone();
+    let refreshed_token_cl = refreshed_token.clone();
     let app_reg_info = AppRegInfoBuilder::test_default().build()?;
     let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
     let mut mock_auth = MockAuthService::new();
@@ -691,16 +653,14 @@ mod tests {
 
     // Expect token exchange to be called since cached token is expired
     mock_auth
-      .expect_exchange_token()
+      .expect_refresh_token()
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
         eq(offline_token.clone()),
-        eq(GRANT_REFRESH_TOKEN),
-        eq(Vec::<String>::new()),
       )
       .times(1)
-      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, None)));
+      .return_once(|_, _, _| Ok((refreshed_token_cl, None)));
 
     let token_service = DefaultTokenService::new(
       Arc::new(mock_auth),
@@ -715,7 +675,7 @@ mod tests {
       .await?;
 
     // Then
-    assert_eq!(exchanged_token, result);
+    assert_eq!(refreshed_token, result);
     assert_eq!(TokenScope::User, token_scope);
     Ok(())
   }

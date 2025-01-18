@@ -79,12 +79,7 @@ pub fn build_routes(
 
   // Dev-only admin routes
   if !app_service.env_service().is_production() {
-    let dev_apis = Router::new()
-      .route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler))
-      .route_layer(from_fn_with_state(
-        state.clone(),
-        move |state, req, next| api_auth_middleware(Role::Admin, None, state, req, next),
-      ));
+    let dev_apis = Router::new().route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler));
     public_apis = public_apis.merge(dev_apis);
   }
 

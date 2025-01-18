@@ -215,11 +215,10 @@ mod tests {
   use services::{
     test_utils::{
       access_token_claims, build_token, expired_token, offline_access_token_claims,
-      offline_token_claims, sign_token, token, AppServiceStubBuilder, SecretServiceStub, OTHER_KEY,
-      OTHER_PRIVATE_KEY, TEST_CLIENT_ID, TEST_CLIENT_SECRET,
+      offline_token_claims, AppServiceStubBuilder, SecretServiceStub, TEST_CLIENT_ID,
+      TEST_CLIENT_SECRET,
     },
     AppRegInfoBuilder, AuthServiceError, MockAuthService, SqliteSessionService,
-    GRANT_REFRESH_TOKEN,
   };
   use std::sync::Arc;
   use tempfile::TempDir;
@@ -772,15 +771,13 @@ mod tests {
     let access_token_cl = access_token.clone();
     let mut auth_service = MockAuthService::default();
     auth_service
-      .expect_exchange_token()
+      .expect_refresh_token()
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
         eq(bearer_token.clone()),
-        eq(GRANT_REFRESH_TOKEN),
-        eq(vec![]),
       )
-      .return_once(|_, _, _, _, _| Ok((access_token_cl, Some("refresh_token".to_string()))));
+      .return_once(|_, _, _| Ok((access_token_cl, Some("refresh_token".to_string()))));
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()
       .auth_service(Arc::new(auth_service))
@@ -812,46 +809,6 @@ mod tests {
         x_resource_scope: Some(expected_header.to_string()),
         authorization_header: Some(format!("Bearer {}", bearer_token)),
       },
-      actual
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_auth_middleware_with_other_key_bearer_token(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
-    let token = offline_token_claims();
-    let (token, _) = sign_token(&OTHER_PRIVATE_KEY, &OTHER_KEY, token)?;
-    let app_service = AppServiceStubBuilder::default()
-      .with_secret_service()
-      .with_session_service()
-      .await
-      .with_db_service()
-      .await
-      .build()?;
-    let db = app_service.db_service.as_ref().unwrap();
-    let _ = db.create_api_token_from("test-token-id", &token).await?;
-    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
-    ));
-    let router = test_router(state);
-    let req = Request::get("/with_auth")
-      .header("Authorization", format!("Bearer {}", token))
-      .json(json! {{}})?;
-    let response = router.clone().oneshot(req).await?;
-    // assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    let actual: Value = response.json().await?;
-    assert_eq!(
-      json! {{
-        "error": {
-          "message": "signature mismatch, error: \u{2068}InvalidSignature\u{2069}",
-          "type": "authentication_error",
-          "code": "auth_error-signature_mismatch"
-        }
-      }},
       actual
     );
     Ok(())
