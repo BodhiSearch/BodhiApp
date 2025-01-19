@@ -1,4 +1,4 @@
-use crate::{LoginError, ENDPOINT_LOGOUT};
+use crate::{LoginError, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO};
 use auth_middleware::{app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN};
 use axum::{
   body::Body,
@@ -19,6 +19,7 @@ use services::{extract_claims, AppStatus, Claims, SecretServiceExt};
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
+use utoipa::ToSchema;
 
 pub async fn login_handler(
   headers: HeaderMap,
@@ -224,13 +225,41 @@ pub async fn logout_handler(
   Ok(response)
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+/// Information about the currently logged in user
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[schema(example = json!({
+    "logged_in": true,
+    "email": "user@example.com",
+    "roles": ["admin", "user"]
+}))]
 pub struct UserInfo {
+  /// If user is logged in
   pub logged_in: bool,
+  /// User's email address
   pub email: Option<String>,
+  /// List of roles assigned to the user
   pub roles: Vec<String>,
 }
 
+/// Get information about the currently logged in user
+#[utoipa::path(
+    get,
+    path = ENDPOINT_USER_INFO,
+    tag = "auth",
+    operation_id = "getCurrentUser",
+    responses(
+        (status = 200, description = "Returns current user information", body = UserInfo),
+        (status = 500, description = "Error in extracting user info from token", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "token is invalid",
+                 "type": "authentication_error",
+                 "code": "token_error-invalid_token"
+             }
+         })
+        )
+    )
+)]
 pub async fn user_info_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
