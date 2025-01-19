@@ -5,7 +5,7 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, EntityError, ErrorType};
+use objs::{ApiError, AppError, EntityError, ErrorType, OpenAIApiError};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
@@ -13,14 +13,24 @@ use services::{
   extract_claims, AuthServiceError, IdClaims, SecretServiceExt, TokenError,
 };
 use std::{cmp::min, sync::Arc};
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize)]
+use crate::ENDPOINT_TOKENS;
+
+/// Request to create a new API token
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "name": "My API Token"
+}))]
 pub struct CreateApiTokenRequest {
-  name: Option<String>,
+  /// Optional name for the API token
+  #[serde(default)]
+  pub name: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ApiTokenResponse {
+  /// Offline token that can be used as API Token
   offline_token: String,
 }
 
@@ -48,6 +58,22 @@ pub enum ApiTokenError {
   AuthService(#[from] AuthServiceError),
 }
 
+/// Create a new API token
+#[utoipa::path(
+    post,
+    path = ENDPOINT_TOKENS,
+    tag = "auth",
+    operation_id = "createApiToken",
+    request_body = CreateApiTokenRequest,
+    responses(
+        (status = 201, description = "API token created successfully", body = ApiTokenResponse),
+        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
 pub async fn create_token_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
