@@ -2,8 +2,11 @@ use crate::BuilderError;
 use clap::Args;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder)]
+#[derive(
+  Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder, ToSchema,
+)]
 #[builder(
   default,
   setter(into, strip_option),

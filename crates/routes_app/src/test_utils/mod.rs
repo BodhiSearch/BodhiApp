@@ -1,3 +1,8 @@
+mod alias_response;
+
+#[allow(unused_imports)]
+pub use alias_response::*;
+
 #[macro_export]
 macro_rules! wait_for_event {
   ($rx:expr, $event_name:expr, $timeout:expr) => {{

@@ -1,8 +1,8 @@
 use crate::{
-  AppInfo, NewDownloadRequest, SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
-  __path_create_pull_request_handler, __path_list_downloads_handler,
-  __path_list_local_modelfiles_handler, __path_logout_handler, __path_ping_handler,
-  __path_setup_handler, __path_user_info_handler,
+  AliasResponse, AppInfo, NewDownloadRequest, SetupRequest, SetupResponse, UserInfo,
+  __path_app_info_handler, __path_create_pull_request_handler, __path_list_downloads_handler,
+  __path_list_local_aliases_handler, __path_list_local_modelfiles_handler, __path_logout_handler,
+  __path_ping_handler, __path_setup_handler, __path_user_info_handler,
 };
 use objs::OpenAIApiError;
 use services::{db::DownloadRequest, AppStatus};
@@ -70,6 +70,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
             UserInfo,
             NewDownloadRequest,
             DownloadRequest,
+            AliasResponse,
         ),
         responses( ),
     ),
@@ -82,6 +83,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         list_local_modelfiles_handler,
         list_downloads_handler,
         create_pull_request_handler,
+        list_local_aliases_handler,
     )
 )]
 pub struct ApiDoc;
@@ -89,8 +91,8 @@ pub struct ApiDoc;
 #[cfg(test)]
 mod tests {
   use crate::{
-    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_MODEL_FILES,
-    ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_USER_INFO,
+    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
+    ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -390,6 +392,56 @@ mod tests {
       assert!(content.schema.is_some());
     } else {
       panic!("No response found for POST 200 status");
+    }
+  }
+
+  #[test]
+  fn test_model_aliases_endpoint() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let aliases = paths
+      .paths
+      .get(ENDPOINT_MODELS)
+      .expect("Model aliases endpoint not found");
+    let get_op = aliases.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "listModelAliases");
+
+    // Check query parameters
+    let params = get_op.parameters.as_ref().unwrap();
+    assert!(params.iter().any(|p| p.name == "page"));
+    assert!(params.iter().any(|p| p.name == "page_size"));
+    assert!(params.iter().any(|p| p.name == "sort"));
+    assert!(params.iter().any(|p| p.name == "sort_order"));
+
+    // Check responses
+    let responses = &get_op.responses;
+    let success = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        // Verify example has correct structure
+        assert!(example.get("data").is_some());
+        assert!(example.get("total").is_some());
+        assert!(example.get("page").is_some());
+        assert!(example.get("page_size").is_some());
+
+        // Verify alias response structure
+        let data = example.get("data").unwrap().as_array().unwrap();
+        let alias = &data[0];
+        assert!(alias.get("alias").is_some());
+        assert!(alias.get("repo").is_some());
+        assert!(alias.get("filename").is_some());
+        assert!(alias.get("source").is_some());
+        assert!(alias.get("chat_template").is_some());
+        assert!(alias.get("model_params").is_some());
+        assert!(alias.get("request_params").is_some());
+        assert!(alias.get("context_params").is_some());
+      }
     }
   }
 }

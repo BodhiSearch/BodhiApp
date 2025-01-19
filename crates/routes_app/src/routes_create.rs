@@ -1,12 +1,12 @@
-use axum::http::StatusCode;
-use axum::{extract::State, Json};
+use crate::AliasResponse;
+use axum::{extract::State, http::StatusCode, Json};
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
 use objs::{
   ApiError, AppError, ChatTemplateType, ErrorType, GptContextParams, OAIRequestParams, Repo,
 };
 use serde::{Deserialize, Serialize};
-use server_core::{AliasResponse, RouterState};
+use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
 use validator::Validate;
@@ -97,7 +97,7 @@ pub async fn update_alias_handler(
 
 #[cfg(test)]
 mod tests {
-  use crate::{create_alias_handler, update_alias_handler};
+  use crate::{create_alias_handler, update_alias_handler, AliasResponse, AliasResponseBuilder};
   use axum::{
     body::Body,
     http::{status::StatusCode, Method, Request},
@@ -111,10 +111,7 @@ mod tests {
   use pretty_assertions::assert_eq;
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
-  use server_core::{
-    test_utils::ResponseTestExt, AliasResponse, AliasResponseBuilder, DefaultRouterState,
-    MockSharedContext,
-  };
+  use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
   use services::test_utils::{app_service_stub, AppServiceStub};
   use std::collections::HashMap;
   use std::sync::Arc;
