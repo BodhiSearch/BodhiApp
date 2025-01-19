@@ -1,9 +1,10 @@
 use crate::{
-  AliasResponse, AppInfo, NewDownloadRequest, SetupRequest, SetupResponse, UserInfo,
-  __path_app_info_handler, __path_create_pull_request_handler, __path_list_chat_templates_handler,
-  __path_list_downloads_handler, __path_list_local_aliases_handler,
-  __path_list_local_modelfiles_handler, __path_logout_handler, __path_ping_handler,
-  __path_setup_handler, __path_user_info_handler,
+  AliasResponse, ApiTokenResponse, AppInfo, CreateApiTokenRequest, NewDownloadRequest,
+  SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
+  __path_create_pull_request_handler, __path_create_token_handler,
+  __path_list_chat_templates_handler, __path_list_downloads_handler,
+  __path_list_local_aliases_handler, __path_list_local_modelfiles_handler, __path_logout_handler,
+  __path_ping_handler, __path_setup_handler, __path_user_info_handler,
 };
 use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
 use services::{db::DownloadRequest, AppStatus};
@@ -75,6 +76,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
             ChatTemplateType,
             ChatTemplateId,
             Repo,
+            CreateApiTokenRequest,
+            ApiTokenResponse,
         ),
         responses( ),
     ),
@@ -89,6 +92,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         create_pull_request_handler,
         list_local_aliases_handler,
         list_chat_templates_handler,
+        create_token_handler,
     )
 )]
 pub struct ApiDoc;
