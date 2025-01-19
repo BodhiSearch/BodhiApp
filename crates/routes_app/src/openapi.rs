@@ -1,6 +1,6 @@
 use crate::{
   AppInfo, SetupRequest, SetupResponse, __path_app_info_handler, __path_logout_handler,
-  __path_setup_handler,
+  __path_ping_handler, __path_setup_handler,
 };
 use objs::OpenAIApiError;
 use services::AppStatus;
@@ -71,14 +71,16 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         app_info_handler,
         setup_handler,
         logout_handler,
+        ping_handler,
     )
 )]
 pub struct ApiDoc;
 
 #[cfg(test)]
 mod tests {
-  use crate::{ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT};
+  use crate::{ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_PING};
   use pretty_assertions::assert_eq;
+  use serde_json::json;
   use utoipa::{openapi::RefOr, OpenApi};
 
   #[test]
@@ -200,6 +202,37 @@ mod tests {
     let success_response = responses.responses.get("200").unwrap();
     if let RefOr::T(response) = success_response {
       assert!(response.headers.contains_key("Location"));
+    }
+  }
+
+  #[test]
+  fn test_ping_endpoint() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let ping = paths
+      .paths
+      .get(ENDPOINT_PING)
+      .expect("Ping endpoint not found");
+    let get_op = ping.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "system");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "pingServer");
+
+    // Check response
+    let responses = &get_op.responses;
+    let success = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        assert_eq!(example, &json!({"message": "pong"}));
+      } else {
+        panic!("No example found for 200 status");
+      }
+    } else {
+      panic!("No response found for 200 status");
     }
   }
 }
