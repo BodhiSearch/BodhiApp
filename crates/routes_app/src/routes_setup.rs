@@ -6,12 +6,15 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, ErrorType};
+use objs::{ApiError, AppError, ErrorType, OpenAIApiError};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt};
 use std::sync::Arc;
 use tracing::info;
+use utoipa::ToSchema;
+
+use crate::ENDPOINT_APP_INFO;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -25,13 +28,21 @@ pub enum AppServiceError {
   AuthServiceError(#[from] AuthServiceError),
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct AppInfo {
   version: String,
   status: AppStatus,
   authz: bool,
 }
 
+#[utoipa::path(
+  get,
+  path = ENDPOINT_APP_INFO,
+  responses(
+      (status = 200, description = "App Info", body = AppInfo),
+      (status = 500, description = "Internal Server Error", body = OpenAIApiError),
+  )
+)]
 pub async fn app_info_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<AppInfo>, ApiError> {

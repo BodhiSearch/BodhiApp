@@ -4,6 +4,7 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod error;
+mod openapi;
 mod routes_api_token;
 mod routes_create;
 mod routes_dev;
@@ -13,6 +14,7 @@ mod routes_setup;
 mod routes_ui;
 
 pub use error::*;
+pub use openapi::*;
 pub use routes_api_token::*;
 pub use routes_create::*;
 pub use routes_dev::*;

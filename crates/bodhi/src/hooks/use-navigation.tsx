@@ -14,6 +14,7 @@ import {
   Key,
   FlaskRound,
   Settings,
+  FileJson,
 } from 'lucide-react';
 
 const navigationItems: NavigationItem[] = [
@@ -56,6 +57,13 @@ const navigationItems: NavigationItem[] = [
         href: '/ui/chat/',
         description: 'AI Chat Interface',
         icon: MessageSquare,
+      },
+      {
+        title: 'OpenAPI Docs',
+        href: '/swagger-ui',
+        description: 'API Documentation',
+        icon: FileJson,
+        target: '_blank',
       },
     ],
   },
