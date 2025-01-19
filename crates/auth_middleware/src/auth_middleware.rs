@@ -215,7 +215,7 @@ mod tests {
   use services::{
     test_utils::{
       access_token_claims, build_token, expired_token, offline_access_token_claims,
-      offline_token_claims, AppServiceStubBuilder, SecretServiceStub, TEST_CLIENT_ID,
+      offline_token_claims, token, AppServiceStubBuilder, SecretServiceStub, TEST_CLIENT_ID,
       TEST_CLIENT_SECRET,
     },
     AppRegInfoBuilder, AuthServiceError, MockAuthService, SqliteSessionService,

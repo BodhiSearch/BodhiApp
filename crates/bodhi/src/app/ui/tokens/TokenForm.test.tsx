@@ -1,5 +1,6 @@
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
-import { API_TOKENS_ENDPOINT, TokenResponse } from '@/hooks/useApiTokens';
+import { TokenResponse } from '@/hooks/useApiTokens';
+import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';

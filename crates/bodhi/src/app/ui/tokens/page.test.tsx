@@ -1,5 +1,5 @@
 import TokenPage, { TokenPageContent } from '@/app/ui/tokens/page';
-import { API_TOKENS_ENDPOINT } from '@/hooks/useApiTokens';
+import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
