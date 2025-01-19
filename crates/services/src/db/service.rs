@@ -86,7 +86,11 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError>;
 
-  async fn list_all_downloads(&self) -> Result<Vec<DownloadRequest>, DbError>;
+  async fn list_download_requests(
+    &self,
+    page: usize,
+    page_size: usize,
+  ) -> Result<(Vec<DownloadRequest>, usize), DbError>;
 
   async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError>;
 
@@ -117,6 +121,12 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn get_api_token_by_token_id(&self, token: &str) -> Result<Option<ApiToken>, DbError>;
 
   async fn update_api_token(&self, user_id: &str, token: &mut ApiToken) -> Result<(), DbError>;
+
+  async fn find_download_request_by_repo_filename(
+    &self,
+    repo: &str,
+    filename: &str,
+  ) -> Result<Vec<DownloadRequest>, DbError>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -375,14 +385,34 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
-  async fn list_all_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
+  async fn list_download_requests(
+    &self,
+    page: usize,
+    page_size: usize,
+  ) -> Result<(Vec<DownloadRequest>, usize), DbError> {
+    let page = page.max(1);
+    let page_size = page_size.clamp(1, 100);
+    let offset = ((page - 1) as i64) * (page_size as i64);
+
+    // Get total count
+    let total: usize = query_as::<_, (i64,)>("SELECT COUNT(*) FROM download_requests")
+      .fetch_one(&self.pool)
+      .await?
+      .0 as usize;
+
+    // Get paginated results using bind parameters
     let results = query_as::<_, (String, String, String, String, Option<String>, i64, i64)>(
-      "SELECT id, repo, filename, status, error, created_at, updated_at FROM download_requests ORDER BY updated_at DESC",
+      "SELECT id, repo, filename, status, error, created_at, updated_at
+       FROM download_requests
+       ORDER BY updated_at DESC
+       LIMIT ? OFFSET ?",
     )
+    .bind(page_size as i64)
+    .bind(offset)
     .fetch_all(&self.pool)
     .await?;
 
-    let results = results
+    let items = results
       .into_iter()
       .filter_map(
         |(id, repo, filename, status, error, created_at, updated_at)| {
@@ -399,7 +429,8 @@ impl DbService for SqliteDbService {
         },
       )
       .collect::<Vec<DownloadRequest>>();
-    Ok(results)
+
+    Ok((items, total))
   }
 
   async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError> {
@@ -729,6 +760,43 @@ impl DbService for SqliteDbService {
     }
 
     Ok(())
+  }
+
+  async fn find_download_request_by_repo_filename(
+    &self,
+    repo: &str,
+    filename: &str,
+  ) -> Result<Vec<DownloadRequest>, DbError> {
+    let results = query_as::<_, (String, String, String, String, Option<String>, i64, i64)>(
+      "SELECT id, repo, filename, status, error, created_at, updated_at
+       FROM download_requests
+       WHERE repo = ? AND filename = ?
+       ORDER BY created_at DESC",
+    )
+    .bind(repo)
+    .bind(filename)
+    .fetch_all(&self.pool)
+    .await?;
+
+    let items = results
+      .into_iter()
+      .filter_map(
+        |(id, repo, filename, status, error, created_at, updated_at)| {
+          let status = DownloadStatus::from_str(&status).ok()?;
+          Some(DownloadRequest {
+            id,
+            repo,
+            filename,
+            status,
+            error,
+            created_at: chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
+            updated_at: chrono::DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+          })
+        },
+      )
+      .collect();
+
+    Ok(items)
   }
 }
 

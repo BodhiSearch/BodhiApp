@@ -1,10 +1,11 @@
 use crate::{
-  AppInfo, SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
+  AppInfo, NewDownloadRequest, SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
+  __path_create_pull_request_handler, __path_list_downloads_handler,
   __path_list_local_modelfiles_handler, __path_logout_handler, __path_ping_handler,
   __path_setup_handler, __path_user_info_handler,
 };
 use objs::OpenAIApiError;
-use services::AppStatus;
+use services::{db::DownloadRequest, AppStatus};
 use utoipa::OpenApi;
 
 macro_rules! make_ui_endpoint {
@@ -67,6 +68,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
             SetupRequest,
             SetupResponse,
             UserInfo,
+            NewDownloadRequest,
+            DownloadRequest,
         ),
         responses( ),
     ),
@@ -77,6 +80,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         ping_handler,
         user_info_handler,
         list_local_modelfiles_handler,
+        list_downloads_handler,
+        create_pull_request_handler,
     )
 )]
 pub struct ApiDoc;
@@ -84,8 +89,8 @@ pub struct ApiDoc;
 #[cfg(test)]
 mod tests {
   use crate::{
-    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_PING,
-    ENDPOINT_USER_INFO,
+    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_MODEL_FILES,
+    ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -284,7 +289,7 @@ mod tests {
     let paths = &api_doc.paths;
     let modelfiles = paths
       .paths
-      .get("/bodhi/v1/modelfiles")
+      .get(ENDPOINT_MODEL_FILES)
       .expect("Modelfiles endpoint not found");
     let get_op = modelfiles.get.as_ref().expect("GET operation not found");
 
@@ -319,6 +324,72 @@ mod tests {
       }
     } else {
       panic!("No response found for 200 status");
+    }
+  }
+
+  #[test]
+  fn test_download_endpoints() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify tags
+    let tags = api_doc.tags.as_ref().unwrap();
+    assert!(tags.iter().any(|t| t.name == "models"));
+
+    let paths = &api_doc.paths;
+
+    // Test GET /modelfiles/pull endpoint
+    let downloads = paths
+      .paths
+      .get(ENDPOINT_MODEL_PULL)
+      .expect("Downloads endpoint not found");
+
+    // Check GET operation
+    let get_op = downloads.get.as_ref().expect("GET operation not found");
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "listDownloads");
+
+    // Check query parameters
+    let params = get_op.parameters.as_ref().unwrap();
+    assert!(params.iter().any(|p| p.name == "page"));
+    assert!(params.iter().any(|p| p.name == "page_size"));
+    assert!(params.iter().any(|p| p.name == "sort"));
+    assert!(params.iter().any(|p| p.name == "sort_order"));
+
+    // Check GET responses
+    let get_responses = &get_op.responses;
+    let get_200 = get_responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = get_200 {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        assert!(example.get("data").is_some());
+        assert!(example.get("total").is_some());
+        assert!(example.get("page").is_some());
+        assert!(example.get("page_size").is_some());
+      } else {
+        panic!("No example found for GET 200 status");
+      }
+    }
+
+    // Check POST operation
+    let post_op = downloads.post.as_ref().expect("POST operation not found");
+    assert_eq!(post_op.tags.as_ref().unwrap()[0], "models");
+    assert_eq!(post_op.operation_id.as_ref().unwrap(), "pullModelFile");
+
+    // Verify request body schema
+    assert!(post_op.request_body.is_some());
+
+    // Check POST responses
+    let post_responses = &post_op.responses;
+    assert!(post_responses.responses.contains_key("200"));
+    assert!(post_responses.responses.contains_key("500"));
+
+    // Verify response schema references DownloadRequest
+    let success_response = post_responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success_response {
+      let content = response.content.get("application/json").unwrap();
+      assert!(content.schema.is_some());
+    } else {
+      panic!("No response found for POST 200 status");
     }
   }
 }
