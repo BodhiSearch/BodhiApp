@@ -1,6 +1,7 @@
 use crate::{
-  AppInfo, SetupRequest, SetupResponse, UserInfo, __path_app_info_handler, __path_logout_handler,
-  __path_ping_handler, __path_setup_handler, __path_user_info_handler,
+  AppInfo, SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
+  __path_list_local_modelfiles_handler, __path_logout_handler, __path_ping_handler,
+  __path_setup_handler, __path_user_info_handler,
 };
 use objs::OpenAIApiError;
 use services::AppStatus;
@@ -56,6 +57,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         (name = "system", description = "System information and operations"),
         (name = "setup", description = "Application setup and initialization"),
         (name = "auth", description = "Authentication and session management"),
+        (name = "models", description = "Model files and aliases"),
     ),
     components(
         schemas(
@@ -74,6 +76,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         logout_handler,
         ping_handler,
         user_info_handler,
+        list_local_modelfiles_handler,
     )
 )]
 pub struct ApiDoc;
@@ -266,6 +269,56 @@ mod tests {
     let success_response = responses.responses.get("200").unwrap();
     if let RefOr::T(response) = success_response {
       assert!(response.content.get("application/json").is_some());
+    }
+  }
+
+  #[test]
+  fn test_modelfiles_endpoint() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify tags
+    let tags = api_doc.tags.as_ref().unwrap();
+    assert!(tags.iter().any(|t| t.name == "models"));
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let modelfiles = paths
+      .paths
+      .get("/bodhi/v1/modelfiles")
+      .expect("Modelfiles endpoint not found");
+    let get_op = modelfiles.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "listModelFiles");
+
+    // Check query parameters
+    let params = get_op.parameters.as_ref().unwrap();
+    assert!(params.iter().any(|p| p.name == "page"));
+    assert!(params.iter().any(|p| p.name == "page_size"));
+    assert!(params.iter().any(|p| p.name == "sort"));
+    assert!(params.iter().any(|p| p.name == "sort_order"));
+
+    // Check responses
+    let responses = &get_op.responses;
+    assert!(responses.responses.contains_key("200"));
+    assert!(responses.responses.contains_key("500"));
+
+    // Verify response schema references PaginatedResponse<LocalModelResponse>
+    let success_response = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success_response {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        // Verify example has correct structure
+        assert!(example.get("data").is_some());
+        assert!(example.get("total").is_some());
+        assert!(example.get("page").is_some());
+        assert!(example.get("page_size").is_some());
+      } else {
+        panic!("No example found for 200 status");
+      }
+    } else {
+      panic!("No response found for 200 status");
     }
   }
 }

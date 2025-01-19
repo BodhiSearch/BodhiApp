@@ -38,6 +38,7 @@ tracing = { workspace = true, features = ["async-await", "log"] }
 tracing-subscriber = { workspace = true, features = [
   "env-filter",
 ], optional = true }
+utoipa = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]

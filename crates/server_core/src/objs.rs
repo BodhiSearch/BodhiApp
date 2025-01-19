@@ -1,23 +1,7 @@
-use objs::{Alias, GptContextParams, HubFile, OAIRequestParams};
+use objs::{Alias, GptContextParams, OAIRequestParams};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-
-#[derive(Serialize, Deserialize)]
-pub struct PaginationSortParams {
-  pub page: Option<usize>,
-  pub page_size: Option<usize>,
-  pub sort: Option<String>,
-  pub sort_order: Option<String>,
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct PaginatedResponse<T> {
-  pub data: Vec<T>,
-  pub total: usize,
-  pub page: usize,
-  pub page_size: usize,
-}
 
 #[allow(clippy::too_many_arguments)]
 #[derive(Serialize, Deserialize, Debug, PartialEq, derive_new::new)]
@@ -37,27 +21,6 @@ pub struct AliasResponse {
   pub model_params: HashMap<String, Value>,
   pub request_params: OAIRequestParams,
   pub context_params: GptContextParams,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct LocalModelResponse {
-  pub repo: String,
-  pub filename: String,
-  pub snapshot: String,
-  pub size: Option<u64>,
-  pub model_params: HashMap<String, Value>,
-}
-
-impl From<HubFile> for LocalModelResponse {
-  fn from(model: HubFile) -> Self {
-    LocalModelResponse {
-      repo: model.repo.to_string(),
-      filename: model.filename,
-      snapshot: model.snapshot,
-      size: model.size,
-      model_params: HashMap::new(),
-    }
-  }
 }
 
 impl From<Alias> for AliasResponse {
