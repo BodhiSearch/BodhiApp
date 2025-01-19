@@ -3,7 +3,9 @@ use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 use strum::{AsRefStr, EnumIter};
+use utoipa::ToSchema;
 
+/// Chat template identifier for built-in templates
 #[derive(
   clap::ValueEnum,
   Clone,
@@ -17,6 +19,7 @@ use strum::{AsRefStr, EnumIter};
   Eq,
   Hash,
   Copy,
+  ToSchema,
 )]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
@@ -57,10 +60,14 @@ impl From<ChatTemplateId> for Repo {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash)]
+/// Chat template type that can be either built-in or from a repository
+#[derive(Debug, Clone, PartialEq, PartialOrd, Eq, Hash, ToSchema)]
 pub enum ChatTemplateType {
+  /// Chat template embedded in the GGUF model file
   Embedded,
+  /// Built-in chat template using Id
   Id(ChatTemplateId),
+  /// Custom chat template from a repository
   Repo(Repo),
 }
 

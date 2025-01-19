@@ -3,6 +3,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt::Display, str::FromStr};
+use utoipa::ToSchema;
 use validator::Validate;
 
 pub static TOKENIZER_CONFIG_JSON: &str = "tokenizer_config.json";
@@ -10,7 +11,7 @@ pub static GGUF: &str = "gguf";
 pub static GGUF_EXTENSION: &str = ".gguf";
 pub static REGEX_VALID_REPO: Lazy<Regex> = Lazy::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+$").unwrap());
 
-#[derive(Debug, Clone, PartialEq, Default, PartialOrd, Eq, Ord, Hash, Validate)]
+#[derive(Debug, Clone, PartialEq, Default, PartialOrd, Eq, Ord, Hash, Validate, ToSchema)]
 pub struct Repo {
   #[validate(regex(
     path = *REGEX_VALID_REPO,
