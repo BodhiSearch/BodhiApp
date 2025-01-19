@@ -1,3 +1,4 @@
+use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_PING};
 use auth_middleware::app_status_or_default;
 use axum::{
   extract::State,
@@ -13,8 +14,6 @@ use services::{AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt
 use std::sync::Arc;
 use tracing::info;
 use utoipa::ToSchema;
-
-use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -159,6 +158,33 @@ pub async fn setup_handler(
       status: AppStatus::Ready,
     })
   }
+}
+
+/// Response to the ping endpoint
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+pub struct PingResponse {
+  /// always returns "pong"
+  pub message: String,
+}
+
+/// Simple health check endpoint
+#[utoipa::path(
+    get,
+    path = ENDPOINT_PING,
+    tag = "system",
+    operation_id = "pingServer",
+    responses(
+        (status = 200, description = "Server is healthy", 
+         body = PingResponse,
+         content_type = "application/json",
+         example = json!({"message": "pong"})
+        )
+    )
+)]
+pub async fn ping_handler() -> Json<PingResponse> {
+  Json(PingResponse {
+    message: "pong".to_string(),
+  })
 }
 
 #[cfg(test)]
