@@ -25,14 +25,17 @@ import {
 // backend endpoints
 export const ENDPOINT_APP_LOGIN = '/app/login';
 
-export const ENDPOINT_APP_INFO = '/api/ui/info';
-export const ENDPOINT_APP_SETUP = '/api/ui/setup';
-export const ENDPOINT_USER_INFO = '/api/ui/user';
-export const ENDPOINT_LOGOUT = '/api/ui/logout';
-export const ENDPOINT_MODEL_FILES = '/api/ui/modelfiles';
-export const ENDPOINT_MODEL_FILES_PULL = '/api/ui/modelfiles/pull';
-export const ENDPOINT_MODELS = '/api/ui/models';
-export const ENDPOINT_CHAT_TEMPLATES = '/api/ui/chat_templates';
+export const BODHI_API_BASE = '/bodhi/v1';
+
+export const ENDPOINT_APP_INFO = `${BODHI_API_BASE}/info`;
+export const ENDPOINT_APP_SETUP = `${BODHI_API_BASE}/setup`;
+export const ENDPOINT_USER_INFO = `${BODHI_API_BASE}/user`;
+export const ENDPOINT_LOGOUT = `${BODHI_API_BASE}/logout`;
+export const ENDPOINT_MODEL_FILES = `${BODHI_API_BASE}/modelfiles`;
+export const ENDPOINT_MODEL_FILES_PULL = `${BODHI_API_BASE}/modelfiles/pull`;
+export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
+export const ENDPOINT_CHAT_TEMPLATES = `${BODHI_API_BASE}/chat_templates`;
+export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
 
 export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
 

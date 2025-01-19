@@ -1,3 +1,10 @@
+#[macro_export]
+macro_rules! make_ui_endpoint {
+  ($name:ident, $path:expr) => {
+    pub const $name: &str = concat!("/api/ui/", $path);
+  };
+}
+
 use crate::proxy_router;
 use auth_middleware::{api_auth_middleware, auth_middleware, inject_session_auth_info};
 use axum::{
@@ -28,21 +35,27 @@ use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
 use tracing::{debug, info, Level};
 
+macro_rules! make_ui_endpoint {
+  ($name:ident, $path:expr) => {
+    pub const $name: &str = concat!("/bodhi/v1/", $path);
+  };
+}
+
 pub const ENDPOINT_PING: &str = "/ping";
 // sent by frontend to redirect to oauth server login
 pub const ENDPOINT_LOGIN: &str = "/app/login";
 // redirected by oauth server for auth code exchange
 pub const ENDPOINT_LOGIN_CALLBACK: &str = "/app/login/callback";
 
-pub const ENDPOINT_LOGOUT: &str = "/api/ui/logout";
-pub const ENDPOINT_APP_INFO: &str = "/api/ui/info";
-pub const ENDPOINT_APP_SETUP: &str = "/api/ui/setup";
-pub const ENDPOINT_USER_INFO: &str = "/api/ui/user";
-pub const ENDPOINT_MODEL_FILES: &str = "/api/ui/modelfiles";
-pub const ENDPOINT_MODEL_PULL: &str = "/api/ui/modelfiles/pull";
-pub const ENDPOINT_MODELS: &str = "/api/ui/models";
-pub const ENDPOINT_CHAT_TEMPLATES: &str = "/api/ui/chat_templates";
-pub const ENDPOINT_TOKENS: &str = "/api/ui/tokens";
+make_ui_endpoint!(ENDPOINT_LOGOUT, "logout");
+make_ui_endpoint!(ENDPOINT_APP_INFO, "info");
+make_ui_endpoint!(ENDPOINT_APP_SETUP, "setup");
+make_ui_endpoint!(ENDPOINT_USER_INFO, "user");
+make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
+make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
+make_ui_endpoint!(ENDPOINT_MODELS, "models");
+make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
+make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
 
 pub const ENDPOINT_OAI_MODELS: &str = "/v1/models";
 pub const ENDPOINT_OAI_CHAT_COMPLETIONS: &str = "/v1/chat/completions";
