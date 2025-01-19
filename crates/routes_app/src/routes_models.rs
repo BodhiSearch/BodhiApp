@@ -1,11 +1,10 @@
+use crate::{LocalModelResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODEL_FILES};
 use axum::{
   extract::{Query, State},
   Json,
 };
-use objs::{Alias, ApiError, ChatTemplateId, ChatTemplateType, HubFile};
-use server_core::{
-  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, RouterState,
-};
+use objs::{Alias, ApiError, ChatTemplateId, ChatTemplateType, HubFile, OpenAIApiError};
+use server_core::{AliasResponse, RouterState};
 use services::AliasNotFoundError;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
@@ -33,6 +32,32 @@ pub async fn list_local_aliases_handler(
   }))
 }
 
+/// List available model files in GGUF format from HuggingFace cache
+#[utoipa::path(
+    get,
+    path = ENDPOINT_MODEL_FILES,
+    tag = "models",
+    operation_id = "listModelFiles",
+    params(
+        PaginationSortParams
+    ),
+    responses(
+        (status = 200, description = "List of supported model files from local HuggingFace cache folder", body = PaginatedResponse<LocalModelResponse>,
+         example = json!({
+             "data": [{
+                 "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                 "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                 "snapshot_id": "ab12cd34",
+                 "size": 4815162
+             }],
+             "total": 1,
+             "page": 1,
+             "page_size": 10
+         })
+        ),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    )
+)]
 pub async fn list_local_modelfiles_handler(
   State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<PaginationSortParams>,
@@ -59,10 +84,10 @@ pub async fn list_local_modelfiles_handler(
 }
 
 fn extract_pagination_sort_params(params: PaginationSortParams) -> (usize, usize, String, String) {
-  let page = params.page.unwrap_or(1).max(1);
-  let page_size = params.page_size.unwrap_or(30).min(100);
+  let page = params.page;
+  let page_size = params.page_size.min(100);
   let sort = params.sort.unwrap_or_else(|| "name".to_string());
-  let sort_order = params.sort_order.unwrap_or_else(|| "asc".to_string());
+  let sort_order = params.sort_order;
   (page, page_size, sort, sort_order)
 }
 
@@ -137,7 +162,9 @@ pub async fn get_alias_handler(
 
 #[cfg(test)]
 mod tests {
-  use crate::{get_alias_handler, list_chat_templates_handler, list_local_aliases_handler};
+  use crate::{
+    get_alias_handler, list_chat_templates_handler, list_local_aliases_handler, PaginatedResponse,
+  };
   use axum::{
     body::Body,
     http::{status::StatusCode, Request},
@@ -152,7 +179,7 @@ mod tests {
   use serde_json::{json, Value};
   use server_core::{
     test_utils::{router_state_stub, ResponseTestExt},
-    AliasResponse, DefaultRouterState, PaginatedResponse,
+    AliasResponse, DefaultRouterState,
   };
   use std::sync::Arc;
   use strum::IntoEnumIterator;
