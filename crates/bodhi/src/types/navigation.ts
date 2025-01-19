@@ -7,6 +7,7 @@ export interface NavigationItem {
   icon?: LucideIcon;
   authRequired?: boolean;
   items?: NavigationItem[];
+  target?: string;
 }
 
 export interface NavigationSection {

@@ -39,6 +39,7 @@ tracing-subscriber = { workspace = true, features = [
 ], optional = true }
 thiserror = { workspace = true }
 unic-langid = { workspace = true }
+utoipa = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]

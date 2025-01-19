@@ -1,5 +1,6 @@
 use jsonwebtoken::Algorithm;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, derive_builder::Builder)]
 pub struct AppRegInfo {
@@ -12,7 +13,15 @@ pub struct AppRegInfo {
 }
 
 #[derive(
-  Debug, Serialize, Deserialize, PartialEq, strum::Display, Clone, Default, strum::EnumString,
+  Debug,
+  Serialize,
+  Deserialize,
+  PartialEq,
+  strum::Display,
+  Clone,
+  Default,
+  strum::EnumString,
+  ToSchema,
 )]
 #[strum(serialize_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]

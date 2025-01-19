@@ -130,6 +130,8 @@ trybuild = "1.0.99"
 unic-langid = "0.9.5"
 ureq = "2.9.7"
 url = "2.5.2"
+utoipa = "5.3.1"
+utoipa-swagger-ui = "=8.1.0" # latest version requires axum 0.8.0
 uuid = "1.8.0"
 validator = "0.18.1"
 walkdir = "2.5.0"

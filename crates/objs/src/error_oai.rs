@@ -4,8 +4,9 @@ use axum::{
   response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new, ToSchema)]
 pub struct ErrorBody {
   pub message: String,
   pub r#type: String,
@@ -14,10 +15,11 @@ pub struct ErrorBody {
   pub param: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, derive_new::new, ToSchema)]
 pub struct OpenAIApiError {
   pub error: ErrorBody,
   #[serde(skip)]
+  #[schema(ignore = true)]
   pub status: u16,
 }
 
