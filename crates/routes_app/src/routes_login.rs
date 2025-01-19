@@ -1,4 +1,4 @@
-use crate::LoginError;
+use crate::{LoginError, ENDPOINT_LOGOUT};
 use auth_middleware::{app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN};
 use axum::{
   body::Body,
@@ -12,7 +12,7 @@ use axum::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
-use objs::{ApiError, AppError, BadRequestError, ErrorType};
+use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{extract_claims, AppStatus, Claims, SecretServiceExt};
@@ -193,6 +193,21 @@ pub enum LogoutError {
   SessionDelete(#[from] tower_sessions::session::Error),
 }
 
+/// Logout the current user by destroying their session
+#[utoipa::path(
+    post,
+    path = ENDPOINT_LOGOUT,
+    tag = "auth",
+    operation_id = "logoutUser",
+    responses(
+        (status = 200, description = "Logout successful, redirects to login page",
+         headers(
+             ("Location" = String, description = "Frontend login page URL")
+         )
+        ),
+        (status = 500, description = "Session deletion failed", body = OpenAIApiError)
+    )
+)]
 pub async fn logout_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
