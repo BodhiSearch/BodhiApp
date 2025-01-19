@@ -25,9 +25,16 @@ pub struct AppRegInfo {
 )]
 #[strum(serialize_all = "kebab-case")]
 #[serde(rename_all = "kebab-case")]
+#[schema(example = "ready")]
 pub enum AppStatus {
   #[default]
+  /// Initial setup required
+  #[schema(rename = "setup")]
   Setup,
+  /// Application is ready
+  #[schema(rename = "ready")]
   Ready,
+  /// Admin setup required
+  #[schema(rename = "resource-admin")]
   ResourceAdmin,
 }

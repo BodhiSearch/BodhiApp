@@ -28,20 +28,31 @@ pub enum AppServiceError {
   AuthServiceError(#[from] AuthServiceError),
 }
 
+/// Application information and status
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[schema(example = json!({
+    "version": "0.1.0",
+    "authz": true,
+    "status": "ready"
+}))]
 pub struct AppInfo {
-  version: String,
-  status: AppStatus,
-  authz: bool,
+  /// Application version
+  pub version: String,
+  /// Whether authentication is enabled
+  pub authz: bool,
+  /// Current application status
+  pub status: AppStatus,
 }
 
 #[utoipa::path(
-  get,
-  path = ENDPOINT_APP_INFO,
-  responses(
-      (status = 200, description = "App Info", body = AppInfo),
-      (status = 500, description = "Internal Server Error", body = OpenAIApiError),
-  )
+    get,
+    path = ENDPOINT_APP_INFO,
+    tag = "system",
+    operation_id = "getAppInfo",
+    responses(
+        (status = 200, description = "Returns the status information about the Application", body = AppInfo),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    )
 )]
 pub async fn app_info_handler(
   State(state): State<Arc<dyn RouterState>>,
