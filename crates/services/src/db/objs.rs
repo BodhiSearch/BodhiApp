@@ -4,7 +4,19 @@ use objs::{is_default, BuilderError};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use strum::EnumString;
+use utoipa::ToSchema;
 use uuid::Uuid;
+
+/// ISO-8601 formatted UTC timestamp
+#[derive(Serialize, Deserialize, Debug, ToSchema)]
+#[schema(value_type = String, format = "date-time", example = "2024-03-14T12:34:56.789Z")]
+pub struct Timestamp(pub DateTime<Utc>);
+
+impl From<DateTime<Utc>> for Timestamp {
+  fn from(dt: DateTime<Utc>) -> Self {
+    Timestamp(dt)
+  }
+}
 
 #[derive(
   Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow, derive_builder::Builder,
@@ -48,7 +60,7 @@ pub struct Message {
   pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum DownloadStatus {
@@ -57,14 +69,16 @@ pub enum DownloadStatus {
   Error,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema)]
 pub struct DownloadRequest {
   pub id: String,
   pub repo: String,
   pub filename: String,
   pub status: DownloadStatus,
   pub error: Option<String>,
+  #[schema(value_type = String, format = "date-time", example = "2024-03-14T12:34:56.789Z")]
   pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time", example = "2024-03-14T12:34:56.789Z")]
   pub updated_at: DateTime<Utc>,
 }
 

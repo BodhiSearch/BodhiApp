@@ -17,16 +17,16 @@ use axum::{
 };
 use objs::{Role, TokenScope};
 use routes_app::{
-  app_info_handler, create_alias_handler, create_token_handler, dev_secrets_handler,
-  get_alias_handler, get_download_status_handler, list_chat_templates_handler,
+  app_info_handler, create_alias_handler, create_pull_request_handler, create_token_handler,
+  dev_secrets_handler, get_alias_handler, get_download_status_handler, list_chat_templates_handler,
   list_downloads_handler, list_local_aliases_handler, list_local_modelfiles_handler,
   list_tokens_handler, login_callback_handler, login_handler, logout_handler,
-  pull_by_alias_handler, pull_by_repo_file_handler, setup_handler, update_alias_handler,
-  update_token_handler, user_info_handler, ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
-  ENDPOINT_CHAT_TEMPLATES, ENDPOINT_DEV_SECRETS, ENDPOINT_LOGIN, ENDPOINT_LOGIN_CALLBACK,
-  ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL,
-  ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_MODELS, ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW,
-  ENDPOINT_OLLAMA_TAGS, ENDPOINT_PING, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+  pull_by_alias_handler, setup_handler, update_alias_handler, update_token_handler,
+  user_info_handler, ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_CHAT_TEMPLATES,
+  ENDPOINT_DEV_SECRETS, ENDPOINT_LOGIN, ENDPOINT_LOGIN_CALLBACK, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
+  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_MODELS,
+  ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS, ENDPOINT_PING, ENDPOINT_TOKENS,
+  ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
@@ -111,7 +111,7 @@ pub fn build_routes(
     .route(ENDPOINT_MODELS, post(create_alias_handler))
     .route(&format!("{ENDPOINT_MODELS}/:id"), put(update_alias_handler))
     .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
-    .route(ENDPOINT_MODEL_PULL, post(pull_by_repo_file_handler))
+    .route(ENDPOINT_MODEL_PULL, post(create_pull_request_handler))
     .route(
       &format!("{ENDPOINT_MODEL_PULL}/:alias"),
       post(pull_by_alias_handler),

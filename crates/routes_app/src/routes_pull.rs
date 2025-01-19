@@ -1,3 +1,4 @@
+use crate::{PaginatedResponse, PaginationSortParams, ENDPOINT_MODEL_PULL};
 use axum::http::StatusCode;
 use axum::{
   extract::{Path, Query, State},
@@ -6,7 +7,7 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use chrono::Utc;
 use commands::{PullCommand, PullCommandError};
-use objs::{ApiError, AppError, ErrorType, ObjValidationError, Repo};
+use objs::{ApiError, AppError, ErrorType, ObjValidationError, OpenAIApiError, Repo};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::db::ItemNotFound;
@@ -17,12 +18,19 @@ use services::{
 };
 use std::sync::Arc;
 use tokio::spawn;
-use validator::Validate;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, Validate)]
-pub struct PullRepoFileRequest {
-  repo: String,
-  filename: String,
+/// Request to pull a model file from HuggingFace
+#[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+    "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
+}))]
+pub struct NewDownloadRequest {
+  /// HuggingFace repository name
+  pub repo: String,
+  /// Model file name to pull
+  pub filename: String,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -57,41 +65,63 @@ fn default_page_size() -> u32 {
   30
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ListDownloadsResponse {
-  pub data: Vec<DownloadRequest>,
-  pub total: u32,
-  pub page: u32,
-  pub page_size: u32,
-}
-
+/// List all model download requests
+#[utoipa::path(
+    get,
+    path = ENDPOINT_MODEL_PULL,
+    tag = "models",
+    operation_id = "listDownloads",
+    params(
+        PaginationSortParams
+    ),
+    responses(
+        (status = 200, description = "List of download requests", body = PaginatedResponse<DownloadRequest>,
+         example = json!({
+             "data": [{
+                 "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                 "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
+             }],
+             "total": 1,
+             "page": 1,
+             "page_size": 10
+         })
+        ),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    )
+)]
 pub async fn list_downloads_handler(
   State(state): State<Arc<dyn RouterState>>,
-  Query(query): Query<ListDownloadsQuery>,
-) -> Result<Json<ListDownloadsResponse>, ApiError> {
+  Query(query): Query<PaginationSortParams>,
+) -> Result<Json<PaginatedResponse<DownloadRequest>>, ApiError> {
   let downloads = state
     .app_service()
     .db_service()
-    .list_all_downloads()
+    .list_download_requests(query.page, query.page_size)
     .await?;
 
-  // Calculate pagination
-  let total = downloads.len() as u32;
-  let start = ((query.page - 1) * query.page_size) as usize;
-  let end = (start + query.page_size as usize).min(downloads.len());
-  let paged_downloads = downloads[start..end].to_vec();
-
-  Ok(Json(ListDownloadsResponse {
-    data: paged_downloads,
-    total,
+  Ok(Json(PaginatedResponse {
+    data: downloads.0,
+    total: downloads.1 as usize,
     page: query.page,
     page_size: query.page_size,
   }))
 }
 
-pub async fn pull_by_repo_file_handler(
+/// Start a new model file download
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODEL_PULL,
+    tag = "models",
+    operation_id = "pullModelFile",
+    request_body = NewDownloadRequest,
+    responses(
+        (status = 200, description = "Download request created", body = DownloadRequest),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    )
+)]
+pub async fn create_pull_request_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<PullRepoFileRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<NewDownloadRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<DownloadRequest>), ApiError> {
   let repo = Repo::try_from(payload.repo.clone())?;
 
@@ -113,16 +143,12 @@ pub async fn pull_by_repo_file_handler(
   let pending_downloads = state
     .app_service()
     .db_service()
-    .list_all_downloads()
+    .find_download_request_by_repo_filename(&payload.repo, &payload.filename)
     .await?
     .into_iter()
-    .filter(|r| r.status == DownloadStatus::Pending)
-    .collect::<Vec<_>>();
+    .find(|r| r.repo == payload.repo && r.filename == payload.filename);
 
-  if let Some(existing_request) = pending_downloads
-    .into_iter()
-    .find(|r| r.repo == payload.repo && r.filename == payload.filename)
-  {
+  if let Some(existing_request) = pending_downloads {
     return Ok((StatusCode::OK, Json(existing_request)));
   }
 
@@ -178,16 +204,12 @@ pub async fn pull_by_alias_handler(
   let pending_downloads = state
     .app_service()
     .db_service()
-    .list_all_downloads()
+    .find_download_request_by_repo_filename(&model.repo.to_string(), &model.filename)
     .await?
     .into_iter()
-    .filter(|r| r.status == DownloadStatus::Pending)
-    .collect::<Vec<_>>();
+    .find(|r| r.status == DownloadStatus::Pending);
 
-  if let Some(existing_request) = pending_downloads
-    .into_iter()
-    .find(|r| r.repo == model.repo.to_string() && r.filename == model.filename)
-  {
+  if let Some(existing_request) = pending_downloads {
     return Ok((StatusCode::OK, Json(existing_request)));
   }
 
@@ -257,11 +279,12 @@ async fn update_download_status(
 
 #[cfg(test)]
 mod tests {
+  use crate::PaginatedResponse;
+
   use super::{
-    get_download_status_handler, list_downloads_handler, pull_by_alias_handler,
-    pull_by_repo_file_handler,
+    create_pull_request_handler, get_download_status_handler, list_downloads_handler,
+    pull_by_alias_handler,
   };
-  use crate::ListDownloadsResponse;
   use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
@@ -306,7 +329,7 @@ mod tests {
   fn test_router(service: Arc<dyn AppService>) -> Router {
     let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), service);
     Router::new()
-      .route("/modelfiles/pull", post(pull_by_repo_file_handler))
+      .route("/modelfiles/pull", post(create_pull_request_handler))
       .route("/modelfiles/pull/:alias", post(pull_by_alias_handler))
       .route(
         "/modelfiles/pull/status/:id",
@@ -697,7 +720,9 @@ mod tests {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = response.json::<ListDownloadsResponse>().await?;
+    let body = response
+      .json::<PaginatedResponse<DownloadRequest>>()
+      .await?;
     assert_eq!(body.data.len(), 3);
     assert_eq!(body.total, 3);
     assert_eq!(body.page, 1);

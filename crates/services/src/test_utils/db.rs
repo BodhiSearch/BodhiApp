@@ -153,12 +153,16 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("update_download_request"))
   }
 
-  async fn list_all_downloads(&self) -> Result<Vec<DownloadRequest>, DbError> {
+  async fn list_download_requests(
+    &self,
+    page: usize,
+    page_size: usize,
+  ) -> Result<(Vec<DownloadRequest>, usize), DbError> {
     self
       .inner
-      .list_all_downloads()
+      .list_download_requests(page, page_size)
       .await
-      .tap(|_| self.notify("list_all_downloads"))
+      .tap(|_| self.notify("list_download_requests"))
   }
 
   async fn insert_pending_request(&self, email: String) -> Result<AccessRequest, DbError> {
@@ -252,5 +256,17 @@ impl DbService for TestDbService {
       .update_api_token(user_id, token)
       .await
       .tap(|_| self.notify("update_api_token"))
+  }
+
+  async fn find_download_request_by_repo_filename(
+    &self,
+    repo: &str,
+    filename: &str,
+  ) -> Result<Vec<DownloadRequest>, DbError> {
+    self
+      .inner
+      .find_download_request_by_repo_filename(repo, filename)
+      .await
+      .tap(|_| self.notify("find_download_request_by_repo_filename"))
   }
 }
