@@ -1,6 +1,6 @@
 use crate::{
-  AppInfo, SetupRequest, SetupResponse, __path_app_info_handler, __path_logout_handler,
-  __path_ping_handler, __path_setup_handler,
+  AppInfo, SetupRequest, SetupResponse, UserInfo, __path_app_info_handler, __path_logout_handler,
+  __path_ping_handler, __path_setup_handler, __path_user_info_handler,
 };
 use objs::OpenAIApiError;
 use services::AppStatus;
@@ -64,6 +64,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
             AppStatus,
             SetupRequest,
             SetupResponse,
+            UserInfo,
         ),
         responses( ),
     ),
@@ -72,13 +73,17 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         setup_handler,
         logout_handler,
         ping_handler,
+        user_info_handler,
     )
 )]
 pub struct ApiDoc;
 
 #[cfg(test)]
 mod tests {
-  use crate::{ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_PING};
+  use crate::{
+    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_PING,
+    ENDPOINT_USER_INFO,
+  };
   use pretty_assertions::assert_eq;
   use serde_json::json;
   use utoipa::{openapi::RefOr, OpenApi};
@@ -233,6 +238,34 @@ mod tests {
       }
     } else {
       panic!("No response found for 200 status");
+    }
+  }
+
+  #[test]
+  fn test_user_info_endpoint() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let user_info = paths
+      .paths
+      .get(ENDPOINT_USER_INFO)
+      .expect("User info endpoint not found");
+    let get_op = user_info.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "getCurrentUser");
+
+    // Check responses
+    let responses = &get_op.responses;
+    assert!(responses.responses.contains_key("200"));
+    assert!(responses.responses.contains_key("500"));
+
+    // Verify response schema references UserInfo
+    let success_response = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success_response {
+      assert!(response.content.get("application/json").is_some());
     }
   }
 }
