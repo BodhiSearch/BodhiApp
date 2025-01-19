@@ -14,7 +14,7 @@ use std::sync::Arc;
 use tracing::info;
 use utoipa::ToSchema;
 
-use crate::ENDPOINT_APP_INFO;
+use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -68,14 +68,28 @@ pub async fn app_info_handler(
   }))
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Request to setup the application in authenticated or non-authenticated mode
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "authz": true
+}))]
 pub struct SetupRequest {
-  authz: bool,
+  /// Whether to enable authentication
+  /// - true: Setup app in authenticated mode with role-based access
+  /// - false: Setup app in non-authenticated mode for open access
+  pub authz: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Response containing the updated application status after setup
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "status": "resource-admin"
+}))]
 pub struct SetupResponse {
-  status: AppStatus,
+  /// New application status after setup
+  /// - resource-admin: When setup in authenticated mode
+  /// - ready: When setup in non-authenticated mode
+  pub status: AppStatus,
 }
 
 impl IntoResponse for SetupResponse {
@@ -84,6 +98,26 @@ impl IntoResponse for SetupResponse {
   }
 }
 
+#[utoipa::path(
+    post,
+    path = ENDPOINT_APP_SETUP,
+    tag = "setup",
+    operation_id = "setupApp",
+    request_body = SetupRequest,
+    responses(
+        (status = 200, description = "Application setup successful", body = SetupResponse),
+        (status = 400, description = "Application is already setup", body = OpenAIApiError),
+        (status = 500, description = "Internal server error", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Failed to register with auth server",
+                 "type": "internal_server_error",
+                 "code": "auth_service_error"
+             }
+         })
+        )
+    )
+)]
 pub async fn setup_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, ApiError>,

@@ -1,4 +1,4 @@
-use crate::{AppInfo, __path_app_info_handler};
+use crate::{AppInfo, SetupRequest, SetupResponse, __path_app_info_handler, __path_setup_handler};
 use objs::OpenAIApiError;
 use services::AppStatus;
 use utoipa::OpenApi;
@@ -51,22 +51,28 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
     ),
     tags(
         (name = "system", description = "System information and operations"),
+        (name = "setup", description = "Application setup and initialization"),
     ),
     components(
         schemas(
             OpenAIApiError,
             AppInfo,
             AppStatus,
+            SetupRequest,
+            SetupResponse,
         ),
         responses( ),
     ),
-    paths(app_info_handler)
+    paths(
+        app_info_handler,
+        setup_handler,
+    )
 )]
 pub struct ApiDoc;
 
 #[cfg(test)]
 mod tests {
-  use crate::{ApiDoc, ENDPOINT_APP_INFO};
+  use crate::{ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP};
   use pretty_assertions::assert_eq;
   use utoipa::{openapi::RefOr, OpenApi};
 
@@ -131,5 +137,32 @@ mod tests {
     if let RefOr::T(response) = success_response {
       assert!(response.content.get("application/json").is_some());
     }
+  }
+
+  #[test]
+  fn test_setup_endpoint() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify tags
+    let tags = api_doc.tags.as_ref().unwrap();
+    assert!(tags.iter().any(|t| t.name == "setup"));
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let setup = paths
+      .paths
+      .get(ENDPOINT_APP_SETUP)
+      .expect("Setup endpoint not found");
+    let post_op = setup.post.as_ref().expect("POST operation not found");
+
+    // Check operation details
+    assert_eq!(post_op.tags.as_ref().unwrap()[0], "setup");
+    assert_eq!(post_op.operation_id.as_ref().unwrap(), "setupApp");
+
+    // Check responses
+    let responses = &post_op.responses;
+    assert!(responses.responses.contains_key("200"));
+    assert!(responses.responses.contains_key("400"));
+    assert!(responses.responses.contains_key("500"));
   }
 }
