@@ -1,4 +1,3 @@
-mod alias_response;
 mod http;
 mod server;
 mod state;

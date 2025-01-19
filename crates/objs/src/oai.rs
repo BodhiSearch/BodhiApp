@@ -4,8 +4,11 @@ use clap::Args;
 use derive_builder::Builder;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use utoipa::ToSchema;
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder)]
+#[derive(
+  Deserialize, Serialize, Debug, Clone, PartialEq, Default, PartialOrd, Args, Builder, ToSchema,
+)]
 #[
   builder(
     default,

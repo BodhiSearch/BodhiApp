@@ -6,14 +6,12 @@ pub mod test_utils;
 mod direct_sse;
 mod error;
 mod fwd_sse;
-mod objs;
 mod router_state;
 mod shared_rw;
 
 pub use direct_sse::*;
 pub use error::*;
 pub use fwd_sse::*;
-pub use objs::*;
 pub use router_state::*;
 pub use shared_rw::*;
 

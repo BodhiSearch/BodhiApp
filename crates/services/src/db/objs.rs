@@ -7,17 +7,6 @@ use strum::EnumString;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-/// ISO-8601 formatted UTC timestamp
-#[derive(Serialize, Deserialize, Debug, ToSchema)]
-#[schema(value_type = String, format = "date-time", example = "2024-03-14T12:34:56.789Z")]
-pub struct Timestamp(pub DateTime<Utc>);
-
-impl From<DateTime<Utc>> for Timestamp {
-  fn from(dt: DateTime<Utc>) -> Self {
-    Timestamp(dt)
-  }
-}
-
 #[derive(
   Debug, Clone, Default, PartialEq, Serialize, Deserialize, FromRow, derive_builder::Builder,
 )]

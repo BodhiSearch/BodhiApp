@@ -1,14 +1,52 @@
-use crate::{LocalModelResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODEL_FILES};
+use crate::{
+  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODELS,
+  ENDPOINT_MODEL_FILES,
+};
 use axum::{
   extract::{Query, State},
   Json,
 };
 use objs::{Alias, ApiError, ChatTemplateId, ChatTemplateType, HubFile, OpenAIApiError};
-use server_core::{AliasResponse, RouterState};
+use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
 use strum::IntoEnumIterator;
 
+/// List configured model aliases
+#[utoipa::path(
+    get,
+    path = ENDPOINT_MODELS,
+    tag = "models",
+    operation_id = "listModelAliases",
+    params(
+        PaginationSortParams
+    ),
+    responses(
+        (status = 200, description = "List of configured model aliases", body = PaginatedResponse<AliasResponse>,
+         example = json!({
+             "data": [{
+                 "alias": "llama2:chat",
+                 "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                 "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                 "source": "huggingface",
+                 "chat_template": "llama2",
+                 "model_params": {},
+                 "request_params": {
+                     "temperature": 0.7,
+                     "top_p": 0.95
+                 },
+                 "context_params": {
+                     "max_tokens": 4096
+                 }
+             }],
+             "total": 1,
+             "page": 1,
+             "page_size": 10
+         })
+        ),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    )
+)]
 pub async fn list_local_aliases_handler(
   State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<PaginationSortParams>,
@@ -163,7 +201,8 @@ pub async fn get_alias_handler(
 #[cfg(test)]
 mod tests {
   use crate::{
-    get_alias_handler, list_chat_templates_handler, list_local_aliases_handler, PaginatedResponse,
+    get_alias_handler, list_chat_templates_handler, list_local_aliases_handler, AliasResponse,
+    PaginatedResponse,
   };
   use axum::{
     body::Body,
@@ -179,7 +218,7 @@ mod tests {
   use serde_json::{json, Value};
   use server_core::{
     test_utils::{router_state_stub, ResponseTestExt},
-    AliasResponse, DefaultRouterState,
+    DefaultRouterState,
   };
   use std::sync::Arc;
   use strum::IntoEnumIterator;
