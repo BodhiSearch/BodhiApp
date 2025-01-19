@@ -1,6 +1,6 @@
 use crate::{
   AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODELS,
-  ENDPOINT_MODEL_FILES,
+  ENDPOINT_MODEL_FILES, ENDPOINT_CHAT_TEMPLATES,
 };
 use axum::{
   extract::{Query, State},
@@ -169,6 +169,27 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
   });
 }
 
+/// List available chat templates (both built-in and from repositories)
+#[utoipa::path(
+    get,
+    path = ENDPOINT_CHAT_TEMPLATES,
+    tag = "models",
+    operation_id = "listChatTemplates",
+    responses(
+        (status = 200, description = "List of available chat templates", body = Vec<ChatTemplateType>,
+         example = json!([
+             // Built-in templates
+             {"id": "llama2"},
+             {"id": "llama3"},
+             {"id": "gemma"},
+             // Repository templates
+             {"repo": "meta-llama/Llama-2-70b-chat-hf"},
+             {"repo": "mistralai/Mistral-7B-Instruct-v0.1"}
+         ])
+        ),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    )
+)]
 pub async fn list_chat_templates_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<Vec<ChatTemplateType>>, ApiError> {

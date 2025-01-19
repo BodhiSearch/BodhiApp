@@ -1,10 +1,11 @@
 use crate::{
   AliasResponse, AppInfo, NewDownloadRequest, SetupRequest, SetupResponse, UserInfo,
-  __path_app_info_handler, __path_create_pull_request_handler, __path_list_downloads_handler,
-  __path_list_local_aliases_handler, __path_list_local_modelfiles_handler, __path_logout_handler,
-  __path_ping_handler, __path_setup_handler, __path_user_info_handler,
+  __path_app_info_handler, __path_create_pull_request_handler, __path_list_chat_templates_handler,
+  __path_list_downloads_handler, __path_list_local_aliases_handler,
+  __path_list_local_modelfiles_handler, __path_logout_handler, __path_ping_handler,
+  __path_setup_handler, __path_user_info_handler,
 };
-use objs::OpenAIApiError;
+use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
 use services::{db::DownloadRequest, AppStatus};
 use utoipa::OpenApi;
 
@@ -71,6 +72,9 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
             NewDownloadRequest,
             DownloadRequest,
             AliasResponse,
+            ChatTemplateType,
+            ChatTemplateId,
+            Repo,
         ),
         responses( ),
     ),
@@ -84,6 +88,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         list_downloads_handler,
         create_pull_request_handler,
         list_local_aliases_handler,
+        list_chat_templates_handler,
     )
 )]
 pub struct ApiDoc;
@@ -91,8 +96,8 @@ pub struct ApiDoc;
 #[cfg(test)]
 mod tests {
   use crate::{
-    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-    ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_USER_INFO,
+    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_LOGOUT,
+    ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -441,6 +446,36 @@ mod tests {
         assert!(alias.get("model_params").is_some());
         assert!(alias.get("request_params").is_some());
         assert!(alias.get("context_params").is_some());
+      }
+    }
+  }
+
+  #[test]
+  fn test_chat_templates_endpoint() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let templates = paths
+      .paths
+      .get(ENDPOINT_CHAT_TEMPLATES)
+      .expect("Chat templates endpoint not found");
+    let get_op = templates.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "listChatTemplates");
+
+    // Check responses
+    let responses = &get_op.responses;
+    let success = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        let templates = example.as_array().unwrap();
+        // Verify we have both types of templates
+        assert!(templates.iter().any(|t| t.get("id").is_some()));
+        assert!(templates.iter().any(|t| t.get("repo").is_some()));
       }
     }
   }
