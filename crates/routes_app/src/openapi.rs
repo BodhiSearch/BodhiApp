@@ -9,6 +9,7 @@ use crate::{
   __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
+use routes_oai::__path_oai_models_handler;
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
   AppStatus,
@@ -33,7 +34,6 @@ make_ui_endpoint!(ENDPOINT_APP_SETUP, "setup");
 make_ui_endpoint!(ENDPOINT_USER_INFO, "user");
 make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
 make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
-make_ui_endpoint!(ENDPOINT_MODEL_PULL_BY_ALIAS, "modelfiles/pull/:alias");
 make_ui_endpoint!(ENDPOINT_MODELS, "models");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
@@ -104,7 +104,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         create_token_handler,
         get_download_status_handler,
         list_tokens_handler,
-        update_token_handler
+        update_token_handler,
+        oai_models_handler
     )
 )]
 pub struct ApiDoc;
@@ -811,6 +812,71 @@ mod tests {
         assert_eq!(error.get("code").unwrap(), "entity_error-not_found");
       } else {
         panic!("No example found for 404 status");
+      }
+    }
+
+    // Check 500 response exists
+    assert!(responses.responses.contains_key("500"));
+  }
+
+  #[test]
+  fn test_oai_models_endpoint() {
+    let api_doc = ApiDoc::openapi();
+    let paths = &api_doc.paths;
+
+    // Verify endpoint
+    let models_path = paths
+      .paths
+      .get("/v1/models")
+      .expect("OpenAI models endpoint not found");
+
+    let get_op = models_path.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "openai");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "listModels");
+
+    // Check responses
+    let responses = &get_op.responses;
+
+    // Check 200 response
+    let success = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        // Verify response structure
+        assert_eq!(example.get("object").unwrap(), "list");
+        let data = example.get("data").unwrap().as_array().unwrap();
+
+        // Check first model in the list
+        let model = &data[0];
+        assert!(model.get("id").is_some());
+        assert_eq!(model.get("object").unwrap(), "model");
+        assert!(model.get("created").is_some());
+        assert!(model.get("owned_by").is_some());
+
+        // Verify example values
+        assert_eq!(model.get("id").unwrap(), "llama2:chat");
+        assert_eq!(model.get("owned_by").unwrap(), "bodhi");
+      } else {
+        panic!("No example found for 200 status");
+      }
+    }
+
+    // Check 401 response
+    let unauthorized = responses.responses.get("401").unwrap();
+    if let RefOr::T(response) = unauthorized {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        let error = example.get("error").unwrap();
+        assert_eq!(error.get("type").unwrap(), "invalid_request_error");
+        assert_eq!(error.get("code").unwrap(), "invalid_api_key");
+        assert_eq!(
+          error.get("message").unwrap(),
+          "Invalid authentication token"
+        );
+      } else {
+        panic!("No example found for 401 status");
       }
     }
 

@@ -3,11 +3,116 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{Alias, ApiError};
+use objs::{Alias, ApiError, OpenAIApiError};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
+use utoipa::openapi::ObjectBuilder;
 
+pub struct ListModelResponseWrapper;
+
+impl utoipa::PartialSchema for ListModelResponseWrapper {
+  fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+    use utoipa::openapi::schema::{ArrayBuilder, SchemaType, Type};
+
+    ObjectBuilder::new()
+      .property(
+        "object",
+        ObjectBuilder::new().schema_type(SchemaType::new(Type::String)),
+      )
+      .required("object")
+      .property(
+        "data",
+        ArrayBuilder::new().items(
+          ObjectBuilder::new()
+            .property(
+              "id",
+              ObjectBuilder::new()
+                .schema_type(SchemaType::new(Type::String))
+                .description(Some(
+                  "The model identifier, which can be referenced in the API endpoints.",
+                )),
+            )
+            .required("id")
+            .property(
+              "object",
+              ObjectBuilder::new()
+                .schema_type(SchemaType::new(Type::String))
+                .description(Some("The object type, which is always \"model\".")),
+            )
+            .required("object")
+            .property(
+              "created",
+              ObjectBuilder::new()
+                .schema_type(SchemaType::new(Type::Integer))
+                .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
+                  utoipa::openapi::schema::KnownFormat::Int32,
+                )))
+                .description(Some(
+                  "The Unix timestamp (in seconds) when the model was created.",
+                ))
+                .minimum(Some(0f64)),
+            )
+            .required("created")
+            .property(
+              "owned_by",
+              ObjectBuilder::new()
+                .schema_type(SchemaType::new(Type::String))
+                .description(Some("The organization that owns the model.")),
+            )
+            .required("owned_by")
+            .description(Some(
+              "Describes an OpenAI model offering that can be used with the API.",
+            )),
+        ),
+      )
+      .required("data")
+      .into()
+  }
+}
+
+impl utoipa::ToSchema for ListModelResponseWrapper {}
+
+/// List available models
+#[utoipa::path(
+    get,
+    path = "/v1/models",
+    tag = "openai",
+    operation_id = "listModels",
+    responses(
+        (status = 200, description = "List of available models", 
+         body = ListModelResponseWrapper,
+         example = json!({
+             "object": "list",
+             "data": [
+                 {
+                     "id": "llama2:chat",
+                     "object": "model",
+                     "created": 1677610602,
+                     "owned_by": "bodhi"
+                 },
+                 {
+                     "id": "mistral:instruct",
+                     "object": "model",
+                     "created": 1677610602,
+                     "owned_by": "bodhi"
+                 }
+             ]
+         })),
+        (status = 401, description = "Invalid authentication", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Invalid authentication token",
+                 "type": "invalid_request_error",
+                 "code": "invalid_api_key"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<ListModelResponse>, ApiError> {
