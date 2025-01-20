@@ -86,8 +86,8 @@ pub struct OllamaError {
          }))
     ),
     security(
-        ("api_key" = [])
-    )
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn ollama_models_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -202,8 +202,8 @@ pub struct ShowResponse {
          }))
     ),
     security(
-        ("api_key" = [])
-    )
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn ollama_model_show_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -519,8 +519,8 @@ pub struct Options {
          }))
     ),
     security(
-        ("api_key" = [])
-    )
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn ollama_model_chat_handler(
   State(state): State<Arc<dyn RouterState>>,

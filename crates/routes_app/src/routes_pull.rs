@@ -71,7 +71,10 @@ pub enum PullError {
          })
         ),
         (status = 500, description = "Internal server error", body = OpenAIApiError)
-    )
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn list_downloads_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -142,7 +145,10 @@ pub async fn list_downloads_handler(
                  "code": "internal_error"
              }
          }))
-    )
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn create_pull_request_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -267,7 +273,10 @@ pub async fn create_pull_request_handler(
                  "code": "internal_error"
              }
          }))
-    )
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn pull_by_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -363,7 +372,10 @@ pub async fn pull_by_alias_handler(
                  "code": "internal_error"
              }
          }))
-    )
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn get_download_status_handler(
   State(state): State<Arc<dyn RouterState>>,
