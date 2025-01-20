@@ -68,26 +68,58 @@ So that I can understand and test the API endpoints easily
 ### Backend Tasks
 
 #### Utoipa Integration
-- [ ] Add Utoipa dependencies
-- [ ] Configure OpenAPI information
-- [ ] Set up security schemes
-- [ ] Configure servers section
-- [ ] Add common components
+- [x] Add Utoipa dependencies
+- [x] Configure OpenAPI information
+- [x] Set up security schemes
+- [x] Configure servers section
+- [x] Add common components
 
 #### Schema Documentation
-- [ ] Document common request types
-- [ ] Document response types
-- [ ] Document error types
-- [ ] Add example values
-- [ ] Document authentication types
+- [x] Document common request types
+- [x] Document response types
+- [x] Document error types
+- [x] Add example values
+- [x] Document authentication types
 
 #### Endpoint Documentation
-- [ ] Document auth endpoints
-- [ ] Document user endpoints
-- [ ] Document model endpoints
-- [ ] Document chat endpoints
+
+##### Auth & User Endpoints
+- [x] Document auth endpoints
+  - [x] GET /bodhi/v1/info (app_info_handler)
+  - [x] POST /bodhi/v1/setup (setup_handler)
+  - [x] GET /ping (ping_handler)
+  - [x] GET /app/login (login_handler)
+  - [x] GET /app/login/callback (login_callback_handler)
+  - [x] POST /bodhi/v1/logout (logout_handler)
+  - [x] GET /bodhi/v1/user (user_info_handler)
+
+##### Model Management
+- [x] Document model endpoints
+  - [x] GET /bodhi/v1/modelfiles (list_local_modelfiles_handler)
+  - [x] GET /bodhi/v1/modelfiles/pull (list_downloads_handler)
+  - [x] POST /bodhi/v1/modelfiles/pull (create_pull_request_handler)
+  - [ ] GET /bodhi/v1/modelfiles/pull/status/{id} (get_download_status_handler)
+  - [ ] POST /bodhi/v1/modelfiles/pull/{alias} (pull_by_alias_handler)
+  - [x] GET /bodhi/v1/models (list_local_aliases_handler)
+  - [ ] GET /bodhi/v1/models/{alias} (get_alias_handler)
+  - [x] GET /bodhi/v1/chat_templates (list_chat_templates_handler)
+
+##### Token Management
 - [ ] Document token endpoints
-- [ ] Document system endpoints
+  - [x] POST /bodhi/v1/tokens (create_token_handler)
+  - [ ] GET /bodhi/v1/tokens (list_tokens_handler)
+  - [ ] PUT /bodhi/v1/tokens/{id} (update_token_handler)
+
+##### Chat Endpoints
+- [ ] Document chat endpoints
+  - [ ] GET /v1/models (list_models_handler)
+  - [ ] POST /v1/chat/completions (chat_completions_handler)
+
+##### Ollama Compatibility
+- [ ] Document Ollama endpoints
+  - [ ] GET /api/tags (list_ollama_tags_handler)
+  - [ ] POST /api/show (show_ollama_model_handler)
+  - [ ] POST /api/chat (chat_ollama_handler)
 
 #### Swagger UI Setup
 - [ ] Add Swagger UI dependencies
@@ -97,12 +129,18 @@ So that I can understand and test the API endpoints easily
 - [ ] Add custom configuration
 
 ### Testing Tasks
-- [ ] Verify OpenAPI spec generation
+- [x] Verify OpenAPI spec generation
 - [ ] Test Swagger UI integration
-- [ ] Validate schema documentation
+- [x] Validate schema documentation
 - [ ] Test authentication in Swagger UI
-- [ ] Verify example values
+- [x] Verify example values
 - [ ] Test API operations through UI
+
+### Next Steps
+1. Document list_tokens_handler and update_token_handler
+2. Document chat endpoints (OpenAI compatibility)
+3. Document Ollama compatibility endpoints
+4. Set up Swagger UI integration
 
 ## File Overview
 
