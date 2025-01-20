@@ -22,9 +22,10 @@ use routes_app::{
   list_downloads_handler, list_local_aliases_handler, list_local_modelfiles_handler,
   list_tokens_handler, login_callback_handler, login_handler, logout_handler,
   pull_by_alias_handler, setup_handler, update_alias_handler, update_token_handler,
-  user_info_handler, ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_CHAT_TEMPLATES,
-  ENDPOINT_DEV_SECRETS, ENDPOINT_LOGIN, ENDPOINT_LOGIN_CALLBACK, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+  user_info_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
+  ENDPOINT_CHAT_TEMPLATES, ENDPOINT_DEV_SECRETS, ENDPOINT_LOGIN, ENDPOINT_LOGIN_CALLBACK,
+  ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
+  ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
@@ -35,10 +36,12 @@ use serde_json::json;
 use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::{AppService, EnvService, BODHI_DEV_PROXY_UI};
 use std::sync::Arc;
-use tower_http::cors::{Any, CorsLayer};
-use tower_http::trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer};
+use tower_http::{
+  cors::{Any, CorsLayer},
+  trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
+};
 use tracing::{debug, info, Level};
-use utoipa::OpenApi;
+use utoipa::{Modify, OpenApi};
 use utoipa_swagger_ui::SwaggerUi;
 
 pub fn build_routes(
@@ -156,12 +159,15 @@ pub fn build_routes(
     .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
     .on_response(DefaultOnResponse::new().level(Level::INFO));
 
+  let mut openapi = BodhiOpenAPIDoc::openapi();
+  OpenAPIEnvModifier::new(app_service.env_service()).modify(&mut openapi);
+
   // Build final router
   let router = Router::<Arc<dyn RouterState>>::new()
     .merge(public_apis)
     .merge(optional_auth)
     .merge(protected_apis)
-    .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+    .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi))
     .layer(
       CorsLayer::new()
         .allow_origin(Any)

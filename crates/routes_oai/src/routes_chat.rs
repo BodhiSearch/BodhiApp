@@ -41,6 +41,7 @@ pub enum HttpError {
     ),
     responses(
         (status = 200, description = "Chat completion response", 
+         content_type = "application/json",
          body = serde_json::Value,
          example = json!({
              "id": "chatcmpl-123",
@@ -63,6 +64,24 @@ pub enum HttpError {
                  "total_tokens": 30
              }
          })),
+         (status = 201, description = "Chat completion stream, the status is 200, using 201 to avoid OpenAPI format limitation.",
+         content_type = "text/event-stream",
+         headers(
+             ("Cache-Control" = String, description = "No-cache directive")
+         ),
+         body = serde_json::Value,
+         example = json!({
+             "id": "chatcmpl-123",
+             "object": "chat.completion.chunk",
+             "created": 1694268190,
+             "model": "llama2:chat",
+             "choices": [{
+                 "delta": {"content": "Hello"},
+                 "index": 0,
+                 "finish_reason": null
+             }]
+         })
+        ),
         (status = 400, description = "Invalid request parameters", body = OpenAIApiError,
          example = json!({
              "error": {

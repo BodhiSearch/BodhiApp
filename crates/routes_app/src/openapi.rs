@@ -15,9 +15,10 @@ use routes_oai::{
 };
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
-  AppStatus,
+  AppStatus, EnvService,
 };
-use utoipa::OpenApi;
+use std::sync::Arc;
+use utoipa::{Modify, OpenApi};
 
 macro_rules! make_ui_endpoint {
   ($name:ident, $path:expr) => {
@@ -52,9 +53,14 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         version = env!("CARGO_PKG_VERSION"),
         description = "API documentation for Bodhi App",
         contact(
-            name = "Bodhi Support",
-            url = "https://github.com/BodhiSearch/BodhiApp"
-        ),
+            name = "Bodhi API Support",
+            url = "https://github.com/BodhiSearch/BodhiApp/issues",
+            email = "support@getbodhi.app"
+        )
+    ),
+    external_docs(
+        url = "https://getbodhi.app/docs/api",
+        description = "Find more info here"
     ),
     servers(
         (url = "http://localhost:1135", description = "Local running instance"),
@@ -112,14 +118,38 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         ollama_model_chat_handler,
     )
 )]
-pub struct ApiDoc;
+pub struct BodhiOpenAPIDoc;
+
+/// Modifies OpenAPI documentation with environment-specific settings
+
+#[derive(Debug, derive_new::new)]
+pub struct OpenAPIEnvModifier {
+  env_service: Arc<dyn EnvService>,
+}
+
+impl Modify for OpenAPIEnvModifier {
+  fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+    // Add environment-specific server
+    let server_url = self.env_service.server_url();
+    let desc = if self.env_service.is_production() {
+      ""
+    } else {
+      " - Development"
+    };
+    let server = utoipa::openapi::ServerBuilder::default()
+      .url(server_url)
+      .description(Some(format!("Bodhi App {}", desc)))
+      .build();
+    openapi.servers = Some(vec![server]);
+  }
+}
 
 #[cfg(test)]
 mod tests {
   use crate::{
-    ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_LOGOUT,
-    ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS,
-    ENDPOINT_USER_INFO,
+    BodhiOpenAPIDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_CHAT_TEMPLATES,
+    ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
+    ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -130,7 +160,7 @@ mod tests {
 
   #[test]
   fn test_openapi_basic_info() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Test API Info
     let info = &api_doc.info;
@@ -143,11 +173,12 @@ mod tests {
 
     // Test Contact Info
     let contact = info.contact.as_ref().unwrap();
-    assert_eq!(contact.name.as_deref().unwrap(), "Bodhi Support");
+    assert_eq!(contact.name.as_deref().unwrap(), "Bodhi API Support");
     assert_eq!(
       contact.url.as_deref().unwrap(),
-      "https://github.com/BodhiSearch/BodhiApp"
+      "https://github.com/BodhiSearch/BodhiApp/issues"
     );
+    assert_eq!(contact.email.as_deref().unwrap(), "support@getbodhi.app");
 
     // Test Servers
     let servers = api_doc.servers.as_ref().unwrap();
@@ -161,7 +192,7 @@ mod tests {
 
   #[test]
   fn test_app_info_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -193,7 +224,7 @@ mod tests {
 
   #[test]
   fn test_setup_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -220,7 +251,7 @@ mod tests {
 
   #[test]
   fn test_logout_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -252,7 +283,7 @@ mod tests {
 
   #[test]
   fn test_ping_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -283,7 +314,7 @@ mod tests {
 
   #[test]
   fn test_user_info_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -311,7 +342,7 @@ mod tests {
 
   #[test]
   fn test_modelfiles_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -361,7 +392,7 @@ mod tests {
 
   #[test]
   fn test_download_endpoints() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify tags
     let tags = api_doc.tags.as_ref().unwrap();
@@ -427,7 +458,7 @@ mod tests {
 
   #[test]
   fn test_model_aliases_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -477,7 +508,7 @@ mod tests {
 
   #[test]
   fn test_chat_templates_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -507,7 +538,7 @@ mod tests {
 
   #[test]
   fn test_create_token_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
 
     // Verify endpoint
     let paths = &api_doc.paths;
@@ -544,7 +575,7 @@ mod tests {
 
   #[test]
   fn test_pull_by_alias_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
     // Verify endpoint
     let paths = &api_doc.paths;
     let pull_alias = paths
@@ -591,7 +622,7 @@ mod tests {
 
   #[test]
   fn test_get_download_status_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
     let paths = &api_doc.paths;
 
     // Verify endpoint
@@ -660,7 +691,7 @@ mod tests {
 
   #[test]
   fn test_list_tokens_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
     let paths = &api_doc.paths;
 
     // Verify endpoint
@@ -730,7 +761,7 @@ mod tests {
 
   #[test]
   fn test_update_token_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
     let paths = &api_doc.paths;
 
     // Verify endpoint
@@ -825,7 +856,7 @@ mod tests {
 
   #[test]
   fn test_oai_models_endpoint() {
-    let api_doc = ApiDoc::openapi();
+    let api_doc = BodhiOpenAPIDoc::openapi();
     let paths = &api_doc.paths;
 
     // Verify endpoint
