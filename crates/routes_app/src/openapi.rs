@@ -4,11 +4,15 @@ use crate::{
   __path_create_pull_request_handler, __path_create_token_handler,
   __path_get_download_status_handler, __path_list_chat_templates_handler,
   __path_list_downloads_handler, __path_list_local_aliases_handler,
-  __path_list_local_modelfiles_handler, __path_logout_handler, __path_ping_handler,
-  __path_pull_by_alias_handler, __path_setup_handler, __path_user_info_handler,
+  __path_list_local_modelfiles_handler, __path_list_tokens_handler, __path_logout_handler,
+  __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
+  __path_user_info_handler,
 };
 use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
-use services::{db::DownloadRequest, AppStatus};
+use services::{
+  db::{ApiToken, DownloadRequest, TokenStatus},
+  AppStatus,
+};
 use utoipa::OpenApi;
 
 macro_rules! make_ui_endpoint {
@@ -80,6 +84,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
             Repo,
             CreateApiTokenRequest,
             ApiTokenResponse,
+            ApiToken,
+            TokenStatus
         ),
         responses( ),
     ),
@@ -96,7 +102,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         list_local_aliases_handler,
         list_chat_templates_handler,
         create_token_handler,
-        get_download_status_handler
+        get_download_status_handler,
+        list_tokens_handler
     )
 )]
 pub struct ApiDoc;
@@ -638,6 +645,76 @@ mod tests {
         assert_eq!(error.get("code").unwrap(), "item_not_found");
       } else {
         panic!("No example found for 404 status");
+      }
+    }
+
+    // Check 500 response exists
+    assert!(responses.responses.contains_key("500"));
+  }
+
+  #[test]
+  fn test_list_tokens_endpoint() {
+    let api_doc = ApiDoc::openapi();
+    let paths = &api_doc.paths;
+
+    // Verify endpoint
+    let tokens_path = paths
+      .paths
+      .get(ENDPOINT_TOKENS)
+      .expect("Tokens endpoint not found");
+
+    let get_op = tokens_path.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "listApiTokens");
+
+    // Check pagination parameters
+    let params = get_op.parameters.as_ref().unwrap();
+    assert!(params.iter().any(|p| p.name == "page"));
+    assert!(params.iter().any(|p| p.name == "page_size"));
+    assert!(params.iter().any(|p| p.name == "sort"));
+    assert!(params.iter().any(|p| p.name == "sort_order"));
+
+    // Check responses
+    let responses = &get_op.responses;
+
+    // Check 200 response
+    let success = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        // Verify paginated response structure
+        assert!(example.get("data").is_some());
+        assert!(example.get("total").is_some());
+        assert!(example.get("page").is_some());
+        assert!(example.get("page_size").is_some());
+
+        // Verify token data structure
+        let data = example.get("data").unwrap().as_array().unwrap();
+        let token = &data[0];
+        assert!(token.get("id").is_some());
+        assert!(token.get("user_id").is_some());
+        assert!(token.get("name").is_some());
+        assert!(token.get("token_id").is_some());
+        assert!(token.get("status").is_some());
+        assert!(token.get("created_at").is_some());
+        assert!(token.get("updated_at").is_some());
+      } else {
+        panic!("No example found for 200 status");
+      }
+    }
+
+    // Check 401 response
+    let unauthorized = responses.responses.get("401").unwrap();
+    if let RefOr::T(response) = unauthorized {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        let error = example.get("error").unwrap();
+        assert_eq!(error.get("type").unwrap(), "invalid_request_error");
+        assert_eq!(error.get("code").unwrap(), "api_token_error-token_missing");
+      } else {
+        panic!("No example found for 401 status");
       }
     }
 

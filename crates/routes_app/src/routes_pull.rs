@@ -113,8 +113,8 @@ pub async fn list_downloads_handler(
              "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
              "status": "pending",
              "error": null,
-             "created_at": "2024-01-20T12:00:00Z",
-             "updated_at": "2024-01-20T12:00:00Z"
+             "created_at": "2024-11-10T04:52:06.786Z",
+             "updated_at": "2024-11-10T04:52:06.786Z"
          })),
         (status = 200, description = "Existing download request found", body = DownloadRequest,
          example = json!({
@@ -123,8 +123,8 @@ pub async fn list_downloads_handler(
              "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
              "status": "pending",
              "error": null,
-             "created_at": "2024-01-20T12:00:00Z",
-             "updated_at": "2024-01-20T12:00:00Z"
+             "created_at": "2024-11-10T04:52:06.786Z",
+             "updated_at": "2024-11-10T04:52:06.786Z"
          })),
         (status = 400, description = "File already exists or invalid input", body = OpenAIApiError,
          example = json!({
@@ -230,8 +230,8 @@ pub async fn create_pull_request_handler(
              "filename": "llama-2-7b-chat.Q8_0.gguf",
              "status": "pending",
              "error": null,
-             "created_at": "2024-01-20T12:00:00Z",
-             "updated_at": "2024-01-20T12:00:00Z"
+             "created_at": "2024-11-10T04:52:06.786Z",
+             "updated_at": "2024-11-10T04:52:06.786Z"
          })),
         (status = 200, description = "Existing download request found", body = DownloadRequest,
          example = json!({
@@ -240,8 +240,8 @@ pub async fn create_pull_request_handler(
              "filename": "llama-2-7b-chat.Q8_0.gguf",
              "status": "pending",
              "error": null,
-             "created_at": "2024-01-20T12:00:00Z",
-             "updated_at": "2024-01-20T12:00:00Z"
+             "created_at": "2024-11-10T04:52:06.786Z",
+             "updated_at": "2024-11-10T04:52:06.786Z"
          })),
         (status = 404, description = "Alias not found", body = OpenAIApiError,
          example = json!({
@@ -344,7 +344,7 @@ pub async fn pull_by_alias_handler(
              "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
              "status": "completed",
              "error": null,
-             "created_at": "2024-01-20T12:00:00Z",
+             "created_at": "2024-11-10T04:52:06.786Z",
              "updated_at": "2024-01-20T12:00:10Z"
          })),
         (status = 404, description = "Download request not found", body = OpenAIApiError,
