@@ -40,10 +40,10 @@ pub struct ApiTokenResponse {
     "status": "inactive"
 }))]
 pub struct UpdateApiTokenRequest {
-    /// New name for the token
-    pub name: String,
-    /// New status for the token (active/inactive)
-    pub status: TokenStatus,
+  /// New name for the token
+  pub name: String,
+  /// New status for the token (active/inactive)
+  pub status: TokenStatus,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
