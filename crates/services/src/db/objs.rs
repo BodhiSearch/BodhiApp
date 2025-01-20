@@ -65,9 +65,9 @@ pub struct DownloadRequest {
   pub filename: String,
   pub status: DownloadStatus,
   pub error: Option<String>,
-  #[schema(value_type = String, format = "date-time", example = "2024-03-14T12:34:56.789Z")]
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
-  #[schema(value_type = String, format = "date-time", example = "2024-03-14T12:34:56.789Z")]
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
 
@@ -103,7 +103,7 @@ pub enum RequestStatus {
   Rejected,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq, ToSchema)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum TokenStatus {
@@ -111,7 +111,7 @@ pub enum TokenStatus {
   Inactive,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct ApiToken {
   pub id: String,
   pub user_id: String,
@@ -119,7 +119,9 @@ pub struct ApiToken {
   pub token_id: String,
   pub token_hash: String,
   pub status: TokenStatus,
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
 }
 

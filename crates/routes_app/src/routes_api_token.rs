@@ -143,6 +143,63 @@ pub async fn update_token_handler(
   Ok(Json(token))
 }
 
+/// List all API tokens for the current user
+#[utoipa::path(
+    get,
+    path = ENDPOINT_TOKENS,
+    tag = "auth",
+    operation_id = "listApiTokens",
+    params(
+        PaginationSortParams
+    ),
+    responses(
+        (status = 200, description = "List of API tokens", body = PaginatedResponse<ApiToken>,
+         example = json!({
+             "data": [
+                 {
+                     "id": "550e8400-e29b-41d4-a716-446655440000",
+                     "user_id": "auth0|123456789",
+                     "name": "Development Token",
+                     "token_id": "jwt-token-id-1",
+                     "status": "active",
+                     "created_at": "2024-11-10T04:52:06.786Z",
+                     "updated_at": "2024-11-10T04:52:06.786Z"
+                 },
+                 {
+                     "id": "660e8400-e29b-41d4-a716-446655440000",
+                     "user_id": "auth0|123456789",
+                     "name": "Test Token",
+                     "token_id": "jwt-token-id-2",
+                     "status": "inactive",
+                     "created_at": "2024-11-10T04:52:06.786Z",
+                     "updated_at": "2024-11-10T04:52:06.786Z"
+                 }
+             ],
+             "total": 2,
+             "page": 1,
+             "page_size": 10
+         })),
+        (status = 401, description = "Unauthorized - Token missing or invalid", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "access token is not present in request",
+                 "type": "invalid_request_error",
+                 "code": "api_token_error-token_missing"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Internal server error occurred",
+                 "type": "internal_server_error",
+                 "code": "internal_error"
+             }
+         }))
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
 pub async fn list_tokens_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
