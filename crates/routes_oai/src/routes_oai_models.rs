@@ -1,3 +1,4 @@
+use crate::ENDPOINT_OAI_MODELS;
 use async_openai::types::{ListModelResponse, Model};
 use axum::{
   extract::{Path, State},
@@ -76,7 +77,7 @@ impl utoipa::ToSchema for ListModelResponseWrapper {}
 /// List available models
 #[utoipa::path(
     get,
-    path = "/v1/models",
+    path = ENDPOINT_OAI_MODELS,
     tag = "openai",
     operation_id = "listModels",
     responses(

@@ -207,6 +207,52 @@ pub async fn list_chat_templates_handler(
   Ok(Json(responses))
 }
 
+/// Get details for a specific model alias
+#[utoipa::path(
+    get,
+    path = ENDPOINT_MODELS.to_owned() + "/{alias}",
+    tag = "models",
+    operation_id = "getAlias",
+    params(
+        ("alias" = String, Path, description = "Alias identifier for the model")
+    ),
+    responses(
+        (status = 200, description = "Model alias details", body = AliasResponse,
+         example = json!({
+             "alias": "llama2:chat",
+             "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+             "filename": "llama-2-7b-chat.Q8_0.gguf",
+             "snapshot": "sha256:abc123",
+             "source": "config",
+             "chat_template": "llama2",
+             "model_params": {},
+             "request_params": {
+                 "temperature": 0.7,
+                 "top_p": 1.0,
+                 "frequency_penalty": 0.0,
+                 "presence_penalty": 0.0
+             },
+             "context_params": {
+                 "n_keep": 24,
+                 "stop": [
+                     "<|end_of_turn|>"
+                 ]
+             }
+         })),
+        (status = 404, description = "Alias not found", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Alias 'unknown:model' not found",
+                 "type": "not_found_error",
+                 "code": "alias_not_found"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 pub async fn get_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   axum::extract::Path(id): axum::extract::Path<String>,

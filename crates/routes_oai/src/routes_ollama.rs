@@ -1,3 +1,4 @@
+use crate::{ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS};
 use async_openai::types::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
   ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage,
@@ -19,13 +20,14 @@ use objs::{Alias, GGUF};
 use serde::{Deserialize, Serialize, Serializer};
 use server_core::RouterState;
 use std::{collections::HashMap, fs, sync::Arc, time::UNIX_EPOCH};
+use utoipa::ToSchema;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ModelsResponse {
   models: Vec<Model>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Model {
   model: String,
@@ -36,7 +38,7 @@ pub struct Model {
   details: ModelDetails,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct ModelDetails {
   parent_model: Option<String>,
@@ -47,11 +49,46 @@ pub struct ModelDetails {
   quantization_level: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct OllamaError {
   error: String,
 }
 
+/// List available models in Ollama format
+#[utoipa::path(
+    get,
+    path = ENDPOINT_OLLAMA_TAGS,
+    tag = "ollama",
+    operation_id = "listOllamaModels",
+    responses(
+        (status = 200, description = "List of available models", body = ModelsResponse,
+         example = json!({
+             "models": [
+                 {
+                     "model": "llama2:chat",
+                     "modified_at": "2024-01-20T12:00:00.000000000Z",
+                     "size": 0,
+                     "digest": "sha256:abc123",
+                     "details": {
+                         "parent_model": null,
+                         "format": "gguf",
+                         "family": "unknown",
+                         "families": null,
+                         "parameter_size": "",
+                         "quantization_level": ""
+                     }
+                 }
+             ]
+         })),
+        (status = 500, description = "Internal server error", body = OllamaError,
+         example = json!({
+             "error": "Failed to list models"
+         }))
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 pub async fn ollama_models_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<ModelsResponse>, Json<OllamaError>> {
@@ -107,12 +144,12 @@ where
   serializer.serialize_str(&formatted)
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ShowRequest {
   pub name: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct ShowResponse {
   pub details: ModelDetails,
   pub license: String,
@@ -124,6 +161,50 @@ pub struct ShowResponse {
   pub template: String,
 }
 
+/// Get detailed information about a model in Ollama format
+#[utoipa::path(
+    post,
+    path = ENDPOINT_OLLAMA_SHOW,
+    tag = "ollama",
+    operation_id = "showOllamaModel",
+    request_body(
+        content = ShowRequest,
+        description = "Model name to get details for",
+        example = json!({
+            "name": "llama2:chat"
+        })
+    ),
+    responses(
+        (status = 200, description = "Model details", body = ShowResponse,
+         example = json!({
+             "details": {
+                 "parent_model": null,
+                 "format": "gguf",
+                 "family": "unknown",
+                 "families": null,
+                 "parameter_size": "",
+                 "quantization_level": ""
+             },
+             "license": "",
+             "model_info": {},
+             "modelfile": "",
+             "modified_at": "2024-01-20T12:00:00.000000000Z",
+             "parameters": "n_keep: 24\nstop:\n- <|start_header_id|>\n- <|end_header_id|>\n- <|eot_id|>\n",
+             "template": "llama2"
+         })),
+        (status = 404, description = "Model not found", body = OllamaError,
+         example = json!({
+             "error": "model not found"
+         })),
+        (status = 500, description = "Internal server error", body = OllamaError,
+         example = json!({
+             "error": "Failed to get model details"
+         }))
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 pub async fn ollama_model_show_handler(
   State(state): State<Arc<dyn RouterState>>,
   Json(request): Json<ShowRequest>,
@@ -159,7 +240,7 @@ fn to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowRespon
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct ChatRequest {
   pub model: String,
@@ -280,7 +361,7 @@ impl From<CreateChatCompletionStreamResponse> for ResponseStream {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Message {
   pub role: String,
@@ -340,10 +421,10 @@ impl Default for Message {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Duration(String);
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, ToSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Options {
   pub num_keep: Option<i32>,
@@ -377,6 +458,70 @@ pub struct Options {
   pub num_thread: Option<i32>,
 }
 
+/// Chat with a model using Ollama format
+#[utoipa::path(
+    post,
+    path = ENDPOINT_OLLAMA_CHAT,
+    tag = "ollama",
+    operation_id = "chatOllamaModel",
+    request_body(
+        content = ChatRequest,
+        description = "Chat request in Ollama format",
+        example = json!({
+            "model": "llama2:chat",
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a helpful assistant."
+                },
+                {
+                    "role": "user",
+                    "content": "Hello!"
+                }
+            ],
+            "stream": true,
+            "options": {
+                "temperature": 0.7,
+                "num_predict": 100
+            }
+        })
+    ),
+    responses(
+        (status = 200, description = "Chat response", body = serde_json::Value,
+         example = json!({
+             "model": "llama2:chat",
+             "created_at": "2024-01-20T12:00:00.000000000Z",
+             "message": {
+                 "role": "assistant",
+                 "content": "Hello! How can I help you today?",
+                 "images": null
+             },
+             "done": true,
+             "done_reason": "stop",
+             "total_duration": 0.0,
+             "load_duration": "-1",
+             "prompt_eval_count": 20,
+             "prompt_eval_duration": "-1",
+             "eval_count": 10,
+             "eval_duration": "-1"
+         })),
+        (status = 404, description = "Model not found", body = OllamaError,
+         example = json!({
+             "error": "model not found"
+         })),
+        (status = 400, description = "Invalid request", body = OllamaError,
+         example = json!({
+             "error": "invalid request parameters"
+         })),
+        (status = 500, description = "Internal server error", body = OllamaError,
+         example = json!({
+             "error": "chat completion error: failed to process request"
+         }))
+    ),
+    security(
+        ("api_key" = [])
+    )
+)]
 pub async fn ollama_model_chat_handler(
   State(state): State<Arc<dyn RouterState>>,
   Json(ollama_request): Json<ChatRequest>,

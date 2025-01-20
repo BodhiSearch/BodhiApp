@@ -24,13 +24,12 @@ use routes_app::{
   pull_by_alias_handler, setup_handler, update_alias_handler, update_token_handler,
   user_info_handler, ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_CHAT_TEMPLATES,
   ENDPOINT_DEV_SECRETS, ENDPOINT_LOGIN, ENDPOINT_LOGIN_CALLBACK, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_OAI_CHAT_COMPLETIONS, ENDPOINT_OAI_MODELS,
-  ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS, ENDPOINT_PING, ENDPOINT_TOKENS,
-  ENDPOINT_USER_INFO,
+  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
-  ollama_model_show_handler, ollama_models_handler,
+  ollama_model_show_handler, ollama_models_handler, ENDPOINT_OAI_CHAT_COMPLETIONS,
+  ENDPOINT_OAI_MODELS, ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
 use serde_json::json;
 use server_core::{DefaultRouterState, RouterState, SharedContext};
