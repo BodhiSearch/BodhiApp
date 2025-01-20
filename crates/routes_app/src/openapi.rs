@@ -9,7 +9,7 @@ use crate::{
   __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
-use routes_oai::__path_oai_models_handler;
+use routes_oai::{__path_chat_completions_handler, __path_oai_models_handler};
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
   AppStatus,
@@ -105,7 +105,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         get_download_status_handler,
         list_tokens_handler,
         update_token_handler,
-        oai_models_handler
+        oai_models_handler,
+        chat_completions_handler
     )
 )]
 pub struct ApiDoc;
