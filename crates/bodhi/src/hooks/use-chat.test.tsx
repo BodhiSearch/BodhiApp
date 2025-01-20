@@ -111,67 +111,15 @@ describe('useChat', () => {
         wrapper: createWrapper()
       });
 
-      const userMessage: Message = {
-        id: '1',
-        role: 'user',
-        content: 'Hi there',
-      };
-
       await act(async () => {
-        await result.current.append(userMessage);
+        await result.current.append('Hi there');
       });
 
       const savedChat = await chatDB.getChat('1');
       expect(savedChat?.messages).toHaveLength(2);
       expect(savedChat?.messages).toEqual([
-        userMessage,
+        { role: 'user', content: 'Hi there' },
         { role: 'assistant', content: ' Hello world' },
-      ]);
-      expect(savedChat?.messages[1]).toEqual({
-        role: 'assistant',
-        content: ' Hello world',
-      });
-    });
-
-    it('should handle reload functionality', async () => {
-      const messages: Message[] = [
-        { id: '1', role: 'user', content: 'First message' },
-        { id: '2', role: 'assistant', content: 'First response' },
-        { id: '3', role: 'user', content: 'Second message' },
-        { id: '4', role: 'assistant', content: 'Second response' },
-      ];
-
-      const initialChat: Chat = {
-        id: '1',
-        title: 'Test Chat',
-        messages,
-        createdAt: Date.now(),
-      };
-
-      chatDB.setCurrentChat(initialChat);
-
-      server.use(
-        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.status(200),
-            ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body('data: {"choices":[{"delta":{"content":"New response"}}]}\n\ndata: [DONE]\n\n')
-          );
-        })
-      );
-
-      const { result } = renderHook(() => useChat(), {
-        wrapper: createWrapper()
-      });
-
-      await act(async () => {
-        await result.current.reload();
-      });
-
-      const savedChat = await chatDB.getChat('1');
-      expect(savedChat?.messages).toEqual([
-        ...messages.slice(0, 3),
-        { role: 'assistant', content: 'New response' },
       ]);
     });
 
@@ -228,7 +176,7 @@ describe('useChat', () => {
   });
 
   describe('error handling', () => {
-    it('should handle API errors with error message', async () => {
+    it('should handle API errors with error message and not save the message', async () => {
       const initialChat = {
         id: '1',
         title: 'Test Chat',
@@ -256,15 +204,9 @@ describe('useChat', () => {
         wrapper: createWrapper()
       });
 
-      const userMessage = {
-        id: '1',
-        role: 'user' as const,
-        content: 'Hello',
-      };
-
       await act(async () => {
         try {
-          await result.current.append(userMessage);
+          await result.current.append('Hello');
         } catch (error) {
         }
       });
@@ -279,11 +221,10 @@ describe('useChat', () => {
 
       // Verify the user message was still saved
       const savedChat = await chatDB.getChat('1');
-      expect(savedChat?.messages).toHaveLength(1);
-      expect(savedChat?.messages[0]).toEqual(userMessage);
+      expect(savedChat?.messages).toHaveLength(0);
     });
 
-    it('should handle network errors', async () => {
+    it('should handle network errors and not save the message', async () => {
       const initialChat = {
         id: '1',
         title: 'Test Chat',
@@ -303,14 +244,8 @@ describe('useChat', () => {
         wrapper: createWrapper()
       });
 
-      const userMessage = {
-        id: '1',
-        role: 'user' as const,
-        content: 'Hello',
-      };
-
       await act(async () => {
-        await result.current.append(userMessage);
+        await result.current.append('Hello');
       });
 
       expect(mockToast).toHaveBeenCalledWith({
@@ -322,8 +257,7 @@ describe('useChat', () => {
 
       // Verify the user message was still saved
       const savedChat = await chatDB.getChat('1');
-      expect(savedChat?.messages).toHaveLength(1);
-      expect(savedChat?.messages[0]).toEqual(userMessage);
+      expect(savedChat?.messages).toHaveLength(0);
     });
   });
 });

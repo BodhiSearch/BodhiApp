@@ -4,6 +4,7 @@ import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useToast } from '@/hooks/use-toast';
+import { nanoid } from '@/lib/utils';
 import { Message } from '@/types/chat';
 import { useCallback, useState } from 'react';
 
@@ -11,10 +12,18 @@ export function useChat() {
   const [input, setInput] = useState('');
   const [abortController, setAbortController] =
     useState<AbortController | null>(null);
-  const { toast } = useToast();
+  const [userMessage, setUserMessage] = useState<Message>({
+    role: 'user',
+    content: '',
+  });
+  const [assistantMessage, setAssistantMessage] = useState<Message>({
+    role: 'assistant',
+    content: '',
+  });
 
+  const { toast } = useToast();
   const { append, isLoading } = useChatCompletion();
-  const { currentChat, createOrUpdateChat } = useChatDB();
+  const { currentChat, createOrUpdateChat, setCurrentChatId } = useChatDB();
   const chatSettings = useChatSettings();
 
   const stop = useCallback(() => {
@@ -26,18 +35,16 @@ export function useChat() {
 
   const processCompletion = useCallback(
     async (userMessages: Message[]) => {
-      if (!currentChat) return;
-
-      let assistantMessage = '';
+      let currentAssistantMessage = '';
 
       try {
-        let requestMessages = [...userMessages];
-        if (chatSettings.systemPrompt_enabled && chatSettings.systemPrompt) {
-          requestMessages = [
-            { role: 'system', content: chatSettings.systemPrompt },
-            ...requestMessages,
-          ];
-        }
+        const requestMessages =
+          chatSettings.systemPrompt_enabled && chatSettings.systemPrompt
+            ? [
+                { role: 'system' as const, content: chatSettings.systemPrompt },
+                ...userMessages,
+              ]
+            : userMessages;
 
         const headers: Record<string, string> = {};
         if (chatSettings.api_token_enabled && chatSettings.api_token) {
@@ -51,46 +58,41 @@ export function useChat() {
           },
           headers,
           onDelta: (chunk) => {
-            assistantMessage += chunk;
-            createOrUpdateChat({
-              ...currentChat,
-              messages: [
-                ...userMessages,
-                { role: 'assistant' as const, content: assistantMessage },
-              ],
-              updatedAt: Date.now(),
-            });
+            currentAssistantMessage += chunk;
+            setAssistantMessage((prevMessage) => ({
+              role: 'assistant' as const,
+              content: prevMessage.content + chunk,
+            }));
           },
           onMessage: (message) => {
-            createOrUpdateChat({
-              ...currentChat,
-              messages: [
-                ...userMessages,
-                { role: 'assistant' as const, content: message.content },
-              ],
-              updatedAt: Date.now(),
+            setAssistantMessage({
+              role: 'assistant' as const,
+              content: message.content,
             });
           },
-          onFinish: () => {},
-          onError: (error) => {
-            let errorMessage = 'Error sending message to AI assistant.';
+          onFinish: () => {
+            const id = currentChat?.id || nanoid();
+            const createdAt = currentChat?.createdAt || Date.now();
+            const messages = [
+              ...userMessages,
+              { role: 'assistant' as const, content: currentAssistantMessage },
+            ];
 
-            if (typeof error === 'object' && error !== null) {
-              if (
-                'error' in error &&
-                typeof error.error === 'object' &&
-                error.error !== null
-              ) {
-                errorMessage =
-                  (error.error as { message?: string }).message || errorMessage;
-              }
-            } else if (typeof error === 'string') {
-              errorMessage = error;
-            } else if (typeof error === 'object' && error !== null) {
-              errorMessage =
-                (error as { message?: string }).message || errorMessage;
+            createOrUpdateChat({
+              id,
+              title: messages[0]?.content.slice(0, 20) || 'New Chat',
+              messages,
+              createdAt,
+              updatedAt: Date.now(),
+            });
+            setAssistantMessage({ role: 'assistant' as const, content: '' });
+            setUserMessage({ role: 'user' as const, content: '' });
+            if (!currentChat) {
+              setCurrentChatId(id);
             }
-
+          },
+          onError: (error) => {
+            const errorMessage = extractErrorMessage(error);
             toast({
               title: 'Error',
               description: errorMessage,
@@ -100,7 +102,6 @@ export function useChat() {
           },
         });
       } catch (error) {
-        // Handle any unexpected errors that weren't caught by onError
         const errorMessage =
           error instanceof Error
             ? error.message
@@ -114,24 +115,46 @@ export function useChat() {
         });
       }
     },
-    [chatSettings, currentChat, append, createOrUpdateChat, toast]
+    [
+      chatSettings,
+      currentChat,
+      append,
+      createOrUpdateChat,
+      toast,
+      setCurrentChatId,
+    ]
   );
 
+  // Helper function to extract error message
+  const extractErrorMessage = (error: unknown): string => {
+    if (typeof error === 'string') return error;
+
+    if (error && typeof error === 'object') {
+      if ('error' in error && error.error && typeof error.error === 'object') {
+        return (
+          (error.error as { message?: string }).message ||
+          'Error sending message to AI assistant.'
+        );
+      }
+      return (
+        (error as { message?: string }).message ||
+        'Error sending message to AI assistant.'
+      );
+    }
+
+    return 'Error sending message to AI assistant.';
+  };
+
   const appendMessage = useCallback(
-    async (userMessage: Message) => {
-      if (!currentChat) return;
+    async (content: string) => {
+      setAssistantMessage({ role: 'assistant' as const, content: '' });
+      setUserMessage({ role: 'user' as const, content });
 
-      const newMessages = [...currentChat.messages, userMessage];
-
-      const title = newMessages[0].content.substring(0, 100);
-      currentChat.title = title;
-      // Update chat with user message immediately
-      await createOrUpdateChat({
-        ...currentChat,
-        messages: newMessages,
-        title,
-        updatedAt: Date.now(),
-      });
+      const existingMessages = currentChat?.messages || [];
+      const newMessages = [
+        ...existingMessages,
+        { role: 'user' as const, content },
+      ];
 
       const controller = new AbortController();
       setAbortController(controller);
@@ -142,32 +165,8 @@ export function useChat() {
         setAbortController(null);
       }
     },
-    [currentChat, processCompletion, createOrUpdateChat]
+    [currentChat, processCompletion]
   );
-
-  const reload = useCallback(async () => {
-    if (!currentChat || currentChat.messages.length < 2) return;
-
-    // Remove the last assistant message
-    const lastUserMessageIndex = currentChat.messages
-      .map((m) => m.role)
-      .lastIndexOf('user');
-    if (lastUserMessageIndex === -1) return;
-
-    const messagesToKeep = currentChat.messages.slice(
-      0,
-      lastUserMessageIndex + 1
-    );
-
-    // Update chat with removed assistant message
-    await createOrUpdateChat({
-      ...currentChat,
-      messages: messagesToKeep,
-      updatedAt: Date.now(),
-    });
-
-    await processCompletion(messagesToKeep);
-  }, [currentChat, processCompletion, createOrUpdateChat]);
 
   return {
     input,
@@ -175,6 +174,7 @@ export function useChat() {
     isLoading,
     append: appendMessage,
     stop,
-    reload,
+    userMessage,
+    assistantMessage,
   };
 }

@@ -13,39 +13,13 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { ChatDBProvider, useChatDB } from '@/hooks/use-chat-db';
+import { ChatDBProvider } from '@/hooks/use-chat-db';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { cn } from '@/lib/utils';
 import { Settings2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
 
 function ChatWithSettings() {
   const { open, isMobile } = useSidebar();
-  const { initializeCurrentChatId } = useChatDB();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    let mounted = true;
-    const initialize = async () => {
-      try {
-        await initializeCurrentChatId();
-        if (mounted) {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('Failed to initialize chat:', error);
-        if (mounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initialize();
-
-    return () => {
-      mounted = false;
-    };
-  }, [initializeCurrentChatId]);
 
   return (
     <>
@@ -56,7 +30,7 @@ function ChatWithSettings() {
           !isMobile && open ? 'mr-64' : ''
         )}
       >
-        <ChatUI isLoading={isLoading} />
+        <ChatUI />
       </div>
       <SidebarTrigger
         variant="ghost"

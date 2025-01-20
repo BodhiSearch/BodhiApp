@@ -26,23 +26,6 @@ describe('useChatDB', () => {
       expect(result.current.currentChat).toBeNull();
       expect(result.current.currentChatId).toBeNull();
     });
-
-    it('should initialize current chat when requested', async () => {
-      const { result } = renderHook(() => useChatDB(), { wrapper });
-
-      await act(async () => {
-        await result.current.initializeCurrentChatId();
-      });
-
-      expect(result.current.currentChatId).toBe('test-id');
-      expect(result.current.currentChat).toEqual({
-        id: 'test-id',
-        title: 'New Chat',
-        messages: [],
-        createdAt: expect.any(Number),
-        updatedAt: expect.any(Number),
-      });
-    });
   });
 
   describe('chat management', () => {

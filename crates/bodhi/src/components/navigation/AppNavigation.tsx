@@ -73,7 +73,11 @@ export function AppNavigation() {
                       <span className="font-medium">{item.title}</span>
                     </DropdownMenuLabel>
                     {item.items.map((subItem) => (
-                      <Link key={subItem.title} href={subItem.href || '#'} target={subItem.target}>
+                      <Link
+                        key={subItem.title}
+                        href={subItem.href || '#'}
+                        target={subItem.target}
+                      >
                         <DropdownMenuItem
                           className={cn(
                             'flex items-center gap-2 cursor-pointer pl-8',
