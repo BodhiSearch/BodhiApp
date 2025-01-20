@@ -33,10 +33,17 @@ pub struct ApiTokenResponse {
   offline_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// Request to update an existing API token
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "name": "Updated Token Name",
+    "status": "inactive"
+}))]
 pub struct UpdateApiTokenRequest {
-  name: String,
-  status: TokenStatus,
+    /// New name for the token
+    pub name: String,
+    /// New status for the token (active/inactive)
+    pub status: TokenStatus,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -115,6 +122,64 @@ pub async fn create_token_handler(
   Ok((StatusCode::CREATED, Json(response)))
 }
 
+/// Update an existing API token
+#[utoipa::path(
+    put,
+    path = ENDPOINT_TOKENS.to_owned() + "/{id}",
+    tag = "auth",
+    operation_id = "updateApiToken",
+    params(
+        ("id" = String, Path, description = "Token identifier",
+         example = "550e8400-e29b-41d4-a716-446655440000")
+    ),
+    request_body(
+        content = UpdateApiTokenRequest,
+        description = "Token update request",
+        example = json!({
+            "name": "Updated Token Name",
+            "status": "inactive"
+        })
+    ),
+    responses(
+        (status = 200, description = "Token updated successfully", body = ApiToken,
+         example = json!({
+             "id": "550e8400-e29b-41d4-a716-446655440000",
+             "user_id": "auth0|123456789",
+             "name": "Updated Token Name",
+             "token_id": "jwt-token-id-1",
+             "status": "inactive",
+             "created_at": "2024-11-10T04:52:06.786Z",
+             "updated_at": "2024-11-10T04:52:06.786Z"
+         })),
+        (status = 401, description = "Unauthorized - Token missing or invalid", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "access token is not present in request",
+                 "type": "invalid_request_error",
+                 "code": "api_token_error-token_missing"
+             }
+         })),
+        (status = 404, description = "Token not found", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Token not found",
+                 "type": "not_found_error",
+                 "code": "entity_error-not_found"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Internal server error occurred",
+                 "type": "internal_server_error",
+                 "code": "internal_error"
+             }
+         }))
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
 pub async fn update_token_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
