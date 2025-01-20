@@ -6,7 +6,7 @@ use crate::{
   __path_list_downloads_handler, __path_list_local_aliases_handler,
   __path_list_local_modelfiles_handler, __path_list_tokens_handler, __path_logout_handler,
   __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
-  __path_user_info_handler,
+  __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
 use services::{
@@ -103,7 +103,8 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         list_chat_templates_handler,
         create_token_handler,
         get_download_status_handler,
-        list_tokens_handler
+        list_tokens_handler,
+        update_token_handler
     )
 )]
 pub struct ApiDoc;
@@ -715,6 +716,101 @@ mod tests {
         assert_eq!(error.get("code").unwrap(), "api_token_error-token_missing");
       } else {
         panic!("No example found for 401 status");
+      }
+    }
+
+    // Check 500 response exists
+    assert!(responses.responses.contains_key("500"));
+  }
+
+  #[test]
+  fn test_update_token_endpoint() {
+    let api_doc = ApiDoc::openapi();
+    let paths = &api_doc.paths;
+
+    // Verify endpoint
+    let update_path = paths
+      .paths
+      .get("/bodhi/v1/tokens/{id}")
+      .expect("Update token endpoint not found");
+
+    let put_op = update_path.put.as_ref().expect("PUT operation not found");
+
+    // Check operation details
+    assert_eq!(put_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(put_op.operation_id.as_ref().unwrap(), "updateApiToken");
+
+    // Check path parameters
+    let params = put_op.parameters.as_ref().unwrap();
+    let id_param = params
+      .iter()
+      .find(|p| p.name == "id")
+      .expect("ID parameter not found");
+    assert_eq!(
+      serde_json::to_string(&id_param.parameter_in).unwrap(),
+      serde_json::to_string(&ParameterIn::Path).unwrap()
+    );
+    assert!(id_param.description.is_some());
+
+    // Check request body
+    let request_body = put_op.request_body.as_ref().unwrap();
+    let content = request_body.content.get("application/json").unwrap();
+    if let Some(example) = &content.example {
+      assert!(example.get("name").is_some());
+      assert!(example.get("status").is_some());
+      assert_eq!(example.get("status").unwrap(), "inactive");
+    } else {
+      panic!("No example found for request body");
+    }
+
+    // Check responses
+    let responses = &put_op.responses;
+
+    // Check 200 response
+    let success = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        // Verify token structure
+        assert!(example.get("id").is_some());
+        assert!(example.get("user_id").is_some());
+        assert!(example.get("name").is_some());
+        assert!(example.get("token_id").is_some());
+        assert!(example.get("status").is_some());
+        assert!(example.get("created_at").is_some());
+        assert!(example.get("updated_at").is_some());
+
+        // Verify updated values
+        assert_eq!(example.get("name").unwrap(), "Updated Token Name");
+        assert_eq!(example.get("status").unwrap(), "inactive");
+      } else {
+        panic!("No example found for 200 status");
+      }
+    }
+
+    // Check 401 response
+    let unauthorized = responses.responses.get("401").unwrap();
+    if let RefOr::T(response) = unauthorized {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        let error = example.get("error").unwrap();
+        assert_eq!(error.get("type").unwrap(), "invalid_request_error");
+        assert_eq!(error.get("code").unwrap(), "api_token_error-token_missing");
+      } else {
+        panic!("No example found for 401 status");
+      }
+    }
+
+    // Check 404 response
+    let not_found = responses.responses.get("404").unwrap();
+    if let RefOr::T(response) = not_found {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        let error = example.get("error").unwrap();
+        assert_eq!(error.get("type").unwrap(), "not_found_error");
+        assert_eq!(error.get("code").unwrap(), "entity_error-not_found");
+      } else {
+        panic!("No example found for 404 status");
       }
     }
 
