@@ -111,9 +111,9 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
   async fn list_api_tokens(
     &self,
     user_id: &str,
-    page: u32,
-    per_page: u32,
-  ) -> Result<(Vec<ApiToken>, u32), DbError>;
+    page: usize,
+    per_page: usize,
+  ) -> Result<(Vec<ApiToken>, usize), DbError>;
 
   async fn get_api_token_by_id(&self, user_id: &str, id: &str)
     -> Result<Option<ApiToken>, DbError>;
@@ -612,9 +612,9 @@ impl DbService for SqliteDbService {
   async fn list_api_tokens(
     &self,
     user_id: &str,
-    page: u32,
-    per_page: u32,
-  ) -> Result<(Vec<ApiToken>, u32), DbError> {
+    page: usize,
+    per_page: usize,
+  ) -> Result<(Vec<ApiToken>, usize), DbError> {
     let offset = (page - 1) * per_page;
     let results = query_as::<
       _,
@@ -677,8 +677,8 @@ impl DbService for SqliteDbService {
     let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM api_tokens WHERE user_id = ?")
       .bind(user_id)
       .fetch_one(&self.pool)
-      .await?;
-    Ok((tokens, total as u32))
+      .await? as usize;
+    Ok((tokens, total))
   }
 
   async fn get_api_token_by_id(

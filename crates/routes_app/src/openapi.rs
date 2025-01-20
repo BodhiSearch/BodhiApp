@@ -101,7 +101,8 @@ pub struct ApiDoc;
 mod tests {
   use crate::{
     ApiDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_LOGOUT,
-    ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_USER_INFO,
+    ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS,
+    ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -481,6 +482,43 @@ mod tests {
         assert!(templates.iter().any(|t| t.get("id").is_some()));
         assert!(templates.iter().any(|t| t.get("repo").is_some()));
       }
+    }
+  }
+
+  #[test]
+  fn test_create_token_endpoint() {
+    let api_doc = ApiDoc::openapi();
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let tokens = paths
+      .paths
+      .get(ENDPOINT_TOKENS)
+      .expect("Tokens endpoint not found");
+    let post_op = tokens.post.as_ref().expect("POST operation not found");
+
+    // Check operation details
+    assert_eq!(post_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(post_op.operation_id.as_ref().unwrap(), "createApiToken");
+
+    // Verify request body schema
+    let request_body = post_op.request_body.as_ref().unwrap();
+    let content = request_body.content.get("application/json").unwrap();
+    if let Some(example) = &content.example {
+      assert!(example.get("name").is_some());
+    }
+
+    // Check responses
+    let responses = &post_op.responses;
+    assert!(responses.responses.contains_key("201"));
+    assert!(responses.responses.contains_key("400"));
+    assert!(responses.responses.contains_key("500"));
+
+    // Verify response schema
+    let success_response = responses.responses.get("201").unwrap();
+    if let RefOr::T(response) = success_response {
+      let content = response.content.get("application/json").unwrap();
+      assert!(content.schema.is_some());
     }
   }
 }

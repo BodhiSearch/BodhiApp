@@ -1,6 +1,6 @@
 use crate::{
-  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODELS,
-  ENDPOINT_MODEL_FILES, ENDPOINT_CHAT_TEMPLATES,
+  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams,
+  ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Query, State},

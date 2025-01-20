@@ -1,3 +1,4 @@
+use crate::{PaginatedResponse, PaginationSortParams, ENDPOINT_TOKENS};
 use auth_middleware::KEY_RESOURCE_TOKEN;
 use axum::{
   extract::{Path, Query, State},
@@ -12,10 +13,8 @@ use services::{
   db::{ApiToken, TokenStatus},
   extract_claims, AuthServiceError, IdClaims, SecretServiceExt, TokenError,
 };
-use std::{cmp::min, sync::Arc};
+use std::sync::Arc;
 use utoipa::ToSchema;
-
-use crate::ENDPOINT_TOKENS;
 
 /// Request to create a new API token
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
@@ -144,36 +143,12 @@ pub async fn update_token_handler(
   Ok(Json(token))
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ListApiTokensQuery {
-  #[serde(default = "default_page")]
-  pub page: u32,
-  #[serde(default = "default_page_size")]
-  pub page_size: u32,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ListApiTokensResponse {
-  pub data: Vec<ApiToken>,
-  pub total: u32,
-  pub page: u32,
-  pub page_size: u32,
-}
-
-fn default_page() -> u32 {
-  1
-}
-
-fn default_page_size() -> u32 {
-  10
-}
-
 pub async fn list_tokens_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
-  Query(query): Query<ListApiTokensQuery>,
-) -> Result<Json<ListApiTokensResponse>, ApiError> {
-  let per_page = min(query.page_size, 100);
+  Query(query): Query<PaginationSortParams>,
+) -> Result<Json<PaginatedResponse<ApiToken>>, ApiError> {
+  let per_page = query.page_size.min(100);
   let resource_token = headers.get(KEY_RESOURCE_TOKEN).map(|token| token.to_str());
   let Some(Ok(resource_token)) = resource_token else {
     return Err(ApiTokenError::AccessTokenMissing)?;
@@ -186,7 +161,7 @@ pub async fn list_tokens_handler(
     .list_api_tokens(&user_id, query.page, per_page)
     .await?;
 
-  Ok(Json(ListApiTokensResponse {
+  Ok(Json(PaginatedResponse {
     data: tokens,
     total,
     page: query.page,
@@ -198,8 +173,7 @@ pub async fn list_tokens_handler(
 mod tests {
   use super::{list_tokens_handler, update_token_handler};
   use crate::{
-    create_token_handler, wait_for_event, ApiTokenError, ListApiTokensResponse,
-    UpdateApiTokenRequest,
+    create_token_handler, wait_for_event, ApiTokenError, PaginatedResponse, UpdateApiTokenRequest,
   };
   use anyhow_trace::anyhow_trace;
   use auth_middleware::KEY_RESOURCE_TOKEN;
@@ -548,7 +522,7 @@ mod tests {
       .await?;
 
     assert_eq!(response.status(), StatusCode::OK);
-    let list_response = response.json::<ListApiTokensResponse>().await?;
+    let list_response = response.json::<PaginatedResponse<ApiToken>>().await?;
     assert_eq!(list_response.data.len(), 10);
     assert_eq!(list_response.total, 15);
     assert_eq!(list_response.page, 1);
@@ -567,7 +541,7 @@ mod tests {
       .await?;
 
     assert_eq!(response.status(), StatusCode::OK);
-    let list_response = response.json::<ListApiTokensResponse>().await?;
+    let list_response = response.json::<PaginatedResponse<ApiToken>>().await?;
     assert_eq!(list_response.data.len(), 5);
     assert_eq!(list_response.total, 15);
     assert_eq!(list_response.page, 2);
@@ -605,11 +579,11 @@ mod tests {
       .await?;
 
     assert_eq!(response.status(), StatusCode::OK);
-    let list_response = response.json::<ListApiTokensResponse>().await?;
+    let list_response = response.json::<PaginatedResponse<ApiToken>>().await?;
     assert_eq!(list_response.data.len(), 0);
     assert_eq!(list_response.total, 0);
     assert_eq!(list_response.page, 1); // Default page
-    assert_eq!(list_response.page_size, 10); // Default page size
+    assert_eq!(list_response.page_size, 30); // Default page size
 
     Ok(())
   }

@@ -220,9 +220,9 @@ impl DbService for TestDbService {
   async fn list_api_tokens(
     &self,
     user_id: &str,
-    page: u32,
-    per_page: u32,
-  ) -> Result<(Vec<ApiToken>, u32), DbError> {
+    page: usize,
+    per_page: usize,
+  ) -> Result<(Vec<ApiToken>, usize), DbError> {
     self
       .inner
       .list_api_tokens(user_id, page, per_page)
