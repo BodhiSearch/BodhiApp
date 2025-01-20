@@ -111,8 +111,8 @@ impl utoipa::ToSchema for ListModelResponseWrapper {}
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
-        ("api_key" = [])
-    )
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterState>>,

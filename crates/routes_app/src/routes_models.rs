@@ -45,7 +45,10 @@ use strum::IntoEnumIterator;
          })
         ),
         (status = 500, description = "Internal server error", body = OpenAIApiError)
-    )
+    ),
+    security(
+        ("bearer_auth" = []),
+    ),
 )]
 pub async fn list_local_aliases_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -94,7 +97,10 @@ pub async fn list_local_aliases_handler(
          })
         ),
         (status = 500, description = "Internal server error", body = OpenAIApiError)
-    )
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn list_local_modelfiles_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -188,7 +194,10 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
          ])
         ),
         (status = 500, description = "Internal server error", body = OpenAIApiError)
-    )
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn list_chat_templates_handler(
   State(state): State<Arc<dyn RouterState>>,
@@ -250,7 +259,7 @@ pub async fn list_chat_templates_handler(
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
-        ("api_key" = [])
+        ("bearer_auth" = []),
     )
 )]
 pub async fn get_alias_handler(

@@ -457,8 +457,7 @@ struct ApiError {
         (status = 500, description = "Internal server error", body = ApiError)
     ),
     security(
-        ("api_key" = []),
-        ("jwt" = [])
+        ("bearer_auth" = []),
     ),
     tag = "protected"
 )]

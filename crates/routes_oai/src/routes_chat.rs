@@ -101,8 +101,8 @@ pub enum HttpError {
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
-        ("api_key" = [])
-    )
+      ("bearer_auth" = []),
+    ),
 )]
 pub async fn chat_completions_handler(
   State(state): State<Arc<dyn RouterState>>,

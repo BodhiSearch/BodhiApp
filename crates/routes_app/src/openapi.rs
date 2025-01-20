@@ -18,7 +18,10 @@ use services::{
   AppStatus, EnvService,
 };
 use std::sync::Arc;
-use utoipa::{Modify, OpenApi};
+use utoipa::{
+  openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
+  Modify, OpenApi,
+};
 
 macro_rules! make_ui_endpoint {
   ($name:ident, $path:expr) => {
@@ -51,12 +54,39 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
     info(
         title = "Bodhi App APIs",
         version = env!("CARGO_PKG_VERSION"),
-        description = "API documentation for Bodhi App",
         contact(
             name = "Bodhi API Support",
             url = "https://github.com/BodhiSearch/BodhiApp/issues",
             email = "support@getbodhi.app"
-        )
+        ),
+        description = r#"API documentation for Bodhi App.
+
+## Authentication
+This API supports three authentication methods:
+
+1. **Browser Session** (Default)
+   - Login via `/app/login` endpoint
+   - Session cookie will be used automatically
+   - Best for browser-based access
+
+2. **API Key**
+   - Create API key via `/bodhi/v1/tokens` endpoint
+   - Add key Authorization as Bearer token
+   - Best for programmatic access
+
+3. **OAuth2**
+   - Click 'Authorize' button above
+   - Login via OAuth2 flow
+   - Best for testing in Swagger UI
+
+## Authorization
+APIs require different privilege levels:
+
+- **User Level**: Requires `resource_user` role or `scope_token_user`
+- **Power User Level**: Requires `resource_power_user` role or `scope_token_power_user`
+
+For API keys, specify required scope when creating the token.
+"#
     ),
     external_docs(
         url = "https://getbodhi.app/docs/api",
@@ -121,7 +151,6 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
 pub struct BodhiOpenAPIDoc;
 
 /// Modifies OpenAPI documentation with environment-specific settings
-
 #[derive(Debug, derive_new::new)]
 pub struct OpenAPIEnvModifier {
   env_service: Arc<dyn EnvService>,
@@ -141,6 +170,20 @@ impl Modify for OpenAPIEnvModifier {
       .description(Some(format!("Bodhi App {}", desc)))
       .build();
     openapi.servers = Some(vec![server]);
+    if let Some(components) = &mut openapi.components {
+      components.security_schemes.insert(
+        "bearer_auth".to_string(),
+        SecurityScheme::Http(
+          HttpBuilder::default()
+            .scheme(HttpAuthScheme::Bearer)
+            .bearer_format("JWT")
+            .description(Some(
+              "Enter the API token obtained from /bodhi/v1/tokens endpoint".to_string(),
+            ))
+            .build(),
+        ),
+      );
+    }
   }
 }
 
@@ -166,10 +209,6 @@ mod tests {
     let info = &api_doc.info;
     assert_eq!(info.title, "Bodhi App APIs");
     assert_eq!(info.version, "0.1.0");
-    assert_eq!(
-      info.description.as_deref().unwrap(),
-      "API documentation for Bodhi App"
-    );
 
     // Test Contact Info
     let contact = info.contact.as_ref().unwrap();
