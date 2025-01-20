@@ -8,7 +8,7 @@ use axum_extra::extract::WithRejection;
 use chrono::Utc;
 use commands::{PullCommand, PullCommandError};
 use objs::{ApiError, AppError, ErrorType, ObjValidationError, OpenAIApiError, Repo};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use server_core::RouterState;
 use services::db::ItemNotFound;
 use services::RemoteModelNotFoundError;
@@ -47,22 +47,6 @@ pub enum PullError {
   PullCommand(#[from] PullCommandError),
   #[error(transparent)]
   ObjValidation(#[from] ObjValidationError),
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ListDownloadsQuery {
-  #[serde(default = "default_page")]
-  pub page: u32,
-  #[serde(default = "default_page_size")]
-  pub page_size: u32,
-}
-
-fn default_page() -> u32 {
-  1
-}
-
-fn default_page_size() -> u32 {
-  30
 }
 
 /// List all model download requests
@@ -113,10 +97,51 @@ pub async fn list_downloads_handler(
     path = ENDPOINT_MODEL_PULL,
     tag = "models",
     operation_id = "pullModelFile",
-    request_body = NewDownloadRequest,
+    request_body(
+        content = NewDownloadRequest,
+        description = "Model file download request",
+        example = json!({
+            "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+            "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf"
+        })
+    ),
     responses(
-        (status = 200, description = "Download request created", body = DownloadRequest),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 201, description = "Download request created", body = DownloadRequest,
+         example = json!({
+             "id": "550e8400-e29b-41d4-a716-446655440000",
+             "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+             "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+             "status": "pending",
+             "error": null,
+             "created_at": "2024-01-20T12:00:00Z",
+             "updated_at": "2024-01-20T12:00:00Z"
+         })),
+        (status = 200, description = "Existing download request found", body = DownloadRequest,
+         example = json!({
+             "id": "550e8400-e29b-41d4-a716-446655440000",
+             "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+             "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+             "status": "pending",
+             "error": null,
+             "created_at": "2024-01-20T12:00:00Z",
+             "updated_at": "2024-01-20T12:00:00Z"
+         })),
+        (status = 400, description = "File already exists or invalid input", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "file 'mistral-7b-instruct-v0.1.Q8_0.gguf' already exists in repo 'TheBloke/Mistral-7B-Instruct-v0.1-GGUF' with snapshot 'main'",
+                 "type": "invalid_request_error",
+                 "code": "pull_error-file_already_exists"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Internal server error occurred",
+                 "type": "internal_server_error",
+                 "code": "internal_error"
+             }
+         }))
     )
 )]
 pub async fn create_pull_request_handler(
@@ -176,6 +201,74 @@ pub async fn create_pull_request_handler(
   Ok((StatusCode::CREATED, Json(download_request)))
 }
 
+/// Start a model file download using a predefined alias
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODEL_PULL.to_owned() + "/{alias}",
+    tag = "models",
+    operation_id = "pullModelByAlias",
+    params(
+        ("alias" = String, Path,
+         description = "Available model aliases:
+- llama3:instruct - Meta Llama 3 8B Instruct
+- llama3:70b-instruct - Meta Llama 3 70B Instruct
+- llama2:chat - Llama 2 7B Chat
+- llama2:13b-chat - Llama 2 13B Chat
+- llama2:70b-chat - Llama 2 70B Chat
+- phi3:mini - Phi 3 Mini
+- mistral:instruct - Mistral 7B Instruct
+- mixtral:instruct - Mixtral 8x7B Instruct
+- gemma:instruct - Gemma 7B Instruct
+- gemma:7b-instruct-v1.1-q8_0 - Gemma 1.1 7B Instruct",
+         example = "llama2:chat")
+    ),
+    responses(
+        (status = 201, description = "Download request created", body = DownloadRequest,
+         example = json!({
+             "id": "550e8400-e29b-41d4-a716-446655440000",
+             "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+             "filename": "llama-2-7b-chat.Q8_0.gguf",
+             "status": "pending",
+             "error": null,
+             "created_at": "2024-01-20T12:00:00Z",
+             "updated_at": "2024-01-20T12:00:00Z"
+         })),
+        (status = 200, description = "Existing download request found", body = DownloadRequest,
+         example = json!({
+             "id": "550e8400-e29b-41d4-a716-446655440000",
+             "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+             "filename": "llama-2-7b-chat.Q8_0.gguf",
+             "status": "pending",
+             "error": null,
+             "created_at": "2024-01-20T12:00:00Z",
+             "updated_at": "2024-01-20T12:00:00Z"
+         })),
+        (status = 404, description = "Alias not found", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "remote model alias 'invalid:model' not found, check your alias and try again",
+                 "type": "not_found_error",
+                 "code": "remote_model_not_found_error"
+             }
+         })),
+        (status = 400, description = "File already exists", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "file 'llama-2-7b-chat.Q8_0.gguf' already exists in repo 'TheBloke/Llama-2-7B-Chat-GGUF' with snapshot 'main'",
+                 "type": "invalid_request_error",
+                 "code": "pull_error-file_already_exists"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Internal server error occurred",
+                 "type": "internal_server_error",
+                 "code": "internal_error"
+             }
+         }))
+    )
+)]
 pub async fn pull_by_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(alias): Path<String>,
