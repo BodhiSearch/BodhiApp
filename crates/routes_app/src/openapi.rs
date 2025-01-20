@@ -1,7 +1,7 @@
 use crate::{
   AliasResponse, ApiTokenResponse, AppInfo, CreateApiTokenRequest, NewDownloadRequest,
   SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
-  __path_create_pull_request_handler, __path_create_token_handler,
+  __path_create_pull_request_handler, __path_create_token_handler, __path_get_alias_handler,
   __path_get_download_status_handler, __path_list_chat_templates_handler,
   __path_list_downloads_handler, __path_list_local_aliases_handler,
   __path_list_local_modelfiles_handler, __path_list_tokens_handler, __path_logout_handler,
@@ -9,7 +9,10 @@ use crate::{
   __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
-use routes_oai::{__path_chat_completions_handler, __path_oai_models_handler};
+use routes_oai::{
+  __path_chat_completions_handler, __path_oai_models_handler, __path_ollama_model_chat_handler,
+  __path_ollama_model_show_handler, __path_ollama_models_handler,
+};
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
   AppStatus,
@@ -38,12 +41,6 @@ make_ui_endpoint!(ENDPOINT_MODELS, "models");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
 
-pub const ENDPOINT_OAI_MODELS: &str = "/v1/models";
-pub const ENDPOINT_OAI_CHAT_COMPLETIONS: &str = "/v1/chat/completions";
-pub const ENDPOINT_OLLAMA_TAGS: &str = "/api/tags";
-pub const ENDPOINT_OLLAMA_SHOW: &str = "/api/show";
-pub const ENDPOINT_OLLAMA_CHAT: &str = "/api/chat";
-
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
 
@@ -66,7 +63,9 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         (name = "system", description = "System information and operations"),
         (name = "setup", description = "Application setup and initialization"),
         (name = "auth", description = "Authentication and session management"),
+        (name = "api-keys", description = "API keys management"),
         (name = "models", description = "Model files and aliases"),
+        (name = "ollama", description = "Ollama-compatible API endpoints"),
     ),
     components(
         schemas(
@@ -101,12 +100,16 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         pull_by_alias_handler,
         list_local_aliases_handler,
         list_chat_templates_handler,
+        get_alias_handler,
         create_token_handler,
         get_download_status_handler,
         list_tokens_handler,
         update_token_handler,
         oai_models_handler,
-        chat_completions_handler
+        chat_completions_handler,
+        ollama_models_handler,
+        ollama_model_show_handler,
+        ollama_model_chat_handler,
     )
 )]
 pub struct ApiDoc;
@@ -515,7 +518,7 @@ mod tests {
     let post_op = tokens.post.as_ref().expect("POST operation not found");
 
     // Check operation details
-    assert_eq!(post_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(post_op.tags.as_ref().unwrap()[0], "api-keys");
     assert_eq!(post_op.operation_id.as_ref().unwrap(), "createApiToken");
 
     // Verify request body schema
@@ -669,7 +672,7 @@ mod tests {
     let get_op = tokens_path.get.as_ref().expect("GET operation not found");
 
     // Check operation details
-    assert_eq!(get_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "api-keys");
     assert_eq!(get_op.operation_id.as_ref().unwrap(), "listApiTokens");
 
     // Check pagination parameters
@@ -739,7 +742,7 @@ mod tests {
     let put_op = update_path.put.as_ref().expect("PUT operation not found");
 
     // Check operation details
-    assert_eq!(put_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(put_op.tags.as_ref().unwrap()[0], "api-keys");
     assert_eq!(put_op.operation_id.as_ref().unwrap(), "updateApiToken");
 
     // Check path parameters

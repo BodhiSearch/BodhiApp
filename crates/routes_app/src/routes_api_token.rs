@@ -68,7 +68,7 @@ pub enum ApiTokenError {
 #[utoipa::path(
     post,
     path = ENDPOINT_TOKENS,
-    tag = "auth",
+    tag = "api-keys",
     operation_id = "createApiToken",
     request_body = CreateApiTokenRequest,
     responses(
@@ -126,7 +126,7 @@ pub async fn create_token_handler(
 #[utoipa::path(
     put,
     path = ENDPOINT_TOKENS.to_owned() + "/{id}",
-    tag = "auth",
+    tag = "api-keys",
     operation_id = "updateApiToken",
     params(
         ("id" = String, Path, description = "Token identifier",
@@ -212,7 +212,7 @@ pub async fn update_token_handler(
 #[utoipa::path(
     get,
     path = ENDPOINT_TOKENS,
-    tag = "auth",
+    tag = "api-keys",
     operation_id = "listApiTokens",
     params(
         PaginationSortParams

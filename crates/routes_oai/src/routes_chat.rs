@@ -1,3 +1,4 @@
+use crate::ENDPOINT_OAI_CHAT_COMPLETIONS;
 use async_openai::types::CreateChatCompletionRequest;
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
@@ -16,7 +17,7 @@ pub enum HttpError {
 /// Create a chat completion
 #[utoipa::path(
     post,
-    path = "/v1/chat/completions",
+    path = ENDPOINT_OAI_CHAT_COMPLETIONS,
     tag = "openai",
     operation_id = "createChatCompletion",
     request_body(

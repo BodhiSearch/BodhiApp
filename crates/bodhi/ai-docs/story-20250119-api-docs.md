@@ -98,39 +98,39 @@ So that I can understand and test the API endpoints easily
   - [x] GET /bodhi/v1/modelfiles (list_local_modelfiles_handler)
   - [x] GET /bodhi/v1/modelfiles/pull (list_downloads_handler)
   - [x] POST /bodhi/v1/modelfiles/pull (create_pull_request_handler)
-  - [ ] GET /bodhi/v1/modelfiles/pull/status/{id} (get_download_status_handler)
-  - [ ] POST /bodhi/v1/modelfiles/pull/{alias} (pull_by_alias_handler)
+  - [x] GET /bodhi/v1/modelfiles/pull/status/{id} (get_download_status_handler)
+  - [x] POST /bodhi/v1/modelfiles/pull/{alias} (pull_by_alias_handler)
   - [x] GET /bodhi/v1/models (list_local_aliases_handler)
-  - [ ] GET /bodhi/v1/models/{alias} (get_alias_handler)
+  - [x] GET /bodhi/v1/models/{alias} (get_alias_handler)
   - [x] GET /bodhi/v1/chat_templates (list_chat_templates_handler)
 
 ##### Token Management
-- [ ] Document token endpoints
+- [x] Document token endpoints
   - [x] POST /bodhi/v1/tokens (create_token_handler)
-  - [ ] GET /bodhi/v1/tokens (list_tokens_handler)
-  - [ ] PUT /bodhi/v1/tokens/{id} (update_token_handler)
+  - [x] GET /bodhi/v1/tokens (list_tokens_handler)
+  - [x] PUT /bodhi/v1/tokens/{id} (update_token_handler)
 
 ##### Chat Endpoints
-- [ ] Document chat endpoints
-  - [ ] GET /v1/models (list_models_handler)
-  - [ ] POST /v1/chat/completions (chat_completions_handler)
+- [x] Document chat endpoints
+  - [x] GET /v1/models (list_models_handler)
+  - [x] POST /v1/chat/completions (chat_completions_handler)
 
 ##### Ollama Compatibility
-- [ ] Document Ollama endpoints
-  - [ ] GET /api/tags (list_ollama_tags_handler)
-  - [ ] POST /api/show (show_ollama_model_handler)
-  - [ ] POST /api/chat (chat_ollama_handler)
+- [x] Document Ollama endpoints
+  - [x] GET /api/tags (list_ollama_tags_handler)
+  - [x] POST /api/show (show_ollama_model_handler)
+  - [x] POST /api/chat (chat_ollama_handler)
 
 #### Swagger UI Setup
-- [ ] Add Swagger UI dependencies
-- [ ] Configure UI options
+- [x] Add Swagger UI dependencies
+- [x] Configure UI options
 - [ ] Set up authentication
 - [ ] Configure theme
 - [ ] Add custom configuration
 
 ### Testing Tasks
 - [x] Verify OpenAPI spec generation
-- [ ] Test Swagger UI integration
+- [x] Test Swagger UI integration
 - [x] Validate schema documentation
 - [ ] Test authentication in Swagger UI
 - [x] Verify example values
