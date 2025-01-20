@@ -20,7 +20,6 @@ interface ChatDBContextType {
   currentChat: Chat | null;
   currentChatId: string | null;
   setCurrentChatId: (id: string | null) => void;
-  initializeCurrentChatId: () => Promise<void>;
   createNewChat: () => Promise<void>;
   getChat: (id: string) => Promise<{ data: Chat; status: number }>;
   createOrUpdateChat: (chat: Chat) => Promise<string>;
@@ -141,40 +140,6 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
     setCurrentChatId(null);
   }, [setCurrentChatId]);
 
-  const initializeCurrentChatId = useCallback(async () => {
-    // Return if we already have a current chat
-    if (currentChatId) {
-      return;
-    }
-
-    // Try to find an empty chat
-    const emptyChat = chats.find((chat) => chat.messages.length === 0);
-
-    if (emptyChat) {
-      // Update the empty chat's timestamp
-      const updatedChat: Chat = {
-        ...emptyChat,
-        updatedAt: Date.now(),
-      };
-
-      await createOrUpdateChat(updatedChat);
-      setCurrentChatId(emptyChat.id);
-      return;
-    }
-
-    // Create new chat if no empty chat found
-    const newChat: Chat = {
-      id: nanoid(),
-      title: 'New Chat',
-      messages: [],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    };
-
-    await createOrUpdateChat(newChat);
-    setCurrentChatId(newChat.id);
-  }, [currentChatId, chats, createOrUpdateChat, setCurrentChatId]);
-
   const createNewChat = useCallback(async () => {
     // Don't create new if current chat is empty
     if (!currentChat || currentChat.messages.length === 0) {
@@ -216,7 +181,6 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
         currentChat,
         currentChatId,
         setCurrentChatId,
-        initializeCurrentChatId,
         createNewChat,
         getChat,
         createOrUpdateChat,

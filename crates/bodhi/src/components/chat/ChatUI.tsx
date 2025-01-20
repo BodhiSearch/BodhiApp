@@ -3,26 +3,10 @@
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
-import { Skeleton } from '@/components/ui/skeleton';
 import { useChat } from '@/hooks/use-chat';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { Message } from '@/types/chat';
-import { FormEvent, RefObject, useEffect, useRef } from 'react';
-
-// Extracted components outside the main component
-const LoadingSkeletons = () => (
-  <div className="space-y-4">
-    {[...Array(2)].map((_, i) => (
-      <div key={i} className="flex items-start gap-4">
-        <Skeleton className="h-8 w-8 rounded-full" />
-        <div className="space-y-2 flex-1">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-16 w-full" />
-        </div>
-      </div>
-    ))}
-  </div>
-);
+import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
 
 const EmptyState = () => (
   <div className="flex-1 flex items-center justify-center">
@@ -88,25 +72,42 @@ const ChatInput = ({
 
 interface MessageListProps {
   messages: Message[];
+  userMessage: Message;
+  assistantMessage: Message;
 }
 
-const MessageList = ({ messages }: MessageListProps) => (
-  <>
-    {messages.map((message, i) => (
-      <ChatMessage key={i} message={message} />
-    ))}
-    <ScrollAnchor />
-  </>
-);
+const MessageList = memo(function MessageList({
+  messages,
+  userMessage,
+  assistantMessage,
+}: MessageListProps) {
+  return (
+    <>
+      {messages.map((message, i) => (
+        <ChatMessage key={`history-${i}`} message={message} />
+      ))}
+      {userMessage.content && (
+        <ChatMessage key="user-current" message={userMessage} />
+      )}
+      {assistantMessage.content && (
+        <ChatMessage key="assistant-current" message={assistantMessage} />
+      )}
+      <ScrollAnchor />
+    </>
+  );
+});
 
-interface ChatUIProps {
-  isLoading: boolean;
-}
-
-export function ChatUI({ isLoading }: ChatUIProps) {
+export function ChatUI() {
   const { currentChat } = useChatDB();
-  const { input, setInput, isLoading: streamLoading, append, stop } = useChat();
-
+  const {
+    input,
+    setInput,
+    isLoading: streamLoading,
+    append,
+    stop,
+    userMessage,
+    assistantMessage,
+  } = useChat();
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Focus input after loading completes
@@ -119,14 +120,9 @@ export function ChatUI({ isLoading }: ChatUIProps) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || streamLoading) return;
-
-    const userMessage: Message = {
-      role: 'user',
-      content: input.trim(),
-    };
-
+    const content = input.trim();
     setInput('');
-    await append(userMessage);
+    await append(content);
   };
 
   return (
@@ -134,12 +130,15 @@ export function ChatUI({ isLoading }: ChatUIProps) {
       <div className="flex-1 overflow-hidden relative">
         <div className="absolute inset-0 overflow-y-auto">
           <div className="p-4">
-            {isLoading ? (
-              <LoadingSkeletons />
-            ) : !currentChat?.messages?.length ? (
+            {(currentChat === null || !currentChat?.messages?.length) &&
+            !userMessage.content ? (
               <EmptyState />
             ) : (
-              <MessageList messages={currentChat.messages} />
+              <MessageList
+                messages={currentChat?.messages || []}
+                userMessage={userMessage}
+                assistantMessage={assistantMessage}
+              />
             )}
           </div>
         </div>
