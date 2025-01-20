@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
+routes_oai = { workspace = true }
 services = { workspace = true }
 commands = { workspace = true }
 auth_middleware = { workspace = true }

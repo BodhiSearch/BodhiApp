@@ -113,7 +113,7 @@ pub fn build_routes(
     .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
     .route(ENDPOINT_MODEL_PULL, post(create_pull_request_handler))
     .route(
-      &format!("{ENDPOINT_MODEL_PULL}/:alias"),
+      &format!("{ENDPOINT_MODEL_PULL}/:id"),
       post(pull_by_alias_handler),
     )
     .route(
