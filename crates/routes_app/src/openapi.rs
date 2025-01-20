@@ -2,10 +2,10 @@ use crate::{
   AliasResponse, ApiTokenResponse, AppInfo, CreateApiTokenRequest, NewDownloadRequest,
   SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
   __path_create_pull_request_handler, __path_create_token_handler,
-  __path_list_chat_templates_handler, __path_list_downloads_handler,
-  __path_list_local_aliases_handler, __path_list_local_modelfiles_handler, __path_logout_handler,
-  __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
-  __path_user_info_handler,
+  __path_get_download_status_handler, __path_list_chat_templates_handler,
+  __path_list_downloads_handler, __path_list_local_aliases_handler,
+  __path_list_local_modelfiles_handler, __path_logout_handler, __path_ping_handler,
+  __path_pull_by_alias_handler, __path_setup_handler, __path_user_info_handler,
 };
 use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
 use services::{db::DownloadRequest, AppStatus};
@@ -96,6 +96,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         list_local_aliases_handler,
         list_chat_templates_handler,
         create_token_handler,
+        get_download_status_handler
     )
 )]
 pub struct ApiDoc;
@@ -573,5 +574,74 @@ mod tests {
         assert!(example.get("status").is_some());
       }
     }
+  }
+
+  #[test]
+  fn test_get_download_status_endpoint() {
+    let api_doc = ApiDoc::openapi();
+    let paths = &api_doc.paths;
+
+    // Verify endpoint
+    let status_path = paths
+      .paths
+      .get("/bodhi/v1/modelfiles/pull/{id}")
+      .expect("Download status endpoint not found");
+
+    let get_op = status_path.get.as_ref().expect("GET operation not found");
+
+    // Check operation details
+    assert_eq!(get_op.tags.as_ref().unwrap()[0], "models");
+    assert_eq!(get_op.operation_id.as_ref().unwrap(), "getDownloadStatus");
+
+    // Check path parameters
+    let params = get_op.parameters.as_ref().unwrap();
+    let id_param = params
+      .iter()
+      .find(|p| p.name == "id")
+      .expect("ID parameter not found");
+    assert_eq!(
+      serde_json::to_string(&id_param.parameter_in).unwrap(),
+      serde_json::to_string(&ParameterIn::Path).unwrap()
+    );
+    assert!(id_param.description.is_some());
+
+    // Check responses
+    let responses = &get_op.responses;
+
+    // Check 200 response
+    let success = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        // Verify example has correct structure
+        assert!(example.get("id").is_some());
+        assert!(example.get("repo").is_some());
+        assert!(example.get("filename").is_some());
+        assert!(example.get("status").is_some());
+        assert!(example.get("created_at").is_some());
+        assert!(example.get("updated_at").is_some());
+
+        // Verify status is "completed" in example
+        assert_eq!(example.get("status").unwrap(), "completed");
+      } else {
+        panic!("No example found for 200 status");
+      }
+    }
+
+    // Check 404 response
+    let not_found = responses.responses.get("404").unwrap();
+    if let RefOr::T(response) = not_found {
+      let content = response.content.get("application/json").unwrap();
+      if let Some(example) = &content.example {
+        let error = example.get("error").unwrap();
+        assert_eq!(error.get("type").unwrap(), "not_found_error");
+        assert_eq!(error.get("code").unwrap(), "item_not_found");
+      } else {
+        panic!("No example found for 404 status");
+      }
+    }
+
+    // Check 500 response exists
+    assert!(responses.responses.contains_key("500"));
   }
 }

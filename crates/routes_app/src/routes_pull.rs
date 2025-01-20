@@ -326,6 +326,45 @@ pub async fn pull_by_alias_handler(
   Ok((StatusCode::CREATED, Json(download_request)))
 }
 
+/// Get the status of a specific download request
+#[utoipa::path(
+    get,
+    path = ENDPOINT_MODEL_PULL.to_owned() + "/{id}",
+    tag = "models",
+    operation_id = "getDownloadStatus",
+    params(
+        ("id" = String, Path, description = "Download request identifier",
+         example = "550e8400-e29b-41d4-a716-446655440000")
+    ),
+    responses(
+        (status = 200, description = "Download request found", body = DownloadRequest,
+         example = json!({
+             "id": "550e8400-e29b-41d4-a716-446655440000",
+             "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+             "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+             "status": "completed",
+             "error": null,
+             "created_at": "2024-01-20T12:00:00Z",
+             "updated_at": "2024-01-20T12:00:10Z"
+         })),
+        (status = 404, description = "Download request not found", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",
+                 "type": "not_found_error",
+                 "code": "item_not_found"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Internal server error occurred",
+                 "type": "internal_server_error",
+                 "code": "internal_error"
+             }
+         }))
+    )
+)]
 pub async fn get_download_status_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,

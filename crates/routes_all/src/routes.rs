@@ -117,7 +117,7 @@ pub fn build_routes(
       post(pull_by_alias_handler),
     )
     .route(
-      &format!("{ENDPOINT_MODEL_PULL}/status/:id"),
+      &format!("{ENDPOINT_MODEL_PULL}/:id"),
       get(get_download_status_handler),
     )
     .route_layer(from_fn_with_state(
