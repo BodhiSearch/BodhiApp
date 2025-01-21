@@ -296,6 +296,7 @@ fn delete_setting(&self, key: &str) -> Result<()>;
 - `crates/bodhi/src/components/navigation/AppNavigation.tsx`: Navigation with settings menu
 
 ### Backend (Rust)
+- `crates/objs/src/envs.rs`: API endpoints for settings management
 - `crates/routes_app/src/routes_settings.rs`: API endpoints for settings management
 - `crates/services/src/setting_service.rs`: Core settings service implementation
 - `crates/services/src/env_service.rs`: Environment and settings defaults
@@ -455,3 +456,88 @@ fn delete_setting(&self, key: &str) -> Result<()>;
    - WHEN a DELETE request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
    - THEN returns 200
    - AND setting remains at default value
+
+## Next Steps
+
+### API Integration Tasks
+
+1. API Response Types
+   - Create/update API response types in `crates/objs/src/api.rs` to match SettingInfo structure
+   - Ensure proper serialization of all fields including metadata
+   - Add response examples to documentation
+
+2. Settings Routes Update
+   - Modify `crates/routes_app/src/routes_settings.rs` to use SettingInfo
+   - Update GET `/settings` endpoint to return full setting information
+   - Update PUT `/settings/{key}` endpoint to validate values against metadata
+   - Add validation error responses
+
+3. Frontend Integration
+   - Add TypeScript types matching new API response format
+   - Update settings state management for richer setting information
+   - Modify settings UI to display:
+     - Setting sources (env, file, default)
+     - Default values
+     - Validation rules
+   - Add input validation based on metadata:
+     - Number ranges
+     - Option lists
+     - Boolean toggles
+     - String inputs
+
+4. Validation Implementation
+   - Create validation functions using SettingMetadata
+   - Add validation to setting updates
+   - Implement proper error messages for validation failures
+   - Add tests for validation logic
+
+5. Documentation
+   - Update API documentation with new response format
+   - Document validation rules and setting metadata
+   - Update user documentation for new settings UI
+   - Add examples of different setting types and sources
+
+### Settings Value Management
+
+#### Setting Sources
+Settings can come from different sources, in order of precedence:
+1. Command line arguments (highest priority)
+2. Environment variables
+3. settings.yaml file
+4. Default values (lowest priority)
+
+The source of each setting is tracked in the `SettingSource` enum to help with:
+- Debugging configuration issues
+- Understanding where a setting value comes from
+- Determining if a value can be modified
+
+#### Setting Types and Validation
+Each setting has associated metadata that defines:
+1. Type information:
+   - String: Basic text values
+   - Number: Integer or float values with optional range constraints
+   - Boolean: true/false values
+   - Option: Value must be one of predefined options
+
+2. Validation rules:
+   - Number ranges (min/max)
+   - Option lists (allowed values)
+   - Type-specific parsing rules
+
+3. Value Parsing:
+   - All values start as strings (from env vars or yaml)
+   - Values are parsed according to their metadata type
+   - Failed parsing preserves original value for debugging
+   - Successful parsing converts to appropriate type:
+     - Numbers: parsed as integers or floats
+     - Booleans: handles "true"/"false" strings
+     - Options: validated against allowed list
+     - Strings: preserved as-is
+
+#### Setting Updates
+When updating settings:
+1. Values are validated against metadata rules
+2. Updates are only allowed for configurable settings
+3. System settings (version, env type, etc.) are read-only
+4. Updates are persisted to settings.yaml
+5. Environment variables still take precedence over saved values

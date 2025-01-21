@@ -12,6 +12,7 @@ mod routes_dev;
 mod routes_login;
 mod routes_models;
 mod routes_pull;
+mod routes_settings;
 mod routes_setup;
 mod routes_ui;
 
@@ -24,6 +25,7 @@ pub use routes_dev::*;
 pub use routes_login::*;
 pub use routes_models::*;
 pub use routes_pull::*;
+pub use routes_settings::*;
 pub use routes_setup::*;
 pub use routes_ui::*;
 

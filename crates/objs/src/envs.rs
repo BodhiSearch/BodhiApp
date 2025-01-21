@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 #[derive(Debug, Clone, PartialEq, Default, strum::EnumString, strum::Display)]
 #[strum(serialize_all = "snake_case")]
@@ -59,7 +60,7 @@ impl From<LogLevel> for tracing::level_filters::LevelFilter {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum SettingSource {
   CommandLine,
@@ -83,7 +84,7 @@ pub struct NumberRange {
   pub max: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, PartialOrd)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum SettingMetadata {
   String,
@@ -136,7 +137,7 @@ impl SettingMetadata {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, PartialOrd)]
 pub struct SettingInfo {
   pub key: String,
   pub current_value: serde_yaml::Value,
