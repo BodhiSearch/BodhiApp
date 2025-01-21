@@ -6,6 +6,7 @@ use axum::{
 use objs::{ApiError, AppError, ErrorType, OpenAIApiError, SettingInfo};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
+use services::BODHI_HOME;
 use std::sync::Arc;
 use utoipa::ToSchema;
 
@@ -15,6 +16,10 @@ pub enum SettingsError {
   #[error("not_found")]
   #[error_meta(error_type = ErrorType::NotFound)]
   NotFound(String),
+
+  #[error("bodhi_home")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  BodhiHome,
 }
 
 /// Request to update a setting value
@@ -88,7 +93,11 @@ pub async fn list_settings_handler(
     params(
         ("key" = String, Path, description = "Setting key to update")
     ),
-    request_body = UpdateSettingRequest,
+    request_body(content = inline(UpdateSettingRequest), description = "New setting value",
+        example = json!({
+            "value": "debug"
+        })
+    ),
     responses(
         (status = 200, description = "Setting updated successfully", body = SettingInfo,
          example = json!({
@@ -130,6 +139,9 @@ pub async fn update_setting_handler(
   let setting_service = state.app_service().env_service().setting_service();
 
   // Validate setting exists
+  if BODHI_HOME == key {
+    return Err(SettingsError::BodhiHome)?;
+  }
   let settings = setting_service.list();
   let setting = settings
     .iter()
@@ -150,15 +162,75 @@ pub async fn update_setting_handler(
   Ok(Json(updated))
 }
 
+/// Reset a setting to its default value
+#[utoipa::path(
+    delete,
+    path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
+    tag = "settings", 
+    operation_id = "deleteSetting",
+    params(
+        ("key" = String, Path, description = "Setting key to reset")
+    ),
+    responses(
+        (status = 200, description = "Setting reset to default successfully", body = SettingInfo,
+         example = json!({
+             "key": "BODHI_LOG_LEVEL",
+             "current_value": "warn",
+             "default_value": "warn", 
+             "source": "default",
+             "metadata": {
+                 "type": "option",
+                 "options": ["error", "warn", "info", "debug", "trace"]
+             }
+         })),
+        (status = 404, description = "Setting not found", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Setting not found: INVALID_KEY",
+                 "type": "not_found_error",
+                 "code": "settings_error-not_found"
+             }
+         }))
+    ),
+    security(
+        ("session_auth" = [])
+    )
+)]
+pub async fn delete_setting_handler(
+  State(state): State<Arc<dyn RouterState>>,
+  Path(key): Path<String>,
+) -> Result<Json<SettingInfo>, ApiError> {
+  let setting_service = state.app_service().env_service().setting_service();
+
+  // Validate setting exists
+  let settings = setting_service.list();
+  let _ = settings
+    .iter()
+    .find(|s| s.key == key)
+    .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
+
+  // Delete setting (reset to default)
+  setting_service.delete_setting(&key)?;
+
+  // Get updated setting info
+  let settings = setting_service.list();
+  let updated = settings
+    .into_iter()
+    .find(|s| s.key == key)
+    .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
+
+  Ok(Json(updated))
+}
+
 #[cfg(test)]
 mod tests {
-  use super::{list_settings_handler, update_setting_handler};
+  use super::{delete_setting_handler, list_settings_handler, update_setting_handler};
   use crate::ENDPOINT_SETTINGS;
   use anyhow_trace::anyhow_trace;
   use axum::{
     body::Body,
     http::{Request, StatusCode},
-    routing::{get, put},
+    routing::{delete, get, put},
     Router,
   };
   use objs::{test_utils::temp_dir, AppType, EnvType, SettingInfo, SettingMetadata, SettingSource};
@@ -183,6 +255,7 @@ mod tests {
     Router::new()
       .route(ENDPOINT_SETTINGS, get(list_settings_handler))
       .route("/v1/bodhi/settings/:key", put(update_setting_handler))
+      .route("/v1/bodhi/settings/:key", delete(delete_setting_handler))
       .with_state(Arc::new(router_state))
   }
 
@@ -425,6 +498,164 @@ mod tests {
       }},
       error["error"]
     );
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_delete_setting_success(temp_dir: TempDir) -> anyhow::Result<()> {
+    // GIVEN an app with a custom setting value
+    let env_service = test_env_service(
+      &temp_dir,
+      maplit::hashmap! {},
+      maplit::hashmap! {
+        BODHI_LOG_LEVEL.to_string() => serde_yaml::Value::String("debug".to_string()),
+      },
+    )?;
+    let app_service = AppServiceStubBuilder::default()
+      .env_service(Arc::new(env_service))
+      .build()?;
+    let app = app(Arc::new(app_service)).await;
+
+    // WHEN deleting the setting
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("DELETE")
+          .uri("/v1/bodhi/settings/BODHI_LOG_LEVEL")
+          .body(Body::empty())?,
+      )
+      .await?;
+
+    // THEN it succeeds
+    assert_eq!(StatusCode::OK, response.status());
+
+    // AND returns setting with default value
+    let setting = response.json::<SettingInfo>().await?;
+    assert_eq!(BODHI_LOG_LEVEL, setting.key);
+    assert_eq!(
+      serde_yaml::Value::String("warn".to_string()),
+      setting.current_value
+    );
+    assert_eq!(SettingSource::Default, setting.source);
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_delete_setting_invalid_key(temp_dir: TempDir) -> anyhow::Result<()> {
+    // GIVEN an app
+    let env_service = test_env_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+    let app_service = AppServiceStubBuilder::default()
+      .env_service(Arc::new(env_service))
+      .build()?;
+    let app = app(Arc::new(app_service)).await;
+
+    // WHEN deleting an invalid setting
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("DELETE")
+          .uri("/v1/bodhi/settings/INVALID_KEY")
+          .body(Body::empty())?,
+      )
+      .await?;
+
+    // THEN it fails with not found
+    assert_eq!(StatusCode::NOT_FOUND, response.status());
+    let error = response.json::<serde_json::Value>().await?;
+    assert_eq!(
+      "settings_error-not_found",
+      error["error"]["code"].as_str().unwrap()
+    );
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_delete_setting_with_env_override(temp_dir: TempDir) -> anyhow::Result<()> {
+    // GIVEN an app with both env and file settings
+    let env_service = test_env_service(
+      &temp_dir,
+      maplit::hashmap! {
+        BODHI_LOG_LEVEL.to_string() => "trace".to_string(),
+      },
+      maplit::hashmap! {
+        BODHI_LOG_LEVEL.to_string() => serde_yaml::Value::String("debug".to_string()),
+      },
+    )?;
+    let app_service = AppServiceStubBuilder::default()
+      .env_service(Arc::new(env_service))
+      .build()?;
+    let app = app(Arc::new(app_service)).await;
+
+    // WHEN deleting the setting
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("DELETE")
+          .uri("/v1/bodhi/settings/BODHI_LOG_LEVEL")
+          .body(Body::empty())?,
+      )
+      .await?;
+
+    // THEN it succeeds
+    assert_eq!(StatusCode::OK, response.status());
+
+    // AND returns setting with env value (not default)
+    let setting = response.json::<SettingInfo>().await?;
+    assert_eq!(BODHI_LOG_LEVEL, setting.key);
+    assert_eq!(
+      serde_yaml::Value::String("trace".to_string()),
+      setting.current_value
+    );
+    assert_eq!(SettingSource::Environment, setting.source);
+
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_delete_setting_no_override(temp_dir: TempDir) -> anyhow::Result<()> {
+    // GIVEN an app with no custom settings
+    let env_service = test_env_service(&temp_dir, maplit::hashmap! {}, maplit::hashmap! {})?;
+    let app_service = AppServiceStubBuilder::default()
+      .env_service(Arc::new(env_service))
+      .build()?;
+    let app = app(Arc::new(app_service)).await;
+
+    // WHEN deleting a setting that's already at default
+    let response = app
+      .oneshot(
+        Request::builder()
+          .method("DELETE")
+          .uri("/v1/bodhi/settings/BODHI_LOG_LEVEL")
+          .body(Body::empty())?,
+      )
+      .await?;
+
+    // THEN it succeeds
+    assert_eq!(StatusCode::OK, response.status());
+
+    // AND returns setting with default value
+    let setting = response.json::<SettingInfo>().await?;
+    assert_eq!(BODHI_LOG_LEVEL, setting.key);
+    assert_eq!(
+      serde_yaml::Value::String("warn".to_string()),
+      setting.current_value
+    );
+    assert_eq!(SettingSource::Default, setting.source);
+
     Ok(())
   }
 }

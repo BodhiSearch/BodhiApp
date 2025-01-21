@@ -1,12 +1,12 @@
 use crate::{
   AliasResponse, ApiTokenResponse, AppInfo, CreateApiTokenRequest, NewDownloadRequest,
-  SetupRequest, SetupResponse, UserInfo, __path_app_info_handler,
-  __path_create_pull_request_handler, __path_create_token_handler, __path_get_alias_handler,
-  __path_get_download_status_handler, __path_list_chat_templates_handler,
+  SetupRequest, SetupResponse, UpdateSettingRequest, UserInfo, __path_app_info_handler,
+  __path_create_pull_request_handler, __path_create_token_handler, __path_delete_setting_handler,
+  __path_get_alias_handler, __path_get_download_status_handler, __path_list_chat_templates_handler,
   __path_list_downloads_handler, __path_list_local_aliases_handler,
   __path_list_local_modelfiles_handler, __path_list_settings_handler, __path_list_tokens_handler,
   __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
-  __path_update_token_handler, __path_user_info_handler,
+  __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{
   ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo, SettingInfo, SettingMetadata,
@@ -127,7 +127,8 @@ For API keys, specify required scope when creating the token.
             TokenStatus,
             SettingInfo,
             SettingMetadata,
-            SettingSource
+            SettingSource,
+            UpdateSettingRequest
         ),
         responses( ),
     ),
@@ -153,7 +154,9 @@ For API keys, specify required scope when creating the token.
         ollama_models_handler,
         ollama_model_show_handler,
         ollama_model_chat_handler,
-        list_settings_handler
+        list_settings_handler,
+        update_setting_handler,
+        delete_setting_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

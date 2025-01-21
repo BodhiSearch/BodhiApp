@@ -12,20 +12,21 @@ use axum::{
   http::StatusCode,
   middleware::from_fn_with_state,
   response::Response,
-  routing::{get, post, put},
+  routing::{delete, get, post, put},
   Router,
 };
 use objs::{Role, TokenScope};
 use routes_app::{
   app_info_handler, create_alias_handler, create_pull_request_handler, create_token_handler,
-  dev_secrets_handler, get_alias_handler, get_download_status_handler, list_chat_templates_handler,
-  list_downloads_handler, list_local_aliases_handler, list_local_modelfiles_handler,
-  list_tokens_handler, login_callback_handler, login_handler, logout_handler,
-  pull_by_alias_handler, setup_handler, update_alias_handler, update_token_handler,
-  user_info_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
+  delete_setting_handler, dev_secrets_handler, get_alias_handler, get_download_status_handler,
+  list_chat_templates_handler, list_downloads_handler, list_local_aliases_handler,
+  list_local_modelfiles_handler, list_settings_handler, list_tokens_handler,
+  login_callback_handler, login_handler, logout_handler, pull_by_alias_handler, setup_handler,
+  update_alias_handler, update_setting_handler, update_token_handler, user_info_handler,
+  BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
   ENDPOINT_CHAT_TEMPLATES, ENDPOINT_DEV_SECRETS, ENDPOINT_LOGIN, ENDPOINT_LOGIN_CALLBACK,
   ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
-  ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+  ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
@@ -148,11 +149,27 @@ pub fn build_routes(
       move |state, req, next| api_auth_middleware(Role::PowerUser, None, state, req, next),
     ));
 
+  let admin_session_apis = Router::new()
+    .route(ENDPOINT_SETTINGS, get(list_settings_handler))
+    .route(
+      &format!("{ENDPOINT_SETTINGS}/:key"),
+      put(update_setting_handler),
+    )
+    .route(
+      &format!("{ENDPOINT_SETTINGS}/:key"),
+      delete(delete_setting_handler),
+    )
+    .route_layer(from_fn_with_state(
+      state.clone(),
+      move |state, req, next| api_auth_middleware(Role::Admin, None, state, req, next),
+    ));
+
   // Combine all protected APIs
   let protected_apis = Router::new()
     .merge(user_apis)
     .merge(power_user_apis)
     .merge(power_user_session_apis)
+    .merge(admin_session_apis)
     .route_layer(from_fn_with_state(state.clone(), auth_middleware));
 
   let info_trace = TraceLayer::new_for_http()
