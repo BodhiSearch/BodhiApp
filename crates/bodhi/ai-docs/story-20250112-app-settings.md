@@ -38,14 +38,14 @@ So that I can manage the app's behavior without editing configuration files
 - [ ] Show success message when setting is saved
 
 ### Backend Implementation
-- [ ] API endpoint GET /v1/bodhi/settings:
+- [x] API endpoint GET /v1/bodhi/settings:
   - Return all settings with their current and default values
   - Include setting metadata (type, for number their range)
-- [ ] API endpoint PUT /v1/bodhi/settings/{key}:
+- [x] API endpoint PUT /v1/bodhi/settings/{key}:
   - Update individual setting
   - Validate setting value
   - Return updated setting value
-- [ ] Add setting validation rules in backend
+- [x] Add setting validation rules in backend
 - [ ] Add role check middleware for settings APIs
 
 ## Available Settings Analysis

@@ -1,7 +1,6 @@
 use crate::{
   SettingService, SettingServiceError, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_PATH, BODHI_HOST,
-  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_PORT, BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL,
-  DEFAULT_PORT, DEFAULT_PORT_STR, DEFAULT_SCHEME, HF_HOME,
+  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_PORT, BODHI_SCHEME, DEFAULT_PORT, HF_HOME,
 };
 use objs::{
   impl_error_from, AppError, AppType, EnvType, ErrorType, IoDirCreateError, IoError, LogLevel,
@@ -245,29 +244,28 @@ impl EnvService for DefaultEnvService {
   }
 
   fn scheme(&self) -> String {
-    self
-      .setting_service
-      .get_setting_or_default(BODHI_SCHEME, DEFAULT_SCHEME)
+    self.setting_service.get_setting_or_default(BODHI_SCHEME)
   }
 
   fn host(&self) -> String {
-    self
-      .setting_service
-      .get_setting_or_default(BODHI_HOST, DEFAULT_HOST)
+    self.setting_service.get_setting_or_default(BODHI_HOST)
   }
 
   fn port(&self) -> u16 {
     self
       .setting_service
-      .get_setting_or_default(BODHI_PORT, DEFAULT_PORT_STR)
+      .get_setting_or_default(BODHI_PORT)
       .parse::<u16>()
       .unwrap_or(DEFAULT_PORT)
   }
 
   fn frontend_url(&self) -> String {
-    self
-      .setting_service
-      .get_setting_or_default(BODHI_FRONTEND_URL, &self.server_url())
+    format!(
+      "{}://{}:{}",
+      self.setting_service.get_setting_or_default(BODHI_SCHEME),
+      self.setting_service.get_setting_or_default(BODHI_HOST),
+      self.setting_service.get_setting_or_default(BODHI_PORT)
+    )
   }
 
   fn db_path(&self) -> PathBuf {
@@ -275,39 +273,18 @@ impl EnvService for DefaultEnvService {
   }
 
   fn log_level(&self) -> LogLevel {
-    let log_level = self
-      .setting_service
-      .get_setting_or_default(BODHI_LOG_LEVEL, DEFAULT_LOG_LEVEL);
+    let log_level = self.setting_service.get_setting_or_default(BODHI_LOG_LEVEL);
     LogLevel::try_from(log_level.as_str()).unwrap_or(LogLevel::Warn)
   }
 
   fn exec_lookup_path(&self) -> String {
-    let lookup_path = self.setting_service.get_setting(BODHI_EXEC_LOOKUP_PATH);
-    match lookup_path {
-      Some(lookup_path) => lookup_path,
-      None => std::env::current_dir()
-        .unwrap_or_else(|err| {
-          tracing::warn!("failed to get current directory. err: {err}");
-          PathBuf::from(".")
-            .canonicalize()
-            .expect("failed to canonicalize current directory")
-        })
-        .display()
-        .to_string(),
-    }
+    self
+      .setting_service
+      .get_setting_or_default(BODHI_EXEC_LOOKUP_PATH)
   }
 
   fn exec_path(&self) -> String {
-    let exec_path = self.setting_service.get_setting_or_default(
-      BODHI_EXEC_PATH,
-      &format!(
-        "{}/{}/{}",
-        llama_server_proc::BUILD_TARGET,
-        llama_server_proc::DEFAULT_VARIANT,
-        llama_server_proc::EXEC_NAME
-      ),
-    );
-    exec_path.replace('/', std::path::MAIN_SEPARATOR_STR)
+    self.setting_service.get_setting_or_default(BODHI_EXEC_PATH)
   }
 
   fn setting_service(&self) -> Arc<dyn SettingService> {

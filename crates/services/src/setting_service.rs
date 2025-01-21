@@ -84,7 +84,7 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   fn get_setting_value_with_source(&self, key: &str, default: Value) -> (Value, SettingSource);
 
-  fn get_setting_or_default(&self, key: &str, default: &str) -> String;
+  fn get_setting_or_default(&self, key: &str) -> String;
 
   fn set_setting(&self, key: &str, value: &str) -> Result<()>;
 
@@ -164,8 +164,16 @@ impl SettingService for DefaultSettingService {
     })
   }
 
-  fn get_setting_or_default(&self, key: &str, default: &str) -> String {
-    self.get_setting(key).unwrap_or_else(|| default.to_string())
+  fn get_setting_or_default(&self, key: &str) -> String {
+    self.get_setting(key).unwrap_or_else(|| {
+      let default_value = self.get_default_value(key);
+      match default_value {
+        Value::String(s) => s,
+        Value::Bool(bool) => bool.to_string(),
+        Value::Number(number) => number.to_string(),
+        _ => "<unknown>".to_string(),
+      }
+    })
   }
 
   fn set_setting(&self, key: &str, value: &str) -> Result<()> {
@@ -236,6 +244,31 @@ impl SettingService for DefaultSettingService {
           .map(serde_yaml::Value::String)
           .unwrap_or(serde_yaml::Value::Null)
       }
+      BODHI_LOGS => {
+        let bodhi_logs = self.home_dir().map(|home| {
+          home
+            .join(".cache")
+            .join("bodhi")
+            .join("logs")
+            .display()
+            .to_string()
+        });
+        bodhi_logs
+          .map(serde_yaml::Value::String)
+          .unwrap_or(serde_yaml::Value::Null)
+      }
+      HF_HOME => {
+        let default_hf_home = self.home_dir().map(|home| {
+          home
+            .join(".cache")
+            .join("huggingface")
+            .display()
+            .to_string()
+        });
+        default_hf_home
+          .map(serde_yaml::Value::String)
+          .unwrap_or(serde_yaml::Value::Null)
+      }
       BODHI_SCHEME => serde_yaml::Value::String(DEFAULT_SCHEME.to_string()),
       BODHI_HOST => serde_yaml::Value::String(DEFAULT_HOST.to_string()),
       BODHI_PORT => serde_yaml::Value::Number(DEFAULT_PORT.into()),
@@ -252,6 +285,19 @@ impl SettingService for DefaultSettingService {
           llama_server_proc::EXEC_NAME
         );
         serde_yaml::Value::String(exec_path)
+      }
+      BODHI_EXEC_LOOKUP_PATH => {
+        let lookup_path = std::env::current_dir()
+          .unwrap_or_else(|err| {
+            tracing::warn!("failed to get current directory. err: {err}");
+            PathBuf::from(".")
+              .canonicalize()
+              .expect("failed to canonicalize current directory")
+          })
+          .display()
+          .to_string()
+          .replace('/', std::path::MAIN_SEPARATOR_STR);
+        serde_yaml::Value::String(lookup_path)
       }
       BODHI_EXEC_VARIANT => {
         serde_yaml::Value::String(llama_server_proc::DEFAULT_VARIANT.to_string())
