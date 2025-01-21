@@ -1,6 +1,6 @@
-use std::str::FromStr;
-
+use crate::{AppError, ErrorType};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, PartialEq, Default, strum::EnumString, strum::Display)]
@@ -84,7 +84,21 @@ pub struct NumberRange {
   pub max: i64,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, PartialOrd)]
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum SettingsMetadataError {
+  #[error("invalid_value_type")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidValueType(SettingMetadata, serde_json::Value),
+  #[error("invalid_value")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  InvalidValue(serde_json::Value),
+  #[error("null_value")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  NullValue,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, PartialOrd, strum::Display)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum SettingMetadata {
   String,
@@ -135,6 +149,71 @@ impl SettingMetadata {
       }
     }
   }
+
+  pub fn convert(
+    self: &SettingMetadata,
+    value: serde_json::Value,
+  ) -> Result<serde_yaml::Value, SettingsMetadataError> {
+    let orig = value.clone();
+
+    if let serde_json::Value::Null = value {
+      return Err(SettingsMetadataError::NullValue);
+    }
+
+    match self {
+      SettingMetadata::String => match value {
+        serde_json::Value::String(s) => Ok(serde_yaml::Value::String(s)),
+        _ => Ok(serde_yaml::Value::String(
+          value.as_str().unwrap_or(&value.to_string()).to_string(),
+        )),
+      },
+
+      SettingMetadata::Option { options } => {
+        let option = match value {
+          serde_json::Value::String(s) => s,
+          _ => value.as_str().unwrap_or(&value.to_string()).to_string(),
+        };
+
+        if options.contains(&option) {
+          Ok(serde_yaml::Value::String(option))
+        } else {
+          Err(SettingsMetadataError::InvalidValue(orig))
+        }
+      }
+
+      metadata @ SettingMetadata::Number { min, max } => {
+        let number = match value {
+          serde_json::Value::Number(n) => serde_yaml::Number::from_str(&n.to_string()),
+          serde_json::Value::String(s) => serde_yaml::Number::from_str(&s),
+          _ => serde_yaml::Number::from_str(&value.to_string()),
+        }
+        .map_err(|_| SettingsMetadataError::InvalidValueType(metadata.clone(), orig.clone()))?;
+
+        let num_val = number
+          .as_f64()
+          .ok_or_else(|| SettingsMetadataError::InvalidValueType(metadata.clone(), orig.clone()))?;
+
+        if num_val >= *min as f64 && num_val <= *max as f64 {
+          Ok(serde_yaml::Value::Number(number))
+        } else {
+          Err(SettingsMetadataError::InvalidValue(orig))
+        }
+      }
+
+      metadata @ SettingMetadata::Boolean => match value {
+        serde_json::Value::Bool(b) => Ok(serde_yaml::Value::Bool(b)),
+        serde_json::Value::String(s) => s
+          .parse::<bool>()
+          .map(serde_yaml::Value::Bool)
+          .map_err(|_| SettingsMetadataError::InvalidValueType(metadata.clone(), orig)),
+        _ => value
+          .to_string()
+          .parse::<bool>()
+          .map(serde_yaml::Value::Bool)
+          .map_err(|_| SettingsMetadataError::InvalidValueType(metadata.clone(), orig)),
+      },
+    }
+  }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, PartialOrd)]
@@ -149,9 +228,11 @@ pub struct SettingInfo {
 #[cfg(test)]
 mod tests {
   use super::SettingMetadata;
-  use pretty_assertions::assert_eq;
+  use crate::{test_utils::setup_l10n, ApiError, FluentLocalizationService, OpenAIApiError};
+  // use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_yaml::Number;
+  use std::sync::Arc;
 
   #[rstest]
   // String metadata tests
@@ -265,5 +346,120 @@ mod tests {
   ) {
     // When parsing fails, the original value should be returned
     assert_eq!(input, metadata.parse(input.clone()));
+  }
+
+  #[rstest]
+  // String metadata tests
+  #[case::convert_string_to_string(
+    SettingMetadata::String,
+    serde_json::json!("test"),
+    serde_yaml::Value::String("test".to_string())
+  )]
+  #[case::convert_number_to_string(
+    SettingMetadata::String,
+    serde_json::json!(42),
+    serde_yaml::Value::String("42".to_string())
+  )]
+  #[case::convert_option_to_string(
+    SettingMetadata::Option { options: vec!["a".to_string(), "b".to_string()] },
+    serde_json::json!("a"),
+    serde_yaml::Value::String("a".to_string())
+  )]
+  // Number metadata tests
+  #[case::convert_number_to_number(
+    SettingMetadata::Number { min: 0, max: 100 },
+    serde_json::json!(42),
+    serde_yaml::Value::Number(serde_yaml::Number::from(42))
+  )]
+  #[case::convert_string_to_number(
+    SettingMetadata::Number { min: 0, max: 100 },
+    serde_json::json!("42"),
+    serde_yaml::Value::Number(serde_yaml::Number::from(42))
+  )]
+  #[case::convert_string_to_number(
+    SettingMetadata::Number { min: -100, max: 100 },
+    serde_json::json!(-42),
+    serde_yaml::Value::Number(serde_yaml::Number::from(-42))
+  )]
+  // Boolean metadata tests
+  #[case::convert_boolean_to_boolean(
+    SettingMetadata::Boolean,
+    serde_json::json!(true),
+    serde_yaml::Value::Bool(true)
+  )]
+  #[case::convert_string_to_boolean(
+    SettingMetadata::Boolean,
+    serde_json::json!("true"),
+    serde_yaml::Value::Bool(true)
+  )]
+  fn test_setting_metadata_convert_success(
+    #[case] metadata: SettingMetadata,
+    #[case] input: serde_json::Value,
+    #[case] expected: serde_yaml::Value,
+  ) {
+    let result = metadata.convert(input);
+    assert!(result.is_ok());
+    assert_eq!(expected, result.unwrap());
+  }
+
+  #[rstest]
+  // Invalid string for boolean
+  #[case::invalid_string_for_boolean(
+    SettingMetadata::Boolean,
+    serde_json::json!("not_a_bool"),
+    "cannot parse \"not_a_bool\" as Boolean"
+  )]
+  // Invalid type combinations
+  #[case(
+    SettingMetadata::Boolean,
+    serde_json::json!(42),
+    "cannot parse 42 as Boolean"
+  )]
+  #[case(
+    SettingMetadata::Number { min: 0, max: 100 },
+    serde_json::json!(true),
+    "cannot parse true as Number"
+  )]
+  // Number range validation
+  #[case::number_range_validation_lower(
+    SettingMetadata::Number { min: 0, max: 100 },
+    serde_json::json!(-1),
+    "passed value is not a valid value: -1"
+  )]
+  #[case::number_range_validation_upper(
+    SettingMetadata::Number { min: 0, max: 100 },
+    serde_json::json!(101),
+    "passed value is not a valid value: 101"
+  )]
+  #[case::number_range_validation_string(
+    SettingMetadata::Number { min: 0, max: 100 },
+    serde_json::json!("101"),
+    "passed value is not a valid value: \"101\""
+  )]
+  // Option validation
+  #[case(
+    SettingMetadata::Option { options: vec!["a".to_string(), "b".to_string()] },
+    serde_json::json!("c"),
+    "passed value is not a valid value: \"c\""
+  )]
+  // Null test
+  #[case(
+    SettingMetadata::String,
+    serde_json::json!(null),
+    "value is null"
+  )]
+  fn test_setting_metadata_convert_error(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[case] metadata: SettingMetadata,
+    #[case] input: serde_json::Value,
+    #[case] expected_error: &str,
+  ) {
+    let app_error = metadata.convert(input).unwrap_err();
+    let message = OpenAIApiError::from(ApiError::from(app_error))
+      .error
+      .message
+      .replace("\u{2068}", "")
+      .replace("\u{2069}", "");
+    assert_eq!(expected_error, message.trim());
   }
 }

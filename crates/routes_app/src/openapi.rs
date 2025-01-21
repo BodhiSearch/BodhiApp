@@ -8,7 +8,10 @@ use crate::{
   __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
   __path_update_token_handler, __path_user_info_handler,
 };
-use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo, SettingInfo, SettingMetadata, SettingSource};
+use objs::{
+  ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo, SettingInfo, SettingMetadata,
+  SettingSource,
+};
 use routes_oai::{
   __path_chat_completions_handler, __path_oai_models_handler, __path_ollama_model_chat_handler,
   __path_ollama_model_show_handler, __path_ollama_models_handler,

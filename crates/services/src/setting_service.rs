@@ -1,10 +1,45 @@
-use crate::{asref_impl, EnvWrapper};
-use objs::{impl_error_from, AppError, ErrorType, IoError, SerdeYamlError, SettingSource};
+use crate::{asref_impl, EnvWrapper, BODHI_HOME};
+use objs::{
+  impl_error_from, AppError, ErrorType, IoError, SerdeYamlError, SettingInfo, SettingMetadata,
+  SettingSource,
+};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
 use std::fs;
 use std::path::Path;
 use std::{path::PathBuf, sync::Arc, sync::RwLock};
+
+pub const HF_HOME: &str = "HF_HOME";
+pub const BODHI_LOGS: &str = "BODHI_LOGS";
+pub const BODHI_LOG_LEVEL: &str = "BODHI_LOG_LEVEL";
+pub const BODHI_LOG_STDOUT: &str = "BODHI_LOG_STDOUT";
+pub const BODHI_SCHEME: &str = "BODHI_SCHEME";
+pub const BODHI_HOST: &str = "BODHI_HOST";
+pub const BODHI_PORT: &str = "BODHI_PORT";
+pub const BODHI_EXEC_PATH: &str = "BODHI_EXEC_PATH";
+pub const BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
+pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
+
+pub const DEFAULT_SCHEME: &str = "http";
+pub const DEFAULT_HOST: &str = "localhost";
+pub const DEFAULT_PORT: u16 = 1135;
+pub const DEFAULT_PORT_STR: &str = "1135";
+pub const DEFAULT_LOG_LEVEL: &str = "warn";
+pub const DEFAULT_LOG_STDOUT: bool = false;
+
+pub const SETTINGS_YAML: &str = "settings.yaml";
+
+pub const SETTING_VARS: &[&str] = &[
+  BODHI_LOGS,
+  BODHI_LOG_LEVEL,
+  BODHI_LOG_STDOUT,
+  HF_HOME,
+  BODHI_SCHEME,
+  BODHI_HOST,
+  BODHI_PORT,
+  BODHI_EXEC_PATH,
+  BODHI_EXEC_LOOKUP_PATH,
+];
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -34,6 +69,12 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   fn load_default_env(&self, bodhi_home: &Path);
 
   fn home_dir(&self) -> Option<PathBuf>;
+
+  fn list(&self) -> Vec<SettingInfo>;
+
+  fn get_default_value(&self, key: &str) -> Value;
+
+  fn get_setting_metadata(&self, key: &str) -> SettingMetadata;
 
   fn get_env(&self, key: &str) -> Option<String>;
 
@@ -159,10 +200,76 @@ impl SettingService for DefaultSettingService {
       .unwrap_or((default, SettingSource::Default))
   }
 
-  fn set_setting_value(&self, key: &str, value: &Value) -> Result<()> {
+  fn set_setting_value(&self, key: &str, value: &serde_yaml::Value) -> Result<()> {
     let mut settings = self.read_settings()?;
     settings.insert(key.into(), value.clone());
     self.write_settings(&settings)
+  }
+
+  fn list(&self) -> Vec<SettingInfo> {
+    SETTING_VARS
+      .iter()
+      .map(|key| {
+        let (current_value, source) =
+          self.get_setting_value_with_source(key, self.get_default_value(key));
+        let metadata = self.get_setting_metadata(key);
+        let current_value = metadata.parse(current_value);
+
+        SettingInfo {
+          key: key.to_string(),
+          current_value,
+          default_value: self.get_default_value(key),
+          source,
+          metadata,
+        }
+      })
+      .collect()
+  }
+
+  fn get_default_value(&self, key: &str) -> serde_yaml::Value {
+    match key {
+      BODHI_HOME => {
+        let default_home = self
+          .home_dir()
+          .map(|home| home.join(".cache").join("bodhi").display().to_string());
+        default_home
+          .map(serde_yaml::Value::String)
+          .unwrap_or(serde_yaml::Value::Null)
+      }
+      BODHI_SCHEME => serde_yaml::Value::String(DEFAULT_SCHEME.to_string()),
+      BODHI_HOST => serde_yaml::Value::String(DEFAULT_HOST.to_string()),
+      BODHI_PORT => serde_yaml::Value::Number(DEFAULT_PORT.into()),
+      BODHI_LOG_LEVEL => serde_yaml::Value::String(DEFAULT_LOG_LEVEL.to_string()),
+      BODHI_LOG_STDOUT => serde_yaml::Value::Bool(DEFAULT_LOG_STDOUT),
+      BODHI_EXEC_PATH => {
+        // TODO: for development, below are the values
+        // for native, need to get it from tauri
+        // for container, need to set a convention
+        let exec_path = format!(
+          "{}/{}/{}",
+          llama_server_proc::BUILD_TARGET,
+          llama_server_proc::DEFAULT_VARIANT,
+          llama_server_proc::EXEC_NAME
+        );
+        serde_yaml::Value::String(exec_path)
+      }
+      BODHI_EXEC_VARIANT => {
+        serde_yaml::Value::String(llama_server_proc::DEFAULT_VARIANT.to_string())
+      }
+      _ => serde_yaml::Value::Null,
+    }
+  }
+
+  fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
+    match key {
+      BODHI_PORT => SettingMetadata::Number {
+        min: 1025,
+        max: 65535,
+      },
+      BODHI_LOG_LEVEL => SettingMetadata::option(&["error", "warn", "info", "debug", "trace"]),
+      BODHI_LOG_STDOUT => SettingMetadata::Boolean,
+      _ => SettingMetadata::String,
+    }
   }
 }
 
