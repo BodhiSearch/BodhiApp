@@ -66,7 +66,7 @@ impl DefaultSettingService {
     }
   }
 
-  fn read_settings(&self) -> Result<serde_yaml::Mapping> {
+  pub fn read_settings(&self) -> Result<serde_yaml::Mapping> {
     let _guard = self
       .settings_lock
       .read()
@@ -112,9 +112,13 @@ impl SettingService for DefaultSettingService {
   }
 
   fn get_setting(&self, key: &str) -> Option<String> {
-    self
-      .get_setting_value(key)
-      .and_then(|value| value.as_str().map(ToOwned::to_owned))
+    self.get_setting_value(key).and_then(|value| match value {
+      Value::String(s) => Some(s),
+      Value::Number(n) => Some(n.to_string()),
+      Value::Bool(b) => Some(b.to_string()),
+      Value::Null => None,
+      _ => None,
+    })
   }
 
   fn get_setting_or_default(&self, key: &str, default: &str) -> String {
@@ -175,12 +179,15 @@ asref_impl!(SettingService, DefaultSettingService);
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use crate::MockEnvWrapper;
+  use crate::{
+    get_setting, set_setting, test_utils::EnvWrapperStub, DefaultSettingService, MockEnvWrapper,
+    SettingService,
+  };
   use mockall::predicate::eq;
   use objs::test_utils::temp_dir;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
+  use std::{collections::HashMap, sync::Arc};
   use tempfile::TempDir;
 
   #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -192,17 +199,20 @@ mod tests {
   #[rstest]
   fn test_setting_service_read_from_file_if_env_not_set(temp_dir: TempDir) -> anyhow::Result<()> {
     let path = temp_dir.path().join("settings.yaml");
-    std::fs::write(&path, "TEST_KEY: file_value")?;
-    let mut mock_env = MockEnvWrapper::default();
-    mock_env
-      .expect_var()
-      .with(eq("TEST_KEY"))
-      .return_const(Err(std::env::VarError::NotPresent));
-    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+    std::fs::write(
+      &path,
+      r#"
+TEST_KEY: file_value
+TEST_NUMBER: 8080
+"#,
+    )?;
+    let env_wrapper = EnvWrapperStub::new(HashMap::new());
+    let service = DefaultSettingService::new(Arc::new(env_wrapper), path.clone());
     assert_eq!(
       Some("file_value".to_string()),
       service.get_setting("TEST_KEY"),
     );
+    assert_eq!(Some("8080".to_string()), service.get_setting("TEST_NUMBER"),);
     Ok(())
   }
 
