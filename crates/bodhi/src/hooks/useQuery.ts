@@ -228,20 +228,19 @@ export function useSettings() {
 
 export function useUpdateSetting() {
   const queryClient = useQueryClient();
-  return useMutationQuery<Setting, {key: string, value: string | number | boolean}>(
-    (vars) => `${ENDPOINT_SETTINGS}/${vars.key}`,
-    'put',
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('settings');
-      },
-    }
-  );
+  return useMutationQuery<
+    Setting,
+    { key: string; value: string | number | boolean }
+  >((vars) => `${ENDPOINT_SETTINGS}/${vars.key}`, 'put', {
+    onSuccess: () => {
+      queryClient.invalidateQueries('settings');
+    },
+  });
 }
 
 export function useDeleteSetting() {
   const queryClient = useQueryClient();
-  return useMutationQuery<Setting, {key: string}>(
+  return useMutationQuery<Setting, { key: string }>(
     (vars) => `${ENDPOINT_SETTINGS}/${vars.key}`,
     'delete',
     {

@@ -1,4 +1,9 @@
-import { ENDPOINT_SETTINGS, useDeleteSetting, useSettings, useUpdateSetting } from '@/hooks/useQuery';
+import {
+  ENDPOINT_SETTINGS,
+  useDeleteSetting,
+  useSettings,
+  useUpdateSetting,
+} from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { ApiError, Setting } from '@/types/models';
 import { act, renderHook, waitFor } from '@testing-library/react';
@@ -15,8 +20,8 @@ const mockSettings: Setting[] = [
     source: 'settings_file',
     metadata: {
       type: 'option',
-      options: ['error', 'warn', 'info', 'debug', 'trace']
-    }
+      options: ['error', 'warn', 'info', 'debug', 'trace'],
+    },
   },
   {
     key: 'BODHI_PORT',
@@ -27,10 +32,10 @@ const mockSettings: Setting[] = [
       type: 'number',
       range: {
         min: 1025,
-        max: 65535
-      }
-    }
-  }
+        max: 65535,
+      },
+    },
+  },
 ];
 
 const server = setupServer(
@@ -53,7 +58,7 @@ describe('Settings Hooks', () => {
   describe('useSettings', () => {
     it('fetches settings successfully', async () => {
       const { result } = renderHook(() => useSettings(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await waitFor(() => {
@@ -71,7 +76,7 @@ describe('Settings Hooks', () => {
       );
 
       const { result } = renderHook(() => useSettings(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await waitFor(() => {
@@ -83,7 +88,7 @@ describe('Settings Hooks', () => {
   describe('useUpdateSetting', () => {
     const updateData = {
       key: 'BODHI_LOG_LEVEL',
-      value: 'debug'
+      value: 'debug',
     };
 
     const mockUpdatedSetting: Setting = {
@@ -93,8 +98,8 @@ describe('Settings Hooks', () => {
       source: 'settings_file',
       metadata: {
         type: 'option',
-        options: ['error', 'warn', 'info', 'debug', 'trace']
-      }
+        options: ['error', 'warn', 'info', 'debug', 'trace'],
+      },
     };
 
     beforeEach(() => {
@@ -107,7 +112,7 @@ describe('Settings Hooks', () => {
 
     it('updates setting successfully', async () => {
       const { result } = renderHook(() => useUpdateSetting(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -124,14 +129,14 @@ describe('Settings Hooks', () => {
             ctx.status(400),
             ctx.json({
               error: 'Bad Request',
-              message: 'Invalid setting value'
+              message: 'Invalid setting value',
             })
           );
         })
       );
 
       const { result } = renderHook(() => useUpdateSetting(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -142,7 +147,9 @@ describe('Settings Hooks', () => {
         } catch (error) {
           const axiosError = error as AxiosError<ApiError>;
           expect(axiosError.response?.status).toBe(400);
-          expect(axiosError.response?.data.message).toBe('Invalid setting value');
+          expect(axiosError.response?.data.message).toBe(
+            'Invalid setting value'
+          );
         }
       });
     });
@@ -152,7 +159,7 @@ describe('Settings Hooks', () => {
 
       // Setup settings hook and wait for initial data
       const { result: settingsResult } = renderHook(() => useSettings(), {
-        wrapper
+        wrapper,
       });
 
       await waitFor(() => {
@@ -163,7 +170,7 @@ describe('Settings Hooks', () => {
 
       // Update setting
       const { result: updateResult } = renderHook(() => useUpdateSetting(), {
-        wrapper
+        wrapper,
       });
 
       await act(async () => {
@@ -181,31 +188,34 @@ describe('Settings Hooks', () => {
 
   describe('useDeleteSetting', () => {
     const deleteData = {
-      key: 'BODHI_LOG_LEVEL'
+      key: 'BODHI_LOG_LEVEL',
     };
 
     const mockDeletedSetting: Setting = {
       key: 'BODHI_LOG_LEVEL',
-      current_value: 'warn',  // Reset to default value
+      current_value: 'warn', // Reset to default value
       default_value: 'warn',
       source: 'default',
       metadata: {
         type: 'option',
-        options: ['error', 'warn', 'info', 'debug', 'trace']
-      }
+        options: ['error', 'warn', 'info', 'debug', 'trace'],
+      },
     };
 
     beforeEach(() => {
       server.use(
-        rest.delete(`*${ENDPOINT_SETTINGS}/${deleteData.key}`, (_, res, ctx) => {
-          return res(ctx.status(200), ctx.json(mockDeletedSetting));
-        })
+        rest.delete(
+          `*${ENDPOINT_SETTINGS}/${deleteData.key}`,
+          (_, res, ctx) => {
+            return res(ctx.status(200), ctx.json(mockDeletedSetting));
+          }
+        )
       );
     });
 
     it('deletes setting successfully', async () => {
       const { result } = renderHook(() => useDeleteSetting(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -217,19 +227,22 @@ describe('Settings Hooks', () => {
 
     it('handles error response', async () => {
       server.use(
-        rest.delete(`*${ENDPOINT_SETTINGS}/${deleteData.key}`, (_, res, ctx) => {
-          return res(
-            ctx.status(400),
-            ctx.json({
-              error: 'Bad Request',
-              message: 'Cannot delete required setting'
-            })
-          );
-        })
+        rest.delete(
+          `*${ENDPOINT_SETTINGS}/${deleteData.key}`,
+          (_, res, ctx) => {
+            return res(
+              ctx.status(400),
+              ctx.json({
+                error: 'Bad Request',
+                message: 'Cannot delete required setting',
+              })
+            );
+          }
+        )
       );
 
       const { result } = renderHook(() => useDeleteSetting(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -240,7 +253,9 @@ describe('Settings Hooks', () => {
         } catch (error) {
           const axiosError = error as AxiosError<ApiError>;
           expect(axiosError.response?.status).toBe(400);
-          expect(axiosError.response?.data.message).toBe('Cannot delete required setting');
+          expect(axiosError.response?.data.message).toBe(
+            'Cannot delete required setting'
+          );
         }
       });
     });
@@ -250,7 +265,7 @@ describe('Settings Hooks', () => {
 
       // Setup settings hook and wait for initial data
       const { result: settingsResult } = renderHook(() => useSettings(), {
-        wrapper
+        wrapper,
       });
 
       await waitFor(() => {
@@ -261,7 +276,7 @@ describe('Settings Hooks', () => {
 
       // Delete setting
       const { result: deleteResult } = renderHook(() => useDeleteSetting(), {
-        wrapper
+        wrapper,
       });
 
       await act(async () => {
@@ -276,4 +291,4 @@ describe('Settings Hooks', () => {
       });
     });
   });
-}); 
+});
