@@ -1,5 +1,5 @@
 use crate::{
-  EnvService, EnvServiceError, EnvWrapper, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
+  EnvService, EnvWrapper, SettingService, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
   BODHI_HOST, BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
 use objs::{
@@ -159,10 +159,6 @@ impl EnvService for EnvServiceStub {
     "/tmp/library-path.dylib".to_string()
   }
 
-  fn set_setting(&self, _key: &str, _value: &str) -> Result<(), EnvServiceError> {
-    Ok(())
-  }
-
   fn exec_lookup_path(&self) -> String {
     "/tmp".to_string()
   }
@@ -184,12 +180,8 @@ impl EnvService for EnvServiceStub {
     lock.get(key).cloned()
   }
 
-  fn get_default_value(&self, _key: &str) -> serde_yaml::Value {
-    serde_yaml::Value::Null
-  }
-
-  fn get_setting_metadata(&self, _key: &str) -> SettingMetadata {
-    SettingMetadata::String
+  fn setting_service(&self) -> Arc<dyn SettingService> {
+    todo!()
   }
 }
 

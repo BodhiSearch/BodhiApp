@@ -11,3 +11,4 @@ logout_error-session_delete_error = failed to delete session, error: {$error}
 api_token_error-app_reg_missing = app is not registered, cannot create api tokens
 api_token_error-access_token_missing = access token is not present in request
 api_token_error-refresh_token_missing = refresh token not received from auth server
+settings_error-not_found = setting with key not found: {$var_0}
