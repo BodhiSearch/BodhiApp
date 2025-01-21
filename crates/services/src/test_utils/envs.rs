@@ -2,7 +2,9 @@ use crate::{
   EnvService, EnvServiceError, EnvWrapper, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
   BODHI_HOST, BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
-use objs::{test_utils::temp_dir, AppType, EnvType, LogLevel};
+use objs::{
+  test_utils::temp_dir, AppType, EnvType, LogLevel, SettingInfo, SettingMetadata, SettingSource,
+};
 use rstest::fixture;
 use std::{
   collections::HashMap,
@@ -123,8 +125,20 @@ impl EnvService for EnvServiceStub {
     self.bodhi_home().join("test.db")
   }
 
-  fn list(&self) -> HashMap<String, String> {
-    self.envs.read().unwrap().clone()
+  fn list(&self) -> Vec<SettingInfo> {
+    self
+      .envs
+      .read()
+      .unwrap()
+      .iter()
+      .map(|(key, value)| SettingInfo {
+        key: key.clone(),
+        current_value: serde_yaml::Value::String(value.clone()),
+        default_value: serde_yaml::Value::Null,
+        source: SettingSource::Environment,
+        metadata: SettingMetadata::String,
+      })
+      .collect()
   }
 
   fn auth_url(&self) -> String {
@@ -168,6 +182,14 @@ impl EnvService for EnvServiceStub {
   fn get_env(&self, key: &str) -> Option<String> {
     let lock = self.envs.read().unwrap();
     lock.get(key).cloned()
+  }
+
+  fn get_default_value(&self, _key: &str) -> serde_yaml::Value {
+    serde_yaml::Value::Null
+  }
+
+  fn get_setting_metadata(&self, _key: &str) -> SettingMetadata {
+    SettingMetadata::String
   }
 }
 

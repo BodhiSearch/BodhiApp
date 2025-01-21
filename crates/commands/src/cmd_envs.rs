@@ -1,7 +1,7 @@
 use objs::AppError;
 use prettytable::{format::FormatBuilder, row, Cell, Row, Table};
 use services::AppService;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, derive_new::new)]
 pub struct EnvCommand {
@@ -21,12 +21,20 @@ impl EnvCommand {
     // println!();
     let mut table = Table::new();
     table.add_row(row!["ENV VARIABLE", "VALUE"]);
+    let envs = envs
+      .into_iter()
+      .map(|s| (s.key.clone(), s))
+      .collect::<HashMap<_, _>>();
     let mut keys = envs.keys().collect::<Vec<_>>();
     keys.sort();
     for key in keys {
       table.add_row(Row::from(vec![
         Cell::new(key),
-        Cell::new(envs.get(key).expect("should be present")),
+        Cell::new(
+          serde_yaml::to_string(&envs.get(key).expect("should be present").current_value)
+            .unwrap()
+            .trim(),
+        ),
       ]));
     }
     table.set_format(FormatBuilder::default().padding(2, 2).build());

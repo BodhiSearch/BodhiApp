@@ -1,6 +1,7 @@
 #![allow(unused_imports)]
 
 mod bodhi;
+mod envs;
 mod error;
 mod hf;
 mod http;
@@ -11,6 +12,7 @@ mod objs;
 mod test_data;
 
 pub use bodhi::*;
+pub use envs::*;
 pub use error::*;
 pub use hf::*;
 pub use http::*;

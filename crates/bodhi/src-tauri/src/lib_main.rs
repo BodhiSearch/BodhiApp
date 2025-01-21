@@ -47,7 +47,7 @@ pub fn _main() {
   let mut env_wrapper = DefaultEnvWrapper::default();
   set_feature_settings(&mut env_wrapper);
   let init_service = InitService::new(&env_wrapper, &ENV_TYPE);
-  let bodhi_home = match init_service.setup_bodhi_home() {
+  let (bodhi_home, source) = match init_service.setup_bodhi_home() {
     Ok(bodhi_home) => bodhi_home,
     Err(err) => {
       eprintln!(
@@ -78,6 +78,7 @@ pub fn _main() {
 
   let env_service = match DefaultEnvService::new(
     bodhi_home,
+    source,
     ENV_TYPE.clone(),
     APP_TYPE.clone(),
     AUTH_URL.to_string(),

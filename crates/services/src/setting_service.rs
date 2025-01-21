@@ -1,5 +1,5 @@
 use crate::{asref_impl, EnvWrapper};
-use objs::{impl_error_from, AppError, ErrorType, IoError, SerdeYamlError};
+use objs::{impl_error_from, AppError, ErrorType, IoError, SerdeYamlError, SettingSource};
 use serde::de::DeserializeOwned;
 use serde_yaml::Value;
 use std::fs;
@@ -40,6 +40,8 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   fn get_setting(&self, key: &str) -> Option<String>;
 
   fn get_setting_value(&self, key: &str) -> Option<Value>;
+
+  fn get_setting_value_with_source(&self, key: &str, default: Value) -> (Value, SettingSource);
 
   fn get_setting_or_default(&self, key: &str, default: &str) -> String;
 
@@ -143,6 +145,18 @@ impl SettingService for DefaultSettingService {
       .read_settings()
       .ok()
       .and_then(|settings| settings.get(key).cloned())
+  }
+
+  fn get_setting_value_with_source(&self, key: &str, default: Value) -> (Value, SettingSource) {
+    if let Ok(value) = self.env_wrapper.var(key) {
+      return (Value::String(value), SettingSource::Environment);
+    }
+    self
+      .read_settings()
+      .ok()
+      .and_then(|settings| settings.get(key).cloned())
+      .map(|value| (value, SettingSource::SettingsFile))
+      .unwrap_or((default, SettingSource::Default))
   }
 
   fn set_setting_value(&self, key: &str, value: &Value) -> Result<()> {
