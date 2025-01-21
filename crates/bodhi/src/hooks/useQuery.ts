@@ -14,6 +14,7 @@ import {
   Model,
   ModelFile,
   UserInfo,
+  Setting,
 } from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
 import {
@@ -36,6 +37,7 @@ export const ENDPOINT_MODEL_FILES_PULL = `${BODHI_API_BASE}/modelfiles/pull`;
 export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
 export const ENDPOINT_CHAT_TEMPLATES = `${BODHI_API_BASE}/chat_templates`;
 export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
+export const ENDPOINT_SETTINGS = `${BODHI_API_BASE}/settings`;
 
 export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
 
@@ -217,5 +219,35 @@ export function useDownloads(page: number, pageSize: number) {
 export function usePullModel() {
   return useMutationQuery<DownloadRequest, PullModelRequest>(
     ENDPOINT_MODEL_FILES_PULL
+  );
+}
+
+export function useSettings() {
+  return useQuery<Setting[]>('settings', ENDPOINT_SETTINGS);
+}
+
+export function useUpdateSetting() {
+  const queryClient = useQueryClient();
+  return useMutationQuery<Setting, {key: string, value: string | number | boolean}>(
+    (vars) => `${ENDPOINT_SETTINGS}/${vars.key}`,
+    'put',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('settings');
+      },
+    }
+  );
+}
+
+export function useDeleteSetting() {
+  const queryClient = useQueryClient();
+  return useMutationQuery<Setting, {key: string}>(
+    (vars) => `${ENDPOINT_SETTINGS}/${vars.key}`,
+    'delete',
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries('settings');
+      },
+    }
   );
 }

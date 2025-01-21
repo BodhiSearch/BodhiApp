@@ -106,3 +106,18 @@ export interface UserInfo {
   email?: string;
   roles: string[];
 }
+
+export interface Setting {
+  key: string;
+  current_value: string | number | boolean;
+  default_value: string | number | boolean;
+  source: 'environment' | 'settings_file' | 'default';
+  metadata: {
+    type: 'string' | 'number' | 'boolean' | 'option';
+    options?: string[];
+    range?: {
+      min: number;
+      max: number;
+    };
+  };
+}
