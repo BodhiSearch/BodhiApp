@@ -4,11 +4,11 @@ use crate::{
   __path_create_pull_request_handler, __path_create_token_handler, __path_get_alias_handler,
   __path_get_download_status_handler, __path_list_chat_templates_handler,
   __path_list_downloads_handler, __path_list_local_aliases_handler,
-  __path_list_local_modelfiles_handler, __path_list_tokens_handler, __path_logout_handler,
-  __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
+  __path_list_local_modelfiles_handler, __path_list_settings_handler, __path_list_tokens_handler,
+  __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
   __path_update_token_handler, __path_user_info_handler,
 };
-use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo};
+use objs::{ChatTemplateId, ChatTemplateType, OpenAIApiError, Repo, SettingInfo, SettingMetadata, SettingSource};
 use routes_oai::{
   __path_chat_completions_handler, __path_oai_models_handler, __path_ollama_model_chat_handler,
   __path_ollama_model_show_handler, __path_ollama_models_handler,
@@ -44,6 +44,7 @@ make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
 make_ui_endpoint!(ENDPOINT_MODELS, "models");
 make_ui_endpoint!(ENDPOINT_CHAT_TEMPLATES, "chat_templates");
 make_ui_endpoint!(ENDPOINT_TOKENS, "tokens");
+make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
@@ -120,7 +121,10 @@ For API keys, specify required scope when creating the token.
             CreateApiTokenRequest,
             ApiTokenResponse,
             ApiToken,
-            TokenStatus
+            TokenStatus,
+            SettingInfo,
+            SettingMetadata,
+            SettingSource
         ),
         responses( ),
     ),
@@ -146,6 +150,7 @@ For API keys, specify required scope when creating the token.
         ollama_models_handler,
         ollama_model_show_handler,
         ollama_model_chat_handler,
+        list_settings_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;
