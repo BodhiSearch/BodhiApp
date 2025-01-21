@@ -1,5 +1,5 @@
 use fs_extra::dir::{copy, CopyOptions};
-use objs::{test_utils::setup_l10n, AppType, EnvType, FluentLocalizationService};
+use objs::{test_utils::setup_l10n, AppType, EnvType, FluentLocalizationService, SettingSource};
 use rand::Rng;
 use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
@@ -75,6 +75,7 @@ pub fn llama2_7b_setup(
     DefaultSettingService::new(Arc::new(env_wrapper), bodhi_home.join("settings.yaml"));
   let env_service = DefaultEnvService::new(
     bodhi_home.clone(),
+    SettingSource::Environment,
     EnvType::Development,
     AppType::Container,
     "".to_string(),

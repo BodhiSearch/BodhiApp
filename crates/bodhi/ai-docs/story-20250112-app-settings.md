@@ -317,3 +317,141 @@ fn delete_setting(&self, key: &str) -> Result<()>;
 - `crates/auth_middleware/src/resources/en-US/messages.ftl`: Error messages for authorization
 - `crates/routes_app/src/resources/en-US/messages.ftl`: API endpoint error messages
 - `crates/services/src/resources/en-US/messages.ftl`: Service layer error messages
+
+## API Test Scenarios
+
+### GET /v1/bodhi/settings
+
+1. List Settings - Non-Auth Mode
+   - GIVEN the app is in non-auth mode
+   - WHEN a GET request is made to /v1/bodhi/settings
+   - THEN returns 200 with list of all settings
+   - AND includes current values, default values and metadata
+
+2. List Settings - Auth Mode (Admin)
+   - GIVEN the app is in auth mode
+   - AND user has resource_admin role
+   - WHEN a GET request is made to /v1/bodhi/settings
+   - THEN returns 200 with list of all settings
+   - AND includes current values, default values and metadata
+
+3. List Settings - Auth Mode (Non-Admin)
+   - GIVEN the app is in auth mode
+   - AND user does not have resource_admin role
+   - WHEN a GET request is made to /v1/bodhi/settings
+   - THEN returns 401 Unauthorized
+   - AND returns appropriate error message
+
+4. List Settings - With Custom Values
+   - GIVEN some settings have custom values in settings.yaml
+   - WHEN a GET request is made to /v1/bodhi/settings
+   - THEN returns 200 with list of all settings
+   - AND shows custom values as current_value
+   - AND shows system defaults as default_value
+
+5. List Settings - With Environment Overrides
+   - GIVEN some settings are overridden by environment variables
+   - WHEN a GET request is made to /v1/bodhi/settings
+   - THEN returns 200 with list of all settings
+   - AND environment values take precedence over settings.yaml
+   - AND shows system defaults as default_value
+
+### PUT /v1/bodhi/settings/{key}
+
+1. Update Setting - Valid Key (Non-Auth Mode)
+   - GIVEN the app is in non-auth mode
+   - WHEN a PUT request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - WITH valid value for the setting type
+   - THEN returns 200 with updated setting info
+   - AND setting is persisted to settings.yaml
+
+2. Update Setting - Valid Key (Auth Mode Admin)
+   - GIVEN the app is in auth mode
+   - AND user has resource_admin role
+   - WHEN a PUT request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - WITH valid value for the setting type
+   - THEN returns 200 with updated setting info
+   - AND setting is persisted to settings.yaml
+
+3. Update Setting - Valid Key (Auth Mode Non-Admin)
+   - GIVEN the app is in auth mode
+   - AND user does not have resource_admin role
+   - WHEN a PUT request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - THEN returns 401 Unauthorized
+   - AND setting remains unchanged
+
+4. Update Setting - Invalid Key
+   - GIVEN any auth mode
+   - WHEN a PUT request is made to /v1/bodhi/settings/INVALID_KEY
+   - THEN returns 404 Not Found
+   - AND returns appropriate error message
+
+5. Update Setting - Invalid Value Type
+   - GIVEN any auth mode
+   - WHEN a PUT request is made to /v1/bodhi/settings/BODHI_PORT
+   - WITH value of wrong type (e.g. string for number)
+   - THEN returns 422 Unprocessable Entity
+   - AND returns appropriate error message
+
+6. Update Setting - Out of Range Value
+   - GIVEN any auth mode
+   - WHEN a PUT request is made to /v1/bodhi/settings/BODHI_PORT
+   - WITH number outside valid range
+   - THEN returns 422 Unprocessable Entity
+   - AND returns appropriate error message
+
+7. Update Setting - Invalid Option Value
+   - GIVEN any auth mode
+   - WHEN a PUT request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - WITH value not in allowed options
+   - THEN returns 422 Unprocessable Entity
+   - AND returns appropriate error message
+
+8. Update Setting - Read Only Setting
+   - GIVEN any auth mode
+   - WHEN a PUT request is made to /v1/bodhi/settings/BODHI_VERSION
+   - THEN returns 422 Unprocessable Entity
+   - AND returns "Setting is read-only" message
+
+### DELETE /v1/bodhi/settings/{key}
+
+1. Delete Setting - Valid Key (Non-Auth Mode)
+   - GIVEN the app is in non-auth mode
+   - AND setting has custom value
+   - WHEN a DELETE request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - THEN returns 200
+   - AND setting reverts to default value
+
+2. Delete Setting - Valid Key (Auth Mode Admin)
+   - GIVEN the app is in auth mode
+   - AND user has resource_admin role
+   - AND setting has custom value
+   - WHEN a DELETE request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - THEN returns 200
+   - AND setting reverts to default value
+
+3. Delete Setting - Valid Key (Auth Mode Non-Admin)
+   - GIVEN the app is in auth mode
+   - AND user does not have resource_admin role
+   - WHEN a DELETE request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - THEN returns 401 Unauthorized
+   - AND setting remains unchanged
+
+4. Delete Setting - Invalid Key
+   - GIVEN any auth mode
+   - WHEN a DELETE request is made to /v1/bodhi/settings/INVALID_KEY
+   - THEN returns 404 Not Found
+   - AND returns appropriate error message
+
+5. Delete Setting - Read Only Setting
+   - GIVEN any auth mode
+   - WHEN a DELETE request is made to /v1/bodhi/settings/BODHI_VERSION
+   - THEN returns 422 Unprocessable Entity
+   - AND returns "Setting is read-only" message
+
+6. Delete Setting - No Custom Value
+   - GIVEN any auth mode
+   - AND setting has no custom value
+   - WHEN a DELETE request is made to /v1/bodhi/settings/BODHI_LOG_LEVEL
+   - THEN returns 200
+   - AND setting remains at default value

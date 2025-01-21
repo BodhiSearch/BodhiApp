@@ -2,7 +2,7 @@ use crate::{
   EnvWrapper, SettingService, ALIASES_DIR, BODHI_HOME, BODHI_LOGS, HF_HOME, LOGS_DIR, MODELS_YAML,
   PROD_DB,
 };
-use objs::EnvType;
+use objs::{EnvType, SettingSource};
 use std::{
   fs::{self, File},
   io,
@@ -38,16 +38,16 @@ pub struct InitService<'a> {
 }
 
 impl InitService<'_> {
-  pub fn setup_bodhi_home(self) -> Result<PathBuf, InitServiceError> {
-    let bodhi_home = self.find_bodhi_home()?;
+  pub fn setup_bodhi_home(self) -> Result<(PathBuf, SettingSource), InitServiceError> {
+    let (bodhi_home, source) = self.find_bodhi_home()?;
     self.create_bodhi_home_dirs(&bodhi_home)?;
-    Ok(bodhi_home)
+    Ok((bodhi_home, source))
   }
 
-  fn find_bodhi_home(&self) -> Result<PathBuf, InitServiceError> {
+  fn find_bodhi_home(&self) -> Result<(PathBuf, SettingSource), InitServiceError> {
     let value = self.env_wrapper.var(BODHI_HOME);
     let bodhi_home = match value {
-      Ok(value) => PathBuf::from(value),
+      Ok(value) => (PathBuf::from(value), SettingSource::Environment),
       Err(_) => {
         let home_dir = self.env_wrapper.home_dir();
         match home_dir {
@@ -57,7 +57,7 @@ impl InitService<'_> {
             } else {
               "bodhi-dev"
             };
-            home_dir.join(".cache").join(path)
+            (home_dir.join(".cache").join(path), SettingSource::Default)
           }
           None => return Err(InitServiceError::BodhiHomeNotFound),
         }
@@ -159,6 +159,7 @@ mod tests {
   };
   use crate::{MockSettingService, HF_HOME};
   use mockall::predicate::eq;
+  use objs::SettingSource;
   use objs::{
     test_utils::{empty_bodhi_home, temp_dir},
     EnvType,
@@ -187,8 +188,9 @@ mod tests {
       .with(eq(BODHI_HOME))
       .returning(move |_| Ok(bodhi_home_str.clone()));
     let init_service = InitService::new(&mock, &EnvType::Development);
-    let result = init_service.setup_bodhi_home()?;
+    let (result, source) = init_service.setup_bodhi_home()?;
     assert_eq!(bodhi_home, result);
+    assert_eq!(SettingSource::Environment, source);
     Ok(())
   }
 
@@ -202,8 +204,9 @@ mod tests {
     let home_dir = temp_dir.path().to_path_buf();
     mock.expect_home_dir().times(1).return_const(Some(home_dir));
     let init_service = InitService::new(&mock, &EnvType::Development);
-    let result = init_service.setup_bodhi_home()?;
+    let (result, source) = init_service.setup_bodhi_home()?;
     assert_eq!(temp_dir.path().join(".cache").join("bodhi-dev"), result);
+    assert_eq!(SettingSource::Default, source);
     Ok(())
   }
 
