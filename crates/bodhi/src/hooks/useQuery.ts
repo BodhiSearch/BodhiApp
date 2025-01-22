@@ -1,29 +1,29 @@
-import {
-  useQuery as useReactQuery,
-  useMutation,
-  useQueryClient,
-  UseQueryOptions,
-  UseMutationOptions,
-  UseMutationResult,
-  UseQueryResult,
-} from 'react-query';
 import apiClient from '@/lib/apiClient';
-import { AxiosError, AxiosResponse } from 'axios';
+import { AliasFormData } from '@/schemas/alias';
+import {
+  DownloadRequest,
+  ListDownloadsResponse,
+  PullModelRequest,
+} from '@/types/api';
 import {
   AppInfo,
+  ErrorResponse,
   FeaturedModel,
   Model,
   ModelFile,
-  UserInfo,
   Setting,
-  ErrorResponse,
+  UserInfo,
 } from '@/types/models';
-import { AliasFormData } from '@/schemas/alias';
+import { AxiosError, AxiosResponse } from 'axios';
 import {
-  ListDownloadsResponse,
-  DownloadRequest,
-  PullModelRequest,
-} from '@/types/api';
+  useMutation,
+  UseMutationOptions,
+  UseMutationResult,
+  useQueryClient,
+  UseQueryOptions,
+  UseQueryResult,
+  useQuery as useReactQuery,
+} from 'react-query';
 
 // backend endpoints
 export const ENDPOINT_APP_LOGIN = '/app/login';
@@ -113,12 +113,24 @@ type SetupRequest = {
   authz: boolean;
 };
 
-export function useSetupApp(): UseMutationResult<
+export function useSetupApp(options?: {
+  onSuccess?: (appInfo: AppInfo) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
   AxiosResponse<AppInfo>,
   AxiosError<ErrorResponse>,
   SetupRequest
 > {
-  return useMutationQuery<AppInfo, SetupRequest>(ENDPOINT_APP_SETUP);
+  return useMutationQuery<AppInfo, SetupRequest>(ENDPOINT_APP_SETUP, 'post', {
+    onSuccess: (response) => {
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message =
+        error?.response?.data?.error?.message || 'Failed to setup app';
+      options?.onError?.(message);
+    },
+  });
 }
 
 export function useModelFiles(
@@ -164,18 +176,52 @@ export function useModel(alias: string) {
   );
 }
 
-export function useCreateModel() {
-  return useMutationQuery<Model, AliasFormData>(ENDPOINT_MODELS);
+export function useCreateModel(options?: {
+  onSuccess?: (model: Model) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<Model>,
+  AxiosError<ErrorResponse>,
+  AliasFormData
+> {
+  const queryClient = useQueryClient();
+  return useMutationQuery<Model, AliasFormData>(ENDPOINT_MODELS, 'post', {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries(ENDPOINT_MODELS);
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message =
+        error?.response?.data?.error?.message || 'Failed to create model';
+      options?.onError?.(message);
+    },
+  });
 }
 
-export function useUpdateModel(alias: string) {
+export function useUpdateModel(
+  alias: string,
+  options?: {
+    onSuccess?: (model: Model) => void;
+    onError?: (message: string) => void;
+  }
+): UseMutationResult<
+  AxiosResponse<Model>,
+  AxiosError<ErrorResponse>,
+  AliasFormData
+> {
   const queryClient = useQueryClient();
   return useMutationQuery<Model, AliasFormData>(
     `${ENDPOINT_MODELS}/${alias}`,
     'put',
     {
-      onSuccess: () => {
+      onSuccess: (response) => {
         queryClient.invalidateQueries(['model', alias]);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message =
+          error?.response?.data?.error?.message || 'Failed to update model';
+        options?.onError?.(message);
       },
     }
   );
@@ -232,9 +278,30 @@ export function useDownloads(page: number, pageSize: number) {
   );
 }
 
-export function usePullModel() {
+export function usePullModel(options?: {
+  onSuccess?: (response: DownloadRequest) => void;
+  onError?: (message: string, code?: string) => void;
+}): UseMutationResult<
+  AxiosResponse<DownloadRequest>,
+  AxiosError<ErrorResponse>,
+  PullModelRequest
+> {
+  const queryClient = useQueryClient();
   return useMutationQuery<DownloadRequest, PullModelRequest>(
-    ENDPOINT_MODEL_FILES_PULL
+    ENDPOINT_MODEL_FILES_PULL,
+    'post',
+    {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries('downloads');
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message =
+          error?.response?.data?.error?.message || 'Failed to pull model';
+        const code = error?.response?.data?.error?.code;
+        options?.onError?.(message, code);
+      },
+    }
   );
 }
 
@@ -245,7 +312,10 @@ export function useSettings(): UseQueryResult<
   return useQuery<Setting[]>('settings', ENDPOINT_SETTINGS);
 }
 
-export function useUpdateSetting(): UseMutationResult<
+export function useUpdateSetting(options?: {
+  onSuccess?: () => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
   AxiosResponse<Setting>,
   AxiosError<ErrorResponse>,
   { key: string; value: string | number | boolean }
@@ -257,17 +327,24 @@ export function useUpdateSetting(): UseMutationResult<
   >((vars) => `${ENDPOINT_SETTINGS}/${vars.key}`, 'put', {
     onSuccess: () => {
       queryClient.invalidateQueries('settings');
+      options?.onSuccess?.();
     },
     onError: (error: AxiosError<ErrorResponse>) => {
-      if (error?.response?.data?.error?.message) {
-        throw new Error(error.response.data.error.message);
-      }
-      throw error;
+      const message =
+        error?.response?.data?.error?.message || 'Failed to update setting';
+      options?.onError?.(message);
     },
   });
 }
 
-export function useDeleteSetting() {
+export function useDeleteSetting(options?: {
+  onSuccess?: () => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<Setting>,
+  AxiosError<ErrorResponse>,
+  { key: string }
+> {
   const queryClient = useQueryClient();
   return useMutationQuery<Setting, { key: string }>(
     (vars) => `${ENDPOINT_SETTINGS}/${vars.key}`,
@@ -275,6 +352,12 @@ export function useDeleteSetting() {
     {
       onSuccess: () => {
         queryClient.invalidateQueries('settings');
+        options?.onSuccess?.();
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message =
+          error?.response?.data?.error?.message || 'Failed to delete setting';
+        options?.onError?.(message);
       },
     }
   );

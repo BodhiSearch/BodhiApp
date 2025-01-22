@@ -308,11 +308,11 @@ describe('EditSettingDialog', () => {
     server.use(
       rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, (_, res, ctx) => {
         return res(
-          ctx.status(500), 
-          ctx.json({ 
-            error: { 
-              message: 'Server error' 
-            } 
+          ctx.status(500),
+          ctx.json({
+            error: {
+              message: 'Server error'
+            }
           })
         );
       })
@@ -353,5 +353,79 @@ describe('EditSettingDialog', () => {
 
     await user.click(screen.getByRole('button', { name: /cancel/i }));
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('handles network error correctly', async () => {
+    const user = userEvent.setup();
+
+    // Simulate a network error
+    server.use(
+      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, (_, res) => {
+        // Return error without response data to simulate network failure
+        return res.networkError('Failed to connect');
+      })
+    );
+
+    render(
+      <EditSettingDialog
+        setting={mockSettings.string}
+        open={true}
+        onOpenChange={mockOnOpenChange}
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    await user.clear(screen.getByRole('textbox'));
+    await user.type(screen.getByRole('textbox'), '/new/path');
+    await user.click(screen.getByRole('button', { name: /save/i }));
+
+    // Verify error toast is shown with default error message
+    expect(mockToast).toHaveBeenCalledWith({
+      title: "Error",
+      description: "Failed to update setting",
+      variant: "destructive"
+    });
+
+    // Verify dialog stays open
+    expect(mockOnOpenChange).not.toHaveBeenCalled();
+  });
+
+  // This test verifies that the loading state is handled correctly during the request
+  it('shows loading state during update', async () => {
+    const user = userEvent.setup();
+
+    // Add artificial delay to the response
+    server.use(
+      rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, async (_, res, ctx) => {
+        return res(ctx.delay(100), ctx.json(mockSettings.string));
+      })
+    );
+
+    render(
+      <EditSettingDialog
+        setting={mockSettings.string}
+        open={true}
+        onOpenChange={mockOnOpenChange}
+      />,
+      { wrapper: createWrapper() }
+    );
+
+    await user.clear(screen.getByRole('textbox'));
+    await user.type(screen.getByRole('textbox'), '/new/path');
+
+    const saveButton = screen.getByRole('button', { name: /save/i });
+    await user.click(saveButton);
+
+    // Verify loading state
+    expect(saveButton).toBeDisabled();
+    expect(screen.getByText('Updating...')).toBeInTheDocument();
+
+    // Wait for success
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith({
+        title: "Success",
+        description: "Setting updated successfully"
+      });
+    });
   });
 }); 

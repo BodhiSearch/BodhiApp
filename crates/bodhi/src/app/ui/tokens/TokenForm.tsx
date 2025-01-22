@@ -13,7 +13,6 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { TokenResponse, useCreateToken } from '@/hooks/useApiTokens';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AxiosError } from 'axios';
 import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -30,8 +29,6 @@ interface TokenFormProps {
 
 export function TokenForm({ onTokenCreated }: TokenFormProps) {
   const { toast } = useToast();
-  const { mutateAsync: createToken, isLoading } = useCreateToken();
-
   const form = useForm<TokenFormData>({
     resolver: zodResolver(createTokenSchema),
     mode: 'onSubmit',
@@ -40,9 +37,8 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
     },
   });
 
-  const onSubmit = async (data: TokenFormData) => {
-    try {
-      const { data: response } = await createToken(data);
+  const { mutate: createToken, isLoading } = useCreateToken({
+    onSuccess: (response) => {
       onTokenCreated(response);
       form.reset();
       toast({
@@ -51,21 +47,19 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
         variant: 'default',
         duration: 5000,
       });
-    } catch (error) {
-      console.error('Error creating token:', error);
-      let errorMessage = 'Failed to generate token. Please try again.';
-
-      if (error instanceof AxiosError && error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
+    },
+    onError: (message) => {
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: message,
         variant: 'destructive',
         duration: 5000,
       });
-    }
+    },
+  });
+
+  const onSubmit = (data: TokenFormData) => {
+    createToken(data);
   };
 
   return (

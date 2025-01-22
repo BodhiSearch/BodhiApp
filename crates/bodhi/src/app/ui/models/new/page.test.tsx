@@ -81,7 +81,7 @@ describe('CreateAliasPage', () => {
       rest.post(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
         return res(
           ctx.status(200),
-          ctx.json({ message: 'Model created successfully' })
+          ctx.json({ alias: 'test-alias' })
         );
       })
     );

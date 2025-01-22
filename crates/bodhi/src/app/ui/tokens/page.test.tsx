@@ -261,7 +261,7 @@ describe('token status update', () => {
     await waitFor(() => {
       expect(toast).toHaveBeenCalledWith({
         title: 'Error',
-        description: 'Failed to update token status',
+        description: 'Test Error',
         variant: 'destructive',
       });
     });

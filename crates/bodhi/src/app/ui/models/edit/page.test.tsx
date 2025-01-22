@@ -88,10 +88,10 @@ describe('EditAliasPage', () => {
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
         return res(ctx.json({ data: [] }));
       }),
-      rest.put(`*${ENDPOINT_MODELS}/:alias`, (_, res, ctx) => {
+      rest.put(`*${ENDPOINT_MODELS}/test-alias`, (_, res, ctx) => {
         return res(
           ctx.status(200),
-          ctx.json({ message: 'Model updated successfully' })
+          ctx.json({ alias: 'test-alias' })
         );
       })
     );

@@ -36,51 +36,60 @@ export function EditSettingDialog({
 }: EditSettingDialogProps) {
   const [value, setValue] = useState(String(setting.current_value));
   const { toast } = useToast();
-  const updateSetting = useUpdateSetting();
 
-  const handleSubmit = async () => {
-    try {
-      let parsedValue: string | number | boolean = value;
-
-      // Parse value based on type
-      if (setting.metadata.type === 'number') {
-        parsedValue = Number(value);
-        if (isNaN(parsedValue)) {
-          throw new Error('Invalid number');
-        }
-        // Validate range if specified
-        if (setting.metadata.range) {
-          if (
-            parsedValue < setting.metadata.range.min ||
-            parsedValue > setting.metadata.range.max
-          ) {
-            throw new Error(
-              `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`
-            );
-          }
-        }
-      } else if (setting.metadata.type === 'boolean') {
-        parsedValue = value === 'true';
-      }
-
-      await updateSetting.mutateAsync({
-        key: setting.key,
-        value: parsedValue,
-      });
-
+  const updateSetting = useUpdateSetting({
+    onSuccess: () => {
       toast({
         title: 'Success',
         description: 'Setting updated successfully',
       });
       onOpenChange(false);
-    } catch (error) {
+    },
+    onError: (message) => {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to update setting',
+        description: message,
         variant: 'destructive',
       });
+    },
+  });
+
+  const handleSubmit = async () => {
+    let parsedValue: string | number | boolean = value;
+
+    // Parse value based on type
+    if (setting.metadata.type === 'number') {
+      parsedValue = Number(value);
+      if (isNaN(parsedValue)) {
+        toast({
+          title: 'Error',
+          description: 'Invalid number',
+          variant: 'destructive',
+        });
+        return;
+      }
+      // Validate range if specified
+      if (setting.metadata.range) {
+        if (
+          parsedValue < setting.metadata.range.min ||
+          parsedValue > setting.metadata.range.max
+        ) {
+          toast({
+            title: 'Error',
+            description: `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`,
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
+    } else if (setting.metadata.type === 'boolean') {
+      parsedValue = value === 'true';
     }
+
+    updateSetting.mutate({
+      key: setting.key,
+      value: parsedValue,
+    });
   };
 
   const renderInput = () => {
