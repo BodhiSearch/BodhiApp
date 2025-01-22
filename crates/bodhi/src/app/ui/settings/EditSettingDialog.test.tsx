@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { EditSettingDialog } from './EditSettingDialog';
+import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
 import { Setting } from '@/types/models';
 import { createWrapper } from '@/tests/wrapper';

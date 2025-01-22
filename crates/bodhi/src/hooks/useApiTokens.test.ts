@@ -5,7 +5,7 @@ import {
   useListTokens,
   useUpdateToken,
 } from '@/hooks/useApiTokens';
-import { API_TOKENS_ENDPOINT } from './useQuery';
+import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { ApiError } from '@/types/models';
 import { act, renderHook, waitFor } from '@testing-library/react';

@@ -15,6 +15,7 @@ import {
   FlaskRound,
   Settings,
   FileJson,
+  Cog,
 } from 'lucide-react';
 
 const navigationItems: NavigationItem[] = [
@@ -71,6 +72,12 @@ const navigationItems: NavigationItem[] = [
     title: 'Settings',
     icon: Settings,
     items: [
+      {
+        title: 'App Settings',
+        href: '/ui/settings',
+        description: 'Manage application settings',
+        icon: Cog,
+      },
       {
         title: 'API Tokens',
         href: '/ui/tokens/',

@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import SettingsPage, { SettingsPageContent } from './page';
+import { SettingsPageContent } from '@/app/ui/settings/page';
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
 import { Setting } from '@/types/models';
 import { createWrapper } from '@/tests/wrapper';
@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { FileText, Settings, Terminal } from 'lucide-react';
 
 // Mock EditSettingDialog component
-vi.mock('./components/EditSettingDialog', () => ({
+vi.mock('@/app/ui/settings/EditSettingDialog', () => ({
   EditSettingDialog: ({ setting, open, onOpenChange }: any) => (
     open ? (
       <div role="dialog" data-testid="mock-edit-dialog">
@@ -78,34 +78,42 @@ afterEach(() => server.resetHandlers());
 const TEST_CONFIG = {
   app: {
     title: 'Test App Config',
-    description: 'Test app settings',
+    description: 'Test app settings description',
     icon: Settings,
     settings: [
       {
         key: 'BODHI_HOME',
         editable: false,
+        description: 'Test home directory',
+      },
+      {
+        key: 'BODHI_PORT',
+        editable: false,
+        description: 'Server Port',
       }
     ]
   },
   logging: {
     title: 'Test Logging Config',
-    description: 'Test logging settings',
+    description: 'Test logging settings description',
     icon: FileText,
     settings: [
       {
         key: 'BODHI_LOG_LEVEL',
         editable: false,
+        description: 'Test log level',
       }
     ]
   },
   execution: {
     title: 'Test Execution Config',
-    description: 'Test execution settings',
+    description: 'Test execution settings description',
     icon: Terminal,
     settings: [
       {
         key: 'BODHI_EXEC_PATH',
         editable: true,
+        description: 'Test execution path',
       }
     ]
   }
@@ -170,8 +178,8 @@ describe('SettingsPageContent', () => {
 
 describe('SettingsPage', () => {
   it('shows loading skeleton initially', () => {
-    render(<SettingsPage />, { wrapper: createWrapper() });
-    expect(screen.getAllByTestId('settings-skeleton')).toHaveLength(5); // 5 setting groups
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+    expect(screen.getAllByTestId('settings-skeleton')).toHaveLength(3); // 3 setting groups
   });
 
   it('shows error when api fails', async () => {
@@ -184,20 +192,20 @@ describe('SettingsPage', () => {
       })
     );
 
-    render(<SettingsPage />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
     expect(await screen.findByText(/Failed to load settings/)).toBeInTheDocument();
   });
 
   it('displays settings grouped by category', async () => {
-    render(<SettingsPage />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
     // Wait for data to load
     await screen.findByText('Application Settings');
 
     // Check group titles
-    expect(screen.getByText('App Configuration')).toBeInTheDocument();
-    expect(screen.getByText('Logging Configuration')).toBeInTheDocument();
-    expect(screen.getByText('Server Configuration')).toBeInTheDocument();
+    expect(screen.getByText('Test App Config')).toBeInTheDocument();
+    expect(screen.getByText('Test Logging Config')).toBeInTheDocument();
+    expect(screen.getByText('Test Execution Config')).toBeInTheDocument();
 
     // Check setting values
     expect(screen.getByText('BODHI_HOME')).toBeInTheDocument();
@@ -205,7 +213,7 @@ describe('SettingsPage', () => {
   });
 
   it('shows setting source badges', async () => {
-    render(<SettingsPage />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
     await screen.findByText('Application Settings');
 
     // Use getAllByText for badges since there might be multiple
@@ -218,7 +226,7 @@ describe('SettingsPage', () => {
   });
 
   it('shows edit button only for BODHI_EXEC_PATH', async () => {
-    render(<SettingsPage />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
     await screen.findByText('BODHI_EXEC_PATH');
 
     const editButtons = screen.getAllByRole('button', { name: /edit setting/i });
@@ -227,7 +235,7 @@ describe('SettingsPage', () => {
 
   it('opens and closes edit dialog', async () => {
     const user = userEvent.setup();
-    render(<SettingsPage />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
     // Wait for content and click edit
     await screen.findByText('BODHI_EXEC_PATH');

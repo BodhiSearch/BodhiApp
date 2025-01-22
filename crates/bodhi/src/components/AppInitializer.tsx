@@ -1,11 +1,11 @@
 'use client';
 
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAppInfo, useUser } from '@/hooks/useQuery';
+import { AppStatus, ErrorResponse } from '@/types/models';
+import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2 } from 'lucide-react';
-import { ApiError, AppStatus } from '@/types/models';
 
 interface AppInitializerProps {
   children?: ReactNode;
@@ -81,7 +81,8 @@ export default function AppInitializer({
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(appError.response?.data as ApiError)?.message || appError.message}
+          {(appError.response?.data as ErrorResponse)?.error?.message ||
+            appError.message}
         </AlertDescription>
       </Alert>
     );
@@ -92,7 +93,8 @@ export default function AppInitializer({
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(userError.response?.data as ApiError)?.message || userError.message}
+          {(userError.response?.data as ErrorResponse)?.error?.message ||
+            userError.message}
         </AlertDescription>
       </Alert>
     );

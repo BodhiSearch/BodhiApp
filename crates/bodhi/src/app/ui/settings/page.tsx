@@ -1,7 +1,10 @@
 'use client';
 
+import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
+import AppInitializer from '@/components/AppInitializer';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -10,36 +13,28 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { useSettings } from '@/hooks/useQuery';
 import { cn } from '@/lib/utils';
+import { Setting } from '@/types/models';
 import {
   AlertCircle,
   Database,
   FileText,
   Hash,
-  Info,
   List,
+  LucideIcon,
+  Pencil,
   Server,
   Settings,
   Terminal,
   ToggleLeft,
-  Pencil,
-  LucideIcon,
 } from 'lucide-react';
-import { EditSettingDialog } from './components/EditSettingDialog';
-import { Button } from '@/components/ui/button';
 import { useState } from 'react';
-import { Setting } from '@/types/models';
 
 type SettingConfig = {
   key: string;
   editable: boolean;
+  description?: string;
 };
 
 type GroupConfig = {
@@ -62,6 +57,7 @@ const SETTINGS_CONFIG: SettingsConfig = {
       {
         key: 'BODHI_HOME',
         editable: false,
+        description: 'The home directory for Bodhi application.',
       },
     ],
   },
@@ -73,6 +69,7 @@ const SETTINGS_CONFIG: SettingsConfig = {
       {
         key: 'HF_HOME',
         editable: false,
+        description: 'Home directory for Hugging Face model files.',
       },
     ],
   },
@@ -84,10 +81,12 @@ const SETTINGS_CONFIG: SettingsConfig = {
       {
         key: 'BODHI_EXEC_LOOKUP_PATH',
         editable: false,
+        description: 'Path to look for Llama.cpp executables.',
       },
       {
         key: 'BODHI_EXEC_PATH',
         editable: true,
+        description: 'Path to the Llama.cpp executable.',
       },
     ],
   },
@@ -99,14 +98,17 @@ const SETTINGS_CONFIG: SettingsConfig = {
       {
         key: 'BODHI_SCHEME',
         editable: false,
+        description: 'Scheme used for server connection (http/https).',
       },
       {
         key: 'BODHI_HOST',
         editable: false,
+        description: 'Host address for the server.',
       },
       {
         key: 'BODHI_PORT',
         editable: false,
+        description: 'Port number for the server.',
       },
     ],
   },
@@ -118,14 +120,17 @@ const SETTINGS_CONFIG: SettingsConfig = {
       {
         key: 'BODHI_LOGS',
         editable: false,
+        description: 'Directory for log files.',
       },
       {
         key: 'BODHI_LOG_LEVEL',
         editable: false,
+        description: 'Level of logging (e.g., info, debug).',
       },
       {
         key: 'BODHI_LOG_STDOUT',
         editable: false,
+        description: 'Whether to log to standard output.',
       },
     ],
   },
@@ -184,7 +189,7 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
               <CardDescription>{group.description}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {group.settings.map(({ key, editable }) => {
+              {group.settings.map(({ key, editable, description }) => {
                 const setting = settings?.find((s) => s.key === key);
                 if (!setting) return null;
 
@@ -226,6 +231,11 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                       <div className="text-xs text-muted-foreground/60">
                         Default: {String(setting.default_value)}
                       </div>
+                      {description && (
+                        <div className="text-sm text-primary font-semibold">
+                          {description}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{setting.metadata.type}</Badge>
@@ -240,29 +250,6 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                           <span className="sr-only">Edit setting</span>
                         </Button>
                       )}
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <div className="space-y-1">
-                              <p>Type: {setting.metadata.type}</p>
-                              {setting.metadata.range && (
-                                <p>
-                                  Range: {setting.metadata.range.min} -{' '}
-                                  {setting.metadata.range.max}
-                                </p>
-                              )}
-                              {setting.metadata.options && (
-                                <p>
-                                  Options: {setting.metadata.options.join(', ')}
-                                </p>
-                              )}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
                     </div>
                   </div>
                 );
@@ -332,5 +319,9 @@ function SettingsSkeleton({ config }: { config: SettingsConfig }) {
 }
 
 export default function SettingsPage() {
-  return <SettingsPageContent config={SETTINGS_CONFIG} />;
+  return (
+    <AppInitializer authenticated={true} allowedStatus="ready">
+      <SettingsPageContent config={SETTINGS_CONFIG} />
+    </AppInitializer>
+  );
 }
