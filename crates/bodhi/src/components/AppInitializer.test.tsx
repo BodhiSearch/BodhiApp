@@ -85,8 +85,8 @@ describe('AppInitializer loading and error handling', () => {
 
   // Test error handling
   it.each([
-    { scenario: 'app/info error', setup: [{ endpoint: `*${ENDPOINT_APP_INFO}`, response: { message: 'API Error' }, status: 500 }, { endpoint: `*${ENDPOINT_USER_INFO}`, response: { logged_in: true }, status: 200 }] },
-    { scenario: 'app/info success, user error', setup: [{ endpoint: `*${ENDPOINT_APP_INFO}`, response: { status: 'ready', authz: true }, status: 200 }, { endpoint: `*${ENDPOINT_USER_INFO}`, response: { message: 'API Error' }, status: 500 }] },
+    { scenario: 'app/info error', setup: [{ endpoint: `*${ENDPOINT_APP_INFO}`, response: { error: { message: 'API Error' } }, status: 500 }, { endpoint: `*${ENDPOINT_USER_INFO}`, response: { logged_in: true }, status: 200 }] },
+    { scenario: 'app/info success, user error', setup: [{ endpoint: `*${ENDPOINT_APP_INFO}`, response: { status: 'ready', authz: true }, status: 200 }, { endpoint: `*${ENDPOINT_USER_INFO}`, response: { error: { message: 'API Error' } }, status: 500 }] },
   ])('handles error $scenario', async ({ scenario, setup }) => {
     server.use(
       ...setup.map(({ endpoint, response, status }) =>
