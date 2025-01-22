@@ -5,6 +5,7 @@ import {
   UseQueryOptions,
   UseMutationOptions,
   UseMutationResult,
+  UseQueryResult,
 } from 'react-query';
 import apiClient from '@/lib/apiClient';
 import { AxiosError, AxiosResponse } from 'axios';
@@ -15,6 +16,7 @@ import {
   ModelFile,
   UserInfo,
   Setting,
+  ErrorResponse,
 } from '@/types/models';
 import { AliasFormData } from '@/schemas/alias';
 import {
@@ -53,9 +55,9 @@ export function useQuery<T>(
   endpoint: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   params?: Record<string, any>,
-  options?: UseQueryOptions<T, AxiosError>
-) {
-  return useReactQuery<T, AxiosError>(
+  options?: UseQueryOptions<T, AxiosError<ErrorResponse>>
+): UseQueryResult<T, AxiosError<ErrorResponse>> {
+  return useReactQuery<T, AxiosError<ErrorResponse>>(
     key,
     async () => {
       const { data } = await apiClient.get<T>(endpoint, {
@@ -73,11 +75,11 @@ export function useQuery<T>(
 export function useMutationQuery<T, V>(
   endpoint: string | ((variables: V) => string),
   method: 'post' | 'put' | 'delete' = 'post',
-  options?: UseMutationOptions<AxiosResponse<T>, AxiosError, V>
-): UseMutationResult<AxiosResponse<T>, AxiosError, V> {
+  options?: UseMutationOptions<AxiosResponse<T>, AxiosError<ErrorResponse>, V>
+): UseMutationResult<AxiosResponse<T>, AxiosError<ErrorResponse>, V> {
   const queryClient = useQueryClient();
 
-  return useMutation<AxiosResponse<T>, AxiosError, V>(
+  return useMutation<AxiosResponse<T>, AxiosError<ErrorResponse>, V>(
     async (variables) => {
       const _endpoint =
         typeof endpoint === 'function' ? endpoint(variables) : endpoint;
@@ -222,11 +224,18 @@ export function usePullModel() {
   );
 }
 
-export function useSettings() {
+export function useSettings(): UseQueryResult<
+  Setting[],
+  AxiosError<ErrorResponse>
+> {
   return useQuery<Setting[]>('settings', ENDPOINT_SETTINGS);
 }
 
-export function useUpdateSetting() {
+export function useUpdateSetting(): UseMutationResult<
+  Setting,
+  AxiosError<ErrorResponse>,
+  { key: string; value: string | number | boolean }
+> {
   const queryClient = useQueryClient();
   return useMutationQuery<
     Setting,
@@ -234,6 +243,12 @@ export function useUpdateSetting() {
   >((vars) => `${ENDPOINT_SETTINGS}/${vars.key}`, 'put', {
     onSuccess: () => {
       queryClient.invalidateQueries('settings');
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      if (error?.response?.data?.error?.message) {
+        throw new Error(error.response.data.error.message);
+      }
+      throw error;
     },
   });
 }

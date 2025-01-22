@@ -433,7 +433,12 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
       current_value: serde_yaml::Value::String("debug".to_string()),
       default_value: serde_yaml::Value::String(DEFAULT_LOG_LEVEL.to_string()),
       source: SettingSource::Environment,
-      metadata: SettingMetadata::option(&["error", "warn", "info", "debug", "trace"]),
+      metadata: SettingMetadata::option(
+        ["error", "warn", "info", "debug", "trace"]
+          .iter()
+          .map(|s| s.to_string())
+          .collect(),
+      ),
     };
     assert_eq!(
       expected_log_level,
