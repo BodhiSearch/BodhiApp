@@ -49,7 +49,23 @@ export function TokenPageContent() {
     direction: 'desc',
   });
   const { toast } = useToast();
-  const updateToken = useUpdateToken();
+
+  const { mutate: updateToken } = useUpdateToken({
+    onSuccess: (token) => {
+      toast({
+        title: 'Token Updated',
+        description: `Token status changed to ${token.status}`,
+      });
+    },
+    onError: (message) => {
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const { data: tokensData, isLoading: tokensLoading } = useListTokens(
     page,
     pageSize,
@@ -58,24 +74,12 @@ export function TokenPageContent() {
     }
   );
 
-  const handleStatusChange = async (token: ApiToken, checked: boolean) => {
-    try {
-      await updateToken.mutateAsync({
-        id: token.id,
-        name: token.name,
-        status: checked ? 'active' : 'inactive',
-      });
-      toast({
-        title: 'Token Updated',
-        description: `Token status changed to ${checked ? 'active' : 'inactive'}`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update token status',
-        variant: 'destructive',
-      });
-    }
+  const handleStatusChange = (token: ApiToken, checked: boolean) => {
+    updateToken({
+      id: token.id,
+      name: token.name,
+      status: checked ? 'active' : 'inactive',
+    });
   };
 
   const handleTokenCreated = (newToken: TokenResponse) => {

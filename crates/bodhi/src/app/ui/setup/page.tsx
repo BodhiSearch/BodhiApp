@@ -16,19 +16,14 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import AppInitializer from '@/components/AppInitializer';
 import { useSetupApp } from '@/hooks/useQuery';
-import { AxiosError } from 'axios';
-import { ErrorResponse } from '@/types/models';
 
 function SetupContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(searchParams.get('error'));
-  const { mutateAsync: setup, isLoading: isSettingUp } = useSetupApp();
 
-  const handleSetup = async (authz: boolean) => {
-    setError(null);
-    try {
-      const { data: appInfo } = await setup({ authz });
+  const { mutate: setup, isLoading: isSettingUp } = useSetupApp({
+    onSuccess: (appInfo) => {
       if (appInfo.status === 'resource-admin') {
         router.push('/ui/setup/resource-admin');
       } else if (appInfo.status === 'ready') {
@@ -36,13 +31,15 @@ function SetupContent() {
       } else {
         setError(`Unexpected setup status: ${appInfo.status}`);
       }
-    } catch (err) {
-      const errorMessage =
-        (err as AxiosError<ErrorResponse>).response?.data?.error?.message ||
-        (err as Error)?.message ||
-        'An unexpected error occurred. Please try again.';
-      setError(`Error while setting up app: ${errorMessage}`);
-    }
+    },
+    onError: (message) => {
+      setError(`Error while setting up app: ${message}`);
+    },
+  });
+
+  const handleSetup = (authz: boolean) => {
+    setError(null);
+    setup({ authz });
   };
 
   return (

@@ -7,7 +7,6 @@ import { useQueryClient } from 'react-query';
 import { useToast } from '@/hooks/use-toast';
 import { pullModelSchema, type PullModelFormData } from '@/schemas/pull';
 import { usePullModel, useModelFiles } from '@/hooks/useQuery';
-import { AxiosError } from 'axios';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,7 +34,33 @@ export function PullForm() {
     },
   });
 
-  const { mutateAsync: pullModel, isLoading } = usePullModel();
+  const { mutate: pullModel, isLoading } = usePullModel({
+    onSuccess: () => {
+      toast({
+        title: 'Success',
+        description: 'Model pull request submitted successfully',
+        duration: 5000,
+      });
+      queryClient.invalidateQueries('downloads');
+      form.reset();
+    },
+    onError: (message, code) => {
+      // Set error on both fields since it's a file existence error
+      if (code === 'pull_error-file_already_exists') {
+        form.setError('filename', { message });
+      } else {
+        form.setError('repo', { message });
+        form.setError('filename', { message });
+      }
+
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+
   const { data: modelsData, isLoading: modelsLoading } = useModelFiles(1, 100);
 
   const repos = Array.from(
@@ -50,39 +75,9 @@ export function PullForm() {
     )
   ).sort();
 
-  const onSubmit = async (data: PullModelFormData) => {
-    try {
-      await pullModel(data);
-      toast({
-        title: 'Success',
-        description: 'Model pull request submitted successfully',
-        duration: 5000,
-      });
-      queryClient.invalidateQueries('downloads');
-      form.reset();
-    } catch (error) {
-      console.error('Error pulling model:', error);
-      let errorMessage = 'Failed to pull model. Please try again.';
-
-      if (error instanceof AxiosError && error.response?.data?.error) {
-        errorMessage = error.response.data.error.message;
-        // Set error on both fields since it's a file existence error
-        if (
-          error.response.data.error.code === 'pull_error-file_already_exists'
-        ) {
-          form.setError('filename', { message: errorMessage });
-        } else {
-          form.setError('repo', { message: errorMessage });
-          form.setError('filename', { message: errorMessage });
-        }
-      }
-
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
+  const onSubmit = (data: PullModelFormData) => {
+    form.clearErrors();
+    pullModel(data);
   };
 
   const handleReset = () => {

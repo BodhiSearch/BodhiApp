@@ -4,6 +4,9 @@ import {
   useQuery,
 } from '@/hooks/useQuery';
 import { useQueryClient } from 'react-query';
+import { AxiosResponse, AxiosError } from 'axios';
+import { UseMutationResult } from 'react-query';
+import { ErrorResponse } from '@/types/models';
 
 export interface CreateTokenRequest {
   name?: string;
@@ -48,31 +51,55 @@ export function useListTokens(
   );
 }
 
-export function useCreateToken() {
+export function useCreateToken(options?: {
+  onSuccess?: (response: TokenResponse) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<TokenResponse>,
+  AxiosError<ErrorResponse>,
+  CreateTokenRequest
+> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<TokenResponse, CreateTokenRequest>(
     API_TOKENS_ENDPOINT,
     'post',
     {
-      onSuccess: () => {
-        // Invalidate all token list queries
+      onSuccess: (response) => {
         queryClient.invalidateQueries(['tokens']);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message =
+          error?.response?.data?.error?.message || 'Failed to generate token';
+        options?.onError?.(message);
       },
     }
   );
 }
 
-export function useUpdateToken() {
+export function useUpdateToken(options?: {
+  onSuccess?: (token: ApiToken) => void;
+  onError?: (message: string) => void;
+}): UseMutationResult<
+  AxiosResponse<ApiToken>,
+  AxiosError<ErrorResponse>,
+  UpdateTokenRequest
+> {
   const queryClient = useQueryClient();
 
   return useMutationQuery<ApiToken, UpdateTokenRequest>(
     (params) => `${API_TOKENS_ENDPOINT}/${params.id}`,
     'put',
     {
-      onSuccess: () => {
-        // Invalidate all token list queries
+      onSuccess: (response) => {
         queryClient.invalidateQueries(['tokens']);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message =
+          error?.response?.data?.error?.message || 'Failed to update token';
+        options?.onError?.(message);
       },
     }
   );

@@ -233,6 +233,134 @@ Test form validation and submission::
 Network & API Conventions
 ------------------------
 
+Mutation Pattern
+~~~~~~~~~~~~~
+The application follows a consistent pattern for handling mutations using react-query. This pattern
+provides better error handling, type safety, and separation of concerns.
+
+Hook Definition Pattern
+'''''''''''''''''''''''
+Mutation hooks should be defined with callback options::
+
+    export function useSomeMutation(options?: {
+      onSuccess?: (response: ResponseType) => void;
+      onError?: (message: string) => void;
+    }): UseMutationResult<
+      AxiosResponse<ResponseType>,
+      AxiosError<ErrorResponse>,
+      RequestType
+    > {
+      const queryClient = useQueryClient();
+      return useMutationQuery<ResponseType, RequestType>(
+        ENDPOINT,
+        'post',
+        {
+          onSuccess: (response) => {
+            queryClient.invalidateQueries(['queryKey']);
+            options?.onSuccess?.(response.data);
+          },
+          onError: (error: AxiosError<ErrorResponse>) => {
+            const message =
+              error?.response?.data?.error?.message || 'Failed to perform action';
+            options?.onError?.(message);
+          },
+        }
+      );
+    }
+
+Component Usage Pattern
+''''''''''''''''''''''
+Components should use mutations by providing callbacks::
+
+    const { mutate, isLoading } = useSomeMutation({
+      onSuccess: (response) => {
+        toast({
+          title: 'Success',
+          description: 'Operation completed successfully',
+        });
+        // Additional success handling
+      },
+      onError: (message) => {
+        toast({
+          title: 'Error',
+          description: message,
+          variant: 'destructive',
+        });
+        // Additional error handling
+      },
+    });
+
+    const handleAction = (data: RequestType) => {
+      mutate(data);
+    };
+
+Benefits of this Pattern
+''''''''''''''''''''''''
+- Consistent error handling across the application
+- Type-safe callbacks
+- Clear separation of concerns
+- Simpler component code
+- Centralized error message handling
+- Automatic query invalidation
+- Better maintainability
+
+Example Implementation
+'''''''''''''''''''''
+Here's a complete example with a mutation hook and its usage::
+
+    // Hook definition
+    export function useCreateToken(options?: {
+      onSuccess?: (response: TokenResponse) => void;
+      onError?: (message: string) => void;
+    }): UseMutationResult<
+      AxiosResponse<TokenResponse>,
+      AxiosError<ErrorResponse>,
+      CreateTokenRequest
+    > {
+      const queryClient = useQueryClient();
+      return useMutationQuery<TokenResponse, CreateTokenRequest>(
+        API_TOKENS_ENDPOINT,
+        'post',
+        {
+          onSuccess: (response) => {
+            queryClient.invalidateQueries(['tokens']);
+            options?.onSuccess?.(response.data);
+          },
+          onError: (error: AxiosError<ErrorResponse>) => {
+            const message =
+              error?.response?.data?.error?.message || 'Failed to generate token';
+            options?.onError?.(message);
+          },
+        }
+      );
+    }
+
+    // Component usage
+    export function TokenForm({ onTokenCreated }: TokenFormProps) {
+      const { toast } = useToast();
+      const { mutate: createToken, isLoading } = useCreateToken({
+        onSuccess: (response) => {
+          onTokenCreated(response);
+          form.reset();
+          toast({
+            title: 'Success',
+            description: 'API token successfully generated',
+          });
+        },
+        onError: (message) => {
+          toast({
+            title: 'Error',
+            description: message,
+            variant: 'destructive',
+          });
+        },
+      });
+
+      const onSubmit = (data: FormData) => {
+        createToken(data);
+      };
+    }
+
 API Client Structure
 ~~~~~~~~~~~~~~~~~
 - Centralized API endpoint definitions in ``useQuery.ts``
@@ -326,6 +454,79 @@ Error handling patterns:
         variant: "destructive"
       });
     }
+
+Error Handling Patterns
+~~~~~~~~~~~~~~~~~~~~~
+There are two main patterns for handling API errors in the application:
+
+1. Using useQuery (Automatic Error Handling)
+''''''''''''''''''''''''''''''''''''''''''
+The error is automatically returned as part of UseQueryResult::
+
+    const { data, error, isLoading } = useQuery<DataType>(...);
+    
+    if (error) {
+      // Handle error state in UI
+      return <ErrorComponent message={error.message} />;
+    }
+
+This pattern is used for:
+- Read operations
+- Automatically retried operations
+- Declarative data fetching
+- Operations that happen on component mount
+
+2. Using useMutationQuery (Manual Error Handling)
+''''''''''''''''''''''''''''''''''''''''''''''
+Mutations require explicit error handling using try/catch or callbacks::
+
+    // Using try/catch with mutateAsync
+    const handleSubmit = async (formData: FormData) => {
+      try {
+        await mutation.mutateAsync(formData);
+        toast.success("Operation successful");
+      } catch (error) {
+        if (error instanceof Error) {
+          setErrorMessage(error.message);
+        }
+      }
+    };
+
+    // Using callbacks
+    const mutation = useMutationQuery({
+      onSuccess: () => {
+        toast.success("Operation successful");
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        if (error.response?.data?.error?.message) {
+          setErrorMessage(error.response.data.error.message);
+        }
+      }
+    });
+
+This pattern is used for:
+- Write operations
+- User-triggered actions
+- Operations needing UI feedback
+- Operations that may need to roll back changes
+
+Mutation States
+'''''''''''''
+Available mutation states for error handling::
+
+    mutation.isLoading  // Is the mutation in progress?
+    mutation.isError    // Did the mutation error?
+    mutation.error      // The error object if present
+    mutation.isSuccess  // Did the mutation succeed?
+
+Best Practices
+''''''''''''
+- Use try/catch with mutateAsync for complex flows
+- Use callbacks for simple success/error handling
+- Always show user-friendly error messages
+- Handle network errors gracefully
+- Implement proper error boundaries
+- Log errors appropriately for debugging
 
 Testing Error Responses
 ''''''''''''''''''''''

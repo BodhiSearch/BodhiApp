@@ -27,7 +27,6 @@ import {
   useChatTemplates,
   useModelFiles,
 } from '@/hooks/useQuery';
-import { AxiosError } from 'axios';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 
 interface AliasFormProps {
@@ -93,8 +92,41 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     },
   });
 
-  const createModel = useCreateModel();
-  const updateModel = useUpdateModel(initialData?.alias || '');
+  const createModel = useCreateModel({
+    onSuccess: (model) => {
+      toast({
+        title: 'Success',
+        description: `Alias ${model.alias} successfully created`,
+        duration: 5000,
+      });
+      router.push('/ui/models');
+    },
+    onError: (message) => {
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updateModel = useUpdateModel(initialData?.alias || '', {
+    onSuccess: (model) => {
+      toast({
+        title: 'Success',
+        description: `Alias ${model.alias} successfully updated`,
+        duration: 5000,
+      });
+      router.push('/ui/models');
+    },
+    onError: (message) => {
+      toast({
+        title: 'Error',
+        description: message,
+        variant: 'destructive',
+      });
+    },
+  });
 
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
@@ -105,34 +137,9 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  const onSubmit = async (data: AliasFormData) => {
-    try {
-      const mutationFn = isEditMode ? updateModel : createModel;
-      await mutationFn.mutateAsync(data);
-
-      toast({
-        title: 'Success',
-        description: `Alias ${data.alias} successfully ${isEditMode ? 'updated' : 'created'}`,
-        duration: 5000,
-      });
-      router.push('/ui/models');
-    } catch (error) {
-      console.error(
-        `Error ${isEditMode ? 'updating' : 'creating'} alias:`,
-        error
-      );
-      let errorMessage = `Failed to ${isEditMode ? 'update' : 'create'} alias. Please try again.`;
-
-      if (error instanceof AxiosError && error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    }
+  const onSubmit = (data: AliasFormData) => {
+    const mutationFn = isEditMode ? updateModel : createModel;
+    mutationFn.mutate(data);
   };
 
   const handleSubmit = form.handleSubmit(
