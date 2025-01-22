@@ -174,7 +174,9 @@ describe('EditAliasPage', () => {
   it('displays error message when model data fails to load', async () => {
     server.use(
       rest.get(`*${ENDPOINT_MODELS}/:alias`, (req, res, ctx) => {
-        return res(ctx.status(500));
+        return res(
+          ctx.status(500),
+          ctx.json({ error: { message: 'Internal Server Error' } }));
       })
     );
 

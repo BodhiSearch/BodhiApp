@@ -98,7 +98,10 @@ describe('useListTokens', () => {
   it('handles error response', async () => {
     server.use(
       rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.status(500));
+        return res(
+          ctx.status(500),
+          ctx.json({ error: { message: 'Test Error' } })
+        );
       })
     );
 

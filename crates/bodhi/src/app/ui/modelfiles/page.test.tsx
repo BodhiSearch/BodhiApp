@@ -92,7 +92,7 @@ describe('ModelFilesPage', () => {
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (req, res, ctx) => {
         return res(
           ctx.status(500),
-          ctx.json({ message: 'Internal Server Error' })
+          ctx.json({ error: { message: 'Internal Server Error' } })
         );
       })
     );

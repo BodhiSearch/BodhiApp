@@ -113,7 +113,11 @@ type SetupRequest = {
   authz: boolean;
 };
 
-export function useSetupApp() {
+export function useSetupApp(): UseMutationResult<
+  AxiosResponse<AppInfo>,
+  AxiosError<ErrorResponse>,
+  SetupRequest
+> {
   return useMutationQuery<AppInfo, SetupRequest>(ENDPOINT_APP_SETUP);
 }
 
@@ -189,10 +193,20 @@ export function useFeaturedModels() {
 }
 
 export function useLogout(
-  options?: UseMutationOptions<AxiosResponse, AxiosError, void, unknown>
-): UseMutationResult<AxiosResponse, AxiosError, void, unknown> {
+  options?: UseMutationOptions<
+    AxiosResponse<void>,
+    AxiosError<ErrorResponse>,
+    void,
+    unknown
+  >
+): UseMutationResult<
+  AxiosResponse<void>,
+  AxiosError<ErrorResponse>,
+  void,
+  unknown
+> {
   const queryClient = useQueryClient();
-  return useMutationQuery<AxiosResponse, void>(ENDPOINT_LOGOUT, 'post', {
+  return useMutationQuery<void, void>(ENDPOINT_LOGOUT, 'post', {
     ...options,
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries();
@@ -232,7 +246,7 @@ export function useSettings(): UseQueryResult<
 }
 
 export function useUpdateSetting(): UseMutationResult<
-  Setting,
+  AxiosResponse<Setting>,
   AxiosError<ErrorResponse>,
   { key: string; value: string | number | boolean }
 > {

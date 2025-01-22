@@ -243,7 +243,7 @@ describe('token status update', () => {
   it('handles token status update error', async () => {
     server.use(
       rest.put(`*${API_TOKENS_ENDPOINT}/token-1`, (_, res, ctx) => {
-        return res(ctx.status(500));
+        return res(ctx.status(500), ctx.json({ error: { message: 'Test Error' } }));
       })
     );
 

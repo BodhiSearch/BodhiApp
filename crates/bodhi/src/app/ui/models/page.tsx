@@ -1,11 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
-import { ApiError, Model, SortState } from '@/types/models';
+import { Model, SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Pencil } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
@@ -92,16 +91,11 @@ function ModelsPageContent() {
   );
 
   if (error) {
-    if (error instanceof AxiosError) {
-      return (
-        <div>
-          An error occurred:{' '}
-          {(error.response?.data as ApiError)?.message || error.message}
-        </div>
-      );
-    } else {
-      return <div>An error occurred: {(error as Error)?.message}</div>;
-    }
+    const errorMessage =
+      error.response?.data?.error?.message ||
+      error.message ||
+      'An unexpected error occurred. Please try again.';
+    return <div>An error occurred: {errorMessage}</div>;
   }
 
   return (

@@ -94,7 +94,7 @@ describe('ModelsPage', () => {
       rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
         return res(
           ctx.status(500),
-          ctx.json({ message: 'Internal Server Error' })
+          ctx.json({ error: { message: 'Internal Server Error' } })
         );
       })
     );
