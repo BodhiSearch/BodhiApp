@@ -280,6 +280,134 @@ Response Types
 - Strong typing for all API responses
 - Consistent error type handling with ``AxiosError``
 
+
+API Error Format
+''''''''''''''''
+The application expects API errors in a consistent format::
+
+    interface ApiError {
+      error: {
+        message: string;
+      }
+    }
+
+Error handling patterns:
+
+1. API Client Level (apiClient.ts)::
+
+    apiClient.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        console.error('Error:', error.response?.status, error.config?.url);
+        return Promise.reject(error);
+      }
+    );
+
+2. Hook Level::
+    // Hooks pass through the error to be handled by components
+    export function useMutationQuery<T, V>(
+      endpoint: string | ((variables: V) => string),
+      method: 'post' | 'put' | 'delete' = 'post',
+      options?: UseMutationOptions<AxiosResponse<T>, AxiosError, V>
+    ) {
+      // ... mutation logic
+    }
+
+3. Component Level::
+
+    try {
+      await mutation.mutateAsync(data);
+    } catch (error) {
+      // Components handle the error structure from the API
+      const message = error?.response?.data?.error?.message || "Operation failed";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive"
+      });
+    }
+
+Testing Error Responses
+''''''''''''''''''''''
+Mock error responses in tests following the API error format::
+
+    server.use(
+      rest.put('*/endpoint', (_, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({
+            error: {
+              message: 'Server error'
+            }
+          })
+        );
+      })
+    );
+
+Testing Best Practices
+~~~~~~~~~~~~~~~~~~~
+Component Testing Patterns
+''''''''''''''''''''''''''
+1. Mock child components when testing parent components::
+
+    vi.mock('./ChildComponent', () => ({
+      ChildComponent: ({ prop, onAction }: any) => (
+        <div data-testid="mock-child">
+          <span>Prop: {prop}</span>
+          <button onClick={onAction}>Action</button>
+        </div>
+      )
+    }));
+
+2. Test component behavior, not implementation::
+
+    // Good
+    expect(screen.getByRole('button')).toBeInTheDocument();
+    
+    // Avoid
+    expect(screen.getByTestId('specific-div')).toHaveClass('specific-class');
+
+3. Use proper query priorities::
+
+    // Priority order:
+    // 1. getByRole
+    // 2. getByLabelText
+    // 3. getByText
+    // 4. getByTestId
+
+Toast Notification Testing
+''''''''''''''''''''''''''
+Mock toast notifications instead of testing DOM content::
+
+    const mockToast = vi.fn();
+    vi.mock('@/hooks/use-toast', () => ({
+      useToast: () => ({ toast: mockToast })
+    }));
+
+    expect(mockToast).toHaveBeenCalledWith({
+      title: "Success",
+      description: "Operation completed"
+    });
+
+UI Component Testing
+'''''''''''''''''''
+1. Test complex UI interactions with proper setup::
+
+    // For Radix UI / ShadCN components
+    Object.assign(window.HTMLElement.prototype, {
+      scrollIntoView: vi.fn(),
+      releasePointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(),
+    });
+
+2. Use findBy* for async rendering::
+
+    const listbox = await screen.findByRole('listbox');
+
+3. Use within for scoped queries::
+
+    const option = within(listbox).getByRole('option');
+
 Cache Management
 ~~~~~~~~~~~~~
 - React Query for client-side caching
@@ -294,6 +422,55 @@ Testing Network Calls
 - Test both success and error scenarios
 - Verify cache invalidation
 
+Toast Notification Testing
+'''''''''''''''''''''''''
+When testing components that use toast notifications, mock the toast hook instead
+of checking for toast content in the DOM. This makes tests more reliable and faster::
+
+    // Mock toast hook
+    const mockToast = vi.fn();
+    vi.mock('@/hooks/use-toast', () => ({
+      useToast: () => ({
+        toast: mockToast
+      })
+    }));
+
+    // In your test
+    it('shows success toast', async () => {
+      await user.click(screen.getByRole('button'));
+      
+      expect(mockToast).toHaveBeenCalledWith({
+        title: "Success",
+        description: "Operation completed",
+        variant: "default"
+      });
+    });
+
+Benefits of mocking toast:
+- Tests are more reliable (no waiting for toast animations)
+- Faster test execution
+- Clear verification of toast parameters
+- No need for async waitFor calls
+
+Component Testing Best Practices
+'''''''''''''''''''''''''''''''
+- Use ``findByRole`` instead of ``getByRole`` when element might not be immediately available
+- Use ``within`` to scope element queries to a specific container
+- Prefer role-based queries over text-based queries for better accessibility testing
+- Mock complex UI libraries (like toast, dialogs) instead of testing their DOM presence
+- Use proper cleanup in afterEach to prevent test interference
+
+Example of scoped queries::
+
+    const dialog = screen.getByRole('dialog');
+    const submitButton = within(dialog).getByRole('button', { name: /submit/i });
+
+This approach:
+- Makes tests more reliable and maintainable
+- Follows testing best practices
+- Improves test readability
+- Ensures proper component isolation
+
 MSW Server Setup
 '''''''''''''''
 - Mock Service Worker (MSW) for API mocking
@@ -303,6 +480,9 @@ MSW Server Setup
 
 Example MSW server setup::
 
+    // Import from msw/node for Node.js environment testing
+    import { setupServer } from 'msw/node';
+    
     const server = setupServer(
       rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json(mockListResponse));
@@ -316,11 +496,64 @@ Example MSW server setup::
     afterAll(() => server.close());
     afterEach(() => server.resetHandlers());
 
+// Note: Always use msw/node instead of msw/browser for Vitest/Jest tests
+// as they run in a Node.js environment
+
 User Interaction Testing
 '''''''''''''''''''''''
 - Use ``userEvent`` from @testing-library/user-event
 - Setup user events at the start of each test
 - Simulate real user interactions
+
+Testing Radix UI Components
+'''''''''''''''''''''''''''
+When testing components that use Radix UI (like shadcn's Select), special setup is needed
+to handle pointer events and HTML element methods. Here's the required setup::
+
+    // Mock PointerEvent for Radix UI components
+    function createMockPointerEvent(
+      type: string,
+      props: PointerEventInit = {}
+    ): PointerEvent {
+      const event = new Event(type, props) as PointerEvent;
+      Object.assign(event, {
+        button: props.button ?? 0,
+        ctrlKey: props.ctrlKey ?? false,
+        pointerType: props.pointerType ?? "mouse",
+      });
+      return event;
+    }
+
+    // Assign mock to window
+    window.PointerEvent = createMockPointerEvent as any;
+
+    // Mock required HTMLElement methods
+    Object.assign(window.HTMLElement.prototype, {
+      scrollIntoView: vi.fn(),
+      releasePointerCapture: vi.fn(),
+      hasPointerCapture: vi.fn(),
+    });
+
+This setup is necessary because:
+- Radix UI uses PointerEvent API which isn't available in test environment
+- Components like Select need pointer capture methods for interaction
+- The mocks allow proper event handling in tests
+
+Example testing Select component::
+
+    it('updates select value', async () => {
+      const user = userEvent.setup();
+      
+      render(<SelectComponent />);
+      
+      // Open select dropdown
+      await user.click(screen.getByRole('combobox'));
+      
+      // Find and click option
+      const listbox = await screen.findByRole('listbox');
+      const option = within(listbox).getByRole('option', { name: /option/i });
+      await user.click(option);
+    });
 
 Example user interaction test::
 
@@ -445,4 +678,3 @@ Git Workflow
 - Run linting before commits (husky)
 - Ensure all tests pass before merging
 - Keep PRs focused and small
-

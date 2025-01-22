@@ -312,8 +312,26 @@ impl SettingService for DefaultSettingService {
         min: 1025,
         max: 65535,
       },
-      BODHI_LOG_LEVEL => SettingMetadata::option(&["error", "warn", "info", "debug", "trace"]),
+      BODHI_LOG_LEVEL => SettingMetadata::option(
+        ["error", "warn", "info", "debug", "trace"]
+          .iter()
+          .map(|s| s.to_string())
+          .collect(),
+      ),
       BODHI_LOG_STDOUT => SettingMetadata::Boolean,
+      BODHI_EXEC_PATH => {
+        let mut options = Vec::new();
+        for variant in llama_server_proc::BUILD_VARIANTS.iter() {
+          let exec_path = format!(
+            "{}/{}/{}",
+            llama_server_proc::BUILD_TARGET,
+            variant,
+            llama_server_proc::EXEC_NAME
+          );
+          options.push(exec_path);
+        }
+        SettingMetadata::option(options)
+      }
       _ => SettingMetadata::String,
     }
   }

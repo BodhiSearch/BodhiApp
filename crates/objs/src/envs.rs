@@ -108,10 +108,8 @@ pub enum SettingMetadata {
 }
 
 impl SettingMetadata {
-  pub fn option(options: &[&str]) -> Self {
-    Self::Option {
-      options: options.iter().map(|s| s.to_string()).collect(),
-    }
+  pub fn option(options: Vec<String>) -> Self {
+    Self::Option { options }
   }
 
   pub fn parse(&self, value: serde_yaml::Value) -> serde_yaml::Value {
