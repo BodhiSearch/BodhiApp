@@ -182,7 +182,9 @@ describe('SettingsSidebar', () => {
         return res(
           ctx.status(500),
           ctx.json({
-            message: 'Test error message'
+            error: {
+              message: 'Test error message'
+            }
           })
         );
       })

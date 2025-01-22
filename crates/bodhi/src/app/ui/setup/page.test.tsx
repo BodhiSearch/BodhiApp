@@ -146,7 +146,7 @@ describe('Setup Page', () => {
         return res(ctx.json({ status: 'setup' }));
       }),
       rest.post(`*${ENDPOINT_APP_SETUP}`, (req, res, ctx) => {
-        return res(ctx.status(500), ctx.json({ message: 'Setup failed' }));
+        return res(ctx.status(500), ctx.json({ error: { message: 'Setup failed' } }));
       })
     );
 

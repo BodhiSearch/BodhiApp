@@ -118,7 +118,7 @@ describe('SettingsPageContent', () => {
         return res(ctx.status(200), ctx.json([]));
       })
     );
-    
+
     render(
       <SettingsPageContent config={TEST_CONFIG} />,
       { wrapper: createWrapper() }
@@ -144,7 +144,7 @@ describe('SettingsPageContent', () => {
       <SettingsPageContent config={TEST_CONFIG} />,
       { wrapper: createWrapper() }
     );
-    
+
     // Wait for the error message to appear
     const errorMessage = await screen.findByText('Failed to load settings: Test error');
     expect(errorMessage).toBeInTheDocument();
@@ -179,9 +179,7 @@ describe('SettingsPage', () => {
       rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
         return res(
           ctx.status(500),
-          ctx.json({
-            error: { message: 'Failed to fetch settings' }
-          })
+          ctx.json({ error: { message: 'Failed to fetch settings' } })
         );
       })
     );

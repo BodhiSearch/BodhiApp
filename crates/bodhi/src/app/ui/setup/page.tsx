@@ -17,6 +17,7 @@ import { Loader2 } from 'lucide-react';
 import AppInitializer from '@/components/AppInitializer';
 import { useSetupApp } from '@/hooks/useQuery';
 import { AxiosError } from 'axios';
+import { ErrorResponse } from '@/types/models';
 
 function SetupContent() {
   const router = useRouter();
@@ -36,13 +37,11 @@ function SetupContent() {
         setError(`Unexpected setup status: ${appInfo.status}`);
       }
     } catch (err) {
-      if (err instanceof AxiosError) {
-        setError(
-          `Error while setting up app: ${err.response?.data?.message || err?.message}`
-        );
-      } else {
-        setError(`An unexpected error occurred during setup: ${err}`);
-      }
+      const errorMessage =
+        (err as AxiosError<ErrorResponse>).response?.data?.error?.message ||
+        (err as Error)?.message ||
+        'An unexpected error occurred. Please try again.';
+      setError(`Error while setting up app: ${errorMessage}`);
     }
   };
 
