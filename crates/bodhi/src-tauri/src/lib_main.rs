@@ -21,18 +21,23 @@ mod env_config {
 #[cfg(not(feature = "production"))]
 mod env_config {
   use objs::EnvType;
-  use services::{DefaultEnvWrapper, BODHI_EXEC_LOOKUP_PATH};
+  use services::DefaultEnvWrapper;
 
   pub static ENV_TYPE: EnvType = EnvType::Development;
   pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
+  #[cfg(not(feature = "native"))]
   pub fn set_feature_settings(env_wrapper: &mut DefaultEnvWrapper) {
+    use services::BODHI_EXEC_LOOKUP_PATH;
+
     env_wrapper.set_var(
       BODHI_EXEC_LOOKUP_PATH,
       concat!(env!("CARGO_MANIFEST_DIR"), "/bin"),
     );
   }
+  #[cfg(feature = "native")]
+  pub fn set_feature_settings(_env_wrapper: &mut DefaultEnvWrapper) {}
 }
 
 pub use env_config::*;
