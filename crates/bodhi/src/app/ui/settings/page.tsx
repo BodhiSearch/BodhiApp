@@ -85,9 +85,9 @@ const SETTINGS_CONFIG: SettingsConfig = {
         description: 'Path to look for Llama.cpp executables.',
       },
       {
-        key: 'BODHI_EXEC_PATH',
+        key: 'BODHI_EXEC_VARIANT',
         editable: true,
-        description: 'Path to the Llama.cpp executable.',
+        description: 'Optimized hardware specific variant of llama.cpp to use.',
       },
     ],
   },

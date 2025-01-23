@@ -6,7 +6,7 @@ use axum::{
 use objs::{ApiError, AppError, ErrorType, OpenAIApiError, SettingInfo};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{BODHI_EXEC_PATH, BODHI_HOME};
+use services::{BODHI_EXEC_VARIANT, BODHI_HOME};
 use std::sync::Arc;
 use utoipa::ToSchema;
 
@@ -152,7 +152,7 @@ pub async fn update_setting_handler(
     .find(|s| s.key == key)
     .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
 
-  if BODHI_EXEC_PATH != key {
+  if BODHI_EXEC_VARIANT != key {
     return Err(SettingsError::Unsupported(key))?;
   }
   // Validate new value against metadata
@@ -219,7 +219,7 @@ pub async fn delete_setting_handler(
     .find(|s| s.key == key)
     .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
 
-  if BODHI_EXEC_PATH != key {
+  if BODHI_EXEC_VARIANT != key {
     return Err(SettingsError::Unsupported(key))?;
   }
   // Delete setting (reset to default)
@@ -256,7 +256,7 @@ mod tests {
   };
   use services::{
     test_utils::{AppServiceStubBuilder, EnvWrapperStub},
-    DefaultEnvService, DefaultSettingService, SettingService, BODHI_EXEC_PATH, BODHI_HOST,
+    DefaultEnvService, DefaultSettingService, SettingService, BODHI_EXEC_VARIANT, BODHI_HOST,
     BODHI_LOG_LEVEL, BODHI_PORT,
   };
   use std::{collections::HashMap, str::FromStr, sync::Arc};
@@ -279,7 +279,7 @@ mod tests {
   ) -> Result<DefaultEnvService, anyhow::Error> {
     let settings_yaml = temp_dir.path().join("settings.yaml");
     let setting_service =
-      DefaultSettingService::new(Arc::new(EnvWrapperStub::new(envs)), settings_yaml);
+      DefaultSettingService::new_with_defaults(Arc::new(EnvWrapperStub::new(envs)), settings_yaml);
     for (key, value) in settings {
       setting_service.set_setting_value(&key, &value)?;
     }
@@ -392,8 +392,8 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("PUT")
-          .uri("/v1/bodhi/settings/BODHI_EXEC_PATH")
-          .json(json! {{"value": default_exec_path()}})?,
+          .uri("/v1/bodhi/settings/BODHI_EXEC_VARIANT")
+          .json(json! {{"value": llama_server_proc::DEFAULT_VARIANT.to_string()}})?,
       )
       .await?;
 
@@ -402,9 +402,9 @@ mod tests {
 
     // AND returns updated setting
     let setting = response.json::<SettingInfo>().await?;
-    assert_eq!(BODHI_EXEC_PATH, setting.key);
+    assert_eq!(BODHI_EXEC_VARIANT, setting.key);
     assert_eq!(
-      serde_yaml::Value::String(default_exec_path()),
+      serde_yaml::Value::String(llama_server_proc::DEFAULT_VARIANT.to_string()),
       setting.current_value
     );
 
@@ -526,7 +526,7 @@ mod tests {
       &temp_dir,
       maplit::hashmap! {},
       maplit::hashmap! {
-        BODHI_EXEC_PATH.to_string() => serde_yaml::Value::String("aarch64-apple-darwin/metal/llama-server".to_string()),
+        BODHI_EXEC_VARIANT.to_string() => serde_yaml::Value::String("metal".to_string()),
       },
     )?;
     let app_service = AppServiceStubBuilder::default()
@@ -539,7 +539,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("DELETE")
-          .uri("/v1/bodhi/settings/BODHI_EXEC_PATH")
+          .uri(format!("/v1/bodhi/settings/{BODHI_EXEC_VARIANT}"))
           .body(Body::empty())?,
       )
       .await?;
@@ -549,9 +549,9 @@ mod tests {
 
     // AND returns setting with default value
     let setting = response.json::<SettingInfo>().await?;
-    assert_eq!(BODHI_EXEC_PATH, setting.key);
+    assert_eq!(BODHI_EXEC_VARIANT, setting.key);
     assert_eq!(
-      serde_yaml::Value::String(default_exec_path()),
+      serde_yaml::Value::String(llama_server_proc::DEFAULT_VARIANT.to_string()),
       setting.current_value
     );
     assert_eq!(SettingSource::Default, setting.source);
@@ -601,10 +601,10 @@ mod tests {
     let env_service = test_env_service(
       &temp_dir,
       maplit::hashmap! {
-        BODHI_EXEC_PATH.to_string() => "aarch64-unknown-linux-gnu/cpu/llama-server".to_string(),
+        BODHI_EXEC_VARIANT.to_string() => "aarch64-unknown-linux-gnu/cpu/llama-server".to_string(),
       },
       maplit::hashmap! {
-        BODHI_EXEC_PATH.to_string() => serde_yaml::Value::String("aarch64-unknown-linux-gnu/cuda/llama-server".to_string()),
+        BODHI_EXEC_VARIANT.to_string() => serde_yaml::Value::String("aarch64-unknown-linux-gnu/cuda/llama-server".to_string()),
       },
     )?;
     let app_service = AppServiceStubBuilder::default()
@@ -617,7 +617,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("DELETE")
-          .uri("/v1/bodhi/settings/BODHI_EXEC_PATH")
+          .uri("/v1/bodhi/settings/BODHI_EXEC_VARIANT")
           .body(Body::empty())?,
       )
       .await?;
@@ -627,7 +627,7 @@ mod tests {
 
     // AND returns setting with env value (not default)
     let setting = response.json::<SettingInfo>().await?;
-    assert_eq!(BODHI_EXEC_PATH, setting.key);
+    assert_eq!(BODHI_EXEC_VARIANT, setting.key);
     assert_eq!(
       serde_yaml::Value::String("aarch64-unknown-linux-gnu/cpu/llama-server".to_string()),
       setting.current_value
@@ -654,7 +654,7 @@ mod tests {
       .oneshot(
         Request::builder()
           .method("DELETE")
-          .uri("/v1/bodhi/settings/BODHI_EXEC_PATH")
+          .uri("/v1/bodhi/settings/BODHI_EXEC_VARIANT")
           .body(Body::empty())?,
       )
       .await?;
@@ -664,22 +664,13 @@ mod tests {
 
     // AND returns setting with default value
     let setting = response.json::<SettingInfo>().await?;
-    assert_eq!(BODHI_EXEC_PATH, setting.key);
+    assert_eq!(BODHI_EXEC_VARIANT, setting.key);
     assert_eq!(
-      serde_yaml::Value::String(default_exec_path()),
+      serde_yaml::Value::String(llama_server_proc::DEFAULT_VARIANT.to_string()),
       setting.current_value
     );
     assert_eq!(SettingSource::Default, setting.source);
 
     Ok(())
-  }
-
-  fn default_exec_path() -> String {
-    format!(
-      "{}/{}/{}",
-      llama_server_proc::BUILD_TARGET,
-      llama_server_proc::DEFAULT_VARIANT,
-      llama_server_proc::EXEC_NAME
-    )
   }
 }
