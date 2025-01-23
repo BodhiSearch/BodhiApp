@@ -32,10 +32,10 @@ pub enum Command {
   /// start the OpenAI compatible REST API server and Web UI
   Serve {
     /// Start with the given host, e.g. '0.0.0.0' to allow traffic from any ip on network
-    #[clap(short='H', default_value = DEFAULT_HOST)]
+    #[clap(long, short='H', default_value = DEFAULT_HOST)]
     host: String,
     /// Start on the given port
-    #[clap(short, default_value = DEFAULT_PORT_STR, value_parser = clap::value_parser!(u16).range(1..=65535))]
+    #[clap(long, short='p', default_value = DEFAULT_PORT_STR, value_parser = clap::value_parser!(u16).range(1..=65535))]
     port: u16,
   },
   /// list the model aliases on local
@@ -235,12 +235,12 @@ For more information, try '--help'.
 
   #[rstest]
   #[case(vec!["bodhi", "serve", "-p", "65536"],
-  r#"error: invalid value '65536' for '-p <PORT>': 65536 is not in 1..=65535
+  r#"error: invalid value '65536' for '--port <PORT>': 65536 is not in 1..=65535
 
 For more information, try '--help'.
 "#)]
   #[case(vec!["bodhi", "serve", "-p", "0"],
-  r#"error: invalid value '0' for '-p <PORT>': 0 is not in 1..=65535
+  r#"error: invalid value '0' for '--port <PORT>': 0 is not in 1..=65535
 
 For more information, try '--help'.
 "#)]

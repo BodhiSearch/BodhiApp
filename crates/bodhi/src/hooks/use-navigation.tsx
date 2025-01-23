@@ -74,7 +74,7 @@ const navigationItems: NavigationItem[] = [
     items: [
       {
         title: 'App Settings',
-        href: '/ui/settings',
+        href: '/ui/settings/',
         description: 'Manage application settings',
         icon: Cog,
       },

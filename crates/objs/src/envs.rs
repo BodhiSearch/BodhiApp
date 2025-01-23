@@ -1,6 +1,6 @@
 use crate::{AppError, ErrorType};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, PartialEq, Default, strum::EnumString, strum::Display)]
@@ -119,6 +119,11 @@ impl SettingMetadata {
       (SettingMetadata::String, value @ serde_yaml::Value::String(_)) => value,
       (SettingMetadata::Number { .. }, value @ serde_yaml::Value::Number(_)) => value,
       (SettingMetadata::Boolean, value @ serde_yaml::Value::Bool(_)) => value,
+      (SettingMetadata::Boolean, serde_yaml::Value::String(value)) => value
+        .parse::<bool>()
+        .ok()
+        .map(serde_yaml::Value::Bool)
+        .unwrap_or_else(|| serde_yaml::Value::String(value)),
       (SettingMetadata::Option { .. }, value @ serde_yaml::Value::String(_)) => value,
       (SettingMetadata::String | SettingMetadata::Option { .. }, value) => to_string(&value)
         .map(|str| str.trim().to_string())
@@ -221,6 +226,22 @@ pub struct SettingInfo {
   pub default_value: serde_yaml::Value,
   pub source: SettingSource,
   pub metadata: SettingMetadata,
+}
+
+impl SettingInfo {
+  pub fn new_system_setting<T, U>(key: T, default_value: U) -> Self
+  where
+    T: Display,
+    U: Display,
+  {
+    Self {
+      key: key.to_string(),
+      current_value: serde_yaml::Value::String(default_value.to_string()),
+      default_value: serde_yaml::Value::String(default_value.to_string()),
+      source: SettingSource::Default,
+      metadata: SettingMetadata::String,
+    }
+  }
 }
 
 #[cfg(test)]
