@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { Setting } from '@/types/models';
 import {
   AlertCircle,
+  Code,
   Database,
   FileText,
   Hash,
@@ -134,6 +135,28 @@ const SETTINGS_CONFIG: SettingsConfig = {
       },
     ],
   },
+  dev: {
+    title: 'Development Settings',
+    description: 'Development settings of app',
+    icon: Code,
+    settings: [
+      {
+        key: 'BODHI_VERSION',
+        editable: false,
+        description: 'Version of app',
+      },
+      {
+        key: 'BODHI_ENV_TYPE',
+        editable: false,
+        description: 'Environment type of app',
+      },
+      {
+        key: 'BODHI_APP_TYPE',
+        editable: false,
+        description: 'App flavour',
+      },
+    ],
+  },
 } as const;
 
 const SETTING_ICONS = {
@@ -199,7 +222,7 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                     className={cn(
                       'flex items-start justify-between p-4 rounded-lg border bg-card hover:bg-accent/5',
                       setting.source !== 'default' &&
-                        'border-primary/20 bg-primary/5'
+                      'border-primary/20 bg-primary/5'
                     )}
                   >
                     <div className="space-y-1">
@@ -207,8 +230,8 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                         {(() => {
                           const TypeIcon =
                             SETTING_ICONS[
-                              setting.metadata
-                                .type as keyof typeof SETTING_ICONS
+                            setting.metadata
+                              .type as keyof typeof SETTING_ICONS
                             ];
                           return (
                             <TypeIcon className="h-4 w-4 text-muted-foreground" />

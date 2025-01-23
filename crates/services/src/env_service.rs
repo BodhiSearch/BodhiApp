@@ -310,7 +310,18 @@ impl EnvService for DefaultEnvService {
       source: self.bodhi_home_source.clone(),
       metadata: SettingMetadata::String,
     });
-
+    settings.push(SettingInfo::new_system_setting(
+      BODHI_ENV_TYPE,
+      self.env_type(),
+    ));
+    settings.push(SettingInfo::new_system_setting(
+      BODHI_APP_TYPE,
+      self.app_type(),
+    ));
+    settings.push(SettingInfo::new_system_setting(
+      BODHI_VERSION,
+      self.version(),
+    ));
     // Add configurable settings
     settings.extend(self.setting_service.list());
     settings
