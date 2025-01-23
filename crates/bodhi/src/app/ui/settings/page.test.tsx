@@ -55,9 +55,9 @@ const mockSettings: Setting[] = [
     }
   },
   {
-    key: 'BODHI_EXEC_PATH',
-    current_value: '/usr/local/bin/llama',
-    default_value: '/usr/bin/llama',
+    key: 'BODHI_EXEC_VARIANT',
+    current_value: 'cpu',
+    default_value: 'metal',
     source: 'settings_file',
     metadata: {
       type: 'string'
@@ -111,7 +111,7 @@ const TEST_CONFIG = {
     icon: Terminal,
     settings: [
       {
-        key: 'BODHI_EXEC_PATH',
+        key: 'BODHI_EXEC_VARIANT',
         editable: true,
         description: 'Test execution path',
       }
@@ -225,9 +225,9 @@ describe('SettingsPage', () => {
     expect(settingsFileBadge).toHaveLength(2); // Based on our mockSettings
   });
 
-  it('shows edit button only for BODHI_EXEC_PATH', async () => {
+  it('shows edit button only for BODHI_EXEC_VARIANT', async () => {
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
-    await screen.findByText('BODHI_EXEC_PATH');
+    await screen.findByText('BODHI_EXEC_VARIANT');
 
     const editButtons = screen.getAllByRole('button', { name: /edit setting/i });
     expect(editButtons).toHaveLength(1);
@@ -238,13 +238,13 @@ describe('SettingsPage', () => {
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
     // Wait for content and click edit
-    await screen.findByText('BODHI_EXEC_PATH');
+    await screen.findByText('BODHI_EXEC_VARIANT');
     await user.click(screen.getByRole('button', { name: /edit setting/i }));
 
     // Verify dialog opens with correct setting
     const dialog = screen.getByTestId('mock-edit-dialog');
     expect(dialog).toBeInTheDocument();
-    expect(screen.getByText('Editing: BODHI_EXEC_PATH')).toBeInTheDocument();
+    expect(screen.getByText('Editing: BODHI_EXEC_VARIANT')).toBeInTheDocument();
 
     // Close dialog
     await user.click(screen.getByRole('button', { name: /close/i }));

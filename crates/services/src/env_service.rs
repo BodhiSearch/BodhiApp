@@ -1,5 +1,5 @@
 use crate::{
-  SettingService, SettingServiceError, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_PATH, BODHI_HOST,
+  SettingService, SettingServiceError, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_VARIANT, BODHI_HOST,
   BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_PORT, BODHI_SCHEME, DEFAULT_PORT, HF_HOME,
 };
 use objs::{
@@ -97,28 +97,30 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
   }
 
   fn scheme(&self) -> String {
-    self.setting_service().get_setting_or_default(BODHI_SCHEME)
+    self
+      .setting_service()
+      .get_setting(BODHI_SCHEME)
+      .expect("BODHI_SCHEME should be set")
   }
 
   fn host(&self) -> String {
-    self.setting_service().get_setting_or_default(BODHI_HOST)
+    self
+      .setting_service()
+      .get_setting(BODHI_HOST)
+      .expect("BODHI_HOST should be set")
   }
 
   fn port(&self) -> u16 {
     self
       .setting_service()
-      .get_setting_or_default(BODHI_PORT)
+      .get_setting(BODHI_PORT)
+      .expect("BODHI_PORT should be set")
       .parse::<u16>()
       .unwrap_or(DEFAULT_PORT)
   }
 
   fn frontend_url(&self) -> String {
-    format!(
-      "{}://{}:{}",
-      self.setting_service().get_setting_or_default(BODHI_SCHEME),
-      self.setting_service().get_setting_or_default(BODHI_HOST),
-      self.setting_service().get_setting_or_default(BODHI_PORT)
-    )
+    format!("{}://{}:{}", self.scheme(), self.host(), self.port())
   }
 
   fn db_path(&self) -> PathBuf {
@@ -128,20 +130,31 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
   fn log_level(&self) -> LogLevel {
     let log_level = self
       .setting_service()
-      .get_setting_or_default(BODHI_LOG_LEVEL);
+      .get_setting(BODHI_LOG_LEVEL)
+      .expect("BODHI_LOG_LEVEL should be set");
     LogLevel::try_from(log_level.as_str()).unwrap_or(LogLevel::Warn)
   }
 
+  // TODO: remove this
   fn exec_lookup_path(&self) -> String {
     self
       .setting_service()
-      .get_setting_or_default(BODHI_EXEC_LOOKUP_PATH)
+      .get_setting(BODHI_EXEC_LOOKUP_PATH)
+      .expect("BODHI_EXEC_LOOKUP_PATH should be set")
   }
 
+  // TODO: remove this
   fn exec_path(&self) -> String {
-    self
+    let variant = self
       .setting_service()
-      .get_setting_or_default(BODHI_EXEC_PATH)
+      .get_setting(BODHI_EXEC_VARIANT)
+      .expect("BODHI_EXEC_VARIANT should be set");
+    format!(
+      "{}/{}/{}",
+      llama_server_proc::BUILD_TARGET,
+      variant,
+      llama_server_proc::EXEC_NAME
+    )
   }
 
   fn server_url(&self) -> String {
@@ -283,7 +296,7 @@ impl EnvService for DefaultEnvService {
 
   fn list(&self) -> Vec<SettingInfo> {
     let mut settings = Vec::new();
-    let default_home = self.setting_service().get_default_value(BODHI_HOME);
+    let default_home = serde_yaml::Value::String(self.bodhi_home().display().to_string());
     // Add system settings
     settings.push(SettingInfo {
       key: BODHI_HOME.to_string(),
@@ -362,7 +375,7 @@ mod tests {
     // BODHI_HOST - from setting.yaml
     // BODHI_PORT - from setting.yaml
     // BODHI_FRONTEND_URL - derived
-    // BODHI_EXEC_PATH - from setting.yaml
+    // BODHI_EXEC_VARIANT - from setting.yaml
     // BODHI_EXEC_LOOKUP_PATH - from setting.yaml
 
     let env_wrapper = EnvWrapperStub::new(maplit::hashmap! {
@@ -379,14 +392,16 @@ mod tests {
       r#"
 BODHI_HOST: test.host
 BODHI_PORT: 8080
-BODHI_EXEC_PATH: test_server
+BODHI_EXEC_VARIANT: metal
 BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
 "#,
     )?;
 
-    let setting_service = DefaultSettingService::new(Arc::new(env_wrapper), settings_file.clone());
+    let setting_service =
+      DefaultSettingService::new_with_defaults(Arc::new(env_wrapper), settings_file.clone());
+    let bodhi_home = bodhi_home.path().to_path_buf();
     let env_service = DefaultEnvService::new(
-      bodhi_home.path().to_path_buf(),
+      bodhi_home.clone(),
       SettingSource::Default,
       EnvType::Production,
       AppType::Native,
@@ -406,8 +421,8 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     // System settings
     let expected_bodhi_home = SettingInfo {
       key: BODHI_HOME.to_string(),
-      current_value: serde_yaml::Value::String(bodhi_home.path().display().to_string()),
-      default_value: serde_yaml::Value::String("/test/home/.cache/bodhi".to_string()),
+      current_value: serde_yaml::Value::String(bodhi_home.display().to_string()),
+      default_value: serde_yaml::Value::String(bodhi_home.display().to_string()),
       source: SettingSource::Default,
       metadata: SettingMetadata::String,
     };

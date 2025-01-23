@@ -67,7 +67,7 @@ Data Settings:
 - HF_TOKEN
 - BODHI_HOME
 - BODHI_EXEC_DEFAULT_VARIANT
-- BODHI_EXEC_PATH
+- BODHI_EXEC_VARIANT
 - BODHI_EXEC_LOOKUP_PATH
 - BODHI_EXEC_VARIANT
 
@@ -142,7 +142,7 @@ Resets setting to default value.
 - BODHI_HOME (type: string)
 
 #### Execution Configuration
-- BODHI_EXEC_PATH (type: string)
+- BODHI_EXEC_VARIANT (type: string)
 - BODHI_EXEC_LOOKUP_PATH (type: string)
 
 ### Frontend Implementation

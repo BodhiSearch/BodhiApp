@@ -63,7 +63,7 @@ pub fn _main() {
     }
   };
   let settings_file = bodhi_home.join(SETTINGS_YAML);
-  let setting_service = DefaultSettingService::new(Arc::new(env_wrapper), settings_file);
+  let setting_service = DefaultSettingService::new_with_defaults(Arc::new(env_wrapper), settings_file);
   setting_service.load_default_env(&bodhi_home);
 
   if let Err(err) = InitService::setup_hf_home(&setting_service) {
