@@ -76,37 +76,85 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
 
   fn auth_realm(&self) -> String;
 
-  fn hf_home(&self) -> PathBuf;
+  fn setting_service(&self) -> Arc<dyn SettingService>;
 
-  fn logs_dir(&self) -> PathBuf;
+  fn hf_home(&self) -> PathBuf {
+    PathBuf::from(
+      self
+        .setting_service()
+        .get_setting(HF_HOME)
+        .expect("HF_HOME should be set"),
+    )
+  }
 
-  fn scheme(&self) -> String;
+  fn logs_dir(&self) -> PathBuf {
+    PathBuf::from(
+      self
+        .setting_service()
+        .get_setting(BODHI_LOGS)
+        .expect("BODHI_LOGS should be set"),
+    )
+  }
 
-  fn host(&self) -> String;
+  fn scheme(&self) -> String {
+    self.setting_service().get_setting_or_default(BODHI_SCHEME)
+  }
 
-  fn port(&self) -> u16;
+  fn host(&self) -> String {
+    self.setting_service().get_setting_or_default(BODHI_HOST)
+  }
+
+  fn port(&self) -> u16 {
+    self
+      .setting_service()
+      .get_setting_or_default(BODHI_PORT)
+      .parse::<u16>()
+      .unwrap_or(DEFAULT_PORT)
+  }
+
+  fn frontend_url(&self) -> String {
+    format!(
+      "{}://{}:{}",
+      self.setting_service().get_setting_or_default(BODHI_SCHEME),
+      self.setting_service().get_setting_or_default(BODHI_HOST),
+      self.setting_service().get_setting_or_default(BODHI_PORT)
+    )
+  }
+
+  fn db_path(&self) -> PathBuf {
+    self.bodhi_home().join(PROD_DB)
+  }
+
+  fn log_level(&self) -> LogLevel {
+    let log_level = self
+      .setting_service()
+      .get_setting_or_default(BODHI_LOG_LEVEL);
+    LogLevel::try_from(log_level.as_str()).unwrap_or(LogLevel::Warn)
+  }
+
+  fn exec_lookup_path(&self) -> String {
+    self
+      .setting_service()
+      .get_setting_or_default(BODHI_EXEC_LOOKUP_PATH)
+  }
+
+  fn exec_path(&self) -> String {
+    self
+      .setting_service()
+      .get_setting_or_default(BODHI_EXEC_PATH)
+  }
 
   fn server_url(&self) -> String {
     format!("{}://{}:{}", self.scheme(), self.host(), self.port())
   }
 
-  fn frontend_url(&self) -> String;
+  fn get_setting(&self, key: &str) -> Option<String> {
+    self.setting_service().get_setting(key)
+  }
 
-  fn db_path(&self) -> PathBuf;
-
-  fn log_level(&self) -> LogLevel;
-
-  fn exec_lookup_path(&self) -> String;
-
-  fn exec_path(&self) -> String;
-
-  fn setting_service(&self) -> Arc<dyn SettingService>;
-
-  fn get_setting(&self, key: &str) -> Option<String>;
-
-  fn get_env(&self, key: &str) -> Option<String>;
-
-  fn list(&self) -> Vec<SettingInfo>;
+  fn get_env(&self, key: &str) -> Option<String> {
+    self.setting_service().get_env(key)
+  }
 
   fn hf_cache(&self) -> PathBuf {
     self.hf_home().join("hub")
@@ -145,7 +193,11 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
     self.bodhi_home().join("secrets.yaml")
   }
 
-  fn encryption_key(&self) -> Option<String>;
+  fn encryption_key(&self) -> Option<String> {
+    self.setting_service().get_env(BODHI_ENCRYPTION_KEY)
+  }
+
+  fn list(&self) -> Vec<SettingInfo>;
 
   #[cfg(not(debug_assertions))]
   fn get_dev_env(&self, _key: &str) -> Option<String> {
@@ -225,83 +277,13 @@ impl EnvService for DefaultEnvService {
     self.auth_realm.clone()
   }
 
-  fn hf_home(&self) -> PathBuf {
-    PathBuf::from(
-      self
-        .setting_service
-        .get_setting(HF_HOME)
-        .expect("HF_HOME should be set"),
-    )
-  }
-
-  fn logs_dir(&self) -> PathBuf {
-    PathBuf::from(
-      self
-        .setting_service
-        .get_setting(BODHI_LOGS)
-        .expect("BODHI_LOGS should be set"),
-    )
-  }
-
-  fn scheme(&self) -> String {
-    self.setting_service.get_setting_or_default(BODHI_SCHEME)
-  }
-
-  fn host(&self) -> String {
-    self.setting_service.get_setting_or_default(BODHI_HOST)
-  }
-
-  fn port(&self) -> u16 {
-    self
-      .setting_service
-      .get_setting_or_default(BODHI_PORT)
-      .parse::<u16>()
-      .unwrap_or(DEFAULT_PORT)
-  }
-
-  fn frontend_url(&self) -> String {
-    format!(
-      "{}://{}:{}",
-      self.setting_service.get_setting_or_default(BODHI_SCHEME),
-      self.setting_service.get_setting_or_default(BODHI_HOST),
-      self.setting_service.get_setting_or_default(BODHI_PORT)
-    )
-  }
-
-  fn db_path(&self) -> PathBuf {
-    self.bodhi_home().join(PROD_DB)
-  }
-
-  fn log_level(&self) -> LogLevel {
-    let log_level = self.setting_service.get_setting_or_default(BODHI_LOG_LEVEL);
-    LogLevel::try_from(log_level.as_str()).unwrap_or(LogLevel::Warn)
-  }
-
-  fn exec_lookup_path(&self) -> String {
-    self
-      .setting_service
-      .get_setting_or_default(BODHI_EXEC_LOOKUP_PATH)
-  }
-
-  fn exec_path(&self) -> String {
-    self.setting_service.get_setting_or_default(BODHI_EXEC_PATH)
-  }
-
   fn setting_service(&self) -> Arc<dyn SettingService> {
     self.setting_service.clone()
   }
 
-  fn get_setting(&self, key: &str) -> Option<String> {
-    self.setting_service.get_setting(key)
-  }
-
-  fn get_env(&self, key: &str) -> Option<String> {
-    self.setting_service.get_env(key)
-  }
-
   fn list(&self) -> Vec<SettingInfo> {
     let mut settings = Vec::new();
-    let default_home = self.setting_service.get_default_value(BODHI_HOME);
+    let default_home = self.setting_service().get_default_value(BODHI_HOME);
     // Add system settings
     settings.push(SettingInfo {
       key: BODHI_HOME.to_string(),
@@ -323,12 +305,8 @@ impl EnvService for DefaultEnvService {
       self.version(),
     ));
     // Add configurable settings
-    settings.extend(self.setting_service.list());
+    settings.extend(self.setting_service().list());
     settings
-  }
-
-  fn encryption_key(&self) -> Option<String> {
-    self.setting_service.get_env(BODHI_ENCRYPTION_KEY)
   }
 
   fn get_dev_env(&self, key: &str) -> Option<String> {
