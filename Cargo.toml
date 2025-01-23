@@ -29,7 +29,6 @@ routes_oai = { path = "crates/routes_oai" }
 routes_app = { path = "crates/routes_app" }
 routes_all = { path = "crates/routes_all" }
 server_app = { path = "crates/server_app" }
-# bodhi = { path = "app/bodhi" }
 bodhi = { path = "crates/bodhi/src-tauri" }
 
 aes-gcm = "0.10.3"
