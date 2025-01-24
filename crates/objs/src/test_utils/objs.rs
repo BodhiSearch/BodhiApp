@@ -56,7 +56,7 @@ impl Repo {
     Repo::from_str(Self::TESTALIAS_TOKENIZER).unwrap()
   }
 
-  pub fn testalias_filename() -> String {
+  pub fn testalias_model_q8() -> String {
     Self::TESTALIAS_FILENAME.to_string()
   }
 
@@ -64,7 +64,7 @@ impl Repo {
     Repo::from_str(Self::FAKEMODEL).unwrap()
   }
 
-  pub fn testalias_q4() -> String {
+  pub fn testalias_model_q4() -> String {
     Self::TESTALIAS_Q4_FILENAME.to_string()
   }
 
@@ -90,7 +90,7 @@ impl HubFileBuilder {
   pub fn testalias_exists() -> HubFileBuilder {
     HubFileBuilder::default()
       .repo(Repo::testalias())
-      .filename(Repo::testalias_filename())
+      .filename(Repo::testalias_model_q8())
       .snapshot(SNAPSHOT.to_string())
       .size(Some(21))
       .to_owned()
@@ -149,7 +149,7 @@ impl HubFile {
 
   pub fn testalias_q4() -> HubFile {
     HubFileBuilder::testalias()
-      .filename(Repo::testalias_q4())
+      .filename(Repo::testalias_model_q4())
       .hf_cache(PathBuf::from("/tmp/ignored/huggingface/hub"))
       .build()
       .unwrap()
@@ -208,7 +208,7 @@ impl AliasBuilder {
     AliasBuilder::default()
       .alias("testalias:instruct")
       .repo(Repo::testalias())
-      .filename(Repo::testalias_filename())
+      .filename(Repo::testalias_model_q8())
       .snapshot(SNAPSHOT)
       .source(AliasSource::User)
       .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
@@ -220,7 +220,7 @@ impl AliasBuilder {
   pub fn testalias_q4() -> AliasBuilder {
     AliasBuilder::testalias()
       .alias("testalias:q4_instruct")
-      .filename(Repo::testalias_q4())
+      .filename(Repo::testalias_model_q4())
       .to_owned()
   }
 

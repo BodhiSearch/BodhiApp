@@ -303,6 +303,7 @@ mod tests {
     mock_env
       .expect_get_dev_env()
       .with(eq(BODHI_DEV_PROXY_UI))
+      .times(1)
       .return_const(config.proxy_ui);
 
     Arc::new(mock_env)

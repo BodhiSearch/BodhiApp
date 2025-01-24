@@ -186,7 +186,8 @@ mod tests {
     mock
       .expect_var()
       .with(eq(BODHI_HOME))
-      .returning(move |_| Ok(bodhi_home_str.clone()));
+      .times(1)
+      .return_once(move |_| Ok(bodhi_home_str.clone()));
     let init_service = InitService::new(&mock, &EnvType::Development);
     let (result, source) = init_service.setup_bodhi_home()?;
     assert_eq!(bodhi_home, result);
@@ -200,7 +201,8 @@ mod tests {
     mock
       .expect_var()
       .with(eq(BODHI_HOME))
-      .returning(move |_| Err(VarError::NotPresent));
+      .times(1)
+      .return_once(move |_| Err(VarError::NotPresent));
     let home_dir = temp_dir.path().to_path_buf();
     mock.expect_home_dir().times(1).return_const(Some(home_dir));
     let init_service = InitService::new(&mock, &EnvType::Development);
@@ -216,8 +218,9 @@ mod tests {
     mock
       .expect_var()
       .with(eq(BODHI_HOME))
-      .returning(|_| Err(VarError::NotPresent));
-    mock.expect_home_dir().returning(move || None);
+      .times(1)
+      .return_once(|_| Err(VarError::NotPresent));
+    mock.expect_home_dir().times(1).return_once(move || None);
 
     let init_service = InitService::new(&mock, &EnvType::Development);
     let result = init_service.setup_bodhi_home();

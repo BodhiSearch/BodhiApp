@@ -216,6 +216,7 @@ mod test {
         eq(TOKENIZER_CONFIG_JSON),
         eq(None),
       )
+      .times(1)
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let service = Arc::new(
       AppServiceStubBuilder::default()
@@ -257,6 +258,7 @@ mod test {
         eq(TOKENIZER_CONFIG_JSON),
         eq(None),
       )
+      .times(1)
       .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
     let service = Arc::new(
       AppServiceStubBuilder::default()

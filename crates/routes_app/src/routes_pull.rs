@@ -495,8 +495,13 @@ mod tests {
   ) -> anyhow::Result<()> {
     test_hf_service
       .expect_download()
-      .with(eq(Repo::testalias()), eq(Repo::testalias_q4()), eq(None))
-      .returning(|_, _, _| Ok(HubFile::testalias()));
+      .with(
+        eq(Repo::testalias()),
+        eq(Repo::testalias_model_q4()),
+        eq(None),
+      )
+      .times(1)
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
     let app_service = app_service_stub_builder
@@ -506,7 +511,7 @@ mod tests {
     let router = test_router(Arc::new(app_service));
     let payload = serde_json::json!({
         "repo": "MyFactory/testalias-gguf",
-        "filename": Repo::testalias_q4()
+        "filename": Repo::testalias_model_q4()
     });
 
     let response = router
@@ -523,7 +528,7 @@ mod tests {
     assert_eq!(response.status(), StatusCode::CREATED);
     let download_request = response.json::<DownloadRequest>().await?;
     assert_eq!(download_request.repo, Repo::testalias().to_string());
-    assert_eq!(download_request.filename, Repo::testalias_q4());
+    assert_eq!(download_request.filename, Repo::testalias_model_q4());
     assert_eq!(download_request.status, DownloadStatus::Pending);
 
     // Wait for the update_download_request event
@@ -602,7 +607,7 @@ mod tests {
     #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     let pending_request =
-      DownloadRequest::new_pending(Repo::testalias().to_string(), Repo::testalias_q4());
+      DownloadRequest::new_pending(Repo::testalias().to_string(), Repo::testalias_model_q4());
     db_service.create_download_request(&pending_request).await?;
     let db_service = Arc::new(db_service);
     let app_service = app_service_stub_builder
@@ -614,7 +619,7 @@ mod tests {
 
     let payload = serde_json::json!({
         "repo": Repo::testalias().to_string(),
-        "filename": Repo::testalias_q4()
+        "filename": Repo::testalias_model_q4()
     });
 
     let response = router
@@ -632,7 +637,7 @@ mod tests {
     let download_request = response.json::<DownloadRequest>().await?;
     assert_eq!(download_request.id, pending_request.id);
     assert_eq!(download_request.repo, Repo::testalias().to_string());
-    assert_eq!(download_request.filename, Repo::testalias_q4());
+    assert_eq!(download_request.filename, Repo::testalias_model_q4());
     assert_eq!(download_request.status, DownloadStatus::Pending);
 
     Ok(())
@@ -651,8 +656,13 @@ mod tests {
   ) -> anyhow::Result<()> {
     test_hf_service
       .expect_download()
-      .with(eq(Repo::testalias()), eq(Repo::testalias_q4()), eq(None))
-      .returning(|_, _, _| Ok(HubFile::testalias()));
+      .with(
+        eq(Repo::testalias()),
+        eq(Repo::testalias_model_q4()),
+        eq(None),
+      )
+      .times(1)
+      .return_once(|_, _, _| Ok(HubFile::testalias()));
     test_hf_service
       .expect_download()
       .with(
@@ -660,6 +670,7 @@ mod tests {
         eq(TOKENIZER_CONFIG_JSON),
         eq(None),
       )
+      .times(1)
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
@@ -681,7 +692,7 @@ mod tests {
     assert_eq!(response.status(), StatusCode::CREATED);
     let download_request = response.json::<DownloadRequest>().await?;
     assert_eq!(download_request.repo, Repo::testalias().to_string());
-    assert_eq!(download_request.filename, Repo::testalias_q4());
+    assert_eq!(download_request.filename, Repo::testalias_model_q4());
     assert_eq!(download_request.status, DownloadStatus::Pending);
 
     let event_received = wait_for_event!(rx, "update_download_request", Duration::from_millis(500));

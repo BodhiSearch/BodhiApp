@@ -125,6 +125,7 @@ mod test {
     mock_ctx
       .expect_chat_completions()
       .with(eq(request.clone()), eq(Alias::testalias_exists()))
+      .times(1)
       .return_once(|_, _| Ok(mock_response("")));
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
@@ -152,6 +153,7 @@ mod test {
     mock_ctx
       .expect_chat_completions()
       .with(eq(request.clone()), eq(alias))
+      .times(1)
       .return_once(|_, _| {
         Err(ContextError::Server(ServerError::StartupError(
           "test error".to_string(),

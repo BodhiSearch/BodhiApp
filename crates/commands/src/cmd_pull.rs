@@ -146,6 +146,7 @@ mod test {
         eq(TOKENIZER_CONFIG_JSON),
         eq(None),
       )
+      .times(1)
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let service = AppServiceStubBuilder::default()
       .hub_service(Arc::new(test_hf_service))
@@ -174,7 +175,7 @@ mod test {
     mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
     let repo = Repo::testalias();
-    let filename = Repo::testalias_filename();
+    let filename = Repo::testalias_model_q4();
     let pull = PullCommand::ByRepoFile {
       repo: repo.clone(),
       filename: filename.to_string(),
@@ -183,7 +184,8 @@ mod test {
     test_hf_service
       .expect_download()
       .with(eq(repo), eq(filename), eq(snapshot))
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .times(1)
+      .return_once(|_, _, _| Ok(HubFile::testalias_q4()));
     let service = AppServiceStubBuilder::default()
       .hub_service(Arc::new(test_hf_service))
       .build()?;

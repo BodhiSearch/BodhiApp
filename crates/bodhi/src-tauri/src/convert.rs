@@ -192,7 +192,7 @@ mod tests {
   Command::Create {
     alias: "testalias:instruct".to_string(),
     repo: Repo::testalias(),
-    filename: Repo::testalias_filename(),
+    filename: Repo::testalias_model_q8(),
     snapshot: Some("main".to_string()),
     chat_template: Some(ChatTemplateId::Llama3),
     tokenizer_config: None,
@@ -203,7 +203,7 @@ mod tests {
   CreateCommand {
     alias: "testalias:instruct".to_string(),
     repo: Repo::testalias(),
-    filename: Repo::testalias_filename(),
+    filename: Repo::testalias_model_q8(),
     snapshot: Some("main".to_string()),
     chat_template: ChatTemplateType::Id(ChatTemplateId::Llama3),
     auto_download: true,
@@ -229,7 +229,7 @@ mod tests {
     Command::Create {
       alias: "test".to_string(),
       repo: Repo::testalias(),
-      filename: Repo::testalias_filename(),
+      filename: Repo::testalias_model_q8(),
       snapshot: None,
       chat_template: None,
       tokenizer_config: None,

@@ -181,6 +181,7 @@ mod test {
     ctx
       .expect_chat_completions()
       .with(eq(request.clone()), eq(alias))
+      .times(1)
       .return_once(move |_, _| Ok(non_streamed_response()));
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));
     let app = Router::new()
@@ -267,6 +268,7 @@ mod test {
     ctx
       .expect_chat_completions()
       .with(eq(request.clone()), eq(alias))
+      .times(1)
       .return_once(move |_, _| streamed_response());
 
     let router_state = DefaultRouterState::new(Arc::new(ctx), Arc::new(app_service_stub));

@@ -373,9 +373,11 @@ mod tests {
     let mut mock_env_service = MockEnvService::new();
     mock_env_service
       .expect_login_callback_url()
+      .times(1)
       .return_const(callback_url.to_string());
     mock_env_service
       .expect_login_url()
+      .times(1)
       .return_const(login_url.to_string());
     let dbfile = temp_bodhi_home.path().join("test.db");
     let app_service = AppServiceStubBuilder::default()
@@ -537,7 +539,8 @@ mod tests {
     let token_clone = token.clone();
     mock_auth_service
       .expect_exchange_auth_code()
-      .returning(move |_, _, _, _, _| {
+      .times(1)
+      .return_once(move |_, _, _, _, _| {
         Ok((
           AccessToken::new(token_clone.clone()),
           RefreshToken::new("test_refresh_token".to_string()),
@@ -755,7 +758,8 @@ mod tests {
     let mut mock_auth_service = MockAuthService::new();
     mock_auth_service
       .expect_exchange_auth_code()
-      .returning(|_, _, _, _, _| {
+      .times(1)
+      .return_once(|_, _, _, _, _| {
         Err(AuthServiceError::AuthServiceApiError(
           "network error".to_string(),
         ))

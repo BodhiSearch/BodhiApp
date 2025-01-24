@@ -401,6 +401,7 @@ mod tests {
           "scope_token_user".to_string(),
         ]),
       )
+      .times(1)
       .return_once(|_, _, _, _, _| Ok(("new_access_token".to_string(), Some(offline_token_cl))));
 
     let secret_service = SecretServiceStub::new()
@@ -485,6 +486,7 @@ mod tests {
           "scope_token_user".to_string(),
         ]),
       )
+      .times(1)
       .return_once(|_, _, _, _, _| Ok(("some_access_token".to_string(), Some(offline_token))));
 
     let secret_service = SecretServiceStub::new()
@@ -541,7 +543,8 @@ mod tests {
           "scope_token_user".to_string(),
         ]),
       )
-      .returning(|_, _, _, _, _| {
+      .times(1)
+      .return_once(|_, _, _, _, _| {
         Err(AuthServiceError::TokenExchangeError(
           "test_error".to_string(),
         ))

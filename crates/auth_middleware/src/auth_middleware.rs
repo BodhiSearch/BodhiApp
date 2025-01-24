@@ -510,6 +510,7 @@ mod tests {
         eq(TEST_CLIENT_SECRET),
         eq("valid_refresh_token".to_string()),
       )
+      .times(1)
       .return_once(|_, _, _| Ok((exchanged_token_cl, Some("new_refresh_token".to_string()))));
 
     // Setup app service with mocks
@@ -589,6 +590,7 @@ mod tests {
         eq("test_client_secret"),
         eq("refresh_token"),
       )
+      .times(1)
       .return_once(|_, _, _| {
         Err(AuthServiceError::Reqwest(ReqwestError::new(
           "Failed to refresh token".to_string(),
@@ -777,6 +779,7 @@ mod tests {
         eq(TEST_CLIENT_SECRET),
         eq(bearer_token.clone()),
       )
+      .times(1)
       .return_once(|_, _, _| Ok((access_token_cl, Some("refresh_token".to_string()))));
     let app_service = AppServiceStubBuilder::default()
       .with_secret_service()

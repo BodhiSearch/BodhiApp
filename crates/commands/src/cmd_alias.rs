@@ -162,6 +162,7 @@ snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 "#,
       ))
+      .times(1)
       .return_once(|input| Ok(input.len()));
     show.execute(service, &mut mock)?;
     Ok(())
@@ -195,6 +196,7 @@ chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
       .with(eq(
         "created new alias 'tinyllama:myconfig' from 'tinyllama:instruct'.\n",
       ))
+      .times(1)
       .return_once(|input| Ok(input.len()));
     copy.execute(service.clone(), &mut mock)?;
     assert!(service

@@ -311,6 +311,7 @@ mod test {
     mock_server
       .expect_chat_completions()
       .with(eq(expected_input))
+      .times(1)
       .return_once(|_| async { Ok(mock_response("")) }.boxed());
     let server_args = LlamaServerArgsBuilder::default()
       .alias("testalias:instruct")
@@ -319,9 +320,11 @@ mod test {
     let server_args_cl = server_args.clone();
     mock_server
       .expect_get_server_args()
+      .times(1)
       .return_once(move || server_args_cl);
     mock_server
       .expect_stop()
+      .times(1)
       .return_once(|| async { Ok(()) }.boxed());
 
     let server_factory = ServerFactoryStub::new(Box::new(mock_server));
@@ -359,6 +362,7 @@ mod test {
     mock_server
       .expect_chat_completions()
       .with(eq(expected_input))
+      .times(1)
       .return_once(|_| async { Ok(mock_response("")) }.boxed());
 
     let bodhi_server_factory = ServerFactoryStub::new(Box::new(mock_server));
@@ -400,19 +404,17 @@ mod test {
       .alias("testalias:instruct")
       .model(loaded_model.path())
       .build()?;
-    let loaded_params_cl = loaded_params.clone();
-    mock_server
-      .expect_get_server_args()
-      .return_once(move || loaded_params_cl);
     let expected_input: Value = serde_json::from_str(
       r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"fakemodel:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#,
     )?;
     mock_server
       .expect_chat_completions()
       .with(eq(expected_input))
+      .times(1)
       .return_once(|_| async { Ok(mock_response("")) }.boxed());
     mock_server
       .expect_stop()
+      .times(1)
       .return_once(|| async { Ok(()) }.boxed());
 
     let request_model = HubFileBuilder::fakemodel()
@@ -424,9 +426,11 @@ mod test {
       .build()?;
     request_server
       .expect_get_server_args()
+      .times(1)
       .return_once(move || request_params);
     request_server
       .expect_stop()
+      .times(1)
       .return_once(|| async { Ok(()) }.boxed());
     let server_factory =
       ServerFactoryStub::new_with_instances(vec![Box::new(mock_server), Box::new(request_server)]);

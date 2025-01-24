@@ -318,18 +318,8 @@ mod tests {
   #[rstest]
   #[case(
       SecretServiceStub::new(),
-      SetupRequest { authz: false },
-      AppStatus::Ready,
-  )]
-  #[case(
-      SecretServiceStub::new(),
       SetupRequest { authz: true },
       AppStatus::ResourceAdmin,
-  )]
-  #[case(
-      SecretServiceStub::new().with_app_status(&AppStatus::Setup),
-      SetupRequest { authz: false },
-      AppStatus::Ready,
   )]
   #[case(
       SecretServiceStub::new().with_app_status(&AppStatus::Setup),
@@ -337,7 +327,7 @@ mod tests {
       AppStatus::ResourceAdmin,
   )]
   #[tokio::test]
-  async fn test_setup_handler_success(
+  async fn test_setup_handler_success_for_authz(
     #[case] secret_service: SecretServiceStub,
     #[case] request: SetupRequest,
     #[case] expected_status: AppStatus,
@@ -345,7 +335,8 @@ mod tests {
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_register_client()
-      .returning(|_redirect_uris| {
+      .times(1)
+      .return_once(|_redirect_uris| {
         Ok(AppRegInfo {
           public_key: "public_key".to_string(),
           alg: Algorithm::RS256,
@@ -387,6 +378,56 @@ mod tests {
   }
 
   #[rstest]
+  #[case(
+      SecretServiceStub::new(),
+      SetupRequest { authz: false },
+      AppStatus::Ready,
+  )]
+  #[case(
+      SecretServiceStub::new().with_app_status(&AppStatus::Setup),
+      SetupRequest { authz: false },
+      AppStatus::Ready,
+  )]
+  #[tokio::test]
+  async fn test_setup_handler_success_for_non_authz(
+    #[case] secret_service: SecretServiceStub,
+    #[case] request: SetupRequest,
+    #[case] expected_status: AppStatus,
+  ) -> anyhow::Result<()> {
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service.expect_register_client().never();
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .secret_service(Arc::new(secret_service))
+        .auth_service(Arc::new(mock_auth_service))
+        .build()?,
+    );
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/setup", post(setup_handler))
+      .with_state(state);
+
+    let response = router
+      .oneshot(
+        Request::post("/setup")
+          .header("Content-Type", "application/json")
+          .body(Body::from(serde_json::to_string(&request)?))?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let secret_service = app_service.secret_service();
+    assert_eq!(expected_status, secret_service.app_status().unwrap(),);
+    let app_reg_info = secret_service.app_reg_info().unwrap();
+    assert_eq!(None, app_reg_info);
+    assert_eq!(false, request.authz);
+    Ok(())
+  }
+
+  #[rstest]
   #[tokio::test]
   async fn test_setup_handler_register_resource_error(
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
@@ -395,8 +436,8 @@ mod tests {
     let mut mock_auth_service = MockAuthService::default();
     mock_auth_service
       .expect_register_client()
-      .once()
-      .returning(|_redirect_uris| {
+      .times(1)
+      .return_once(|_redirect_uris| {
         Err(AuthServiceError::Reqwest(ReqwestError::new(
           "failed to register as resource server".to_string(),
         )))
