@@ -1,6 +1,8 @@
 use crate::ContextError;
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
+use llama_server_proc::{
+  exec_path_from, LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server,
+};
 use objs::Alias;
 use services::{HubService, IntoChatTemplate};
 use std::{
@@ -8,12 +10,13 @@ use std::{
   sync::Arc,
 };
 use tokio::sync::RwLock;
+use tracing::info;
 
 type Result<T> = std::result::Result<T, ContextError>;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait SharedContext: std::fmt::Debug + Send + Sync {
-  async fn set_exec_path(&mut self, path: PathBuf) -> Result<()>;
+  async fn set_exec_variant(&self, variant: &str) -> Result<()>;
 
   async fn reload(&self, server_args: Option<LlamaServerArgs>) -> Result<()>;
 
@@ -54,23 +57,35 @@ impl ServerFactory for DefaultServerFactory {
 pub struct DefaultSharedContext {
   hub_service: Arc<dyn HubService>,
   factory: Box<dyn ServerFactory>,
-  exec_path: PathBuf,
+  exec_lookup_path: PathBuf,
+  exec_variant: ExecVariant,
   server: RwLock<Option<Box<dyn Server>>>,
 }
 
 impl DefaultSharedContext {
-  pub fn new(hub_service: Arc<dyn HubService>, exec_path: PathBuf) -> Self {
-    Self::with_args(hub_service, Box::new(DefaultServerFactory), exec_path)
+  pub fn new(
+    hub_service: Arc<dyn HubService>,
+    exec_lookup_path: &Path,
+    exec_variant: &str,
+  ) -> Self {
+    Self::with_args(
+      hub_service,
+      Box::new(DefaultServerFactory),
+      exec_lookup_path,
+      exec_variant,
+    )
   }
 
   pub fn with_args(
     hub_service: Arc<dyn HubService>,
     factory: Box<dyn ServerFactory>,
-    exec_path: PathBuf,
+    exec_lookup_path: &Path,
+    exec_variant: &str,
   ) -> Self {
     Self {
       hub_service,
-      exec_path,
+      exec_lookup_path: exec_lookup_path.to_path_buf(),
+      exec_variant: ExecVariant::new(exec_variant.to_string()),
       factory,
       server: RwLock::new(None),
     }
@@ -84,8 +99,8 @@ impl DefaultSharedContext {
 
 #[async_trait::async_trait]
 impl SharedContext for DefaultSharedContext {
-  async fn set_exec_path(&mut self, path: PathBuf) -> Result<()> {
-    self.exec_path = path;
+  async fn set_exec_variant(&self, variant: &str) -> Result<()> {
+    self.exec_variant.set(variant.to_string()).await;
     let server_args = self.get_server_args().await;
     self.reload(server_args).await?;
     Ok(())
@@ -101,11 +116,19 @@ impl SharedContext for DefaultSharedContext {
     let Some(server_args) = server_args else {
       return Ok(());
     };
-    let server = self
-      .factory
-      .create_server(self.exec_path.as_ref(), &server_args)?;
+    let exec_path = exec_path_from(
+      self.exec_lookup_path.as_ref(),
+      self.exec_variant.get().await.as_ref(),
+    );
+    if !exec_path.exists() {
+      return Err(ContextError::ExecNotExists(
+        exec_path.to_string_lossy().to_string(),
+      ))?;
+    }
+    let server = self.factory.create_server(&exec_path, &server_args)?;
     server.start().await?;
     *self.server.write().await = Some(server);
+    info!(?exec_path, "server started");
     Ok(())
   }
 
@@ -205,11 +228,38 @@ impl ModelLoadStrategy {
   }
 }
 
+#[derive(Debug)]
+pub struct ExecVariant {
+  inner: RwLock<String>,
+}
+
+impl ExecVariant {
+  pub fn new(variant: String) -> Self {
+    Self {
+      inner: RwLock::new(variant),
+    }
+  }
+
+  pub async fn get(&self) -> String {
+    self.inner.read().await.clone()
+  }
+
+  pub async fn set(&self, variant: String) {
+    *self.inner.write().await = variant;
+  }
+}
+
+impl Default for ExecVariant {
+  fn default() -> Self {
+    Self::new(llama_server_proc::DEFAULT_VARIANT.to_string())
+  }
+}
+
 #[cfg(test)]
 mod test {
   use crate::{
     shared_rw::{DefaultSharedContext, ModelLoadStrategy, SharedContext},
-    test_utils::{mock_server, ServerFactoryStub},
+    test_utils::{bin_path, mock_server, ServerFactoryStub},
   };
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
@@ -224,7 +274,6 @@ mod test {
     test_utils::{app_service_stub, AppServiceStub},
     AppService,
   };
-  use std::path::PathBuf;
   use tempfile::TempDir;
 
   #[rstest]
@@ -249,6 +298,7 @@ mod test {
   async fn test_chat_completions_continue_strategy(
     mut mock_server: MockServer,
     #[future] app_service_stub: AppServiceStub,
+    bin_path: TempDir,
   ) -> anyhow::Result<()> {
     let hf_cache = app_service_stub.hf_cache();
     let model_file = HubFileBuilder::testalias()
@@ -278,7 +328,8 @@ mod test {
     let shared_ctx = DefaultSharedContext::with_args(
       app_service_stub.hub_service(),
       Box::new(server_factory),
-      PathBuf::from("/tmp/test_server.exe"),
+      bin_path.path(),
+      llama_server_proc::DEFAULT_VARIANT,
     );
     shared_ctx.reload(Some(server_args)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
@@ -299,6 +350,7 @@ mod test {
   #[anyhow_trace]
   async fn test_chat_completions_load_strategy(
     #[future] app_service_stub: AppServiceStub,
+    bin_path: TempDir,
     mut mock_server: MockServer,
   ) -> anyhow::Result<()> {
     let expected_input: Value = serde_json::from_str(
@@ -310,10 +362,12 @@ mod test {
       .return_once(|_| async { Ok(mock_response("")) }.boxed());
 
     let bodhi_server_factory = ServerFactoryStub::new(Box::new(mock_server));
+
     let shared_ctx = DefaultSharedContext::with_args(
       app_service_stub.hub_service(),
       Box::new(bodhi_server_factory),
-      PathBuf::from("/tmp/test_library.dylib"),
+      bin_path.path(),
+      llama_server_proc::DEFAULT_VARIANT,
     );
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
@@ -334,6 +388,7 @@ mod test {
     mut mock_server: MockServer,
     #[from(mock_server)] mut request_server: MockServer,
     #[future] app_service_stub: AppServiceStub,
+    bin_path: TempDir,
     temp_hf_home: TempDir,
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
@@ -378,7 +433,8 @@ mod test {
     let shared_ctx = DefaultSharedContext::with_args(
       app_service_stub.hub_service(),
       Box::new(server_factory),
-      PathBuf::from("/tmp/test_server.exe"),
+      bin_path.path(),
+      llama_server_proc::DEFAULT_VARIANT,
     );
     shared_ctx.reload(Some(loaded_params)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{

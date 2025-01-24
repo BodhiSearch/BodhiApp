@@ -278,14 +278,16 @@ mod tests {
     settings: HashMap<String, serde_yaml::Value>,
   ) -> Result<DefaultEnvService, anyhow::Error> {
     let settings_yaml = temp_dir.path().join("settings.yaml");
-    let setting_service =
-      DefaultSettingService::new_with_defaults(Arc::new(EnvWrapperStub::new(envs)), settings_yaml);
+    let setting_service = DefaultSettingService::new_with_defaults(
+      Arc::new(EnvWrapperStub::new(envs)),
+      &temp_dir.path(),
+      SettingSource::Environment,
+      settings_yaml,
+    )?;
     for (key, value) in settings {
       setting_service.set_setting_value(&key, &value)?;
     }
     let env_service = DefaultEnvService::new(
-      temp_dir.path().to_path_buf(),
-      SettingSource::Environment,
       EnvType::Development,
       AppType::Native,
       "http://auth.url".to_string(),

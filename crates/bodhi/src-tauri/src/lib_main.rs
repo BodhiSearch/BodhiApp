@@ -15,29 +15,36 @@ mod env_config {
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
-  pub fn set_feature_settings(_env_wrapper: &mut DefaultEnvWrapper) {}
+  pub fn set_feature_settings(setting_service: &mut DefaultSettingService) -> Result<(), ApiError> {
+    Ok(())
+  }
 }
 
 #[cfg(not(feature = "production"))]
 mod env_config {
-  use objs::EnvType;
-  use services::DefaultEnvWrapper;
+  use objs::{ApiError, EnvType};
+  use services::DefaultSettingService;
 
   pub static ENV_TYPE: EnvType = EnvType::Development;
   pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
   #[cfg(not(feature = "native"))]
-  pub fn set_feature_settings(env_wrapper: &mut DefaultEnvWrapper) {
-    use services::BODHI_EXEC_LOOKUP_PATH;
+  #[allow(clippy::result_large_err)]
+  pub fn set_feature_settings(setting_service: &DefaultSettingService) -> Result<(), ApiError> {
+    use services::{SettingService, BODHI_EXEC_LOOKUP_PATH};
 
-    env_wrapper.set_var(
+    setting_service.set_default(
       BODHI_EXEC_LOOKUP_PATH,
-      concat!(env!("CARGO_MANIFEST_DIR"), "/bin"),
-    );
+      &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
+    )?;
+    Ok(())
   }
   #[cfg(feature = "native")]
-  pub fn set_feature_settings(_env_wrapper: &mut DefaultEnvWrapper) {}
+  #[allow(clippy::result_large_err)]
+  pub fn set_feature_settings(_setting_service: &DefaultSettingService) -> Result<(), ApiError> {
+    Ok(())
+  }
 }
 
 pub use env_config::*;
@@ -49,8 +56,7 @@ pub const APP_TYPE: AppType = AppType::Native;
 pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
-  let mut env_wrapper = DefaultEnvWrapper::default();
-  set_feature_settings(&mut env_wrapper);
+  let env_wrapper = DefaultEnvWrapper::default();
   let init_service = InitService::new(&env_wrapper, &ENV_TYPE);
   let (bodhi_home, source) = match init_service.setup_bodhi_home() {
     Ok(bodhi_home) => bodhi_home,
@@ -63,8 +69,28 @@ pub fn _main() {
     }
   };
   let settings_file = bodhi_home.join(SETTINGS_YAML);
-  let setting_service = DefaultSettingService::new_with_defaults(Arc::new(env_wrapper), settings_file);
-  setting_service.load_default_env(&bodhi_home);
+  let setting_service = DefaultSettingService::new_with_defaults(
+    Arc::new(env_wrapper),
+    &bodhi_home,
+    source,
+    settings_file,
+  )
+  .unwrap_or_else(|err| {
+    let err: ApiError = err.into();
+    eprintln!(
+      "fatal error, setting up setting service, error: {}\nexiting...",
+      err
+    );
+    std::process::exit(1);
+  });
+  setting_service.load_default_env();
+  set_feature_settings(&setting_service).unwrap_or_else(|err| {
+    eprintln!(
+      "fatal error, setting up feature settings, error: {}\nexiting...",
+      err
+    );
+    std::process::exit(1);
+  });
 
   if let Err(err) = InitService::setup_hf_home(&setting_service) {
     eprintln!(
@@ -82,8 +108,6 @@ pub fn _main() {
   }
 
   let env_service = match DefaultEnvService::new(
-    bodhi_home,
-    source,
     ENV_TYPE.clone(),
     APP_TYPE.clone(),
     AUTH_URL.to_string(),

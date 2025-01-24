@@ -1,12 +1,14 @@
 use crate::{
   build_server_handle, shutdown_signal, ServerError, ServerHandle, ShutdownCallback, TaskJoinError,
+  VariantChangeListener,
 };
 use axum::Router;
+use llama_server_proc::exec_path_from;
 use objs::{impl_error_from, AppError};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContext, SharedContext};
 use services::AppService;
-use std::{path::Path, sync::Arc};
+use std::{path::PathBuf, sync::Arc};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -88,23 +90,30 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let exec_path = service.env_service().exec_path();
-    let exec_lookup_path = service.env_service().exec_lookup_path();
-    let exec_path = Path::new(&exec_lookup_path).join(exec_path);
+    let exec_variant = service.env_service().exec_variant();
+    let exec_lookup_path = PathBuf::from(service.env_service().exec_lookup_path());
+    let exec_path = exec_path_from(&exec_lookup_path, &exec_variant);
     if !exec_path.exists() {
       println!("exec not found at {}", exec_path.to_string_lossy());
       return Err(ContextError::ExecNotExists(
         exec_path.to_string_lossy().to_string(),
       ))?;
     }
-    let ctx = DefaultSharedContext::new(service.hub_service(), exec_path);
+    let ctx = DefaultSharedContext::new(service.hub_service(), &exec_lookup_path, &exec_variant);
     let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
+    service
+      .env_service()
+      .setting_service()
+      .add_listener(Box::new(VariantChangeListener::new(ctx.clone())));
     let app = build_routes(ctx.clone(), service, static_router);
 
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {
       let callback = Box::new(ShutdownContextCallback { ctx });
       match server.start_new(app, Some(callback)).await {
-        Ok(()) => Ok(()),
+        Ok(()) => {
+          tracing::info!("server started");
+          Ok(())
+        }
         Err(err) => {
           tracing::error!(err = ?err, "server encountered an error");
           Err(err)?
