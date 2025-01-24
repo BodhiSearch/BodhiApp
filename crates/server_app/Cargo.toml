@@ -24,6 +24,7 @@ mockall = { workspace = true, optional = true }
 reqwest = { workspace = true }
 rstest = { workspace = true, optional = true }
 serde_json = { workspace = true }
+serde_yaml = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
@@ -32,6 +33,7 @@ tracing = { workspace = true }
 objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 routes_all = { workspace = true, features = ["test-utils"] }
+server_core = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }

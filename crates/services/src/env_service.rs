@@ -4,7 +4,7 @@ use crate::{
 };
 use objs::{
   impl_error_from, AppError, AppType, EnvType, ErrorType, IoDirCreateError, IoError, LogLevel,
-  SerdeYamlError, SettingInfo, SettingMetadata, SettingSource,
+  SerdeYamlError, SettingInfo, SettingMetadata,
 };
 use std::{path::PathBuf, sync::Arc};
 
@@ -135,7 +135,6 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
     LogLevel::try_from(log_level.as_str()).unwrap_or(LogLevel::Warn)
   }
 
-  // TODO: remove this
   fn exec_lookup_path(&self) -> String {
     self
       .setting_service()
@@ -143,18 +142,11 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
       .expect("BODHI_EXEC_LOOKUP_PATH should be set")
   }
 
-  // TODO: remove this
-  fn exec_path(&self) -> String {
-    let variant = self
+  fn exec_variant(&self) -> String {
+    self
       .setting_service()
       .get_setting(BODHI_EXEC_VARIANT)
-      .expect("BODHI_EXEC_VARIANT should be set");
-    format!(
-      "{}/{}/{}",
-      llama_server_proc::BUILD_TARGET,
-      variant,
-      llama_server_proc::EXEC_NAME
-    )
+      .expect("BODHI_EXEC_VARIANT should be set")
   }
 
   fn server_url(&self) -> String {
@@ -225,8 +217,6 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
 
 #[derive(Debug, Clone)]
 pub struct DefaultEnvService {
-  bodhi_home: PathBuf,
-  bodhi_home_source: SettingSource,
   env_type: EnvType,
   app_type: AppType,
   version: String,
@@ -239,22 +229,13 @@ pub struct DefaultEnvService {
 impl DefaultEnvService {
   #[allow(clippy::new_without_default)]
   pub fn new(
-    bodhi_home: PathBuf,
-    bodhi_home_source: SettingSource,
     env_type: EnvType,
     app_type: AppType,
     auth_url: String,
     auth_realm: String,
     setting_service: Arc<dyn SettingService>,
   ) -> Result<Self, EnvServiceError> {
-    if !bodhi_home.exists() {
-      return Err(EnvServiceError::BodhiHomeNotExists(
-        bodhi_home.display().to_string(),
-      ));
-    }
     Ok(DefaultEnvService {
-      bodhi_home,
-      bodhi_home_source,
       env_type,
       app_type,
       version: env!("CARGO_PKG_VERSION").to_string(),
@@ -267,7 +248,11 @@ impl DefaultEnvService {
 
 impl EnvService for DefaultEnvService {
   fn bodhi_home(&self) -> PathBuf {
-    self.bodhi_home.clone()
+    let result = self
+      .setting_service
+      .get_setting(BODHI_HOME)
+      .expect("BODHI_HOME should be set");
+    PathBuf::from(result)
   }
 
   fn env_type(&self) -> EnvType {
@@ -296,13 +281,16 @@ impl EnvService for DefaultEnvService {
 
   fn list(&self) -> Vec<SettingInfo> {
     let mut settings = Vec::new();
-    let default_home = serde_yaml::Value::String(self.bodhi_home().display().to_string());
+    let default_home = self.setting_service().get_default_value(BODHI_HOME);
+    let (current_value, source) = self
+      .setting_service()
+      .get_setting_value_with_source(BODHI_HOME);
     // Add system settings
     settings.push(SettingInfo {
       key: BODHI_HOME.to_string(),
-      current_value: serde_yaml::Value::String(self.bodhi_home().display().to_string()),
-      default_value: default_home,
-      source: self.bodhi_home_source.clone(),
+      current_value: current_value.expect("BODHI_HOME should be set"),
+      default_value: default_home.unwrap_or(serde_yaml::Value::Null),
+      source,
       metadata: SettingMetadata::String,
     });
     settings.push(SettingInfo::new_system_setting(
@@ -397,12 +385,14 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
 "#,
     )?;
 
-    let setting_service =
-      DefaultSettingService::new_with_defaults(Arc::new(env_wrapper), settings_file.clone());
+    let setting_service = DefaultSettingService::new_with_defaults(
+      Arc::new(env_wrapper),
+      &bodhi_home.path(),
+      SettingSource::Default,
+      settings_file.clone(),
+    )?;
     let bodhi_home = bodhi_home.path().to_path_buf();
     let env_service = DefaultEnvService::new(
-      bodhi_home.clone(),
-      SettingSource::Default,
       EnvType::Production,
       AppType::Native,
       "http://auth.test".to_string(),

@@ -71,11 +71,14 @@ pub fn llama2_7b_setup(
   InitService::new(&env_wrapper, &EnvType::Development)
     .setup_bodhi_home()
     .unwrap();
-  let setting_service =
-    DefaultSettingService::new_with_defaults(Arc::new(env_wrapper), bodhi_home.join("settings.yaml"));
-  let env_service = DefaultEnvService::new(
-    bodhi_home.clone(),
+  let setting_service = DefaultSettingService::new_with_defaults(
+    Arc::new(env_wrapper),
+    &bodhi_home,
     SettingSource::Environment,
+    bodhi_home.join("settings.yaml"),
+  )
+  .expect("failed to setup setting service");
+  let env_service = DefaultEnvService::new(
     EnvType::Development,
     AppType::Container,
     "".to_string(),

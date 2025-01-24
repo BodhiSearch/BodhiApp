@@ -1,10 +1,11 @@
 use axum::Router;
 use objs::{AppError, ErrorType, LogLevel};
 use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
-use services::AppService;
+use services::{AppService, BODHI_EXEC_LOOKUP_PATH};
 use std::sync::{Arc, Mutex};
 use tauri::{
   menu::{Menu, MenuEvent, MenuItem},
+  path::BaseDirectory,
   tray::TrayIconBuilder,
   AppHandle, Manager, Window, WindowEvent,
 };
@@ -36,26 +37,43 @@ impl NativeCommand {
   // TODO: modbile entry point as marked by default tauri app generator
   // #[cfg_attr(mobile, tauri::mobile_entry_point)]
   pub async fn aexecute(&self, static_router: Option<Router>) -> Result<()> {
-    let host = self.service.env_service().host();
-    let port = self.service.env_service().port();
-    let addr = self.service.env_service().server_url();
-    let addr_clone = addr.clone();
-    let cmd = ServeCommand::ByParams { host, port };
-    let server_handle = cmd
-      .get_server_handle(self.service.clone(), static_router)
-      .await?;
+    let app_service = self.service.clone();
+    let env_service = self.service.env_service();
     let ui = self.ui;
-    let log_level: LogLevel = self.service.env_service().log_level();
-
     tauri::Builder::default()
       .setup(move |app| {
         if cfg!(debug_assertions) {
+          let log_level: LogLevel = env_service.log_level();
           app.handle().plugin(
             tauri_plugin_log::Builder::default()
               .level(log_level)
               .build(),
           )?;
         }
+        #[cfg(target_os = "macos")]
+        app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+
+        let bodhi_exec_lookup_path = app.path().resolve("bin", BaseDirectory::Resource)?;
+        env_service.setting_service().set_default(
+          BODHI_EXEC_LOOKUP_PATH,
+          &serde_yaml::Value::String(bodhi_exec_lookup_path.display().to_string())
+        )?;
+        let host = env_service.host();
+        let port = env_service.port();
+        let addr = env_service.server_url();
+        let cmd = ServeCommand::ByParams { host, port };
+        let shared_server_handle: Arc<Mutex<Option<ServerShutdownHandle>>> = Arc::new(Mutex::new(None));
+        app.manage(shared_server_handle.clone());
+        tokio::spawn(async move {
+          match cmd
+          .get_server_handle(app_service, static_router)
+          .await {
+            Ok(server_handle) => shared_server_handle.lock().unwrap().replace(server_handle),
+            Err(err) => {
+              tracing::error!(?err, "failed to start the backend server");
+            }
+          }
+        });
         let homepage = MenuItem::with_id(app, "homepage", "Open Homepage", true, None::<&str>)?;
         let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
         let menu = Menu::with_items(app, &[&homepage, &quit])?;
@@ -64,17 +82,13 @@ impl NativeCommand {
           .menu_on_left_click(true)
           .icon(app.default_window_icon().unwrap().clone())
           .on_menu_event(move |app, event| {
-            on_menu_event(app, event, &addr_clone);
+            on_menu_event(app, event, &addr);
           })
           .build(app)?;
 
-        #[cfg(target_os = "macos")]
-        app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-
-        app.manage(Arc::new(Mutex::new(Some(server_handle))));
         // Attempt to open the default web browser
         if ui {
-          if let Err(err) = webbrowser::open(&addr) {
+          if let Err(err) = webbrowser::open(env_service.server_url().as_str()) {
             tracing::info!(?err, "failed to open browser");
           }
         }

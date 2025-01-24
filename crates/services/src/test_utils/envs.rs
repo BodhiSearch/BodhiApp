@@ -155,10 +155,6 @@ impl EnvService for EnvServiceStub {
     }
   }
 
-  fn exec_path(&self) -> String {
-    "/tmp/library-path.dylib".to_string()
-  }
-
   fn exec_lookup_path(&self) -> String {
     "/tmp".to_string()
   }
