@@ -37,7 +37,7 @@ mod env_config {
     setting_service.set_default(
       BODHI_EXEC_LOOKUP_PATH,
       &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
-    )?;
+    );
     Ok(())
   }
   #[cfg(feature = "native")]

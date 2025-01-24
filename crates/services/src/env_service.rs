@@ -445,10 +445,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
       current_value: serde_yaml::Value::Number(8080.into()),
       default_value: serde_yaml::Value::Number(DEFAULT_PORT.into()),
       source: SettingSource::SettingsFile,
-      metadata: SettingMetadata::Number {
-        min: 1025,
-        max: 65535,
-      },
+      metadata: SettingMetadata::Number { min: 1, max: 65535 },
     };
     assert_eq!(expected_port, settings.get(BODHI_PORT).unwrap().clone());
 

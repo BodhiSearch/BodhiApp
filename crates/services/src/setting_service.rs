@@ -113,17 +113,17 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   fn get_setting_value_with_source(&self, key: &str) -> (Option<Value>, SettingSource);
 
-  fn set_setting_with_source(&self, key: &str, value: &Value, source: SettingSource) -> Result<()>;
+  fn set_setting_with_source(&self, key: &str, value: &Value, source: SettingSource);
 
-  fn set_setting(&self, key: &str, value: &str) -> Result<()> {
+  fn set_setting(&self, key: &str, value: &str) {
     self.set_setting_value(key, &Value::String(value.to_owned()))
   }
 
-  fn set_setting_value(&self, key: &str, value: &Value) -> Result<()> {
+  fn set_setting_value(&self, key: &str, value: &Value) {
     self.set_setting_with_source(key, value, SettingSource::SettingsFile)
   }
 
-  fn set_default(&self, key: &str, value: &Value) -> Result<()> {
+  fn set_default(&self, key: &str, value: &Value) {
     self.set_setting_with_source(key, value, SettingSource::Default)
   }
 
@@ -139,6 +139,7 @@ pub struct DefaultSettingService {
   settings_lock: RwLock<()>,
   defaults: RwLock<HashMap<String, Value>>,
   listeners: RwLock<Vec<Box<dyn SettingsChangeListener>>>,
+  cmd_lines: RwLock<HashMap<String, Value>>,
 }
 
 impl DefaultSettingService {
@@ -149,6 +150,7 @@ impl DefaultSettingService {
       settings_lock: RwLock::new(()),
       defaults: RwLock::new(HashMap::new()),
       listeners: RwLock::new(Vec::new()),
+      cmd_lines: RwLock::new(HashMap::new()),
     }
   }
 
@@ -267,6 +269,22 @@ impl DefaultSettingService {
     f(&mut defaults);
   }
 
+  pub fn with_cmd_lines_read_lock<F, R>(&self, f: F) -> R
+  where
+    F: FnOnce(&HashMap<String, Value>) -> R,
+  {
+    let cmd_lines = self.cmd_lines.read().unwrap();
+    f(&cmd_lines)
+  }
+
+  pub fn with_cmd_lines_write_lock<F>(&self, f: F)
+  where
+    F: FnOnce(&mut HashMap<String, Value>),
+  {
+    let mut cmd_lines = self.cmd_lines.write().unwrap();
+    f(&mut cmd_lines);
+  }
+
   fn notify_listeners(
     &self,
     key: &str,
@@ -277,7 +295,7 @@ impl DefaultSettingService {
   ) {
     let lock = self.listeners.read().unwrap();
     for listener in lock.iter() {
-      listener.on_change(key, prev_value, &prev_source, new_value, &new_source);
+      listener.on_change(key, prev_value, prev_source, new_value, new_source);
     }
   }
 }
@@ -305,24 +323,28 @@ impl SettingService for DefaultSettingService {
     self.env_wrapper.var(key).ok()
   }
 
-  fn set_setting_with_source(&self, key: &str, value: &Value, source: SettingSource) -> Result<()> {
+  fn set_setting_with_source(&self, key: &str, value: &Value, source: SettingSource) {
     let (prev_value, prev_source) = self.get_setting_value_with_source(key);
     match source {
-      SettingSource::CommandLine => todo!(),
-      SettingSource::Environment => Err(SettingServiceError::InvalidSource),
+      SettingSource::CommandLine => {
+        self.with_cmd_lines_write_lock(|cmd_lines| {
+          cmd_lines.insert(key.to_string(), value.clone());
+        });
+      }
+      SettingSource::Environment => {
+        tracing::error!("SettingSource::Environment is not supported for override");
+      }
       SettingSource::SettingsFile => {
         self.with_settings_write_lock(|settings| {
           settings.insert(key.into(), value.clone());
         });
         let (cur_value, cur_source) = self.get_setting_value_with_source(key);
         self.notify_listeners(key, &prev_value, &prev_source, &cur_value, &cur_source);
-        Ok(())
       }
       SettingSource::Default => {
         self.with_defaults_write_lock(|defaults| {
           defaults.insert(key.to_string(), value.clone());
         });
-        Ok(())
       }
     }
   }
@@ -339,6 +361,10 @@ impl SettingService for DefaultSettingService {
 
   fn get_setting_value_with_source(&self, key: &str) -> (Option<Value>, SettingSource) {
     let metadata = self.get_setting_metadata(key);
+    let result = self.with_cmd_lines_read_lock(|cmd_lines| cmd_lines.get(key).cloned());
+    if let Some(value) = result {
+      return (Some(value), SettingSource::CommandLine);
+    }
     if let Ok(value) = self.env_wrapper.var(key) {
       let value = metadata.parse(Value::String(value));
       return (Some(value), SettingSource::Environment);
@@ -370,10 +396,7 @@ impl SettingService for DefaultSettingService {
 
   fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
     match key {
-      BODHI_PORT => SettingMetadata::Number {
-        min: 1025,
-        max: 65535,
-      },
+      BODHI_PORT => SettingMetadata::Number { min: 1, max: 65535 },
       BODHI_LOG_LEVEL => SettingMetadata::option(
         ["error", "warn", "info", "debug", "trace"]
           .iter()
@@ -548,7 +571,7 @@ SOME_OTHER_KEY: value
     )?;
     let env_wrapper = EnvWrapperStub::new(HashMap::new());
     let service = DefaultSettingService::new(Arc::new(env_wrapper), path.clone());
-    service.set_default("SOME_KEY", &Value::String("default_value".to_string()))?;
+    service.set_default("SOME_KEY", &Value::String("default_value".to_string()));
     assert_eq!(
       Some("default_value".to_string()),
       service.get_setting("SOME_KEY"),
@@ -575,6 +598,28 @@ SOME_OTHER_KEY: value
   }
 
   #[rstest]
+  fn test_setting_service_read_from_cmd_line_if_set(temp_dir: TempDir) -> anyhow::Result<()> {
+    let path = temp_dir.path().join("settings.yaml");
+    std::fs::write(&path, "TEST_KEY: file_value")?;
+    let mut mock_env = MockEnvWrapper::new();
+    mock_env
+      .expect_var()
+      .with(eq("TEST_KEY"))
+      .return_const(Ok("env_value".to_string()));
+    let service = DefaultSettingService::new(Arc::new(mock_env), path);
+    service.set_setting_with_source(
+      "TEST_KEY",
+      &serde_yaml::Value::String("cmdline-value".to_string()),
+      SettingSource::CommandLine,
+    );
+    assert_eq!(
+      Some("cmdline-value".to_string()),
+      service.get_setting("TEST_KEY")
+    );
+    Ok(())
+  }
+
+  #[rstest]
   fn test_setting_service_change_notification_when_overriding_settings(
     temp_dir: TempDir,
   ) -> anyhow::Result<()> {
@@ -589,7 +634,6 @@ SOME_OTHER_KEY: value
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener
       .expect_on_change()
-      .times(1)
       .with(
         eq("TEST_KEY"),
         eq(Some(Value::String("test_value".to_string()))),
@@ -597,9 +641,10 @@ SOME_OTHER_KEY: value
         eq(Some(Value::String("new_value".to_string()))),
         eq(SettingSource::SettingsFile),
       )
+      .times(1)
       .return_once(|_, _, _, _, _| ());
     service.add_listener(Box::new(mock_listener));
-    service.set_setting("TEST_KEY", "new_value")?;
+    service.set_setting("TEST_KEY", "new_value");
     Ok(())
   }
 
@@ -615,7 +660,7 @@ SOME_OTHER_KEY: value
     let path = temp_dir.path().join("settings.yaml");
     std::fs::write(&path, "TEST_KEY: test_value")?;
     let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
-    service.set_default("TEST_KEY", &Value::String("default_value".to_string()))?;
+    service.set_default("TEST_KEY", &Value::String("default_value".to_string()));
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener
       .expect_on_change()
@@ -658,7 +703,7 @@ SOME_OTHER_KEY: value
       .times(1)
       .return_once(|_, _, _, _, _| ());
     service.add_listener(Box::new(mock_listener));
-    service.set_setting("TEST_KEY", "new_value")?;
+    service.set_setting("TEST_KEY", "new_value");
     Ok(())
   }
 
@@ -678,7 +723,7 @@ SOME_OTHER_KEY: value
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener.expect_on_change().never();
     service.add_listener(Box::new(mock_listener));
-    service.set_default("TEST_KEY", &Value::String("default_value".to_string()))?;
+    service.set_default("TEST_KEY", &Value::String("default_value".to_string()));
     Ok(())
   }
 
@@ -693,7 +738,7 @@ SOME_OTHER_KEY: value
 
     {
       let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
-      service.set_setting("TEST_KEY", "test_value")?;
+      service.set_setting("TEST_KEY", "test_value");
     }
     let contents = read_to_string(&path)?;
     assert_eq!("TEST_KEY: test_value\n", contents);
@@ -729,7 +774,7 @@ SOME_OTHER_KEY: value
 
     let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
 
-    service.set_setting("TEST_KEY", "test_value")?;
+    service.set_setting("TEST_KEY", "test_value");
     assert_eq!(
       Some("test_value".to_string()),
       service.get_setting("TEST_KEY")

@@ -157,7 +157,7 @@ pub async fn update_setting_handler(
   }
   // Validate new value against metadata
   let value = setting.metadata.convert(payload.value)?;
-  setting_service.set_setting_value(&key, &value)?;
+  setting_service.set_setting_value(&key, &value);
 
   // Get updated setting
   let settings = setting_service.list();
@@ -285,7 +285,7 @@ mod tests {
       settings_yaml,
     )?;
     for (key, value) in settings {
-      setting_service.set_setting_value(&key, &value)?;
+      setting_service.set_setting_value(&key, &value);
     }
     let env_service = DefaultEnvService::new(
       EnvType::Development,
@@ -358,10 +358,7 @@ mod tests {
       current_value: serde_yaml::Value::Number(serde_yaml::Number::from(8080)),
       default_value: serde_yaml::Value::Number(serde_yaml::Number::from(1135)),
       source: SettingSource::SettingsFile,
-      metadata: SettingMetadata::Number {
-        min: 1025,
-        max: 65535,
-      },
+      metadata: SettingMetadata::Number { min: 1, max: 65535 },
     };
     assert_eq!(
       &log_level,

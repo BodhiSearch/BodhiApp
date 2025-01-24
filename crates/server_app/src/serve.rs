@@ -4,16 +4,18 @@ use crate::{
 };
 use axum::Router;
 use llama_server_proc::exec_path_from;
-use objs::{impl_error_from, AppError};
+use objs::{impl_error_from, AppError, SettingSource};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContext, SharedContext};
-use services::AppService;
+use services::{AppService, SettingServiceError, BODHI_HOST, BODHI_PORT};
 use std::{path::PathBuf, sync::Arc};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ServeError {
+  #[error(transparent)]
+  Setting(#[from] SettingServiceError),
   #[error(transparent)]
   Join(#[from] TaskJoinError),
   #[error(transparent)]
@@ -84,6 +86,39 @@ impl ServeCommand {
     static_router: Option<Router>,
   ) -> Result<ServerShutdownHandle> {
     let ServeCommand::ByParams { host, port } = self;
+    let setting_service = service.env_service().setting_service();
+    let host_source = if let Some(serde_yaml::Value::String(default_host)) =
+      setting_service.get_default_value(BODHI_HOST)
+    {
+      if *host == default_host {
+        SettingSource::Default
+      } else {
+        SettingSource::CommandLine
+      }
+    } else {
+      SettingSource::CommandLine
+    };
+    setting_service.set_setting_with_source(
+      BODHI_HOST,
+      &serde_yaml::Value::String(host.to_string()),
+      host_source,
+    );
+    let port_source = if let Some(serde_yaml::Value::Number(default_port)) =
+      setting_service.get_default_value(BODHI_PORT)
+    {
+      if Some((*port) as u64) == default_port.as_u64() {
+        SettingSource::Default
+      } else {
+        SettingSource::CommandLine
+      }
+    } else {
+      SettingSource::CommandLine
+    };
+    setting_service.set_setting_with_source(
+      BODHI_PORT,
+      &serde_yaml::Value::Number((*port).into()),
+      port_source,
+    );
     let ServerHandle {
       server,
       shutdown,

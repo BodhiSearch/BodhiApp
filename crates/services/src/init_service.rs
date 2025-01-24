@@ -107,9 +107,7 @@ impl InitService<'_> {
       None => match setting_service.home_dir() {
         Some(home_dir) => {
           let hf_home = home_dir.join(".cache").join("huggingface");
-          setting_service
-            .set_setting(HF_HOME, &hf_home.display().to_string())
-            .map_err(|_| InitServiceError::SettingServiceError)?;
+          setting_service.set_setting(HF_HOME, &hf_home.display().to_string());
           hf_home
         }
         None => return Err(InitServiceError::HfHomeNotFound),
@@ -134,9 +132,7 @@ impl InitService<'_> {
       Some(logs_dir) => PathBuf::from(logs_dir),
       None => {
         let logs_dir = bodhi_home.join(LOGS_DIR);
-        setting_service
-          .set_setting(BODHI_LOGS, &logs_dir.display().to_string())
-          .map_err(|_| InitServiceError::SettingServiceError)?;
+        setting_service.set_setting(BODHI_LOGS, &logs_dir.display().to_string());
         logs_dir
       }
     };
@@ -302,7 +298,7 @@ mod tests {
       .expect_set_setting()
       .with(eq(HF_HOME), eq(expected_hf_home.display().to_string()))
       .times(1)
-      .return_once(|_, _| Ok(()));
+      .return_once(|_, _| ());
 
     let setting_service: Arc<dyn SettingService> = Arc::new(mock);
     let result = InitService::setup_hf_home(&setting_service)?;
@@ -346,7 +342,8 @@ mod tests {
     mock
       .expect_set_setting()
       .with(eq(BODHI_LOGS), eq(expected_logs_dir.display().to_string()))
-      .return_once(|_, _| Ok(()));
+      .times(1)
+      .return_once(|_, _| ());
 
     let setting_service: Arc<dyn SettingService> = Arc::new(mock);
     let result = InitService::setup_logs_dir(&setting_service, &bodhi_home)?;
