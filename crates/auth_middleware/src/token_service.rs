@@ -309,6 +309,7 @@ mod tests {
         eq(TEST_CLIENT_SECRET),
         eq(offline_token.clone()),
       )
+      .times(1)
       .return_once(|_, _, _| Ok((refreshed_token_cl, Some("new_refresh_token".to_string()))));
 
     let token_service = Arc::new(DefaultTokenService::new(
@@ -359,6 +360,7 @@ mod tests {
         eq(TEST_CLIENT_SECRET),
         eq(offline_token.clone()),
       )
+      .times(1)
       .return_once(|_, _, _| Ok((refreshed_token_cl, Some("new_refresh_token".to_string()))));
 
     let token_service = Arc::new(DefaultTokenService::new(
@@ -553,7 +555,7 @@ mod tests {
         eq(token.clone()),
       )
       .times(1)
-      .returning(|_, _, _| {
+      .return_once(|_, _, _| {
         Err(AuthServiceError::AuthServiceApiError(
           "server unreachable".to_string(),
         ))

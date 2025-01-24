@@ -9,6 +9,7 @@ pub fn mock_server() -> MockServer {
   let mut mock_server = MockServer::default();
   mock_server
     .expect_start()
+    .times(1)
     .return_once(|| async { Ok(()) }.boxed());
   mock_server
 }

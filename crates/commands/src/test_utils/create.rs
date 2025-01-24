@@ -12,7 +12,7 @@ impl CreateCommandBuilder {
     CreateCommandBuilder::default()
       .alias("testalias:instruct".to_string())
       .repo(Repo::testalias())
-      .filename(Repo::testalias_filename())
+      .filename(Repo::testalias_model_q8())
       .snapshot(None)
       .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .oai_request_params(OAIRequestParams::default())

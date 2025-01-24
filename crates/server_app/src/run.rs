@@ -103,7 +103,12 @@ mod test {
     };
     test_hf_service
       .expect_download()
-      .with(eq(Repo::testalias()), eq(Repo::testalias_q4()), eq(None))
+      .with(
+        eq(Repo::testalias()),
+        eq(Repo::testalias_model_q4()),
+        eq(None),
+      )
+      .times(1)
       .return_once(|_, _, _| Ok(HubFile::testalias_q4()));
     test_hf_service
       .expect_download()
@@ -112,11 +117,13 @@ mod test {
         eq(TOKENIZER_CONFIG_JSON),
         eq(None),
       )
+      .times(1)
       .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let mut mock_interactive = MockInteractiveRuntime::default();
     mock_interactive
       .expect_execute()
       .with(eq(Alias::testalias_q4()), always())
+      .times(1)
       .return_once(|_, _| Ok(()));
     let service = Arc::new(
       AppServiceStubBuilder::default()

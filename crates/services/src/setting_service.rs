@@ -564,6 +564,7 @@ SOME_OTHER_KEY: value
     mock_env
       .expect_var()
       .with(eq("TEST_KEY"))
+      .times(1)
       .return_const(Ok("env_value".to_string()));
     let service = DefaultSettingService::new(Arc::new(mock_env), path);
     assert_eq!(
@@ -618,7 +619,6 @@ SOME_OTHER_KEY: value
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener
       .expect_on_change()
-      .times(1)
       .with(
         eq("TEST_KEY"),
         eq(Some(Value::String("test_value".to_string()))),
@@ -626,6 +626,7 @@ SOME_OTHER_KEY: value
         eq(Some(Value::String("default_value".to_string()))),
         eq(SettingSource::Default),
       )
+      .times(1)
       .return_once(|_, _, _, _, _| ());
     service.add_listener(Box::new(mock_listener));
     service.delete_setting("TEST_KEY")?;
@@ -647,7 +648,6 @@ SOME_OTHER_KEY: value
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener
       .expect_on_change()
-      .times(1)
       .with(
         eq("TEST_KEY"),
         eq(Some(Value::String("env_value".to_string()))),
@@ -655,6 +655,7 @@ SOME_OTHER_KEY: value
         eq(Some(Value::String("env_value".to_string()))),
         eq(SettingSource::Environment),
       )
+      .times(1)
       .return_once(|_, _, _, _, _| ());
     service.add_listener(Box::new(mock_listener));
     service.set_setting("TEST_KEY", "new_value")?;
@@ -669,6 +670,7 @@ SOME_OTHER_KEY: value
     mock_env
       .expect_var()
       .with(eq("TEST_KEY"))
+      .times(1)
       .return_const(Err(std::env::VarError::NotPresent));
     let path = temp_dir.path().join("settings.yaml");
     std::fs::write(&path, "TEST_KEY: test_value")?;
@@ -699,6 +701,7 @@ SOME_OTHER_KEY: value
     let mut mock_env = MockEnvWrapper::new();
     mock_env
       .expect_var()
+      .with(eq("TEST_KEY"))
       .return_const(Err(std::env::VarError::NotPresent));
 
     {
@@ -715,7 +718,6 @@ SOME_OTHER_KEY: value
   fn test_settings_service_delete(temp_dir: TempDir) -> anyhow::Result<()> {
     let path = temp_dir.path().join("settings.yaml");
     let mut mock_env = MockEnvWrapper::new();
-
     mock_env
       .expect_var()
       .with(eq("TEST_KEY"))
