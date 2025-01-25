@@ -32,16 +32,29 @@ try {
         }
     }
 
+    # Clean any existing CMake cache
+    if (Test-Path "build") {
+        Write-Host "Cleaning existing build directory..."
+        Remove-Item -Path "build" -Recurse -Force
+    }
+
     # Debug output
     Write-Host "=== Build Configuration ==="
     Write-Host "CUDA Version: $CudaVersion"
     Write-Host "Target Architecture: $TargetArch"
     Write-Host "Build Type: $BuildType"
 
+    # Ensure Ninja is available
+    if (-not (Get-Command "ninja.exe" -ErrorAction SilentlyContinue)) {
+        Write-Host "Installing Ninja..."
+        choco install ninja -y
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+    }
+
     # CMake configuration
     Write-Host '=== Running CMake Configure ==='
     $cmakeFlags = @(
-        "-G `"Ninja Multi-Config`"",
+        "-G `"Ninja`"",
         "-DLLAMA_BUILD_SERVER=ON",
         "-DGGML_NATIVE=OFF",
         "-DGGML_CUDA=ON",
@@ -49,8 +62,10 @@ try {
     )
     $cmakeCommand = "cmake -S . -B build $($cmakeFlags -join ' ')"
     Write-Host "Executing command: $cmakeCommand"
-    Invoke-Expression $cmakeCommand
+    $cmakeResult = Invoke-Expression $cmakeCommand
     if ($LASTEXITCODE -ne 0) {
+        Write-Host "CMake output:"
+        Write-Host $cmakeResult
         throw "CMake configure failed with exit code $LASTEXITCODE"
     }
 
@@ -63,8 +78,10 @@ try {
     Write-Host '=== Building ggml target ==='
     $buildGgmlCommand = "cmake --build build --config Release -j $ninjaJobs -t ggml"
     Write-Host "Executing command: $buildGgmlCommand"
-    Invoke-Expression $buildGgmlCommand
+    $ggmlResult = Invoke-Expression $buildGgmlCommand
     if ($LASTEXITCODE -ne 0) {
+        Write-Host "GGML build output:"
+        Write-Host $ggmlResult
         throw "GGML build failed with exit code $LASTEXITCODE"
     }
 
@@ -72,8 +89,10 @@ try {
     Write-Host '=== Building main release ==='
     $buildCommand = "cmake --build build --config Release -j $ninjaJobs"
     Write-Host "Executing command: $buildCommand"
-    Invoke-Expression $buildCommand
+    $buildResult = Invoke-Expression $buildCommand
     if ($LASTEXITCODE -ne 0) {
+        Write-Host "Build output:"
+        Write-Host $buildResult
         throw "Main build failed with exit code $LASTEXITCODE"
     }
 
@@ -93,9 +112,6 @@ try {
         $destination = Join-Path $targetDir $_.Name
         Write-Host "Copying $($_.Name) to $destination"
         Copy-Item -Path $_.FullName -Destination $destination -Force
-        if ($LASTEXITCODE -ne 0) {
-            throw "Failed to copy llama-server.exe"
-        }
     }
 
     # Copy CUDA runtime DLLs if needed
@@ -116,6 +132,9 @@ try {
     }
 
 } catch {
+    Write-Host "Error details:"
+    Write-Host $_.Exception.Message
+    Write-Host $_.ScriptStackTrace
     Write-Error "Build failed: $_"
     exit 1
 } finally {
