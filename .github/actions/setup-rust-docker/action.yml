@@ -25,7 +25,9 @@ runs:
           ninja-build \
           libgomp1 \
           curl \
-          git
+          git \
+          libssl-dev \
+          pkg-config
     - uses: Swatinem/rust-cache@v2
     - name: install Rust 1.82.0
       uses: dtolnay/rust-toolchain@1.82.0
