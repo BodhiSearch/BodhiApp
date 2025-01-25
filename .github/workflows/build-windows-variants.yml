@@ -21,9 +21,9 @@ jobs:
           - platform: windows-2019
             target: x86_64-pc-windows-msvc
             cuda: '12.4'
-          - platform: windows-2019
-            target: x86_64-pc-windows-msvc
-            cuda: '11.7'
+          # - platform: windows-2019
+          #   target: x86_64-pc-windows-msvc
+          #   cuda: '11.7'
     runs-on: ${{ matrix.platform }}
     
     steps:
