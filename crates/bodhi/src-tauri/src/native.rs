@@ -57,7 +57,7 @@ impl NativeCommand {
         env_service.setting_service().set_default(
           BODHI_EXEC_LOOKUP_PATH,
           &serde_yaml::Value::String(bodhi_exec_lookup_path.display().to_string())
-        )?;
+        );
         let host = env_service.host();
         let port = env_service.port();
         let addr = env_service.server_url();
@@ -68,7 +68,7 @@ impl NativeCommand {
           match cmd
           .get_server_handle(app_service, static_router)
           .await {
-            Ok(server_handle) => shared_server_handle.lock().unwrap().replace(server_handle),
+            Ok(server_handle) => {shared_server_handle.lock().unwrap().replace(server_handle);},
             Err(err) => {
               tracing::error!(?err, "failed to start the backend server");
             }
