@@ -37,6 +37,7 @@ jobs:
       - name: Rewrite submodule URLs and checkout submodules
         shell: bash
         run: |
+          git config --global --add safe.directory /__w/BodhiApp/BodhiApp
           git submodule update --init --recursive --depth=1
 
       - name: setup-rust
