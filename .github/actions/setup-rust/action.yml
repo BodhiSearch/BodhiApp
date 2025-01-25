@@ -21,7 +21,6 @@ runs:
           libwebkit2gtk-4.1-dev \
           libappindicator3-dev \
           librsvg2-dev \
-          curl \
           patchelf
     - uses: Swatinem/rust-cache@v2
     - name: install Rust 1.82.0
