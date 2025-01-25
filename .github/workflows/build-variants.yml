@@ -52,10 +52,12 @@ jobs:
         shell: bash
         run: |
           cargo clean
-      - name: Generate code coverage
+      - name: Build
         shell: bash
         run: |
-          cargo build -p llama_server_proc
+          cargo build -p llama_server_proc -vv
+        env:
+          CI_FULL_BUILD: true
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:

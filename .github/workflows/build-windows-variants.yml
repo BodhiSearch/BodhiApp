@@ -1,0 +1,102 @@
+name: Windows Variants Build Flow
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CI: true
+  RUST_BACKTRACE: 1
+  CI_FULL_BUILD: true
+
+jobs:
+  build:
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-2019
+            target: x86_64-pc-windows-msvc
+            cuda: '12.4'
+          - platform: windows-2019
+            target: x86_64-pc-windows-msvc
+            cuda: '11.7'
+    runs-on: ${{ matrix.platform }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Cuda Toolkit 11.7
+        if: ${{ matrix.cuda == '11.7' }}
+        shell: pwsh
+        run: |
+          mkdir -p "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7"
+          choco install unzip -y
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-11.7.99-archive.zip"
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-11.7.99-archive.zip"
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvrtc/windows-x86_64/cuda_nvrtc-windows-x86_64-11.7.99-archive.zip"
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/libcublas/windows-x86_64/libcublas-windows-x86_64-11.7.4.6-archive.zip"
+          unzip '*.zip' -d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7"
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7\cuda_cudart-windows-x86_64-11.7.99-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7" /E /I /H /Y
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7\cuda_nvcc-windows-x86_64-11.7.99-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7" /E /I /H /Y
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7\cuda_nvrtc-windows-x86_64-11.7.99-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7" /E /I /H /Y
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7\libcublas-windows-x86_64-11.7.4.6-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7" /E /I /H /Y
+          echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "CUDA_PATH_V11_7=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.7" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Install Cuda Toolkit 12.4
+        if: ${{ matrix.cuda == '12.4' }}
+        shell: pwsh
+        run: |
+          mkdir -p "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4"
+          choco install unzip -y
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cudart/windows-x86_64/cuda_cudart-windows-x86_64-12.4.127-archive.zip"
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvcc/windows-x86_64/cuda_nvcc-windows-x86_64-12.4.131-archive.zip"
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/cuda_nvrtc/windows-x86_64/cuda_nvrtc-windows-x86_64-12.4.127-archive.zip"
+          curl -O "https://developer.download.nvidia.com/compute/cuda/redist/libcublas/windows-x86_64/libcublas-windows-x86_64-12.4.5.8-archive.zip"
+          unzip '*.zip' -d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4"
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\cuda_cudart-windows-x86_64-12.4.127-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4" /E /I /H /Y
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\cuda_nvcc-windows-x86_64-12.4.131-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4" /E /I /H /Y
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\cuda_nvrtc-windows-x86_64-12.4.127-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4" /E /I /H /Y
+          xcopy "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\libcublas-windows-x86_64-12.4.5.8-archive\*" "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4" /E /I /H /Y
+          echo "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          echo "CUDA_PATH=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          echo "CUDA_PATH_V12_4=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.4" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Rewrite submodule URLs and checkout submodules
+        shell: pwsh
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+
+      - name: Clean
+        shell: pwsh
+        run: |
+          cargo clean
+
+      - name: Build
+        shell: pwsh
+        run: |
+          cargo build -p llama_server_proc -vv
+        env:
+          CI_FULL_BUILD: true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: llama_server_proc_artifacts
+          path: crates/llama_server_proc/bin/**
