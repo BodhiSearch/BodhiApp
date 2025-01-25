@@ -44,7 +44,7 @@ jobs:
           git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
 
       - name: setup-rust
-        uses: ./.github/actions/setup-rust
+        uses: ./.github/actions/setup-rust-docker
         with:
           platform: ${{ matrix.platform }}
           target: ${{ matrix.target }}
