@@ -24,6 +24,7 @@ runs:
           build-essential \
           ninja-build \
           libgomp1 \
+          curl \
           git
     - uses: Swatinem/rust-cache@v2
     - name: install Rust 1.82.0
