@@ -47,7 +47,7 @@ static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
   set.insert(LlamaServerBuild::new(
     "x86_64-unknown-linux-gnu",
     "",
-    vec!["cpu"],
+    vec!["cpu", "cuda-12_6"],
   ));
   set.insert(LlamaServerBuild::new(
     "x86_64-pc-windows-msvc",

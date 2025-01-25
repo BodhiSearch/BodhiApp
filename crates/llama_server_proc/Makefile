@@ -5,7 +5,7 @@ BUILD_DIR := llama.cpp/build
 BIN_DIR := bin
 
 # Common CMake flags
-CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_SHARED_LIBS=OFF
+CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release
 
 # Platform-specific variables
 ifeq ($(shell uname -s),Darwin)
@@ -14,6 +14,9 @@ else
   NCPU := $(shell nproc)
 endif
 BIN_EXT :=
+
+# Define the variable for the build arguments
+CUDA_BUILD_FLAGS := -DCMAKE_CUDA_ARCHITECTURES=89-real -DCMAKE_EXE_LINKER_FLAGS=-Wl,--allow-shlib-undefined -DGGML_NATIVE=OFF -DGGML_CUDA=ON
 
 all: configure build copy_exec
 
@@ -48,3 +51,6 @@ build-aarch64-unknown-linux-gnu-cpu:
 
 build-x86_64-unknown-linux-gnu-cpu:
 	$(call build_target,,UNAME_S=Linux UNAME_P=unknown UNAME_M=x86_64,x86_64-unknown-linux-gnu,cpu)
+
+build-x86_64-unknown-linux-gnu-cuda-12_6:
+	$(call build_target,"$(CUDA_BUILD_FLAGS)",UNAME_S=Linux UNAME_P=unknown UNAME_M=x86_64,x86_64-unknown-linux-gnu,cuda-12_6)
