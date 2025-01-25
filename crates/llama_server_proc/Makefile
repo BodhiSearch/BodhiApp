@@ -53,4 +53,4 @@ build-x86_64-unknown-linux-gnu-cpu:
 	$(call build_target,,UNAME_S=Linux UNAME_P=unknown UNAME_M=x86_64,x86_64-unknown-linux-gnu,cpu)
 
 build-x86_64-unknown-linux-gnu-cuda-12_6:
-	$(call build_target,"$(CUDA_BUILD_FLAGS)",UNAME_S=Linux UNAME_P=unknown UNAME_M=x86_64,x86_64-unknown-linux-gnu,cuda-12_6)
+	$(call build_target,$(CUDA_BUILD_FLAGS),UNAME_S=Linux UNAME_P=unknown UNAME_M=x86_64,x86_64-unknown-linux-gnu,cuda-12_6)
