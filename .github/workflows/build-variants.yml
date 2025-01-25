@@ -48,14 +48,10 @@ jobs:
         with:
           platform: ${{ matrix.platform }}
           target: ${{ matrix.target }}
-      - name: setup-node
-        uses: ./.github/actions/setup-node
-        with:
-          platform: ${{ matrix.platform }}
       - name: clean
         shell: bash
         run: |
-          make ci.clean
+          cargo clean
       - name: Generate code coverage
         shell: bash
         run: |
