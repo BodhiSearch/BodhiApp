@@ -228,7 +228,7 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                     className={cn(
                       'flex items-start justify-between p-4 rounded-lg border bg-card hover:bg-accent/5',
                       setting.source !== 'default' &&
-                      'border-primary/20 bg-primary/5'
+                        'border-primary/20 bg-primary/5'
                     )}
                   >
                     <div className="space-y-1">
@@ -236,8 +236,8 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                         {(() => {
                           const TypeIcon =
                             SETTING_ICONS[
-                            setting.metadata
-                              .type as keyof typeof SETTING_ICONS
+                              setting.metadata
+                                .type as keyof typeof SETTING_ICONS
                             ];
                           return (
                             <TypeIcon className="h-4 w-4 text-muted-foreground" />
