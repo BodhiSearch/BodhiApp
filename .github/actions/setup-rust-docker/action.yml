@@ -1,0 +1,34 @@
+name: setup-rust-docker
+description: setup rust and components for docker environments
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+  target:
+    description: "Target to build for"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: install dependencies (ubuntu only)
+      shell: bash
+      if: inputs.platform == 'ubuntu-latest'
+      run: |
+        apt-get update
+        apt-get install -y --no-install-recommends \
+          libwebkit2gtk-4.1-dev \
+          libappindicator3-dev \
+          librsvg2-dev \
+          patchelf \
+          curl \
+          build-essential \
+          pkg-config \
+          libssl-dev
+    - uses: Swatinem/rust-cache@v2
+    - name: install Rust 1.82.0
+      uses: dtolnay/rust-toolchain@1.82.0
+      with:
+        targets: ${{ inputs.target }}
+        components: rustfmt,clippy,llvm-tools
