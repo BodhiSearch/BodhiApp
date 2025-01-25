@@ -1,0 +1,63 @@
+name: Variants Build Flow
+
+on:
+  workflow_dispatch:
+
+env:
+  CI: true
+  RUST_BACKTRACE: 1
+  CI_FULL_BUILD: true
+
+jobs:
+  build:
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            container: nvidia/cuda:12.6.2-devel-ubuntu24.04
+    runs-on: ${{ matrix.platform }}
+    container: ${{ matrix.container }}
+    steps:
+      - name: envs
+        shell: bash
+        run: |
+          echo "USER_HOME=$HOME" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+      - name: Rewrite submodule URLs and checkout submodules
+        shell: bash
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
+
+      - name: setup-rust
+        uses: ./.github/actions/setup-rust
+        with:
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
+      - name: setup-node
+        uses: ./.github/actions/setup-node
+        with:
+          platform: ${{ matrix.platform }}
+      - name: clean
+        shell: bash
+        run: |
+          make ci.clean
+      - name: Generate code coverage
+        shell: bash
+        run: |
+          cargo build -p llama_server_proc
+      - name: Archive artifacts
+        shell: bash
+        run: |
+          zip -r llama_server_proc_artifacts.zip crates/llama_server_proc/bin
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: llama_server_proc_artifacts
+          path: llama_server_proc_artifacts.zip
+      
