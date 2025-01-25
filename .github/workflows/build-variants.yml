@@ -56,13 +56,8 @@ jobs:
         shell: bash
         run: |
           cargo build -p llama_server_proc
-      - name: Archive artifacts
-        shell: bash
-        run: |
-          zip -r llama_server_proc_artifacts.zip crates/llama_server_proc/bin
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
           name: llama_server_proc_artifacts
-          path: llama_server_proc_artifacts.zip
-      
+          path: crates/llama_server_proc/bin/**
