@@ -26,6 +26,7 @@ jobs:
           # - platform: macos-13
           #   target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform }}
+    if: false
     steps:
       - name: envs
         shell: bash

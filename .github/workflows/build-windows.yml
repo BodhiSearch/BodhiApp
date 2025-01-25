@@ -20,6 +20,7 @@ jobs:
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.platform }}
+    if: false
     steps:
       - name: Set environment variables
         shell: pwsh

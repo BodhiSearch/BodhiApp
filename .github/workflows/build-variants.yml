@@ -21,6 +21,11 @@ jobs:
     runs-on: ${{ matrix.platform }}
     container: ${{ matrix.container }}
     steps:
+      - name: Install Git
+        shell: bash
+        run: |
+          apt-get update
+          apt-get install -y git
       - name: envs
         shell: bash
         run: |
