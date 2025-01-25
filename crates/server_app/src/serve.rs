@@ -1,6 +1,6 @@
 use crate::{
-  build_server_handle, shutdown_signal, ServerError, ServerHandle, ShutdownCallback, TaskJoinError,
-  VariantChangeListener,
+  build_server_handle, shutdown_signal, ServerError, ServerHandle, ServerKeepAlive,
+  ShutdownCallback, TaskJoinError, VariantChangeListener,
 };
 use axum::Router;
 use llama_server_proc::exec_path_from;
@@ -86,7 +86,8 @@ impl ServeCommand {
     static_router: Option<Router>,
   ) -> Result<ServerShutdownHandle> {
     let ServeCommand::ByParams { host, port } = self;
-    let setting_service = service.env_service().setting_service();
+    let env_service = service.env_service();
+    let setting_service = env_service.setting_service();
     let host_source = if let Some(serde_yaml::Value::String(default_host)) =
       setting_service.get_default_value(BODHI_HOST)
     {
@@ -136,10 +137,12 @@ impl ServeCommand {
     }
     let ctx = DefaultSharedContext::new(service.hub_service(), &exec_lookup_path, &exec_variant);
     let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
-    service
-      .env_service()
-      .setting_service()
-      .add_listener(Box::new(VariantChangeListener::new(ctx.clone())));
+    setting_service.add_listener(Arc::new(VariantChangeListener::new(ctx.clone())));
+
+    let keep_alive = Arc::new(ServerKeepAlive::new(ctx.clone(), env_service.keep_alive()));
+    setting_service.add_listener(keep_alive.clone());
+    ctx.add_state_listener(keep_alive).await;
+
     let app = build_routes(ctx.clone(), service, static_router);
 
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {

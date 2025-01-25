@@ -5,7 +5,8 @@ pub mod test_utils;
 
 mod error;
 mod interactive;
-mod listener;
+mod listener_keep_alive;
+mod listener_variant;
 mod run;
 mod serve;
 mod server;
@@ -13,7 +14,8 @@ mod shutdown;
 
 pub use error::*;
 pub use interactive::*;
-pub use listener::*;
+pub use listener_keep_alive::*;
+pub use listener_variant::*;
 pub use run::*;
 pub use serve::*;
 pub use server::*;

@@ -6,9 +6,11 @@ use axum::{
 use objs::{ApiError, AppError, ErrorType, OpenAIApiError, SettingInfo};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{BODHI_EXEC_VARIANT, BODHI_HOME};
+use services::{BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_KEEP_ALIVE_SECS};
 use std::sync::Arc;
 use utoipa::ToSchema;
+
+const EDIT_SETTINGS_ALLOWED: &[&str] = &[BODHI_EXEC_VARIANT, BODHI_KEEP_ALIVE_SECS];
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -152,7 +154,7 @@ pub async fn update_setting_handler(
     .find(|s| s.key == key)
     .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
 
-  if BODHI_EXEC_VARIANT != key {
+  if !EDIT_SETTINGS_ALLOWED.contains(&key.as_str()) {
     return Err(SettingsError::Unsupported(key))?;
   }
   // Validate new value against metadata
@@ -219,7 +221,7 @@ pub async fn delete_setting_handler(
     .find(|s| s.key == key)
     .ok_or_else(|| SettingsError::NotFound(key.clone()))?;
 
-  if BODHI_EXEC_VARIANT != key {
+  if !EDIT_SETTINGS_ALLOWED.contains(&key.as_str()) {
     return Err(SettingsError::Unsupported(key))?;
   }
   // Delete setting (reset to default)

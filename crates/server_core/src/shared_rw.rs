@@ -5,6 +5,7 @@ use llama_server_proc::{
 };
 use objs::Alias;
 use services::{HubService, IntoChatTemplate};
+use std::fmt::Debug;
 use std::{
   path::{Path, PathBuf},
   sync::Arc,
@@ -13,6 +14,15 @@ use tokio::sync::RwLock;
 use tracing::info;
 
 type Result<T> = std::result::Result<T, ContextError>;
+
+#[derive(Debug, Clone)]
+pub enum ServerState {
+  Start,
+  Stop,
+  ChatCompletions { alias: String },
+  Variant { variant: String },
+}
+
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait SharedContext: std::fmt::Debug + Send + Sync {
@@ -29,6 +39,16 @@ pub trait SharedContext: std::fmt::Debug + Send + Sync {
     mut request: CreateChatCompletionRequest,
     alias: Alias,
   ) -> Result<reqwest::Response>;
+
+  async fn add_state_listener(&self, listener: Arc<dyn ServerStateListener>);
+
+  async fn notify_state_listeners(&self, state: ServerState);
+}
+
+#[async_trait::async_trait]
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+pub trait ServerStateListener: Debug + Send + Sync {
+  async fn on_state_change(&self, state: ServerState);
 }
 
 pub trait ServerFactory: std::fmt::Debug + Send + Sync {
@@ -60,6 +80,7 @@ pub struct DefaultSharedContext {
   exec_lookup_path: PathBuf,
   exec_variant: ExecVariant,
   server: RwLock<Option<Box<dyn Server>>>,
+  state_listeners: RwLock<Vec<Arc<dyn ServerStateListener>>>,
 }
 
 impl DefaultSharedContext {
@@ -88,6 +109,7 @@ impl DefaultSharedContext {
       exec_variant: ExecVariant::new(exec_variant.to_string()),
       factory,
       server: RwLock::new(None),
+      state_listeners: RwLock::new(Vec::new()),
     }
   }
 
@@ -102,6 +124,11 @@ impl SharedContext for DefaultSharedContext {
   async fn set_exec_variant(&self, variant: &str) -> Result<()> {
     self.exec_variant.set(variant.to_string()).await;
     let server_args = self.get_server_args().await;
+    self
+      .notify_state_listeners(ServerState::Variant {
+        variant: variant.to_string(),
+      })
+      .await;
     self.reload(server_args).await?;
     Ok(())
   }
@@ -128,6 +155,7 @@ impl SharedContext for DefaultSharedContext {
     let server = self.factory.create_server(&exec_path, &server_args)?;
     server.start().await?;
     *self.server.write().await = Some(server);
+    self.notify_state_listeners(ServerState::Start).await;
     info!(?exec_path, "server started");
     Ok(())
   }
@@ -137,6 +165,7 @@ impl SharedContext for DefaultSharedContext {
     let server = lock.take();
     if let Some(server) = server {
       server.stop().await?;
+      self.notify_state_listeners(ServerState::Stop).await;
     };
     Ok(())
   }
@@ -161,7 +190,8 @@ impl SharedContext for DefaultSharedContext {
     let prompt = chat_template.apply_chat_template(&request.messages)?;
     let mut input_value = serde_json::to_value(request)?;
     input_value["prompt"] = serde_json::Value::String(prompt);
-    match ModelLoadStrategy::choose(loaded_alias, request_alias) {
+    let alias_name = alias.alias.clone();
+    let result = match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
         let response = server
           .ok_or_else(|| ContextError::Unreachable("context should not be None".to_string()))?
@@ -203,6 +233,31 @@ impl SharedContext for DefaultSharedContext {
           .await?;
         Ok(response)
       }
+    };
+    self
+      .notify_state_listeners(ServerState::ChatCompletions { alias: alias_name })
+      .await;
+    result
+  }
+
+  async fn add_state_listener(&self, listener: Arc<dyn ServerStateListener>) {
+    let mut listeners = self.state_listeners.write().await;
+    if !listeners
+      .iter()
+      .any(|existing| std::ptr::eq(existing.as_ref(), listener.as_ref()))
+    {
+      listeners.push(listener);
+    }
+  }
+
+  async fn notify_state_listeners(&self, state: ServerState) {
+    let listeners = self.state_listeners.read().await;
+    for listener in listeners.iter() {
+      let listener_clone = listener.clone();
+      let state_clone = state.clone();
+      tokio::spawn(async move {
+        listener_clone.on_state_change(state_clone).await;
+      });
     }
   }
 }

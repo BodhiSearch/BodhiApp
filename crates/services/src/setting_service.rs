@@ -20,6 +20,7 @@ pub const BODHI_HOST: &str = "BODHI_HOST";
 pub const BODHI_PORT: &str = "BODHI_PORT";
 pub const BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
 pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
+pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 
 pub const DEFAULT_SCHEME: &str = "http";
 pub const DEFAULT_HOST: &str = "localhost";
@@ -27,6 +28,7 @@ pub const DEFAULT_PORT: u16 = 1135;
 pub const DEFAULT_PORT_STR: &str = "1135";
 pub const DEFAULT_LOG_LEVEL: &str = "warn";
 pub const DEFAULT_LOG_STDOUT: bool = false;
+pub const DEFAULT_KEEP_ALIVE_SECS: i64 = 300;
 
 pub const SETTINGS_YAML: &str = "settings.yaml";
 
@@ -40,6 +42,7 @@ pub const SETTING_VARS: &[&str] = &[
   BODHI_PORT,
   BODHI_EXEC_LOOKUP_PATH,
   BODHI_EXEC_VARIANT,
+  BODHI_KEEP_ALIVE_SECS,
 ];
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -52,6 +55,21 @@ pub trait SettingsChangeListener: std::fmt::Debug + Send + Sync {
     new_value: &Option<Value>,
     new_source: &SettingSource,
   );
+}
+
+impl SettingsChangeListener for Arc<dyn SettingsChangeListener> {
+  fn on_change(
+    &self,
+    key: &str,
+    prev_value: &Option<Value>,
+    prev_source: &SettingSource,
+    new_value: &Option<Value>,
+    new_source: &SettingSource,
+  ) {
+    self
+      .as_ref()
+      .on_change(key, prev_value, prev_source, new_value, new_source)
+  }
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -129,7 +147,7 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   fn delete_setting(&self, key: &str) -> Result<()>;
 
-  fn add_listener(&self, listener: Box<dyn SettingsChangeListener>);
+  fn add_listener(&self, listener: Arc<dyn SettingsChangeListener>);
 }
 
 #[derive(Debug)]
@@ -138,7 +156,7 @@ pub struct DefaultSettingService {
   path: PathBuf,
   settings_lock: RwLock<()>,
   defaults: RwLock<HashMap<String, Value>>,
-  listeners: RwLock<Vec<Box<dyn SettingsChangeListener>>>,
+  listeners: RwLock<Vec<Arc<dyn SettingsChangeListener>>>,
   cmd_lines: RwLock<HashMap<String, Value>>,
 }
 
@@ -219,6 +237,10 @@ impl DefaultSettingService {
       defaults.insert(
         BODHI_EXEC_VARIANT.to_string(),
         Value::String(llama_server_proc::DEFAULT_VARIANT.to_string()),
+      );
+      defaults.insert(
+        BODHI_KEEP_ALIVE_SECS.to_string(),
+        Value::Number(DEFAULT_KEEP_ALIVE_SECS.into()),
       );
     });
   }
@@ -411,6 +433,10 @@ impl SettingService for DefaultSettingService {
         }
         SettingMetadata::option(options)
       }
+      BODHI_KEEP_ALIVE_SECS => SettingMetadata::Number {
+        min: 300,
+        max: 86400,
+      },
       _ => SettingMetadata::String,
     }
   }
@@ -431,7 +457,7 @@ impl SettingService for DefaultSettingService {
     })
   }
 
-  fn add_listener(&self, listener: Box<dyn SettingsChangeListener>) {
+  fn add_listener(&self, listener: Arc<dyn SettingsChangeListener>) {
     let mut listeners = self.listeners.write().unwrap();
     if !listeners
       .iter()
@@ -643,7 +669,7 @@ SOME_OTHER_KEY: value
       )
       .times(1)
       .return_once(|_, _, _, _, _| ());
-    service.add_listener(Box::new(mock_listener));
+    service.add_listener(Arc::new(mock_listener));
     service.set_setting("TEST_KEY", "new_value");
     Ok(())
   }
@@ -673,7 +699,7 @@ SOME_OTHER_KEY: value
       )
       .times(1)
       .return_once(|_, _, _, _, _| ());
-    service.add_listener(Box::new(mock_listener));
+    service.add_listener(Arc::new(mock_listener));
     service.delete_setting("TEST_KEY")?;
     Ok(())
   }
@@ -702,7 +728,7 @@ SOME_OTHER_KEY: value
       )
       .times(1)
       .return_once(|_, _, _, _, _| ());
-    service.add_listener(Box::new(mock_listener));
+    service.add_listener(Arc::new(mock_listener));
     service.set_setting("TEST_KEY", "new_value");
     Ok(())
   }
@@ -722,7 +748,7 @@ SOME_OTHER_KEY: value
     let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener.expect_on_change().never();
-    service.add_listener(Box::new(mock_listener));
+    service.add_listener(Arc::new(mock_listener));
     service.set_default("TEST_KEY", &Value::String("default_value".to_string()));
     Ok(())
   }

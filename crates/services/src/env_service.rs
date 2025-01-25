@@ -1,6 +1,7 @@
 use crate::{
   SettingService, SettingServiceError, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_VARIANT, BODHI_HOST,
-  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_PORT, BODHI_SCHEME, DEFAULT_PORT, HF_HOME,
+  BODHI_KEEP_ALIVE_SECS, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_PORT, BODHI_SCHEME,
+  DEFAULT_KEEP_ALIVE_SECS, DEFAULT_PORT, HF_HOME,
 };
 use objs::{
   impl_error_from, AppError, AppType, EnvType, ErrorType, IoDirCreateError, IoError, LogLevel,
@@ -212,6 +213,14 @@ pub trait EnvService: Send + Sync + std::fmt::Debug {
   #[cfg(debug_assertions)]
   fn get_dev_env(&self, key: &str) -> Option<String> {
     self.get_env(key)
+  }
+
+  fn keep_alive(&self) -> i64 {
+    self
+      .setting_service()
+      .get_setting_value(BODHI_KEEP_ALIVE_SECS)
+      .map(|v| v.as_i64().unwrap_or(DEFAULT_KEEP_ALIVE_SECS))
+      .unwrap_or(DEFAULT_KEEP_ALIVE_SECS)
   }
 }
 
