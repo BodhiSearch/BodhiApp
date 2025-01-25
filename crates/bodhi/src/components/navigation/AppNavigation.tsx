@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Menu, ChevronsUpDown } from 'lucide-react';
+import { Menu, ChevronsUpDown, Sun, Moon, Monitor } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import {
@@ -18,10 +18,12 @@ import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/hooks/use-navigation';
 import { NavigationItem } from '@/types/navigation';
 import { LoginMenu } from '@/components/LoginMenu';
+import { useTheme } from '@/components/ThemeProvider';
 
 export function AppNavigation() {
   const isMobile = useIsMobile();
   const { navigationItems, currentItem } = useNavigation();
+  const { theme, setTheme } = useTheme();
 
   const isSelected = (item: NavigationItem) => {
     return item.href === currentItem.item.href;
@@ -96,7 +98,6 @@ export function AppNavigation() {
                         </DropdownMenuItem>
                       </Link>
                     ))}
-                    <DropdownMenuSeparator />
                   </>
                 ) : (
                   <Link href={item.href || '#'} target={item.target}>
@@ -118,9 +119,38 @@ export function AppNavigation() {
                     </DropdownMenuItem>
                   </Link>
                 )}
+                <DropdownMenuSeparator />
               </React.Fragment>
             ))}
           </DropdownMenuGroup>
+          <div className="px-2 py-1.5">
+            <div className="flex items-center justify-center gap-2">
+              <Button
+                variant={theme === 'light' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTheme('light')}
+                className="flex-1"
+              >
+                <Sun className="h-5 w-5" />
+              </Button>
+              <Button
+                variant={theme === 'dark' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTheme('dark')}
+                className="flex-1"
+              >
+                <Moon className="h-5 w-5" />
+              </Button>
+              <Button
+                variant={theme === 'system' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setTheme('system')}
+                className="flex-1"
+              >
+                <Monitor className="h-5 w-5" />
+              </Button>
+            </div>
+          </div>
           <DropdownMenuSeparator />
           <LoginMenu />
         </DropdownMenuContent>

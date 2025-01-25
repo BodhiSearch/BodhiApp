@@ -24,7 +24,6 @@ interface ChatInputProps {
   setInput: (value: string) => void;
   handleSubmit: (e: FormEvent) => void;
   streamLoading: boolean;
-  stop: () => void;
   inputRef: RefObject<HTMLTextAreaElement>;
 }
 
@@ -33,7 +32,6 @@ const ChatInput = ({
   setInput,
   handleSubmit,
   streamLoading,
-  stop,
   inputRef,
 }: ChatInputProps) => (
   <div className="sticky bottom-0 border-t bg-background">
@@ -60,11 +58,6 @@ const ChatInput = ({
         >
           Send
         </Button>
-        {/* {streamLoading && (
-          <Button onClick={stop} type="button" variant="destructive">
-            Stop
-          </Button>
-        )} */}
       </div>
     </form>
   </div>
