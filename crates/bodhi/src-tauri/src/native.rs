@@ -1,7 +1,7 @@
 use axum::Router;
 use objs::{AppError, ErrorType, LogLevel};
 use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
-use services::{AppService, BODHI_EXEC_LOOKUP_PATH};
+use services::{AppService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT};
 use std::sync::{Arc, Mutex};
 use tauri::{
   menu::{Menu, MenuEvent, MenuItem},
@@ -40,16 +40,31 @@ impl NativeCommand {
     let app_service = self.service.clone();
     let env_service = self.service.env_service();
     let ui = self.ui;
+
+    let log_level: LogLevel = env_service.log_level();
+    let mut log_plugin = tauri_plugin_log::Builder::default()
+      .level(log_level)
+      .max_file_size(50_000)
+      .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll);
+    let setting_service = self.service.env_service().setting_service();
+    if let Some(serde_yaml::Value::Bool(true)) = setting_service.get_setting_value(BODHI_LOG_STDOUT)
+    {
+      log_plugin = log_plugin.target(tauri_plugin_log::Target::new(
+        tauri_plugin_log::TargetKind::Stdout,
+      ));
+    }
+    if let Some(bodhi_logs) = setting_service.get_setting(BODHI_LOGS) {
+      log_plugin = log_plugin.target(tauri_plugin_log::Target::new(
+        tauri_plugin_log::TargetKind::Folder {
+          path: std::path::PathBuf::from(bodhi_logs),
+          file_name: None,
+        },
+      ));
+    }
+    let log_plugin = log_plugin.build();
     tauri::Builder::default()
+      .plugin(log_plugin)
       .setup(move |app| {
-        if cfg!(debug_assertions) {
-          let log_level: LogLevel = env_service.log_level();
-          app.handle().plugin(
-            tauri_plugin_log::Builder::default()
-              .level(log_level)
-              .build(),
-          )?;
-        }
         #[cfg(target_os = "macos")]
         app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 

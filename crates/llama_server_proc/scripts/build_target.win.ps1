@@ -11,7 +11,7 @@ param(
 
 # Constants moved from Makefile
 $BUILD_DIR = "llama.cpp/build"
-$CMAKE_COMMON_FLAGS = "-DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_LLAMA_SERVER=ON"
+$CMAKE_COMMON_FLAGS = "-DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_LLAMA_SERVER=ON -DBUILD_SHARED_LIBS=OFF"
 # Change to llama.cpp directory from the script's location
 Push-Location (Join-Path $PSScriptRoot "../llama.cpp")
 

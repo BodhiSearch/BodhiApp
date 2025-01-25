@@ -60,11 +60,11 @@ const ChatInput = ({
         >
           Send
         </Button>
-        {streamLoading && (
+        {/* {streamLoading && (
           <Button onClick={stop} type="button" variant="destructive">
             Stop
           </Button>
-        )}
+        )} */}
       </div>
     </form>
   </div>
