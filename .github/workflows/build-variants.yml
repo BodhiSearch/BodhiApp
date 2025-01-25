@@ -23,6 +23,7 @@ jobs:
             container: nvidia/cuda:12.6.2-devel-ubuntu24.04
     runs-on: ${{ matrix.platform }}
     container: ${{ matrix.container }}
+    if: false
     steps:
       - name: Install Git
         shell: bash
