@@ -5,7 +5,7 @@ BUILD_DIR := llama.cpp/build
 BIN_DIR := bin
 
 # Common CMake flags
-CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF
+CMAKE_COMMON_FLAGS := -DLLAMA_FATAL_WARNINGS=OFF -DLLAMA_CURL=OFF -DBUILD_SHARED_LIBS=OFF
 
 # Platform-specific variables
 ifeq ($(shell uname -s),Darwin)
@@ -44,7 +44,7 @@ build-aarch64-apple-darwin-cpu:
 	$(call build_target,-DGGML_METAL_EMBED_LIBRARY=OFF -DGGML_METAL=OFF,UNAME_S=Darwin UNAME_P=arm64 UNAME_M=arm64,aarch64-apple-darwin,cpu)
 
 build-aarch64-unknown-linux-gnu-cpu:
-	$(call build_target,-DGGML_NATIVE=OFF,UNAME_S=Linux UNAME_P=unknown UNAME_M=arm64,aarch64-unknown-linux-gnu,cpu)
+	$(call build_target,,UNAME_S=Linux UNAME_P=unknown UNAME_M=arm64,aarch64-unknown-linux-gnu,cpu)
 
 build-x86_64-unknown-linux-gnu-cpu:
-	$(call build_target,-DGGML_NATIVE=OFF,UNAME_S=Linux UNAME_P=unknown UNAME_M=x86_64,x86_64-unknown-linux-gnu,cpu)
+	$(call build_target,,UNAME_S=Linux UNAME_P=unknown UNAME_M=x86_64,x86_64-unknown-linux-gnu,cpu)

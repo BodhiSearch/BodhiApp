@@ -25,3 +25,4 @@ app_reg_info_missing = app registration info is missing
 settings_metadata_error-invalid_value_type = cannot parse {$var_1} as {$var_0}
 settings_metadata_error-invalid_value = passed value is not a valid value: {$var_0}
 settings_metadata_error-null_value = value is null
+localization_error-format_pattern = error formatting message: {$var_0}

@@ -61,6 +61,7 @@ pub fn main() -> Result<()> {
   println!("cargo:rerun-if-changed=build.rs");
   println!("cargo:rerun-if-changed=Makefile");
   println!("cargo:rerun-if-env-changed=CI");
+  println!("cargo:rerun-if-env-changed=CI_FULL_BUILD");
   println!("cargo:rerun-if-env-changed=CI_DEFAULT_VARIANT");
   let target = env::var("TARGET").unwrap();
   let build = LLAMA_SERVER_BUILDS.iter().find(|i| i.target == target);
@@ -74,7 +75,15 @@ pub fn main() -> Result<()> {
   let variant = env::var("CI_DEFAULT_VARIANT").unwrap_or_else(|_| build.default.clone());
   set_build_envs(build, &variant)?;
   clean()?;
-  build_llama_server(build, &variant)?;
+  if env::var("CI_FULL_BUILD").unwrap_or("false".to_string()) == "true" {
+    println!("building all variants");
+    for variant in build.variants.iter() {
+      build_llama_server(build, variant)?;
+    }
+  } else {
+    println!("building default variants");
+    build_llama_server(build, &variant)?;
+  }
   Ok(())
 }
 
@@ -104,6 +113,7 @@ fn exec_make_target(target: &str, envs: Vec<(&str, &str)>) -> Result<()> {
   for (key, value) in envs.iter() {
     command.env(key, value);
   }
+  println!("executing make target: {}", makefile_args.join(" "));
   let status = command.status().with_context(|| {
     format!(
       "Failed to execute command: {} with args: {:?} and envs: {:?}",
@@ -140,9 +150,6 @@ fn set_build_envs(build: &LlamaServerBuild, default_variant: &str) -> Result<()>
 
 fn build_llama_server(build: &LlamaServerBuild, variant: &str) -> Result<()> {
   let build_target = format!("build-{}-{}", build.target, variant);
-  let mut makefile_args = get_makefile_args();
-  makefile_args.push(&build_target);
-
   let envs = vec![
     ("TARGET", build.target.as_str()),
     ("VARIANT", variant),
