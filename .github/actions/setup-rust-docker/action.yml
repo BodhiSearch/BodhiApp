@@ -15,17 +15,16 @@ runs:
     - name: install dependencies (ubuntu only)
       shell: bash
       if: inputs.platform == 'ubuntu-latest'
+      env:
+        DEBIAN_FRONTEND: noninteractive
       run: |
         apt-get update
         apt-get install -y --no-install-recommends \
-          libwebkit2gtk-4.1-dev \
-          libappindicator3-dev \
-          librsvg2-dev \
-          patchelf \
-          curl \
+          cmake \
           build-essential \
-          pkg-config \
-          libssl-dev
+          ninja-build \
+          libgomp1 \
+          git
     - uses: Swatinem/rust-cache@v2
     - name: install Rust 1.82.0
       uses: dtolnay/rust-toolchain@1.82.0
