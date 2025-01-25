@@ -89,6 +89,12 @@ const SETTINGS_CONFIG: SettingsConfig = {
         editable: true,
         description: 'Optimized hardware specific variant of llama.cpp to use.',
       },
+      {
+        key: 'BODHI_KEEP_ALIVE_SECS',
+        editable: true,
+        description:
+          'Keep alive timeout for llama-server (in seconds). range 300 (5 mins)..=86400 (1 day)',
+      },
     ],
   },
   server: {
