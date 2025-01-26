@@ -257,7 +257,7 @@ mod tests {
     DefaultRouterState, MockSharedContext,
   };
   use services::{
-    test_utils::{AppServiceStubBuilder, EnvWrapperStub},
+    test_utils::{bodhi_home_setting, AppServiceStubBuilder, EnvWrapperStub},
     DefaultEnvService, DefaultSettingService, SettingService, BODHI_EXEC_VARIANT, BODHI_HOST,
     BODHI_LOG_LEVEL, BODHI_PORT,
   };
@@ -282,8 +282,8 @@ mod tests {
     let settings_yaml = temp_dir.path().join("settings.yaml");
     let setting_service = DefaultSettingService::new_with_defaults(
       Arc::new(EnvWrapperStub::new(envs)),
-      &temp_dir.path(),
-      SettingSource::Environment,
+      bodhi_home_setting(&temp_dir.path(), SettingSource::Environment),
+      vec![],
       settings_yaml,
     )?;
     for (key, value) in settings {

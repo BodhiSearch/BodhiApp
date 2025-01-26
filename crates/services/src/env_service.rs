@@ -327,9 +327,10 @@ impl EnvService for DefaultEnvService {
 #[cfg(test)]
 mod tests {
   use crate::{
-    test_utils::EnvWrapperStub, DefaultEnvService, DefaultSettingService, EnvService,
-    EnvServiceError, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT,
-    BODHI_PORT, BODHI_SCHEME, DEFAULT_LOG_LEVEL, DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME,
+    test_utils::{bodhi_home_setting, EnvWrapperStub},
+    DefaultEnvService, DefaultSettingService, EnvService, EnvServiceError, BODHI_HOME, BODHI_HOST,
+    BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, DEFAULT_LOG_LEVEL,
+    DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
@@ -396,8 +397,8 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
 
     let setting_service = DefaultSettingService::new_with_defaults(
       Arc::new(env_wrapper),
-      &bodhi_home.path(),
-      SettingSource::Default,
+      bodhi_home_setting(&bodhi_home.path(), SettingSource::Default),
+      vec![],
       settings_file.clone(),
     )?;
     let bodhi_home = bodhi_home.path().to_path_buf();

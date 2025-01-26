@@ -1,8 +1,8 @@
 use crate::app::main_internal;
-use objs::{ApiError, AppType, OpenAIApiError};
+use objs::{ApiError, AppType, OpenAIApiError, Setting, SettingMetadata, SettingSource};
 use services::{
   DefaultEnvService, DefaultEnvWrapper, DefaultSettingService, InitService, SettingService,
-  SETTINGS_YAML,
+  BODHI_HOME, SETTINGS_YAML,
 };
 use std::sync::Arc;
 
@@ -69,10 +69,41 @@ pub fn _main() {
     }
   };
   let settings_file = bodhi_home.join(SETTINGS_YAML);
+  let app_settings: Vec<Setting> = vec![
+    Setting {
+      key: ENV_TYPE.to_string(),
+      value: serde_yaml::Value::String(ENV_TYPE.to_string()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+    Setting {
+      key: APP_TYPE.to_string(),
+      value: serde_yaml::Value::String(APP_TYPE.to_string()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+    Setting {
+      key: AUTH_URL.to_string(),
+      value: serde_yaml::Value::String(AUTH_URL.to_string()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+    Setting {
+      key: AUTH_REALM.to_string(),
+      value: serde_yaml::Value::String(AUTH_REALM.to_string()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+  ];
   let setting_service = DefaultSettingService::new_with_defaults(
     Arc::new(env_wrapper),
-    &bodhi_home,
-    source,
+    Setting {
+      key: BODHI_HOME.to_string(),
+      value: serde_yaml::Value::String(bodhi_home.display().to_string()),
+      source,
+      metadata: SettingMetadata::String,
+    },
+    app_settings,
     settings_file,
   )
   .unwrap_or_else(|err| {

@@ -141,7 +141,6 @@ export function ChatUI() {
         setInput={setInput}
         handleSubmit={handleSubmit}
         streamLoading={streamLoading}
-        stop={stop}
         inputRef={inputRef}
       />
     </div>

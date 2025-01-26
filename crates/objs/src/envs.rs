@@ -60,9 +60,18 @@ impl From<LogLevel> for tracing::level_filters::LevelFilter {
   }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+pub struct Setting {
+  pub key: String,
+  pub value: serde_yaml::Value,
+  pub source: SettingSource,
+  pub metadata: SettingMetadata,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, ToSchema, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum SettingSource {
+  System,
   CommandLine,
   Environment,
   SettingsFile,
