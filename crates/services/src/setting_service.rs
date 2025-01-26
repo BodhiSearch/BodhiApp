@@ -1,7 +1,7 @@
-use crate::{asref_impl, EnvWrapper, BODHI_HOME};
+use crate::{asref_impl, EnvWrapper};
 use objs::{
-  impl_error_from, AppError, ErrorType, IoError, SerdeYamlError, Setting, SettingInfo,
-  SettingMetadata, SettingSource,
+  impl_error_from, AppError, AppType, EnvType, ErrorType, IoError, LogLevel, SerdeYamlError,
+  Setting, SettingInfo, SettingMetadata, SettingSource,
 };
 use serde_yaml::Value;
 use std::{
@@ -10,7 +10,17 @@ use std::{
   path::{Path, PathBuf},
   sync::{Arc, RwLock},
 };
+use tracing::warn;
 
+// System settings
+pub const BODHI_HOME: &str = "BODHI_HOME";
+pub const BODHI_ENV_TYPE: &str = "BODHI_ENV_TYPE";
+pub const BODHI_APP_TYPE: &str = "BODHI_APP_TYPE";
+pub const BODHI_VERSION: &str = "BODHI_VERSION";
+pub const BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
+pub const BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
+
+// App Settings
 pub const HF_HOME: &str = "HF_HOME";
 pub const BODHI_LOGS: &str = "BODHI_LOGS";
 pub const BODHI_LOG_LEVEL: &str = "BODHI_LOG_LEVEL";
@@ -31,6 +41,15 @@ pub const DEFAULT_LOG_STDOUT: bool = false;
 pub const DEFAULT_KEEP_ALIVE_SECS: i64 = 300;
 
 pub const SETTINGS_YAML: &str = "settings.yaml";
+
+pub const PROD_DB: &str = "bodhi.sqlite";
+pub const ALIASES_DIR: &str = "aliases";
+pub const MODELS_YAML: &str = "models.yaml";
+
+pub const LOGS_DIR: &str = "logs";
+
+pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
+pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 
 pub const SETTING_VARS: &[&str] = &[
   BODHI_LOGS,
@@ -100,7 +119,15 @@ type Result<T> = std::result::Result<T, SettingServiceError>;
 pub trait SettingService: std::fmt::Debug + Send + Sync {
   fn load(&self, path: &Path);
 
-  fn load_default_env(&self);
+  fn load_default_env(&self) {
+    let bodhi_home = self
+      .get_setting(BODHI_HOME)
+      .expect("BODHI_HOME should be set");
+    let env_file = PathBuf::from(bodhi_home).join(".env");
+    if env_file.exists() {
+      self.load(&env_file);
+    }
+  }
 
   fn home_dir(&self) -> Option<PathBuf>;
 
@@ -148,13 +175,196 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   fn delete_setting(&self, key: &str) -> Result<()>;
 
   fn add_listener(&self, listener: Arc<dyn SettingsChangeListener>);
+
+  fn bodhi_home(&self) -> PathBuf {
+    let bodhi_home = self
+      .get_setting(BODHI_HOME)
+      .expect("BODHI_HOME should be set");
+    PathBuf::from(bodhi_home)
+  }
+
+  fn env_type(&self) -> EnvType {
+    self
+      .get_setting(BODHI_ENV_TYPE)
+      .expect("BODHI_ENV_TYPE should be set")
+      .parse()
+      .unwrap()
+  }
+
+  fn app_type(&self) -> AppType {
+    self
+      .get_setting(BODHI_APP_TYPE)
+      .expect("BODHI_APP_TYPE should be set")
+      .parse()
+      .unwrap()
+  }
+
+  fn version(&self) -> String {
+    self
+      .get_setting(BODHI_VERSION)
+      .expect("BODHI_VERSION should be set")
+      .to_string()
+  }
+
+  fn auth_url(&self) -> String {
+    self
+      .get_setting(BODHI_AUTH_URL)
+      .expect("BODHI_AUTH_URL should be set")
+      .to_string()
+  }
+
+  fn auth_realm(&self) -> String {
+    self
+      .get_setting(BODHI_AUTH_REALM)
+      .expect("BODHI_AUTH_REALM should be set")
+      .to_string()
+  }
+
+  fn is_production(&self) -> bool {
+    self.env_type().is_production()
+  }
+
+  fn is_native(&self) -> bool {
+    self.app_type().is_native()
+  }
+
+  fn hf_home(&self) -> PathBuf {
+    PathBuf::from(self.get_setting(HF_HOME).expect("HF_HOME should be set"))
+  }
+
+  fn logs_dir(&self) -> PathBuf {
+    PathBuf::from(
+      self
+        .get_setting(BODHI_LOGS)
+        .expect("BODHI_LOGS should be set"),
+    )
+  }
+
+  fn scheme(&self) -> String {
+    self
+      .get_setting(BODHI_SCHEME)
+      .expect("BODHI_SCHEME should be set")
+  }
+
+  fn host(&self) -> String {
+    self
+      .get_setting(BODHI_HOST)
+      .expect("BODHI_HOST should be set")
+  }
+
+  fn port(&self) -> u16 {
+    match self
+      .get_setting_value(BODHI_PORT)
+      .expect("BODHI_PORT should be set")
+    {
+      serde_yaml::Value::Number(n) => n.as_u64().expect("BODHI_PORT should be a number") as u16,
+      serde_yaml::Value::String(s) => match s.parse() {
+        Ok(port) => port,
+        Err(_) => {
+          warn!("BODHI_PORT is not a number: {}, falling back to default", s);
+          DEFAULT_PORT
+        }
+      },
+      _ => DEFAULT_PORT,
+    }
+  }
+
+  fn frontend_url(&self) -> String {
+    format!("{}://{}:{}", self.scheme(), self.host(), self.port())
+  }
+
+  fn db_path(&self) -> PathBuf {
+    self.bodhi_home().join(PROD_DB)
+  }
+
+  fn log_level(&self) -> LogLevel {
+    let log_level = self
+      .get_setting(BODHI_LOG_LEVEL)
+      .expect("BODHI_LOG_LEVEL should be set");
+    LogLevel::try_from(log_level.as_str()).unwrap_or(LogLevel::Warn)
+  }
+
+  fn exec_lookup_path(&self) -> String {
+    self
+      .get_setting(BODHI_EXEC_LOOKUP_PATH)
+      .expect("BODHI_EXEC_LOOKUP_PATH should be set")
+  }
+
+  fn exec_variant(&self) -> String {
+    self
+      .get_setting(BODHI_EXEC_VARIANT)
+      .expect("BODHI_EXEC_VARIANT should be set")
+  }
+
+  fn server_url(&self) -> String {
+    format!("{}://{}:{}", self.scheme(), self.host(), self.port())
+  }
+
+  fn hf_cache(&self) -> PathBuf {
+    self.hf_home().join("hub")
+  }
+
+  fn aliases_dir(&self) -> PathBuf {
+    self.bodhi_home().join("aliases")
+  }
+
+  fn login_url(&self) -> String {
+    format!(
+      "{}/realms/{}/protocol/openid-connect/auth",
+      self.auth_url(),
+      self.auth_realm()
+    )
+  }
+
+  fn token_url(&self) -> String {
+    format!(
+      "{}/realms/{}/protocol/openid-connect/token",
+      self.auth_url(),
+      self.auth_realm()
+    )
+  }
+
+  fn login_callback_url(&self) -> String {
+    format!(
+      "{}://{}:{}/app/login/callback",
+      self.scheme(),
+      self.host(),
+      self.port()
+    )
+  }
+
+  fn secrets_path(&self) -> PathBuf {
+    self.bodhi_home().join("secrets.yaml")
+  }
+
+  fn encryption_key(&self) -> Option<String> {
+    SettingService::get_env(self, BODHI_ENCRYPTION_KEY)
+  }
+
+  #[cfg(not(debug_assertions))]
+  fn get_dev_env(&self, _key: &str) -> Option<String> {
+    None
+  }
+
+  #[cfg(debug_assertions)]
+  fn get_dev_env(&self, key: &str) -> Option<String> {
+    SettingService::get_env(self, key)
+  }
+
+  fn keep_alive(&self) -> i64 {
+    self
+      .get_setting_value(BODHI_KEEP_ALIVE_SECS)
+      .expect("BODHI_KEEP_ALIVE_SECS should be set")
+      .as_i64()
+      .expect("BODHI_KEEP_ALIVE_SECS should be a number")
+  }
 }
 
 #[derive(Debug)]
 pub struct DefaultSettingService {
   env_wrapper: Arc<dyn EnvWrapper>,
   path: PathBuf,
-  app_settings: Vec<Setting>,
+  system_settings: Vec<Setting>,
   settings_lock: RwLock<()>,
   defaults: RwLock<HashMap<String, Value>>,
   listeners: RwLock<Vec<Arc<dyn SettingsChangeListener>>>,
@@ -165,12 +375,12 @@ impl DefaultSettingService {
   fn new(
     env_wrapper: Arc<dyn EnvWrapper>,
     path: PathBuf,
-    app_settings: Vec<Setting>,
+    system_settings: Vec<Setting>,
   ) -> DefaultSettingService {
     Self {
       env_wrapper,
       path,
-      app_settings,
+      system_settings,
       settings_lock: RwLock::new(()),
       defaults: RwLock::new(HashMap::new()),
       listeners: RwLock::new(Vec::new()),
@@ -181,10 +391,11 @@ impl DefaultSettingService {
   pub fn new_with_defaults(
     env_wrapper: Arc<dyn EnvWrapper>,
     bodhi_home: Setting,
-    app_settings: Vec<Setting>,
+    mut system_settings: Vec<Setting>,
     settings_file: PathBuf,
   ) -> Result<Self> {
-    let service = Self::new(env_wrapper, settings_file, app_settings);
+    system_settings.push(bodhi_home.clone());
+    let service = Self::new(env_wrapper, settings_file, system_settings);
     service.init_defaults(bodhi_home);
     Ok(service)
   }
@@ -335,16 +546,6 @@ impl SettingService for DefaultSettingService {
     self.env_wrapper.load(path);
   }
 
-  fn load_default_env(&self) {
-    let bodhi_home = self
-      .get_setting(BODHI_HOME)
-      .expect("BODHI_HOME should be set");
-    let env_file = PathBuf::from(bodhi_home).join(".env");
-    if env_file.exists() {
-      self.load(&env_file);
-    }
-  }
-
   fn home_dir(&self) -> Option<PathBuf> {
     self.env_wrapper.home_dir()
   }
@@ -393,7 +594,7 @@ impl SettingService for DefaultSettingService {
   }
 
   fn get_setting_value_with_source(&self, key: &str) -> (Option<Value>, SettingSource) {
-    if let Some(setting) = self.app_settings.iter().find(|s| s.key == key) {
+    if let Some(setting) = self.system_settings.iter().find(|s| s.key == key) {
       return (Some(setting.value.clone()), SettingSource::System);
     }
 
@@ -413,7 +614,18 @@ impl SettingService for DefaultSettingService {
   }
 
   fn list(&self) -> Vec<SettingInfo> {
-    SETTING_VARS
+    let mut system_settings = self
+      .system_settings
+      .iter()
+      .map(|s| SettingInfo {
+        key: s.key.clone(),
+        current_value: s.value.clone(),
+        default_value: s.value.clone(),
+        source: s.source.clone(),
+        metadata: self.get_setting_metadata(&s.key),
+      })
+      .collect::<Vec<SettingInfo>>();
+    let app_settings = SETTING_VARS
       .iter()
       .map(|key| {
         let (current_value, source) = self.get_setting_value_with_source(key);
@@ -428,7 +640,9 @@ impl SettingService for DefaultSettingService {
           metadata,
         }
       })
-      .collect()
+      .collect::<Vec<SettingInfo>>();
+    system_settings.extend(app_settings);
+    system_settings
   }
 
   fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
@@ -494,15 +708,15 @@ mod tests {
     BODHI_PORT, BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT,
     DEFAULT_SCHEME, HF_HOME,
   };
+  use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_dir, Setting, SettingSource};
+  use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
   use serde_yaml::Value;
-  use std::{collections::HashMap, fs::read_to_string, sync::Arc};
+  use std::{collections::HashMap, fs, fs::read_to_string, sync::Arc};
   use tempfile::TempDir;
-
   #[derive(Debug, PartialEq, Serialize, Deserialize)]
   struct TestConfig {
     name: String,
@@ -868,6 +1082,121 @@ SOME_OTHER_KEY: value
       service.get_setting("TEST_KEY"),
     );
 
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  fn test_setting_service_list(
+    temp_dir: TempDir,
+    #[from(temp_dir)] bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let env_wrapper = EnvWrapperStub::new(maplit::hashmap! {
+      "HOME".to_owned() => "/test/home".to_string(),
+      BODHI_LOGS.to_owned() => "/test/logs".to_string(),
+      BODHI_LOG_LEVEL.to_owned() => "debug".to_string(),
+      BODHI_LOG_STDOUT.to_owned() => "true".to_string(),
+      HF_HOME.to_owned() => "/test/hf/home".to_string(),
+    });
+
+    let settings_file = temp_dir.path().join("settings.yaml");
+    fs::write(
+      &settings_file,
+      r#"
+BODHI_HOST: test.host
+BODHI_PORT: 8080
+BODHI_EXEC_VARIANT: metal
+BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
+"#,
+    )?;
+
+    let setting_service = DefaultSettingService::new_with_defaults(
+      Arc::new(env_wrapper),
+      bodhi_home_setting(&bodhi_home.path(), SettingSource::Default),
+      vec![],
+      settings_file.clone(),
+    )?;
+    let bodhi_home = bodhi_home.path().to_path_buf();
+    // WHEN
+    let settings = setting_service
+      .list()
+      .into_iter()
+      .map(|setting| (setting.key.clone(), setting))
+      .collect::<HashMap<String, SettingInfo>>();
+
+    // THEN
+    // System settings
+    let expected_bodhi_home = SettingInfo {
+      key: BODHI_HOME.to_string(),
+      current_value: serde_yaml::Value::String(bodhi_home.display().to_string()),
+      default_value: serde_yaml::Value::String(bodhi_home.display().to_string()),
+      source: SettingSource::Default,
+      metadata: SettingMetadata::String,
+    };
+    assert_eq!(
+      expected_bodhi_home,
+      settings.get(BODHI_HOME).unwrap().clone()
+    );
+
+    // Environment variable settings
+    let expected_log_level = SettingInfo {
+      key: BODHI_LOG_LEVEL.to_string(),
+      current_value: serde_yaml::Value::String("debug".to_string()),
+      default_value: serde_yaml::Value::String(DEFAULT_LOG_LEVEL.to_string()),
+      source: SettingSource::Environment,
+      metadata: SettingMetadata::option(
+        ["error", "warn", "info", "debug", "trace"]
+          .iter()
+          .map(|s| s.to_string())
+          .collect(),
+      ),
+    };
+    assert_eq!(
+      expected_log_level,
+      settings.get(BODHI_LOG_LEVEL).unwrap().clone()
+    );
+
+    // Settings file settings
+    let expected_port = SettingInfo {
+      key: BODHI_PORT.to_string(),
+      current_value: serde_yaml::Value::Number(8080.into()),
+      default_value: serde_yaml::Value::Number(DEFAULT_PORT.into()),
+      source: SettingSource::SettingsFile,
+      metadata: SettingMetadata::Number { min: 1, max: 65535 },
+    };
+    assert_eq!(expected_port, settings.get(BODHI_PORT).unwrap().clone());
+
+    // Boolean setting
+    let expected_stdout = SettingInfo {
+      key: BODHI_LOG_STDOUT.to_string(),
+      current_value: serde_yaml::Value::Bool(true),
+      default_value: serde_yaml::Value::Bool(false),
+      source: SettingSource::Environment,
+      metadata: SettingMetadata::Boolean,
+    };
+    assert_eq!(
+      expected_stdout,
+      settings.get(BODHI_LOG_STDOUT).unwrap().clone()
+    );
+
+    // Default value setting
+    let expected_scheme = SettingInfo {
+      key: BODHI_SCHEME.to_string(),
+      current_value: serde_yaml::Value::String(DEFAULT_SCHEME.to_string()),
+      default_value: serde_yaml::Value::String(DEFAULT_SCHEME.to_string()),
+      source: SettingSource::Default,
+      metadata: SettingMetadata::String,
+    };
+    assert_eq!(expected_scheme, settings.get(BODHI_SCHEME).unwrap().clone());
+
+    let expected_host = SettingInfo {
+      key: BODHI_HOST.to_string(),
+      current_value: serde_yaml::Value::String("test.host".to_string()),
+      default_value: serde_yaml::Value::String("localhost".to_string()),
+      source: SettingSource::SettingsFile,
+      metadata: SettingMetadata::String,
+    };
+    assert_eq!(expected_host, settings.get(BODHI_HOST).unwrap().clone());
     Ok(())
   }
 }

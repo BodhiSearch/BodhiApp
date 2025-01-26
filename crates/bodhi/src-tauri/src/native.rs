@@ -38,15 +38,15 @@ impl NativeCommand {
   // #[cfg_attr(mobile, tauri::mobile_entry_point)]
   pub async fn aexecute(&self, static_router: Option<Router>) -> Result<()> {
     let app_service = self.service.clone();
-    let env_service = self.service.env_service();
+    let setting_service = self.service.setting_service();
     let ui = self.ui;
 
-    let log_level: LogLevel = env_service.log_level();
+    let log_level: LogLevel = setting_service.log_level();
     let mut log_plugin = tauri_plugin_log::Builder::default()
       .level(log_level)
       .max_file_size(50_000)
       .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll);
-    let setting_service = self.service.env_service().setting_service();
+    let setting_service = self.service.setting_service().setting_service();
     if let Some(serde_yaml::Value::Bool(true)) = setting_service.get_setting_value(BODHI_LOG_STDOUT)
     {
       log_plugin = log_plugin.target(tauri_plugin_log::Target::new(
@@ -69,13 +69,13 @@ impl NativeCommand {
         app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
         let bodhi_exec_lookup_path = app.path().resolve("bin", BaseDirectory::Resource)?;
-        env_service.setting_service().set_default(
+        setting_service.setting_service().set_default(
           BODHI_EXEC_LOOKUP_PATH,
           &serde_yaml::Value::String(bodhi_exec_lookup_path.display().to_string())
         );
-        let host = env_service.host();
-        let port = env_service.port();
-        let addr = env_service.server_url();
+        let host = setting_service.host();
+        let port = setting_service.port();
+        let addr = setting_service.server_url();
         let cmd = ServeCommand::ByParams { host, port };
         let shared_server_handle: Arc<Mutex<Option<ServerShutdownHandle>>> = Arc::new(Mutex::new(None));
         app.manage(shared_server_handle.clone());
@@ -103,7 +103,7 @@ impl NativeCommand {
 
         // Attempt to open the default web browser
         if ui {
-          if let Err(err) = webbrowser::open(env_service.server_url().as_str()) {
+          if let Err(err) = webbrowser::open(setting_service.server_url().as_str()) {
             tracing::info!(?err, "failed to open browser");
           }
         }

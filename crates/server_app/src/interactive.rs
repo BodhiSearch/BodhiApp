@@ -104,7 +104,7 @@ impl Interactive {
       .alias(&alias.alias)
       .server_params(&alias.context_params)
       .build()?;
-    let lookup_path = PathBuf::from(service.env_service().exec_lookup_path());
+    let lookup_path = PathBuf::from(service.setting_service().exec_lookup_path());
     let shared_rw = DefaultSharedContext::new(
       service.hub_service(),
       &lookup_path,

@@ -1,8 +1,8 @@
 use crate::app::main_internal;
 use objs::{ApiError, AppType, OpenAIApiError, Setting, SettingMetadata, SettingSource};
 use services::{
-  DefaultEnvService, DefaultEnvWrapper, DefaultSettingService, InitService, SettingService,
-  BODHI_HOME, SETTINGS_YAML,
+  DefaultEnvWrapper, DefaultSettingService, InitService, SettingService, BODHI_AUTH_REALM,
+  BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, SETTINGS_YAML,
 };
 use std::sync::Arc;
 
@@ -71,7 +71,7 @@ pub fn _main() {
   let settings_file = bodhi_home.join(SETTINGS_YAML);
   let app_settings: Vec<Setting> = vec![
     Setting {
-      key: ENV_TYPE.to_string(),
+      key: BODHI_ENV_TYPE.to_string(),
       value: serde_yaml::Value::String(ENV_TYPE.to_string()),
       source: SettingSource::System,
       metadata: SettingMetadata::String,
@@ -83,13 +83,19 @@ pub fn _main() {
       metadata: SettingMetadata::String,
     },
     Setting {
-      key: AUTH_URL.to_string(),
+      key: BODHI_VERSION.to_string(),
+      value: serde_yaml::Value::String(env!("CARGO_PKG_VERSION").to_string()),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+    Setting {
+      key: BODHI_AUTH_URL.to_string(),
       value: serde_yaml::Value::String(AUTH_URL.to_string()),
       source: SettingSource::System,
       metadata: SettingMetadata::String,
     },
     Setting {
-      key: AUTH_REALM.to_string(),
+      key: BODHI_AUTH_REALM.to_string(),
       value: serde_yaml::Value::String(AUTH_REALM.to_string()),
       source: SettingSource::System,
       metadata: SettingMetadata::String,
@@ -130,7 +136,7 @@ pub fn _main() {
     );
     std::process::exit(1);
   }
-  if let Err(err) = InitService::setup_logs_dir(&setting_service, &bodhi_home) {
+  if let Err(err) = InitService::setup_logs_dir(&setting_service) {
     eprintln!(
       "fatal error, setting up logs dir, error: {}\nexiting...",
       err
@@ -138,26 +144,9 @@ pub fn _main() {
     std::process::exit(1);
   }
 
-  let env_service = match DefaultEnvService::new(
-    ENV_TYPE.clone(),
-    APP_TYPE.clone(),
-    AUTH_URL.to_string(),
-    AUTH_REALM.to_string(),
-    Arc::new(setting_service),
-  ) {
-    Ok(env_service) => env_service,
-    Err(err) => {
-      let api_error: ApiError = err.into();
-      eprintln!(
-        "fatal error, setting up environment service, error: {}\nexiting...",
-        api_error
-      );
-      std::process::exit(1);
-    }
-  };
   #[cfg(not(feature = "native"))]
-  let _guard = setup_logs(&env_service);
-  let result = main_internal(Arc::new(env_service));
+  let _guard = setup_logs(&setting_service);
+  let result = main_internal(Arc::new(setting_service));
   if let Err(err) = result {
     tracing::warn!(?err, "application exited with error");
     let err: ApiError = err.into();
@@ -173,25 +162,25 @@ pub fn _main() {
 
 #[cfg(not(feature = "native"))]
 fn setup_logs(
-  env_service: &DefaultEnvService,
+  setting_service: &DefaultSettingService,
 ) -> Result<tracing_appender::non_blocking::WorkerGuard, crate::error::BodhiError> {
   use crate::error::Result;
-  use services::{EnvService, BODHI_LOG_STDOUT};
+  use services::{SettingService, BODHI_LOG_STDOUT};
   use std::path::Path;
   use tracing::level_filters::LevelFilter;
   use tracing_appender::non_blocking::WorkerGuard;
   use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-  fn setup_logs(env_service: &dyn EnvService, logs_dir: &Path) -> Result<WorkerGuard> {
+  fn setup_logs(setting_service: &DefaultSettingService, logs_dir: &Path) -> Result<WorkerGuard> {
     let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
-    let log_level: LevelFilter = env_service.log_level().into();
+    let log_level: LevelFilter = setting_service.log_level().into();
     let filter = EnvFilter::new(log_level.to_string());
     let filter = filter.add_directive("hf_hub=error".parse().unwrap());
 
     // Check if we should output to stdout
     let enable_stdout = cfg!(debug_assertions)
-      || env_service
+      || setting_service
         .get_setting(BODHI_LOG_STDOUT)
         .map(|v| v == "1" || v.to_lowercase() == "true")
         .unwrap_or(false);
@@ -218,8 +207,8 @@ fn setup_logs(
     Ok(guard)
   }
 
-  let logs_dir = env_service.logs_dir();
-  let result = setup_logs(env_service, &logs_dir);
+  let logs_dir = setting_service.logs_dir();
+  let result = setup_logs(setting_service, &logs_dir);
   if result.is_err() {
     eprintln!("failed to configure logging, will be skipped");
   };

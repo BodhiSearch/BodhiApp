@@ -230,7 +230,6 @@ Common error types:
 - `BODHI_HOST` - Server host
 - `BODHI_PORT` - Server port
 - `BODHI_AUTH_URL` - Auth server URL
-- `BODHI_FRONTEND_URL` - Frontend URL
 
 ### File Locations
 - Models: `$BODHI_HOME/models`

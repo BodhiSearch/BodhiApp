@@ -27,10 +27,10 @@ pub async fn login_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Response, ApiError> {
   let app_service = state.app_service();
-  let env_service = app_service.env_service();
+  let setting_service = app_service.setting_service();
   match headers.get(KEY_RESOURCE_TOKEN) {
     Some(_) => {
-      let ui_home = format!("{}/ui/home", env_service.frontend_url());
+      let ui_home = format!("{}/ui/home", setting_service.frontend_url());
       Ok(
         Response::builder()
           .status(StatusCode::FOUND)
@@ -45,7 +45,7 @@ pub async fn login_handler(
       let app_reg_info = secret_service
         .app_reg_info()?
         .ok_or(LoginError::AppRegInfoNotFound)?;
-      let callback_url = env_service.login_callback_url();
+      let callback_url = setting_service.login_callback_url();
       let client_id = app_reg_info.client_id;
       let state = generate_random_string(32);
       session
@@ -62,7 +62,7 @@ pub async fn login_handler(
       let scope = ["openid", "email", "profile", "roles"].join("%20"); // manual url encoding for space
       let login_url = format!(
           "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope={}",
-          env_service.login_url(), client_id, callback_url, state, code_challenge, scope
+          setting_service.login_url(), client_id, callback_url, state, code_challenge, scope
       );
 
       let response = Response::builder()
@@ -83,7 +83,7 @@ pub async fn login_callback_handler(
   Query(params): Query<HashMap<String, String>>,
 ) -> Result<Response, ApiError> {
   let app_service = state.app_service();
-  let env_service = app_service.env_service();
+  let setting_service = app_service.setting_service();
   let secret_service = app_service.secret_service();
   let auth_service = app_service.auth_service();
 
@@ -128,7 +128,7 @@ pub async fn login_callback_handler(
       AuthorizationCode::new(code.to_string()),
       ClientId::new(app_reg_info.client_id.clone()),
       ClientSecret::new(app_reg_info.client_secret.clone()),
-      RedirectUrl::new(env_service.login_callback_url()).map_err(LoginError::from)?,
+      RedirectUrl::new(setting_service.login_callback_url()).map_err(LoginError::from)?,
       PkceCodeVerifier::new(pkce_verifier),
     )
     .await?;
@@ -168,7 +168,7 @@ pub async fn login_callback_handler(
     .insert("refresh_token", refresh_token)
     .await
     .map_err(LoginError::from)?;
-  let ui_home = format!("{}/ui/home", env_service.frontend_url());
+  let ui_home = format!("{}/ui/home", setting_service.frontend_url());
   Ok(
     Response::builder()
       .status(StatusCode::FOUND)
@@ -213,9 +213,9 @@ pub async fn logout_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Response, ApiError> {
-  let env_service = state.app_service().env_service();
+  let setting_service = state.app_service().setting_service();
   session.delete().await.map_err(LogoutError::from)?;
-  let ui_login = format!("{}/ui/login", env_service.frontend_url());
+  let ui_login = format!("{}/ui/login", setting_service.frontend_url());
   // TODO: sending 200 instead of 302 to avoid axios/xmlhttprequest following redirects
   let response = Response::builder()
     .status(StatusCode::OK)
@@ -327,15 +327,15 @@ mod tests {
   use server_core::{
     test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
   };
-  use services::AppStatus;
   use services::{
     test_utils::{
       app_reg_info, build_token, expired_token, test_auth_service, token, AppServiceStub,
-      AppServiceStubBuilder, EnvServiceStub, SecretServiceStub, SessionTestExt, TEST_CLIENT_ID,
+      AppServiceStubBuilder, SecretServiceStub, SessionTestExt, SettingServiceStub, TEST_CLIENT_ID,
     },
-    AppRegInfo, AppService, AuthServiceError, MockAuthService, MockEnvService, SecretServiceExt,
-    SqliteSessionService, BODHI_FRONTEND_URL,
+    AppRegInfo, AppService, AuthServiceError, MockAuthService, SecretServiceExt,
+    SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
   };
+  use services::{AppStatus, BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
   use std::{collections::HashMap, sync::Arc};
   use strfmt::strfmt;
   use tempfile::TempDir;
@@ -358,31 +358,30 @@ mod tests {
                 kid: "test_kid".to_string(),
                 issuer: "test_issuer".to_string(),
             }),
-        "http://localhost:3000/callback",
-        "http://test-id.getbodhi.app/realms/test-realm/auth",
     )]
   #[tokio::test]
   async fn test_login_handler(
     #[case] secret_service: SecretServiceStub,
-    #[case] callback_url: &str,
-    #[case] login_url: &str,
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
     use axum::routing::get;
+    let callback_url = "http://localhost:3000/app/login/callback";
+    let login_url = "http://test-id.getbodhi.app/realms/test-realm/protocol/openid-connect/auth";
 
-    let mut mock_env_service = MockEnvService::new();
-    mock_env_service
-      .expect_login_callback_url()
-      .times(1)
-      .return_const(callback_url.to_string());
-    mock_env_service
-      .expect_login_url()
-      .times(1)
-      .return_const(login_url.to_string());
+    let setting_service = SettingServiceStub::new(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "localhost".to_string()),
+      (BODHI_PORT.to_string(), "3000".to_string()),
+      (
+        BODHI_AUTH_URL.to_string(),
+        "http://test-id.getbodhi.app".to_string(),
+      ),
+      (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
+    ]));
     let dbfile = temp_bodhi_home.path().join("test.db");
     let app_service = AppServiceStubBuilder::default()
       .secret_service(Arc::new(secret_service))
-      .env_service(Arc::new(mock_env_service))
+      .setting_service(Arc::new(setting_service))
       .build_session_service(dbfile)
       .await
       .build()?;
@@ -467,9 +466,13 @@ mod tests {
     let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let record = set_token_in_session(&session_service, &token).await?;
     let app_service = AppServiceStubBuilder::default()
-      .env_service(Arc::new(
-        EnvServiceStub::default().with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000"),
-      ))
+      .setting_service(Arc::new(SettingServiceStub::default().with_settings(
+        HashMap::from([
+          (BODHI_SCHEME.to_string(), "http".to_string()),
+          (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
+          (BODHI_PORT.to_string(), "3000".to_string()),
+        ]),
+      )))
       .with_sqlite_session_service(Arc::new(session_service))
       .with_secret_service()
       .with_db_service()
@@ -526,8 +529,8 @@ mod tests {
     assert_eq!(43, challenge.len());
   }
 
-  #[rstest]
   #[anyhow_trace]
+  #[rstest]
   #[tokio::test]
   async fn test_login_callback_handler(
     temp_bodhi_home: TempDir,
@@ -547,8 +550,11 @@ mod tests {
         ))
       });
 
-    let mock_env_service =
-      EnvServiceStub::default().with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000");
+    let setting_service = SettingServiceStub::default().with_settings(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
+      (BODHI_PORT.to_string(), "3000".to_string()),
+    ]));
 
     let secret_service = SecretServiceStub::new()
       .with_app_reg_info(&AppRegInfo {
@@ -563,7 +569,7 @@ mod tests {
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
     let app_service = AppServiceStubBuilder::default()
       .auth_service(Arc::new(mock_auth_service))
-      .env_service(Arc::new(mock_env_service))
+      .setting_service(Arc::new(setting_service))
       .secret_service(Arc::new(secret_service))
       .with_sqlite_session_service(session_service.clone())
       .build()?;
@@ -1049,6 +1055,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_login_callback_handler_resource_admin(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     temp_bodhi_home: TempDir,
     token: (String, String),
   ) -> anyhow::Result<()> {
@@ -1093,17 +1100,16 @@ mod tests {
       .with_app_status(&AppStatus::ResourceAdmin);
     let secret_service = Arc::new(secret_service);
     let auth_service = Arc::new(test_auth_service(&keycloak_url));
-    let mock_env_service = Arc::new(
-      EnvServiceStub::default()
-        .with_env(BODHI_FRONTEND_URL, "http://frontend.localhost:3000")
-        .with_env("BODHI_HOST", "localhost")
-        .with_env("BODHI_PORT", "9000")
-        .with_env("BODHI_AUTH_URL", keycloak_url),
-    );
+    let setting_service = Arc::new(SettingServiceStub::default().with_settings(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
+      (BODHI_PORT.to_string(), "3000".to_string()),
+      (BODHI_AUTH_URL.to_string(), keycloak_url.to_string()),
+    ])));
     let app_service = AppServiceStubBuilder::default()
       .secret_service(secret_service)
       .auth_service(auth_service)
-      .env_service(mock_env_service)
+      .setting_service(setting_service)
       .with_sqlite_session_service(session_service)
       .build()?;
     Ok(Arc::new(app_service))
@@ -1122,7 +1128,7 @@ mod tests {
         Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
         Matcher::UrlEncoded(
           "redirect_uri".into(),
-          "http://localhost:9000/app/login/callback".into(),
+          "http://frontend.localhost:3000/app/login/callback".into(),
         ),
         Matcher::UrlEncoded("code_verifier".into(), code_secret.into()),
       ]))

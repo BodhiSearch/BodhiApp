@@ -59,9 +59,9 @@ pub async fn app_info_handler(
   let secret_service = &state.app_service().secret_service();
   let authz = secret_service.authz()?;
   let status = app_status_or_default(secret_service);
-  let env_service = &state.app_service().env_service();
+  let setting_service = &state.app_service().setting_service();
   Ok(Json(AppInfo {
-    version: env_service.version(),
+    version: setting_service.version(),
     status,
     authz,
   }))
@@ -128,8 +128,8 @@ pub async fn setup_handler(
     return Err(AppServiceError::AlreadySetup)?;
   }
   if request.authz {
-    let env_service = &state.app_service().env_service();
-    let server_host = env_service.host();
+    let setting_service = &state.app_service().setting_service();
+    let server_host = setting_service.host();
     let is_loopback =
       server_host == "localhost" || server_host == "127.0.0.1" || server_host == "0.0.0.0";
     let hosts = if is_loopback {
@@ -137,8 +137,8 @@ pub async fn setup_handler(
     } else {
       vec![server_host.as_str()]
     };
-    let scheme = env_service.scheme();
-    let port = env_service.port();
+    let scheme = setting_service.scheme();
+    let port = setting_service.port();
     let redirect_uris = hosts
       .into_iter()
       .map(|host| format!("{scheme}://{host}:{port}/app/login/callback"))

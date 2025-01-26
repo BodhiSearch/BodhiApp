@@ -49,13 +49,12 @@ So that I can manage the app's behavior without editing configuration files
 - [ ] Add role check middleware for settings APIs
 
 ## Available Settings Analysis
-Settings from env_service.rs:
+Settings from setting_service.rs:
 
 Server Settings:
 - BODHI_SCHEME (default: "http")
 - BODHI_HOST (default: "localhost")
 - BODHI_PORT (default: 1135)
-- BODHI_FRONTEND_URL
 
 Logging Settings:
 - BODHI_LOGS
@@ -130,7 +129,6 @@ Resets setting to default value.
 - BODHI_SCHEME (type: string, default: "http")
 - BODHI_HOST (type: string, default: "localhost") 
 - BODHI_PORT (type: number, default: 1135)
-- BODHI_FRONTEND_URL (type: string)
 
 #### Logging Configuration
 - BODHI_LOGS (type: string)
@@ -299,7 +297,6 @@ fn delete_setting(&self, key: &str) -> Result<()>;
 - `crates/objs/src/envs.rs`: API endpoints for settings management
 - `crates/routes_app/src/routes_settings.rs`: API endpoints for settings management
 - `crates/services/src/setting_service.rs`: Core settings service implementation
-- `crates/services/src/env_service.rs`: Environment and settings defaults
 - `crates/auth_middleware/src/api_auth_middleware.rs`: Role-based authorization
 - `crates/routes_all/src/routes.rs`: Route registration for settings endpoints
 - `crates/server_app/src/serve.rs`: Server setup and configuration

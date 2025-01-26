@@ -16,7 +16,7 @@ type Result<T> = std::result::Result<T, EnvCommandError>;
 
 impl EnvCommand {
   pub fn execute(&self) -> Result<()> {
-    let envs = self.service.env_service().list();
+    let envs = self.service.setting_service().list();
     // println!("List of current environment/config variables:");
     // println!();
     let mut table = Table::new();
