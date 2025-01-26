@@ -1,8 +1,15 @@
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
-use std::collections::HashSet;
-use std::env;
-use std::process::Command;
+use reqwest::header::USER_AGENT;
+use serde::Deserialize;
+use std::{
+  collections::HashSet,
+  env,
+  fs::{self, File},
+  io::{self},
+  path::Path,
+  process::Command,
+};
 
 #[derive(Debug, Hash, Eq, PartialEq)]
 struct LlamaServerBuild {
@@ -39,22 +46,22 @@ static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
     "",
     vec!["metal", "cpu"],
   ));
-  set.insert(LlamaServerBuild::new(
-    "aarch64-unknown-linux-gnu",
-    "",
-    vec!["cpu"],
-  ));
+  // set.insert(LlamaServerBuild::new(
+  //   "aarch64-unknown-linux-gnu",
+  //   "",
+  //   vec!["cpu", "cuda-12.6"],
+  // ));
   set.insert(LlamaServerBuild::new(
     "x86_64-unknown-linux-gnu",
     "",
-    vec!["cpu", "cuda-12_6"],
+    vec!["cpu", "cuda-12.6"],
   ));
   set.insert(LlamaServerBuild::new(
     "x86_64-pc-windows-msvc",
     "exe",
     vec![
       "cpu",
-      // "cuda-11.7",
+      "cuda-11.7",
       "cuda-12.4",
     ],
   ));
@@ -65,7 +72,7 @@ pub fn main() -> Result<()> {
   println!("cargo:rerun-if-changed=build.rs");
   println!("cargo:rerun-if-changed=Makefile");
   println!("cargo:rerun-if-env-changed=CI");
-  println!("cargo:rerun-if-env-changed=CI_FULL_BUILD");
+  println!("cargo:rerun-if-env-changed=CI_RELEASE");
   println!("cargo:rerun-if-env-changed=CI_DEFAULT_VARIANT");
   let target = env::var("TARGET").unwrap();
   let build = LLAMA_SERVER_BUILDS.iter().find(|i| i.target == target);
@@ -79,10 +86,17 @@ pub fn main() -> Result<()> {
   let variant = env::var("CI_DEFAULT_VARIANT").unwrap_or_else(|_| build.default.clone());
   set_build_envs(build, &variant)?;
   clean()?;
-  if env::var("CI_FULL_BUILD").unwrap_or("false".to_string()) == "true" {
+  if env::var("CI_RELEASE").unwrap_or("false".to_string()) == "true" {
     println!("building all variants");
+    clean_output_directory()?;
+    let client = reqwest::blocking::Client::new();
+    let release: GithubRelease = client
+      .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases/latest")
+      .header(USER_AGENT, "Bodhi-Build")
+      .send()?
+      .json()?;
     for variant in build.variants.iter() {
-      build_llama_server(build, variant)?;
+      fetch_llama_server(build, variant, &release)?;
     }
   } else {
     println!("building default variants");
@@ -160,5 +174,86 @@ fn build_llama_server(build: &LlamaServerBuild, variant: &str) -> Result<()> {
     ("EXTENSION", build.extension.as_str()),
   ];
   exec_make_target(&build_target, envs)?;
+  Ok(())
+}
+
+#[derive(Deserialize)]
+struct GithubRelease {
+  assets: Vec<GithubAsset>,
+}
+
+#[derive(Deserialize)]
+struct GithubAsset {
+  name: String,
+  browser_download_url: String,
+}
+
+fn fetch_llama_server(
+  build: &LlamaServerBuild,
+  variant: &str,
+  release: &GithubRelease,
+) -> Result<()> {
+  // Construct the target file name prefix based on the target and variant
+  let target_file_prefix = format!("llama-server--{}--{}", build.target, variant);
+
+  // Filter assets based on the target and variant
+  let Some(asset) = release
+    .assets
+    .iter()
+    .find(|asset| asset.name.starts_with(&target_file_prefix))
+  else {
+    println!("No matching assets found for {}-{}", build.target, variant);
+    return Ok(());
+  };
+
+  // Download each matching asset
+  let download_url = &asset.browser_download_url;
+  println!("cargo:warning=Downloading {}", download_url);
+  let response = reqwest::blocking::Client::new()
+    .get(download_url)
+    .header(USER_AGENT, "Bodhi-Build")
+    .send()?;
+
+  // Ensure the response is successful
+  if !response.status().is_success() {
+    bail!("Failed to download file: {}", download_url);
+  }
+
+  // Create the target directory
+  let target_dir = Path::new("bin").join(&build.target).join(variant);
+  fs::create_dir_all(&target_dir)?;
+
+  // Move the downloaded file to the target location
+  let target_path = target_dir.join(build.execname());
+  let mut file = File::create(&target_path)?;
+
+  // Fix for the error
+  let bytes = response.bytes()?;
+  io::copy(&mut bytes.as_ref(), &mut file)?;
+
+  // Change file permissions to make it executable
+  #[cfg(unix)]
+  {
+    use std::os::unix::fs::PermissionsExt;
+    let mut perms = file.metadata()?.permissions();
+    perms.set_mode(0o755); // Set executable permissions
+    std::fs::set_permissions(&target_path, perms)?;
+  }
+
+  println!(
+    "cargo:warning=Successfully downloaded and moved {} for {}-{}",
+    asset.name, build.target, variant
+  );
+
+  Ok(())
+}
+
+// New function to clean the output directory
+fn clean_output_directory() -> Result<()> {
+  let output_dir = Path::new("bin");
+  if output_dir.exists() {
+    fs::remove_dir_all(output_dir)?;
+  }
+  fs::create_dir_all(output_dir)?;
   Ok(())
 }

@@ -25,6 +25,7 @@ on:
 
 env:
   CI: true
+  CI_RELEASE: true
 
 jobs:
   create-release:

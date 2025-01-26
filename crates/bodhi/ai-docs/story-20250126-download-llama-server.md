@@ -14,7 +14,7 @@ We need to support downloading pre-built binaries and organize variants based on
 ## Requirements
 
 ### Download Pre-built Binaries
-- When CI_FULL_BUILD is enabled, fetch llama server binaries from GitHub releases
+- When CI_RELEASE is enabled, fetch llama server binaries from GitHub releases
 - Check latest release of BodhiApp/llama.cpp repository
 - Download artifacts using pattern: llama-server--{TARGET}--{VARIANT}.zip
 - Extract downloaded zip to temp folder
@@ -35,7 +35,7 @@ We need to support downloading pre-built binaries and organize variants based on
    - [ ] Implement artifact download logic
    - [ ] Add zip extraction functionality
    - [ ] Implement binary copy to target location
-   - [ ] Add CI_FULL_BUILD conditional logic
+   - [ ] Add CI_RELEASE conditional logic
 
 2. Update Variant Management:
    - [ ] Create new enum/struct for variant types
