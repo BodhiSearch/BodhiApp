@@ -1,7 +1,7 @@
 use crate::{asref_impl, EnvWrapper, BODHI_HOME};
 use objs::{
-  impl_error_from, AppError, ErrorType, IoError, SerdeYamlError, SettingInfo, SettingMetadata,
-  SettingSource,
+  impl_error_from, AppError, ErrorType, IoError, SerdeYamlError, Setting, SettingInfo,
+  SettingMetadata, SettingSource,
 };
 use serde_yaml::Value;
 use std::{
@@ -154,6 +154,7 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 pub struct DefaultSettingService {
   env_wrapper: Arc<dyn EnvWrapper>,
   path: PathBuf,
+  app_settings: Vec<Setting>,
   settings_lock: RwLock<()>,
   defaults: RwLock<HashMap<String, Value>>,
   listeners: RwLock<Vec<Arc<dyn SettingsChangeListener>>>,
@@ -161,10 +162,15 @@ pub struct DefaultSettingService {
 }
 
 impl DefaultSettingService {
-  fn new(env_wrapper: Arc<dyn EnvWrapper>, path: PathBuf) -> DefaultSettingService {
+  fn new(
+    env_wrapper: Arc<dyn EnvWrapper>,
+    path: PathBuf,
+    app_settings: Vec<Setting>,
+  ) -> DefaultSettingService {
     Self {
       env_wrapper,
       path,
+      app_settings,
       settings_lock: RwLock::new(()),
       defaults: RwLock::new(HashMap::new()),
       listeners: RwLock::new(Vec::new()),
@@ -174,25 +180,27 @@ impl DefaultSettingService {
 
   pub fn new_with_defaults(
     env_wrapper: Arc<dyn EnvWrapper>,
-    bodhi_home: &Path,
-    source: SettingSource,
+    bodhi_home: Setting,
+    app_settings: Vec<Setting>,
     settings_file: PathBuf,
   ) -> Result<Self> {
-    let service = Self::new(env_wrapper, settings_file);
-    service.init_defaults(bodhi_home, source);
+    let service = Self::new(env_wrapper, settings_file, app_settings);
+    service.init_defaults(bodhi_home);
     Ok(service)
   }
 
-  fn init_defaults(&self, bodhi_home: &Path, source: SettingSource) {
+  fn init_defaults(&self, bodhi_home: Setting) {
     self.with_defaults_write_lock(|defaults| {
-      if source == SettingSource::Default {
-        defaults.insert(
-          BODHI_HOME.to_string(),
-          Value::String(bodhi_home.display().to_string()),
-        );
+      if bodhi_home.source == SettingSource::Default {
+        defaults.insert(BODHI_HOME.to_string(), bodhi_home.value.clone());
         defaults.insert(
           BODHI_LOGS.to_string(),
-          Value::String(bodhi_home.join("logs").display().to_string()),
+          Value::String(
+            PathBuf::from(bodhi_home.value.as_str().unwrap())
+              .join("logs")
+              .display()
+              .to_string(),
+          ),
         );
       } else if let Some(home_dir) = self.home_dir() {
         let default_bodhi_home = home_dir.join(".cache").join("bodhi");
@@ -368,6 +376,9 @@ impl SettingService for DefaultSettingService {
           defaults.insert(key.to_string(), value.clone());
         });
       }
+      SettingSource::System => {
+        tracing::error!("SettingSource::System is not supported for override");
+      }
     }
   }
 
@@ -382,6 +393,10 @@ impl SettingService for DefaultSettingService {
   }
 
   fn get_setting_value_with_source(&self, key: &str) -> (Option<Value>, SettingSource) {
+    if let Some(setting) = self.app_settings.iter().find(|s| s.key == key) {
+      return (Some(setting.value.clone()), SettingSource::System);
+    }
+
     let metadata = self.get_setting_metadata(key);
     let result = self.with_cmd_lines_read_lock(|cmd_lines| cmd_lines.get(key).cloned());
     if let Some(value) = result {
@@ -473,13 +488,14 @@ asref_impl!(SettingService, DefaultSettingService);
 #[cfg(test)]
 mod tests {
   use crate::{
-    test_utils::EnvWrapperStub, DefaultSettingService, MockEnvWrapper, MockSettingsChangeListener,
-    SettingService, BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL,
-    BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL,
-    DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME,
+    test_utils::{bodhi_home_setting, EnvWrapperStub},
+    DefaultSettingService, MockEnvWrapper, MockSettingsChangeListener, SettingService,
+    BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT,
+    BODHI_PORT, BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT,
+    DEFAULT_SCHEME, HF_HOME,
   };
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_dir, SettingSource};
+  use objs::{test_utils::temp_dir, Setting, SettingSource};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde::{Deserialize, Serialize};
@@ -501,8 +517,8 @@ mod tests {
       EnvWrapperStub::new(maplit::hashmap! {"HOME".to_string() => home_dir.display().to_string()});
     let service = DefaultSettingService::new_with_defaults(
       Arc::new(env_wrapper),
-      &temp_dir.path(),
-      SettingSource::Environment,
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+      vec![],
       path.clone(),
     )?;
     for (key, expected) in [
@@ -572,8 +588,8 @@ TEST_NUMBER: 8080
     let env_wrapper = EnvWrapperStub::new(HashMap::new());
     let service = DefaultSettingService::new_with_defaults(
       Arc::new(env_wrapper),
-      temp_dir.path(),
-      SettingSource::Environment,
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+      vec![],
       path.clone(),
     )?;
     assert_eq!(
@@ -596,7 +612,7 @@ SOME_OTHER_KEY: value
 "#,
     )?;
     let env_wrapper = EnvWrapperStub::new(HashMap::new());
-    let service = DefaultSettingService::new(Arc::new(env_wrapper), path.clone());
+    let service = DefaultSettingService::new(Arc::new(env_wrapper), path.clone(), vec![]);
     service.set_default("SOME_KEY", &Value::String("default_value".to_string()));
     assert_eq!(
       Some("default_value".to_string()),
@@ -615,7 +631,7 @@ SOME_OTHER_KEY: value
       .with(eq("TEST_KEY"))
       .times(1)
       .return_const(Ok("env_value".to_string()));
-    let service = DefaultSettingService::new(Arc::new(mock_env), path);
+    let service = DefaultSettingService::new(Arc::new(mock_env), path, vec![]);
     assert_eq!(
       Some("env_value".to_string()),
       service.get_setting("TEST_KEY")
@@ -632,7 +648,7 @@ SOME_OTHER_KEY: value
       .expect_var()
       .with(eq("TEST_KEY"))
       .return_const(Ok("env_value".to_string()));
-    let service = DefaultSettingService::new(Arc::new(mock_env), path);
+    let service = DefaultSettingService::new(Arc::new(mock_env), path, vec![]);
     service.set_setting_with_source(
       "TEST_KEY",
       &serde_yaml::Value::String("cmdline-value".to_string()),
@@ -656,7 +672,7 @@ SOME_OTHER_KEY: value
       .return_const(Err(std::env::VarError::NotPresent));
     let path = temp_dir.path().join("settings.yaml");
     std::fs::write(&path, "TEST_KEY: test_value")?;
-    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone(), vec![]);
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener
       .expect_on_change()
@@ -685,7 +701,7 @@ SOME_OTHER_KEY: value
       .return_const(Err(std::env::VarError::NotPresent));
     let path = temp_dir.path().join("settings.yaml");
     std::fs::write(&path, "TEST_KEY: test_value")?;
-    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone(), vec![]);
     service.set_default("TEST_KEY", &Value::String("default_value".to_string()));
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener
@@ -715,7 +731,7 @@ SOME_OTHER_KEY: value
       .return_const(Ok("env_value".to_string()));
     let path = temp_dir.path().join("settings.yaml");
     std::fs::write(&path, "TEST_KEY: test_value")?;
-    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone(), vec![]);
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener
       .expect_on_change()
@@ -745,7 +761,7 @@ SOME_OTHER_KEY: value
       .return_const(Err(std::env::VarError::NotPresent));
     let path = temp_dir.path().join("settings.yaml");
     std::fs::write(&path, "TEST_KEY: test_value")?;
-    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone(), vec![]);
     let mut mock_listener = MockSettingsChangeListener::default();
     mock_listener.expect_on_change().never();
     service.add_listener(Arc::new(mock_listener));
@@ -763,7 +779,7 @@ SOME_OTHER_KEY: value
       .return_const(Err(std::env::VarError::NotPresent));
 
     {
-      let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+      let service = DefaultSettingService::new(Arc::new(mock_env), path.clone(), vec![]);
       service.set_setting("TEST_KEY", "test_value");
     }
     let contents = read_to_string(&path)?;
@@ -776,7 +792,7 @@ SOME_OTHER_KEY: value
       .return_const(Err(std::env::VarError::NotPresent));
 
     {
-      let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+      let service = DefaultSettingService::new(Arc::new(mock_env), path.clone(), vec![]);
       assert_eq!(
         Some("test_value".to_string()),
         service.get_setting("TEST_KEY"),
@@ -798,7 +814,7 @@ SOME_OTHER_KEY: value
       .with(eq("NON_EXISTENT_KEY"))
       .return_const(Err(std::env::VarError::NotPresent));
 
-    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone());
+    let service = DefaultSettingService::new(Arc::new(mock_env), path.clone(), vec![]);
 
     service.set_setting("TEST_KEY", "test_value");
     assert_eq!(
@@ -813,6 +829,45 @@ SOME_OTHER_KEY: value
 
     // Delete non-existent key should still succeed
     service.delete_setting("NON_EXISTENT_KEY")?;
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_get_setting_with_app_settings_precedence(temp_dir: TempDir) -> anyhow::Result<()> {
+    let path = temp_dir.path().join("settings.yaml");
+    let mut mock_env = MockEnvWrapper::new();
+    mock_env.expect_var().with(eq("TEST_KEY")).never();
+    mock_env
+      .expect_home_dir()
+      .return_const(Some(temp_dir.path().to_path_buf()));
+
+    let app_settings = vec![Setting {
+      key: "TEST_KEY".to_string(),
+      value: Value::String("app_value".to_string()),
+      source: SettingSource::Default,
+      metadata: objs::SettingMetadata::String,
+    }];
+
+    let service = DefaultSettingService::new_with_defaults(
+      Arc::new(mock_env),
+      bodhi_home_setting(temp_dir.path(), SettingSource::Default),
+      app_settings,
+      path.clone(),
+    )?;
+
+    // Check that the value from app_settings is returned
+    assert_eq!(
+      Some("app_value".to_string()),
+      service.get_setting("TEST_KEY"),
+    );
+
+    // Ensure that the original logic is still intact
+    std::fs::write(&path, "TEST_KEY: file_value")?;
+    assert_eq!(
+      Some("app_value".to_string()),
+      service.get_setting("TEST_KEY"),
+    );
+
     Ok(())
   }
 }

@@ -3,7 +3,8 @@ use crate::{
   BODHI_HOST, BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
 };
 use objs::{
-  test_utils::temp_dir, AppType, EnvType, LogLevel, SettingInfo, SettingMetadata, SettingSource,
+  test_utils::temp_dir, AppType, EnvType, LogLevel, Setting, SettingInfo, SettingMetadata,
+  SettingSource,
 };
 use rstest::fixture;
 use std::{
@@ -214,5 +215,14 @@ impl EnvWrapper for EnvWrapperStub {
 
   fn load(&self, _path: &Path) {
     //
+  }
+}
+
+pub fn bodhi_home_setting(path: &Path, source: SettingSource) -> Setting {
+  Setting {
+    key: BODHI_HOME.to_string(),
+    value: serde_yaml::Value::String(path.display().to_string()),
+    source,
+    metadata: SettingMetadata::String,
   }
 }

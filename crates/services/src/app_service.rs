@@ -1,6 +1,7 @@
 use crate::{
   db::{DbService, TimeService},
   AuthService, CacheService, DataService, EnvService, HubService, SecretService, SessionService,
+  SettingService,
 };
 use objs::LocalizationService;
 use std::sync::Arc;
@@ -8,6 +9,10 @@ use std::sync::Arc;
 #[cfg_attr(test, mockall::automock)]
 pub trait AppService: std::fmt::Debug + Send + Sync {
   fn env_service(&self) -> Arc<dyn EnvService>;
+
+  fn setting_service(&self) -> Arc<dyn SettingService> {
+    self.env_service().setting_service()
+  }
 
   fn data_service(&self) -> Arc<dyn DataService>;
 

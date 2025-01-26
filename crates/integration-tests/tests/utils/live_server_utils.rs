@@ -5,7 +5,9 @@ use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DefaultTimeService, SqliteDbService},
-  test_utils::{test_auth_service, EnvWrapperStub, OfflineHubService, SecretServiceStub},
+  test_utils::{
+    bodhi_home_setting, test_auth_service, EnvWrapperStub, OfflineHubService, SecretServiceStub,
+  },
   AppService, DefaultAppService, DefaultEnvService, DefaultSettingService, HfHubService,
   InitService, LocalDataService, MokaCacheService, SqliteSessionService, BODHI_EXEC_LOOKUP_PATH,
   BODHI_HOME, BODHI_LOGS, HF_HOME,
@@ -73,8 +75,8 @@ pub fn llama2_7b_setup(
     .unwrap();
   let setting_service = DefaultSettingService::new_with_defaults(
     Arc::new(env_wrapper),
-    &bodhi_home,
-    SettingSource::Environment,
+    bodhi_home_setting(&bodhi_home, SettingSource::Environment),
+    vec![],
     bodhi_home.join("settings.yaml"),
   )
   .expect("failed to setup setting service");
