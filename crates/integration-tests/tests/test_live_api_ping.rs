@@ -7,6 +7,7 @@ use rstest::rstest;
 use serial_test::serial;
 use std::time::Duration;
 
+#[anyhow_trace::anyhow_trace]
 #[rstest]
 #[awt]
 #[tokio::test]

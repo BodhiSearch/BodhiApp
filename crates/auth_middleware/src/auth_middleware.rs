@@ -87,7 +87,7 @@ pub async fn auth_middleware(
     return Ok(
       Redirect::to(&format!(
         "{}/ui/setup",
-        app_service.env_service().frontend_url()
+        app_service.setting_service().frontend_url()
       ))
       .into_response(),
     );
@@ -218,7 +218,8 @@ mod tests {
       offline_token_claims, token, AppServiceStubBuilder, SecretServiceStub, TEST_CLIENT_ID,
       TEST_CLIENT_SECRET,
     },
-    AppRegInfoBuilder, AuthServiceError, MockAuthService, SqliteSessionService,
+    AppRegInfoBuilder, AuthServiceError, MockAuthService, SqliteSessionService, BODHI_HOST,
+    BODHI_PORT, BODHI_SCHEME,
   };
   use std::sync::Arc;
   use tempfile::TempDir;
@@ -372,7 +373,11 @@ mod tests {
       .await
       .with_db_service()
       .await
-      .with_envs(maplit::hashmap! {"BODHI_FRONTEND_URL" => "https://bodhi.app"})
+      .with_settings(maplit::hashmap! {
+        BODHI_SCHEME => "https",
+        BODHI_HOST => "bodhi.app",
+        BODHI_PORT => "443",
+      })
       .build()?;
     let app_service = Arc::new(app_service);
     let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
@@ -384,7 +389,7 @@ mod tests {
     let response = router.clone().oneshot(req).await?;
     assert_eq!(StatusCode::SEE_OTHER, response.status());
     assert_eq!(
-      "https://bodhi.app/ui/setup",
+      "https://bodhi.app:443/ui/setup",
       response.headers().get("Location").unwrap()
     );
     assert_optional_auth_passthrough(&router).await?;

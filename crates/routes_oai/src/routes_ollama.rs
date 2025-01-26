@@ -108,7 +108,7 @@ pub async fn ollama_models_handler(
 }
 
 fn to_ollama_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
-  let bodhi_home = &state.app_service().env_service().bodhi_home();
+  let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = fs::metadata(path)
     .map_err(|e| e.to_string())

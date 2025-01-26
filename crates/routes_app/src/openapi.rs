@@ -18,7 +18,7 @@ use routes_oai::{
 };
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
-  AppStatus, EnvService,
+  AppStatus, SettingService,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -164,14 +164,14 @@ pub struct BodhiOpenAPIDoc;
 /// Modifies OpenAPI documentation with environment-specific settings
 #[derive(Debug, derive_new::new)]
 pub struct OpenAPIEnvModifier {
-  env_service: Arc<dyn EnvService>,
+  setting_service: Arc<dyn SettingService>,
 }
 
 impl Modify for OpenAPIEnvModifier {
   fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
     // Add environment-specific server
-    let server_url = self.env_service.server_url();
-    let desc = if self.env_service.is_production() {
+    let server_url = self.setting_service.server_url();
+    let desc = if self.setting_service.is_production() {
       ""
     } else {
       " - Development"

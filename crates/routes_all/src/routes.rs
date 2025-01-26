@@ -35,7 +35,7 @@ use routes_oai::{
 };
 use serde_json::json;
 use server_core::{DefaultRouterState, RouterState, SharedContext};
-use services::{AppService, EnvService, BODHI_DEV_PROXY_UI};
+use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
 use std::sync::Arc;
 use tower_http::{
   cors::{Any, CorsLayer},
@@ -70,7 +70,7 @@ pub fn build_routes(
     .route(ENDPOINT_LOGOUT, post(logout_handler));
 
   // Dev-only admin routes
-  if !app_service.env_service().is_production() {
+  if !app_service.setting_service().is_production() {
     let dev_apis = Router::new().route(ENDPOINT_DEV_SECRETS, get(dev_secrets_handler));
     public_apis = public_apis.merge(dev_apis);
   }
@@ -177,7 +177,7 @@ pub fn build_routes(
     .on_response(DefaultOnResponse::new().level(Level::INFO));
 
   let mut openapi = BodhiOpenAPIDoc::openapi();
-  OpenAPIEnvModifier::new(app_service.env_service()).modify(&mut openapi);
+  OpenAPIEnvModifier::new(app_service.setting_service()).modify(&mut openapi);
 
   // Build final router
   let router = Router::<Arc<dyn RouterState>>::new()
@@ -196,7 +196,7 @@ pub fn build_routes(
     .layer(info_trace);
 
   let router = apply_ui_router(
-    &app_service.env_service(),
+    &app_service.setting_service(),
     router,
     static_router,
     proxy_router("http://localhost:3000".to_string()),
@@ -205,17 +205,17 @@ pub fn build_routes(
 }
 
 fn apply_ui_router(
-  env_service: &Arc<dyn EnvService>,
+  setting_service: &Arc<dyn SettingService>,
   router: Router,
   static_router: Option<Router>,
   proxy_router: Router,
 ) -> Router {
-  let proxy_ui = env_service
+  let proxy_ui = setting_service
     .get_dev_env(BODHI_DEV_PROXY_UI)
     .map(|val| val.parse::<bool>().unwrap_or_default())
     .unwrap_or_default();
 
-  match env_service.is_production() {
+  match setting_service.is_production() {
     true => {
       if let Some(static_router) = static_router {
         debug!("serving ui from embedded assets");
@@ -249,10 +249,13 @@ mod tests {
     Router,
   };
   use mockall::predicate::*;
+  use objs::EnvType;
   use rstest::{fixture, rstest};
   use server_core::test_utils::ResponseTestExt;
-  use services::{EnvService, MockEnvService, BODHI_DEV_PROXY_UI};
-  use std::sync::Arc;
+  use services::{
+    test_utils::SettingServiceStub, SettingService, BODHI_DEV_PROXY_UI, BODHI_ENV_TYPE,
+  };
+  use std::{collections::HashMap, sync::Arc};
   use tower::ServiceExt;
 
   // Helper to create a stub router that returns a specific path
@@ -293,20 +296,21 @@ mod tests {
     proxy_ui: Option<String>,
   }
 
-  fn env_service(config: EnvConfig) -> Arc<dyn EnvService> {
-    let mut mock_env = MockEnvService::new();
-
-    mock_env
-      .expect_is_production()
-      .return_const(config.is_production);
-
-    mock_env
-      .expect_get_dev_env()
-      .with(eq(BODHI_DEV_PROXY_UI))
-      .times(1)
-      .return_const(config.proxy_ui);
-
-    Arc::new(mock_env)
+  fn test_setting_service(config: EnvConfig) -> Arc<dyn SettingService> {
+    let env_type = if config.is_production {
+      EnvType::Production
+    } else {
+      EnvType::Development
+    };
+    let mut envs = HashMap::new();
+    if let Some(proxy_ui) = config.proxy_ui {
+      envs.insert(BODHI_DEV_PROXY_UI.to_string(), proxy_ui);
+    }
+    let setting_service = SettingServiceStub::new_with_env(
+      envs,
+      HashMap::from([(BODHI_ENV_TYPE.to_string(), env_type.to_string())]),
+    );
+    Arc::new(setting_service)
   }
 
   #[rstest]
@@ -376,8 +380,13 @@ mod tests {
     #[case] static_router: Option<Router>,
     #[case] test_paths: Vec<(&str, bool)>,
   ) {
-    let env_service = env_service(config);
-    let router = apply_ui_router(&env_service, base_router(), static_router, proxy_router());
+    let setting_service = test_setting_service(config);
+    let router = apply_ui_router(
+      &setting_service,
+      base_router(),
+      static_router,
+      proxy_router(),
+    );
 
     for (path, should_exist) in test_paths {
       let (status, body) = test_request(router.clone(), path).await;

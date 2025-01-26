@@ -1,9 +1,9 @@
 use crate::{
   db::{DbService, TimeService},
-  test_utils::{test_db_service, EnvServiceStub, SecretServiceStub, TestDbService},
-  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, EnvService, HfHubService,
-  HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
-  SessionService, SqliteSessionService, BODHI_HOME, HF_HOME,
+  test_utils::{test_db_service, SecretServiceStub, SettingServiceStub, TestDbService},
+  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, HfHubService, HubService,
+  LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
+  SessionService, SettingService, SqliteSessionService, BODHI_HOME, HF_HOME,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir, temp_dir};
@@ -42,8 +42,8 @@ pub async fn app_service_stub_builder(
 #[builder(default, setter(strip_option))]
 pub struct AppServiceStub {
   pub temp_home: Option<Arc<TempDir>>,
-  #[builder(default = "self.default_env_service()")]
-  pub env_service: Option<Arc<dyn EnvService>>,
+  #[builder(default = "self.default_setting_service()")]
+  pub setting_service: Option<Arc<dyn SettingService>>,
   #[builder(default = "self.default_hub_service()")]
   pub hub_service: Option<Arc<dyn HubService>>,
   pub data_service: Option<Arc<dyn DataService>>,
@@ -61,8 +61,8 @@ pub struct AppServiceStub {
 }
 
 impl AppServiceStubBuilder {
-  fn default_env_service(&self) -> Option<Arc<dyn EnvService>> {
-    Some(Arc::new(EnvServiceStub::default()))
+  fn default_setting_service(&self) -> Option<Arc<dyn SettingService>> {
+    Some(Arc::new(SettingServiceStub::default()))
   }
 
   fn default_cache_service(&self) -> Option<Arc<dyn CacheService>> {
@@ -93,7 +93,7 @@ impl AppServiceStubBuilder {
   pub fn with_temp_home_as(&mut self, temp_dir: TempDir) -> &mut Self {
     let temp_home = Arc::new(temp_dir);
     self.temp_home = Some(Some(temp_home.clone()));
-    let envs = HashMap::from([
+    let settings = HashMap::from([
       (
         BODHI_HOME.to_string(),
         temp_home.path().join("bodhi").display().to_string(),
@@ -103,8 +103,8 @@ impl AppServiceStubBuilder {
         temp_home.path().join("huggingface").display().to_string(),
       ),
     ]);
-    let env_service = EnvServiceStub::new(envs);
-    self.env_service = Some(Some(Arc::new(env_service)));
+    let setting_service = SettingServiceStub::new(settings);
+    self.setting_service = Some(Some(Arc::new(setting_service)));
     self
   }
 
@@ -118,12 +118,12 @@ impl AppServiceStubBuilder {
     }
   }
 
-  pub fn with_envs(&mut self, envs: HashMap<&str, &str>) -> &mut Self {
-    let mut env_service = EnvServiceStub::default();
-    for (key, value) in envs {
-      env_service = env_service.with_env(key, value);
+  pub fn with_settings(&mut self, settings: HashMap<&str, &str>) -> &mut Self {
+    let setting_service = SettingServiceStub::default();
+    for (key, value) in settings {
+      setting_service.set_setting(key, value);
     }
-    self.env_service = Some(Some(Arc::new(env_service)));
+    self.setting_service = Some(Some(Arc::new(setting_service)));
     self
   }
 
@@ -208,8 +208,8 @@ impl AppServiceStub {
 }
 
 impl AppService for AppServiceStub {
-  fn env_service(&self) -> Arc<dyn EnvService> {
-    self.env_service.clone().unwrap()
+  fn setting_service(&self) -> Arc<dyn SettingService> {
+    self.setting_service.clone().unwrap()
   }
 
   fn data_service(&self) -> Arc<dyn DataService> {

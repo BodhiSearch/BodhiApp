@@ -1,11 +1,10 @@
 use crate::{
-  EnvService, EnvWrapper, SettingService, BODHI_APP_TYPE, BODHI_FRONTEND_URL, BODHI_HOME,
-  BODHI_HOST, BODHI_PORT, BODHI_SCHEME, HF_HOME, LOGS_DIR,
+  EnvWrapper, SettingService, SettingServiceError, SettingsChangeListener, BODHI_APP_TYPE,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_HOME, BODHI_HOST,
+  BODHI_KEEP_ALIVE_SECS, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME,
+  BODHI_VERSION, HF_HOME,
 };
-use objs::{
-  test_utils::temp_dir, AppType, EnvType, LogLevel, Setting, SettingInfo, SettingMetadata,
-  SettingSource,
-};
+use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
 use rstest::fixture;
 use std::{
   collections::HashMap,
@@ -14,9 +13,6 @@ use std::{
   sync::{Arc, RwLock},
 };
 use tempfile::TempDir;
-
-const TEST_AUTH_URL: &str = "TEST_AUTH_URL";
-const TEST_AUTH_REALM: &str = "TEST_AUTH_REALM";
 
 pub fn hf_test_token_allowed() -> Option<String> {
   dotenv::from_filename(".env.test").ok();
@@ -29,156 +25,153 @@ pub fn hf_test_token_public() -> Option<String> {
 }
 
 #[fixture]
-pub fn test_env_service(
+pub fn test_setting_service(
   #[default(HashMap::new())] envs: HashMap<String, String>,
-) -> EnvServiceStub {
-  EnvServiceStub::new(envs)
+) -> SettingServiceStub {
+  SettingServiceStub::new(envs)
 }
 
-#[derive(Debug, Clone, Default)]
-pub struct EnvServiceStub {
-  envs: Arc<RwLock<HashMap<String, String>>>,
+#[derive(Debug, Clone)]
+pub struct SettingServiceStub {
+  settings: Arc<RwLock<HashMap<String, serde_yaml::Value>>>,
+  envs: HashMap<String, String>,
 }
 
-impl EnvServiceStub {
-  pub fn new(envs: HashMap<String, String>) -> Self {
+impl SettingServiceStub {
+  pub fn new_with_env(envs: HashMap<String, String>, settings: HashMap<String, String>) -> Self {
+    let settings = Self::to_settings_value(settings);
     Self {
-      envs: Arc::new(RwLock::new(envs)),
+      settings: Arc::new(RwLock::new(settings)),
+      envs,
     }
   }
 
-  pub fn with_env(self, key: &str, value: &str) -> Self {
+  pub fn new(settings: HashMap<String, String>) -> Self {
+    Self::new_with_env(HashMap::new(), settings)
+  }
+
+  pub fn with_settings(self, settings: HashMap<String, String>) -> Self {
+    let settings = Self::to_settings_value(settings);
+    for (key, value) in settings {
+      self.set_setting_with_source(key.as_str(), &value, SettingSource::SettingsFile);
+    }
     self
-      .envs
-      .write()
-      .unwrap()
-      .insert(key.to_string(), value.to_string());
-    self
+  }
+
+  fn to_settings_value(settings: HashMap<String, String>) -> HashMap<String, serde_yaml::Value> {
+    settings
+      .iter()
+      .map(|(key, value)| {
+        let metadata = get_metadata(key);
+        let value = metadata.parse(serde_yaml::Value::String(value.to_string()));
+        (key.to_string(), value)
+      })
+      .collect::<HashMap<String, serde_yaml::Value>>()
   }
 }
 
-impl EnvService for EnvServiceStub {
-  fn env_type(&self) -> EnvType {
-    EnvType::Development
+impl Default for SettingServiceStub {
+  fn default() -> Self {
+    let settings = HashMap::from([
+      ("HOME".to_string(), "/tmp/home".to_string()),
+      (BODHI_ENV_TYPE.to_string(), "development".to_string()),
+      (BODHI_APP_TYPE.to_string(), "container".to_string()),
+      (BODHI_VERSION.to_string(), "0.0.0".to_string()),
+      (
+        BODHI_AUTH_URL.to_string(),
+        "http://id.localhost".to_string(),
+      ),
+      (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
+      (BODHI_HOME.to_string(), "/tmp/bodhi".to_string()),
+      (BODHI_LOGS.to_string(), "/tmp/logs".to_string()),
+      (HF_HOME.to_string(), "/tmp/hf".to_string()),
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "localhost".to_string()),
+      (BODHI_PORT.to_string(), "1135".to_string()),
+      (BODHI_LOG_LEVEL.to_string(), "warn".to_string()),
+      (BODHI_LOG_STDOUT.to_string(), "true".to_string()),
+      (BODHI_ENCRYPTION_KEY.to_string(), "testkey".to_string()),
+    ]);
+    Self::new(settings)
   }
+}
 
-  fn app_type(&self) -> AppType {
-    match self.envs.read().unwrap().get(BODHI_APP_TYPE) {
-      Some(app_type) => AppType::try_from(app_type.as_str()).unwrap_or(AppType::Container),
-      None => AppType::Container,
-    }
-  }
+impl SettingService for SettingServiceStub {
+  fn load(&self, _path: &Path) {}
 
-  fn version(&self) -> String {
-    "0.0.0".to_string()
-  }
+  fn load_default_env(&self) {}
 
-  fn bodhi_home(&self) -> PathBuf {
-    match self.envs.read().unwrap().get(BODHI_HOME) {
-      Some(path) => PathBuf::from(path),
-      None => PathBuf::from("/tmp/bodhi"),
-    }
-  }
-
-  fn hf_home(&self) -> PathBuf {
-    match self.envs.read().unwrap().get(HF_HOME) {
-      Some(path) => PathBuf::from(path),
-      None => PathBuf::from("/tmp/hf"),
-    }
-  }
-
-  fn logs_dir(&self) -> PathBuf {
-    match self.envs.read().unwrap().get(LOGS_DIR) {
-      Some(path) => PathBuf::from(path),
-      None => PathBuf::from("/tmp/logs"),
-    }
-  }
-
-  fn scheme(&self) -> String {
-    match self.envs.read().unwrap().get(BODHI_SCHEME) {
-      Some(path) => path.to_string(),
-      None => "http".to_string(),
-    }
-  }
-
-  fn host(&self) -> String {
-    match self.envs.read().unwrap().get(BODHI_HOST) {
-      Some(path) => path.to_string(),
-      None => "localhost".to_string(),
-    }
-  }
-
-  fn port(&self) -> u16 {
-    match self.envs.read().unwrap().get(BODHI_PORT) {
-      Some(path) => path.parse::<u16>().unwrap(),
-      None => 1135,
-    }
-  }
-
-  fn frontend_url(&self) -> String {
-    match self.envs.read().unwrap().get(BODHI_FRONTEND_URL) {
-      Some(path) => path.to_string(),
-      None => self.server_url(),
-    }
-  }
-
-  fn db_path(&self) -> PathBuf {
-    self.bodhi_home().join("test.db")
+  fn home_dir(&self) -> Option<PathBuf> {
+    self
+      .settings
+      .read()
+      .unwrap()
+      .get("HOME")
+      .map(|home| PathBuf::from(home.as_str().unwrap()))
   }
 
   fn list(&self) -> Vec<SettingInfo> {
     self
-      .envs
+      .settings
       .read()
       .unwrap()
       .iter()
-      .map(|(key, value)| SettingInfo {
-        key: key.clone(),
-        current_value: serde_yaml::Value::String(value.clone()),
-        default_value: serde_yaml::Value::Null,
-        source: SettingSource::Environment,
-        metadata: SettingMetadata::String,
+      .map(|(key, value)| {
+        let result = SettingInfo {
+          key: key.clone(),
+          current_value: value.clone(),
+          default_value: serde_yaml::Value::Null,
+          source: SettingSource::Environment,
+          metadata: self.get_setting_metadata(key),
+        };
+        result
       })
       .collect()
   }
 
-  fn auth_url(&self) -> String {
-    match self.envs.read().unwrap().get(TEST_AUTH_URL) {
-      Some(path) => path.to_string(),
-      None => "http://id.localhost".to_string(),
-    }
-  }
-
-  fn auth_realm(&self) -> String {
-    match self.envs.read().unwrap().get(TEST_AUTH_REALM) {
-      Some(path) => path.to_string(),
-      None => "test-realm".to_string(),
-    }
-  }
-
-  fn exec_lookup_path(&self) -> String {
-    "/tmp".to_string()
-  }
-
-  fn log_level(&self) -> LogLevel {
-    LogLevel::Warn
-  }
-
-  fn encryption_key(&self) -> Option<String> {
+  fn get_default_value(&self, _key: &str) -> Option<serde_yaml::Value> {
     None
   }
 
-  fn get_setting(&self, _key: &str) -> Option<String> {
-    None
+  fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
+    get_metadata(key)
   }
 
   fn get_env(&self, key: &str) -> Option<String> {
-    let lock = self.envs.read().unwrap();
-    lock.get(key).cloned()
+    self.envs.get(key).cloned()
   }
 
-  fn setting_service(&self) -> Arc<dyn SettingService> {
-    todo!()
+  fn get_setting_value_with_source(&self, key: &str) -> (Option<serde_yaml::Value>, SettingSource) {
+    let lock = self.settings.read().unwrap();
+    (
+      Some(lock.get(key).cloned().unwrap()),
+      SettingSource::SettingsFile,
+    )
+  }
+
+  fn set_setting_with_source(&self, key: &str, value: &serde_yaml::Value, _source: SettingSource) {
+    let mut lock = self.settings.write().unwrap();
+    lock.insert(key.to_string(), value.clone());
+  }
+
+  fn delete_setting(&self, key: &str) -> Result<(), SettingServiceError> {
+    let mut lock = self.settings.write().unwrap();
+    lock.remove(key);
+    Ok(())
+  }
+
+  fn add_listener(&self, _listener: Arc<dyn SettingsChangeListener>) {}
+}
+
+fn get_metadata(key: &str) -> SettingMetadata {
+  match key {
+    BODHI_PORT => SettingMetadata::Number { min: 1, max: 65535 },
+    BODHI_LOG_STDOUT => SettingMetadata::Boolean,
+    BODHI_KEEP_ALIVE_SECS => SettingMetadata::Number {
+      min: 300,
+      max: 86400,
+    },
+    _ => SettingMetadata::String,
   }
 }
 

@@ -15,6 +15,7 @@ server_core = { workspace = true, features = ["test-utils"] }
 
 axum = { workspace = true }
 anyhow = { workspace = true }
+anyhow_trace = { workspace = true }
 dirs = { workspace = true }
 fs_extra = { workspace = true }
 rstest = { workspace = true }

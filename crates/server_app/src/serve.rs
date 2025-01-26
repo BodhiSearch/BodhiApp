@@ -86,8 +86,7 @@ impl ServeCommand {
     static_router: Option<Router>,
   ) -> Result<ServerShutdownHandle> {
     let ServeCommand::ByParams { host, port } = self;
-    let env_service = service.env_service();
-    let setting_service = env_service.setting_service();
+    let setting_service = service.setting_service();
     let host_source = if let Some(serde_yaml::Value::String(default_host)) =
       setting_service.get_default_value(BODHI_HOST)
     {
@@ -126,8 +125,8 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let exec_variant = service.env_service().exec_variant();
-    let exec_lookup_path = PathBuf::from(service.env_service().exec_lookup_path());
+    let exec_variant = service.setting_service().exec_variant();
+    let exec_lookup_path = PathBuf::from(service.setting_service().exec_lookup_path());
     let exec_path = exec_path_from(&exec_lookup_path, &exec_variant);
     if !exec_path.exists() {
       println!("exec not found at {}", exec_path.to_string_lossy());
@@ -139,7 +138,10 @@ impl ServeCommand {
     let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
     setting_service.add_listener(Arc::new(VariantChangeListener::new(ctx.clone())));
 
-    let keep_alive = Arc::new(ServerKeepAlive::new(ctx.clone(), env_service.keep_alive()));
+    let keep_alive = Arc::new(ServerKeepAlive::new(
+      ctx.clone(),
+      setting_service.keep_alive(),
+    ));
     setting_service.add_listener(keep_alive.clone());
     ctx.add_state_listener(keep_alive).await;
 

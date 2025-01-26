@@ -125,13 +125,12 @@ impl InitService<'_> {
 
   pub fn setup_logs_dir<T: AsRef<dyn SettingService>>(
     setting_service: T,
-    bodhi_home: &Path,
   ) -> Result<PathBuf, InitServiceError> {
     let setting_service = setting_service.as_ref();
     let logs_dir = match setting_service.get_setting(BODHI_LOGS) {
       Some(logs_dir) => PathBuf::from(logs_dir),
       None => {
-        let logs_dir = bodhi_home.join(LOGS_DIR);
+        let logs_dir = setting_service.bodhi_home().join(LOGS_DIR);
         setting_service.set_setting(BODHI_LOGS, &logs_dir.display().to_string());
         logs_dir
       }
@@ -319,8 +318,7 @@ mod tests {
       .return_const(Some(logs_dir.display().to_string()));
 
     let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let bodhi_home = temp_dir.path().to_path_buf();
-    let result = InitService::setup_logs_dir(&setting_service, &bodhi_home)?;
+    let result = InitService::setup_logs_dir(&setting_service)?;
 
     assert_eq!(result, logs_dir);
     assert!(logs_dir.exists());
@@ -338,6 +336,7 @@ mod tests {
       .with(eq(BODHI_LOGS))
       .times(1)
       .return_const(None);
+    mock.expect_bodhi_home().times(1).return_const(bodhi_home);
 
     mock
       .expect_set_setting()
@@ -346,7 +345,7 @@ mod tests {
       .return_once(|_, _| ());
 
     let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let result = InitService::setup_logs_dir(&setting_service, &bodhi_home)?;
+    let result = InitService::setup_logs_dir(&setting_service)?;
 
     assert_eq!(expected_logs_dir, result);
     assert!(expected_logs_dir.exists());

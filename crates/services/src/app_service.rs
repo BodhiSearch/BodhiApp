@@ -1,6 +1,6 @@
 use crate::{
   db::{DbService, TimeService},
-  AuthService, CacheService, DataService, EnvService, HubService, SecretService, SessionService,
+  AuthService, CacheService, DataService, HubService, SecretService, SessionService,
   SettingService,
 };
 use objs::LocalizationService;
@@ -8,11 +8,7 @@ use std::sync::Arc;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait AppService: std::fmt::Debug + Send + Sync {
-  fn env_service(&self) -> Arc<dyn EnvService>;
-
-  fn setting_service(&self) -> Arc<dyn SettingService> {
-    self.env_service().setting_service()
-  }
+  fn setting_service(&self) -> Arc<dyn SettingService>;
 
   fn data_service(&self) -> Arc<dyn DataService>;
 
@@ -36,7 +32,7 @@ pub trait AppService: std::fmt::Debug + Send + Sync {
 #[allow(clippy::too_many_arguments)]
 #[derive(Clone, Debug, derive_new::new)]
 pub struct DefaultAppService {
-  env_service: Arc<dyn EnvService>,
+  env_service: Arc<dyn SettingService>,
   hub_service: Arc<dyn HubService>,
   data_service: Arc<dyn DataService>,
   auth_service: Arc<dyn AuthService>,
@@ -49,7 +45,7 @@ pub struct DefaultAppService {
 }
 
 impl AppService for DefaultAppService {
-  fn env_service(&self) -> Arc<dyn EnvService> {
+  fn setting_service(&self) -> Arc<dyn SettingService> {
     self.env_service.clone()
   }
 

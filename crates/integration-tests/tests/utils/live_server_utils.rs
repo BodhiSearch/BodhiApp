@@ -1,5 +1,5 @@
 use fs_extra::dir::{copy, CopyOptions};
-use objs::{test_utils::setup_l10n, AppType, EnvType, FluentLocalizationService, SettingSource};
+use objs::{test_utils::setup_l10n, EnvType, FluentLocalizationService, SettingSource};
 use rand::Rng;
 use rstest::fixture;
 use server_app::{ServeCommand, ServerShutdownHandle};
@@ -8,8 +8,8 @@ use services::{
   test_utils::{
     bodhi_home_setting, test_auth_service, EnvWrapperStub, OfflineHubService, SecretServiceStub,
   },
-  AppService, DefaultAppService, DefaultEnvService, DefaultSettingService, HfHubService,
-  InitService, LocalDataService, MokaCacheService, SqliteSessionService, BODHI_EXEC_LOOKUP_PATH,
+  AppService, DefaultAppService, DefaultSettingService, HfHubService, InitService,
+  LocalDataService, MokaCacheService, SqliteSessionService, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
   BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
 use sqlx::SqlitePool;
@@ -56,18 +56,19 @@ pub fn llama2_7b_setup(
       temp_dir.path().to_str().unwrap().to_string(),
     ),
     (
-      String::from(BODHI_HOME),
+      BODHI_HOME.to_string(),
       bodhi_home.to_str().unwrap().to_string(),
     ),
     (
-      String::from(BODHI_LOGS),
+      BODHI_LOGS.to_string(),
       bodhi_logs.to_str().unwrap().to_string(),
     ),
-    (String::from(HF_HOME), hf_home.to_str().unwrap().to_string()),
+    (HF_HOME.to_string(), hf_home.to_str().unwrap().to_string()),
     (
-      String::from(BODHI_EXEC_LOOKUP_PATH),
+      BODHI_EXEC_LOOKUP_PATH.to_string(),
       execs_dir.display().to_string(),
     ),
+    (BODHI_ENV_TYPE.to_string(), EnvType::Development.to_string()),
   ]);
   let env_wrapper = EnvWrapperStub::new(envs);
   InitService::new(&env_wrapper, &EnvType::Development)
@@ -80,16 +81,6 @@ pub fn llama2_7b_setup(
     bodhi_home.join("settings.yaml"),
   )
   .expect("failed to setup setting service");
-  let env_service = DefaultEnvService::new(
-    EnvType::Development,
-    AppType::Container,
-    "".to_string(),
-    "".to_string(),
-    Arc::new(setting_service),
-  )
-  .unwrap();
-  // TODO: fix this
-  // env_service.set_library_path(library_path().display().to_string());
   let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
     hf_cache, false, None,
   )));
@@ -104,7 +95,7 @@ pub fn llama2_7b_setup(
   let session_service = SqliteSessionService::new(pool);
   let cache_service = MokaCacheService::default();
   let service = DefaultAppService::new(
-    Arc::new(env_service),
+    Arc::new(setting_service),
     hub_service,
     Arc::new(data_service),
     Arc::new(auth_service),
