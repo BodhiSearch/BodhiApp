@@ -1049,11 +1049,10 @@ SOME_OTHER_KEY: value
   #[rstest]
   fn test_get_setting_with_app_settings_precedence(temp_dir: TempDir) -> anyhow::Result<()> {
     let path = temp_dir.path().join("settings.yaml");
+    let home_dir = Some(temp_dir.path().to_path_buf());
     let mut mock_env = MockEnvWrapper::new();
     mock_env.expect_var().with(eq("TEST_KEY")).never();
-    mock_env
-      .expect_home_dir()
-      .return_const(Some(temp_dir.path().to_path_buf()));
+    mock_env.expect_home_dir().return_const(home_dir);
 
     let app_settings = vec![Setting {
       key: "TEST_KEY".to_string(),
