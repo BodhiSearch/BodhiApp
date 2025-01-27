@@ -14,6 +14,7 @@ on:
         options:
           - "yes"
           - "no"
+          - "no-release"
         default: "yes"
       prerelease:
         description: is a prerelease?
@@ -28,7 +29,67 @@ env:
   CI_RELEASE: true
 
 jobs:
+  build:
+    if: inputs.draft == 'no-release'
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+            artifact_path: target/release/bundle/dmg/*.dmg
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_path: target/release/bundle/rpm/*.rpm
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_path: target/release/bundle/msi/*.msi
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rewrite submodule URLs and checkout submodules
+        if: matrix.platform != 'windows-latest'
+        shell: bash
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
+      - name: Setup Git with PAT
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
+      - uses: ./.github/actions/setup-rust
+        with:
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
+      - name: setup-node
+        uses: ./.github/actions/setup-node
+        with:
+          platform: ${{ matrix.platform }}
+      - name: clean
+        shell: bash
+        run: |
+          make ci.clean
+      - name: Build Application
+        run: |
+          cargo tauri build --features native
+      - name: Archive Artifacts
+        run: |
+          mkdir -p artifacts
+          cp ${{ matrix.artifact_path }} artifacts/
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-artifacts-${{ matrix.platform }}
+          path: artifacts/
+
   create-release:
+    if: inputs.draft != 'no-release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -73,6 +134,7 @@ jobs:
           prerelease: ${{ inputs.prerelease }}
 
   publish:
+    if: inputs.draft != 'no-release'
     needs: create-release
     permissions:
       contents: write

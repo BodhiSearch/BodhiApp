@@ -46,7 +46,7 @@ impl NativeCommand {
       .level(log_level)
       .max_file_size(50_000)
       .rotation_strategy(tauri_plugin_log::RotationStrategy::KeepAll);
-    let setting_service = self.service.setting_service().setting_service();
+    let setting_service = self.service.setting_service();
     if let Some(serde_yaml::Value::Bool(true)) = setting_service.get_setting_value(BODHI_LOG_STDOUT)
     {
       log_plugin = log_plugin.target(tauri_plugin_log::Target::new(
@@ -69,7 +69,7 @@ impl NativeCommand {
         app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
         let bodhi_exec_lookup_path = app.path().resolve("bin", BaseDirectory::Resource)?;
-        setting_service.setting_service().set_default(
+        setting_service.set_default(
           BODHI_EXEC_LOOKUP_PATH,
           &serde_yaml::Value::String(bodhi_exec_lookup_path.display().to_string())
         );
