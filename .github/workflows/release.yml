@@ -77,8 +77,7 @@ jobs:
           make ci.clean
       - name: Build Application
         run: |
-          cargo build -p llama_server_proc && \
-            cargo tauri build --features native
+          cargo tauri build --features native -- -vv
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
       - name: Archive Artifacts

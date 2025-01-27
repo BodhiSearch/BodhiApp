@@ -52,6 +52,7 @@ anyhow_trace = { workspace = true }
 tauri-build = { version = "2.0.1", features = [] }
 anyhow = { workspace = true }
 fs_extra = { workspace = true }
+fs2 = { workspace = true }
 
 [features]
 native = ["tauri", "tauri/tray-icon", "tauri-plugin-log", "webbrowser"]

@@ -1,7 +1,4 @@
-.PHONY: build_frontend copy_bins
+.PHONY: build_frontend
 
 build_frontend:
 	@pwsh -NoProfile -File scripts/build_frontend.win.ps1
-
-copy_bins:
-	@pwsh -NoProfile -File scripts/copy_bins.win.ps1

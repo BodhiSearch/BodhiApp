@@ -1,4 +1,5 @@
 use anyhow::{bail, Context, Result};
+use fs2::FileExt;
 use once_cell::sync::Lazy;
 use reqwest::header::{HeaderMap, HeaderValue};
 use serde::Deserialize;
@@ -7,9 +8,11 @@ use std::{
   env,
   fs::{self, File},
   io::{self},
-  path::Path,
+  path::{Path, PathBuf},
   process::Command,
 };
+
+const LOCK_FILE: &str = "bodhi-build.lock";
 
 static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
   let mut set = HashSet::new();
@@ -42,6 +45,29 @@ pub fn main() -> Result<()> {
   println!("cargo:rerun-if-env-changed=CI");
   println!("cargo:rerun-if-env-changed=CI_RELEASE");
   println!("cargo:rerun-if-env-changed=CI_DEFAULT_VARIANT");
+
+  let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+  // Create bin directory and lock file at the start
+  let bin_dir = project_dir.join("bin");
+  fs::create_dir_all(&bin_dir).context("Failed to create bin directory")?;
+  let lock_path = bin_dir.join(LOCK_FILE);
+  let lock_file = File::create(&lock_path).context("Failed to create lock file")?;
+
+  // Take exclusive lock for the entire build process
+  lock_file
+    .lock_exclusive()
+    .context("Failed to acquire lock for llama server bin")?;
+
+  // Rest of the build process
+  try_main(&project_dir)?;
+
+  // Release the lock
+  let _ = lock_file.unlock();
+
+  Ok(())
+}
+
+fn try_main(project_dir: &Path) -> Result<()> {
   let target = env::var("TARGET").unwrap();
   let build = LLAMA_SERVER_BUILDS.iter().find(|i| i.target == target);
 
@@ -56,7 +82,7 @@ pub fn main() -> Result<()> {
       bail!("GH_PAT is not set");
     };
     println!("building all variants");
-    clean_bin_dir()?;
+    clean_bin_dir(project_dir)?;
     let client = build_gh_client(gh_pat)?;
     let response = client
       .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases/latest")
@@ -192,6 +218,15 @@ struct GithubAsset {
 }
 
 fn fetch_llama_server(
+  client: &reqwest::blocking::Client,
+  build: &LlamaServerBuild,
+  variant: &str,
+  release: &GithubRelease,
+) -> Result<()> {
+  try_fetch_llama_server(client, build, variant, release)
+}
+
+fn try_fetch_llama_server(
   client: &reqwest::blocking::Client,
   build: &LlamaServerBuild,
   variant: &str,
@@ -346,12 +381,24 @@ fn check_zip_installation() -> Result<()> {
 }
 
 // New function to clean the output directory
-fn clean_bin_dir() -> Result<()> {
-  let output_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("bin");
-  if output_dir.exists() {
-    fs::remove_dir_all(&output_dir)?;
+fn clean_bin_dir(project_dir: &Path) -> Result<()> {
+  let bin_dir = project_dir.join("bin");
+  if !bin_dir.exists() {
+    fs::create_dir_all(&bin_dir)?;
+    return Ok(());
   }
-  fs::create_dir_all(&output_dir)?;
+  // Remove all contents except the lock file
+  for entry in fs::read_dir(&bin_dir)? {
+    let entry = entry?;
+    let path = entry.path();
+    if path.file_name().unwrap() != LOCK_FILE {
+      if path.is_dir() {
+        fs::remove_dir_all(&path)?;
+      } else {
+        fs::remove_file(&path)?;
+      }
+    }
+  }
   Ok(())
 }
 
