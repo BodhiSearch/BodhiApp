@@ -11,34 +11,6 @@ use std::{
   process::Command,
 };
 
-#[derive(Debug, Hash, Eq, PartialEq)]
-struct LlamaServerBuild {
-  target: String,
-  extension: String,
-  variants: Vec<String>,
-  default: String,
-}
-
-impl LlamaServerBuild {
-  fn new(target: &str, extension: &str, variants: Vec<&str>) -> Self {
-    let default = variants.first().unwrap().to_string();
-    Self {
-      target: target.to_string(),
-      extension: extension.to_string(),
-      variants: variants.into_iter().map(|v| v.to_string()).collect(),
-      default,
-    }
-  }
-
-  fn execname(&self) -> String {
-    if self.extension.is_empty() {
-      "llama-server".to_string()
-    } else {
-      format!("llama-server.{}", self.extension)
-    }
-  }
-}
-
 static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
   let mut set = HashSet::new();
   set.insert(LlamaServerBuild::new(
@@ -59,7 +31,7 @@ static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
   set.insert(LlamaServerBuild::new(
     "x86_64-pc-windows-msvc",
     "exe",
-    vec!["cpu", "cuda-11.7", "cuda-12.4"],
+    vec!["cpu"],
   ));
   set
 });
@@ -73,11 +45,8 @@ pub fn main() -> Result<()> {
   let target = env::var("TARGET").unwrap();
   let build = LLAMA_SERVER_BUILDS.iter().find(|i| i.target == target);
 
-  #[allow(clippy::unnecessary_unwrap)]
-  let build = if build.is_none() {
+  let Some(build) = build else {
     bail!("Unsupported target platform: {}", target);
-  } else {
-    build.unwrap()
   };
   let variant = env::var("CI_DEFAULT_VARIANT").unwrap_or_else(|_| build.default.clone());
   set_build_envs(build, &variant)?;
@@ -87,34 +56,33 @@ pub fn main() -> Result<()> {
       bail!("GH_PAT is not set");
     };
     println!("building all variants");
-    clean_output_directory()?;
-    println!("building all variants");
-    clean_output_directory()?;
-    let mut headers = HeaderMap::<HeaderValue>::default();
-    headers.append(
-      "Authorization",
-      format!("Bearer {}", gh_pat).parse().unwrap(),
-    );
-    headers.append("Accept", "application/vnd.github.v3+json".parse().unwrap());
-    headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
-    headers.append("User-Agent", "Bodhi-Build".parse().unwrap());
-    let client = reqwest::blocking::ClientBuilder::default()
-      .default_headers(headers)
-      .build()?;
+    clean_bin_dir()?;
+    let client = build_gh_client(gh_pat)?;
     let response = client
       .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases/latest")
       .send()?;
-    // Read the response as text for debugging
     let response_text = response
       .text()
       .with_context(|| "Failed to read response text for latest release".to_string())?;
-    // Attempt to deserialize the response text
     let release: GithubRelease = serde_json::from_str(&response_text).unwrap_or_else(|err| {
       panic!(
         "Failed to deserialize response: {}\nError: {}",
         response_text, err
       );
     });
+    if release.assets.is_empty() {
+      bail!("No assets found in latest release: {}", response_text);
+    } else {
+      println!(
+        "assets: {:?}",
+        release
+          .assets
+          .iter()
+          .map(|a| a.name.clone())
+          .collect::<Vec<String>>()
+          .join(",")
+      );
+    }
     for variant in build.variants.iter() {
       fetch_llama_server(&client, build, variant, &release)?;
     }
@@ -123,6 +91,21 @@ pub fn main() -> Result<()> {
     build_llama_server(build, &variant)?;
   }
   Ok(())
+}
+
+fn build_gh_client(gh_pat: String) -> Result<reqwest::blocking::Client, anyhow::Error> {
+  let mut headers = HeaderMap::<HeaderValue>::default();
+  headers.append(
+    "Authorization",
+    format!("Bearer {}", gh_pat).parse().unwrap(),
+  );
+  headers.append("Accept", "application/vnd.github.v3+json".parse().unwrap());
+  headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
+  headers.append("User-Agent", "Bodhi-Build".parse().unwrap());
+  let client = reqwest::blocking::ClientBuilder::default()
+    .default_headers(headers)
+    .build()?;
+  Ok(client)
 }
 
 fn get_makefile_args() -> Vec<&'static str> {
@@ -214,17 +197,23 @@ fn fetch_llama_server(
   variant: &str,
   release: &GithubRelease,
 ) -> Result<()> {
-  // Construct the target file name prefix based on the target and variant
   let target_file_prefix = format!("llama-server--{}--{}", build.target, variant);
-
   // Filter assets based on the target and variant
   let Some(asset) = release
     .assets
     .iter()
     .find(|asset| asset.name.starts_with(&target_file_prefix))
   else {
-    println!("No matching assets found for {}-{}", build.target, variant);
-    return Ok(());
+    bail!(
+      "No matching assets found for {}, found: {}",
+      target_file_prefix,
+      release
+        .assets
+        .iter()
+        .map(|a| a.name.clone())
+        .collect::<Vec<String>>()
+        .join(",")
+    );
   };
 
   // Download each matching asset
@@ -241,21 +230,83 @@ fn fetch_llama_server(
   let target_dir = Path::new("bin").join(&build.target).join(variant);
   fs::create_dir_all(&target_dir)?;
 
-  // Move the downloaded file to the target location
-  let target_path = target_dir.join(build.execname());
-  let mut file = File::create(&target_path)?;
-
-  // Fix for the error
   let bytes = response.bytes()?;
-  io::copy(&mut bytes.as_ref(), &mut file)?;
 
-  // Change file permissions to make it executable
-  #[cfg(unix)]
-  {
-    use std::os::unix::fs::PermissionsExt;
-    let mut perms = file.metadata()?.permissions();
-    perms.set_mode(0o755); // Set executable permissions
-    std::fs::set_permissions(&target_path, perms)?;
+  if asset.name.ends_with(".zip") {
+    // Handle zip file
+    let temp_dir = tempfile::tempdir()?;
+    let zip_path = temp_dir.path().join("download.zip");
+
+    // Write zip file to temp location
+    let mut temp_file = File::create(&zip_path)?;
+    io::copy(&mut bytes.as_ref(), &mut temp_file)?;
+
+    // Check if zip is available
+    check_zip_installation()?;
+
+    // Extract using system zip command
+    let unzip_status = if cfg!(windows) {
+      Command::new("pwsh")
+        .args([
+          "-Command",
+          &format!(
+            "Expand-Archive -Path '{}' -DestinationPath '{}'",
+            zip_path.display(),
+            temp_dir.path().display()
+          ),
+        ])
+        .status()?
+    } else {
+      Command::new("unzip")
+        .args([
+          "-o", // overwrite files without prompting
+          zip_path.to_str().unwrap(),
+          "-d",
+          temp_dir.path().to_str().unwrap(),
+        ])
+        .status()?
+    };
+
+    if !unzip_status.success() {
+      bail!("Failed to extract zip file");
+    }
+
+    // Move extracted contents to target directory
+    for entry in fs::read_dir(temp_dir.path())? {
+      let entry = entry?;
+      let path = entry.path();
+      if path.file_name().unwrap() == "download.zip" {
+        continue;
+      }
+
+      let target_path = target_dir.join(path.file_name().unwrap());
+      fs::rename(&path, &target_path)?;
+
+      // Set executable permissions only for llama-server
+      #[cfg(unix)]
+      {
+        if target_path.file_name().unwrap() == "llama-server" {
+          use std::os::unix::fs::PermissionsExt;
+          let mut perms = fs::metadata(&target_path)?.permissions();
+          perms.set_mode(0o755);
+          fs::set_permissions(&target_path, perms)?;
+        }
+      }
+    }
+  } else {
+    // Handle direct file copy
+    let target_path = target_dir.join(build.execname());
+    let mut file = File::create(&target_path)?;
+    io::copy(&mut bytes.as_ref(), &mut file)?;
+
+    // Set executable permissions
+    #[cfg(unix)]
+    {
+      use std::os::unix::fs::PermissionsExt;
+      let mut perms = file.metadata()?.permissions();
+      perms.set_mode(0o755);
+      std::fs::set_permissions(&target_path, perms)?;
+    }
   }
 
   println!(
@@ -266,12 +317,68 @@ fn fetch_llama_server(
   Ok(())
 }
 
-// New function to clean the output directory
-fn clean_output_directory() -> Result<()> {
-  let output_dir = Path::new("bin");
-  if output_dir.exists() {
-    fs::remove_dir_all(output_dir)?;
+fn check_zip_installation() -> Result<()> {
+  let check_command = if cfg!(windows) {
+    Command::new("pwsh")
+      .args([
+        "-Command",
+        "if (!(Get-Command Expand-Archive -ErrorAction SilentlyContinue)) { exit 1 }",
+      ])
+      .status()?
+  } else {
+    Command::new("which").arg("unzip").status()?
+  };
+
+  if !check_command.success() {
+    let msg = if cfg!(target_os = "macos") {
+      "zip utility not found. Please install it using: brew install unzip"
+    } else if cfg!(target_os = "linux") {
+      "zip utility not found. Please install it using: sudo apt-get install unzip"
+    } else if cfg!(windows) {
+      "PowerShell 5.0 or later with Expand-Archive cmdlet is required. Please install latest PowerShell: choco install powershell-core"
+    } else {
+      "zip utility not found. Please install it using your system's package manager"
+    };
+    bail!(msg);
   }
-  fs::create_dir_all(output_dir)?;
+
   Ok(())
+}
+
+// New function to clean the output directory
+fn clean_bin_dir() -> Result<()> {
+  let output_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("bin");
+  if output_dir.exists() {
+    fs::remove_dir_all(&output_dir)?;
+  }
+  fs::create_dir_all(&output_dir)?;
+  Ok(())
+}
+
+#[derive(Debug, Hash, Eq, PartialEq)]
+struct LlamaServerBuild {
+  target: String,
+  extension: String,
+  variants: Vec<String>,
+  default: String,
+}
+
+impl LlamaServerBuild {
+  fn new(target: &str, extension: &str, variants: Vec<&str>) -> Self {
+    let default = variants.first().unwrap().to_string();
+    Self {
+      target: target.to_string(),
+      extension: extension.to_string(),
+      variants: variants.into_iter().map(|v| v.to_string()).collect(),
+      default,
+    }
+  }
+
+  fn execname(&self) -> String {
+    if self.extension.is_empty() {
+      "llama-server".to_string()
+    } else {
+      format!("llama-server.{}", self.extension)
+    }
+  }
 }

@@ -39,12 +39,12 @@ jobs:
           - platform: macos-latest
             target: aarch64-apple-darwin
             artifact_path: target/release/bundle/dmg/*.dmg
-          # - platform: ubuntu-latest
-          #   target: x86_64-unknown-linux-gnu
-          #   artifact_path: target/release/bundle/rpm/*.rpm
-          # - platform: windows-latest
-          #   target: x86_64-pc-windows-msvc
-          #   artifact_path: target/release/bundle/msi/*.msi
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact_path: target/release/bundle/rpm/*.rpm
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact_path: target/release/bundle/msi/*.msi
     steps:
       - uses: actions/checkout@v4
       - name: Rewrite submodule URLs and checkout submodules
@@ -77,7 +77,8 @@ jobs:
           make ci.clean
       - name: Build Application
         run: |
-          cargo tauri build --features native
+          cargo build -p llama_server_proc && \
+            cargo tauri build --features native
         env:
           GH_PAT: ${{ secrets.GH_PAT }}
       - name: Archive Artifacts
