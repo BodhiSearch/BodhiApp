@@ -1,6 +1,6 @@
 use anyhow::{bail, Context, Result};
 use once_cell::sync::Lazy;
-use reqwest::header::USER_AGENT;
+use reqwest::header::{HeaderMap, HeaderValue};
 use serde::Deserialize;
 use std::{
   collections::HashSet,
@@ -83,18 +83,31 @@ pub fn main() -> Result<()> {
   set_build_envs(build, &variant)?;
   clean()?;
   if env::var("CI_RELEASE").unwrap_or("false".to_string()) == "true" {
+    let Ok(gh_pat) = env::var("GH_PAT") else {
+      bail!("GH_PAT is not set");
+    };
     println!("building all variants");
     clean_output_directory()?;
-    let client = reqwest::blocking::Client::new();
+    println!("building all variants");
+    clean_output_directory()?;
+    let mut headers = HeaderMap::<HeaderValue>::default();
+    headers.append(
+      "Authorization",
+      format!("Bearer {}", gh_pat).parse().unwrap(),
+    );
+    headers.append("Accept", "application/vnd.github.v3+json".parse().unwrap());
+    headers.append("X-GitHub-Api-Version", "2022-11-28".parse().unwrap());
+    headers.append("User-Agent", "Bodhi-Build".parse().unwrap());
+    let client = reqwest::blocking::ClientBuilder::default()
+      .default_headers(headers)
+      .build()?;
     let response = client
       .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases/latest")
-      .header(USER_AGENT, "Bodhi-Build")
       .send()?;
     // Read the response as text for debugging
     let response_text = response
       .text()
       .with_context(|| "Failed to read response text for latest release".to_string())?;
-
     // Attempt to deserialize the response text
     let release: GithubRelease = serde_json::from_str(&response_text).unwrap_or_else(|err| {
       panic!(
@@ -103,7 +116,7 @@ pub fn main() -> Result<()> {
       );
     });
     for variant in build.variants.iter() {
-      fetch_llama_server(build, variant, &release)?;
+      fetch_llama_server(&client, build, variant, &release)?;
     }
   } else {
     println!("building default variants");
@@ -196,6 +209,7 @@ struct GithubAsset {
 }
 
 fn fetch_llama_server(
+  client: &reqwest::blocking::Client,
   build: &LlamaServerBuild,
   variant: &str,
   release: &GithubRelease,
@@ -216,10 +230,7 @@ fn fetch_llama_server(
   // Download each matching asset
   let download_url = &asset.browser_download_url;
   println!("cargo:warning=Downloading {}", download_url);
-  let response = reqwest::blocking::Client::new()
-    .get(download_url)
-    .header(USER_AGENT, "Bodhi-Build")
-    .send()?;
+  let response = client.get(download_url).send()?;
 
   // Ensure the response is successful
   if !response.status().is_success() {
