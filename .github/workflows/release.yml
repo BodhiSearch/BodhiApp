@@ -83,9 +83,9 @@ jobs:
           mkdir -p artifacts
           cp ${{ matrix.artifact_path }} artifacts/
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
-          name: build-artifacts-${{ matrix.platform }}
+          name: artifacts-${{ matrix.platform }}-${{ matrix.target }}
           path: artifacts/
 
   create-release:
