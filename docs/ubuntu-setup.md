@@ -54,7 +54,7 @@ sudo apt install -y \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 rustup component add llvm-tools rust-src
-cargo install cargo-llvm-cov cargo-nextest bindgen-cli tauri-cli@^2.0.0
+cargo install cargo-llvm-cov tauri-cli@^2.0.0
 ```
 
 ## nodejs
