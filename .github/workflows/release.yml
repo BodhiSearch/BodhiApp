@@ -78,6 +78,8 @@ jobs:
       - name: Build Application
         run: |
           cargo tauri build --features native
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
       - name: Archive Artifacts
         run: |
           mkdir -p artifacts
