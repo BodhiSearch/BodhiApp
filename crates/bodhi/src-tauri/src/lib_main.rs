@@ -1,7 +1,8 @@
 use crate::app::main_internal;
 use objs::{ApiError, AppType, OpenAIApiError, Setting, SettingMetadata, SettingSource};
 use services::{
-  DefaultEnvWrapper, DefaultSettingService, InitService, SettingService, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, SETTINGS_YAML
+  DefaultEnvWrapper, DefaultSettingService, InitService, SettingService, BODHI_APP_TYPE,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, SETTINGS_YAML,
 };
 use std::sync::Arc;
 

@@ -42,6 +42,7 @@ reqwest = { workspace = true, features = ["blocking", "json"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
+fs2 = { workspace = true }
 
 [features]
 test-utils = ["dirs", "http", "mockall", "rstest", "url"]
