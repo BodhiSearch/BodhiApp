@@ -59,11 +59,7 @@ static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
   set.insert(LlamaServerBuild::new(
     "x86_64-pc-windows-msvc",
     "exe",
-    vec![
-      "cpu",
-      "cuda-11.7",
-      "cuda-12.4",
-    ],
+    vec!["cpu", "cuda-11.7", "cuda-12.4"],
   ));
   set
 });
@@ -90,11 +86,22 @@ pub fn main() -> Result<()> {
     println!("building all variants");
     clean_output_directory()?;
     let client = reqwest::blocking::Client::new();
-    let release: GithubRelease = client
+    let response = client
       .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases/latest")
       .header(USER_AGENT, "Bodhi-Build")
-      .send()?
-      .json()?;
+      .send()?;
+    // Read the response as text for debugging
+    let response_text = response
+      .text()
+      .with_context(|| "Failed to read response text for latest release".to_string())?;
+
+    // Attempt to deserialize the response text
+    let release: GithubRelease = serde_json::from_str(&response_text).unwrap_or_else(|err| {
+      panic!(
+        "Failed to deserialize response: {}\nError: {}",
+        response_text, err
+      );
+    });
     for variant in build.variants.iter() {
       fetch_llama_server(build, variant, &release)?;
     }
