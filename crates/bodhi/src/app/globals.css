@@ -5,14 +5,19 @@
 @layer base {
   :root {
     /* Base colors */
-    --background: 0 0% 100%;
+    --background: 240 10% 98%;    /* Slightly off-white for base layer */
     --foreground: 240 10% 3.9%;
     
     /* Component colors */
-    --card: 0 0% 100%;
+    --card: 0 0% 100%;            /* Pure white for content */
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
+    
+    /* Header colors */
+    --header: 0 0% 100%;          /* White base for header */
+    --header-alpha: 80%;          /* Transparency for blur effect */
+    --header-elevated: 240 10% 94%;  /* Slightly darker than background for light theme */
     
     /* Primary colors */
     --primary: 250 95% 64%;
@@ -61,13 +66,18 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 10% 1%;     /* Almost black for base layer: #020203 */
     --foreground: 0 0% 98%;
     
-    --card: 240 10% 3.9%;
+    --card: 240 10% 4.5%;         /* Noticeably lighter for content: #0B0B0D */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 10% 4.5%;      /* Match card background */
     --popover-foreground: 0 0% 98%;
+    
+    /* Header colors */
+    --header: 240 10% 5%;         /* Slightly lighter than card: #0D0D0F */
+    --header-alpha: 80%;          /* More opacity in dark mode for contrast */
+    --header-elevated: 240 10% 10%;  /* Slightly lighter than header for dark theme */
     
     --primary: 250 95% 64%;
     --primary-foreground: 0 0% 100%;
@@ -147,5 +157,22 @@
   
   .form-container {
     @apply max-w-2xl mx-auto space-y-6;
+  }
+
+  /* Add back required component styles */
+  .card-elevated {
+    @apply border-border rounded-lg shadow-sm;
+  }
+  
+  .header-section {
+    @apply border-b border-border bg-muted/50;
+  }
+  
+  .content-section {
+    @apply bg-card p-4 space-y-3;
+  }
+
+  .text-description {
+    @apply text-sm text-muted-foreground text-center;
   }
 }
