@@ -18,46 +18,46 @@ export function LoginMenu() {
 
   if (userInfo?.logged_in) {
     return (
-      <div className="px-2 py-1.5 flex flex-col items-center gap-1">
+      <div
+        className="p-2 space-y-1.5 text-center"
+        data-testid="login-menu-logged-in"
+      >
+        <p className="text-xs text-muted-foreground">
+          Logged in as {userInfo.email}
+        </p>
         <Button
           variant="destructive"
-          className="px-8 border border-destructive hover:border-destructive"
+          className="w-full border border-destructive"
           onClick={() => logout()}
           disabled={isLoggingOut}
         >
           {isLoggingOut ? 'Logging out...' : 'Log Out'}
         </Button>
-        <span className="text-xs text-muted-foreground">
-          Logged in as {userInfo.email}
-        </span>
       </div>
     );
   }
 
   if (isNonAuthz) {
     return (
-      <div className="px-2 py-1.5">
+      <div className="p-2" data-testid="login-menu-non-authz">
         <Button
           variant="ghost"
-          className="w-full justify-start flex flex-col items-start gap-1"
+          className="w-full space-y-1 items-start"
           disabled
         >
-          <span>Login</span>
-          <span className="text-xs text-muted-foreground">
+          <p>Login</p>
+          <p className="text-xs text-muted-foreground">
             Non-Authenticated Mode Setup
-          </span>
+          </p>
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="px-2 py-1.5 flex flex-col items-center">
-      <Link href={ENDPOINT_APP_LOGIN} passHref>
-        <Button
-          variant="default"
-          className="px-8 border border-primary hover:border-primary"
-        >
+    <div className="p-2" data-testid="login-menu-default">
+      <Link href={ENDPOINT_APP_LOGIN} className="block">
+        <Button variant="default" className="w-full border border-primary">
           Login
         </Button>
       </Link>

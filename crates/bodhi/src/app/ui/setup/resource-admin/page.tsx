@@ -22,10 +22,7 @@ function ResourceAdminContent() {
 export default function ResourceAdminPage() {
   return (
     <AppInitializer allowedStatus="resource-admin" authenticated={false}>
-      <div
-        className="flex-1 pt-12 sm:pt-16"
-        data-testid="resource-admin-page"
-      >
+      <div className="flex-1 pt-12 sm:pt-16" data-testid="resource-admin-page">
         <ResourceAdminContent />
       </div>
     </AppInitializer>

@@ -19,10 +19,7 @@ export function AppBreadcrumb() {
       className="flex-1 flex h-16 items-center gap-2 px-4"
       data-testid="app-breadcrumb"
     >
-      <BookOpenCheck
-        className="size-5"
-        data-testid="app-logo"
-      />
+      <BookOpenCheck className="size-5" data-testid="app-logo" />
       <Breadcrumb>
         <BreadcrumbList data-testid="breadcrumb-list">
           <BreadcrumbItem>

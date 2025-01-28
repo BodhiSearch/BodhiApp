@@ -33,7 +33,10 @@ export default function RootLayout({
         <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">
           <ClientProviders>
             <NavigationProvider>
-              <div className="min-h-screen flex flex-col" data-testid="root-layout">
+              <div
+                className="min-h-screen flex flex-col"
+                data-testid="root-layout"
+              >
                 <header
                   className="sticky top-0 z-50 flex h-16 items-center border-b border-border bg-header-elevated/90 backdrop-blur-sm"
                   data-testid="app-header"
@@ -41,10 +44,7 @@ export default function RootLayout({
                   <AppNavigation />
                   <AppBreadcrumb />
                 </header>
-                <main
-                  className="flex-1"
-                  data-testid="app-main"
-                >
+                <main className="flex-1" data-testid="app-main">
                   {children}
                 </main>
                 <Toaster />
