@@ -2,10 +2,10 @@
 
 import { Inter as FontSans } from 'next/font/google';
 import '@/app/globals.css';
+import '@/styles/syntax-highlighter.css';
 import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
-import '@/styles/syntax-highlighter.css';
 import { NavigationProvider } from '@/hooks/use-navigation';
 import { AppNavigation } from '@/components/navigation/AppNavigation';
 import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
@@ -22,22 +22,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          'min-h-screen bg-background font-sans antialiased',
+          'min-h-screen bg-background text-foreground font-sans antialiased',
           fontSans.variable
         )}
+        suppressHydrationWarning
       >
         <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">
           <ClientProviders>
             <NavigationProvider>
-              <div className="flex flex-col h-screen">
-                <header className="flex h-16 items-center border-b bg-background">
+              <div className="min-h-screen flex flex-col" data-testid="root-layout">
+                <header
+                  className="sticky top-0 z-50 flex h-16 items-center border-b border-border bg-header-elevated/90 backdrop-blur-sm"
+                  data-testid="app-header"
+                >
                   <AppNavigation />
                   <AppBreadcrumb />
                 </header>
-                <main className="flex flex-1 w-full">{children}</main>
+                <main
+                  className="flex-1"
+                  data-testid="app-main"
+                >
+                  {children}
+                </main>
                 <Toaster />
               </div>
             </NavigationProvider>

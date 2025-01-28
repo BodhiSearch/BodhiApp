@@ -30,26 +30,30 @@ export function AppNavigation() {
   };
 
   return (
-    <div className={cn('flex items-center p-2', !isMobile && 'w-64')}>
+    <div
+      className={cn('flex items-center p-2', {'w-64': !isMobile})}
+      data-testid="app-navigation"
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className={cn(
-              'flex items-center gap-2 h-auto py-2 w-full',
-              isMobile && 'w-10 px-0'
-            )}
+            className={cn('flex items-center gap-2 h-auto py-2', {
+              'w-full': !isMobile,
+              'w-10 px-0': isMobile
+            })}
+            data-testid="navigation-menu-button"
           >
             {isMobile ? (
-              <Menu className="h-5 w-5" />
+              <Menu className="size-5" />
             ) : (
               <>
                 <div className="flex items-center justify-center rounded-lg">
                   {currentItem.item.icon && (
-                    <currentItem.item.icon className="h-4 w-4" />
+                    <currentItem.item.icon className="size-4" />
                   )}
                 </div>
-                <div className="flex flex-col gap-0.5 items-start flex-1">
+                <div className="flex-1 flex flex-col items-start gap-0.5">
                   <span className="font-medium">
                     {currentItem.parent?.title || currentItem.item.title}
                   </span>
@@ -59,13 +63,17 @@ export function AppNavigation() {
                     </span>
                   )}
                 </div>
-                <ChevronsUpDown className="h-4 w-4" />
+                <ChevronsUpDown className="size-4" />
               </>
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-64" align="start">
-          <DropdownMenuGroup>
+        <DropdownMenuContent
+          className="w-64"
+          align="start"
+          data-testid="navigation-menu-content"
+        >
+          <DropdownMenuGroup data-testid="navigation-menu-items">
             {navigationItems.map((item) => (
               <React.Fragment key={item.title}>
                 {item.items ? (
@@ -123,7 +131,7 @@ export function AppNavigation() {
               </React.Fragment>
             ))}
           </DropdownMenuGroup>
-          <div className="px-2 py-1.5">
+          <div className="px-2 py-1.5" data-testid="theme-switcher">
             <div className="flex items-center justify-center gap-2">
               <Button
                 variant={theme === 'light' ? 'default' : 'ghost'}

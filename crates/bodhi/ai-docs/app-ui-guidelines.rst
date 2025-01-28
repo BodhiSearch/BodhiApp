@@ -637,4 +637,131 @@ File Organization
 
        import '@/app/globals.css';
        import '@/styles/components.css';
-       import '@/styles/syntax-highlighter.css'; 
+       import '@/styles/syntax-highlighter.css';
+
+Visual Hierarchy & Component Architecture
+======================================
+
+This section outlines learnings and best practices for visual hierarchy and component architecture.
+
+Color System & Visual Layers
+--------------------------
+
+Color Token Organization
+~~~~~~~~~~~~~~~~~~~~~
+
+Define colors in ``globals.css`` using a layered approach:
+
+.. code-block:: css
+
+    :root {
+      /* Base Layer */
+      --background: 240 10% 98%    /* Slightly off-white (#F9F9FB) */
+      
+      /* Content Layer */
+      --card: 0 0% 100%           /* Pure white (#FFFFFF) */
+      
+      /* Top Layer */
+      --header-elevated: 240 10% 94% /* Darker for distinction */
+    }
+
+    .dark {
+      /* Base Layer */
+      --background: 240 10% 1%     /* Almost black (#020203) */
+      
+      /* Content Layer */
+      --card: 240 10% 4.5%        /* Lighter (#0B0B0D) */
+      
+      /* Top Layer */
+      --header-elevated: 240 10% 10% /* Lightest for distinction */
+    }
+
+Visual Layer Hierarchy
+~~~~~~~~~~~~~~~~~~~
+
+1. **Base Layer (Background)**
+   - Light theme: Slightly off-white for subtle foundation
+   - Dark theme: Deep dark for reduced eye strain
+   - Purpose: Creates foundation for content
+
+2. **Content Layer (Cards)**
+   - Light theme: Pure white for readability
+   - Dark theme: Slightly elevated from background
+   - Purpose: Main content areas and interactive elements
+
+3. **Top Layer (Header)**
+   - Light theme: Darker than background for distinction
+   - Dark theme: Lighter than content for hierarchy
+   - Uses blur and opacity for depth
+   - Purpose: Navigation and key UI elements
+
+Component Architecture Patterns
+----------------------------
+
+Layout Structure
+~~~~~~~~~~~~~
+
+Organize layouts with clear containment:
+
+.. code-block:: tsx
+
+    // layout.tsx
+    <div className="min-h-screen flex flex-col">
+      <header className="sticky top-0 z-50 bg-header-elevated/90 backdrop-blur-sm">
+        <Navigation />
+        <Breadcrumb />
+      </header>
+      <main className="flex-1">
+        {children}
+      </main>
+    </div>
+
+Tailwind Class Organization
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. **Layout Properties**
+   .. code-block:: tsx
+
+       className={cn(
+         // Layout
+         'flex-1 flex',
+         // Positioning
+         'sticky top-0 z-50',
+         // Dimensions
+         'h-16 px-4',
+         // Visual
+         'bg-header-elevated/90 backdrop-blur-sm'
+       )}
+
+2. **Conditional Styling**
+   .. code-block:: tsx
+
+       className={cn(
+         'base-styles',
+         {
+           'w-64': !isMobile,
+           'w-10 px-0': isMobile
+         }
+       )}
+
+Component Best Practices
+~~~~~~~~~~~~~~~~~~~~~
+
+1. **Container vs Component**
+   - Containers handle layout and positioning
+   - Components focus on internal structure
+   - Keep styling concerns separated
+
+2. **Visual Consistency**
+   - Use consistent elevation patterns
+   - Maintain color hierarchy
+   - Apply consistent spacing
+   - Consider both themes
+
+3. **Code Organization**
+   - Group related styles
+   - Use semantic class names
+   - Include descriptive test IDs
+   - Follow consistent patterns
+
+These patterns ensure maintainable, scalable UI development while providing clear visual hierarchy across light and dark themes. 

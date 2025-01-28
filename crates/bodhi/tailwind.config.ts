@@ -79,6 +79,10 @@ const config = {
 					DEFAULT: 'hsl(var(--info))',
 					foreground: 'hsl(var(--info-foreground))',
 				},
+				header: {
+					DEFAULT: 'hsl(var(--header))',
+					elevated: 'hsl(var(--header-elevated))',
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',

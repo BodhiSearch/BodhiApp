@@ -15,18 +15,29 @@ export function AppBreadcrumb() {
   const { item, parent } = currentItem;
 
   return (
-    <div className="flex h-16 shrink-0 items-center gap-2 px-4 flex-1">
-      <BookOpenCheck className="h-5 w-5" />
+    <div
+      className="flex-1 flex h-16 items-center gap-2 px-4"
+      data-testid="app-breadcrumb"
+    >
+      <BookOpenCheck
+        className="size-5"
+        data-testid="app-logo"
+      />
       <Breadcrumb>
-        <BreadcrumbList>
+        <BreadcrumbList data-testid="breadcrumb-list">
           <BreadcrumbItem>
-            <span className="font-semibold">Bodhi</span>
+            <span className="font-semibold" data-testid="breadcrumb-app-name">
+              Bodhi
+            </span>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           {parent && (
             <>
               <BreadcrumbItem>
-                <BreadcrumbLink href={parent.href || '#'}>
+                <BreadcrumbLink
+                  href={parent.href || '#'}
+                  data-testid="breadcrumb-parent"
+                >
                   {parent.title}
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -34,7 +45,10 @@ export function AppBreadcrumb() {
             </>
           )}
           <BreadcrumbItem>
-            <BreadcrumbLink href={item.href || '#'}>
+            <BreadcrumbLink
+              href={item.href || '#'}
+              data-testid="breadcrumb-current"
+            >
               {item.title}
             </BreadcrumbLink>
           </BreadcrumbItem>
