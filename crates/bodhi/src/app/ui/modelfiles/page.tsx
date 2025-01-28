@@ -11,7 +11,7 @@ import AppInitializer from '@/components/AppInitializer';
 const bytesToGB = (bytes: number | undefined): string => {
   if (bytes === undefined) return '';
   const gb = bytes / (1024 * 1024 * 1024);
-  return gb.toFixed(2) + ' GB';
+  return `${gb.toFixed(2)} GB`;
 };
 
 const columns = [
@@ -24,7 +24,7 @@ const columns = [
 
 function ModelFilesContent() {
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(30);
+  const [pageSize] = useState(10);
   const [sort, setSort] = useState<SortState>({
     column: 'filename',
     direction: 'asc',
@@ -66,27 +66,38 @@ function ModelFilesContent() {
   );
 
   const renderExpandedRow = (modelFile: ModelFile) => (
-    <div className="p-4 bg-gray-50">
-      <h4 className="font-semibold mt-2">Full Snapshot:</h4>
-      <p>{modelFile.snapshot}</p>
-      {modelFile.size !== undefined && (
-        <>
-          <h4 className="font-semibold mt-2">Exact Size:</h4>
-          <p>{modelFile.size.toLocaleString()} bytes</p>
-        </>
-      )}
+    <div className="p-4 bg-background-subtle">
+      <div className="space-y-3">
+        <div>
+          <h4 className="font-medium text-sm">Full Snapshot</h4>
+          <p className="text-sm text-muted-foreground">{modelFile.snapshot}</p>
+        </div>
+        {modelFile.size !== undefined && (
+          <div>
+            <h4 className="font-medium text-sm">Exact Size</h4>
+            <p className="text-sm text-muted-foreground">
+              {modelFile.size.toLocaleString()} bytes
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
+
   if (error) {
     const errorMessage =
       error.response?.data?.error?.message ||
       error.message ||
       'An unexpected error occurred. Please try again.';
-    return <div>An error occurred: {errorMessage}</div>;
+    return (
+      <div className="text-sm text-destructive text-center" role="alert">
+        {errorMessage}
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="flex-1 space-y-4" data-testid="modelfiles-content">
       <DataTable
         data={data?.data || []}
         columns={columns}
@@ -97,10 +108,10 @@ function ModelFilesContent() {
         renderExpandedRow={renderExpandedRow}
         getItemId={getItemId}
       />
-      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
-        <div className="mb-2 sm:mb-0">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+        <p className="text-sm text-muted-foreground">
           Displaying {data?.data.length || 0} items of {data?.total || 0}
-        </div>
+        </p>
         <Pagination
           page={page}
           totalPages={
