@@ -2,6 +2,180 @@
 UI/UX Guidelines
 ===================
 
+Core Design System
+-----------------
+
+Color System
+~~~~~~~~~~~
+
+1. **Semantic Color Tokens**
+   
+   Base colors are defined using semantic naming that describes their purpose:
+
+   .. code-block:: css
+
+       /* Background Levels */
+       --background-base      /* Main app background */
+       --background-elevated  /* Header, elevated surfaces */
+       --background-overlay   /* Cards, dialogs */
+
+       /* Border Levels */
+       --border-subtle       /* Subtle separators */
+       --border-strong       /* Prominent borders */
+
+       /* Text Levels */
+       --text-primary       /* Primary content */
+       --text-secondary     /* Secondary content */
+       --text-muted        /* De-emphasized text */
+
+2. **Theme Implementation**
+
+   Colors are implemented through Tailwind's color system:
+
+   .. code-block:: typescript
+
+       colors: {
+         'background-base': 'hsl(var(--background-base))',
+         'background-elevated': 'hsl(var(--background-elevated))',
+         'background-overlay': 'hsl(var(--background-overlay))',
+         'border-subtle': 'hsl(var(--border-subtle))',
+         'border-strong': 'hsl(var(--border-strong))',
+         'text-primary': 'hsl(var(--text-primary))',
+         'text-secondary': 'hsl(var(--text-secondary))',
+         'text-muted': 'hsl(var(--text-muted))',
+       }
+
+Component Architecture
+--------------------
+
+1. **Layout Structure**
+
+   Base layout hierarchy:
+
+   .. code-block:: text
+
+       root-layout
+       ├── app-header
+       │   ├── app-navigation
+       │   └── app-breadcrumb
+       └── app-main
+           └── page-content
+
+2. **Component Identification**
+
+   Components use data-testid for clear identification:
+
+   .. code-block:: tsx
+
+       <header data-testid="app-header">
+       <nav data-testid="app-navigation">
+       <main data-testid="app-main">
+
+3. **Reusable Component Classes**
+
+   Common component patterns defined in components.css:
+
+   .. code-block:: css
+
+       .card-elevated {
+         @apply bg-overlay border-subtle rounded-lg shadow-md;
+       }
+
+       .header-section {
+         @apply border-b border-subtle bg-elevated/50;
+       }
+
+       .content-section {
+         @apply bg-overlay p-4 space-y-3;
+       }
+
+       .text-description {
+         @apply text-sm text-muted text-center;
+       }
+
+Theming System
+-------------
+
+1. **Theme Configuration**
+
+   - Dark theme is the default
+   - Theme colors defined using HSL values
+   - Semantic color mapping for consistency
+
+2. **Utility Classes**
+
+   Semantic utility classes for common patterns:
+
+   .. code-block:: css
+
+       .bg-base      /* Main background */
+       .bg-elevated  /* Elevated surfaces */
+       .bg-overlay   /* Overlay surfaces */
+       .border-subtle
+       .border-strong
+       .text-primary
+       .text-secondary
+       .text-muted
+
+Best Practices
+-------------
+
+1. **Color Usage**
+   - Use semantic color tokens instead of direct color values
+   - Maintain consistent contrast ratios
+   - Follow color hierarchy for visual importance
+
+2. **Component Structure**
+   - Use data-testid for component identification
+   - Follow consistent naming conventions
+   - Implement proper component hierarchy
+
+3. **Responsive Design**
+   - Mobile-first approach
+   - Use semantic breakpoints
+   - Consistent spacing scale
+
+4. **Accessibility**
+   - Proper color contrast
+   - Semantic HTML structure
+   - Clear visual hierarchy
+
+Development Guidelines
+--------------------
+
+1. **File Organization**
+   - Component styles in components.css
+   - Theme configuration in globals.css
+   - Tailwind config in tailwind.config.ts
+
+2. **Naming Conventions**
+   - Use semantic names for colors and utilities
+   - Consistent component naming
+   - Clear test ID structure
+
+3. **Code Style**
+   - Use Tailwind utility classes
+   - Extract common patterns to components
+   - Maintain consistent spacing
+
+Migration Guide
+-------------
+
+1. **Updating Existing Components**
+   - Replace hardcoded colors with semantic tokens
+   - Add proper data-testid attributes
+   - Implement consistent spacing
+
+2. **Theme Changes**
+   - Update color variables in globals.css
+   - Modify semantic color mapping
+   - Test in both light and dark modes
+
+3. **Quality Assurance**
+   - Verify color contrast
+   - Test responsive behavior
+   - Validate component hierarchy
+
 Core Principles
 --------------
 1. **Mobile-First Design**
@@ -439,4 +613,28 @@ Migration Steps
    - Verify dark mode appearance
    - Test responsive behavior
    - Validate color contrast
-   - Check component spacing 
+   - Check component spacing
+
+File Organization
+---------------
+
+1. **Required Style Files**
+
+   .. code-block:: text
+
+       src/
+       ├── styles/
+       │   ├── components.css    # Reusable component styles
+       │   └── syntax-highlighter.css
+       └── app/
+           └── globals.css       # Global styles and theme variables
+
+2. **Style File Integration**
+
+   Add to app/layout.tsx:
+
+   .. code-block:: typescript
+
+       import '@/app/globals.css';
+       import '@/styles/components.css';
+       import '@/styles/syntax-highlighter.css'; 
