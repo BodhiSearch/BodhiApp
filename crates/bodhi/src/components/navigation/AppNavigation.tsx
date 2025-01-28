@@ -30,37 +30,35 @@ export function AppNavigation() {
   };
 
   return (
-    <div
-      className={cn('flex items-center p-2', {'w-64': !isMobile})}
+    <nav
+      className={cn('flex items-center p-2', isMobile ? 'w-auto' : 'w-64')}
       data-testid="app-navigation"
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className={cn('flex items-center gap-2 h-auto py-2', {
-              'w-full': !isMobile,
-              'w-10 px-0': isMobile
-            })}
+            className={cn(
+              'flex items-center gap-2 h-auto py-2',
+              isMobile ? 'w-10 px-0' : 'w-full'
+            )}
             data-testid="navigation-menu-button"
           >
             {isMobile ? (
               <Menu className="size-5" />
             ) : (
               <>
-                <div className="flex items-center justify-center rounded-lg">
-                  {currentItem.item.icon && (
-                    <currentItem.item.icon className="size-4" />
-                  )}
-                </div>
-                <div className="flex-1 flex flex-col items-start gap-0.5">
-                  <span className="font-medium">
+                {currentItem.item.icon && (
+                  <currentItem.item.icon className="size-4" />
+                )}
+                <div className="flex-1 text-left space-y-0.5">
+                  <p className="font-medium">
                     {currentItem.parent?.title || currentItem.item.title}
-                  </span>
+                  </p>
                   {currentItem.parent && (
-                    <span className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground">
                       {currentItem.item.title}
-                    </span>
+                    </p>
                   )}
                 </div>
                 <ChevronsUpDown className="size-4" />
@@ -69,7 +67,7 @@ export function AppNavigation() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-64"
+          className="w-72"
           align="start"
           data-testid="navigation-menu-content"
         >
@@ -79,7 +77,7 @@ export function AppNavigation() {
                 {item.items ? (
                   <>
                     <DropdownMenuLabel className="flex items-center gap-2 px-2 py-1.5">
-                      {item.icon && <item.icon className="h-4 w-4" />}
+                      {item.icon && <item.icon className="size-4" />}
                       <span className="font-medium">{item.title}</span>
                     </DropdownMenuLabel>
                     {item.items.map((subItem) => (
@@ -90,17 +88,17 @@ export function AppNavigation() {
                       >
                         <DropdownMenuItem
                           className={cn(
-                            'flex items-center gap-2 cursor-pointer pl-8',
+                            'flex items-center gap-2 pl-8 cursor-pointer',
                             isSelected(subItem) && 'bg-accent'
                           )}
                         >
-                          {subItem.icon && <subItem.icon className="h-4 w-4" />}
-                          <div className="flex flex-col gap-1">
-                            <span>{subItem.title}</span>
+                          {subItem.icon && <subItem.icon className="size-4" />}
+                          <div className="space-y-1">
+                            <p>{subItem.title}</p>
                             {subItem.description && (
-                              <span className="text-xs text-muted-foreground">
+                              <p className="text-xs text-muted-foreground">
                                 {subItem.description}
-                              </span>
+                              </p>
                             )}
                           </div>
                         </DropdownMenuItem>
@@ -115,13 +113,13 @@ export function AppNavigation() {
                         isSelected(item) && 'bg-accent'
                       )}
                     >
-                      {item.icon && <item.icon className="h-4 w-4" />}
-                      <div className="flex flex-col gap-1">
-                        <span>{item.title}</span>
+                      {item.icon && <item.icon className="size-4" />}
+                      <div className="space-y-1">
+                        <p>{item.title}</p>
                         {item.description && (
-                          <span className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground">
                             {item.description}
-                          </span>
+                          </p>
                         )}
                       </div>
                     </DropdownMenuItem>
@@ -131,38 +129,37 @@ export function AppNavigation() {
               </React.Fragment>
             ))}
           </DropdownMenuGroup>
-          <div className="px-2 py-1.5" data-testid="theme-switcher">
-            <div className="flex items-center justify-center gap-2">
+
+          <div className="p-2" data-testid="theme-switcher">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 variant={theme === 'light' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setTheme('light')}
-                className="flex-1"
               >
-                <Sun className="h-5 w-5" />
+                <Sun className="size-5" />
               </Button>
               <Button
                 variant={theme === 'dark' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setTheme('dark')}
-                className="flex-1"
               >
-                <Moon className="h-5 w-5" />
+                <Moon className="size-5" />
               </Button>
               <Button
                 variant={theme === 'system' ? 'default' : 'ghost'}
                 size="sm"
                 onClick={() => setTheme('system')}
-                className="flex-1"
               >
-                <Monitor className="h-5 w-5" />
+                <Monitor className="size-5" />
               </Button>
             </div>
           </div>
+
           <DropdownMenuSeparator />
           <LoginMenu />
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </nav>
   );
 }

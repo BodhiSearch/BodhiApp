@@ -58,8 +58,9 @@ export function AuthCard({
                 </div>
               )}
               <div
-                className={`space-y-4 ${disabled ? 'opacity-50 pointer-events-none' : 'opacity-100'
-                  }`}
+                className={`space-y-4 ${
+                  disabled ? 'opacity-50 pointer-events-none' : 'opacity-100'
+                }`}
                 data-testid="auth-card-actions"
               >
                 {actions.map((action, index) =>

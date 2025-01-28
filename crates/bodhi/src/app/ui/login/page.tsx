@@ -33,6 +33,7 @@ export function LoginContent() {
             onClick: () => logout(),
             disabled: isLoggingOut,
             loading: isLoggingOut,
+            variant: 'destructive',
           },
         ]}
       />
@@ -68,10 +69,7 @@ export function LoginContent() {
 export default function LoginPage() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={false}>
-      <div
-        className="flex-1 pt-12 sm:pt-16"
-        data-testid="login-page"
-      >
+      <div className="pt-12 sm:pt-16" data-testid="login-page">
         <LoginContent />
       </div>
     </AppInitializer>
