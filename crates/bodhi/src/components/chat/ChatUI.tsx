@@ -97,7 +97,6 @@ export function ChatUI() {
     setInput,
     isLoading: streamLoading,
     append,
-    stop,
     userMessage,
     assistantMessage,
   } = useChat();

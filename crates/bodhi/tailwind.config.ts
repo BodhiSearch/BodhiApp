@@ -15,7 +15,11 @@ const config = {
 			center: true,
 			padding: '2rem',
 			screens: {
-				'2xl': '1400px'
+				'sm': '640px',
+				'md': '768px',
+				'lg': '1024px',
+				'xl': '1280px',
+				'2xl': '1400px',
 			}
 		},
 		extend: {
@@ -62,7 +66,19 @@ const config = {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))',
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))',
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))',
+				},
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
@@ -96,7 +112,28 @@ const config = {
 					'var(--font-sans)',
 					...fontFamily.sans
 				]
-			}
+			},
+			fontSize: {
+				xs: ['0.75rem', { lineHeight: '1rem' }],
+				sm: ['0.875rem', { lineHeight: '1.25rem' }],
+				base: ['1rem', { lineHeight: '1.5rem' }],
+				lg: ['1.125rem', { lineHeight: '1.75rem' }],
+				xl: ['1.25rem', { lineHeight: '1.75rem' }],
+				'2xl': ['1.5rem', { lineHeight: '2rem' }],
+				'3xl': ['1.875rem', { lineHeight: '2.25rem' }],
+			},
+			spacing: {
+				'4xs': '0.125rem',
+				'3xs': '0.25rem',
+				'2xs': '0.375rem',
+				'xs': '0.5rem',
+				'sm': '0.75rem',
+				'md': '1rem',
+				'lg': '1.5rem',
+				'xl': '2rem',
+				'2xl': '2.5rem',
+				'3xl': '3rem',
+			},
 		}
 	},
 	plugins: [require('tailwindcss-animate')],
