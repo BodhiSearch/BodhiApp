@@ -6,10 +6,17 @@ import { TableCell } from '@/components/ui/table';
 import { ModelFile, SortState } from '@/types/models';
 import { useModelFiles } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
-import { ExternalLink, X } from 'lucide-react';
+import { ExternalLink, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -36,6 +43,7 @@ const columns = [
 ];
 
 function ModelFilesContent() {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
     'modelfiles-banner-dismissed',
     false
@@ -86,17 +94,28 @@ function ModelFilesContent() {
       </TableCell>
       <TableCell className="text-right">{bytesToGB(modelFile.size)}</TableCell>
       <TableCell>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() =>
-            window.open(getHuggingFaceUrl(modelFile.repo), '_blank')
-          }
-          title="Open in HuggingFace"
-        >
-          <ExternalLink className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2 justify-end">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => setShowDeleteDialog(true)}
+            title="Delete modelfile"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() =>
+              window.open(getHuggingFaceUrl(modelFile.repo), '_blank')
+            }
+            title="Open in HuggingFace"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </div>
       </TableCell>
     </>
   );
@@ -144,6 +163,18 @@ function ModelFilesContent() {
         renderRow={renderRow}
         getItemId={getItemId}
       />
+
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Coming Soon</DialogTitle>
+            <DialogDescription>
+              Delete modelfile feature is not yet implemented. Stay tuned for our next update.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
       <div className="mt-6">
         <Pagination
           page={page}

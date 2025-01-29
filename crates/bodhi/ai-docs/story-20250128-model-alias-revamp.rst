@@ -797,4 +797,23 @@ Success Metrics
    - Validation speed
    - Error resolution time
 
-[Rest of the document remains unchanged...] 
+
+Mobile Optimization:
+Hide less important columns on mobile (Source)
+Show Source under the alias name for mobile
+Add truncation for long alias names
+Right-align any numeric/size columns
+Optimize table header text and spacing
+UI Improvements:
+1. Add welcome banner with localStorage persistence
+Add HuggingFace link for models from HF
+Improve pagination layout and mobile view
+Optimize button sizes and spacing
+Add tooltips for actions
+Questions before proceeding:
+Should we keep the same banner text or customize it for Model Aliases?
+Are there any model-specific actions we should add besides HuggingFace link?
+Should we show any additional metadata in the mobile view?
+Do we want to keep the same page size (30) as ModelFiles?
+Are there any specific sorting preferences we should set as default?
+Should we add any filtering capabilities in this phase?

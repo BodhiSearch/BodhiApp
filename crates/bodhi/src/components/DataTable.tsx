@@ -99,7 +99,10 @@ export function DataTable<T>({
       <TableHeader>
         <TableRow>
           {columns.map((column) => (
-            <TableHead key={column.id} className={column.className}>
+            <TableHead
+              key={column.id}
+              className={`min-w-8 ${column.className || ''}`}
+            >
               {column.sorted ? (
                 <Button
                   variant="ghost"
@@ -109,12 +112,18 @@ export function DataTable<T>({
                   {column.name}
                   {renderSortIcon(column.id)}
                 </Button>
+              ) : column.name === '' ? (
+                <div className="min-w-10">
+                  <span className="sr-only">Actions</span>
+                </div>
               ) : (
                 column.name
               )}
             </TableHead>
           ))}
-          {renderExpandedRow && <TableHead className="w-10" />}
+          {renderExpandedRow && (
+            <TableHead className="w-10" data-testid="expanded-row-head" />
+          )}
         </TableRow>
       </TableHeader>
       <TableBody>

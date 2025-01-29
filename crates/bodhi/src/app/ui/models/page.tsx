@@ -6,7 +6,7 @@ import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
 import { Model, SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
-import { Pencil } from 'lucide-react';
+import { Pencil, MessageSquare, ExternalLink, FilePlus2 } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 
@@ -15,7 +15,7 @@ const columns = [
   { id: 'source', name: 'Source', sorted: true },
   { id: 'repo', name: 'Repo', sorted: true },
   { id: 'filename', name: 'Filename', sorted: true },
-  { id: 'actions', name: 'Actions', sorted: false },
+  { id: 'actions', name: '', sorted: false },
 ];
 
 function ModelsPageContent() {
@@ -50,56 +50,92 @@ function ModelsPageContent() {
   const handleEdit = (alias: string) => {
     router.push(`/ui/models/edit?alias=${alias}`);
   };
-
-  const actionUi = (model: Model) => {
-    if (model.source === 'model') {
-      return <></>;
-    } else {
-      return (
-        <>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleEdit(model.alias)}
-            title={`Edit ${model.alias}`}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-        </>
-      );
-    }
+  const handleNew = (model: Model) => {
+    router.push(
+      `/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`
+    );
   };
-  const renderRow = (model: Model) => (
-    <>
-      <TableCell>{model.alias}</TableCell>
-      <TableCell>{model.source}</TableCell>
-      <TableCell>{model.repo}</TableCell>
-      <TableCell>{model.filename}</TableCell>
-      <TableCell>{actionUi(model)}</TableCell>
-    </>
-  );
+  const handleChat = (model: Model) => {
+    router.push(`/ui/chat?alias=${model.alias}`);
+  };
+  const getHuggingFaceFileUrl = (repo: string, filename: string) => {
+    return `https://huggingface.co/${repo}/blob/main/${filename}`;
+  };
+  const actionUi = (model: Model) => {
+    const actions =
+      model.source === 'model' ? (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleNew(model)}
+          title={`Create new model alias using this modelfile`}
+          className="h-8 w-8 p-0"
+        >
+          <FilePlus2 className="h-4 w-4" />
+        </Button>
+      ) : (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleEdit(model.alias)}
+          title={`Edit ${model.alias}`}
+          className="h-8 w-8 p-0"
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      );
+    return (
+      <div className="flex gap-2 justify-end">
+        {actions}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleChat(model)}
+          title={`Chat with the model in playground`}
+          className="h-8 w-8 p-0"
+        >
+          <MessageSquare className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() =>
+            window.open(
+              getHuggingFaceFileUrl(model.repo, model.filename),
+              '_blank'
+            )
+          }
+          title="Open in HuggingFace"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  };
 
-  const renderExpandedRow = (model: Model) => (
-    <div className="p-4 bg-gray-50">
-      <h4 className="font-semibold">Additional Details:</h4>
-      <p>SHA: {model.snapshot}</p>
-      <p>Template: {model.chat_template}</p>
-      <h5 className="font-semibold mt-2">Parameters:</h5>
-      <p>Request: {JSON.stringify(model.request_params)}</p>
-      <p>Context: {JSON.stringify(model.context_params)}</p>
-    </div>
-  );
+  const renderRow = (model: Model) => [
+    <TableCell key="alias">{model.alias}</TableCell>,
+    <TableCell key="source">{model.source}</TableCell>,
+    <TableCell key="repo">{model.repo}</TableCell>,
+    <TableCell key="filename">{model.filename}</TableCell>,
+    <TableCell key="actions" className="w-10">
+      {actionUi(model)}
+    </TableCell>,
+  ];
 
   if (error) {
-    const errorMessage =
-      error.response?.data?.error?.message ||
-      error.message ||
-      'An unexpected error occurred. Please try again.';
-    return <div>An error occurred: {errorMessage}</div>;
+    return (
+      <div className="text-destructive text-center" role="alert">
+        {error.response?.data?.error?.message ||
+          error.message ||
+          'An unexpected error occurred'}
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8 w-full">
+    <div data-testid="models-content" className="container mx-auto p-4">
       <DataTable
         data={data?.data || []}
         columns={columns}
@@ -107,13 +143,9 @@ function ModelsPageContent() {
         sort={sort}
         onSortChange={toggleSort}
         renderRow={renderRow}
-        renderExpandedRow={renderExpandedRow}
         getItemId={getItemId}
       />
-      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
-        <div className="mb-2 sm:mb-0">
-          Displaying {data?.data.length || 0} items of {data?.total || 0}
-        </div>
+      <div className="mt-6">
         <Pagination
           page={page}
           totalPages={

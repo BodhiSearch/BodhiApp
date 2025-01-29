@@ -107,8 +107,10 @@ const ChatSettingsContext = createContext<ChatSettingsContextType | undefined>(
 
 export function ChatSettingsProvider({
   children,
+  initialData,
 }: {
   children: React.ReactNode;
+  initialData?: Partial<ChatSettings>;
 }) {
   const [settings, setSettings] = useState<ChatSettings>(() => {
     if (typeof window !== 'undefined') {
@@ -126,6 +128,16 @@ export function ChatSettingsProvider({
     }
     return defaultSettings;
   });
+
+  // Apply initialData after settings are loaded from localStorage
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      setSettings((prev) => ({
+        ...prev,
+        ...initialData,
+      }));
+    }
+  }, [initialData]);
 
   useEffect(() => {
     localStorage.setItem('chat-settings', JSON.stringify(settings));
