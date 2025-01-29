@@ -67,13 +67,17 @@ export default function AppInitializer({
     userError,
   ]);
 
-  if (appLoading || userLoading) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center w-full">
-        <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
-        <p className="mt-4 text-gray-600">Initializing app...</p>
+  const loadingView = (message: string) => (
+    <div className="flex flex-1 items-center justify-center">
+      <div className="flex flex-col items-center gap-4">
+        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
+        <p className="text-muted-foreground">{message}</p>
       </div>
-    );
+    </div>
+  );
+
+  if (appLoading || userLoading) {
+    return loadingView('Initializing app...');
   }
 
   if (appError) {
@@ -113,22 +117,12 @@ export default function AppInitializer({
     }
 
     if (!allowedStatus || appInfo.status !== allowedStatus) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center w-full">
-          <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
-          <p className="mt-4 text-gray-600">Redirecting...</p>
-        </div>
-      );
+      return loadingView('Redirecting...');
     }
   }
 
   if (authenticated && appInfo?.authz && !userInfo?.logged_in) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center w-full">
-        <Loader2 className="h-12 w-12 animate-spin text-gray-500" />
-        <p className="mt-4 text-gray-600">Redirecting to login...</p>
-      </div>
-    );
+    return loadingView('Redirecting to login...');
   }
 
   return <>{children}</>;
