@@ -7,18 +7,23 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+  const isUser = message.role === 'user';
+  
   return (
     <div
       className={cn(
-        'mb-4 p-4 rounded',
-        message.role === 'user' ? 'message-user' : 'message-assistant'
+        'rounded-lg p-4',
+        isUser 
+          ? 'bg-primary/10 text-primary-foreground' 
+          : 'bg-muted/50 text-foreground'
       )}
     >
-      <div className="font-bold mb-2">
-        {message.role === 'user' ? 'You' : 'Assistant'}
+      <div className="mb-2 text-sm font-medium">
+        {isUser ? 'You' : 'Assistant'}
       </div>
-
-      <MemoizedReactMarkdown className="prose break-words prose-p:leading-relaxed prose-pre:p-0">
+      <MemoizedReactMarkdown 
+        className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:leading-relaxed prose-pre:p-0"
+      >
         {message.content}
       </MemoizedReactMarkdown>
     </div>

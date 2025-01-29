@@ -9,8 +9,8 @@ import { Message } from '@/types/chat';
 import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
 
 const EmptyState = () => (
-  <div className="flex-1 flex items-center justify-center">
-    <div className="space-y-4 text-center">
+  <div className="flex h-full items-center justify-center">
+    <div className="space-y-3 text-center">
       <h3 className="text-lg font-semibold">Welcome to Chat</h3>
       <p className="text-muted-foreground">
         Start a conversation by typing a message below.
@@ -34,11 +34,11 @@ const ChatInput = ({
   streamLoading,
   inputRef,
 }: ChatInputProps) => (
-  <div className="sticky bottom-0 border-t bg-background">
-    <form onSubmit={handleSubmit} className="flex gap-2 max-w-2xl mx-auto p-4">
+  <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+    <form onSubmit={handleSubmit} className="mx-auto flex max-w-2xl gap-2 p-4">
       <textarea
         ref={inputRef}
-        className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm flex-1 min-h-[44px] resize-none"
+        className="min-h-[44px] w-full resize-none rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         rows={1}
         placeholder="Type your message..."
         value={input}
@@ -50,15 +50,13 @@ const ChatInput = ({
           }
         }}
       />
-      <div className="flex gap-2">
-        <Button
-          type="submit"
-          disabled={!input.trim() || streamLoading}
-          onClick={handleSubmit}
-        >
-          Send
-        </Button>
-      </div>
+      <Button
+        type="submit"
+        disabled={!input.trim() || streamLoading}
+        onClick={handleSubmit}
+      >
+        Send
+      </Button>
     </form>
   </div>
 );
@@ -75,7 +73,7 @@ const MessageList = memo(function MessageList({
   assistantMessage,
 }: MessageListProps) {
   return (
-    <>
+    <div className="space-y-4 py-4">
       {messages.map((message, i) => (
         <ChatMessage key={`history-${i}`} message={message} />
       ))}
@@ -86,7 +84,7 @@ const MessageList = memo(function MessageList({
         <ChatMessage key="assistant-current" message={assistantMessage} />
       )}
       <ScrollAnchor />
-    </>
+    </div>
   );
 });
 
@@ -118,22 +116,18 @@ export function ChatUI() {
   };
 
   return (
-    <div data-testid="chat-ui" className="flex-1 flex flex-col min-h-0">
-      <div className="flex-1 overflow-hidden relative">
-        <div className="absolute inset-0 overflow-y-auto">
-          <div className="p-4">
-            {(currentChat === null || !currentChat?.messages?.length) &&
-            !userMessage.content ? (
-              <EmptyState />
-            ) : (
-              <MessageList
-                messages={currentChat?.messages || []}
-                userMessage={userMessage}
-                assistantMessage={assistantMessage}
-              />
-            )}
-          </div>
-        </div>
+    <div data-testid="chat-ui" className="flex h-full flex-col">
+      <div className="flex-1 overflow-y-auto px-4">
+        {(currentChat === null || !currentChat?.messages?.length) &&
+          !userMessage.content ? (
+          <EmptyState />
+        ) : (
+          <MessageList
+            messages={currentChat?.messages || []}
+            userMessage={userMessage}
+            assistantMessage={assistantMessage}
+          />
+        )}
       </div>
       <ChatInput
         input={input}
