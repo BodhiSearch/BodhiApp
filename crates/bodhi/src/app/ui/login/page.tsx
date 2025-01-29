@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthCard } from '@/components/auth/AuthCard';
+import { AuthCard } from '@/components/AuthCard';
 import AppInitializer from '@/components/AppInitializer';
 import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';

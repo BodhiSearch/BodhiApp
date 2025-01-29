@@ -30,8 +30,18 @@ import { useState } from 'react';
 const columns = [
   { id: 'name', name: 'Name', sorted: false },
   { id: 'status', name: 'Status', sorted: false },
-  { id: 'created_at', name: 'Created At', sorted: true },
-  { id: 'updated_at', name: 'Updated At', sorted: false },
+  {
+    id: 'created_at',
+    name: 'Created At',
+    sorted: true,
+    className: 'hidden md:table-cell',
+  },
+  {
+    id: 'updated_at',
+    name: 'Updated At',
+    sorted: false,
+    className: 'hidden md:table-cell',
+  },
 ];
 
 function StatusBadge({ status }: { status: string }) {
@@ -147,8 +157,12 @@ export function TokenPageContent() {
           <StatusBadge status={token.status} />
         </div>
       </TableCell>
-      <TableCell>{new Date(token.created_at).toLocaleString()}</TableCell>
-      <TableCell>{new Date(token.updated_at).toLocaleString()}</TableCell>
+      <TableCell className="hidden md:table-cell">
+        {new Date(token.created_at).toLocaleString()}
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
+        {new Date(token.updated_at).toLocaleString()}
+      </TableCell>
     </>
   );
 
@@ -186,16 +200,17 @@ export function TokenPageContent() {
               onSortChange={() => {}}
             />
             {tokensData && (
-              <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
-                <div className="mb-2 sm:mb-0">
-                  Displaying {tokensData.data.length} items of{' '}
-                  {tokensData.total}
-                </div>
+              <div className="mt-6 mb-4">
                 <Pagination
                   page={page}
-                  totalPages={Math.ceil(
-                    tokensData.total / tokensData.page_size
-                  )}
+                  totalPages={
+                    tokensData
+                      ? Math.ceil(
+                          (tokensData.total as number) /
+                            (tokensData.page_size as number)
+                        )
+                      : 1
+                  }
                   onPageChange={setPage}
                 />
               </div>

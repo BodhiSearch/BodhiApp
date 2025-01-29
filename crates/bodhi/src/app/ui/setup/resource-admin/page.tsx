@@ -1,7 +1,7 @@
 'use client';
 
 import AppInitializer from '@/components/AppInitializer';
-import { AuthCard } from '@/components/auth/AuthCard';
+import { AuthCard } from '@/components/AuthCard';
 import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
 
 function ResourceAdminContent() {
