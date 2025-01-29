@@ -1,4 +1,4 @@
-import { PullForm } from '@/components/PullForm';
+import { PullForm } from '@/app/ui/pull/PullForm';
 import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';

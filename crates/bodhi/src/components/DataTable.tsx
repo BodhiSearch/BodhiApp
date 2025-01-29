@@ -77,10 +77,10 @@ export function DataTable<T>({
     );
   }
 
-  const renderTableRows = (item: T) => (
+  const renderTableRows = (item: T, showExpand: boolean) => (
     <TableRow key={getItemId(item)}>
       {renderRow(item)}
-      {renderExpandedRow && (
+      {showExpand && (
         <TableCell>
           <Button
             variant="ghost"
@@ -127,22 +127,24 @@ export function DataTable<T>({
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data.map((item) =>
-          renderExpandedRow ? (
+        {data.map((item) => {
+          const expandedContent = renderExpandedRow?.(item);
+
+          return expandedContent ? (
             <React.Fragment key={getItemId(item)}>
-              {renderTableRows(item)}
+              {renderTableRows(item, true)}
               {expandedRow === getItemId(item) && (
                 <TableRow>
                   <TableCell colSpan={columns.length + 1}>
-                    {renderExpandedRow(item)}
+                    {expandedContent}
                   </TableCell>
                 </TableRow>
               )}
             </React.Fragment>
           ) : (
-            <TableRow key={getItemId(item)}>{renderRow(item)}</TableRow>
-          )
-        )}
+            renderTableRows(item, false)
+          );
+        })}
       </TableBody>
     </Table>
   );

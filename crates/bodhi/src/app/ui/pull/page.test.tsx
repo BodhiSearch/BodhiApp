@@ -16,7 +16,7 @@ import {
 } from 'vitest';
 import PullPage from '@/app/ui/pull/page';
 
-vi.mock('@/components/PullForm', () => ({
+vi.mock('@/app/ui/pull/PullForm', () => ({
   PullForm: () => <div data-testid="pull-form">Pull Form</div>,
 }));
 

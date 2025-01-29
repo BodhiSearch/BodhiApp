@@ -8,7 +8,11 @@ import { DownloadRequest } from '@/types/api';
 import { SortState } from '@/types/models';
 import AppInitializer from '@/components/AppInitializer';
 import { Badge } from '@/components/ui/badge';
-import { PullForm } from '@/components/PullForm';
+import { PullForm } from '@/app/ui/pull/PullForm';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 
 const columns = [
   { id: 'repo', name: 'Repo', sorted: true },
@@ -30,6 +34,10 @@ function StatusBadge({ status }: { status: DownloadRequest['status'] }) {
 }
 
 function PullPageContent() {
+  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
+    'pull-banner-dismissed',
+    false
+  );
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
   const [sort, setSort] = useState<SortState>({
@@ -61,24 +69,46 @@ function PullPageContent() {
     </>
   );
 
-  const renderExpandedRow = (download: DownloadRequest) => (
-    <div className="p-4 bg-gray-50">
-      {download.status === 'error' && download.error && (
-        <>
+  const renderExpandedRow = (download: DownloadRequest) => {
+    if (download.status === 'error' && download.error) {
+      return (
+        <div className="bg-muted p-4">
           <h4 className="font-semibold">Error:</h4>
-          <p className="text-red-600">{download.error}</p>
-        </>
-      )}
-    </div>
-  );
+          <p className="text-destructive">{download.error}</p>
+        </div>
+      );
+    }
+    return undefined;
+  };
 
   if (error) {
-    return <div>Error loading downloads</div>;
+    return <div className="text-destructive">Error loading downloads</div>;
   }
 
   return (
-    <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-8">
+    <div className="container mx-auto space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      {!hasDismissedBanner && (
+        <Alert className="mb-4">
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              Welcome to Pull! Here you can download model files from Hugging
+              Face to your local storage, and monitor the status of your
+              downloads.
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setHasDismissedBanner(true)}
+              title="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div>
         <PullForm />
       </div>
       <DataTable
@@ -91,13 +121,14 @@ function PullPageContent() {
         renderExpandedRow={renderExpandedRow}
         getItemId={(item) => item.id}
       />
-      <div className="mt-4 flex flex-col sm:flex-row justify-between items-center">
-        <div className="mb-2 sm:mb-0">
-          Displaying {data?.data.length || 0} items of {data?.total || 0}
-        </div>
+      <div className="mt-6 mb-4">
         <Pagination
           page={page}
-          totalPages={data ? Math.ceil(data.total / data.page_size) : 1}
+          totalPages={
+            data
+              ? Math.ceil((data.total as number) / (data.page_size as number))
+              : 1
+          }
           onPageChange={setPage}
         />
       </div>
