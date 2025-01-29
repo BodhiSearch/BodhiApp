@@ -1,7 +1,7 @@
 import CreateAliasPage from '@/app/ui/models/new/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -15,6 +15,31 @@ import {
   it,
   vi,
 } from 'vitest';
+
+// Mock useMediaQuery hook
+vi.mock("@/hooks/use-media-query", () => ({
+  useMediaQuery: (query: string) => {
+    return true;
+  }
+}))
+
+// Mock required HTMLElement methods and styles for Radix UI and Vaul components
+Object.assign(window.HTMLElement.prototype, {
+  scrollIntoView: vi.fn(),
+  releasePointerCapture: vi.fn(),
+  hasPointerCapture: vi.fn(),
+  setPointerCapture: vi.fn(),
+  getBoundingClientRect: vi.fn().mockReturnValue({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  }),
+});
 
 const mockToast = vi.fn();
 
@@ -79,7 +104,7 @@ describe('CreateAliasPage', () => {
         return res(ctx.json(mockChatTemplatesResponse));
       }),
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
-        return res(ctx.json({ data: [] }));
+        return res(ctx.json({ data: [{ repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' }, { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' }] }));
       }),
       rest.post(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
         return res(
@@ -100,12 +125,12 @@ describe('CreateAliasPage', () => {
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/chat template/i)).toBeInTheDocument();
 
-    expect(screen.getByRole('textbox', { name: /repo/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('textbox', { name: /filename/i })
+      screen.getByRole('combobox', { name: /filename/i })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('textbox', { name: /chat template/i })
+      screen.getByRole('combobox', { name: /chat template/i })
     ).toBeInTheDocument();
 
     expect(
@@ -123,18 +148,34 @@ describe('CreateAliasPage', () => {
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText(/alias/i), 'test-alias');
+
+    // Open combobox
+    await user.click(screen.getByRole('combobox', { name: /repo/i }));
+
+    // Wait for and find the dialog
+    const dialog = screen.getByRole('dialog');
+
+    // Find and click option within dialog
+    const options = within(dialog).getAllByRole('option');
+    await user.click(options[0]); // owner1/repo1 should be the first option
+
     await user.type(
-      screen.getByRole('textbox', { name: /repo/i }),
-      'owner1/repo1'
-    );
-    await user.type(
-      screen.getByRole('textbox', { name: /filename/i }),
+      screen.getByRole('combobox', { name: /filename/i }),
       'file1.gguf'
     );
-    await user.type(
-      screen.getByRole('textbox', { name: /chat template/i }),
-      'llama2'
+
+    // Open chat template combobox
+    await user.click(screen.getByRole('combobox', { name: /chat template/i }));
+    const chatTemplatePopover = screen.getByRole('dialog');
+    const chatTemplateItems = within(chatTemplatePopover).getAllByRole('option');
+    const llama2Option = chatTemplateItems.find(item =>
+      item.textContent?.includes('llama2')
     );
+    if (!llama2Option) {
+      throw new Error('Could not find llama2 option');
+    }
+    await user.click(llama2Option);
+
     await user.click(
       screen.getByRole('button', { name: /create model alias/i })
     );
