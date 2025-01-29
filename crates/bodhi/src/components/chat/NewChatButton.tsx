@@ -1,11 +1,10 @@
 'use client';
 
+import { Button } from '@/components/ui/button';
+import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';
 import { useChatDB } from '@/hooks/use-chat-db';
-import {
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
+import { MessageSquare } from 'lucide-react';
 
 export const NewChatButton = () => {
   const { createNewChat } = useChatDB();
@@ -13,13 +12,19 @@ export const NewChatButton = () => {
   return (
     <SidebarMenu>
       <SidebarMenuItem>
-        <SidebarMenuButton
-          onClick={createNewChat}
-          data-testid="new-chat-button"
-          tooltip="New Chat"
-        >
-          <span>New Chat</span>
-        </SidebarMenuButton>
+        <div className="flex flex-col gap-4 p-2 space-y-1 pb-2">
+          <Button
+            variant="ghost"
+            className={cn(
+              'w-full justify-start gap-2 px-2 font-normal hover:bg-muted/50'
+            )}
+            onClick={createNewChat}
+            data-testid="new-chat-button"
+          >
+            <MessageSquare className="h-4 w-4" />
+            New Chat
+          </Button>
+        </div>
       </SidebarMenuItem>
     </SidebarMenu>
   );

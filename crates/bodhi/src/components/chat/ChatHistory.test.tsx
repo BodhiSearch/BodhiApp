@@ -21,20 +21,31 @@ function Wrapper({ children }: { children: React.ReactNode }) {
 }
 
 describe('ChatHistory', () => {
+  const now = Date.now();
+  const yesterday = now - 24 * 60 * 60 * 1000;
+  const lastWeek = now - 7 * 24 * 60 * 60 * 1000;
+
   const mockChats: Chat[] = [
     {
       id: '1',
-      title: 'Chat 1',
+      title: 'Today Chat',
       messages: [{ role: 'user', content: 'test' }],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     },
     {
       id: '2',
-      title: 'Chat 2',
+      title: 'Yesterday Chat',
       messages: [{ role: 'user', content: 'test' }],
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: yesterday,
+      updatedAt: yesterday,
+    },
+    {
+      id: '3',
+      title: 'Previous Chat',
+      messages: [{ role: 'user', content: 'test' }],
+      createdAt: lastWeek,
+      updatedAt: lastWeek,
     },
   ];
 
@@ -52,22 +63,27 @@ describe('ChatHistory', () => {
     } as any);
   });
 
-  it('renders non-empty chats', () => {
+  it('renders chats in correct groups', () => {
     render(<ChatHistory />, { wrapper: Wrapper });
 
-    expect(screen.getByText('Chat 1')).toBeInTheDocument();
-    expect(screen.getByText('Chat 2')).toBeInTheDocument();
+    expect(screen.getByText('TODAY')).toBeInTheDocument();
+    expect(screen.getByText('YESTERDAY')).toBeInTheDocument();
+    expect(screen.getByText('PREVIOUS 7 DAYS')).toBeInTheDocument();
+    
+    expect(screen.getByText('Today Chat')).toBeInTheDocument();
+    expect(screen.getByText('Yesterday Chat')).toBeInTheDocument();
+    expect(screen.getByText('Previous Chat')).toBeInTheDocument();
   });
 
   it('does not render empty chats', () => {
     const chatsWithEmpty = [
       ...mockChats,
       {
-        id: '3',
+        id: '4',
         title: 'Empty Chat',
         messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       },
     ];
 
@@ -86,15 +102,15 @@ describe('ChatHistory', () => {
     const user = userEvent.setup();
     render(<ChatHistory />, { wrapper: Wrapper });
 
-    await user.click(screen.getByText('Chat 2'));
+    await user.click(screen.getByText('Yesterday Chat'));
     expect(mockSetCurrentChatId).toHaveBeenCalledWith('2');
   });
 
   it('marks current chat as active', () => {
     render(<ChatHistory />, { wrapper: Wrapper });
 
-    const currentChat = screen.getByText('Chat 1').closest('button');
-    const otherChat = screen.getByText('Chat 2').closest('button');
+    const currentChat = screen.getByText('Today Chat').closest('button');
+    const otherChat = screen.getByText('Yesterday Chat').closest('button');
 
     expect(currentChat).toHaveAttribute('data-active', 'true');
     expect(otherChat).toHaveAttribute('data-active', 'false');
