@@ -80,11 +80,9 @@ describe('ModelFilesPage', () => {
       render(<ModelFilesPage />, { wrapper: createWrapper() });
     });
     expect(screen.getByText('test-repo')).toBeInTheDocument();
-    expect(screen.getByText('test-file.txt')).toBeInTheDocument();
+    expect(screen.getAllByText('test-file.txt')).toHaveLength(2);
     expect(screen.getByText('1.00 GB')).toBeInTheDocument();
-    expect(screen.getByText('abc123')).toBeInTheDocument();
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
-    expect(screen.getByText('Displaying 1 items of 1')).toBeInTheDocument();
   });
 
   it('handles API error', async () => {
@@ -101,7 +99,7 @@ describe('ModelFilesPage', () => {
     });
 
     expect(
-      screen.getByText('An error occurred: Internal Server Error')
+      screen.getByText('Internal Server Error')
     ).toBeInTheDocument();
   });
 });

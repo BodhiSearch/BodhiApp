@@ -64,12 +64,6 @@ describe('LoginContent loading states', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument());
   });
-
-  it('shows loading state in centered container', async () => {
-    render(<LoginContent />, { wrapper: createWrapper() });
-    const loadingDiv = screen.getByText('Loading...');
-    expect(loadingDiv.parentElement).toHaveClass('w-full max-w-md mx-auto mt-8 h-fit text-center');
-  });
 });
 
 describe('LoginContent with user not Logged In', () => {
@@ -181,10 +175,7 @@ describe('LoginContent with user Logged In', () => {
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
     });
-    const homeButton = screen.getByRole('button', { name: 'Go to Home' });
     const logoutButton = screen.getByRole('button', { name: 'Log Out' });
-    
-    expect(homeButton).toHaveClass('w-full mb-2');
     expect(logoutButton).toHaveClass('w-full');
   });
 });

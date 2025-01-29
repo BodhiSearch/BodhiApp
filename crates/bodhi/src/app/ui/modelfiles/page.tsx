@@ -6,6 +6,10 @@ import { TableCell } from '@/components/ui/table';
 import { ModelFile, SortState } from '@/types/models';
 import { useModelFiles } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
+import { ExternalLink, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -15,14 +19,28 @@ const bytesToGB = (bytes: number | undefined): string => {
 };
 
 const columns = [
-  { id: 'repo', name: 'Repo', sorted: true },
-  { id: 'filename', name: 'Filename', sorted: true },
-  { id: 'size', name: 'Size (GB)', sorted: true },
-  { id: 'updated_at', name: 'Updated At', sorted: true },
-  { id: 'snapshot', name: 'Snapshot', sorted: true },
+  {
+    id: 'repo',
+    name: 'Repo',
+    sorted: true,
+    className: 'max-w-[180px] truncate',
+  },
+  {
+    id: 'filename',
+    name: 'Filename',
+    sorted: true,
+    className: 'hidden sm:table-cell',
+  },
+  { id: 'size', name: 'Size', sorted: true, className: 'w-20 text-right' },
+  { id: 'actions', name: '', sorted: false, className: 'w-10' },
 ];
 
 function ModelFilesContent() {
+  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
+    'modelfiles-banner-dismissed',
+    false
+  );
+
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sort, setSort] = useState<SortState>({
@@ -51,37 +69,36 @@ function ModelFilesContent() {
   const getItemId = (modelFile: ModelFile) =>
     `${modelFile.repo}${modelFile.filename}${modelFile.snapshot}`;
 
+  const getHuggingFaceUrl = (repo: string) => {
+    return `https://huggingface.co/${repo}`;
+  };
+
   const renderRow = (modelFile: ModelFile) => (
     <>
-      <TableCell>{modelFile.repo}</TableCell>
-      <TableCell>{modelFile.filename}</TableCell>
-      <TableCell>{bytesToGB(modelFile.size)}</TableCell>
-      <TableCell>
-        {modelFile.updated_at
-          ? new Date(modelFile.updated_at).toLocaleString()
-          : ''}
-      </TableCell>
-      <TableCell>{modelFile.snapshot.slice(0, 6)}</TableCell>
-    </>
-  );
-
-  const renderExpandedRow = (modelFile: ModelFile) => (
-    <div className="p-4 bg-background-subtle">
-      <div className="space-y-3">
-        <div>
-          <h4 className="font-medium text-sm">Full Snapshot</h4>
-          <p className="text-sm text-muted-foreground">{modelFile.snapshot}</p>
+      <TableCell className="max-w-[180px]">
+        <div className="truncate">{modelFile.repo}</div>
+        <div className="text-xs text-muted-foreground truncate sm:hidden mt-1">
+          {modelFile.filename}
         </div>
-        {modelFile.size !== undefined && (
-          <div>
-            <h4 className="font-medium text-sm">Exact Size</h4>
-            <p className="text-sm text-muted-foreground">
-              {modelFile.size.toLocaleString()} bytes
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+      </TableCell>
+      <TableCell className="hidden sm:table-cell">
+        {modelFile.filename}
+      </TableCell>
+      <TableCell className="text-right">{bytesToGB(modelFile.size)}</TableCell>
+      <TableCell>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={() =>
+            window.open(getHuggingFaceUrl(modelFile.repo), '_blank')
+          }
+          title="Open in HuggingFace"
+        >
+          <ExternalLink className="h-4 w-4" />
+        </Button>
+      </TableCell>
+    </>
   );
 
   if (error) {
@@ -90,14 +107,34 @@ function ModelFilesContent() {
       error.message ||
       'An unexpected error occurred. Please try again.';
     return (
-      <div className="text-sm text-destructive text-center" role="alert">
+      <div className="text-destructive text-center" role="alert">
         {errorMessage}
       </div>
     );
   }
 
   return (
-    <div className="flex-1 space-y-4" data-testid="modelfiles-content">
+    <div data-testid="modelfiles-content" className="container mx-auto p-4">
+      {!hasDismissedBanner && (
+        <Alert className="mb-4">
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              Welcome to Model Management! Here you can view all your downloaded
+              models and access their HuggingFace repositories.
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setHasDismissedBanner(true)}
+              title="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <DataTable
         data={data?.data || []}
         columns={columns}
@@ -105,13 +142,9 @@ function ModelFilesContent() {
         sort={sort}
         onSortChange={toggleSort}
         renderRow={renderRow}
-        renderExpandedRow={renderExpandedRow}
         getItemId={getItemId}
       />
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-        <p className="text-sm text-muted-foreground">
-          Displaying {data?.data.length || 0} items of {data?.total || 0}
-        </p>
+      <div className="mt-6">
         <Pagination
           page={page}
           totalPages={
