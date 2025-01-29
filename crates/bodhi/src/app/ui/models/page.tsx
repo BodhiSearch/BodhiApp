@@ -6,20 +6,76 @@ import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
 import { Model, SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
-import { Pencil, MessageSquare, ExternalLink, FilePlus2 } from 'lucide-react';
+import {
+  Pencil,
+  MessageSquare,
+  ExternalLink,
+  FilePlus2,
+  X,
+  Plus,
+} from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const columns = [
-  { id: 'alias', name: 'Name', sorted: true },
-  { id: 'source', name: 'Source', sorted: true },
-  { id: 'repo', name: 'Repo', sorted: true },
-  { id: 'filename', name: 'Filename', sorted: true },
-  { id: 'actions', name: '', sorted: false },
+  { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
+  {
+    id: 'name_source',
+    name: 'Name',
+    sorted: true,
+    className: 'hidden sm:table-cell lg:hidden',
+  },
+  {
+    id: 'repo_filename',
+    name: 'Repository',
+    sorted: true,
+    className: 'hidden sm:table-cell lg:hidden',
+  },
+  {
+    id: 'alias',
+    name: 'Name',
+    sorted: true,
+    className: 'hidden lg:table-cell',
+  },
+  { id: 'repo', name: 'Repo', sorted: true, className: 'hidden lg:table-cell' },
+  {
+    id: 'filename',
+    name: 'Filename',
+    sorted: true,
+    className: 'hidden lg:table-cell',
+  },
+  {
+    id: 'source',
+    name: 'Source',
+    sorted: true,
+    className: 'hidden lg:table-cell',
+  },
+  { id: 'actions', name: '', sorted: false, className: 'hidden sm:table-cell' },
 ];
+
+const SourceBadge = ({ source }: { source: string | undefined }) => {
+  const colorClass =
+    source === 'model'
+      ? 'bg-green-500/10 text-green-500'
+      : 'bg-blue-500/10 text-blue-500';
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium w-fit ${colorClass}`}
+    >
+      {source || ''}
+    </span>
+  );
+};
 
 function ModelsPageContent() {
   const router = useRouter();
+  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
+    'models-banner-dismissed',
+    false
+  );
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sort, setSort] = useState<SortState>({
@@ -85,7 +141,7 @@ function ModelsPageContent() {
         </Button>
       );
     return (
-      <div className="flex gap-2 justify-end">
+      <div className="flex flex-nowrap items-center gap-1 md:gap-2">
         {actions}
         <Button
           variant="ghost"
@@ -114,12 +170,97 @@ function ModelsPageContent() {
     );
   };
 
+  const handleNewAlias = () => {
+    router.push('/ui/models/new');
+  };
+
   const renderRow = (model: Model) => [
-    <TableCell key="alias">{model.alias}</TableCell>,
-    <TableCell key="source">{model.source}</TableCell>,
-    <TableCell key="repo">{model.repo}</TableCell>,
-    <TableCell key="filename">{model.filename}</TableCell>,
-    <TableCell key="actions" className="w-10">
+    // Mobile view (single column with all items stacked)
+    <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
+      <div className="flex flex-col gap-2">
+        {/* Name */}
+        <span className="font-medium truncate">{model.alias}</span>
+
+        {/* Repo */}
+        <span className="truncate text-sm">{model.repo}</span>
+
+        {/* Filename */}
+        <span className="truncate text-xs text-muted-foreground">
+          {model.filename}
+        </span>
+
+        {/* Source */}
+        <div className="w-fit">
+          <SourceBadge source={model.source} />
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 pt-2 border-t">
+          {actionUi(model)}
+        </div>
+      </div>
+    </TableCell>,
+    // Tablet view (name+source column)
+    <TableCell
+      key="name_source"
+      className="max-w-[250px] hidden sm:table-cell lg:hidden"
+      data-testid="name-source-cell"
+    >
+      <div className="flex flex-col gap-1">
+        <span className="font-medium truncate">{model.alias}</span>
+        <div className="w-fit">
+          <SourceBadge source={model.source} />
+        </div>
+      </div>
+    </TableCell>,
+    // Tablet view (repo+filename column)
+    <TableCell
+      key="repo_filename"
+      className="max-w-[300px] hidden sm:table-cell lg:hidden"
+      data-testid="repo-filename-cell"
+    >
+      <div className="flex flex-col gap-1">
+        <span className="truncate text-sm">{model.repo}</span>
+        <span className="truncate text-xs text-muted-foreground">
+          {model.filename}
+        </span>
+      </div>
+    </TableCell>,
+    // Desktop view (separate columns)
+    <TableCell
+      key="alias"
+      className="max-w-[250px] truncate hidden lg:table-cell"
+      data-testid="alias-cell"
+    >
+      {model.alias}
+    </TableCell>,
+    <TableCell
+      key="repo"
+      className="max-w-[200px] truncate hidden lg:table-cell"
+      data-testid="repo-cell"
+    >
+      {model.repo}
+    </TableCell>,
+    <TableCell
+      key="filename"
+      className="max-w-[200px] truncate hidden lg:table-cell"
+      data-testid="filename-cell"
+    >
+      {model.filename}
+    </TableCell>,
+    <TableCell
+      key="source"
+      className="max-w-[100px] hidden lg:table-cell"
+      data-testid="source-cell"
+    >
+      <div className="w-fit">
+        <SourceBadge source={model.source} />
+      </div>
+    </TableCell>,
+    <TableCell
+      key="actions"
+      className="w-[140px] whitespace-nowrap hidden sm:table-cell"
+    >
       {actionUi(model)}
     </TableCell>,
   ];
@@ -136,16 +277,46 @@ function ModelsPageContent() {
 
   return (
     <div data-testid="models-content" className="container mx-auto p-4">
-      <DataTable
-        data={data?.data || []}
-        columns={columns}
-        loading={isLoading}
-        sort={sort}
-        onSortChange={toggleSort}
-        renderRow={renderRow}
-        getItemId={getItemId}
-      />
-      <div className="mt-6">
+      {!hasDismissedBanner && (
+        <Alert className="mb-4">
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              Welcome to Models! Here you can manage your model aliases and
+              access their configurations. Create new aliases or edit existing
+              ones to customize your model settings.
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setHasDismissedBanner(true)}
+              title="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex justify-end m2-4">
+        <Button onClick={handleNewAlias} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          New Model Alias
+        </Button>
+      </div>
+
+      <div className="overflow-x-auto my-4">
+        <DataTable
+          data={data?.data || []}
+          columns={columns}
+          loading={isLoading}
+          sort={sort}
+          onSortChange={toggleSort}
+          renderRow={renderRow}
+          getItemId={getItemId}
+        />
+      </div>
+      <div className="mt-6 mb-4">
         <Pagination
           page={page}
           totalPages={
