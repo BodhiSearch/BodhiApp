@@ -98,10 +98,11 @@ export function PullForm() {
               name="repo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Repository</FormLabel>
+                  <FormLabel htmlFor="repo">Repository</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
+                      id="repo"
                       ref={repoInputRef}
                       placeholder="Enter repository"
                     />
@@ -123,10 +124,11 @@ export function PullForm() {
               name="filename"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Filename</FormLabel>
+                  <FormLabel htmlFor="filename">Filename</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
+                      id="filename"
                       ref={filenameInputRef}
                       placeholder="Enter filename"
                     />
@@ -143,7 +145,7 @@ export function PullForm() {
               )}
             />
 
-            <div className="flex justify-end space-x-2">
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"

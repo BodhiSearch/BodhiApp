@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import AliasForm from '@/components/AliasForm';
 import AppInitializer from '@/components/AppInitializer';
 
-export default function CreateAliasPage() {
+function NewModelContent() {
   const searchParams = useSearchParams();
 
   const initialData = {
@@ -18,9 +18,13 @@ export default function CreateAliasPage() {
     context_params: {},
   };
 
+  return <AliasForm isEditMode={false} initialData={initialData} />;
+}
+
+export default function NewModel() {
   return (
     <AppInitializer allowedStatus="ready" authenticated={true}>
-      <AliasForm isEditMode={false} initialData={initialData} />
+      <NewModelContent />
     </AppInitializer>
   );
 }
