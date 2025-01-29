@@ -3,6 +3,7 @@
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import { cn } from '@/lib/utils';
 
 interface SettingSliderProps {
   label: string;
@@ -29,44 +30,45 @@ export function SettingSlider({
   defaultValue,
   isLoading = false,
 }: SettingSliderProps) {
-  // Use provided value or default
   const currentValue = value ?? defaultValue ?? max;
-
-  // Determine if interactions should be disabled
   const isDisabled = isLoading || !enabled;
-
-  const handleValueChange = (values: number[]) => {
-    onValueChange(values[0]);
-  };
+  const id = `setting-${label.toLowerCase().replace(/\s+/g, '-')}`;
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label htmlFor={`setting-${label}`}>{label}</Label>
-        <div className="flex items-center gap-4">
+        <Label htmlFor={id}>{label}</Label>
+        <div className="flex items-center gap-2">
           <span
-            className={`text-sm text-muted-foreground ${isDisabled ? 'opacity-50' : ''}`}
+            className={cn(
+              'text-sm tabular-nums text-muted-foreground',
+              isDisabled && 'opacity-50'
+            )}
           >
             {currentValue}
           </span>
           <Switch
-            id={`setting-${label}-toggle`}
+            id={`${id}-toggle`}
             checked={enabled}
             onCheckedChange={onEnabledChange}
             disabled={isLoading}
+            size="sm"
           />
         </div>
       </div>
       <Slider
-        id={`setting-${label}`}
+        id={id}
         defaultValue={[currentValue]}
         max={max}
         min={min}
         step={step}
-        onValueChange={handleValueChange}
-        className={`[&_[role=slider]]:h-4 [&_[role=slider]]:w-4 ${isDisabled ? 'opacity-50' : ''}`}
-        aria-label={label}
+        onValueChange={(values) => onValueChange(values[0])}
         disabled={isDisabled}
+        className={cn(
+          '[&_[role=slider]]:h-4 [&_[role=slider]]:w-4',
+          isDisabled && 'opacity-50'
+        )}
+        aria-label={label}
       />
     </div>
   );

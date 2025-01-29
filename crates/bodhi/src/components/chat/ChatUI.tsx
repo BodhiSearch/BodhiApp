@@ -117,17 +117,22 @@ export function ChatUI() {
 
   return (
     <div data-testid="chat-ui" className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-4">
-        {(currentChat === null || !currentChat?.messages?.length) &&
-          !userMessage.content ? (
-          <EmptyState />
-        ) : (
-          <MessageList
-            messages={currentChat?.messages || []}
-            userMessage={userMessage}
-            assistantMessage={assistantMessage}
-          />
-        )}
+      <div className="relative flex-1 min-h-0">
+        <div className="absolute inset-0 overflow-y-auto">
+          <div className="sticky top-0 h-11 bg-background/80 backdrop-blur-sm z-30" />
+          <div className="px-4">
+            {(currentChat === null || !currentChat?.messages?.length) &&
+            !userMessage.content ? (
+              <EmptyState />
+            ) : (
+              <MessageList
+                messages={currentChat?.messages || []}
+                userMessage={userMessage}
+                assistantMessage={assistantMessage}
+              />
+            )}
+          </div>
+        </div>
       </div>
       <ChatInput
         input={input}

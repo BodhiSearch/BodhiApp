@@ -4,6 +4,31 @@ import { AliasSelector } from '@/components/settings/AliasSelector';
 import { createWrapper } from '@/tests/wrapper';
 import * as chatSettings from '@/hooks/use-chat-settings';
 
+// Mock useMediaQuery hook
+vi.mock("@/hooks/use-media-query", () => ({
+  useMediaQuery: (query: string) => {
+    return true;
+  }
+}))
+
+// Mock required HTMLElement methods and styles for Radix UI and Vaul components
+Object.assign(window.HTMLElement.prototype, {
+  scrollIntoView: vi.fn(),
+  releasePointerCapture: vi.fn(),
+  hasPointerCapture: vi.fn(),
+  setPointerCapture: vi.fn(),
+  getBoundingClientRect: vi.fn().mockReturnValue({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  }),
+});
+
 // Mock useChatSettings
 vi.mock('@/hooks/use-chat-settings', () => ({
   useChatSettings: vi.fn()

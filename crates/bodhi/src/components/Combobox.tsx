@@ -36,6 +36,7 @@ interface ComboBoxResponsiveProps {
   statuses: Status[];
   placeholder?: string;
   id?: string;
+  loading?: boolean;
 }
 
 export function ComboBoxResponsive({
@@ -44,6 +45,7 @@ export function ComboBoxResponsive({
   statuses,
   placeholder = '+ Set status',
   id,
+  loading = false,
 }: ComboBoxResponsiveProps) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -54,14 +56,17 @@ export function ComboBoxResponsive({
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            className="w-full justify-start"
+            className="w-full justify-start truncate"
             role="combobox"
             id={id}
             aria-expanded={open}
             aria-haspopup="listbox"
             type="button"
+            disabled={loading}
           >
-            {selectedStatus ? <>{selectedStatus.label}</> : <>{placeholder}</>}
+            <span className="truncate">
+              {selectedStatus ? selectedStatus.label : placeholder}
+            </span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
@@ -80,14 +85,17 @@ export function ComboBoxResponsive({
       <DrawerTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-start"
+          className="w-full justify-start truncate"
           role="combobox"
           id={id}
           aria-expanded={open}
           aria-haspopup="listbox"
           type="button"
+          disabled={loading}
         >
-          {selectedStatus ? <>{selectedStatus.label}</> : <>{placeholder}</>}
+          <span className="truncate">
+            {selectedStatus ? selectedStatus.label : placeholder}
+          </span>
         </Button>
       </DrawerTrigger>
       <DrawerContent>

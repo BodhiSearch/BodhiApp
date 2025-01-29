@@ -8,22 +8,20 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
   const isUser = message.role === 'user';
-  
+
   return (
     <div
       className={cn(
         'rounded-lg p-4',
-        isUser 
-          ? 'bg-primary/10 text-primary-foreground' 
+        isUser
+          ? 'bg-primary/10 text-primary-foreground'
           : 'bg-muted/50 text-foreground'
       )}
     >
       <div className="mb-2 text-sm font-medium">
         {isUser ? 'You' : 'Assistant'}
       </div>
-      <MemoizedReactMarkdown 
-        className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:leading-relaxed prose-pre:p-0"
-      >
+      <MemoizedReactMarkdown className="prose prose-sm dark:prose-invert max-w-none break-words prose-p:leading-relaxed prose-pre:p-0">
         {message.content}
       </MemoizedReactMarkdown>
     </div>

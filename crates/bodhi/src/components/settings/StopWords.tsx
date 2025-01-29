@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, KeyboardEvent } from 'react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { X } from 'lucide-react';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { X } from 'lucide-react';
+import { KeyboardEvent, useState } from 'react';
 import { Button } from '../ui/button';
 
 interface StopWordsProps {
@@ -49,6 +49,7 @@ export function StopWords({ isLoading = false }: StopWordsProps) {
           checked={stop_enabled}
           onCheckedChange={setStopEnabled}
           disabled={isLoading}
+          size="sm"
         />
       </div>
       <div className="space-y-2">
