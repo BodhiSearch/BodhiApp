@@ -16,6 +16,15 @@ const fontSans = FontSans({
   variable: '--font-sans',
 });
 
+// Script to handle initial theme to prevent flash
+const themeScript = `
+  let theme = window.localStorage.getItem('bodhi-ui-theme')
+  if (!theme) {
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  }
+  document.documentElement.classList.add(theme)
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -23,9 +32,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body
         className={cn(
-          'min-h-screen bg-background text-foreground font-sans antialiased',
+          'min-h-screen bg-background font-sans antialiased',
           fontSans.variable
         )}
         suppressHydrationWarning
@@ -34,15 +46,17 @@ export default function RootLayout({
           <ClientProviders>
             <NavigationProvider>
               <div
-                className="min-h-screen flex flex-col"
+                className="flex min-h-screen flex-col"
                 data-testid="root-layout"
               >
                 <header
-                  className="sticky top-0 z-50 flex h-16 items-center border-b border-border bg-header-elevated/90 backdrop-blur-sm"
+                  className="sticky top-0 z-50 h-16 border-b bg-header-elevated/90 backdrop-blur-sm"
                   data-testid="app-header"
                 >
-                  <AppNavigation />
-                  <AppBreadcrumb />
+                  <div className="flex h-full items-center">
+                    <AppNavigation />
+                    <AppBreadcrumb />
+                  </div>
                 </header>
                 <main className="flex-1" data-testid="app-main">
                   {children}
