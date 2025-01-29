@@ -1,7 +1,7 @@
 import EditAliasPage from '@/app/ui/models/edit/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
@@ -16,8 +16,32 @@ import {
   vi,
 } from 'vitest';
 
-const mockToast = vi.fn();
+// Mock useMediaQuery hook
+vi.mock("@/hooks/use-media-query", () => ({
+  useMediaQuery: (query: string) => {
+    return true;
+  }
+}))
 
+// Mock required HTMLElement methods and styles for Radix UI and Vaul components
+Object.assign(window.HTMLElement.prototype, {
+  scrollIntoView: vi.fn(),
+  releasePointerCapture: vi.fn(),
+  hasPointerCapture: vi.fn(),
+  setPointerCapture: vi.fn(),
+  getBoundingClientRect: vi.fn().mockReturnValue({
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  }),
+});
+
+const mockToast = vi.fn();
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
@@ -86,7 +110,13 @@ describe('EditAliasPage', () => {
         return res(ctx.json(mockChatTemplatesResponse));
       }),
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
-        return res(ctx.json({ data: [] }));
+        return res(ctx.json({
+          data: [
+            { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' },
+            { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' },
+            { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main' }
+          ]
+        }));
       }),
       rest.put(`*${ENDPOINT_MODELS}/test-alias`, (_, res, ctx) => {
         return res(
@@ -107,12 +137,10 @@ describe('EditAliasPage', () => {
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/chat template/i)).toBeInTheDocument();
 
-    expect(screen.getByRole('textbox', { name: /repo/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('textbox', { name: /filename/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('textbox', { name: /chat template/i })
+      screen.getByRole('combobox', { name: /chat template/i })
     ).toBeInTheDocument();
 
     expect(
@@ -120,15 +148,9 @@ describe('EditAliasPage', () => {
     ).toBeInTheDocument();
 
     expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
-    expect(screen.getByRole('textbox', { name: /repo/i })).toHaveValue(
-      'owner1/repo1'
-    );
-    expect(screen.getByRole('textbox', { name: /filename/i })).toHaveValue(
-      'file1.gguf'
-    );
-    expect(
-      screen.getByRole('textbox', { name: /chat template/i })
-    ).toHaveValue('llama2');
+    expect(screen.getByRole('combobox', { name: /repo/i })).toHaveTextContent('owner1/repo1');
+    expect(screen.getByRole('combobox', { name: /filename/i })).toHaveTextContent('file1.gguf');
+    expect(screen.getByRole('combobox', { name: /chat template/i })).toHaveTextContent('llama2');
   });
 
   it('submits the form with updated data', async () => {
@@ -140,23 +162,41 @@ describe('EditAliasPage', () => {
 
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
 
-    await user.clear(screen.getByRole('textbox', { name: /repo/i }));
-    await user.type(
-      screen.getByRole('textbox', { name: /repo/i }),
-      'owner2/repo2'
+    // Open repo combobox
+    await user.click(screen.getByRole('combobox', { name: /repo/i }));
+    const repoPopover = screen.getByRole('dialog');
+    const repoItems = within(repoPopover).getAllByRole('option');
+    const owner2Repo2Option = repoItems.find(item =>
+      item.textContent?.includes('owner2/repo2')
     );
+    if (!owner2Repo2Option) {
+      throw new Error('Could not find owner2/repo2 option');
+    }
+    await user.click(owner2Repo2Option);
 
-    await user.clear(screen.getByRole('textbox', { name: /filename/i }));
-    await user.type(
-      screen.getByRole('textbox', { name: /filename/i }),
-      'file3.gguf'
+    // Open filename combobox
+    await user.click(screen.getByRole('combobox', { name: /filename/i }));
+    const filenamePopover = screen.getByRole('dialog');
+    const filenameItems = within(filenamePopover).getAllByRole('option');
+    const file3Option = filenameItems.find(item =>
+      item.textContent?.includes('file3.gguf')
     );
+    if (!file3Option) {
+      throw new Error('Could not find file3.gguf option');
+    }
+    await user.click(file3Option);
 
-    await user.clear(screen.getByRole('textbox', { name: /chat template/i }));
-    await user.type(
-      screen.getByRole('textbox', { name: /chat template/i }),
-      'llama3'
+    // Open chat template combobox
+    await user.click(screen.getByRole('combobox', { name: /chat template/i }));
+    const chatTemplatePopover = screen.getByRole('dialog');
+    const chatTemplateItems = within(chatTemplatePopover).getAllByRole('option');
+    const llama3Option = chatTemplateItems.find(item =>
+      item.textContent?.includes('llama3')
     );
+    if (!llama3Option) {
+      throw new Error('Could not find llama3 option');
+    }
+    await user.click(llama3Option);
 
     await user.click(
       screen.getByRole('button', { name: /update model alias/i })

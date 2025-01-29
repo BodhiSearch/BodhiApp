@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,7 +27,7 @@ import {
   useChatTemplates,
   useModelFiles,
 } from '@/hooks/useQuery';
-import { AutocompleteInput } from '@/components/AutocompleteInput';
+import { ComboBoxResponsive } from '@/components/Combobox';
 
 interface AliasFormProps {
   isEditMode: boolean;
@@ -44,40 +44,44 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     isEditMode && Object.keys(initialData?.context_params || {}).length > 0
   );
 
-  const { data: chatTemplates, isLoading: chatTemplatesLoading } =
-    useChatTemplates();
-  const { data: modelsData, isLoading: modelsLoading } = useModelFiles(
-    1,
-    100,
-    'alias',
-    'asc'
-  );
-
-  const repoInputRef = useRef<HTMLInputElement>(null);
-  const filenameInputRef = useRef<HTMLInputElement>(null);
-  const chatTemplateInputRef = useRef<HTMLInputElement>(null);
+  const { data: chatTemplates } = useChatTemplates();
+  const { data: modelsData } = useModelFiles(1, 100, 'alias', 'asc');
 
   const [currentRepo, setCurrentRepo] = useState(initialData?.repo || '');
 
-  const repos = useMemo(() => {
+  const repoOptions = useMemo(() => {
     if (!modelsData) return [];
     const repoSet = new Set(modelsData.data.map((model) => model.repo));
-    return Array.from(repoSet).sort((a, b) =>
-      a.toLowerCase().localeCompare(b.toLowerCase())
-    );
+    return Array.from(repoSet)
+      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+      .map((repo) => ({
+        value: repo,
+        label: repo,
+      }));
   }, [modelsData]);
 
-  const filenames = useMemo(() => {
+  const filenameOptions = useMemo(() => {
     if (!modelsData || !currentRepo) return [];
     const filenameSet = new Set(
       modelsData.data
         .filter((model) => model.repo === currentRepo)
         .map((model) => model.filename)
     );
-    return Array.from(filenameSet).sort((a, b) =>
-      a.toLowerCase().localeCompare(b.toLowerCase())
-    );
+    return Array.from(filenameSet)
+      .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
+      .map((filename) => ({
+        value: filename,
+        label: filename,
+      }));
   }, [modelsData, currentRepo]);
+
+  const chatTemplateOptions = useMemo(() => {
+    if (!chatTemplates) return [];
+    return chatTemplates.map((template) => ({
+      value: template,
+      label: template,
+    }));
+  }, [chatTemplates]);
 
   const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasSchema),
@@ -265,79 +269,84 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               )}
             />
 
-            {/* Repo field with AutocompleteInput */}
+            {/* Replace Repo field with ComboBoxResponsive */}
             <FormField
               control={form.control}
               name="repo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Repo</FormLabel>
+                  <FormLabel htmlFor="repo-select">Repo</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      ref={repoInputRef}
-                      placeholder="Enter repo"
+                    <ComboBoxResponsive
+                      selectedStatus={
+                        field.value
+                          ? { value: field.value, label: field.value }
+                          : null
+                      }
+                      setSelectedStatus={(selected) =>
+                        field.onChange(selected?.value || '')
+                      }
+                      statuses={repoOptions}
+                      placeholder="Select repo"
+                      id="repo-select"
                     />
                   </FormControl>
-                  <AutocompleteInput
-                    value={field.value}
-                    onChange={(value) => field.onChange(value)}
-                    suggestions={repos}
-                    loading={modelsLoading}
-                    inputRef={repoInputRef}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Filename field with AutocompleteInput */}
+            {/* Replace Filename field with ComboBoxResponsive */}
             <FormField
               control={form.control}
               name="filename"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Filename</FormLabel>
+                  <FormLabel htmlFor="filename-select">Filename</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      ref={filenameInputRef}
-                      placeholder="Enter filename"
+                    <ComboBoxResponsive
+                      selectedStatus={
+                        field.value
+                          ? { value: field.value, label: field.value }
+                          : null
+                      }
+                      setSelectedStatus={(selected) =>
+                        field.onChange(selected?.value || '')
+                      }
+                      statuses={filenameOptions}
+                      placeholder="Select filename"
+                      id="filename-select"
                     />
                   </FormControl>
-                  <AutocompleteInput
-                    value={field.value}
-                    onChange={(value) => field.onChange(value)}
-                    suggestions={filenames}
-                    loading={modelsLoading}
-                    inputRef={filenameInputRef}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Chat Template field with AutocompleteInput */}
+            {/* Chat Template field with ComboBoxResponsive */}
             <FormField
               control={form.control}
               name="chat_template"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Chat Template</FormLabel>
+                  <FormLabel htmlFor="chat-template-select">
+                    Chat Template
+                  </FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      ref={chatTemplateInputRef}
-                      placeholder="Enter chat template"
+                    <ComboBoxResponsive
+                      selectedStatus={
+                        field.value
+                          ? { value: field.value, label: field.value }
+                          : null
+                      }
+                      setSelectedStatus={(selected) =>
+                        field.onChange(selected?.value || '')
+                      }
+                      statuses={chatTemplateOptions}
+                      placeholder="Select chat template"
+                      id="chat-template-select"
                     />
                   </FormControl>
-                  <AutocompleteInput
-                    value={field.value}
-                    onChange={(value) => field.onChange(value)}
-                    suggestions={chatTemplates || []}
-                    loading={chatTemplatesLoading}
-                    inputRef={chatTemplateInputRef}
-                  />
                   <FormMessage />
                 </FormItem>
               )}
