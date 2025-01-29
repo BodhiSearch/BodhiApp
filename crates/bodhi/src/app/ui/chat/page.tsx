@@ -9,8 +9,8 @@ import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
   SidebarProvider,
+  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -68,12 +68,9 @@ function ChatWithHistory() {
     <>
       <Sidebar side="left">
         <SidebarContent>
-          <SidebarGroup>
-            <NewChatButton />
-          </SidebarGroup>
-          <SidebarGroup>
-            <ChatHistory />
-          </SidebarGroup>
+          <NewChatButton />
+          <SidebarSeparator />
+          <ChatHistory />
         </SidebarContent>
       </Sidebar>
       <div className="flex flex-1 flex-col w-full">
