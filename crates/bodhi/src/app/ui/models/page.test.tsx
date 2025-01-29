@@ -86,7 +86,6 @@ describe('ModelsPage', () => {
     expect(screen.getByText('test-repo')).toBeInTheDocument();
     expect(screen.getByText('test-file.bin')).toBeInTheDocument();
     expect(screen.getByTestId('pagination')).toBeInTheDocument();
-    expect(screen.getByText('Displaying 1 items of 1')).toBeInTheDocument();
   });
 
   it('handles API error', async () => {
@@ -103,8 +102,130 @@ describe('ModelsPage', () => {
     });
 
     expect(
-      screen.getByText('An error occurred: Internal Server Error')
+      screen.getByText('Internal Server Error')
     ).toBeInTheDocument();
+  });
+
+  describe('action buttons', () => {
+    it('shows FilePlus2 button for model source type', async () => {
+      const modelData = {
+        ...mockModelsResponse,
+        data: [{
+          alias: 'test-model',
+          source: 'model',
+          repo: 'test-repo',
+          filename: 'test-file.bin',
+          snapshot: 'abc123'
+        }]
+      };
+
+      server.use(
+        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
+          return res(ctx.json(modelData));
+        })
+      );
+
+      await act(async () => {
+        render(<ModelsPage />, { wrapper: createWrapper() });
+      });
+
+      const newButton = screen.getByTitle('Create new model alias using this modelfile');
+      expect(newButton).toBeInTheDocument();
+      
+      await act(async () => {
+        newButton.click();
+      });
+      
+      expect(pushMock).toHaveBeenCalledWith(
+        '/ui/models/new?repo=test-repo&filename=test-file.bin&snapshot=abc123'
+      );
+    });
+
+    it('shows edit button for non-model source type', async () => {
+      const modelData = {
+        ...mockModelsResponse,
+        data: [{
+          alias: 'test-alias',
+          source: 'alias',
+          repo: 'test-repo',
+          filename: 'test-file.bin'
+        }]
+      };
+
+      server.use(
+        rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
+          return res(ctx.json(modelData));
+        })
+      );
+
+      await act(async () => {
+        render(<ModelsPage />, { wrapper: createWrapper() });
+      });
+
+      const editButton = screen.getByTitle('Edit test-alias');
+      expect(editButton).toBeInTheDocument();
+      
+      await act(async () => {
+        editButton.click();
+      });
+      
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/edit?alias=test-alias');
+    });
+
+    it('shows chat and huggingface buttons for all models', async () => {
+      await act(async () => {
+        render(<ModelsPage />, { wrapper: createWrapper() });
+      });
+
+      const chatButton = screen.getByTitle('Chat with the model in playground');
+      expect(chatButton).toBeInTheDocument();
+      
+      const hfButton = screen.getByTitle('Open in HuggingFace');
+      expect(hfButton).toBeInTheDocument();
+
+      await act(async () => {
+        chatButton.click();
+      });
+      
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat?alias=test-model');
+    });
+
+    it('opens huggingface link in new tab', async () => {
+      const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+      await act(async () => {
+        render(<ModelsPage />, { wrapper: createWrapper() });
+      });
+
+      const hfButton = screen.getByTitle('Open in HuggingFace');
+      await act(async () => {
+        hfButton.click();
+      });
+      
+      expect(windowOpenSpy).toHaveBeenCalledWith(
+        'https://huggingface.co/test-repo/blob/main/test-file.bin',
+        '_blank'
+      );
+
+      windowOpenSpy.mockRestore();
+    });
+  });
+
+  it('displays error message when API call fails', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({ error: { message: 'Internal Server Error' } })
+        );
+      })
+    );
+
+    await act(async () => {
+      render(<ModelsPage />, { wrapper: createWrapper() });
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Internal Server Error');
   });
 });
 

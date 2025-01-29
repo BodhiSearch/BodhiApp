@@ -23,6 +23,9 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue('test-alias'),
+  }),
 }));
 
 vi.mock('@/hooks/use-toast', () => ({

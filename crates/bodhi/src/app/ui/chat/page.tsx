@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import { ChatHistory } from '@/components/chat/ChatHistory';
 import { ChatUI } from '@/components/chat/ChatUI';
@@ -17,10 +18,10 @@ import { ChatDBProvider } from '@/hooks/use-chat-db';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { cn } from '@/lib/utils';
 import { Settings2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 
 function ChatWithSettings() {
   const { open, isMobile } = useSidebar();
-
   return (
     <>
       <div
@@ -51,6 +52,10 @@ function ChatWithSettings() {
 
 function ChatWithHistory() {
   const { open } = useSidebar();
+  const searchParams = useSearchParams();
+  const alias = searchParams.get('alias');
+  const initialData = alias ? { model: alias } : undefined;
+
   return (
     <>
       <Sidebar side="left">
@@ -75,7 +80,7 @@ function ChatWithHistory() {
             )}
             aria-label="Toggle settings"
           />
-          <ChatSettingsProvider>
+          <ChatSettingsProvider initialData={initialData}>
             <SidebarProvider
               inner
               className="flex-1 flex flex-col overflow-hidden"

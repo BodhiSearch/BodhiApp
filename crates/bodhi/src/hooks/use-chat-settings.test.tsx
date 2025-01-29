@@ -217,4 +217,91 @@ describe('useChatSettings', () => {
       expect(result.current.stop_enabled).toBe(false);
     });
   });
+
+  describe('initialData handling', () => {
+    it('should apply initialData over default settings', () => {
+      const initialData = {
+        model: 'test-model',
+        temperature: 0.8,
+        temperature_enabled: true
+      };
+
+      const { result } = renderHook(() => useChatSettings(), {
+        wrapper: ({ children }) => (
+          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
+        )
+      });
+
+      expect(result.current.model).toBe('test-model');
+      expect(result.current.temperature).toBe(0.8);
+      expect(result.current.temperature_enabled).toBe(true);
+      // Other settings should remain at defaults
+      expect(result.current.stream_enabled).toBe(true);
+    });
+
+    it('should apply initialData over localStorage values', () => {
+      // Set up localStorage with some values
+      localStorage.setItem('chat-settings', JSON.stringify({
+        model: 'stored-model',
+        temperature: 0.5,
+        temperature_enabled: false
+      }));
+
+      const initialData = {
+        model: 'initial-model',
+        temperature: 0.9,
+        temperature_enabled: true
+      };
+
+      const { result } = renderHook(() => useChatSettings(), {
+        wrapper: ({ children }) => (
+          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
+        )
+      });
+
+      // Initial data should override localStorage values
+      expect(result.current.model).toBe('initial-model');
+      expect(result.current.temperature).toBe(0.9);
+      expect(result.current.temperature_enabled).toBe(true);
+    });
+
+    it('should handle partial initialData', () => {
+      const initialData = {
+        model: 'test-model'
+        // Only setting model, other settings should use defaults
+      };
+
+      const { result } = renderHook(() => useChatSettings(), {
+        wrapper: ({ children }) => (
+          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
+        )
+      });
+
+      expect(result.current.model).toBe('test-model');
+      // Other settings should remain at defaults
+      expect(result.current.temperature_enabled).toBe(false);
+      expect(result.current.stream_enabled).toBe(true);
+    });
+
+    it('should persist settings with initialData to localStorage', () => {
+      const initialData = {
+        model: 'test-model',
+        temperature: 0.8,
+        temperature_enabled: true
+      };
+
+      renderHook(() => useChatSettings(), {
+        wrapper: ({ children }) => (
+          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
+        )
+      });
+
+      const saved = JSON.parse(localStorage.getItem('chat-settings') || '{}');
+      expect(saved).toMatchObject({
+        model: 'test-model',
+        temperature: 0.8,
+        temperature_enabled: true
+      });
+    });
+  });
 }); 
