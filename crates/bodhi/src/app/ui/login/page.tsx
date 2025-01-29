@@ -14,7 +14,7 @@ export function LoginContent() {
   const isNonAuthz = appInfo && !appInfo.authz;
 
   if (userLoading || appLoading) {
-    return <AuthCard title="Loading" isLoading={true} />;
+    return <AuthCard title="Loading..." isLoading={true} />;
   }
 
   if (userInfo?.logged_in) {
@@ -32,7 +32,6 @@ export function LoginContent() {
             label: isLoggingOut ? 'Logging out...' : 'Log Out',
             onClick: () => logout(),
             disabled: isLoggingOut,
-            loading: isLoggingOut,
             variant: 'destructive',
           },
         ]}

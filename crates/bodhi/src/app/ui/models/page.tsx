@@ -21,7 +21,7 @@ const columns = [
 function ModelsPageContent() {
   const router = useRouter();
   const [page, setPage] = useState(1);
-  const [pageSize] = useState(30);
+  const [pageSize] = useState(10);
   const [sort, setSort] = useState<SortState>({
     column: 'alias',
     direction: 'asc',

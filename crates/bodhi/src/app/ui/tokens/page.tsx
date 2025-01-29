@@ -168,8 +168,8 @@ export function TokenPageContent() {
           <Alert>
             <Shield className="h-4 w-4" />
             <AlertDescription>
-              API tokens provide full access to the API. Keep them secure and
-              never share them. Tokens cannot be viewed again after creation.
+              API tokens provide full access to the API. Keep them secure.
+              Tokens cannot be viewed again after creation.
             </AlertDescription>
           </Alert>
           <div className="mt-6">

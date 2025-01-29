@@ -20,6 +20,7 @@ interface Column {
   id: string;
   name: string;
   sorted: boolean;
+  className?: string;
 }
 
 interface DataTableProps<T> {
@@ -62,67 +63,77 @@ export function DataTable<T>({
 
   if (loading) {
     return (
-      <div className="space-y-2">
-        {[...Array(5)].map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full" />
-        ))}
-      </div>
+      <Table>
+        <TableBody>
+          {[...Array(5)].map((_, i) => (
+            <TableRow key={i}>
+              <TableCell colSpan={columns.length + 1}>
+                <Skeleton className="h-12 w-full" />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     );
   }
+
+  const renderTableRows = (item: T) => (
+    <TableRow key={getItemId(item)}>
+      {renderRow(item)}
+      {renderExpandedRow && (
+        <TableCell>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleRowExpansion(getItemId(item))}
+          >
+            {expandedRow === getItemId(item) ? <ChevronUp /> : <ChevronDown />}
+          </Button>
+        </TableCell>
+      )}
+    </TableRow>
+  );
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
           {columns.map((column) => (
-            <TableHead key={column.id}>
+            <TableHead key={column.id} className={column.className}>
               {column.sorted ? (
                 <Button
                   variant="ghost"
                   onClick={() => onSortChange(column.id)}
-                  className="font-bold"
+                  className="h-8 px-2 font-medium"
                 >
                   {column.name}
                   {renderSortIcon(column.id)}
                 </Button>
               ) : (
-                <span className="font-bold">{column.name}</span>
+                column.name
               )}
             </TableHead>
           ))}
-          {renderExpandedRow && <TableHead></TableHead>}
+          {renderExpandedRow && <TableHead className="w-10" />}
         </TableRow>
       </TableHeader>
       <TableBody>
-        {data.map((item) => (
-          <React.Fragment key={getItemId(item)}>
-            <TableRow>
-              {renderRow(item)}
-              {renderExpandedRow && (
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleRowExpansion(getItemId(item))}
-                  >
-                    {expandedRow === getItemId(item) ? (
-                      <ChevronUp />
-                    ) : (
-                      <ChevronDown />
-                    )}
-                  </Button>
-                </TableCell>
+        {data.map((item) =>
+          renderExpandedRow ? (
+            <React.Fragment key={getItemId(item)}>
+              {renderTableRows(item)}
+              {expandedRow === getItemId(item) && (
+                <TableRow>
+                  <TableCell colSpan={columns.length + 1}>
+                    {renderExpandedRow(item)}
+                  </TableCell>
+                </TableRow>
               )}
-            </TableRow>
-            {renderExpandedRow && expandedRow === getItemId(item) && (
-              <TableRow>
-                <TableCell colSpan={columns.length + 1}>
-                  {renderExpandedRow(item)}
-                </TableCell>
-              </TableRow>
-            )}
-          </React.Fragment>
-        ))}
+            </React.Fragment>
+          ) : (
+            <TableRow key={getItemId(item)}>{renderRow(item)}</TableRow>
+          )
+        )}
       </TableBody>
     </Table>
   );
@@ -138,19 +149,23 @@ export function Pagination({
   onPageChange: (newPage: number) => void;
 }) {
   return (
-    <div className="flex items-center space-x-4">
+    <div className="flex justify-center gap-4">
       <Button
+        size="sm"
         onClick={() => onPageChange(Math.max(1, page - 1))}
         disabled={page === 1}
+        className="px-6"
       >
         Previous
       </Button>
-      <span>
-        Page {page} of {totalPages}
+      <span className="flex items-center">
+        {page}/{totalPages}
       </span>
       <Button
+        size="sm"
         onClick={() => onPageChange(page + 1)}
         disabled={page === totalPages}
+        className="px-6"
       >
         Next
       </Button>

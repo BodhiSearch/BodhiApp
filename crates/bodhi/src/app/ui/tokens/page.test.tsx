@@ -125,7 +125,7 @@ describe('TokenPageContent', () => {
 
     // Check security warning
     expect(screen.getByText(/API tokens provide full access to the API/)).toBeInTheDocument();
-    expect(screen.getByText(/Keep them secure and never share them/)).toBeInTheDocument();
+    expect(screen.getByText(/Keep them secure/)).toBeInTheDocument();
     expect(screen.getByText(/Tokens cannot be viewed again/)).toBeInTheDocument();
 
     // Check form is rendered
