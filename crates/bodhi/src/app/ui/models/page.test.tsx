@@ -62,6 +62,20 @@ beforeEach(() => {
   pushMock.mockClear();
 });
 
+// Mock window.matchMedia for responsive testing
+function mockMatchMedia(matches: boolean) {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  }));
+}
+
 describe('ModelsPage', () => {
   beforeEach(() => {
     server.use(
@@ -77,15 +91,52 @@ describe('ModelsPage', () => {
     );
   });
 
-  it('renders models data successfully', async () => {
-    await act(async () => {
-      render(<ModelsPage />, { wrapper: createWrapper() });
-    });
+  it('renders responsive layouts correctly', async () => {
+    // Test mobile view (< sm)
+    mockMatchMedia(false);
 
-    expect(screen.getByText('test-model')).toBeInTheDocument();
-    expect(screen.getByText('test-repo')).toBeInTheDocument();
-    expect(screen.getByText('test-file.bin')).toBeInTheDocument();
-    expect(screen.getByTestId('pagination')).toBeInTheDocument();
+    const { unmount } = render(<ModelsPage />, { wrapper: createWrapper() });
+
+    // Wait for data to load
+    await screen.findByTestId('combined-cell');
+
+    // Mobile view should show combined cell
+    expect(screen.getAllByTestId('combined-cell')[0]).toBeVisible();
+
+    unmount();
+
+    // Test tablet view (sm to lg)
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query.includes('sm') && !query.includes('lg'),
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    render(<ModelsPage />, { wrapper: createWrapper() });
+    await screen.findByTestId('name-source-cell');
+
+    // Tablet view should show combined name+source and repo+filename columns
+    expect(screen.getAllByTestId('name-source-cell')[0]).toBeVisible();
+    expect(screen.getAllByTestId('repo-filename-cell')[0]).toBeVisible();
+
+    unmount();
+
+    // Test desktop view (>= lg)
+    mockMatchMedia(true);
+
+    render(<ModelsPage />, { wrapper: createWrapper() });
+    await screen.findByTestId('alias-cell');
+
+    // Desktop view should show separate columns
+    expect(screen.getAllByTestId('alias-cell')[0]).toBeVisible();
+    expect(screen.getAllByTestId('repo-cell')[0]).toBeVisible();
+    expect(screen.getAllByTestId('filename-cell')[0]).toBeVisible();
+    expect(screen.getAllByTestId('source-cell')[0]).toBeVisible();
   });
 
   it('handles API error', async () => {
@@ -129,13 +180,13 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      const newButton = screen.getByTitle('Create new model alias using this modelfile');
+      const newButton = screen.getAllByTitle('Create new model alias using this modelfile')[0];
       expect(newButton).toBeInTheDocument();
-      
+
       await act(async () => {
         newButton.click();
       });
-      
+
       expect(pushMock).toHaveBeenCalledWith(
         '/ui/models/new?repo=test-repo&filename=test-file.bin&snapshot=abc123'
       );
@@ -162,13 +213,13 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      const editButton = screen.getByTitle('Edit test-alias');
+      const editButton = screen.getAllByTitle('Edit test-alias')[0];
       expect(editButton).toBeInTheDocument();
-      
+
       await act(async () => {
         editButton.click();
       });
-      
+
       expect(pushMock).toHaveBeenCalledWith('/ui/models/edit?alias=test-alias');
     });
 
@@ -177,16 +228,16 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      const chatButton = screen.getByTitle('Chat with the model in playground');
+      const chatButton = screen.getAllByTitle('Chat with the model in playground')[0];
       expect(chatButton).toBeInTheDocument();
-      
-      const hfButton = screen.getByTitle('Open in HuggingFace');
+
+      const hfButton = screen.getAllByTitle('Open in HuggingFace')[0];
       expect(hfButton).toBeInTheDocument();
 
       await act(async () => {
         chatButton.click();
       });
-      
+
       expect(pushMock).toHaveBeenCalledWith('/ui/chat?alias=test-model');
     });
 
@@ -197,11 +248,11 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      const hfButton = screen.getByTitle('Open in HuggingFace');
+      const hfButton = screen.getAllByTitle('Open in HuggingFace')[0];
       await act(async () => {
         hfButton.click();
       });
-      
+
       expect(windowOpenSpy).toHaveBeenCalledWith(
         'https://huggingface.co/test-repo/blob/main/test-file.bin',
         '_blank'
