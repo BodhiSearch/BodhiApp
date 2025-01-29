@@ -20,11 +20,9 @@ import { cn } from '@/lib/utils';
 import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 
-const SIDEBAR_WIDTH = '24rem';
-
 // Define custom CSS properties for TypeScript
 const sidebarStyles = {
-  '--sidebar-width': SIDEBAR_WIDTH,
+  '--sidebar-width': '24rem',
   '--sidebar-width-mobile': '90vw',
 } as React.CSSProperties;
 
@@ -36,7 +34,7 @@ function ChatWithSettings() {
         className={cn(
           'flex-1 flex flex-col min-w-0',
           'transition-[margin] duration-300 ease-in-out',
-          !isMobile && open ? `mr-[${SIDEBAR_WIDTH}]` : ''
+          !isMobile && open ? `mr-[calc(24rem)]` : ''
         )}
       >
         <ChatUI />
@@ -46,7 +44,7 @@ function ChatWithSettings() {
         size="icon"
         className={cn(
           'fixed z-40 transition-all duration-300 right-0 top-20 h-7 w-7 -ml-1 md:right-0',
-          open && `md:right-[${SIDEBAR_WIDTH}]`,
+          open && `md:right-[calc(24rem)]`,
           !open && 'md:right-4'
         )}
         aria-label="Toggle settings"

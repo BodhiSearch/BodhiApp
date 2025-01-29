@@ -69,32 +69,49 @@ export function ChatHistory() {
   );
 
   return (
-    <SidebarMenu>
-      <ScrollArea className="h-full">
-        <div className="flex flex-col gap-4 p-2">
-          <div className="space-y-4">
-            <HistoryGroup title="TODAY">
-              {todayChats.map((chat) =>
-                renderChat(chat, chat.id === currentChatId)
+    <div className="flex h-full flex-col">
+      <div className="flex-1 overflow-y-auto">
+        <SidebarMenu>
+          <ScrollArea className="h-full">
+            <div className="flex flex-col gap-4 p-2">
+              {todayChats.length > 0 && (
+                <div className="space-y-4">
+                  <HistoryGroup title="TODAY">
+                    {todayChats.map((chat) =>
+                      renderChat(chat, chat.id === currentChatId)
+                    )}
+                  </HistoryGroup>
+                </div>
               )}
-            </HistoryGroup>
-          </div>
-          <div className="space-y-4">
-            <HistoryGroup title="YESTERDAY">
-              {yesterdayChats.map((chat) =>
-                renderChat(chat, chat.id === currentChatId)
+              {yesterdayChats.length > 0 && (
+                <div className="space-y-4">
+                  <HistoryGroup title="YESTERDAY">
+                    {yesterdayChats.map((chat) =>
+                      renderChat(chat, chat.id === currentChatId)
+                    )}
+                  </HistoryGroup>
+                </div>
               )}
-            </HistoryGroup>
-          </div>
-          <div className="space-y-4">
-            <HistoryGroup title="PREVIOUS 7 DAYS">
-              {previousChats.map((chat) =>
-                renderChat(chat, chat.id === currentChatId)
+              {previousChats.length > 0 && (
+                <div className="space-y-4">
+                  <HistoryGroup title="PREVIOUS 7 DAYS">
+                    {previousChats.map((chat) =>
+                      renderChat(chat, chat.id === currentChatId)
+                    )}
+                  </HistoryGroup>
+                </div>
               )}
-            </HistoryGroup>
-          </div>
-        </div>
-      </ScrollArea>
-    </SidebarMenu>
+            </div>
+          </ScrollArea>
+        </SidebarMenu>
+      </div>
+
+      <div className="border-t p-4">
+        <p className="text-xs text-muted-foreground text-center">
+          Chat history is stored in your browser and may be lost if you clear
+          your data.
+        </p>
+      </div>
+    </div>
   );
 }
