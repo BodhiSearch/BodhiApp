@@ -31,6 +31,7 @@ export function SystemPrompt({ isLoading = false }: SystemPromptProps) {
           checked={systemPrompt_enabled}
           onCheckedChange={setSystemPromptEnabled}
           disabled={isLoading}
+          size="sm"
         />
       </div>
       <Textarea

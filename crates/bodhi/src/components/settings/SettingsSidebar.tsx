@@ -15,6 +15,22 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { SettingSlider } from '@/components/settings/SettingSlider';
+import { Input } from '@/components/ui/input';
+
+interface SettingRowProps {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}
+
+function SettingRow({ label, htmlFor, children }: SettingRowProps) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <Label htmlFor={htmlFor}>{label}</Label>
+      {children}
+    </div>
+  );
+}
 
 export function SettingsSidebar() {
   const { data: modelsResponse, isLoading } = useModels(1, 100, 'alias', 'asc');
@@ -28,36 +44,37 @@ export function SettingsSidebar() {
       variant="floating"
       data-testid="settings-sidebar"
     >
-      <SidebarHeader>
-        <h2>Settings</h2>
+      <SidebarHeader className="px-4 py-2 bg-muted">
+        <h2 className="text-lg font-semibold">Settings</h2>
       </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup>
-          <div className="space-y-4">
+      <SidebarContent className="h-[calc(100vh-4rem)]">
+        <SidebarGroup className="pb-20">
+          <div className="space-y-6">
             <AliasSelector models={models} isLoading={isLoading} />
-            <div className="flex items-center justify-between">
-              <Label htmlFor="stream-mode">Stream Response</Label>
+
+            <SettingRow label="Stream Response" htmlFor="stream-mode">
               <Switch
                 id="stream-mode"
                 checked={settings.stream}
                 onCheckedChange={settings.setStream}
                 disabled={isLoading}
+                size="sm"
               />
-            </div>
+            </SettingRow>
+
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="api-token">API Token</Label>
+              <SettingRow label="API Token" htmlFor="api-token-enabled">
                 <Switch
                   id="api-token-enabled"
                   checked={settings.api_token_enabled}
                   onCheckedChange={settings.setApiTokenEnabled}
                   disabled={isLoading}
+                  size="sm"
                 />
-              </div>
-              <input
+              </SettingRow>
+              <Input
                 type="password"
                 id="api-token"
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
                 value={settings.api_token || ''}
                 onChange={(e) =>
                   settings.setApiToken(e.target.value || undefined)
@@ -66,22 +83,20 @@ export function SettingsSidebar() {
                 placeholder="Enter your API token"
               />
             </div>
+
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="seed-input">Seed</Label>
-                <div className="flex items-center gap-4">
-                  <Switch
-                    id="seed-enabled"
-                    checked={settings.seed_enabled}
-                    onCheckedChange={settings.setSeedEnabled}
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-              <input
+              <SettingRow label="Seed" htmlFor="seed-enabled">
+                <Switch
+                  id="seed-enabled"
+                  checked={settings.seed_enabled}
+                  onCheckedChange={settings.setSeedEnabled}
+                  disabled={isLoading}
+                  size="sm"
+                />
+              </SettingRow>
+              <Input
                 type="number"
                 id="seed-input"
-                className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
                 value={settings.seed}
                 onChange={(e) =>
                   settings.setSeed(parseInt(e.target.value) || 0)
@@ -90,9 +105,11 @@ export function SettingsSidebar() {
                 max={999999}
                 disabled={isLoading || !settings.seed_enabled}
               />
-            </div>{' '}
+            </div>
+
             <SystemPrompt isLoading={isLoading} />
             <StopWords isLoading={isLoading} />
+
             <SettingSlider
               label="Temperature"
               value={settings.temperature}
@@ -105,6 +122,7 @@ export function SettingsSidebar() {
               defaultValue={1}
               isLoading={isLoading}
             />
+
             <SettingSlider
               label="Top P"
               value={settings.top_p}
@@ -117,7 +135,9 @@ export function SettingsSidebar() {
               defaultValue={1}
               isLoading={isLoading}
             />
-            <Separator />
+
+            <Separator className="my-4" />
+
             <SettingSlider
               label="Max Tokens"
               value={settings.max_tokens}
@@ -130,7 +150,7 @@ export function SettingsSidebar() {
               defaultValue={2048}
               isLoading={isLoading}
             />
-            {/* Penalties */}
+
             <SettingSlider
               label="Presence Penalty"
               value={settings.presence_penalty}
@@ -143,6 +163,7 @@ export function SettingsSidebar() {
               defaultValue={0}
               isLoading={isLoading}
             />
+
             <SettingSlider
               label="Frequency Penalty"
               value={settings.frequency_penalty}
