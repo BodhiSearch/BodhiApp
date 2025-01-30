@@ -43,27 +43,28 @@ function SetupContent() {
   };
 
   return (
-    <div className="flex flex-col w-full items-center justify-center min-h-screen p-4 bg-gray-100">
-      <Image
-        src="/bodhi-logo.png"
-        alt="Bodhi App Logo"
-        width={150}
-        height={150}
-        className="mb-8"
-      />
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Bodhi App Setup</CardTitle>
-          <CardDescription>Choose your setup mode</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          <div className="space-y-4">
+    <main className="min-h-screen bg-background p-4 pt-16">
+      <div className="mx-auto w-full max-w-md space-y-8">
+        <Image
+          src="/bodhi-logo/bodhi-logo-480.svg"
+          alt="Bodhi App Logo"
+          width={150}
+          height={150}
+          className="mx-auto"
+          priority
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Bodhi App Setup</CardTitle>
+            <CardDescription>Choose your setup mode</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
             <Button
               className="w-full"
               onClick={() => handleSetup(true)}
@@ -78,7 +79,7 @@ function SetupContent() {
                 'Setup Authenticated Instance →'
               )}
             </Button>
-            <Alert className="mb-4">
+            <Alert>
               <AlertTitle>Warning</AlertTitle>
               <AlertDescription>
                 Setting up in non-authenticated mode may compromise system
@@ -101,15 +102,15 @@ function SetupContent() {
                 'Setup Unauthenticated Instance →'
               )}
             </Button>
-          </div>
-        </CardContent>
-        <CardFooter className="justify-center">
-          <p className="text-sm text-gray-500">
-            For more information, visit our documentation.
-          </p>
-        </CardFooter>
-      </Card>
-    </div>
+          </CardContent>
+          <CardFooter>
+            <p className="mx-auto text-sm text-gray-500">
+              For more information, visit our documentation.
+            </p>
+          </CardFooter>
+        </Card>
+      </div>
+    </main>
   );
 }
 
