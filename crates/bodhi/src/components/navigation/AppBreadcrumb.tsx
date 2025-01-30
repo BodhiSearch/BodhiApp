@@ -35,11 +35,11 @@ export function AppBreadcrumb() {
             </span>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
-          {parent && (
+          {parent?.href && (
             <>
               <BreadcrumbItem>
                 <BreadcrumbLink
-                  href={parent.href || '#'}
+                  href={parent.href}
                   data-testid="breadcrumb-parent"
                 >
                   {parent.title}

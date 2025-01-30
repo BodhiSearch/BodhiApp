@@ -1,24 +1,31 @@
 'use client';
 
-import * as React from 'react';
-import { usePathname } from 'next/navigation';
-import { useContext, useMemo } from 'react';
 import { NavigationItem } from '@/types/navigation';
 import {
-  Home,
-  MessageSquare,
-  Database,
-  Settings2,
-  Files,
-  Download,
-  Key,
-  FlaskRound,
-  Settings,
-  FileJson,
   Cog,
+  Database,
+  Download,
+  FileJson,
+  FilePlus2,
+  Files,
+  FlaskRound,
+  Home,
+  Key,
+  MessageSquare,
+  Settings,
+  Settings2,
 } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import {
+  ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 
-const navigationItems: NavigationItem[] = [
+// Rename and export the default navigation items
+export const defaultNavigationItems: NavigationItem[] = [
   {
     title: 'Home',
     href: '/ui/home/',
@@ -34,6 +41,22 @@ const navigationItems: NavigationItem[] = [
         href: '/ui/models/',
         description: 'Configure and manage model aliases',
         icon: Settings2,
+        items: [
+          {
+            title: 'New Model Alias',
+            href: '/ui/models/new/',
+            description: 'Create a new model alias',
+            icon: FilePlus2,
+            skip: true,
+          },
+          {
+            title: 'Edit Model Alias',
+            href: '/ui/models/edit/',
+            description: 'Edit a model alias',
+            icon: FilePlus2,
+            skip: true,
+          },
+        ],
       },
       {
         title: 'Model Files',
@@ -98,7 +121,7 @@ interface NavigationContextType {
   navigationItems: NavigationItem[];
 }
 
-const NavigationContext = React.createContext<NavigationContextType>({
+const NavigationContext = createContext<NavigationContextType>({
   currentPath: '',
   currentItem: {
     item: {} as NavigationItem,
@@ -108,40 +131,73 @@ const NavigationContext = React.createContext<NavigationContextType>({
 });
 
 interface NavigationProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
+  items?: NavigationItem[];
 }
 
-export function NavigationProvider({ children }: NavigationProviderProps) {
+export function NavigationProvider({
+  children,
+  items = defaultNavigationItems,
+}: NavigationProviderProps) {
   const pathname = usePathname();
 
   const currentItem = useMemo(() => {
     // First check top-level items
-    const topLevelItem = navigationItems.find((item) => item.href === pathname);
+    const topLevelItem = items.find((item) => item.href === pathname);
     if (topLevelItem) {
       return { item: topLevelItem, parent: null };
     }
 
     // Then check sub-items
-    for (const item of navigationItems) {
+    for (const item of items) {
       if (item.items) {
-        const subItem = item.items.find((subItem) => subItem.href === pathname);
-        if (subItem) {
-          return { item: subItem, parent: item };
+        for (const subItem of item.items) {
+          if (subItem.href === pathname) {
+            return { item: subItem, parent: item };
+          }
+          // Check for sub-sub-items
+          if (subItem.items) {
+            const subSubItem = subItem.items.find(
+              (subSubItem) => subSubItem.href === pathname
+            );
+            if (subSubItem) {
+              return { item: subSubItem, parent: subItem };
+            }
+          }
         }
       }
     }
 
     // Default to Home if no match found
-    return { item: navigationItems[0], parent: null };
-  }, [pathname]);
+    return { item: items[0], parent: null };
+  }, [pathname, items]);
+
+  // Update document title based on currentItem
+  useEffect(() => {
+    const parts = [];
+
+    // Add current item title
+    parts.push(currentItem.item.title);
+
+    // Add parent title if exists
+    if (currentItem.parent) {
+      parts.push(currentItem.parent.title);
+    }
+
+    // Add base title
+    parts.push('Bodhi App | Run LLMs Locally');
+
+    // Set document title
+    document.title = parts.join(' | ');
+  }, [currentItem]);
 
   const value = useMemo(
     () => ({
       currentPath: pathname,
       currentItem,
-      navigationItems,
+      navigationItems: items,
     }),
-    [pathname, currentItem]
+    [pathname, currentItem, items]
   );
 
   return (
