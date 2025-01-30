@@ -14,7 +14,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import Setup from '@/app/ui/setup/page';
+import Setup from '@/app/ui/setup/auth-mode/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP } from '@/hooks/useQuery';
 
 // Mock the router
