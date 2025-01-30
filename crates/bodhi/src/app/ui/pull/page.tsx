@@ -13,6 +13,7 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
+import { ErrorPage } from '@/components/ui/ErrorPage';
 
 const columns = [
   { id: 'repo', name: 'Repo', sorted: true },
@@ -82,7 +83,7 @@ function PullPageContent() {
   };
 
   if (error) {
-    return <div className="text-destructive">Error loading downloads</div>;
+    return <ErrorPage message="Error loading downloads" />;
   }
 
   return (

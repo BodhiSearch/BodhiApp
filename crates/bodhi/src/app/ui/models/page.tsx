@@ -18,6 +18,7 @@ import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { ErrorPage } from '@/components/ui/ErrorPage';
 
 const columns = [
   { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
@@ -266,13 +267,11 @@ function ModelsPageContent() {
   ];
 
   if (error) {
-    return (
-      <div className="text-destructive text-center" role="alert">
-        {error.response?.data?.error?.message ||
-          error.message ||
-          'An unexpected error occurred'}
-      </div>
-    );
+    const errorMessage =
+      error.response?.data?.error?.message ||
+      error.message ||
+      'An unexpected error occurred';
+    return <ErrorPage message={errorMessage} />;
   }
 
   return (

@@ -17,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ErrorPage } from '@/components/ui/ErrorPage';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -168,11 +169,7 @@ function ModelFilesContent() {
       error.response?.data?.error?.message ||
       error.message ||
       'An unexpected error occurred. Please try again.';
-    return (
-      <div className="text-destructive text-center" role="alert">
-        {errorMessage}
-      </div>
-    );
+    return <ErrorPage message={errorMessage} />;
   }
 
   return (
