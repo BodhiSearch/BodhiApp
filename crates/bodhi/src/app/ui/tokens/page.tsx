@@ -16,7 +16,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
-import { useToast } from '@/hooks/use-toast';
 import {
   ApiToken,
   TokenResponse,
@@ -24,6 +23,7 @@ import {
   useUpdateToken,
 } from '@/hooks/useApiTokens';
 import { useAppInfo } from '@/hooks/useQuery';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
 
@@ -58,21 +58,14 @@ export function TokenPageContent() {
     column: 'created_at',
     direction: 'desc',
   });
-  const { toast } = useToast();
+  const { showSuccess, showError } = useToastMessages();
 
   const { mutate: updateToken } = useUpdateToken({
     onSuccess: (token) => {
-      toast({
-        title: 'Token Updated',
-        description: `Token status changed to ${token.status}`,
-      });
+      showSuccess('Token Updated', `Token status changed to ${token.status}`);
     },
     onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+      showError('Error', message);
     },
   });
 

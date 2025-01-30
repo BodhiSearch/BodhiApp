@@ -7,6 +7,7 @@ import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
 import { Setting } from '@/types/models';
 import { createWrapper } from '@/tests/wrapper';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
 
 // Add PointerEvent mock
 function createMockPointerEvent(
@@ -183,7 +184,8 @@ describe('EditSettingDialog', () => {
 
     expect(mockToast).toHaveBeenCalledWith({
       title: "Success",
-      description: "Setting updated successfully"
+      description: "Setting updated successfully",
+      duration: 1000,
     });
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
   });
@@ -209,10 +211,7 @@ describe('EditSettingDialog', () => {
     await user.type(screen.getByRole('spinbutton'), '2000');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Success",
-      description: "Setting updated successfully"
-    });
+    expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Setting updated successfully'));
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -232,11 +231,7 @@ describe('EditSettingDialog', () => {
     await user.type(screen.getByRole('spinbutton'), '100');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Error",
-      description: "Value must be between 1025 and 65535",
-      variant: "destructive"
-    });
+    expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'Value must be between 1025 and 65535'));
     expect(mockOnOpenChange).not.toHaveBeenCalled();
   });
 
@@ -269,10 +264,7 @@ describe('EditSettingDialog', () => {
     // Click save
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Success",
-      description: "Setting updated successfully"
-    });
+    expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Setting updated successfully'));
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -296,10 +288,7 @@ describe('EditSettingDialog', () => {
     await user.click(screen.getByRole('switch'));
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Success",
-      description: "Setting updated successfully"
-    });
+    expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Setting updated successfully'));
     expect(screen.getByText('Disabled')).toBeInTheDocument();
   });
 
@@ -331,11 +320,7 @@ describe('EditSettingDialog', () => {
     await user.type(screen.getByRole('textbox'), '/new/path');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Error",
-      description: "Server error",
-      variant: "destructive"
-    });
+    expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'Server error'));
     expect(mockOnOpenChange).not.toHaveBeenCalled();
   });
 
@@ -380,11 +365,7 @@ describe('EditSettingDialog', () => {
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     // Verify error toast is shown with default error message
-    expect(mockToast).toHaveBeenCalledWith({
-      title: "Error",
-      description: "Failed to update setting",
-      variant: "destructive"
-    });
+    expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'Failed to update setting'));
 
     // Verify dialog stays open
     expect(mockOnOpenChange).not.toHaveBeenCalled();
@@ -422,10 +403,7 @@ describe('EditSettingDialog', () => {
 
     // Wait for success
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        title: "Success",
-        description: "Setting updated successfully"
-      });
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Setting updated successfully'));
     });
   });
 }); 

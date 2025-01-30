@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUpdateSetting } from '@/hooks/useQuery';
 import { Setting } from '@/types/models';
 import { useState } from 'react';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 
 interface EditSettingDialogProps {
   setting: Setting;
@@ -36,28 +37,21 @@ export function EditSettingDialog({
 }: EditSettingDialogProps) {
   const [value, setValue] = useState(String(setting.current_value));
   const { toast } = useToast();
+  const { showSuccess, showError } = useToastMessages();
 
   const updateSetting = useUpdateSetting({
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Setting updated successfully',
-      });
+      showSuccess('Success', 'Setting updated successfully');
       onOpenChange(false);
     },
     onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+      showError('Error', message);
     },
   });
 
   const handleSubmit = async () => {
     let parsedValue: string | number | boolean = value;
 
-    // Parse value based on type
     if (setting.metadata.type === 'number') {
       parsedValue = Number(value);
       if (isNaN(parsedValue)) {
@@ -65,10 +59,10 @@ export function EditSettingDialog({
           title: 'Error',
           description: 'Invalid number',
           variant: 'destructive',
+          duration: 5000,
         });
         return;
       }
-      // Validate range if specified
       if (setting.metadata.range) {
         if (
           parsedValue < setting.metadata.range.min ||
@@ -78,6 +72,7 @@ export function EditSettingDialog({
             title: 'Error',
             description: `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`,
             variant: 'destructive',
+            duration: 5000,
           });
           return;
         }
@@ -96,13 +91,16 @@ export function EditSettingDialog({
     switch (setting.metadata.type) {
       case 'boolean':
         return (
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center gap-2">
             <Switch
               id="value"
               checked={value === 'true'}
               onCheckedChange={(checked) => setValue(String(checked))}
             />
-            <label htmlFor="value" className="text-sm font-medium">
+            <label
+              htmlFor="value"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
               {value === 'true' ? 'Enabled' : 'Disabled'}
             </label>
           </div>
@@ -111,7 +109,7 @@ export function EditSettingDialog({
       case 'option':
         return (
           <Select value={value} onValueChange={setValue}>
-            <SelectTrigger>
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a value" />
             </SelectTrigger>
             <SelectContent>
@@ -134,6 +132,7 @@ export function EditSettingDialog({
             placeholder="Enter new value"
             min={setting.metadata.range?.min}
             max={setting.metadata.range?.max}
+            className="w-full"
           />
         );
 
@@ -144,6 +143,7 @@ export function EditSettingDialog({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Enter new value"
+            className="w-full"
           />
         );
     }
@@ -151,32 +151,44 @@ export function EditSettingDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-[425px]">
+        <DialogHeader className="space-y-1">
           <DialogTitle>Edit Setting</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-sm text-muted-foreground break-words">
             Update the value for {setting.key}
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="space-y-2">
+
+        <div className="flex flex-col gap-4 py-4">
+          <div className="flex flex-col gap-2">
             {renderInput()}
-            <p className="text-xs text-muted-foreground">
-              Default: {String(setting.default_value)}
-            </p>
-            {setting.metadata.type === 'number' && setting.metadata.range && (
-              <p className="text-xs text-muted-foreground">
-                Range: {setting.metadata.range.min} -{' '}
-                {setting.metadata.range.max}
+            <div className="flex flex-col gap-1">
+              <p className="text-xs text-muted-foreground break-words">
+                Default: {String(setting.default_value)}
               </p>
-            )}
+              {setting.metadata.type === 'number' && setting.metadata.range && (
+                <p className="text-xs text-muted-foreground">
+                  Range: {setting.metadata.range.min} -{' '}
+                  {setting.metadata.range.max}
+                </p>
+              )}
+            </div>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+
+        <DialogFooter className="flex flex-col sm:flex-row gap-2">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={updateSetting.isLoading}>
+          <Button
+            onClick={handleSubmit}
+            disabled={updateSetting.isLoading}
+            className="w-full sm:w-auto"
+          >
             {updateSetting.isLoading ? 'Updating...' : 'Save'}
           </Button>
         </DialogFooter>

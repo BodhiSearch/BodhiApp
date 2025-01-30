@@ -1,6 +1,7 @@
 import TokenPage, { TokenPageContent } from '@/app/ui/tokens/page';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -219,10 +220,8 @@ describe('token status updates', () => {
   it('successfully updates token status', async () => {
     const user = userEvent.setup();
 
-    render(<TokenPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+    await act(async () => {
+      render(<TokenPage />, { wrapper: createWrapper() });
     });
 
     const switchElement = screen.getByRole('switch');
@@ -231,10 +230,7 @@ describe('token status updates', () => {
     await user.click(switchElement);
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith({
-        title: 'Token Updated',
-        description: 'Token status changed to inactive',
-      });
+      expect(toast).toHaveBeenCalledWith(showSuccessParams('Token Updated', 'Token status changed to inactive'));
     });
   });
 })
@@ -249,21 +245,16 @@ describe('token status update', () => {
 
     const user = userEvent.setup();
 
-    render(<TokenPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      expect(screen.getByRole('switch')).toBeInTheDocument();
+    await act(async () => {
+      render(<TokenPage />, { wrapper: createWrapper() });
     });
 
     const switchElement = screen.getByRole('switch');
     await user.click(switchElement);
 
     await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith({
-        title: 'Error',
-        description: 'Test Error',
-        variant: 'destructive',
-      });
+      expect(toast).toHaveBeenCalledWith(showErrorParams('Error', 'Test Error'));
     });
   });
 });
+

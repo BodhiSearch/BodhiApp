@@ -111,7 +111,12 @@ export interface Setting {
   key: string;
   current_value: string | number | boolean;
   default_value: string | number | boolean;
-  source: 'environment' | 'settings_file' | 'default';
+  source:
+    | 'system'
+    | 'command_line'
+    | 'environment'
+    | 'settings_file'
+    | 'default';
   metadata: {
     type: 'string' | 'number' | 'boolean' | 'option';
     options?: string[];
