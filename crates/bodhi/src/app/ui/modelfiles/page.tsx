@@ -6,10 +6,8 @@ import { TableCell } from '@/components/ui/table';
 import { ModelFile, SortState } from '@/types/models';
 import { useModelFiles } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
-import { ExternalLink, Trash2, X } from 'lucide-react';
+import { ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { UserOnboarding } from '@/components/UserOnboarding';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -58,10 +57,6 @@ export const columns = [
 
 function ModelFilesContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
-    'modelfiles-banner-dismissed',
-    false
-  );
 
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -174,25 +169,11 @@ function ModelFilesContent() {
 
   return (
     <div data-testid="modelfiles-content" className="container mx-auto p-4">
-      {!hasDismissedBanner && (
-        <Alert className="mb-4">
-          <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              Welcome to Model Management! Here you can view all your downloaded
-              models and access their HuggingFace repositories.
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 shrink-0"
-              onClick={() => setHasDismissedBanner(true)}
-              title="Dismiss"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      <UserOnboarding storageKey="modelfiles-banner-dismissed">
+        Welcome to Model Management! Here you can view all your downloaded
+        models and access their HuggingFace repositories.
+      </UserOnboarding>
+
       <DataTable
         data={data?.data || []}
         columns={columns}

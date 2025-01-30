@@ -11,14 +11,12 @@ import {
   MessageSquare,
   ExternalLink,
   FilePlus2,
-  X,
   Plus,
 } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { UserOnboarding } from '@/components/UserOnboarding';
 
 const columns = [
   { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
@@ -73,10 +71,6 @@ const SourceBadge = ({ source }: { source: string | undefined }) => {
 
 function ModelsPageContent() {
   const router = useRouter();
-  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
-    'models-banner-dismissed',
-    false
-  );
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sort, setSort] = useState<SortState>({
@@ -276,26 +270,11 @@ function ModelsPageContent() {
 
   return (
     <div data-testid="models-content" className="container mx-auto p-4">
-      {!hasDismissedBanner && (
-        <Alert className="mb-4">
-          <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              Welcome to Models! Here you can manage your model aliases and
-              access their configurations. Create new aliases or edit existing
-              ones to customize your model settings.
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 shrink-0"
-              onClick={() => setHasDismissedBanner(true)}
-              title="Dismiss"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      <UserOnboarding storageKey="models-banner-dismissed">
+        Welcome to Models! Here you can manage your model aliases and access
+        their configurations. Create new aliases or edit existing ones to
+        customize your model settings.
+      </UserOnboarding>
 
       <div className="flex justify-end m2-4">
         <Button onClick={handleNewAlias} size="sm">
