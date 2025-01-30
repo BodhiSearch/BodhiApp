@@ -1,5 +1,6 @@
 import { useChat } from '@/hooks/use-chat';
 import { ENDPOINT_OAI_CHAT_COMPLETIONS } from '@/hooks/useQuery';
+import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { Chat, Message } from '@/types/chat';
 import { act, renderHook } from '@testing-library/react';
@@ -258,6 +259,107 @@ describe('useChat', () => {
       // Verify the user message was still saved
       const savedChat = await chatDB.getChat('1');
       expect(savedChat?.messages).toHaveLength(0);
+    });
+
+    it('should restore input when API request fails completely', async () => {
+      const initialChat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
+      chatDB.setCurrentChat(initialChat);
+
+      // Mock network error
+      server.use(
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res) => {
+          return res.networkError('Failed to connect');
+        })
+      );
+
+      const { result } = renderHook(() => useChat(), {
+        wrapper: createWrapper()
+      });
+
+      // Set initial input
+      act(() => {
+        result.current.setInput('Hello world');
+      });
+
+      const originalInput = result.current.input;
+
+      await act(async () => {
+        await result.current.append('Hello world');
+      });
+
+      // Verify state is restored
+      expect(result.current.input).toBe(originalInput);
+      expect(result.current.userMessage.content).toBe('');
+      expect(result.current.assistantMessage.content).toBe('');
+      expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'Failed to fetch'));
+    });
+
+    it('should handle errors in event stream', async () => {
+      const initialChat = {
+        id: '1',
+        title: 'Test Chat',
+        messages: [],
+        createdAt: Date.now(),
+      };
+      chatDB.setCurrentChat(initialChat);
+
+      const formatSSEMessage = (data: any) => `data: ${JSON.stringify(data)}\n\n`;
+      
+      server.use(
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, async (req, res, ctx) => {
+          const responseText = [
+            formatSSEMessage({
+              choices: [{
+                delta: { content: 'Hello' },
+                finish_reason: null
+              }]
+            }),
+            formatSSEMessage({
+              error: {
+                message: 'Server error occurred',
+                type: 'server_error'
+              }
+            }),
+            'data: [DONE]\n\n'
+          ].join('');
+
+          return res(
+            ctx.status(200),
+            ctx.set({
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+            }),
+            ctx.body(responseText)
+          );
+        })
+      );
+
+      const { result } = renderHook(() => useChat(), {
+        wrapper: createWrapper()
+      });
+
+      await act(async () => {
+        await result.current.append('Hello');
+      });
+
+      // Verify that the messages were saved (current behavior)
+      const savedChat = await chatDB.getChat('1');
+      expect(savedChat?.messages).toEqual([
+        { role: 'user', content: 'Hello' },
+        { role: 'assistant', content: 'Hello' }
+      ]);
+
+      // The assistant message should contain the content received before the error
+      expect(result.current.assistantMessage.content).toBe('');
+
+      // Currently errors in the stream are silently ignored (no error toast)
+      expect(mockToast).not.toHaveBeenCalled();
     });
   });
 });

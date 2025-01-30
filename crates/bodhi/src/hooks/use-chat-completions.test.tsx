@@ -145,5 +145,75 @@ describe('useChatCompletion', () => {
         content: ' The day that comes after Monday is Tuesday.'
       });
     });
+
+    it('should handle errors in event stream', async () => {
+      const formatSSEMessage = (data: any) => `data: ${JSON.stringify(data)}\n\n`;
+
+      const responseText = [
+        formatSSEMessage({
+          choices: [{
+            delta: { content: 'Hello' },
+            finish_reason: null
+          }]
+        }),
+        formatSSEMessage({
+          error: {
+            message: 'Server error occurred',
+            type: 'server_error'
+          }
+        }),
+        'data: [DONE]\n\n'
+      ].join('');
+
+      server.use(
+        rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
+          return res(
+            ctx.status(200),
+            ctx.set({
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              'Connection': 'keep-alive',
+            }),
+            ctx.body(responseText)
+          );
+        })
+      );
+
+      const onDelta = vi.fn();
+      const onFinish = vi.fn();
+      const onError = vi.fn();
+      const { result } = renderHook(() => useChatCompletion(), { wrapper });
+
+      await act(async () => {
+        await result.current.append({
+          request: {
+            model: "llama2-7B-chat",
+            messages: [
+              {
+                id: '1',
+                role: "user",
+                content: "What day comes after Monday?"
+              }
+            ],
+            stream: true
+          },
+          onDelta,
+          onFinish,
+          onError
+        });
+      });
+
+      // Verify we received the content before the error
+      expect(onDelta).toHaveBeenCalledWith('Hello');
+
+      // Current behavior: Stream continues and finishes with partial content
+      expect(onFinish).toHaveBeenCalledWith({
+        role: 'assistant',
+        content: 'Hello'
+      });
+
+      // Current behavior: Error in stream is not reported
+      expect(onError).not.toHaveBeenCalled();
+    });
   });
 });

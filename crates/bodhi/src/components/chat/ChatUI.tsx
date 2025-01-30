@@ -34,65 +34,69 @@ const ChatInput = ({
   handleSubmit,
   streamLoading,
   inputRef,
-}: ChatInputProps) => (
-  <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
-    <div className="mx-auto max-w-3xl px-4 py-2">
-      <div className="relative flex items-center rounded-lg border bg-background shadow-sm">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="absolute left-2 h-8 w-8"
-        >
-          <Plus className="h-5 w-5" />
-          <span className="sr-only">Add attachment</span>
-        </Button>
-
-        <form onSubmit={handleSubmit} className="flex w-full items-center">
-          <textarea
-            ref={inputRef}
-            className="flex-1 resize-none bg-transparent px-12 py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
-            rows={1}
-            placeholder="Ask me anything..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-          />
+}: ChatInputProps) => {
+  const { createNewChat } = useChatDB();
+  return (
+    <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+      <div className="mx-auto max-w-3xl px-4 py-2">
+        <div className="relative flex items-center rounded-lg border bg-background shadow-sm">
           <Button
-            type="submit"
+            type="button"
+            variant="ghost"
             size="icon"
-            disabled={!input.trim() || streamLoading}
-            onClick={handleSubmit}
-            className="absolute right-2 h-8 w-8"
+            className="absolute left-2 h-8 w-8"
+            onClick={() => createNewChat()}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 16 16"
-              fill="none"
-              className="h-4 w-4"
-              strokeWidth="2"
-            >
-              <path
-                d="M.5 1.163A1 1 0 0 1 1.97.28l12.868 6.837a1 1 0 0 1 0 1.766L1.969 15.72A1 1 0 0 1 .5 14.836V10.33a1 1 0 0 1 .816-.983L8.5 8 1.316 6.653A1 1 0 0 1 .5 5.67V1.163Z"
-                fill="currentColor"
-              />
-            </svg>
-            <span className="sr-only">Send message</span>
+            <Plus className="h-5 w-5" />
+            <span className="sr-only">Add attachment</span>
           </Button>
-        </form>
-      </div>
 
-      <div className="px-2 py-2 text-center text-xs text-muted-foreground">
-        Chat assistant can make mistakes.
+          <form onSubmit={handleSubmit} className="flex w-full items-center">
+            <textarea
+              ref={inputRef}
+              className="flex-1 resize-none bg-transparent px-12 py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              rows={1}
+              placeholder="Ask me anything..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit(e);
+                }
+              }}
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!input.trim() || streamLoading}
+              onClick={handleSubmit}
+              className="absolute right-2 h-8 w-8"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="none"
+                className="h-4 w-4"
+                strokeWidth="2"
+              >
+                <path
+                  d="M.5 1.163A1 1 0 0 1 1.97.28l12.868 6.837a1 1 0 0 1 0 1.766L1.969 15.72A1 1 0 0 1 .5 14.836V10.33a1 1 0 0 1 .816-.983L8.5 8 1.316 6.653A1 1 0 0 1 .5 5.67V1.163Z"
+                  fill="currentColor"
+                />
+              </svg>
+              <span className="sr-only">Send message</span>
+            </Button>
+          </form>
+        </div>
+
+        <div className="px-2 py-2 text-center text-xs text-muted-foreground">
+          Chat assistant can make mistakes.
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 interface MessageListProps {
   messages: Message[];

@@ -25,16 +25,17 @@ export function useChat() {
   const { currentChat, createOrUpdateChat, setCurrentChatId } = useChatDB();
   const chatSettings = useChatSettings();
 
-  const stop = useCallback(() => {
-    if (abortController) {
-      abortController.abort();
-      setAbortController(null);
-    }
-  }, [abortController]);
+  // Reset state to before user submission
+  const resetToPreSubmissionState = useCallback((userContent: string) => {
+    setInput(userContent); // Restore input
+    setUserMessage({ role: 'user', content: '' }); // Clear user message
+    setAssistantMessage({ role: 'assistant', content: '' }); // Clear assistant message
+  }, []);
 
   const processCompletion = useCallback(
     async (userMessages: Message[]) => {
       let currentAssistantMessage = '';
+      const userContent = userMessages[userMessages.length - 1].content;
 
       try {
         const requestMessages =
@@ -86,6 +87,7 @@ export function useChat() {
             });
             setAssistantMessage({ role: 'assistant' as const, content: '' });
             setUserMessage({ role: 'user' as const, content: '' });
+            setInput(''); // Clear input after successful completion
             if (!currentChat) {
               setCurrentChatId(id);
             }
@@ -93,6 +95,12 @@ export function useChat() {
           onError: (error) => {
             const errorMessage = extractErrorMessage(error);
             showError('Error', errorMessage);
+
+            // Only reset if we haven't started receiving assistant's response
+            if (!currentAssistantMessage) {
+              resetToPreSubmissionState(userContent);
+            }
+            // If we have partial response, we might handle it differently in the future
           },
         });
       } catch (error) {
@@ -102,6 +110,8 @@ export function useChat() {
             : 'An unexpected error occurred';
 
         showError('Error', errorMessage);
+        // Reset state since this is a complete failure (couldn't even make the request)
+        resetToPreSubmissionState(userContent);
       }
     },
     [
@@ -111,6 +121,7 @@ export function useChat() {
       createOrUpdateChat,
       showError,
       setCurrentChatId,
+      resetToPreSubmissionState,
     ]
   );
 
@@ -162,7 +173,12 @@ export function useChat() {
     setInput,
     isLoading,
     append: appendMessage,
-    stop,
+    stop: () => {
+      if (abortController) {
+        abortController.abort();
+        setAbortController(null);
+      }
+    },
     userMessage,
     assistantMessage,
   };
