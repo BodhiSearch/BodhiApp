@@ -1,14 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useToast } from '@/hooks/use-toast';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { createAliasSchema, AliasFormData } from '@/schemas/alias';
-import { Model } from '@/types/models';
-import { Input } from '@/components/ui/input';
+import { ComboBoxResponsive } from '@/components/Combobox';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -17,17 +11,27 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { requestParamsSchema, contextParamsSchema } from '@/schemas/alias';
-import { z } from 'zod';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import {
-  useCreateModel,
-  useUpdateModel,
   useChatTemplates,
+  useCreateModel,
   useModelFiles,
+  useUpdateModel,
 } from '@/hooks/useQuery';
-import { ComboBoxResponsive } from '@/components/Combobox';
+import {
+  AliasFormData,
+  contextParamsSchema,
+  createAliasSchema,
+  requestParamsSchema,
+} from '@/schemas/alias';
+import { Model } from '@/types/models';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 
 interface AliasFormProps {
   isEditMode: boolean;
@@ -36,7 +40,7 @@ interface AliasFormProps {
 
 const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const router = useRouter();
-  const { toast } = useToast();
+  const { showSuccess, showError } = useToastMessages();
   const [isRequestExpanded, setIsRequestExpanded] = useState(
     isEditMode && Object.keys(initialData?.request_params || {}).length > 0
   );
@@ -98,37 +102,21 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
   const createModel = useCreateModel({
     onSuccess: (model) => {
-      toast({
-        title: 'Success',
-        description: `Alias ${model.alias} successfully created`,
-        duration: 5000,
-      });
+      showSuccess('Success', `Alias ${model.alias} successfully created`);
       router.push('/ui/models');
     },
     onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+      showError('Error', message);
     },
   });
 
   const updateModel = useUpdateModel(initialData?.alias || '', {
     onSuccess: (model) => {
-      toast({
-        title: 'Success',
-        description: `Alias ${model.alias} successfully updated`,
-        duration: 5000,
-      });
+      showSuccess('Success', `Alias ${model.alias} successfully updated`);
       router.push('/ui/models');
     },
     onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+      showError('Error', message);
     },
   });
 

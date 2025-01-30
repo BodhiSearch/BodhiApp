@@ -3,7 +3,7 @@
 import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { useChatSettings } from '@/hooks/use-chat-settings';
-import { useToast } from '@/hooks/use-toast';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { nanoid } from '@/lib/utils';
 import { Message } from '@/types/chat';
 import { useCallback, useState } from 'react';
@@ -20,8 +20,7 @@ export function useChat() {
     role: 'assistant',
     content: '',
   });
-
-  const { toast } = useToast();
+  const { showError } = useToastMessages();
   const { append, isLoading } = useChatCompletion();
   const { currentChat, createOrUpdateChat, setCurrentChatId } = useChatDB();
   const chatSettings = useChatSettings();
@@ -93,12 +92,7 @@ export function useChat() {
           },
           onError: (error) => {
             const errorMessage = extractErrorMessage(error);
-            toast({
-              title: 'Error',
-              description: errorMessage,
-              variant: 'destructive',
-              duration: 5000,
-            });
+            showError('Error', errorMessage);
           },
         });
       } catch (error) {
@@ -107,12 +101,7 @@ export function useChat() {
             ? error.message
             : 'An unexpected error occurred';
 
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive',
-          duration: 5000,
-        });
+        showError('Error', errorMessage);
       }
     },
     [
@@ -120,7 +109,7 @@ export function useChat() {
       currentChat,
       append,
       createOrUpdateChat,
-      toast,
+      showError,
       setCurrentChatId,
     ]
   );

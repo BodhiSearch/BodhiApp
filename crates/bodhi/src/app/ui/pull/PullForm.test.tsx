@@ -1,5 +1,6 @@
 import { PullForm } from '@/app/ui/pull/PullForm';
 import { ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_FILES_PULL } from '@/hooks/useQuery';
+import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -78,11 +79,7 @@ describe('PullForm', () => {
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        title: 'Success',
-        description: 'Model pull request submitted successfully',
-        duration: 5000,
-      });
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Model pull request submitted successfully'));
     });
 
     // Form should be reset after successful submission
@@ -116,11 +113,7 @@ describe('PullForm', () => {
 
     // Check for toast error message
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        title: 'Error',
-        description: 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
-        variant: 'destructive',
-      });
+      expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"'));
     });
 
     // Check that form fields are in error state
@@ -158,11 +151,7 @@ describe('PullForm', () => {
 
     // Wait for error message in toast
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        title: 'Error',
-        description: 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"',
-        variant: 'destructive',
-      });
+      expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"'));
     });
 
     // Verify error state before reset

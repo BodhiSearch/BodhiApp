@@ -4,7 +4,6 @@ import React, { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQueryClient } from 'react-query';
-import { useToast } from '@/hooks/use-toast';
 import { pullModelSchema, type PullModelFormData } from '@/schemas/pull';
 import { usePullModel, useModelFiles } from '@/hooks/useQuery';
 import { Input } from '@/components/ui/input';
@@ -19,9 +18,10 @@ import {
 } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 
 export function PullForm() {
-  const { toast } = useToast();
+  const { showSuccess, showError } = useToastMessages();
   const queryClient = useQueryClient();
   const repoInputRef = useRef<HTMLInputElement>(null);
   const filenameInputRef = useRef<HTMLInputElement>(null);
@@ -36,11 +36,7 @@ export function PullForm() {
 
   const { mutate: pullModel, isLoading } = usePullModel({
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Model pull request submitted successfully',
-        duration: 5000,
-      });
+      showSuccess('Success', 'Model pull request submitted successfully');
       queryClient.invalidateQueries('downloads');
       form.reset();
     },
@@ -52,12 +48,7 @@ export function PullForm() {
         form.setError('repo', { message });
         form.setError('filename', { message });
       }
-
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-      });
+      showError('Error', message);
     },
   });
 

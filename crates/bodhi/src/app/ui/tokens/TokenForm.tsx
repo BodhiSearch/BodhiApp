@@ -10,7 +10,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useToast } from '@/hooks/use-toast';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { TokenResponse, useCreateToken } from '@/hooks/useApiTokens';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
@@ -28,7 +28,7 @@ interface TokenFormProps {
 }
 
 export function TokenForm({ onTokenCreated }: TokenFormProps) {
-  const { toast } = useToast();
+  const { showSuccess, showError } = useToastMessages();
   const form = useForm<TokenFormData>({
     resolver: zodResolver(createTokenSchema),
     mode: 'onSubmit',
@@ -41,20 +41,10 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
     onSuccess: (response) => {
       onTokenCreated(response);
       form.reset();
-      toast({
-        title: 'Success',
-        description: 'API token successfully generated',
-        variant: 'default',
-        duration: 5000,
-      });
+      showSuccess('Success', 'API token successfully generated');
     },
     onError: (message) => {
-      toast({
-        title: 'Error',
-        description: message,
-        variant: 'destructive',
-        duration: 5000,
-      });
+      showError('Error', message);
     },
   });
 

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { SettingsPageContent } from '@/app/ui/settings/page';
@@ -25,7 +25,7 @@ const mockSettings: Setting[] = [
   {
     key: 'BODHI_HOME',
     current_value: '/home/user/.bodhi',
-    default_value: '/home/user/.bodhi',
+    default_value: '/home/user/.cache/bodhi',
     source: 'default',
     metadata: {
       type: 'string'
@@ -197,10 +197,9 @@ describe('SettingsPage', () => {
   });
 
   it('displays settings grouped by category', async () => {
-    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
-
-    // Wait for data to load
-    await screen.findByText('Application Settings');
+    await act(async () => {
+      render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+    });
 
     // Check group titles
     expect(screen.getByText('Test App Config')).toBeInTheDocument();
@@ -209,12 +208,13 @@ describe('SettingsPage', () => {
 
     // Check setting values
     expect(screen.getByText('BODHI_HOME')).toBeInTheDocument();
-    expect(screen.getByText(/Current: \/home\/user\/.bodhi/)).toBeInTheDocument();
+    expect(screen.getByText(/\/home\/user\/.bodhi/)).toBeInTheDocument();
   });
 
   it('shows setting source badges', async () => {
-    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
-    await screen.findByText('Application Settings');
+    await act(async () => {
+      render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+    });
 
     // Use getAllByText for badges since there might be multiple
     const defaultBadges = screen.getAllByText('default');

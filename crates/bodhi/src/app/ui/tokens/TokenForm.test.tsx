@@ -1,6 +1,7 @@
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
 import { TokenResponse } from '@/hooks/useApiTokens';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
+import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -59,12 +60,7 @@ describe('TokenForm', () => {
     await user.click(screen.getByRole('button', { name: 'Generate Token' }));
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        title: 'Success',
-        description: 'API token successfully generated',
-        variant: 'default',
-        duration: 5000,
-      });
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
     });
 
     // Check if callback was called with token
@@ -85,12 +81,7 @@ describe('TokenForm', () => {
     await user.click(screen.getByRole('button', { name: 'Generate Token' }));
 
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith({
-        title: 'Success',
-        description: 'API token successfully generated',
-        variant: 'default',
-        duration: 5000,
-      });
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'API token successfully generated'));
       expect(onTokenCreated).toHaveBeenCalledWith(mockToken);
     });
   });

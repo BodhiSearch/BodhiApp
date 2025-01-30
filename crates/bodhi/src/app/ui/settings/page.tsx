@@ -29,8 +29,12 @@ import {
   Settings,
   Terminal,
   ToggleLeft,
+  Copy,
+  X,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 type SettingConfig = {
   key: string;
@@ -176,9 +180,37 @@ type SettingsPageContentProps = {
   config: SettingsConfig;
 };
 
+// Add this helper function to determine badge variant
+const getSourceBadgeVariant = (source: string) => {
+  switch (source) {
+    case 'system':
+      return 'destructive'; // red
+    case 'command line':
+      return 'blue';
+    case 'environment':
+      return 'green';
+    case 'settings_file':
+      return 'orange';
+    case 'default':
+      return 'gray';
+    default:
+      return 'secondary';
+  }
+};
+
 export function SettingsPageContent({ config }: SettingsPageContentProps) {
+  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
+    'settings-banner-dismissed',
+    false
+  );
   const [editingSetting, setEditingSetting] = useState<Setting | null>(null);
   const { data: settings, isLoading, error } = useSettings();
+  const { showSuccess } = useToastMessages();
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showSuccess('Copied', 'Value copied to clipboard');
+  };
 
   if (isLoading) {
     return <SettingsSkeleton config={config} />;
@@ -197,27 +229,46 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="space-y-2 mb-6">
-        <h1 className="text-2xl font-bold">Application Settings</h1>
-        <p className="text-muted-foreground">
-          View and manage application configuration settings
-        </p>
-      </div>
+    <div className="flex flex-col gap-4 sm:container sm:mx-auto sm:py-4">
+      {!hasDismissedBanner && (
+        <Alert className="border-x-0 sm:border-x rounded-none sm:rounded-lg">
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              Welcome to Settings! Here you can view and manage your
+              application&apos;s configuration. It also shows the current value,
+              and the source of that value. Some settings are editable while
+              others are read-only.
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 shrink-0"
+              onClick={() => setHasDismissedBanner(true)}
+              title="Dismiss"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {Object.entries(config).map(([groupKey, group]) => {
         const Icon = group.icon;
 
         return (
-          <Card key={groupKey}>
-            <CardHeader>
+          <Card
+            key={groupKey}
+            className="border-x-0 sm:border-x rounded-none sm:rounded-lg"
+          >
+            <CardHeader className="px-4 py-4">
               <div className="flex items-center gap-2">
-                <Icon className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>{group.title}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <CardTitle className="text-base">{group.title}</CardTitle>
               </div>
               <CardDescription>{group.description}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+
+            <CardContent className="space-y-4 px-4">
               {group.settings.map(({ key, editable, description }) => {
                 const setting = settings?.find((s) => s.key === key);
                 if (!setting) return null;
@@ -226,56 +277,100 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                   <div
                     key={key}
                     className={cn(
-                      'flex items-start justify-between p-4 rounded-lg border bg-card hover:bg-accent/5',
+                      'flex flex-col sm:flex-row gap-3',
+                      'p-4 rounded-lg border',
+                      'bg-card hover:bg-accent/5',
                       setting.source !== 'default' &&
                         'border-primary/20 bg-primary/5'
                     )}
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        {(() => {
-                          const TypeIcon =
-                            SETTING_ICONS[
-                              setting.metadata
-                                .type as keyof typeof SETTING_ICONS
-                            ];
-                          return (
-                            <TypeIcon className="h-4 w-4 text-muted-foreground" />
-                          );
-                        })()}
-                        <div className="font-medium">{setting.key}</div>
-                        <Badge
-                          variant={
-                            setting.source === 'default'
-                              ? 'secondary'
-                              : 'default'
-                          }
-                        >
-                          {setting.source}
-                        </Badge>
-                      </div>
-                      <div className="text-sm text-muted-foreground max-w-[500px] break-all">
-                        Current: {String(setting.current_value)}
-                      </div>
-                      <div className="text-xs text-muted-foreground/60">
-                        Default: {String(setting.default_value)}
-                      </div>
-                      {description && (
-                        <div className="text-sm text-primary font-semibold">
-                          {description}
+                    {/* Main content section */}
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      {/* Setting header with name and description */}
+                      <div className="space-y-1">
+                        <div className="flex items-center flex-wrap gap-1.5">
+                          {(() => {
+                            const TypeIcon =
+                              SETTING_ICONS[
+                                setting.metadata
+                                  .type as keyof typeof SETTING_ICONS
+                              ];
+                            return (
+                              <TypeIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
+                            );
+                          })()}
+                          <div className="font-medium text-sm sm:text-base truncate">
+                            {setting.key}
+                          </div>
+                          <Badge
+                            variant={getSourceBadgeVariant(setting.source)}
+                            className="text-xs h-5 px-1.5"
+                          >
+                            {setting.source}
+                          </Badge>
                         </div>
-                      )}
+                        {description && (
+                          <div className="text-xs sm:text-sm text-primary font-medium">
+                            {description}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Values section */}
+                      <div className="space-y-1">
+                        {/* Only show current value if source is not system */}
+                        {setting.source !== 'system' && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs sm:text-sm text-muted-foreground shrink-0">
+                              Current:
+                            </span>
+                            <span className="text-xs sm:text-sm text-muted-foreground truncate">
+                              {String(setting.current_value)}
+                            </span>
+                            {setting.metadata.type === 'string' && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 sm:h-6 sm:w-6 shrink-0"
+                                onClick={() =>
+                                  handleCopy(String(setting.current_value))
+                                }
+                              >
+                                <Copy className="h-3 w-3" />
+                                <span className="sr-only">Copy value</span>
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Default value */}
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground/60 shrink-0">
+                            Default:
+                          </span>
+                          <span className="text-xs text-muted-foreground/60 truncate">
+                            {String(setting.default_value)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{setting.metadata.type}</Badge>
+
+                    {/* Actions section */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge
+                        variant="outline"
+                        className="text-xs h-5 px-1.5 shrink-0"
+                      >
+                        {setting.metadata.type}
+                      </Badge>
                       {editable && (
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => setEditingSetting(setting)}
-                          className="h-8 w-8"
+                          className="h-7 w-7 sm:h-8 sm:w-8 shrink-0"
                         >
-                          <Pencil className="h-4 w-4" />
+                          <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                           <span className="sr-only">Edit setting</span>
                         </Button>
                       )}
@@ -302,22 +397,21 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
 function SettingsSkeleton({ config }: { config: SettingsConfig }) {
   return (
     <div
-      className="container mx-auto py-6 space-y-6"
+      className="flex flex-col gap-4 sm:container sm:mx-auto sm:py-4"
       data-testid="settings-skeleton-container"
     >
-      <div className="space-y-2 mb-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-5 w-96" />
-      </div>
-
       {Object.keys(config).map((group) => (
-        <Card key={group} data-testid="settings-skeleton">
+        <Card
+          key={group}
+          className="border-x-0 sm:border-x rounded-none sm:rounded-lg"
+          data-testid="settings-skeleton"
+        >
           <CardHeader>
             <div className="flex items-center gap-2">
               <Skeleton className="h-5 w-5" />
               <Skeleton className="h-6 w-36" />
             </div>
-            <Skeleton className="h-4 w-72 mt-1.5" />
+            <Skeleton className="h-4 w-72" />
           </CardHeader>
           <CardContent className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
