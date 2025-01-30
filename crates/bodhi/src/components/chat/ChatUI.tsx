@@ -106,7 +106,7 @@ const MessageList = memo(function MessageList({
   assistantMessage,
 }: MessageListProps) {
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-2 py-2">
       {messages.map((message, i) => (
         <ChatMessage key={`history-${i}`} message={message} />
       ))}
@@ -156,8 +156,8 @@ export function ChatUI() {
     <div data-testid="chat-ui" className="flex h-full flex-col">
       <div className="relative flex-1 min-h-0">
         <div className="absolute inset-0 overflow-y-auto">
-          <div className="sticky top-0 h-11 bg-background/80 backdrop-blur-sm z-30" />
-          <div className="px-4">
+          <div className="sticky top-0 h-8 bg-background/80 backdrop-blur-sm z-30" />
+          <div className="px-3">
             {(currentChat === null || !currentChat?.messages?.length) &&
             !userMessage.content ? (
               <EmptyState />

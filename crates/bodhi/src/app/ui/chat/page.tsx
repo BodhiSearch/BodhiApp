@@ -22,19 +22,27 @@ import { useSearchParams } from 'next/navigation';
 
 // Define custom CSS properties for TypeScript
 const sidebarStyles = {
+  '--sidebar-width': '260px',
+  '--sidebar-width-mobile': '90vw',
+} as React.CSSProperties;
+
+// Settings sidebar should keep original width
+const settingsSidebarStyles = {
   '--sidebar-width': '24rem',
   '--sidebar-width-mobile': '90vw',
 } as React.CSSProperties;
 
 function ChatWithSettings() {
-  const { open, isMobile } = useSidebar();
+  const { open, openMobile, isMobile } = useSidebar();
+  const showSettingsPanel = isMobile ? openMobile : open;
+
   return (
     <>
       <div
         className={cn(
           'flex-1 flex flex-col min-w-0',
           'transition-[margin] duration-300 ease-in-out',
-          !isMobile && open ? `mr-[calc(24rem)]` : ''
+          !isMobile && open ? 'mr-[calc(24rem)]' : ''
         )}
       >
         <ChatUI />
@@ -44,12 +52,16 @@ function ChatWithSettings() {
         size="icon"
         className={cn(
           'fixed z-40 transition-all duration-300 right-0 top-20 h-7 w-7 -ml-1 md:right-0',
-          open && `md:right-[calc(24rem)]`,
+          open && 'md:right-[calc(24rem)]',
           !open && 'md:right-4'
         )}
         aria-label="Toggle settings"
       >
-        {open ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
+        {showSettingsPanel ? (
+          <X className="h-5 w-5" />
+        ) : (
+          <Settings2 className="h-5 w-5" />
+        )}
       </SidebarTrigger>
       <SettingsSidebar />
     </>
@@ -57,7 +69,8 @@ function ChatWithSettings() {
 }
 
 function ChatWithHistory() {
-  const { open } = useSidebar();
+  const { open, openMobile, isMobile } = useSidebar();
+  const showHistoryPanel = isMobile ? openMobile : open;
   const searchParams = useSearchParams();
   const alias = searchParams.get('alias');
   const initialData = alias ? { model: alias } : undefined;
@@ -78,12 +91,12 @@ function ChatWithHistory() {
             size="icon"
             className={cn(
               'fixed z-40 transition-all duration-300 left-0 top-20 h-7 w-7 -ml-1',
-              open && `md:left-[calc(24.5rem)]`,
+              open && 'md:left-[262px]',
               !open && 'md:left-5'
             )}
             aria-label="Toggle history"
           >
-            {open ? (
+            {showHistoryPanel ? (
               <PanelLeftClose className="h-5 w-5" />
             ) : (
               <PanelLeftOpen className="h-5 w-5" />
@@ -92,7 +105,7 @@ function ChatWithHistory() {
           <ChatSettingsProvider initialData={initialData}>
             <SidebarProvider
               inner
-              style={sidebarStyles}
+              style={settingsSidebarStyles}
               className="flex-1 flex flex-col overflow-hidden"
             >
               <ChatWithSettings />

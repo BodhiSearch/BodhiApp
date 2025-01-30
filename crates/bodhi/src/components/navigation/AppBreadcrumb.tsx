@@ -1,6 +1,5 @@
 'use client';
 
-import { BookOpenCheck } from 'lucide-react';
 import { useNavigation } from '@/hooks/use-navigation';
 import {
   Breadcrumb,
@@ -9,6 +8,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import Image from 'next/image';
 
 export function AppBreadcrumb() {
   const { currentItem } = useNavigation();
@@ -19,7 +19,14 @@ export function AppBreadcrumb() {
       className="flex-1 flex h-16 items-center gap-2 px-4"
       data-testid="app-breadcrumb"
     >
-      <BookOpenCheck className="size-5" data-testid="app-logo" />
+      <Image
+        src="/bodhi-logo/bodhi-logo-60.svg"
+        alt="Bodhi Logo"
+        width={20}
+        height={20}
+        className="text-primary"
+        data-testid="app-logo"
+      />
       <Breadcrumb>
         <BreadcrumbList data-testid="breadcrumb-list">
           <BreadcrumbItem>
