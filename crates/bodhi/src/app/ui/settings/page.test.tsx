@@ -154,7 +154,7 @@ describe('SettingsPageContent', () => {
     );
 
     // Wait for the error message to appear
-    const errorMessage = await screen.findByText('Failed to load settings: Test error');
+    const errorMessage = await screen.findByText('Test error');
     expect(errorMessage).toBeInTheDocument();
   });
 
@@ -193,7 +193,7 @@ describe('SettingsPage', () => {
     );
 
     render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
-    expect(await screen.findByText(/Failed to load settings/)).toBeInTheDocument();
+    expect(await screen.findByText(/Failed to fetch settings/)).toBeInTheDocument();
   });
 
   it('displays settings grouped by category', async () => {

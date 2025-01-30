@@ -3,9 +3,9 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAppInfo, useUser } from '@/hooks/useQuery';
 import { AppStatus, ErrorResponse } from '@/types/models';
-import { Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
+import { Loading } from '@/components/ui/Loading';
 
 interface AppInitializerProps {
   children?: ReactNode;
@@ -67,17 +67,8 @@ export default function AppInitializer({
     userError,
   ]);
 
-  const loadingView = (message: string) => (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-        <p className="text-muted-foreground">{message}</p>
-      </div>
-    </div>
-  );
-
   if (appLoading || userLoading) {
-    return loadingView('Initializing app...');
+    return <Loading message="Initializing app..." />;
   }
 
   if (appError) {
@@ -117,12 +108,12 @@ export default function AppInitializer({
     }
 
     if (!allowedStatus || appInfo.status !== allowedStatus) {
-      return loadingView('Redirecting...');
+      return <Loading message="Redirecting..." />;
     }
   }
 
   if (authenticated && appInfo?.authz && !userInfo?.logged_in) {
-    return loadingView('Redirecting to login...');
+    return <Loading message="Redirecting to login..." />;
   }
 
   return <>{children}</>;

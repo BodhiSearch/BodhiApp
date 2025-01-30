@@ -17,7 +17,6 @@ import { useSettings } from '@/hooks/useQuery';
 import { cn } from '@/lib/utils';
 import { Setting } from '@/types/models';
 import {
-  AlertCircle,
   Code,
   Database,
   FileText,
@@ -35,6 +34,7 @@ import {
 import { useState } from 'react';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { ErrorPage } from '@/components/ui/ErrorPage';
 
 type SettingConfig = {
   key: string;
@@ -218,14 +218,7 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
 
   if (error) {
     const errorMessage = error.response?.data?.error?.message || error.message;
-    return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load settings: {errorMessage}
-        </AlertDescription>
-      </Alert>
-    );
+    return <ErrorPage message={errorMessage} />;
   }
 
   return (
