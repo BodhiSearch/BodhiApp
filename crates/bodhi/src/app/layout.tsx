@@ -6,7 +6,10 @@ import '@/styles/syntax-highlighter.css';
 import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
-import { NavigationProvider } from '@/hooks/use-navigation';
+import {
+  NavigationProvider,
+  defaultNavigationItems,
+} from '@/hooks/use-navigation';
 import { AppNavigation } from '@/components/navigation/AppNavigation';
 import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -44,7 +47,7 @@ export default function RootLayout({
       >
         <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">
           <ClientProviders>
-            <NavigationProvider>
+            <NavigationProvider items={defaultNavigationItems}>
               <div
                 className="flex min-h-screen flex-col"
                 data-testid="root-layout"

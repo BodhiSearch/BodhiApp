@@ -26,7 +26,19 @@ export function AppNavigation() {
   const { theme, setTheme } = useTheme();
 
   const isSelected = (item: NavigationItem) => {
-    return item.href === currentItem.item.href;
+    // Direct match
+    if (item.href === currentItem.item.href) {
+      return true;
+    }
+
+    // Check if any skipped child items match current path
+    if (item.items) {
+      return item.items.some(
+        (subItem) => subItem.skip && subItem.href === currentItem.item.href
+      );
+    }
+
+    return false;
   };
 
   return (
@@ -80,30 +92,34 @@ export function AppNavigation() {
                       {item.icon && <item.icon className="size-4" />}
                       <span className="font-medium">{item.title}</span>
                     </DropdownMenuLabel>
-                    {item.items.map((subItem) => (
-                      <Link
-                        key={subItem.title}
-                        href={subItem.href || '#'}
-                        target={subItem.target}
-                      >
-                        <DropdownMenuItem
-                          className={cn(
-                            'flex items-center gap-2 pl-8 cursor-pointer',
-                            isSelected(subItem) && 'bg-accent'
-                          )}
+                    {item.items
+                      .filter((subItem) => subItem.skip !== true)
+                      .map((subItem) => (
+                        <Link
+                          key={subItem.title}
+                          href={subItem.href || '#'}
+                          target={subItem.target}
                         >
-                          {subItem.icon && <subItem.icon className="size-4" />}
-                          <div className="space-y-1">
-                            <p>{subItem.title}</p>
-                            {subItem.description && (
-                              <p className="text-xs text-muted-foreground">
-                                {subItem.description}
-                              </p>
+                          <DropdownMenuItem
+                            className={cn(
+                              'flex items-center gap-2 pl-8 cursor-pointer',
+                              isSelected(subItem) && 'bg-accent'
                             )}
-                          </div>
-                        </DropdownMenuItem>
-                      </Link>
-                    ))}
+                          >
+                            {subItem.icon && (
+                              <subItem.icon className="size-4" />
+                            )}
+                            <div className="space-y-1">
+                              <p>{subItem.title}</p>
+                              {subItem.description && (
+                                <p className="text-xs text-muted-foreground">
+                                  {subItem.description}
+                                </p>
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                        </Link>
+                      ))}
                   </>
                 ) : (
                   <Link href={item.href || '#'} target={item.target}>
