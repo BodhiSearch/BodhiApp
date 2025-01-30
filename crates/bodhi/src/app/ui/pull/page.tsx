@@ -9,11 +9,8 @@ import { SortState } from '@/types/models';
 import AppInitializer from '@/components/AppInitializer';
 import { Badge } from '@/components/ui/badge';
 import { PullForm } from '@/app/ui/pull/PullForm';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { UserOnboarding } from '@/components/UserOnboarding';
 
 const columns = [
   { id: 'repo', name: 'Repo', sorted: true },
@@ -35,10 +32,6 @@ function StatusBadge({ status }: { status: DownloadRequest['status'] }) {
 }
 
 function PullPageContent() {
-  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
-    'pull-banner-dismissed',
-    false
-  );
   const [page, setPage] = useState(1);
   const [pageSize] = useState(30);
   const [sort, setSort] = useState<SortState>({
@@ -88,26 +81,10 @@ function PullPageContent() {
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-8 sm:px-6 lg:px-8">
-      {!hasDismissedBanner && (
-        <Alert className="mb-4">
-          <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              Welcome to Pull! Here you can download model files from Hugging
-              Face to your local storage, and monitor the status of your
-              downloads.
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 shrink-0"
-              onClick={() => setHasDismissedBanner(true)}
-              title="Dismiss"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      <UserOnboarding storageKey="pull-banner-dismissed">
+        Welcome to Pull! Here you can download model files from Hugging Face to
+        your local storage, and monitor the status of your downloads.
+      </UserOnboarding>
 
       <div>
         <PullForm />

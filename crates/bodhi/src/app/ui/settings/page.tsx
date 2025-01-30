@@ -2,7 +2,6 @@
 
 import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
 import AppInitializer from '@/components/AppInitializer';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -29,12 +28,11 @@ import {
   Terminal,
   ToggleLeft,
   Copy,
-  X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { ErrorPage } from '@/components/ui/ErrorPage';
+import { UserOnboarding } from '@/components/UserOnboarding';
 
 type SettingConfig = {
   key: string;
@@ -199,10 +197,6 @@ const getSourceBadgeVariant = (source: string) => {
 };
 
 export function SettingsPageContent({ config }: SettingsPageContentProps) {
-  const [hasDismissedBanner, setHasDismissedBanner] = useLocalStorage(
-    'settings-banner-dismissed',
-    false
-  );
   const [editingSetting, setEditingSetting] = useState<Setting | null>(null);
   const { data: settings, isLoading, error } = useSettings();
   const { showSuccess } = useToastMessages();
@@ -223,27 +217,12 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
 
   return (
     <div className="flex flex-col gap-4 sm:container sm:mx-auto sm:py-4">
-      {!hasDismissedBanner && (
-        <Alert className="border-x-0 sm:border-x rounded-none sm:rounded-lg">
-          <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              Welcome to Settings! Here you can view and manage your
-              application&apos;s configuration. It also shows the current value,
-              and the source of that value. Some settings are editable while
-              others are read-only.
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 shrink-0"
-              onClick={() => setHasDismissedBanner(true)}
-              title="Dismiss"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      <UserOnboarding storageKey="settings-banner-dismissed">
+        Welcome to Settings! Here you can view and manage your
+        application&apos;s configuration. It also shows the current value, and
+        the source of that value. Some settings are editable while others are
+        read-only.
+      </UserOnboarding>
 
       {Object.entries(config).map(([groupKey, group]) => {
         const Icon = group.icon;
