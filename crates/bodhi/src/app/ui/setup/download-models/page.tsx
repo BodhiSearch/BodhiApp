@@ -209,42 +209,6 @@ function RatingStars({ rating }: { rating: number }) {
   );
 }
 
-function ModelDownloadStatus({ model }: { model: ModelInfo }) {
-  if (!model.downloadState) return null;
-
-  switch (model.downloadState.status) {
-    case 'downloading':
-      return (
-        <div className="space-y-2">
-          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${model.downloadState.progress}%` }}
-            />
-          </div>
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{model.downloadState.progress}% • {model.downloadState.speed}</span>
-            <span>{model.downloadState.timeRemaining} remaining</span>
-          </div>
-        </div>
-      );
-    case 'complete':
-      return (
-        <div className="text-sm text-green-500">
-          Download Complete
-        </div>
-      );
-    case 'error':
-      return (
-        <div className="text-sm text-destructive">
-          Download Failed - Retry
-        </div>
-      );
-    default:
-      return null;
-  }
-}
-
 function ModelCard({ model }: { model: ModelInfo }) {
   return (
     <Card className="h-full flex flex-col">
@@ -295,17 +259,35 @@ function ModelCard({ model }: { model: ModelInfo }) {
             <RatingStars rating={model.ratings.accuracy} />
           </div>
         </div>
-
-        <ModelDownloadStatus model={model} />
       </CardContent>
-      <CardFooter>
-        <Button 
-          className="w-full" 
-          disabled={model.downloadState?.status === 'downloading' || model.downloadState?.status === 'complete'}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Download Model
-        </Button>
+      <CardFooter className="flex gap-2">
+        {model.downloadState?.status === 'downloading' ? (
+          <>
+            <div className="flex-1">
+              <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${model.downloadState.progress}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                <span>{model.downloadState.progress}% • {model.downloadState.speed}</span>
+                <span>{model.downloadState.timeRemaining} remaining</span>
+              </div>
+            </div>
+            <Button variant="outline" size="sm">
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <Button 
+            className="w-full" 
+            disabled={model.downloadState?.status === 'complete'}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {model.downloadState?.status === 'complete' ? 'Download Complete' : 'Download Model'}
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
@@ -336,10 +318,7 @@ function ModelList() {
           {expandedCategory === category && (
             <div className="space-y-2 p-2">
               {models.map((model) => (
-                <div
-                  key={model.id}
-                  className="flex flex-col gap-2 p-3 rounded-lg bg-card"
-                >
+                <div key={model.id} className="flex flex-col gap-2 p-3 rounded-lg bg-card">
                   {/* Model Name and Rank */}
                   <div className="flex items-center justify-between">
                     <div>
@@ -378,13 +357,27 @@ function ModelList() {
                   </div>
 
                   {/* Download Button and Status */}
-                  <div>
+                  <div className="flex justify-center">
                     {model.downloadState?.status === 'downloading' ? (
-                      <ModelDownloadStatus model={model} />
+                      <div className="w-full flex gap-2 items-center">
+                        <div className="flex-1">
+                          <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary transition-all duration-500"
+                              style={{ width: `${model.downloadState.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                            <span>{model.downloadState.progress}% • {model.downloadState.speed}</span>
+                            <span>{model.downloadState.timeRemaining} remaining</span>
+                          </div>
+                        </div>
+                        <Button variant="outline" size="sm">
+                          Cancel
+                        </Button>
+                      </div>
                     ) : (
                       <Button
-                        variant="secondary"
-                        className="w-full"
                         disabled={model.downloadState?.status === 'complete'}
                       >
                         <Download className="mr-2 h-4 w-4" />

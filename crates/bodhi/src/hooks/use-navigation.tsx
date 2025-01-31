@@ -2,9 +2,12 @@
 
 import { NavigationItem } from '@/types/navigation';
 import {
+  BadgeCheck,
+  CloudDownload,
   Cog,
   Database,
   Download,
+  Drill,
   FileJson,
   FilePlus2,
   Files,
@@ -12,8 +15,11 @@ import {
   Home,
   Key,
   MessageSquare,
+  Rocket,
   Settings,
   Settings2,
+  ShieldCheck,
+  UserRoundPlus,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import {
