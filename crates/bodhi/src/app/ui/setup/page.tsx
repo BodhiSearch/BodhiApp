@@ -84,7 +84,7 @@ function SetupContent() {
     {
       title: 'Solid Foundation',
       description:
-        'Built on proven open-source pillars: HuggingFace, llama.cpp.',
+        'Leverages open-source eco-system: HuggingFace, llama.cpp, etc.',
       icon: '🌟',
     },
   ];
@@ -97,8 +97,9 @@ function SetupContent() {
         'User authentication',
         'Multi-user support with RBAC',
         'Secure API endpoints',
-        'API Tokens (scoped)',
+        'API Tokens',
         'Resource usage tracking (coming soon)',
+        'User/token level usage quotas (coming soon)',
         'Compatible with future Auth-only mode features',
       ],
       icon: '🔐',
@@ -110,10 +111,10 @@ function SetupContent() {
       benefits: [
         'Quick setup',
         'No email/login required',
-        'No authentication or user management',
+        'No authentication or user management feature',
         'No API tokens',
-        'No Resource usage tracking',
-        'Unsecure API endpoints',
+        'No user/token-wise usage tracking',
+        'Public/insecure API endpoints',
         'Not compatible with Auth-only mode features',
       ],
       icon: '⚡️',

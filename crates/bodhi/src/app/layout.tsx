@@ -10,9 +10,8 @@ import {
   NavigationProvider,
   defaultNavigationItems,
 } from '@/hooks/use-navigation';
-import { AppNavigation } from '@/components/navigation/AppNavigation';
-import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { AppHeader } from '@/components/navigation/AppHeader';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -52,15 +51,7 @@ export default function RootLayout({
                 className="flex min-h-screen flex-col"
                 data-testid="root-layout"
               >
-                <header
-                  className="sticky top-0 z-50 h-16 border-b bg-header-elevated/90 backdrop-blur-sm"
-                  data-testid="app-header"
-                >
-                  <div className="flex h-full items-center">
-                    <AppNavigation />
-                    <AppBreadcrumb />
-                  </div>
-                </header>
+                <AppHeader />
                 <main className="flex-1" data-testid="app-main">
                   {children}
                 </main>
