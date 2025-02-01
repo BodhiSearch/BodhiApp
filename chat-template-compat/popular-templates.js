@@ -2,6 +2,7 @@ import { gguf } from "@huggingface/gguf";
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import yaml from 'js-yaml';
 
 // Get current script directory
 const __filename = fileURLToPath(import.meta.url);
@@ -10,6 +11,7 @@ const __dirname = path.dirname(__filename);
 // Compute output directory relative to script location
 const OUTPUT_DIR = path.join(__dirname, 'tests', 'data', 'embedded');
 const REPOS_FILE = path.join(__dirname, 'tests', 'data', 'embedded-repos.txt');
+const OUTPUT_YAML = path.join(__dirname, 'tests', 'data', 'embedded-repos-with-base.yaml');
 
 async function ensureDirectoryExists(dirPath) {
   try {
@@ -59,35 +61,52 @@ async function fetchFirstGGUFFile(owner_repo) {
   return ggufFile.path;
 }
 
-async function readAndSaveGGUF(owner_repo) {
+async function fetchBaseModel(repo) {
+  const url = `https://huggingface.co/api/models/${repo}`;
   try {
-    const sanitizedName = `${owner_repo.replace('/', '--')}`;
-    const outputPath = path.join(OUTPUT_DIR, `${sanitizedName}.j2`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch base model for ${repo}: ${response.statusText}`);
+      return null;
+    }
+    const data = await response.json();
+    return data?.cardData?.base_model;
+  } catch (error) {
+    console.error(`Error fetching base model for ${repo}:`, error);
+    return null;
+  }
+}
 
-    // Skip if file already exists
-    if (await fileExists(outputPath)) {
-      console.log(`Template already exists for ${owner_repo}, skipping...`);
-      return;
+async function getModelInfo(repo) {
+  try {
+    console.log(`Processing ${repo}...`);
+    
+    const baseModel = await fetchBaseModel(repo);
+    if (!baseModel) {
+      console.log(`No base model found for ${repo}`);
+      return null;
     }
 
-    const filename = await fetchFirstGGUFFile(owner_repo);
-    const url = `https://huggingface.co/${owner_repo}/resolve/main/${filename}`;
+    const filename = await fetchFirstGGUFFile(repo);
+    const url = `https://huggingface.co/${repo}/resolve/main/${filename}`;
     console.log(`Reading GGUF file from ${url}...`);
 
     const { metadata } = await gguf(url);
-
-    if (metadata?.['tokenizer.chat_template']) {
-      const template = metadata['tokenizer.chat_template'];
-
-      await ensureDirectoryExists(OUTPUT_DIR);
-      await fs.writeFile(outputPath, template);
-
-      console.log(`Saved chat template for ${owner_repo}/${filename} to ${outputPath}`);
-    } else {
-      console.log(`No chat template found for ${owner_repo}/${filename}`);
+    const template = metadata?.['tokenizer.chat_template'];
+    
+    if (!template) {
+      console.log(`No chat template found for ${repo}/${filename}`);
+      return null;
     }
+
+    return {
+      id: repo,
+      base: baseModel,
+      template: template
+    };
   } catch (error) {
-    console.error(`Error processing ${owner_repo}:`, error);
+    console.error(`Error processing ${repo}:`, error);
+    return null;
   }
 }
 
@@ -102,9 +121,25 @@ async function main() {
     await fs.writeFile(REPOS_FILE, modelRepos.join('\n'));
     console.log(`Saved repos list to ${REPOS_FILE}`);
 
-    // for (const repo of modelRepos) {
-    //   await readAndSaveGGUF(repo);
-    // }
+    // Process all repos in parallel with concurrency limit
+    const concurrencyLimit = 5;
+    const results = [];
+    
+    for (let i = 0; i < modelRepos.length; i += concurrencyLimit) {
+      const batch = modelRepos.slice(i, i + concurrencyLimit);
+      const batchResults = await Promise.all(batch.map(repo => getModelInfo(repo)));
+      results.push(...batchResults.filter(Boolean));
+    }
+
+    // Save results to YAML file
+    await ensureDirectoryExists(path.dirname(OUTPUT_YAML));
+    await fs.writeFile(
+      OUTPUT_YAML,
+      yaml.dump(results, { lineWidth: -1, noRefs: true })
+    );
+    
+    console.log(`Successfully processed ${results.length} models`);
+    console.log(`Results saved to ${OUTPUT_YAML}`);
   } catch (error) {
     console.error('Error in main:', error);
   }
