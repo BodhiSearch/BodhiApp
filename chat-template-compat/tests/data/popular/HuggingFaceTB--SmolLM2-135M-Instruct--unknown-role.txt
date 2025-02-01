@@ -1,0 +1,5 @@
+<|im_start|>system
+You are a helpful AI assistant named SmolLM, trained by Hugging Face<|im_end|>
+<|im_start|>unknown
+should fail<|im_end|>
+<|im_start|>assistant

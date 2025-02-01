@@ -1,0 +1,9 @@
+<|im_start|>system
+You are a helpful AI assistant named SmolLM, trained by Hugging Face<|im_end|>
+<|im_start|>user
+What day comes after Monday?<|im_end|>
+<|im_start|>assistant
+Tuesday<|im_end|>
+<|im_start|>user
+And what day comes after that?<|im_end|>
+<|im_start|>assistant

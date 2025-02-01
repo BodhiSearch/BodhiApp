@@ -1,0 +1,9 @@
+<|im_start|>system
+Please reason step by step, and put your final answer within \boxed{}.<|im_end|>
+<|im_start|>user
+What day comes after Monday?<|im_end|>
+<|im_start|>assistant
+Tuesday<|im_end|>
+<|im_start|>user
+And what day comes after that?<|im_end|>
+<|im_start|>assistant

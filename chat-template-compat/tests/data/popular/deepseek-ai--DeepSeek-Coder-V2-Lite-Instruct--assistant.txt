@@ -1,0 +1,5 @@
+<｜begin▁of▁sentence｜>User: What day comes after Monday?
+
+Assistant: Tuesday<｜end▁of▁sentence｜>User: And what day comes after that?
+
+Assistant:

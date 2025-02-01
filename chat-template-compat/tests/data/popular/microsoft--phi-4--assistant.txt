@@ -1,0 +1,1 @@
+<|im_start|>user<|im_sep|>What day comes after Monday?<|im_end|><|im_start|>assistant<|im_sep|>Tuesday<|im_end|><|im_start|>user<|im_sep|>And what day comes after that?<|im_end|><|im_start|>assistant<|im_sep|>

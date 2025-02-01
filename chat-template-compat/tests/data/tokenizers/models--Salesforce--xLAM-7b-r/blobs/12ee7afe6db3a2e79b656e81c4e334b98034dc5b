@@ -1,0 +1,54 @@
+{
+    "add_bos_token": false,
+    "add_eos_token": false,
+    "add_prefix_space": null,
+    "added_tokens_decoder": {
+        "0": {
+            "content": "<unk>",
+            "lstrip": false,
+            "normalized": false,
+            "rstrip": false,
+            "single_word": false,
+            "special": true
+        },
+        "1": {
+            "content": "<s>",
+            "lstrip": false,
+            "normalized": false,
+            "rstrip": false,
+            "single_word": false,
+            "special": true
+        },
+        "2": {
+            "content": "</s>",
+            "lstrip": false,
+            "normalized": false,
+            "rstrip": false,
+            "single_word": false,
+            "special": true
+        }
+    },
+    "additional_special_tokens": [],
+    "bos_token": "<s>",
+    "chat_template": [
+        {
+            "name": "default",
+            "template": "{{ bos_token }}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}{% if message['role'] == 'user' %}{{ '[INST] ' + message['content'] + ' [/INST]' }}{% elif message['role'] == 'assistant' %}{{ ' ' + message['content'] + eos_token}}{% else %}{{ raise_exception('Only user and assistant roles are supported!') }}{% endif %}{% endfor %}"
+        },
+        {
+            "name": "tool_use",
+            "template": "{%- if messages[0][\"role\"] == \"system\" %}\n    {%- set system_message = messages[0][\"content\"] %}\n    {%- if messages[1][\"role\"] == \"system\" %}\n        {%- set format_message = messages[1][\"content\"] %}\n        {%- set loop_messages = messages[2:] %}\n    {%- else %}\n        {%- set loop_messages = messages[1:] %}\n    {%- endif %}\n{%- else %}\n    {%- set loop_messages = messages %}\n{%- endif %}\n{%- if not tools is defined %}\n    {%- set tools = none %}\n{%- endif %}\n\n{#- This block checks for alternating user/assistant messages, skipping tool calling messages #}\n{%- set ns = namespace() %}\n{%- set ns.index = 0 %}\n{%- for message in loop_messages %}\n    {%- if ((message[\"role\"] == \"user\") and (ns.index % 2 != 0)) or (message[\"role\"] not in [\"user\", \"assistant\", \"tool\", \"tool_results\"]) %}\n        {{- raise_exception(\"After the optional system message, conversation roles can only be from user/assistant/tool; After each tool message, the next message must be from the assistant\") }}\n    {%- endif %}\n    {%- set ns.index = ns.index + 1 %}\n{%- endfor %}\n\n{{- bos_token }}\n{{- \" [INST]\" }}\n{%- if system_message is not defined %}\n    {% set system_message %}\nYou are an expert in composing functions. You are given a question and a set of possible functions. \nBased on the question, you will need to make one or more function/tool calls to achieve the purpose. \nIf none of the functions can be used, point it out and refuse to answer. \nIf the given question lacks the parameters required by the function, also point it out.{% endset %}\n{%- endif %}\n{{- \"\n[BEGIN OF TASK INSTRUCTION]\n\" + system_message + \"\n[END OF TASK INSTRUCTION]\n\n\" }}\n\n{%- if tools is not none %}\n    {{- \"[BEGIN OF AVAILABLE_TOOLS]\n\" }}\n    {{- tools|string }}\n    {{- \"\n[END OF AVAILABLE_TOOLS]\n\n\" }}\n{%- endif %}\n    \n{%- if format_message is not defined %}\n    {% set format_message %}\nYour output should be in the JSON format, which specifies a list of function calls. The example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make tool_calls an empty list '[]'.\n```{\"thought\": \"the thought process, or an empty string\", \"tool_calls\": [{\"name\": \"api_name1\", \"arguments\": {\"argument1\": \"value1\", \"argument2\": \"value2\"}}]}```\n    {% endset %}\n{%- endif %}\n{{- \"[BEGIN OF FORMAT INSTRUCTION]\n\" + format_message + \"[END OF FORMAT INSTRUCTION]\n\n\" }}\n\n{%- if loop_messages[0][\"role\"] == \"user\" %}\n    {%- set query = loop_messages[0][\"content\"] %}\n    {%- set remaining_messages = loop_messages[1:] %}\n    {{- \"[BEGIN OF QUERY]\n\" + query + \"\n[END OF QUERY]\" }}\n    {%- if remaining_messages|length == 0 %}\n        {{- \"\n\" }}\n    {%- endif %}\n    {%- set loop_messages = remaining_messages %}\n{%- endif %}\n\n{% if loop_messages %}\n    {{- \"\n[BEGIN OF HISTORY STEPS]\n[\" }}\n    {%- set step_id = namespace(value=1) %}\n    {%- for message in loop_messages %}\n        {%- if message[\"role\"] == \"assistant\" %}\n            {%- if message.tool_calls is defined and message.tool_calls is not none %}\n                {% if message.tool_calls is iterable and (message.tool_calls is not string and message.tool_calls is not mapping) %}\n                    {{- \"{'thought':\" + message.content|tojson + \", 'tool_calls':\" + message.tool_calls|tojson + \", 'step_id':\" + step_id.value|string + \",\" }}\n                {%- else %}\n                    {{- raise_exception(\"The tool_calls must be a list!\") }}\n                {%- endif %}\n            {%- else %}\n                {{- \"{'thought':\" + message.content|tojson + \", 'tool_calls':[]\" + \", 'step_id':\" + step_id.value|string + \",\" }}\n            {%- endif %}\n            {%- if loop.nextitem is not defined %}\n                {{- \" 'next_observation':''}\" }}\n            {%- elif loop.nextitem[\"role\"] == \"user\" %}\n                {{- \" 'next_observation':''\" }}\n            {%- elif loop.nextitem[\"role\"] != \"tool_results\" and loop.nextitem[\"role\"] != \"tool\" %}\n                {{- \" 'next_observation':''},\" }}\n            {%- endif %}\n        {%- elif message[\"role\"] == \"tool_results\" or message[\"role\"] == \"tool\" %}\n            {{- \" 'next_observation':\" + message.content|tojson }}\n            {%- if loop.nextitem is defined and loop.nextitem[\"role\"] != \"user\" %}\n                {{- \"}, \" }}\n            {%- elif not loop.nextitem is defined %}\n                {{- \"} \" }}\n            {%- endif %}\n            {%- set step_id.value = step_id.value + 1 %}\n        {%- elif message[\"role\"] == \"user\" %}\n            {{- \", 'user_input':\" + message.content|tojson }}\n            {%- if loop.nextitem is defined %}\n                {{- \"}, \" }}\n            {%- else %}\n                {{- \"} \" }}\n            {%- endif %}\n            {%- set step_id.value = step_id.value + 1 %}\n        {%- endif %}\n    {%- endfor %}\n    {{- \"]\n[END OF HISTORY STEPS]\n\n\"}}\n{%- endif %}\n{{- \" [/INST]\" }}"
+        }
+    ],
+    "clean_up_tokenization_spaces": false,
+    "eos_token": "</s>",
+    "legacy": true,
+    "max_length": 8192,
+    "model_max_length": 1000000000000000019884624838656,
+    "pad_token": "[PAD]",
+    "sp_model_kwargs": {},
+    "spaces_between_special_tokens": false,
+    "tokenizer_class": "LlamaTokenizer",
+    "unk_token": "<unk>",
+    "use_default_system_prompt": false
+}

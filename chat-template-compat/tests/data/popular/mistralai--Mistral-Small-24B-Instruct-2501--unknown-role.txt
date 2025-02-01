@@ -1,0 +1,1 @@
+JINJA_ERROR: Only user, system and assistant roles are supported!

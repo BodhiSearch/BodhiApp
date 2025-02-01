@@ -1,0 +1,330 @@
+{
+  "add_bos_token": true,
+  "add_eos_token": false,
+  "add_prefix_space": false,
+  "added_tokens_decoder": {
+    "0": {
+      "content": "<PAD>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "1": {
+      "content": "<UNK>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "2": {
+      "content": "<CLS>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "3": {
+      "content": "<SEP>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "4": {
+      "content": "<MASK_TOKEN>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "5": {
+      "content": "<BOS_TOKEN>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "6": {
+      "content": "<EOS_TOKEN>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "7": {
+      "content": "<EOP_TOKEN>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "255000": {
+      "content": "<|START_OF_TURN_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255001": {
+      "content": "<|END_OF_TURN_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": true
+    },
+    "255002": {
+      "content": "<|YES_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255003": {
+      "content": "<|NO_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255004": {
+      "content": "<|GOOD_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255005": {
+      "content": "<|BAD_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255006": {
+      "content": "<|USER_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255007": {
+      "content": "<|CHATBOT_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255008": {
+      "content": "<|SYSTEM_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255009": {
+      "content": "<|USER_0_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255010": {
+      "content": "<|USER_1_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255011": {
+      "content": "<|USER_2_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255012": {
+      "content": "<|USER_3_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255013": {
+      "content": "<|USER_4_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255014": {
+      "content": "<|USER_5_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255015": {
+      "content": "<|USER_6_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255016": {
+      "content": "<|USER_7_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255017": {
+      "content": "<|USER_8_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255018": {
+      "content": "<|USER_9_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255019": {
+      "content": "<|EXTRA_0_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255020": {
+      "content": "<|EXTRA_1_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255021": {
+      "content": "<|EXTRA_2_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255022": {
+      "content": "<|EXTRA_3_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255023": {
+      "content": "<|EXTRA_4_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255024": {
+      "content": "<|EXTRA_5_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255025": {
+      "content": "<|EXTRA_6_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255026": {
+      "content": "<|EXTRA_7_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255027": {
+      "content": "<|EXTRA_8_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    },
+    "255028": {
+      "content": "<|EXTRA_9_TOKEN|>",
+      "lstrip": false,
+      "normalized": false,
+      "rstrip": false,
+      "single_word": false,
+      "special": false
+    }
+  },
+  "bos_token": "<BOS_TOKEN>",
+  "chat_template": [
+    {
+      "name": "default",
+      "template": "{{ bos_token }}{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] %}{% elif false == true %}{% set loop_messages = messages %}{% set system_message = 'You are a large language model called Command R+ built by the company Cohere. You act as a brilliant, sophisticated, AI-assistant chatbot trained to assist human users by providing thorough responses.' %}{% else %}{% set loop_messages = messages %}{% set system_message = false %}{% endif %}{% if system_message != false %}{{ '<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>' + system_message + '<|END_OF_TURN_TOKEN|>' }}{% endif %}{% for message in loop_messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<|START_OF_TURN_TOKEN|><|USER_TOKEN|>' + content.strip() + '<|END_OF_TURN_TOKEN|>' }}{% elif message['role'] == 'assistant' %}{{ '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>'  + content.strip() + '<|END_OF_TURN_TOKEN|>' }}{% endif %}{% endfor %}{% if add_generation_prompt %}{{ '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>' }}{% endif %}"
+    },
+    {
+      "name": "tool_use",
+      "template": "\n{%- macro json_to_python_type(json_spec) %}\n{%- set basic_type_map = {\n    \"string\": \"str\",\n    \"number\": \"float\",\n    \"integer\": \"int\",\n    \"boolean\": \"bool\"\n} %}\n\n{%- if basic_type_map[json_spec.type] is defined %}\n    {{- basic_type_map[json_spec.type] }}\n{%- elif json_spec.type == \"array\" %}\n    {{- \"List[\" +  json_to_python_type(json_spec.items) + \"]\"}}\n{%- elif json_spec.type == \"object\" %}\n    {{- \"Dict[str, \" + json_to_python_type(json_spec.additionalProperties) + ']'}}\n{%- elif json_spec.type is iterable %}\n    {{- \"Union[\" }}\n    {%- for t in json_spec.type %}\n      {{- json_to_python_type({\"type\": t}) }}\n      {%- if not loop.last %}\n        {{- \",\" }} \n    {%- endif %}\n    {%- endfor %}\n    {{- \"]\" }}\n{%- else %}\n    {{- \"Any\" }}\n{%- endif %}\n{%- endmacro %}\n\n{%- macro old_tool_parser(tools) %}\n{%- for tool in tools %}\n    {%- if loop.index0 != 0 %}\n        {{- '\\n\\n' }}\n    {%- endif %}\n    {{- '```python\\ndef ' + tool.name + '(' }}\n    {%- for param_name, param_fields in tool.parameter_definitions|items %}\n        {%- if loop.index0 != 0 %}\n            {{- ', '}}\n        {%- endif %}\n        {{- param_name + ': ' }}\n        {%- if not param_fields.required %}\n            {{- 'Optional[' + param_fields.type + '] = None'}}\n        {%- else %}\n            {{- param_fields.type }}\n        {%- endif %}\n    {%- endfor %}\n    {{- ') -> List[Dict]:\\n    \"\"\"'}}\n    {{- tool.description }}\n    {%- if tool.parameter_definitions|length != 0 %}\n        {{- '\\n\\n    Args:\\n        '}}\n        {%- for param_name, param_fields in tool.parameter_definitions|items %}\n            {%- if loop.index0 != 0 %}\n                {{- '\\n        ' }}\n            {%- endif %}\n            {{- param_name + ' ('}}\n            {%- if not param_fields.required %}\n                {{- 'Optional[' + param_fields.type + ']'}}\n            {%- else %}\n                {{- param_fields.type }}\n            {%- endif %}\n            {{- '): ' + param_fields.description }}\n        {%- endfor %}\n    {%- endif %}\n    {{- '\\n    \"\"\"\\n    pass\\n```' }}\n{%- endfor %}\n{%- endmacro %}\n\n{%- macro new_tool_parser(tools) %}\n{%- for tool in tools %}\n  {%- if loop.index0 != 0 %}\n    {{- '\\n\\n'}}\n  {%- endif %}\n  {%- if tool.function is defined %}\n    {%- set tool = tool.function %}\n  {%- endif %}\n  {{-'```python\ndef ' + tool.name + '('}}\n  {%- for param_name, param_fields in tool.parameters.properties|items %}\n    {%- if loop.index0 != 0 %}\n      {{- ', '}}\n    {%- endif %}\n    {{-param_name + \": \"}} \n    {%- if not param_name in tool.parameters.required %}\n      {{-'Optional[' + json_to_python_type(param_fields) + '] = None'}}\n    {%- else %}\n      {{- json_to_python_type(param_fields) }}\n    {%- endif %}\n  {%- endfor %}\n  {{- ') -> List[Dict]:\n    \"\"\"'}}\n  {{- tool.description }}\n  {%- if tool.parameters.properties|length != 0 %}\n    {{- '\\n\\n    Args:\\n        '}}\n    {%- for param_name, param_fields in tool.parameters.properties|items %}\n      {%- if loop.index0 != 0 %}\n        {{- '\\n        ' }}\n      {%- endif %}\n      {{- param_name + ' ('}}\n      {%- if not param_name in tool.parameters.required %}\n        {{-'Optional[' + json_to_python_type(param_fields) + ']'}}\n      {%- else %}\n        {{- json_to_python_type(param_fields) }}\n      {%- endif %}\n      {{- '): ' + param_fields.description }}\n    {%- endfor %}\n    {%- endif %}\n    {{- '\\n    \"\"\"\\n    pass\\n```' }}\n{%- endfor %}\n{%- endmacro %}\n\n{{- bos_token }}\n{%- if messages[0]['role'] == 'system' %}\n  {%- set loop_messages = messages[1:] %}\n  {%- set system_message = messages[0]['content'] %}\n{%- else %}\n  {%- set loop_messages = messages %}\n  {%- set system_message = '## Task and Context\\nYou help people answer their questions and other requests interactively. You will be asked a very wide array of requests on all kinds of topics. You will be equipped with a wide range of search engines or similar tools to help you, which you use to research your answer. You should focus on serving the user\\'s needs as best you can, which will be wide-ranging.\\n\\n## Style Guide\\nUnless the user asks for a different style of answer, you should answer in full sentences, using proper grammar and spelling.' %}\n{%- endif %}\n{{- '<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>' }}\n{{- '# Safety Preamble' }}\n{{- '\nThe instructions in this section override those in the task description and style guide sections. Don\\'t answer questions that are harmful or immoral.' }}\n{{- '\n\n# System Preamble' }}\n{{- '\n## Basic Rules' }}\n{{- '\nYou are a powerful conversational AI trained by Cohere to help people. You are augmented by a number of tools, and your job is to use and consume the output of these tools to best help the user. You will see a conversation history between yourself and a user, ending with an utterance from the user. You will then see a specific instruction instructing you what kind of response to generate. When you answer the user\\'s requests, you cite your sources in your answers, according to those instructions.' }}\n{{- '\n\n# User Preamble' }}\n{{- '\n' + system_message }}\n{{-'\n\n## Available Tools\nHere is a list of tools that you have available to you:\n\n'}}\n{%- set ns = namespace(new_tools=true) %}\n{%- for tool in tools %}\n    {%- if tool.parameter_definitions is defined %}\n        {%- set ns.new_tools = false %}\n    {%- endif %}\n{%- endfor %}\n{%- if ns.new_tools %}\n    {{- new_tool_parser(tools) }}\n{%- else %}\n    {{- old_tool_parser(tools) }}\n{%- endif %}\n{{- '<|END_OF_TURN_TOKEN|>'}}\n{%- for message in loop_messages %}\n  {%- set content = message['content'] %}\n  {%- if message.role == 'user' %}\n    {{- '<|START_OF_TURN_TOKEN|><|USER_TOKEN|>' + content|trim + '<|END_OF_TURN_TOKEN|>' }}\n  {%- elif message.role == 'system' %}\n    {{- '<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>' + content|trim + '<|END_OF_TURN_TOKEN|>' }}\n  {%- elif message.role == 'assistant' and message.tool_calls is defined %}\n    {{- '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>' }}\n    {%- if message.content is defined %}\n        {{- message.content|trim }}\n    {%- endif %}\n    {{- '\\nAction:\\n```json\\n[\\n' }}\n    {%- for tool_call in message.tool_calls %}\n        {%- if tool_call.function is defined %}\n            {%- set tool_call = tool_call.function %}\n        {%- endif %}\n        {{- '{\\n'|indent(4, first=true) }}\n        {{- '\"tool_name\": \"'|indent(8, first=true) + tool_call.name + '\",\\n' }}\n        {{- '\"parameters\": '|indent(8, first=true) }}\n        {%- if tool_call.arguments is defined and tool_call.arguments|length > 0 %}    \n            {{- tool_call.arguments|tojson(indent=4)|indent(8) }}\n            {{- '\\n' }}\n        {%- else %}\n            {{- '{}\\n' }}\n        {%- endif %}\n        {{- '}'|indent(4, first=true) }}\n        {%- if not loop.last %}\n            {{- ',\\n' }}\n        {%- endif %}\n    {%- endfor %}\n    {{- \"\\n]```\\n\" }}\n  {%- elif message.role == 'assistant' %}\n    {{- '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>'  + content|trim + '<|END_OF_TURN_TOKEN|>' }}\n  {%- elif message.role == 'tool' %}\n    {{- '<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|><results>\\n' }}\n    {{- message.content|trim }}\n    {{- '</results><|END_OF_TURN_TOKEN|>' }}\n  {%- endif %}\n{%- endfor %}\n{{-'<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>Write \\'Action:\\' followed by a json-formatted list of actions that you want to perform in order to produce a good response to the user\\'s last input. You can use any of the supplied tools any number of times, but you should aim to execute the minimum number of necessary actions for the input. You should use the `directly-answer` tool if calling the other tools is unnecessary. The list of actions you want to call should be formatted as a list of json objects, for example:\n```json\n[\n    {\n        \"tool_name\": title of the tool in the specification,\n        \"parameters\": a dict of parameters to input into the tool as they are defined in the specs, or {} if it takes no parameters\n    }\n]```<|END_OF_TURN_TOKEN|>'}}\n{%- if add_generation_prompt %}\n  {{- '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>' }}\n{%- endif %}\n"
+    },
+    {
+      "name": "rag",
+      "template": "{{ bos_token }}{% if messages[0]['role'] == 'system' %}{% set loop_messages = messages[1:] %}{% set system_message = messages[0]['content'] %}{% else %}{% set loop_messages = messages %}{% set system_message = '## Task and Context\\nYou help people answer their questions and other requests interactively. You will be asked a very wide array of requests on all kinds of topics. You will be equipped with a wide range of search engines or similar tools to help you, which you use to research your answer. You should focus on serving the user\\'s needs as best you can, which will be wide-ranging.\\n\\n## Style Guide\\nUnless the user asks for a different style of answer, you should answer in full sentences, using proper grammar and spelling.' %}{% endif %}{{ '<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>' }}{{ '# Safety Preamble' }}{{ '\nThe instructions in this section override those in the task description and style guide sections. Don\\'t answer questions that are harmful or immoral.' }}{{ '\n\n# System Preamble' }}{{ '\n## Basic Rules' }}{{ '\nYou are a powerful conversational AI trained by Cohere to help people. You are augmented by a number of tools, and your job is to use and consume the output of these tools to best help the user. You will see a conversation history between yourself and a user, ending with an utterance from the user. You will then see a specific instruction instructing you what kind of response to generate. When you answer the user\\'s requests, you cite your sources in your answers, according to those instructions.' }}{{ '\n\n# User Preamble' }}{{ '\n' + system_message }}{{ '<|END_OF_TURN_TOKEN|>'}}{% for message in loop_messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<|START_OF_TURN_TOKEN|><|USER_TOKEN|>' + content.strip() + '<|END_OF_TURN_TOKEN|>' }}{% elif message['role'] == 'system' %}{{ '<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>' + content.strip() + '<|END_OF_TURN_TOKEN|>' }}{% elif message['role'] == 'assistant' %}{{ '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>'  + content.strip() + '<|END_OF_TURN_TOKEN|>' }}{% endif %}{% endfor %}{{ '<|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>'}}{{ '<results>' }}{% for document in documents %}{{ '\nDocument: ' }}{{ loop.index0 }}\n{% for key, value in document.items() %}{{ key }}: {{value}}\n{% endfor %}{% endfor %}{{ '</results>'}}{{ '<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|SYSTEM_TOKEN|>' }}{{ 'Carefully perform the following instructions, in order, starting each with a new line.\n' }}{{ 'Firstly, Decide which of the retrieved documents are relevant to the user\\'s last input by writing \\'Relevant Documents:\\' followed by comma-separated list of document numbers. If none are relevant, you should instead write \\'None\\'.\n' }}{{ 'Secondly, Decide which of the retrieved documents contain facts that should be cited in a good answer to the user\\'s last input by writing \\'Cited Documents:\\' followed a comma-separated list of document numbers. If you dont want to cite any of them, you should instead write \\'None\\'.\n' }}{% if citation_mode=='accurate' %}{{ 'Thirdly, Write \\'Answer:\\' followed by a response to the user\\'s last input in high quality natural english. Use the retrieved documents to help you. Do not insert any citations or grounding markup.\n' }}{% endif %}{{ 'Finally, Write \\'Grounded answer:\\' followed by a response to the user\\'s last input in high quality natural english. Use the symbols <co: doc> and </co: doc> to indicate when a fact comes from a document in the search result, e.g <co: 0>my fact</co: 0> for a fact from document 0.' }}{{ '<|END_OF_TURN_TOKEN|>' }}{% if add_generation_prompt %}{{ '<|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>' }}{% endif %}"
+    }
+  ],
+  "clean_up_tokenization_spaces": false,
+  "eos_token": "<|END_OF_TURN_TOKEN|>",
+  "legacy": true,
+  "merges_file": null,
+  "model_max_length": 1000000000000000019884624838656,
+  "pad_token": "<PAD>",
+  "sp_model_kwargs": {},
+  "spaces_between_special_tokens": false,
+  "tokenizer_class": "CohereTokenizer",
+  "unk_token": null,
+  "use_default_system_prompt": false,
+  "vocab_file": null
+}

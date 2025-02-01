@@ -1,0 +1,5 @@
+<|assistant|>
+should not have assistant message as first<|endoftext|>
+<|user|>
+should not have user message at even
+<|assistant|>

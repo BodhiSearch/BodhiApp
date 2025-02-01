@@ -1,0 +1,5 @@
+System: You are a helpful assistant.<|im_end|>
+User: What day comes after Monday?<|im_end|>
+Assistant: Tuesday<|im_end|>
+User: And what day comes after that?<|im_end|>
+Assistant: 

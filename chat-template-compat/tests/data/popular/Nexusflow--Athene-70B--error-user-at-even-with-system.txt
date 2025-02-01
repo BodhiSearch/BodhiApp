@@ -1,0 +1,8 @@
+<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+this is system message<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+this is incorrect assistant instruction<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+this is user question<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+

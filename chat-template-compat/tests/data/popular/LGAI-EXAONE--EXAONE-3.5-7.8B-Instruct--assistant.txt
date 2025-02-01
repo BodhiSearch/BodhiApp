@@ -1,0 +1,5 @@
+[|system|][|endofturn|]
+[|user|]What day comes after Monday?
+[|assistant|]Tuesday[|endofturn|]
+[|user|]And what day comes after that?
+[|assistant|]

@@ -1,0 +1,4 @@
+[|system|][|endofturn|]
+[|assistant|]should not have assistant message as first[|endofturn|]
+[|user|]should not have user message at even
+[|assistant|]

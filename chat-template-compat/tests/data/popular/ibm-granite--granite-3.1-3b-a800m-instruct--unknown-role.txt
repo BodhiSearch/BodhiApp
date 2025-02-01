@@ -1,0 +1,5 @@
+<|start_of_role|>system<|end_of_role|>Knowledge Cutoff Date: April 2024.
+Today's Date: February 01, 2025.
+You are Granite, developed by IBM. You are a helpful AI assistant.<|end_of_text|>
+<|start_of_role|>unknown<|end_of_role|>should fail<|end_of_text|>
+<|start_of_role|>assistant<|end_of_role|>

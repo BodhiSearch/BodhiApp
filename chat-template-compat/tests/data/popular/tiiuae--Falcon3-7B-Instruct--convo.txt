@@ -1,0 +1,9 @@
+<|system|>
+You are a helpful assistant.
+<|user|>
+What day comes after Monday?
+<|assistant|>
+Tuesday<|endoftext|>
+<|user|>
+And what day comes after that?
+<|assistant|>

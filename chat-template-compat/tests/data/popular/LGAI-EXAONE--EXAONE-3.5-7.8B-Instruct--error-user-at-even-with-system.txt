@@ -1,0 +1,4 @@
+[|system|]this is system message[|endofturn|]
+[|assistant|]this is incorrect assistant instruction[|endofturn|]
+[|user|]this is user question
+[|assistant|]

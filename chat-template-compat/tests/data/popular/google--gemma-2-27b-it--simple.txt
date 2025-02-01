@@ -1,0 +1,3 @@
+<bos><start_of_turn>user
+What day comes after Monday?<end_of_turn>
+<start_of_turn>model

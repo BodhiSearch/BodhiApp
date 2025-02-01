@@ -1,0 +1,6 @@
+<|begin_of_text|><|start_header_id|>System<|end_header_id|>
+
+You are a helpful assistant.<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>
+
