@@ -1,0 +1,3 @@
+[|system|]You are a helpful assistant.[|endofturn|]
+[|user|]What day comes after Monday?
+[|assistant|]

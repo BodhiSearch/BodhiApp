@@ -1,0 +1,1 @@
+You are a helpful assistant.<|endoftext|>What day comes after Monday?<|endoftext|>Tuesday<|endoftext|>And what day comes after that?<|endoftext|>

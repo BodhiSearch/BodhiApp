@@ -1,0 +1,5 @@
+<|system|>
+You are a helpful assistant.<|end|>
+<|user|>
+What day comes after Monday?<|end|>
+<|assistant|>

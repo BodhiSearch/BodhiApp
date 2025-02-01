@@ -1,0 +1,8 @@
+# Disable CRLF conversion for all files in this directory
+* -text
+
+# Specifically for text files
+*.txt -text
+*.yaml -text
+*.yml -text
+*.j2 -text 

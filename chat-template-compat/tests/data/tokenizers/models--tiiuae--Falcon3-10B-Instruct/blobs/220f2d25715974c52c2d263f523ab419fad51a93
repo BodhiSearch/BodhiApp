@@ -1,0 +1,41 @@
+{
+  "additional_special_tokens": [
+    ">>TITLE<<",
+    ">>ABSTRACT<<",
+    ">>INTRODUCTION<<",
+    ">>SUMMARY<<",
+    ">>COMMENT<<",
+    ">>ANSWER<<",
+    ">>QUESTION<<",
+    ">>DOMAIN<<",
+    ">>EMAIL_ADDRESS<<",
+    ">>IP_ADDRESS<<",
+    "<|startoftext|>",
+    ">>IP_ADDRESS_0<<",
+    ">>IP_ADDRESS_1<<",
+    ">>IP_ADDRESS_2<<",
+    ">>IP_ADDRESS_3<<",
+    ">>IP_ADDRESS_4<<",
+    ">>IP_ADDRESS_5<<",
+    ">>IP_ADDRESS_6<<",
+    ">>IP_ADDRESS_7<<",
+    ">>IP_ADDRESS_8<<",
+    ">>IP_ADDRESS_9<<",
+    ">>PASSWORD<<",
+    ">>KEY<<"
+  ],
+  "eos_token": {
+    "content": "<|endoftext|>",
+    "lstrip": false,
+    "normalized": false,
+    "rstrip": false,
+    "single_word": false
+  },
+  "pad_token": {
+    "content": "<|pad|>",
+    "lstrip": false,
+    "normalized": false,
+    "rstrip": false,
+    "single_word": false
+  }
+}

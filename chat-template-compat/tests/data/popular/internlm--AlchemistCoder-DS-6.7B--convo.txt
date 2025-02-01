@@ -1,0 +1,8 @@
+<｜begin▁of▁sentence｜>You are a helpful assistant.### Instruction:
+What day comes after Monday?
+### Response:
+Tuesday
+<|EOT|>
+### Instruction:
+And what day comes after that?
+### Response:

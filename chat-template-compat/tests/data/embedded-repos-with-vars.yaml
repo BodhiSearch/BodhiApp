@@ -1,0 +1,962 @@
+- id: lmstudio-community/Mistral-Small-24B-Instruct-2501-GGUF
+  base: mistralai/Mistral-Small-24B-Instruct-2501
+  variables:
+  - bos_token
+  - eos_token
+  - messages
+  - raise_exception
+  bos_token: <s>
+  eos_token: </s>
+- id: lmstudio-community/DeepSeek-R1-Distill-Qwen-7B-GGUF
+  base: deepseek-ai/DeepSeek-R1-Distill-Qwen-7B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/Qwen2.5-7B-Instruct-1M-GGUF
+  base: Qwen/Qwen2.5-7B-Instruct-1M
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/DeepSeek-R1-Distill-Llama-8B-GGUF
+  base: deepseek-ai/DeepSeek-R1-Distill-Llama-8B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/Qwen2.5-14B-Instruct-1M-GGUF
+  base: Qwen/Qwen2.5-14B-Instruct-1M
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/DeepSeek-R1-Distill-Qwen-14B-GGUF
+  base: deepseek-ai/DeepSeek-R1-Distill-Qwen-14B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/DeepSeek-R1-GGUF
+  base: deepseek-ai/DeepSeek-R1
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/DeepSeek-R1-Distill-Qwen-32B-GGUF
+  base: deepseek-ai/DeepSeek-R1-Distill-Qwen-32B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/phi-4-GGUF
+  base: microsoft/phi-4
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/DeepSeek-R1-Distill-Qwen-1.5B-GGUF
+  base: deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/DeepSeek-Coder-V2-Lite-Instruct-GGUF
+  base: deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - eos_token
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+  eos_token: <｜end▁of▁sentence｜>
+- id: lmstudio-community/Qwen2.5-Coder-7B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Coder-7B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/UI-TARS-7B-DPO-GGUF
+  base: bytedance-research/UI-TARS-7B-DPO
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|im_end|>
+- id: lmstudio-community/Llama-3.1-Tulu-3-405B-GGUF
+  base: allenai/Llama-3.1-Tulu-3-405B
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|end_of_text|>
+- id: lmstudio-community/dolphin-2.8-mistral-7b-v02-GGUF
+  base: alpindale/Mistral-7B-v0.2-hf
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/Mistral-7B-Instruct-v0.3-GGUF
+  base: mistralai/Mistral-7B-Instruct-v0.3
+  variables:
+  - bos_token
+  - eos_token
+  - messages
+  - raise_exception
+- id: lmstudio-community/gemma-2-9b-it-GGUF
+  base: google/gemma-2-9b-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  - raise_exception
+  - role
+  bos_token: <bos>
+- id: lmstudio-community/Meta-Llama-3.1-8B-Instruct-GGUF
+  base: meta-llama/Meta-Llama-3.1-8B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - builtin_tools
+  - custom_tools
+  - date_string
+  - first_user_message
+  - messages
+  - raise_exception
+  - system_message
+  - tool_call
+  - tools
+  - tools_in_user_message
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Phi-3.1-mini-128k-instruct-GGUF
+  base: microsoft/Phi-3-mini-128k-instruct
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|endoftext|>
+- id: lmstudio-community/gemma-2-2b-it-GGUF
+  base: google/gemma-2-2b-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  - raise_exception
+  - role
+  bos_token: <bos>
+- id: lmstudio-community/Mistral-Nemo-Instruct-2407-GGUF
+  base: mistralai/Mistral-Nemo-Instruct-2407
+  variables:
+  - bos_token
+  - content
+  - eos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  - tools
+- id: lmstudio-community/xLAM-7b-r-GGUF
+  base: Salesforce/xLAM-7b-r
+  variables:
+  - bos_token
+  - eos_token
+  - messages
+  - raise_exception
+  bos_token: <s>
+  eos_token: </s>
+- id: lmstudio-community/Qwen2.5-14B-Instruct-GGUF
+  base: Qwen/Qwen2.5-14B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-7B-Instruct-GGUF
+  base: Qwen/Qwen2.5-7B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-3B-Instruct-GGUF
+  base: Qwen/Qwen2.5-3B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Llama-3.2-1B-Instruct-GGUF
+  base: meta-llama/Llama-3.2-1B-Instruct
+  variables:
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Llama-3.2-3B-Instruct-GGUF
+  base: meta-llama/Llama-3.2-3B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - custom_tools
+  - date_string
+  - first_user_message
+  - messages
+  - raise_exception
+  - strftime_now
+  - system_message
+  - tool_call
+  - tools
+  - tools_in_user_message
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/aya-expanse-32b-GGUF
+  base: CohereForAI/aya-expanse-32b
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+- id: lmstudio-community/QwQ-32B-Preview-GGUF
+  base: Qwen/QwQ-32B-Preview
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Llama-3.3-70B-Instruct-GGUF
+  base: meta-llama/Llama-3.3-70B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - builtin_tools
+  - custom_tools
+  - date_string
+  - first_user_message
+  - messages
+  - raise_exception
+  - system_message
+  - tool_call
+  - tools
+  - tools_in_user_message
+- id: lmstudio-community/Qwen2-VL-7B-Instruct-GGUF
+  base: Qwen/Qwen2-VL-7B-Instruct
+  variables:
+  - add_generation_prompt
+  - add_vision_id
+  - messages
+- id: lmstudio-community/Falcon3-10B-Instruct-GGUF
+  base: tiiuae/Falcon3-10B-Instruct
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  - tools
+  eos_token: <|endoftext|>
+- id: lmstudio-community/Falcon3-7B-Instruct-GGUF
+  base: tiiuae/Falcon3-7B-Instruct
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  - tools
+  eos_token: <|endoftext|>
+- id: lmstudio-community/granite-3.1-8b-instruct-GGUF
+  base: ibm-granite/granite-3.1-8b-instruct
+  variables:
+  - add_generation_prompt
+  - controls
+  - documents
+  - loop_messages
+  - messages
+  - system_message
+  - tools
+- id: lmstudio-community/QVQ-72B-Preview-GGUF
+  base: Qwen/QVQ-72B-Preview
+  variables:
+  - add_generation_prompt
+  - add_vision_id
+  - messages
+- id: lmstudio-community/Phi-3.5-MoE-instruct-GGUF
+  base: microsoft/Phi-3.5-MoE-instruct
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|endoftext|>
+- id: lmstudio-community/internlm3-8b-instruct-GGUF
+  base: internlm/internlm3-8b-instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <s>
+- id: lmstudio-community/DeepSeek-R1-Distill-Llama-70B-GGUF
+  base: deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/UI-TARS-2B-SFT-GGUF
+  base: bytedance-research/UI-TARS-2B-SFT
+  variables:
+  - add_generation_prompt
+  - add_vision_id
+  - messages
+- id: lmstudio-community/UI-TARS-72B-DPO-GGUF
+  base: bytedance-research/UI-TARS-72B-DPO
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|im_end|>
+- id: lmstudio-community/MiniCPM-o-2_6-GGUF
+  base: openbmb/MiniCPM-o-2_6
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Meta-Llama-3-8B-Instruct-GGUF
+  base: meta-llama/Meta-Llama-3-8B-Instruct
+  variables:
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Meta-Llama-3-70B-Instruct-GGUF
+  base: meta-llama/Meta-Llama-3-70B-Instruct
+  variables:
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/starcoder2-15b-instruct-v0.1-GGUF
+  base: bigcode/starcoder2-15b
+  variables:
+  - bos_token
+  - eos_token
+  - messages
+  - raise_exception
+  bos_token: <|endoftext|>
+  eos_token: <|endoftext|>
+- id: lmstudio-community/Meta-Llama-3-8B-Instruct-BPE-fix-GGUF
+  base: meta-llama/Meta-Llama-3-8B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Meta-Llama-3-70B-Instruct-BPE-fix-GGUF
+  base: meta-llama/Meta-Llama-3-70B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/codegemma-1.1-7b-it-GGUF
+  base: google/codegemma-1.1-7b-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  - raise_exception
+  - role
+  bos_token: <bos>
+- id: lmstudio-community/Llama3-ChatQA-1.5-8B-GGUF
+  base: nvidia/Llama3-ChatQA-1.5-8B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Meta-Llama-3-120B-Instruct-GGUF
+  base:
+  - mlabonne/Meta-Llama-3-120B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+- id: lmstudio-community/Yi-1.5-34B-Chat-GGUF
+  base: 01-ai/Yi-1.5-34B-Chat
+  variables:
+  - messages
+  - system_message
+- id: lmstudio-community/Yi-1.5-9B-Chat-GGUF
+  base: 01-ai/Yi-1.5-9B-Chat
+  variables:
+  - messages
+  - system_message
+- id: lmstudio-community/Yi-1.5-6B-Chat-GGUF
+  base: 01-ai/Yi-1.5-6B-Chat
+  variables:
+  - messages
+  - system_message
+- id: lmstudio-community/aya-23-8B-GGUF
+  base: CohereForAI/aya-23-8B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+- id: lmstudio-community/aya-23-35B-GGUF
+  base: CohereForAI/aya-23-35B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  bos_token: <BOS_TOKEN>
+- id: lmstudio-community/openchat-3.6-8b-20240522-GGUF
+  base: openchat/openchat-3.6-8b-20240522
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - content
+  - messages
+  - raise_exception
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/AlchemistCoder-DS-6.7B-GGUF
+  base: internlm/AlchemistCoder-DS-6.7B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/internlm2-math-plus-7b-GGUF
+  base: internlm/internlm2-math-plus-7b
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+- id: lmstudio-community/DiscoPOP-zephyr-7b-gemma-GGUF
+  base: SakanaAI/DiscoPOP-zephyr-7b-gemma
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - eos_token
+  - messages
+  bos_token: <bos>
+  eos_token: <eos>
+- id: lmstudio-community/Qwen2-500M-Instruct-GGUF
+  base: Qwen/Qwen2-0.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/gemma-2-27b-it-GGUF
+  base: google/gemma-2-27b-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  - raise_exception
+  - role
+  bos_token: <bos>
+- id: lmstudio-community/Phi-3.1-mini-4k-instruct-GGUF
+  base: microsoft/Phi-3-mini-4k-instruct
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|endoftext|>
+- id: lmstudio-community/Llama-3-Groq-8B-Tool-Use-GGUF
+  base: Groq/Llama-3-Groq-8B-Tool-Use
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Llama-3-Groq-70B-Tool-Use-GGUF
+  base: Groq/Llama-3-Groq-8B-Tool-Use
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Athene-70B-GGUF
+  base: Nexusflow/Athene-70B
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/Meta-Llama-3.1-70B-Instruct-GGUF
+  base: meta-llama/Meta-Llama-3.1-70B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - builtin_tools
+  - custom_tools
+  - date_string
+  - first_user_message
+  - messages
+  - raise_exception
+  - system_message
+  - tool_call
+  - tools
+  - tools_in_user_message
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/internlm2_5-20b-chat-GGUF
+  base: internlm/internlm2_5-20b-chat
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+- id: lmstudio-community/Qwen2-Math-1.5B-Instruct-GGUF
+  base: Qwen/Qwen2-Math-1.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/Qwen2-Math-7B-Instruct-GGUF
+  base: Qwen/Qwen2-Math-7B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/Qwen2-Math-72B-Instruct-GGUF
+  base: Qwen/Qwen2-Math-72B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/internlm2_5-1_8b-chat-GGUF
+  base: internlm/internlm2_5-1_8b-chat
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+- id: lmstudio-community/MiniCPM-V-2_6-GGUF
+  base: openbmb/MiniCPM-V-2_6
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/xLAM-8x7b-r-GGUF
+  base: Salesforce/xLAM-8x7b-r
+  variables:
+  - bos_token
+  - eos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  bos_token: <s>
+  eos_token: </s>
+- id: lmstudio-community/c4ai-command-r-08-2024-GGUF
+  base: CohereForAI/c4ai-command-r-08-2024
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  bos_token: <BOS_TOKEN>
+- id: lmstudio-community/c4ai-command-r-plus-08-2024-GGUF
+  base: CohereForAI/c4ai-command-r-plus-08-2024
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+- id: lmstudio-community/Yi-Coder-9B-Chat-GGUF
+  base: 01-ai/Yi-Coder-9B-Chat
+  variables:
+  - messages
+  - system_message
+- id: lmstudio-community/Yi-Coder-1.5B-Chat-GGUF
+  base: 01-ai/Yi-Coder-1.5B-Chat
+  variables:
+  - messages
+  - system_message
+- id: lmstudio-community/DeepSeek-V2.5-GGUF
+  base: deepseek-ai/DeepSeek-V2.5
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/DeepSeek-Coder-V2-Instruct-0724-GGUF
+  base: deepseek-ai/DeepSeek-Coder-V2-Instruct-0724
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/datagemma-rag-27b-it-GGUF
+  base: google/datagemma-rag-27b-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  - raise_exception
+  - role
+  bos_token: <bos>
+- id: lmstudio-community/datagemma-rig-27b-it-GGUF
+  base: google/datagemma-rig-27b-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  - raise_exception
+  - role
+  bos_token: <bos>
+- id: lmstudio-community/Qwen2.5-72B-Instruct-GGUF
+  base: Qwen/Qwen2.5-72B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-32B-Instruct-GGUF
+  base: Qwen/Qwen2.5-32B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Mistral-Small-Instruct-2409-GGUF
+  base: mistralai/Mistral-Small-Instruct-2409
+  variables:
+  - bos_token
+  - eos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  bos_token: <s>
+  eos_token: </s>
+- id: lmstudio-community/Qwen2.5-1.5B-Instruct-GGUF
+  base: Qwen/Qwen2.5-1.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-0.5B-Instruct-GGUF
+  base: Qwen/Qwen2.5-0.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Math-7B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Math-7B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Math-72B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Math-72B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Math-1.5B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Math-1.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Coder-1.5B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Coder-1.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Llama-3_1-Nemotron-51B-Instruct-GGUF
+  base: nvidia/Llama-3_1-Nemotron-51B-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - builtin_tools
+  - custom_tools
+  - date_string
+  - first_user_message
+  - messages
+  - raise_exception
+  - system_message
+  - tool_call
+  - tools
+  - tools_in_user_message
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/NuExtract-v1.5-GGUF
+  base: numind/NuExtract-v1.5
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|endoftext|>
+- id: lmstudio-community/Llama-3.1-Nemotron-70B-Instruct-HF-GGUF
+  base: nvidia/Llama-3.1-Nemotron-70B-Instruct-HF
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - builtin_tools
+  - custom_tools
+  - date_string
+  - first_user_message
+  - messages
+  - raise_exception
+  - system_message
+  - tool_call
+  - tools
+  - tools_in_user_message
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/gemma-7b-aps-it-GGUF
+  base: google/gemma-7b-aps-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  bos_token: <bos>
+- id: lmstudio-community/gemma-2b-aps-it-GGUF
+  base: google/gemma-2b-aps-it
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  bos_token: <bos>
+- id: lmstudio-community/granite-3.0-8b-instruct-GGUF
+  base: ibm-granite/granite-3.0-8b-instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/granite-3.0-2b-instruct-GGUF
+  base: ibm-granite/granite-3.0-2b-instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/granite-3.0-1b-a400m-instruct-GGUF
+  base: ibm-granite/granite-3.0-1b-a400m-instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/granite-3.0-3b-a800m-instruct-GGUF
+  base: ibm-granite/granite-3.0-3b-a800m-instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/aya-expanse-8b-GGUF
+  base: CohereForAI/aya-expanse-8b
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - loop_messages
+  - messages
+  - raise_exception
+  - system_message
+  bos_token: <BOS_TOKEN>
+- id: lmstudio-community/SmolLM2-1.7B-Instruct-GGUF
+  base: HuggingFaceTB/SmolLM2-1.7B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/SmolLM2-360M-Instruct-GGUF
+  base: HuggingFaceTB/SmolLM2-360M-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/SmolLM2-135M-Instruct-GGUF
+  base: HuggingFaceTB/SmolLM2-135M-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/AMD-OLMo-1B-SFT-DPO-GGUF
+  base: amd/AMD-OLMo-1B-SFT-DPO
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/Qwen2.5-Coder-32B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Coder-32B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Coder-14B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Coder-14B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Coder-0.5B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Coder-0.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Coder-3B-Instruct-GGUF
+  base: Qwen/Qwen2.5-Coder-3B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/OpenCoder-8B-Instruct-GGUF
+  base: infly/OpenCoder-8B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/OpenCoder-1.5B-Instruct-GGUF
+  base: infly/OpenCoder-1.5B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/Qwen2.5-Coder-0.5B-GGUF
+  base: Qwen/Qwen2.5-Coder-0.5B
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Coder-3B-GGUF
+  base: Qwen/Qwen2.5-Coder-3B
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Coder-14B-GGUF
+  base: Qwen/Qwen2.5-Coder-14B
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Qwen2.5-Coder-32B-GGUF
+  base: Qwen/Qwen2.5-Coder-32B
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Athene-V2-Chat-GGUF
+  base: Nexusflow/Athene-V2-Chat
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Athene-V2-Agent-GGUF
+  base: Nexusflow/Athene-V2-Agent
+  variables:
+  - add_generation_prompt
+  - messages
+  - tools
+- id: lmstudio-community/Mistral-Large-Instruct-2411-GGUF
+  base: mistralai/Mistral-Large-Instruct-2411
+  variables:
+  - bos_token
+  - eos_token
+  - messages
+  - raise_exception
+  bos_token: <s>
+  eos_token: </s>
+- id: lmstudio-community/Llama-3.1-Tulu-3-8B-GGUF
+  base: allenai/Llama-3.1-Tulu-3-8B
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|end_of_text|>
+- id: lmstudio-community/Llama-3.1-Tulu-3-70B-GGUF
+  base: allenai/Llama-3.1-Tulu-3-70B
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  eos_token: <|end_of_text|>
+- id: lmstudio-community/INTELLECT-1-Instruct-GGUF
+  base: PrimeIntellect/INTELLECT-1-Instruct
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <|begin_of_text|>
+- id: lmstudio-community/EuroLLM-9B-Instruct-GGUF
+  base: utter-project/EuroLLM-9B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+  - role
+- id: lmstudio-community/EXAONE-3.5-2.4B-Instruct-GGUF
+  base: LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/EXAONE-3.5-7.8B-Instruct-GGUF
+  base: LGAI-EXAONE/EXAONE-3.5-7.8B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/EXAONE-3.5-32B-Instruct-GGUF
+  base: LGAI-EXAONE/EXAONE-3.5-32B-Instruct
+  variables:
+  - add_generation_prompt
+  - messages
+- id: lmstudio-community/DeepSeek-V2.5-1210-GGUF
+  base: deepseek-ai/DeepSeek-V2.5-1210
+  variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+  bos_token: <｜begin▁of▁sentence｜>
+- id: lmstudio-community/Qwen2-VL-72B-Instruct-GGUF
+  base: Qwen/Qwen2-VL-72B-Instruct
+  variables:
+  - add_generation_prompt
+  - add_vision_id
+  - messages
+- id: lmstudio-community/Falcon3-1B-Instruct-GGUF
+  base: tiiuae/Falcon3-1B-Instruct
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  - tools
+  eos_token: <|endoftext|>
+- id: lmstudio-community/Falcon3-3B-Instruct-GGUF
+  base: tiiuae/Falcon3-3B-Instruct
+  variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  - tools
+  eos_token: <|endoftext|>
+- id: lmstudio-community/granite-3.1-2b-instruct-GGUF
+  base: ibm-granite/granite-3.1-2b-instruct
+  variables:
+  - add_generation_prompt
+  - controls
+  - documents
+  - loop_messages
+  - messages
+  - system_message
+  - tools
+- id: lmstudio-community/granite-3.1-3b-a800m-instruct-GGUF
+  base: ibm-granite/granite-3.1-3b-a800m-instruct
+  variables:
+  - add_generation_prompt
+  - controls
+  - documents
+  - loop_messages
+  - messages
+  - system_message
+  - tools
+- id: lmstudio-community/granite-3.1-1b-a400m-instruct-GGUF
+  base: ibm-granite/granite-3.1-1b-a400m-instruct
+  variables:
+  - add_generation_prompt
+  - controls
+  - documents
+  - loop_messages
+  - messages
+  - system_message
+  - tools

@@ -1,0 +1,5 @@
+<|im_start|>assistant
+should not have assistant message as first<|im_end|>
+<|im_start|>user
+should not have user message at even<|im_end|>
+<|im_start|>assistant

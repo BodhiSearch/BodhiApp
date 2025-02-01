@@ -1,0 +1,7 @@
+<|im_start|>system
+You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step.<|im_end|>
+<|im_start|>assistant
+should not have assistant message as first<|im_end|>
+<|im_start|>user
+should not have user message at even<|im_end|>
+<|im_start|>assistant

@@ -1,0 +1,5 @@
+<｜begin▁of▁sentence｜>You are a helpful assistant.
+
+User: What day comes after Monday?
+
+Assistant:

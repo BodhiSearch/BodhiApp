@@ -1,0 +1,1 @@
+<|im_start|>system<|im_sep|>You are a helpful assistant.<|im_end|><|im_start|>user<|im_sep|>What day comes after Monday?<|im_end|><|im_start|>assistant<|im_sep|>

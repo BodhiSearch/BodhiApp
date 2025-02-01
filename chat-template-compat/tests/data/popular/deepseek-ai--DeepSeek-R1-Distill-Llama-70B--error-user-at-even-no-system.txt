@@ -1,0 +1,1 @@
+<｜begin▁of▁sentence｜><｜Assistant｜>should not have assistant message as first<｜end▁of▁sentence｜><｜User｜>should not have user message at even<｜Assistant｜>

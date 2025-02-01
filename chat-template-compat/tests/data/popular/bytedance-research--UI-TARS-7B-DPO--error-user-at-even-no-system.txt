@@ -1,0 +1,3 @@
+Assistant: should not have assistant message as first<|im_end|>
+User: should not have user message at even<|im_end|>
+Assistant: 

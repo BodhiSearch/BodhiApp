@@ -1,0 +1,7 @@
+<|system|>
+this is system message
+<|assistant|>
+this is incorrect assistant instruction<|endoftext|>
+<|user|>
+this is user question
+<|assistant|>

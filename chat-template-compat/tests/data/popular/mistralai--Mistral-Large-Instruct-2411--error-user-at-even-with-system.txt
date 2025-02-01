@@ -1,0 +1,1 @@
+<s>[SYSTEM_PROMPT] this is system message[/SYSTEM_PROMPT] this is incorrect assistant instruction</s>[INST] this is user question[/INST]

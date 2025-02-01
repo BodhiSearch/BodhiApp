@@ -1,0 +1,4 @@
+System: this is system message<|im_end|>
+Assistant: this is incorrect assistant instruction<|im_end|>
+User: this is user question<|im_end|>
+Assistant: 

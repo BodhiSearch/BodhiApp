@@ -1,0 +1,11 @@
+<bos><start_of_turn>system
+I will provide a passage split into sentences by <s> and </s> markers. For each sentence, generate its list of propositions. Each proposition contains a single fact mentioned in the corresponding sentence written as briefly and clearly as possible.
+
+Passage: <end_of_turn>
+<start_of_turn>user
+What day comes after Monday?<end_of_turn>
+<start_of_turn>assistant
+Tuesday<end_of_turn>
+<start_of_turn>user
+And what day comes after that?<end_of_turn>
+<start_of_turn>model

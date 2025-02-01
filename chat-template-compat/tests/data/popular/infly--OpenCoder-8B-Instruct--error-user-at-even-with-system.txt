@@ -1,0 +1,7 @@
+<|im_start|>system
+this is system message<|im_end|>
+<|im_start|>assistant
+this is incorrect assistant instruction<|im_end|>
+<|im_start|>user
+this is user question<|im_end|>
+<|im_start|>assistant

@@ -1,0 +1,6 @@
+<｜begin▁of▁sentence｜>this is system message### Response:
+this is incorrect assistant instruction
+<|EOT|>
+### Instruction:
+this is user question
+### Response:

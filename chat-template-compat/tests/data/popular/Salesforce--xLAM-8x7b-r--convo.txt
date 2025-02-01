@@ -1,0 +1,3 @@
+<s> [INST] You are a helpful assistant.
+
+What day comes after Monday? [/INST] Tuesday</s> [INST] And what day comes after that? [/INST]

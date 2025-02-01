@@ -1,0 +1,4 @@
+<|start_of_role|>system<|end_of_role|>this is system message<|end_of_text|>
+<|start_of_role|>assistant<|end_of_role|>this is incorrect assistant instruction<|end_of_text|>
+<|start_of_role|>user<|end_of_role|>this is user question<|end_of_text|>
+<|start_of_role|>assistant<|end_of_role|>

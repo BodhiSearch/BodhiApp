@@ -1,0 +1,5 @@
+<|im_start|>system
+You are OpenCoder, created by OpenCoder Team.<|im_end|>
+<|im_start|>unknown
+should fail<|im_end|>
+<|im_start|>assistant

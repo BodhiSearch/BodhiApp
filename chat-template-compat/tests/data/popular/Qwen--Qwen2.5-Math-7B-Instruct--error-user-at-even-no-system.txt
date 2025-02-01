@@ -1,0 +1,7 @@
+<|im_start|>system
+Please reason step by step, and put your final answer within \boxed{}.<|im_end|>
+<|im_start|>assistant
+should not have assistant message as first<|im_end|>
+<|im_start|>user
+should not have user message at even<|im_end|>
+<|im_start|>assistant
