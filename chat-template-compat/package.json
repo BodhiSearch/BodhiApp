@@ -1,0 +1,19 @@
+{
+  "name": "chat-template-compat",
+  "version": "1.0.0",
+  "main": "popular-templates.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@huggingface/gguf": "^0.1.12"
+  }
+}
