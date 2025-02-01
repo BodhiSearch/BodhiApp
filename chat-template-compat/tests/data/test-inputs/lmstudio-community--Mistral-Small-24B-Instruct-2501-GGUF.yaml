@@ -1,0 +1,10 @@
+id: lmstudio-community/Mistral-Small-24B-Instruct-2501-GGUF
+base: mistralai/Mistral-Small-24B-Instruct-2501
+variables:
+  - bos_token
+  - eos_token
+  - messages
+  - raise_exception
+bos_token: <s>
+eos_token: </s>
+template: '{{ bos_token }}{% for message in messages %}{% if message[''role''] == ''user'' %}{{ ''[INST]'' + message[''content''] + ''[/INST]'' }}{% elif message[''role''] == ''system'' %}{{ ''[SYSTEM_PROMPT]'' + message[''content''] + ''[/SYSTEM_PROMPT]'' }}{% elif message[''role''] == ''assistant'' %}{{ message[''content''] + eos_token }}{% else %}{{ raise_exception(''Only user, system and assistant roles are supported!'') }}{% endif %}{% endfor %}'

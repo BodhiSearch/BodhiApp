@@ -1,0 +1,12 @@
+id: lmstudio-community/internlm2_5-1_8b-chat-GGUF
+base: internlm/internlm2_5-1_8b-chat
+variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+bos_token: <s>
+template: |-
+  {{ bos_token }}{% for message in messages %}{{'<|im_start|>' + message['role'] + '
+  ' + message['content'] + '<|im_end|>' + '
+  '}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
+  ' }}{% endif %}

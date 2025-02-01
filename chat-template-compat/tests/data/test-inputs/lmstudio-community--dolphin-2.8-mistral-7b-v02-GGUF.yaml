@@ -1,0 +1,10 @@
+id: lmstudio-community/dolphin-2.8-mistral-7b-v02-GGUF
+base: alpindale/Mistral-7B-v0.2-hf
+variables:
+  - add_generation_prompt
+  - messages
+template: |-
+  {% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{% for message in messages %}{{'<|im_start|>' + message['role'] + '
+  ' + message['content'] + '<|im_end|>' + '
+  '}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
+  ' }}{% endif %}

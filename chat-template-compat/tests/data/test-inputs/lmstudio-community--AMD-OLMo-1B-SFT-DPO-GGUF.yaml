@@ -1,0 +1,21 @@
+id: lmstudio-community/AMD-OLMo-1B-SFT-DPO-GGUF
+base: amd/AMD-OLMo-1B-SFT-DPO
+variables:
+  - add_generation_prompt
+  - messages
+template: |-
+  {% for message in messages %}
+  {% if message['role'] == 'user' %}
+  {{ '<|user|>
+  ' + message['content'] }}
+  {% elif message['role'] == 'system' %}
+  {{ '<|system|>
+  ' + message['content'] }}
+  {% elif message['role'] == 'assistant' %}
+  {{ '<|assistant|>
+  '  + message['content'] }}
+  {% endif %}
+  {% if loop.last and add_generation_prompt %}
+  {{ '<|assistant|>' }}
+  {% endif %}
+  {% endfor %}

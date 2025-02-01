@@ -1,0 +1,11 @@
+id: lmstudio-community/EuroLLM-9B-Instruct-GGUF
+base: utter-project/EuroLLM-9B-Instruct
+variables:
+  - add_generation_prompt
+  - messages
+  - role
+template: |-
+  {% for message in messages %}{% if message['role'] == 'assistant' %}{% set role = 'assistant' %}{% else %}{% set role = message['role'] %}{% endif %}<|im_start|>{{ role }}
+  {{ message['content'] | trim }}<|im_end|>
+  {% endfor %}{% if add_generation_prompt %}{{'<|im_start|>assistant
+  '}}{% endif %}

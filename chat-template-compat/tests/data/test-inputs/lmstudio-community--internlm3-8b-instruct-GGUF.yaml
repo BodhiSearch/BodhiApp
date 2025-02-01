@@ -1,0 +1,12 @@
+id: lmstudio-community/internlm3-8b-instruct-GGUF
+base: internlm/internlm3-8b-instruct
+variables:
+  - add_generation_prompt
+  - bos_token
+  - messages
+bos_token: <s>
+template: |-
+  {{ bos_token }}{% for message in messages %}{{'<|im_start|>' + message['role'] + '
+  ' + message['content'] + '<|im_end|>' + '
+  '}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
+  ' }}{% endif %}

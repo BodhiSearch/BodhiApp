@@ -150,7 +150,7 @@ impl ChatTemplate {
       add_generation_prompt: true,
     };
     let result = template.render(inputs)?;
-    Ok(result)
+    Ok(result.trim_matches(' ').to_string())
   }
 
   fn extract_token(metadata: &GGUFMetadata, tokens: &[GGUFValue], key: &str) -> Option<String> {
@@ -301,9 +301,11 @@ mod test {
   use anyhow::anyhow;
   use anyhow_trace::anyhow_trace;
   use dirs::home_dir;
+  use pretty_assertions::assert_eq;
   use rstest::rstest;
   use std::{path::PathBuf, sync::Arc};
   use tempfile::TempDir;
+  use regex::Regex;
 
   #[rstest]
   #[case(&ChatTemplateError::Minijina(minijinja::Error::new(minijinja::ErrorKind::NonKey, "error")), "error rendering template: not a key type: error")]
@@ -618,6 +620,94 @@ mod test {
       Some("</s>".to_string()),
     );
     assert_eq!(expected, chat_template);
+    Ok(())
+  }
+
+  #[rstest]
+  #[ignore]
+  fn test_chat_template_popular(
+    // #[files("../../chat-template-compat/tests/data/test-inputs/*.yaml")] path: PathBuf,
+    #[values(
+      "simple",
+      "assistant",
+      "system",
+      "convo",
+      "unknown-role",
+      "error-user-at-even-no-system",
+      "error-user-at-even-with-system"
+    )]
+    case: &str,
+  ) -> anyhow::Result<()> {
+    let path = PathBuf::from("comment-this-out");
+
+    let content = std::fs::read_to_string(&path)?;
+    let model_config: serde_yaml::Value = serde_yaml::from_str(&content)?;
+
+    // Extract template and tokens
+    let template = model_config["template"]
+      .as_str()
+      .ok_or_else(|| anyhow!("template not found in {}", path.display()))?;
+    let bos_token = model_config["bos_token"].as_str().map(String::from);
+    let eos_token = model_config["eos_token"].as_str().map(String::from);
+    let id = model_config["id"].as_str().unwrap();
+
+    // Create ChatTemplate
+    let chat_template = ChatTemplate::new(
+      ChatTemplateVersions::Single(template.to_string()),
+      bos_token,
+      eos_token,
+    );
+
+    // Load test inputs
+    let input_filename = concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../../chat-template-compat/tests/data/inputs.yaml"
+    );
+    let inputs = std::fs::read_to_string(input_filename)?;
+    let inputs: serde_yaml::Value = serde_yaml::from_str(&inputs)?;
+
+    // Find matching test case
+    let input = inputs
+      .as_sequence()
+      .ok_or_else(|| anyhow!("should be an array of test cases"))?
+      .iter()
+      .find(|item| item["id"] == case)
+      .ok_or_else(|| anyhow!("test case with id: {case} not found"))?;
+
+    // Get messages from test case
+    let messages: Vec<ChatMessage> = serde_yaml::from_value(input["messages"].clone())?;
+
+    // Apply template
+    let result = chat_template.apply_chat_template(&messages);
+
+    // Get model name from path
+    let model_name = model_config["base"].as_str().unwrap().replace("/", "--");
+
+    // Load expected output
+    let expected_path = PathBuf::from(concat!(
+      env!("CARGO_MANIFEST_DIR"),
+      "/../../chat-template-compat/tests/data/popular"
+    ))
+    .join(format!("{model_name}--{case}.txt"));
+    assert!(
+      expected_path.exists(),
+      "expected file {} not found",
+      expected_path.display()
+    );
+    let expected = std::fs::read_to_string(expected_path)?;
+    match result {
+      Ok(output) => {
+        // Compare with expected
+        assert_eq!(expected, output, "failed {id}, for template: {template}");
+      }
+      Err(e) => {
+        let re_err = Regex::new(r" \(in <string>.*$").unwrap();
+        let actual = e.to_string().replace("syntax error: ", "");
+        let actual = re_err.replace_all(&actual, "").to_string();
+        assert_eq!(expected.replace("JINJA_ERROR: ", ""), actual, "failed {id}, for template: {template}");
+      }
+    }
+
     Ok(())
   }
 }
