@@ -1,0 +1,16 @@
+id: lmstudio-community/NuExtract-v1.5-GGUF
+base: numind/NuExtract-v1.5
+variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+eos_token: <|endoftext|>
+template: |-
+  {% for message in messages %}{% if message['role'] == 'system' and message['content'] %}{{'<|system|>
+  ' + message['content'] + '<|end|>
+  '}}{% elif message['role'] == 'user' %}{{'<|user|>
+  ' + message['content'] + '<|end|>
+  '}}{% elif message['role'] == 'assistant' %}{{'<|assistant|>
+  ' + message['content'] + '<|end|>
+  '}}{% endif %}{% endfor %}{% if add_generation_prompt %}{{ '<|assistant|>
+  ' }}{% else %}{{ eos_token }}{% endif %}

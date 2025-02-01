@@ -1,0 +1,10 @@
+id: lmstudio-community/EXAONE-3.5-2.4B-Instruct-GGUF
+base: LGAI-EXAONE/EXAONE-3.5-2.4B-Instruct
+variables:
+  - add_generation_prompt
+  - messages
+template: |-
+  {% for message in messages %}{% if loop.first and message['role'] != 'system' %}{{ '[|system|][|endofturn|]
+  ' }}{% endif %}{{ '[|' + message['role'] + '|]' + message['content'] }}{% if message['role'] == 'user' %}{{ '
+  ' }}{% else %}{{ '[|endofturn|]
+  ' }}{% endif %}{% endfor %}{% if add_generation_prompt %}{{ '[|assistant|]' }}{% endif %}

@@ -1,0 +1,16 @@
+id: lmstudio-community/Phi-3.5-MoE-instruct-GGUF
+base: microsoft/Phi-3.5-MoE-instruct
+variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+eos_token: <|endoftext|>
+template: |-
+  {% for message in messages %}{% if message['role'] == 'system' and message['content'] %}{{'<|system|>
+  ' + message['content'] + '<|end|>
+  '}}{% elif message['role'] == 'user' %}{{'<|user|>
+  ' + message['content'] + '<|end|>
+  '}}{% elif message['role'] == 'assistant' %}{{'<|assistant|>
+  ' + message['content'] + '<|end|>
+  '}}{% endif %}{% endfor %}{% if add_generation_prompt %}{{ '<|assistant|>
+  ' }}{% else %}{{ eos_token }}{% endif %}

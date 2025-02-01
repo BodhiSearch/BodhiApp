@@ -1,0 +1,15 @@
+id: lmstudio-community/DeepSeek-Coder-V2-Lite-Instruct-GGUF
+base: deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct
+variables:
+  - add_generation_prompt
+  - bos_token
+  - eos_token
+  - messages
+bos_token: <｜begin▁of▁sentence｜>
+eos_token: <｜end▁of▁sentence｜>
+template: |-
+  {% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{{ bos_token }}{% for message in messages %}{% if message['role'] == 'user' %}{{ 'User: ' + message['content'] + '
+
+  ' }}{% elif message['role'] == 'assistant' %}{{ 'Assistant: ' + message['content'] + eos_token }}{% elif message['role'] == 'system' %}{{ message['content'] + '
+
+  ' }}{% endif %}{% endfor %}{% if add_generation_prompt %}{{ 'Assistant:' }}{% endif %}

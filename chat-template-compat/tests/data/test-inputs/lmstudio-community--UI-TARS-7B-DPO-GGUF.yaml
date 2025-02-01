@@ -1,0 +1,10 @@
+id: lmstudio-community/UI-TARS-7B-DPO-GGUF
+base: bytedance-research/UI-TARS-7B-DPO
+variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+eos_token: <|im_end|>
+template: |-
+  {% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{% for message in messages %}{{ message['role'].title() + ': ' + message['content'] | trim + eos_token + '
+  ' }}{% endfor %}{% if add_generation_prompt %}{{ 'Assistant: ' }}{% endif %}

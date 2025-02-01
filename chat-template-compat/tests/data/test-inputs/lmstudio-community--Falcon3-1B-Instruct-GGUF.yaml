@@ -1,0 +1,39 @@
+id: lmstudio-community/Falcon3-1B-Instruct-GGUF
+base: tiiuae/Falcon3-1B-Instruct
+variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+  - tools
+eos_token: <|endoftext|>
+template: |-
+  {% if tools %}{% for message in messages %}{% if message['role'] == 'system' %}{{ '<|system|>
+  ' + message['content'] + '
+  You are an expert in composing functions. You are given a question and a set of possible functions. 
+  Based on the question, you will need to make one or more function/tool calls to achieve the purpose. 
+  If none of the functions can be used, point it out and refuse to answer. 
+  If the given question lacks the parameters required by the function, also point it out.
+
+   You have access to the following tools:
+  <tools>'  + tools|tojson + '</tools>
+
+  The output MUST strictly adhere to the following format, and NO other text MUST be included.
+  The example format is as follows. Please make sure the parameter type is correct. If no function call is needed, please make the tool calls an empty list [].
+  <tool_call>[
+  {"name": "function_name1", "arguments": {"argument1": "value1", "argument2": "value2"}},
+  ... (more tool calls as required)
+  ]</tool_call>' }}{% elif message['role'] == 'user' %}{{ '<|user|>
+  ' + message['content'] + '
+  ' }}{% elif message['role'] == 'assistant' %}{% if not loop.last %}{{ '<|assistant|>
+  ' + message['content'] + eos_token + '
+  ' }}{% else %}{{ '<|assistant|>
+  ' + message['content'] + eos_token }}{% endif %}{% endif %}{% if loop.last and add_generation_prompt %}{{ '<|assistant|>
+  ' }}{% endif %}{% endfor %}{% else %}{% for message in messages %}{% if message['role'] == 'system' %}{{ '<|system|>
+  ' + message['content'] + '
+  ' }}{% elif message['role'] == 'user' %}{{ '<|user|>
+  ' + message['content'] + '
+  ' }}{% elif message['role'] == 'assistant' %}{% if not loop.last %}{{ '<|assistant|>
+  ' + message['content'] + eos_token + '
+  ' }}{% else %}{{ '<|assistant|>
+  ' + message['content'] + eos_token }}{% endif %}{% endif %}{% if loop.last and add_generation_prompt %}{{ '<|assistant|>
+  ' }}{% endif %}{% endfor %}{% endif %}

@@ -1,0 +1,17 @@
+id: lmstudio-community/Llama-3.1-Tulu-3-405B-GGUF
+base: allenai/Llama-3.1-Tulu-3-405B
+variables:
+  - add_generation_prompt
+  - eos_token
+  - messages
+eos_token: <|end_of_text|>
+template: |-
+  {% for message in messages %}{% if message['role'] == 'system' %}{{ '<|system|>
+  ' + message['content'] + '
+  ' }}{% elif message['role'] == 'user' %}{{ '<|user|>
+  ' + message['content'] + '
+  ' }}{% elif message['role'] == 'assistant' %}{% if not loop.last %}{{ '<|assistant|>
+  '  + message['content'] + eos_token + '
+  ' }}{% else %}{{ '<|assistant|>
+  '  + message['content'] + eos_token }}{% endif %}{% endif %}{% if loop.last and add_generation_prompt %}{{ '<|assistant|>
+  ' }}{% endif %}{% endfor %}

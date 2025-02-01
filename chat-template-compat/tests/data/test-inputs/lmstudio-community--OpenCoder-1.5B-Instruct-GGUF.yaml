@@ -1,0 +1,12 @@
+id: lmstudio-community/OpenCoder-1.5B-Instruct-GGUF
+base: infly/OpenCoder-1.5B-Instruct
+variables:
+  - add_generation_prompt
+  - messages
+template: |-
+  {% for message in messages %}{% if loop.first and messages[0]['role'] != 'system' %}{{ '<|im_start|>system
+  You are OpenCoder, created by OpenCoder Team.<|im_end|>
+  ' }}{% endif %}{{'<|im_start|>' + message['role'] + '
+  ' + message['content'] + '<|im_end|>' + '
+  '}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant
+  ' }}{% endif %}

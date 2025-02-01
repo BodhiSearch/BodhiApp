@@ -1,0 +1,13 @@
+id: lmstudio-community/Yi-Coder-9B-Chat-GGUF
+base: 01-ai/Yi-Coder-9B-Chat
+variables:
+  - messages
+  - system_message
+template: |-
+  {% if messages[0]['role'] == 'system' %}{% set system_message = messages[0]['content'] %}{% endif %}{% if system_message is defined %}{{ '<|im_start|>system
+  ' + system_message + '<|im_end|>
+  ' }}{% endif %}{% for message in messages %}{% set content = message['content'] %}{% if message['role'] == 'user' %}{{ '<|im_start|>user
+  ' + content + '<|im_end|>
+  <|im_start|>assistant
+  ' }}{% elif message['role'] == 'assistant' %}{{ content + '<|im_end|>' + '
+  ' }}{% endif %}{% endfor %}
