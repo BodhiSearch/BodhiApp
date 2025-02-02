@@ -1,16 +1,20 @@
 'use client';
 
+import { BenefitCard } from '@/app/ui/setup/BenefitCard';
+import { SetupModeCard } from '@/app/ui/setup/SetupModeCard';
+import { SetupProgress } from '@/app/ui/setup/SetupProgress';
+import { containerVariants, itemVariants } from '@/app/ui/setup/types';
+import { WelcomeCard } from '@/app/ui/setup/WelcomeCard';
+import AppInitializer from '@/components/AppInitializer';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useSetupApp } from '@/hooks/useQuery';
+import {
+  ROUTE_SETUP_DOWNLOAD_MODELS,
+  ROUTE_SETUP_RESOURCE_ADMIN,
+} from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useSetupApp } from '@/hooks/useQuery';
-import AppInitializer from '@/components/AppInitializer';
-import { SetupProgress } from '@/app/ui/setup/SetupProgress';
-import { BenefitCard } from '@/app/ui/setup/BenefitCard';
-import { WelcomeCard } from '@/app/ui/setup/WelcomeCard';
-import { SetupModeCard } from '@/app/ui/setup/SetupModeCard';
-import { containerVariants, itemVariants } from '@/app/ui/setup/types';
 import { useEffect } from 'react';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const benefits = [
   {
@@ -97,9 +101,9 @@ function SetupContent() {
   const { mutate: setup, isLoading } = useSetupApp({
     onSuccess: (appInfo) => {
       if (appInfo.status === 'resource-admin') {
-        router.push('/ui/setup/resource-admin');
+        router.push(ROUTE_SETUP_RESOURCE_ADMIN);
       } else {
-        router.push('/ui/setup/download-models');
+        router.push(ROUTE_SETUP_DOWNLOAD_MODELS);
       }
     },
   });
