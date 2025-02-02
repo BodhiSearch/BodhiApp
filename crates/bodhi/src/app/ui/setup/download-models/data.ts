@@ -102,7 +102,7 @@ export const additionalModels: Record<string, ModelInfo[]> = {
       ratings: { quality: 4, speed: 4, accuracy: 4 },
       license: 'Apache 2.0',
       downloadState: {
-        status: 'downloading',
+        status: 'pending',
         progress: 23,
         speed: '8.2 MB/s',
         timeRemaining: '8 minutes',
@@ -134,7 +134,7 @@ export const additionalModels: Record<string, ModelInfo[]> = {
       category: 'large',
       ratings: { quality: 4.5, speed: 3.5, accuracy: 4.5 },
       license: 'Meta License',
-      downloadState: { status: 'complete' },
+      downloadState: { status: 'completed' },
     },
   ],
 };

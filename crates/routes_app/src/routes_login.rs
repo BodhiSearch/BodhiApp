@@ -609,7 +609,7 @@ mod tests {
     let resp = client.get(&format!("/login/callback?{}", query)).await;
     resp.assert_status(StatusCode::FOUND);
     assert_eq!(
-      "http://frontend.localhost:3000/ui/home",
+      "http://frontend.localhost:3000/ui/setup/download-models",
       resp.headers().get(LOCATION).unwrap(),
     );
     let session_id = resp.cookie("bodhiapp_session_id");
@@ -1227,7 +1227,7 @@ mod tests {
   ) -> anyhow::Result<()> {
     assert_eq!(StatusCode::FOUND, response.status());
     assert_eq!(
-      "http://frontend.localhost:3000/ui/home",
+      "http://frontend.localhost:3000/ui/setup/download-models",
       response.headers().get("Location").unwrap(),
     );
     let secret_service = app_service.secret_service();

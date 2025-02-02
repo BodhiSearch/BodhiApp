@@ -203,6 +203,7 @@ pub async fn list_chat_templates_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<Vec<ChatTemplateType>>, ApiError> {
   let mut responses = Vec::new();
+  responses.push(ChatTemplateType::Embedded);
   for chat_template in ChatTemplateId::iter() {
     responses.push(ChatTemplateType::Id(chat_template));
   }
@@ -482,7 +483,8 @@ mod tests {
     assert_eq!(StatusCode::OK, response.status());
     let response = response.json::<Vec<ChatTemplateType>>().await?;
 
-    assert_eq!(14, response.len());
+    assert_eq!(15, response.len());
+    assert!(response.iter().any(|t| t == &ChatTemplateType::Embedded));
     for template_id in ChatTemplateId::iter() {
       assert!(response
         .iter()

@@ -77,7 +77,7 @@ export const ModelList = ({ additionalModels }: ModelListProps) => {
                   </div>
 
                   <div className="flex justify-center">
-                    {model.downloadState?.status === 'downloading' ? (
+                    {model.downloadState?.status === 'pending' ? (
                       <div className="w-full flex gap-2 items-center">
                         <div className="flex-1">
                           <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
@@ -104,10 +104,10 @@ export const ModelList = ({ additionalModels }: ModelListProps) => {
                       </div>
                     ) : (
                       <Button
-                        disabled={model.downloadState?.status === 'complete'}
+                        disabled={model.downloadState?.status === 'completed'}
                       >
                         <Download className="mr-2 h-4 w-4" />
-                        {model.downloadState?.status === 'complete'
+                        {model.downloadState?.status === 'completed'
                           ? 'Download Complete'
                           : 'Download'}
                       </Button>
