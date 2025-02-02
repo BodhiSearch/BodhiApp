@@ -60,17 +60,21 @@ impl IntoChatTemplate for ChatTemplateType {
 }
 
 pub trait HubDownloadable {
-  fn download(&self, hub_service: Arc<dyn HubService>) -> Result<HubFile, ObjExtsError>;
+  fn download(&self, hub_service: Arc<dyn HubService>) -> Result<Option<HubFile>, ObjExtsError>;
 }
 
 impl HubDownloadable for ChatTemplateType {
-  fn download(&self, hub_service: Arc<dyn HubService>) -> Result<HubFile, ObjExtsError> {
+  fn download(&self, hub_service: Arc<dyn HubService>) -> Result<Option<HubFile>, ObjExtsError> {
     let repo = match self {
-      ChatTemplateType::Id(id) => (*id).into(),
-      ChatTemplateType::Repo(repo) => repo.clone(),
-      ChatTemplateType::Embedded => todo!(),
+      ChatTemplateType::Id(id) => Some((*id).into()),
+      ChatTemplateType::Repo(repo) => Some(repo.clone()),
+      ChatTemplateType::Embedded => None,
     };
-    let hub_file = hub_service.download(&repo, TOKENIZER_CONFIG_JSON, None)?;
-    Ok(hub_file)
+    if let Some(repo) = repo {
+      let hub_file = hub_service.download(&repo, TOKENIZER_CONFIG_JSON, None)?;
+      Ok(Some(hub_file))
+    } else {
+      Ok(None)
+    }
   }
 }
