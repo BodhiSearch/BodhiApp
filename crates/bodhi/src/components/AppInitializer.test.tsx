@@ -41,6 +41,21 @@ beforeEach(() => {
   pushMock.mockClear();
 });
 
+// Mock localStorage
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+
 const renderWithSetup = async (ui: React.ReactElement) => {
   const wrapper = createWrapper();
   const rendered = render(ui, { wrapper });
@@ -112,14 +127,51 @@ describe('AppInitializer loading and error handling', () => {
 });
 
 describe('AppInitializer routing based on currentStatus and allowedStatus', () => {
-  // Test basic routing scenarios
-  it.each([
-    { status: 'setup', expectedPath: '/ui/setup' },
-    { status: 'ready', expectedPath: '/ui/home' },
-    { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin' },
-  ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath }) => {
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
+
+  // Add new test cases for download models page redirection
+  it('redirects to download models page when status is ready and models page not shown', async () => {
+    localStorageMock.setItem('shown-download-models-page', 'false');
+
     server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+        return res(ctx.json({ status: 'ready', authz: false }));
+      })
+    );
+
+    await renderWithSetup(<AppInitializer />);
+    expect(pushMock).toHaveBeenCalledWith('/ui/setup/download-models');
+  });
+
+  it('redirects to home when status is ready and models page was shown', async () => {
+    localStorageMock.setItem('shown-download-models-page', 'true');
+
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+        return res(ctx.json({ status: 'ready', authz: false }));
+      })
+    );
+
+    await renderWithSetup(<AppInitializer />);
+    expect(pushMock).toHaveBeenCalledWith('/ui/home');
+  });
+
+  // Update existing test case to handle localStorage
+  it.each([
+    { status: 'setup', expectedPath: '/ui/setup', localStorage: {} },
+    { status: 'ready', expectedPath: '/ui/home', localStorage: {} },
+    { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin', localStorage: {} },
+    { status: 'ready', expectedPath: '/ui/home', localStorage: { 'shown-download-models-page': 'true' } },
+    { status: 'ready', expectedPath: '/ui/setup/download-models', localStorage: { 'shown-download-models-page': 'false' } },
+  ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath, localStorage }) => {
+    Object.entries(localStorage).forEach(([key, value]) => {
+      localStorageMock.setItem(key, value);
+    });
+
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status, authz: false }));
       })
     );

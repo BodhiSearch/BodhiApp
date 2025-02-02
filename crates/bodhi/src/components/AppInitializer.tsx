@@ -2,6 +2,7 @@
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAppInfo, useUser } from '@/hooks/useQuery';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { AppStatus, ErrorResponse } from '@/types/models';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
@@ -19,6 +20,11 @@ export default function AppInitializer({
   authenticated = false,
 }: AppInitializerProps) {
   const router = useRouter();
+  const [hasShownModelsPage, setHasShownModelsPage] = useLocalStorage(
+    'shown-download-models-page',
+    true
+  );
+
   const {
     data: appInfo,
     error: appError,
@@ -41,7 +47,11 @@ export default function AppInitializer({
             router.push('/ui/setup');
             break;
           case 'ready':
-            router.push('/ui/home');
+            if (!hasShownModelsPage) {
+              router.push('/ui/setup/download-models');
+            } else {
+              router.push('/ui/home');
+            }
             break;
           case 'resource-admin':
             router.push('/ui/setup/resource-admin');
@@ -49,7 +59,14 @@ export default function AppInitializer({
         }
       }
     }
-  }, [appInfo, appLoading, allowedStatus, router]);
+  }, [
+    appInfo,
+    appLoading,
+    allowedStatus,
+    router,
+    hasShownModelsPage,
+    setHasShownModelsPage,
+  ]);
 
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;
