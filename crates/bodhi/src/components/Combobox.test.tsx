@@ -93,7 +93,7 @@ describe("ComboBoxResponsive", () => {
       await user.click(screen.getByRole("combobox"));
 
       // Type in search input
-      const searchInput = screen.getByPlaceholderText("Filter status...");
+      const searchInput = screen.getByPlaceholderText("Filter ...");
       await user.type(searchInput, "act");
 
       // Verify filtered options

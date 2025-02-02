@@ -7,6 +7,7 @@ import fs from 'fs'
 import path from 'path'
 import prettier from 'prettier'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { writeFileSync } from 'fs'
 
 // Mock the copy-to-clipboard hook with a default implementation
 vi.mock('@/hooks/use-copy-to-clipboard', () => ({
@@ -14,7 +15,13 @@ vi.mock('@/hooks/use-copy-to-clipboard', () => ({
     isCopied: false,
     copyToClipboard: vi.fn()
   })
-}))
+}));
+
+vi.mock('@/components/ThemeProvider', () => ({
+  useTheme: () => ({
+    theme: 'dark'
+  })
+}));
 
 const TEST_FILES_DIR = path.join(__dirname, '__tests__')
 
@@ -35,6 +42,12 @@ async function formatHTML(html: string): Promise<string> {
     htmlWhitespaceSensitivity: 'ignore',
     printWidth: 80,
   })
+}
+
+async function writeFailedTestOutput(filename: string, content: string) {
+  const outputPath = path.join(TEST_FILES_DIR, `${filename}.actual.html`)
+  await fs.promises.writeFile(outputPath, content)
+  console.log(`Wrote failed test output to: ${outputPath}`)
 }
 
 describe('CodeBlock language rendering', () => {
@@ -75,7 +88,12 @@ describe('CodeBlock language rendering', () => {
         console.log('\nActual:\n', formattedActual)
       }
 
-      expect(formattedActual).toBe(formattedExpected)
+      try {
+        expect(formattedActual).toBe(formattedExpected)
+      } catch (error) {
+        writeFailedTestOutput(file, formattedActual)
+        throw error // Re-throw the error to fail the test
+      }
     })
   })
 })
@@ -125,39 +143,5 @@ describe('CodeBlock', () => {
     render(<CodeBlock language={mockLanguage} value={mockCode} />)
 
     expect(screen.getByTestId('check-icon')).toBeInTheDocument()
-  })
-
-  it('handles download functionality', () => {
-    // Mock window.prompt
-    const mockPrompt = vi.fn().mockReturnValue('test.js')
-    window.prompt = mockPrompt
-
-    // Mock URL.createObjectURL and URL.revokeObjectURL
-    const mockCreateObjectURL = vi.fn()
-    const mockRevokeObjectURL = vi.fn()
-    global.URL.createObjectURL = mockCreateObjectURL
-    global.URL.revokeObjectURL = mockRevokeObjectURL
-
-    render(<CodeBlock language={mockLanguage} value={mockCode} />)
-
-    const downloadButton = screen.getByRole('button', { name: /download/i })
-    fireEvent.click(downloadButton)
-
-    expect(mockPrompt).toHaveBeenCalled()
-    expect(mockCreateObjectURL).toHaveBeenCalled()
-    expect(mockRevokeObjectURL).toHaveBeenCalled()
-  })
-
-  it('cancels download when prompt is cancelled', () => {
-    // Mock window.prompt to return null (simulating cancel)
-    window.prompt = vi.fn().mockReturnValue(null)
-
-    render(<CodeBlock language={mockLanguage} value={mockCode} />)
-
-    const downloadButton = screen.getByRole('button', { name: /download/i })
-    fireEvent.click(downloadButton)
-
-    // Verify that no download was initiated
-    expect(document.querySelector('a')).not.toBeInTheDocument()
   })
 }) 

@@ -2,7 +2,6 @@
 
 import { Inter as FontSans } from 'next/font/google';
 import '@/app/globals.css';
-import '@/styles/syntax-highlighter.css';
 import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
