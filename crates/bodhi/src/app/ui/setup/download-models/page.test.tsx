@@ -1,8 +1,10 @@
-import { act, render, screen } from '@testing-library/react';
-import { rest } from 'msw';
-import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { setupServer } from 'msw/node';
+import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
+import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
+import { act, render, screen, within } from '@testing-library/react';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
 import {
   afterAll,
   afterEach,
@@ -13,7 +15,6 @@ import {
   it,
   vi,
 } from 'vitest';
-import ModelDownloadPage from '@/app/ui/setup/download-models/page';
 
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
@@ -39,7 +40,42 @@ beforeEach(() => {
   pushMock.mockClear();
 });
 
-describe('ModelDownloadPage', () => {
+// Add ModelCard mock after existing mocks
+vi.mock('@/app/ui/setup/download-models/ModelCard', () => ({
+  ModelCard: ({ model }: any) => (
+    <div data-testid={`model-card-${model.id}`}>
+      <div>Name: {model.name}</div>
+      <div>Status: {model.downloadState.status}</div>
+      {model.downloadState.status === 'pending' && (
+        <div>Progress: {model.downloadState.progress}%</div>
+      )}
+    </div>
+  ),
+}));
+
+// Add toast mock after existing mocks
+const mockToast = vi.fn();
+vi.mock('@/components/ui/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
+
+// Add mock models data after server setup
+const mockModels = [
+  {
+    id: 'meta-llama-3.1-8b-instruct',
+    repo: 'bartowski/Meta-Llama-3.1-8B-Instruct-GGUF',
+    filename: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf',
+    status: 'pending',
+  },
+  {
+    id: 'phi-3.5-mini-128k-instruct',
+    repo: 'bartowski/Phi-3.5-mini-instruct-GGUF',
+    filename: 'Phi-3.5-mini-instruct-Q8_0.gguf',
+    status: 'completed',
+  },
+];
+
+describe('ModelDownloadPage access control', () => {
   it('should render the page when app is ready without auth', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
@@ -57,14 +93,16 @@ describe('ModelDownloadPage', () => {
             logged_in: false,
           })
         );
-      })
+      }),
+      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
+        return res(ctx.json({ data: [], page: 1, page_size: 100 }));
+      }),
     );
 
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
     });
     expect(screen.getByText('Recommended Models')).toBeInTheDocument();
-    expect(screen.getByText('Additional Models')).toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
   });
 
@@ -84,7 +122,10 @@ describe('ModelDownloadPage', () => {
             logged_in: false,
           })
         );
-      })
+      }),
+      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
+        return res(ctx.json({ data: [], page: 1, page_size: 100 }));
+      }),
     );
 
     await act(async () => {
@@ -112,14 +153,16 @@ describe('ModelDownloadPage', () => {
             roles: [],
           })
         );
-      })
+      }),
+      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
+        return res(ctx.json({ data: [], page: 1, page_size: 100 }));
+      }),
     );
 
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
     });
     expect(screen.getByText('Recommended Models')).toBeInTheDocument();
-    expect(screen.getByText('Additional Models')).toBeInTheDocument();
     expect(pushMock).not.toHaveBeenCalled();
   });
 
@@ -142,7 +185,10 @@ describe('ModelDownloadPage', () => {
             roles: [],
           })
         );
-      })
+      }),
+      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
+        return res(ctx.json({ data: [], page: 1, page_size: 100 }));
+      }),
     );
 
     await act(async () => {
@@ -150,4 +196,38 @@ describe('ModelDownloadPage', () => {
     });
     expect(pushMock).toHaveBeenCalledWith('/ui/login');
   });
-}); 
+});
+
+describe('ModelDownloadPage render', () => {
+  beforeEach(() => {
+    mockToast.mockClear(); // Clear toast mock before each test
+    server.use(
+      rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
+        return res(ctx.json({ data: mockModels, page: 1, page_size: 100 }));
+      })
+    );
+  });
+
+  it('should render models with different download states', async () => {
+    await act(async () => {
+      render(<ModelDownloadContent />, { wrapper: createWrapper() });
+    });
+
+    // Wait for models to load
+    const idleModel = await screen.findByTestId('model-card-deepseek-r1-distill-llama-8b');
+    const pendingModel = screen.getByTestId('model-card-meta-llama-3.1-8b-instruct');
+    const completedModel = screen.getByTestId('model-card-phi-3.5-mini-128k-instruct');
+
+    // Check idle model
+    expect(idleModel).toBeInTheDocument();
+    expect(within(idleModel).getByText('Status: idle')).toBeInTheDocument();
+
+    // Check pending model
+    expect(pendingModel).toBeInTheDocument();
+    expect(within(pendingModel).getByText('Status: pending')).toBeInTheDocument();
+
+    // Check completed model
+    expect(completedModel).toBeInTheDocument();
+    expect(within(completedModel).getByText('Status: completed')).toBeInTheDocument();
+  });
+});

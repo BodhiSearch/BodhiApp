@@ -12,9 +12,10 @@ import { RatingStars } from './RatingStars';
 
 interface ModelCardProps {
   model: ModelInfo;
+  onDownload: () => void;
 }
 
-export const ModelCard = ({ model }: ModelCardProps) => {
+export const ModelCard = ({ model, onDownload }: ModelCardProps) => {
   return (
     <Card className="h-full flex flex-col">
       <CardHeader>
@@ -25,9 +26,6 @@ export const ModelCard = ({ model }: ModelCardProps) => {
               {model.repo}
             </div>
           </div>
-          <span className="text-sm text-muted-foreground">
-            #{model.leaderboardRank}
-          </span>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 space-y-4">
@@ -66,33 +64,48 @@ export const ModelCard = ({ model }: ModelCardProps) => {
         </div>
       </CardContent>
       <CardFooter className="flex gap-2">
-        {model.downloadState?.status === 'downloading' ? (
+        {model.downloadState?.status === 'pending' ? (
           <>
             <div className="flex-1">
               <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary transition-all duration-500"
-                  style={{ width: `${model.downloadState.progress}%` }}
-                />
+                {model.downloadState.progress !== undefined ? (
+                  <div
+                    className="h-full bg-primary transition-all duration-500"
+                    style={{ width: `${model.downloadState.progress}%` }}
+                  />
+                ) : (
+                  <div className="h-full bg-primary animate-progress-infinite" />
+                )}
               </div>
               <div className="flex justify-between text-sm text-muted-foreground mt-2">
                 <span>
-                  {model.downloadState.progress}% • {model.downloadState.speed}
+                  {model.downloadState.progress !== undefined && (
+                    <>{model.downloadState.progress}%</>
+                  )}
+                  {model.downloadState.speed && (
+                    <>
+                      {model.downloadState.progress !== undefined && ' • '}
+                      {model.downloadState.speed}
+                    </>
+                  )}
                 </span>
-                <span>{model.downloadState.timeRemaining} remaining</span>
+                {model.downloadState.timeRemaining && (
+                  <span>{model.downloadState.timeRemaining} remaining</span>
+                )}
               </div>
             </div>
-            <Button variant="outline" size="sm">
-              Cancel
+            <Button variant="outline" size="sm" disabled>
+              Downloading
             </Button>
           </>
         ) : (
           <Button
             className="w-full"
-            disabled={model.downloadState?.status === 'complete'}
+            disabled={model.downloadState?.status === 'completed'}
+            onClick={onDownload}
           >
             <Download className="mr-2 h-4 w-4" />
-            {model.downloadState?.status === 'complete'
+            {model.downloadState?.status === 'completed'
               ? 'Download Complete'
               : 'Download Model'}
           </Button>

@@ -3,7 +3,6 @@
 import React, { useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useQueryClient } from 'react-query';
 import { pullModelSchema, type PullModelFormData } from '@/schemas/pull';
 import { usePullModel, useModelFiles } from '@/hooks/useQuery';
 import { Input } from '@/components/ui/input';
@@ -22,7 +21,6 @@ import { useToastMessages } from '@/hooks/use-toast-messages';
 
 export function PullForm() {
   const { showSuccess, showError } = useToastMessages();
-  const queryClient = useQueryClient();
   const repoInputRef = useRef<HTMLInputElement>(null);
   const filenameInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,11 +35,9 @@ export function PullForm() {
   const { mutate: pullModel, isLoading } = usePullModel({
     onSuccess: () => {
       showSuccess('Success', 'Model pull request submitted successfully');
-      queryClient.invalidateQueries('downloads');
       form.reset();
     },
     onError: (message, code) => {
-      // Set error on both fields since it's a file existence error
       if (code === 'pull_error-file_already_exists') {
         form.setError('filename', { message });
       } else {
