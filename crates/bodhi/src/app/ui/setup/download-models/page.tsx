@@ -11,10 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useDownloads, usePullModel } from '@/hooks/useQuery';
+import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
 import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 export function ModelDownloadContent() {
+  const router = useRouter();
   const { showSuccess, showError } = useToastMessages();
   const { data: downloads } = useDownloads(1, 100);
 
@@ -92,7 +95,12 @@ export function ModelDownloadContent() {
         </motion.div>
 
         <motion.div variants={itemVariants} className="flex justify-end">
-          <Button variant="outline">Continue</Button>
+          <Button
+            variant="outline"
+            onClick={() => router.push(ROUTE_SETUP_COMPLETE)}
+          >
+            Continue
+          </Button>
         </motion.div>
       </motion.div>
     </main>
