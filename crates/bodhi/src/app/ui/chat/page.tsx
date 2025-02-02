@@ -19,6 +19,7 @@ import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { cn } from '@/lib/utils';
 import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // Define custom CSS properties for TypeScript
 const sidebarStyles = {
@@ -69,6 +70,10 @@ function ChatWithSettings() {
 }
 
 function ChatWithHistory() {
+  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage(
+    'sidebar-settings-open',
+    true
+  );
   const { open, openMobile, isMobile } = useSidebar();
   const showHistoryPanel = isMobile ? openMobile : open;
   const searchParams = useSearchParams();
@@ -107,6 +112,8 @@ function ChatWithHistory() {
               inner
               style={settingsSidebarStyles}
               className="flex-1 flex flex-col overflow-hidden"
+              open={isSidebarOpen}
+              onOpenChange={setIsSidebarOpen}
             >
               <ChatWithSettings />
             </SidebarProvider>
@@ -118,9 +125,17 @@ function ChatWithHistory() {
 }
 
 function ChatPageContent() {
+  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage(
+    'sidebar-history-open',
+    true
+  );
   return (
     <ChatDBProvider>
-      <SidebarProvider style={sidebarStyles}>
+      <SidebarProvider
+        style={sidebarStyles}
+        open={isSidebarOpen}
+        onOpenChange={setIsSidebarOpen}
+      >
         <ChatWithHistory />
       </SidebarProvider>
     </ChatDBProvider>
