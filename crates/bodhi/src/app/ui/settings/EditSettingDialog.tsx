@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/hooks/use-toast';
 import { useUpdateSetting } from '@/hooks/useQuery';
 import { Setting } from '@/types/models';
 import { useState } from 'react';
@@ -36,7 +35,6 @@ export function EditSettingDialog({
   onOpenChange,
 }: EditSettingDialogProps) {
   const [value, setValue] = useState(String(setting.current_value));
-  const { toast } = useToast();
   const { showSuccess, showError } = useToastMessages();
 
   const updateSetting = useUpdateSetting({
@@ -55,12 +53,7 @@ export function EditSettingDialog({
     if (setting.metadata.type === 'number') {
       parsedValue = Number(value);
       if (isNaN(parsedValue)) {
-        toast({
-          title: 'Error',
-          description: 'Invalid number',
-          variant: 'destructive',
-          duration: 5000,
-        });
+        showError('Error', 'Invalid number');
         return;
       }
       if (setting.metadata.range) {
@@ -68,12 +61,10 @@ export function EditSettingDialog({
           parsedValue < setting.metadata.range.min ||
           parsedValue > setting.metadata.range.max
         ) {
-          toast({
-            title: 'Error',
-            description: `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`,
-            variant: 'destructive',
-            duration: 5000,
-          });
+          showError(
+            'Error',
+            `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`
+          );
           return;
         }
       }

@@ -120,6 +120,7 @@ describe('useLogoutHandler', () => {
       variant: 'destructive',
       title: 'Logout failed',
       description: 'Message: Internal Server Error. Try again later.',
+      duration: 5000,
     });
   });
 });

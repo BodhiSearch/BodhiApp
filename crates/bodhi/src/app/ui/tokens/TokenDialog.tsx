@@ -2,6 +2,8 @@
 
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/CopyButton';
+import { ShowHideInput } from '@/components/ShowHideInput';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { TokenResponse } from '@/hooks/useApiTokens';
-import { Check, Copy, Eye, EyeOff, Shield } from 'lucide-react';
+import { Shield } from 'lucide-react';
 import { useState } from 'react';
 
 interface TokenDialogProps {
@@ -22,13 +24,6 @@ interface TokenDialogProps {
 
 export function TokenDialog({ token, open, onClose }: TokenDialogProps) {
   const [showToken, setShowToken] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(token.offline_token);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const toggleShowToken = () => {
     setShowToken(!showToken);
@@ -53,38 +48,14 @@ export function TokenDialog({ token, open, onClose }: TokenDialogProps) {
             </AlertDescription>
           </Alert>
 
-          <div className="relative">
-            <div className="rounded-md bg-muted p-3 font-mono text-sm break-all">
-              {showToken ? token.offline_token : '•'.repeat(40)}
-            </div>
-            <div className="absolute right-2 top-2 space-x-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleShowToken}
-                type="button"
-                data-testid="toggle-show-token"
-              >
-                {showToken ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleCopy}
-                type="button"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4" data-testid="copied-token" />
-                ) : (
-                  <Copy className="h-4 w-4" data-testid="copy-token" />
-                )}
-              </Button>
-            </div>
-          </div>
+          <ShowHideInput
+            value={token.offline_token}
+            shown={showToken}
+            onToggle={toggleShowToken}
+            actions={
+              <CopyButton text={token.offline_token} showToast={false} />
+            }
+          />
         </div>
 
         <DialogFooter className="sm:justify-start">

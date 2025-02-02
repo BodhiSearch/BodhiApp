@@ -6,33 +6,30 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { 
-  ArrowRight,
-  BookOpen,
-  Mail
-} from 'lucide-react';
-import { 
-  siGithub,
-  siDiscord,
-  siX,
-  siYoutube
-} from 'simple-icons';
+import { ArrowRight, BookOpen, Mail } from 'lucide-react';
+import { siGithub, siDiscord, siX, siYoutube } from 'simple-icons';
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
+    transition: { staggerChildren: 0.1 },
+  },
 };
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1 }
+  visible: { y: 0, opacity: 1 },
 };
 
 // Simple Icon component
-function SimpleIcon({ icon, className }: { icon: { path: string }, className?: string }) {
+function SimpleIcon({
+  icon,
+  className,
+}: {
+  icon: { path: string };
+  className?: string;
+}) {
   return (
     <svg
       role="img"
@@ -49,10 +46,11 @@ const socialLinks = [
   {
     title: 'Star on GitHub',
     icon: <SimpleIcon icon={siGithub} className="h-5 w-5" />,
-    description: 'Support the project, track updates, and contribute to development',
+    description:
+      'Support the project, track updates, and contribute to development',
     url: 'https://github.com/bodhi-project/bodhi-app',
     stats: '★ 1.2k',
-    color: 'hover:bg-zinc-100 dark:hover:bg-zinc-800'
+    color: 'hover:bg-zinc-100 dark:hover:bg-zinc-800',
   },
   {
     title: 'Join Discord',
@@ -60,22 +58,22 @@ const socialLinks = [
     description: 'Connect with community, get help, and share your experience',
     url: 'https://discord.gg/bodhi-app',
     stats: '2.5k members',
-    color: 'hover:bg-indigo-100 dark:hover:bg-indigo-900/30'
+    color: 'hover:bg-indigo-100 dark:hover:bg-indigo-900/30',
   },
   {
     title: 'Follow on X',
     icon: <SimpleIcon icon={siX} className="h-5 w-5" />,
     description: 'Stay updated with latest news and announcements',
     url: 'https://x.com/bodhi_app',
-    color: 'hover:bg-blue-100 dark:hover:bg-blue-900/30'
+    color: 'hover:bg-blue-100 dark:hover:bg-blue-900/30',
   },
   {
     title: 'Watch Tutorials',
     icon: <SimpleIcon icon={siYoutube} className="h-5 w-5" />,
     description: 'Learn tips, tricks and best practices',
     url: 'https://youtube.com/@bodhi-app',
-    color: 'hover:bg-red-100 dark:hover:bg-red-900/30'
-  }
+    color: 'hover:bg-red-100 dark:hover:bg-red-900/30',
+  },
 ];
 
 const resourceLinks = [
@@ -83,14 +81,14 @@ const resourceLinks = [
     title: 'Getting Started Guide',
     icon: <BookOpen className="h-5 w-5" />,
     description: 'Learn the basics and get up to speed quickly',
-    url: '/docs/getting-started'
-  }
+    url: '/docs/getting-started',
+  },
 ];
 
 // Magic UI Confetti component
 function Confetti() {
   return (
-    <div 
+    <div
       className="fixed inset-0 flex items-center justify-center pointer-events-none"
       aria-hidden="true"
     >
@@ -101,14 +99,20 @@ function Confetti() {
               key={i}
               className="relative -top-full flex items-center justify-center"
               style={{
-                animation: `confetti ${Math.random() * 3 + 2}s ${Math.random() * 2}s linear forwards`
+                animation: `confetti ${Math.random() * 3 + 2}s ${Math.random() * 2}s linear forwards`,
               }}
             >
-              <div 
+              <div
                 className="w-2 h-2 rotate-45 animate-spin"
                 style={{
-                  backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'][Math.floor(Math.random() * 5)],
-                  animationDuration: `${Math.random() * 2 + 1}s`
+                  backgroundColor: [
+                    '#ff0000',
+                    '#00ff00',
+                    '#0000ff',
+                    '#ffff00',
+                    '#ff00ff',
+                  ][Math.floor(Math.random() * 5)],
+                  animationDuration: `${Math.random() * 2 + 1}s`,
                 }}
               />
             </div>
@@ -117,8 +121,12 @@ function Confetti() {
       </div>
       <style jsx>{`
         @keyframes confetti {
-          0% { transform: translateY(0) rotateX(0) rotateY(0); }
-          100% { transform: translateY(100vh) rotateX(360deg) rotateY(360deg); }
+          0% {
+            transform: translateY(0) rotateX(0) rotateY(0);
+          }
+          100% {
+            transform: translateY(100vh) rotateX(360deg) rotateY(360deg);
+          }
         }
       `}</style>
     </div>
@@ -148,7 +156,8 @@ function SetupCompleteContent() {
       <motion.div variants={itemVariants} className="text-center space-y-4">
         <h1 className="text-4xl font-bold">🎉 Setup Complete!</h1>
         <p className="text-muted-foreground">
-          Your Bodhi App is ready to use. Join our community to get the most out of it!
+          Your Bodhi App is ready to use. Join our community to get the most out
+          of it!
         </p>
       </motion.div>
 
@@ -179,7 +188,9 @@ function SetupCompleteContent() {
                       </span>
                     )}
                   </h3>
-                  <p className="text-sm text-muted-foreground">{link.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {link.description}
+                  </p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </motion.a>
@@ -232,7 +243,9 @@ function SetupCompleteContent() {
                 {link.icon}
                 <div>
                   <h3 className="font-medium">{link.title}</h3>
-                  <p className="text-sm text-muted-foreground">{link.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {link.description}
+                  </p>
                 </div>
                 <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
               </motion.a>
@@ -243,11 +256,7 @@ function SetupCompleteContent() {
 
       {/* Start Using App Button */}
       <motion.div variants={itemVariants} className="flex justify-center pt-4">
-        <Button 
-          size="lg" 
-          onClick={() => router.push('/chat')}
-          className="px-8"
-        >
+        <Button size="lg" onClick={() => router.push('/chat')} className="px-8">
           Start Using Bodhi App →
         </Button>
       </motion.div>
@@ -261,4 +270,4 @@ export default function SetupCompletePage() {
       <SetupCompleteContent />
     </main>
   );
-} 
+}

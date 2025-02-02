@@ -1,9 +1,8 @@
 import { Message } from '@/types/chat';
 import { MemoizedReactMarkdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
-import { User, Bot, Copy } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { useToastMessages } from '@/hooks/use-toast-messages';
+import { User, Bot } from 'lucide-react';
+import { CopyButton } from '@/components/CopyButton';
 
 interface ChatMessageProps {
   message: Message;
@@ -15,12 +14,6 @@ export function ChatMessage({
   isStreaming = false,
 }: ChatMessageProps) {
   const isUser = message.role === 'user';
-  const { showSuccess } = useToastMessages();
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
-    showSuccess('Copied', 'Chat message copied to clipboard');
-  };
 
   return (
     <div
@@ -56,16 +49,14 @@ export function ChatMessage({
 
         {!isUser && !isStreaming && (
           <div className="flex justify-end pt-1">
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <CopyButton
+                text={message.content}
                 size="icon"
-                className="h-7 w-7 p-0"
-                onClick={handleCopy}
-              >
-                <Copy className="h-3.5 w-3.5" />
-                <span className="sr-only">Copy</span>
-              </Button>
+                variant="ghost"
+                className="h-7 w-7"
+                showToast={true}
+              />
             </div>
           </div>
         )}
