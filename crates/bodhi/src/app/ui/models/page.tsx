@@ -17,7 +17,7 @@ import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
-import { CopyButton } from '@/components/CopyButton';
+import { CopyableContent } from '@/components/CopyableContent';
 
 const columns = [
   { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
@@ -67,24 +67,6 @@ const SourceBadge = ({ source }: { source: string | undefined }) => {
     >
       {source || ''}
     </span>
-  );
-};
-
-// Add this component to handle the hover container
-const CopyableContent = ({
-  text,
-  className = '',
-}: {
-  text: string;
-  className?: string;
-}) => {
-  return (
-    <div className={`flex items-center group ${className}`}>
-      <span className="truncate">{text}</span>
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-        <CopyButton text={text} />
-      </div>
-    </div>
   );
 };
 

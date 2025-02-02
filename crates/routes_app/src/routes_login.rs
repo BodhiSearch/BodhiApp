@@ -168,11 +168,11 @@ pub async fn login_callback_handler(
     .insert("refresh_token", refresh_token)
     .await
     .map_err(LoginError::from)?;
-  let ui_home = format!("{}/ui/home", setting_service.frontend_url());
+  let ui_setup_resume = format!("{}/ui/setup/download-models", setting_service.frontend_url());
   Ok(
     Response::builder()
       .status(StatusCode::FOUND)
-      .header("Location", ui_home)
+      .header("Location", ui_setup_resume)
       .body(Body::empty())
       .unwrap()
       .into_response(),

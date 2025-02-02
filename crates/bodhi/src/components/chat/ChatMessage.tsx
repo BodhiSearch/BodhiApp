@@ -2,7 +2,7 @@ import { Message } from '@/types/chat';
 import { MemoizedReactMarkdown } from '@/components/ui/markdown';
 import { cn } from '@/lib/utils';
 import { User, Bot } from 'lucide-react';
-import { CopyButton } from '@/components/CopyButton';
+import { CopyableContent } from '@/components/CopyableContent';
 
 interface ChatMessageProps {
   message: Message;
@@ -49,15 +49,7 @@ export function ChatMessage({
 
         {!isUser && !isStreaming && (
           <div className="flex justify-end pt-1">
-            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-              <CopyButton
-                text={message.content}
-                size="icon"
-                variant="ghost"
-                className="h-7 w-7"
-                showToast={true}
-              />
-            </div>
+            <CopyableContent text={message.content} className="justify-end" />
           </div>
         )}
       </div>

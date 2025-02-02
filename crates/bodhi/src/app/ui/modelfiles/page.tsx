@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
+import { CopyableContent } from '@/components/CopyableContent';
 
 // Helper function to convert bytes to GB
 const bytesToGB = (bytes: number | undefined): string => {
@@ -94,8 +95,8 @@ function ModelFilesContent() {
     // Mobile view (combined column)
     <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
       <div className="flex flex-col gap-2">
-        <span className="font-medium truncate">{modelFile.repo}</span>
-        <span className="truncate text-sm">{modelFile.filename}</span>
+        <CopyableContent text={modelFile.repo} className="font-medium" />
+        <CopyableContent text={modelFile.filename} className="text-sm" />
         <span className="text-xs text-muted-foreground">
           {bytesToGB(modelFile.size)}
         </span>
@@ -110,14 +111,14 @@ function ModelFilesContent() {
       className="hidden sm:table-cell max-w-[180px]"
       data-testid="repo-cell"
     >
-      <div className="truncate">{modelFile.repo}</div>
+      <CopyableContent text={modelFile.repo} />
     </TableCell>,
     <TableCell
       key="filename"
       className="hidden sm:table-cell"
       data-testid="filename-cell"
     >
-      {modelFile.filename}
+      <CopyableContent text={modelFile.filename} />
     </TableCell>,
     <TableCell
       key="size"

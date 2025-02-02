@@ -2,11 +2,10 @@ export interface ModelInfo {
   id: string;
   name: string;
   repo: string;
-  fileName: string;
+  filename: string;
   quantization: string;
   size: string;
   parameters: string;
-  leaderboardRank: number;
   category: 'small' | 'medium' | 'large' | 'extra-large';
   ratings: {
     quality: number;
@@ -14,12 +13,14 @@ export interface ModelInfo {
     accuracy: number;
   };
   license: string;
-  downloadState?: {
-    status: 'idle' | 'downloading' | 'complete' | 'error';
-    progress?: number;
-    speed?: string;
-    timeRemaining?: string;
-  };
+  downloadState: DownloadState;
+}
+
+export interface DownloadState {
+  status: 'idle' | 'pending' | 'completed' | 'error';
+  progress?: number;
+  speed?: string;
+  timeRemaining?: string;
 }
 
 export const containerVariants = {

@@ -1,21 +1,31 @@
 'use client';
 
-import {
-  additionalModels,
-  recommendedModels,
-} from '@/app/ui/setup/download-models/data';
+import { recommendedModels } from '@/app/ui/setup/download-models/data';
 import { ModelCard } from '@/app/ui/setup/download-models/ModelCard';
-import { ModelList } from '@/app/ui/setup/download-models/ModelList';
+import { ModelInfo } from '@/app/ui/setup/download-models/types';
 import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import { containerVariants, itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useDownloads, usePullModel } from '@/hooks/useQuery';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
 
-function ModelDownloadContent() {
+export function ModelDownloadContent() {
+  const { showSuccess, showError } = useToastMessages();
+  const { data: downloads } = useDownloads(1, 100);
+
+  const { mutate: pullModel } = usePullModel({
+    onSuccess: () => {
+      showSuccess('Success', 'Model downloaded successfully');
+    },
+    onError: (message) => {
+      showError('Error', message);
+    },
+  });
   const [, setHasShownModelsPage] = useLocalStorage(
     'shown-download-models-page',
     true
@@ -24,6 +34,13 @@ function ModelDownloadContent() {
   useEffect(() => {
     setHasShownModelsPage(false);
   }, [setHasShownModelsPage]);
+
+  const handleModelDownload = (model: ModelInfo) => {
+    pullModel({
+      repo: model.repo,
+      filename: model.filename,
+    });
+  };
 
   return (
     <main className="min-h-screen bg-background">
@@ -42,22 +59,22 @@ function ModelDownloadContent() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {recommendedModels.map((model) => (
-                  <ModelCard key={model.id} model={model} />
-                ))}
+                {recommendedModels.map((model) => {
+                  const status =
+                    downloads?.data.find(
+                      (d) =>
+                        d.repo === model.repo && d.filename === model.filename
+                    )?.status || 'idle';
+                  model.downloadState = { status };
+                  return (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      onDownload={() => handleModelDownload(model)}
+                    />
+                  );
+                })}
               </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Additional Models */}
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-center">Additional Models</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ModelList additionalModels={additionalModels} />
             </CardContent>
           </Card>
         </motion.div>
@@ -67,8 +84,8 @@ function ModelDownloadContent() {
           <Card>
             <CardContent className="py-4">
               <p className="text-sm text-center text-muted-foreground">
-                Downloads will continue in the background. You can track
-                download progress in the Models section after setup is complete.
+                Downloads will continue in the background. You can download
+                additional models later on the Models page.
               </p>
             </CardContent>
           </Card>

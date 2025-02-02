@@ -46,9 +46,6 @@ export const ModelList = ({ additionalModels }: ModelListProps) => {
                         {model.repo}
                       </p>
                     </div>
-                    <span className="text-sm text-muted-foreground">
-                      #{model.leaderboardRank}
-                    </span>
                   </div>
 
                   <div className="grid grid-cols-3 gap-2 text-sm">

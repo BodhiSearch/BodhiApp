@@ -176,3 +176,20 @@
     @apply text-sm text-muted-foreground text-center;
   }
 }
+
+@keyframes progress-infinite {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.animate-progress-infinite {
+  animation: progress-infinite 1.5s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent 0%, hsl(var(--primary)) 50%, transparent 100%);
+}
