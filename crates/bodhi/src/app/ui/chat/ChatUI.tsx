@@ -5,13 +5,17 @@ import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useChat } from '@/hooks/use-chat';
 import { useChatDB } from '@/hooks/use-chat-db';
+import { useChatSettings } from '@/hooks/use-chat-settings';
 import { Message } from '@/types/chat';
 import { FormEvent, RefObject, useEffect, useRef, memo } from 'react';
 import { Plus } from 'lucide-react';
+import { useSidebar } from '@/components/ui/sidebar';
+import { cn } from '@/lib/utils';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 
 const EmptyState = () => (
   <div className="flex h-full items-center justify-center">
-    <div className="space-y-3 text-center">
+    <div className="text-center space-y-3">
       <h3 className="text-lg font-semibold">Welcome to Chat</h3>
       <p className="text-muted-foreground">
         Start a conversation by typing a message below.
@@ -26,16 +30,19 @@ interface ChatInputProps {
   handleSubmit: (e: FormEvent) => void;
   streamLoading: boolean;
   inputRef: RefObject<HTMLTextAreaElement>;
+  isModelSelected: boolean;
 }
 
-const ChatInput = ({
+const ChatInput = memo(function ChatInput({
   input,
   setInput,
   handleSubmit,
   streamLoading,
   inputRef,
-}: ChatInputProps) => {
+  isModelSelected,
+}: ChatInputProps) {
   const { createNewChat } = useChatDB();
+
   return (
     <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto max-w-3xl px-4 py-2">
@@ -45,18 +52,25 @@ const ChatInput = ({
             variant="ghost"
             size="icon"
             className="absolute left-2 h-8 w-8"
-            onClick={() => createNewChat()}
+            onClick={createNewChat}
           >
             <Plus className="h-5 w-5" />
-            <span className="sr-only">Add attachment</span>
+            <span className="sr-only">New chat</span>
           </Button>
 
           <form onSubmit={handleSubmit} className="flex w-full items-center">
             <textarea
               ref={inputRef}
-              className="flex-1 resize-none bg-transparent px-12 py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              className={cn(
+                'flex-1 resize-none bg-transparent px-12 py-3 text-sm outline-none disabled:opacity-50',
+                !isModelSelected && 'ring-2 ring-destructive'
+              )}
               rows={1}
-              placeholder="Ask me anything..."
+              placeholder={
+                isModelSelected
+                  ? 'Ask me anything...'
+                  : 'Please select a model first'
+              }
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -69,8 +83,7 @@ const ChatInput = ({
             <Button
               type="submit"
               size="icon"
-              disabled={!input.trim() || streamLoading}
-              onClick={handleSubmit}
+              disabled={!input.trim() || streamLoading || !isModelSelected}
               className="absolute right-2 h-8 w-8"
             >
               <svg
@@ -90,13 +103,13 @@ const ChatInput = ({
           </form>
         </div>
 
-        <div className="px-2 py-2 text-center text-xs text-muted-foreground">
+        <p className="px-2 py-2 text-center text-xs text-muted-foreground">
           Chat assistant can make mistakes.
-        </div>
+        </p>
       </div>
     </div>
   );
-};
+});
 
 interface MessageListProps {
   messages: Message[];
@@ -131,6 +144,9 @@ const MessageList = memo(function MessageList({
 
 export function ChatUI() {
   const { currentChat } = useChatDB();
+  const { showError } = useToastMessages();
+  const { model } = useChatSettings();
+  const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
   const {
     input,
     setInput,
@@ -141,7 +157,6 @@ export function ChatUI() {
   } = useChat();
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus input after loading completes
   useEffect(() => {
     if (!streamLoading && inputRef.current) {
       inputRef.current.focus();
@@ -151,6 +166,19 @@ export function ChatUI() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!input.trim() || streamLoading) return;
+    // Check if model is selected
+    if (!model) {
+      showError(
+        'No Model Selected',
+        'Please select an Alias/Model from settings before sending a message.'
+      );
+      // Open settings panel if it's not already open
+      if (!openSettings) {
+        setOpenSettings(true);
+      }
+      return;
+    }
+
     const content = input.trim();
     setInput('');
     await append(content);
@@ -181,6 +209,7 @@ export function ChatUI() {
         handleSubmit={handleSubmit}
         streamLoading={streamLoading}
         inputRef={inputRef}
+        isModelSelected={!!model}
       />
     </div>
   );

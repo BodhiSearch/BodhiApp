@@ -19,8 +19,8 @@ interface HistoryGroupProps {
 
 const HistoryGroup = ({ title, children }: HistoryGroupProps) => (
   <div className="space-y-2">
-    <h3 className="px-2 text-xs font-medium text-muted-foreground">{title}</h3>
-    <div className="space-y-1">{children}</div>
+    <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+    {children}
   </div>
 );
 
@@ -47,13 +47,13 @@ export function ChatHistory() {
         onClick={() => setCurrentChatId(chat.id)}
         isActive={chat.id === currentChatId}
         className={cn(
-          'w-full justify-start px-2 text-sm font-normal truncate',
+          'w-full justify-start truncate text-sm',
           'hover:bg-muted/50',
           selected && 'bg-muted'
         )}
         tooltip={chat.title || 'Untitled Chat'}
       >
-        <span className="truncate">{chat.title || 'Untitled Chat'}</span>
+        {chat.title || 'Untitled Chat'}
       </SidebarMenuButton>
       <SidebarMenuAction
         data-testid={`delete-chat-${chat.id}`}
@@ -70,41 +70,33 @@ export function ChatHistory() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto">
+      <ScrollArea className="flex-1">
         <SidebarMenu>
-          <ScrollArea className="h-full">
-            <div className="flex flex-col gap-4 p-2">
-              {todayChats.length > 0 && (
-                <div className="space-y-4">
-                  <HistoryGroup title="TODAY">
-                    {todayChats.map((chat) =>
-                      renderChat(chat, chat.id === currentChatId)
-                    )}
-                  </HistoryGroup>
-                </div>
-              )}
-              {yesterdayChats.length > 0 && (
-                <div className="space-y-4">
-                  <HistoryGroup title="YESTERDAY">
-                    {yesterdayChats.map((chat) =>
-                      renderChat(chat, chat.id === currentChatId)
-                    )}
-                  </HistoryGroup>
-                </div>
-              )}
-              {previousChats.length > 0 && (
-                <div className="space-y-4">
-                  <HistoryGroup title="PREVIOUS 7 DAYS">
-                    {previousChats.map((chat) =>
-                      renderChat(chat, chat.id === currentChatId)
-                    )}
-                  </HistoryGroup>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
+          <div className="space-y-4 p-2">
+            {todayChats.length > 0 && (
+              <HistoryGroup title="TODAY">
+                {todayChats.map((chat) =>
+                  renderChat(chat, chat.id === currentChatId)
+                )}
+              </HistoryGroup>
+            )}
+            {yesterdayChats.length > 0 && (
+              <HistoryGroup title="YESTERDAY">
+                {yesterdayChats.map((chat) =>
+                  renderChat(chat, chat.id === currentChatId)
+                )}
+              </HistoryGroup>
+            )}
+            {previousChats.length > 0 && (
+              <HistoryGroup title="PREVIOUS 7 DAYS">
+                {previousChats.map((chat) =>
+                  renderChat(chat, chat.id === currentChatId)
+                )}
+              </HistoryGroup>
+            )}
+          </div>
         </SidebarMenu>
-      </div>
+      </ScrollArea>
 
       <div className="border-t p-4">
         <p className="text-xs text-muted-foreground text-center">
