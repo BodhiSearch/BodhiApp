@@ -102,10 +102,12 @@ impl LocalDataService {
   }
 
   fn aliases_dir(&self) -> PathBuf {
+    // TODO: take from setting service
     self.bodhi_home.join(ALIASES_DIR)
   }
 
   fn models_yaml(&self) -> PathBuf {
+    // TODO: take from setting service
     self.bodhi_home.join(MODELS_YAML)
   }
 

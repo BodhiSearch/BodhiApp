@@ -70,12 +70,12 @@ pub fn llama2_7b_setup(
     ),
     (BODHI_ENV_TYPE.to_string(), EnvType::Development.to_string()),
   ]);
-  let env_wrapper = EnvWrapperStub::new(envs);
-  InitService::new(&env_wrapper, &EnvType::Development)
-    .setup_bodhi_home()
+  let env_wrapper = Arc::new(EnvWrapperStub::new(envs));
+  InitService::new(env_wrapper.clone(), EnvType::Development)
+    .setup_bodhi_home_dir()
     .unwrap();
   let setting_service = DefaultSettingService::new_with_defaults(
-    Arc::new(env_wrapper),
+    env_wrapper,
     bodhi_home_setting(&bodhi_home, SettingSource::Environment),
     vec![],
     bodhi_home.join("settings.yaml"),

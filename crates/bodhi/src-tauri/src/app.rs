@@ -46,13 +46,23 @@ async fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<()> {
 
   let secret_service = DefaultSecretService::new(encryption_key, &secrets_path)?;
 
-  let dbpath = setting_service.db_path();
-  let pool = DbPool::connect(&format!("sqlite:{}", dbpath.display())).await?;
+  let app_db_pool = DbPool::connect(&format!(
+    "sqlite:{}",
+    setting_service.app_db_path().display()
+  ))
+  .await?;
   let time_service = Arc::new(DefaultTimeService);
-  let db_service = SqliteDbService::new(pool.clone(), time_service.clone());
+  let db_service = SqliteDbService::new(app_db_pool, time_service.clone());
   db_service.migrate().await?;
-  let session_service = SqliteSessionService::new(pool);
+
+  let session_db_pool = DbPool::connect(&format!(
+    "sqlite:{}",
+    setting_service.session_db_path().display()
+  ))
+  .await?;
+  let session_service = SqliteSessionService::new(session_db_pool);
   session_service.migrate().await?;
+
   let cache_service = MokaCacheService::default();
 
   let auth_url = setting_service.auth_url();

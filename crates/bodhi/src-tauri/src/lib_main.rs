@@ -56,9 +56,9 @@ pub const APP_TYPE: AppType = AppType::Native;
 pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
-  let env_wrapper = DefaultEnvWrapper::default();
-  let init_service = InitService::new(&env_wrapper, &ENV_TYPE);
-  let (bodhi_home, source) = match init_service.setup_bodhi_home() {
+  let env_wrapper = Arc::new(DefaultEnvWrapper::default());
+  let init_service = InitService::new(env_wrapper.clone(), ENV_TYPE.clone());
+  let (bodhi_home, source) = match init_service.setup_bodhi_home_dir() {
     Ok(bodhi_home) => bodhi_home,
     Err(err) => {
       eprintln!(
@@ -102,7 +102,7 @@ pub fn _main() {
     },
   ];
   let setting_service = DefaultSettingService::new_with_defaults(
-    Arc::new(env_wrapper),
+    env_wrapper,
     Setting {
       key: BODHI_HOME.to_string(),
       value: serde_yaml::Value::String(bodhi_home.display().to_string()),
@@ -128,7 +128,13 @@ pub fn _main() {
     );
     std::process::exit(1);
   });
-
+  if let Err(err) = init_service.set_bodhi_home(&setting_service) {
+    eprintln!(
+      "fatal error, setting up bodhi home, error: {}\nexiting...",
+      err
+    );
+    std::process::exit(1);
+  }
   if let Err(err) = InitService::setup_hf_home(&setting_service) {
     eprintln!(
       "fatal error, setting up huggingface home, error: {}\nexiting...",
