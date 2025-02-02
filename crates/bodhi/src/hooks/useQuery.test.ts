@@ -1,16 +1,30 @@
 import {
+  ENDPOINT_APP_INFO,
+  ENDPOINT_APP_SETUP,
   ENDPOINT_SETTINGS,
+  ENDPOINT_USER_INFO,
+  useAppInfo,
   useDeleteSetting,
   useSettings,
+  useSetupApp,
   useUpdateSetting,
+  useUser,
 } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { ApiError, Setting } from '@/types/models';
+import { ApiError, AppInfo, Setting } from '@/types/models';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 const mockSettings: Setting[] = [
   {
@@ -38,6 +52,18 @@ const mockSettings: Setting[] = [
   },
 ];
 
+const mockAppInfo: AppInfo = {
+  version: '0.1.0',
+  status: 'ready',
+  authz: false,
+};
+
+const mockUserInfo = {
+  logged_in: true,
+  email: 'test@example.com',
+  roles: [],
+};
+
 const server = setupServer(
   rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
     return res(ctx.status(200), ctx.json(mockSettings));
@@ -47,6 +73,15 @@ const server = setupServer(
   }),
   rest.delete(`*${ENDPOINT_SETTINGS}/:key`, (_, res, ctx) => {
     return res(ctx.status(200), ctx.json(mockSettings[0]));
+  }),
+  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+    return res(ctx.json(mockAppInfo));
+  }),
+  rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
+    return res(ctx.json(mockUserInfo));
+  }),
+  rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
+    return res(ctx.json({ ...mockAppInfo, status: 'ready' }));
   })
 );
 
@@ -293,5 +328,95 @@ describe('Settings Hooks', () => {
         );
       });
     });
+  });
+});
+
+describe('useSetupApp', () => {
+  it('invalidates appInfo and user queries on successful setup', async () => {
+    const wrapper = createWrapper();
+
+    // Setup initial queries and wait for data
+    const { result: appInfoResult } = renderHook(() => useAppInfo(), {
+      wrapper,
+    });
+    const { result: userResult } = renderHook(
+      () => useUser({ enabled: true }),
+      {
+        wrapper,
+      }
+    );
+
+    await waitFor(() => {
+      expect(appInfoResult.current.isSuccess).toBe(true);
+      expect(userResult.current.isSuccess).toBe(true);
+    });
+
+    const initialAppInfoUpdatedAt = appInfoResult.current.dataUpdatedAt;
+    const initialUserUpdatedAt = userResult.current.dataUpdatedAt;
+
+    // Perform setup
+    const { result: setupResult } = renderHook(() => useSetupApp(), {
+      wrapper,
+    });
+
+    await act(async () => {
+      await setupResult.current.mutateAsync({ authz: false });
+    });
+
+    // Verify both queries were invalidated and refetched
+    await waitFor(() => {
+      expect(appInfoResult.current.dataUpdatedAt).toBeGreaterThan(
+        initialAppInfoUpdatedAt
+      );
+      expect(userResult.current.dataUpdatedAt).toBeGreaterThan(
+        initialUserUpdatedAt
+      );
+    });
+  });
+
+  it('calls onSuccess with the response data', async () => {
+    const onSuccess = vi.fn();
+    const { result } = renderHook(() => useSetupApp({ onSuccess }), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync({ authz: false });
+    });
+
+    expect(onSuccess).toHaveBeenCalledWith({
+      ...mockAppInfo,
+      status: 'ready',
+    });
+  });
+
+  it('calls onError with error message on failure', async () => {
+    const onError = vi.fn();
+    server.use(
+      rest.post(`*${ENDPOINT_APP_SETUP}`, (_, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({
+            error: {
+              message: 'Setup failed',
+            },
+          })
+        );
+      })
+    );
+
+    const { result } = renderHook(() => useSetupApp({ onError }), {
+      wrapper: createWrapper(),
+    });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync({ authz: false });
+      } catch (error) {
+        // Expected error
+      }
+    });
+
+    expect(onError).toHaveBeenCalledWith('Setup failed');
   });
 });

@@ -109,6 +109,13 @@ export function useAppInfo() {
   return useQuery<AppInfo>('appInfo', ENDPOINT_APP_INFO);
 }
 
+export function useUser(options?: { enabled?: boolean }) {
+  return useQuery<UserInfo | null>('user', ENDPOINT_USER_INFO, undefined, {
+    retry: false,
+    enabled: options?.enabled ?? true,
+  });
+}
+
 type SetupRequest = {
   authz: boolean;
 };
@@ -121,8 +128,11 @@ export function useSetupApp(options?: {
   AxiosError<ErrorResponse>,
   SetupRequest
 > {
+  const queryClient = useQueryClient();
   return useMutationQuery<AppInfo, SetupRequest>(ENDPOINT_APP_SETUP, 'post', {
     onSuccess: (response) => {
+      queryClient.invalidateQueries('appInfo');
+      queryClient.invalidateQueries('user');
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<ErrorResponse>) => {
@@ -260,13 +270,6 @@ export function useLogout(
         options.onSuccess(data, variables, context);
       }
     },
-  });
-}
-
-export function useUser(options?: { enabled: boolean }) {
-  return useQuery<UserInfo | null>('user', ENDPOINT_USER_INFO, undefined, {
-    retry: false,
-    enabled: options?.enabled,
   });
 }
 
