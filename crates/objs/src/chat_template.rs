@@ -10,15 +10,21 @@ use async_openai::types::{
 };
 use derive_new::new;
 use minijinja::{Environment, ErrorKind};
+use regex::Regex;
 use serde::{
   de::{self, MapAccess, Visitor},
   Deserialize, Deserializer, Serialize,
 };
 use std::{fmt, ops::Deref, path::Path};
+use tracing::debug;
 use validator::{Validate, ValidationError};
 
 pub fn raise_exception(err_text: String) -> Result<String, minijinja::Error> {
   Err(minijinja::Error::new(ErrorKind::SyntaxError, err_text))
+}
+
+pub fn split_filter(value: String, delimiter: &str) -> Result<Vec<String>, minijinja::Error> {
+  Ok(value.split(delimiter).map(|s| s.to_string()).collect())
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
@@ -69,7 +75,7 @@ impl<'a> From<&'a ChatCompletionRequestMessage> for ChatMessage {
   }
 }
 
-#[derive(Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChatTemplateInputs {
   messages: Vec<ChatMessage>,
   bos_token: Option<String>,
@@ -137,9 +143,15 @@ impl ChatTemplate {
       })?
       .replace(".strip()", " | trim")
       .replace(".title()", " | title");
+    let split_re = Regex::new(r"(\w+)\.split\((.*?)\)").unwrap();
+    let chat_template = split_re
+      .replace_all(&chat_template, "($1 | split($2))")
+      .to_string();
+    dbg!(&chat_template);
     let mut env = Box::new(Environment::new());
     let template_str = chat_template.into_boxed_str();
     env.add_function("raise_exception", raise_exception);
+    env.add_filter("split", split_filter);
     let template = Box::leak(env).template_from_str(Box::leak(template_str))?;
     let messages: Vec<ChatMessage> = messages.iter().map(Into::into).collect();
 
@@ -149,8 +161,9 @@ impl ChatTemplate {
       eos_token: self.eos_token.clone(),
       add_generation_prompt: true,
     };
+    debug!("rendering template with inputs: {:?}", inputs);
     let result = template.render(inputs)?;
-    Ok(result.trim_matches(' ').to_string())
+    Ok(result.to_string())
   }
 
   fn extract_token(metadata: &GGUFMetadata, tokens: &[GGUFValue], key: &str) -> Option<String> {
@@ -302,10 +315,10 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use dirs::home_dir;
   use pretty_assertions::assert_eq;
+  use regex::Regex;
   use rstest::rstest;
   use std::{path::PathBuf, sync::Arc};
   use tempfile::TempDir;
-  use regex::Regex;
 
   #[rstest]
   #[case(&ChatTemplateError::Minijina(minijinja::Error::new(minijinja::ErrorKind::NonKey, "error")), "error rendering template: not a key type: error")]
@@ -325,16 +338,17 @@ mod test {
 
   #[anyhow_trace]
   #[rstest]
-  #[case("llama3", "meta-llama/Meta-Llama-3-8B-Instruct")]
-  #[case("llama2", "meta-llama/Llama-2-13b-chat-hf")]
-  #[case("phi3", "microsoft/Phi-3-mini-4k-instruct")]
-  #[case("llama2-legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1")]
-  #[case("gemma", "google/gemma-7b-it")]
-  #[case("deepseek", "deepseek-ai/deepseek-llm-67b-chat")]
-  #[case("command-r", "CohereForAI/c4ai-command-r-plus")]
-  #[case("openchat", "openchat/openchat-3.6-8b-20240522")]
-  #[case("tinyllama", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")]
-  // #[case("zephyr", "HuggingFaceH4/zephyr-7b-beta")]
+  #[case::llama3("llama3", "meta-llama/Meta-Llama-3-8B-Instruct")]
+  #[case::llama2("llama2", "meta-llama/Llama-2-13b-chat-hf")]
+  #[case::phi3("phi3", "microsoft/Phi-3-mini-4k-instruct")]
+  #[case::llama2_legacy("llama2-legacy", "mistralai/Mixtral-8x7B-Instruct-v0.1")]
+  #[case::gemma("gemma", "google/gemma-7b-it")]
+  #[case::deepseek("deepseek", "deepseek-ai/deepseek-llm-67b-chat")]
+  #[case::deepseek_r1("deepseek-r1", "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B")]
+  #[case::command_r("command-r", "CohereForAI/c4ai-command-r-plus")]
+  #[case::openchat("openchat", "openchat/openchat-3.6-8b-20240522")]
+  #[case::tinyllama("tinyllama", "TinyLlama/TinyLlama-1.1B-Chat-v1.0")]
+  // #[case::zephyr("zephyr", "HuggingFaceH4/zephyr-7b-beta")]
   fn test_chat_template_apply_chat_template(
     #[case] format: String,
     #[case] model: String,
@@ -345,7 +359,9 @@ mod test {
       "convo",
       "unknown-role",
       "error-user-at-even-no-system",
-      "error-user-at-even-with-system"
+      "error-user-at-even-with-system",
+      "reasoning-empty",
+      "reasoning-some"
     )]
     case: String,
   ) -> anyhow::Result<()> {
@@ -704,7 +720,11 @@ mod test {
         let re_err = Regex::new(r" \(in <string>.*$").unwrap();
         let actual = e.to_string().replace("syntax error: ", "");
         let actual = re_err.replace_all(&actual, "").to_string();
-        assert_eq!(expected.replace("JINJA_ERROR: ", ""), actual, "failed {id}, for template: {template}");
+        assert_eq!(
+          expected.replace("JINJA_ERROR: ", ""),
+          actual,
+          "failed {id}, for template: {template}"
+        );
       }
     }
 
