@@ -1,4 +1,4 @@
-import { ChatHistory } from '@/components/chat/ChatHistory';
+import { ChatHistory } from '@/app/ui/chat/ChatHistory';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useChatDB } from '@/hooks/use-chat-db';
 import { Chat } from '@/types/chat';

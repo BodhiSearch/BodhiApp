@@ -1,4 +1,4 @@
-import { NewChatButton } from '@/components/chat/NewChatButton';
+import { NewChatButton } from '@/app/ui/chat/NewChatButton';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';

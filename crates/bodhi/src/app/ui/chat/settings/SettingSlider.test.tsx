@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { SettingSlider } from '@/components/settings/SettingSlider';
+import { SettingSlider } from '@/app/ui/chat/settings/SettingSlider';
 import { useEffect } from 'react';
 
 // Mock the Slider component

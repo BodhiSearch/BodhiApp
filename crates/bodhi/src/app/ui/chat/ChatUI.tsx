@@ -1,6 +1,6 @@
 'use client';
 
-import { ChatMessage } from '@/components/chat/ChatMessage';
+import { ChatMessage } from '@/app/ui/chat/ChatMessage';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';
 import { useChat } from '@/hooks/use-chat';
