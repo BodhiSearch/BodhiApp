@@ -2,10 +2,10 @@
 
 import React from 'react';
 import AppInitializer from '@/components/AppInitializer';
-import { ChatHistory } from '@/components/chat/ChatHistory';
-import { ChatUI } from '@/components/chat/ChatUI';
-import { NewChatButton } from '@/components/chat/NewChatButton';
-import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
+import { ChatHistory } from '@/app/ui/chat/ChatHistory';
+import { ChatUI } from '@/app/ui/chat/ChatUI';
+import { NewChatButton } from '@/app/ui/chat/NewChatButton';
+import { SettingsSidebar } from '@/app/ui/chat/settings/SettingsSidebar';
 import {
   Sidebar,
   SidebarContent,

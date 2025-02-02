@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { StopWords } from '@/components/settings/StopWords';
+import { StopWords } from '@/app/ui/chat/settings/StopWords';
 import * as chatSettings from '@/hooks/use-chat-settings';
 import userEvent from '@testing-library/user-event';
 

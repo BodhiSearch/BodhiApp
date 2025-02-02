@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
-import AliasForm from '@/components/AliasForm';
+import AliasForm from '@/app/ui/models/AliasForm';
 import AppInitializer from '@/components/AppInitializer';
 
 function NewModelContent() {

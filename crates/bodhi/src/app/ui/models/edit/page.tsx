@@ -1,7 +1,7 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import AliasForm from '@/components/AliasForm';
+import AliasForm from '@/app/ui/models/AliasForm';
 import { useModel } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { Loading } from '@/components/ui/Loading';

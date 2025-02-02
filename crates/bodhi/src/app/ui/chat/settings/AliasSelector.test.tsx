@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { AliasSelector } from '@/components/settings/AliasSelector';
+import { AliasSelector } from '@/app/ui/chat/settings/AliasSelector';
 import { createWrapper } from '@/tests/wrapper';
 import * as chatSettings from '@/hooks/use-chat-settings';
 

@@ -7,7 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { X } from 'lucide-react';
 import { KeyboardEvent, useState } from 'react';
-import { Button } from '../ui/button';
+import { Button } from '../../../../components/ui/button';
 
 interface StopWordsProps {
   isLoading?: boolean;

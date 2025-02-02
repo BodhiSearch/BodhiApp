@@ -1,8 +1,8 @@
 'use client';
 
-import { AliasSelector } from '@/components/settings/AliasSelector';
-import { SystemPrompt } from '@/components/settings/SystemPrompt';
-import { StopWords } from '@/components/settings/StopWords';
+import { AliasSelector } from '@/app/ui/chat/settings/AliasSelector';
+import { SystemPrompt } from '@/app/ui/chat/settings/SystemPrompt';
+import { StopWords } from '@/app/ui/chat/settings/StopWords';
 import { useModels } from '@/hooks/useQuery';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import {
@@ -14,7 +14,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { SettingSlider } from '@/components/settings/SettingSlider';
+import { SettingSlider } from '@/app/ui/chat/settings/SettingSlider';
 import { Input } from '@/components/ui/input';
 
 interface SettingRowProps {

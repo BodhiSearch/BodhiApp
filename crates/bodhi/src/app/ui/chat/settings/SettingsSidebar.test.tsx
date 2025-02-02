@@ -1,4 +1,4 @@
-import { SettingsSidebar } from '@/components/settings/SettingsSidebar';
+import { SettingsSidebar } from '@/app/ui/chat/settings/SettingsSidebar';
 import { ENDPOINT_MODELS } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -7,7 +7,7 @@ import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the child components
-vi.mock('@/components/settings/AliasSelector', () => ({
+vi.mock('@/app/ui/chat/settings/AliasSelector', () => ({
   AliasSelector: ({ models, isLoading }: { models: any[], isLoading: boolean }) => (
     <div data-testid="alias-selector" data-loading={isLoading}>
       Models count: {models.length}
@@ -15,19 +15,19 @@ vi.mock('@/components/settings/AliasSelector', () => ({
   ),
 }));
 
-vi.mock('@/components/settings/SystemPrompt', () => ({
+vi.mock('@/app/ui/chat/settings/SystemPrompt', () => ({
   SystemPrompt: ({ isLoading }: { isLoading: boolean }) => (
     <div data-testid="system-prompt" data-loading={isLoading} />
   ),
 }));
 
-vi.mock('@/components/settings/StopWords', () => ({
+vi.mock('@/app/ui/chat/settings/StopWords', () => ({
   StopWords: ({ isLoading }: { isLoading: boolean }) => (
     <div data-testid="stop-words" data-loading={isLoading} />
   ),
 }));
 
-vi.mock('@/components/settings/SettingSlider', () => ({
+vi.mock('@/app/ui/chat/settings/SettingSlider', () => ({
   SettingSlider: ({ label, isLoading }: { label: string, isLoading: boolean }) => (
     <div data-testid={`setting-slider-${label.toLowerCase().replace(' ', '-')}`} data-loading={isLoading} />
   ),
