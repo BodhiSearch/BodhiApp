@@ -46,7 +46,9 @@
 
 
     <|assistant|>\n\n
+  deepseek-r1: <｜begin▁of▁sentence｜><｜User｜>What day comes after Monday?<｜Assistant｜>
   empty: ""
+
 - id: assistant
   messages:
     - role: user
@@ -125,7 +127,10 @@
 
 
     <|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜><｜User｜>What day comes after Monday?<｜Assistant｜>Tuesday<｜end▁of▁sentence｜><｜User｜>And what day comes after that?<｜Assistant｜>
   empty: ""
+
 - id: system
   messages:
     - role: system
@@ -184,7 +189,10 @@
 
 
     <|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜>You are a helpful assistant.<｜User｜>What day comes after Monday?<｜Assistant｜>
   empty: ""
+
 - id: convo
   messages:
     - role: system
@@ -279,7 +287,10 @@
 
 
     <|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜>You are a helpful assistant.<｜User｜>What day comes after Monday?<｜Assistant｜>Tuesday<｜end▁of▁sentence｜><｜User｜>And what day comes after that?<｜Assistant｜>
   empty: ""
+
 - id: unknown-role
   messages:
     - role: unknown
@@ -302,6 +313,10 @@
     message: Only user, assistant and system roles are supported!
   tinyllama: |
     \n\n\n<|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜><｜Assistant｜>
+  empty: ""
+
 - id: error-user-at-even-no-system
   messages:
     - role: assistant
@@ -351,7 +366,10 @@
 
 
     <|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜><｜Assistant｜>should not have assistant message as first<｜end▁of▁sentence｜><｜User｜>should not have user message at even<｜Assistant｜>
   empty: ""
+
 - id: error-user-at-even-with-system
   messages:
     - role: system
@@ -417,4 +435,170 @@
 
 
     <|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜>this is system message<｜Assistant｜>this is incorrect assistant instruction<｜end▁of▁sentence｜><｜User｜>this is user question<｜Assistant｜>
+  empty: ""
+
+- id: reasoning-empty
+  messages:
+    - role: user
+      content: What day comes after Monday?
+    - role: assistant
+      content: <think> </think>Tuesday
+    - role: user
+      content: And what day comes after that?
+  llama3: |
+    <|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+    <think> </think>Tuesday<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  llama2: |
+    <s>[INST] What day comes after Monday? [/INST] <think> </think>Tuesday </s><s>[INST] And what day comes after that? [/INST]
+  llama2-legacy: |
+    <s>[INST] What day comes after Monday? [/INST]<think> </think>Tuesday</s>[INST] And what day comes after that? [/INST]
+  phi3: |
+    <s><|user|>
+    What day comes after Monday?<|end|>
+    <|assistant|>
+    <think> </think>Tuesday<|end|>
+    <|user|>
+    And what day comes after that?<|end|>
+    <|assistant|>\n
+  gemma: |
+    <bos><start_of_turn>user
+    What day comes after Monday?<end_of_turn>
+    <start_of_turn>model
+    <think> </think>Tuesday<end_of_turn>
+    <start_of_turn>user
+    And what day comes after that?<end_of_turn>
+    <start_of_turn>model\n
+  zephyr: |
+    <|user|>
+    What day comes after Monday?</s>
+    <|assistant|>
+    <think> </think>Tuesday</s>
+    <|user|>
+    And what day comes after that?</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>User: What day comes after Monday?
+
+    Assistant: <think> </think>Tuesday<｜end▁of▁sentence｜>User: And what day comes after that?
+
+    Assistant:
+  command-r: |
+    <BOS_TOKEN><|START_OF_TURN_TOKEN|><|USER_TOKEN|>What day comes after Monday?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|><think> </think>Tuesday<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|USER_TOKEN|>And what day comes after that?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>
+  openchat: |
+    <|begin_of_text|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>
+
+    <think> </think>Tuesday<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|user|>
+    What day comes after Monday?</s>
+
+
+
+
+    <|assistant|>
+    <think> </think>Tuesday</s>
+
+
+
+
+    <|user|>
+    And what day comes after that?</s>
+
+
+    <|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜><｜User｜>What day comes after Monday?<｜Assistant｜>Tuesday<｜end▁of▁sentence｜><｜User｜>And what day comes after that?<｜Assistant｜>
+  empty: ""
+
+- id: reasoning-some
+  messages:
+    - role: user
+      content: What day comes after Monday?
+    - role: assistant
+      content: <think>i know it is tuesday.</think>Tuesday
+    - role: user
+      content: And what day comes after that?
+  llama3: |
+    <|begin_of_text|><|start_header_id|>user<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+    <think>i know it is tuesday.</think>Tuesday<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n
+  llama2: |
+    <s>[INST] What day comes after Monday? [/INST] <think>i know it is tuesday.</think>Tuesday </s><s>[INST] And what day comes after that? [/INST]
+  llama2-legacy: |
+    <s>[INST] What day comes after Monday? [/INST]<think>i know it is tuesday.</think>Tuesday</s>[INST] And what day comes after that? [/INST]
+  phi3: |
+    <s><|user|>
+    What day comes after Monday?<|end|>
+    <|assistant|>
+    <think>i know it is tuesday.</think>Tuesday<|end|>
+    <|user|>
+    And what day comes after that?<|end|>
+    <|assistant|>\n
+  gemma: |
+    <bos><start_of_turn>user
+    What day comes after Monday?<end_of_turn>
+    <start_of_turn>model
+    <think>i know it is tuesday.</think>Tuesday<end_of_turn>
+    <start_of_turn>user
+    And what day comes after that?<end_of_turn>
+    <start_of_turn>model\n
+  zephyr: |
+    <|user|>
+    What day comes after Monday?</s>
+    <|assistant|>
+    <think>i know it is tuesday.</think>Tuesday</s>
+    <|user|>
+    And what day comes after that?</s>
+    <|assistant|>\n
+  deepseek: |
+    <｜begin▁of▁sentence｜>User: What day comes after Monday?
+
+    Assistant: <think>i know it is tuesday.</think>Tuesday<｜end▁of▁sentence｜>User: And what day comes after that?
+
+    Assistant:
+  command-r: |
+    <BOS_TOKEN><|START_OF_TURN_TOKEN|><|USER_TOKEN|>What day comes after Monday?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|><think>i know it is tuesday.</think>Tuesday<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|USER_TOKEN|>And what day comes after that?<|END_OF_TURN_TOKEN|><|START_OF_TURN_TOKEN|><|CHATBOT_TOKEN|>
+  openchat: |
+    <|begin_of_text|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    What day comes after Monday?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>
+
+    <think>i know it is tuesday.</think>Tuesday<|eot_id|><|start_header_id|>GPT4 Correct User<|end_header_id|>
+
+    And what day comes after that?<|eot_id|><|start_header_id|>GPT4 Correct Assistant<|end_header_id|>\n\n
+  tinyllama: |
+    \n\n<|user|>
+    What day comes after Monday?</s>
+
+
+
+
+    <|assistant|>
+    <think>i know it is tuesday.</think>Tuesday</s>
+
+
+
+
+    <|user|>
+    And what day comes after that?</s>
+
+
+    <|assistant|>\n\n
+  deepseek-r1: |
+    <｜begin▁of▁sentence｜><｜User｜>What day comes after Monday?<｜Assistant｜>Tuesday<｜end▁of▁sentence｜><｜User｜>And what day comes after that?<｜Assistant｜>
   empty: ""
