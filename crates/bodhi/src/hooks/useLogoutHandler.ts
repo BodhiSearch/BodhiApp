@@ -1,10 +1,10 @@
 import { useRouter } from 'next/navigation';
 import { useLogout } from '@/hooks/useQuery';
-import { useToast } from '@/hooks/use-toast';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 
 export function useLogoutHandler() {
   const router = useRouter();
-  const { toast } = useToast();
+  const { showError } = useToastMessages();
 
   const { mutate: logout, isLoading } = useLogout({
     onSuccess: (response) => {
@@ -17,11 +17,7 @@ export function useLogoutHandler() {
         error.response?.data?.error?.message ||
         error.message ||
         'An unexpected error occurred. Please try again.';
-      toast({
-        variant: 'destructive',
-        title: 'Logout failed',
-        description: `Message: ${errorMessage}. Try again later.`,
-      });
+      showError('Logout failed', `Message: ${errorMessage}. Try again later.`);
     },
   });
 

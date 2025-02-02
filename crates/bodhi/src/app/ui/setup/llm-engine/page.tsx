@@ -17,9 +17,8 @@ import {
   CheckCircle2,
   XCircle,
   Download,
-  Loader2,
 } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
+import { Badge } from '@/components/ui/badge';
 
 // Animation variants
 const containerVariants = {
@@ -204,10 +203,7 @@ function DownloadError({
 
 function CompatibilityBadge({ compatible }: { compatible: boolean }) {
   return (
-    <Badge
-      variant={compatible ? "green" : "destructive"}
-      className="ml-2"
-    >
+    <Badge variant={compatible ? 'green' : 'destructive'} className="ml-2">
       {compatible ? 'Compatible' : 'Not Compatible'}
     </Badge>
   );
@@ -266,7 +262,7 @@ function LLMEngineContent() {
   const [selectedEngine, setSelectedEngine] = useState<EngineOption>(
     stubEnginesWithStates[0]
   );
-  const [downloadState, setDownloadState] = useState<{
+  const [, setDownloadState] = useState<{
     status: 'idle' | 'downloading' | 'complete' | 'error';
     progress?: number;
     error?: string;
@@ -306,8 +302,14 @@ function LLMEngineContent() {
           <CardContent className="space-y-6">
             {/* Add recommendation message */}
             <div className="text-center text-muted-foreground mb-4">
-              <p>Based on hardware analysis, we've picked the most suitable LLM engine for optimal performance.</p>
-              <p className="text-sm mt-2">You can choose from our recommendations or explore other available engines.</p>
+              <p>
+                Based on hardware analysis, we have picked the most suitable LLM
+                engine for optimal performance.
+              </p>
+              <p className="text-sm mt-2">
+                You can choose from our recommendations or explore other
+                available engines.
+              </p>
             </div>
 
             {/* Basic Info */}
@@ -341,7 +343,9 @@ function LLMEngineContent() {
               </Button>
 
               {/* Technical Details Content - Always visible on md+ screens */}
-              <div className={`space-y-2 text-sm ${showTechnicalDetails ? 'block' : 'hidden'} md:block`}>
+              <div
+                className={`space-y-2 text-sm ${showTechnicalDetails ? 'block' : 'hidden'} md:block`}
+              >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {Object.entries(stubHardware.technicalDetails).map(
                     ([key, value]) => (
@@ -415,7 +419,9 @@ function LLMEngineContent() {
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center">
-                          <h4 className="font-medium truncate">{engine.name}</h4>
+                          <h4 className="font-medium truncate">
+                            {engine.name}
+                          </h4>
                           <CompatibilityBadge compatible={engine.compatible} />
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
@@ -423,7 +429,8 @@ function LLMEngineContent() {
                         </p>
                         {!engine.compatible && (
                           <p className="text-xs text-destructive mt-1">
-                            Warning: This engine may not perform optimally on your hardware
+                            Warning: This engine may not perform optimally on
+                            your hardware
                           </p>
                         )}
                       </div>

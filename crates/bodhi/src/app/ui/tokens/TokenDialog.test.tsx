@@ -43,12 +43,12 @@ describe('TokenDialog', () => {
     expect(screen.queryByText('test-token-123')).not.toBeInTheDocument();
 
     // Show token
-    await user.click(screen.getByTestId('toggle-show-token'));
+    await user.click(screen.getByTestId('toggle-show-content'));
     expect(screen.getByText('test-token-123')).toBeInTheDocument();
     expect(screen.queryByText('•'.repeat(40))).not.toBeInTheDocument();
 
     // Hide token again
-    await user.click(screen.getByTestId('toggle-show-token'));
+    await user.click(screen.getByTestId('toggle-show-content'));
     expect(screen.getByText('•'.repeat(40))).toBeInTheDocument();
     expect(screen.queryByText('test-token-123')).not.toBeInTheDocument();
   });
@@ -63,13 +63,13 @@ describe('TokenDialog', () => {
     });
 
     // Click copy button
-    await user.click(screen.getByTestId('copy-token'));
+    await user.click(screen.getByTestId('copy-content'));
 
     // Verify clipboard content
     expect(await navigator.clipboard.readText()).toBe('test-token-123');
 
     // Check copy confirmation
-    expect(screen.getByTestId('copied-token')).toBeInTheDocument();
+    expect(screen.getByTestId('copied-content')).toBeInTheDocument();
   });
 
   it('closes dialog', async () => {

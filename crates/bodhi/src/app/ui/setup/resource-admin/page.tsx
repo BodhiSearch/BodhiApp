@@ -52,8 +52,9 @@ function ResourceAdminContent() {
           <CardContent className="space-y-6">
             <div className="prose dark:prose-invert mx-auto">
               <p className="text-center text-muted-foreground">
-                You are setting up Bodhi App in authenticated mode. The
-                email address you log in with will be granted admin role for this app instance.
+                You are setting up Bodhi App in authenticated mode. The email
+                address you log in with will be granted admin role for this app
+                instance.
               </p>
             </div>
 

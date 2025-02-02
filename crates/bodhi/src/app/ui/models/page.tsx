@@ -17,6 +17,7 @@ import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
+import { CopyButton } from '@/components/CopyButton';
 
 const columns = [
   { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
@@ -66,6 +67,24 @@ const SourceBadge = ({ source }: { source: string | undefined }) => {
     >
       {source || ''}
     </span>
+  );
+};
+
+// Add this component to handle the hover container
+const CopyableContent = ({
+  text,
+  className = '',
+}: {
+  text: string;
+  className?: string;
+}) => {
+  return (
+    <div className={`flex items-center group ${className}`}>
+      <span className="truncate">{text}</span>
+      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <CopyButton text={text} />
+      </div>
+    </div>
   );
 };
 
@@ -174,15 +193,16 @@ function ModelsPageContent() {
     <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
       <div className="flex flex-col gap-2">
         {/* Name */}
-        <span className="font-medium truncate">{model.alias}</span>
+        <CopyableContent text={model.alias} className="font-medium" />
 
         {/* Repo */}
-        <span className="truncate text-sm">{model.repo}</span>
+        <CopyableContent text={model.repo} className="text-sm" />
 
         {/* Filename */}
-        <span className="truncate text-xs text-muted-foreground">
-          {model.filename}
-        </span>
+        <CopyableContent
+          text={model.filename}
+          className="text-xs text-muted-foreground"
+        />
 
         {/* Source */}
         <div className="w-fit">
@@ -202,7 +222,7 @@ function ModelsPageContent() {
       data-testid="name-source-cell"
     >
       <div className="flex flex-col gap-1">
-        <span className="font-medium truncate">{model.alias}</span>
+        <CopyableContent text={model.alias} className="font-medium" />
         <div className="w-fit">
           <SourceBadge source={model.source} />
         </div>
@@ -215,10 +235,11 @@ function ModelsPageContent() {
       data-testid="repo-filename-cell"
     >
       <div className="flex flex-col gap-1">
-        <span className="truncate text-sm">{model.repo}</span>
-        <span className="truncate text-xs text-muted-foreground">
-          {model.filename}
-        </span>
+        <CopyableContent text={model.repo} className="text-sm" />
+        <CopyableContent
+          text={model.filename}
+          className="text-xs text-muted-foreground"
+        />
       </div>
     </TableCell>,
     // Desktop view (separate columns)
@@ -227,21 +248,21 @@ function ModelsPageContent() {
       className="max-w-[250px] truncate hidden lg:table-cell"
       data-testid="alias-cell"
     >
-      {model.alias}
+      <CopyableContent text={model.alias} />
     </TableCell>,
     <TableCell
       key="repo"
       className="max-w-[200px] truncate hidden lg:table-cell"
       data-testid="repo-cell"
     >
-      {model.repo}
+      <CopyableContent text={model.repo} />
     </TableCell>,
     <TableCell
       key="filename"
       className="max-w-[200px] truncate hidden lg:table-cell"
       data-testid="filename-cell"
     >
-      {model.filename}
+      <CopyableContent text={model.filename} />
     </TableCell>,
     <TableCell
       key="source"

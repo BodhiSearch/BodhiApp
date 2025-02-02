@@ -3,7 +3,13 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { SetupProgress } from '@/components/setup/SetupProgress';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, Download, Star } from 'lucide-react';
 
@@ -12,13 +18,13 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
+    transition: { staggerChildren: 0.1 },
+  },
 };
 
 const itemVariants = {
   hidden: { y: 20, opacity: 0 },
-  visible: { y: 0, opacity: 1 }
+  visible: { y: 0, opacity: 1 },
 };
 
 // Types
@@ -60,7 +66,7 @@ const recommendedModels: ModelInfo[] = [
     category: 'medium',
     ratings: { quality: 4.5, speed: 4, accuracy: 4.5 },
     license: 'Apache 2.0',
-    downloadState: { status: 'idle' }
+    downloadState: { status: 'idle' },
   },
   {
     id: 'phi2',
@@ -74,12 +80,12 @@ const recommendedModels: ModelInfo[] = [
     category: 'small',
     ratings: { quality: 4, speed: 5, accuracy: 4 },
     license: 'MIT',
-    downloadState: { 
+    downloadState: {
       status: 'downloading',
       progress: 45,
       speed: '10.5 MB/s',
-      timeRemaining: '5 minutes'
-    }
+      timeRemaining: '5 minutes',
+    },
   },
   {
     id: 'neural-7b',
@@ -93,8 +99,8 @@ const recommendedModels: ModelInfo[] = [
     category: 'medium',
     ratings: { quality: 4, speed: 4, accuracy: 4 },
     license: 'Apache 2.0',
-    downloadState: { status: 'complete' }
-  }
+    downloadState: { status: 'complete' },
+  },
 ];
 
 // Additional models grouped by size
@@ -112,7 +118,7 @@ const additionalModels: Record<string, ModelInfo[]> = {
       category: 'small',
       ratings: { quality: 3.5, speed: 5, accuracy: 3.5 },
       license: 'MIT',
-      downloadState: { status: 'idle' }
+      downloadState: { status: 'idle' },
     },
     {
       id: 'tinyllama',
@@ -126,8 +132,8 @@ const additionalModels: Record<string, ModelInfo[]> = {
       category: 'small',
       ratings: { quality: 3, speed: 5, accuracy: 3 },
       license: 'Apache 2.0',
-      downloadState: { status: 'idle' }
-    }
+      downloadState: { status: 'idle' },
+    },
   ],
   'Medium Models (4-7B)': [
     {
@@ -142,7 +148,7 @@ const additionalModels: Record<string, ModelInfo[]> = {
       category: 'medium',
       ratings: { quality: 4.5, speed: 4, accuracy: 4.5 },
       license: 'Apache 2.0',
-      downloadState: { status: 'idle' }
+      downloadState: { status: 'idle' },
     },
     {
       id: 'stable-beluga',
@@ -156,8 +162,13 @@ const additionalModels: Record<string, ModelInfo[]> = {
       category: 'medium',
       ratings: { quality: 4, speed: 4, accuracy: 4 },
       license: 'Apache 2.0',
-      downloadState: { status: 'downloading', progress: 23, speed: '8.2 MB/s', timeRemaining: '8 minutes' }
-    }
+      downloadState: {
+        status: 'downloading',
+        progress: 23,
+        speed: '8.2 MB/s',
+        timeRemaining: '8 minutes',
+      },
+    },
   ],
   'Large Models (8-13B)': [
     {
@@ -172,7 +183,7 @@ const additionalModels: Record<string, ModelInfo[]> = {
       category: 'large',
       ratings: { quality: 5, speed: 3, accuracy: 5 },
       license: 'Apache 2.0',
-      downloadState: { status: 'idle' }
+      downloadState: { status: 'idle' },
     },
     {
       id: 'llama2-13b',
@@ -186,9 +197,9 @@ const additionalModels: Record<string, ModelInfo[]> = {
       category: 'large',
       ratings: { quality: 4.5, speed: 3.5, accuracy: 4.5 },
       license: 'Meta License',
-      downloadState: { status: 'complete' }
-    }
-  ]
+      downloadState: { status: 'complete' },
+    },
+  ],
 };
 
 // Components
@@ -271,7 +282,9 @@ function ModelCard({ model }: { model: ModelInfo }) {
                 />
               </div>
               <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                <span>{model.downloadState.progress}% • {model.downloadState.speed}</span>
+                <span>
+                  {model.downloadState.progress}% • {model.downloadState.speed}
+                </span>
                 <span>{model.downloadState.timeRemaining} remaining</span>
               </div>
             </div>
@@ -280,12 +293,14 @@ function ModelCard({ model }: { model: ModelInfo }) {
             </Button>
           </>
         ) : (
-          <Button 
-            className="w-full" 
+          <Button
+            className="w-full"
             disabled={model.downloadState?.status === 'complete'}
           >
             <Download className="mr-2 h-4 w-4" />
-            {model.downloadState?.status === 'complete' ? 'Download Complete' : 'Download Model'}
+            {model.downloadState?.status === 'complete'
+              ? 'Download Complete'
+              : 'Download Model'}
           </Button>
         )}
       </CardFooter>
@@ -303,9 +318,11 @@ function ModelList() {
           <Button
             variant="ghost"
             className="w-full justify-between py-3 h-auto"
-            onClick={() => setExpandedCategory(
-              expandedCategory === category ? null : category
-            )}
+            onClick={() =>
+              setExpandedCategory(
+                expandedCategory === category ? null : category
+              )
+            }
           >
             {category}
             {expandedCategory === category ? (
@@ -314,11 +331,14 @@ function ModelList() {
               <ChevronDown className="h-4 w-4" />
             )}
           </Button>
-          
+
           {expandedCategory === category && (
             <div className="space-y-2 p-2">
               {models.map((model) => (
-                <div key={model.id} className="flex flex-col gap-2 p-3 rounded-lg bg-card">
+                <div
+                  key={model.id}
+                  className="flex flex-col gap-2 p-3 rounded-lg bg-card"
+                >
                   {/* Model Name and Rank */}
                   <div className="flex items-center justify-between">
                     <div>
@@ -339,11 +359,15 @@ function ModelList() {
                       <div>{model.size}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">Parameters</div>
+                      <div className="text-xs text-muted-foreground">
+                        Parameters
+                      </div>
                       <div>{model.parameters}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">License</div>
+                      <div className="text-xs text-muted-foreground">
+                        License
+                      </div>
                       <div>{model.license}</div>
                     </div>
                   </div>
@@ -351,7 +375,9 @@ function ModelList() {
                   {/* Ratings */}
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Quality</span>
+                      <span className="text-xs text-muted-foreground">
+                        Quality
+                      </span>
                       <RatingStars rating={model.ratings.quality} />
                     </div>
                   </div>
@@ -364,12 +390,19 @@ function ModelList() {
                           <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
                             <div
                               className="h-full bg-primary transition-all duration-500"
-                              style={{ width: `${model.downloadState.progress}%` }}
+                              style={{
+                                width: `${model.downloadState.progress}%`,
+                              }}
                             />
                           </div>
                           <div className="flex justify-between text-sm text-muted-foreground mt-2">
-                            <span>{model.downloadState.progress}% • {model.downloadState.speed}</span>
-                            <span>{model.downloadState.timeRemaining} remaining</span>
+                            <span>
+                              {model.downloadState.progress}% •{' '}
+                              {model.downloadState.speed}
+                            </span>
+                            <span>
+                              {model.downloadState.timeRemaining} remaining
+                            </span>
                           </div>
                         </div>
                         <Button variant="outline" size="sm">
@@ -381,7 +414,9 @@ function ModelList() {
                         disabled={model.downloadState?.status === 'complete'}
                       >
                         <Download className="mr-2 h-4 w-4" />
-                        {model.downloadState?.status === 'complete' ? 'Download Complete' : 'Download'}
+                        {model.downloadState?.status === 'complete'
+                          ? 'Download Complete'
+                          : 'Download'}
                       </Button>
                     )}
                   </div>
@@ -438,17 +473,15 @@ function ModelDownloadContent() {
         <Card>
           <CardContent className="py-4">
             <p className="text-sm text-center text-muted-foreground">
-              Downloads will continue in the background. You can track download progress 
-              in the Models section after setup is complete.
+              Downloads will continue in the background. You can track download
+              progress in the Models section after setup is complete.
             </p>
           </CardContent>
         </Card>
       </motion.div>
 
       <motion.div variants={itemVariants} className="flex justify-end">
-        <Button variant="outline">
-          Continue
-        </Button>
+        <Button variant="outline">Continue</Button>
       </motion.div>
     </motion.div>
   );
@@ -460,4 +493,4 @@ export default function ModelDownloadPage() {
       <ModelDownloadContent />
     </main>
   );
-} 
+}

@@ -27,12 +27,11 @@ import {
   Settings,
   Terminal,
   ToggleLeft,
-  Copy,
 } from 'lucide-react';
 import { useState } from 'react';
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
+import { CopyButton } from '@/components/CopyButton';
 
 type SettingConfig = {
   key: string;
@@ -199,12 +198,6 @@ const getSourceBadgeVariant = (source: string) => {
 export function SettingsPageContent({ config }: SettingsPageContentProps) {
   const [editingSetting, setEditingSetting] = useState<Setting | null>(null);
   const { data: settings, isLoading, error } = useSettings();
-  const { showSuccess } = useToastMessages();
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    showSuccess('Copied', 'Value copied to clipboard');
-  };
 
   if (isLoading) {
     return <SettingsSkeleton config={config} />;
@@ -300,17 +293,9 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                               {String(setting.current_value)}
                             </span>
                             {setting.metadata.type === 'string' && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-5 w-5 sm:h-6 sm:w-6 shrink-0"
-                                onClick={() =>
-                                  handleCopy(String(setting.current_value))
-                                }
-                              >
-                                <Copy className="h-3 w-3" />
-                                <span className="sr-only">Copy value</span>
-                              </Button>
+                              <CopyButton
+                                text={String(setting.current_value)}
+                              />
                             )}
                           </div>
                         )}
