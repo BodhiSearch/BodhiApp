@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { SetupProgress } from '@/components/setup/SetupProgress';
+import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import {
   Card,
   CardContent,
@@ -82,36 +82,36 @@ const stubEnginesWithStates: (EngineOption & {
   progress?: number;
   error?: string;
 })[] = [
-    {
-      id: 'cuda-opt',
-      name: 'CUDA-Optimized Engine',
-      description:
-        'Optimal for NVIDIA GPUs with CUDA support. Best performance for your hardware.',
-      downloadUrl: '/api/download/cuda-opt',
-      compatible: true,
-      size: '85MB',
-      state: 'idle',
-    },
-    {
-      id: 'cpu-gpu',
-      name: 'CPU+GPU Hybrid',
-      description: 'Balanced performance using both CPU and GPU resources.',
-      downloadUrl: '/api/download/cpu-gpu',
-      compatible: true,
-      size: '75MB',
-      state: 'downloading',
-      progress: 45,
-    },
-    {
-      id: 'cpu-only',
-      name: 'CPU-Optimized',
-      description: 'Optimized for modern CPUs with AVX2 support.',
-      downloadUrl: '/api/download/cpu-opt',
-      compatible: true,
-      size: '60MB',
-      state: 'complete',
-    },
-  ];
+  {
+    id: 'cuda-opt',
+    name: 'CUDA-Optimized Engine',
+    description:
+      'Optimal for NVIDIA GPUs with CUDA support. Best performance for your hardware.',
+    downloadUrl: '/api/download/cuda-opt',
+    compatible: true,
+    size: '85MB',
+    state: 'idle',
+  },
+  {
+    id: 'cpu-gpu',
+    name: 'CPU+GPU Hybrid',
+    description: 'Balanced performance using both CPU and GPU resources.',
+    downloadUrl: '/api/download/cpu-gpu',
+    compatible: true,
+    size: '75MB',
+    state: 'downloading',
+    progress: 45,
+  },
+  {
+    id: 'cpu-only',
+    name: 'CPU-Optimized',
+    description: 'Optimized for modern CPUs with AVX2 support.',
+    downloadUrl: '/api/download/cpu-opt',
+    compatible: true,
+    size: '60MB',
+    state: 'complete',
+  },
+];
 
 // Additional engines for expanded list
 const additionalEngines: EngineOption[] = [
@@ -226,8 +226,9 @@ function EngineCard({
 }) {
   return (
     <Card
-      className={`cursor-pointer transition-colors h-full flex flex-col ${isSelected ? 'border-primary' : ''
-        }`}
+      className={`cursor-pointer transition-colors h-full flex flex-col ${
+        isSelected ? 'border-primary' : ''
+      }`}
       onClick={onSelect}
     >
       <CardHeader>
@@ -239,7 +240,7 @@ function EngineCard({
         </p>
         <div className="mt-4">
           {downloadState.status === 'idle' && (
-            <DownloadButton engine={engine} onDownload={() => { }} fullWidth />
+            <DownloadButton engine={engine} onDownload={() => {}} fullWidth />
           )}
           {downloadState.status === 'downloading' && (
             <DownloadProgress progress={downloadState.progress || 0} />
@@ -248,7 +249,7 @@ function EngineCard({
           {downloadState.status === 'error' && (
             <DownloadError
               error={downloadState.error || 'Download failed'}
-              onRetry={() => { }}
+              onRetry={() => {}}
             />
           )}
         </div>
@@ -291,7 +292,7 @@ function LLMEngineContent() {
       initial="hidden"
       animate="visible"
     >
-      <SetupProgress currentStep={3} totalSteps={5} />
+      <SetupProgress currentStep={3} totalSteps={4} />
 
       {/* Hardware Analysis Card */}
       <motion.div variants={itemVariants}>

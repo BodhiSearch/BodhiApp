@@ -1,17 +1,17 @@
 'use client';
 
-import { motion } from 'framer-motion';
-// import AppInitializer from '@/components/AppInitializer';
-import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
-import { SetupProgress } from '@/components/setup/SetupProgress';
+import { SetupProgress } from '@/app/ui/setup/SetupProgress';
+import AppInitializer from '@/components/AppInitializer';
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
+import { motion } from 'framer-motion';
 
 // Animation variants
 const containerVariants = {
@@ -34,67 +34,65 @@ const itemVariants = {
 
 function ResourceAdminContent() {
   return (
-    <motion.div
-      className="mx-auto max-w-4xl space-y-8 p-4 md:p-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
+    <main
+      className="min-h-screen bg-background p-4 md:p-8"
+      data-testid="resource-admin-page"
     >
-      {/* Progress Indicator */}
-      <SetupProgress currentStep={2} totalSteps={5} />
+      <motion.div
+        className="mx-auto max-w-4xl space-y-8 p-4 md:p-8"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <SetupProgress currentStep={2} totalSteps={4} />
 
-      {/* Admin Role Info with Login */}
-      <motion.div variants={itemVariants}>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">Admin Setup</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="prose dark:prose-invert mx-auto">
-              <p className="text-center text-muted-foreground">
-                You are setting up Bodhi App in authenticated mode. The email
-                address you log in with will be granted admin role for this app
-                instance.
-              </p>
-            </div>
-
-            <div className="space-y-4 text-sm">
-              <div className="space-y-2">
-                <h3 className="font-semibold">As an Admin, you can:</h3>
-                <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
-                  <li>Manage user access and permissions</li>
-                  <li>Unrestricted access to system-wide settings</li>
-                </ul>
+        <motion.div variants={itemVariants}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-center">Admin Setup</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="prose dark:prose-invert mx-auto">
+                <p className="text-center text-muted-foreground">
+                  You are setting up Bodhi App in authenticated mode. The email
+                  address you log in with will be granted admin role for this
+                  app instance.
+                </p>
               </div>
-            </div>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button
-              className="w-full"
-              size="lg"
-              onClick={() => (window.location.href = ENDPOINT_APP_LOGIN)}
-            >
-              Continue with Login →
-            </Button>
-            <p className="text-sm text-muted-foreground text-center">
-              Login with a valid email address to continue
-            </p>
-          </CardFooter>
-        </Card>
+
+              <div className="space-y-4 text-sm">
+                <div className="space-y-2">
+                  <h3 className="font-semibold">As an Admin, you can:</h3>
+                  <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                    <li>Manage user access and permissions</li>
+                    <li>Unrestricted access to system-wide settings</li>
+                  </ul>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <Button
+                className="w-full"
+                size="lg"
+                onClick={() => (window.location.href = ENDPOINT_APP_LOGIN)}
+              >
+                Continue with Login →
+              </Button>
+              <p className="text-sm text-muted-foreground text-center">
+                Login with a valid email address to continue
+              </p>
+            </CardFooter>
+          </Card>
+        </motion.div>
       </motion.div>
-    </motion.div>
+    </main>
   );
 }
 
 export default function ResourceAdminPage() {
   return (
-    // <AppInitializer allowedStatus="resource-admin" authenticated={false}>
-    <main
-      className="min-h-screen bg-background"
-      data-testid="resource-admin-page"
-    >
+    <AppInitializer allowedStatus="resource-admin" authenticated={false}>
       <ResourceAdminContent />
-    </main>
-    // </AppInitializer>
+    </AppInitializer>
   );
 }
