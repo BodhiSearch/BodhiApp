@@ -46,7 +46,7 @@ const CopyButton = memo(({ onClick, isCopied }: { onClick: () => void; isCopied:
   <Button
     variant="ghost"
     size="icon"
-    className="absolute right-2 top-2 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
+    className="absolute right-0 top-0 h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
     onClick={onClick}
   >
     {isCopied ? (
