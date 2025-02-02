@@ -42,11 +42,14 @@ pub const DEFAULT_KEEP_ALIVE_SECS: i64 = 300;
 
 pub const SETTINGS_YAML: &str = "settings.yaml";
 
-pub const PROD_DB: &str = "bodhi.sqlite";
+const PROD_DB: &str = "bodhi.sqlite";
+const SESSION_DB: &str = "session.sqlite";
+
+// TODO: remove the pub
 pub const ALIASES_DIR: &str = "aliases";
 pub const MODELS_YAML: &str = "models.yaml";
 
-pub const LOGS_DIR: &str = "logs";
+const LOGS_DIR: &str = "logs";
 
 pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
 pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
@@ -183,6 +186,10 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     PathBuf::from(bodhi_home)
   }
 
+  fn models_yaml(&self) -> PathBuf {
+    self.bodhi_home().join(MODELS_YAML)
+  }
+
   fn env_type(&self) -> EnvType {
     self
       .get_setting(BODHI_ENV_TYPE)
@@ -273,8 +280,12 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     format!("{}://{}:{}", self.scheme(), self.host(), self.port())
   }
 
-  fn db_path(&self) -> PathBuf {
+  fn app_db_path(&self) -> PathBuf {
     self.bodhi_home().join(PROD_DB)
+  }
+
+  fn session_db_path(&self) -> PathBuf {
+    self.bodhi_home().join(SESSION_DB)
   }
 
   fn log_level(&self) -> LogLevel {
@@ -408,7 +419,7 @@ impl DefaultSettingService {
           BODHI_LOGS.to_string(),
           Value::String(
             PathBuf::from(bodhi_home.value.as_str().unwrap())
-              .join("logs")
+              .join(LOGS_DIR)
               .display()
               .to_string(),
           ),

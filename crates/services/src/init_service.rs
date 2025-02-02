@@ -1,12 +1,10 @@
-use crate::{
-  EnvWrapper, SettingService, ALIASES_DIR, BODHI_HOME, BODHI_LOGS, HF_HOME, LOGS_DIR, MODELS_YAML,
-  PROD_DB,
-};
+use crate::{EnvWrapper, SettingService, BODHI_HOME, HF_HOME};
 use objs::{EnvType, SettingSource};
 use std::{
   fs::{self, File},
   io,
-  path::{Path, PathBuf},
+  path::PathBuf,
+  sync::Arc,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -32,15 +30,20 @@ pub enum InitServiceError {
 }
 
 #[derive(derive_new::new)]
-pub struct InitService<'a> {
-  env_wrapper: &'a dyn EnvWrapper,
-  env_type: &'a EnvType,
+pub struct InitService {
+  env_wrapper: Arc<dyn EnvWrapper>,
+  env_type: EnvType,
 }
 
-impl InitService<'_> {
-  pub fn setup_bodhi_home(self) -> Result<(PathBuf, SettingSource), InitServiceError> {
+impl InitService {
+  pub fn setup_bodhi_home_dir(&self) -> Result<(PathBuf, SettingSource), InitServiceError> {
     let (bodhi_home, source) = self.find_bodhi_home()?;
-    self.create_bodhi_home_dirs(&bodhi_home)?;
+    if !bodhi_home.exists() {
+      fs::create_dir_all(&bodhi_home).map_err(|err| InitServiceError::DirCreate {
+        source: err,
+        path: format!("$BODHI_HOME={}", &bodhi_home.display()),
+      })?;
+    }
     Ok((bodhi_home, source))
   }
 
@@ -66,33 +69,37 @@ impl InitService<'_> {
     Ok(bodhi_home)
   }
 
-  fn create_bodhi_home_dirs(&self, bodhi_home: &Path) -> Result<(), InitServiceError> {
-    if !bodhi_home.exists() {
-      fs::create_dir_all(bodhi_home).map_err(|err| InitServiceError::DirCreate {
-        source: err,
-        path: format!("$BODHI_HOME={}", bodhi_home.display()),
-      })?;
-    }
-    let alias_home = bodhi_home.join(ALIASES_DIR);
+  pub fn set_bodhi_home(
+    &self,
+    setting_service: &dyn SettingService,
+  ) -> Result<(), InitServiceError> {
+    let alias_home = setting_service.aliases_dir();
     if !alias_home.exists() {
       fs::create_dir_all(&alias_home).map_err(|err| InitServiceError::DirCreate {
         source: err,
-        path: "$BODHI_HOME/aliases".to_string(),
+        path: alias_home.display().to_string(),
       })?;
     }
-    let db_path = bodhi_home.join(PROD_DB);
+    let db_path = setting_service.app_db_path();
     if !db_path.exists() {
       File::create_new(&db_path).map_err(|err| InitServiceError::IoFileWrite {
         source: err,
-        path: format!("$BODHI_HOME/{}", PROD_DB),
+        path: db_path.display().to_string(),
       })?;
     }
-    let models_file = bodhi_home.join(MODELS_YAML);
+    let session_db_path = setting_service.session_db_path();
+    if !session_db_path.exists() {
+      File::create_new(&session_db_path).map_err(|err| InitServiceError::IoFileWrite {
+        source: err,
+        path: session_db_path.display().to_string(),
+      })?;
+    }
+    let models_file = setting_service.models_yaml();
     if !models_file.exists() {
       let contents = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/models.yaml"));
       fs::write(&models_file, contents).map_err(|err| InitServiceError::IoFileWrite {
         source: err,
-        path: format!("$BODHI_HOME/{}", MODELS_YAML),
+        path: models_file.display().to_string(),
       })?;
     }
     Ok(())
@@ -127,14 +134,7 @@ impl InitService<'_> {
     setting_service: T,
   ) -> Result<PathBuf, InitServiceError> {
     let setting_service = setting_service.as_ref();
-    let logs_dir = match setting_service.get_setting(BODHI_LOGS) {
-      Some(logs_dir) => PathBuf::from(logs_dir),
-      None => {
-        let logs_dir = setting_service.bodhi_home().join(LOGS_DIR);
-        setting_service.set_setting(BODHI_LOGS, &logs_dir.display().to_string());
-        logs_dir
-      }
-    };
+    let logs_dir = setting_service.logs_dir();
     if !logs_dir.exists() {
       std::fs::create_dir_all(&logs_dir).map_err(|err| InitServiceError::DirCreate {
         source: err,
@@ -149,19 +149,20 @@ impl InitService<'_> {
 mod tests {
   use super::{InitService, InitServiceError};
   use crate::{
-    MockEnvWrapper, SettingService, ALIASES_DIR, BODHI_HOME, BODHI_LOGS, LOGS_DIR, MODELS_YAML,
-    PROD_DB,
+    test_utils::{
+      EnvWrapperStub, TEST_ALIASES_DIR, TEST_MODELS_YAML, TEST_PROD_DB, TEST_SESSION_DB,
+      TEST_SETTINGS_YAML,
+    },
+    DefaultSettingService, MockEnvWrapper, MockSettingService, SettingService, BODHI_HOME, HF_HOME,
   };
-  use crate::{MockSettingService, HF_HOME};
   use mockall::predicate::eq;
-  use objs::SettingSource;
   use objs::{
     test_utils::{empty_bodhi_home, temp_dir},
-    EnvType,
+    EnvType, Setting, SettingMetadata, SettingSource,
   };
   use rstest::rstest;
-  use std::env::VarError;
-  use std::sync::Arc;
+  use serde_yaml::Value;
+  use std::{env::VarError, sync::Arc};
   use tempfile::TempDir;
 
   #[rstest]
@@ -177,14 +178,11 @@ mod tests {
   fn test_init_service_bodhi_home_from_env(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let bodhi_home_str = bodhi_home.display().to_string();
-    let mut mock = MockEnvWrapper::default();
-    mock
-      .expect_var()
-      .with(eq(BODHI_HOME))
-      .times(1)
-      .return_once(move |_| Ok(bodhi_home_str.clone()));
-    let init_service = InitService::new(&mock, &EnvType::Development);
-    let (result, source) = init_service.setup_bodhi_home()?;
+    let env_wrapper = Arc::new(EnvWrapperStub::new(maplit::hashmap! {
+      BODHI_HOME.to_string() => bodhi_home_str.clone(),
+    }));
+    let init_service = InitService::new(env_wrapper.clone(), EnvType::Development);
+    let (result, source) = init_service.setup_bodhi_home_dir()?;
     assert_eq!(bodhi_home, result);
     assert_eq!(SettingSource::Environment, source);
     Ok(())
@@ -192,16 +190,11 @@ mod tests {
 
   #[rstest]
   fn test_init_service_bodhi_home_from_home_dir(temp_dir: TempDir) -> anyhow::Result<()> {
-    let mut mock = MockEnvWrapper::default();
-    mock
-      .expect_var()
-      .with(eq(BODHI_HOME))
-      .times(1)
-      .return_once(move |_| Err(VarError::NotPresent));
-    let home_dir = temp_dir.path().to_path_buf();
-    mock.expect_home_dir().times(1).return_const(Some(home_dir));
-    let init_service = InitService::new(&mock, &EnvType::Development);
-    let (result, source) = init_service.setup_bodhi_home()?;
+    let env_wrapper = Arc::new(EnvWrapperStub::new(maplit::hashmap! {
+      "HOME".to_string() => temp_dir.path().display().to_string(),
+    }));
+    let init_service = InitService::new(env_wrapper.clone(), EnvType::Development);
+    let (result, source) = init_service.setup_bodhi_home_dir()?;
     assert_eq!(temp_dir.path().join(".cache").join("bodhi-dev"), result);
     assert_eq!(SettingSource::Default, source);
     Ok(())
@@ -209,16 +202,18 @@ mod tests {
 
   #[rstest]
   fn test_init_service_fails_if_not_able_to_find_bodhi_home() -> anyhow::Result<()> {
-    let mut mock = MockEnvWrapper::default();
-    mock
+    let mut mock_env_wrapper = MockEnvWrapper::default();
+    mock_env_wrapper
       .expect_var()
       .with(eq(BODHI_HOME))
       .times(1)
       .return_once(|_| Err(VarError::NotPresent));
-    mock.expect_home_dir().times(1).return_once(move || None);
-
-    let init_service = InitService::new(&mock, &EnvType::Development);
-    let result = init_service.setup_bodhi_home();
+    mock_env_wrapper
+      .expect_home_dir()
+      .times(1)
+      .return_once(|| None);
+    let init_service = InitService::new(Arc::new(mock_env_wrapper), EnvType::Development);
+    let result = init_service.setup_bodhi_home_dir();
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
@@ -231,16 +226,26 @@ mod tests {
   fn test_init_service_creates_home_dirs(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let bodhi_home_str = bodhi_home.display().to_string();
-    let mut mock = MockEnvWrapper::default();
-    mock
-      .expect_var()
-      .with(eq(BODHI_HOME))
-      .returning(move |_| Ok(bodhi_home_str.clone()));
-    let init_service = InitService::new(&mock, &EnvType::Development);
-    init_service.create_bodhi_home_dirs(&bodhi_home)?;
-    assert!(bodhi_home.join(ALIASES_DIR).exists());
-    assert!(bodhi_home.join(PROD_DB).exists());
-    assert!(bodhi_home.join(MODELS_YAML).exists());
+    let env_wrapper = Arc::new(EnvWrapperStub::new(maplit::hashmap! {
+      BODHI_HOME.to_string() => bodhi_home_str.clone(),
+    }));
+    let init_service = InitService::new(env_wrapper.clone(), EnvType::Development);
+    let settings_service = DefaultSettingService::new_with_defaults(
+      env_wrapper,
+      Setting {
+        key: BODHI_HOME.to_string(),
+        value: Value::String(bodhi_home_str),
+        source: SettingSource::Default,
+        metadata: SettingMetadata::String,
+      },
+      vec![],
+      bodhi_home.join(TEST_SETTINGS_YAML),
+    )?;
+    init_service.set_bodhi_home(&settings_service)?;
+    assert!(bodhi_home.join(TEST_ALIASES_DIR).exists());
+    assert!(bodhi_home.join(TEST_PROD_DB).exists());
+    assert!(bodhi_home.join(TEST_SESSION_DB).exists());
+    assert!(bodhi_home.join(TEST_MODELS_YAML).exists());
     Ok(())
   }
 
@@ -308,47 +313,19 @@ mod tests {
   }
 
   #[rstest]
-  fn test_setup_logs_dir_when_setting_exists(temp_dir: TempDir) -> anyhow::Result<()> {
+  fn test_setup_logs_dir(temp_dir: TempDir) -> anyhow::Result<()> {
     let logs_dir = temp_dir.path().join("logs");
     let mut mock = MockSettingService::default();
     mock
-      .expect_get_setting()
-      .with(eq(BODHI_LOGS))
+      .expect_logs_dir()
       .times(1)
-      .return_const(Some(logs_dir.display().to_string()));
+      .return_const(logs_dir.clone());
 
     let setting_service: Arc<dyn SettingService> = Arc::new(mock);
     let result = InitService::setup_logs_dir(&setting_service)?;
 
     assert_eq!(result, logs_dir);
     assert!(logs_dir.exists());
-    Ok(())
-  }
-
-  #[rstest]
-  fn test_setup_logs_dir_when_setting_missing(temp_dir: TempDir) -> anyhow::Result<()> {
-    let bodhi_home = temp_dir.path().to_path_buf();
-    let expected_logs_dir = bodhi_home.join(LOGS_DIR);
-    let mut mock = MockSettingService::default();
-
-    mock
-      .expect_get_setting()
-      .with(eq(BODHI_LOGS))
-      .times(1)
-      .return_const(None);
-    mock.expect_bodhi_home().times(1).return_const(bodhi_home);
-
-    mock
-      .expect_set_setting()
-      .with(eq(BODHI_LOGS), eq(expected_logs_dir.display().to_string()))
-      .times(1)
-      .return_once(|_, _| ());
-
-    let setting_service: Arc<dyn SettingService> = Arc::new(mock);
-    let result = InitService::setup_logs_dir(&setting_service)?;
-
-    assert_eq!(expected_logs_dir, result);
-    assert!(expected_logs_dir.exists());
     Ok(())
   }
 }

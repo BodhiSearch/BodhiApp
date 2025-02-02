@@ -7,6 +7,7 @@ mod hf;
 mod objs;
 mod secret;
 mod session;
+mod settings;
 
 pub use app::*;
 pub use auth::*;
@@ -17,3 +18,4 @@ pub use hf::*;
 pub use objs::*;
 pub use secret::*;
 pub use session::*;
+pub use settings::*;
