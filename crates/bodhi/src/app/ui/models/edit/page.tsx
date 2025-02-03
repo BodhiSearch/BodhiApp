@@ -9,7 +9,7 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 
 function EditAliasContent() {
   const searchParams = useSearchParams();
-  const alias = searchParams.get('alias');
+  const alias = searchParams?.get('alias');
 
   const { data: modelData, isLoading, error } = useModel(alias ?? '');
 

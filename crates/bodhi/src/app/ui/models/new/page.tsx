@@ -10,9 +10,9 @@ function NewModelContent() {
 
   const initialData = {
     alias: '',
-    repo: searchParams.get('repo') || '',
-    filename: searchParams.get('filename') || '',
-    snapshot: searchParams.get('snapshot') || '',
+    repo: searchParams?.get('repo') || '',
+    filename: searchParams?.get('filename') || '',
+    snapshot: searchParams?.get('snapshot') || '',
     chat_template: '',
     request_params: {},
     context_params: {},
