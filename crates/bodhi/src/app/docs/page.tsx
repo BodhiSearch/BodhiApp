@@ -1,87 +1,8 @@
-import { getPathOrder } from '@/app/docs/config';
-import { getAllDocPaths } from '@/app/docs/utils';
-import fs from 'fs';
-import matter from 'gray-matter';
+import { getDocsForPath } from '@/app/docs/utils';
 import Link from 'next/link';
-import path from 'path';
-
-function getDocDetails(filePath: string) {
-  try {
-    const fullPath = path.join(process.cwd(), 'src/docs', `${filePath}.md`);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const { data } = matter(fileContents);
-    return {
-      title:
-        data.title ||
-        filePath
-          .split('/')
-          .pop()
-          ?.replace(/-/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase()),
-      description: data.description || '',
-      slug: filePath,
-      order: getPathOrder(filePath),
-    };
-  } catch (e) {
-    console.error(`Error reading doc details for ${filePath}:`, e);
-    return {
-      title: filePath
-        .split('/')
-        .pop()
-        ?.replace(/-/g, ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase()),
-      description: '',
-      slug: filePath,
-      order: getPathOrder(filePath),
-    };
-  }
-}
-
-interface DocGroup {
-  title: string;
-  items: {
-    title: string;
-    description: string;
-    slug: string;
-    order: number;
-  }[];
-  order: number;
-}
 
 export default function DocsPage() {
-  const paths = getAllDocPaths();
-  const groups: { [key: string]: DocGroup } = {};
-
-  paths.forEach((path) => {
-    const parts = path.split('/');
-    const groupName = parts.length > 1 ? parts[0] : 'intro';
-    const details = getDocDetails(path);
-
-    if (!groups[groupName]) {
-      groups[groupName] = {
-        title: groupName
-          .replace(/-/g, ' ')
-          .replace(/\b\w/g, (c) => c.toUpperCase()),
-        items: [],
-        order: getPathOrder(groupName),
-      };
-    }
-
-    groups[groupName].items.push(details);
-  });
-
-  // Sort items within each group
-  Object.values(groups).forEach((group) => {
-    group.items.sort((a, b) => a.order - b.order);
-  });
-
-  // Convert groups object to sorted array
-  const sortedGroups = Object.entries(groups)
-    .map(([key, group]) => ({
-      ...group,
-      key,
-    }))
-    .sort((a, b) => a.order - b.order);
+  const sortedGroups = getDocsForPath(null);
 
   return (
     <div className="max-w-none prose prose-slate dark:prose-invert">

@@ -10,12 +10,26 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
-import { getAllDocPaths } from '@/app/docs/utils';
+import { getAllDocPaths, getDocsForPath } from '@/app/docs/utils';
+import Link from 'next/link';
 
 // Generate static paths for all markdown files
 export function generateStaticParams() {
   const paths = getAllDocPaths();
-  return paths.map((path) => ({
+  const allPaths = new Set<string>();
+  
+  paths.forEach(path => {
+    // Add the full path
+    allPaths.add(path);
+    
+    // Add all parent directory paths
+    const parts = path.split('/');
+    for (let i = 1; i < parts.length; i++) {
+      allPaths.add(parts.slice(0, i).join('/'));
+    }
+  });
+
+  return Array.from(allPaths).map((path) => ({
     slug: path.split('/'),
   }));
 }
@@ -45,8 +59,45 @@ export default async function DocPage({
 }) {
   const slug = params.slug.join('/');
   const filePath = path.join(process.cwd(), 'src/docs', `${slug}.md`);
+  const dirPath = path.join(process.cwd(), 'src/docs', slug);
 
   try {
+    // Check if it's a directory first
+    if (fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory()) {
+      const sortedGroups = getDocsForPath(params.slug);
+      const title = params.slug[params.slug.length - 1]
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+      
+      return (
+        <div className="max-w-none prose prose-slate dark:prose-invert">
+          <h1>{title}</h1>
+          
+          {sortedGroups.map((group) => (
+            <section key={group.key} className="mb-12">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {group.items.map((doc) => (
+                  <Link
+                    key={doc.slug}
+                    href={`/docs/${doc.slug}`}
+                    className="block p-4 border rounded-lg hover:border-blue-500 transition-colors no-underline"
+                  >
+                    <h3 className="text-lg font-semibold mb-1 mt-0">{doc.title}</h3>
+                    {doc.description && (
+                      <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
+                        {doc.description}
+                      </p>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      );
+    }
+
+    // If not a directory, treat as a markdown file
     const fileContents = fs.readFileSync(filePath, 'utf8');
     const { content } = matter(fileContents);
     const htmlContent = await markdownToHtml(content);
