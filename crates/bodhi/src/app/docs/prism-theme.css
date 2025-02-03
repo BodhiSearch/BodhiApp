@@ -1,0 +1,64 @@
+/* Markdown content styles */
+.markdown-content {
+  /* Base styles */
+  @apply text-base leading-7;
+}
+
+/* Code block styles */
+pre[class*="language-"] {
+  @apply my-6 rounded-lg overflow-hidden;
+}
+
+/* Line numbers */
+.line-number::before {
+  @apply text-gray-400 dark:text-gray-600 mr-4;
+}
+
+/* Inline code */
+:not(pre) > code {
+  @apply bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm;
+}
+
+/* Table styles */
+.markdown-content table {
+  @apply w-full my-6 border-collapse;
+}
+
+.markdown-content th,
+.markdown-content td {
+  @apply border border-gray-300 dark:border-gray-700 px-4 py-2;
+}
+
+.markdown-content th {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+/* Blockquote styles */
+.markdown-content blockquote {
+  @apply border-l-4 border-gray-300 dark:border-gray-700 pl-4 italic;
+}
+
+/* Task list styles */
+.markdown-content input[type="checkbox"] {
+  @apply mr-2;
+}
+
+/* Add Prism Tomorrow theme styles directly here */
+code[class*="language-"],
+pre[class*="language-"] {
+  color: #ccc;
+  background: none;
+  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  line-height: 1.5;
+  tab-size: 4;
+  hyphens: none;
+}
+
+/* ... rest of prism-tomorrow theme ... */
+
+@import 'prismjs/themes/prism-tomorrow.css';

@@ -1,4 +1,5 @@
 import withPWAInit from '@ducanh2912/next-pwa';
+import createMDX from '@next/mdx';
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -8,6 +9,14 @@ const withPWA = withPWAInit({
   workboxOptions: {
     disableDevLogs: true,
   }
+});
+
+const withMDX = createMDX({
+  // Add markdown plugins here, as desired
+  options: {
+    remarkPlugins: [],
+    rehypePlugins: [],
+  },
 });
 
 /** @type {import('next').NextConfig} */
@@ -30,4 +39,4 @@ const nextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default withPWA(withMDX(nextConfig));

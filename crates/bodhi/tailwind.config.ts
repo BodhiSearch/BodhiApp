@@ -138,9 +138,47 @@ const config = {
 				'2xl': '2.5rem',
 				'3xl': '3rem',
 			},
+			typography: {
+				DEFAULT: {
+					css: {
+						'code::before': {
+							content: ''
+						},
+						'code::after': {
+							content: ''
+						},
+						'blockquote p:first-of-type::before': {
+							content: ''
+						},
+						'blockquote p:last-of-type::after': {
+							content: ''
+						},
+						a: {
+							color: 'var(--tw-prose-links)',
+							'&:hover': {
+								color: 'var(--tw-prose-links-hover)'
+							}
+						},
+						code: {
+							'&::before': {
+								content: ''
+							},
+							'&::after': {
+								content: ''
+							}
+						},
+            'a.block': {
+              textDecoration: 'none',
+            },
+            'h3.mt-0': {
+              marginTop: '0',
+            }
+					}
+				}
+			},
 		}
 	},
-	plugins: [require('tailwindcss-animate')],
+	plugins: [require('@tailwindcss/typography'), require('tailwindcss-animate')],
 } satisfies Config;
 
 export default config;
