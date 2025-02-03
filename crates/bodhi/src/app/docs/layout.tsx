@@ -2,13 +2,10 @@ import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
 import '@/app/docs/prism-theme.css';
-import { Menu } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Navigation } from '@/app/docs/Navigation';
 import { getAllDocPaths } from '@/app/docs/utils';
 import type { NavItem } from '@/app/docs/types';
 import { getPathOrder } from '@/app/docs/config';
+import { DocSidebar } from './DocSidebar';
 
 function getDocTitle(filePath: string): string {
   try {
@@ -66,17 +63,15 @@ function buildNavigation(): NavItem[] {
             currentLevel.push(parent);
           }
           parent.children = parent.children || [];
-          // Sort children based on our custom order
-          parent.children.sort(
+          currentLevel = parent.children;
+          currentLevel.sort(
             (a, b) => getPathOrder(a.slug) - getPathOrder(b.slug)
           );
-          currentLevel = parent.children;
         }
         currentLevel.push({
           title,
           slug: path,
         });
-        // Sort current level based on our custom order
         currentLevel.sort(
           (a, b) => getPathOrder(a.slug) - getPathOrder(b.slug)
         );
@@ -95,36 +90,7 @@ export default function DocsLayout({
 
   return (
     <div className="flex min-h-screen">
-      {/* Desktop Sidebar */}
-      <aside
-        className="hidden lg:block w-80 shrink-0 border-r bg-background"
-        aria-label="Documentation navigation"
-      >
-        <div className="h-16 border-b px-6 flex items-center">
-          <h1 className="text-lg font-semibold">Documentation</h1>
-        </div>
-        <Navigation items={navigation} />
-      </aside>
-
-      {/* Mobile Sidebar */}
-      <Sheet>
-        <SheetTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden fixed left-4 top-4 z-[50]"
-            aria-label="Open documentation navigation"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="left" className="w-80 p-0">
-          <div className="h-16 border-b px-6 flex items-center">
-            <h2 className="text-lg font-semibold">Documentation</h2>
-          </div>
-          <Navigation items={navigation} />
-        </SheetContent>
-      </Sheet>
+      <DocSidebar navigation={navigation} />
 
       {/* Main content */}
       <main className="flex-1 min-w-0" role="main">

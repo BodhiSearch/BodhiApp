@@ -24,9 +24,14 @@ export const Nav = memo(function Nav({ items }: NavProps) {
       className="grid gap-1 w-full"
       role="navigation"
       aria-label="Documentation navigation"
+      data-testid="nav-container"
     >
       {items.map((item, index) => (
-        <NavItem key={`nav-item-${item.title}-${index}`} item={item} />
+        <NavItem
+          key={`nav-item-${item.title}-${index}`}
+          item={item}
+          data-testid={`nav-item-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+        />
       ))}
     </nav>
   );
@@ -39,14 +44,13 @@ interface NavItemProps {
 function NavItem({ item }: NavItemProps) {
   const pathname = usePathname();
   const isActive = item.href ? pathname === item.href : false;
-  const isParentOfActive = item.children?.some(
-    (child) => child.href === pathname
-  );
+  const isParentOfActive = item.children?.some((child) => child.href === pathname);
 
   if (item.children) {
     return (
-      <div className="grid gap-1 w-full">
-        <div
+      <div className="grid gap-1 w-full" data-testid={`nav-group-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+        <Link
+          href={item.href || '#'}
           className={cn(
             'w-full rounded-md',
             'px-3 py-2',
@@ -56,15 +60,16 @@ function NavItem({ item }: NavItemProps) {
             'hover:bg-accent/25 dark:hover:bg-accent/10',
             isParentOfActive && 'bg-accent/50 dark:bg-accent/25'
           )}
-          role="button"
           aria-expanded={isParentOfActive}
+          data-testid={`nav-group-title-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
         >
           {item.title}
-        </div>
+        </Link>
         <div
           className="grid gap-1 pl-6 w-full"
           role="group"
           aria-label={`${item.title} sub-navigation`}
+          data-testid={`nav-group-children-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
         >
           {item.children.map((child, index) => (
             <NavItem
@@ -93,6 +98,7 @@ function NavItem({ item }: NavItemProps) {
       aria-disabled={item.disabled}
       target={item.external ? '_blank' : undefined}
       rel={item.external ? 'noreferrer' : undefined}
+      data-testid={`nav-link-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
     >
       <span className="flex items-center justify-between">
         {item.title}
@@ -105,6 +111,7 @@ function NavItem({ item }: NavItemProps) {
               'no-underline group-hover:no-underline'
             )}
             aria-label={item.label}
+            data-testid={`nav-label-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
           >
             {item.label}
           </span>
