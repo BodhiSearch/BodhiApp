@@ -66,22 +66,17 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
         description = r#"API documentation for Bodhi App.
 
 ## Authentication
-This API supports three authentication methods:
+This API supports two authentication methods:
 
 1. **Browser Session** (Default)
    - Login via `/app/login` endpoint
    - Session cookie will be used automatically
    - Best for browser-based access
 
-2. **API Key**
-   - Create API key via `/bodhi/v1/tokens` endpoint
-   - Add key Authorization as Bearer token
+2. **API Token**
+   - Create API Token using the app Menu > Settings > API Tokens
+   - Use the API Token as the Authorization Bearer token in API calls
    - Best for programmatic access
-
-3. **OAuth2**
-   - Click 'Authorize' button above
-   - Login via OAuth2 flow
-   - Best for testing in Swagger UI
 
 ## Authorization
 APIs require different privilege levels:

@@ -7,6 +7,7 @@ import { AppStatus, ErrorResponse } from '@/types/models';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
 import { Loading } from '@/components/ui/Loading';
+import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED } from '@/lib/constants';
 
 interface AppInitializerProps {
   children?: ReactNode;
@@ -21,7 +22,7 @@ export default function AppInitializer({
 }: AppInitializerProps) {
   const router = useRouter();
   const [hasShownModelsPage, setHasShownModelsPage] = useLocalStorage(
-    'shown-download-models-page',
+    FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
     true
   );
 

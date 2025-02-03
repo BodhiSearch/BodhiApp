@@ -11,7 +11,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useDownloads, usePullModel } from '@/hooks/useQuery';
-import { ROUTE_SETUP_COMPLETE } from '@/lib/constants';
+import {
+  FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
+  ROUTE_SETUP_COMPLETE,
+} from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -30,12 +33,12 @@ export function ModelDownloadContent() {
     },
   });
   const [, setHasShownModelsPage] = useLocalStorage(
-    'shown-download-models-page',
+    FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
     true
   );
 
   useEffect(() => {
-    setHasShownModelsPage(false);
+    setHasShownModelsPage(true);
   }, [setHasShownModelsPage]);
 
   const handleModelDownload = (model: ModelInfo) => {
