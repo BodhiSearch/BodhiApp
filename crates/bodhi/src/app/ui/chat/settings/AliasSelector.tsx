@@ -3,6 +3,7 @@
 import { Label } from '@/components/ui/label';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { ComboBoxResponsive } from '@/components/Combobox';
+import { CopyButton } from '@/components/CopyButton';
 
 interface AliasSelectorProps {
   models: Array<{ alias: string }>;
@@ -27,7 +28,14 @@ export function AliasSelector({
   return (
     <div className="space-y-4" data-testid="model-selector-loaded">
       <div className="space-y-2">
-        <Label>Alias/Model</Label>
+        <div className="flex items-center justify-between group">
+          <Label>Alias/Model</Label>
+          {model && (
+            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <CopyButton text={model} size="icon" variant="ghost" />
+            </div>
+          )}
+        </div>
         <ComboBoxResponsive
           selectedStatus={selectedStatus}
           setSelectedStatus={(status) => setModel(status?.value ?? '')}
