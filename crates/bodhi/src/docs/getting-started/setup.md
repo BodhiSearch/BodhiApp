@@ -1,6 +1,6 @@
 ---
 title: "Setting Up Bodhi App"
-description: "Configure Bodhi App for first use and understand authentication modes"
+description: "Learn how to install and configure Bodhi App"
 ---
 
 # Setting Up Bodhi App

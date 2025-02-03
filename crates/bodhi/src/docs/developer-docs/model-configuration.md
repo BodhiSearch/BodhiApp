@@ -1,6 +1,6 @@
 ---
 title: "Model Configuration"
-description: "Advanced configuration options for model deployment and inference"
+description: "Configure models in Bodhi App"
 ---
 
 # Model Configuration
