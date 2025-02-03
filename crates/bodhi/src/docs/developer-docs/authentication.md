@@ -1,6 +1,6 @@
 ---
 title: "Authentication Guide"
-description: "Understanding Bodhi App's authentication modes and security features"
+description: "Learn about authentication in Bodhi App"
 ---
 
 # Authentication Guide

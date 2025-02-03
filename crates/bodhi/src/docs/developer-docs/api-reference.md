@@ -1,6 +1,6 @@
 ---
 title: "API Reference"
-description: "Complete API endpoint documentation for Bodhi App integration"
+description: "Complete API reference for Bodhi App"
 ---
 
 # API Reference
