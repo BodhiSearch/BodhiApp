@@ -15,6 +15,7 @@ import {
   Settings,
   Settings2,
   Users,
+  BookOpen,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import {
@@ -82,6 +83,12 @@ export const defaultNavigationItems: NavigationItem[] = [
         href: '/ui/chat/',
         description: 'AI Chat Interface',
         icon: MessageSquare,
+      },
+      {
+        title: 'User Documentation',
+        href: '/docs/',
+        description: 'User guides and documentation',
+        icon: BookOpen,
       },
       {
         title: 'OpenAPI Docs',
