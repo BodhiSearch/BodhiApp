@@ -9,6 +9,7 @@ import AppInitializer from '@/components/AppInitializer';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSetupApp } from '@/hooks/useQuery';
 import {
+  FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
   ROUTE_SETUP_DOWNLOAD_MODELS,
   ROUTE_SETUP_RESOURCE_ADMIN,
 } from '@/lib/constants';
@@ -90,8 +91,8 @@ const setupModes = [
 function SetupContent() {
   const router = useRouter();
   const [, setHasShownModelsPage] = useLocalStorage(
-    'shown-download-models-page',
-    true
+    FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
+    false
   );
 
   useEffect(() => {

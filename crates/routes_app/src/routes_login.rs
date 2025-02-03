@@ -168,7 +168,14 @@ pub async fn login_callback_handler(
     .insert("refresh_token", refresh_token)
     .await
     .map_err(LoginError::from)?;
-  let ui_setup_resume = format!("{}/ui/setup/download-models", setting_service.frontend_url());
+  let ui_setup_resume = if status_resource_admin {
+    format!(
+      "{}/ui/setup/download-models",
+      setting_service.frontend_url()
+    )
+  } else {
+    format!("{}/ui/home", setting_service.frontend_url())
+  };
   Ok(
     Response::builder()
       .status(StatusCode::FOUND)
@@ -609,7 +616,7 @@ mod tests {
     let resp = client.get(&format!("/login/callback?{}", query)).await;
     resp.assert_status(StatusCode::FOUND);
     assert_eq!(
-      "http://frontend.localhost:3000/ui/setup/download-models",
+      "http://frontend.localhost:3000/ui/home",
       resp.headers().get(LOCATION).unwrap(),
     );
     let session_id = resp.cookie("bodhiapp_session_id");
