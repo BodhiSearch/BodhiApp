@@ -5,7 +5,6 @@ export interface NavigationItem {
   href?: string;
   description?: string;
   icon?: LucideIcon;
-  authRequired?: boolean;
   items?: NavigationItem[];
   skip?: boolean;
   target?: string;
