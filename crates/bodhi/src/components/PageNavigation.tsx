@@ -22,7 +22,7 @@ export default function PageNavigation() {
   const [currentPage, setCurrentPage] = useState('Home');
 
   useEffect(() => {
-    const page = pages.find((p) => pathname.startsWith(p.path));
+    const page = pages.find((p) => pathname?.startsWith(p.path));
     if (page) {
       setCurrentPage(page.name);
     }

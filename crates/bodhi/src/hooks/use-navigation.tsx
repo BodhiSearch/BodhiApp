@@ -199,7 +199,7 @@ export function NavigationProvider({
 
   const value = useMemo(
     () => ({
-      currentPath: pathname,
+      currentPath: pathname || '',
       currentItem,
       navigationItems: items,
     }),

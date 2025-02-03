@@ -77,7 +77,7 @@ function ChatWithHistory() {
   const { open, openMobile, isMobile } = useSidebar();
   const showHistoryPanel = isMobile ? openMobile : open;
   const searchParams = useSearchParams();
-  const alias = searchParams.get('alias');
+  const alias = searchParams?.get('alias');
   const initialData = alias ? { model: alias } : undefined;
 
   return (
