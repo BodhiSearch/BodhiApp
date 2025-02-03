@@ -1,23 +1,23 @@
-import fs from 'fs'
-import matter from 'gray-matter'
-import { notFound } from 'next/navigation'
-import path from 'path'
-import rehypeAutolinkHeadings from 'rehype-autolink-headings'
-import rehypePrism from 'rehype-prism-plus'
-import rehypeSlug from 'rehype-slug'
-import rehypeStringify from 'rehype-stringify'
-import remarkGfm from 'remark-gfm'
-import remarkParse from 'remark-parse'
-import remarkRehype from 'remark-rehype'
-import { unified } from 'unified'
-import { getAllDocPaths } from '@/app/docs/utils'
+import fs from 'fs';
+import matter from 'gray-matter';
+import { notFound } from 'next/navigation';
+import path from 'path';
+import rehypeAutolinkHeadings from 'rehype-autolink-headings';
+import rehypePrism from 'rehype-prism-plus';
+import rehypeSlug from 'rehype-slug';
+import rehypeStringify from 'rehype-stringify';
+import remarkGfm from 'remark-gfm';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import { unified } from 'unified';
+import { getAllDocPaths } from '@/app/docs/utils';
 
 // Generate static paths for all markdown files
 export function generateStaticParams() {
-  const paths = getAllDocPaths()
-  return paths.map(path => ({
-    slug: path.split('/')
-  }))
+  const paths = getAllDocPaths();
+  return paths.map((path) => ({
+    slug: path.split('/'),
+  }));
 }
 
 async function markdownToHtml(content: string) {
@@ -32,23 +32,28 @@ async function markdownToHtml(content: string) {
       ignoreMissing: true,
     })
     .use(rehypeStringify, { allowDangerousHtml: true })
-    .process(content)
+    .process(content);
 
-  return result.toString()
+  return result.toString();
 }
 
 // Page component
-export default async function DocPage({ params }: { params: { slug: string[] } }) {
-  const slug = params.slug.join('/')
-  const filePath = path.join(process.cwd(), 'src/docs', `${slug}.md`)
+export default async function DocPage({
+  params,
+}: {
+  params: { slug: string[] };
+}) {
+  const slug = params.slug.join('/');
+  const filePath = path.join(process.cwd(), 'src/docs', `${slug}.md`);
 
   try {
-    const fileContents = fs.readFileSync(filePath, 'utf8')
-    const { content } = matter(fileContents)
-    const htmlContent = await markdownToHtml(content)
+    const fileContents = fs.readFileSync(filePath, 'utf8');
+    const { content } = matter(fileContents);
+    const htmlContent = await markdownToHtml(content);
 
     return (
-      <article className="max-w-none prose prose-slate dark:prose-invert
+      <article
+        className="max-w-none prose prose-slate dark:prose-invert
         prose-headings:font-semibold
         prose-h1:text-3xl
         prose-h2:text-2xl
@@ -68,9 +73,9 @@ export default async function DocPage({ params }: { params: { slug: string[] } }
         hover:prose-a:text-blue-500"
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
-    )
+    );
   } catch (e) {
-    console.error(`Error loading doc page for ${slug}:`, e)
-    notFound()
+    console.error(`Error loading doc page for ${slug}:`, e);
+    notFound();
   }
-} 
+}

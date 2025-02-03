@@ -1,56 +1,87 @@
-import { getAllDocPaths } from '@/app/docs/utils'
-import matter from 'gray-matter'
-import fs from 'fs'
-import path from 'path'
-import Link from 'next/link'
+import { getPathOrder } from '@/app/docs/config';
+import { getAllDocPaths } from '@/app/docs/utils';
+import fs from 'fs';
+import matter from 'gray-matter';
+import Link from 'next/link';
+import path from 'path';
 
 function getDocDetails(filePath: string) {
   try {
-    const fullPath = path.join(process.cwd(), 'src/docs', `${filePath}.md`)
-    const fileContents = fs.readFileSync(fullPath, 'utf8')
-    const { data } = matter(fileContents)
+    const fullPath = path.join(process.cwd(), 'src/docs', `${filePath}.md`);
+    const fileContents = fs.readFileSync(fullPath, 'utf8');
+    const { data } = matter(fileContents);
     return {
-      title: data.title || filePath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      title:
+        data.title ||
+        filePath
+          .split('/')
+          .pop()
+          ?.replace(/-/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase()),
       description: data.description || '',
-      slug: filePath
-    }
+      slug: filePath,
+      order: getPathOrder(filePath),
+    };
   } catch (e) {
-    console.error(`Error reading doc details for ${filePath}:`, e)
+    console.error(`Error reading doc details for ${filePath}:`, e);
     return {
-      title: filePath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+      title: filePath
+        .split('/')
+        .pop()
+        ?.replace(/-/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase()),
       description: '',
-      slug: filePath
-    }
+      slug: filePath,
+      order: getPathOrder(filePath),
+    };
   }
 }
 
 interface DocGroup {
-  title: string
+  title: string;
   items: {
-    title: string
-    description: string
-    slug: string
-  }[]
+    title: string;
+    description: string;
+    slug: string;
+    order: number;
+  }[];
+  order: number;
 }
 
 export default function DocsPage() {
-  const paths = getAllDocPaths()
-  const groups: { [key: string]: DocGroup } = {}
+  const paths = getAllDocPaths();
+  const groups: { [key: string]: DocGroup } = {};
 
-  paths.forEach(path => {
-    const parts = path.split('/')
-    const groupName = parts.length > 1 ? parts[0] : 'Getting Started'
-    const details = getDocDetails(path)
+  paths.forEach((path) => {
+    const parts = path.split('/');
+    const groupName = parts.length > 1 ? parts[0] : 'intro';
+    const details = getDocDetails(path);
 
     if (!groups[groupName]) {
       groups[groupName] = {
-        title: groupName.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-        items: []
-      }
+        title: groupName
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, (c) => c.toUpperCase()),
+        items: [],
+        order: getPathOrder(groupName),
+      };
     }
 
-    groups[groupName].items.push(details)
-  })
+    groups[groupName].items.push(details);
+  });
+
+  // Sort items within each group
+  Object.values(groups).forEach((group) => {
+    group.items.sort((a, b) => a.order - b.order);
+  });
+
+  // Convert groups object to sorted array
+  const sortedGroups = Object.entries(groups)
+    .map(([key, group]) => ({
+      ...group,
+      key,
+    }))
+    .sort((a, b) => a.order - b.order);
 
   return (
     <div className="max-w-none prose prose-slate dark:prose-invert">
@@ -59,8 +90,8 @@ export default function DocsPage() {
         Welcome to our documentation. Choose a topic below to get started.
       </p>
 
-      {Object.entries(groups).map(([key, group]) => (
-        <section key={key} className="mb-12">
+      {sortedGroups.map((group) => (
+        <section key={group.key} className="mb-12">
           <h2 className="text-2xl font-bold mb-4">{group.title}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {group.items.map((doc) => (
@@ -81,5 +112,5 @@ export default function DocsPage() {
         </section>
       ))}
     </div>
-  )
-} 
+  );
+}
