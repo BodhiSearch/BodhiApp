@@ -10,6 +10,10 @@ vi.mock("@/hooks/use-media-query", () => ({
     return true;
   }
 }))
+vi.mock("@/components/CopyButton", () => ({
+  CopyButton: () => <div>Copy Button</div>
+}))
+
 
 // Mock required HTMLElement methods and styles for Radix UI and Vaul components
 Object.assign(window.HTMLElement.prototype, {
