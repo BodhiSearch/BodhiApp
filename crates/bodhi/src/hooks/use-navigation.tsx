@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Settings,
   Settings2,
+  Users,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import {
@@ -106,7 +107,12 @@ export const defaultNavigationItems: NavigationItem[] = [
         href: '/ui/tokens/',
         description: 'Manage API access tokens',
         icon: Key,
-        authRequired: true,
+      },
+      {
+        title: 'Manage Users',
+        href: '/ui/users/',
+        description: 'Manage users and access control',
+        icon: Users,
       },
     ],
   },
