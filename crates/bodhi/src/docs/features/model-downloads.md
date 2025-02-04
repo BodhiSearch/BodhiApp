@@ -1,5 +1,5 @@
 ---
-title: "Download Models"
+title: "Model Downloads"
 description: "Download model files from HuggingFace repositories into Bodhi's local storage"
 order: 230
 ---

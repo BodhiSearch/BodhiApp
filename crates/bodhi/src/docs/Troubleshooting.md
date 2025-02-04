@@ -6,23 +6,58 @@ order: 600
 
 # Troubleshooting
 
-If you encounter issues with Bodhi App, this guide will help you diagnose and resolve them.
+If you encounter issues with Bodhi App, this guide can help you diagnose and resolve common problems. All errors are logged (either to the log files or stdout) to help trace the source of the issue.
 
-## Logging
+## Startup Issues
 
-- **Local Logs:** Logs are stored in your application data folder.
-- **Viewing Logs:** Refer to the in‑app log viewer from the Help menu.
+- **Bodhi Home Directory:**  
+  Bodhi App sets up its home directory inside `$HOME/.cache/bodhi`. If access to this folder is denied or if it isn't writable, the app may crash during startup.  
+  **Solution:**  
+  - Verify that the `$HOME/.cache/bodhi` folder exists and has the correct permissions.
+  - Ensure you have read/write access to this directory.
 
-## Common Issues
+- **Keychain Access (macOS):**  
+  On macOS, Bodhi App uses the Keychain to store encryption keys for sensitive data. If access to the Keychain is denied or if an error occurs, the app may fail to start.  
+  **Solution:**  
+  - Check your system Keychain settings and allow Bodhi App to access necessary credentials.
 
-### Model Download Failed
-- Check your Hugging Face token validity.
-- Verify your internet connection.
+Any startup error details are logged—see the **Logs** section below for further diagnostics.
 
-### Chat UI is Unresponsive
-- Refresh the application.
-- Verify that your model has been pulled successfully.
+## Logging Configuration
 
-## Getting Further Help
+- **Log Files:**  
+  Once initialized, Bodhi App writes logs to `$BODHI_HOME/logs` and rotates them daily. In the event the app crashes before logging is fully set up, error messages may be output to STDOUT.  
+  **Solution:**  
+  - If you suspect logging-related issues, run Bodhi App from the command line to capture output in real-time.
+  - Ensure the logs directory exists and has proper permissions.
 
-Reach out via our support channels or consult the [FAQ](./FAQ.md) for more details. 
+- **STDOUT Logging:**  
+  When the app is starting up, and logging isn't initialized, errors are sent to the system STDOUT. Running the app via command line is recommended to capture such logs.
+
+Bodhi App has a robust error handling mechanism that captures issues and origin (for example, misconfigured environment variables). These errors are logged with detailed context.
+  
+**Solution:**  
+- Check the log files for error messages related to feature settings.
+- Verify that any required environment variables are set correctly.
+- Confirm that the default settings are properly defined in your configuration file.
+
+## Network & External Dependencies
+
+- **Authentication and Remote Dependencies:**  
+  Bodhi App relies on an active network connection to interact with remote services—for example, to refresh access tokens from the authentication server at `https://id.getbodhi.app/`.
+  **Solution:**  
+  - Ensure your network connection is active.
+  - Confirm that firewall rules permit access to external domains such as `getbodhi.app`.
+  
+- **Model Download Issues:**  
+  If model downloads are failing, check your network connection and ensure that the Huggingface repository can be accessed.
+
+## General Error Diagnostics
+
+- **Locating Logs:**  
+  Detailed error messages are logged in `$BODHI_HOME/logs`. Review these files to diagnose issues. The logs rotate daily, so check the logs corresponding to the time of the error.
+  
+- **Debug Mode:**  
+  If issues persist, launch Bodhi App from the command line in debug mode. This will output error messages to STDOUT, offering immediate insight into what might be going wrong.
+
+If you continue to experience issues after following these steps, please reach out via our Discord channel or submit an issue on Github. 

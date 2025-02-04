@@ -1,7 +1,7 @@
 ---
 title: "App Settings"
 description: "Configure and manage application settings directly from the UI in Bodhi App"
-order: 250
+order: 240
 ---
 
 # App Settings
