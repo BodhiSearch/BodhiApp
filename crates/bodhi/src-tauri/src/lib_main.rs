@@ -8,14 +8,16 @@ use std::sync::Arc;
 
 #[cfg(feature = "production")]
 mod env_config {
-  use objs::EnvType;
-  use services::DefaultEnvWrapper;
+  use objs::{ApiError, EnvType};
+  use services::DefaultSettingService;
 
   pub static ENV_TYPE: EnvType = EnvType::Production;
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
-  pub fn set_feature_settings(setting_service: &mut DefaultSettingService) -> Result<(), ApiError> {
+  pub fn set_feature_settings(
+    _setting_service: &mut DefaultSettingService,
+  ) -> Result<(), ApiError> {
     Ok(())
   }
 }
@@ -101,7 +103,7 @@ pub fn _main() {
       metadata: SettingMetadata::String,
     },
   ];
-  let setting_service = DefaultSettingService::new_with_defaults(
+  let mut setting_service = DefaultSettingService::new_with_defaults(
     env_wrapper,
     Setting {
       key: BODHI_HOME.to_string(),
@@ -121,7 +123,7 @@ pub fn _main() {
     std::process::exit(1);
   });
   setting_service.load_default_env();
-  set_feature_settings(&setting_service).unwrap_or_else(|err| {
+  set_feature_settings(&mut setting_service).unwrap_or_else(|err| {
     eprintln!(
       "fatal error, setting up feature settings, error: {}\nexiting...",
       err
