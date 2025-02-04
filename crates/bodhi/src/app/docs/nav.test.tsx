@@ -1,12 +1,6 @@
 import { Nav } from '@/app/docs/nav';
 import { render, screen } from '@testing-library/react';
-import { usePathname } from 'next/navigation';
 import { describe, expect, it, vi } from 'vitest';
-
-// Mock next/navigation
-vi.mock('next/navigation', () => ({
-  usePathname: vi.fn(),
-}));
 
 // Mock next/link
 vi.mock('next/link', () => ({
@@ -17,32 +11,38 @@ describe('Nav', () => {
   const mockItems = [
     {
       title: 'Getting Started',
-      href: '/docs/getting-started',
+      href: '/docs/getting-started/',
+      selected: true,
       children: [
         {
           title: 'Introduction',
-          href: '/docs/getting-started/intro',
+          href: '/docs/getting-started/intro/',
+          selected: false,
         },
         {
           title: 'Installation',
-          href: '/docs/getting-started/install',
+          href: '/docs/getting-started/install/',
+          selected: false,
         },
       ],
     },
     {
       title: 'Features',
-      href: '/docs/features',
+      href: '/docs/features/',
+      selected: false,
       label: 'New',
     },
     {
       title: 'External Link',
-      href: 'https://example.com',
+      href: 'https://example.com/',
       external: true,
+      selected: false,
     },
     {
       title: 'Disabled Item',
-      href: '/docs/disabled',
+      href: '/docs/disabled/',
       disabled: true,
+      selected: false,
     },
   ];
 
@@ -103,31 +103,38 @@ describe('Nav', () => {
     expect(label).toHaveAttribute('aria-label', 'New');
   });
 
-  it('marks active items correctly', () => {
-    const mockPathname = '/docs/getting-started';
-    const mockedUsePathname = vi.mocked(usePathname);
-    mockedUsePathname.mockReturnValue(mockPathname);
-
+  it('marks active group correctly', () => {
     render(<Nav items={mockItems} />);
 
     const activeLink = screen.getByTestId('nav-group-title-getting-started');
+    expect(activeLink).toHaveAttribute('aria-current', 'page');
   });
 
-  it('marks parent of active child correctly', () => {
-    const mockPathname = '/docs/getting-started/intro';
-    const mockedUsePathname = vi.mocked(usePathname);
-    mockedUsePathname.mockReturnValue(mockPathname);
+  it('marks active child correctly', () => {
+    const itemsWithActiveChild = [
+      {
+        title: 'Getting Started',
+        href: '/docs/getting-started/',
+        selected: false,
+        children: [
+          {
+            title: 'Introduction',
+            href: '/docs/getting-started/intro/',
+            selected: true,
+          },
+          {
+            title: 'Installation',
+            href: '/docs/getting-started/install/',
+            selected: false,
+          },
+        ],
+      },
+    ];
 
-    render(<Nav items={mockItems} />);
+    render(<Nav items={itemsWithActiveChild} />);
 
-    // Check that child is marked as active
-    const childLink = screen.getByText('Introduction').closest('a');
-    expect(childLink).toHaveAttribute('aria-current', 'page');
-
-    // Check that parent group is expanded
-    const parentGroup = screen.getByTestId('nav-group-getting-started');
-    expect(parentGroup).toBeInTheDocument();
-    expect(screen.getByTestId('nav-group-children-getting-started')).toBeInTheDocument();
+    const activeChildLink = screen.getByTestId('nav-link-introduction');
+    expect(activeChildLink).toHaveAttribute('aria-current', 'page');
   });
 
   it('handles empty items array gracefully', () => {

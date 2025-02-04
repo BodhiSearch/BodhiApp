@@ -879,3 +879,205 @@ Git Workflow
 - Run linting before commits (husky)
 - Ensure all tests pass before merging
 - Keep PRs focused and small
+
+
+Testing Best Practices - Lessons from Navigation Component Testing
+===============================================================
+
+Key Testing Patterns
+-------------------
+
+1. Component Testing Structure
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Use descriptive test names that indicate behavior being tested
+* Group related tests logically
+* Use beforeEach for common setup and cleanup
+* Mock external dependencies consistently
+* Test both success and edge cases
+
+.. code-block:: typescript
+
+    describe('Navigation', () => {
+      beforeEach(() => {
+        vi.mocked(usePathname).mockReset();
+      });
+
+      it('renders navigation structure with correct paths', () => {
+        // Test basic rendering
+      });
+
+      it('marks current page as active', () => {
+        // Test specific behavior
+      });
+    });
+
+2. Element Selection Strategy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Prefer (in order of reliability):
+
+1. data-testid attributes for unique identification
+2. ARIA attributes for semantic elements
+3. Role attributes for semantic elements
+4. Text content as last resort
+
+Good:
+
+.. code-block:: typescript
+
+    // Using data-testid
+    const activeLink = screen.getByTestId('nav-group-title-getting-started');
+    
+    // Using ARIA
+    expect(element).toHaveAttribute('aria-current', 'page');
+    
+    // Using role
+    const nav = screen.getByRole('navigation');
+
+Avoid:
+
+.. code-block:: typescript
+
+    // Avoid CSS classes
+    expect(element).toHaveClass('text-accent-foreground');
+    
+    // Avoid complex selectors
+    container.querySelector('.nav > .item.active');
+
+3. Mock Data Structure
+~~~~~~~~~~~~~~~~~~~~~
+
+* Create realistic mock data that matches component props
+* Include all required properties
+* Use helper functions to create mock data
+* Consider edge cases in mock data
+
+.. code-block:: typescript
+
+    const mockItems = [
+      {
+        title: 'Getting Started',
+        href: '/docs/getting-started/',
+        selected: true,
+        children: [...]
+      }
+    ];
+
+4. Behavioral Testing
+~~~~~~~~~~~~~~~~~~~~
+
+Focus on testing:
+
+* Component rendering
+* User interactions
+* Accessibility attributes
+* Component state changes
+* Edge cases
+
+What to Test
+-----------
+
+1. High Value Tests
+~~~~~~~~~~~~~~~~~~
+
+* Component rendering with different props
+* Navigation structure and hierarchy
+* Accessibility attributes and roles
+* Interactive behaviors
+* Edge cases (empty states, error states)
+* Integration with parent components
+
+2. Low Value Tests
+~~~~~~~~~~~~~~~~~
+
+* Implementation details
+* Styling and CSS classes
+* Internal state management
+* Framework-specific features
+* Third-party library implementation
+
+Best Practices
+-------------
+
+1. Test Organization
+~~~~~~~~~~~~~~~~~~~
+
+* One test file per component
+* Clear test descriptions
+* Logical test grouping
+* Shared setup in beforeEach
+* Clean mock reset after tests
+
+2. Accessibility Testing
+~~~~~~~~~~~~~~~~~~~~~~~
+
+* Test ARIA attributes
+* Verify semantic HTML
+* Check keyboard navigation
+* Test screen reader compatibility
+
+3. Maintainable Tests
+~~~~~~~~~~~~~~~~~~~~
+
+* Use constants for repeated values
+* Create helper functions for common operations
+* Keep tests focused and atomic
+* Follow DRY principle in test setup
+* Use meaningful test descriptions
+
+4. Testing Techniques
+~~~~~~~~~~~~~~~~~~~~
+
+* Arrange-Act-Assert pattern
+* Component isolation
+* Proper mocking
+* Clear assertions
+* Meaningful error messages
+
+Anti-Patterns to Avoid
+---------------------
+
+1. Implementation Testing
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+* Testing implementation details
+* Testing framework internals
+* Testing third-party code
+* Testing styles directly
+
+2. Brittle Tests
+~~~~~~~~~~~~~~~
+
+* Using CSS selectors
+* Testing exact text content
+* Testing component internals
+* Tight coupling to implementation
+
+3. Poor Test Structure
+~~~~~~~~~~~~~~~~~~~~~
+
+* Unclear test names
+* Missing test descriptions
+* Shared state between tests
+* Complex setup procedures
+* Lack of cleanup
+
+4. Unreliable Tests
+~~~~~~~~~~~~~~~~~~
+
+* Time-dependent tests
+* Order-dependent tests
+* Network-dependent tests
+* Environment-dependent tests
+
+Conclusion
+---------
+
+Focus on:
+
+* Behavior over implementation
+* Accessibility over styling
+* User interaction over internal state
+* Maintainability over coverage
+* Reliability over complexity

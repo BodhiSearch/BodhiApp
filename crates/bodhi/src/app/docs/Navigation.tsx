@@ -1,35 +1,36 @@
 'use client';
 
-import { SidebarNav } from '@/app/docs/sidebar-nav';
+import { SidebarNav } from '@/app/docs/nav';
 import type { NavigationProps } from '@/app/docs/types';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/lib/utils';
 
 const DOCS_BASE_PATH = '/docs';
 
 export function Navigation({ items }: NavigationProps) {
   const pathname = usePathname();
 
-  // Convert our doc items to nav items
-  const navItems = items.map((item) => ({
-    title: item.title,
-    href: `${DOCS_BASE_PATH}/${item.slug}`,
-    isFolder: item.children && item.children.length > 0,
-    className: cn(
-      'hover:text-accent-foreground',
-      pathname === `${DOCS_BASE_PATH}/${item.slug}` &&
-        'text-accent-foreground font-medium'
-    ),
-    children: item.children?.map((child) => ({
-      title: child.title,
-      href: `${DOCS_BASE_PATH}/${child.slug}`,
-      className: cn(
-        'hover:text-accent-foreground',
-        pathname === `${DOCS_BASE_PATH}/${child.slug}` &&
-          'text-accent-foreground font-medium'
-      ),
-    })),
-  }));
+  // Convert our doc items to nav items with selection state
+  const navItems = items.map((item) => {
+    const itemPath = `${DOCS_BASE_PATH}/${item.slug}/`;
+    const isSelected = pathname === itemPath;
+
+    // Check if any children are selected
+    const children = item.children?.map((child) => {
+      const childPath = `${DOCS_BASE_PATH}/${child.slug}/`;
+      return {
+        title: child.title,
+        href: childPath,
+        selected: pathname === childPath,
+      };
+    });
+
+    return {
+      title: item.title,
+      href: itemPath,
+      selected: isSelected || children?.some((child) => child.selected),
+      children,
+    };
+  });
 
   return (
     <SidebarNav

@@ -1,25 +1,12 @@
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
 import { getPathOrder } from '@/app/docs/config';
+import { DocDetails, DocGroup } from '@/app/docs/types';
+import fs from 'fs';
+import matter from 'gray-matter';
+import path from 'path';
 
 const MD_EXTENSION = '.md';
 
 const DEFAULT_DOCS_DIR = 'src/docs';
-
-export interface DocDetails {
-  title: string;
-  description: string;
-  slug: string;
-  order: number;
-}
-
-export interface DocGroup {
-  title: string;
-  items: DocDetails[];
-  order: number;
-  key?: string;
-}
 
 export function getDocsDirectory(): string {
   return process.env.DOCS_DIR || DEFAULT_DOCS_DIR;
