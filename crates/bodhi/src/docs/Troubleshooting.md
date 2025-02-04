@@ -1,6 +1,7 @@
 ---
-title: "Troubleshooting Guide"
-description: "Solutions for common issues and problems in Bodhi App"
+title: "Troubleshooting"
+description: "Common issues and solutions"
+order: 600
 ---
 
 # Troubleshooting

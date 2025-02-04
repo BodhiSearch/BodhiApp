@@ -1,6 +1,7 @@
 ---
 title: "Introduction"
-description: "A powerful local LLM inference tool integrated with HuggingFace ecosystem"
+description: "Getting started with Bodhi"
+order: 0
 ---
 
 # Welcome to Bodhi App

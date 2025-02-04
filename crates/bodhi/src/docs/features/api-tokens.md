@@ -1,6 +1,7 @@
 ---
-title: "API Token Management"
-description: "Create and manage API tokens for secure external access to Bodhi App"
+title: "API Tokens"
+description: "Managing API tokens"
+order: 220
 ---
 
 # API Token Management

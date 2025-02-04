@@ -1,6 +1,7 @@
 ---
-title: "Authentication Guide"
-description: "Learn about authentication in Bodhi App"
+title: "Authentication"
+description: "Authentication guide"
+order: 401
 ---
 
 # Authentication Guide

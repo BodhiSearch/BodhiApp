@@ -1,7 +1,8 @@
 ---
 title: "Nested Document"
 description: "A nested test document"
+order: 110
 ---
 
-# Nested Document
-Test content 
+# Nested Doc
+Test content

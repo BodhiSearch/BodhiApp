@@ -8,6 +8,8 @@ import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+export const DOCS_BASE_PATH = '/docs';
+
 function getCurrentFolderNavigation(
   navigation: NavItem[],
   currentPath: string | null
@@ -76,7 +78,9 @@ export function DocSidebar({ navigation }: DocSidebarProps) {
         data-testid="desktop-sidebar"
       >
         <div className="h-16 border-b px-6 flex items-center">
-          <h1 className="text-lg font-semibold">Documentation</h1>
+          <Link href={DOCS_BASE_PATH}>
+            <h1 className="text-lg font-semibold">Documentation</h1>
+          </Link>
         </div>
         {sidebarContent}
       </aside>

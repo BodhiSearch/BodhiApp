@@ -1,6 +1,7 @@
 ---
 title: "Installation"
-description: "Step-by-step guide to installing Bodhi App on different platforms"
+description: "How to install Bodhi"
+order: 101
 ---
 
 # Install Bodhi App
