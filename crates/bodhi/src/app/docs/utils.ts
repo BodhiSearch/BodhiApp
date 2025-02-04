@@ -1,15 +1,57 @@
-import { getPathOrder } from '@/app/docs/config';
-import { DocDetails, DocGroup } from '@/app/docs/types';
+import { DocDetails, DocGroup, MetaData } from '@/app/docs/types';
 import fs from 'fs';
 import matter from 'gray-matter';
 import path from 'path';
 
 const MD_EXTENSION = '.md';
+const DEFAULT_ORDER = 999;
 
-const DEFAULT_DOCS_DIR = 'src/docs';
+function getDocsDirectory(): string {
+  return process.env.DOCS_DIR || 'src/docs';
+}
 
-export function getDocsDirectory(): string {
-  return process.env.DOCS_DIR || DEFAULT_DOCS_DIR;
+export function getPathOrder(docPath: string): number {
+  const rootDocs = getDocsDirectory();
+  try {
+    // Special case for index - read from root _meta.json
+    if (docPath === 'index') {
+      const rootMetaPath = path.join(rootDocs, '_meta.json');
+      if (fs.existsSync(rootMetaPath)) {
+        const metaContent = fs.readFileSync(rootMetaPath, 'utf-8');
+        const meta = JSON.parse(metaContent) as MetaData;
+        return meta.order ?? DEFAULT_ORDER;
+      }
+      return DEFAULT_ORDER;
+    }
+
+    const fullPath = path.join(rootDocs, docPath);
+
+    // Check if it's a directory
+    const isDirectory =
+      fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+
+    if (isDirectory) {
+      const metaPath = path.join(fullPath, '_meta.json');
+      if (fs.existsSync(metaPath)) {
+        const metaContent = fs.readFileSync(metaPath, 'utf-8');
+        const meta = JSON.parse(metaContent) as MetaData;
+        return meta.order ?? DEFAULT_ORDER;
+      }
+    } else {
+      // Check if it's a markdown file
+      const mdPath = `${fullPath}.md`;
+      if (fs.existsSync(mdPath)) {
+        const fileContent = fs.readFileSync(mdPath, 'utf-8');
+        const { data } = matter(fileContent);
+        return data.order ?? DEFAULT_ORDER;
+      }
+    }
+
+    return DEFAULT_ORDER;
+  } catch (error) {
+    console.error(`Error getting order for path ${docPath}:`, error);
+    return DEFAULT_ORDER;
+  }
 }
 
 export function getAllDocPaths() {
