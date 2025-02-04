@@ -1,0 +1,242 @@
+import { PROSE_CLASSES } from '@/app/docs/constants';
+import { createMockDoc, createMockGroup, mockMarkdownContent } from '@/app/docs/test-utils';
+import { getAllDocPaths, getDocsForPath } from '@/app/docs/utils';
+import { act, render, screen } from '@testing-library/react';
+import fs from 'fs';
+import matter from 'gray-matter';
+import { notFound } from 'next/navigation';
+import { describe, expect, it, vi } from 'vitest';
+import DocsSlugPage, { generateStaticParams } from './page';
+
+// Mock dependencies
+vi.mock('next/navigation', () => ({
+  notFound: vi.fn(),
+}));
+
+vi.mock('@/app/docs/utils', () => ({
+  getAllDocPaths: vi.fn(),
+  getDocsForPath: vi.fn(),
+}));
+
+// Mock fs module with default export
+vi.mock('fs', () => {
+  const mockFs = {
+    existsSync: vi.fn(),
+    statSync: vi.fn(),
+    readFileSync: vi.fn(),
+  };
+  return {
+    default: mockFs,
+    ...mockFs,
+  };
+});
+
+// Mock gray-matter
+vi.mock('gray-matter', () => {
+  return {
+    default: vi.fn(),
+  };
+});
+
+describe('DocsSlugPage', () => {
+  const mockGroups = [createMockGroup({
+    title: 'Nested',
+    key: 'nested',
+    items: [createMockDoc({
+      title: 'Nested Doc',
+      description: 'A nested document',
+      slug: 'nested/nested-doc',
+    })],
+  })];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe('generateStaticParams', () => {
+    it('generates params for all doc paths and their parent directories', () => {
+      vi.mocked(getAllDocPaths).mockReturnValue([
+        'docs/intro',
+        'docs/nested/guide',
+        'docs/nested/deep/advanced',
+      ]);
+
+      const params = generateStaticParams();
+
+      expect(params).toEqual([
+        { slug: ['docs', 'intro'] },
+        { slug: ['docs'] },
+        { slug: ['docs', 'nested', 'guide'] },
+        { slug: ['docs', 'nested'] },
+        { slug: ['docs', 'nested', 'deep', 'advanced'] },
+        { slug: ['docs', 'nested', 'deep'] },
+      ]);
+    });
+
+    it('handles empty paths', () => {
+      vi.mocked(getAllDocPaths).mockReturnValue([]);
+      expect(generateStaticParams()).toEqual([]);
+    });
+  });
+
+  describe('page rendering', () => {
+    it('renders docs index for directory with nested docs', async () => {
+      vi.mocked(getDocsForPath).mockReturnValue(mockGroups);
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
+
+      const page = await DocsSlugPage({ params: { slug: ['nested'] } });
+      render(page);
+
+      // Check group structure
+      expect(screen.getByRole('heading', { name: 'Nested' })).toBeInTheDocument();
+
+      // Check doc item
+      const docLink = screen.getByRole('link', { name: /Nested Doc/ });
+      expect(docLink).toHaveAttribute('href', '/docs/nested/nested-doc');
+      expect(screen.getByText('A nested document')).toBeInTheDocument();
+    });
+
+    it('renders docs index with multiple groups and items', async () => {
+      const multipleGroups = [
+        {
+          title: 'Getting Started',
+          key: 'getting-started',
+          order: 0,
+          items: [
+            {
+              title: 'Introduction',
+              description: 'Get started here',
+              slug: 'getting-started/intro',
+              order: 1,
+            },
+          ],
+        },
+        {
+          title: 'Advanced',
+          key: 'advanced',
+          order: 1,
+          items: [
+            {
+              title: 'Configuration',
+              description: 'Advanced settings',
+              slug: 'advanced/config',
+              order: 1,
+            },
+          ],
+        },
+      ];
+
+      vi.mocked(getDocsForPath).mockReturnValue(multipleGroups);
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
+
+      const page = await DocsSlugPage({ params: { slug: ['docs'] } });
+      render(page);
+
+      // Check group headings
+      expect(screen.getByRole('heading', { name: 'Getting Started' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Advanced' })).toBeInTheDocument();
+
+      // Check items in first group
+      const introLink = screen.getByRole('link', { name: /Introduction/ });
+      expect(introLink).toHaveAttribute('href', '/docs/getting-started/intro');
+      expect(screen.getByText('Get started here')).toBeInTheDocument();
+
+      // Check items in second group
+      const configLink = screen.getByRole('link', { name: /Configuration/ });
+      expect(configLink).toHaveAttribute('href', '/docs/advanced/config');
+      expect(screen.getByText('Advanced settings')).toBeInTheDocument();
+    });
+
+    it('renders markdown content for document files', async () => {
+      vi.mocked(getDocsForPath).mockReturnValue([]);
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+      vi.mocked(fs.readFileSync).mockReturnValue(mockMarkdownContent);
+
+      // Mock matter with proper return value
+      vi.mocked(matter).mockImplementation(() => ({
+        content: '# Test Content',
+        data: {},
+        orig: '',
+        language: '',
+        matter: '',
+        stringify: () => '',
+      }));
+
+
+      await act(async () => {
+        const page = await DocsSlugPage({ params: { slug: ['test-doc'] } });
+        render(page);
+      });
+
+      // Check the rendered content
+      const article = screen.getByRole('article');
+      expect(article).toHaveClass(PROSE_CLASSES.root);
+
+      // Check the heading content
+      const heading = screen.getByRole('heading', { level: 1 });
+      expect(heading).toHaveTextContent('Test Content');
+
+      // Check the anchor link
+      const anchor = heading.querySelector('a');
+      expect(anchor).toHaveAttribute('href', '#test-content');
+    });
+
+    it('shows 404 for non-existent paths', async () => {
+      vi.mocked(getDocsForPath).mockReturnValue([]);
+      // Both file and directory don't exist
+      vi.mocked(fs.existsSync).mockImplementation(() => false);
+
+      await DocsSlugPage({ params: { slug: ['non-existent'] } });
+
+      expect(notFound).toHaveBeenCalled();
+    });
+
+    it('handles file read errors gracefully', async () => {
+      vi.mocked(getDocsForPath).mockReturnValue([]);
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+      vi.mocked(fs.readFileSync).mockImplementation(() => {
+        throw new Error('File read error');
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+      await DocsSlugPage({ params: { slug: ['error-doc'] } });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error loading doc page for error-doc:',
+        expect.any(Error)
+      );
+      expect(notFound).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it('handles markdown processing errors gracefully', async () => {
+      vi.mocked(getDocsForPath).mockReturnValue([]);
+      vi.mocked(fs.existsSync).mockReturnValue(true);
+      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+      vi.mocked(fs.readFileSync).mockReturnValue('invalid markdown');
+
+      // Mock matter to throw error
+      vi.mocked(matter).mockImplementation(() => {
+        throw new Error('Markdown processing error');
+      });
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+      await DocsSlugPage({ params: { slug: ['invalid-doc'] } });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'Error loading doc page for invalid-doc:',
+        expect.any(Error)
+      );
+      expect(notFound).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+  });
+}); 
