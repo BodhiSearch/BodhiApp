@@ -44,11 +44,16 @@ interface NavItemProps {
 function NavItem({ item }: NavItemProps) {
   const pathname = usePathname();
   const isActive = item.href ? pathname === item.href : false;
-  const isParentOfActive = item.children?.some((child) => child.href === pathname);
+  const isParentOfActive = item.children?.some(
+    (child) => child.href === pathname
+  );
 
   if (item.children) {
     return (
-      <div className="grid gap-1 w-full" data-testid={`nav-group-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+      <div
+        className="grid gap-1 w-full"
+        data-testid={`nav-group-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
+      >
         <Link
           href={item.href || '#'}
           className={cn(

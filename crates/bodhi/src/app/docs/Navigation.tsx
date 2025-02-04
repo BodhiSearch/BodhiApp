@@ -17,17 +17,25 @@ export function Navigation({ items }: NavigationProps) {
     isFolder: item.children && item.children.length > 0,
     className: cn(
       'hover:text-accent-foreground',
-      pathname === `${DOCS_BASE_PATH}/${item.slug}` && 'text-accent-foreground font-medium'
+      pathname === `${DOCS_BASE_PATH}/${item.slug}` &&
+        'text-accent-foreground font-medium'
     ),
     children: item.children?.map((child) => ({
       title: child.title,
       href: `${DOCS_BASE_PATH}/${child.slug}`,
       className: cn(
         'hover:text-accent-foreground',
-        pathname === `${DOCS_BASE_PATH}/${child.slug}` && 'text-accent-foreground font-medium'
+        pathname === `${DOCS_BASE_PATH}/${child.slug}` &&
+          'text-accent-foreground font-medium'
       ),
     })),
   }));
 
-  return <SidebarNav items={navItems} className="p-4" data-testid="main-navigation" />;
+  return (
+    <SidebarNav
+      items={navItems}
+      className="p-4"
+      data-testid="main-navigation"
+    />
+  );
 }

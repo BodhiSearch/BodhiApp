@@ -116,9 +116,9 @@ export const groupDocs = (paths: string[]): DocGroup[] => {
 export const getDocsForPath = (slugPath: string[] | null): DocGroup[] => {
   const basePath = slugPath ? slugPath.join('/') : '';
   const paths = getAllDocPaths();
-  
+
   // Filter paths that belong to the current directory
-  const relevantPaths = paths.filter(path => {
+  const relevantPaths = paths.filter((path) => {
     if (!basePath) return true;
     return path.startsWith(basePath + '/') && path !== basePath;
   });

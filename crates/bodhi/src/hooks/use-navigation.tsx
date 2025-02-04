@@ -156,6 +156,13 @@ export function NavigationProvider({
 
   const currentItem = useMemo(() => {
     // First check top-level items
+    if (pathname?.startsWith('/docs/')) {
+      const playgroundItem = items.find((item) => item.title === 'Playground');
+      const docsItem = playgroundItem?.items?.find(
+        (item) => item.href === '/docs/'
+      );
+      return { item: docsItem!, parent: playgroundItem! };
+    }
     const topLevelItem = items.find((item) => item.href === pathname);
     if (topLevelItem) {
       return { item: topLevelItem, parent: null };

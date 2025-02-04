@@ -17,11 +17,11 @@ import Link from 'next/link';
 export function generateStaticParams() {
   const paths = getAllDocPaths();
   const allPaths = new Set<string>();
-  
-  paths.forEach(path => {
+
+  paths.forEach((path) => {
     // Add the full path
     allPaths.add(path);
-    
+
     // Add all parent directory paths
     const parts = path.split('/');
     for (let i = 1; i < parts.length; i++) {
@@ -68,11 +68,11 @@ export default async function DocPage({
       const title = params.slug[params.slug.length - 1]
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (c) => c.toUpperCase());
-      
+
       return (
         <div className="max-w-none prose prose-slate dark:prose-invert">
           <h1>{title}</h1>
-          
+
           {sortedGroups.map((group) => (
             <section key={group.key} className="mb-12">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -82,7 +82,9 @@ export default async function DocPage({
                     href={`/docs/${doc.slug}`}
                     className="block p-4 border rounded-lg hover:border-blue-500 transition-colors no-underline"
                   >
-                    <h3 className="text-lg font-semibold mb-1 mt-0">{doc.title}</h3>
+                    <h3 className="text-lg font-semibold mb-1 mt-0">
+                      {doc.title}
+                    </h3>
                     {doc.description && (
                       <p className="text-sm text-gray-600 dark:text-gray-400 m-0">
                         {doc.description}
