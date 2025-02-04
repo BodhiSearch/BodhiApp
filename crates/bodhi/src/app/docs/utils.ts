@@ -93,13 +93,13 @@ export const formatTitle = (path: string): string => {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 };
 
-export const groupDocs = (paths: string[]): DocGroup[] => {
+const groupDocs = (paths: string[]): DocGroup[] => {
   const groups: { [key: string]: DocGroup } = {};
   const docsDirectory = path.join(process.cwd(), getDocsDirectory());
 
   paths.forEach((relativePath) => {
     const parts = relativePath.split('/');
-    const groupName = parts.length > 1 ? parts[0] : 'intro';
+    const groupName = parts.length > 1 ? parts[0] : 'index';
     const fullPath = path.join(docsDirectory, `${relativePath}.md`);
     const details = getDocDetails(fullPath);
 
