@@ -1,7 +1,7 @@
 ---
 title: "API Tokens"
 description: "Manage API tokens for secure external access to Bodhi App"
-order: 230
+order: 240
 ---
 
 # API Token Management
