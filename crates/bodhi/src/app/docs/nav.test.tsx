@@ -1,0 +1,139 @@
+import { Nav } from '@/app/docs/nav';
+import { render, screen } from '@testing-library/react';
+import { usePathname } from 'next/navigation';
+import { describe, expect, it, vi } from 'vitest';
+
+// Mock next/navigation
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn(),
+}));
+
+// Mock next/link
+vi.mock('next/link', () => ({
+  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
+}));
+
+describe('Nav', () => {
+  const mockItems = [
+    {
+      title: 'Getting Started',
+      href: '/docs/getting-started',
+      children: [
+        {
+          title: 'Introduction',
+          href: '/docs/getting-started/intro',
+        },
+        {
+          title: 'Installation',
+          href: '/docs/getting-started/install',
+        },
+      ],
+    },
+    {
+      title: 'Features',
+      href: '/docs/features',
+      label: 'New',
+    },
+    {
+      title: 'External Link',
+      href: 'https://example.com',
+      external: true,
+    },
+    {
+      title: 'Disabled Item',
+      href: '/docs/disabled',
+      disabled: true,
+    },
+  ];
+
+  it('renders navigation structure correctly', () => {
+    render(<Nav items={mockItems} />);
+
+    // Check main navigation container
+    const nav = screen.getByRole('navigation');
+    expect(nav).toHaveAttribute('aria-label', 'Documentation navigation');
+
+    // Check all top-level items are rendered
+    mockItems.forEach((item) => {
+      expect(screen.getByText(item.title)).toBeInTheDocument();
+    });
+  });
+
+  it('renders nested items correctly', () => {
+    render(<Nav items={mockItems} />);
+
+    // Check parent item
+    const parentGroup = screen.getByTestId('nav-group-getting-started');
+    expect(parentGroup).toBeInTheDocument();
+
+    // Check children items
+    const children = mockItems[0].children!;
+    children.forEach((child) => {
+      const childLink = screen.getByText(child.title);
+      expect(childLink).toBeInTheDocument();
+      expect(childLink.closest('a')).toHaveAttribute('href', child.href);
+    });
+
+    // Check group structure
+    const groupContainer = screen.getByTestId('nav-group-children-getting-started');
+    expect(groupContainer).toHaveAttribute('role', 'group');
+    expect(groupContainer).toHaveAttribute('aria-label', 'Getting Started sub-navigation');
+  });
+
+  it('handles external links correctly', () => {
+    render(<Nav items={mockItems} />);
+
+    const externalLink = screen.getByTestId('nav-link-external-link');
+    expect(externalLink).toHaveAttribute('target', '_blank');
+    expect(externalLink).toHaveAttribute('rel', 'noreferrer');
+  });
+
+  it('handles disabled items correctly', () => {
+    render(<Nav items={mockItems} />);
+
+    const disabledLink = screen.getByTestId('nav-link-disabled-item');
+    expect(disabledLink).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('displays labels with proper accessibility', () => {
+    render(<Nav items={mockItems} />);
+
+    const label = screen.getByTestId('nav-label-new');
+    expect(label).toHaveTextContent('New');
+    expect(label).toHaveAttribute('aria-label', 'New');
+  });
+
+  it('marks active items correctly', () => {
+    const mockPathname = '/docs/getting-started';
+    const mockedUsePathname = vi.mocked(usePathname);
+    mockedUsePathname.mockReturnValue(mockPathname);
+
+    render(<Nav items={mockItems} />);
+
+    const activeLink = screen.getByTestId('nav-group-title-getting-started');
+  });
+
+  it('marks parent of active child correctly', () => {
+    const mockPathname = '/docs/getting-started/intro';
+    const mockedUsePathname = vi.mocked(usePathname);
+    mockedUsePathname.mockReturnValue(mockPathname);
+
+    render(<Nav items={mockItems} />);
+
+    // Check that child is marked as active
+    const childLink = screen.getByText('Introduction').closest('a');
+    expect(childLink).toHaveAttribute('aria-current', 'page');
+
+    // Check that parent group is expanded
+    const parentGroup = screen.getByTestId('nav-group-getting-started');
+    expect(parentGroup).toBeInTheDocument();
+    expect(screen.getByTestId('nav-group-children-getting-started')).toBeInTheDocument();
+  });
+
+  it('handles empty items array gracefully', () => {
+    render(<Nav items={[]} />);
+
+    const nav = screen.getByRole('navigation');
+    expect(nav).toBeEmptyDOMElement();
+  });
+}); 
