@@ -1,13 +1,19 @@
 'use client';
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { useAppInfo, useUser } from '@/hooks/useQuery';
+import { Loading } from '@/components/ui/Loading';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useAppInfo, useUser } from '@/hooks/useQuery';
+import {
+  FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
+  ROUTE_DEFAULT,
+  ROUTE_RESOURCE_ADMIN,
+  ROUTE_SETUP,
+  ROUTE_SETUP_DOWNLOAD_MODELS,
+} from '@/lib/constants';
 import { AppStatus, ErrorResponse } from '@/types/models';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
-import { Loading } from '@/components/ui/Loading';
-import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED } from '@/lib/constants';
 
 interface AppInitializerProps {
   children?: ReactNode;
@@ -45,17 +51,17 @@ export default function AppInitializer({
       if (!allowedStatus || status !== allowedStatus) {
         switch (status) {
           case 'setup':
-            router.push('/ui/setup');
+            router.push(ROUTE_SETUP);
             break;
           case 'ready':
             if (!hasShownModelsPage) {
-              router.push('/ui/setup/download-models');
+              router.push(ROUTE_SETUP_DOWNLOAD_MODELS);
             } else {
-              router.push('/ui/home');
+              router.push(ROUTE_DEFAULT);
             }
             break;
           case 'resource-admin':
-            router.push('/ui/setup/resource-admin');
+            router.push(ROUTE_RESOURCE_ADMIN);
             break;
         }
       }

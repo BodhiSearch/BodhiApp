@@ -1,10 +1,10 @@
 'use client';
 
-import { AuthCard } from '@/components/AuthCard';
 import AppInitializer from '@/components/AppInitializer';
-import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
+import { AuthCard } from '@/components/AuthCard';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import { PATH_UI_HOME } from '@/lib/utils';
+import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
+import { ROUTE_DEFAULT } from '@/lib/constants';
 
 export function LoginContent() {
   const { data: userInfo, isLoading: userLoading } = useUser();
@@ -25,7 +25,7 @@ export function LoginContent() {
         actions={[
           {
             label: 'Go to Home',
-            href: PATH_UI_HOME,
+            href: ROUTE_DEFAULT,
             variant: 'secondary',
           },
           {

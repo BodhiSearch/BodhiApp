@@ -57,9 +57,9 @@ describe('AppNavigation', () => {
 
   const testNavigationItems: NavigationItem[] = [
     {
-      title: 'Home',
-      href: '/ui/home/',
-      description: 'Test Home',
+      title: 'Root',
+      href: '/ui/root/',
+      description: 'Test Root',
       icon: Home,
     },
     {
@@ -152,7 +152,7 @@ describe('AppNavigation', () => {
     const menuContent = screen.getByTestId('navigation-menu-content');
 
     // Verify all parent items are shown
-    expect(within(menuContent).getByText('Home')).toBeInTheDocument();
+    expect(within(menuContent).getByText('Root')).toBeInTheDocument();
     expect(within(menuContent).getByText('Settings')).toBeInTheDocument();
   });
 

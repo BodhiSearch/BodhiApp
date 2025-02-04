@@ -16,9 +16,9 @@ import { useNavigation, NavigationProvider } from '@/hooks/use-navigation';
 describe('useNavigation', () => {
   const testNavigationItems: NavigationItem[] = [
     {
-      title: 'Home',
-      href: '/ui/home/',
-      description: 'Test Home',
+      title: 'Root',
+      href: '/ui/root/',
+      description: 'Test Root',
       icon: Home,
     },
     {
@@ -56,14 +56,14 @@ describe('useNavigation', () => {
   });
 
   it('should return root level item when path matches', () => {
-    mockUsePathname.mockReturnValue('/ui/home/');
+    mockUsePathname.mockReturnValue('/ui/root/');
 
     const { result } = renderHook(() => useNavigation(), { wrapper: renderWithProvider });
 
     expect(result.current.currentItem).toEqual({
       item: expect.objectContaining({
-        title: 'Home',
-        href: '/ui/home/',
+        title: 'Root',
+        href: '/ui/root/',
       }),
       parent: null,
     });
@@ -118,8 +118,8 @@ describe('useNavigation', () => {
 
     expect(result.current.currentItem).toEqual({
       item: expect.objectContaining({
-        title: 'Home',
-        href: '/ui/home/',
+        title: 'Root',
+        href: '/ui/root/',
       }),
       parent: null,
     });

@@ -280,6 +280,10 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     format!("{}://{}:{}", self.scheme(), self.host(), self.port())
   }
 
+  fn frontend_default_path(&self) -> String {
+    "/ui/chat".to_string()
+  }
+
   fn app_db_path(&self) -> PathBuf {
     self.bodhi_home().join(PROD_DB)
   }

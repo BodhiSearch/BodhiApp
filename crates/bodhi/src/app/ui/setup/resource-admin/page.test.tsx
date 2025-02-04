@@ -16,6 +16,7 @@ import {
 } from 'vitest';
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
+import { ROUTE_DEFAULT } from '@/lib/constants';
 
 // Mock the router
 const pushMock = vi.fn();
@@ -79,7 +80,7 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  test.skip('redirects to /ui/home when status is ready', async () => {
+  test.skip(`redirects to ${ROUTE_DEFAULT} when status is ready`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
@@ -89,7 +90,7 @@ describe('ResourceAdminPage', () => {
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/home');
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
     });
   });
 });

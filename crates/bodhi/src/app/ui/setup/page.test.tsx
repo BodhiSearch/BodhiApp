@@ -16,6 +16,7 @@ import {
 } from 'vitest';
 import Setup from '@/app/ui/setup/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP } from '@/hooks/useQuery';
+import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
 
 // Mock the router
 const pushMock = vi.fn();
@@ -68,7 +69,7 @@ describe('Setup Page', () => {
     });
   });
 
-  test.skip('redirects to /ui/home when status is ready', async () => {
+  test.skip(`redirects to ${ROUTE_DEFAULT} when status is ready`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
@@ -78,11 +79,11 @@ describe('Setup Page', () => {
     render(<Setup />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/home');
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
     });
   });
 
-  test.skip('redirects to /ui/setup/resource-admin when status is resource-admin', async () => {
+  test.skip(`redirects to ${ROUTE_RESOURCE_ADMIN} when status is resource-admin`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -92,11 +93,11 @@ describe('Setup Page', () => {
     render(<Setup />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup/resource-admin');
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_RESOURCE_ADMIN);
     });
   });
 
-  test.skip('sets up authenticated instance and redirects to /ui/home', async () => {
+  test.skip(`sets up authenticated instance and redirects to ${ROUTE_DEFAULT}`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
@@ -114,11 +115,11 @@ describe('Setup Page', () => {
     fireEvent.click(authButton);
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/home');
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
     });
   });
 
-  test.skip('sets up authenticated instance and redirects to /ui/setup/resource-admin', async () => {
+  test.skip(`sets up authenticated instance and redirects to ${ROUTE_RESOURCE_ADMIN}`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
@@ -136,7 +137,7 @@ describe('Setup Page', () => {
     fireEvent.click(unauthButton);
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup/resource-admin');
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_RESOURCE_ADMIN);
     });
   });
 

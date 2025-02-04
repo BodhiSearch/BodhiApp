@@ -16,6 +16,7 @@ import { setupServer } from 'msw/node';
 import UiPage from '@/app/ui/page';
 import { createWrapper } from '@/tests/wrapper';
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
+import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -59,7 +60,7 @@ describe('UiPage', () => {
     });
   });
 
-  it('redirects to /ui/home when status is ready', async () => {
+  it(`redirects to ${ROUTE_DEFAULT} when status is ready`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
@@ -69,11 +70,11 @@ describe('UiPage', () => {
     render(<UiPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/home');
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
     });
   });
 
-  it('redirects to /ui/setup/resource-admin when status is resource-admin', async () => {
+  it(`redirects to ${ROUTE_RESOURCE_ADMIN} when status is resource-admin`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -83,7 +84,7 @@ describe('UiPage', () => {
     render(<UiPage />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('/ui/setup/resource-admin');
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_RESOURCE_ADMIN);
     });
   });
 });

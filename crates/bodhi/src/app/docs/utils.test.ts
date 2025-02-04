@@ -17,26 +17,6 @@ const EMPTY_TEST_DOCS_DIR = path.join(
   'empty-test-docs'
 );
 
-// Mock Configuration
-const mockOrderMap = {
-  // Group orders
-  index: -1,  // from root _meta.json
-  nested: 100, // from nested/_meta.json
-
-  // Root level docs
-  'root-doc': 10,
-  'another-doc': 20,
-
-  // Nested docs
-  'nested/nested-doc': 110,
-  'nested/deep/deep-nested': 160,
-
-  // Mock test paths
-  'some-path': 100,
-  'no-frontmatter': 101,
-  'non-existent-file': 102,
-};
-
 describe('Documentation Utils', () => {
   const originalEnv = process.env.DOCS_DIR;
 
@@ -137,13 +117,20 @@ describe('Documentation Utils', () => {
       it('should format title if no frontmatter title exists', () => {
         // Create a temporary test file
         const testFilePath = path.join(TEST_DOCS_DIR, 'no-title.md');
-        fs.writeFileSync(testFilePath, `---
+        fs.writeFileSync(
+          testFilePath,
+          `---
 description: "Some description"
 ---
-# Content`);
+# Content`
+        );
 
         try {
-          const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'no-title.md');
+          const fullPath = path.join(
+            process.cwd(),
+            TEST_DOCS_DIR,
+            'no-title.md'
+          );
           const details = getDocDetails(fullPath);
 
           expect(details).toEqual({
@@ -164,7 +151,11 @@ description: "Some description"
         fs.writeFileSync(testFilePath, '# Just content without frontmatter');
 
         try {
-          const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'no-frontmatter.md');
+          const fullPath = path.join(
+            process.cwd(),
+            TEST_DOCS_DIR,
+            'no-frontmatter.md'
+          );
           const details = getDocDetails(fullPath);
 
           expect(details).toEqual({
