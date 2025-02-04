@@ -1,8 +1,8 @@
 'use client';
 
+import type { SidebarNavProps } from '@/app/docs/types';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { memo } from 'react';
 
 interface NavItem {
@@ -11,6 +11,7 @@ interface NavItem {
   disabled?: boolean;
   external?: boolean;
   label?: string;
+  selected?: boolean;
   children?: NavItem[];
 }
 
@@ -42,27 +43,18 @@ interface NavItemProps {
 }
 
 function NavItem({ item }: NavItemProps) {
-  const pathname = usePathname();
-  const isActive = item.href ? pathname === item.href : false;
-  const isParentOfActive = item.children?.some(
-    (child) => child.href === pathname
-  );
-
   if (item.children) {
-    return (
-      <NavGroup item={item} isParentOfActive={isParentOfActive ?? false} />
-    );
+    return <NavGroup item={item} />;
   }
 
-  return <NavLink item={item} isActive={isActive} />;
+  return <NavLink item={item} />;
 }
 
 interface NavGroupProps {
   item: NavItem;
-  isParentOfActive: boolean;
 }
 
-function NavGroup({ item, isParentOfActive }: NavGroupProps) {
+function NavGroup({ item }: NavGroupProps) {
   return (
     <div
       className="grid gap-1 w-full"
@@ -77,9 +69,9 @@ function NavGroup({ item, isParentOfActive }: NavGroupProps) {
           'transition-colors duration-200',
           'text-gray-900 dark:text-gray-100',
           'hover:bg-accent/25 dark:hover:bg-accent/10',
-          isParentOfActive && 'bg-accent/50 dark:bg-accent/25'
+          item.selected && 'bg-accent/50 dark:bg-accent/25'
         )}
-        aria-expanded={isParentOfActive}
+        aria-current={item.selected ? 'page' : undefined}
         data-testid={`nav-group-title-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
       >
         {item.title}
@@ -113,10 +105,9 @@ function NavGroupChildren({ item }: NavGroupChildrenProps) {
 
 interface NavLinkProps {
   item: NavItem;
-  isActive: boolean;
 }
 
-function NavLink({ item, isActive }: NavLinkProps) {
+function NavLink({ item }: NavLinkProps) {
   return (
     <Link
       href={item.href || '#'}
@@ -126,10 +117,10 @@ function NavLink({ item, isActive }: NavLinkProps) {
         'text-sm font-medium',
         'transition-colors duration-200',
         'hover:bg-accent hover:text-accent-foreground',
-        isActive && 'bg-accent text-accent-foreground',
+        item.selected && 'bg-accent text-accent-foreground',
         item.disabled && 'pointer-events-none opacity-60'
       )}
-      aria-current={isActive ? 'page' : undefined}
+      aria-current={item.selected ? 'page' : undefined}
       aria-disabled={item.disabled}
       target={item.external ? '_blank' : undefined}
       rel={item.external ? 'noreferrer' : undefined}
@@ -171,5 +162,13 @@ function NavLabel({ label }: NavLabelProps) {
     >
       {label}
     </span>
+  );
+}
+
+export function SidebarNav({ className, items, ...props }: SidebarNavProps) {
+  return (
+    <div className={cn('space-y-4', className)} {...props}>
+      <Nav items={items} />
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-import { DocDetails, DocGroup } from '@/app/docs/utils';
+import { DocDetails, DocGroup } from '@/app/docs/types';
 
 export const createMockDoc = (overrides?: Partial<DocDetails>) => ({
   title: 'Test Doc',
