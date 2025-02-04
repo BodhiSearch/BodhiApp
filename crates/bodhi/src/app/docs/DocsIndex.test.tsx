@@ -39,11 +39,11 @@ describe('DocsIndex', () => {
   ];
 
   it('renders complete documentation index with default props', () => {
-    render(<DocsIndex groups={mockGroups} />);
+    render(<DocsIndex groups={mockGroups} title="Custom Title" description="Custom description" />);
 
     // Check main title and description
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Documentation');
-    expect(screen.getByText(/Welcome to our documentation/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Custom Title');
+    expect(screen.getByText('Custom description')).toBeInTheDocument();
 
     // Check all groups and their content
     expect(screen.getByRole('heading', { name: 'Getting Started' })).toBeInTheDocument();
@@ -69,17 +69,14 @@ describe('DocsIndex', () => {
     expect(screen.getByText('Advanced configuration options')).toBeInTheDocument();
   });
 
-  it('renders with custom title and description', () => {
+  it('does not render with title and description if not provided', () => {
     render(
       <DocsIndex
         groups={mockGroups}
-        title="Custom Title"
-        description="Custom description"
       />
     );
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Custom Title');
-    expect(screen.getByText('Custom description')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
   });
 
   it('handles missing description and empty item descriptions', () => {
@@ -102,12 +99,9 @@ describe('DocsIndex', () => {
     render(
       <DocsIndex
         groups={groupsWithoutDesc}
-        description=""
       />
     );
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Documentation');
-    expect(screen.queryByText(/Welcome to our documentation/)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Test Doc' })).toBeInTheDocument();
     expect(screen.queryByText(/description/i)).not.toBeInTheDocument();
   });
@@ -115,7 +109,6 @@ describe('DocsIndex', () => {
   it('handles empty groups array', () => {
     render(<DocsIndex groups={[]} />);
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Documentation');
-    expect(screen.queryByRole('heading', { level: 2 })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
   });
 });
