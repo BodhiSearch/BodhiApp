@@ -1,16 +1,16 @@
 ---
 title: "Chat UI"
-description: "A comprehensive guide to using Bodhi's Chat Interface"
+description: "A comprehensive guide to using Bodhi App's Chat Interface"
 order: 201
 ---
 
 # Chat UI
 
-Welcome to Bodhi's Chat UI! This guide is designed to help you get started with our conversational AI interface. Whether you are a first-time user or someone looking to explore advanced configuration options, you will find all the information you need in this guide.
+Welcome to Bodhi App's Chat UI! This guide is designed to help you get started with our conversational AI interface. Whether you are a first-time user or someone looking to explore advanced configuration options, you will find all the information you need in this guide.
 
 ## Overview
 
-Bodhi's Chat UI features a clean, three-panel design that keeps everything you need at your fingertips. The interface is divided into:
+Bodhi App's Chat UI features a clean, three-panel design that keeps everything you need at your fingertips. The interface is divided into:
 
 - **Chat History Panel (Left):** View and manage your past conversations.
 - **Main Chat Panel (Center):** Interact directly with the AI assistant.
@@ -99,6 +99,6 @@ You have two options to start a new conversation:
 
 ## Final Thoughts
 
-Bodhi's Chat UI is thoughtfully designed to combine ease of use with powerful functionality. Enjoy interacting with the AI assistant and experiment with the settings to tailor the experience to your needs. Always remember that your configurations and history are stored locally, so manage your data wisely.
+Bodhi App's Chat UI is thoughtfully designed to combine ease of use with powerful functionality. Enjoy interacting with the AI assistant and experiment with the settings to tailor the experience to your needs. Always remember that your configurations and history are stored locally, so manage your data wisely.
 
 Happy chatting! 

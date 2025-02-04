@@ -24,11 +24,11 @@ Bodhi App is a cross‑platform LLM inference tool that seamlessly integrates wi
 - **Built-in Chat UI**  
   Say goodbye to separate installations—Bodhi App includes a ready‑to‑use Chat UI featuring markdown support (with code blocks and copy functionality), multi‑conversation management, customizable system prompts, and real‑time feedback. For those who prefer an external Chat frontend, our OpenAI‑compatible API endpoints make integration effortless.
 
-- **Efficient Model Files Management**  
-  Manage your AI model files seamlessly with the HuggingFace ecosystem. Models are downloaded into your local HuggingFace home folder, and any compatible GGUF models already present can be used for inference. This design saves disk space and bandwidth by reusing your existing resources.
-
 - **Model Alias**  
   Easily create and save your inference configurations by specifying your preferred request parameters and llama‑server settings—such as temperature and context size. Switch between configurations seamlessly without any restarts.
+
+- **Model Files Management**  
+  Manage your AI model files seamlessly with the HuggingFace ecosystem. Models are downloaded into your local HuggingFace home folder, and any compatible GGUF models already present can be used for inference. This design saves disk space and bandwidth by reusing your existing resources.
 
 - **Robust API Access & Developer Tools**  
   Benefit from comprehensive API documentation and developer tools. Whether you are generating API tokens or integrating Bodhi App into external applications, every technical detail is supported.
@@ -37,7 +37,7 @@ Bodhi App is a cross‑platform LLM inference tool that seamlessly integrates wi
   Designed for desktop, mobile, and web, Bodhi App is continuously evolving—with upcoming features such as expanded AI API integrations and enhanced authorization flows.
 
 - **Guided Onboarding & Ongoing Support**  
-  Kickstart your journey with [Installing](/docs/getting-started/) Bodhi App. For more technical details, explore our [Developer Documentation](/docs/developer-docs/) and discover additional features on our [Features](/docs/features/) page.
+  Kickstart your journey with [Installing](/docs/install/) Bodhi App. For more technical details, explore our [API References](/docs/features/openapi-docs/) and discover additional features on our [Features](/docs/features/) page.
 
 ## What's in Store
 
@@ -52,7 +52,7 @@ Bodhi App is an evolving platform, and our roadmap includes:
   Begin your journey by [Installing](/docs/install/) Bodhi App.
 
 - **For Developers:**  
-  Dive into technical details in our [Developer Documentation](/docs/developer-docs/).
+  Dive into technical details in our [API References](/docs/features/openapi-docs/).
 
 - **Explore?**  
   Find out more in our [Features](/docs/features/).

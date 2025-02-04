@@ -132,6 +132,30 @@ We hope the above form is self-explanatory.
 
 ## Best Practices and Reference Configurations
 
-Bodhi's Model Alias system is designed to simplify advanced model configuration. By leveraging aliases, you can ensure that each chat session uses a clear, consistent setup tailored to your requirements.
+Bodhi App's Model Alias system is designed to simplify advanced model configuration. By leveraging aliases, you can ensure that each chat session uses a clear, consistent setup tailored to your requirements.
+
+## Performance Considerations
+
+When configuring model aliases, consider these key performance factors:
+
+### Memory Usage vs Thread Count
+- Higher thread counts (`n_threads`) can improve inference speed
+- But each thread requires additional memory
+- Recommended: Start with `n_threads` = number of CPU cores / 2
+
+### Context Size Impact
+- Larger context sizes (`n_ctx`) allow for longer conversations
+- But increase memory usage and initial load time
+- Recommended: Start with 2048 tokens and adjust based on needs
+
+### Quantization Effects
+- Lower bit models (Q4_K_M) use less memory but may reduce quality
+- Higher bit models (Q8_0) provide better quality but use more memory
+- Recommended: Test different quantization levels for your use case
+
+### Optimization Tips
+- Set `n_parallel` based on your expected concurrent usage
+- Use `n_keep` to maintain important context while reducing memory usage
+- Consider using `stop` sequences to prevent unnecessary token generation
 
 Happy configuring!

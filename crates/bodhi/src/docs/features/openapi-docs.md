@@ -33,3 +33,25 @@ Our backend automatically generates the OpenAPI specification. As the codebase e
 The integrated API documentation feature of Bodhi App makes it easy for you to explore and test our APIs without the need for separate reference materials. Whether you are troubleshooting, integrating with other systems, or simply learning about our services, the Swagger UI provides a clear and interactive guide to all available endpoints.
 
 Happy integrating!
+
+## Quick Start Examples
+
+### Chat Completion API
+```bash
+curl -X POST http://localhost:1135/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -d '{
+    "model": "your-model-alias",
+    "messages": [
+      {"role": "system", "content": "You are a helpful assistant."},
+      {"role": "user", "content": "Hello!"}
+    ]
+  }'
+```
+
+### Model List API
+```bash
+curl http://localhost:1135/v1/models \
+  -H "Authorization: Bearer YOUR_API_TOKEN"
+```

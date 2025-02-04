@@ -66,7 +66,7 @@ export const defaultNavigationItems: NavigationItem[] = [
         icon: Files,
       },
       {
-        title: 'Download Models',
+        title: 'Model Downloads',
         href: '/ui/pull/',
         description: 'Download new models',
         icon: Download,

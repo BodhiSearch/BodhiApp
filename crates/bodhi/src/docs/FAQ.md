@@ -39,6 +39,17 @@ Go to the **Download Models** section, provide the Huggingface repository name a
 ### What should I do if a model download fails?
 Verify your network connection and review any error messages on the Downloads page. For further guidance, see the [Troubleshooting](/docs/troubleshooting/) page.
 
+### How do I update Bodhi App?
+For macOS users:
+1. Download the latest `.dmg` file from our releases page
+2. Install the new version - it will automatically replace the existing installation
+3. Your settings and configurations will be preserved
+
+### What should I do if I encounter a model loading error?
+1. Review the logs at `$BODHI_HOME/logs` for specific error messages
+2. Try to resolve based on logs or
+3. Restart the application
+
 ## API & Developer
 
 ### How do I create an API token?
