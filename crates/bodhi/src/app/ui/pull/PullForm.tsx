@@ -77,7 +77,7 @@ export function PullForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <Card>
           <CardHeader>
-            <CardTitle>Pull Model</CardTitle>
+            <CardTitle>Download Model</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
