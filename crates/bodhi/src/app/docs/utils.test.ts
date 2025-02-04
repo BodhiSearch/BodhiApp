@@ -20,28 +20,22 @@ const EMPTY_TEST_DOCS_DIR = path.join(
 // Mock Configuration
 const mockOrderMap = {
   // Group orders
-  index: 0,
-  nested: 1,
+  index: -1,  // from root _meta.json
+  nested: 100, // from nested/_meta.json
 
   // Root level docs
-  'root-doc': 1,
-  'another-doc': 2,
+  'root-doc': 10,
+  'another-doc': 20,
 
   // Nested docs
-  'nested/nested-doc': 10,
-  'nested/deep/deep-nested': 20,
+  'nested/nested-doc': 110,
+  'nested/deep/deep-nested': 160,
 
   // Mock test paths
   'some-path': 100,
   'no-frontmatter': 101,
   'non-existent-file': 102,
 };
-
-vi.mock('@/app/docs/config', () => ({
-  getPathOrder: vi.fn(
-    (path: string) => mockOrderMap[path as keyof typeof mockOrderMap] ?? 999
-  ),
-}));
 
 describe('Documentation Utils', () => {
   const originalEnv = process.env.DOCS_DIR;
@@ -101,7 +95,7 @@ describe('Documentation Utils', () => {
           title: 'Root Document',
           description: 'A test root level document',
           slug: 'root-doc',
-          order: 1,
+          order: 10,
         });
       });
 
@@ -118,7 +112,7 @@ describe('Documentation Utils', () => {
           title: 'Nested Document',
           description: 'A nested test document',
           slug: 'nested/nested-doc',
-          order: 10,
+          order: 110,
         });
       });
 
@@ -136,51 +130,53 @@ describe('Documentation Utils', () => {
           title: 'Deep Nested',
           description: 'A deeply nested test document',
           slug: 'nested/deep/deep-nested',
-          order: 20,
+          order: 160,
         });
       });
 
-      it('should format title if no frontmatter title exists', async () => {
-        const mockFs = vi.spyOn(fs, 'readFileSync');
-        mockFs.mockReturnValueOnce(`---
+      it('should format title if no frontmatter title exists', () => {
+        // Create a temporary test file
+        const testFilePath = path.join(TEST_DOCS_DIR, 'no-title.md');
+        fs.writeFileSync(testFilePath, `---
 description: "Some description"
 ---
 # Content`);
 
-        const fullPath = path.join(
-          process.cwd(),
-          TEST_DOCS_DIR,
-          'some-path.md'
-        );
-        const details = getDocDetails(fullPath);
+        try {
+          const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'no-title.md');
+          const details = getDocDetails(fullPath);
 
-        expect(details).toEqual({
-          title: 'Some Path',
-          description: 'Some description',
-          slug: 'some-path',
-          order: 100,
-        });
-        mockFs.mockRestore();
+          expect(details).toEqual({
+            title: 'No Title',
+            description: 'Some description',
+            slug: 'no-title',
+            order: 999,
+          });
+        } finally {
+          // Clean up - remove the temporary file
+          fs.unlinkSync(path.join(TEST_DOCS_DIR, 'no-title.md'));
+        }
       });
 
-      it('should handle missing frontmatter', async () => {
-        const mockFs = vi.spyOn(fs, 'readFileSync');
-        mockFs.mockReturnValueOnce('# Just content without frontmatter');
+      it('should handle missing frontmatter', () => {
+        // Create a temporary test file
+        const testFilePath = path.join(TEST_DOCS_DIR, 'no-frontmatter.md');
+        fs.writeFileSync(testFilePath, '# Just content without frontmatter');
 
-        const fullPath = path.join(
-          process.cwd(),
-          TEST_DOCS_DIR,
-          'no-frontmatter.md'
-        );
-        const details = getDocDetails(fullPath);
+        try {
+          const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'no-frontmatter.md');
+          const details = getDocDetails(fullPath);
 
-        expect(details).toEqual({
-          title: 'No Frontmatter',
-          description: '',
-          slug: 'no-frontmatter',
-          order: 101,
-        });
-        mockFs.mockRestore();
+          expect(details).toEqual({
+            title: 'No Frontmatter',
+            description: '',
+            slug: 'no-frontmatter',
+            order: 999,
+          });
+        } finally {
+          // Clean up - remove the temporary file
+          fs.unlinkSync(path.join(TEST_DOCS_DIR, 'no-frontmatter.md'));
+        }
       });
     });
 
@@ -198,7 +194,7 @@ description: "Some description"
           title: 'Non Existent File',
           description: '',
           slug: 'non-existent-file',
-          order: 102,
+          order: 999,
         });
 
         expect(consoleSpy).toHaveBeenCalledWith(
@@ -224,16 +220,16 @@ description: "Some description"
                 title: 'Root Document',
                 description: 'A test root level document',
                 slug: 'root-doc',
-                order: 1,
+                order: 10,
               },
               {
                 title: 'Another Document',
                 description: 'Another test document',
                 slug: 'another-doc',
-                order: 2,
+                order: 20,
               },
             ],
-            order: 0,
+            order: -1,
             key: 'index',
           },
           {
@@ -243,16 +239,16 @@ description: "Some description"
                 title: 'Nested Document',
                 description: 'A nested test document',
                 slug: 'nested/nested-doc',
-                order: 10,
+                order: 110,
               },
               {
                 title: 'Deep Nested',
                 description: 'A deeply nested test document',
                 slug: 'nested/deep/deep-nested',
-                order: 20,
+                order: 160,
               },
             ],
-            order: 1,
+            order: 100,
             key: 'nested',
           },
         ]);
@@ -269,16 +265,16 @@ description: "Some description"
                 title: 'Nested Document',
                 description: 'A nested test document',
                 slug: 'nested/nested-doc',
-                order: 10,
+                order: 110,
               },
               {
                 title: 'Deep Nested',
                 description: 'A deeply nested test document',
                 slug: 'nested/deep/deep-nested',
-                order: 20,
+                order: 160,
               },
             ],
-            order: 1,
+            order: 100,
             key: 'nested',
           },
         ]);
@@ -295,10 +291,10 @@ description: "Some description"
                 title: 'Deep Nested',
                 description: 'A deeply nested test document',
                 slug: 'nested/deep/deep-nested',
-                order: 20,
+                order: 160,
               },
             ],
-            order: 1,
+            order: 100,
             key: 'nested',
           },
         ]);
