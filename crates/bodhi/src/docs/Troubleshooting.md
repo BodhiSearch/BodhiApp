@@ -60,4 +60,50 @@ Bodhi App has a robust error handling mechanism that captures issues and origin 
 - **Debug Mode:**  
   If issues persist, launch Bodhi App from the command line in debug mode. This will output error messages to STDOUT, offering immediate insight into what might be going wrong.
 
-If you continue to experience issues after following these steps, please reach out via our Discord channel or submit an issue on Github. 
+If you continue to experience issues after following these steps, please reach out via our Discord channel or submit an issue on Github.
+
+## Issue Resolution Flowchart
+
+Follow this decision tree to diagnose common issues:
+
+1. **Application Launch**
+   - Is the app starting?
+     - No → Check:
+       - System requirements
+       - Log files in `$BODHI_HOME/logs`
+       - Process conflicts on port 1135
+     - Yes → Proceed to step 2
+
+2. **UI Access**
+   - Can you access the web interface?
+     - No → Check:
+       - Network connectivity
+       - Firewall settings
+       - Browser console for errors
+     - Yes → Proceed to step 3
+
+3. **Model Loading**
+   - Are models loading correctly?
+     - No → Verify:
+       - Model file exists
+       - Model alias configuration
+       - Available system memory
+     - Yes → Proceed to step 4
+
+4. **API Access**
+   - Are API calls working?
+     - No → Check:
+       - API token validity
+       - Authentication mode
+       - Request format
+     - Yes → Proceed to step 5
+
+5. **Performance Issues**
+   - Is performance satisfactory?
+     - No → Review:
+       - Model configuration
+       - System resources
+       - Network latency
+     - Yes → System is working as expected
+
+Each step includes detailed logs in `$BODHI_HOME/logs` to help identify specific issues. 
