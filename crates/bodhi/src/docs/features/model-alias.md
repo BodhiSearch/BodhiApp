@@ -1,6 +1,7 @@
 ---
-title: "Model Alias"
-description: "Learn how to manage and configure models in Bodhi App"
+title: "Model Aliases"
+description: "Configure model aliases"
+order: 210
 ---
 
 # Model Management

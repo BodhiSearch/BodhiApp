@@ -1,6 +1,7 @@
 ---
-title: "Chat Interface"
-description: "Learn how to use Bodhi App's integrated chat interface for LLM interactions"
+title: "Chat UI"
+description: "Chat UI features and customization"
+order: 201
 ---
 
 # Chat Interface

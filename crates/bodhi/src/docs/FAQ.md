@@ -1,6 +1,7 @@
 ---
-title: "Frequently Asked Questions"
-description: "Common questions and answers about Bodhi App"
+title: "FAQ"
+description: "Frequently Asked Questions"
+order: 500
 ---
 
 # FAQ

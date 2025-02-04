@@ -4,7 +4,7 @@ import { SidebarNav } from '@/app/docs/nav';
 import type { NavigationProps } from '@/app/docs/types';
 import { usePathname } from 'next/navigation';
 
-const DOCS_BASE_PATH = '/docs';
+export const DOCS_BASE_PATH = '/docs';
 
 export function Navigation({ items }: NavigationProps) {
   const pathname = usePathname();

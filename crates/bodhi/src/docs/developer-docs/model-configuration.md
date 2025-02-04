@@ -1,6 +1,7 @@
 ---
 title: "Model Configuration"
-description: "Configure models in Bodhi App"
+description: "Configure models"
+order: 402
 ---
 
 # Model Configuration

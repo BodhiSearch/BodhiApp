@@ -1,7 +1,8 @@
 ---
 title: "Root Document"
 description: "A test root level document"
+order: 10
 ---
 
-# Root Document
+# Root Doc
 Test content 

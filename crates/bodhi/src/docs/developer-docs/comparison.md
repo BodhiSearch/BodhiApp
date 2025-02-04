@@ -1,6 +1,7 @@
 ---
-title: "Bodhi App vs Ollama"
-description: "Feature comparison between Bodhi App and Ollama"
+title: "Comparison"
+description: "Compare with other solutions"
+order: 404
 ---
 
 # Comparison: Bodhi App vs. Ollama

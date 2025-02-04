@@ -1,4 +1,3 @@
-import { PROSE_CLASSES } from '@/app/docs/constants';
 import { createMockDoc, createMockGroup, mockMarkdownContent } from '@/app/docs/test-utils';
 import { getAllDocPaths, getDocsForPath } from '@/app/docs/utils';
 import { act, render, screen } from '@testing-library/react';
@@ -173,7 +172,7 @@ describe('DocsSlugPage', () => {
 
       // Check the rendered content
       const article = screen.getByRole('article');
-      expect(article).toHaveClass(PROSE_CLASSES.root);
+      expect(article).toHaveClass('max-w-none prose prose-slate dark:prose-invert');
 
       // Check the heading content
       const heading = screen.getByRole('heading', { level: 1 });

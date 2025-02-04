@@ -38,7 +38,9 @@ const mockOrderMap = {
 };
 
 vi.mock('@/app/docs/config', () => ({
-  getPathOrder: vi.fn((path: string) => mockOrderMap[path] ?? 999),
+  getPathOrder: vi.fn(
+    (path: string) => mockOrderMap[path as keyof typeof mockOrderMap] ?? 999
+  ),
 }));
 
 describe('Documentation Utils', () => {

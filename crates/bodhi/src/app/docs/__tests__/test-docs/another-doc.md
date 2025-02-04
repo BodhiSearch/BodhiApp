@@ -1,7 +1,8 @@
 ---
 title: "Another Document"
 description: "Another test document"
+order: 20
 ---
 
-# Another Document
-Test content 
+# Another Doc
+Test content

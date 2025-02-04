@@ -1,6 +1,7 @@
 ---
 title: "API Reference"
-description: "Complete API reference for Bodhi App"
+description: "API documentation"
+order: 403
 ---
 
 # API Reference

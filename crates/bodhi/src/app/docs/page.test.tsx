@@ -1,4 +1,3 @@
-import { DOCS_CONFIG } from '@/app/docs/constants';
 import { createMockGroup } from '@/app/docs/test-utils';
 import * as utils from '@/app/docs/utils';
 import { render, screen } from '@testing-library/react';
@@ -46,8 +45,8 @@ describe('DocsPage', () => {
     expect(utils.getDocsForPath).toHaveBeenCalledWith(null);
 
     // Verify title and description
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(DOCS_CONFIG.defaultTitle);
-    expect(screen.getByText(DOCS_CONFIG.defaultDescription)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Documentation');
+    expect(screen.getByText('Welcome to our documentation. Choose a topic below to get started.')).toBeInTheDocument();
 
     // Verify groups and items
     expect(screen.getByRole('heading', { name: 'Getting Started' })).toBeInTheDocument();
