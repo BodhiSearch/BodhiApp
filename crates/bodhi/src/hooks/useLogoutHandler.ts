@@ -1,6 +1,7 @@
-import { useRouter } from 'next/navigation';
-import { useLogout } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
+import { useLogout } from '@/hooks/useQuery';
+import { ROUTE_DEFAULT } from '@/lib/constants';
+import { useRouter } from 'next/navigation';
 
 export function useLogoutHandler() {
   const router = useRouter();
@@ -8,7 +9,7 @@ export function useLogoutHandler() {
 
   const { mutate: logout, isLoading } = useLogout({
     onSuccess: (response) => {
-      const redirectUrl = response.headers['location'] || '/ui/home';
+      const redirectUrl = response.headers['location'] || ROUTE_DEFAULT;
       router.push(redirectUrl);
     },
     onError: (error) => {

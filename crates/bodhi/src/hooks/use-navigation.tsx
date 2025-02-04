@@ -8,14 +8,13 @@ import {
   FileJson,
   FilePlus2,
   Files,
-  FlaskRound,
-  Home,
   Key,
   MessageSquare,
   Settings,
   Settings2,
   Users,
   BookOpen,
+  BookText,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import {
@@ -29,10 +28,10 @@ import {
 // Rename and export the default navigation items
 export const defaultNavigationItems: NavigationItem[] = [
   {
-    title: 'Home',
-    href: '/ui/home/',
-    description: 'Dashboard and overview',
-    icon: Home,
+    title: 'Chat',
+    href: '/ui/chat/',
+    description: 'AI Chat Interface',
+    icon: MessageSquare,
   },
   {
     title: 'Models',
@@ -75,31 +74,6 @@ export const defaultNavigationItems: NavigationItem[] = [
     ],
   },
   {
-    title: 'Playground',
-    icon: FlaskRound,
-    items: [
-      {
-        title: 'Chat',
-        href: '/ui/chat/',
-        description: 'AI Chat Interface',
-        icon: MessageSquare,
-      },
-      {
-        title: 'User Documentation',
-        href: '/docs/',
-        description: 'User guides and documentation',
-        icon: BookOpen,
-      },
-      {
-        title: 'OpenAPI Docs',
-        href: '/swagger-ui',
-        description: 'API Documentation',
-        icon: FileJson,
-        target: '_blank',
-      },
-    ],
-  },
-  {
     title: 'Settings',
     icon: Settings,
     items: [
@@ -120,6 +94,25 @@ export const defaultNavigationItems: NavigationItem[] = [
         href: '/ui/users/',
         description: 'Manage users and access control',
         icon: Users,
+      },
+    ],
+  },
+  {
+    title: 'Documentation',
+    icon: BookText,
+    items: [
+      {
+        title: 'App Guide',
+        href: '/docs/',
+        description: 'User guides and documentation',
+        icon: BookOpen,
+      },
+      {
+        title: 'OpenAPI Docs',
+        href: '/swagger-ui',
+        description: 'API Documentation',
+        icon: FileJson,
+        target: '_blank',
       },
     ],
   },
@@ -157,11 +150,11 @@ export function NavigationProvider({
   const currentItem = useMemo(() => {
     // First check top-level items
     if (pathname?.startsWith('/docs/')) {
-      const playgroundItem = items.find((item) => item.title === 'Playground');
-      const docsItem = playgroundItem?.items?.find(
+      const docsItem = items.find((item) => item.title === 'Documentation');
+      const docsSubItem = docsItem?.items?.find(
         (item) => item.href === '/docs/'
       );
-      return { item: docsItem!, parent: playgroundItem! };
+      return { item: docsSubItem!, parent: docsItem! };
     }
     const topLevelItem = items.find((item) => item.href === pathname);
     if (topLevelItem) {
@@ -188,7 +181,7 @@ export function NavigationProvider({
       }
     }
 
-    // Default to Home if no match found
+    // Default to Chat if no match found
     return { item: items[0], parent: null };
   }, [pathname, items]);
 

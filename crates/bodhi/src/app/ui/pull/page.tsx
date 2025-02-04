@@ -82,8 +82,9 @@ function PullPageContent() {
   return (
     <div className="container mx-auto space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       <UserOnboarding storageKey="pull-banner-dismissed">
-        Welcome to Download Models! Here you can download model files from Huggingface to
-        your local storage, and monitor the status of your downloads.
+        Welcome to Download Models! Here you can download model files from
+        Huggingface to your local storage, and monitor the status of your
+        downloads.
       </UserOnboarding>
 
       <div>

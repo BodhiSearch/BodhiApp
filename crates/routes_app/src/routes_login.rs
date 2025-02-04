@@ -30,7 +30,11 @@ pub async fn login_handler(
   let setting_service = app_service.setting_service();
   match headers.get(KEY_RESOURCE_TOKEN) {
     Some(_) => {
-      let ui_home = format!("{}/ui/home", setting_service.frontend_url());
+      let ui_home = format!(
+        "{}{}",
+        setting_service.frontend_url(),
+        setting_service.frontend_default_path()
+      );
       Ok(
         Response::builder()
           .status(StatusCode::FOUND)
@@ -174,7 +178,7 @@ pub async fn login_callback_handler(
       setting_service.frontend_url()
     )
   } else {
-    format!("{}/ui/home", setting_service.frontend_url())
+    format!("{}/ui/chat", setting_service.frontend_url())
   };
   Ok(
     Response::builder()
@@ -442,7 +446,7 @@ mod tests {
       temp_bodhi_home,
       token,
       StatusCode::FOUND,
-      "http://frontend.localhost:3000/ui/home",
+      "http://frontend.localhost:3000/ui/chat",
     )
     .await
   }
@@ -616,7 +620,7 @@ mod tests {
     let resp = client.get(&format!("/login/callback?{}", query)).await;
     resp.assert_status(StatusCode::FOUND);
     assert_eq!(
-      "http://frontend.localhost:3000/ui/home",
+      "http://frontend.localhost:3000/ui/chat",
       resp.headers().get(LOCATION).unwrap(),
     );
     let session_id = resp.cookie("bodhiapp_session_id");
