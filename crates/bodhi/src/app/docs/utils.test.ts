@@ -1,17 +1,27 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import path from 'path';
-import { getAllDocPaths, getDocDetails, getDocsForPath } from '@/app/docs/utils';
+import {
+  getAllDocPaths,
+  getDocDetails,
+  getDocsForPath,
+} from '@/app/docs/utils';
 import fs from 'fs';
+import path from 'path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Constants
 const TEST_DOCS_DIR = path.join('src', 'app', 'docs', '__tests__', 'test-docs');
-const EMPTY_TEST_DOCS_DIR = path.join('src', 'app', 'docs', '__tests__', 'empty-test-docs');
+const EMPTY_TEST_DOCS_DIR = path.join(
+  'src',
+  'app',
+  'docs',
+  '__tests__',
+  'empty-test-docs'
+);
 
 // Mock Configuration
 const mockOrderMap = {
   // Group orders
-  'index': 0,
-  'nested': 1,
+  index: 0,
+  nested: 1,
 
   // Root level docs
   'root-doc': 1,
@@ -135,7 +145,11 @@ description: "Some description"
 ---
 # Content`);
 
-        const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'some-path.md');
+        const fullPath = path.join(
+          process.cwd(),
+          TEST_DOCS_DIR,
+          'some-path.md'
+        );
         const details = getDocDetails(fullPath);
 
         expect(details).toEqual({

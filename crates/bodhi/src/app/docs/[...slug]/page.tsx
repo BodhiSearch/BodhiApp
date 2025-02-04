@@ -1,5 +1,8 @@
+import { DocsIndex } from '@/app/docs/DocsIndex';
+import { getAllDocPaths, getDocsForPath } from '@/app/docs/utils';
 import fs from 'fs';
 import matter from 'gray-matter';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import path from 'path';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
@@ -10,8 +13,6 @@ import remarkGfm from 'remark-gfm';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
-import { getAllDocPaths, getDocsForPath } from '@/app/docs/utils';
-import Link from 'next/link';
 
 // Generate static paths for all markdown files
 export function generateStaticParams() {
@@ -51,12 +52,27 @@ async function markdownToHtml(content: string) {
   return result.toString();
 }
 
-// Page component
-export default async function DocPage({
-  params,
-}: {
-  params: { slug: string[] };
-}) {
+interface DocsSlugPageProps {
+  params: {
+    slug: string[];
+  };
+}
+
+export default async function DocsSlugPage({ params }: DocsSlugPageProps) {
+  const sortedGroups = getDocsForPath(params.slug);
+
+  // If there are nested docs, show the index
+  if (sortedGroups.length > 0) {
+    return (
+      <DocsIndex
+        groups={sortedGroups}
+        title={`${params.slug[params.slug.length - 1]} Documentation`}
+        description={`Documentation for ${params.slug.join('/')}`}
+      />
+    );
+  }
+
+  // Otherwise, render the document content
   const slug = params.slug.join('/');
   const filePath = path.join(process.cwd(), 'src/docs', `${slug}.md`);
   const dirPath = path.join(process.cwd(), 'src/docs', slug);
