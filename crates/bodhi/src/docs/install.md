@@ -38,14 +38,19 @@ During setup, choose between:
 - **Non‑Authenticated Mode:** The app is configured for open access. (Note: You cannot switch modes later due to security risks.)
 
 <p align="center">
-  <img src="/doc-images/choose-mode.jpg" alt="Choose the Authentication Mode">
+  <img 
+    src="/doc-images/choose-mode.jpg" alt="Choose the Authentication Mode"
+    class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%]"
 </p>
 
 ### 4. Downloading Models
 After configuring authentication, the app navigates to the Downloads Models page. Here, a selection of popular models—compatible with your system—is displayed. Choose the models you wish to download; these downloads will continue in the background.
 
 <p align="center">
-  <img src="/doc-images/download-models.jpg" alt="Download Models">
+<img 
+  src="/doc-images/download-models.jpg" alt="Download Models"
+  class="rounded-lg border-2 border-gray-200 dark:border-gray-700 shadow-lg hover:shadow-xl transition-shadow duration-300 max-w-[90%]"
+/>
 </p>
 
 ### 5. Completing Setup
