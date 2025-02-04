@@ -1,11 +1,11 @@
-import fs from 'fs';
-import path from 'path';
-import matter from 'gray-matter';
-import '@/app/docs/prism-theme.css';
-import { getAllDocPaths } from '@/app/docs/utils';
-import type { NavItem } from '@/app/docs/types';
 import { getPathOrder } from '@/app/docs/config';
-import { DocSidebar } from './DocSidebar';
+import { DocSidebar } from '@/app/docs/DocSidebar';
+import '@/app/docs/prism-theme.css';
+import type { NavItem } from '@/app/docs/types';
+import { getAllDocPaths } from '@/app/docs/utils';
+import fs from 'fs';
+import matter from 'gray-matter';
+import path from 'path';
 
 function getDocTitle(filePath: string): string {
   try {
