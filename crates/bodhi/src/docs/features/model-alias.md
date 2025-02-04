@@ -1,5 +1,5 @@
 ---
-title: "Model Management Overview"
+title: "Model Alias"
 description: "Learn how to manage and configure models in Bodhi App"
 ---
 

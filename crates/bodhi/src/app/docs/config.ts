@@ -2,15 +2,11 @@ export const docsConfig = {
   // Lower number = higher priority in ordering
   order: {
     intro: 0,
-    'getting-started': 100,
-    'getting-started/index': 101,
-    'getting-started/setup': 102,
-    'getting-started/intro': 103,
+    install: 101,
     features: 200,
     'features/chat-ui': 201,
-    'features/api-tokens': 202,
-    'model-management': 300,
-    'model-management/intro': 301,
+    'features/model-alias': 210,
+    'features/api-tokens': 220,
     'developer-docs': 400,
     'developer-docs/authentication': 401,
     'developer-docs/model-configuration': 402,
