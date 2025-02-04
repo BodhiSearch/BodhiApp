@@ -1,32 +1,53 @@
 'use client';
 
 import { AliasSelector } from '@/app/ui/chat/settings/AliasSelector';
-import { SystemPrompt } from '@/app/ui/chat/settings/SystemPrompt';
+import { SettingSlider } from '@/app/ui/chat/settings/SettingSlider';
 import { StopWords } from '@/app/ui/chat/settings/StopWords';
-import { useModels } from '@/hooks/useQuery';
-import { useChatSettings } from '@/hooks/use-chat-settings';
-import {
-  SidebarContent,
-  SidebarHeader,
-  Sidebar,
-  SidebarGroup,
-} from '@/components/ui/sidebar';
-import { Switch } from '@/components/ui/switch';
+import { SystemPrompt } from '@/app/ui/chat/settings/SystemPrompt';
+import { SETTINGS_TOOLTIPS } from '@/app/ui/chat/settings/tooltips';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { SettingSlider } from '@/app/ui/chat/settings/SettingSlider';
-import { Input } from '@/components/ui/input';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarHeader,
+} from '@/components/ui/sidebar';
+import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { useChatSettings } from '@/hooks/use-chat-settings';
+import { useModels } from '@/hooks/useQuery';
+import { HelpCircle } from 'lucide-react';
 
 interface SettingRowProps {
   label: string;
+  tooltip: string;
   htmlFor: string;
   children: React.ReactNode;
 }
 
-function SettingRow({ label, htmlFor, children }: SettingRowProps) {
+function SettingRow({ label, tooltip, htmlFor, children }: SettingRowProps) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <Label htmlFor={htmlFor}>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Label htmlFor={htmlFor}>{label}</Label>
+        <TooltipProvider>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="max-w-xs text-sm">{tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
       {children}
     </div>
   );
@@ -50,9 +71,19 @@ export function SettingsSidebar() {
       <SidebarContent className="h-[calc(100vh-4rem)]">
         <SidebarGroup className="pb-20">
           <div className="space-y-6">
-            <AliasSelector models={models} isLoading={isLoading} />
+            <div className="space-y-2">
+              <AliasSelector
+                models={models}
+                isLoading={isLoading}
+                tooltip={SETTINGS_TOOLTIPS.alias}
+              />
+            </div>
 
-            <SettingRow label="Stream Response" htmlFor="stream-mode">
+            <SettingRow
+              label="Stream Response"
+              tooltip={SETTINGS_TOOLTIPS.stream}
+              htmlFor="stream-mode"
+            >
               <Switch
                 id="stream-mode"
                 checked={settings.stream}
@@ -63,7 +94,11 @@ export function SettingsSidebar() {
             </SettingRow>
 
             <div className="space-y-2">
-              <SettingRow label="API Token" htmlFor="api-token-enabled">
+              <SettingRow
+                label="API Token"
+                tooltip={SETTINGS_TOOLTIPS.apiToken}
+                htmlFor="api-token-enabled"
+              >
                 <Switch
                   id="api-token-enabled"
                   checked={settings.api_token_enabled}
@@ -85,7 +120,11 @@ export function SettingsSidebar() {
             </div>
 
             <div className="space-y-2">
-              <SettingRow label="Seed" htmlFor="seed-enabled">
+              <SettingRow
+                label="Seed"
+                tooltip={SETTINGS_TOOLTIPS.seed}
+                htmlFor="seed-enabled"
+              >
                 <Switch
                   id="seed-enabled"
                   checked={settings.seed_enabled}
@@ -107,11 +146,18 @@ export function SettingsSidebar() {
               />
             </div>
 
-            <SystemPrompt isLoading={isLoading} />
-            <StopWords isLoading={isLoading} />
+            <SystemPrompt
+              isLoading={isLoading}
+              tooltip={SETTINGS_TOOLTIPS.systemPrompt}
+            />
+            <StopWords
+              isLoading={isLoading}
+              tooltip={SETTINGS_TOOLTIPS.stopWords}
+            />
 
             <SettingSlider
               label="Temperature"
+              tooltip={SETTINGS_TOOLTIPS.temperature}
               value={settings.temperature}
               enabled={settings.temperature_enabled}
               onValueChange={settings.setTemperature}
@@ -125,6 +171,7 @@ export function SettingsSidebar() {
 
             <SettingSlider
               label="Top P"
+              tooltip={SETTINGS_TOOLTIPS.topP}
               value={settings.top_p}
               enabled={settings.top_p_enabled}
               onValueChange={settings.setTopP}
@@ -140,6 +187,7 @@ export function SettingsSidebar() {
 
             <SettingSlider
               label="Max Tokens"
+              tooltip={SETTINGS_TOOLTIPS.maxTokens}
               value={settings.max_tokens}
               enabled={settings.max_tokens_enabled}
               onValueChange={settings.setMaxTokens}
@@ -153,6 +201,7 @@ export function SettingsSidebar() {
 
             <SettingSlider
               label="Presence Penalty"
+              tooltip={SETTINGS_TOOLTIPS.presencePenalty}
               value={settings.presence_penalty}
               enabled={settings.presence_penalty_enabled}
               onValueChange={settings.setPresencePenalty}
@@ -166,6 +215,7 @@ export function SettingsSidebar() {
 
             <SettingSlider
               label="Frequency Penalty"
+              tooltip={SETTINGS_TOOLTIPS.frequencyPenalty}
               value={settings.frequency_penalty}
               enabled={settings.frequency_penalty_enabled}
               onValueChange={settings.setFrequencyPenalty}

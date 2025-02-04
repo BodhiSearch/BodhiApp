@@ -4,16 +4,23 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
-import { X } from 'lucide-react';
+import { HelpCircle, X } from 'lucide-react';
 import { KeyboardEvent, useState } from 'react';
 import { Button } from '../../../../components/ui/button';
 
 interface StopWordsProps {
   isLoading?: boolean;
+  tooltip: string;
 }
 
-export function StopWords({ isLoading = false }: StopWordsProps) {
+export function StopWords({ isLoading = false, tooltip }: StopWordsProps) {
   const { stop, stop_enabled, setStop, setStopEnabled } = useChatSettings();
   const [inputValue, setInputValue] = useState('');
 
@@ -41,9 +48,19 @@ export function StopWords({ isLoading = false }: StopWordsProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <Label htmlFor="stop-words" className="text-sm font-medium">
-          Stop Words
-        </Label>
+        <div className="flex items-center gap-2">
+          <Label htmlFor="stop-words">Stop Words</Label>
+          <TooltipProvider>
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent sideOffset={8}>
+                <p className="max-w-xs text-sm">{tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <Switch
           id="stop-words-toggle"
           checked={stop_enabled}

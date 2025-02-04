@@ -1,5 +1,6 @@
 'use client';
 
+import { ALIAS_FORM_TOOLTIPS } from '@/app/ui/models/tooltips';
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +13,12 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import {
   useChatTemplates,
@@ -27,7 +34,7 @@ import {
 } from '@/schemas/alias';
 import { Model } from '@/types/models';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -36,6 +43,42 @@ import { z } from 'zod';
 interface AliasFormProps {
   isEditMode: boolean;
   initialData?: Model;
+}
+
+function FormFieldWithTooltip({
+  label,
+  tooltip,
+  children,
+  htmlFor,
+}: {
+  label: string;
+  tooltip: string;
+  children: React.ReactNode;
+  htmlFor: string;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-2">
+        <FormLabel
+          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          htmlFor={htmlFor}
+        >
+          {label}
+        </FormLabel>
+        <TooltipProvider>
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent sideOffset={8}>
+              <p className="max-w-xs text-sm">{tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+      {children}
+    </>
+  );
 }
 
 const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
@@ -160,78 +203,92 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
       paramType === 'request_params'
         ? requestParamsSchema
         : contextParamsSchema;
-    return Object.entries(schema.shape).map(([key, field]) => (
-      <FormField
-        key={key}
-        control={form.control}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        name={`${paramType}.${key}` as any}
-        render={({ field: formField }) => (
-          <FormItem>
-            <FormLabel>{key}</FormLabel>
-            <FormControl>
-              {Array.isArray(field) ? (
-                <Input
-                  {...formField}
-                  value={
-                    formField.value
-                      ? Array.isArray(formField.value)
-                        ? formField.value.join(',')
-                        : formField.value
-                      : ''
-                  }
-                  onChange={(e) =>
-                    formField.onChange(
-                      e.target.value
-                        ? e.target.value.split(',').map((item) => item.trim())
-                        : undefined
-                    )
-                  }
-                  placeholder="Comma-separated values"
-                />
-              ) : (
-                <Input
-                  {...formField}
-                  type={field instanceof z.ZodNumber ? 'number' : 'text'}
-                  min={
-                    field instanceof z.ZodNumber
-                      ? (field.minValue ?? undefined)
-                      : undefined
-                  }
-                  max={
-                    field instanceof z.ZodNumber
-                      ? (field.maxValue ?? undefined)
-                      : undefined
-                  }
-                  step={
-                    field instanceof z.ZodNumber && !field.isInt
-                      ? 0.1
-                      : undefined
-                  }
-                  value={formField.value ?? ''}
-                  onChange={(e) => {
-                    const inputValue = e.target.value;
-                    if (inputValue === '') {
-                      formField.onChange(undefined);
-                    } else if (field instanceof z.ZodNumber) {
-                      const numValue = field.isInt
-                        ? parseInt(inputValue, 10)
-                        : parseFloat(inputValue);
-                      formField.onChange(
-                        isNaN(numValue) ? undefined : numValue
-                      );
-                    } else {
-                      formField.onChange(inputValue);
-                    }
-                  }}
-                />
-              )}
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-    ));
+    return Object.entries(schema.shape).map(([key, field]) => {
+      const fieldId = `${paramType}-${key}`;
+      return (
+        <FormField
+          key={key}
+          control={form.control}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          name={`${paramType}.${key}` as any}
+          render={({ field: formField }) => (
+            <FormItem className="space-y-2 mb-4">
+              <FormFieldWithTooltip
+                label={key}
+                tooltip={
+                  ALIAS_FORM_TOOLTIPS[key as keyof typeof ALIAS_FORM_TOOLTIPS]
+                }
+                htmlFor={fieldId}
+              >
+                <FormControl>
+                  {Array.isArray(field) ? (
+                    <Input
+                      {...formField}
+                      id={fieldId}
+                      value={
+                        formField.value
+                          ? Array.isArray(formField.value)
+                            ? formField.value.join(',')
+                            : formField.value
+                          : ''
+                      }
+                      onChange={(e) =>
+                        formField.onChange(
+                          e.target.value
+                            ? e.target.value
+                                .split(',')
+                                .map((item) => item.trim())
+                            : undefined
+                        )
+                      }
+                      placeholder="Comma-separated values"
+                    />
+                  ) : (
+                    <Input
+                      {...formField}
+                      id={fieldId}
+                      type={field instanceof z.ZodNumber ? 'number' : 'text'}
+                      min={
+                        field instanceof z.ZodNumber
+                          ? (field.minValue ?? undefined)
+                          : undefined
+                      }
+                      max={
+                        field instanceof z.ZodNumber
+                          ? (field.maxValue ?? undefined)
+                          : undefined
+                      }
+                      step={
+                        field instanceof z.ZodNumber && !field.isInt
+                          ? 0.1
+                          : undefined
+                      }
+                      value={formField.value ?? ''}
+                      onChange={(e) => {
+                        const inputValue = e.target.value;
+                        if (inputValue === '') {
+                          formField.onChange(undefined);
+                        } else if (field instanceof z.ZodNumber) {
+                          const numValue = field.isInt
+                            ? parseInt(inputValue, 10)
+                            : parseFloat(inputValue);
+                          formField.onChange(
+                            isNaN(numValue) ? undefined : numValue
+                          );
+                        } else {
+                          formField.onChange(inputValue);
+                        }
+                      }}
+                    />
+                  )}
+                </FormControl>
+              </FormFieldWithTooltip>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      );
+    });
   };
 
   return (
@@ -248,10 +305,15 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               name="alias"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Alias</FormLabel>
-                  <FormControl>
-                    <Input {...field} disabled={isEditMode} />
-                  </FormControl>
+                  <FormFieldWithTooltip
+                    label="Alias"
+                    tooltip={ALIAS_FORM_TOOLTIPS.alias}
+                    htmlFor="alias"
+                  >
+                    <FormControl>
+                      <Input {...field} id="alias" disabled={isEditMode} />
+                    </FormControl>
+                  </FormFieldWithTooltip>
                   <FormMessage />
                 </FormItem>
               )}
@@ -263,22 +325,27 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               name="repo"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel htmlFor="repo-select">Repo</FormLabel>
-                  <FormControl>
-                    <ComboBoxResponsive
-                      selectedStatus={
-                        field.value
-                          ? { value: field.value, label: field.value }
-                          : null
-                      }
-                      setSelectedStatus={(selected) =>
-                        field.onChange(selected?.value || '')
-                      }
-                      statuses={repoOptions}
-                      placeholder="Select repo"
-                      id="repo-select"
-                    />
-                  </FormControl>
+                  <FormFieldWithTooltip
+                    label="Repo"
+                    tooltip={ALIAS_FORM_TOOLTIPS.repo}
+                    htmlFor="repo-select"
+                  >
+                    <FormControl>
+                      <ComboBoxResponsive
+                        selectedStatus={
+                          field.value
+                            ? { value: field.value, label: field.value }
+                            : null
+                        }
+                        setSelectedStatus={(selected) =>
+                          field.onChange(selected?.value || '')
+                        }
+                        statuses={repoOptions}
+                        placeholder="Select repo"
+                        id="repo-select"
+                      />
+                    </FormControl>
+                  </FormFieldWithTooltip>
                   <FormMessage />
                 </FormItem>
               )}
@@ -290,22 +357,27 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               name="filename"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel htmlFor="filename-select">Filename</FormLabel>
-                  <FormControl>
-                    <ComboBoxResponsive
-                      selectedStatus={
-                        field.value
-                          ? { value: field.value, label: field.value }
-                          : null
-                      }
-                      setSelectedStatus={(selected) =>
-                        field.onChange(selected?.value || '')
-                      }
-                      statuses={filenameOptions}
-                      placeholder="Select filename"
-                      id="filename-select"
-                    />
-                  </FormControl>
+                  <FormFieldWithTooltip
+                    label="Filename"
+                    tooltip={ALIAS_FORM_TOOLTIPS.filename}
+                    htmlFor="filename-select"
+                  >
+                    <FormControl>
+                      <ComboBoxResponsive
+                        selectedStatus={
+                          field.value
+                            ? { value: field.value, label: field.value }
+                            : null
+                        }
+                        setSelectedStatus={(selected) =>
+                          field.onChange(selected?.value || '')
+                        }
+                        statuses={filenameOptions}
+                        placeholder="Select filename"
+                        id="filename-select"
+                      />
+                    </FormControl>
+                  </FormFieldWithTooltip>
                   <FormMessage />
                 </FormItem>
               )}
@@ -317,24 +389,27 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               name="chat_template"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel htmlFor="chat-template-select">
-                    Chat Template
-                  </FormLabel>
-                  <FormControl>
-                    <ComboBoxResponsive
-                      selectedStatus={
-                        field.value
-                          ? { value: field.value, label: field.value }
-                          : null
-                      }
-                      setSelectedStatus={(selected) =>
-                        field.onChange(selected?.value || '')
-                      }
-                      statuses={chatTemplateOptions}
-                      placeholder="Select chat template"
-                      id="chat-template-select"
-                    />
-                  </FormControl>
+                  <FormFieldWithTooltip
+                    label="Chat Template"
+                    tooltip={ALIAS_FORM_TOOLTIPS.chatTemplate}
+                    htmlFor="chat-template-select"
+                  >
+                    <FormControl>
+                      <ComboBoxResponsive
+                        selectedStatus={
+                          field.value
+                            ? { value: field.value, label: field.value }
+                            : null
+                        }
+                        setSelectedStatus={(selected) =>
+                          field.onChange(selected?.value || '')
+                        }
+                        statuses={chatTemplateOptions}
+                        placeholder="Select chat template"
+                        id="chat-template-select"
+                      />
+                    </FormControl>
+                  </FormFieldWithTooltip>
                   <FormMessage />
                 </FormItem>
               )}

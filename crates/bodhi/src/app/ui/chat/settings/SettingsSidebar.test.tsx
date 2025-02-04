@@ -93,6 +93,18 @@ vi.mock('@/hooks/use-chat-settings', () => ({
   }),
 }));
 
+// Mock the Tooltip components from shadcn
+vi.mock('@/components/ui/tooltip', () => ({
+  Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  TooltipContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tooltip-content">{children}</div>
+  ),
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tooltip-trigger">{children}</div>
+  ),
+}));
+
 // Setup MSW server
 const mockModels = [
   { id: 1, name: 'Model 1', alias: 'model-1' },
