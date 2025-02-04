@@ -3,8 +3,9 @@ import path from 'path';
 import matter from 'gray-matter';
 import { getPathOrder } from './config';
 
-const DOCS_DIR_NAME = 'src/docs';
 const MD_EXTENSION = '.md';
+
+const DEFAULT_DOCS_DIR = 'src/docs';
 
 export interface DocDetails {
   title: string;
@@ -20,8 +21,12 @@ export interface DocGroup {
   key?: string;
 }
 
+export function getDocsDirectory(): string {
+  return process.env.DOCS_DIR || DEFAULT_DOCS_DIR;
+}
+
 export function getAllDocPaths() {
-  const docsDirectory = path.join(process.cwd(), DOCS_DIR_NAME);
+  const docsDirectory = path.join(process.cwd(), getDocsDirectory());
 
   const getAllFiles = (
     dirPath: string,

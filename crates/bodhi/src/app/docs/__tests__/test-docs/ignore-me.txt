@@ -1,0 +1,1 @@
+This is a non-markdown file that should be ignored by the getAllDocPaths function. 
