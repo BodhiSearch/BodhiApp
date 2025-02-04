@@ -1,7 +1,7 @@
 ---
 title: "API Tokens"
 description: "Managing API tokens"
-order: 220
+order: 230
 ---
 
 # API Token Management

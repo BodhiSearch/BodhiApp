@@ -1,10 +1,10 @@
 ---
-title: "Chat UI Guide"
+title: "Chat UI"
 description: "A comprehensive guide to using Bodhi's Chat Interface"
 order: 201
 ---
 
-# Chat UI Guide
+# Chat UI
 
 Welcome to Bodhi's Chat UI! This guide is designed to help you get started with our conversational AI interface. Whether you are a first-time user or someone looking to explore advanced configuration options, you will find all the information you need in this guide.
 
