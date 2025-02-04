@@ -1,3 +1,4 @@
+import { DocSidebar } from '@/app/docs/DocSidebar';
 import '@/app/docs/prism-theme.css';
 import type { NavItem } from '@/app/docs/types';
 import { getAllDocPaths, getPathOrder } from '@/app/docs/utils';
@@ -88,6 +89,7 @@ export default function DocsLayout({
 
   return (
     <div className="flex min-h-screen">
+      <DocSidebar navigation={navigation} />
 
       {/* Main content */}
       <main className="flex-1 min-w-0" role="main">
