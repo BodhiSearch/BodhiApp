@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
-import { getPathOrder } from './config';
+import { getPathOrder } from '@/app/docs/config';
 
 const MD_EXTENSION = '.md';
 
@@ -57,22 +57,30 @@ export function getAllDocPaths() {
 
 export const getDocDetails = (filePath: string): DocDetails => {
   try {
-    const fullPath = path.join(process.cwd(), 'src/docs', `${filePath}.md`);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
+    const fileContents = fs.readFileSync(filePath, 'utf8');
     const { data } = matter(fileContents);
+    const docsDirectory = path.join(process.cwd(), getDocsDirectory());
+    const relativePath = path
+      .relative(docsDirectory, filePath)
+      .replace(/\.md$/, '');
+
     return {
-      title: data.title || formatTitle(filePath),
+      title: data.title || formatTitle(relativePath),
       description: data.description || '',
-      slug: filePath,
-      order: getPathOrder(filePath),
+      slug: relativePath,
+      order: getPathOrder(relativePath),
     };
   } catch (e) {
     console.error(`Error reading doc details for ${filePath}:`, e);
+    const docsDirectory = path.join(process.cwd(), getDocsDirectory());
+    const relativePath = path
+      .relative(docsDirectory, filePath)
+      .replace(/\.md$/, '');
     return {
-      title: formatTitle(filePath),
+      title: formatTitle(relativePath),
       description: '',
-      slug: filePath,
-      order: getPathOrder(filePath),
+      slug: relativePath,
+      order: getPathOrder(relativePath),
     };
   }
 };
@@ -87,11 +95,13 @@ export const formatTitle = (path: string): string => {
 
 export const groupDocs = (paths: string[]): DocGroup[] => {
   const groups: { [key: string]: DocGroup } = {};
+  const docsDirectory = path.join(process.cwd(), getDocsDirectory());
 
-  paths.forEach((path) => {
-    const parts = path.split('/');
+  paths.forEach((relativePath) => {
+    const parts = relativePath.split('/');
     const groupName = parts.length > 1 ? parts[0] : 'intro';
-    const details = getDocDetails(path);
+    const fullPath = path.join(docsDirectory, `${relativePath}.md`);
+    const details = getDocDetails(fullPath);
 
     if (!groups[groupName]) {
       groups[groupName] = {
