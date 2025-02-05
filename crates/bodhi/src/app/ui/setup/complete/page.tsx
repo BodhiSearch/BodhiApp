@@ -9,6 +9,7 @@ import { ArrowRight, BookOpen } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { siDiscord, siGithub, siX, siYoutube } from 'simple-icons';
+import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -152,6 +153,7 @@ function SetupCompleteContent() {
         animate="visible"
       >
         {showConfetti && <Confetti />}
+        <BodhiLogo />
 
         {/* Completion Message */}
         <motion.div variants={itemVariants} className="text-center space-y-4">

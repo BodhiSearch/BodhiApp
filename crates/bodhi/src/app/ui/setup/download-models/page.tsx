@@ -18,6 +18,7 @@ import {
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 
 export function ModelDownloadContent() {
   const router = useRouter();
@@ -57,6 +58,7 @@ export function ModelDownloadContent() {
         animate="visible"
       >
         <SetupProgress currentStep={3} totalSteps={4} />
+        <BodhiLogo />
 
         <motion.div variants={itemVariants}>
           <Card>

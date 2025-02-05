@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/card';
 import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
 import { motion } from 'framer-motion';
+import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 
 // Animation variants
 const containerVariants = {
@@ -45,6 +46,7 @@ function ResourceAdminContent() {
         animate="visible"
       >
         <SetupProgress currentStep={2} totalSteps={4} />
+        <BodhiLogo />
 
         <motion.div variants={itemVariants}>
           <Card>
