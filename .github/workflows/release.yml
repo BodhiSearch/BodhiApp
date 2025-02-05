@@ -184,6 +184,7 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           TAURI_PRIVATE_KEY: "${{ secrets.TAURI_PRIVATE_KEY }}"
+          GH_PAT: ${{ secrets.GH_PAT }}
         with:
           projectPath: crates/bodhi
           appName: Bodhi App
