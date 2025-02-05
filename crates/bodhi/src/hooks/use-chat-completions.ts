@@ -1,7 +1,7 @@
 import { useMutation } from 'react-query';
 import { AxiosError } from 'axios';
 import apiClient from '@/lib/apiClient';
-import { Message } from '@/types/chat';
+import { Message, MessageMetadata } from '@/types/chat';
 import { ErrorResponse } from '@/types/models';
 
 interface ChatCompletionRequest {
@@ -26,6 +26,15 @@ interface ChatCompletionResponse {
     message: Message;
     finish_reason: string;
   }[];
+  usage?: {
+    completion_tokens?: number;
+    prompt_tokens?: number;
+    total_tokens?: number;
+  };
+  timings?: {
+    prompt_per_second?: number;
+    predicted_per_second?: number;
+  };
 }
 
 interface ChatCompletionCallbacks {
@@ -91,6 +100,7 @@ export function useChatCompletion() {
         const reader = response.body?.getReader();
         const decoder = new TextDecoder();
         let fullContent = '';
+        let metadata: MessageMetadata | undefined;
 
         while (reader) {
           const { done, value } = await reader.read();
@@ -107,7 +117,18 @@ export function useChatCompletion() {
             try {
               const jsonStr = line.replace(/^data: /, '');
               const json = JSON.parse(jsonStr);
-              if (json.choices?.[0]?.delta?.content) {
+
+              // Capture metadata from the last chunk
+              if (json.choices?.[0]?.finish_reason === 'stop' && json.timings) {
+                metadata = {
+                  model: json.model,
+                  usage: json.usage,
+                  timings: {
+                    prompt_per_second: json.timings?.prompt_per_second,
+                    predicted_per_second: json.timings?.predicted_per_second,
+                  },
+                };
+              } else if (json.choices?.[0]?.delta?.content) {
                 const content = json.choices[0].delta.content;
                 fullContent += content;
                 onDelta?.(content);
@@ -118,16 +139,31 @@ export function useChatCompletion() {
           }
         }
 
-        // Call onFinish with the complete message after streaming is done
+        // Include metadata in the final message
         const finalMessage: Message = {
           role: 'assistant',
           content: fullContent,
         };
+        if (metadata) {
+          finalMessage.metadata = metadata;
+        }
         onFinish?.(finalMessage);
       } else {
         const data: ChatCompletionResponse = await response.json();
         if (data.choices?.[0]?.message) {
-          const message = data.choices[0].message;
+          const message = {
+            ...data.choices[0].message,
+          };
+          if (data.usage) {
+            message.metadata = {
+              model: data.model,
+              usage: data.usage,
+              timings: {
+                prompt_per_second: data.timings?.prompt_per_second,
+                predicted_per_second: data.timings?.predicted_per_second,
+              },
+            };
+          }
           onMessage?.(message);
           onFinish?.(message);
         }

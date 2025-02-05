@@ -14,6 +14,9 @@ export function ChatMessage({
   isStreaming = false,
 }: ChatMessageProps) {
   const isUser = message.role === 'user';
+  const metadata = message.metadata;
+
+  const formatNumber = (num: number) => num.toFixed(2);
 
   return (
     <div
@@ -39,7 +42,28 @@ export function ChatMessage({
         <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>
 
         {!isUser && !isStreaming && (
-          <div className="flex justify-end mt-2">
+          <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-4">
+              {metadata?.usage && (
+                <div className="flex items-center gap-2">
+                  <span>Query: {metadata.usage.prompt_tokens} tokens</span>
+                  <span>•</span>
+                  <span>
+                    Response: {metadata.usage.completion_tokens} tokens
+                  </span>
+                </div>
+              )}
+              {metadata?.timings?.prompt_per_second &&
+                metadata?.timings?.predicted_per_second && (
+                  <div className="flex items-center gap-2">
+                    <span>•</span>
+                    <span>
+                      Speed:{' '}
+                      {formatNumber(metadata.timings.predicted_per_second)} t/s
+                    </span>
+                  </div>
+                )}
+            </div>
             <CopyButton
               text={message.content}
               className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
