@@ -155,21 +155,22 @@ jobs:
           echo TAG_BUILD=${{ needs.create-release.outputs.TAG_BUILD  }} >> $GITHUB_ENV
           echo RELEASE_UPLOAD_ID=${{ needs.create-release.outputs.RELEASE_UPLOAD_ID  }} >> $GITHUB_ENV
       - uses: actions/checkout@v4
-      - name: setup
-        uses: ./.github/actions/setup
-        with:
-          GH_PAT: ${{ secrets.GH_PAT }}
-          platform: ${{ matrix.platform }}
       - uses: ./.github/actions/setup-rust
         with:
           platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
       - uses: ./.github/actions/setup-node
+        with:
+          platform: ${{ matrix.platform }}
       - name: clean
         run: |
           make ci.clean
       - name: Update version in Cargo.toml files
         run: |
-          make ci.update-version VERSION=${{ env.VERSION }}
+          if ! make ci.update-version VERSION=${{ env.VERSION }}; then
+            echo "Failed to update version"
+            exit 1
+          fi
       - name: tauri-action
         id: tauri-action
         uses: tauri-apps/tauri-action@v0
@@ -184,10 +185,11 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           TAURI_PRIVATE_KEY: "${{ secrets.TAURI_PRIVATE_KEY }}"
         with:
-          projectPath: app
-          appName: Bodhi
+          projectPath: crates/bodhi
+          appName: Bodhi App
+          iconPath: src-tauri/icons
           releaseId: ${{ env.RELEASE_UPLOAD_ID }}
-          args: "--target ${{ matrix.target }}"
+          args: "--target ${{ matrix.target }} --features native"
       - name: Update Homebrew Formula
         if: matrix.target == 'aarch64-apple-darwin'
         uses: ./.github/actions/homebrew
@@ -232,5 +234,16 @@ jobs:
       - name: Push the changes
         if: env.TAG_BUILD == 'false'
         run: |
-          git pull origin main --rebase
-          git push origin main
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            if git pull origin main --rebase && git push origin main; then
+              break
+            fi
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            sleep 5
+          done
+          if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+            echo "Failed to push changes after $MAX_RETRIES attempts"
+            exit 0
+          fi
