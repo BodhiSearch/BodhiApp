@@ -27,9 +27,9 @@ export default function AppInitializer({
   authenticated = false,
 }: AppInitializerProps) {
   const router = useRouter();
-  const [hasShownModelsPage, setHasShownModelsPage] = useLocalStorage(
+  const [hasShownModelsPage] = useLocalStorage(
     FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
-    true
+    false
   );
 
   const {
@@ -66,14 +66,7 @@ export default function AppInitializer({
         }
       }
     }
-  }, [
-    appInfo,
-    appLoading,
-    allowedStatus,
-    router,
-    hasShownModelsPage,
-    setHasShownModelsPage,
-  ]);
+  }, [appInfo, appLoading, allowedStatus, router, hasShownModelsPage]);
 
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;

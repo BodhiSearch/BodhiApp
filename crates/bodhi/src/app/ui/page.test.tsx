@@ -16,7 +16,7 @@ import { setupServer } from 'msw/node';
 import UiPage from '@/app/ui/page';
 import { createWrapper } from '@/tests/wrapper';
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
-import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
+import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -27,6 +27,20 @@ vi.mock('next/navigation', () => ({
     get: () => null,
   }),
 }));
+
+const localStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: (key: string) => store[key] || null,
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    clear: () => {
+      store = {};
+    },
+  };
+})();
+Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // Setup MSW server
 const server = setupServer(
@@ -44,6 +58,7 @@ describe('UiPage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     pushMock.mockClear();
+    localStorageMock.clear();
   });
 
   it('redirects to /ui/setup when status is setup', async () => {
@@ -61,6 +76,9 @@ describe('UiPage', () => {
   });
 
   it(`redirects to ${ROUTE_DEFAULT} when status is ready`, async () => {
+    // Set the localStorage flag
+    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'true');
+
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'ready' }));
@@ -85,6 +103,22 @@ describe('UiPage', () => {
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(ROUTE_RESOURCE_ADMIN);
+    });
+  });
+
+  it(`redirects to ${ROUTE_SETUP_DOWNLOAD_MODELS} when status is ready and models page not shown`, async () => {
+    // Set the localStorage flag to false
+    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'false');
+
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+        return res(ctx.json({ status: 'ready' }));
+      })
+    );
+
+    render(<UiPage />, { wrapper: createWrapper() });
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith(ROUTE_SETUP_DOWNLOAD_MODELS);
     });
   });
 });

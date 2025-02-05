@@ -88,7 +88,7 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it('shows disabled login button with message when authz disabled', async () => {
+  it('does not show login button when authz disabled', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json(mockAuthzDisabled));
@@ -98,8 +98,8 @@ describe('LoginMenu Component', () => {
     render(<LoginMenu />, { wrapper: createWrapper() });
 
     await waitFor(() => {
-      const loginButton = screen.getByRole('button', { name: /login/i });
-      expect(loginButton).toBeDisabled();
+      const loginButton = screen.queryByRole('button', { name: /login/i });
+      expect(loginButton).not.toBeInTheDocument();
       expect(screen.getByText(/non-authenticated mode setup/i)).toBeInTheDocument();
     });
   });
