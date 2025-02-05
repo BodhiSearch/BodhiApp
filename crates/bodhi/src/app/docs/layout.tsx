@@ -1,9 +1,10 @@
-import { DocSidebar } from '@/app/docs/DocSidebar';
+import { DOCS_BASE_PATH, DocSidebar } from '@/app/docs/DocSidebar';
 import '@/app/docs/prism-theme.css';
 import type { NavItem } from '@/app/docs/types';
 import { getAllDocPaths, getPathOrder } from '@/app/docs/utils';
 import fs from 'fs';
 import matter from 'gray-matter';
+import Link from 'next/link';
 import path from 'path';
 
 function getDocTitle(filePath: string): string {
@@ -94,7 +95,9 @@ export default function DocsLayout({
       {/* Main content */}
       <main className="flex-1 min-w-0" role="main">
         <div className="h-16 border-b px-6 flex items-center lg:hidden">
-          <h2 className="text-lg font-semibold ml-12">Documentation</h2>
+          <Link href={DOCS_BASE_PATH}>
+            <h2 className="text-lg font-semibold ml-10">Home</h2>
+          </Link>
         </div>
         <div className="container py-8 px-6">{children}</div>
       </main>

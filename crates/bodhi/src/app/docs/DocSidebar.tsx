@@ -79,7 +79,7 @@ export function DocSidebar({ navigation }: DocSidebarProps) {
       >
         <div className="h-16 border-b px-6 flex items-center">
           <Link href={DOCS_BASE_PATH}>
-            <h1 className="text-lg font-semibold">Documentation</h1>
+            <h1 className="text-lg font-semibold">Home</h1>
           </Link>
         </div>
         {sidebarContent}
@@ -91,7 +91,7 @@ export function DocSidebar({ navigation }: DocSidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden fixed left-4 top-4 z-[50]"
+            className="lg:hidden fixed left-4 top-100 z-[50]"
             aria-label="Open documentation navigation"
             data-testid="mobile-sidebar-trigger"
           >
@@ -104,7 +104,9 @@ export function DocSidebar({ navigation }: DocSidebarProps) {
           data-testid="mobile-sidebar"
         >
           <div className="h-16 border-b px-6 flex items-center">
-            <h2 className="text-lg font-semibold">Documentation</h2>
+            <Link href={DOCS_BASE_PATH}>
+              <h2 className="text-lg font-semibold">Home</h2>
+            </Link>
           </div>
           {sidebarContent}
         </SheetContent>
