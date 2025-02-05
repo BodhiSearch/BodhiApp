@@ -2,6 +2,7 @@ use anyhow::{bail, Context};
 use fs2::FileExt;
 use fs_extra::dir::CopyOptions;
 use std::{
+  env,
   fs::{self, File},
   path::{Path, PathBuf},
   process::Command,
@@ -97,10 +98,51 @@ fn copy_llama_bins(project_dir: &Path) -> Result<(), anyhow::Error> {
     attempts += 1;
   }
   println!("Acquired llama server bin lock");
+
   // Perform the copy operation
   try_copy_bins(project_dir, &llama_server_dir)?;
 
+  // Sign binaries if in CI and on macOS
+  if cfg!(target_os = "macos") && is_ci() {
+    sign_binaries()?;
+  }
+
   // Lock will be automatically released when lock_file is dropped
+  Ok(())
+}
+
+fn is_ci() -> bool {
+  env::var("CI").map(|v| v == "true").unwrap_or(false)
+    && env::var("CI_RELEASE").map(|v| v == "true").unwrap_or(false)
+}
+
+fn sign_binaries() -> Result<(), anyhow::Error> {
+  println!("Signing llama-server binaries for macOS...");
+
+  // Check if we're in CI and have required environment variables
+  for var in &[
+    "APPLE_CERTIFICATE",
+    "APPLE_CERTIFICATE_PASSWORD",
+    "APPLE_SIGNING_IDENTITY",
+    "KEYCHAIN_PASSWORD",
+  ] {
+    if env::var(var).is_err() {
+      bail!("Required environment variable {} not set for signing", var);
+    }
+  }
+
+  // Run the make command for signing
+  let status = Command::new("make")
+    .arg("ci.sign-binaries")
+    .current_dir(env!("CARGO_MANIFEST_DIR")) // Ensure we're in src-tauri directory
+    .status()
+    .context("Failed to execute make ci.sign-binaries command")?;
+
+  if !status.success() {
+    bail!("Failed to sign binaries using make ci.sign-binaries");
+  }
+
+  println!("Successfully signed llama-server binaries");
   Ok(())
 }
 

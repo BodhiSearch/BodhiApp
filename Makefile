@@ -39,4 +39,4 @@ ci.app-pnpm:
 ci.ui:
 	cd crates/bodhi && pnpm run test run --coverage
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.ui
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui
