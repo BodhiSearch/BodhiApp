@@ -1,199 +1,60 @@
 # Bodhi App
 
-Run Open Source/Open Weight Large Lanuage Models locally.
+[![Mac/Linux Build](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Windows Build](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build-windows.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Release](https://github.com/BodhiSearch/BodhiApp/actions/workflows/release.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions) [![Coverage](https://codecov.io/gh/BodhiSearch/BodhiApp/branch/main/graph/badge.svg)](https://codecov.io/gh/BodhiSearch/BodhiApp)
 
-Bodhi App runs Open Source LLMs locally. It also exposes these LLM inference capabilities as OpenAI API compatible REST APIs. This allows GenAI based native/local applications use the user's GPU/CPU to run inference and provide LLM features without any paid remote API calls.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/BodhiSearch/BodhiApp/main/crates/bodhi/public/bodhi-logo/bodhi-logo-480.svg" alt="Bodhi App Logo" width="240" />
+</p>
 
-## llama.cpp and Huggingface Ecosystem
+## Table of Contents
+- [Overview](#overview)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Documentation](#documentation)
 
-Bodhi App does not re-invent the wheel, and uses [llama.cpp](https://github.com/ggerganov/llama.cpp) to run the Open Source model files of [GGUF format](https://github.com/ggerganov/llama.cpp/tree/master/gguf-py).
+## Overview
+Bodhi App allows you to run Open Source LLMs locally. It utilizes the Huggingface ecosystem for accessing open-source LLM weights and information and is powered by [llama.cpp](https://github.com/ggerganov/llama.cpp).
 
-It also leverages the rich huggingface.co ecosystem, and uses the existing **$HF_HOME** downloaded models, and current session token to download new model files in a huggingface repo compatible manner. This saves you a lot of local storage and bandwidth by not duplicating the effort.
+While many apps that help you run LLMs locally are targeted at technical users, Bodhi App is designed with both technical and non-technical users in mind.
 
-# Installation
+For technical users, it provides OpenAI-compatible chat completions and models API endpoints. It includes comprehensive API documentation following OpenAPI standards and features a built-in SwaggerUI that allows developers to explore and test all API endpoints live.
 
-## Homebrew
+For non-technical users, it comes with a built-in Chat UI that is quick to start and easy to understand. Users can quickly get started with open-source models and adjust various settings to suit their needs. The app also enables users to discover, explore, and download new open-source models that fit their requirements and are compatible with their local hardware.
 
-To install via Homebrew, add `BodhiSearch/homebrew-apps` as an external tap:
+## Features
+- **Built-in Chat UI:** Enjoy an intuitive, responsive chat interface with real-time streaming, markdown support, and customizable settings
+- **Model Management:** Download and manage GGUF model files directly from HuggingFace
+- **API Token Management:** Securely generate and manage API tokens for external integrations
+- **Dynamic App Settings:** Easily adjust application parameters (like execution variant and idle timeout) on the fly
+- **Responsive Design:** A fully adaptive layout that works seamlessly across desktop and mobile devices
+- **Robust Error Handling:** Comprehensive error logging and troubleshooting guides to help quickly identify and resolve issues
 
-```shell
-brew tap BodhiSearch/apps
-```
+## Installation
+Bodhi App is currently released only for the Mac platform. You can install it either by downloading the release from the GitHub release page or using Homebrew.
 
-Then install the cask bodhi:
-```shell
-brew install --cask bodhi
-```
-
-## Download
-
-Download the latest release for your platform from [Github Release Page](https://github.com/BodhiSearch/BodhiApp/releases).
-
-## Verify Installation
-
-Once the installation is complete, verify the installation:
-1. invoke the CLI -
-```shell
-bodhi -h
-```
-
-2. launch `Bodhi.app` from `/Applications` folder, and check the system tray for application icon.
-
-3. Open the homepage using system tray or opening website in the browser - `http://localhost:1135`
-
-# YouTube Tutorial
-
-Checkout the YouTube walkthrough of the Bodhi App [here](https://bit.ly/bodhiapp-yt).
-
-# Quick Start
-
-`bodhi run llama3:instruct`
-
-Runs the llama3-8B instructions fine tuned model in a closed-loop (no server) terminal based chat mode. 
-
-The above downloads ~8GB of model files from huggingface.co. If you want a quicker quickstart try:
-
-`bodhi run tinyllama:instruct`
-
-This requires downloading ~0.5GB model. But it is not going to be as powerful as the Llama3 model in its capabilities.
-
-## Text Generation vs Chat Completions
-
-OpenAI has deprecated the Text Generation endpoint, and now only supports Chat Completion endpoints. Following the same trend, Bodhi does not support Text Generation endpoints, and provides Chat Completion endpoint only.
-
-So for chat completion, you need to use a RLHF/Instruct fine-tuned models rather than base model with no intruction fine-tuning. Bodhi requires a `tokenizer_config.json` to convert the User-AI assistant chat into the LLM prompt input to create a model config alias.
-
-## Other Popular Models
-
-| Model Alias    | Parameters | Size    | Quick Start Command                     |
-| -------------- | ---------- | ------- | --------------------------------------- |
-| llama3 8B      | 8B         | 4.7 GB  | `bodhi run llama3:instruct`             |
-| llama3 70B     | 70B        | 40.0 GB | `bodhi run llama3:70b-instruct`         |
-| llama2         |            |         | `bodhi run llama2:chat`                 |
-| llama2 13B     |            |         | `bodhi run llama2:13b-chat`             |
-| llama2 70B     |            |         | `bodhi run llama2:70b-chat`             |
-| phi3 mini      |            |         | `bodhi run phi3:mini`                   |
-| mistral 7B     |            |         | `bodhi run mistral:instruct`            |
-| gemma 7b       |            |         | `bodhi run gemma:instruct`              |
-| gemma 7b 1.1   |            |         | `bodhi run gemma:7b-instruct-v1.1-q8_0` |
-| tinyllama 1.1B |            |         | `bodhi run tinyllama:instruct`          |
-
-
-## Import from GGUF
-
-Bodhi supports creating a model config alias using GGUF files from Huggingface. To create a new alias, you need -
-1. Huggingface Repo and filename of the GGUF model you want to use
-2. Repo hosting `tokenizer_config.json` for the above model
-3. Alias name unique to your local setup
-
-`bodhi create <ALIAS> --repo <REPO> --filename <FILE> --tokenizer-config <TOKENIZER_REPO>`
-
-For e.g. to run tinyllama locally, we can create our own custom model using:
-1. the model file from huggingface repo [TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF](https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF) using the quantized file [tinyllama-1.1b-chat-v1.0.Q4_0.gguf](https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/blob/main/tinyllama-1.1b-chat-v1.0.Q4_0.gguf)
-2. Use the `tokenizer_config.json` from the original tinyllama repository [TinyLlama/TinyLlama-1.1B-Chat-v1.0](https://huggingface.co/TinyLlama/TinyLlama-1.1B-Chat-v1.0)
-3. Call it `tinyllama:mymodel`
+### Homebrew
+Bodhi App hosts its external cask at `BodhiSearch/homebrew-apps`. Install Bodhi App using this command:
 
 ```shell
-bodhi create tinyllama:mymodel \
-  --repo TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF \
-  --filename tinyllama-1.1b-chat-v1.0.Q4_0.gguf \
-  --tokenizer-config TinyLlama/TinyLlama-1.1B-Chat-v1.0
+brew install --cask BodhiSearch/apps/bodhi
 ```
 
-Once the alias is created, you can run the above model in interactive mode using:
+Once installed, launch `Bodhi App.app` from the `/Applications` folder. You should see the Bodhi App icon in your system tray. Launch the homepage from the system tray menu by selecting `Open Homepage`.
 
-`bodhi run tinyllama:mymodel`
+### GitHub Releases
+Download the latest release for your platform from the [Releases](https://github.com/BodhiSearch/BodhiApp/releases) page.
 
-# Convert Huggingface model to GGUF format
+Unzip and move `Bodhi.app` to your `/Applications` folder, then launch it. You should see the Bodhi App icon in your system tray. Launch the homepage from the system tray menu by selecting `Open Homepage`.
 
-You can convert a Huggingface model to GGUF format using Python library [GGUF](https://pypi.org/project/gguf/).
+### Setup
+On first launch, Bodhi App starts with a setup flow. Follow this process to configure and install Bodhi App for your local machine and get started.
 
-# CLI
+## Documentation
+Bodhi App comes with built-in documentation:
 
-## `bodhi --help`
-See the various subcommands supported by the bodhi CLI.
-
-To see the help specific to a subcommand, use:
-
-`bodhi <subcommand> --help`
-
-## `bodhi envs`
-
-Bodhi App can be configured using environment variables. 2 of the important environment variable to configure are:
-
-1. **HF_HOME**
-HF_HOME environment variable determines the location of storing huggingface downloaded files, as well as the token to use to query the huggingface endpoint.
-By default, it is `$USER_HOME/.cache/huggingface`.
-
-<br/>
-
-2. **BODHI_HOME**
-BODHI_HOME environment variable determines the location of storing the config files used by Bodhi App. On the first run, the application sets up BODHI_HOME if not already setup, and creates `aliases` folder to store the aliases yaml configs, `bodhi.sqlite` to store the chat conversations, and `.env` file to load the default environment variables.
-By default, it is `$USER_HOME/.cache/bodhi`.
-
-There are other configs set using environment variables. You can list all the current values of environment variables used by the current setup using:
-
-`bodhi envs`
-
-## `bodhi list`
-
-To list the locally configured model aliases:
-
-`bodhi list`
-
-To view the list of pre-configured quickstart model aliases:
-
-`bodhi list --remote`
-
-To view the list of GGUF files in your $HF_HOME:
-
-`bodhi list --models`
-
-## `bodhi pull`
-
-Bodhi allows you to pull any file from huggingface.co given its repo and filename, and store it in **$HF_HOME** in a huggingface repo compatible manner. By default, it pulls the latest version of the file.
-
-`bodhi pull --repo <REPO> --filename <FILENAME>`
-
-## `bodhi create`
-
-We already covered the `bodhi create` as part of [Import from GGUF](#import-from-gguf).
-
-
-## `bodhi show/edit/cp/rm <ALIAS>`
-
-To view the alias you can use -
-`bodhi show <ALIAS>`
-
-To edit the alias in your local editor -
-`EDITOR=vi bodhi edit <ALIAS>`
-
-To copy an alias -
-`bodhi cp <ALIAS> <NEW-ALIAS>`
-
-To remove the alias -
-`bodhi rm <ALIAS>`
-
-## `bodhi serve`
-
-To run a OpenAI compatible API server, run:
-
-`bodhi serve`
-
-This by default starts the server on [http://localhost:1135](http://localhost:1135). You can configure it using command line overrides.
-
-Once the server is started, you query the chat completions endpoint using:
-
-```shell
-curl -X POST --location 'http://localhost:1135/v1/chat/completions' \
-  --header 'Content-Type: application/json' \
-  --data '{
-    "model": "tinyllama:instruct",
-    "messages": [
-        {"role": "user", "content": "List down the days in a calendar week?"}
-    ]
-  }'
-```
+- User Guide: Access at [http://localhost:1135/docs/](http://localhost:1135/docs/)
+- Technical Documentation: Available as OpenAPI Swagger UI at [http://localhost:1135/swagger-ui/](http://localhost:1135/swagger-ui/)
 
 # Community
 
@@ -202,10 +63,7 @@ curl -X POST --location 'http://localhost:1135/v1/chat/completions' \
 ### [Open WebUI](https://github.com/open-webui/open-webui)
 ![](docs/openwebui.png){width=600px}
 
-
-(Open up a pull request on README.md to includ the community integrations)
-
-
+(Open up a pull request on README.md to include community integrations)
 
 # Powered By
 
