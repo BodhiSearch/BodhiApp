@@ -2,7 +2,7 @@
 
 import AppInitializer from '@/components/AppInitializer';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
+import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { createWrapper } from '@/tests/wrapper';
 import { AppStatus } from '@/types/models';
 import {
@@ -132,9 +132,9 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     localStorageMock.clear();
   });
 
-  // Add new test cases for download models page redirection
+  // Update this test to use the constant
   it('redirects to download models page when status is ready and models page not shown', async () => {
-    localStorageMock.setItem('shown-download-models-page', 'false');
+    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'false');
 
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
@@ -146,8 +146,9 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     expect(pushMock).toHaveBeenCalledWith(ROUTE_SETUP_DOWNLOAD_MODELS);
   });
 
+  // Update this test to use the constant
   it(`redirects to ${ROUTE_DEFAULT} when status is ready and models page was shown`, async () => {
-    localStorageMock.setItem('shown-download-models-page', 'true');
+    localStorageMock.setItem(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, 'true');
 
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
@@ -159,14 +160,14 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     expect(pushMock).toHaveBeenCalledWith(ROUTE_DEFAULT);
   });
 
-  // Update existing test case to handle localStorage
+  // Update the test cases to use the constant
   it.each([
     { status: 'setup', expectedPath: '/ui/setup', localStorage: {} },
-    { status: 'ready', expectedPath: ROUTE_DEFAULT, localStorage: {} },
+    { status: 'ready', expectedPath: ROUTE_DEFAULT, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' } },
     { status: 'resource-admin', expectedPath: '/ui/setup/resource-admin', localStorage: {} },
-    { status: 'ready', expectedPath: ROUTE_DEFAULT, localStorage: { 'shown-download-models-page': 'true' } },
-    { status: 'ready', expectedPath: ROUTE_SETUP_DOWNLOAD_MODELS, localStorage: { 'shown-download-models-page': 'false' } },
-  ])('redirects to $expectedPath when status is $status', async ({ status, expectedPath, localStorage }) => {
+    { status: 'ready', expectedPath: ROUTE_DEFAULT, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' } },
+    { status: 'ready', expectedPath: ROUTE_SETUP_DOWNLOAD_MODELS, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'false' } },
+  ])('redirects to $expectedPath when status is $status and localStorage is $localStorage', async ({ status, expectedPath, localStorage }) => {
     Object.entries(localStorage).forEach(([key, value]) => {
       localStorageMock.setItem(key, value);
     });
@@ -181,19 +182,23 @@ describe('AppInitializer routing based on currentStatus and allowedStatus', () =
     expect(pushMock).toHaveBeenCalledWith(expectedPath);
   });
 
-  // Test status mismatch scenarios (redirects)
+  // Update the status mismatch test cases
   it.each([
-    { currentStatus: 'setup', allowedStatus: 'resource-admin', expectedPath: '/ui/setup' },
-    { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/ui/setup' },
-    { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/ui/setup' },
-    { currentStatus: 'resource-admin', allowedStatus: 'setup', expectedPath: '/ui/setup/resource-admin' },
-    { currentStatus: 'resource-admin', allowedStatus: 'ready', expectedPath: '/ui/setup/resource-admin' },
-    { currentStatus: 'resource-admin', allowedStatus: undefined, expectedPath: '/ui/setup/resource-admin' },
-    { currentStatus: 'ready', allowedStatus: 'setup', expectedPath: ROUTE_DEFAULT },
-    { currentStatus: 'ready', allowedStatus: 'resource-admin', expectedPath: ROUTE_DEFAULT },
-    { currentStatus: 'ready', allowedStatus: undefined, expectedPath: ROUTE_DEFAULT },
+    { currentStatus: 'setup', allowedStatus: 'resource-admin', expectedPath: '/ui/setup', localStorage: {} },
+    { currentStatus: 'setup', allowedStatus: 'ready', expectedPath: '/ui/setup', localStorage: {} },
+    { currentStatus: 'setup', allowedStatus: undefined, expectedPath: '/ui/setup', localStorage: {} },
+    { currentStatus: 'resource-admin', allowedStatus: 'setup', expectedPath: '/ui/setup/resource-admin', localStorage: {} },
+    { currentStatus: 'resource-admin', allowedStatus: 'ready', expectedPath: '/ui/setup/resource-admin', localStorage: {} },
+    { currentStatus: 'resource-admin', allowedStatus: undefined, expectedPath: '/ui/setup/resource-admin', localStorage: {} },
+    { currentStatus: 'ready', allowedStatus: 'setup', expectedPath: ROUTE_DEFAULT, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' } },
+    { currentStatus: 'ready', allowedStatus: 'resource-admin', expectedPath: ROUTE_DEFAULT, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' } },
+    { currentStatus: 'ready', allowedStatus: undefined, expectedPath: ROUTE_DEFAULT, localStorage: { [FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED]: 'true' } },
   ])('redirects to $expectedPath when currentStatus=$currentStatus does not match allowedStatus=$allowedStatus',
-    async ({ currentStatus, allowedStatus, expectedPath }) => {
+    async ({ currentStatus, allowedStatus, expectedPath, localStorage }) => {
+      Object.entries(localStorage).forEach(([key, value]) => {
+        localStorageMock.setItem(key, value as string);
+      });
+
       server.use(
         rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
           return res(ctx.json({ status: currentStatus }));

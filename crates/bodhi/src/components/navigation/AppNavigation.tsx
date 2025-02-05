@@ -79,7 +79,7 @@ export function AppNavigation() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-72"
+          className="w-72 max-h-[calc(100vh-4rem)] overflow-y-auto"
           align="start"
           data-testid="navigation-menu-content"
         >

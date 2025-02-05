@@ -7,6 +7,7 @@ use oauth2::{
 };
 use objs::{impl_error_from, AppError, ErrorType, ReqwestError};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 pub const GRANT_REFRESH_TOKEN: &str = "refresh_token";
 pub const TOKEN_TYPE_OFFLINE: &str = "Offline";
@@ -159,7 +160,15 @@ impl AuthService for KeycloakAuthService {
     if response.status().is_success() {
       Ok(response.json::<AppRegInfo>().await?)
     } else {
-      let error = response.json::<KeycloakError>().await?;
+      let response = response.text().await?;
+      debug!(
+        ?response,
+        service = "auth_service",
+        method = "register_client",
+        "error registering client"
+      );
+      let error: KeycloakError =
+        serde_json::from_str(&response).unwrap_or(KeycloakError { error: response });
       Err(error.into())
     }
   }

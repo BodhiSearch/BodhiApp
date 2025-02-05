@@ -45,7 +45,6 @@ export function LoginMenu() {
           className="w-full space-y-1 items-start"
           disabled
         >
-          <p>Login</p>
           <p className="text-xs text-muted-foreground">
             Non-Authenticated Mode Setup
           </p>

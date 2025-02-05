@@ -6,6 +6,7 @@ import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import { containerVariants, itemVariants } from '@/app/ui/setup/types';
 import { WelcomeCard } from '@/app/ui/setup/WelcomeCard';
 import AppInitializer from '@/components/AppInitializer';
+import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useSetupApp } from '@/hooks/useQuery';
 import {
@@ -90,6 +91,7 @@ const setupModes = [
 
 function SetupContent() {
   const router = useRouter();
+  const { showError } = useToastMessages();
   const [, setHasShownModelsPage] = useLocalStorage(
     FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
     false
@@ -106,6 +108,9 @@ function SetupContent() {
       } else {
         router.push(ROUTE_SETUP_DOWNLOAD_MODELS);
       }
+    },
+    onError: (error) => {
+      showError('Error', error);
     },
   });
 
