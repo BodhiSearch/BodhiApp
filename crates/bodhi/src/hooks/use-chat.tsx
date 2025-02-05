@@ -70,12 +70,16 @@ export function useChat() {
               content: message.content,
             });
           },
-          onFinish: () => {
+          onFinish: (message) => {
             const id = currentChat?.id || nanoid();
             const createdAt = currentChat?.createdAt || Date.now();
             const messages = [
               ...userMessages,
-              { role: 'assistant' as const, content: currentAssistantMessage },
+              {
+                role: 'assistant' as const,
+                content: currentAssistantMessage,
+                metadata: message.metadata,
+              },
             ];
 
             createOrUpdateChat({
