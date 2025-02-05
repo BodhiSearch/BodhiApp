@@ -124,7 +124,6 @@ fn sign_binaries() -> Result<(), anyhow::Error> {
     "APPLE_CERTIFICATE",
     "APPLE_CERTIFICATE_PASSWORD",
     "APPLE_SIGNING_IDENTITY",
-    "KEYCHAIN_PASSWORD",
   ] {
     if env::var(var).is_err() {
       bail!("Required environment variable {} not set for signing", var);
@@ -134,7 +133,7 @@ fn sign_binaries() -> Result<(), anyhow::Error> {
   // Run the make command for signing
   let status = Command::new("make")
     .arg("ci.sign-binaries")
-    .current_dir(env!("CARGO_MANIFEST_DIR")) // Ensure we're in src-tauri directory
+    .current_dir(env!("CARGO_MANIFEST_DIR"))
     .status()
     .context("Failed to execute make ci.sign-binaries command")?;
 
