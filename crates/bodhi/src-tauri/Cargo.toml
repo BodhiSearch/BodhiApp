@@ -21,15 +21,11 @@ routes_all = { workspace = true }
 server_app = { workspace = true }
 
 include_dir = { workspace = true }
-log = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 tauri = { version = "2.0.6", features = ["tray-icon"], optional = true }
 tauri-plugin-log = { version = "2.0.0-rc", optional = true }
 
 axum = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-dotenv = { workspace = true }
 serde_yaml = { workspace = true }
 tracing = { workspace = true, features = ["async-await", "log"] }
 tracing-appender = { workspace = true }

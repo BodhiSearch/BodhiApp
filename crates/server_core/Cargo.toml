@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-commands = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 llama_server_proc = { workspace = true }
@@ -14,10 +13,7 @@ anyhow = { workspace = true, optional = true }
 async-openai = { workspace = true }
 async-trait = { workspace = true }
 axum = { workspace = true }
-axum-extra = { workspace = true }
 bytes = { workspace = true }
-derive_builder = { workspace = true }
-derive-new = { workspace = true }
 futures = { workspace = true }
 futures-core = { workspace = true }
 http-body = { workspace = true }
@@ -36,10 +32,6 @@ thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tokio-stream = { workspace = true }
 tracing = { workspace = true, features = ["async-await", "log"] }
-tracing-subscriber = { workspace = true, features = [
-  "env-filter",
-], optional = true }
-utoipa = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
@@ -71,7 +63,6 @@ test-utils = [
   "commands/test-utils",
   "services/test-utils",
   "anyhow",
-  "tracing-subscriber",
   "mockall",
   "rstest",
   "http-body-util",

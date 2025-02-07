@@ -10,7 +10,6 @@ axum = { workspace = true, features = ["json"] }
 async-openai = { workspace = true }
 byteorder = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
-ctor = { workspace = true, optional = true }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
 dirs = { workspace = true, optional = true }
@@ -22,7 +21,6 @@ http-body-util = { workspace = true, optional = true }
 include_dir = { workspace = true }
 once_cell = { workspace = true }
 lazy_static = { workspace = true }
-log = { workspace = true }
 memmap2 = { workspace = true }
 minijinja = { workspace = true }
 regex = { workspace = true }
@@ -65,7 +63,6 @@ unic-langid = { workspace = true }
 
 [features]
 test-utils = [
-  "ctor",
   "dircpy",
   "dirs",
   "fs_extra",
