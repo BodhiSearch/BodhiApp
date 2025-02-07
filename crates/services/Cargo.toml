@@ -10,7 +10,6 @@ llama_server_proc = { workspace = true }
 
 aes-gcm = { workspace = true }
 anyhow = { workspace = true, optional = true }
-axum = { workspace = true }
 base64 = { workspace = true }
 derive-new = { workspace = true }
 async-trait = { workspace = true }
@@ -19,7 +18,6 @@ chrono = { workspace = true, features = ["serde"] }
 derive_builder = { workspace = true }
 dirs = { workspace = true }
 dotenv = { workspace = true }
-fluent = { workspace = true }
 fs2 = { workspace = true }
 jsonwebtoken = { workspace = true }
 hf-hub = { workspace = true, features = ["tokio"] }
@@ -55,7 +53,6 @@ tower-sessions-sqlx-store = { workspace = true, features = ["sqlite"] }
 tracing = { workspace = true, features = ["async-await", "log"] }
 ureq = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
-unic-langid = { workspace = true }
 validator = { workspace = true, features = ["derive"] }
 walkdir = { workspace = true }
 tokio = { workspace = true, optional = true }

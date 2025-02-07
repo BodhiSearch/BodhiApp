@@ -8,20 +8,15 @@ objs = { workspace = true }
 errmeta_derive = { workspace = true }
 services = { workspace = true }
 
-axum = { workspace = true }
-async-trait = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
-fluent = { workspace = true }
 include_dir = { workspace = true }
-prettytable-rs = { workspace = true }
+prettytable = { workspace = true }
 rstest = { workspace = true, optional = true }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 serde_yaml = { workspace = true }
-tracing = { workspace = true, features = ["async-await", "log"] }
-tokio = { workspace = true, features = ["full"] }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }

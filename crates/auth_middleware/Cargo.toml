@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-commands = { workspace = true }
 errmeta_derive = { workspace = true }
 objs = { workspace = true }
 include_dir = { workspace = true }
@@ -12,7 +11,6 @@ services = { workspace = true }
 server_core = { workspace = true }
 time = { workspace = true }
 
-async-trait = { workspace = true }
 axum = { workspace = true }
 chrono = { workspace = true }
 jsonwebtoken = { workspace = true }
@@ -20,11 +18,8 @@ rand = { workspace = true }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
-oauth2 = { workspace = true }
 serde_json = { workspace = true, features = ["preserve_order"] }
-sha2 = { workspace = true }
 tower-sessions = { workspace = true }
-tracing = { workspace = true, features = ["async-await", "log"] }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
