@@ -1,0 +1,70 @@
+Hey Product Hunt! 👋 
+
+"Bodhi" (बोधि) comes from Sanskrit/Pali, meaning deep wisdom/intelligence, the ultimate goal of every being. On the same lines we believe Artificial Intelligence (Man-made Bodhi) should also be private, free, and accessible to everyone. Let me show you how through Bodhi App we are planning to democratize AI:
+
+🎯 **Highlights**
+• Built-in Chat UI
+Bodhi App is designed with non-technical users in mind, as we believe too many have been left out of the AI revolution. No complex setup, no separate downloads for API servers and UIs - everything comes packaged in one intuitive, ready-to-go application.
+
+• Rich markdown support, syntax highlighting, copy response
+• One-click model downloads and management through intuitive UI
+• Real-time streaming responses with inference statistics
+• Responsive design - works seamlessly on Desktop, Tablet, or Mobile
+• Comprehensive documentation with built-in User Guide and API reference
+
+
+💡 **Why Bodhi App?**
+1. **Privacy First:** Run everything locally - your data never leaves your machine
+2. **Cost Effective:** No API costs or usage limits
+3. **User Friendly:** Clean UI that just works, for both beginners and power users
+4. **Industry Standards:** OpenAI+Ollama compatible APIs, drop-in replacement for existing compatible tools
+5. **Huggingface Ecosystem:** Direct integration for model downloads and metadata
+6. **llama.cpp:** Open source inference engine optimized for performance
+7. **Security:** Built-in authentication with team features in pipeline
+
+Unlike cloud solutions, Bodhi App puts you in complete control. Run state-of-the-art language models on your hardware, eliminating privacy concerns and ongoing API costs. We keep AI jargon to a minimum, guiding you to start using LLMs as swiftly as possible.
+
+Built on proven open-source foundations, Bodhi App leverages the HuggingFace ecosystem instead of reinventing the wheel. llama.cpp ensures optimal performance. These choices makes local AI both powerful and accessible.
+
+🛠️ **Technical Highlights**
+• Support for all major GGUF models
+• Configuration via YAML files, update and apply in real-time, without restarts
+• OpenAPI documentation with embedded Swagger-UI
+• Flexible model alias system for quick switching
+
+Features designed with tinkering developers in mind, giving in-built OpenAPI based Swagger-UI with complete and thorough documentation of each endpoint. No proprietary dockerish Modelfile format, the robust and industry standard configuration through YAML files.
+
+🎮 **Power Features**
+• Model aliases for configuration
+• Control request parameters (temperature, system prompt etc.)
+• Control LLM context parameters (context window, num parallel requests etc.)
+• Conversation management
+• Real-time streaming responses
+
+Power users will appreciate the fine-grained control over model behavior. Create aliases to save your perfect configurations, adjust parameters in real-time, and manage multiple conversations effortlessly. The streaming responses make interaction fluid and productive.
+
+🔐 **Security & Control**
+• Choose between authenticated or non-authenticated modes
+• Role-based access for teams (coming soon)
+• API token management
+
+Security shouldn't be complex. Bodhi App offers flexible authentication options suitable for both personal use and team deployments. The built-in security features protect your data while maintaining the simplicity everyone loves.
+
+📦 **Getting Started**
+1. Download for your platform (macOS available now, more coming soon)
+2. Choose your security mode
+3. Download models with one click
+4. Start chatting or integrate via API
+
+Getting started with Bodhi App is straightforward. The guided setup process helps you choose the right configuration for your needs, and you'll be chatting with your first model in minutes. No technical expertise required - just download and start exploring AI.
+
+🔄 **Regular Updates**
+We're actively developing Bodhi App with new features and improvements. Our roadmap includes:
+• Support for more platforms (Linux and Windows coming soon)
+• Enhanced model management capabilities
+• Additional API integrations
+• Advanced conversation features
+
+Join our mission to democratize AI! We believe everyone should have access to powerful AI tools, regardless of technical expertise. Follow us for updates and join the discussion on Discord or GitHub.
+
+Happy to answer any questions! 🚀
