@@ -75,7 +75,7 @@ export function getAllDocSlugs() {
           const relativePath = path.relative(docsDirectory, filePath);
           const pathSlug = relativePath
             .replace(/\.md$/, '')
-            .replace(path.sep, '/');
+            .replaceAll(path.sep, '/');
           arrayOfFiles.push(pathSlug);
         }
       });
@@ -99,7 +99,7 @@ export const getDocDetails = (filePath: string): DocDetails => {
     const derivedSlug = path
       .relative(docsDirectory, filePath)
       .replace(/\.md$/, '')
-      .replace(path.sep, '/');
+      .replaceAll(path.sep, '/');
 
     return {
       title: data.title || formatTitle(derivedSlug),
@@ -113,7 +113,7 @@ export const getDocDetails = (filePath: string): DocDetails => {
     const derivedSlug = path
       .relative(docsDirectory, filePath)
       .replace(/\.md$/, '')
-      .replace(path.sep, '/');
+      .replaceAll(path.sep, '/');
     return {
       title: formatTitle(derivedSlug),
       description: '',
@@ -139,7 +139,8 @@ const groupDocs = (slugs: string[]): DocGroup[] => {
   slugs.forEach((slug) => {
     const parts = slug.split('/');
     const groupName = parts.length > 1 ? parts[0] : 'index';
-    const fullPath = path.join(docsDirectory, `${slug}.md`);
+    const filePath = slug.replaceAll('/', path.sep);
+    const fullPath = path.join(docsDirectory, `${filePath}.md`);
     const details = getDocDetails(fullPath);
 
     if (!groups[groupName]) {
