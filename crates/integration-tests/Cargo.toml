@@ -26,13 +26,7 @@ serial_test = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 rand = { workspace = true }
 reqwest = { workspace = true }
-sqlx = { workspace = true, features = [
-  "runtime-tokio",
-  "sqlite",
-  "macros",
-  "migrate",
-  "chrono",
-] }
+sqlx = { workspace = true, features = ["chrono", "runtime-tokio", "sqlite"] }
 tempfile = { workspace = true }
 
 [lints.rust]
