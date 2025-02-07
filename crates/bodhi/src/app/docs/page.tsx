@@ -1,8 +1,8 @@
 import { DocsIndex } from '@/app/docs/DocsIndex';
-import { getDocsForPath } from '@/app/docs/utils';
+import { getDocsForSlug } from '@/app/docs/utils';
 
 export default function DocsPage() {
-  const sortedGroups = getDocsForPath(null);
+  const sortedGroups = getDocsForSlug(null);
 
   return (
     <DocsIndex

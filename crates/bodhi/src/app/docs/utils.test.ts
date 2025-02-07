@@ -1,7 +1,7 @@
 import {
-  getAllDocPaths,
+  getAllDocSlugs,
   getDocDetails,
-  getDocsForPath,
+  getDocsForSlug,
 } from '@/app/docs/utils';
 import fs from 'fs';
 import path from 'path';
@@ -29,7 +29,7 @@ describe('Documentation Utils', () => {
     process.env.DOCS_DIR = originalEnv;
   });
 
-  describe('getAllDocPaths', () => {
+  describe('getAllDocSlugs', () => {
     it('should return all markdown files paths without extension', () => {
       const expectedPaths = [
         'root-doc',
@@ -38,7 +38,7 @@ describe('Documentation Utils', () => {
         'nested/deep/deep-nested',
       ].sort();
 
-      const paths = getAllDocPaths().sort();
+      const paths = getAllDocSlugs().sort();
 
       expect(paths).toEqual(expectedPaths);
     });
@@ -47,7 +47,7 @@ describe('Documentation Utils', () => {
       process.env.DOCS_DIR = '__tests__/non-existent';
 
       const consoleSpy = vi.spyOn(console, 'error');
-      const paths = getAllDocPaths();
+      const paths = getAllDocSlugs();
 
       expect(paths).toEqual([]);
       expect(consoleSpy).toHaveBeenCalledWith(
@@ -59,7 +59,7 @@ describe('Documentation Utils', () => {
     });
 
     it('should ignore non-markdown files', () => {
-      const paths = getAllDocPaths();
+      const paths = getAllDocSlugs();
 
       expect(paths).not.toContain('not-markdown');
     });
@@ -198,10 +198,10 @@ description: "Some description"
     });
   });
 
-  describe('getDocsForPath', () => {
+  describe('getDocsForSlug', () => {
     describe('grouping behavior', () => {
       it('should return all docs grouped when no path is provided', () => {
-        const groups = getDocsForPath(null);
+        const groups = getDocsForSlug(null);
 
         expect(groups).toEqual([
           {
@@ -246,7 +246,7 @@ description: "Some description"
       });
 
       it('should return filtered docs for a specific path', () => {
-        const groups = getDocsForPath(['nested']);
+        const groups = getDocsForSlug(['nested']);
 
         expect(groups).toEqual([
           {
@@ -272,7 +272,7 @@ description: "Some description"
       });
 
       it('should return deeply nested docs for a specific path', () => {
-        const groups = getDocsForPath(['nested', 'deep']);
+        const groups = getDocsForSlug(['nested', 'deep']);
 
         expect(groups).toEqual([
           {
@@ -294,7 +294,7 @@ description: "Some description"
 
     describe('filtering behavior', () => {
       it('should exclude the current path from results', () => {
-        const groups = getDocsForPath(['nested', 'nested-doc']);
+        const groups = getDocsForSlug(['nested', 'nested-doc']);
 
         expect(groups.flatMap((g) => g.items).map((i) => i.slug)).not.toContain(
           'nested/nested-doc'
@@ -304,13 +304,13 @@ description: "Some description"
 
     describe('sorting behavior', () => {
       it('should sort groups by order', () => {
-        const groups = getDocsForPath(null);
+        const groups = getDocsForSlug(null);
 
         expect(groups.map((g) => g.key)).toEqual(['index', 'nested']);
       });
 
       it('should sort items within groups by order', () => {
-        const groups = getDocsForPath(['nested']);
+        const groups = getDocsForSlug(['nested']);
 
         expect(groups[0].items.map((item) => item.slug)).toEqual([
           'nested/nested-doc',
@@ -322,11 +322,11 @@ description: "Some description"
     describe('error handling', () => {
       it('should handle empty directory gracefully', () => {
         process.env.DOCS_DIR = EMPTY_TEST_DOCS_DIR;
-        expect(getDocsForPath(null)).toEqual([]);
+        expect(getDocsForSlug(null)).toEqual([]);
       });
 
       it('should return empty array for non-existent path', () => {
-        expect(getDocsForPath(['non-existent'])).toEqual([]);
+        expect(getDocsForSlug(['non-existent'])).toEqual([]);
       });
     });
   });

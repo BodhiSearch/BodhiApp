@@ -1,28 +1,29 @@
 import { DOCS_BASE_PATH, DocSidebar } from '@/app/docs/DocSidebar';
 import '@/app/docs/prism-theme.css';
 import type { NavItem } from '@/app/docs/types';
-import { getAllDocPaths, getPathOrder } from '@/app/docs/utils';
+import { getAllDocSlugs, getPathOrder } from '@/app/docs/utils';
 import fs from 'fs';
 import matter from 'gray-matter';
 import Link from 'next/link';
 import path from 'path';
 
-function getDocTitle(filePath: string): string {
+function getDocTitle(slug: string): string {
   try {
-    const fullPath = path.join(process.cwd(), 'src/docs', `${filePath}.md`);
+    const relPath = slug.split('/').join(path.sep);
+    const fullPath = path.join(process.cwd(), 'src', 'docs', `${relPath}.md`);
     const fileContents = fs.readFileSync(fullPath, 'utf8');
     const { data } = matter(fileContents);
-    return data.title || getDefaultTitle(filePath);
+    return data.title || getDefaultTitle(slug);
   } catch (e) {
-    console.error(`Error reading doc title for ${filePath}:`, e);
-    return getDefaultTitle(filePath);
+    console.error(`Error reading doc title for ${slug}:`, e);
+    return getDefaultTitle(slug);
   }
 }
 
 function getDefaultTitle(filePath: string): string {
   return (
     filePath
-      .split('/')
+      .split(path.sep)
       .pop()
       ?.replace(/-/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Untitled'
@@ -30,22 +31,22 @@ function getDefaultTitle(filePath: string): string {
 }
 
 function buildNavigation(): NavItem[] {
-  const paths = getAllDocPaths();
+  const slugs = getAllDocSlugs();
   const nav: NavItem[] = [];
 
   // Sort paths based on our custom order
-  paths
+  slugs
     .sort((a, b) => {
       const orderA = getPathOrder(a);
       const orderB = getPathOrder(b);
       return orderA - orderB;
     })
-    .forEach((path) => {
-      const parts = path.split('/');
-      const title = getDocTitle(path);
+    .forEach((slug) => {
+      const parts = slug.split('/');
+      const title = getDocTitle(slug);
 
       if (parts.length === 1) {
-        nav.push({ title, slug: path });
+        nav.push({ title, slug: slug });
       } else {
         // Handle nested paths
         let currentLevel = nav;
@@ -70,7 +71,7 @@ function buildNavigation(): NavItem[] {
         }
         currentLevel.push({
           title,
-          slug: path,
+          slug: slug,
         });
         currentLevel.sort(
           (a, b) => getPathOrder(a.slug) - getPathOrder(b.slug)

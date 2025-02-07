@@ -6,7 +6,7 @@ import DocsPage from './page';
 
 // Mock the utils module
 vi.mock('@/app/docs/utils', () => ({
-  getDocsForPath: vi.fn(),
+  getDocsForSlug: vi.fn(),
 }));
 
 describe('DocsPage', () => {
@@ -38,11 +38,11 @@ describe('DocsPage', () => {
   ];
 
   it('renders documentation index with root level docs', () => {
-    vi.mocked(utils.getDocsForPath).mockReturnValue(mockGroups);
+    vi.mocked(utils.getDocsForSlug).mockReturnValue(mockGroups);
     render(<DocsPage />);
 
-    // Verify getDocsForPath was called correctly
-    expect(utils.getDocsForPath).toHaveBeenCalledWith(null);
+    // Verify getDocsForSlug was called correctly
+    expect(utils.getDocsForSlug).toHaveBeenCalledWith(null);
 
     // Verify title and description
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Documentation');
@@ -58,7 +58,7 @@ describe('DocsPage', () => {
   });
 
   it('handles empty documentation gracefully', () => {
-    vi.mocked(utils.getDocsForPath).mockReturnValue([]);
+    vi.mocked(utils.getDocsForSlug).mockReturnValue([]);
     render(<DocsPage />);
 
     // Verify empty state
@@ -67,7 +67,7 @@ describe('DocsPage', () => {
 
   test.skip('handles error state gracefully', () => {
     // Setup mock to throw error
-    vi.mocked(utils.getDocsForPath).mockImplementation(() => {
+    vi.mocked(utils.getDocsForSlug).mockImplementation(() => {
       throw new Error('Failed to load docs');
     });
 

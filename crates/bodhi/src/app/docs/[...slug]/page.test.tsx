@@ -1,5 +1,5 @@
 import { createMockDoc, createMockGroup, mockMarkdownContent } from '@/app/docs/test-utils';
-import { getAllDocPaths, getDocsForPath } from '@/app/docs/utils';
+import { getAllDocSlugs, getDocsForSlug } from '@/app/docs/utils';
 import { act, render, screen } from '@testing-library/react';
 import fs from 'fs';
 import matter from 'gray-matter';
@@ -13,8 +13,8 @@ vi.mock('next/navigation', () => ({
 }));
 
 vi.mock('@/app/docs/utils', () => ({
-  getAllDocPaths: vi.fn(),
-  getDocsForPath: vi.fn(),
+  getAllDocSlugs: vi.fn(),
+  getDocsForSlug: vi.fn(),
 }));
 
 // Mock fs module with default export
@@ -54,7 +54,7 @@ describe('DocsSlugPage', () => {
 
   describe('generateStaticParams', () => {
     it('generates params for all doc paths and their parent directories', () => {
-      vi.mocked(getAllDocPaths).mockReturnValue([
+      vi.mocked(getAllDocSlugs).mockReturnValue([
         'docs/intro',
         'docs/nested/guide',
         'docs/nested/deep/advanced',
@@ -73,14 +73,14 @@ describe('DocsSlugPage', () => {
     });
 
     it('handles empty paths', () => {
-      vi.mocked(getAllDocPaths).mockReturnValue([]);
+      vi.mocked(getAllDocSlugs).mockReturnValue([]);
       expect(generateStaticParams()).toEqual([]);
     });
   });
 
   describe('page rendering', () => {
     it('renders docs index for directory with nested docs', async () => {
-      vi.mocked(getDocsForPath).mockReturnValue(mockGroups);
+      vi.mocked(getDocsForSlug).mockReturnValue(mockGroups);
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
 
@@ -126,7 +126,7 @@ describe('DocsSlugPage', () => {
         },
       ];
 
-      vi.mocked(getDocsForPath).mockReturnValue(multipleGroups);
+      vi.mocked(getDocsForSlug).mockReturnValue(multipleGroups);
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
 
@@ -149,7 +149,7 @@ describe('DocsSlugPage', () => {
     });
 
     it('renders markdown content for document files', async () => {
-      vi.mocked(getDocsForPath).mockReturnValue([]);
+      vi.mocked(getDocsForSlug).mockReturnValue([]);
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
       vi.mocked(fs.readFileSync).mockReturnValue(mockMarkdownContent);
@@ -184,7 +184,7 @@ describe('DocsSlugPage', () => {
     });
 
     it('shows 404 for non-existent paths', async () => {
-      vi.mocked(getDocsForPath).mockReturnValue([]);
+      vi.mocked(getDocsForSlug).mockReturnValue([]);
       // Both file and directory don't exist
       vi.mocked(fs.existsSync).mockImplementation(() => false);
 
@@ -194,7 +194,7 @@ describe('DocsSlugPage', () => {
     });
 
     it('handles file read errors gracefully', async () => {
-      vi.mocked(getDocsForPath).mockReturnValue([]);
+      vi.mocked(getDocsForSlug).mockReturnValue([]);
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
       vi.mocked(fs.readFileSync).mockImplementation(() => {
@@ -215,7 +215,7 @@ describe('DocsSlugPage', () => {
     });
 
     it('handles markdown processing errors gracefully', async () => {
-      vi.mocked(getDocsForPath).mockReturnValue([]);
+      vi.mocked(getDocsForSlug).mockReturnValue([]);
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
       vi.mocked(fs.readFileSync).mockReturnValue('invalid markdown');
