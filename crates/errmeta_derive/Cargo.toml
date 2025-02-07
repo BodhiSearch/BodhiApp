@@ -16,14 +16,14 @@ syn = { workspace = true, features = ["full"] }
 convert_case = { workspace = true }
 
 [dev-dependencies]
-http = "1.1.0"
-pretty_assertions = "1.4.1"
-rstest = "0.23.0"
-serde = { version = "1.0.210", features = ["derive"] }
-serde_json = { version = "1.0.128" }
-strum = { version = "0.26.3", features = ["derive"] }
-thiserror = "1.0.64"
-trybuild = "1.0.99"
+http = { workspace = true }
+pretty_assertions = { workspace = true }
+rstest = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+strum = { workspace = true, features = ["derive"] }
+thiserror = { workspace = true }
+trybuild = { workspace = true }
 
 [[test]]
 name = "trybuild"

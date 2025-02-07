@@ -14,7 +14,7 @@ routes_oai = { workspace = true }
 axum = { workspace = true }
 include_dir = { workspace = true }
 rstest = { workspace = true, optional = true }
-tower-http = { workspace = true, features = ["trace", "cors"] }
+tower-http = { workspace = true, features = ["cors", "trace"] }
 tracing = { workspace = true }
 serde_json = { workspace = true }
 hyper-util = { workspace = true }

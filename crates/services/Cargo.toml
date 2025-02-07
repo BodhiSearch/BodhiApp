@@ -27,7 +27,7 @@ mini-moka = { workspace = true }
 mockall = { workspace = true, optional = true }
 oauth2 = { workspace = true }
 once_cell = { workspace = true, optional = true }
-pbkdf2 = { workspace = true, features = ["simple"] }
+pbkdf2 = { workspace = true, features = ["password-hash", "sha2"] }
 reqwest = { workspace = true }
 rand = { workspace = true }
 rsa = { workspace = true, optional = true }
@@ -36,13 +36,7 @@ sha2 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
-sqlx = { workspace = true, features = [
-  "runtime-tokio",
-  "sqlite",
-  "macros",
-  "migrate",
-  "chrono",
-] }
+sqlx = { workspace = true, features = ["chrono", "runtime-tokio", "sqlite"] }
 strum = { workspace = true }
 tap = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
