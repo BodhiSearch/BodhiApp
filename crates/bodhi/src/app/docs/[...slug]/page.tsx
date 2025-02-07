@@ -1,5 +1,5 @@
 import { DocsIndex } from '@/app/docs/DocsIndex';
-import { getAllDocPaths, getDocsForPath } from '@/app/docs/utils';
+import { getAllDocSlugs, getDocsForSlug } from '@/app/docs/utils';
 import fs from 'fs';
 import matter from 'gray-matter';
 import { notFound } from 'next/navigation';
@@ -17,7 +17,7 @@ export const DOCS_ROOT_PATH = 'src/docs';
 
 // Generate static paths for all markdown files
 export function generateStaticParams() {
-  const paths = getAllDocPaths();
+  const paths = getAllDocSlugs();
   const allPaths = new Set<string>();
 
   paths.forEach((path) => {
@@ -60,7 +60,7 @@ async function markdownToHtml(content: string) {
 }
 
 export default async function DocsSlugPage({ params }: DocsSlugPageProps) {
-  const sortedGroups = getDocsForPath(params.slug);
+  const sortedGroups = getDocsForSlug(params.slug);
   const slug = params.slug.join('/');
   const filePath = path.join(process.cwd(), DOCS_ROOT_PATH, `${slug}.md`);
   const dirPath = path.join(process.cwd(), DOCS_ROOT_PATH, slug);
