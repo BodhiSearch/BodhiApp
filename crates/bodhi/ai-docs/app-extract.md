@@ -115,3 +115,4 @@ The app aims to democratize AI by making powerful AI tools accessible to everyon
 
 - **Website**: https://www.getbodhi.app
 - **GitHub Repository**: https://github.com/BodhiSearch/BodhiApp 
+- **Linktree**: https://linktr.ee/bodhiapp
