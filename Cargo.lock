@@ -8893,6 +8893,8 @@ name = "xtask"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "routes_app",
+ "utoipa",
  "xtaskops",
 ]
 
