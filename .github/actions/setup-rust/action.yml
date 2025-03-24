@@ -43,3 +43,7 @@ runs:
         if ! command -v cargo-tauri > /dev/null 2>&1; then
           cargo install tauri-cli@^2.0.0
         fi
+    - name: Update for deranged issue
+      shell: bash
+      run: |
+        cargo update -p deranged
