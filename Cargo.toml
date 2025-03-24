@@ -139,11 +139,6 @@ walkdir = "2.5.0"
 webbrowser = "1.0.0"
 xtaskops = "0.4.2"
 
-deranged = "=0.4.0"
-
-[patch.crates-io]
-deranged = { git = "https://github.com/jhpratt/deranged", rev = "3c95431a375bca409a4731ae8749acc84e076267" }
-
 # [profile.release.package.bodhi]
 # codegen-units = 1
 # strip = true
