@@ -29,6 +29,10 @@ runs:
         targets: ${{ inputs.target }}
         components: rustfmt,clippy,llvm-tools
     - uses: taiki-e/install-action@cargo-llvm-cov
+    - name: Update for deranged issue
+      shell: bash
+      run: |
+        cargo update -p deranged
     - name: Install Tauri CLI (Windows)
       if: inputs.platform == 'windows-latest'
       shell: pwsh
@@ -43,7 +47,3 @@ runs:
         if ! command -v cargo-tauri > /dev/null 2>&1; then
           cargo install tauri-cli@^2.0.0
         fi
-    - name: Update for deranged issue
-      shell: bash
-      run: |
-        cargo update -p deranged
