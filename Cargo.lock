@@ -576,6 +576,7 @@ dependencies = [
  "axum",
  "clap 4.5.28",
  "commands",
+ "deranged 0.4.0",
  "derive-new",
  "errmeta_derive",
  "fs2",
@@ -1382,6 +1383,11 @@ dependencies = [
  "powerfmt",
  "serde",
 ]
+
+[[package]]
+name = "deranged"
+version = "0.4.0"
+source = "git+https://github.com/jhpratt/deranged?rev=3c95431a375bca409a4731ae8749acc84e076267#3c95431a375bca409a4731ae8749acc84e076267"
 
 [[package]]
 name = "derive-new"
@@ -7212,7 +7218,7 @@ version = "0.3.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "35e7868883861bd0e56d9ac6efcaaca0d6d5d82a2a7ec8209ff492c07cf37b21"
 dependencies = [
- "deranged",
+ "deranged 0.3.11",
  "itoa 1.0.14",
  "libc",
  "num-conv",
@@ -9043,8 +9049,3 @@ dependencies = [
  "once_cell",
  "simd-adler32",
 ]
-
-[[patch.unused]]
-name = "deranged"
-version = "0.4.0"
-source = "git+https://github.com/jhpratt/deranged?rev=3c95431a375bca409a4731ae8749acc84e076267#3c95431a375bca409a4731ae8749acc84e076267"

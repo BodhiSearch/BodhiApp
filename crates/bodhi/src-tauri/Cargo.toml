@@ -23,6 +23,7 @@ server_app = { workspace = true }
 include_dir = { workspace = true }
 tauri = { workspace = true, features = ["tray-icon"], optional = true }
 tauri-plugin-log = { workspace = true, optional = true }
+deranged = { workspace = true }
 
 axum = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
