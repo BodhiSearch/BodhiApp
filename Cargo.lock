@@ -9043,3 +9043,8 @@ dependencies = [
  "once_cell",
  "simd-adler32",
 ]
+
+[[patch.unused]]
+name = "deranged"
+version = "0.4.0"
+source = "git+https://github.com/jhpratt/deranged?rev=3c95431a375bca409a4731ae8749acc84e076267#3c95431a375bca409a4731ae8749acc84e076267"
