@@ -17,6 +17,7 @@ runs:
       uses: actions/setup-node@v4
       with:
         node-version: lts/iron
+        registry-url: 'https://registry.npmjs.org'
 
     - name: Get pnpm store directory (Windows)
       if: inputs.platform == 'windows-latest'

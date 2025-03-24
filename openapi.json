@@ -1,0 +1,3432 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Bodhi App APIs",
+    "description": "API documentation for Bodhi App.\n\n## Authentication\nThis API supports two authentication methods:\n\n1. **Browser Session** (Default)\n   - Login via `/app/login` endpoint\n   - Session cookie will be used automatically\n   - Best for browser-based access\n\n2. **API Token**\n   - Create API Token using the app Menu > Settings > API Tokens\n   - Use the API Token as the Authorization Bearer token in API calls\n   - Best for programmatic access\n\n## Authorization\nAPIs require different privilege levels:\n\n- **User Level**: Requires `resource_user` role or `scope_token_user`\n- **Power User Level**: Requires `resource_power_user` role or `scope_token_power_user`\n\nFor API keys, specify required scope when creating the token.\n",
+    "contact": {
+      "name": "Bodhi API Support",
+      "url": "https://github.com/BodhiSearch/BodhiApp/issues",
+      "email": "support@getbodhi.app"
+    },
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:1135",
+      "description": "Local running instance"
+    }
+  ],
+  "paths": {
+    "/api/chat": {
+      "post": {
+        "tags": [
+          "ollama"
+        ],
+        "summary": "Chat with a model using Ollama format",
+        "operationId": "chatOllamaModel",
+        "requestBody": {
+          "description": "Chat request in Ollama format",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              },
+              "example": {
+                "messages": [
+                  {
+                    "content": "You are a helpful assistant.",
+                    "role": "system"
+                  },
+                  {
+                    "content": "Hello!",
+                    "role": "user"
+                  }
+                ],
+                "model": "llama2:chat",
+                "options": {
+                  "num_predict": 100,
+                  "temperature": 0.7
+                },
+                "stream": true
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Chat response",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "created_at": "2024-01-20T12:00:00.000000000Z",
+                  "done": true,
+                  "done_reason": "stop",
+                  "eval_count": 10,
+                  "eval_duration": "-1",
+                  "load_duration": "-1",
+                  "message": {
+                    "content": "Hello! How can I help you today?",
+                    "images": null,
+                    "role": "assistant"
+                  },
+                  "model": "llama2:chat",
+                  "prompt_eval_count": 20,
+                  "prompt_eval_duration": "-1",
+                  "total_duration": 0.0
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OllamaError"
+                },
+                "example": {
+                  "error": "invalid request parameters"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OllamaError"
+                },
+                "example": {
+                  "error": "model not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OllamaError"
+                },
+                "example": {
+                  "error": "chat completion error: failed to process request"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/show": {
+      "post": {
+        "tags": [
+          "ollama"
+        ],
+        "summary": "Get detailed information about a model in Ollama format",
+        "operationId": "showOllamaModel",
+        "requestBody": {
+          "description": "Model name to get details for",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShowRequest"
+              },
+              "example": {
+                "name": "llama2:chat"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Model details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowResponse"
+                },
+                "example": {
+                  "details": {
+                    "families": null,
+                    "family": "unknown",
+                    "format": "gguf",
+                    "parameter_size": "",
+                    "parent_model": null,
+                    "quantization_level": ""
+                  },
+                  "license": "",
+                  "model_info": {},
+                  "modelfile": "",
+                  "modified_at": "2024-01-20T12:00:00.000000000Z",
+                  "parameters": "n_keep: 24\nstop:\n- <|start_header_id|>\n- <|end_header_id|>\n- <|eot_id|>\n",
+                  "template": "llama2"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OllamaError"
+                },
+                "example": {
+                  "error": "model not found"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OllamaError"
+                },
+                "example": {
+                  "error": "Failed to get model details"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "tags": [
+          "ollama"
+        ],
+        "summary": "List available models in Ollama format",
+        "operationId": "listOllamaModels",
+        "responses": {
+          "200": {
+            "description": "List of available models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsResponse"
+                },
+                "example": {
+                  "models": [
+                    {
+                      "details": {
+                        "families": null,
+                        "family": "unknown",
+                        "format": "gguf",
+                        "parameter_size": "",
+                        "parent_model": null,
+                        "quantization_level": ""
+                      },
+                      "digest": "sha256:abc123",
+                      "model": "llama2:chat",
+                      "modified_at": "2024-01-20T12:00:00.000000000Z",
+                      "size": 0
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OllamaError"
+                },
+                "example": {
+                  "error": "Failed to list models"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/chat_templates": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List available chat templates (both built-in and from repositories)",
+        "operationId": "listChatTemplates",
+        "responses": {
+          "200": {
+            "description": "List of available chat templates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ChatTemplateType"
+                  }
+                },
+                "example": [
+                  {
+                    "id": "llama2"
+                  },
+                  {
+                    "id": "llama3"
+                  },
+                  {
+                    "id": "gemma"
+                  },
+                  {
+                    "repo": "meta-llama/Llama-2-70b-chat-hf"
+                  },
+                  {
+                    "repo": "mistralai/Mistral-7B-Instruct-v0.1"
+                  }
+                ]
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/info": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "operationId": "getAppInfo",
+        "responses": {
+          "200": {
+            "description": "Returns the status information about the Application",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppInfo"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bodhi/v1/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Logout the current user by destroying their session",
+        "operationId": "logoutUser",
+        "responses": {
+          "200": {
+            "description": "Logout successful, redirects to login page",
+            "headers": {
+              "Location": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Frontend login page URL"
+              }
+            }
+          },
+          "500": {
+            "description": "Session deletion failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bodhi/v1/modelfiles": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List available model files in GGUF format from HuggingFace cache",
+        "operationId": "listModelFiles",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items per page (max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order (asc or desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of supported model files from local HuggingFace cache folder",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_LocalModelResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                      "size": 4815162,
+                      "snapshot_id": "ab12cd34"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 10,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/modelfiles/pull": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List all model download requests",
+        "operationId": "listDownloads",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items per page (max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order (asc or desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of download requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_DownloadRequest"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 10,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Start a new model file download",
+        "operationId": "pullModelFile",
+        "requestBody": {
+          "description": "Model file download request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewDownloadRequest"
+              },
+              "example": {
+                "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Existing download request found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                  "status": "pending",
+                  "updated_at": "2024-11-10T04:52:06.786Z"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Download request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                  "status": "pending",
+                  "updated_at": "2024-11-10T04:52:06.786Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "File already exists or invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "pull_error-file_already_exists",
+                    "message": "file 'mistral-7b-instruct-v0.1.Q8_0.gguf' already exists in repo 'TheBloke/Mistral-7B-Instruct-v0.1-GGUF' with snapshot 'main'",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Internal server error occurred",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/modelfiles/pull/{alias}": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Start a model file download using a predefined alias",
+        "operationId": "pullModelByAlias",
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "description": "Available model aliases:\n- llama3:instruct - Meta Llama 3 8B Instruct\n- llama3:70b-instruct - Meta Llama 3 70B Instruct\n- llama2:chat - Llama 2 7B Chat\n- llama2:13b-chat - Llama 2 13B Chat\n- llama2:70b-chat - Llama 2 70B Chat\n- phi3:mini - Phi 3 Mini\n- mistral:instruct - Mistral 7B Instruct\n- mixtral:instruct - Mixtral 8x7B Instruct\n- gemma:instruct - Gemma 7B Instruct\n- gemma:7b-instruct-v1.1-q8_0 - Gemma 1.1 7B Instruct",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "llama2:chat"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Existing download request found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "llama-2-7b-chat.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                  "status": "pending",
+                  "updated_at": "2024-11-10T04:52:06.786Z"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Download request created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "llama-2-7b-chat.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                  "status": "pending",
+                  "updated_at": "2024-11-10T04:52:06.786Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "File already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "pull_error-file_already_exists",
+                    "message": "file 'llama-2-7b-chat.Q8_0.gguf' already exists in repo 'TheBloke/Llama-2-7B-Chat-GGUF' with snapshot 'main'",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alias not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "remote_model_not_found_error",
+                    "message": "remote model alias 'invalid:model' not found, check your alias and try again",
+                    "type": "not_found_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Internal server error occurred",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/modelfiles/pull/{id}": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Get the status of a specific download request",
+        "operationId": "getDownloadStatus",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Download request identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Download request found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadRequest"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "error": null,
+                  "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                  "status": "completed",
+                  "updated_at": "2024-01-20T12:00:10Z"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Download request not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "item_not_found",
+                    "message": "item '550e8400-e29b-41d4-a716-446655440000' of type 'download_requests' not found in db",
+                    "type": "not_found_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Internal server error occurred",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "List configured model aliases",
+        "operationId": "listModelAliases",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items per page (max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order (asc or desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of configured model aliases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_AliasResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "alias": "llama2:chat",
+                      "chat_template": "llama2",
+                      "context_params": {
+                        "max_tokens": 4096
+                      },
+                      "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                      "model_params": {},
+                      "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                      "request_params": {
+                        "temperature": 0.7,
+                        "top_p": 0.95
+                      },
+                      "source": "huggingface"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 10,
+                  "total": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/{alias}": {
+      "get": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Get details for a specific model alias",
+        "operationId": "getAlias",
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "description": "Alias identifier for the model",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model alias details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AliasResponse"
+                },
+                "example": {
+                  "alias": "llama2:chat",
+                  "chat_template": "llama2",
+                  "context_params": {
+                    "n_keep": 24,
+                    "stop": [
+                      "<|end_of_turn|>"
+                    ]
+                  },
+                  "filename": "llama-2-7b-chat.Q8_0.gguf",
+                  "model_params": {},
+                  "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                  "request_params": {
+                    "frequency_penalty": 0.0,
+                    "presence_penalty": 0.0,
+                    "temperature": 0.7,
+                    "top_p": 1.0
+                  },
+                  "snapshot": "sha256:abc123",
+                  "source": "config"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Alias not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "alias_not_found",
+                    "message": "Alias 'unknown:model' not found",
+                    "type": "not_found_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/settings": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "List all application settings",
+        "operationId": "listSettings",
+        "responses": {
+          "200": {
+            "description": "List of application settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SettingInfo"
+                  }
+                },
+                "example": [
+                  {
+                    "current_value": "info",
+                    "default_value": "warn",
+                    "key": "BODHI_LOG_LEVEL",
+                    "metadata": {
+                      "options": [
+                        "error",
+                        "warn",
+                        "info",
+                        "debug",
+                        "trace"
+                      ],
+                      "type": "option"
+                    },
+                    "source": "environment"
+                  },
+                  {
+                    "current_value": 1135,
+                    "default_value": 1135,
+                    "key": "BODHI_PORT",
+                    "metadata": {
+                      "max": 65535,
+                      "min": 1025,
+                      "type": "number"
+                    },
+                    "source": "default"
+                  }
+                ]
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - User is not an admin",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "settings_error-unauthorized",
+                    "message": "Only administrators can view settings",
+                    "type": "unauthorized_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/settings/{key}": {
+      "put": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Update a specific setting",
+        "operationId": "updateSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Setting key to update",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "New setting value",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "description": "Request to update a setting value",
+                "required": [
+                  "value"
+                ],
+                "properties": {
+                  "value": {}
+                },
+                "example": {
+                  "value": "debug"
+                }
+              },
+              "example": {
+                "value": "debug"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Setting updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingInfo"
+                },
+                "example": {
+                  "current_value": "debug",
+                  "default_value": "warn",
+                  "key": "BODHI_LOG_LEVEL",
+                  "metadata": {
+                    "options": [
+                      "error",
+                      "warn",
+                      "info",
+                      "debug",
+                      "trace"
+                    ],
+                    "type": "option"
+                  },
+                  "source": "settings_file"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid setting or value",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "settings_error-validation_error",
+                    "message": "Invalid value for setting: value out of range",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Setting not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "settings_error-invalid_setting",
+                    "message": "Setting not found: INVALID_KEY",
+                    "type": "not_found_error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "settings"
+        ],
+        "summary": "Reset a setting to its default value",
+        "operationId": "deleteSetting",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "description": "Setting key to reset",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Setting reset to default successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingInfo"
+                },
+                "example": {
+                  "current_value": "warn",
+                  "default_value": "warn",
+                  "key": "BODHI_LOG_LEVEL",
+                  "metadata": {
+                    "options": [
+                      "error",
+                      "warn",
+                      "info",
+                      "debug",
+                      "trace"
+                    ],
+                    "type": "option"
+                  },
+                  "source": "default"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Setting not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "settings_error-not_found",
+                    "message": "Setting not found: INVALID_KEY",
+                    "type": "not_found_error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/setup": {
+      "post": {
+        "tags": [
+          "setup"
+        ],
+        "operationId": "setupApp",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Application setup successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Application is already setup",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "auth_service_error",
+                    "message": "Failed to register with auth server",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bodhi/v1/tokens": {
+      "get": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "List all API tokens for the current user",
+        "operationId": "listApiTokens",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items per page (max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order (asc or desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of API tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedResponse_ApiToken"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "created_at": "2024-11-10T04:52:06.786Z",
+                      "id": "550e8400-e29b-41d4-a716-446655440000",
+                      "name": "Development Token",
+                      "status": "active",
+                      "token_id": "jwt-token-id-1",
+                      "updated_at": "2024-11-10T04:52:06.786Z",
+                      "user_id": "auth0|123456789"
+                    },
+                    {
+                      "created_at": "2024-11-10T04:52:06.786Z",
+                      "id": "660e8400-e29b-41d4-a716-446655440000",
+                      "name": "Test Token",
+                      "status": "inactive",
+                      "token_id": "jwt-token-id-2",
+                      "updated_at": "2024-11-10T04:52:06.786Z",
+                      "user_id": "auth0|123456789"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 10,
+                  "total": 2
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token missing or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "api_token_error-token_missing",
+                    "message": "access token is not present in request",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Internal server error occurred",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "Create a new API token",
+        "operationId": "createApiToken",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiTokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "API token created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiTokenResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/tokens/{id}": {
+      "put": {
+        "tags": [
+          "api-keys"
+        ],
+        "summary": "Update an existing API token",
+        "operationId": "updateApiToken",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Token identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          }
+        ],
+        "requestBody": {
+          "description": "Token update request",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateApiTokenRequest"
+              },
+              "example": {
+                "name": "Updated Token Name",
+                "status": "inactive"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Token updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiToken"
+                },
+                "example": {
+                  "created_at": "2024-11-10T04:52:06.786Z",
+                  "id": "550e8400-e29b-41d4-a716-446655440000",
+                  "name": "Updated Token Name",
+                  "status": "inactive",
+                  "token_id": "jwt-token-id-1",
+                  "updated_at": "2024-11-10T04:52:06.786Z",
+                  "user_id": "auth0|123456789"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized - Token missing or invalid",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "api_token_error-token_missing",
+                    "message": "access token is not present in request",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Token not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "entity_error-not_found",
+                    "message": "Token not found",
+                    "type": "not_found_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "internal_error",
+                    "message": "Internal server error occurred",
+                    "type": "internal_server_error"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/user": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get information about the currently logged in user",
+        "operationId": "getCurrentUser",
+        "responses": {
+          "200": {
+            "description": "Returns current user information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserInfo"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error in extracting user info from token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "token_error-invalid_token",
+                    "message": "token is invalid",
+                    "type": "authentication_error"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ping": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Simple health check endpoint",
+        "operationId": "pingServer",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PingResponse"
+                },
+                "example": {
+                  "message": "pong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "tags": [
+          "openai"
+        ],
+        "summary": "Create a chat completion",
+        "operationId": "createChatCompletion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {},
+              "example": {
+                "max_tokens": 100,
+                "messages": [
+                  {
+                    "content": "You are a helpful assistant.",
+                    "role": "system"
+                  },
+                  {
+                    "content": "Hello!",
+                    "role": "user"
+                  }
+                ],
+                "model": "llama2:chat",
+                "stream": false,
+                "temperature": 0.7
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Chat completion response",
+            "content": {
+              "application/json": {
+                "schema": {},
+                "example": {
+                  "choices": [
+                    {
+                      "finish_reason": "stop",
+                      "index": 0,
+                      "message": {
+                        "content": "Hello! How can I help you today?",
+                        "role": "assistant"
+                      }
+                    }
+                  ],
+                  "created": 1677610602,
+                  "id": "chatcmpl-123",
+                  "model": "llama2:chat",
+                  "object": "chat.completion",
+                  "usage": {
+                    "completion_tokens": 10,
+                    "prompt_tokens": 20,
+                    "total_tokens": 30
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Chat completion stream, the status is 200, using 201 to avoid OpenAPI format limitation.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "No-cache directive"
+              }
+            },
+            "content": {
+              "text/event-stream": {
+                "schema": {},
+                "example": {
+                  "choices": [
+                    {
+                      "delta": {
+                        "content": "Hello"
+                      },
+                      "finish_reason": null,
+                      "index": 0
+                    }
+                  ],
+                  "created": 1694268190,
+                  "id": "chatcmpl-123",
+                  "model": "llama2:chat",
+                  "object": "chat.completion.chunk"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "model_not_found",
+                    "message": "Invalid model specified",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid authentication",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "invalid_api_key",
+                    "message": "Invalid authentication token",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "tags": [
+          "openai"
+        ],
+        "summary": "List available models",
+        "operationId": "listModels",
+        "responses": {
+          "200": {
+            "description": "List of available models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListModelResponseWrapper"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "created": 1677610602,
+                      "id": "llama2:chat",
+                      "object": "model",
+                      "owned_by": "bodhi"
+                    },
+                    {
+                      "created": 1677610602,
+                      "id": "mistral:instruct",
+                      "object": "model",
+                      "owned_by": "bodhi"
+                    }
+                  ],
+                  "object": "list"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid authentication",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "invalid_api_key",
+                    "message": "Invalid authentication token",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AliasResponse": {
+        "type": "object",
+        "required": [
+          "alias",
+          "repo",
+          "filename",
+          "snapshot",
+          "source",
+          "chat_template",
+          "model_params",
+          "request_params",
+          "context_params"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "chat_template": {
+            "type": "string"
+          },
+          "context_params": {
+            "$ref": "#/components/schemas/GptContextParams"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "model_params": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "repo": {
+            "type": "string"
+          },
+          "request_params": {
+            "$ref": "#/components/schemas/OAIRequestParams"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiToken": {
+        "type": "object",
+        "required": [
+          "id",
+          "user_id",
+          "name",
+          "token_id",
+          "token_hash",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-11-10T04:52:06.786Z"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TokenStatus"
+          },
+          "token_hash": {
+            "type": "string"
+          },
+          "token_id": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-11-10T04:52:06.786Z"
+          },
+          "user_id": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiTokenResponse": {
+        "type": "object",
+        "required": [
+          "offline_token"
+        ],
+        "properties": {
+          "offline_token": {
+            "type": "string",
+            "description": "Offline token that can be used as API Token"
+          }
+        }
+      },
+      "AppInfo": {
+        "type": "object",
+        "description": "Application information and status",
+        "required": [
+          "version",
+          "authz",
+          "status"
+        ],
+        "properties": {
+          "authz": {
+            "type": "boolean",
+            "description": "Whether authentication is enabled"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppStatus",
+            "description": "Current application status"
+          },
+          "version": {
+            "type": "string",
+            "description": "Application version"
+          }
+        },
+        "example": {
+          "authz": true,
+          "status": "ready",
+          "version": "0.1.0"
+        }
+      },
+      "AppStatus": {
+        "type": "string",
+        "enum": [
+          "setup",
+          "ready",
+          "resource-admin"
+        ],
+        "example": "ready"
+      },
+      "ChatRequest": {
+        "type": "object",
+        "required": [
+          "model",
+          "messages"
+        ],
+        "properties": {
+          "format": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "keep_alive": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Duration"
+              }
+            ]
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            }
+          },
+          "model": {
+            "type": "string"
+          },
+          "options": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Options"
+              }
+            ]
+          },
+          "stream": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "ChatTemplateId": {
+        "type": "string",
+        "description": "Chat template identifier for built-in templates",
+        "enum": [
+          "llama3",
+          "llama2",
+          "llama2-legacy",
+          "phi3",
+          "gemma",
+          "deepseek",
+          "command-r",
+          "openchat",
+          "tinyllama"
+        ]
+      },
+      "ChatTemplateType": {
+        "oneOf": [
+          {
+            "type": "string",
+            "description": "Chat template embedded in the GGUF model file",
+            "enum": [
+              "Embedded"
+            ]
+          },
+          {
+            "type": "object",
+            "description": "Built-in chat template using Id",
+            "required": [
+              "Id"
+            ],
+            "properties": {
+              "Id": {
+                "$ref": "#/components/schemas/ChatTemplateId",
+                "description": "Built-in chat template using Id"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "description": "Custom chat template from a repository",
+            "required": [
+              "Repo"
+            ],
+            "properties": {
+              "Repo": {
+                "$ref": "#/components/schemas/Repo",
+                "description": "Custom chat template from a repository"
+              }
+            }
+          }
+        ],
+        "description": "Chat template type that can be either built-in or from a repository"
+      },
+      "CreateApiTokenRequest": {
+        "type": "object",
+        "description": "Request to create a new API token",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional name for the API token"
+          }
+        },
+        "example": {
+          "name": "My API Token"
+        }
+      },
+      "DownloadRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "repo",
+          "filename",
+          "status",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-11-10T04:52:06.786Z"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filename": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/DownloadStatus"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-11-10T04:52:06.786Z"
+          }
+        }
+      },
+      "DownloadStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "completed",
+          "error"
+        ]
+      },
+      "Duration": {
+        "type": "string"
+      },
+      "ErrorBody": {
+        "type": "object",
+        "required": [
+          "message",
+          "type"
+        ],
+        "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "param": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "GptContextParams": {
+        "type": "object",
+        "properties": {
+          "n_ctx": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "n_keep": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "n_parallel": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "n_predict": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "n_seed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "n_threads": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          }
+        }
+      },
+      "ListModelResponseWrapper": {
+        "type": "object",
+        "required": [
+          "object",
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Describes an OpenAI model offering that can be used with the API.",
+              "required": [
+                "id",
+                "object",
+                "created",
+                "owned_by"
+              ],
+              "properties": {
+                "created": {
+                  "type": "integer",
+                  "format": "int32",
+                  "description": "The Unix timestamp (in seconds) when the model was created.",
+                  "minimum": 0
+                },
+                "id": {
+                  "type": "string",
+                  "description": "The model identifier, which can be referenced in the API endpoints."
+                },
+                "object": {
+                  "type": "string",
+                  "description": "The object type, which is always \"model\"."
+                },
+                "owned_by": {
+                  "type": "string",
+                  "description": "The organization that owns the model."
+                }
+              }
+            }
+          },
+          "object": {
+            "type": "string"
+          }
+        }
+      },
+      "LocalModelResponse": {
+        "type": "object",
+        "required": [
+          "repo",
+          "filename",
+          "snapshot",
+          "model_params"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string"
+          },
+          "model_params": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "repo": {
+            "type": "string"
+          },
+          "size": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "required": [
+          "role",
+          "content"
+        ],
+        "properties": {
+          "content": {
+            "type": "string"
+          },
+          "images": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      },
+      "Model": {
+        "type": "object",
+        "required": [
+          "model",
+          "modified_at",
+          "size",
+          "digest",
+          "details"
+        ],
+        "properties": {
+          "details": {
+            "$ref": "#/components/schemas/ModelDetails"
+          },
+          "digest": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ModelDetails": {
+        "type": "object",
+        "required": [
+          "format",
+          "family",
+          "parameter_size",
+          "quantization_level"
+        ],
+        "properties": {
+          "families": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "family": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "parameter_size": {
+            "type": "string"
+          },
+          "parent_model": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantization_level": {
+            "type": "string"
+          }
+        }
+      },
+      "ModelsResponse": {
+        "type": "object",
+        "required": [
+          "models"
+        ],
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Model"
+            }
+          }
+        }
+      },
+      "NewDownloadRequest": {
+        "type": "object",
+        "description": "Request to pull a model file from HuggingFace",
+        "required": [
+          "repo",
+          "filename"
+        ],
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "Model file name to pull"
+          },
+          "repo": {
+            "type": "string",
+            "description": "HuggingFace repository name"
+          }
+        },
+        "example": {
+          "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+          "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
+        }
+      },
+      "OAIRequestParams": {
+        "type": "object",
+        "properties": {
+          "frequency_penalty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "max_tokens": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "presence_penalty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "seed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "stop": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "temperature": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "top_p": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "user": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "OllamaError": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "OpenAIApiError": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        }
+      },
+      "Options": {
+        "type": "object",
+        "properties": {
+          "f16_kv": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "frequency_penalty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "logits_all": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "low_vram": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "main_gpu": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "mirostat": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "mirostat_eta": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "mirostat_tau": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "num_batch": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "num_ctx": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "num_gpu": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "num_keep": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "num_predict": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "minimum": 0
+          },
+          "num_thread": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "numa": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "penalize_newline": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "presence_penalty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "repeat_last_n": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "repeat_penalty": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "seed": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "stop": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "temperature": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "tfs_z": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "top_k": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "top_p": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "typical_p": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "float"
+          },
+          "use_mlock": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "use_mmap": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "vocab_only": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "PaginatedResponse_AliasResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "alias",
+                "repo",
+                "filename",
+                "snapshot",
+                "source",
+                "chat_template",
+                "model_params",
+                "request_params",
+                "context_params"
+              ],
+              "properties": {
+                "alias": {
+                  "type": "string"
+                },
+                "chat_template": {
+                  "type": "string"
+                },
+                "context_params": {
+                  "$ref": "#/components/schemas/GptContextParams"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "model_params": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  }
+                },
+                "repo": {
+                  "type": "string"
+                },
+                "request_params": {
+                  "$ref": "#/components/schemas/OAIRequestParams"
+                },
+                "snapshot": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PaginatedResponse_ApiToken": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "user_id",
+                "name",
+                "token_id",
+                "token_hash",
+                "status",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2024-11-10T04:52:06.786Z"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/TokenStatus"
+                },
+                "token_hash": {
+                  "type": "string"
+                },
+                "token_id": {
+                  "type": "string"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2024-11-10T04:52:06.786Z"
+                },
+                "user_id": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PaginatedResponse_DownloadRequest": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "repo",
+                "filename",
+                "status",
+                "created_at",
+                "updated_at"
+              ],
+              "properties": {
+                "created_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2024-11-10T04:52:06.786Z"
+                },
+                "error": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "repo": {
+                  "type": "string"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/DownloadStatus"
+                },
+                "updated_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "example": "2024-11-10T04:52:06.786Z"
+                }
+              }
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PaginatedResponse_LocalModelResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "repo",
+                "filename",
+                "snapshot",
+                "model_params"
+              ],
+              "properties": {
+                "filename": {
+                  "type": "string"
+                },
+                "model_params": {
+                  "type": "object",
+                  "additionalProperties": {},
+                  "propertyNames": {
+                    "type": "string"
+                  }
+                },
+                "repo": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "format": "int64",
+                  "minimum": 0
+                },
+                "snapshot": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PingResponse": {
+        "type": "object",
+        "description": "Response to the ping endpoint",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "always returns \"pong\""
+          }
+        }
+      },
+      "Repo": {
+        "type": "object",
+        "required": [
+          "user",
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "user": {
+            "type": "string"
+          }
+        }
+      },
+      "SettingInfo": {
+        "type": "object",
+        "required": [
+          "key",
+          "current_value",
+          "default_value",
+          "source",
+          "metadata"
+        ],
+        "properties": {
+          "current_value": {},
+          "default_value": {},
+          "key": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/SettingMetadata"
+          },
+          "source": {
+            "$ref": "#/components/schemas/SettingSource"
+          }
+        }
+      },
+      "SettingMetadata": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "string"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "min",
+              "max",
+              "type"
+            ],
+            "properties": {
+              "max": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "min": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "number"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "type"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "boolean"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "options",
+              "type"
+            ],
+            "properties": {
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "option"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "SettingSource": {
+        "type": "string",
+        "enum": [
+          "system",
+          "command_line",
+          "environment",
+          "settings_file",
+          "default"
+        ]
+      },
+      "SetupRequest": {
+        "type": "object",
+        "description": "Request to setup the application in authenticated or non-authenticated mode",
+        "required": [
+          "authz"
+        ],
+        "properties": {
+          "authz": {
+            "type": "boolean",
+            "description": "Whether to enable authentication\n- true: Setup app in authenticated mode with role-based access\n- false: Setup app in non-authenticated mode for open access"
+          }
+        },
+        "example": {
+          "authz": true
+        }
+      },
+      "SetupResponse": {
+        "type": "object",
+        "description": "Response containing the updated application status after setup",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/AppStatus",
+            "description": "New application status after setup\n- resource-admin: When setup in authenticated mode\n- ready: When setup in non-authenticated mode"
+          }
+        },
+        "example": {
+          "status": "resource-admin"
+        }
+      },
+      "ShowRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "ShowResponse": {
+        "type": "object",
+        "required": [
+          "details",
+          "license",
+          "model_info",
+          "modelfile",
+          "modified_at",
+          "parameters",
+          "template"
+        ],
+        "properties": {
+          "details": {
+            "$ref": "#/components/schemas/ModelDetails"
+          },
+          "license": {
+            "type": "string"
+          },
+          "model_info": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "modelfile": {
+            "type": "string"
+          },
+          "modified_at": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "parameters": {
+            "type": "string"
+          },
+          "template": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenStatus": {
+        "type": "string",
+        "enum": [
+          "active",
+          "inactive"
+        ]
+      },
+      "UpdateApiTokenRequest": {
+        "type": "object",
+        "description": "Request to update an existing API token",
+        "required": [
+          "name",
+          "status"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "New name for the token"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TokenStatus",
+            "description": "New status for the token (active/inactive)"
+          }
+        },
+        "example": {
+          "name": "Updated Token Name",
+          "status": "inactive"
+        }
+      },
+      "UpdateSettingRequest": {
+        "type": "object",
+        "description": "Request to update a setting value",
+        "required": [
+          "value"
+        ],
+        "properties": {
+          "value": {}
+        },
+        "example": {
+          "value": "debug"
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "description": "Information about the currently logged in user",
+        "required": [
+          "logged_in",
+          "roles"
+        ],
+        "properties": {
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "User's email address"
+          },
+          "logged_in": {
+            "type": "boolean",
+            "description": "If user is logged in"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of roles assigned to the user"
+          }
+        },
+        "example": {
+          "email": "user@example.com",
+          "logged_in": true,
+          "roles": [
+            "admin",
+            "user"
+          ]
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "system",
+      "description": "System information and operations"
+    },
+    {
+      "name": "setup",
+      "description": "Application setup and initialization"
+    },
+    {
+      "name": "auth",
+      "description": "Authentication and session management"
+    },
+    {
+      "name": "api-keys",
+      "description": "API keys management"
+    },
+    {
+      "name": "models",
+      "description": "Model files and aliases"
+    },
+    {
+      "name": "ollama",
+      "description": "Ollama-compatible API endpoints"
+    }
+  ],
+  "externalDocs": {
+    "url": "https://getbodhi.app/docs/api",
+    "description": "Find more info here"
+  }
+}

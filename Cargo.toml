@@ -135,6 +135,7 @@ uuid = "1.8.0"
 validator = "0.18.1"
 walkdir = "2.5.0"
 webbrowser = "1.0.0"
+xtaskops = "0.4.2"
 
 # [profile.release.package.bodhi]
 # codegen-units = 1

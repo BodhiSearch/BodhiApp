@@ -80,6 +80,9 @@ jobs:
         shell: bash
         run: |
           make ci.clean
+      - name: Early validation - Check ts-client is up to date
+        run: make ci.ts-client-check
+
       - name: Generate code coverage
         shell: bash
         run: |
@@ -115,3 +118,5 @@ jobs:
             crates/bodhi/coverage/clover.xml
           fail_ci_if_error: false
           flags: ${{ matrix.target }},bodhi,ui
+      - name: Check ts-client tests pass
+        run: make ci.ts-client-test

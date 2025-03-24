@@ -1,0 +1,35 @@
+{
+  "name": "@bodhiapp/ts-client",
+  "version": "0.1.0-dev",
+  "description": "TypeScript client for Bodhi API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run generate && tsc",
+    "generate": "npm run generate:openapi && npm run generate:types",
+    "generate:openapi": "cd .. && cargo run --package xtask openapi",
+    "generate:types": "openapi-typescript ../openapi.json --output src/types/api.d.ts --export-type components",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run test",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "bodhi",
+    "api",
+    "client",
+    "typescript"
+  ],
+  "author": "Bodhi Team",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "openapi-typescript": "^6.7.3",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
