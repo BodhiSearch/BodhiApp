@@ -109,6 +109,8 @@ strum = "0.26.2"
 syn = "2.0.79"
 sync_wrapper = "1.0.1"
 tap = "1.0.1"
+tauri = "2.0.6"
+tauri-plugin-log = "2.0.0-rc"
 tauri-build = "2.0.1"
 tempfile = "3.10.1"
 thiserror = "1.0.61"
@@ -136,6 +138,9 @@ validator = "0.18.1"
 walkdir = "2.5.0"
 webbrowser = "1.0.0"
 xtaskops = "0.4.2"
+
+[patch.crates-io]
+deranged = { git = "https://github.com/jhpratt/deranged", rev = "3c95431a375bca409a4731ae8749acc84e076267" }
 
 # [profile.release.package.bodhi]
 # codegen-units = 1

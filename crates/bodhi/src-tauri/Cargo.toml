@@ -21,8 +21,8 @@ routes_all = { workspace = true }
 server_app = { workspace = true }
 
 include_dir = { workspace = true }
-tauri = { version = "2.0.6", features = ["tray-icon"], optional = true }
-tauri-plugin-log = { version = "2.0.0-rc", optional = true }
+tauri = { workspace = true, features = ["tray-icon"], optional = true }
+tauri-plugin-log = { workspace = true, optional = true }
 
 axum = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
