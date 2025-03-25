@@ -51,9 +51,15 @@ jobs:
           # Set version from tag directly
           npm version ${{ steps.version.outputs.tag_version }} --no-git-tag-version
 
-      - name: Build package
+      - name: Install dependencies
         working-directory: ./ts-client
-        run: npm run build
+        run: npm ci
+
+      - name: Generate types and build
+        working-directory: ./ts-client
+        run: |
+          # Generate types from existing openapi.yml and compile TypeScript
+          npm run generate:types
 
       - name: Verify build artifacts
         working-directory: ./ts-client
