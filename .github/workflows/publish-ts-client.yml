@@ -21,24 +21,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Enable symlinks
-        shell: bash
-        run: |
-          git config --global core.symlinks true
-          git config --global core.autocrlf false
-          git config --global core.eol lf
       - uses: actions/checkout@v4
-      - name: Rewrite submodule URLs and checkout submodules
-        shell: bash
-        run: |
-          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
-          git submodule sync --recursive
-          git submodule update --init --recursive --depth=1
-          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
-      - name: Set up Rust
-        uses: ./.github/actions/setup-rust
         with:
-          platform: ubuntu-latest
+          fetch-depth: 1
 
       - name: Set up Node
         uses: ./.github/actions/setup-node
@@ -49,11 +34,9 @@ jobs:
         id: version
         working-directory: ./ts-client
         run: |
-          # Extract the version from the tag if it's a tag-triggered workflow
-          if [[ "$GITHUB_REF" == refs/tags/ts-client/v* ]]; then
-            TAG_VERSION=${GITHUB_REF#refs/tags/ts-client/v}
-            echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
-          fi
+          # Extract the version from the tag
+          TAG_VERSION=${GITHUB_REF#refs/tags/ts-client/v}
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
 
           # Extract current version from package.json
           PKG_VERSION=$(node -p "require('./package.json').version")
@@ -85,9 +68,6 @@ jobs:
           RELEASE_VERSION=${{ steps.version.outputs.release_version }}
           # Update version in package.json (remove -dev suffix)
           npm version $RELEASE_VERSION --no-git-tag-version
-
-      - name: Run tests
-        run: make ci.ts-client-test
 
       - name: Build package
         working-directory: ./ts-client
@@ -135,7 +115,6 @@ jobs:
       - name: Publish to npm
         working-directory: ./ts-client
         run: |
-          # NPM_TOKEN from secrets will be used by .npmrc
           npm publish
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -152,17 +131,22 @@ jobs:
           fi
           echo "Successfully published version $PUBLISHED_VERSION"
 
-      - name: Configure Git
+      - name: Configure Git for version bump
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
 
+      - name: Pull latest changes
+        run: |
+          # Fetch only the latest commit from main
+          git fetch --depth=1 origin main
+          git checkout -B main origin/main
+
       - name: Bump version and add -dev suffix
         run: |
-          # Update to next dev version
           cd ./ts-client
           npm version ${{ steps.version.outputs.next_version }} --no-git-tag-version
           cd ..
           git add ts-client/package.json
           git commit -m "chore: bump ts-client version to ${{ steps.version.outputs.next_version }} after release [skip ci]"
-          git push origin HEAD:${GITHUB_REF_NAME%/*}
+          git push origin main

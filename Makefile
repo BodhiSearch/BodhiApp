@@ -49,11 +49,15 @@ ci.ui: ## Run UI tests with coverage
 release-ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."
 	@cd ts-client && \
-	VERSION=$$(node -p "require('./package.json').version.replace(/-dev$$/,'')") && \
-	echo "Creating tag ts-client/v$$VERSION..." && \
-	git tag "ts-client/v$$VERSION" && \
-	git push origin "ts-client/v$$VERSION" && \
-	echo "Tag ts-client/v$$VERSION pushed. GitHub workflow will handle the release process."
+	CURRENT_VERSION=$$(npm view @bodhiapp/ts-client version 2>/dev/null || echo "0.0.0") && \
+	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION" && \
+	NEXT_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" && \
+	echo "Current version on npmjs: $$CURRENT_VERSION" && \
+	echo "Next version to release: $$NEXT_VERSION" && \
+	echo "Creating tag ts-client/v$$NEXT_VERSION..." && \
+	git tag "ts-client/v$$NEXT_VERSION" && \
+	git push origin "ts-client/v$$NEXT_VERSION" && \
+	echo "Tag ts-client/v$$NEXT_VERSION pushed. GitHub workflow will handle the release process."
 
 ci.ts-client-check: ## Verify ts-client is up to date with openapi.yml
 	@echo "==> Checking ts-client is up to date with openapi spec"
