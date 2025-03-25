@@ -11,8 +11,8 @@
     "build": "npm run generate && tsc",
     "generate": "npm run generate:openapi && npm run generate:types",
     "generate:openapi": "cd .. && cargo run --package xtask openapi",
-    "generate:types": "openapi-typescript ../openapi.json --output src/types/api.d.ts --export-type components && tsc",
-    "prepare": "npm run build",
+    "generate:types": "openapi-typescript ../openapi.json --output src/types/api.d.ts --export-type components",
+    "compile": "tsc",
     "prepublishOnly": "npm run test",
     "test": "vitest run"
   },

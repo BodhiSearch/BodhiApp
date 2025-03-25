@@ -58,8 +58,10 @@ jobs:
       - name: Generate types and build
         working-directory: ./ts-client
         run: |
-          # Generate types from existing openapi.yml and compile TypeScript
+          # Generate types from existing openapi.yml
           npm run generate:types
+          # Compile TypeScript
+          npm run compile
 
       - name: Verify build artifacts
         working-directory: ./ts-client
