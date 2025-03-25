@@ -48,7 +48,27 @@ ci.ui: ## Run UI tests with coverage
 
 release-ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."
-	@cd ts-client && \
+	@CURRENT_BRANCH=$$(git branch --show-current) && \
+	if [ "$$CURRENT_BRANCH" != "main" ]; then \
+		read -p "Warning: You are not on main branch (current: $$CURRENT_BRANCH). Continue? [y/N] " confirm && \
+		if [ "$$confirm" != "y" ]; then \
+			echo "Aborting release." && exit 1; \
+		fi \
+	fi && \
+	echo "Fetching latest changes from remote..." && \
+	git fetch origin main && \
+	LOCAL_HEAD=$$(git rev-parse HEAD) && \
+	REMOTE_HEAD=$$(git rev-parse origin/main) && \
+	if [ "$$LOCAL_HEAD" != "$$REMOTE_HEAD" ]; then \
+		echo "Warning: Your local main branch is different from origin/main" && \
+		echo "Local:  $$LOCAL_HEAD" && \
+		echo "Remote: $$REMOTE_HEAD" && \
+		read -p "Continue anyway? [y/N] " confirm && \
+		if [ "$$confirm" != "y" ]; then \
+			echo "Aborting release." && exit 1; \
+		fi \
+	fi && \
+	cd ts-client && \
 	CURRENT_VERSION=$$(npm view @bodhiapp/ts-client version 2>/dev/null || echo "0.0.0") && \
 	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION" && \
 	NEXT_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" && \
