@@ -3,7 +3,7 @@ name: Publish TypeScript Client
 on:
   push:
     tags:
-      - "ts-client/v*"
+      - 'ts-client/v*'
 
 # Prevent concurrent releases
 concurrency:
@@ -55,13 +55,11 @@ jobs:
         working-directory: ./ts-client
         run: npm ci
 
-      - name: Generate types and build
+      - name: Build package
         working-directory: ./ts-client
         run: |
-          # Generate types from existing openapi.yml
-          npm run generate:types
-          # Compile TypeScript
-          npm run compile
+          # Generate types and bundle
+          npm run build
 
       - name: Verify build artifacts
         working-directory: ./ts-client
@@ -71,6 +69,15 @@ jobs:
             exit 1
           fi
 
+          # Check for required files
+          required_files=("index.js" "index.mjs" "index.d.ts")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "dist/$file" ]; then
+              echo "Required file dist/$file is missing"
+              exit 1
+            fi
+          done
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -78,24 +85,9 @@ jobs:
             ts-client/dist/*
             ts-client/README.md
             ts-client/package.json
-          name: "TypeScript Client v${{ steps.version.outputs.tag_version }}"
+          name: 'TypeScript Client v${{ steps.version.outputs.tag_version }}'
           body: |
             TypeScript Client Release v${{ steps.version.outputs.tag_version }}
-
-            ## Installation
-            ```bash
-            npm install @bodhiapp/ts-client
-            ```
-
-            ## Usage
-            ```typescript
-            import { BodhiClient } from '@bodhiapp/ts-client';
-
-            const client = new BodhiClient({
-              baseUrl: 'http://localhost:1135',
-              apiKey: 'your-api-key'
-            });
-            ```
           draft: false
           prerelease: false
         env:
