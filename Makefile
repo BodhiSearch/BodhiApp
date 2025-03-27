@@ -74,10 +74,14 @@ release-ts-client: ## Release TypeScript client package
 	NEXT_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" && \
 	echo "Current version on npmjs: $$CURRENT_VERSION" && \
 	echo "Next version to release: $$NEXT_VERSION" && \
-	echo "Creating tag ts-client/v$$NEXT_VERSION..." && \
-	git tag "ts-client/v$$NEXT_VERSION" && \
-	git push origin "ts-client/v$$NEXT_VERSION" && \
-	echo "Tag ts-client/v$$NEXT_VERSION pushed. GitHub workflow will handle the release process."
+	TAG_NAME="ts-client/v$$NEXT_VERSION" && \
+	echo "Cleaning up any existing tag $$TAG_NAME..." && \
+	git tag -d "$$TAG_NAME" 2>/dev/null || true && \
+	git push --delete origin "$$TAG_NAME" 2>/dev/null || true && \
+	echo "Creating new tag $$TAG_NAME..." && \
+	git tag "$$TAG_NAME" && \
+	git push origin "$$TAG_NAME" && \
+	echo "Tag $$TAG_NAME pushed. GitHub workflow will handle the release process."
 
 ci.ts-client-check: ## Verify ts-client is up to date with openapi.yml
 	@echo "==> Checking ts-client is up to date with openapi spec"
@@ -97,7 +101,7 @@ ci.ts-client-test: ## Run ts-client tests
 
 ts-client: ## Build the TypeScript types package
 	@echo "==> Building ts-client package"
-	@cd ts-client && npm install && npm run build && npm run test
+	@cd ts-client && npm install && npm run build && npm run test && npm run bundle
 	@echo "✓ ts-client package built successfully"
 
 .PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client help
