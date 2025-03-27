@@ -12,9 +12,9 @@
     "build": "npm run generate && npm run bundle",
     "generate": "npm run generate:openapi && npm run generate:types",
     "generate:openapi": "cd .. && cargo run --package xtask openapi",
-    "generate:types": "openapi-typescript ../openapi.json --output src/types/api.d.ts --export-type components",
+    "generate:types": "openapi-ts",
     "bundle": "npm run bundle:types && npm run bundle:esm && npm run bundle:cjs",
-    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && mkdir -p dist/types && cp src/types/api.d.ts dist/types/api.d.ts",
+    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && mkdir -p dist/types && cp src/types/types.gen.ts dist/types/",
     "bundle:esm": "esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.mjs --external:./types/api --allow-overwrite",
     "bundle:cjs": "esbuild src/index.ts --bundle --platform=neutral --format=cjs --outfile=dist/index.js --external:./types/api --allow-overwrite",
     "test": "vitest run",
@@ -29,10 +29,10 @@
   "author": "Bodhi Team",
   "license": "Apache-2.0",
   "devDependencies": {
+    "@hey-api/openapi-ts": "^0.64.15",
     "@types/node": "^22.13.14",
     "esbuild": "^0.20.2",
     "msw": "^2.7.3",
-    "openapi-typescript": "^6.7.3",
     "typescript": "^5.3.3",
     "vitest": "^3.0.9"
   },
