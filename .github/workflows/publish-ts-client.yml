@@ -58,8 +58,11 @@ jobs:
       - name: Build package
         working-directory: ./ts-client
         run: |
-          # Generate types and bundle
-          npm run build
+          # DO NOT CALL npm run build here, as it needs rust which is not required on CI
+          # only call npm run generate:types, which takes existing openapi.yml and generates types
+          npm run clean
+          npm run generate:types
+          npm run bundle
 
       - name: Verify build artifacts
         working-directory: ./ts-client
