@@ -1,6 +1,6 @@
 {
   "name": "@bodhiapp/ts-client",
-  "version": "0.1.4-dev",
+  "version": "0.1.5-dev",
   "description": "TypeScript types for Bodhi API",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
