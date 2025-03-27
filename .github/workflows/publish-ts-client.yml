@@ -55,13 +55,21 @@ jobs:
         working-directory: ./ts-client
         run: npm ci
 
+      - name: Verify OpenAPI spec exists
+        run: |
+          if [ ! -f "openapi.json" ]; then
+            echo "OpenAPI spec file not found at openapi.json"
+            exit 1
+          fi
+
       - name: Build package
         working-directory: ./ts-client
         run: |
-          # DO NOT CALL npm run build here, as it needs rust which is not required on CI
-          # only call npm run generate:types, which takes existing openapi.yml and generates types
+          # Clean the dist directory
           npm run clean
+          # Generate types from existing OpenAPI spec
           npm run generate:types
+          # Bundle the package
           npm run bundle
 
       - name: Verify build artifacts
@@ -73,14 +81,13 @@ jobs:
           fi
 
           # Check for required files
-          required_files=("index.js" "index.mjs" "index.d.ts")
+          required_files=("index.js" "index.mjs" "index.d.ts" "types/types.gen.ts")
           for file in "${required_files[@]}"; do
             if [ ! -f "dist/$file" ]; then
               echo "Required file dist/$file is missing"
               exit 1
             fi
           done
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:

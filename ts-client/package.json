@@ -14,11 +14,11 @@
     "generate:openapi": "cd .. && cargo run --package xtask openapi",
     "generate:types": "openapi-ts",
     "bundle": "npm run bundle:types && npm run bundle:esm && npm run bundle:cjs",
-    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && mkdir -p dist/types && cp src/types/types.gen.ts dist/types/",
-    "bundle:esm": "esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.mjs --external:./types/api --allow-overwrite",
-    "bundle:cjs": "esbuild src/index.ts --bundle --platform=neutral --format=cjs --outfile=dist/index.js --external:./types/api --allow-overwrite",
+    "bundle:types": "tsc --emitDeclarationOnly --outDir dist && mkdir -p dist/types && cp -r src/types/* dist/types/",
+    "bundle:esm": "esbuild src/index.ts --bundle --platform=neutral --format=esm --outfile=dist/index.mjs --external:./types --allow-overwrite",
+    "bundle:cjs": "esbuild src/index.ts --bundle --platform=neutral --format=cjs --outfile=dist/index.js --external:./types --allow-overwrite",
     "test": "vitest run",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist && rm -rf src/types"
   },
   "keywords": [
     "bodhi",
