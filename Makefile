@@ -97,7 +97,7 @@ ci.ts-client-test: ## Run ts-client tests
 
 ts-client: ## Build the TypeScript types package
 	@echo "==> Building ts-client package"
-	@cd ts-client && npm install && npm run build
+	@cd ts-client && npm install && npm run build && npm run test
 	@echo "✓ ts-client package built successfully"
 
 .PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client help
