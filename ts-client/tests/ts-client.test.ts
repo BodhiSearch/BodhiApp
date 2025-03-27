@@ -1,7 +1,7 @@
-import { paths } from '../src';
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
+import { ChatRequest } from '../src/types';
 
 const TEST_PORT = 9135;
 const API_BASE_URL = `http://localhost:${TEST_PORT}`;
@@ -48,10 +48,7 @@ afterAll(() => server.close());
 describe('BodhiApp TypeScript Client', () => {
   describe('Chat Completion API', () => {
     it('should create a chat completion', async () => {
-      type ChatCompletionRequest = paths['/v1/chat/completions']['post']['requestBody']['content']['application/json'];
-      type ChatCompletionResponse = paths['/v1/chat/completions']['post']['responses']['200']['content']['application/json'];
-
-      const request: ChatCompletionRequest = {
+      const request: ChatRequest = {
         model: "test-model",
         messages: [
           {
@@ -59,8 +56,10 @@ describe('BodhiApp TypeScript Client', () => {
             content: "What is 2+2?"
           }
         ],
-        temperature: 0.7,
-        max_tokens: 100,
+        options: {
+          temperature: 0.7,
+          num_predict: 100
+        },
         stream: false
       };
 
@@ -73,7 +72,7 @@ describe('BodhiApp TypeScript Client', () => {
       });
 
       expect(response.status).toBe(200);
-      const data = (await response.json()) as ChatCompletionResponse;
+      const data = await response.json();
       expect(data.choices[0].message).toBeDefined();
       expect(data.choices[0].message.content).toBe("4");
       expect(data.choices[0].finish_reason).toBe("stop");
