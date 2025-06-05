@@ -23,7 +23,7 @@ The application implements a comprehensive navigation system with the following 
 
 ### Core UI Elements
 1. **Layout System**
-   - Uses Next.js app directory structure
+   - Uses React+Vite application structure
    - Implements responsive design
    - Custom font (Inter) for consistent typography
    - Theme color: #f69435 (Orange)
@@ -98,8 +98,8 @@ Based on the current implementation, here's a recommended reorganization for bet
 The application uses several modern web technologies:
 
 1. **Framework Features**
-   - Next.js App Router
-   - React Server Components
+   - React+Vite with React Router
+   - React components with client-side rendering
    - Client-side state management
 
 2. **UI Components**

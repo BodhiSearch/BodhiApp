@@ -56,19 +56,18 @@ Development Tools
 
 Build & Optimization
 ~~~~~~~~~~~~~~~~~~
-- **Next.js PWA Support**:
-  - PWA configuration via @ducanh2912/next-pwa
+- **React PWA Support**:
+  - PWA configuration via vite-plugin-pwa
   - Aggressive frontend navigation caching
   - Service worker optimization
   - Workbox configuration
 
-- **Next.js Build Configuration**:
-  - Static export enabled
-  - Trailing slash configuration
-  - Image optimization disabled
+- **Vite Build Configuration**:
+  - Static build output
+  - Asset optimization
   - ESLint integration
-  - Custom webpack configuration
-  - Geist font transpilation
+  - TypeScript compilation
+  - Font optimization
 
 Styling Conventions
 ~~~~~~~~~~~~~~~~

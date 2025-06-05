@@ -114,7 +114,7 @@ This document provides an overview of the contents in the ai-docs folder, catego
 **Tags:** #documentation-index, #frontend, #table-of-contents, #information-architecture
 
 ### app-frontend.rst
-**Summary:** Detailed documentation of Bodhi's frontend architecture in RST format. Covers core technologies (Next.js, React, TypeScript), UI components (Tailwind, Shadcn), data management, testing tools, and project structure with coding conventions and file organization patterns.
+**Summary:** Detailed documentation of Bodhi's frontend architecture in RST format. Covers core technologies (React+Vite, React, TypeScript), UI components (Tailwind, Shadcn), data management, testing tools, and project structure with coding conventions and file organization patterns.
 
 **Tags:** #frontend-architecture, #project-structure, #technologies, #coding-conventions, #component-organization
 
@@ -134,9 +134,9 @@ This document provides an overview of the contents in the ai-docs folder, catego
 **Tags:** #components, #reusable-components, #component-architecture, #design-patterns, #accessibility, #best-practices
 
 ### project-structure.md
-**Summary:** Detailed breakdown of the Bodhi App frontend project structure built with Next.js. Documents root structure, application organization, key features, directory purposes, and provides recommendations for navigation and menu design based on the existing architecture.
+**Summary:** Detailed breakdown of the Bodhi App frontend project structure built with React+Vite. Documents root structure, application organization, key features, directory purposes, and provides recommendations for navigation and menu design based on the existing architecture.
 
-**Tags:** #project-structure, #directory-organization, #architecture, #next-js, #feature-organization, #navigation-recommendations
+**Tags:** #project-structure, #directory-organization, #architecture, #react-vite, #feature-organization, #navigation-recommendations
 
 ### ui-ux-analysis.md
 **Summary:** Analysis of the application's UI/UX implementation, covering navigation structure, UI components, information architecture, recommended navigation reorganization, UX improvement suggestions, technical implementation details, and next steps for enhancing user experience.
