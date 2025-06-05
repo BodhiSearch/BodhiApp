@@ -2,7 +2,7 @@
 
 import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
 import { AppNavigation } from '@/components/navigation/AppNavigation';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/lib/navigation';
 import { siGithub } from 'simple-icons';
 
 // Using the same URL from setup/complete/page.tsx

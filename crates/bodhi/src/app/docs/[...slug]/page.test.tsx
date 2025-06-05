@@ -3,7 +3,7 @@ import { getAllDocSlugs, getDocsForSlug } from '@/app/docs/utils';
 import { act, render, screen } from '@testing-library/react';
 import fs from 'fs';
 import matter from 'gray-matter';
-import { notFound } from 'next/navigation';
+import { notFound } from '@/lib/navigation';
 import { describe, expect, it, vi } from 'vitest';
 import DocsSlugPage, { generateStaticParams } from './page';
 

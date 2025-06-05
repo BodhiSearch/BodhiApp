@@ -35,7 +35,7 @@ import {
 import { Model } from '@/types/models';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';

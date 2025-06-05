@@ -18,7 +18,7 @@ import { ChatDBProvider } from '@/hooks/use-chat-db';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { cn } from '@/lib/utils';
 import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from '@/lib/navigation';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // Define custom CSS properties for TypeScript

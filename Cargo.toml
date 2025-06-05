@@ -16,6 +16,7 @@ members = [
   "crates/integration-tests",
 ]
 resolver = "2"
+exclude = ["demo-vite-react-app/src-tauri"]
 
 [workspace.dependencies]
 errmeta_derive = { path = "crates/errmeta_derive" }

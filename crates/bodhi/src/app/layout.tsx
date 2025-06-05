@@ -1,8 +1,7 @@
 'use client';
 
-import { Inter as FontSans } from 'next/font/google';
 import '@/app/globals.css';
-import { cn } from '@/lib/utils';
+
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
 import {
@@ -12,10 +11,7 @@ import {
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AppHeader } from '@/components/navigation/AppHeader';
 
-const fontSans = FontSans({
-  subsets: ['latin'],
-  variable: '--font-sans',
-});
+
 
 // Script to handle initial theme to prevent flash
 const themeScript = `
@@ -41,10 +37,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={cn(
-          'min-h-screen bg-background font-sans antialiased',
-          fontSans.variable
-        )}
+        className="min-h-screen bg-background font-sans antialiased"
         suppressHydrationWarning
       >
         <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">

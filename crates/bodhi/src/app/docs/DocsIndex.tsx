@@ -1,5 +1,5 @@
 import { DocGroup } from '@/app/docs/types';
-import Link from 'next/link';
+import Link from '@/components/Link';
 import { memo } from 'react';
 
 interface DocsIndexProps {

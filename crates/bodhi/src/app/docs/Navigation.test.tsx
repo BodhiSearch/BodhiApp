@@ -1,7 +1,7 @@
 import { Navigation } from '@/app/docs/Navigation';
 import { NavItem } from '@/app/docs/types';
 import { render, screen } from '@testing-library/react';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/lib/navigation';
 import { describe, expect, it, vi } from 'vitest';
 
 // Mock next/navigation

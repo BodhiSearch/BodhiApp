@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import Link from 'next/link';
+import Link from '@/components/Link';
 
 interface AuthAction {
   label: string;
@@ -65,7 +65,7 @@ export function AuthCard({
               >
                 {actions.map((action, index) =>
                   action.href ? (
-                    <Link key={index} href={action.href} passHref>
+                    <Link key={index} href={action.href}>
                       <Button
                         className="w-full text-base py-6"
                         variant={action.variant || 'default'}

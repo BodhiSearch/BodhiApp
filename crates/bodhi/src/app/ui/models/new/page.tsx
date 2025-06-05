@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from '@/lib/navigation';
 import AliasForm from '@/app/ui/models/AliasForm';
 import AppInitializer from '@/components/AppInitializer';
 

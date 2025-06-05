@@ -1,6 +1,6 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from '@/lib/navigation';
 import AliasForm from '@/app/ui/models/AliasForm';
 import { useModel } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';

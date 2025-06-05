@@ -3,7 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
-import Link from 'next/link';
+import Link from '@/components/Link';
 
 export function LoginMenu() {
   const { data: userInfo, isLoading: userLoading } = useUser();

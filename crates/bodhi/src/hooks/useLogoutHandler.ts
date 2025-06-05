@@ -1,7 +1,7 @@
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLogout } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT } from '@/lib/constants';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 
 export function useLogoutHandler() {
   const router = useRouter();

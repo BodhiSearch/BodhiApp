@@ -5,8 +5,8 @@ import type { NavItem } from '@/app/docs/types';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Menu } from 'lucide-react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import Link from '@/components/Link';
+import { usePathname } from '@/lib/navigation';
 
 export const DOCS_BASE_PATH = '/docs';
 
