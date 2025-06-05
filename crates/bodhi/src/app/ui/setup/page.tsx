@@ -15,7 +15,7 @@ import {
   ROUTE_SETUP_RESOURCE_ADMIN,
 } from '@/lib/constants';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { useEffect } from 'react';
 
 const benefits = [

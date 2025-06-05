@@ -2,7 +2,7 @@ import { DocsIndex } from '@/app/docs/DocsIndex';
 import { getAllDocSlugs, getDocsForSlug } from '@/app/docs/utils';
 import fs from 'fs';
 import matter from 'gray-matter';
-import { notFound } from 'next/navigation';
+import { notFound } from '@/lib/navigation';
 import path from 'path';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypePrism from 'rehype-prism-plus';

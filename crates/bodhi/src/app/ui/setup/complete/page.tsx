@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ROUTE_CHAT } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { ArrowRight, BookOpen } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { useEffect, useState } from 'react';
 import { siDiscord, siGithub, siX, siYoutube } from 'simple-icons';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
@@ -121,7 +121,7 @@ function Confetti() {
           ))}
         </div>
       </div>
-      <style jsx>{`
+      <style>{`
         @keyframes confetti {
           0% {
             transform: translateY(0) rotateX(0) rotateY(0);

@@ -15,7 +15,7 @@ Create a high-fidelity UI design for "Bodhi Web Chat" - a minimal, responsive we
 ### Layout Structure
 Design a responsive chat interface with:
 - A main central chat area for displaying messages and input
-- A right sidebar panel for settings (collapsible on mobile)
+- A left sidebar panel for settings (collapsible on mobile)
 - A clean, minimal header with app title and theme toggle
 
 ### Essential UI Elements
@@ -27,13 +27,18 @@ Design a responsive chat interface with:
    - Input area with text field and send button
    - Copy button for LLM responses
    - Empty state with prompt to start chatting
+- in the generated page show an ongoing conversation with the mouse hovered on assistant response so that the chat context actions are visible like copy chat, redo chat etc.
 
-2. **Settings Sidebar (Right Panel)**
-   - Collapsible panel with toggle button
+2. **Model Settings Sidebar (Left Panel)**
+   - Collapsible panel collapses into a icon on the left panel, similar to discord channels, so clicking on settings shows up the settings. similarly, we have chat history icon, on clicking displays the chat history
+- we also have Chat Settings, this deals with settings of the current chat session. for the chat session, we can enable set of tools like web search, python code interpreter. similarly select the mode which is AI Chat, Deep Research.
+On changing the settings here, an indicator is shown just below the chat input that indicates the settings, clicking on these indicators takes us to the panel where we can modify them
+We also have workspace feature, where user can either upload files, connect their Google Drive, or give permission using File Access APIs and the app is able to see these files, and read/write to them.
+
+ 
    - Section for API key management (update/view)
    - Model selection dropdown
    - Temperature slider control
-   - Theme toggle switch (light/dark)
    - System prompt text area
 
 3. **Error States**
@@ -69,11 +74,12 @@ Design a responsive chat interface with:
 
 ## UI Flow
 
-1. First-time user sees right sidebar open and API key input and model dropdown box highlighted mandatory and errored
+1. First-time user sees left sidebar open and API key input and model dropdown box highlighted mandatory and errored
 2. After entering API key, user sees the model dropdown populated, and selects one, this enables the chat input, removes error state as they are provided
 3. User can begin chatting once model is selected
 4. when api key and model are not selected, the message is displayed just below the chat input on providing the mandatory fields
 5. Settings can be accessed and modified at any time via the sidebar
+6. Also show collapsed icons for Chat Settings, Tools Settings and Files Settings
 
 ## Additional Notes
 

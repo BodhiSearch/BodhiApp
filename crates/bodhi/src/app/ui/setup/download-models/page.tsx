@@ -16,7 +16,7 @@ import {
   ROUTE_SETUP_COMPLETE,
 } from '@/lib/constants';
 import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { useEffect } from 'react';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 

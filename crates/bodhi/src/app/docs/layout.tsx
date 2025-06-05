@@ -4,7 +4,7 @@ import type { NavItem } from '@/app/docs/types';
 import { getAllDocSlugs, getPathOrder } from '@/app/docs/utils';
 import fs from 'fs';
 import matter from 'gray-matter';
-import Link from 'next/link';
+import Link from '@/components/Link';
 import path from 'path';
 
 function getDocTitle(slug: string): string {

@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import Image from '@/components/Image';
 import { motion } from 'framer-motion';
 import { itemVariants } from './types';
 

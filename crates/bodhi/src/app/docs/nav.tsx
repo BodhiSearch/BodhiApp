@@ -2,7 +2,7 @@
 
 import type { SidebarNavProps } from '@/app/docs/types';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
+import Link from '@/components/Link';
 import { memo } from 'react';
 
 interface NavItem {

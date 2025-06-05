@@ -25,6 +25,10 @@ public/workbox-*.js*
 
 # production
 /build
+/dist
+
+# generated files
+/src/generated
 
 # misc
 .DS_Store

@@ -8,7 +8,7 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
-import Image from 'next/image';
+import Image from '@/components/Image';
 
 export function AppBreadcrumb() {
   const { currentItem } = useNavigation();

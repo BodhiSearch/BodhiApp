@@ -12,7 +12,7 @@ import {
   ROUTE_SETUP_DOWNLOAD_MODELS,
 } from '@/lib/constants';
 import { AppStatus, ErrorResponse } from '@/types/models';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/lib/navigation';
 import { ReactNode, useEffect } from 'react';
 
 interface AppInitializerProps {
