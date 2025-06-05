@@ -19,7 +19,7 @@ public/workbox-*.js*
 # testing
 /coverage
 
-# next.js
+# vite
 /.next/
 /out/
 
@@ -47,7 +47,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # old-chat-app
 old-chat-app/

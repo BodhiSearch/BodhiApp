@@ -3,15 +3,15 @@ Bodhi Frontend Documentation
 
 Project Overview
 ---------------
-Bodhi is a Next.js application built with TypeScript that provides a web interface for running LLMs (Large Language Models) locally. The project uses the App Router pattern of Next.js and follows modern React practices.
+Bodhi is a React+Vite application built with TypeScript that provides a web interface for running LLMs (Large Language Models) locally. The project uses the react+vite+react-router and follows modern React practices.
 
 Core Technologies
 ---------------
 
 Framework & Runtime
 ~~~~~~~~~~~~~~~~~
-- **Next.js** (v14.2.6): React framework with App Router
-- **React** (v18): UI library
+- **Vite**
+- **React**
 - **TypeScript**: Programming language
 - **Node.js**: Runtime environment
 
@@ -48,11 +48,11 @@ Development Tools
 Project Structure
 ---------------
 
-The project follows a standard Next.js App Router structure::
+The project follows a standard React+Vite application structure::
 
     crates/bodhi/
     ├── src/
-    │   ├── app/                 # Next.js App Router pages
+    │   ├── app/                 # React application pages
     │   ├── components/          # React components
     │   ├── hooks/              # Custom React hooks
     │   ├── lib/                # Utility functions

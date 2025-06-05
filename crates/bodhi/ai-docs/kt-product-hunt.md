@@ -46,7 +46,7 @@
 
 7. Technical Architecture
    - Rust/Axum backend
-   - Next.js/React frontend
+   - React+Vite frontend
    - llama.cpp inference engine
    - Tauri for cross-platform
    - Static asset serving
@@ -502,8 +502,8 @@ Hey! Would really appreciate if you could share this with your team:
 
 ### Development Stack Details
 1. Frontend Architecture
-   - Next.js 14 with App Router
-   - React Server Components
+   - React+Vite with React Router
+   - React components with client-side rendering
    - TypeScript for type safety
    - TailwindCSS for styling
    - ShadcnUI components

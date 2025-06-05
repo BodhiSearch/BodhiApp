@@ -1,12 +1,12 @@
 # Project Structure
 
-The Bodhi App frontend is built using Next.js and follows a modern, modular architecture. Here's a detailed breakdown of the project structure:
+The Bodhi App frontend is built using React+Vite and follows a modern, modular architecture. Here's a detailed breakdown of the project structure:
 
 ## Root Structure
 
 ```
 src/
-├── app/           # Next.js app directory (main application code)
+├── app/           # React application directory (main application code)
 ├── components/    # Reusable UI components
 ├── hooks/         # Custom React hooks
 ├── lib/           # Utility functions and shared logic
@@ -55,7 +55,7 @@ app/
 ## Directory Purposes
 
 ### `/app`
-The core application directory using Next.js 13+ app directory structure. Contains all the main pages and UI components organized by feature.
+The core application directory using React+Vite structure. Contains all the main pages and UI components organized by feature.
 
 ### `/components`
 Houses reusable UI components that are shared across different features. These components follow a modular design pattern for maximum reusability.
