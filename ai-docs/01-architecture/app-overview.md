@@ -221,9 +221,64 @@ Model aliases provide user-friendly names for complex model configurations:
 - **Custom Clients** → REST API for custom integrations
 - **CLI Tools** → Command-line interface for automation
 
+## Performance Considerations
+
+### LLM Optimization
+- **Hardware Acceleration** → GPU support for inference
+- **Memory Management** → Efficient model loading and caching
+- **Batch Processing** → Optimized inference batching
+
+### Web Performance
+- **Streaming Responses** → Real-time response delivery
+- **Caching** → Intelligent caching strategies
+- **Compression** → Response compression and optimization
+
+### Scalability
+- **Async Architecture** → Non-blocking I/O throughout
+- **Connection Pooling** → Efficient resource management
+- **Load Balancing** → Support for multiple instances
+
+## Security Model
+
+### Authentication
+- **Multi-Provider OAuth2** → Flexible authentication
+- **JWT Security** → Secure token handling
+- **Session Management** → Secure session lifecycle
+
+### Authorization
+- **Role-Based Access** → Granular permission control
+- **API Scoping** → Limited API token permissions
+- **Resource Protection** → Protected endpoints and resources
+
+### Data Security
+- **Local Storage** → All data stored locally by default
+- **Encryption** → Sensitive data encryption
+- **Privacy** → No external data transmission required
+
+## Development Workflow
+
+### Code Generation
+- **OpenAPI Specs** → Automatic generation from Rust code
+- **TypeScript Types** → Generated from OpenAPI for frontend
+- **API Documentation** → Swagger UI with interactive docs
+
+### Testing Strategy
+- **Unit Tests** → Individual crate testing
+- **Integration Tests** → End-to-end API testing
+- **Frontend Tests** → React component and integration testing
+- **Performance Tests** → Load testing and benchmarking
+
+### Build System
+- **Cargo Workspace** → Multi-crate Rust workspace
+- **xtask Automation** → Custom build tasks and code generation
+- **Cross-Platform** → Windows, macOS, Linux support
+- **CI/CD Integration** → GitHub Actions automation
+
 ## Related Documentation
 
 - **[Frontend Architecture](frontend-architecture.md)** - React frontend details
 - **[Tauri Desktop Architecture](tauri-architecture.md)** - Desktop application architecture
 - **[Backend Integration](backend-integration.md)** - API integration patterns
 - **[Authentication](authentication.md)** - Security implementation details
+- **[Testing Architecture](testing-architecture.md)** - Testing patterns and utilities
+- **[Design System](design-system.md)** - UI design patterns and specifications

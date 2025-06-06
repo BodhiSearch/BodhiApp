@@ -302,7 +302,111 @@ Use these semantic classes for consistent layering:
 
 **For feedback**: Use `toast` for notifications, `FormMessage` for form errors
 
+## Chat Interface Design Specifications
+
+### Chat UI Components
+
+The chat interface follows a modern, minimal design with these key components:
+
+#### Layout Structure
+- **Main central chat area** for displaying messages and input
+- **Left sidebar panel** for settings (collapsible on mobile)
+- **Clean header** with app title and theme toggle
+
+#### Chat Area Design
+- **Message bubbles** with clear visual distinction between user and LLM messages
+- **Typing/streaming animation** for LLM responses
+- **Input area** with text field and send button
+- **Copy button** for LLM responses
+- **Empty state** with prompt to start chatting
+- **Context actions** (copy, redo) visible on hover for assistant responses
+
+#### Sidebar Panels (Left Panel)
+The sidebar uses a collapsible design similar to Discord channels:
+
+1. **Model Settings Panel**
+   - API key management (update/view)
+   - Model selection dropdown
+   - Temperature slider control
+   - System prompt text area
+
+2. **Chat Settings Panel**
+   - Tool selection (web search, Python code interpreter)
+   - Mode selection (AI Chat, Deep Research)
+   - Settings indicators below chat input
+
+3. **Workspace Panel**
+   - File upload functionality
+   - Google Drive integration
+   - File Access API permissions
+   - File read/write capabilities
+
+### Design Specifications
+
+#### Color Scheme
+- **Primary**: Soft, calming blue (#3B82F6)
+- **Light theme**: Clean white background with dark text
+- **Dark theme**: Deep blue/gray background (#1E293B) with light text
+- **Success, error, warning states** with appropriate semantic colors
+
+#### Typography
+- **Sans-serif font** for clean readability
+- **Clear hierarchy** with different weights and sizes
+- **Good contrast** for accessibility compliance
+
+#### Mobile Considerations
+- **Fully responsive layout** adapting to screen size
+- **Sidebar collapses** to hamburger menu on mobile
+- **Touch-friendly elements** with appropriate sizing
+- **Bottom-fixed input area** on mobile devices
+
+### UI Flow Patterns
+
+#### First-Time User Experience
+1. **Initial state**: Left sidebar open with API key input highlighted and errored
+2. **Model selection**: After API key entry, model dropdown populates
+3. **Chat enablement**: Chat input enabled after model selection
+4. **Error messaging**: Clear feedback for missing mandatory fields
+
+#### Settings Access
+- **Always accessible** via sidebar at any time
+- **Collapsed icons** for Chat Settings, Tools Settings, and Files Settings
+- **Visual indicators** below chat input showing active settings
+
+#### Error States
+- **Toast notifications** for system errors
+- **Inline error messages** for form validation
+- **Clear error styling** with appropriate colors
+
+### Micro-Interactions
+
+#### Subtle Animations
+- **Smooth transitions** between states
+- **Hover effects** on interactive elements
+- **Loading animations** for streaming responses
+- **Focus indicators** for accessibility
+
+#### Visual Feedback
+- **Message status indicators** for chat messages
+- **Typing indicators** during LLM response generation
+- **Progress indicators** for file uploads and model loading
+
+### Accessibility Considerations
+
+#### Design Requirements
+- **High contrast ratios** for text readability
+- **Appropriate text sizes** for various devices
+- **Interactive element sizing** for touch accessibility
+- **Keyboard navigation** support throughout interface
+
+#### Implementation Guidelines
+- Use semantic HTML elements
+- Provide proper ARIA labels
+- Ensure focus management
+- Support screen readers
+
 ## Related Documentation
 
 - **[Frontend Architecture](frontend-architecture.md)** - Component organization and structure
 - **[App Overview](app-overview.md)** - High-level application architecture
+- **[Testing Architecture](testing-architecture.md)** - Testing patterns and utilities
