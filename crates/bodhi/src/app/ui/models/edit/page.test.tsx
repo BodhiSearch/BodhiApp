@@ -44,7 +44,7 @@ Object.assign(window.HTMLElement.prototype, {
 
 const mockToast = vi.fn();
 const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
+vi.mock('@/lib/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
@@ -133,10 +133,10 @@ describe('EditAliasPage', () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/chat template/i)).toBeInTheDocument();
+    expect(screen.getByText('Alias')).toBeInTheDocument();
+    expect(screen.getByText('Repo')).toBeInTheDocument();
+    expect(screen.getByText('Filename')).toBeInTheDocument();
+    expect(screen.getByText('Chat Template')).toBeInTheDocument();
 
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
@@ -148,7 +148,7 @@ describe('EditAliasPage', () => {
       screen.getByRole('button', { name: /update model alias/i })
     ).toBeInTheDocument();
 
-    expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
+    expect(screen.getByDisplayValue('test-alias')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /repo/i })).toHaveTextContent('owner1/repo1');
     expect(screen.getByRole('combobox', { name: /filename/i })).toHaveTextContent('file1.gguf');
     expect(screen.getByRole('combobox', { name: /chat template/i })).toHaveTextContent('llama2');
@@ -161,7 +161,7 @@ describe('EditAliasPage', () => {
       render(<EditAliasPage />, { wrapper: createWrapper() });
     });
 
-    expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
+    expect(screen.getByText('Alias')).toBeInTheDocument();
 
     // Open repo combobox
     await user.click(screen.getByRole('combobox', { name: /repo/i }));

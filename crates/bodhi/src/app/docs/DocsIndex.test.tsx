@@ -1,6 +1,7 @@
 import { DocsIndex } from '@/app/docs/DocsIndex';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { createWrapper } from '@/tests/wrapper';
 
 describe('DocsIndex', () => {
   const mockGroups = [
@@ -39,7 +40,7 @@ describe('DocsIndex', () => {
   ];
 
   it('renders complete documentation index with default props', () => {
-    render(<DocsIndex groups={mockGroups} title="Custom Title" description="Custom description" />);
+    render(<DocsIndex groups={mockGroups} title="Custom Title" description="Custom description" />, { wrapper: createWrapper() });
 
     // Check main title and description
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Custom Title');
@@ -73,7 +74,7 @@ describe('DocsIndex', () => {
     render(
       <DocsIndex
         groups={mockGroups}
-      />
+      />, { wrapper: createWrapper() }
     );
 
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
@@ -99,7 +100,7 @@ describe('DocsIndex', () => {
     render(
       <DocsIndex
         groups={groupsWithoutDesc}
-      />
+      />, { wrapper: createWrapper() }
     );
 
     expect(screen.getByRole('link', { name: 'Test Doc' })).toBeInTheDocument();
@@ -107,7 +108,7 @@ describe('DocsIndex', () => {
   });
 
   it('handles empty groups array', () => {
-    render(<DocsIndex groups={[]} />);
+    render(<DocsIndex groups={[]} />, { wrapper: createWrapper() });
 
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
   });

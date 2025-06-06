@@ -5,11 +5,14 @@ import fs from 'fs';
 import matter from 'gray-matter';
 import { notFound } from '@/lib/navigation';
 import { describe, expect, it, vi } from 'vitest';
+import { createWrapper } from '@/tests/wrapper';
 import DocsSlugPage, { generateStaticParams } from './page';
 
 // Mock dependencies
-vi.mock('next/navigation', () => ({
-  notFound: vi.fn(),
+vi.mock('@/lib/navigation', () => ({
+  notFound: vi.fn(() => {
+    throw new Error('Not Found');
+  }),
 }));
 
 vi.mock('@/app/docs/utils', () => ({
@@ -85,7 +88,7 @@ describe('DocsSlugPage', () => {
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
 
       const page = await DocsSlugPage({ params: { slug: ['nested'] } });
-      render(page);
+      render(page, { wrapper: createWrapper() });
 
       // Check group structure
       expect(screen.getByRole('heading', { name: 'Nested' })).toBeInTheDocument();
@@ -131,7 +134,7 @@ describe('DocsSlugPage', () => {
       vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
 
       const page = await DocsSlugPage({ params: { slug: ['docs'] } });
-      render(page);
+      render(page, { wrapper: createWrapper() });
 
       // Check group headings
       expect(screen.getByRole('heading', { name: 'Getting Started' })).toBeInTheDocument();
@@ -167,7 +170,7 @@ describe('DocsSlugPage', () => {
 
       await act(async () => {
         const page = await DocsSlugPage({ params: { slug: ['test-doc'] } });
-        render(page);
+        render(page, { wrapper: createWrapper() });
       });
 
       // Check the rendered content
@@ -188,9 +191,7 @@ describe('DocsSlugPage', () => {
       // Both file and directory don't exist
       vi.mocked(fs.existsSync).mockImplementation(() => false);
 
-      await DocsSlugPage({ params: { slug: ['non-existent'] } });
-
-      expect(notFound).toHaveBeenCalled();
+      await expect(DocsSlugPage({ params: { slug: ['non-existent'] } })).rejects.toThrow('Not Found');
     });
 
     it('handles file read errors gracefully', async () => {
@@ -203,13 +204,12 @@ describe('DocsSlugPage', () => {
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-      await DocsSlugPage({ params: { slug: ['error-doc'] } });
+      await expect(DocsSlugPage({ params: { slug: ['error-doc'] } })).rejects.toThrow('Not Found');
 
       expect(consoleSpy).toHaveBeenCalledWith(
         'Error loading doc page for error-doc:',
         expect.any(Error)
       );
-      expect(notFound).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
     });
@@ -227,13 +227,12 @@ describe('DocsSlugPage', () => {
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-      await DocsSlugPage({ params: { slug: ['invalid-doc'] } });
+      await expect(DocsSlugPage({ params: { slug: ['invalid-doc'] } })).rejects.toThrow('Not Found');
 
       expect(consoleSpy).toHaveBeenCalledWith(
         'Error loading doc page for invalid-doc:',
         expect.any(Error)
       );
-      expect(notFound).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
     });

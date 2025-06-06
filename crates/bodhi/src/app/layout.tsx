@@ -37,7 +37,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className="min-h-screen bg-background font-sans antialiased"
+        className="min-h-screen bg-background antialiased"
         suppressHydrationWarning
       >
         <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">

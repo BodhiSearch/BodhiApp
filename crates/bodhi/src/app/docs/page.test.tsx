@@ -2,6 +2,7 @@ import { createMockGroup } from '@/app/docs/test-utils';
 import * as utils from '@/app/docs/utils';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { createWrapper } from '@/tests/wrapper';
 import DocsPage from './page';
 
 // Mock the utils module
@@ -39,7 +40,7 @@ describe('DocsPage', () => {
 
   it('renders documentation index with root level docs', () => {
     vi.mocked(utils.getDocsForSlug).mockReturnValue(mockGroups);
-    render(<DocsPage />);
+    render(<DocsPage />, { wrapper: createWrapper() });
 
     // Verify getDocsForSlug was called correctly
     expect(utils.getDocsForSlug).toHaveBeenCalledWith(null);
@@ -59,7 +60,7 @@ describe('DocsPage', () => {
 
   it('handles empty documentation gracefully', () => {
     vi.mocked(utils.getDocsForSlug).mockReturnValue([]);
-    render(<DocsPage />);
+    render(<DocsPage />, { wrapper: createWrapper() });
 
     // Verify empty state
     expect(screen.getByText('No documentation available.')).toBeInTheDocument();

@@ -6,7 +6,7 @@ import { createWrapper } from '@/tests/wrapper';
 
 // Setup mocks before importing the components
 const mockUsePathname = vi.fn();
-vi.mock('next/navigation', () => ({
+vi.mock('@/lib/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }));
 
