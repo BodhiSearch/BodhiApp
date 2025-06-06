@@ -2,10 +2,14 @@ import { Nav } from '@/app/docs/nav';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-// Mock next/link
-vi.mock('next/link', () => ({
-  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
-}));
+// Mock Link component
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+  };
+});
 
 describe('Nav', () => {
   const mockItems = [

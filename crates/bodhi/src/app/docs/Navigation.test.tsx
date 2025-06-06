@@ -4,15 +4,19 @@ import { render, screen } from '@testing-library/react';
 import { usePathname } from '@/lib/navigation';
 import { describe, expect, it, vi } from 'vitest';
 
-// Mock next/navigation
-vi.mock('next/navigation', () => ({
+// Mock navigation
+vi.mock('@/lib/navigation', () => ({
   usePathname: vi.fn(),
 }));
 
-// Mock next/link
-vi.mock('next/link', () => ({
-  default: ({ children, ...props }: any) => <a {...props}>{children}</a>,
-}));
+// Mock Link component
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    Link: ({ children, to, ...props }: any) => <a href={to} {...props}>{children}</a>,
+  };
+});
 
 describe('Navigation', () => {
   const mockDocItems: NavItem[] = [
@@ -37,7 +41,7 @@ describe('Navigation', () => {
   ];
 
   beforeEach(() => {
-    vi.mocked(usePathname).mockReset();
+    vi.mocked(usePathname).mockClear();
   });
 
   it('renders navigation structure with correct paths', () => {

@@ -20,7 +20,7 @@ import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
 
 // Mock the router
 const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
+vi.mock('@/lib/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),

@@ -10,6 +10,23 @@ class MockResizeObserver {
 
 global.ResizeObserver = MockResizeObserver;
 
+// Mock React Router navigation functions
+const mockNavigate = vi.fn();
+const mockLocation = { pathname: '/', search: '', hash: '', state: null, key: 'default' };
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    useLocation: () => mockLocation,
+    useSearchParams: () => [new URLSearchParams(), vi.fn()],
+  };
+});
+
+// Export mocks for use in tests
+export { mockNavigate, mockLocation };
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
