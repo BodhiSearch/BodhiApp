@@ -1,262 +1,229 @@
-# Bodhi App: Architecture Overview
+# Bodhi App: Technical Architecture Overview
 
-## Application Overview
+## System Architecture
 
-Bodhi App is a tool designed to democratize AI by allowing users to run Large Language Models (LLMs) locally on their devices. The name "Bodhi" comes from Sanskrit/Pali, meaning deep wisdom or intelligence, reflecting the app's mission to make AI accessible to everyone.
+Bodhi App is a comprehensive Rust-based application that provides local Large Language Model (LLM) inference with OpenAI-compatible APIs and a modern web interface. The architecture combines a multi-crate backend with a React frontend, deployable as both a standalone server and a Tauri desktop application.
 
-## Core Architecture
-
-### System Components
+### Architectural Layers
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    Bodhi App                            │
-├─────────────────────────────────────────────────────────┤
-│  Frontend (React+Vite)                                 │
-│  ├── Chat Interface                                     │
-│  ├── Model Management                                   │
-│  ├── Authentication                                     │
-│  └── Configuration                                      │
-├─────────────────────────────────────────────────────────┤
-│  Backend API                                            │
-│  ├── REST API Endpoints                                 │
-│  ├── WebSocket Connections                              │
-│  ├── Authentication Service                             │
-│  └── Model Management                                   │
-├─────────────────────────────────────────────────────────┤
-│  LLM Inference Engine                                   │
-│  ├── GGUF Model Support                                 │
-│  ├── GPU Acceleration                                   │
-│  ├── Streaming Responses                                │
-│  └── Context Management                                 │
-├─────────────────────────────────────────────────────────┤
-│  Storage Layer                                          │
-│  ├── Model Files                                        │
-│  ├── Configuration Files                                │
-│  ├── Chat History                                       │
-│  └── User Data                                          │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend Layer                           │
+│  React + TypeScript + Vite + TailwindCSS + Shadcn UI      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                    Routes Layer                             │
+│  routes_all → routes_oai + routes_app                      │
+│  (HTTP endpoints, OpenAPI docs, middleware)                │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                   Services Layer                            │
+│  Business logic, external integrations, data management    │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                   Domain Layer                              │
+│  objs (types, errors, validation, localization)           │
+└─────────────────────────────────────────────────────────────┘
+                              │
+┌─────────────────────────────────────────────────────────────┐
+│                Infrastructure Layer                         │
+│  llama_server_proc, database, file system, auth           │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Core Capabilities
+### Crate Organization
 
-### 1. Local LLM Inference
-- Run AI models directly on your device
-- Support for all major GGUF models
-- Real-time streaming responses with inference statistics
-- GPU acceleration support for faster inference
+#### Foundation Crates
+1. **objs** - Domain objects, types, errors, validation
+2. **services** - Business logic, external integrations
+3. **server_core** - HTTP server infrastructure
+4. **auth_middleware** - Authentication and authorization
 
-### 2. User-Friendly Interface
-- Built-in Chat UI with rich markdown support and syntax highlighting
-- One-click model downloads and management
-- Responsive design for desktop, tablet, and mobile devices
+#### API Crates
+5. **routes_oai** - OpenAI-compatible API endpoints
+6. **routes_app** - Application-specific API endpoints
+7. **routes_all** - Unified route composition
 
-### 3. Model Management
-- Model aliases for easy configuration
-- File browser and operations
-- Download queue with progress tracking
-- Direct integration with HuggingFace ecosystem
+#### Application Crates
+8. **server_app** - Standalone HTTP server
+9. **bodhi/src-tauri** - Tauri desktop application
+10. **commands** - CLI interface
 
-### 4. Chat Interface
-- Chat sessions management
-- Message input/display/actions
-- Real-time features including message streaming
+#### Utility Crates
+11. **llama_server_proc** - LLM process management
+12. **errmeta_derive** - Error metadata macros
+13. **integration-tests** - End-to-end testing
+14. **xtask** - Build automation
 
-### 5. Configuration & Control
-- Control request parameters (temperature, system prompt, etc.)
-- Control LLM context parameters (context window, num parallel requests, etc.)
-- Configuration via YAML files, updatable in real-time
+## Key Features
 
-### 6. Security Features
-- Choose between authenticated or non-authenticated modes
-- Role-based access for teams (coming soon)
-- API token management
+### Local LLM Inference
+- **llama.cpp Integration**: Native llama.cpp compilation and process management
+- **Model Management**: Download, load, and manage GGUF models from HuggingFace
+- **Hardware Acceleration**: CUDA, OpenCL, Metal support
+- **Multi-Model Support**: Run multiple models simultaneously
 
-### 7. API Compatibility
-- OpenAI and Ollama compatible APIs
-- OpenAPI documentation with embedded Swagger-UI
+### OpenAI Compatibility
+- **API Compatibility**: Full OpenAI API compatibility for chat completions
+- **Streaming Support**: Real-time response streaming via Server-Sent Events
+- **Model Endpoints**: Model listing and information endpoints
+- **Client Library Support**: Works with existing OpenAI client libraries
 
-## Feature Architecture
+### Authentication & Security
+- **OAuth2 Integration**: External authentication provider support
+- **JWT Tokens**: Secure token-based authentication
+- **Role-Based Access**: Admin, PowerUser, BasicUser roles
+- **API Keys**: API token management for programmatic access
 
-### Authentication & Authorization
-```
-Features:
-├── Login/Logout Flow
-│   ├── Login Page
-│   ├── OAuth2 Authentication
-│   └── Logout Process
-├── Authorization Status
-│   ├── Current Role Display
-│   └── Permission Indicators
-├── Role-based UI Elements
-│   ├── Admin Features
-│   ├── Power User Features
-│   └── Basic User Features
-├── Token Management
-│   ├── Token Creation
-│   ├── Token Listing
-│   └── Token Updates
-└── Setup Configuration
-    ├── Auth Mode Selection
-    ├── OAuth2 Setup
-    └── Role Configuration
-```
+## Application States
 
-### Navigation & Layout
-```
-Features:
-├── Header Components
-│   ├── Main Menu
-│   ├── User Profile
-│   └── Quick Actions
-├── Responsive Navigation
-│   ├── Desktop Menu
-│   ├── Tablet Layout
-│   └── Mobile Menu
-├── Role-based Navigation
-│   ├── Admin Routes
-│   ├── Power User Routes
-│   └── Basic User Routes
-└── Navigation Aids
-    ├── Breadcrumbs
-    ├── Section Headers
-    └── Back Navigation
-```
+### Setup Mode (`setup`)
+- Initial state requiring authentication mode selection
+- No API access except setup endpoints
+- Transitions to either `resource-admin` or `ready`
 
-### Model Management
-```
-Features:
-├── Model Aliases
-│   ├── List/Grid View
-│   ├── Create Alias
-│   └── Update Alias
-├── Model Files
-│   ├── File Browser
-│   └── File Operations
-├── Downloads
-│   ├── Download Queue
-│   ├── Progress Tracking
-│   └── Status Updates
-└── Pull Operations
-    ├── Repository Pull
-    ├── Pull by Alias
-    └── Pull Status
+### Resource Admin Mode (`resource-admin`)
+- Intermediate state for authenticated mode
+- Waiting for first admin user registration
+- Limited API access for admin setup
+
+### Ready Mode (`ready`)
+- Fully operational state
+- All APIs accessible
+- Authentication enforced if enabled
+
+## Data Flow
+
+### Chat Completion Flow
+1. **Frontend Request** → React UI sends chat request
+2. **Route Handling** → routes_oai processes OpenAI-compatible request
+3. **Service Layer** → services orchestrate business logic
+4. **LLM Inference** → llama_server_proc manages llama.cpp process
+5. **Response Streaming** → Real-time response via SSE
+6. **Frontend Update** → React UI updates with streamed response
+
+### Model Management Flow
+1. **Model Discovery** → HuggingFace Hub integration for model search
+2. **Download Management** → Background download with progress tracking
+3. **Model Loading** → Dynamic model loading into llama.cpp
+4. **Alias Management** → User-friendly model naming and organization
+
+### Authentication Flow
+
+#### Authenticated Mode Setup
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant AuthServer
+
+    User->>App: POST /setup {authz: true}
+    App->>AuthServer: Register as resource server
+    AuthServer->>App: Client credentials
+    App->>App: Store credentials
+    App->>App: Set status: resource-admin
+    App->>User: Redirect to admin setup
 ```
 
-### Chat Interface
-```
-Features:
-├── Chat Sessions
-│   ├── New Chat
-│   ├── Chat History
-│   └── Session Management
-├── Model Integration
-│   ├── Model Selection
-│   ├── Model Settings
-│   └── Context Management
-├── Message Interface
-│   ├── Message Input
-│   ├── Message Display
-│   └── Message Actions
-└── Real-time Features
-    ├── Message Streaming
-    ├── Status Updates
-    └── Error Handling
+#### Non-Authenticated Mode Setup
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+
+    User->>App: POST /setup {authz: false}
+    App->>App: Set status: ready
+    App->>User: Ready for use
 ```
 
-## Key USPs (Unique Selling Propositions)
+## API Compatibility
 
-### 1. Zero Technical Knowledge Required
-- User-friendly interface designed for non-technical users
-- Guided setup process with hints and help throughout
-- No complex setup, everything packaged in one application
+### OpenAI Compatibility
+- `/v1/models` - List available models
+- `/v1/chat/completions` - Chat completion API
+- Compatible with OpenAI client libraries
 
-### 2. Privacy & Data Control
-- Complete privacy with data staying on your device
-- No cloud processing or data sharing
-- Secure local inference
+### Ollama Compatibility
+- `/api/tags` - List model tags
+- `/api/show` - Model information
+- `/api/chat` - Chat completion
+- Drop-in replacement for Ollama clients
 
-### 3. Cost Effectiveness
-- Completely FREE - no subscription or one-time cost
-- No API costs or usage limits
-- Unlimited AI inferences using your own hardware
+## Key Design Patterns
 
-### 4. Performance & Control
-- Direct access to your hardware's capabilities
-- Optimal performance without internet latency
-- Fine-grained control over model behavior
-- Optimized inference for both CPU and GPU systems
+### Dependency Injection
+- Services injected into route handlers via Axum extensions
+- Mock implementations for testing
+- Clear separation of concerns
 
-### 5. Community-Driven
-- Join fellow users in upskilling together
-- Support for collaborative learning
+### Error Handling
+- Centralized error types with metadata (`errmeta_derive`)
+- Localization support for error messages
+- Structured error responses for APIs
 
-### 6. Accessibility
-- Bringing AI to underserved communities worldwide
-- Making AI accessible to those without technical expertise
+### Configuration Management
+- Environment-based configuration
+- Runtime configuration updates
+- Validation and defaults
 
-## Target Audience
+### Real-Time Communication
+- Server-Sent Events for streaming
+- WebSocket support for bidirectional communication
+- Event-driven architecture
 
-The app is specifically designed for people who:
-- Do not have a deep technical IT background
-- Are savvy using laptops and mobile devices for day-to-day professional needs
-- Want to benefit from AI without complicated setup
-- Include college students (e.g., from IITs, NITs, law schools, CA programs, medical schools)
+## Token System
 
-## Hardware Requirements
+### Session Tokens
+- Used for web UI authentication
+- Short-lived with refresh capability
+- Stored in session cookie
 
-The app intelligently detects your system capabilities and recommends appropriately sized models:
+### API Tokens
+- Long-lived offline tokens
+- Used for programmatic access
+- Can be named and managed
+- Status tracking (active/inactive)
 
-- **For CPU-only systems**: Optimized models like TinyLlama (1.1B parameters, 0.6GB)
-- **For systems with GPU**: Support for larger models like Mistral-7B (7B parameters, 4.1GB)
-- **For high-end systems**: Support for advanced models like Mixtral-8x7B (47B parameters, 26GB)
+## Model Aliases
 
-The app provides hardware recommendations based on:
-- Available GPU memory
-- System RAM
-- CPU cores
+Model aliases provide user-friendly names for complex model configurations:
 
-## Supported Platforms
+```json
+{
+  "alias": "llama2:chat",
+  "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+  "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+  "source": "huggingface",
+  "chat_template": "llama2",
+  "model_params": {},
+  "request_params": {
+    "temperature": 0.7,
+    "top_p": 0.95
+  },
+  "context_params": {
+    "max_tokens": 4096
+  }
+}
+```
 
-- **Currently Available**: macOS
-- **Coming Soon**: Linux and Windows
-- **Built on**: Platform-independent technology stack
+## Integration Points
 
-## Cross-cutting Features
+### External Services
+- **HuggingFace Hub** → Model discovery and download
+- **OAuth2 Providers** → Authentication integration
+- **System Services** → OS integration and notifications
 
-### Theme System
-- Theme switching
-- Color modes
-- Custom themes
+### Client Integration
+- **OpenAI Libraries** → Compatible with existing tools
+- **Custom Clients** → REST API for custom integrations
+- **CLI Tools** → Command-line interface for automation
 
-### Notifications
-- Toast messages
-- Alert dialogs
-- Status updates
+## Related Documentation
 
-### Form Handling
-- Input validation
-- Error states
-- Submit handling
-
-### Modal Systems
-- Dialog windows
-- Confirmation boxes
-- Action sheets
-
-## Upcoming Features
-
-According to the documentation, Bodhi App is actively developing:
-- Support for more platforms (Linux and Windows coming soon)
-- Enhanced model management capabilities
-- Additional API integrations
-- Advanced conversation features
-- Role-based team features
-
-The app aims to democratize AI by making powerful AI tools accessible to everyone, regardless of technical expertise, while keeping data private and eliminating ongoing API costs.
-
-## Links
-
-- **Website**: https://www.getbodhi.app
-- **GitHub Repository**: https://github.com/BodhiSearch/BodhiApp 
-- **Linktree**: https://linktr.ee/bodhiapp
+- **[Frontend Architecture](frontend-architecture.md)** - React frontend details
+- **[Tauri Desktop Architecture](tauri-architecture.md)** - Desktop application architecture
+- **[Backend Integration](backend-integration.md)** - API integration patterns
+- **[Authentication](authentication.md)** - Security implementation details

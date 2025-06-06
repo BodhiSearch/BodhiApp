@@ -2,391 +2,307 @@
 
 ## Overview
 
-The Bodhi design system provides a comprehensive foundation for creating consistent, accessible, and beautiful user interfaces across the Bodhi App ecosystem. Built on Tailwind CSS and Shadcn/ui, it ensures design consistency while maintaining flexibility for future growth.
+This document defines the design patterns and component usage guidelines for implementing consistent UI across Bodhi App screens. Focus is on implementation decisions that ensure visual and functional consistency.
 
-## Core Technologies
+## Layout Patterns
 
-### Tailwind CSS
-**Utility-first CSS framework** with the following configuration:
-
-- Custom theme configuration with CSS variables
-- Dark mode support using 'class' strategy
-- Custom color scheme with HSL values
-- Responsive container configuration
-- Animation support via tailwindcss-animate
-- Custom font configuration using Inter
-
-### Shadcn/ui
-**Component library built on Radix UI** with:
-
-- Default style configuration
-- CSS variables based theming
-- Base color: slate
-- Component aliases configured
-- Radix UI primitives for accessibility
-
-## Color System
-
-### Semantic Color Tokens
-
-Base colors are defined using semantic naming that describes their purpose:
-
-```css
-/* Background Levels */
---background-base      /* Main app background */
---background-elevated  /* Header, elevated surfaces */
---background-overlay   /* Cards, dialogs */
-
-/* Border Levels */
---border-subtle       /* Subtle separators */
---border-strong       /* Prominent borders */
-
-/* Text Levels */
---text-primary       /* Primary content */
---text-secondary     /* Secondary content */
---text-muted        /* De-emphasized text */
-```
-
-### Theme Implementation
-
-Colors are implemented through Tailwind's color system:
-
-```typescript
-colors: {
-  'background-base': 'hsl(var(--background-base))',
-  'background-elevated': 'hsl(var(--background-elevated))',
-  'background-overlay': 'hsl(var(--background-overlay))',
-  'border-subtle': 'hsl(var(--border-subtle))',
-  'border-strong': 'hsl(var(--border-strong))',
-  'text-primary': 'hsl(var(--text-primary))',
-  'text-secondary': 'hsl(var(--text-secondary))',
-  'text-muted': 'hsl(var(--text-muted))',
-}
-```
-
-### Extended Color Palette
-
-```css
-:root {
-  /* Primary Colors */
-  --primary: 250 95% 64%;      /* #6366f1 Indigo */
-  --primary-foreground: 0 0% 100%;
-  
-  /* Background Colors */
-  --background: 0 0% 100%;     /* White */
-  --background-subtle: 240 10% 97%; /* Subtle gray */
-  
-  /* Text Colors */
-  --text-primary: 240 10% 4%;  /* Near black */
-  --text-secondary: 240 5% 34%; /* Gray */
-  
-  /* Component Colors */
-  --component-bg: 0 0% 100%;   /* White */
-  --component-border: 240 6% 90%;
-  
-  /* Status Colors */
-  --success: 142 72% 29%;      /* Green */
-  --warning: 38 92% 50%;       /* Orange */
-  --error: 0 84% 60%;          /* Red */
-  --info: 199 89% 48%;         /* Blue */
-}
-```
-
-### Visual Layer Hierarchy
-
-1. **Base Layer (Background)**
-   - Light theme: Slightly off-white for subtle foundation
-   - Dark theme: Deep dark for reduced eye strain
-   - Purpose: Creates foundation for content
-
-2. **Content Layer (Cards)**
-   - Light theme: Pure white for readability
-   - Dark theme: Slightly elevated from background
-   - Purpose: Main content areas and interactive elements
-
-3. **Top Layer (Header)**
-   - Light theme: Darker than background for distinction
-   - Dark theme: Lighter than content for hierarchy
-   - Uses blur and opacity for depth
-   - Purpose: Navigation and key UI elements
-
-## Typography
-
-### Font System
-
-- **Primary Font**: Inter - Modern, readable sans-serif
-- **Font Loading**: Optimized for performance
-- **Font Display**: Swap for better loading experience
-
-### Typography Scale
-
-```css
-fontSize: {
-  xs: ['0.75rem', { lineHeight: '1rem' }],     // 12px
-  sm: ['0.875rem', { lineHeight: '1.25rem' }], // 14px
-  base: ['1rem', { lineHeight: '1.5rem' }],    // 16px
-  lg: ['1.125rem', { lineHeight: '1.75rem' }], // 18px
-  xl: ['1.25rem', { lineHeight: '1.75rem' }],  // 20px
-  '2xl': ['1.5rem', { lineHeight: '2rem' }],   // 24px
-  '3xl': ['1.875rem', { lineHeight: '2.25rem' }], // 30px
-}
-```
-
-Benefits:
-- Consistent vertical rhythm
-- Improved readability
-- Proper line height ratios
-
-### Text Hierarchy
-
-```css
-/* Text styles */
-h1 { @apply text-3xl font-bold md:text-4xl }
-h2 { @apply text-2xl font-bold md:text-3xl }
-h3 { @apply text-xl font-bold md:text-2xl }
-```
-
-## Spacing System
-
-### Spacing Scale
-
-```css
-spacing: {
-  '4xs': '0.125rem', // 2px - Minimal spacing
-  '3xs': '0.25rem',  // 4px - Tight spacing
-  '2xs': '0.375rem', // 6px - Very compact
-  'xs': '0.5rem',    // 8px - Compact
-  'sm': '0.75rem',   // 12px - Small
-  'md': '1rem',      // 16px - Medium
-  'lg': '1.5rem',    // 24px - Large
-  'xl': '2rem',      // 32px - Extra large
-  '2xl': '2.5rem',   // 40px - 2X Extra large
-  '3xl': '3rem',     // 48px - 3X Extra large
-}
-```
-
-### Common Utilities
-
-```css
-/* Spacing utilities */
-.content-spacing { @apply space-y-6 }
-.section-spacing { @apply py-8 md:py-12 }
-
-/* Layout containers */
-.page-container { @apply container mx-auto px-4 sm:px-6 lg:px-8 }
-.card-container { @apply rounded-lg border bg-card p-6 shadow-sm }
-.form-container { @apply max-w-2xl mx-auto space-y-6 }
-```
-
-## Component Architecture
-
-### Layout Structure
-
-Base layout hierarchy:
+### Screen Structure
+All screens should follow this consistent hierarchy:
 
 ```
-root-layout
-├── app-header
-│   ├── app-navigation
-│   └── app-breadcrumb
-└── app-main
-    └── page-content
+app-header (fixed)
+├── app-navigation
+└── app-breadcrumb
+app-main (scrollable)
+└── page-content
+    ├── page-header
+    ├── content-sections
+    └── page-actions
 ```
-
-### Component Identification
-
-Components use data-testid for clear identification:
-
-```tsx
-<header data-testid="app-header">
-<nav data-testid="app-navigation">
-<main data-testid="app-main">
-```
-
-### Reusable Component Classes
-
-Common component patterns defined in components.css:
-
-```css
-.card-elevated {
-  @apply bg-overlay border-subtle rounded-lg shadow-md;
-}
-
-.header-section {
-  @apply border-b border-subtle bg-elevated/50;
-}
-
-.content-section {
-  @apply bg-overlay p-4 space-y-3;
-}
-
-.text-description {
-  @apply text-sm text-muted text-center;
-}
-```
-
-## Responsive Design
-
-### Breakpoint System
-
-```typescript
-screens: {
-  'sm': '640px',    // Small devices
-  'md': '768px',    // Medium devices
-  'lg': '1024px',   // Large devices
-  'xl': '1280px',   // Extra large devices
-  '2xl': '1400px',  // 2X Extra large devices
-}
-```
-
-These breakpoints provide consistent responsive behavior:
-- Mobile-first approach starting below 640px
-- Tablet portrait mode at 768px
-- Tablet landscape/small desktop at 1024px
-- Standard desktop at 1280px
-- Large desktop at 1400px
 
 ### Container Patterns
+- **Full-width pages**: Use `container mx-auto px-4 sm:px-6 lg:px-8`
+- **Form pages**: Use `max-w-2xl mx-auto px-4`
+- **Content cards**: Use `card-container` class for consistent elevation
+- **Section spacing**: Use `section-spacing` for consistent vertical rhythm
 
-```tsx
-// Default container with responsive padding
-<div className="container mx-auto px-4 sm:px-6 lg:px-8">
-  {/* Content */}
-</div>
+## Visual Hierarchy
 
-// Narrow container for forms
-<div className="max-w-2xl mx-auto px-4">
-  {/* Form content */}
-</div>
-```
+### Background Layers
+Use these semantic classes for consistent layering:
+
+- `bg-base` - Main app background
+- `bg-elevated` - Header, navigation surfaces
+- `bg-overlay` - Cards, dialogs, modals
+
+### Text Hierarchy
+- `text-primary` - Main content, headings
+- `text-secondary` - Supporting content, labels
+- `text-muted` - Placeholder text, descriptions
+
+### Border Usage
+- `border-subtle` - Section separators, card borders
+- `border-strong` - Focus states, active elements
+
+### Status Colors
+- `text-destructive` / `bg-destructive` - Errors, warnings
+- `text-success` / `bg-success` - Success states
+- `text-muted-foreground` - Disabled states
+
+## Typography Patterns
+
+### Heading Hierarchy
+- **Page titles**: `text-3xl font-bold md:text-4xl`
+- **Section titles**: `text-2xl font-bold md:text-3xl`
+- **Subsection titles**: `text-xl font-bold md:text-2xl`
+- **Card titles**: `text-lg font-semibold`
+
+### Content Text
+- **Body text**: `text-base` (default)
+- **Small text**: `text-sm` for labels, captions
+- **Tiny text**: `text-xs` for metadata, timestamps
+
+### Text Styling
+- **Emphasis**: `font-semibold` for important content
+- **De-emphasis**: `text-muted-foreground` for secondary info
+- **Interactive text**: `hover:text-primary` for links
+
+## Spacing Patterns
+
+### Content Spacing
+- **Between sections**: `space-y-6` or `space-y-8`
+- **Within cards**: `space-y-4` for form fields, `space-y-3` for content
+- **Page sections**: `py-8 md:py-12` for consistent vertical rhythm
+
+### Component Spacing
+- **Card padding**: `p-6` for standard cards, `p-4` for compact cards
+- **Form spacing**: `space-y-4` between fields, `space-y-6` between sections
+- **Button groups**: `space-x-2` for related actions, `space-x-4` for separate actions
+
+### Layout Spacing
+- **Page margins**: `px-4 sm:px-6 lg:px-8` for responsive edge spacing
+- **Content width**: `max-w-2xl` for forms, `max-w-4xl` for content pages
 
 ## Component Patterns
 
-### Form Components
-
+### Standard Card Pattern
 ```tsx
 <Card className="max-w-2xl mx-auto shadow-sm">
   <CardHeader className="space-y-1">
-    <CardTitle className="text-2xl font-bold">Form Title</CardTitle>
+    <CardTitle className="text-2xl font-bold">Title</CardTitle>
     <CardDescription className="text-sm text-muted-foreground">
-      Form description here
+      Description text
     </CardDescription>
   </CardHeader>
   <CardContent className="space-y-4">
-    <FormField>
-      <FormLabel className="text-sm font-medium">Label</FormLabel>
-      <FormControl>
-        <Input className="w-full" />
-      </FormControl>
-      <FormMessage className="text-sm text-destructive" />
-    </FormField>
+    {/* Content */}
   </CardContent>
 </Card>
 ```
 
-### Interactive Components
-
+### Form Pattern
 ```tsx
-// Buttons with states
-<Button
-  className="
-    bg-primary
-    hover:bg-primary/90
-    active:bg-primary/80
-    disabled:opacity-50
-    transition-colors
-    duration-200
-  "
->
-  Click Me
-</Button>
+<FormField>
+  <FormLabel className="text-sm font-medium">Label</FormLabel>
+  <FormControl>
+    <Input className="w-full" />
+  </FormControl>
+  <FormMessage className="text-sm text-destructive" />
+</FormField>
+```
 
-// Loading states
-<div className="animate-pulse space-y-4">
-  <div className="h-4 bg-slate-200 rounded dark:bg-slate-700" />
-  <div className="h-4 bg-slate-200 rounded dark:bg-slate-700 w-3/4" />
+### Page Header Pattern
+```tsx
+<div className="border-b border-subtle bg-elevated/50 px-6 py-4">
+  <h1 className="text-2xl font-bold">Page Title</h1>
+  <p className="text-sm text-muted-foreground">Page description</p>
 </div>
 ```
 
-## Theming System
-
-### Theme Configuration
-
-- Dark theme is the default
-- Theme colors defined using HSL values
-- Semantic color mapping for consistency
-
-### Utility Classes
-
-Semantic utility classes for common patterns:
-
-```css
-.bg-base      /* Main background */
-.bg-elevated  /* Elevated surfaces */
-.bg-overlay   /* Overlay surfaces */
-.border-subtle
-.border-strong
-.text-primary
-.text-secondary
-.text-muted
+### Content Section Pattern
+```tsx
+<div className="bg-overlay p-6 space-y-4 rounded-lg border border-subtle">
+  <h2 className="text-lg font-semibold">Section Title</h2>
+  <div className="space-y-3">
+    {/* Section content */}
+  </div>
+</div>
 ```
 
-## Best Practices
+## Responsive Patterns
 
-### 1. Color Usage
-- Use semantic color tokens instead of direct color values
-- Maintain consistent contrast ratios
-- Follow color hierarchy for visual importance
+### Mobile-First Approach
+- Start with mobile layout, enhance for larger screens
+- Use `sm:`, `md:`, `lg:` prefixes for responsive variants
+- Test on mobile devices regularly
 
-### 2. Component Structure
-- Use data-testid for component identification
-- Follow consistent naming conventions
-- Implement proper component hierarchy
+### Common Responsive Patterns
+- **Text sizes**: `text-2xl md:text-3xl` for scalable headings
+- **Spacing**: `py-4 md:py-6` for responsive vertical spacing
+- **Grid layouts**: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
+- **Padding**: `px-4 sm:px-6 lg:px-8` for edge spacing
 
-### 3. Responsive Design
-- Mobile-first approach
-- Use semantic breakpoints
-- Consistent spacing scale
+### Navigation Responsiveness
+- Mobile: Hamburger menu, full-screen overlay
+- Desktop: Horizontal navigation, sidebar navigation
+- Use `hidden md:block` and `md:hidden` for responsive visibility
 
-### 4. Accessibility
-- Proper color contrast
-- Semantic HTML structure
-- Clear visual hierarchy
+## Interactive States
 
-## Development Guidelines
+### Button States
+- **Primary actions**: `Button` with default styling
+- **Secondary actions**: `Button variant="outline"`
+- **Destructive actions**: `Button variant="destructive"`
+- **Loading state**: Add `disabled` prop and loading spinner
 
-### 1. File Organization
-- Component styles in components.css
-- Theme configuration in globals.css
-- Tailwind config in tailwind.config.ts
+### Form States
+- **Default**: Standard input styling
+- **Focus**: Automatic focus ring via Tailwind
+- **Error**: `FormMessage` with `text-destructive`
+- **Disabled**: `disabled` prop with reduced opacity
 
-### 2. Naming Conventions
-- Use semantic names for colors and utilities
-- Consistent component naming
-- Clear test ID structure
+### Loading States
+- **Skeleton loading**: `animate-pulse` with placeholder shapes
+- **Spinner loading**: Use `Loader2` icon with `animate-spin`
+- **Progressive loading**: Show partial content while loading
 
-### 3. Code Style
-- Use Tailwind utility classes
-- Extract common patterns to components
-- Maintain consistent spacing
+### Hover and Focus
+- **Interactive elements**: `hover:bg-accent` for subtle hover
+- **Links**: `hover:text-primary hover:underline`
+- **Cards**: `hover:shadow-md transition-shadow`
 
-## CSS Processing
+## Component Usage Guidelines
 
-- **PostCSS** for processing Tailwind directives
-- **CSS variables** for theme customization
-- **Global styles** in src/app/globals.css
+### When to Use Cards
+- **Form containers**: Always wrap forms in cards
+- **Content sections**: Group related content
+- **Data display**: Tables, lists, detailed information
+- **NOT for**: Page-level layouts, navigation elements
 
-## Build & Optimization
+### When to Use Buttons
+- **Primary**: Main action on a page (only one per section)
+- **Secondary**: Supporting actions, cancel buttons
+- **Outline**: Less important actions, filters
+- **Ghost**: Minimal actions, icon buttons
 
-### React PWA Support
-- PWA configuration via vite-plugin-pwa
-- Aggressive frontend navigation caching
-- Service worker optimization
-- Workbox configuration
+### When to Use Different Text Styles
+- **Headings**: Clear hierarchy with consistent sizing
+- **Body text**: Default for readable content
+- **Muted text**: Supporting information, metadata
+- **Small text**: Labels, captions, fine print
 
-### Vite Build Configuration
-- Static build output
-- Asset optimization
-- ESLint integration
-- TypeScript compilation
-- Font optimization
+## Implementation Consistency Rules
+
+### Screen Layout Consistency
+1. **Always use the same header structure** across all pages
+2. **Consistent page containers** - don't mix container patterns
+3. **Uniform spacing** between sections using defined spacing classes
+4. **Standard card patterns** for content grouping
+
+### Form Consistency
+1. **Same form field spacing** (`space-y-4`) across all forms
+2. **Consistent label styling** (`text-sm font-medium`)
+3. **Standard error message styling** (`text-sm text-destructive`)
+4. **Uniform button placement** (right-aligned for primary actions)
+
+### Navigation Consistency
+1. **Same breadcrumb pattern** across all pages
+2. **Consistent active states** for navigation items
+3. **Standard mobile menu behavior**
+4. **Uniform page transitions**
+
+### Content Consistency
+1. **Same heading hierarchy** across all content
+2. **Consistent table styling** for data display
+3. **Standard loading states** for all async content
+4. **Uniform empty states** when no data is available
+
+## Common Mistakes to Avoid
+
+### Layout Mistakes
+- ❌ Mixing different container widths on the same page
+- ❌ Inconsistent spacing between sections
+- ❌ Using custom spacing instead of design system values
+- ❌ Breaking the established visual hierarchy
+
+### Component Mistakes
+- ❌ Using multiple primary buttons in the same section
+- ❌ Inconsistent card padding across different screens
+- ❌ Mixing different text styles for the same content type
+- ❌ Custom colors instead of semantic color tokens
+
+### Responsive Mistakes
+- ❌ Forgetting mobile-first approach
+- ❌ Inconsistent breakpoint usage
+- ❌ Different responsive patterns for similar content
+- ❌ Not testing on actual mobile devices
+
+## Quick Reference
+
+### Standard Page Structure
+```tsx
+// Every page should follow this structure
+<div className="container mx-auto px-4 sm:px-6 lg:px-8">
+  {/* Page header */}
+  <div className="border-b border-subtle bg-elevated/50 px-6 py-4">
+    <h1 className="text-2xl font-bold">Page Title</h1>
+    <p className="text-sm text-muted-foreground">Description</p>
+  </div>
+
+  {/* Page content */}
+  <div className="py-8 space-y-6">
+    {/* Content sections */}
+  </div>
+</div>
+```
+
+### Standard Form Structure
+```tsx
+<Card className="max-w-2xl mx-auto">
+  <CardHeader>
+    <CardTitle>Form Title</CardTitle>
+    <CardDescription>Form description</CardDescription>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    {/* Form fields with space-y-4 */}
+  </CardContent>
+  <CardFooter className="flex justify-end space-x-2">
+    <Button variant="outline">Cancel</Button>
+    <Button type="submit">Submit</Button>
+  </CardFooter>
+</Card>
+```
+
+### Standard Data Display
+```tsx
+<Card>
+  <CardHeader>
+    <CardTitle className="text-lg">Data Section</CardTitle>
+  </CardHeader>
+  <CardContent>
+    {/* Use DataTable for tabular data */}
+    {/* Use space-y-3 for list items */}
+    {/* Use text-muted-foreground for metadata */}
+  </CardContent>
+</Card>
+```
+
+### Component Selection Guide
+
+**For forms**: Always use `Card` wrapper with `CardHeader`, `CardContent`, `CardFooter`
+
+**For data display**: Use `DataTable` for tabular data, `Card` for grouped information
+
+**For actions**:
+- Primary action: `Button` (default)
+- Secondary action: `Button variant="outline"`
+- Destructive action: `Button variant="destructive"`
+
+**For navigation**: Use consistent breadcrumb and navigation patterns
+
+**For feedback**: Use `toast` for notifications, `FormMessage` for form errors
+
+## Related Documentation
+
+- **[Frontend Architecture](frontend-architecture.md)** - Component organization and structure
+- **[App Overview](app-overview.md)** - High-level application architecture

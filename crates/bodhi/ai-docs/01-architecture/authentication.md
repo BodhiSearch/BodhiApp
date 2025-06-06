@@ -1,300 +1,270 @@
-# Bodhi App Authentication Guide
+# Authentication Architecture
 
 ## Overview
 
-This document outlines the authentication mechanisms and security schemes used in the Bodhi App, along with best practices and implementation details.
+Bodhi App implements a flexible authentication system that supports both single-user and multi-user scenarios. The system is designed around OAuth2/OpenID Connect standards with Keycloak as the identity provider, while also supporting a no-authentication mode for local development and personal use.
 
-## Security Schemes
+## Authentication Modes
 
-### 1. HTTP Authentication
+### 1. No Authentication Mode
+**Use Case**: Personal use, local development, single-user scenarios
 
-#### Basic Auth
-- Username/password encoded in base64
-- Simple to implement
-- Widely supported
-- **Limitation**: Credentials sent with every request
-- **Use Case**: Legacy systems, simple integrations
+**Characteristics**:
+- No login required
+- All features immediately accessible
+- No user management overhead
+- Suitable for desktop applications
+- Local configuration only
 
-#### Bearer Auth
-- Token-based authentication (JWT)
-- More secure than Basic Auth
-- Supports stateless authentication
-- **Use Case**: API authentication, modern web services
+**Security Model**: Trust-based (local environment assumed secure)
 
-#### Digest Auth
-- Challenge-response mechanism
-- More secure than Basic Auth
-- **Use Case**: When credentials can't be sent in plain text
+### 2. OAuth2 Authentication Mode
+**Use Case**: Multi-user environments, team collaboration, enterprise deployments
 
-### 2. API Key Authentication
+**Characteristics**:
+- External identity provider (Keycloak)
+- Role-based access control
+- Secure token management
+- Multi-user support
+- Centralized user management
 
-- Can be implemented in:
-  - Headers (X-API-KEY)
-  - Query parameters
-  - Cookies
-- Simple to implement and use
-- Good for machine-to-machine communication
-- **Limitations**: 
-  - No built-in expiration
-  - Less secure than OAuth2
-- **Use Case**: Service-to-service communication, simple API access
+**Security Model**: Zero-trust with token-based authentication
 
-### 3. OAuth2 Authentication
+## Authentication Flow Design
 
-#### Flow Types
-
-1. **Authorization Code Flow**
-   - Best for web applications
-   - Secure for mobile apps (with PKCE)
-   - Most secure OAuth2 flow
-   - Supports refresh tokens
-
-2. **Implicit Flow**
-   - Legacy browser-based applications
-   - Generally deprecated
-   - Less secure than Authorization Code
-
-3. **Resource Owner Password Flow**
-   - For trusted clients only
-   - Legacy support
-   - Not recommended for new applications
-
-4. **Client Credentials Flow**
-   - Machine-to-machine communication
-   - No user interaction required
-   - Good for background processes
-
-#### Benefits
-- Industry standard
-- Supports scopes for granular permissions
-- Token refresh capabilities
-- Separation of concerns
-
-#### Limitations
-- More complex to implement
-- Requires more infrastructure
-- Higher learning curve
-
-### 4. OpenID Connect
-
-- Built on top of OAuth2
-- Adds standardized identity layer
-- JWT tokens with standardized claims
-- User info endpoint
-- **Best For**: User authentication with identity management
-
-### 5. Mutual TLS (mTLS)
-
-- Client and server certificate authentication
-- Very secure for service-to-service communication
-- Complex certificate management required
-- **Best For**: Internal service mesh, high-security environments
-
-## Common Implementation Patterns
-
-### Web Applications
+### Initial Setup Flow
 ```
-Frontend ─── OAuth2 Auth Code ───> Auth Server
-    │                                  │
-    │<─── Access Token + Session ──────┘
-    │
-    │──── Session Cookie ────> Backend API
+Application Start
+    ↓
+Check Configuration
+    ↓
+┌─────────────────┐    ┌──────────────────┐
+│ No Auth Mode    │    │ OAuth2 Mode      │
+│ - Direct Access │    │ - Setup Required │
+│ - Local Config  │    │ - External Auth  │
+└─────────────────┘    └──────────────────┘
+    ↓                      ↓
+Ready to Use          Registration Flow
 ```
 
-### API Services
+### OAuth2 Setup Flow
 ```
-Client ─── API Key/Bearer Token ───> API Gateway
-   │                                    │
-   │<─── Rate Limited/Authenticated ────┘
+Setup Initiation
+    ↓
+External Auth Server Configuration
+    ↓
+Client Registration
+    ↓
+Role Assignment (First User = Admin)
+    ↓
+System Ready
 ```
 
-### Microservices
+### User Authentication Flow
 ```
-Service A ─── mTLS + JWT ───> Service B
-    │                            │
-    │<─── Authenticated ─────────┘
+User Access Request
+    ↓
+Authentication Check
+    ↓
+┌─────────────────┐    ┌──────────────────┐
+│ No Auth Mode    │    │ OAuth2 Mode      │
+│ - Allow Access  │    │ - Check Token    │
+└─────────────────┘    └──────────────────┘
+                           ↓
+                    ┌─────────────┐    ┌─────────────┐
+                    │ Valid Token │    │ No/Invalid  │
+                    │ - Continue  │    │ - Redirect  │
+                    └─────────────┘    └─────────────┘
+                                           ↓
+                                    OAuth2 Login Flow
 ```
 
-## Current Bodhi Implementation
+## Role-Based Access Control
 
-### Authentication Methods
+### Role Hierarchy
+```
+Administrator
+├── Full system access
+├── User management
+├── System configuration
+└── All lower role permissions
+    ↓
+Manager
+├── User management
+├── Content management
+└── All lower role permissions
+    ↓
+Power User
+├── Advanced features
+├── API access
+└── All lower role permissions
+    ↓
+User
+└── Basic application features
+```
 
-1. **Session-based Authentication**
-   - Used for web UI
-   - Secure cookie handling
-   - CSRF protection
+### Permission Model
+- **Hierarchical**: Higher roles inherit all permissions of lower roles
+- **Additive**: Permissions are cumulative, not restrictive
+- **Contextual**: Some permissions may be resource-specific
 
-2. **API Key Authentication**
-   - For programmatic access
-   - Header-based (X-API-KEY)
-   - Rate limiting per key
+## Token Management
 
-3. **OAuth2 Integration**
-   - Used for initial authentication
-   - Authorization code flow
-   - Secure token handling
+### Session-Based Authentication
+**Use Case**: Web UI interactions, browser-based access
 
-### Security Features
+**Characteristics**:
+- Session cookies for state management
+- Automatic token refresh
+- Browser-integrated security
+- CSRF protection
 
-1. **Token Management**
-   - Short-lived access tokens
-   - Secure storage
-   - Revocation capabilities
+### API Token Authentication
+**Use Case**: Programmatic access, integrations, automation
 
-2. **Permission Scopes**
-   - User-level access
-   - Power user capabilities
-   - Admin functions
+**Characteristics**:
+- Long-lived offline tokens
+- Scope-based permissions
+- Revocable access
+- Machine-to-machine communication
 
-3. **Rate Limiting**
-   - Per-token limits
-   - Graduated thresholds
-   - Clear headers
+### Token Lifecycle
+```
+Token Creation
+    ↓
+Active Usage
+    ↓
+┌─────────────────┐    ┌──────────────────┐
+│ Session Token   │    │ API Token        │
+│ - Auto Refresh  │    │ - Long Lived     │
+│ - Browser Only  │    │ - Revocable      │
+└─────────────────┘    └──────────────────┘
+    ↓                      ↓
+Expiration/Logout      Manual Revocation
+```
 
-## Best Practices
+## Security Architecture
 
-### Token Management
-1. Use short-lived access tokens
-2. Implement secure token storage
-3. Support token revocation
-4. Rotate tokens regularly
+### Authentication Security
+- **OAuth2/OpenID Connect**: Industry standard protocols
+- **JWT Tokens**: Stateless, verifiable tokens
+- **Token Rotation**: Automatic refresh for active sessions
+- **Secure Storage**: Encrypted session management
 
-### Scope Usage
-1. Implement granular permissions
-2. Follow least privilege principle
-3. Document scopes clearly
-4. Validate scopes on every request
+### Authorization Security
+- **Principle of Least Privilege**: Users get minimum required access
+- **Role-Based Control**: Permissions tied to roles, not individuals
+- **Token Scoping**: API tokens limited to specific capabilities
+- **Audit Trail**: Authentication and authorization events logged
 
-### Rate Limiting
-1. Implement per-token limits
-2. Use graduated rate limits
-3. Clear limit documentation
-4. Proper error responses
+### Transport Security
+- **HTTPS Only**: All authentication traffic encrypted
+- **Secure Cookies**: HttpOnly, Secure, SameSite attributes
+- **Token Validation**: Cryptographic signature verification
+- **Session Protection**: CSRF and XSS mitigation
 
-### Error Handling
-1. Don't leak implementation details
-2. Use consistent error formats
-3. Document error responses
-4. Include rate limit headers
+## Integration Points
 
-## Future Enhancements
+### Frontend Integration
+- **Route Protection**: Authentication-aware routing
+- **State Management**: User authentication state
+- **Error Handling**: Authentication failure recovery
+- **User Experience**: Seamless login/logout flows
 
-1. **Enhanced API Token System**
-   - Scoped API tokens
-   - Token analytics
-   - Usage monitoring
+### Backend Integration
+- **Middleware Architecture**: Request-level authentication
+- **Service Integration**: Authentication context propagation
+- **API Protection**: Endpoint-level authorization
+- **Database Security**: User context in data operations
 
-2. **Service Mesh Security**
-   - mTLS implementation
-   - Service-to-service auth
-   - Certificate management
+### External Integration
+- **Identity Provider**: Keycloak OAuth2 server
+- **Token Exchange**: Standard OAuth2 flows
+- **User Synchronization**: Identity data management
+- **Federation Support**: Multiple identity sources
 
-3. **Advanced Rate Limiting**
-   - Dynamic limits
-   - User-based quotas
-   - Burst handling
+## Deployment Considerations
 
-4. **Improved Documentation**
-   - Interactive API docs
-   - Security guidelines
-   - Integration examples
+### Single-User Deployment
+- **Desktop Application**: No authentication overhead
+- **Local Development**: Simplified setup
+- **Personal Use**: Direct feature access
+- **Offline Capability**: No external dependencies
 
-## References
+### Multi-User Deployment
+- **Server Environment**: Centralized authentication
+- **Team Collaboration**: Shared resources with access control
+- **Enterprise Integration**: Existing identity infrastructure
+- **Scalability**: Support for growing user base
 
-1. [OAuth 2.0 Specification](https://oauth.net/2/)
-2. [OpenID Connect](https://openid.net/connect/)
-3. [JWT Best Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-jwt-bcp)
-4. [API Security Checklist](https://github.com/shieldfy/API-Security-Checklist)
+### Hybrid Deployment
+- **Development to Production**: Smooth transition path
+- **Feature Parity**: Same features regardless of auth mode
+- **Configuration Driven**: Runtime authentication mode selection
+- **Migration Support**: Convert between authentication modes
 
-## Bodhi App - Authentication/Authorization
+## Operational Aspects
 
-### Architecture Overview
+### User Management
+- **Self-Service**: Users can manage their own tokens
+- **Administrative Control**: Admins can manage all users
+- **Role Assignment**: Flexible role-based permissions
+- **Access Revocation**: Immediate access termination capability
 
-Bodhi App implements a hybrid authentication system combining OAuth2 for user authentication and API tokens for programmatic access. The system is designed to work with both cloud-hosted and self-hosted instances.
+### Monitoring and Auditing
+- **Authentication Events**: Login, logout, token creation
+- **Authorization Events**: Access grants and denials
+- **Security Events**: Failed authentication attempts
+- **Compliance Support**: Audit trail for regulatory requirements
 
-### Components
+### Maintenance and Support
+- **Token Rotation**: Automated security maintenance
+- **Configuration Management**: Authentication settings
+- **Troubleshooting**: Authentication issue diagnosis
+- **Performance Monitoring**: Authentication system health
 
-1. **OAuth2 Authorization Server**
-   - Cloud-hosted authentication service
-   - Development: https://dev-id.getbodhi.app
-   - Production: https://id.getbodhi.app
-   - Manages user authentication and authorization
-   - Issues access and refresh tokens
+## Design Principles
 
-2. **Client Registration**
-   - Each Bodhi instance registers with auth server
-   - Receives unique client ID and secret
-   - Credentials stored encrypted on instance
-   - Enables OAuth2 flows for the instance
+### Flexibility
+- **Mode Selection**: Choose appropriate authentication for use case
+- **Progressive Enhancement**: Start simple, add security as needed
+- **Configuration Driven**: Runtime behavior modification
 
-### Authentication Flows
+### Security
+- **Defense in Depth**: Multiple security layers
+- **Standard Protocols**: Industry-proven authentication methods
+- **Minimal Attack Surface**: Reduce security vulnerabilities
 
-1. **User Web Authentication**
-   ```
-   User ──> Bodhi App ──> Auth Server (PKCE flow)
-    │         │               │
-    │         │<── Tokens ────┘
-    │         │
-    │<── Session Cookie ──┘
-   ```
-   - Uses OAuth2 Authorization Code flow with PKCE
-   - Implements secure session management
-   - Session cookies for persistent authentication
+### User Experience
+- **Transparent Operation**: Authentication doesn't impede workflow
+- **Consistent Interface**: Same experience across authentication modes
+- **Error Recovery**: Clear guidance for authentication issues
 
-2. **Role-Based Authorization**
-   - Roles available in JWT token:
-     - `resource_admin`
-     - `resource_manager`
-     - `resource_power_user`
-     - `resource_user`
-   - Roles found in: `resource_access.<client_id>.roles`
-   - Hierarchical permission structure
+### Maintainability
+- **Standard Implementation**: OAuth2/OpenID Connect compliance
+- **Modular Design**: Pluggable authentication components
+- **Clear Separation**: Authentication vs. authorization concerns
 
-3. **API Token System**
-   ```
-   User ──> Create Token ──> Offline Token
-    │                            │
-    │                            │
-   External App ──> API ────> Bodhi App
-   (Bearer Token)        (Token Exchange)
-   ```
-   - Uses OAuth2 Token Exchange
-   - Supports offline_access scope
-   - Non-expiring refresh tokens
-   - Privilege levels through scopes:
-     - `scope_token_user`
-     - `scope_token_power_user`
+## Future Considerations
 
-### Security Implementation
+### Enhanced Authentication
+- **Multi-Factor Authentication**: Additional security layers
+- **Biometric Integration**: Modern authentication methods
+- **Social Login**: Popular identity provider integration
 
-1. **Token Management**
-   - Access tokens: Short-lived JWT
-   - Refresh tokens: Long-lived for API access
-   - Token exchange for API authentication
-   - Secure token storage
+### Advanced Authorization
+- **Attribute-Based Access Control**: Fine-grained permissions
+- **Dynamic Permissions**: Context-aware access control
+- **Resource-Level Security**: Granular access management
 
-2. **Authorization Controls**
-   - Role-based access control (RBAC)
-   - Scope-based API token privileges
-   - Token privilege cannot exceed user's role
-   - Automatic token refresh mechanism
+### Integration Expansion
+- **Enterprise SSO**: SAML and other enterprise protocols
+- **API Gateway Integration**: Centralized authentication
+- **Microservices Security**: Service-to-service authentication
 
-3. **Session Security**
-   - Encrypted session cookies
-   - Secure cookie attributes
-   - PKCE for authorization code flow
-   - XSS/CSRF protections
+## Related Documentation
 
-### Future Improvements
-
-1. **Token Authorization**
-   - Migrate from scope-based to role-based
-   - Implement token-specific roles
-   - Enhanced privilege management
-   - Granular permission controls
-
-2. **Security Enhancements**
-   - Token usage analytics
-   - Advanced rate limiting
-   - Token lifecycle management
-   - Enhanced audit logging 
+- **[Implementation Details](../02-features/implemented/authentication.md)** - Technical implementation
+- **[App Status System](app-status.md)** - Application state management
+- **[Backend Integration](backend-integration.md)** - API integration patterns
+- **[Frontend Architecture](frontend-architecture.md)** - UI authentication integration
