@@ -1,4 +1,3 @@
-'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
 import {
@@ -13,7 +12,7 @@ import {
 } from 'vitest';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import UiPage from '@/components/home/page';
+import UiPage from '@/components/home/HomePage';
 import { createWrapper } from '@/tests/wrapper';
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';

@@ -1,4 +1,3 @@
-'use client';
 
 import { useNavigation } from '@/hooks/use-navigation';
 import {

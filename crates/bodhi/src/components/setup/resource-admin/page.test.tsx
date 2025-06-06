@@ -1,4 +1,3 @@
-'use client';
 
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
@@ -14,7 +13,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import ResourceAdminPage from '@/components/setup/resource-admin/page';
+import ResourceAdminPage from '@/components/setup/resource-admin/ResourceAdminPage';
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT } from '@/lib/constants';
 

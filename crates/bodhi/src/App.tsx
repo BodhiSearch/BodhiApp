@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
 import {
@@ -37,7 +37,8 @@ function App() {
               <AppHeader />
               <main className="flex-1" data-testid="app-main">
                 <Routes>
-                  <Route path="/" element={<HomePage />} />
+                  <Route path="/" element={<Navigate to="/ui" replace />} />
+                  <Route path="/ui" element={<HomePage />} />
                   <Route path="/ui/home" element={<HomePage />} />
                   <Route path="/ui/chat" element={<ChatPage />} />
                   <Route path="/ui/models" element={<ModelsPage />} />

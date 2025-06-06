@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getDocContent, getDocDetails } from '@/lib/docs-client';
-import { DocDetails } from '@/app/docs/types';
+import { DocDetails } from '@/components/docs/types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';

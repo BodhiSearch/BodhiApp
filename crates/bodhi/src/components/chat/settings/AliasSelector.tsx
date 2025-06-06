@@ -1,4 +1,3 @@
-'use client';
 
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { CopyButton } from '@/components/CopyButton';

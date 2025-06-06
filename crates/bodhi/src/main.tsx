@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import './app/globals.css';
+import './styles/globals.css';
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {

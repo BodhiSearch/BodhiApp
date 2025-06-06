@@ -1,4 +1,3 @@
-'use client';
 
 import { Button } from '@/components/ui/button';
 import { SidebarMenu, SidebarMenuItem } from '@/components/ui/sidebar';

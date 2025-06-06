@@ -1,4 +1,3 @@
-
 our api token story is complete, next we want to start a new story api-authorization
 
 we have 4 roles in our system - user, power_user, manager, admin

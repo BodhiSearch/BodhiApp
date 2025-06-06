@@ -1,4 +1,4 @@
-import ModelFilesPage from '@/components/modelfiles/page';
+import ModelFilesPage from '@/components/modelfiles/ModelFilesPage';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';

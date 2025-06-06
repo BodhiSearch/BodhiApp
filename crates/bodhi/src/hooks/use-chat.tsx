@@ -1,4 +1,3 @@
-'use client';
 
 import { useChatCompletion } from '@/hooks/use-chat-completions';
 import { useChatDB } from '@/hooks/use-chat-db';

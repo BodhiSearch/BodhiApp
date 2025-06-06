@@ -1,4 +1,4 @@
-import ModelDownloadPage, { ModelDownloadContent } from '@/components/setup/download-models/page';
+import ModelDownloadPage, { ModelDownloadContent } from '@/components/setup/download-models/DownloadModelsPage';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';

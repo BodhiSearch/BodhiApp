@@ -1,4 +1,4 @@
-import CreateAliasPage from '@/components/models/new/page';
+import CreateAliasPage from '@/components/models/new/NewModelPage';
 import { ENDPOINT_APP_INFO, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';

@@ -1,4 +1,4 @@
-import LoginPage, { LoginContent } from '@/components/login/page';
+import LoginPage, { LoginContent } from '@/components/login/LoginPage';
 import { ENDPOINT_APP_INFO, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import {
