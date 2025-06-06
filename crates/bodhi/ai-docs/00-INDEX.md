@@ -26,8 +26,10 @@ System design, core components, and technical architecture
 - **[App Overview](01-architecture/app-overview.md)** ✅ - High-level application architecture and capabilities
 - **[Frontend Architecture](01-architecture/frontend-architecture.md)** ✅ - React+Vite frontend design and conventions
 - **[Authentication](01-architecture/authentication.md)** ✅ - Authentication system design and implementation
-- **[API Documentation](01-architecture/api-documentation.md)** ✅ - API specifications and usage patterns
+- **[Utoipa Reference](01-architecture/utoipa-reference.md)** ✅ - Utoipa library implementation reference
 - **[Knowledge Base](01-architecture/knowledge-base.md)** ✅ - Knowledge management system architecture
+- **[App Status](01-architecture/app-status.md)** ✅ - Technical application status and capabilities
+- **[Project Structure](01-architecture/project-structure.md)** ✅ - Detailed project organization and structure
 
 ### ⚡ [Features](02-features/) - Application Capabilities
 Current and planned application features organized by implementation status
@@ -70,6 +72,9 @@ Development processes, conventions, active work, and implementation guidelines
 - **[API Authorization](04-development/completed-stories/story-20250116-api-authorization.md)** - API authorization implementation
 - **[API Authorization Tests](04-development/completed-stories/story-20250116-api-authorization-tests.md)** - Authorization testing
 - **[API Documentation](04-development/completed-stories/story-20250119-api-docs.md)** - API documentation system
+- **[Download LLM Server](04-development/completed-stories/story-20250126-download-llama-server.md)** - LLM server download implementation
+- **[Setup Stories](04-development/completed-stories/)** - Individual setup wizard components (6 stories)
+- **[Authorization Stories](04-development/completed-stories/)** - Authentication flow implementations (2 stories)
 
 ### 📢 [Marketing](05-marketing/) - Product Marketing
 Marketing materials, community outreach, and promotional content
@@ -77,21 +82,21 @@ Marketing materials, community outreach, and promotional content
 - **[Launch Materials](05-marketing/launch-materials.md)** ✅ - Product Hunt and launch campaign content
 - **[Community Outreach](05-marketing/community-outreach.md)** ✅ - Community engagement strategies
 - **[Presentations](05-marketing/presentations.md)** ✅ - Conference and presentation materials
+- **[WhatsApp Intro](05-marketing/whatsapp-intro.md)** ✅ - Community introduction template
 
 ### 📚 [Knowledge Transfer](06-knowledge-transfer/) - Learning Resources
 Technical knowledge, implementation guides, and learning resources
 - **[LLM Resource Server](06-knowledge-transfer/llm-resource-server.md)** ✅ - LLM server implementation and architecture
+- **[O3 LLM Resource Server](06-knowledge-transfer/kt-o3-llm-resource-server.md)** ✅ - Advanced LLM server implementation reference
 - **[Chat UI](06-knowledge-transfer/chat-ui.md)** ✅ - Chat interface implementation patterns
 - **[Model Parameters](06-knowledge-transfer/model-parameters.md)** ✅ - Model configuration and parameter management
 - **[Setup Processes](06-knowledge-transfer/setup-processes.md)** ✅ - Application setup and configuration procedures
 
 ### 📦 [Archive](99-archive/) - Historical Materials
-Historical documents, deprecated content, and reference materials (30 documents)
-- **[Evolution History](99-archive/evolution-history.md)** - Project evolution timeline and milestones
-- **[Old Summary](99-archive/old-summary.md)** - Previous documentation structure
-- **[Migration Records](99-archive/nextjs-to-react-migration.md)** - Complete NextJS→React migration documentation
-- **[Legacy Documentation](99-archive/)** - Deprecated UI guidelines, old feature docs, and historical content
-- **[Samples](99-archive/samples/)** - Code samples, examples, and reference materials
+Historical documents, deprecated content, and reference materials (minimal - most cleaned up)
+- **[Migration Records](99-archive/nextjs-to-react-migration.md)** ✅ - Complete NextJS→React migration documentation
+- **[Archive README](99-archive/README.md)** ✅ - Archive organization and purpose
+- **[Samples](99-archive/samples/)** - Code samples and examples (empty - cleaned up)
 
 ## 📋 Consolidation Summary
 
