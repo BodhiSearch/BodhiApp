@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 
 // Lazy load the actual page component
-const PullPageContent = lazy(() => import('@/components/pull/page'));
+const PullPageContent = lazy(() => import('@/components/pull/PullPage'));
 
 export default function PullPage() {
   return (

@@ -1,5 +1,5 @@
 // Client-side docs utilities that work with pre-generated data
-import { DocDetails, DocGroup } from '@/app/docs/types';
+import { DocDetails, DocGroup } from '@/components/docs/types';
 
 // Import the generated docs data
 let docsData: {

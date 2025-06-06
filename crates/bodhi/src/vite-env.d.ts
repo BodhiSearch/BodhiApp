@@ -7,7 +7,7 @@ declare module '*.mdx' {
 }
 
 declare module 'virtual:docs-data' {
-  import { DocGroup } from '@/app/docs/types';
+  import { DocGroup } from '@/components/docs/types';
 
   interface DocsData {
     allSlugs: string[];

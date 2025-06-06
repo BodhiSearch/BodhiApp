@@ -1,4 +1,4 @@
-import EditAliasPage from '@/components/models/edit/page';
+import EditAliasPage from '@/components/models/edit/EditModelPage';
 import { ENDPOINT_APP_INFO, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';

@@ -19,6 +19,21 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Load Inter font with optimized font-display -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Prism CSS for code highlighting -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css"
+    />
+
+    <!-- Script to handle initial theme to prevent flash -->
+    <script>
+      let theme = window.localStorage.getItem('bodhi-ui-theme')
+      if (!theme) {
+        theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      }
+      document.documentElement.classList.add(theme)
+    </script>
   </head>
   <body>
     <div id="root"></div>

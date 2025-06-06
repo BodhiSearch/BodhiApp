@@ -1,4 +1,4 @@
-import TokenPage, { TokenPageContent } from '@/components/tokens/page';
+import TokenPage, { TokenPageContent } from '@/components/tokens/TokensPage';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';

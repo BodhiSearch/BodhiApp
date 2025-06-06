@@ -1,4 +1,3 @@
-'use client';
 
 import { createWrapper } from '@/tests/wrapper';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -14,7 +13,7 @@ import {
   it,
   vi,
 } from 'vitest';
-import Setup from '@/components/setup/page';
+import Setup from '@/components/setup/SetupPage';
 import { ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
 

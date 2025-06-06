@@ -1,4 +1,3 @@
-'use client';
 
 import AppInitializer from '@/components/AppInitializer';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';

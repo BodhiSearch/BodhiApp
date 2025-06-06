@@ -1,4 +1,3 @@
-'use client';
 
 import { AliasSelector } from '@/components/chat/settings/AliasSelector';
 import { SettingSlider } from '@/components/chat/settings/SettingSlider';

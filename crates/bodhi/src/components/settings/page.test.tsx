@@ -1,7 +1,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { SettingsPageContent } from '@/components/settings/page';
+import { SettingsPageContent } from '@/components/settings/SettingsPage';
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
 import { Setting } from '@/types/models';
 import { createWrapper } from '@/tests/wrapper';

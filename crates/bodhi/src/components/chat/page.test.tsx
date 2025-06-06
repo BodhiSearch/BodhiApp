@@ -1,4 +1,4 @@
-import ChatPage from '@/components/chat/page';
+import ChatPage from '@/components/chat/ChatPage';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO, ENDPOINT_MODELS } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor } from '@testing-library/react';

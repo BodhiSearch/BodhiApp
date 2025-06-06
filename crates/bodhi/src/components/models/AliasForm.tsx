@@ -1,4 +1,3 @@
-'use client';
 
 import { ALIAS_FORM_TOOLTIPS } from '@/components/models/tooltips';
 import { ComboBoxResponsive } from '@/components/Combobox';

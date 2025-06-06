@@ -1,4 +1,4 @@
-'use client';
+
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loading } from '@/components/ui/Loading';

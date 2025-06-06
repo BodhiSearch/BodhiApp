@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getDocsForSlug } from '@/lib/docs-client';
-import { DocGroup } from '@/app/docs/types';
+import { DocGroup } from '@/components/docs/types';
 import Link from '@/components/Link';
 
 export default function DocsMainPage() {
