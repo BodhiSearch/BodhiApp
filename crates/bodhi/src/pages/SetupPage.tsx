@@ -2,11 +2,11 @@ import { Routes, Route } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
 
 // Lazy load the setup page components
-const SetupMainPage = lazy(() => import('@/app/ui/setup/page'));
-const SetupCompletePage = lazy(() => import('@/app/ui/setup/complete/page'));
-const SetupDownloadModelsPage = lazy(() => import('@/app/ui/setup/download-models/page'));
-const SetupLlmEnginePage = lazy(() => import('@/app/ui/setup/llm-engine/page'));
-const SetupResourceAdminPage = lazy(() => import('@/app/ui/setup/resource-admin/page'));
+const SetupMainPage = lazy(() => import('@/components/setup/page'));
+const SetupCompletePage = lazy(() => import('@/components/setup/complete/page'));
+const SetupDownloadModelsPage = lazy(() => import('@/components/setup/download-models/page'));
+const SetupLlmEnginePage = lazy(() => import('@/components/setup/llm-engine/page'));
+const SetupResourceAdminPage = lazy(() => import('@/components/setup/resource-admin/page'));
 
 export default function SetupPage() {
   return (

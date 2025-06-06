@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 
 // Lazy load the actual page component
-const ModelsPageContent = lazy(() => import('@/app/ui/models/page'));
+const ModelsPageContent = lazy(() => import('@/components/models/page'));
 
 export default function ModelsPage() {
   return (

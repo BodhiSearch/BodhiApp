@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 
 // Lazy load the actual page component
-const LoginPageContent = lazy(() => import('@/app/ui/login/page'));
+const LoginPageContent = lazy(() => import('@/components/login/page'));
 
 export default function LoginPage() {
   return (
