@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 
 // Lazy load the actual page component
-const SettingsPageContent = lazy(() => import('@/app/ui/settings/page'));
+const SettingsPageContent = lazy(() => import('@/components/settings/page'));
 
 export default function SettingsPage() {
   return (

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 
 // Lazy load the actual page component
-const TokensPageContent = lazy(() => import('@/app/ui/tokens/page'));
+const TokensPageContent = lazy(() => import('@/components/tokens/page'));
 
 export default function TokensPage() {
   return (
