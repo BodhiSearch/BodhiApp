@@ -6,30 +6,37 @@ This documentation provides comprehensive information about the Bodhi App, an AI
 
 ## 📊 Documentation Status
 
-**Total Documents**: 67 files organized across 6 main sections
+**Total Documents**: 64 files organized across 4 main sections
 **Last Reorganization**: January 2025
 **Status**: ✅ Fully organized and up-to-date
 
 ### Organization Summary
-- **🏗️ Architecture**: 6 documents - Technical foundation and system design
+- **🏗️ Architecture**: 8 documents - Technical foundation, design system, and development standards
 - **⚡ Features**: 6 documents - Current and planned application capabilities
-- **🎨 UI/UX Design**: 5 documents - Design system and interface specifications
-- **👨‍💻 Development**: 11 documents - Development processes and active work
 - **📢 Marketing**: 4 documents - Product positioning and community outreach
 - **📚 Knowledge Transfer**: 5 documents - Implementation guides and tutorials
 - **📦 Archive**: 30 documents - Historical materials and deprecated content
 
+### Recent Consolidation (January 2025)
+- **UI/UX Design** → Merged into Architecture section for unified technical documentation
+- **Development** → Merged into Architecture section for comprehensive development standards
+
 ## Quick Navigation
 
-### 🏗️ [Architecture](01-architecture/) - Technical Foundation
-System design, core components, and technical architecture
-- **[App Overview](01-architecture/app-overview.md)** ✅ - High-level application architecture and capabilities
-- **[Frontend Architecture](01-architecture/frontend-architecture.md)** ✅ - React+Vite frontend design and conventions
-- **[Authentication](01-architecture/authentication.md)** ✅ - Authentication system design and implementation
-- **[Utoipa Reference](01-architecture/utoipa-reference.md)** ✅ - Utoipa library implementation reference
-- **[Knowledge Base](01-architecture/knowledge-base.md)** ✅ - Knowledge management system architecture
-- **[App Status](01-architecture/app-status.md)** ✅ - Technical application status and capabilities
-- **[Project Structure](01-architecture/project-structure.md)** ✅ - Detailed project organization and structure
+### 🏗️ [Architecture](01-architecture/) - Technical Foundation & Development Standards
+Comprehensive technical architecture, design system, and development guidelines
+
+#### Core Architecture ✅
+- **[App Overview](01-architecture/app-overview.md)** - High-level application architecture and capabilities
+- **[Frontend Architecture](01-architecture/frontend-architecture.md)** - React+Vite frontend design and conventions
+- **[Tauri Architecture](01-architecture/tauri-architecture.md)** - Desktop application architecture and native integration
+- **[Backend Integration](01-architecture/backend-integration.md)** - API integration patterns and state management
+- **[Authentication](01-architecture/authentication.md)** - Authentication system design and implementation
+
+#### Design & Development Standards ✅
+- **[Design System](01-architecture/design-system.md)** - Design system foundations and component library
+- **[Development Conventions](01-architecture/conventions.md)** - Coding standards and best practices
+- **[App Status System](01-architecture/app-status.md)** - Application state machine and status management
 
 ### ⚡ [Features](02-features/) - Application Capabilities
 Current and planned application features organized by implementation status
@@ -44,38 +51,6 @@ Current and planned application features organized by implementation status
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration and cloud sync
 
-### 🎨 [UI/UX Design](03-ui-design/) - Design System
-User interface design guidelines, components, and visual specifications
-- **[Design System](03-ui-design/design-system.md)** ✅ - Color system, typography, theming, and Tailwind configuration
-- **[Component Library](03-ui-design/component-library.md)** ✅ - Reusable UI components and patterns
-- **[Model Pages](03-ui-design/model-pages.md)** ✅ - Model management UI designs (consolidated)
-- **[UX Analysis](03-ui-design/ux-analysis.md)** ✅ - User experience analysis and improvements
-
-### 👨‍💻 [Development](04-development/) - Development Process
-Development processes, conventions, active work, and implementation guidelines
-
-#### Development Guidelines ✅
-- **[Conventions](04-development/conventions.md)** - Coding standards, naming conventions, and best practices
-- **[State Management](04-development/state-management.md)** - Application state patterns and data flow
-- **[Backend Integration](04-development/backend-integration.md)** - API integration patterns and conventions
-- **[Migration Guides](04-development/migration-guides.md)** - Framework migration documentation (NextJS→React)
-
-#### Active Development Stories 🚧
-- **[API Tokens](04-development/active-stories/api-tokens.md)** - API token management implementation
-- **[App Settings](04-development/active-stories/app-settings.md)** - Application settings interface
-- **[Setup Wizard](04-development/active-stories/setup-wizard.md)** - Complete user onboarding flow (consolidated)
-- **[Model Alias Revamp](04-development/active-stories/model-alias-revamp.md)** - Enhanced model configuration UI
-- **[ModelFiles Revamp](04-development/active-stories/modelfiles-revamp.md)** - Unified model management interface
-- **[User Roles](04-development/active-stories/story-20250112-user-roles.md)** - User role management system
-
-#### Completed Stories ✅
-- **[API Authorization](04-development/completed-stories/story-20250116-api-authorization.md)** - API authorization implementation
-- **[API Authorization Tests](04-development/completed-stories/story-20250116-api-authorization-tests.md)** - Authorization testing
-- **[API Documentation](04-development/completed-stories/story-20250119-api-docs.md)** - API documentation system
-- **[Download LLM Server](04-development/completed-stories/story-20250126-download-llama-server.md)** - LLM server download implementation
-- **[Setup Stories](04-development/completed-stories/)** - Individual setup wizard components (6 stories)
-- **[Authorization Stories](04-development/completed-stories/)** - Authentication flow implementations (2 stories)
-
 ### 📢 [Marketing](05-marketing/) - Product Marketing
 Marketing materials, community outreach, and promotional content
 - **[Product Positioning](05-marketing/product-positioning.md)** ✅ - Product messaging, USPs, and target audience
@@ -86,8 +61,7 @@ Marketing materials, community outreach, and promotional content
 
 ### 📚 [Knowledge Transfer](06-knowledge-transfer/) - Learning Resources
 Technical knowledge, implementation guides, and learning resources
-- **[LLM Resource Server](06-knowledge-transfer/llm-resource-server.md)** ✅ - LLM server implementation and architecture
-- **[O3 LLM Resource Server](06-knowledge-transfer/kt-o3-llm-resource-server.md)** ✅ - Advanced LLM server implementation reference
+- **[LLM Resource Server](06-knowledge-transfer/llm-resource-server.md)** ✅ - Comprehensive OAuth2 resource server vision and architecture
 - **[Chat UI](06-knowledge-transfer/chat-ui.md)** ✅ - Chat interface implementation patterns
 - **[Model Parameters](06-knowledge-transfer/model-parameters.md)** ✅ - Model configuration and parameter management
 - **[Setup Processes](06-knowledge-transfer/setup-processes.md)** ✅ - Application setup and configuration procedures
@@ -100,9 +74,11 @@ Historical documents, deprecated content, and reference materials (minimal - mos
 
 ## 📋 Consolidation Summary
 
-This documentation reorganization successfully consolidated and organized 67 documents:
+This documentation reorganization successfully consolidated and organized 65 documents:
 
 ### Major Consolidations ✅
+- **UI/UX Design**: Merged into Architecture section for unified technical documentation
+- **Development Standards**: Merged into Architecture section for comprehensive development guidelines
 - **Setup Wizard**: 6 individual setup stories → 1 comprehensive guide
 - **Model UI Design**: 3 separate UI docs → 1 unified model pages design
 - **Frontend Architecture**: Multiple architecture docs → 1 complete guide
@@ -110,11 +86,12 @@ This documentation reorganization successfully consolidated and organized 67 doc
 - **Migration Documentation**: Scattered migration notes → 1 complete guide
 
 ### Content Analysis
-- **Eliminated Redundancy**: Removed 15+ duplicate or overlapping documents
-- **Improved Organization**: Logical grouping by purpose and audience
+- **Eliminated Redundancy**: Removed 17+ duplicate or overlapping documents
+- **Improved Organization**: Logical grouping by purpose and audience with unified technical documentation
 - **Enhanced Navigation**: Clear hierarchy with status indicators
 - **Preserved History**: All original content archived for reference
 - **Updated Cross-References**: Fixed all internal links and dependencies
+- **Streamlined Structure**: Reduced from 6 to 4 main sections for better maintainability
 
 ### Quality Improvements
 - **Consistent Structure**: Standardized document formats and templates
@@ -136,14 +113,14 @@ This documentation reorganization successfully consolidated and organized 67 doc
 ### For Developers
 
 1. Start with [Frontend Architecture](01-architecture/frontend-architecture.md) for technical overview
-2. Review [Development Conventions](04-development/conventions.md) for coding standards
-3. Check [Active Stories](04-development/active-stories/) for current development work
+2. Review [Development Conventions](01-architecture/conventions.md) for coding standards
+3. Check [Features](02-features/) for current development work
 
 ### For Designers
 
-1. Review [Design System](03-ui-design/design-system.md) for design guidelines
-2. Explore [Component Library](03-ui-design/component-library.md) for UI components
-3. Check [UX Analysis](03-ui-design/ux-analysis.md) for user experience insights
+1. Review [Design System](01-architecture/design-system.md) for design guidelines
+2. Explore [Frontend Architecture](01-architecture/frontend-architecture.md) for UI components
+3. Check [App Overview](01-architecture/app-overview.md) for user experience insights
 
 ### For Product Managers
 
@@ -213,4 +190,4 @@ When adding new documentation:
 
 ---
 
-*This comprehensive index reflects the complete reorganization and consolidation of Bodhi App documentation, providing clear navigation and improved usability for all stakeholders.*
+*This comprehensive index reflects the complete reorganization and consolidation of Bodhi App documentation into 4 streamlined sections, providing clear navigation and improved usability for all stakeholders. UI/UX Design and Development content has been unified into the Architecture section for better maintainability and comprehensive technical documentation.*

@@ -5,7 +5,7 @@ This section contains technical knowledge, implementation guides, and learning r
 ## Contents
 
 ### Technical Implementation
-- **[LLM Resource Server](llm-resource-server.md)** - LLM server implementation and architecture
+- **[LLM Resource Server](llm-resource-server.md)** - Comprehensive OAuth2 resource server vision and architecture
 - **[Chat UI](chat-ui.md)** - Chat interface implementation and patterns
 - **[Model Parameters](model-parameters.md)** - Model configuration and parameter management
 - **[Setup Processes](setup-processes.md)** - Application setup and configuration procedures
@@ -41,13 +41,13 @@ How to configure and customize Bodhi App:
 3. **[Model Parameters](model-parameters.md)** - Understand model configuration options
 
 ### For Developers
-1. **[LLM Resource Server](llm-resource-server.md)** - Understand the technical architecture
+1. **[LLM Resource Server](llm-resource-server.md)** - OAuth2 resource server architecture and client integration
 2. **[Model Parameters](model-parameters.md)** - Deep dive into model configuration
 3. **[Chat UI](chat-ui.md)** - Learn implementation patterns and best practices
 
 ### For System Administrators
 1. **[Setup Processes](setup-processes.md)** - Installation and deployment procedures
-2. **[LLM Resource Server](llm-resource-server.md)** - Server configuration and management
+2. **[LLM Resource Server](llm-resource-server.md)** - OAuth2 security, token management, and resource protection
 3. **[Model Parameters](model-parameters.md)** - Performance tuning and optimization
 
 ## Documentation Types
