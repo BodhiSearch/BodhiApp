@@ -20,7 +20,6 @@ public/workbox-*.js*
 /coverage
 
 # vite
-/.next/
 /out/
 
 # production

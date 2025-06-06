@@ -28,12 +28,6 @@ vi.mock('@/lib/navigation', () => ({
   }),
 }));
 
-// Mock the Image component
-vi.mock('next/image', () => ({
-  // eslint-disable-next-line @next/next/no-img-element
-  default: () => <img alt="mocked image" />,
-}));
-
 // Setup MSW server
 const server = setupServer(
   rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {

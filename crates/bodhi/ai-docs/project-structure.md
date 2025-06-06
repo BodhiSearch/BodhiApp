@@ -6,8 +6,8 @@ The Bodhi App frontend is built using React+Vite and follows a modern, modular a
 
 ```
 src/
-├── app/           # React application directory (main application code)
-├── components/    # Reusable UI components
+├── components/    # React components organized by feature
+├── pages/         # Page components for routing
 ├── hooks/         # Custom React hooks
 ├── lib/           # Utility functions and shared logic
 ├── schemas/       # Data validation schemas
@@ -16,21 +16,21 @@ src/
 └── types/         # TypeScript type definitions
 ```
 
-## Main Application Structure (app/)
+## Components Structure
 
 ```
-app/
-├── ui/           # Main UI components organized by feature
-│   ├── chat/     # Chat interface components
-│   ├── home/     # Home page components
-│   ├── login/    # Authentication related components
-│   ├── modelfiles/ # Model file management
-│   ├── models/   # Model-related components
-│   ├── pull/     # Pull request or sync components
-│   └── setup/    # Setup and configuration components
-├── layout.tsx    # Root layout component
-├── page.tsx      # Root page component
-└── globals.css   # Global styles
+components/
+├── chat/          # Chat interface components
+├── home/          # Home page components
+├── login/         # Authentication related components
+├── modelfiles/    # Model file management
+├── models/        # Model-related components
+├── pull/          # Model download components
+├── setup/         # Setup and configuration components
+├── tokens/        # API tokens components
+├── users/         # User management components
+├── ui/            # Common UI components (shadcn/ui)
+└── [other common components]
 ```
 
 ## Key Features
@@ -54,11 +54,11 @@ app/
 
 ## Directory Purposes
 
-### `/app`
-The core application directory using React+Vite structure. Contains all the main pages and UI components organized by feature.
-
 ### `/components`
-Houses reusable UI components that are shared across different features. These components follow a modular design pattern for maximum reusability.
+React components organized by feature/page. Each folder contains components specific to that feature area.
+
+### `/pages`
+Page components that are used by React Router for routing. Each page component represents a distinct route in the application.
 
 ### `/hooks`
 Custom React hooks for shared stateful logic and side effects. These hooks abstract common functionality used across components.
