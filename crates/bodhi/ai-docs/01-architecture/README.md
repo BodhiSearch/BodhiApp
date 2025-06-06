@@ -5,11 +5,18 @@ This section contains technical architecture documentation for the Bodhi App, in
 ## Contents
 
 ### Core Architecture
-- **[App Overview](app-overview.md)** - High-level application architecture and system components
-- **[Frontend Architecture](frontend-architecture.md)** - React+Vite frontend design patterns and conventions
+- **[App Overview](app-overview.md)** - Complete system architecture, data flows, and design patterns
+- **[Frontend Architecture](frontend-architecture.md)** - React+Vite frontend architecture and component organization
+- **[Tauri Desktop Architecture](tauri-architecture.md)** - Desktop application architecture and native integration
+- **[Backend Integration](backend-integration.md)** - API integration patterns and state management
 - **[Authentication](authentication.md)** - Authentication system design and implementation
-- **[API Documentation](api-documentation.md)** - API specifications, endpoints, and usage patterns
-- **[Knowledge Base](knowledge-base.md)** - Knowledge management system architecture
+
+### Design & Development
+- **[Design System & Components](design-system.md)** - Design system foundations and component library
+- **[Development Conventions](conventions.md)** - Coding standards and best practices
+- **[App Status System](app-status.md)** - Application state machine and status management
+
+
 
 ## Architecture Principles
 

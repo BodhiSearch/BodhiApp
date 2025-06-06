@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Bodhi is a React+Vite application built with TypeScript that provides a web interface for running LLMs (Large Language Models) locally. The project uses the react+vite+react-router and follows modern React practices.
+Bodhi is a React+Vite application built with TypeScript that provides a web interface for running LLMs (Large Language Models) locally. The project uses React Router for navigation and follows modern React practices with a component-based architecture.
 
 ## Project Structure
 
@@ -14,27 +14,53 @@ src/
 ├── pages/         # Page components for routing
 ├── hooks/         # Custom React hooks
 ├── lib/           # Utility functions and shared logic
-├── schemas/       # Data validation schemas
+├── schemas/       # Data validation schemas (Zod)
 ├── styles/        # Global styles and theme definitions
-├── tests/         # Test files
-└── types/         # TypeScript type definitions
+├── tests/         # Test files and utilities
+├── types/         # TypeScript type definitions
+├── docs/          # Documentation content (Markdown)
+└── generated/     # Generated files (docs data)
 ```
 
 ### Components Structure
 
 ```
 components/
+├── auth/          # Authentication components
 ├── chat/          # Chat interface components
+├── docs/          # Documentation components
 ├── home/          # Home page components
-├── login/         # Authentication related components
+├── login/         # Login page components
 ├── modelfiles/    # Model file management
 ├── models/        # Model-related components
+├── navigation/    # Navigation and header components
+├── not-found/     # 404 page components
 ├── pull/          # Model download components
-├── setup/         # Setup and configuration components
+├── settings/      # Settings page components
+├── setup/         # Setup wizard components
 ├── tokens/        # API tokens components
-├── users/         # User management components
 ├── ui/            # Common UI components (shadcn/ui)
-└── [other common components]
+├── users/         # User management components
+└── [shared components] # Shared utilities and providers
+```
+
+### Pages Structure
+
+```
+pages/
+├── ChatPage.tsx       # Chat interface page
+├── DocsPage.tsx       # Documentation page
+├── HomePage.tsx       # Home/dashboard page
+├── LoginPage.tsx      # Login page
+├── ModelFilesPage.tsx # Model files management
+├── ModelsPage.tsx     # Model management page
+├── NotFoundPage.tsx   # 404 error page
+├── PullPage.tsx       # Model download page
+├── SettingsPage.tsx   # Application settings
+├── SetupPage.tsx      # Setup wizard page
+├── TokensPage.tsx     # API tokens management
+├── UsersPage.tsx      # User management page
+└── docs/              # Documentation sub-pages
 ```
 
 ## Core Technologies
@@ -71,38 +97,66 @@ components/
 - **Husky**: Git hooks
 - **lint-staged**: Staged files linting
 
-## Page Organization
+## Application Architecture
 
-The project follows a co-location pattern for page-specific components. Each page directory can contain:
+### Routing and Navigation
 
+The application uses React Router for client-side routing with a clear page-based structure:
+
+```typescript
+// App.tsx - Main routing configuration
+<Routes>
+  <Route path="/" element={<Navigate to="/ui" replace />} />
+  <Route path="/ui" element={<HomePage />} />
+  <Route path="/ui/chat" element={<ChatPage />} />
+  <Route path="/ui/models" element={<ModelsPage />} />
+  <Route path="/ui/modelfiles" element={<ModelFilesPage />} />
+  <Route path="/ui/pull" element={<PullPage />} />
+  <Route path="/ui/login" element={<LoginPage />} />
+  <Route path="/ui/settings" element={<SettingsPage />} />
+  <Route path="/ui/tokens" element={<TokensPage />} />
+  <Route path="/ui/users" element={<UsersPage />} />
+  <Route path="/ui/setup/*" element={<SetupPage />} />
+  <Route path="/docs/*" element={<DocsPage />} />
+  <Route path="*" element={<NotFoundPage />} />
+</Routes>
 ```
-src/app/ui/page-name/
-├── page.tsx               # Main page component
-├── page.test.tsx         # Page tests
-├── ComponentA.tsx        # Page-specific components
-├── ComponentA.test.tsx   # Component tests
-└── types.ts              # Page-specific types
+
+### Component Organization
+
+The project follows a feature-based organization pattern:
+
+```text
+components/feature-name/
+├── FeaturePage.tsx        # Main page component (in /pages)
+├── FeatureComponent.tsx   # Feature-specific components
+├── FeatureForm.tsx        # Forms and inputs
+├── FeatureDialog.tsx      # Modals and dialogs
+├── FeatureComponent.test.tsx # Component tests
+└── types.ts               # Feature-specific types
 ```
 
-Example from tokens page:
+Example from tokens feature:
 
-```
-src/app/ui/tokens/
-├── page.tsx              # Main tokens page
-├── page.test.tsx        # Page tests
-├── TokenDialog.tsx      # Token display dialog
-├── TokenDialog.test.tsx # Dialog tests
-├── TokenForm.tsx        # Token creation form
-└── TokenForm.test.tsx   # Form tests
+```text
+components/tokens/
+├── TokenForm.tsx          # Token creation form
+├── TokenDialog.tsx        # Token display dialog
+├── TokenList.tsx          # Token listing component
+├── TokenForm.test.tsx     # Form tests
+└── TokenDialog.test.tsx   # Dialog tests
+
+pages/
+└── TokensPage.tsx         # Main tokens page
 ```
 
 This organization:
 
-- Keeps related code close together
-- Makes it easy to find components specific to a page
-- Improves maintainability by grouping related files
-- Allows for better code splitting
-- Simplifies testing related components
+- Separates page components from feature components
+- Keeps related functionality grouped together
+- Makes it easy to find components specific to a feature
+- Improves maintainability and code reuse
+- Allows for better code splitting and lazy loading
 
 ## Coding Conventions
 
