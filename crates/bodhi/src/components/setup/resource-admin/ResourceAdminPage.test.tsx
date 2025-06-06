@@ -19,18 +19,13 @@ import { ROUTE_DEFAULT } from '@/lib/constants';
 
 // Mock the router
 const pushMock = vi.fn();
-vi.mock('next/navigation', () => ({
+vi.mock('@/lib/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
   useSearchParams: () => ({
     get: () => null,
   }),
-}));
-
-// Mock the Image component
-vi.mock('next/image', () => ({
-  default: () => <img alt="mocked image" />,
 }));
 
 // Setup MSW server

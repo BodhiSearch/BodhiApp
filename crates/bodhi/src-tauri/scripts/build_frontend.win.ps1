@@ -3,9 +3,9 @@
 $env:PRETTIER_DISABLE = '1'
 Set-Location ..
 
-if (Test-Path .next) {
-  Write-Host 'Cleaning up .next directory...'
-  Remove-Item -Recurse -Force .next
+if (Test-Path dist) {
+  Write-Host 'Cleaning up dist directory...'
+  Remove-Item -Recurse -Force dist
 }
 
 Write-Host 'Installing dependencies...'
