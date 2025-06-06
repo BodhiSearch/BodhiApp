@@ -4,7 +4,16 @@ This document outlines the coding standards, naming conventions, and best practi
 
 ## Project Structure
 
-### Root Structure
+### Crate Organization
+```
+crates/
+├── objs/          # Application common objects
+├── bodhi/         # Frontend application (React+Vite)
+├── services/      # Backend services (Rust)
+└── ...modules/    # Other modules
+```
+
+### Frontend Structure (bodhi/)
 ```
 src/
 ├── components/    # React components organized by feature
@@ -15,6 +24,17 @@ src/
 ├── styles/        # Global styles and theme definitions
 ├── tests/         # Test files
 └── types/         # TypeScript type definitions
+```
+
+### Backend Structure (services/)
+```
+src/
+├── db/           # Database layer (models, services)
+├── migrations/   # Database migration files
+├── api/          # API endpoints and handlers
+├── auth/         # Authentication and authorization
+├── test_utils/   # Testing infrastructure
+└── lib.rs        # Main library entry point
 ```
 
 ### Component Organization
@@ -69,9 +89,131 @@ export function ComponentName({ prop1, prop2 }: ComponentNameProps) {
 }
 ```
 
-## Styling Conventions
+## Backend Conventions
 
-### Tailwind CSS Usage
+### Database Layer
+
+#### Migration Files
+- Location: `crates/services/migrations/`
+- Naming: `NNNN_descriptive_name.{up,down}.sql`
+- Format: Plain SQL with descriptive comments
+- Always include both up and down migrations
+
+#### Database Models
+- Location: `crates/services/src/db/objs.rs`
+- Conventions:
+  ```rust
+  #[derive(Debug, Clone, PartialEq)]
+  pub struct ModelName {
+      pub id: String,          // UUID as string
+      pub created_at: DateTime<Utc>,
+      pub updated_at: DateTime<Utc>,
+      // ... other fields
+  }
+  ```
+
+#### Enums
+- Use serde and strum for serialization
+- Use kebab-case for string representations
+  ```rust
+  #[derive(Debug, Clone, Serialize, Deserialize, EnumString, strum::Display, PartialEq)]
+  #[serde(rename_all = "kebab-case")]
+  #[strum(serialize_all = "kebab-case")]
+  pub enum StatusType {
+      Active,
+      Inactive,
+  }
+  ```
+
+### Service Layer
+
+#### Trait Definitions
+- Location: `crates/services/src/db/service.rs`
+- Pattern:
+  ```rust
+  pub trait DbService: std::fmt::Debug + Send + Sync {
+      async fn method_name(&self, param: Type) -> Result<ReturnType, DbError>;
+  }
+  ```
+
+#### Service Implementation
+- Use SQLx for database operations
+- Prefer query_as over raw query! macro
+- Use bind parameters for values
+  ```rust
+  query_as::<_, (String, String, DateTime<Utc>)>(
+      "SELECT id, name, created_at FROM table WHERE status = ? LIMIT ? OFFSET ?"
+  )
+  .bind(status.to_string())
+  .bind(limit)
+  .bind(offset)
+  ```
+
+### Backend Testing
+
+#### Test Infrastructure
+- Location: `crates/services/src/test_utils/`
+- Use TestDbService for database tests
+- Implement notification system for operation tracking
+
+#### Test Patterns
+```rust
+#[rstest]
+#[awt]
+#[tokio::test]
+async fn test_name(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+) -> anyhow::Result<()> {
+    // Test implementation
+}
+```
+
+#### Test Data
+- Create fresh data in each test
+- No shared test fixtures
+- Use builder patterns where appropriate
+
+### API Conventions
+
+#### Endpoint Structure
+- Base path: `/api/v1`
+- Resource-based routing
+- Pagination parameters: `page` and `per_page`
+- Status codes:
+  - 200: Success
+  - 201: Created
+  - 400: Bad Request
+  - 401: Unauthorized
+  - 404: Not Found
+
+#### Authentication
+- Bearer token authentication
+- Token validation in auth_middleware
+- Cache token status for performance
+- Clear error messages for auth failures
+
+### Backend Error Handling
+```rust
+#[derive(Debug, Error)]
+pub enum DbError {
+    #[error("specific error message: {0}")]
+    SpecificError(String),
+    // ... other variants
+}
+```
+
+### Backend Logging
+- Use tracing for structured logging
+- Log levels: ERROR, WARN, INFO, DEBUG
+- Include context in log messages
+
+## Frontend Conventions
+
+### Styling Conventions
+
+#### Tailwind CSS Usage
 - Use utility-first CSS approach
 - Follow consistent class ordering
 - Use `cn()` utility for conditional classes
@@ -89,7 +231,7 @@ import { cn } from '@/lib/utils';
 >
 ```
 
-### Class Ordering
+#### Class Ordering
 Follow this order for Tailwind classes:
 1. Layout (flex, grid, block)
 2. Positioning (relative, absolute)
