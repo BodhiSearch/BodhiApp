@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 
 interface UseCopyToClipboardProps {

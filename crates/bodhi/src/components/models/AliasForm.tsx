@@ -1,4 +1,3 @@
-
 import { ALIAS_FORM_TOOLTIPS } from '@/components/models/tooltips';
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { Button } from '@/components/ui/button';
@@ -118,8 +117,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
         label: filename,
       }));
   }, [modelsData, currentRepo]);
-
-
 
   const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasSchema),
@@ -372,8 +369,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 </FormItem>
               )}
             />
-
-
           </CardContent>
         </Card>
 

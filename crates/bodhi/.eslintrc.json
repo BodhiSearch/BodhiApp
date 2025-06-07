@@ -1,6 +1,7 @@
 {
   "extends": [
-    "@typescript-eslint/recommended",
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
     "prettier"
   ],
   "plugins": [
@@ -17,9 +18,21 @@
         "trailingComma": "es5",
         "endOfLine": "lf"
       }
+    ],
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
     ]
   },
   "ignorePatterns": [
+    "dist/**",
+    "public/sw.js",
+    "public/swe-worker-**.js",
+    "public/workbox-**.js",
     "src/**/*.test.tsx",
     "tests/**/*.test.tsx",
     "src/components/ui/**/*",

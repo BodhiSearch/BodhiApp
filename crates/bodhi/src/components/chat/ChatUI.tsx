@@ -1,4 +1,3 @@
-
 import { ChatMessage } from '@/components/chat/ChatMessage';
 import { Button } from '@/components/ui/button';
 import { ScrollAnchor } from '@/components/ui/scroll-anchor';

@@ -20,7 +20,8 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Get slug from either props (for lazy loading) or router params
-  const slug = params?.slug || (routerParams['*'] ? routerParams['*'].split('/') : []);
+  const slug =
+    params?.slug || (routerParams['*'] ? routerParams['*'].split('/') : []);
   const slugString = Array.isArray(slug) ? slug.join('/') : slug;
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
 
         const [docContent, details] = await Promise.all([
           getDocContent(slugString),
-          getDocDetails(slugString)
+          getDocDetails(slugString),
         ]);
 
         if (!docContent || !details) {
@@ -87,7 +88,9 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Document Not Found</h1>
-          <p className="text-gray-600">The requested document could not be found.</p>
+          <p className="text-gray-600">
+            The requested document could not be found.
+          </p>
         </div>
       </div>
     );
@@ -102,7 +105,7 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
             <p className="text-lg text-gray-600">{docDetails.description}</p>
           )}
         </header>
-        
+
         <div className="markdown-content">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}

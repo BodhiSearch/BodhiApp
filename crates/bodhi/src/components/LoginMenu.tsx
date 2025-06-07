@@ -1,5 +1,3 @@
-
-
 import { Button } from '@/components/ui/button';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';

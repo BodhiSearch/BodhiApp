@@ -39,23 +39,18 @@ export function renderWithRouter(
     ...renderOptions
   } = options;
 
-  const router = createMemoryRouter(
-    routes,
-    {
-      initialEntries,
-      initialIndex,
-      future: {
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      },
-    }
-  );
+  const router = createMemoryRouter(routes, {
+    initialEntries,
+    initialIndex,
+    future: {
+      v7_startTransition: true,
+      v7_relativeSplatPath: true,
+    },
+  });
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <RouterProvider router={router}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </RouterProvider>
   );
 
@@ -72,8 +67,6 @@ export function renderWithRouter(
     getCurrentSearch: () => router.state.location.search,
   };
 }
-
-
 
 /**
  * Creates mock navigation functions for unit testing

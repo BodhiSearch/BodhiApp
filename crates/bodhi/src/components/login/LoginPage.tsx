@@ -1,4 +1,3 @@
-
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';

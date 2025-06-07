@@ -30,7 +30,8 @@ function getPathOrder(slug: string, docsDir: string): number {
     }
 
     const fullPath = path.join(docsDir, ...slug.split('/'));
-    const isDirectory = fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+    const isDirectory =
+      fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
 
     if (isDirectory) {
       const metaPath = path.join(fullPath, '_meta.json');
@@ -56,7 +57,10 @@ function getPathOrder(slug: string, docsDir: string): number {
 }
 
 function getAllDocSlugs(docsDirectory: string): string[] {
-  const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []): string[] => {
+  const getAllFiles = (
+    dirPath: string,
+    arrayOfFiles: string[] = []
+  ): string[] => {
     try {
       if (!fs.existsSync(dirPath)) {
         return arrayOfFiles;
@@ -163,16 +167,19 @@ function groupDocs(slugs: string[], docsDirectory: string): DocGroup[] {
 function generateDocsData(): DocsData {
   const docsDirectory = path.join(process.cwd(), ...getDocsDirectory());
   const allSlugs = getAllDocSlugs(docsDirectory);
-  
+
   const docGroups: Record<string, DocGroup[]> = {};
   const docContents: Record<string, { content: string; data: any }> = {};
 
   // Generate doc groups for different base paths
   docGroups[''] = groupDocs(allSlugs, docsDirectory);
-  
+
   // Generate content for each doc
   allSlugs.forEach((slug) => {
-    const filePath = path.join(docsDirectory, `${slug.replaceAll('/', path.sep)}.md`);
+    const filePath = path.join(
+      docsDirectory,
+      `${slug.replaceAll('/', path.sep)}.md`
+    );
     if (fs.existsSync(filePath)) {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
       const { content, data } = matter(fileContent);
@@ -193,17 +200,24 @@ export function docsGeneratorPlugin(): Plugin {
     buildStart() {
       // Generate docs data at build time
       const docsData = generateDocsData();
-      
+
       // Write the generated data to a virtual module
-      const outputPath = path.join(process.cwd(), 'src/generated/docs-data.json');
+      const outputPath = path.join(
+        process.cwd(),
+        'src/generated/docs-data.json'
+      );
       const outputDir = path.dirname(outputPath);
-      
+
       if (!fs.existsSync(outputDir)) {
         fs.mkdirSync(outputDir, { recursive: true });
       }
-      
+
       fs.writeFileSync(outputPath, JSON.stringify(docsData, null, 2));
-      console.log('📚 Generated docs data for', docsData.allSlugs.length, 'documents');
+      console.log(
+        '📚 Generated docs data for',
+        docsData.allSlugs.length,
+        'documents'
+      );
     },
     resolveId(id) {
       if (id === 'virtual:docs-data') {

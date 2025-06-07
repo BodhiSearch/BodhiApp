@@ -8,7 +8,13 @@ import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Constants
-const TEST_DOCS_DIR = path.join('src', 'components', 'docs', '__tests__', 'test-docs');
+const TEST_DOCS_DIR = path.join(
+  'src',
+  'components',
+  'docs',
+  '__tests__',
+  'test-docs'
+);
 const EMPTY_TEST_DOCS_DIR = path.join(
   'src',
   'components',

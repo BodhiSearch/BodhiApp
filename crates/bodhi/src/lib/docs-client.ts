@@ -13,7 +13,7 @@ async function getDocsData() {
   if (!docsData) {
     try {
       // Try to import from virtual module first (build time)
-      docsData = await import('virtual:docs-data').then(m => m.default);
+      docsData = await import('virtual:docs-data').then((m) => m.default);
     } catch {
       // Fallback to generated JSON file
       try {
@@ -33,7 +33,9 @@ export async function getAllDocSlugs(): Promise<string[]> {
   return data?.allSlugs || [];
 }
 
-export async function getDocsForSlug(slugPath: string[] | null): Promise<DocGroup[]> {
+export async function getDocsForSlug(
+  slugPath: string[] | null
+): Promise<DocGroup[]> {
   const data = await getDocsData();
   if (!data) return [];
 
@@ -53,7 +55,9 @@ export async function getDocsForSlug(slugPath: string[] | null): Promise<DocGrou
   return groupDocsClient(relevantSlugs, data);
 }
 
-export async function getDocContent(slug: string): Promise<{ content: string; data: any } | null> {
+export async function getDocContent(
+  slug: string
+): Promise<{ content: string; data: any } | null> {
   const data = await getDocsData();
   return data?.docContents[slug] || null;
 }
@@ -89,7 +93,7 @@ function groupDocsClient(slugs: string[], data: any): DocGroup[] {
     const parts = slug.split('/');
     const groupName = parts.length > 1 ? parts[0] : 'index';
     const content = data.docContents[slug];
-    
+
     if (!content) return;
 
     const details: DocDetails = {

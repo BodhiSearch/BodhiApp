@@ -1,4 +1,3 @@
-
 import { recommendedModels } from '@/components/setup/download-models/data';
 import { ModelCard } from '@/components/setup/download-models/ModelCard';
 import { ModelInfo } from '@/components/setup/download-models/types';
