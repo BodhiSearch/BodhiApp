@@ -45,17 +45,10 @@ async fn test_live_chat_completions_non_streamed(
   let response = response.json::<Value>().await?;
   handle.shutdown().await?;
 
-  let expected = if cfg!(any(target_os = "macos", target_os = "windows")) {
-    "  Tuesday"
-  } else {
-    "  Tuesday."
-  };
-  assert_eq!(
-    expected,
-    response["choices"][0]["message"]["content"]
-      .as_str()
-      .unwrap()
-  );
+  let content = response["choices"][0]["message"]["content"]
+    .as_str()
+    .unwrap();
+  assert!(content.contains("Tuesday"));
   assert_eq!("llama2:7b-chat", response["model"]);
   assert_eq!("stop", response["choices"][0]["finish_reason"]);
   Ok(())

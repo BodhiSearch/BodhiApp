@@ -12,7 +12,7 @@ impl IntoRow for Alias {
       Cell::new(&self.repo.to_string()),
       Cell::new(&self.filename),
       Cell::new(&self.snapshot[..8]),
-      Cell::new(&self.chat_template.to_string()),
+      // Chat template column removed since llama.cpp now handles chat templates
     ])
   }
 }
@@ -44,7 +44,7 @@ impl IntoRow for RemoteModel {
       &self.alias,
       &self.repo.to_string(),
       &self.filename,
-      &self.chat_template.to_string(),
+      // Chat template column removed since llama.cpp now handles chat templates
     ])
   }
 }
@@ -68,7 +68,7 @@ mod test {
         Cell::new("MyFactory/testalias-gguf"),
         Cell::new("testalias.Q8_0.gguf"),
         Cell::new("5007652f"),
-        Cell::new("llama3"),
+        // Chat template column removed since llama.cpp now handles chat templates
       ]),
       row
     );
@@ -103,7 +103,7 @@ mod test {
       Cell::new("llama3:instruct"),
       Cell::new("QuantFactory/Meta-Llama-3-8B-Instruct-GGUF"),
       Cell::new("Meta-Llama-3-8B-Instruct.Q8_0.gguf"),
-      Cell::new("llama3"),
+      // Chat template column removed since llama.cpp now handles chat templates
     ]);
     assert_eq!(expected, row);
     Ok(())

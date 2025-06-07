@@ -4,8 +4,6 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod alias;
-mod chat_template;
-mod chat_template_type;
 mod envs;
 mod error;
 mod error_api;
@@ -22,8 +20,6 @@ mod token_scope;
 mod utils;
 
 pub use alias::*;
-pub use chat_template::*;
-pub use chat_template_type::*;
 pub use envs::*;
 pub use error::*;
 pub use error_api::*;

@@ -1,3 +1,1 @@
-mod chat_template_type;
-
-pub use chat_template_type::*;
+// obj_exts module - currently empty after chat template removal

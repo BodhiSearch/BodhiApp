@@ -159,7 +159,6 @@ mod test {
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 "#,
       ))
       .times(1)

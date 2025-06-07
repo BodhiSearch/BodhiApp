@@ -225,6 +225,12 @@ mod tests {
             "owned_by": "system"
           },
           {
+            "id": "MyFactory/testalias-gguf:Q8_0",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
+          {
             "id": "TheBloke/Llama-2-7B-Chat-GGUF:Q8_0",
             "object": "model",
             "created": 0,
@@ -232,6 +238,12 @@ mod tests {
           },
           {
             "id": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
+          {
+            "id": "google/gemma-1.1-2b-it-GGUF:2b_it_v1p1",
             "object": "model",
             "created": 0,
             "owned_by": "system"

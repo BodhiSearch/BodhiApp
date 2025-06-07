@@ -32,7 +32,7 @@ serde_json = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 tempfile = { workspace = true, optional = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing"], optional = true }
+tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing", "env-filter"], optional = true }
 thiserror = { workspace = true }
 unic-langid = { workspace = true }
 utoipa = { workspace = true }
@@ -53,9 +53,9 @@ pretty_assertions = { workspace = true }
 rstest = { workspace = true }
 serial_test = { workspace = true }
 tempfile = { workspace = true }
-tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing"] }
+tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing", "env-filter"] }
 tokio = { workspace = true, features = ["full", "test-util"] }
-tower = { workspace = true }
+tower = { workspace = true, features = ["util"] }
 unic-langid = { workspace = true }
 
 

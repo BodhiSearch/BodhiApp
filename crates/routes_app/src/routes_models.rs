@@ -1,16 +1,16 @@
 use crate::{
   AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams,
-  ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Query, State},
   Json,
 };
-use objs::{Alias, ApiError, ChatTemplateId, ChatTemplateType, HubFile, OpenAIApiError};
+use objs::{Alias, ApiError, HubFile, OpenAIApiError};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
-use strum::IntoEnumIterator;
+
 
 /// List configured model aliases
 #[utoipa::path(
@@ -175,47 +175,7 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
   });
 }
 
-/// List available chat templates (both built-in and from repositories)
-#[utoipa::path(
-    get,
-    path = ENDPOINT_CHAT_TEMPLATES,
-    tag = "models",
-    operation_id = "listChatTemplates",
-    responses(
-        (status = 200, description = "List of available chat templates", body = Vec<ChatTemplateType>,
-         example = json!([
-             // Built-in templates
-             {"id": "llama2"},
-             {"id": "llama3"},
-             {"id": "gemma"},
-             // Repository templates
-             {"repo": "meta-llama/Llama-2-70b-chat-hf"},
-             {"repo": "mistralai/Mistral-7B-Instruct-v0.1"}
-         ])
-        ),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
-    ),
-    security(
-      ("bearer_auth" = []),
-    ),
-)]
-pub async fn list_chat_templates_handler(
-  State(state): State<Arc<dyn RouterState>>,
-) -> Result<Json<Vec<ChatTemplateType>>, ApiError> {
-  let mut responses = Vec::new();
-  responses.push(ChatTemplateType::Embedded);
-  for chat_template in ChatTemplateId::iter() {
-    responses.push(ChatTemplateType::Id(chat_template));
-  }
-  let local_repos = state
-    .app_service()
-    .hub_service()
-    .list_local_tokenizer_configs();
-  for repo in local_repos {
-    responses.push(ChatTemplateType::Repo(repo));
-  }
-  Ok(Json(responses))
-}
+
 
 /// Get details for a specific model alias
 #[utoipa::path(
@@ -278,7 +238,7 @@ pub async fn get_alias_handler(
 #[cfg(test)]
 mod tests {
   use crate::{
-    get_alias_handler, list_chat_templates_handler, list_local_aliases_handler, AliasResponse,
+    get_alias_handler, list_local_aliases_handler, AliasResponse,
     PaginatedResponse,
   };
   use axum::{
@@ -288,7 +248,7 @@ mod tests {
     Router,
   };
   use objs::{
-    test_utils::setup_l10n, ChatTemplateId, ChatTemplateType, FluentLocalizationService, Repo,
+    test_utils::setup_l10n, FluentLocalizationService,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -298,14 +258,14 @@ mod tests {
     DefaultRouterState,
   };
   use std::sync::Arc;
-  use strum::IntoEnumIterator;
+
   use tower::ServiceExt;
 
   fn test_router(router_state_stub: DefaultRouterState) -> Router {
     Router::new()
       .route("/api/models", get(list_local_aliases_handler))
       .route("/api/models/:id", get(get_alias_handler))
-      .route("/api/chat_templates", get(list_chat_templates_handler))
+
       .with_state(Arc::new(router_state_stub))
   }
 
@@ -322,7 +282,7 @@ mod tests {
       .await?;
     assert_eq!(1, response["page"]);
     assert_eq!(30, response["page_size"]);
-    assert_eq!(6, response["total"]);
+    assert_eq!(8, response["total"]);
     let data = response["data"].as_array().unwrap();
     assert!(!data.is_empty());
     assert_eq!(
@@ -349,9 +309,9 @@ mod tests {
       .await?;
     assert_eq!(2, response["page"]);
     assert_eq!(4, response["page_size"]);
-    assert_eq!(6, response["total"]);
+    assert_eq!(8, response["total"]);
     let data = response["data"].as_array().unwrap();
-    assert_eq!(2, data.len());
+    assert_eq!(4, data.len());
     Ok(())
   }
 
@@ -467,41 +427,5 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[awt]
-  #[tokio::test]
-  async fn test_list_chat_templates_handler(
-    #[future] router_state_stub: DefaultRouterState,
-  ) -> anyhow::Result<()> {
-    let response = test_router(router_state_stub)
-      .oneshot(
-        Request::get("/api/chat_templates")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await?;
-    assert_eq!(StatusCode::OK, response.status());
-    let response = response.json::<Vec<ChatTemplateType>>().await?;
 
-    assert_eq!(15, response.len());
-    assert!(response.iter().any(|t| t == &ChatTemplateType::Embedded));
-    for template_id in ChatTemplateId::iter() {
-      assert!(response
-        .iter()
-        .any(|t| t == &ChatTemplateType::Id(template_id)));
-    }
-    let expected_chat_templates = vec![
-      "meta-llama/Llama-2-70b-chat-hf",
-      "meta-llama/Meta-Llama-3-70B-Instruct",
-      "meta-llama/Meta-Llama-3-8B-Instruct",
-      "MyFactory/testalias-gguf",
-      "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
-    ];
-    for repo in expected_chat_templates {
-      assert!(response
-        .iter()
-        .any(|t| t == &ChatTemplateType::Repo(Repo::try_from(repo).unwrap())));
-    }
-    Ok(())
-  }
 }
