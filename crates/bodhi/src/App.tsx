@@ -24,9 +24,7 @@ import NotFoundPage from '@/pages/NotFoundPage';
 
 function App() {
   return (
-    <div
-      className="min-h-screen bg-background font-sans antialiased"
-    >
+    <div className="min-h-screen bg-background font-sans antialiased">
       <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">
         <ClientProviders>
           <NavigationProvider items={defaultNavigationItems}>

@@ -1,4 +1,3 @@
-
 import { SetupProgress } from '@/components/setup/SetupProgress';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';

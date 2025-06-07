@@ -1,4 +1,3 @@
-
 import React from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import { ChatHistory } from '@/components/chat/ChatHistory';

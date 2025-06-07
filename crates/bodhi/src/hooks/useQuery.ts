@@ -237,8 +237,6 @@ export function useUpdateModel(
   );
 }
 
-
-
 export function useFeaturedModels() {
   return useQuery<FeaturedModel[]>(
     'featuredModels',

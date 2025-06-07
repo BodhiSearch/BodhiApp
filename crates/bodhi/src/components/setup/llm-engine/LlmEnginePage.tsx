@@ -1,4 +1,3 @@
-
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { SetupProgress } from '@/components/setup/SetupProgress';

@@ -1,4 +1,3 @@
-
 import { BenefitCard } from '@/components/setup/BenefitCard';
 import { SetupModeCard } from '@/components/setup/SetupModeCard';
 import { SetupProgress } from '@/components/setup/SetupProgress';

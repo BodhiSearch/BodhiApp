@@ -1,5 +1,8 @@
 // React Router equivalent for Next.js Link
-import { Link as RouterLink, LinkProps as RouterLinkProps } from 'react-router-dom';
+import {
+  Link as RouterLink,
+  LinkProps as RouterLinkProps,
+} from 'react-router-dom';
 import { forwardRef } from 'react';
 
 interface LinkProps extends Omit<RouterLinkProps, 'to'> {
@@ -13,7 +16,11 @@ interface LinkProps extends Omit<RouterLinkProps, 'to'> {
 const Link = forwardRef<HTMLAnchorElement, LinkProps>(
   ({ href, children, className, target, rel, ...props }, ref) => {
     // Handle external links
-    if (href.startsWith('http') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+    if (
+      href.startsWith('http') ||
+      href.startsWith('mailto:') ||
+      href.startsWith('tel:')
+    ) {
       return (
         <a
           href={href}

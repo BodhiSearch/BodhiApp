@@ -15,7 +15,24 @@ interface ImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement>, 'src'> {
 }
 
 const Image = forwardRef<HTMLImageElement, ImageProps>(
-  ({ src, alt, width, height, priority, fill, sizes, quality, placeholder, blurDataURL, className, style, ...props }, ref) => {
+  (
+    {
+      src,
+      alt,
+      width,
+      height,
+      priority,
+      fill,
+      sizes,
+      quality: _quality,
+      placeholder: _placeholder,
+      blurDataURL: _blurDataURL,
+      className,
+      style,
+      ...props
+    },
+    ref
+  ) => {
     const imgStyle: React.CSSProperties = {
       ...style,
       ...(fill && {

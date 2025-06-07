@@ -1,4 +1,3 @@
-
 import { EditSettingDialog } from '@/components/settings/EditSettingDialog';
 import AppInitializer from '@/components/AppInitializer';
 import { Badge } from '@/components/ui/badge';

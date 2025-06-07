@@ -1,4 +1,3 @@
-
 import { AppBreadcrumb } from '@/components/navigation/AppBreadcrumb';
 import { AppNavigation } from '@/components/navigation/AppNavigation';
 import { usePathname } from '@/lib/navigation';
