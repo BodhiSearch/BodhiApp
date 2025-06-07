@@ -1,17 +1,15 @@
 use llama_server_proc::ServerError;
 use objs::{
-  impl_error_from, AppError, BuilderError, ChatTemplateError, ErrorType, ObjValidationError,
+  impl_error_from, AppError, BuilderError, ErrorType, ObjValidationError,
   SerdeJsonError,
 };
-use services::{DataServiceError, HubServiceError, ObjExtsError};
+use services::{DataServiceError, HubServiceError};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum ContextError {
   #[error(transparent)]
   HubService(#[from] HubServiceError),
-  #[error(transparent)]
-  ObjExts(#[from] ObjExtsError),
   #[error(transparent)]
   Builder(#[from] BuilderError),
   #[error(transparent)]
@@ -25,8 +23,6 @@ pub enum ContextError {
   Unreachable(String),
   #[error(transparent)]
   ObjValidationError(#[from] ObjValidationError),
-  #[error(transparent)]
-  ChatTemplate(#[from] ChatTemplateError),
   #[error("exec_not_exists")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   ExecNotExists(String),

@@ -1,10 +1,10 @@
 use objs::{
-  AliasBuilder, AliasSource, AppError, BuilderError, ChatTemplateType, GptContextParams,
+  AliasBuilder, AliasSource, AppError, BuilderError, GptContextParams,
   OAIRequestParams, ObjValidationError, Repo,
 };
 use services::{
-  AliasExistsError, AppService, DataServiceError, HubDownloadable, HubFileNotFoundError,
-  HubServiceError, ObjExtsError, SNAPSHOT_MAIN,
+  AliasExistsError, AppService, DataServiceError, HubFileNotFoundError,
+  HubServiceError, SNAPSHOT_MAIN,
 };
 use std::sync::Arc;
 
@@ -15,7 +15,7 @@ pub struct CreateCommand {
   pub repo: Repo,
   pub filename: String,
   pub snapshot: Option<String>,
-  pub chat_template: ChatTemplateType,
+  // chat_template field removed since llama.cpp now handles chat templates
   #[builder(default = "true")]
   pub auto_download: bool,
   #[builder(default = "false")]
@@ -29,8 +29,7 @@ pub struct CreateCommand {
 pub enum CreateCommandError {
   #[error(transparent)]
   Builder(#[from] BuilderError),
-  #[error(transparent)]
-  ObjExts(#[from] ObjExtsError),
+  // ObjExts error removed since chat templates are no longer used
   #[error(transparent)]
   AliasExists(#[from] AliasExistsError),
   #[error(transparent)]
@@ -88,14 +87,13 @@ impl CreateCommand {
         }
       }
     };
-    let _ = self.chat_template.download(service.hub_service())?;
+    // Chat template download removed since llama.cpp now handles chat templates
     let alias = AliasBuilder::default()
       .alias(self.alias)
       .repo(self.repo)
       .filename(self.filename)
       .snapshot(local_model_file.snapshot)
       .source(AliasSource::User)
-      .chat_template(self.chat_template)
       .request_params(self.oai_request_params)
       .context_params(self.context_params)
       .build()?;
@@ -113,8 +111,8 @@ mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
-    Alias, AliasBuilder, ChatTemplateType, GptContextParamsBuilder, HubFile,
-    OAIRequestParamsBuilder, Repo, TOKENIZER_CONFIG_JSON,
+    Alias, AliasBuilder, GptContextParamsBuilder, HubFile,
+    OAIRequestParamsBuilder, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -131,7 +129,7 @@ mod test {
       repo: Repo::tinyllama(),
       filename: Repo::TINYLLAMA_FILENAME.to_string(),
       snapshot: Some("main".to_string()),
-      chat_template: ChatTemplateType::tinyllama(),
+      // chat_template field removed since llama.cpp now handles chat templates
       auto_download: false,
       update: true,
       oai_request_params: OAIRequestParamsBuilder::default()
@@ -209,15 +207,7 @@ mod test {
         eq(snapshot.clone()),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    test_hf_service
-      .expect_download()
-      .with(
-        eq(Repo::llama3_tokenizer()),
-        eq(TOKENIZER_CONFIG_JSON),
-        eq(None),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
+    // Tokenizer download removed since llama.cpp now handles chat templates
     let service = Arc::new(
       AppServiceStubBuilder::default()
         .hub_service(Arc::new(test_hf_service))
@@ -233,51 +223,5 @@ mod test {
     Ok(())
   }
 
-  #[rstest]
-  fn test_cmd_create_with_tokenizer_config_downloads_tokenizer_saves_alias(
-    mut test_hf_service: TestHfService,
-  ) -> anyhow::Result<()> {
-    let tokenizer_repo = Repo::testalias_tokenizer();
-    let chat_template = ChatTemplateType::Repo(tokenizer_repo.clone());
-    let create = CreateCommandBuilder::testalias()
-      .chat_template(chat_template.clone())
-      .build()
-      .unwrap();
-    test_hf_service
-      .expect_download()
-      .with(
-        eq(create.repo.clone()),
-        eq(create.filename.clone()),
-        eq(None),
-      )
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
-    test_hf_service
-      .expect_download()
-      .with(
-        eq(tokenizer_repo.clone()),
-        eq(TOKENIZER_CONFIG_JSON),
-        eq(None),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok(HubFile::testalias_tokenizer()));
-    let service = Arc::new(
-      AppServiceStubBuilder::default()
-        .hub_service(Arc::new(test_hf_service))
-        .with_data_service()
-        .build()?,
-    );
-    create.execute(service.clone())?;
-    let created = service
-      .data_service()
-      .find_alias("testalias:instruct")
-      .unwrap();
-    assert_eq!(
-      AliasBuilder::testalias()
-        .chat_template(chat_template)
-        .build()
-        .unwrap(),
-      created
-    );
-    Ok(())
-  }
+  // Test for tokenizer config removed since llama.cpp now handles chat templates
 }

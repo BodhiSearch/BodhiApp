@@ -1,5 +1,5 @@
 use crate::{
-  is_default, to_safe_filename, ChatTemplateType, GptContextParams, OAIRequestParams, Repo,
+  is_default, to_safe_filename, GptContextParams, OAIRequestParams, Repo,
 };
 use derive_new::new;
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,6 @@ pub enum AliasSource {
   Model,
 }
 
-#[allow(clippy::too_many_arguments)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder, new)]
 #[builder(
   setter(into, strip_option),
@@ -29,7 +28,6 @@ pub struct Alias {
   #[serde(default, skip_serializing_if = "is_default")]
   #[builder(default)]
   pub source: AliasSource,
-  pub chat_template: ChatTemplateType,
   #[serde(default, skip_serializing_if = "is_default")]
   #[builder(default)]
   pub request_params: OAIRequestParams,
@@ -59,7 +57,7 @@ impl std::fmt::Display for Alias {
 #[cfg(test)]
 mod test {
   use crate::{
-    Alias, AliasBuilder, ChatTemplateId, ChatTemplateType, GptContextParamsBuilder,
+    Alias, AliasBuilder, GptContextParamsBuilder,
     OAIRequestParamsBuilder, Repo,
   };
   use anyhow_trace::anyhow_trace;
@@ -99,7 +97,6 @@ mod test {
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 request_params:
   temperature: 0.7
   top_p: 0.95
@@ -109,16 +106,14 @@ context_params:
   n_predict: 256
 "#
   )]
-  #[case::chat_template_id(
+  #[case::minimal(
     AliasBuilder::tinyllama()
-      .chat_template(ChatTemplateType::Id(ChatTemplateId::Tinyllama))
       .build()
       .unwrap(),
     r#"alias: tinyllama:instruct
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-chat_template: tinyllama
 "#)]
   fn test_alias_serialize(#[case] alias: Alias, #[case] expected: &str) -> anyhow::Result<()> {
     let actual = serde_yaml::to_string(&alias)?;
@@ -132,7 +127,6 @@ chat_template: tinyllama
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-chat_template: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 request_params:
   temperature: 0.7
   top_p: 0.95
@@ -142,7 +136,6 @@ context_params:
   n_predict: 256
 "#,
   AliasBuilder::tinyllama()
-    .chat_template(ChatTemplateType::tinyllama())
   .request_params(OAIRequestParamsBuilder::default()
   .temperature(0.7)
   .top_p(0.95)
@@ -159,13 +152,11 @@ context_params:
   .build()
   .unwrap()
   )]
-  #[case::chat_template_id(r#"alias: tinyllama:instruct
+  #[case::minimal(r#"alias: tinyllama:instruct
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
-chat_template: tinyllama
 "#, AliasBuilder::tinyllama()
-.chat_template(ChatTemplateType::Id(ChatTemplateId::Tinyllama))
 .build()
 .unwrap())]
   fn test_alias_deserialized(

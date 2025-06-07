@@ -1,6 +1,6 @@
 use objs::{AliasBuilder, AliasSource, AppError, BuilderError, ObjValidationError, Repo};
 use services::{
-  AliasExistsError, AppService, DataServiceError, HubDownloadable, HubServiceError, ObjExtsError,
+  AliasExistsError, AppService, DataServiceError, HubServiceError,
   RemoteModelNotFoundError,
 };
 use std::sync::Arc;
@@ -22,8 +22,7 @@ pub enum PullCommand {
 pub enum PullCommandError {
   #[error(transparent)]
   Builder(#[from] BuilderError),
-  #[error(transparent)]
-  ObjExts(#[from] ObjExtsError),
+  // ObjExts error removed since chat templates are no longer used
   #[error(transparent)]
   HubServiceError(#[from] HubServiceError),
   #[error(transparent)]
@@ -53,14 +52,13 @@ impl PullCommand {
           service
             .hub_service()
             .download(&model.repo, &model.filename, None)?;
-        let _ = model.chat_template.download(service.hub_service())?;
+        // Chat template download removed since llama.cpp now handles chat templates
         let alias = AliasBuilder::default()
           .alias(model.alias)
           .repo(model.repo)
           .filename(model.filename)
           .snapshot(local_model_file.snapshot)
           .source(AliasSource::User)
-          .chat_template(model.chat_template)
           .request_params(model.request_params)
           .context_params(model.context_params)
           .build()?;
@@ -99,7 +97,7 @@ impl PullCommand {
 mod test {
   use crate::{PullCommand, PullCommandError};
   use mockall::predicate::eq;
-  use objs::{Alias, HubFile, RemoteModel, Repo, TOKENIZER_CONFIG_JSON};
+  use objs::{Alias, HubFile, RemoteModel, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -139,15 +137,7 @@ mod test {
         eq(None),
       )
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    test_hf_service
-      .expect_download()
-      .with(
-        eq(Repo::llama3_tokenizer()),
-        eq(TOKENIZER_CONFIG_JSON),
-        eq(None),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
+    // Tokenizer download removed since llama.cpp now handles chat templates
     let service = AppServiceStubBuilder::default()
       .hub_service(Arc::new(test_hf_service))
       .with_data_service()
@@ -215,7 +205,6 @@ mod test {
 repo: MyFactory/testalias-gguf
 filename: testalias.Q8_0.gguf
 snapshot: 5007652f7a641fe7170e0bad4f63839419bd9213
-chat_template: llama3
 "#,
       content
     );

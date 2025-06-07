@@ -3,7 +3,7 @@ use axum::{extract::State, http::StatusCode, Json};
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
 use objs::{
-  ApiError, AppError, ChatTemplateType, ErrorType, GptContextParams, OAIRequestParams, Repo,
+  ApiError, AppError, ErrorType, GptContextParams, OAIRequestParams, Repo,
 };
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
@@ -17,7 +17,7 @@ pub struct CreateAliasRequest {
   repo: Repo,
   filename: String,
   snapshot: Option<String>,
-  chat_template: ChatTemplateType,
+
   request_params: Option<OAIRequestParams>,
   context_params: Option<GptContextParams>,
 }
@@ -47,7 +47,7 @@ impl TryFrom<CreateAliasRequest> for CreateCommand {
       repo: value.repo,
       filename: value.filename,
       snapshot: value.snapshot,
-      chat_template: value.chat_template,
+
       auto_download: false,
       update: false,
       oai_request_params: value.request_params.unwrap_or_default(),
@@ -135,7 +135,7 @@ mod tests {
       "alias": "testalias:instruct",
       "repo": "MyFactory/testalias-gguf",
       "filename": "testalias.Q8_0.gguf",
-      "chat_template": "llama3",
+
       "family": "testalias",
       "request_params": {
         "temperature": 0.7
@@ -151,7 +151,7 @@ mod tests {
       .alias("testalias:instruct".to_string())
       .repo("MyFactory/testalias-gguf")
       .filename("testalias.Q8_0.gguf")
-      .chat_template("llama3")
+
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
       .source("user")
       .model_params(HashMap::new())
@@ -177,7 +177,7 @@ mod tests {
       "repo": "MyFactory/testalias-gguf",
       "filename": "testalias.Q8_0.gguf",
       "snapshot": "5007652f7a641fe7170e0bad4f63839419bd9213",
-      "chat_template": "llama3",
+
       "family": "testalias",
       "request_params": {
         "temperature": 0.7
@@ -195,7 +195,7 @@ mod tests {
       .filename("testalias.Q8_0.gguf")
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
       .source("user")
-      .chat_template("llama3")
+
       .model_params(HashMap::new())
       .request_params(
         OAIRequestParamsBuilder::default()
@@ -248,7 +248,7 @@ mod tests {
       "alias": "test:newalias",
       "repo": "FakeFactory/not-exists",
       "filename": "fakemodel.Q4_0.gguf",
-      "chat_template": "llama3",
+
       "family": "test_family",
       "request_params": {
         "temperature": 0.7
@@ -288,7 +288,7 @@ mod tests {
     let payload = serde_json::json!({
       "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
       "filename": "tinyllama-1.1b-chat-v0.3.Q2_K.gguf",
-      "chat_template": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+
       "family": "tinyllama",
       "request_params": {
         "temperature": 0.8,
@@ -343,7 +343,7 @@ mod tests {
       "alias": "llama3:different",
       "repo": "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
       "filename": "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-      "chat_template": "llama3"
+
     });
 
     let response = app
@@ -382,7 +382,7 @@ mod tests {
     let payload = serde_json::json!({
       "repo": "FakeFactory/fakemodel-gguf",
       "filename": "fakemodel.Q4_0.gguf",
-      "chat_template": "llama3",
+
       "family": "test_family",
       "request_params": {
         "temperature": 0.7
@@ -421,7 +421,7 @@ mod tests {
     "alias": "tinyllama:new",
     "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
     "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
-    "chat_template": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+
     "family": "tinyllama",
     "request_params": {
       "temperature": 0.8,
@@ -435,7 +435,7 @@ mod tests {
     "alias": "tinyllama:instruct",
     "repo": "TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF",
     "filename": "tinyllama-1.1b-chat-v0.3.Q4_K_S.gguf",
-    "chat_template": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+
     "family": "tinyllama",
     "request_params": {
       "temperature": 0.8,

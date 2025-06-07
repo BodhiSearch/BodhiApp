@@ -64,7 +64,7 @@ impl RunCommand {
 mod test {
   use crate::{test_utils::MockInteractiveRuntime, RunCommand, RunCommandError};
   use mockall::predicate::{always, eq};
-  use objs::{Alias, HubFile, Repo, TOKENIZER_CONFIG_JSON};
+  use objs::{Alias, HubFile, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -110,15 +110,7 @@ mod test {
       )
       .times(1)
       .return_once(|_, _, _| Ok(HubFile::testalias_q4()));
-    test_hf_service
-      .expect_download()
-      .with(
-        eq(Repo::llama3_tokenizer()),
-        eq(TOKENIZER_CONFIG_JSON),
-        eq(None),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
+
     let mut mock_interactive = MockInteractiveRuntime::default();
     mock_interactive
       .expect_execute()

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use clap::{ArgGroup, Parser, Subcommand};
 use objs::{
-  ApiError, ChatTemplateId, GptContextParams, OAIRequestParams, OpenAIApiError, Repo,
+  ApiError, GptContextParams, OAIRequestParams, OpenAIApiError, Repo,
   GGUF_EXTENSION,
 };
 use services::{DEFAULT_HOST, DEFAULT_PORT_STR};
@@ -70,7 +70,6 @@ pub enum Command {
   },
 
   /// Create or update a model alias
-  #[clap(group = ArgGroup::new("template").required(true))]
   Create {
     /// Unique name of the model alias. E.g. llama3:8b-instruct, model alias should not be present,
     /// run `bodhi list` to list the existing model aliases
@@ -88,13 +87,7 @@ pub enum Command {
     #[clap(long, short = 's', requires = "repo")]
     snapshot: Option<String>,
 
-    /// In-built chat template mapping to use to convert chat messages to LLM prompt
-    #[clap(long, group = "template")]
-    chat_template: Option<ChatTemplateId>,
-
-    /// Repo containing tokenizer_config.json file to convert chat messages to LLM prompt. e.g. `TinyLlama/TinyLlama-1.1B-Chat-v1.0`
-    #[clap(long, group = "template", value_parser = repo_parser)]
-    tokenizer_config: Option<Repo>,
+    // Chat template fields removed since llama.cpp now handles chat templates directly
 
     /// Update the existing alias if it already exists
     #[clap(long)]
@@ -168,7 +161,7 @@ mod test {
   use crate::{Cli, Command};
   use clap::{CommandFactory, Parser};
   use objs::{
-    test_utils::setup_l10n, ChatTemplateId, FluentLocalizationService, GptContextParams,
+    test_utils::setup_l10n, FluentLocalizationService, GptContextParams,
     OAIRequestParams, Repo,
   };
   use rstest::rstest;
@@ -369,14 +362,12 @@ For more information, try '--help'.
     "bodhi", "create",
     "testalias:instruct",
     "--repo", "MyFactory/testalias-gguf",
-    "--filename", "testalias.Q8_0.gguf",
-    "--chat-template", "llama3"
+    "--filename", "testalias.Q8_0.gguf"
   ],
     "testalias:instruct",
     "MyFactory/testalias-gguf",
     "testalias.Q8_0.gguf",
     None,
-    ChatTemplateId::Llama3,
     false,
     OAIRequestParams::default(),
     GptContextParams::default(),
@@ -386,7 +377,6 @@ For more information, try '--help'.
     "testalias:instruct",
     "--repo", "MyFactory/testalias-gguf",
     "--filename", "testalias.Q8_0.gguf",
-    "--chat-template", "llama3",
     "--frequency-penalty", "0.8",
     "--max-tokens", "512",
     "--presence-penalty", "1.1",
@@ -406,7 +396,6 @@ For more information, try '--help'.
     "MyFactory/testalias-gguf".to_string(),
     "testalias.Q8_0.gguf".to_string(),
     None,
-    ChatTemplateId::Llama3,
     false,
     OAIRequestParams {
       frequency_penalty: Some(0.8),
@@ -434,14 +423,12 @@ For more information, try '--help'.
     "--repo", "MyFactory/testalias-gguf",
     "--filename", "testalias.Q8_0.gguf",
     "--snapshot", "abcdsha1",
-    "--chat-template", "llama3",
     "--update"
   ],
     "testalias:instruct",
     "MyFactory/testalias-gguf",
     "testalias.Q8_0.gguf",
     Some("abcdsha1".to_string()),
-    ChatTemplateId::Llama3,
     true,
     OAIRequestParams::default(),
     GptContextParams::default(),
@@ -452,7 +439,6 @@ For more information, try '--help'.
     #[case] repo: String,
     #[case] filename: String,
     #[case] snapshot: Option<String>,
-    #[case] chat_template: ChatTemplateId,
     #[case] update: bool,
     #[case] oai_request_params: OAIRequestParams,
     #[case] context_params: GptContextParams,
@@ -463,8 +449,6 @@ For more information, try '--help'.
       repo: Repo::from_str(&repo)?,
       filename,
       snapshot,
-      chat_template: Some(chat_template),
-      tokenizer_config: None,
       update,
       oai_request_params,
       context_params,
@@ -478,33 +462,7 @@ For more information, try '--help'.
     "bodhi", "create",
     "testalias:instruct",
     "--repo", "MyFactory/testalias-gguf",
-    "--filename", "testalias.Q8_0.gguf",
-    "--chat-template", "llama3",
-    "--tokenizer-config", "MyFactory/testalias-gguf",
-  ], r#"error: the argument '--chat-template <CHAT_TEMPLATE>' cannot be used with '--tokenizer-config <TOKENIZER_CONFIG>'
-
-Usage: bodhi create --repo <REPO> --filename <FILENAME> <--chat-template <CHAT_TEMPLATE>|--tokenizer-config <TOKENIZER_CONFIG>> <ALIAS>
-
-For more information, try '--help'.
-"#)]
-  #[case(vec![
-    "bodhi", "create",
-    "testalias:instruct",
-    "--repo", "MyFactory/testalias-gguf",
-    "--filename", "testalias.Q8_0.gguf",
-    "--chat-template", "llama3",
-    "--tokenizer-config", "My:Factory/testalias-gguf",
-  ], r#"error: invalid value 'My:Factory/testalias-gguf' for '--tokenizer-config <TOKENIZER_CONFIG>': user: repo contains invalid characters
-
-For more information, try '--help'.
-"#)]
-  #[case(vec![
-    "bodhi", "create",
-    "testalias:instruct",
-    "--repo", "MyFactory/testalias-gguf",
     "--filename", "testalias.Q8_0.safetensor",
-    "--chat-template", "llama3",
-    "--tokenizer-config", "MyFactory/testalias-gguf",
   ], r#"error: invalid value 'testalias.Q8_0.safetensor' for '--filename <FILENAME>': only GGUF file extension supported
 
 For more information, try '--help'.
@@ -514,8 +472,6 @@ For more information, try '--help'.
     "testalias:instruct",
     "--repo", "MyFactory$testalias-gguf",
     "--filename", "testalias.Q8_0.gguf",
-    "--chat-template", "llama3",
-    "--tokenizer-config", "MyFactory/testalias-gguf",
   ], r#"error: invalid value 'MyFactory$testalias-gguf' for '--repo <REPO>': repo does not match the huggingface repo pattern 'username/repo', path: MyFactory$testalias-gguf
 
 For more information, try '--help'.
@@ -541,8 +497,6 @@ For more information, try '--help'.
       repo: Default::default(),
       filename: Default::default(),
       snapshot: None,
-      chat_template: None,
-      tokenizer_config: None,
       update: false,
       oai_request_params: OAIRequestParams::default(),
       context_params: GptContextParams::default(),

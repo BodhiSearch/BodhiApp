@@ -437,7 +437,7 @@ mod tests {
   };
   use mockall::predicate::eq;
   use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo, TOKENIZER_CONFIG_JSON,
+    test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -663,15 +663,6 @@ mod tests {
       )
       .times(1)
       .return_once(|_, _, _| Ok(HubFile::testalias()));
-    test_hf_service
-      .expect_download()
-      .with(
-        eq(Repo::llama3_tokenizer()),
-        eq(TOKENIZER_CONFIG_JSON),
-        eq(None),
-      )
-      .times(1)
-      .return_once(|_, _, _| Ok(HubFile::llama3_tokenizer()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
     let app_service = app_service_stub_builder

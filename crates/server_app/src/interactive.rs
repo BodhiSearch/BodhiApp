@@ -238,7 +238,7 @@ mod test {
   use crate::{Interactive, InteractiveError};
   use anyhow_trace::anyhow_trace;
   use core::panic;
-  use objs::{AliasBuilder, ChatTemplateType, Repo};
+  use objs::{AliasBuilder, Repo};
   use rstest::rstest;
   use services::{test_utils::AppServiceStubBuilder, HubFileNotFoundError, HubServiceError};
   use std::sync::Arc;
@@ -258,7 +258,7 @@ mod test {
         .repo(Repo::testalias())
         .filename("notexists.Q8_0.gguf")
         .snapshot("main")
-        .chat_template(ChatTemplateType::tinyllama())
+
         .build()?,
     )
     .execute(Arc::new(service))

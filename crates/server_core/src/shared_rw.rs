@@ -4,7 +4,7 @@ use llama_server_proc::{
   exec_path_from, LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server,
 };
 use objs::Alias;
-use services::{HubService, IntoChatTemplate};
+use services::HubService;
 use std::fmt::Debug;
 use std::{
   path::{Path, PathBuf},
@@ -183,13 +183,8 @@ impl SharedContext for DefaultSharedContext {
       .hub_service
       .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot.clone()))?
       .path();
-    let chat_template = alias
-      .chat_template
-      .into_chat_template(self.hub_service.clone(), &alias)?;
     alias.request_params.update(&mut request);
-    let prompt = chat_template.apply_chat_template(&request.messages)?;
-    let mut input_value = serde_json::to_value(request)?;
-    input_value["prompt"] = serde_json::Value::String(prompt);
+    let input_value = serde_json::to_value(request)?;
     let alias_name = alias.alias.clone();
     let result = match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
@@ -361,7 +356,7 @@ mod test {
       .build()
       .unwrap();
     let expected_input: Value = serde_json::from_str(
-      r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#,
+      r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct"}"#,
     )?;
     mock_server
       .expect_chat_completions()
@@ -412,7 +407,7 @@ mod test {
     mut mock_server: MockServer,
   ) -> anyhow::Result<()> {
     let expected_input: Value = serde_json::from_str(
-      r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#,
+      r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct"}"#,
     )?;
     mock_server
       .expect_chat_completions()
@@ -460,7 +455,7 @@ mod test {
       .model(loaded_model.path())
       .build()?;
     let expected_input: Value = serde_json::from_str(
-      r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"fakemodel:instruct","prompt":"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\nWhat day comes after Monday?<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n"}"#,
+      r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"fakemodel:instruct"}"#,
     )?;
     mock_server
       .expect_chat_completions()

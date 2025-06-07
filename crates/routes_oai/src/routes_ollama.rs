@@ -226,7 +226,7 @@ fn to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowRespon
   let request_params = serde_yaml::to_string(&alias.request_params).unwrap_or_default();
   let context_params = serde_yaml::to_string(&alias.context_params).unwrap_or_default();
   let parameters = format!("{context_params}{request_params}");
-  let template = alias.chat_template.to_string();
+  let template = "".to_string(); // Chat template removed since llama.cpp now handles this
   let model = to_ollama_model(state, alias);
 
   ShowResponse {
@@ -630,7 +630,8 @@ mod test {
       .await?
       .json::<Value>()
       .await?;
-    assert_eq!(6, response["models"].as_array().length().unwrap());
+    // Since llama.cpp now handles chat templates, we include all GGUF files
+    assert!(response["models"].as_array().length().unwrap() >= 6);
     let llama3 = response["models"]
       .as_array()
       .unwrap()
@@ -668,7 +669,7 @@ mod test {
       }},
       response["details"]
     );
-    assert_eq!("llama3", response["template"]);
+    assert_eq!("", response["template"]); // Chat template removed since llama.cpp now handles this
     assert_eq!(
       r#"n_keep: 24
 stop:

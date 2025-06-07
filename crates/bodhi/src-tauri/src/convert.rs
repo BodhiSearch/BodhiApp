@@ -1,5 +1,5 @@
 use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
-use objs::{AppError, ChatTemplateType, ErrorType, Repo};
+use objs::{AppError, ErrorType, Repo};
 use server_app::{RunCommand, ServeCommand};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -50,29 +50,18 @@ pub fn build_create_command(command: Command) -> Result<CreateCommand, ConvertEr
       repo,
       filename,
       snapshot,
-      chat_template,
-      tokenizer_config,
+
       update,
       oai_request_params,
       context_params,
     } => {
-      let chat_template = match (chat_template, tokenizer_config) {
-        (Some(chat_template), None) => ChatTemplateType::Id(chat_template),
-        (None, Some(tokenizer_config)) => ChatTemplateType::Repo(tokenizer_config),
-        _ => {
-          return Err(ConvertBadRequestError::new(
-            "create".to_string(),
-            "CreateCommand".to_string(),
-            "convert_bad_request-create_command".to_string(),
-          ))?;
-        }
-      };
+
       Ok(CreateCommand {
         alias,
         repo,
         filename,
         snapshot,
-        chat_template,
+
         auto_download: true,
         update,
         oai_request_params,
@@ -129,7 +118,7 @@ mod tests {
   use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
-    AppError, ChatTemplateId, ChatTemplateType, FluentLocalizationService, GptContextParams,
+    AppError, FluentLocalizationService, GptContextParams,
     OAIRequestParams, Repo,
   };
   use rstest::rstest;
@@ -194,8 +183,7 @@ mod tests {
     repo: Repo::testalias(),
     filename: Repo::testalias_model_q8(),
     snapshot: Some("main".to_string()),
-    chat_template: Some(ChatTemplateId::Llama3),
-    tokenizer_config: None,
+
     update: true,
     oai_request_params: OAIRequestParams::default(),
     context_params: GptContextParams::default(),
@@ -205,7 +193,7 @@ mod tests {
     repo: Repo::testalias(),
     filename: Repo::testalias_model_q8(),
     snapshot: Some("main".to_string()),
-    chat_template: ChatTemplateType::Id(ChatTemplateId::Llama3),
+
     auto_download: true,
     update: true,
     oai_request_params: OAIRequestParams::default(),
@@ -225,20 +213,7 @@ mod tests {
     Command::App {ui: false},
     "Command 'app' cannot be converted into command 'CreateCommand'"
   )]
-  #[case(
-    Command::Create {
-      alias: "test".to_string(),
-      repo: Repo::testalias(),
-      filename: Repo::testalias_model_q8(),
-      snapshot: None,
-      chat_template: None,
-      tokenizer_config: None,
-      update: false,
-      oai_request_params: OAIRequestParams::default(),
-      context_params: GptContextParams::default(),
-    },
-    "Command 'create' cannot be converted into command 'CreateCommand', one of chat_template and tokenizer_config must be provided"
-  )]
+
   #[anyhow_trace::anyhow_trace]
   fn test_create_try_from_invalid(
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,

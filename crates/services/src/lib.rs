@@ -29,7 +29,7 @@ pub use env_wrapper::*;
 pub use hub_service::*;
 pub use init_service::*;
 pub use keyring_service::*;
-pub use obj_exts::*;
+// obj_exts module is currently empty after chat template removal
 pub use objs::*;
 pub use secret_service::*;
 pub use service_ext::*;

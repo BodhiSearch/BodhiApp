@@ -1,17 +1,11 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, ChatTemplateId, ChatTemplateType,
+  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource,
   GptContextParams, GptContextParamsBuilder, HubFile, HubFileBuilder, OAIRequestParams,
   OAIRequestParamsBuilder, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
 use std::{path::PathBuf, str::FromStr};
 
-const DEFAULT_CHAT_TEMPLATE: ChatTemplateId = ChatTemplateId::Llama3;
-
-impl Default for ChatTemplateType {
-  fn default() -> Self {
-    ChatTemplateType::Id(DEFAULT_CHAT_TEMPLATE)
-  }
-}
+// Chat template related code removed since llama.cpp now handles this
 
 impl Repo {
   pub const LLAMA3: &str = "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF";
@@ -184,7 +178,6 @@ impl RemoteModel {
       Repo::llama3(),
       Repo::LLAMA3_Q8.to_string(),
       None,
-      ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
       GptContextParams::default(),
     )
@@ -196,7 +189,6 @@ impl RemoteModel {
       Repo::testalias(),
       Repo::TESTALIAS_FILENAME.to_string(),
       None,
-      ChatTemplateType::Id(ChatTemplateId::Llama3),
       OAIRequestParams::default(),
       GptContextParams::default(),
     )
@@ -211,7 +203,6 @@ impl AliasBuilder {
       .filename(Repo::testalias_model_q8())
       .snapshot(SNAPSHOT)
       .source(AliasSource::User)
-      .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .to_owned()
@@ -249,7 +240,6 @@ impl AliasBuilder {
       .filename(Repo::LLAMA3_Q8.to_string())
       .snapshot(SNAPSHOT.to_string())
       .source(AliasSource::User)
-      .chat_template(ChatTemplateType::Id(ChatTemplateId::Llama3))
       .request_params(request_params)
       .context_params(gpt_params)
       .to_owned()
@@ -262,7 +252,6 @@ impl AliasBuilder {
       .filename(Repo::TINYLLAMA_FILENAME)
       .snapshot(Repo::SNAPSHOT_LATEST)
       .source(AliasSource::User)
-      .chat_template(ChatTemplateType::tinyllama())
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .to_owned()
@@ -297,7 +286,6 @@ impl Alias {
       .filename(Repo::TINYLLAMA_FILENAME)
       .snapshot(Repo::SNAPSHOT_LATEST)
       .source(AliasSource::Model)
-      .chat_template(ChatTemplateType::Embedded)
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .build()
@@ -311,7 +299,6 @@ impl Alias {
       .filename(Repo::LLAMA2_Q8)
       .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb")
       .source(AliasSource::Model)
-      .chat_template(ChatTemplateType::Embedded)
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .build()
@@ -325,7 +312,6 @@ impl Alias {
       .filename("fakemodel.Q4_0.gguf")
       .snapshot("9ca625120374ddaae21f067cb006517d14dc91a6")
       .source(AliasSource::Model)
-      .chat_template(ChatTemplateType::Embedded)
       .request_params(OAIRequestParams::default())
       .context_params(GptContextParams::default())
       .build()
@@ -333,16 +319,4 @@ impl Alias {
   }
 }
 
-impl ChatTemplateType {
-  pub fn tinyllama() -> ChatTemplateType {
-    ChatTemplateType::Repo(Repo::tinyllama_tokenizer())
-  }
-
-  pub fn llama3() -> ChatTemplateType {
-    ChatTemplateType::Repo(Repo::llama3_tokenizer())
-  }
-
-  pub fn testalias() -> ChatTemplateType {
-    ChatTemplateType::Repo(Repo::testalias_tokenizer())
-  }
-}
+// ChatTemplateType implementations removed since llama.cpp now handles chat templates

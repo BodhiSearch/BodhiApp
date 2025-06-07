@@ -79,7 +79,7 @@ pub struct AliasResponse {
   pub filename: String,
   pub snapshot: String,
   pub source: String,
-  pub chat_template: String,
+
   pub model_params: HashMap<String, Value>,
   pub request_params: OAIRequestParams,
   pub context_params: GptContextParams,
@@ -93,7 +93,7 @@ impl From<Alias> for AliasResponse {
       snapshot: alias.snapshot,
       alias: alias.alias,
       source: alias.source.to_string(),
-      chat_template: alias.chat_template.to_string(),
+
       model_params: HashMap::new(),
       request_params: alias.request_params,
       context_params: alias.context_params,
