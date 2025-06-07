@@ -97,6 +97,23 @@ pages/
 - **Husky**: Git hooks
 - **lint-staged**: Staged files linting
 
+## Build and Test Commands
+
+The frontend is located in `crates/bodhi/` and uses the following commands:
+
+### Build
+```bash
+cd crates/bodhi
+npm run build
+```
+
+### Test
+```bash
+cd crates/bodhi
+npm run test -- --run  # CI mode (single run)
+npm run test           # Watch mode (development)
+```
+
 ## Application Architecture
 
 ### Routing and Navigation

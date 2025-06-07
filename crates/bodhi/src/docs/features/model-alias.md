@@ -63,19 +63,11 @@ A Model Alias YAML file includes the following keys:
   - **temperature:** Adjusts the randomness of responses.
   - **top_p:** Sets the token probability threshold.
 
-### Chat Template Types
 
-Bodhi App supports three types of chat templates:
-1. **Embedded Chat Template:**  
-   The GGUF file may include metadata for a chat template. Ensure the selected file contains this metadata; otherwise, a runtime error might occur.
-2. **Inbuilt Chat Template:**  
-   A curated list of popular templates is available out of the box. If your model uses one of these templates, simply select it from the inbuilt list. Supported templates include `llama3`, `llama2`, `llama-2-legacy`, `phi3`, `gemma`, `deepseek`, `commandr`, `openchat`, and `tinyllama`.
-3. **Repo Chat Template:**  
-   Specify a HuggingFace repository (e.g., `meta-llama/Meta-Llama-3-8B-Instruct`). Bodhi will fetch the `tokenizer_config.json` from the repository and use the defined chat template and token ID information.
 
 ## GGUF Model File Defined Alias
 
-A GGUF Model File Defined Alias leverages complete metadata embedded in the GGUF file—including the chat template and token IDs. In this case, all the default request and context parameters are used, and you cannot override them. This method is the quickest, most direct way to run a model within the app.
+A GGUF Model File Defined Alias leverages complete metadata embedded in the GGUF file. In this case, all the default request and context parameters are used, and you cannot override them. This method is the quickest, most direct way to run a model within the app.
 
 The model alias ID for this type is typically a combination of the model repository and the quantization detail. For example, for a repo `QuantFactory/Meta-Llama-3-8B-Instruct-GGUF` and filename `Meta-Llama-3-8B-Instruct.Q8_0.gguf`, the model alias ID would be:
 ```
@@ -87,15 +79,13 @@ QuantFactory/Meta-Llama-3-8B-Instruct-GGUF:Q8_0
 For a **User Defined Model Alias**, when you reference the alias ID in your chat settings or API calls (using the `model` parameter), Bodhi App will:
 1. Launch the LLM inference server (if not already running) with the provided `context_params` settings.
 2. Apply the `request_params` as the default settings on the request.
-3. Convert the chat message into an LLM input prompt using the configured `chat_template`.
-4. Forward the request to the inference server.
-5. Stream back the response received from the inference server.
+3. Forward the request to the inference server.
+4. Stream back the response received from the inference server.
 
 Similarly, for a **GGUF Model File Defined Alias**, the process is:
 1. Launch the LLM inference server, if not already running, with default server settings.
-2. Convert the chat message into an LLM input prompt using the embedded `chat_template` and metadata.
-3. Forward the request to the inference server.
-4. Stream back the response.
+2. Forward the request to the inference server.
+3. Stream back the response.
 
 This approach offers several advantages:
 

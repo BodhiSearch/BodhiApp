@@ -13,7 +13,6 @@ Alias Configuration:
 │   ├── Repository
 │   ├── Filename
 │   └── Snapshot
-├── Chat Template
 ├── Request Parameters
 │   ├── Temperature
 │   ├── Max Tokens
@@ -39,7 +38,6 @@ Alias Configuration:
 - Create new aliases
   - Form validation
   - Parameter configuration
-  - Template selection
 - Edit existing aliases
   - Update configurations
   - Modify parameters
@@ -71,7 +69,6 @@ interface Model {
   filename: string;       // Model file name
   snapshot: string;       // Version snapshot
   source?: string;        // Source information
-  chat_template: string;  // Chat formatting template
   request_params: OAIRequestParams;    // API request parameters
   context_params: GptContextParams;    // Context configuration
 }

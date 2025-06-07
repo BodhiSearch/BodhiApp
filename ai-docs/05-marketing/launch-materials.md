@@ -277,7 +277,6 @@ What makes HuggingFace amazing:
 Bodhi App is built on top of the HuggingFace ecosystem:
 • Direct integration with the Hub for model downloads
 • Using their model cards for metadata
-• Leveraging their chat templates
 • Following their best practices
 
 Thank you HuggingFace for:

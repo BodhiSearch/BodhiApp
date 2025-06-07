@@ -32,7 +32,6 @@ export interface Model {
   filename: string;
   snapshot: string;
   source?: string;
-  chat_template: string;
   request_params: OAIRequestParams;
   context_params: GptContextParams;
 }
@@ -70,7 +69,6 @@ export interface CreateAliasRequest {
   alias: string;
   repo: string;
   filename: string;
-  chat_template: string;
   family?: string;
   request_params?: OAIRequestParams;
   context_params?: GptContextParams;
