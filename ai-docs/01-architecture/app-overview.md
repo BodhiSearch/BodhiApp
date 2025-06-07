@@ -1,5 +1,25 @@
 # Bodhi App: Technical Architecture Overview
 
+## Application Overview
+
+Bodhi App is an AI-powered application for running Large Language Models (LLMs) locally. It utilizes the Huggingface ecosystem for accessing open-source LLM weights and information and is powered by llama.cpp.
+
+While many apps that help you run LLMs locally are targeted at technical users, Bodhi App is designed with both technical and non-technical users in mind.
+
+For technical users, it provides OpenAI-compatible chat completions and models API endpoints. It includes comprehensive API documentation following OpenAPI standards and features a built-in SwaggerUI that allows developers to explore and test all API endpoints live.
+
+For non-technical users, it comes with a built-in Chat UI that is quick to start and easy to understand. Users can quickly get started with open-source models and adjust various settings to suit their needs. The app also enables users to discover, explore, and download new open-source models that fit their requirements and are compatible with their local hardware.
+
+### Core Capabilities
+
+BodhiApp provides:
+- Local LLM server management via llama.cpp integration
+- OpenAI-compatible API endpoints
+- Web-based chat interface
+- Model management and downloading
+- Authentication and authorization
+- Multi-user support
+
 ## System Architecture
 
 Bodhi App is a comprehensive Rust-based application that provides local Large Language Model (LLM) inference with OpenAI-compatible APIs and a modern web interface. The architecture combines a multi-crate backend with a React frontend, deployable as both a standalone server and a Tauri desktop application.
@@ -77,6 +97,14 @@ Bodhi App is a comprehensive Rust-based application that provides local Large La
 - **JWT Tokens**: Secure token-based authentication
 - **Role-Based Access**: Admin, PowerUser, BasicUser roles
 - **API Keys**: API token management for programmatic access
+
+### User Experience Features
+- **Built-in Chat UI**: Intuitive, responsive chat interface with real-time streaming, markdown support, and customizable settings
+- **Model Management**: Download and manage GGUF model files directly from HuggingFace
+- **API Token Management**: Securely generate and manage API tokens for external integrations
+- **Dynamic App Settings**: Easily adjust application parameters (like execution variant and idle timeout) on the fly
+- **Responsive Design**: Fully adaptive layout that works seamlessly across desktop and mobile devices
+- **Robust Error Handling**: Comprehensive error logging and troubleshooting guides to help quickly identify and resolve issues
 
 ## Application States
 
@@ -273,6 +301,56 @@ Model aliases provide user-friendly names for complex model configurations:
 - **xtask Automation** → Custom build tasks and code generation
 - **Cross-Platform** → Windows, macOS, Linux support
 - **CI/CD Integration** → GitHub Actions automation
+
+## Technology Stack
+
+### Key Technologies
+- **Backend**: Rust, Axum, SQLx, Tokio
+- **Frontend**: React, TypeScript, Vite, TailwindCSS, Shadcn UI
+- **Desktop**: Tauri
+- **LLM**: llama.cpp integration
+- **API**: OpenAI-compatible endpoints
+- **Auth**: OAuth2, JWT
+- **Database**: SQLite (via SQLx)
+- **Documentation**: OpenAPI/Swagger via utoipa
+
+### Architecture Patterns
+1. **Layered Architecture**: Clear separation between routes, services, and domain objects
+2. **Dependency Injection**: Services are injected into route handlers
+3. **Error Handling**: Centralized error types with metadata
+4. **API-First**: OpenAPI documentation generated from code
+5. **Modular Design**: Each crate has a specific responsibility
+6. **Test-Driven**: Comprehensive testing at multiple levels
+
+### Rust Workspace Structure
+
+#### Core Crates
+- **objs** - Domain Objects and Types: Shared data structures, domain models, error types
+- **services** - Business Logic Layer: Core business logic and external service integrations
+- **commands** - CLI Commands: Command-line interface implementation
+- **server_core** - HTTP Server Core: Core HTTP server functionality
+- **auth_middleware** - Authentication Middleware: HTTP authentication and authorization middleware
+
+#### Route Crates
+- **routes_oai** - OpenAI API Routes: OpenAI-compatible API endpoints
+- **routes_app** - Application API Routes: Application-specific API endpoints
+- **routes_all** - Combined Routes: Aggregates all route modules
+
+#### Application Crates
+- **server_app** - Standalone Server: Standalone HTTP server application
+- **bodhi/src-tauri** - Tauri Application: Desktop application with embedded server
+
+#### Utility Crates
+- **llama_server_proc** - LLM Server Process: llama.cpp integration and process management
+- **errmeta_derive** - Error Metadata Derive: Procedural macros for error handling
+- **integration-tests** - Integration Tests: End-to-end testing
+- **xtask** - Build Tasks: Build automation and development tasks
+
+### Frontend Structure (crates/bodhi/)
+The frontend is a Vite + React + TypeScript application with:
+- **src/**: React components and application logic
+- **src-tauri/**: Tauri backend integration
+- **public/**: Static assets
 
 ## Related Documentation
 
