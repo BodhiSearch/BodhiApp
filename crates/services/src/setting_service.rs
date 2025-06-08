@@ -341,13 +341,12 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
 
   fn login_callback_url(&self) -> String {
     format!(
-      "{}://{}:{}/app/login/callback",
+      "{}://{}:{}/ui/auth/callback",
       self.scheme(),
       self.host(),
       self.port()
     )
   }
-
   fn secrets_path(&self) -> PathBuf {
     self.bodhi_home().join("secrets.yaml")
   }
@@ -1126,7 +1125,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
 
     let setting_service = DefaultSettingService::new_with_defaults(
       Arc::new(env_wrapper),
-      bodhi_home_setting(&bodhi_home.path(), SettingSource::Default),
+      bodhi_home_setting(bodhi_home.path(), SettingSource::Default),
       vec![],
       settings_file.clone(),
     )?;

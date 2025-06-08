@@ -15,6 +15,7 @@ import ModelsPage from '@/pages/ModelsPage';
 import ModelFilesPage from '@/pages/ModelFilesPage';
 import PullPage from '@/pages/PullPage';
 import LoginPage from '@/pages/LoginPage';
+import OAuthCallbackPage from '@/components/auth/OAuthCallbackPage';
 import SettingsPage from '@/pages/SettingsPage';
 import TokensPage from '@/pages/TokensPage';
 import UsersPage from '@/pages/UsersPage';
@@ -45,6 +46,10 @@ function App() {
                   <Route path="/ui/modelfiles" element={<ModelFilesPage />} />
                   <Route path="/ui/pull" element={<PullPage />} />
                   <Route path="/ui/login" element={<LoginPage />} />
+                  <Route
+                    path="/auth/callback"
+                    element={<OAuthCallbackPage />}
+                  />
                   <Route path="/ui/settings" element={<SettingsPage />} />
                   <Route path="/ui/tokens" element={<TokensPage />} />
                   <Route path="/ui/users" element={<UsersPage />} />

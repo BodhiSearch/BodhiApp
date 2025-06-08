@@ -452,7 +452,83 @@ export default defineConfig({
 });
 ```
 
+## Test Case Design Best Practices
+
+### Test Structure and Organization
+
+#### Preferred Test Case Design
+- **Focus on content components only** - Test `ComponentContent` rather than wrapper components like `ComponentPage`
+- **Separate success and error scenarios** - Never merge unrelated test steps in a single test
+- **Avoid `unmount()` calls** - Using `unmount()` indicates merging of unrelated test steps
+- **One responsibility per test** - Each test should verify a single behavior or scenario
+- **Meaningful test separation** - Keep related but distinct scenarios (success vs error) in separate tests
+
+#### Test Case Examples
+```typescript
+// ✅ Good: Focused, single responsibility
+it('renders admin setup page with all required content', () => {
+  // Test static content and UI elements
+});
+
+it('handles successful OAuth flow and redirects to auth URL', async () => {
+  // Test only the success path
+});
+
+it('handles OAuth errors and allows retry', async () => {
+  // Test only the error path and retry functionality
+});
+
+// ❌ Bad: Merged unrelated scenarios
+it('handles OAuth flow with success and error scenarios', async () => {
+  // Test success path
+  // unmount() - indicates merging unrelated steps
+  // Test error path - should be separate test
+});
+```
+
+#### Component Testing Focus
+- **Test content components** - Focus on `LoginContent`, `ResourceAdminContent`, etc.
+- **Skip wrapper components** - Avoid testing `LoginPage`, `ResourceAdminPage` unless they have specific logic
+- **Test user-visible behavior** - Focus on what users see and interact with
+- **Maintain test isolation** - Each test should be independent and not rely on previous test state
+
+### Maintainable Test Suites
+
+#### Substantial vs Granular Tests
+- **Prefer fewer, substantial tests** over many fine-grained tests
+- **Group related assertions** within logical test boundaries
+- **Separate unrelated concerns** into different tests
+- **Avoid excessive test fragmentation** that makes maintenance difficult
+
+#### Test Naming Conventions
+- Use descriptive names that explain the behavior being tested
+- Include the expected outcome in the test name
+- Be specific about the scenario being tested
+
+```typescript
+// ✅ Good test names
+it('renders admin setup page with all required content and functionality')
+it('handles successful OAuth flow and redirects to auth URL')
+it('handles OAuth errors and allows retry')
+it('displays error message with proper styling')
+
+// ❌ Poor test names
+it('works correctly')
+it('handles errors')
+it('OAuth test')
+```
+
 ## Common Issues and Solutions
+
+### Test Design Anti-patterns
+- **Issue**: Using `unmount()` between test scenarios
+- **Solution**: Separate unrelated test scenarios into different tests
+
+- **Issue**: Merging success and error paths in one test
+- **Solution**: Keep success and error scenarios in separate test cases
+
+- **Issue**: Testing wrapper components without specific logic
+- **Solution**: Focus testing on content components that contain the actual functionality
 
 ### React Router v7 Testing Issues
 - **Issue**: Navigation not working in tests

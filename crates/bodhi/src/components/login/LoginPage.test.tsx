@@ -1,27 +1,45 @@
 import LoginPage, { LoginContent } from '@/components/login/LoginPage';
-import { ENDPOINT_APP_INFO, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import {
-  act,
-  render,
-  screen,
-  waitFor
-} from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import {
   afterAll,
+  afterEach,
   beforeAll,
   beforeEach,
   describe,
   expect,
   it,
-  vi
+  vi,
 } from 'vitest';
+import { ENDPOINT_AUTH_INITIATE } from '@/hooks/useQuery';
+
+// Mock window.location
+const mockLocation = {
+  href: '',
+  origin: 'http://localhost:3000',
+};
+Object.defineProperty(window, 'location', {
+  value: mockLocation,
+  writable: true,
+});
 
 // Mock the hooks
-const server = setupServer();
+const server = setupServer(
+  // Default mock for app info endpoint
+  rest.get('*/bodhi/v1/info', (req, res, ctx) => {
+    return res(
+      ctx.status(200),
+      ctx.json({
+        status: 'ready',
+        authz: false,
+      })
+    );
+  })
+);
+
 const pushMock = vi.fn();
 vi.mock('@/lib/navigation', () => ({
   useRouter: () => ({
@@ -30,198 +48,217 @@ vi.mock('@/lib/navigation', () => ({
 }));
 
 beforeAll(() => server.listen());
-afterAll(() => server.close());
 beforeEach(() => {
-  server.resetHandlers();
-  pushMock.mockClear();
   vi.clearAllMocks();
+  pushMock.mockClear();
+  mockLocation.href = '';
 });
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
-describe('LoginContent loading states', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.json({ logged_in: false })
-        );
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.json({ status: 'ready', authz: true })
-        );
-      })
-    );
-  });
-
-  it('shows loading indicator while fetching data', async () => {
+describe('LoginContent', () => {
+  it('renders sign in button', () => {
     render(<LoginContent />, { wrapper: createWrapper() });
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument());
-  });
-});
 
-describe('LoginContent with user not Logged In', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: false }));
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready', authz: true }));
-      })
-    );
-  });
-
-  it('renders login button when user is not logged in', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
-    });
-    const loginButton = screen.getByRole('button', { name: 'Login' });
-    expect(loginButton).toBeDefined();
+    expect(screen.getByText('Welcome to Bodhi')).toBeInTheDocument();
     expect(
-      screen.getByText('Login to use the Bodhi App')
+      screen.getByText('Sign in to access your AI assistant')
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign In' })).toBeInTheDocument();
   });
 
-  it('renders login button with correct styling', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
-    });
-    const loginButton = screen.getByRole('button', { name: 'Login' });
-    expect(loginButton).toHaveClass('w-full');
-    expect(loginButton).not.toBeDisabled();
-  });
-});
+  it('renders sign in button with correct styling', () => {
+    render(<LoginContent />, { wrapper: createWrapper() });
 
-describe('LoginContent with user Logged In', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
+    const signInButton = screen.getByRole('button', { name: 'Sign In' });
+    expect(signInButton).toHaveClass('w-full');
+    expect(signInButton).not.toBeDisabled();
+  });
+
+  it('calls OAuth initiate when sign in button is clicked', async () => {
+    const authUrl = 'https://auth.example.com/oauth/authorize?client_id=test';
+
     server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (req, res, ctx) => {
         return res(
-          ctx.status(200),
-          ctx.json({ logged_in: true, email: 'test@example.com' })
-        );
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready' }));
-      })
-    );
-  });
-
-  it('renders welcome message and logout button when user is logged in', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
-    });
-    expect(
-      screen.getByText('You are logged in as test@example.com')
-    ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Go to Home' })).toBeInTheDocument();
-  });
-
-  it('calls logout function when logout button is clicked and pushes the route in location', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (req, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.json({})
-        );
-      })
-    );
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
-    });
-    const logoutButton = screen.getByRole('button', { name: 'Log Out' });
-    await userEvent.click(logoutButton);
-    expect(pushMock).toHaveBeenCalledWith(
-      'http://localhost:1135/ui/test/login'
-    );
-  });
-
-  it('disables logout button and shows loading text when logging out', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.json({})
+          ctx.status(401),
+          ctx.set('WWW-Authenticate', 'Bearer realm="OAuth"'),
+          ctx.json({
+            auth_url: authUrl,
+          })
         );
       })
     );
 
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
+    render(<LoginContent />, { wrapper: createWrapper() });
+
+    const signInButton = screen.getByRole('button', { name: 'Sign In' });
+    await userEvent.click(signInButton);
+
+    // Should redirect to auth URL
+    await waitFor(() => {
+      expect(mockLocation.href).toBe(authUrl);
     });
-    const logoutButton = screen.getByRole('button', { name: 'Log Out' });
-    await userEvent.click(logoutButton);
-    const loggingOut = screen.getByRole('button', { name: 'Logging out...' });
-    expect(loggingOut).toBeInTheDocument();
-    expect(loggingOut).toHaveAttribute('disabled');
   });
 
-  it('renders buttons with correct styling', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
-    });
-    const logoutButton = screen.getByRole('button', { name: 'Log Out' });
-    expect(logoutButton).toHaveClass('w-full');
-  });
-});
-
-describe('LoginContent with non-authz mode', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
+  it('disables button when OAuth is loading', async () => {
     server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: false }));
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready', authz: false }));
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (req, res, ctx) => {
+        return res(
+          ctx.delay(200), // Increased delay to ensure we can catch the loading state
+          ctx.status(401),
+          ctx.set('WWW-Authenticate', 'Bearer realm="OAuth"'),
+          ctx.json({
+            auth_url:
+              'https://auth.example.com/oauth/authorize?client_id=test',
+          })
+        );
       })
+    );
+
+    render(<LoginContent />, { wrapper: createWrapper() });
+
+    const signInButton = screen.getByRole('button', { name: 'Sign In' });
+
+    // Click the button to start the OAuth flow
+    await userEvent.click(signInButton);
+
+    // Wait for the loading state to appear (AuthCard shows loading animation)
+    await waitFor(
+      () => {
+        expect(screen.getByTestId('auth-card-loading')).toBeInTheDocument();
+      },
+      { timeout: 150 }
     );
   });
 
-  it('should display non-authz warning and disable login button', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
+  it('displays error state when OAuth initiation fails', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (req, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({
+            error: {
+              message: 'OAuth service unavailable',
+              type: 'server_error',
+            },
+          })
+        );
+      })
+    );
+
+    render(<LoginContent />, { wrapper: createWrapper() });
+
+    const signInButton = screen.getByRole('button', { name: 'Sign In' });
+    await userEvent.click(signInButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Authentication Error')).toBeInTheDocument();
     });
-    expect(screen.getByText('This app is setup in non-authenticated mode.User login is not available.')).toBeInTheDocument();
-    const loginButton = screen.getByRole('button', { name: /login/i });
-    expect(loginButton).toBeDisabled();
+
+    expect(screen.getByText('OAuth service unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try Again' })).toBeInTheDocument();
   });
 
-  it('applies correct styling to disabled state', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
+  it('allows retry after error', async () => {
+    const authUrl = 'https://auth.example.com/oauth/authorize';
+    let callCount = 0;
+
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (req, res, ctx) => {
+        callCount++;
+        if (callCount === 1) {
+          return res(
+            ctx.status(500),
+            ctx.json({
+              error: {
+                message: 'Temporary error',
+                type: 'server_error',
+              },
+            })
+          );
+        }
+        return res(
+          ctx.status(401),
+          ctx.json({ auth_url: authUrl })
+        );
+      })
+    );
+
+    render(<LoginContent />, { wrapper: createWrapper() });
+
+    // First attempt - should fail
+    const signInButton = screen.getByRole('button', { name: 'Sign In' });
+    await userEvent.click(signInButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Authentication Error')).toBeInTheDocument();
     });
-    const container = screen.getByRole('button', { name: /login/i }).closest('div');
-    expect(container).toHaveClass('opacity-50 pointer-events-none');
+
+    // Retry - should succeed
+    const tryAgainButton = screen.getByRole('button', { name: 'Try Again' });
+    await userEvent.click(tryAgainButton);
+
+    await waitFor(() => {
+      expect(mockLocation.href).toBe(authUrl);
+    });
+  });
+
+  it('clears error state when retrying', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (req, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({
+            error: { message: 'Server error' },
+          })
+        );
+      })
+    );
+
+    render(<LoginContent />, { wrapper: createWrapper() });
+
+    const signInButton = screen.getByRole('button', { name: 'Sign In' });
+    await user.click(signInButton);
+
+    // Wait for error state
+    await waitFor(() => {
+      expect(screen.getByText('Authentication Error')).toBeInTheDocument();
+    });
+
+    // Now mock a successful response for retry
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (req, res, ctx) => {
+        return res(
+          ctx.status(401),
+          ctx.json({
+            auth_url: 'https://oauth-server.com/auth',
+          })
+        );
+      })
+    );
+
+    const tryAgainButton = screen.getByRole('button', { name: 'Try Again' });
+    await user.click(tryAgainButton);
+
+    // Should briefly clear error state
+    await waitFor(() => {
+      expect(screen.queryByText('Authentication Error')).not.toBeInTheDocument();
+    });
   });
 });
 
-describe('LoginContent access control', () => {
-  it('redirects to setup when app is not setup', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'setup' }));
-      })
-    );
-    await act(async () => {
-      render(<LoginPage />, { wrapper: createWrapper() });
+describe('LoginPage', () => {
+  it('renders the login content within app initializer', async () => {
+    render(<LoginPage />, { wrapper: createWrapper() });
+
+    // Wait for the app initializer to finish loading
+    await waitFor(() => {
+      expect(screen.getByTestId('login-page')).toBeInTheDocument();
     });
-    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/ui/setup'));
+
+    expect(screen.getByText('Welcome to Bodhi')).toBeInTheDocument();
   });
 });

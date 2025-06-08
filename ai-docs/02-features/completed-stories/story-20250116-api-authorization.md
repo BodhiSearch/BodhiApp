@@ -345,19 +345,18 @@ scope: "openid offline_access scope_token_user"
 
 1. Public APIs (No Auth Required):
 ```
-GET  /ping                  # Health check
-GET  /app/info             # App info
-POST /app/setup            # App setup
-GET  /app/login/callback   # Login callback
-POST /api/ui/logout        # Logout
-GET  /dev/secrets          # (Dev mode only) Secrets
+GET  /ping                         # Health check
+GET  /app/info                    # App info
+POST /app/setup                   # App setup
+POST /api/ui/logout               # Logout
+GET  /dev/secrets                 # (Dev mode only) Secrets
 ```
 
 2. Optional Auth APIs:
 ```
-GET  /app/login            # Login page
-GET  /app/login/           # Login page (with trailing slash)
-GET  /api/ui/user         # User info
+POST /bodhi/v1/auth/initiate      # Auth initiate (replaces /app/login) - redirects to home if already logged in
+POST /bodhi/v1/auth/callback      # Auth callback (replaces /app/login/callback) - logs callbacks from logged-in users
+GET  /api/ui/user                 # User info
 ```
 
 3. Ollama APIs (Protected):
@@ -396,15 +395,14 @@ GET  /tokens/                       # List tokens (with trailing slash)
 
 **role=anon** (No Authentication Required)
 ```
-GET  /ping                  # Health check
-GET  /app/info             # App info
-POST /app/setup            # App setup
-GET  /app/login            # Login page
-GET  /app/login/           # Login page (with trailing slash)
-GET  /app/login/callback   # Login callback
-POST /api/ui/logout        # Logout
-GET  /api/ui/user         # User info
-GET  /*                    # UI fallback routes
+GET  /ping                         # Health check
+GET  /app/info                    # App info
+POST /app/setup                   # App setup
+GET  /api/ui/user                 # User info
+POST /bodhi/v1/auth/initiate      # Auth initiate (replaces /app/login) - redirects to home if already logged in
+POST /bodhi/v1/auth/callback      # Auth callback (replaces /app/login/callback) - logs callbacks from logged-in users
+POST /api/ui/logout               # Logout
+GET  /*                           # UI fallback routes
 ```
 
 **role=user & scope=scope_token_user**

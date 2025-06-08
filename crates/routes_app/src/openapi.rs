@@ -30,15 +30,14 @@ macro_rules! make_ui_endpoint {
 }
 
 pub const ENDPOINT_PING: &str = "/ping";
-// sent by frontend to redirect to oauth server login
-pub const ENDPOINT_LOGIN: &str = "/app/login";
-// redirected by oauth server for auth code exchange
-pub const ENDPOINT_LOGIN_CALLBACK: &str = "/app/login/callback";
 
 make_ui_endpoint!(ENDPOINT_LOGOUT, "logout");
 make_ui_endpoint!(ENDPOINT_APP_INFO, "info");
 make_ui_endpoint!(ENDPOINT_APP_SETUP, "setup");
 make_ui_endpoint!(ENDPOINT_USER_INFO, "user");
+make_ui_endpoint!(ENDPOINT_AUTH_INITIATE, "auth/initiate");
+make_ui_endpoint!(ENDPOINT_AUTH_CALLBACK, "auth/callback");
+
 make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
 make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
 make_ui_endpoint!(ENDPOINT_MODELS, "models");
@@ -66,7 +65,7 @@ pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
 This API supports two authentication methods:
 
 1. **Browser Session** (Default)
-   - Login via `/app/login` endpoint
+   - Login via `/bodhi/v1/auth/initiate` endpoint
    - Session cookie will be used automatically
    - Best for browser-based access
 

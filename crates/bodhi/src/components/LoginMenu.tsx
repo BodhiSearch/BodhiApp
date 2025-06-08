@@ -1,18 +1,23 @@
 import { Button } from '@/components/ui/button';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
-import Link from '@/components/Link';
+import { useOAuthInitiate } from '@/hooks/useOAuth';
+import { useAppInfo, useUser } from '@/hooks/useQuery';
 
 export function LoginMenu() {
   const { data: userInfo, isLoading: userLoading } = useUser();
   const { data: appInfo, isLoading: appLoading } = useAppInfo();
   const { logout, isLoading: isLoggingOut } = useLogoutHandler();
+  const oauthInitiate = useOAuthInitiate();
 
   if (userLoading || appLoading) {
     return null;
   }
 
   const isNonAuthz = appInfo && !appInfo.authz;
+
+  const handleLogin = () => {
+    oauthInitiate.mutate();
+  };
 
   if (userInfo?.logged_in) {
     return (
@@ -53,11 +58,14 @@ export function LoginMenu() {
 
   return (
     <div className="p-2" data-testid="login-menu-default">
-      <Link href={ENDPOINT_APP_LOGIN} className="block">
-        <Button variant="default" className="w-full border border-primary">
-          Login
-        </Button>
-      </Link>
+      <Button
+        variant="default"
+        className="w-full border border-primary"
+        onClick={handleLogin}
+        disabled={oauthInitiate.isLoading}
+      >
+        {oauthInitiate.isLoading ? 'Redirecting...' : 'Login'}
+      </Button>
     </div>
   );
 }

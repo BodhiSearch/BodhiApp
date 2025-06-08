@@ -12,7 +12,7 @@ auth_error = {
 }
 bad_request_error = {
   "code": "invalid_value",
-  "message": "Invalid value: 'foobar'. " "Supported values are: 'system', 'assistant', 'user', 'function', and 'tool'.",
+  "message": "Invalid value: 'foobar'. Supported values are: 'system', 'assistant', 'user', 'function', and 'tool'.",
   "param": "messages[0].role",
   "type": "invalid_request_error",
 }

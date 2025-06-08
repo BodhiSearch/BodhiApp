@@ -19,11 +19,13 @@ pub enum LoginError {
   #[error("session_info_not_found")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   SessionInfoNotFound,
+  #[error("oauth_error")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  OAuthError(String),
   #[error(transparent)]
   AuthServiceError(#[from] AuthServiceError),
   #[error(transparent)]
   BadRequest(#[from] BadRequestError),
-
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::InternalServer, code = "login_error-parse_error", args_delegate = false)]
   ParseError(#[from] ParseError),
@@ -47,6 +49,7 @@ mod tests {
   #[case(&AppServiceError::AlreadySetup, "app is already setup")]
   #[case(&LoginError::AppRegInfoNotFound, "app is not registered, need to register app first")]
   #[case(&LoginError::SessionInfoNotFound, "login info not found in session, are cookies enabled?")]
+  #[case(&LoginError::OAuthError("access_denied".to_string()), "OAuth authentication failed: access_denied")]
   #[case(&LoginError::AppStatusInvalid(AppStatus::Setup), "app status is invalid for this operation, status: setup")]
   #[case(&LoginError::ParseError(ParseError::EmptyHost), "failed to parse url, error: empty host")]
   #[case(&LoginError::SessionError(serde_json::from_str::<String>("{invalid").unwrap_err().into()), "failed to access session information, try again, or try logging out and login again, error: invalid type: map, expected a string at line 1 column 0")]

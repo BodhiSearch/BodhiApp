@@ -26,7 +26,6 @@ import {
 } from 'react-query';
 
 // backend endpoints
-export const ENDPOINT_APP_LOGIN = '/app/login';
 
 export const BODHI_API_BASE = '/bodhi/v1';
 
@@ -42,6 +41,10 @@ export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
 export const ENDPOINT_SETTINGS = `${BODHI_API_BASE}/settings`;
 
 export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
+
+// OAuth endpoints
+export const ENDPOINT_AUTH_INITIATE = `${BODHI_API_BASE}/auth/initiate`;
+export const ENDPOINT_AUTH_CALLBACK = `${BODHI_API_BASE}/auth/callback`;
 
 type PagedApiResponse<T> = {
   data: T;
