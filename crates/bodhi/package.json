@@ -11,9 +11,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "test": "vitest",
+    "test": "vitest run",
     "eslint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "format": "prettier --write .",
+    "format": "eslint --ext .js,.jsx,.ts,.tsx --fix .",
+    "format:check": "eslint --ext .js,.jsx,.ts,.tsx --fix-dry-run .",
     "prepare": "husky"
   },
   "dependencies": {
@@ -97,14 +98,10 @@
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+      "eslint --fix"
     ],
     "*.{json,md}": [
       "prettier --write"
     ]
-  },
-  "prettier": {
-    "endOfLine": "lf"
   }
 }
