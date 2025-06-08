@@ -1,7 +1,6 @@
 use objs::{AliasBuilder, AliasSource, AppError, BuilderError, ObjValidationError, Repo};
 use services::{
-  AliasExistsError, AppService, DataServiceError, HubServiceError,
-  RemoteModelNotFoundError,
+  AliasExistsError, AppService, DataServiceError, HubServiceError, RemoteModelNotFoundError,
 };
 use std::sync::Arc;
 

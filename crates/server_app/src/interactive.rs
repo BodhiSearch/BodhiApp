@@ -258,7 +258,6 @@ mod test {
         .repo(Repo::testalias())
         .filename("notexists.Q8_0.gguf")
         .snapshot("main")
-
         .build()?,
     )
     .execute(Arc::new(service))

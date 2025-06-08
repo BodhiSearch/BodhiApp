@@ -1,6 +1,6 @@
 use crate::{
-  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams,
-  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODELS,
+  ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Query, State},
@@ -10,7 +10,6 @@ use objs::{Alias, ApiError, HubFile, OpenAIApiError};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
-
 
 /// List configured model aliases
 #[utoipa::path(
@@ -175,8 +174,6 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
   });
 }
 
-
-
 /// Get details for a specific model alias
 #[utoipa::path(
     get,
@@ -237,19 +234,14 @@ pub async fn get_alias_handler(
 
 #[cfg(test)]
 mod tests {
-  use crate::{
-    get_alias_handler, list_local_aliases_handler, AliasResponse,
-    PaginatedResponse,
-  };
+  use crate::{get_alias_handler, list_local_aliases_handler, AliasResponse, PaginatedResponse};
   use axum::{
     body::Body,
     http::{status::StatusCode, Request},
     routing::get,
     Router,
   };
-  use objs::{
-    test_utils::setup_l10n, FluentLocalizationService,
-  };
+  use objs::{test_utils::setup_l10n, FluentLocalizationService};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};
@@ -265,7 +257,6 @@ mod tests {
     Router::new()
       .route("/api/models", get(list_local_aliases_handler))
       .route("/api/models/:id", get(get_alias_handler))
-
       .with_state(Arc::new(router_state_stub))
   }
 
@@ -426,6 +417,4 @@ mod tests {
     );
     Ok(())
   }
-
-
 }

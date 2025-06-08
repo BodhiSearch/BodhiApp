@@ -10,7 +10,6 @@ impl AliasResponse {
       .filename(Repo::LLAMA3_Q8)
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
       .source("user")
-
       .model_params(HashMap::new())
       .request_params(
         OAIRequestParamsBuilder::default()
@@ -45,7 +44,6 @@ impl AliasResponseBuilder {
       .filename(Repo::TINYLLAMA_FILENAME)
       .source("user")
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
-
       .model_params(HashMap::new())
       .request_params(OAIRequestParamsBuilder::default().build().unwrap())
       .context_params(GptContextParamsBuilder::default().build().unwrap())

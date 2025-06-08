@@ -1,7 +1,6 @@
 use llama_server_proc::ServerError;
 use objs::{
-  impl_error_from, AppError, BuilderError, ErrorType, ObjValidationError,
-  SerdeJsonError,
+  impl_error_from, AppError, BuilderError, ErrorType, ObjValidationError, SerdeJsonError,
 };
 use services::{DataServiceError, HubServiceError};
 
