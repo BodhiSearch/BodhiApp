@@ -1,0 +1,23 @@
+---
+description: React/TypeScript frontend development patterns, component organization, API integration, and testing guidelines for the Bodhi App web interface
+alwaysApply: false
+---
+
+# Frontend React/TypeScript Guidelines
+
+## Required Documentation References
+
+**MUST READ before any changes:**
+- `ai-docs/01-architecture/frontend-react.md` - React+Vite project structure and conventions
+- `ai-docs/01-architecture/api-integration.md` - API integration patterns and query hooks
+- `ai-docs/01-architecture/development-conventions.md` - Naming conventions and component structure
+
+**FOR STYLING:**
+- `ai-docs/01-architecture/ui-design-system.md` - UI/UX patterns and component usage
+
+**FOR TESTING:**
+- `ai-docs/01-architecture/frontend-testing.md` - Testing patterns and utilities
+
+## Follow Documentation Patterns
+
+All specific implementation details, file organization patterns, API integration standards, component structures, and testing requirements are documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.

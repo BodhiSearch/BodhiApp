@@ -1,0 +1,16 @@
+---
+description: Database layer patterns, SQL operations, migration management, and data access patterns for the services database crate
+alwaysApply: false
+---
+# Services Crate - Database Layer Guidelines
+
+## Required Documentation
+
+**MUST READ before database changes:**
+- `ai-docs/03-crates/services.md` - Services crate architecture and patterns
+- `ai-docs/01-architecture/development-conventions.md` - Database conventions section
+- `ai-docs/01-architecture/rust-backend.md` - Rust backend development patterns
+
+## Follow Documentation Patterns
+
+All migration standards, model definitions, service implementation patterns, query patterns, and service trait patterns are comprehensively documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.
