@@ -1,541 +1,411 @@
 # Backend Integration & State Management
 
-This document details how the frontend integrates with the backend services and manages application state through hooks, utilities, and data flow patterns.
+This document details the backend service architecture, data flow patterns, and integration strategies for the Bodhi App. For frontend API query patterns, see [Frontend Query Architecture](frontend-query.md).
 
-## Architecture Overview
+## Backend Service Architecture
 
-The Bodhi frontend uses a layered architecture for backend integration:
+The Bodhi backend uses a layered service architecture:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Frontend Layer                       │
+│                 HTTP Layer                              │
+│  ├── REST API Endpoints (/bodhi/v1/*)                   │
+│  ├── OpenAI-compatible API (/v1/*)                      │
+│  ├── Authentication Endpoints (/app/*)                  │
+│  └── Static File Serving                                │
 ├─────────────────────────────────────────────────────────┤
-│  React Components                                       │
-│  ├── Pages (Route Components)                           │
-│  ├── Feature Components                                 │
-│  └── UI Components                                      │
+│                Service Layer                            │
+│  ├── Application Services                               │
+│  ├── Model Management Services                          │
+│  ├── Authentication Services                            │
+│  └── Settings Management                                │
 ├─────────────────────────────────────────────────────────┤
-│  State Management Layer                                 │
-│  ├── React Query (Server State)                         │
-│  ├── React Hooks (Local State)                          │
-│  ├── Context Providers (Global State)                   │
-│  └── Local Storage (Persistence)                        │
-├─────────────────────────────────────────────────────────┤
-│  API Integration Layer                                  │
-│  ├── Custom Hooks (useQuery, useMutation)               │
-│  ├── API Client (Axios)                                 │
-│  ├── Error Handling                                     │
-│  └── Request/Response Transformation                    │
-├─────────────────────────────────────────────────────────┤
-│  Backend Services                                       │
-│  ├── REST API Endpoints                                 │
-│  ├── WebSocket Connections (Chat Streaming)             │
-│  ├── Authentication Service                             │
-│  └── File Operations                                    │
+│                Data Layer                               │
+│  ├── Database Services (SQLite)                         │
+│  ├── File System Operations                             │
+│  ├── External API Integration                           │
+│  └── LLM Process Management                             │
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Core Integration Implementation
+## API Endpoint Structure
 
-### API Client Configuration
+### Endpoint Categories
 
-```typescript
-// lib/apiClient.ts - Axios configuration
-const apiClient = axios.create({
-  baseURL: '',  // Uses same origin
-  maxRedirects: 0,
-});
+**Application APIs** (`/bodhi/v1/*`):
+- `/bodhi/v1/info` - Application information
+- `/bodhi/v1/setup` - Initial application setup
+- `/bodhi/v1/user` - User information and authentication
+- `/bodhi/v1/models` - Model management (CRUD operations)
+- `/bodhi/v1/modelfiles` - Available model files
+- `/bodhi/v1/tokens` - API token management
+- `/bodhi/v1/settings` - Application settings
 
-apiClient.interceptors.request.use((config) => {
-  return config;
-});
+**OpenAI-compatible APIs** (`/v1/*`):
+- `/v1/chat/completions` - Chat completion endpoint
+- `/v1/models` - List available models (OpenAI format)
 
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('Error:', error.response?.status, error.config?.url);
-    return Promise.reject(error);
+**Authentication APIs** (`/app/*`):
+- `/app/login` - OAuth login initiation
+- `/app/login/callback` - OAuth callback handling
+
+### Response Format Standards
+
+All API responses follow consistent patterns:
+
+```json
+// Success Response
+{
+  "data": [...],
+  "total": 100,
+  "page": 1,
+  "page_size": 20
+}
+
+// Error Response
+{
+  "error": {
+    "message": "User-friendly error message",
+    "type": "validation_error",
+    "code": "INVALID_INPUT",
+    "param": "field_name"
   }
-);
-```
-
-### React Query Setup
-
-```typescript
-// lib/queryClient.ts - Query client configuration
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: false,  // Disabled for better error handling
-    },
-  },
-});
-```
-
-### Core Data Fetching Hooks
-
-#### Generic Query Hook
-
-```typescript
-// hooks/useQuery.ts - Generic data fetching
-export function useQuery<T>(
-  key: string | string[],
-  endpoint: string,
-  params?: Record<string, any>,
-  options?: UseQueryOptions<T, AxiosError<ErrorResponse>>
-): UseQueryResult<T, AxiosError<ErrorResponse>> {
-  return useReactQuery<T, AxiosError<ErrorResponse>>(
-    key,
-    async () => {
-      const { data } = await apiClient.get<T>(endpoint, {
-        params,
-        headers: { 'Content-Type': 'application/json' },
-      });
-      return data;
-    },
-    options
-  );
 }
 ```
 
-#### Mutation Hook with Cache Invalidation
+## Authentication & Authorization
 
-```typescript
-// hooks/useQuery.ts - Mutation with automatic cache updates
-export function useMutationQuery<T, V>(
-  endpoint: string | ((variables: V) => string),
-  method: 'post' | 'put' | 'delete' = 'post',
-  options?: UseMutationOptions<AxiosResponse<T>, AxiosError<ErrorResponse>, V>
-): UseMutationResult<AxiosResponse<T>, AxiosError<ErrorResponse>, V> {
-  const queryClient = useQueryClient();
+### OAuth 2.0 Integration
 
-  return useMutation<AxiosResponse<T>, AxiosError<ErrorResponse>, V>(
-    async (variables) => {
-      const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
-      return await apiClient[method]<T>(_endpoint, variables, {
-        headers: { 'Content-Type': 'application/json' },
-        validateStatus: (status) => status >= 200 && status < 400,
-      });
-    },
-    {
-      ...options,
-      onSuccess: (data, variables, context) => {
-        const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
-        queryClient.invalidateQueries(_endpoint);
-        options?.onSuccess?.(data, variables, context);
-      },
-    }
-  );
+The backend implements OAuth 2.0 Authorization Code flow with PKCE:
+
+1. **Login Initiation** (`/app/login`):
+   - Generates PKCE challenge
+   - Redirects to OAuth provider
+   - Maintains state for security
+
+2. **Callback Handling** (`/app/login/callback`):
+   - Validates state parameter
+   - Exchanges authorization code for tokens
+   - Establishes user session
+
+3. **Session Management**:
+   - Cookie-based sessions for web clients
+   - Token-based authentication for API clients
+   - Automatic token refresh handling
+
+### API Token Management
+
+**Token Types**:
+- **Session Tokens**: Short-lived, cookie-based
+- **API Tokens**: Long-lived, for programmatic access
+- **Refresh Tokens**: For token renewal
+
+**Token Scopes**:
+- `read`: Read-only access to resources
+- `write`: Full CRUD operations
+- `admin`: Administrative functions
+
+## Service Layer Architecture
+
+### Database Services
+
+**Location**: `crates/services/src/db/service.rs`
+
+```rust
+#[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+pub trait DbService: std::fmt::Debug + Send + Sync {
+    async fn create_conversation(&self, conversation: &Conversation) -> Result<(), DbError>;
+    async fn get_conversation(&self, id: &str) -> Result<Option<Conversation>, DbError>;
+    async fn list_conversations(&self, page: i64, page_size: i64) -> Result<(Vec<Conversation>, i64), DbError>;
+    async fn update_conversation(&self, conversation: &Conversation) -> Result<(), DbError>;
+    async fn delete_conversation(&self, id: &str) -> Result<(), DbError>;
 }
 ```
 
-## State Management Architecture
+**Service Patterns**:
+- Trait-based design for testability
+- Async/await throughout
+- Consistent error handling
+- Pagination support
+- Transaction management
 
-### Global State Management
+### Model Management Services
 
-The application uses a hybrid approach to state management:
+**Model Operations**:
+- **Discovery**: Scan for available model files
+- **Registration**: Create model aliases with configurations
+- **Validation**: Verify model compatibility
+- **Lifecycle**: Download, update, and removal
 
-1. **Server State**: React Query for API data
-2. **Local State**: React hooks for component state
-3. **Global State**: Context providers for shared state
-4. **Persistent State**: Local storage for user preferences
+**Configuration Management**:
+- **Request Parameters**: OpenAI-compatible settings
+- **Context Parameters**: LLM-specific configurations
+- **Template Management**: Chat templates and prompts
 
-### State Categories
+### Settings Service
 
-#### 1. Server State (React Query)
-- **API Data**: Models, users, tokens, chat history
-- **Caching**: Automatic background updates and cache invalidation
-- **Synchronization**: Real-time data synchronization
-- **Error Handling**: Automatic retry and error recovery
+**Setting Categories**:
+- **System Settings**: Core application configuration
+- **User Preferences**: Per-user customizations
+- **Model Defaults**: Default parameters for models
+- **Feature Flags**: Experimental feature toggles
 
-```typescript
-// Example: Model data fetching
-const { data: models, isLoading, error } = useModels();
-const { mutate: createModel } = useCreateModel({
-  onSuccess: () => {
-    toast({ title: 'Model created successfully' });
-  }
-});
+**Setting Sources** (priority order):
+1. Command line arguments
+2. Environment variables
+3. Configuration files
+4. Database settings
+5. Default values
+
+## Real-time Communication
+
+### Server-Sent Events (SSE)
+
+**Chat Streaming Implementation**:
+- Chunked response processing
+- Real-time content delivery
+- Metadata extraction
+- Error handling during streaming
+- Connection management
+
+**SSE Message Format**:
+```
+data: {"choices":[{"delta":{"content":"Hello"}}]}
+
+data: {"choices":[{"delta":{"content":" world"}}]}
+
+data: {"choices":[{"finish_reason":"stop","usage":{"total_tokens":10}}]}
+
+data: [DONE]
 ```
 
-### Specific API Integration Hooks
+### WebSocket Considerations
 
-#### Application Info Hook
-
-```typescript
-// hooks/useQuery.ts - App info fetching
-export function useAppInfo() {
-  return useQuery<AppInfo>('appInfo', ENDPOINT_APP_INFO);
-}
-```
-
-#### User Authentication Hook
-
-```typescript
-// hooks/useQuery.ts - User info with conditional fetching
-export function useUser(options?: { enabled?: boolean }) {
-  return useQuery<UserInfo | null>('user', ENDPOINT_USER_INFO, undefined, {
-    retry: false,
-    enabled: options?.enabled ?? true,
-  });
-}
-```
-
-#### Model Management Hooks
-
-```typescript
-// hooks/useQuery.ts - Model CRUD operations
-export function useModels() {
-  return useQuery<Model[]>('models', ENDPOINT_MODELS);
-}
-
-export function useModel(alias: string) {
-  return useQuery<Model>(
-    ['model', alias],
-    `${ENDPOINT_MODELS}/${alias}`,
-    undefined,
-    { enabled: !!alias }
-  );
-}
-
-export function useCreateModel(options?: {
-  onSuccess?: (model: Model) => void;
-  onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Model>, AxiosError<ErrorResponse>, AliasFormData> {
-  const queryClient = useQueryClient();
-  return useMutationQuery<Model, AliasFormData>(ENDPOINT_MODELS, 'post', {
-    onSuccess: (response) => {
-      queryClient.invalidateQueries(ENDPOINT_MODELS);
-      options?.onSuccess?.(response.data);
-    },
-    onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create model';
-      options?.onError?.(message);
-    },
-  });
-}
-
-export function useUpdateModel(alias: string, options?: {
-  onSuccess?: (model: Model) => void;
-  onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Model>, AxiosError<ErrorResponse>, AliasFormData> {
-  const queryClient = useQueryClient();
-  return useMutationQuery<Model, AliasFormData>(`${ENDPOINT_MODELS}/${alias}`, 'put', {
-    onSuccess: (response) => {
-      queryClient.invalidateQueries(['model', alias]);
-      options?.onSuccess?.(response.data);
-    },
-    onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to update model';
-      options?.onError?.(message);
-    },
-  });
-}
-```
-
-## API Integration Patterns
-
-### Request Handling
-1. **Authentication**
-   - Token management
-   - Session handling
-   - Refresh token logic
-
-2. **Error Handling**
-   - Consistent error responses
-   - Retry logic
-   - User feedback
-
-3. **Data Caching**
-   - Local storage
-   - Memory cache
-   - Cache invalidation
-
-### Real-time Features
-
-#### Chat Streaming Implementation
-
-The chat system uses Server-Sent Events for real-time streaming:
-
-```typescript
-// hooks/use-chat-completions.ts - Core streaming implementation
-export function useChatCompletion() {
-  const appendMutation = useMutation<void, AxiosError, {
-    request: ChatCompletionRequest;
-  } & ChatCompletionCallbacks & RequestExts>(
-    async ({ request, headers, onDelta, onMessage, onFinish, onError }) => {
-      const baseUrl = apiClient.defaults.baseURL || window.location.origin;
-
-      const response = await fetch(`${baseUrl}/v1/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...headers },
-        body: JSON.stringify(request),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json() as ErrorResponse;
-        onError?.(errorData);
-        return;
-      }
-
-      const contentType = response.headers.get('Content-Type') || '';
-
-      if (contentType.includes('text/event-stream')) {
-        // Handle streaming response via SSE
-        const reader = response.body?.getReader();
-        const decoder = new TextDecoder();
-        let fullContent = '';
-
-        while (true) {
-          const { done, value } = await reader!.read();
-          if (done) break;
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter(line => line.trim() !== '');
-
-          for (const line of lines) {
-            const jsonStr = line.replace(/^data: /, '');
-            const json = JSON.parse(jsonStr);
-
-            if (json.choices?.[0]?.delta?.content) {
-              const content = json.choices[0].delta.content;
-              fullContent += content;
-              onDelta?.(content);  // Real-time content streaming
-            }
-          }
-        }
-
-        onFinish?.({ role: 'assistant', content: fullContent });
-      } else {
-        // Handle non-streaming response
-        const data: ChatCompletionResponse = await response.json();
-        const message = data.choices?.[0]?.message;
-        if (message) {
-          onMessage?.(message);
-          onFinish?.(message);
-        }
-      }
-    }
-  );
-
-  return {
-    mutate: appendMutation.mutate,
-    isLoading: appendMutation.isLoading,
-    error: appendMutation.error,
-  };
-}
-```
-
-## State Management Patterns
-
-### Local Storage Integration
-
-```typescript
-// hooks/useLocalStorage.ts - Type-safe local storage
-export function useLocalStorage<T>(
-  key: string,
-  defaultValue: T
-): [T, (value: T | ((val: T) => T)) => void] {
-  const [storedValue, setStoredValue] = useState<T>(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue;
-    } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
-      return defaultValue;
-    }
-  });
-
-  const setValue = (value: T | ((val: T) => T)) => {
-    try {
-      const valueToStore = value instanceof Function ? value(storedValue) : value;
-      setStoredValue(valueToStore);
-      window.localStorage.setItem(key, JSON.stringify(valueToStore));
-    } catch (error) {
-      console.error(`Error setting localStorage key "${key}":`, error);
-    }
-  };
-
-  return [storedValue, setValue];
-}
-```
-
-### Navigation State Management
-
-```typescript
-// hooks/use-navigation.ts - Navigation state
-export function useNavigation() {
-  const [currentItem, setCurrentItem] = useLocalStorage<string>('navigation-current-item', '');
-
-  return {
-    currentItem,
-    setCurrentItem,
-  };
-}
-```
+While currently using SSE for chat streaming, the architecture supports WebSocket integration for:
+- Bidirectional communication
+- Real-time notifications
+- Collaborative features
+- System status updates
 
 ## Data Flow Architecture
 
-### Request Flow
+### Backend Request Processing
+
 ```
-React Component
-    ↓ (user action)
-Custom Hook (useQuery/useMutation)
-    ↓ (API call)
-API Client (axios)
-    ↓ (HTTP request)
-Backend API Endpoint
+HTTP Request
+    ↓ (routing)
+Route Handler
+    ↓ (authentication)
+Auth Middleware
     ↓ (business logic)
 Service Layer
+    ↓ (data operations)
+Database/File System
+    ↓ (response)
+JSON/Stream Response
+```
+
+### Service Integration Flow
+
+```
+Frontend Request
+    ↓ (HTTP/WebSocket)
+API Gateway/Router
+    ↓ (service routing)
+Application Services
     ↓ (data access)
-Database/External Services
+Database Services
+    ↓ (external calls)
+LLM Process/External APIs
+    ↓ (aggregated response)
+Formatted API Response
 ```
 
-### Response Flow
-```
-Database/External Services
-    ↓ (data)
-Service Layer
-    ↓ (processed data)
-Backend API Endpoint
-    ↓ (JSON response)
-API Client (axios)
-    ↓ (parsed response)
-Custom Hook (React Query cache)
-    ↓ (state update)
-React Component Re-render
-```
+## Error Handling & Monitoring
 
-## Error Handling Implementation
+### Error Response Standards
 
-### API Error Types and Responses
-
-```typescript
-// types/api.ts - Error response structure
-export interface ErrorResponse {
-  error: {
-    message: string;
-    code?: string;
-    details?: Record<string, any>;
-  };
-}
-
-// Error handling in hooks
-export function useCreateModel(options?: {
-  onSuccess?: (model: Model) => void;
-  onError?: (message: string) => void;
-}) {
-  return useMutationQuery<Model, AliasFormData>(ENDPOINT_MODELS, 'post', {
-    onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create model';
-      options?.onError?.(message);
-    },
-  });
+**Structured Error Format**:
+```json
+{
+  "error": {
+    "message": "User-friendly error description",
+    "type": "validation_error|authentication_error|server_error",
+    "code": "SPECIFIC_ERROR_CODE",
+    "param": "field_name",
+    "details": {
+      "additional": "context"
+    }
+  }
 }
 ```
 
-### Toast Notification Integration
+**HTTP Status Code Mapping**:
+- `200`: Success
+- `201`: Created
+- `400`: Bad Request (validation errors)
+- `401`: Unauthorized (authentication required)
+- `403`: Forbidden (insufficient permissions)
+- `404`: Not Found
+- `409`: Conflict (resource already exists)
+- `422`: Unprocessable Entity (business logic errors)
+- `500`: Internal Server Error
 
-```typescript
-// hooks/use-toast.ts - User feedback system
-export function useToast() {
-  const { toast } = useToast();
+### Logging & Observability
 
-  const showSuccess = (message: string) => {
-    toast({
-      title: "Success",
-      description: message,
-      variant: "default",
-    });
-  };
+**Structured Logging**:
+- Request/response logging
+- Performance metrics
+- Error tracking
+- User action auditing
 
-  const showError = (message: string) => {
-    toast({
-      title: "Error",
-      description: message,
-      variant: "destructive",
-    });
-  };
+**Log Levels**:
+- `ERROR`: System errors requiring attention
+- `WARN`: Recoverable issues
+- `INFO`: General application flow
+- `DEBUG`: Detailed debugging information
+- `TRACE`: Fine-grained execution details
 
-  return { showSuccess, showError };
-}
-```
+## Performance & Scalability
 
-## Performance Optimizations
+### Database Optimization
 
-### React Query Configuration
+**Query Optimization**:
+- Indexed columns for frequent queries
+- Pagination for large result sets
+- Connection pooling
+- Query result caching
 
-```typescript
-// lib/queryClient.ts - Optimized query client
-export const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,  // Prevent unnecessary refetches
-      retry: false,                 // Handle errors explicitly
-      staleTime: 5 * 60 * 1000,    // 5 minutes
-      cacheTime: 10 * 60 * 1000,   // 10 minutes
-    },
-    mutations: {
-      retry: false,  // Don't retry mutations automatically
-    },
-  },
-});
-```
+**Schema Design**:
+- Normalized data structure
+- Efficient foreign key relationships
+- Optimized for read-heavy workloads
+- Migration-friendly schema evolution
 
-### Optimistic Updates
+### Caching Strategies
 
-```typescript
-// Example: Optimistic model updates
-export function useUpdateModel(alias: string) {
-  const queryClient = useQueryClient();
+**Application-Level Caching**:
+- In-memory caching for frequently accessed data
+- Model metadata caching
+- Settings caching with invalidation
+- User session caching
 
-  return useMutationQuery<Model, AliasFormData>(`${ENDPOINT_MODELS}/${alias}`, 'put', {
-    onMutate: async (newData) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries(['model', alias]);
+**HTTP Caching**:
+- Static asset caching
+- API response caching headers
+- ETags for conditional requests
+- Cache invalidation strategies
 
-      // Snapshot previous value
-      const previousModel = queryClient.getQueryData(['model', alias]);
+### Resource Management
 
-      // Optimistically update
-      queryClient.setQueryData(['model', alias], newData);
+**Memory Management**:
+- Efficient data structures
+- Garbage collection optimization
+- Memory leak prevention
+- Resource cleanup
 
-      return { previousModel };
-    },
-    onError: (err, newData, context) => {
-      // Rollback on error
-      if (context?.previousModel) {
-        queryClient.setQueryData(['model', alias], context.previousModel);
-      }
-    },
-    onSettled: () => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries(['model', alias]);
-    },
-  });
-}
-```
+**Process Management**:
+- LLM process lifecycle management
+- Resource allocation and limits
+- Process monitoring and restart
+- Graceful shutdown handling
+
+## Integration Testing
+
+### API Testing Strategies
+
+**Unit Testing**:
+- Service layer testing with mocked dependencies
+- Database operation testing
+- Business logic validation
+- Error handling verification
+
+**Integration Testing**:
+- End-to-end API testing
+- Database integration testing
+- External service integration
+- Authentication flow testing
+
+**Performance Testing**:
+- Load testing for high-traffic scenarios
+- Memory usage profiling
+- Database query performance
+- Streaming response testing
+
+### Test Infrastructure
+
+**Test Database**:
+- Isolated test environment
+- Fresh data for each test
+- Transaction rollback for cleanup
+- Realistic test data generation
+
+**Mock Services**:
+- External API mocking
+- LLM process simulation
+- File system mocking
+- Network condition simulation
+
+## Security Considerations
+
+### Data Protection
+
+**Sensitive Data Handling**:
+- API token encryption
+- User data anonymization
+- Secure session management
+- PII data protection
+
+**Input Validation**:
+- Request parameter validation
+- SQL injection prevention
+- XSS protection
+- File upload security
+
+### Access Control
+
+**Authorization Patterns**:
+- Role-based access control (RBAC)
+- Resource-level permissions
+- API endpoint protection
+- Admin function restrictions
+
+**Audit Logging**:
+- User action tracking
+- Administrative operation logging
+- Security event monitoring
+- Compliance reporting
 
 ## Related Documentation
 
+- **[Frontend Query Architecture](frontend-query.md)** - Frontend API integration patterns
 - **[Authentication](authentication.md)** - Security implementation details
 - **[Frontend Architecture](frontend-architecture.md)** - React component architecture
 - **[App Overview](app-overview.md)** - High-level system architecture
 
 ## Future Improvements
 
-1. **API Layer**
-   - API client generation
-   - Type safety
-   - Documentation
+1. **Service Architecture**
+   - Microservice decomposition
+   - Service mesh implementation
+   - API versioning strategy
+   - Service discovery
 
-2. **State Management**
-   - Global state solution
-   - State persistence
-   - Performance optimization
+2. **Performance**
+   - Horizontal scaling capabilities
+   - Database sharding
+   - CDN integration
+   - Response compression
 
-3. **Error Handling**
-   - Error boundary implementation
-   - Logging system
-   - Error analytics
+3. **Monitoring**
+   - Real-time metrics dashboard
+   - Alerting system
+   - Performance analytics
+   - Health check endpoints
+
+4. **Security**
+   - Advanced threat detection
+   - Rate limiting implementation
+   - API security scanning
+   - Compliance automation
