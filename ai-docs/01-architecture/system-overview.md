@@ -1,4 +1,6 @@
-# Bodhi App: Technical Architecture Overview
+# System Overview
+
+This document provides a high-level overview of the Bodhi App system architecture, crate organization, and key architectural decisions.
 
 ## Application Overview
 
@@ -10,7 +12,41 @@ For technical users, it provides OpenAI-compatible chat completions and models A
 
 For non-technical users, it comes with a built-in Chat UI that is quick to start and easy to understand. Users can quickly get started with open-source models and adjust various settings to suit their needs. The app also enables users to discover, explore, and download new open-source models that fit their requirements and are compatible with their local hardware.
 
-### Core Capabilities
+### Key Features
+
+### Local LLM Inference
+- **llama.cpp Integration**: Native llama.cpp compilation and process management
+- **Model Management**: Download, load, and manage GGUF models from HuggingFace
+- **Hardware Acceleration**: CUDA, OpenCL, Metal support
+- **Multi-Model Support**: Run multiple models simultaneously
+
+### OpenAI Compatibility
+- **API Compatibility**: Full OpenAI API compatibility for chat completions
+- **Streaming Support**: Real-time response streaming via Server-Sent Events
+- **Model Endpoints**: Model listing and information endpoints
+- **Client Library Support**: Works with existing OpenAI client libraries
+
+### Ollama Compatibility
+- **API Compatibility**: Drop-in replacement for Ollama clients
+- **Endpoint Support**: `/api/tags`, `/api/show`, `/api/chat` endpoints
+- **Model Information**: Compatible model listing and metadata
+- **Client Integration**: Works with existing Ollama client tools
+
+### Authentication & Security
+- **OAuth2 Integration**: External authentication provider support
+- **JWT Tokens**: Secure token-based authentication
+- **Role-Based Access**: Admin, PowerUser, BasicUser roles
+- **API Keys**: API token management for programmatic access
+
+### User Experience Features
+- **Built-in Chat UI**: Intuitive, responsive chat interface with real-time streaming, markdown support, and customizable settings
+- **Model Management**: Download and manage GGUF model files directly from HuggingFace
+- **API Token Management**: Securely generate and manage API tokens for external integrations
+- **Dynamic App Settings**: Easily adjust application parameters (like execution variant and idle timeout) on the fly
+- **Responsive Design**: Fully adaptive layout that works seamlessly across desktop and mobile devices
+- **Robust Error Handling**: Comprehensive error logging and troubleshooting guides to help quickly identify and resolve issues
+
+## Core Capabilities
 
 BodhiApp provides:
 - Local LLM server management via llama.cpp integration
@@ -78,34 +114,6 @@ Bodhi App is a comprehensive Rust-based application that provides local Large La
 13. **integration-tests** - End-to-end testing
 14. **xtask** - Build automation
 
-## Key Features
-
-### Local LLM Inference
-- **llama.cpp Integration**: Native llama.cpp compilation and process management
-- **Model Management**: Download, load, and manage GGUF models from HuggingFace
-- **Hardware Acceleration**: CUDA, OpenCL, Metal support
-- **Multi-Model Support**: Run multiple models simultaneously
-
-### OpenAI Compatibility
-- **API Compatibility**: Full OpenAI API compatibility for chat completions
-- **Streaming Support**: Real-time response streaming via Server-Sent Events
-- **Model Endpoints**: Model listing and information endpoints
-- **Client Library Support**: Works with existing OpenAI client libraries
-
-### Authentication & Security
-- **OAuth2 Integration**: External authentication provider support
-- **JWT Tokens**: Secure token-based authentication
-- **Role-Based Access**: Admin, PowerUser, BasicUser roles
-- **API Keys**: API token management for programmatic access
-
-### User Experience Features
-- **Built-in Chat UI**: Intuitive, responsive chat interface with real-time streaming, markdown support, and customizable settings
-- **Model Management**: Download and manage GGUF model files directly from HuggingFace
-- **API Token Management**: Securely generate and manage API tokens for external integrations
-- **Dynamic App Settings**: Easily adjust application parameters (like execution variant and idle timeout) on the fly
-- **Responsive Design**: Fully adaptive layout that works seamlessly across desktop and mobile devices
-- **Robust Error Handling**: Comprehensive error logging and troubleshooting guides to help quickly identify and resolve issues
-
 ## Application States
 
 ### Setup Mode (`setup`)
@@ -123,7 +131,7 @@ Bodhi App is a comprehensive Rust-based application that provides local Large La
 - All APIs accessible
 - Authentication enforced if enabled
 
-## Data Flow
+## Data Flow Patterns
 
 ### Chat Completion Flow
 1. **Frontend Request** → React UI sends chat request
@@ -166,19 +174,6 @@ sequenceDiagram
     App->>App: Set status: ready
     App->>User: Ready for use
 ```
-
-## API Compatibility
-
-### OpenAI Compatibility
-- `/v1/models` - List available models
-- `/v1/chat/completions` - Chat completion API
-- Compatible with OpenAI client libraries
-
-### Ollama Compatibility
-- `/api/tags` - List model tags
-- `/api/show` - Model information
-- `/api/chat` - Chat completion
-- Drop-in replacement for Ollama clients
 
 ## Key Design Patterns
 
@@ -249,59 +244,6 @@ Model aliases provide user-friendly names for complex model configurations:
 - **Custom Clients** → REST API for custom integrations
 - **CLI Tools** → Command-line interface for automation
 
-## Performance Considerations
-
-### LLM Optimization
-- **Hardware Acceleration** → GPU support for inference
-- **Memory Management** → Efficient model loading and caching
-- **Batch Processing** → Optimized inference batching
-
-### Web Performance
-- **Streaming Responses** → Real-time response delivery
-- **Caching** → Intelligent caching strategies
-- **Compression** → Response compression and optimization
-
-### Scalability
-- **Async Architecture** → Non-blocking I/O throughout
-- **Connection Pooling** → Efficient resource management
-- **Load Balancing** → Support for multiple instances
-
-## Security Model
-
-### Authentication
-- **Multi-Provider OAuth2** → Flexible authentication
-- **JWT Security** → Secure token handling
-- **Session Management** → Secure session lifecycle
-
-### Authorization
-- **Role-Based Access** → Granular permission control
-- **API Scoping** → Limited API token permissions
-- **Resource Protection** → Protected endpoints and resources
-
-### Data Security
-- **Local Storage** → All data stored locally by default
-- **Encryption** → Sensitive data encryption
-- **Privacy** → No external data transmission required
-
-## Development Workflow
-
-### Code Generation
-- **OpenAPI Specs** → Automatic generation from Rust code
-- **TypeScript Types** → Generated from OpenAPI for frontend
-- **API Documentation** → Swagger UI with interactive docs
-
-### Testing Strategy
-- **Unit Tests** → Individual crate testing
-- **Integration Tests** → End-to-end API testing
-- **Frontend Tests** → React component and integration testing
-- **Performance Tests** → Load testing and benchmarking
-
-### Build System
-- **Cargo Workspace** → Multi-crate Rust workspace
-- **xtask Automation** → Custom build tasks and code generation
-- **Cross-Platform** → Windows, macOS, Linux support
-- **CI/CD Integration** → GitHub Actions automation
-
 ## Technology Stack
 
 ### Key Technologies
@@ -322,41 +264,15 @@ Model aliases provide user-friendly names for complex model configurations:
 5. **Modular Design**: Each crate has a specific responsibility
 6. **Test-Driven**: Comprehensive testing at multiple levels
 
-### Rust Workspace Structure
-
-#### Core Crates
-- **objs** - Domain Objects and Types: Shared data structures, domain models, error types
-- **services** - Business Logic Layer: Core business logic and external service integrations
-- **commands** - CLI Commands: Command-line interface implementation
-- **server_core** - HTTP Server Core: Core HTTP server functionality
-- **auth_middleware** - Authentication Middleware: HTTP authentication and authorization middleware
-
-#### Route Crates
-- **routes_oai** - OpenAI API Routes: OpenAI-compatible API endpoints
-- **routes_app** - Application API Routes: Application-specific API endpoints
-- **routes_all** - Combined Routes: Aggregates all route modules
-
-#### Application Crates
-- **server_app** - Standalone Server: Standalone HTTP server application
-- **bodhi/src-tauri** - Tauri Application: Desktop application with embedded server
-
-#### Utility Crates
-- **llama_server_proc** - LLM Server Process: llama.cpp integration and process management
-- **errmeta_derive** - Error Metadata Derive: Procedural macros for error handling
-- **integration-tests** - Integration Tests: End-to-end testing
-- **xtask** - Build Tasks: Build automation and development tasks
-
-### Frontend Structure (crates/bodhi/)
-The frontend is a Vite + React + TypeScript application with:
-- **src/**: React components and application logic
-- **src-tauri/**: Tauri backend integration
-- **public/**: Static assets
-
 ## Related Documentation
 
-- **[Frontend Architecture](frontend-architecture.md)** - React frontend details
-- **[Tauri Desktop Architecture](tauri-architecture.md)** - Desktop application architecture
-- **[Backend Integration](backend-integration.md)** - API integration patterns
+- **[Frontend React](frontend-react.md)** - React frontend development patterns
+- **[Rust Backend](rust-backend.md)** - Backend service architecture
+- **[Tauri Desktop](tauri-desktop.md)** - Desktop application architecture
 - **[Authentication](authentication.md)** - Security implementation details
-- **[Testing Architecture](testing-architecture.md)** - Testing patterns and utilities
-- **[Design System](design-system.md)** - UI design patterns and specifications
+- **[API Integration](api-integration.md)** - Frontend-backend integration patterns
+- **[App Status & Lifecycle](app-status.md)** - Application state management
+
+---
+
+*For detailed implementation guidance, see the technology-specific architecture documents and the [Crates](../03-crates/) documentation.*

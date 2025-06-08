@@ -15,24 +15,46 @@ The documentation is structured into the following main sections:
 - **📚 Knowledge Transfer** - Implementation guides and tutorials
 - **📦 Archive** - Historical materials and deprecated content
 
+### Recent Documentation Updates
+
+**Architecture Content Recovery (January 2025)**: The architecture documentation has been comprehensively updated to recover valuable knowledge that was lost during the migration from monolithic to modular documentation structure. Key recovered content includes:
+
+- **Enhanced System Overview**: Restored key features section with OpenAI/Ollama compatibility details, authentication flow diagrams, token system explanations, and model aliases concept
+- **New Architectural Decisions Document**: Captures rationale for key design choices including embedded web server architecture, configuration hierarchy, and technology trade-offs
+- **Strategic Roadmap**: Comprehensive future improvements plan including microservices evolution, performance enhancements, monitoring & observability, and security improvements
+- **Enhanced Backend Documentation**: Added real-time communication patterns, logging guidance, and settings service architecture
+- **Improved API Integration**: Added local storage patterns, implementation anomalies documentation, and comprehensive best practices summary
+- **Verification & References**: Restored source code references and verification status for improved documentation reliability
+
 ## Quick Navigation
 
 ### 🏗️ [Architecture](01-architecture/) - Technical Foundation & Development Standards
-Technical architecture, design system, and development guidelines for the entire application
+Modular technical architecture documentation organized by technology stack and development concerns for efficient discovery and focused guidance. This section has been comprehensively updated to recover valuable architectural knowledge and strategic context that was previously lost during documentation reorganization.
 
-#### Core Architecture
-- **[App Overview](01-architecture/app-overview.md)** - Complete system architecture, crate organization, data flows, and technical patterns
-- **[Frontend Architecture](01-architecture/frontend-architecture.md)** - React+Vite frontend design, component structure, and UI conventions
-- **[Frontend Query Architecture](01-architecture/frontend-query.md)** - Frontend API integration patterns, query hooks, error handling, and data management
-- **[Tauri Architecture](01-architecture/tauri-architecture.md)** - Desktop application architecture and native OS integration
-- **[Backend Integration](01-architecture/backend-integration.md)** - Backend service architecture, authentication, and service layer patterns
+#### Core System Architecture
+- **[System Overview](01-architecture/system-overview.md)** - High-level application architecture, crate organization, data flows, key features (including OpenAI/Ollama compatibility), authentication flows, token system, and model aliases
+- **[App Status & Lifecycle](01-architecture/app-status.md)** - Application state machine, status transitions, and lifecycle management
+- **[Architectural Decisions](01-architecture/architectural-decisions.md)** - Key architectural decisions, rationale, and design patterns including embedded web server choice, configuration hierarchy, and technology trade-offs
+- **[Roadmap](01-architecture/roadmap.md)** - Strategic direction, planned improvements, and future architecture evolution including microservices, performance enhancements, and security improvements
+
+#### Technology Stack Guides
+- **[Frontend React](01-architecture/frontend-react.md)** - React+Vite development patterns, component structure, and TypeScript conventions
+- **[Rust Backend](01-architecture/rust-backend.md)** - Rust backend development, service patterns, database integration, real-time communication (SSE/WebSocket), logging & observability, and settings service architecture
+- **[Tauri Desktop](01-architecture/tauri-desktop.md)** - Desktop application architecture and native OS integration
 - **[Authentication](01-architecture/authentication.md)** - OAuth2 integration, JWT handling, and security implementation
 
-#### Design & Development Standards
-- **[Design System](01-architecture/design-system.md)** - UI design foundations, component library, and visual consistency patterns
-- **[Development Conventions](01-architecture/conventions.md)** - Coding standards, naming conventions, and development best practices
-- **[App Status System](01-architecture/app-status.md)** - Application state machine, status transitions, and lifecycle management
-- **[Testing Architecture](01-architecture/testing-architecture.md)** - Testing patterns, utilities, and quality assurance strategies
+#### Development Standards
+- **[API Integration](01-architecture/api-integration.md)** - Frontend-backend integration patterns, query hooks, error handling, local storage integration, implementation anomalies, and best practices summary
+- **[Development Conventions](01-architecture/development-conventions.md)** - Coding standards, naming conventions, best practices, verification status, and source code references
+- **[UI Design System](01-architecture/ui-design-system.md)** - Design system foundations, component library, and visual consistency
+
+#### Quality Assurance
+- **[Testing Strategy](01-architecture/testing-strategy.md)** - High-level testing approach and quality assurance strategy
+- **[Frontend Testing](01-architecture/frontend-testing.md)** - Frontend testing patterns, React components, and user interactions
+- **[Backend Testing](01-architecture/backend-testing.md)** - Backend testing approaches, database testing, and API integration
+- **[Build & Configuration](01-architecture/build-config.md)** - Build systems, configuration management, and deployment patterns
+
+#### Reference Documents
 - **[Architecture Summary](01-architecture/ARCHITECTURE_SUMMARY.md)** - High-level architectural overview and key decisions
 - **[Testing Guide](01-architecture/TESTING_GUIDE.md)** - Comprehensive testing guidelines and best practices
 
@@ -131,21 +153,23 @@ Historical documents, deprecated content, and reference materials preserved for 
 ### By User Type
 
 #### For Developers
-1. **Getting Started**: [Frontend Architecture](01-architecture/frontend-architecture.md) → [Development Conventions](01-architecture/conventions.md)
-2. **API Integration**: [Frontend Query Architecture](01-architecture/frontend-query.md) → [Backend Integration](01-architecture/backend-integration.md)
-3. **Technical Details**: [App Overview](01-architecture/app-overview.md) → [Crates Documentation](03-crates/)
-4. **Current Work**: [Active Stories](02-features/active-stories/) → [Testing Guide](01-architecture/TESTING_GUIDE.md)
+1. **Getting Started**: [System Overview](01-architecture/system-overview.md) → [Frontend React](01-architecture/frontend-react.md) → [Development Conventions](01-architecture/development-conventions.md)
+2. **API Integration**: [API Integration](01-architecture/api-integration.md) → [Rust Backend](01-architecture/rust-backend.md)
+3. **Architecture Understanding**: [Architectural Decisions](01-architecture/architectural-decisions.md) → [Roadmap](01-architecture/roadmap.md)
+4. **Technical Details**: [System Overview](01-architecture/system-overview.md) → [Crates Documentation](03-crates/)
+5. **Current Work**: [Active Stories](02-features/active-stories/) → [Frontend Testing](01-architecture/frontend-testing.md)
 
 #### For Designers
-1. **Design System**: [Design System](01-architecture/design-system.md) → [Frontend Architecture](01-architecture/frontend-architecture.md)
-2. **User Experience**: [App Overview](01-architecture/app-overview.md) → [Chat UI](06-knowledge-transfer/chat-ui.md)
+1. **Design System**: [UI Design System](01-architecture/ui-design-system.md) → [Frontend React](01-architecture/frontend-react.md)
+2. **User Experience**: [System Overview](01-architecture/system-overview.md) → [Chat UI](06-knowledge-transfer/chat-ui.md)
 3. **Implementation**: [Implemented Features](02-features/implemented/) → [Active Stories](02-features/active-stories/)
 
 #### For Product Managers
-1. **Product Understanding**: [App Overview](01-architecture/app-overview.md) → [Features Overview](02-features/)
+1. **Product Understanding**: [System Overview](01-architecture/system-overview.md) → [Features Overview](02-features/)
 2. **Current Capabilities**: [Implemented Features](02-features/implemented/) → [Completed Stories](02-features/completed-stories/)
-3. **Roadmap**: [Planned Features](02-features/planned/) → [Active Stories](02-features/active-stories/)
-4. **Marketing**: [Product Positioning](05-marketing/product-positioning.md) → [Marketing Materials](05-marketing/)
+3. **Strategic Direction**: [Roadmap](01-architecture/roadmap.md) → [Architectural Decisions](01-architecture/architectural-decisions.md)
+4. **Feature Planning**: [Planned Features](02-features/planned/) → [Active Stories](02-features/active-stories/)
+5. **Marketing**: [Product Positioning](05-marketing/product-positioning.md) → [Marketing Materials](05-marketing/)
 
 #### For Users
 1. **Setup**: [Setup Processes](06-knowledge-transfer/setup-processes.md) → [Setup Wizard](02-features/active-stories/setup-wizard.md)
@@ -153,6 +177,12 @@ Historical documents, deprecated content, and reference materials preserved for 
 3. **Configuration**: [App Settings](02-features/active-stories/app-settings.md) → [Authentication](02-features/implemented/authentication.md)
 
 ### By Topic
+
+#### Architecture & Strategic Planning
+- **System Design**: [System Overview](01-architecture/system-overview.md) → [Architectural Decisions](01-architecture/architectural-decisions.md)
+- **Strategic Direction**: [Roadmap](01-architecture/roadmap.md) - Future improvements and evolution plans
+- **Key Features**: [System Overview](01-architecture/system-overview.md) - OpenAI/Ollama compatibility, token system, model aliases
+- **Technology Choices**: [Architectural Decisions](01-architecture/architectural-decisions.md) - Rationale for embedded web server, SSE over WebSockets, multi-crate architecture
 
 #### Authentication & Security
 - **Architecture**: [Authentication](01-architecture/authentication.md)
@@ -167,15 +197,15 @@ Historical documents, deprecated content, and reference materials preserved for 
 - **File Handling**: [Modelfiles Revamp](02-features/active-stories/modelfiles-revamp.md)
 
 #### API Integration & Data Management
-- **Frontend Patterns**: [Frontend Query Architecture](01-architecture/frontend-query.md)
-- **Backend Services**: [Backend Integration](01-architecture/backend-integration.md)
+- **Frontend Patterns**: [API Integration](01-architecture/api-integration.md)
+- **Backend Services**: [Rust Backend](01-architecture/rust-backend.md)
 - **Authentication**: [Authentication](01-architecture/authentication.md)
-- **Development Standards**: [Development Conventions](01-architecture/conventions.md)
+- **Development Standards**: [Development Conventions](01-architecture/development-conventions.md)
 
 #### Chat Interface
 - **Implementation**: [Chat Interface](02-features/implemented/chat-interface.md)
 - **User Experience**: [Chat UI](06-knowledge-transfer/chat-ui.md)
-- **Technical Details**: [Frontend Architecture](01-architecture/frontend-architecture.md)
+- **Technical Details**: [Frontend React](01-architecture/frontend-react.md)
 
 #### Setup & Configuration
 - **Setup Process**: [Setup Processes](06-knowledge-transfer/setup-processes.md)
@@ -184,10 +214,11 @@ Historical documents, deprecated content, and reference materials preserved for 
 - **Completed Setup Stories**: [Completed Stories](02-features/completed-stories/)
 
 #### Development & Testing
-- **Architecture**: [App Overview](01-architecture/app-overview.md) → [Testing Architecture](01-architecture/testing-architecture.md)
-- **API Integration**: [Frontend Query Architecture](01-architecture/frontend-query.md) → [Backend Integration](01-architecture/backend-integration.md)
-- **Conventions**: [Development Conventions](01-architecture/conventions.md)
-- **Testing**: [Testing Guide](01-architecture/TESTING_GUIDE.md)
+- **Architecture**: [System Overview](01-architecture/system-overview.md) → [Testing Strategy](01-architecture/testing-strategy.md)
+- **API Integration**: [API Integration](01-architecture/api-integration.md) → [Rust Backend](01-architecture/rust-backend.md)
+- **Conventions**: [Development Conventions](01-architecture/development-conventions.md)
+- **Testing**: [Testing Strategy](01-architecture/testing-strategy.md) → [Frontend Testing](01-architecture/frontend-testing.md) → [Backend Testing](01-architecture/backend-testing.md)
+- **Build & Deploy**: [Build & Configuration](01-architecture/build-config.md)
 - **Crate Details**: [Individual Crate Docs](03-crates/)
 
 ## Navigation Tips
