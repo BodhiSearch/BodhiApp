@@ -269,7 +269,7 @@ mod tests {
     ));
     let result = token_service.validate_bearer_token(header).await;
     assert!(result.is_err());
-    assert_eq!(matches!(result, Err(AuthError::Token(_))), true);
+    assert!(matches!(result, Err(AuthError::Token(_))));
     Ok(())
   }
 

@@ -55,11 +55,12 @@ export const queryClient = new QueryClient({
 
 ### API Base Paths
 ```typescript
-// Authentication endpoints
-export const ENDPOINT_APP_LOGIN = '/app/login';
-
 // Main API base path
 export const BODHI_API_BASE = '/bodhi/v1';
+
+// Authentication endpoints
+export const ENDPOINT_AUTH_INITIATE = `${BODHI_API_BASE}/auth/initiate`;
+export const ENDPOINT_AUTH_CALLBACK = `${BODHI_API_BASE}/auth/callback`;
 
 // Application endpoints
 export const ENDPOINT_APP_INFO = `${BODHI_API_BASE}/info`;

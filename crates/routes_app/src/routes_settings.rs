@@ -282,7 +282,7 @@ mod tests {
     let settings_yaml = temp_dir.path().join("settings.yaml");
     let setting_service = DefaultSettingService::new_with_defaults(
       Arc::new(EnvWrapperStub::new(envs)),
-      bodhi_home_setting(&temp_dir.path(), SettingSource::Environment),
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
       vec![],
       settings_yaml,
     )?;

@@ -8,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
+import { useOAuthInitiate } from '@/hooks/useOAuth';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BodhiLogo } from '@/components/setup/BodhiLogo';
 
@@ -31,7 +32,23 @@ const itemVariants = {
   },
 };
 
-function ResourceAdminContent() {
+export function ResourceAdminContent() {
+  const [error, setError] = useState<string | null>(null);
+
+  const oauthInitiate = useOAuthInitiate({
+    onSuccess: (response) => {
+      window.location.href = response.auth_url;
+    },
+    onError: (message: string) => {
+      setError(message);
+    },
+  });
+
+  const handleLogin = () => {
+    setError(null);
+    oauthInitiate.mutate();
+  };
+
   return (
     <main
       className="min-h-screen bg-background p-4 md:p-8"
@@ -71,13 +88,23 @@ function ResourceAdminContent() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={() => (window.location.href = ENDPOINT_APP_LOGIN)}
-              >
-                Continue with Login →
-              </Button>
+              {error ? (
+                <>
+                  <div className="text-red-600 text-center">{error}</div>
+                  <Button
+                    className="w-full"
+                    size="lg"
+                    onClick={handleLogin}
+                    variant="default"
+                  >
+                    Try Again
+                  </Button>
+                </>
+              ) : (
+                <Button className="w-full" size="lg" onClick={handleLogin}>
+                  Continue with Login →
+                </Button>
+              )}
               <p className="text-sm text-muted-foreground text-center">
                 Login with a valid email address to continue
               </p>

@@ -88,8 +88,8 @@ So that I can understand and test the API endpoints easily
   - [x] GET /bodhi/v1/info (app_info_handler)
   - [x] POST /bodhi/v1/setup (setup_handler)
   - [x] GET /ping (ping_handler)
-  - [x] GET /app/login (login_handler)
-  - [x] GET /app/login/callback (login_callback_handler)
+  - [x] ~~GET /app/login (login_handler)~~ **MIGRATED** → POST /bodhi/v1/auth/initiate (auth_initiate_handler)
+  - [x] ~~GET /app/login/callback (login_callback_handler)~~ **MIGRATED** → POST /bodhi/v1/auth/callback (auth_callback_handler)
   - [x] POST /bodhi/v1/logout (logout_handler)
   - [x] GET /bodhi/v1/user (user_info_handler)
 

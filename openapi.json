@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Bodhi App APIs",
-    "description": "API documentation for Bodhi App.\n\n## Authentication\nThis API supports two authentication methods:\n\n1. **Browser Session** (Default)\n   - Login via `/app/login` endpoint\n   - Session cookie will be used automatically\n   - Best for browser-based access\n\n2. **API Token**\n   - Create API Token using the app Menu > Settings > API Tokens\n   - Use the API Token as the Authorization Bearer token in API calls\n   - Best for programmatic access\n\n## Authorization\nAPIs require different privilege levels:\n\n- **User Level**: Requires `resource_user` role or `scope_token_user`\n- **Power User Level**: Requires `resource_power_user` role or `scope_token_power_user`\n\nFor API keys, specify required scope when creating the token.\n",
+    "description": "API documentation for Bodhi App.\n\n## Authentication\nThis API supports two authentication methods:\n\n1. **Browser Session** (Default)\n   - Login via `/bodhi/v1/auth/initiate` endpoint\n   - Session cookie will be used automatically\n   - Best for browser-based access\n\n2. **API Token**\n   - Create API Token using the app Menu > Settings > API Tokens\n   - Use the API Token as the Authorization Bearer token in API calls\n   - Best for programmatic access\n\n## Authorization\nAPIs require different privilege levels:\n\n- **User Level**: Requires `resource_user` role or `scope_token_user`\n- **Power User Level**: Requires `resource_power_user` role or `scope_token_power_user`\n\nFor API keys, specify required scope when creating the token.\n",
     "contact": {
       "name": "Bodhi API Support",
       "url": "https://github.com/BodhiSearch/BodhiApp/issues",

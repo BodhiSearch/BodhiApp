@@ -17,15 +17,16 @@ use axum::{
 };
 use objs::{Role, TokenScope};
 use routes_app::{
-  app_info_handler, create_alias_handler, create_pull_request_handler, create_token_handler,
-  delete_setting_handler, dev_secrets_handler, get_alias_handler, get_download_status_handler,
-  list_downloads_handler, list_local_aliases_handler, list_local_modelfiles_handler,
-  list_settings_handler, list_tokens_handler, login_callback_handler, login_handler,
-  logout_handler, pull_by_alias_handler, setup_handler, update_alias_handler,
+  app_info_handler, auth_callback_handler, auth_initiate_handler, create_alias_handler,
+  create_pull_request_handler, create_token_handler, delete_setting_handler, dev_secrets_handler,
+  get_alias_handler, get_download_status_handler, list_downloads_handler,
+  list_local_aliases_handler, list_local_modelfiles_handler, list_settings_handler,
+  list_tokens_handler, logout_handler, pull_by_alias_handler, setup_handler, update_alias_handler,
   update_setting_handler, update_token_handler, user_info_handler, BodhiOpenAPIDoc,
-  OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_DEV_SECRETS, ENDPOINT_LOGIN,
-  ENDPOINT_LOGIN_CALLBACK, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
-  ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+  OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
+  ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_SECRETS, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
+  ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS,
+  ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
@@ -64,7 +65,6 @@ pub fn build_routes(
     )
     .route(ENDPOINT_APP_INFO, get(app_info_handler))
     .route(ENDPOINT_APP_SETUP, post(setup_handler))
-    .route(ENDPOINT_LOGIN_CALLBACK, get(login_callback_handler))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios
     .route(ENDPOINT_LOGOUT, post(logout_handler));
 
@@ -75,9 +75,9 @@ pub fn build_routes(
   }
 
   let optional_auth = Router::new()
-    .route(ENDPOINT_LOGIN, get(login_handler))
-    .route(&format!("{ENDPOINT_LOGIN}/"), get(login_handler))
     .route(ENDPOINT_USER_INFO, get(user_info_handler))
+    .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate_handler))
+    .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback_handler))
     .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info));
 
   // User level APIs (role=user & scope=scope_token_user)

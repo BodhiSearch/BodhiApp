@@ -116,15 +116,12 @@ impl SettingService for SettingServiceStub {
       .read()
       .unwrap()
       .iter()
-      .map(|(key, value)| {
-        let result = SettingInfo {
-          key: key.clone(),
-          current_value: value.clone(),
-          default_value: serde_yaml::Value::Null,
-          source: SettingSource::Environment,
-          metadata: self.get_setting_metadata(key),
-        };
-        result
+      .map(|(key, value)| SettingInfo {
+        key: key.clone(),
+        current_value: value.clone(),
+        default_value: serde_yaml::Value::Null,
+        source: SettingSource::Environment,
+        metadata: self.get_setting_metadata(key),
       })
       .collect()
   }

@@ -9,3 +9,7 @@ export const ROUTE_SETUP_COMPLETE = '/ui/setup/complete';
 export const ROUTE_SETUP_DOWNLOAD_MODELS = '/ui/setup/download-models';
 export const ROUTE_SETUP_RESOURCE_ADMIN = '/ui/setup/resource-admin';
 export const FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED = 'shown-download-models-page';
+
+// OAuth-related constants
+export const ROUTE_AUTH_CALLBACK = '/ui/auth/callback';
+export const ROUTE_LOGIN = '/ui/login';

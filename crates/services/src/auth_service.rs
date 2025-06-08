@@ -386,7 +386,9 @@ mod tests {
 
     let service = test_auth_service(&url);
     let result = service
-      .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
+      .register_client(vec![
+        "http://0.0.0.0:1135/bodhi/v1/auth/callback".to_string()
+      ])
       .await;
     assert!(result.is_ok());
     let app_reg_info = result.unwrap();
@@ -418,7 +420,9 @@ mod tests {
 
     let service = test_auth_service(&url);
     let result = service
-      .register_client(vec!["http://0.0.0.0:1135/app/login/callback".to_string()])
+      .register_client(vec![
+        "http://0.0.0.0:1135/bodhi/v1/auth/callback".to_string()
+      ])
       .await;
     assert!(result.is_err());
     let err = result.unwrap_err();

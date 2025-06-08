@@ -1,6 +1,10 @@
 import '@testing-library/jest-dom';
 import { vi, beforeAll, afterAll } from 'vitest';
 
+// Configure API client for tests
+import apiClient from '@/lib/apiClient';
+apiClient.defaults.baseURL = 'http://localhost:3000';
+
 // Mock ResizeObserver
 class MockResizeObserver {
   observe() {}
