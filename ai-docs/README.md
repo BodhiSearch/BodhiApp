@@ -23,8 +23,9 @@ Technical architecture, design system, and development guidelines for the entire
 #### Core Architecture
 - **[App Overview](01-architecture/app-overview.md)** - Complete system architecture, crate organization, data flows, and technical patterns
 - **[Frontend Architecture](01-architecture/frontend-architecture.md)** - React+Vite frontend design, component structure, and UI conventions
+- **[Frontend Query Architecture](01-architecture/frontend-query.md)** - Frontend API integration patterns, query hooks, error handling, and data management
 - **[Tauri Architecture](01-architecture/tauri-architecture.md)** - Desktop application architecture and native OS integration
-- **[Backend Integration](01-architecture/backend-integration.md)** - API integration patterns, state management, and service communication
+- **[Backend Integration](01-architecture/backend-integration.md)** - Backend service architecture, authentication, and service layer patterns
 - **[Authentication](01-architecture/authentication.md)** - OAuth2 integration, JWT handling, and security implementation
 
 #### Design & Development Standards
@@ -131,8 +132,9 @@ Historical documents, deprecated content, and reference materials preserved for 
 
 #### For Developers
 1. **Getting Started**: [Frontend Architecture](01-architecture/frontend-architecture.md) → [Development Conventions](01-architecture/conventions.md)
-2. **Technical Details**: [App Overview](01-architecture/app-overview.md) → [Crates Documentation](03-crates/)
-3. **Current Work**: [Active Stories](02-features/active-stories/) → [Testing Guide](01-architecture/TESTING_GUIDE.md)
+2. **API Integration**: [Frontend Query Architecture](01-architecture/frontend-query.md) → [Backend Integration](01-architecture/backend-integration.md)
+3. **Technical Details**: [App Overview](01-architecture/app-overview.md) → [Crates Documentation](03-crates/)
+4. **Current Work**: [Active Stories](02-features/active-stories/) → [Testing Guide](01-architecture/TESTING_GUIDE.md)
 
 #### For Designers
 1. **Design System**: [Design System](01-architecture/design-system.md) → [Frontend Architecture](01-architecture/frontend-architecture.md)
@@ -164,6 +166,12 @@ Historical documents, deprecated content, and reference materials preserved for 
 - **Improvements**: [Model Alias Revamp](02-features/active-stories/model-alias-revamp.md)
 - **File Handling**: [Modelfiles Revamp](02-features/active-stories/modelfiles-revamp.md)
 
+#### API Integration & Data Management
+- **Frontend Patterns**: [Frontend Query Architecture](01-architecture/frontend-query.md)
+- **Backend Services**: [Backend Integration](01-architecture/backend-integration.md)
+- **Authentication**: [Authentication](01-architecture/authentication.md)
+- **Development Standards**: [Development Conventions](01-architecture/conventions.md)
+
 #### Chat Interface
 - **Implementation**: [Chat Interface](02-features/implemented/chat-interface.md)
 - **User Experience**: [Chat UI](06-knowledge-transfer/chat-ui.md)
@@ -177,6 +185,7 @@ Historical documents, deprecated content, and reference materials preserved for 
 
 #### Development & Testing
 - **Architecture**: [App Overview](01-architecture/app-overview.md) → [Testing Architecture](01-architecture/testing-architecture.md)
+- **API Integration**: [Frontend Query Architecture](01-architecture/frontend-query.md) → [Backend Integration](01-architecture/backend-integration.md)
 - **Conventions**: [Development Conventions](01-architecture/conventions.md)
 - **Testing**: [Testing Guide](01-architecture/TESTING_GUIDE.md)
 - **Crate Details**: [Individual Crate Docs](03-crates/)

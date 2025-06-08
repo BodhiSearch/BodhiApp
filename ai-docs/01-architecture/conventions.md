@@ -368,53 +368,28 @@ const onSubmit = async (data: FormData) => {
 
 ## API Integration
 
-### Mutation Pattern
-Use consistent mutation patterns with React Query:
+For comprehensive frontend API integration patterns, see **[Frontend Query Architecture](frontend-query.md)**.
 
-```typescript
-export function useCreateUser(options?: {
-  onSuccess?: (user: User) => void;
-  onError?: (message: string) => void;
-}) {
-  const queryClient = useQueryClient();
+### Key API Conventions Summary
 
-  return useMutation({
-    mutationFn: createUser,
-    onSuccess: (user) => {
-      queryClient.invalidateQueries(['users']);
-      options?.onSuccess?.(user);
-    },
-    onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.message || 'Failed to create user';
-      options?.onError?.(message);
-    },
-  });
-}
-```
+**Endpoint Structure**:
+- Application APIs: `/bodhi/v1/*`
+- OpenAI-compatible APIs: `/v1/*`
+- Authentication: `/app/*`
 
-**Reference**: `crates/bodhi/src/hooks/useQuery.ts:189-208` - useCreateModel mutation pattern (similar structure)
-```
+**Pagination Parameters**:
+- Use `page` and `page_size` (not `per_page`)
+- Include sort parameters: `sort`, `sort_order`
 
-### Component Usage
-Use mutations with proper callbacks:
+**Error Handling**:
+- Extract user-friendly messages from error responses
+- Provide fallback error messages
+- Use callback patterns for component-level error handling
 
-```typescript
-const { mutate: createUser, isLoading } = useCreateUser({
-  onSuccess: (user) => {
-    toast({
-      title: 'Success',
-      description: `User ${user.name} created successfully`,
-    });
-  },
-  onError: (message) => {
-    toast({
-      title: 'Error',
-      description: message,
-      variant: 'destructive',
-    });
-  },
-});
-```
+**Query Key Patterns**:
+- Include all parameters that affect query results
+- Use hierarchical structure for related queries
+- String conversion for numeric parameters
 
 ## Error Handling
 
