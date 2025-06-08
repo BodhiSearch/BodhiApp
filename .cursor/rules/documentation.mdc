@@ -1,0 +1,70 @@
+---
+description: Documentation standards, README files, API documentation, and knowledge transfer guidelines for maintaining project clarity
+alwaysApply: false
+---
+# Documentation and Feature Guidelines
+
+## Documentation Structure
+
+### When modifying ai-docs
+- **Feature implementation**: Reference `ai-docs/02-features/` for current and planned features
+- **Architecture changes**: Update relevant documents in `ai-docs/01-architecture/`
+- **New crates**: Document in `ai-docs/03-crates/` following established patterns
+- **Knowledge transfer**: Add implementation guides to `ai-docs/06-knowledge-transfer/`
+
+### Documentation Standards
+- **Use kebab-case** for file names (e.g., `model-management.md`)
+- **Include cross-references** to related documents using relative paths
+- **Update the main README** in `ai-docs/README.md` when adding new documents
+- **Follow hierarchical organization** by purpose and audience
+
+## Feature Implementation Workflow
+
+### Development Stories
+- **Active development**: Document in `ai-docs/02-features/active-stories/`
+- **Completed features**: Move to `ai-docs/02-features/completed-stories/`
+- **Implementation status**: Track progress in feature documentation
+- **Architecture impact**: Update architecture docs when features affect system design
+
+### Feature Documentation Pattern
+```markdown
+# Feature Name
+
+## Overview
+Brief description of the feature and its purpose.
+
+## Implementation Status
+- [ ] Backend API
+- [ ] Frontend UI
+- [ ] Tests
+- [ ] Documentation
+
+## Technical Details
+Implementation specifics and architectural decisions.
+
+## Related Documents
+- [Architecture Doc](mdc:../01-architecture/relevant-doc.md)
+- [API Documentation](mdc:../03-crates/relevant-crate.md)
+```
+
+## Content Organization
+
+### By User Type
+- **Developers**: Technical implementation details, API references
+- **Designers**: UI/UX patterns, design system documentation  
+- **Product Managers**: Feature overviews, roadmap planning
+- **Users**: Setup guides, usage instructions
+
+### Cross-Reference System
+- **Maintain internal links** between related documents
+- **Update navigation** when restructuring content
+- **Consider consolidation** opportunities to avoid duplication
+- **Include examples** and code snippets where helpful
+
+## Markdown Standards
+
+- **Use consistent headings** with proper hierarchy
+- **Include code examples** with proper syntax highlighting
+- **Add tables** for structured data comparison
+- **Use lists** for step-by-step instructions
+- **Link to external resources** when appropriate

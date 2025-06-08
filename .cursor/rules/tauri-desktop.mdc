@@ -1,0 +1,16 @@
+---
+description: Tauri desktop application development patterns, native API integration, and cross-platform compatibility for the Bodhi App desktop client
+alwaysApply: false
+---
+# Tauri Desktop Application Guidelines
+
+## Required Documentation References
+
+**MUST READ before Tauri changes:**
+- `ai-docs/01-architecture/tauri-desktop.md` - Desktop app architecture and native OS integration
+- `ai-docs/03-crates/bodhi-tauri.md` - Specific implementation patterns and examples
+- `ai-docs/01-architecture/system-overview.md` - Overall system understanding
+
+## Follow Documentation Patterns
+
+All architectural principles, native integration patterns, build process patterns, and implementation standards are comprehensively documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.

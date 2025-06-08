@@ -1,0 +1,17 @@
+---
+description: Testing patterns, test utilities, mocking strategies, and quality assurance guidelines for both frontend and backend code
+alwaysApply: false
+---
+# Testing Guidelines and Patterns
+
+## Required Documentation References
+
+**MUST READ for testing:**
+- `ai-docs/01-architecture/testing-strategy.md` - High-level testing approach and quality assurance strategy
+- `ai-docs/01-architecture/frontend-testing.md` - Frontend testing patterns, React components, and user interactions
+- `ai-docs/01-architecture/backend-testing.md` - Backend testing approaches, database testing, and API integration
+- `ai-docs/03-crates/integration-tests.md` - End-to-end testing framework
+
+## Follow Documentation Patterns
+
+All frontend testing standards, backend testing standards, integration testing guidelines, and testing best practices are comprehensively documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.

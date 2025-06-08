@@ -1,0 +1,19 @@
+---
+description: Rust backend development patterns, Axum server setup, service layer architecture, and error handling for the Bodhi App API
+alwaysApply: false
+---
+# Rust Backend Development Guidelines
+
+## Required Documentation References
+
+**MUST READ before any Rust changes:**
+- `ai-docs/01-architecture/system-overview.md` - System architecture and crate organization
+- `ai-docs/01-architecture/rust-backend.md` - Rust backend development patterns
+- `ai-docs/01-architecture/development-conventions.md` - Rust-specific patterns and database conventions
+
+**FOR SPECIFIC CRATES:**
+- Reference `ai-docs/03-crates/[specific-crate].md` for detailed crate documentation
+
+## Follow Documentation Patterns
+
+All database layer patterns, service layer patterns, testing standards, and error handling guidelines are comprehensively documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.

@@ -1,0 +1,16 @@
+---
+description: Authentication and authorization patterns, middleware setup, session management, and security best practices
+alwaysApply: false
+---
+# Authentication and Authorization Guidelines
+
+## Required Documentation References
+
+**MUST READ before auth changes:**
+- `ai-docs/01-architecture/authentication.md` - OAuth2 and JWT patterns, security implementation
+- `ai-docs/03-crates/auth_middleware.md` - Middleware implementation details
+- `ai-docs/06-knowledge-transfer/llm-resource-server.md` - OAuth2 resource server patterns and vision
+
+## Follow Documentation Patterns
+
+All authentication flow patterns, OAuth2 integration details, application states, frontend authentication patterns, backend implementation guidelines, and security best practices are comprehensively documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.
