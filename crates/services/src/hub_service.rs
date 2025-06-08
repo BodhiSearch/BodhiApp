@@ -1,7 +1,7 @@
 use hf_hub::Cache;
 use objs::{
-  impl_error_from, Alias, AliasBuilder, AliasSource, AppError,
-  ErrorType, HubFile, IoError, ObjValidationError, Repo,
+  impl_error_from, Alias, AliasBuilder, AliasSource, AppError, ErrorType, HubFile, IoError,
+  ObjValidationError, Repo,
 };
 use std::{
   collections::HashSet,
@@ -292,7 +292,7 @@ impl HubService for HfHubService {
     unique_repos.into_iter().collect()
   }
 
-// model_chat_template method removed since llama.cpp now handles chat templates
+  // model_chat_template method removed since llama.cpp now handles chat templates
 
   fn list_model_aliases(&self) -> Result<Vec<Alias>> {
     let cache = self.hf_cache();

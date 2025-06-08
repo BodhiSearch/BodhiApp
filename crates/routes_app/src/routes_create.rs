@@ -2,9 +2,7 @@ use crate::AliasResponse;
 use axum::{extract::State, http::StatusCode, Json};
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
-use objs::{
-  ApiError, AppError, ErrorType, GptContextParams, OAIRequestParams, Repo,
-};
+use objs::{ApiError, AppError, ErrorType, GptContextParams, OAIRequestParams, Repo};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::AliasNotFoundError;
@@ -151,7 +149,6 @@ mod tests {
       .alias("testalias:instruct".to_string())
       .repo("MyFactory/testalias-gguf")
       .filename("testalias.Q8_0.gguf")
-
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
       .source("user")
       .model_params(HashMap::new())
@@ -195,7 +192,6 @@ mod tests {
       .filename("testalias.Q8_0.gguf")
       .snapshot("5007652f7a641fe7170e0bad4f63839419bd9213")
       .source("user")
-
       .model_params(HashMap::new())
       .request_params(
         OAIRequestParamsBuilder::default()

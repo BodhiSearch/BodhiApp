@@ -436,9 +436,7 @@ mod tests {
     Router,
   };
   use mockall::predicate::eq;
-  use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo,
-  };
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use serde_json::{json, Value};

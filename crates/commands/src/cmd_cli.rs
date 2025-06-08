@@ -1,10 +1,7 @@
 use std::str::FromStr;
 
 use clap::{ArgGroup, Parser, Subcommand};
-use objs::{
-  ApiError, GptContextParams, OAIRequestParams, OpenAIApiError, Repo,
-  GGUF_EXTENSION,
-};
+use objs::{ApiError, GptContextParams, OAIRequestParams, OpenAIApiError, Repo, GGUF_EXTENSION};
 use services::{DEFAULT_HOST, DEFAULT_PORT_STR};
 use strum::Display;
 
@@ -88,7 +85,6 @@ pub enum Command {
     snapshot: Option<String>,
 
     // Chat template fields removed since llama.cpp now handles chat templates directly
-
     /// Update the existing alias if it already exists
     #[clap(long)]
     update: bool,
@@ -161,8 +157,7 @@ mod test {
   use crate::{Cli, Command};
   use clap::{CommandFactory, Parser};
   use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, GptContextParams,
-    OAIRequestParams, Repo,
+    test_utils::setup_l10n, FluentLocalizationService, GptContextParams, OAIRequestParams, Repo,
   };
   use rstest::rstest;
   use std::{str::FromStr, sync::Arc};

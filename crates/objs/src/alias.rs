@@ -1,6 +1,4 @@
-use crate::{
-  is_default, to_safe_filename, GptContextParams, OAIRequestParams, Repo,
-};
+use crate::{is_default, to_safe_filename, GptContextParams, OAIRequestParams, Repo};
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
@@ -56,10 +54,7 @@ impl std::fmt::Display for Alias {
 
 #[cfg(test)]
 mod test {
-  use crate::{
-    Alias, AliasBuilder, GptContextParamsBuilder,
-    OAIRequestParamsBuilder, Repo,
-  };
+  use crate::{Alias, AliasBuilder, GptContextParamsBuilder, OAIRequestParamsBuilder, Repo};
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
 

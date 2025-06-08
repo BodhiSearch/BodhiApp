@@ -54,20 +54,17 @@ pub fn build_create_command(command: Command) -> Result<CreateCommand, ConvertEr
       update,
       oai_request_params,
       context_params,
-    } => {
+    } => Ok(CreateCommand {
+      alias,
+      repo,
+      filename,
+      snapshot,
 
-      Ok(CreateCommand {
-        alias,
-        repo,
-        filename,
-        snapshot,
-
-        auto_download: true,
-        update,
-        oai_request_params,
-        context_params,
-      })
-    }
+      auto_download: true,
+      update,
+      oai_request_params,
+      context_params,
+    }),
     _ => Err(ConvertError::Convert {
       input: command.to_string(),
       output: "CreateCommand".to_string(),
@@ -118,8 +115,7 @@ mod tests {
   use commands::{Command, CreateCommand, ListCommand, ManageAliasCommand, PullCommand};
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
-    AppError, FluentLocalizationService, GptContextParams,
-    OAIRequestParams, Repo,
+    AppError, FluentLocalizationService, GptContextParams, OAIRequestParams, Repo,
   };
   use rstest::rstest;
   use server_app::ServeCommand;
@@ -213,7 +209,6 @@ mod tests {
     Command::App {ui: false},
     "Command 'app' cannot be converted into command 'CreateCommand'"
   )]
-
   #[anyhow_trace::anyhow_trace]
   fn test_create_try_from_invalid(
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,

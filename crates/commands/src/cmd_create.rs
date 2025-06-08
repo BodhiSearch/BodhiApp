@@ -1,10 +1,10 @@
 use objs::{
-  AliasBuilder, AliasSource, AppError, BuilderError, GptContextParams,
-  OAIRequestParams, ObjValidationError, Repo,
+  AliasBuilder, AliasSource, AppError, BuilderError, GptContextParams, OAIRequestParams,
+  ObjValidationError, Repo,
 };
 use services::{
-  AliasExistsError, AppService, DataServiceError, HubFileNotFoundError,
-  HubServiceError, SNAPSHOT_MAIN,
+  AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,
+  SNAPSHOT_MAIN,
 };
 use std::sync::Arc;
 
@@ -111,8 +111,7 @@ mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
-    Alias, AliasBuilder, GptContextParamsBuilder, HubFile,
-    OAIRequestParamsBuilder, Repo,
+    Alias, AliasBuilder, GptContextParamsBuilder, HubFile, OAIRequestParamsBuilder, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
