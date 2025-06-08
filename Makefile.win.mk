@@ -2,7 +2,7 @@
 
 test:
 	cargo test
-	pwsh -Command "Push-Location crates/bodhi; npm test -- --run; Pop-Location"
+	pwsh -Command "Push-Location crates/bodhi; npm test; Pop-Location"
 	pwsh -Command "Push-Location openai-pysdk-compat; poetry run pytest; exit 0"
 
 format:

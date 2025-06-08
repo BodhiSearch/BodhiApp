@@ -256,6 +256,69 @@ export function NavigationComponent() {
 - Prefer composition over prop drilling
 - Keep context providers focused and specific
 
+## Page-Based Action Handling Convention
+
+### Principle: Pages Handle Actions, Hooks Handle Queries
+
+For better code clarity and maintainability, **page components should handle action-based logic** (redirects, navigation, UI state changes) while **hooks should focus purely on data operations**.
+
+### Pattern: OAuth Flow Example
+
+**❌ Avoid: Hook handling redirects**
+```typescript
+// Don't do this - hook handles redirect logic
+export const useOAuthInitiate = () => {
+  return useMutation({
+    onSuccess: (response) => {
+      window.location.href = response.auth_url; // ❌ Hook handles redirect
+    },
+  });
+};
+```
+
+**✅ Preferred: Page handles redirects**
+```typescript
+// Hook focuses on data operation only
+export const useOAuthInitiate = (options?: {
+  onSuccess?: (response: AuthInitiateResponse) => void;
+  onError?: (message: string) => void;
+}) => {
+  return useMutation({
+    onSuccess: (response) => {
+      options?.onSuccess?.(response.data); // ✅ Just call callback
+    },
+  });
+};
+
+// Page component handles the redirect logic
+export function LoginPage() {
+  const oauthInitiate = useOAuthInitiate({
+    onSuccess: (response) => {
+      window.location.href = response.auth_url; // ✅ Page handles redirect
+    },
+    onError: (message) => {
+      setError(message);
+    },
+  });
+
+  return (
+    <AuthCard
+      actions={[{
+        label: 'Sign In',
+        onClick: () => oauthInitiate.mutate(), // ✅ Page triggers action
+      }]}
+    />
+  );
+}
+```
+
+### Benefits of This Pattern
+
+1. **Clearer Separation of Concerns**: Hooks focus on data, pages focus on user experience
+2. **Better Testability**: Easier to test data operations separately from UI behavior
+3. **Improved Reusability**: Hooks can be reused in different contexts with different action handling
+4. **Enhanced Developer Experience**: Developers can easily understand where redirects and UI changes happen
+
 ## Testing Requirements
 
 ### Component Testing
@@ -340,7 +403,6 @@ npm run build
 
 # Testing
 npm run test           # Watch mode
-npm run test -- --run  # CI mode
 
 # Code quality
 npm run format
