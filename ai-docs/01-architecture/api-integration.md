@@ -466,7 +466,7 @@ queryClient.invalidateQueries(ENDPOINT_MODELS);
 2. **Disable automatic behaviors** in test environment
 3. **Test both success and error scenarios**
 4. **Use proper test wrappers** with required providers
-5. After the changes run `npm run test -- run` to verify the tests pass
+5. After the changes run `npm run test` to verify the tests pass
 6. Once all the tasks are done, run `npm run format` to format the code
 
 ## Related Documentation

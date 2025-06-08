@@ -50,7 +50,7 @@ The coding environment supports the following languages and frameworks:
   2. then run all the tests using `cargo test`
   3. then run the format using `cargo fmt`
 - If changing any frontend code in crates/bodhi/src
-  1. from directory crates/bodhi, run the test for frontend using `npm run test -- run`
+  1. from directory crates/bodhi, run the test for frontend using `npm run test`
   2. then run the format using `npm run format`
 ## Code Implementation Rules
 

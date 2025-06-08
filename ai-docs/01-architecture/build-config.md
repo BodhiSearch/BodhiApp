@@ -516,7 +516,7 @@ jobs:
         run: cargo test --all-crates
         
       - name: Run frontend tests
-        run: cd crates/bodhi && npm run test -- --run
+        run: cd crates/bodhi && npm run test
         
       - name: Build all
         run: cargo xtask build-all

@@ -408,11 +408,8 @@ describe('Performance Tests', () => {
 ```bash
 cd crates/bodhi
 
-# Run tests in watch mode
-npm run test
-
 # Run tests once (CI mode)
-npm run test -- --run
+npm run test
 
 # Run tests with coverage
 npm run test -- --coverage

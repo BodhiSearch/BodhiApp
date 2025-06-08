@@ -7,7 +7,7 @@ help: ## Show this help message
 
 test: ## Run all tests (Rust, Node, Python)
 	cargo test
-	cd crates/bodhi && npm test -- --run
+	cd crates/bodhi && npm test
 	cd openai-pysdk-compat && poetry run pytest || true
 
 format: ## Format code in all projects (Rust, Node, Python)

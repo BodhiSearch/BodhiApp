@@ -136,7 +136,7 @@ rm -rf src/app/ui/setup
 
 # Verification
 grep -r "@/app/ui/" src/ --include="*.tsx" --include="*.ts"
-npm run test -- run
+npm run test
 ```
 
 The refactoring is **complete and successful** with all tests passing and proper React+Vite structure now in place.
