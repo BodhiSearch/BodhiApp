@@ -16,11 +16,8 @@ syn = { workspace = true, features = ["full"] }
 convert_case = { workspace = true }
 
 [dev-dependencies]
-http = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 trybuild = { workspace = true }

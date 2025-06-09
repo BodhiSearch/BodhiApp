@@ -9,12 +9,12 @@ errmeta_derive = { workspace = true }
 services = { workspace = true }
 
 derive_builder = { workspace = true }
-derive-new = { workspace = true }
+
 include_dir = { workspace = true }
 prettytable = { workspace = true }
 rstest = { workspace = true, optional = true }
 thiserror = { workspace = true }
-serde_yaml = { workspace = true }
+
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }

@@ -26,8 +26,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 sha2 = { workspace = true }
-strum = { workspace = true, features = ["derive"] }
-tracing = { workspace = true }
+
 tokio = { workspace = true, features = ["full"] }
 thiserror = { workspace = true }
 tower-sessions = { workspace = true }
@@ -50,8 +49,6 @@ mockall = { workspace = true }
 mockito = { workspace = true }
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
-serial_test = { workspace = true }
-strfmt = { workspace = true }
 tempfile = { workspace = true }
 time = { workspace = true }
 tokio = { workspace = true, features = ["full", "test-util"] }

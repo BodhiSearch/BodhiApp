@@ -27,7 +27,6 @@ url = { workspace = true, optional = true }
 objs = { workspace = true, features = ["test-utils"] }
 
 axum = { workspace = true }
-anyhow = { workspace = true }
 dirs = { workspace = true }
 http = { workspace = true }
 mockall = { workspace = true }
@@ -36,13 +35,16 @@ rstest = { workspace = true }
 url = { workspace = true }
 
 [build-dependencies]
-anyhow = { workspace = true }
-once_cell = { workspace = true }
 reqwest = { workspace = true, features = ["blocking", "json"] }
-serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-tempfile = { workspace = true }
+anyhow = { workspace = true }
 fs2 = { workspace = true }
+once_cell = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+tempfile = { workspace = true }
 
 [features]
 test-utils = ["dirs", "http", "mockall", "rstest", "url"]
+
+[package.metadata.cargo-machete]
+ignored = ["anyhow", "fs2", "once_cell", "serde", "tempfile"]
