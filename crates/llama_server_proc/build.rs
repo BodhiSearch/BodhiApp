@@ -62,7 +62,7 @@ pub fn main() -> Result<()> {
   try_main(&project_dir)?;
 
   // Release the lock
-  let _ = lock_file.unlock();
+  let _ = fs2::FileExt::unlock(&lock_file);
 
   Ok(())
 }

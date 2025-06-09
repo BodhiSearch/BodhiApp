@@ -1,5 +1,4 @@
 use anyhow::{bail, Context};
-use fs2::FileExt;
 use fs_extra::dir::CopyOptions;
 use std::{
   env,
@@ -89,7 +88,7 @@ fn copy_llama_bins(project_dir: &Path) -> Result<(), anyhow::Error> {
   // Try to acquire the lock, retry if locked
   let max_attempts = 60; // Maximum 60 seconds wait
   let mut attempts = 0;
-  while let Err(e) = lock_file.try_lock_shared() {
+  while let Err(e) = fs2::FileExt::try_lock_shared(&lock_file) {
     if attempts >= max_attempts {
       bail!("Timeout waiting for llama server bin lock: {}", e);
     }
