@@ -276,7 +276,7 @@ mod tests {
   #[case(&BadRequestError::new("invalid input".to_string()), "invalid request, reason: invalid input")]
   #[case(&InternalServerError::new("unexpected server error".to_string()), "internal_server_error: unexpected server error")]
   #[case(&IoError::new(StdIoError::new(ErrorKind::PermissionDenied, "test io error")), "io_error: test io error")]
-  #[case(&ObjValidationError::ValidationErrors(ValidationErrors(HashMap::from([("field", ValidationErrorsKind::Field(vec![validator::ValidationError::new("value").with_message(Cow::Borrowed("validation failed"))]))]))), "field: validation failed")]
+  #[case(&ObjValidationError::ValidationErrors(ValidationErrors(HashMap::from([(Cow::Borrowed("field"), ValidationErrorsKind::Field(vec![validator::ValidationError::new("value").with_message(Cow::Borrowed("validation failed"))]))]))), "field: validation failed")]
   #[case::file_pattern(&ObjValidationError::FilePatternMismatch("huggingface/hub/models--invalid-repo/snapshots/model.gguf".to_string()), "repo does not match the huggingface repo pattern 'username/repo', path: huggingface/hub/models--invalid-repo/snapshots/model.gguf")]
   #[case(&ReqwestError {
     error: "error sending request for url (http://foobar.nohost/)".to_string(),
