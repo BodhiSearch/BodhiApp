@@ -4,7 +4,7 @@ use aes_gcm::{
   Aes256Gcm, Key, Nonce,
 };
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use fs2::FileExt;
+
 use objs::{impl_error_from, AppError, ErrorType, IoError, SerdeYamlError};
 use pbkdf2::pbkdf2_hmac;
 use rand::{rng, RngCore};
@@ -124,7 +124,7 @@ impl DefaultSecretService {
     }
 
     let mut file = OpenOptions::new().read(true).open(&self.secrets_path)?;
-    file.lock_shared()?;
+    fs2::FileExt::lock_shared(&file)?;
 
     let result = (|| {
       let mut content = String::new();
@@ -169,7 +169,7 @@ impl DefaultSecretService {
       })
     })();
 
-    file.unlock()?;
+    fs2::FileExt::unlock(&file)?;
     result
   }
 
@@ -180,7 +180,7 @@ impl DefaultSecretService {
       .truncate(true)
       .open(&self.secrets_path)?;
 
-    file.lock_exclusive()?;
+    fs2::FileExt::lock_exclusive(&file)?;
 
     let result = (|| {
       let key = self.derive_key(&data.salt)?;
@@ -204,7 +204,7 @@ impl DefaultSecretService {
         .map_err(|e| SecretServiceError::SerdeYamlError(e.into()))
     })();
 
-    file.unlock()?;
+    fs2::FileExt::unlock(&file)?;
     result
   }
 
