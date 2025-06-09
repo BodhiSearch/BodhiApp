@@ -33,7 +33,7 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tokio = { workspace = true, features = ["full"] }
 thiserror = { workspace = true }
 tower-serve-static = { workspace = true }
-derive-new = { workspace = true }
+
 # futures-util = { workspace = true }
 webbrowser = { workspace = true, optional = true }
 
@@ -42,15 +42,17 @@ objs = { workspace = true, features = ["test-utils"] }
 
 rstest = { workspace = true }
 anyhow = { workspace = true }
-anyhow_trace = { workspace = true }
+
 
 [build-dependencies]
-tauri-build = { workspace = true }
 anyhow = { workspace = true }
-fs_extra = { workspace = true }
 fs2 = { workspace = true }
+fs_extra = { workspace = true }
 
 [features]
 native = ["tauri", "tauri/tray-icon", "tauri-plugin-log", "webbrowser"]
 test-utils = []
 production = []
+
+[package.metadata.cargo-machete]
+ignored = ["fs2", "fs_extra"]

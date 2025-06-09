@@ -19,7 +19,7 @@ derive-new = { workspace = true }
 dialoguer = { workspace = true, features = ["history"] }
 futures-util = { workspace = true }
 include_dir = { workspace = true }
-indicatif = { workspace = true, features = ["tokio"] }
+indicatif = { workspace = true }
 mockall = { workspace = true, optional = true }
 reqwest = { workspace = true }
 rstest = { workspace = true, optional = true }
@@ -40,9 +40,7 @@ anyhow_trace = { workspace = true }
 mockall = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
-reqwest = { workspace = true }
 rstest = { workspace = true }
-serial_test = { workspace = true }
 
 [features]
 test-utils = ["rstest", "mockall", "routes_all/test-utils"]

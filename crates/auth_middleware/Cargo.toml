@@ -35,9 +35,6 @@ tower = { workspace = true, features = ["util"] }
 tokio = { workspace = true, features = ["full"] }
 pretty_assertions = { workspace = true }
 maplit = { workspace = true }
-reqwest = { workspace = true }
-http-body-util = { workspace = true }
-uuid = { workspace = true }
 
 [features]
 test-utils = ["rstest", "services/test-utils"]

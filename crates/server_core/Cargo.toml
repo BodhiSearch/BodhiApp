@@ -37,21 +37,20 @@ validator = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 llama_server_proc = { workspace = true, features = ["test-utils"] }
 objs = { workspace = true, features = ["test-utils"] }
-commands = { workspace = true, features = ["test-utils"] }
+
 services = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
-axum-test = { workspace = true }
-dirs = { workspace = true }
+
 futures-util = { workspace = true }
 http-body-util = { workspace = true }
 mockall = { workspace = true }
-rand = { workspace = true }
+
 reqwest = { workspace = true }
 rstest = { workspace = true }
 serde_json = { workspace = true, features = ["indexmap"] }
-serde_yaml = { workspace = true }
+
 serial_test = { workspace = true }
 tempfile = { workspace = true }
 tower = { workspace = true, features = ["util"] }
@@ -60,7 +59,7 @@ tower = { workspace = true, features = ["util"] }
 test-utils = [
   "llama_server_proc/test-utils",
   "objs/test-utils",
-  "commands/test-utils",
+
   "services/test-utils",
   "anyhow",
   "mockall",

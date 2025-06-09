@@ -22,7 +22,7 @@ include_dir = { workspace = true }
 once_cell = { workspace = true }
 lazy_static = { workspace = true }
 memmap2 = { workspace = true }
-minijinja = { workspace = true }
+
 regex = { workspace = true }
 reqwest = { workspace = true }
 rstest = { workspace = true, optional = true }
@@ -42,16 +42,16 @@ validator = { workspace = true, features = ["derive"] }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 axum-extra = { workspace = true }
-ctor = { workspace = true }
+
 dircpy = { workspace = true }
 dirs = { workspace = true }
 fs_extra = { workspace = true }
 futures = { workspace = true }
 http-body-util = { workspace = true }
-hyper = { workspace = true, features = ["full"] }
+
 pretty_assertions = { workspace = true }
 rstest = { workspace = true }
-serial_test = { workspace = true }
+
 tempfile = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["matchers", "once_cell", "regex", "tracing", "env-filter"] }
 tokio = { workspace = true, features = ["full", "test-util"] }
