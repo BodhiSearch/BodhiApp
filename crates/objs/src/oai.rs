@@ -106,7 +106,7 @@ fn validate_range<T: PartialOrd + FromStr + std::fmt::Debug + std::fmt::Display>
 impl OAIRequestParams {
   pub fn update(&self, request: &mut CreateChatCompletionRequest) {
     update_if_none(&self.frequency_penalty, &mut request.frequency_penalty);
-    update_if_none(&self.max_tokens, &mut request.max_tokens);
+    update_if_none(&self.max_tokens, &mut request.max_completion_tokens);
     update_if_none(&self.presence_penalty, &mut request.presence_penalty);
     update_if_none(&self.seed, &mut request.seed);
     update_if_none(&self.temperature, &mut request.temperature);
@@ -187,7 +187,7 @@ mod tests {
     params.update(&mut request);
 
     assert_eq!(Some(0.5), request.frequency_penalty);
-    assert_eq!(Some(100), request.max_tokens);
+    assert_eq!(Some(100), request.max_completion_tokens);
     assert_eq!(Some(0.2), request.presence_penalty);
     assert_eq!(Some(42), request.seed);
     assert_eq!(
@@ -203,7 +203,7 @@ mod tests {
   fn test_oai_request_params_update_partial() {
     let mut request = CreateChatCompletionRequestArgs::default()
       .temperature(0.5)
-      .max_tokens(50_u32)
+      .max_completion_tokens(50_u32)
       .build()
       .unwrap();
 
@@ -221,7 +221,7 @@ mod tests {
     params.update(&mut request);
 
     assert_eq!(Some(0.5), request.frequency_penalty);
-    assert_eq!(Some(50), request.max_tokens);
+    assert_eq!(Some(50), request.max_completion_tokens);
     assert_eq!(None, request.presence_penalty);
     assert_eq!(None, request.seed);
     assert_eq!(None, request.stop);

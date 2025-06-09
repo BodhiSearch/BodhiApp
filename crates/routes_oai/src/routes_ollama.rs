@@ -1,11 +1,11 @@
 use crate::{ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS};
 use async_openai::types::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
-  ChatCompletionRequestSystemMessage, ChatCompletionRequestUserMessage,
-  ChatCompletionRequestUserMessageContent, ChatCompletionResponseFormat,
-  ChatCompletionResponseFormatType, ChatCompletionResponseMessage,
-  ChatCompletionStreamResponseDelta, CreateChatCompletionRequest, CreateChatCompletionResponse,
-  CreateChatCompletionStreamResponse, FinishReason, Role, Stop,
+  ChatCompletionRequestSystemMessage, ChatCompletionRequestSystemMessageContent,
+  ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
+  ChatCompletionResponseMessage, ChatCompletionStreamResponseDelta,
+  CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
+  FinishReason, ResponseFormat, Role, Stop,
 };
 use axum::{
   body::Body,
@@ -251,15 +251,10 @@ pub struct ChatRequest {
   pub options: Option<Options>,
 }
 
-fn response_format(input: Option<String>) -> Option<ChatCompletionResponseFormat> {
-  input.map(|i| {
-    let format_type = match i.as_str() {
-      "json_object" => ChatCompletionResponseFormatType::JsonObject,
-      _ => ChatCompletionResponseFormatType::Text,
-    };
-    ChatCompletionResponseFormat {
-      r#type: format_type,
-    }
+fn response_format(input: Option<String>) -> Option<ResponseFormat> {
+  input.map(|i| match i.as_str() {
+    "json_object" => ResponseFormat::JsonObject,
+    _ => ResponseFormat::Text,
   })
 }
 
@@ -275,7 +270,7 @@ impl From<ChatRequest> for CreateChatCompletionRequest {
         .collect::<Vec<_>>(),
       model: val.model,
       frequency_penalty: options.frequency_penalty,
-      max_tokens: options.num_predict,
+      max_completion_tokens: options.num_predict,
       n: Some(1),
       presence_penalty: options.presence_penalty,
       response_format: response_format(val.format),
@@ -380,7 +375,7 @@ impl From<Message> for ChatCompletionRequestMessage {
         ChatCompletionRequestMessage::Assistant(message)
       }
       "system" => ChatCompletionRequestMessage::System(ChatCompletionRequestSystemMessage {
-        content: val.content,
+        content: ChatCompletionRequestSystemMessageContent::Text(val.content),
         ..Default::default()
       }),
       _ => ChatCompletionRequestMessage::User(ChatCompletionRequestUserMessage {
