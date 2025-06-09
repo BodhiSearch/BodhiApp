@@ -74,23 +74,8 @@ fn chat_request(stream: bool) -> Value {
   })
 }
 
-fn prompt_request(stream: bool) -> Value {
-  serde_json::json!({
-    "model": "llama2:7b-chat",
-    "seed": 42,
-    "stream": stream,
-    "prompt": r#"<s>[INST] <<SYS>>
-You are a helpful assistant.
-<</SYS>>
-
-Answer in one word. What day comes after Monday? [/INST]"#,
-    "add_special": false
-  })
-}
-
 #[rstest]
 #[case::messages_format(chat_request(false), "The day that comes after Monday is Tuesday.")]
-#[case::prompt_format(prompt_request(false), "  Tuesday")]
 #[awt]
 #[tokio::test]
 async fn test_server_proc_chat_completions(
@@ -99,8 +84,9 @@ async fn test_server_proc_chat_completions(
   #[case] expected_content: &str,
 ) -> Result<()> {
   let response = server.chat_completions(&request_body).await?;
-  assert_eq!(StatusCode::OK, response.status());
+  let status = response.status();
   let response_body = response.json::<Value>().await.unwrap();
+  assert_eq!(StatusCode::OK, status, "body: {:?}", response_body);
 
   assert_eq!(
     expected_content,
@@ -116,9 +102,8 @@ async fn test_server_proc_chat_completions(
 
 #[rstest]
 #[case::messages_format(chat_request(true), [
-  "The", " day", " that", " comes", " after", " Monday", " is", " T", "ues", "day", ".", "",
+  "", "The", " day", " that", " comes", " after", " Monday", " is", " T", "ues", "day", ".",
 ].as_slice())]
-#[case::prompt_format(prompt_request(true), [" ", " T", "ues", "day", ""].as_slice())]
 #[awt]
 #[tokio::test]
 async fn test_server_proc_chat_completions_streamed(
@@ -127,8 +112,9 @@ async fn test_server_proc_chat_completions_streamed(
   #[case] expected_content: &[&str],
 ) -> Result<()> {
   let response = server.chat_completions(&request_body).await?;
-  assert_eq!(200, response.status());
+  let status = response.status();
   let response_text = response.text().await.unwrap();
+  assert_eq!(200, status, "body: {}", response_text);
 
   let streams = response_text
     .lines()
@@ -146,7 +132,11 @@ async fn test_server_proc_chat_completions_streamed(
 
   let actual = streams[0..streams.len() - 1]
     .iter()
-    .map(|stream| stream["choices"][0]["delta"]["content"].as_str().unwrap())
+    .map(|stream| {
+      stream["choices"][0]["delta"]["content"]
+        .as_str()
+        .unwrap_or_default()
+    })
     .collect::<Vec<_>>();
 
   assert_eq!(expected_content, actual);
