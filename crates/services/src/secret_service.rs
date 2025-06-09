@@ -7,7 +7,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use fs2::FileExt;
 use objs::{impl_error_from, AppError, ErrorType, IoError, SerdeYamlError};
 use pbkdf2::pbkdf2_hmac;
-use rand::{rngs::OsRng, RngCore};
+use rand::{rng, RngCore};
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use std::path::Path;
@@ -34,8 +34,8 @@ impl Default for DecryptedData {
   fn default() -> Self {
     let mut salt = vec![0u8; SALT_SIZE];
     let mut nonce = vec![0u8; NONCE_SIZE];
-    OsRng.fill_bytes(&mut salt);
-    OsRng.fill_bytes(&mut nonce);
+    rng().fill_bytes(&mut salt);
+    rng().fill_bytes(&mut nonce);
     Self {
       salt,
       nonce,

@@ -175,7 +175,7 @@ pub async fn live_server(
   #[future] llama2_7b_setup: anyhow::Result<(TempDir, Arc<dyn AppService>)>,
 ) -> anyhow::Result<TestServerHandle> {
   let host = String::from("127.0.0.1");
-  let port = rand::thread_rng().gen_range(2000..60000);
+  let port = rand::rng().random_range(2000..60000);
   let (temp_cache_dir, app_service) = llama2_7b_setup?;
   let serve_command = ServeCommand::ByParams {
     host: host.clone(),
