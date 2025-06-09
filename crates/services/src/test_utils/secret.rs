@@ -37,8 +37,6 @@ impl SecretServiceStub {
     self.with_app_status(&AppStatus::Setup)
   }
 
-
-
   pub fn with_app_reg_info(self, app_reg_info: &AppRegInfo) -> Self {
     self.set_app_reg_info(app_reg_info).unwrap();
     self

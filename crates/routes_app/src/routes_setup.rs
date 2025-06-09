@@ -346,8 +346,6 @@ mod tests {
     Ok(())
   }
 
-
-
   #[rstest]
   #[tokio::test]
   async fn test_setup_handler_register_resource_error(

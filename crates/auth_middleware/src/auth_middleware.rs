@@ -7,9 +7,7 @@ use axum::{
 };
 use objs::{ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError};
 use server_core::RouterState;
-use services::{
-  AppStatus, AuthServiceError, SecretServiceError, TokenError,
-};
+use services::{AppStatus, AuthServiceError, SecretServiceError, TokenError};
 use std::sync::Arc;
 use tower_sessions::Session;
 
@@ -149,8 +147,6 @@ pub async fn inject_session_auth_info(
     return Ok(next.run(req).await);
   }
 
-
-
   // Try to get token from session
   if let Some(access_token) = session
     .get::<String>("access_token")
@@ -173,8 +169,6 @@ pub async fn inject_session_auth_info(
   // Continue with the request, even if no valid token was found
   Ok(next.run(req).await)
 }
-
-
 
 #[cfg(test)]
 mod tests {
@@ -308,8 +302,6 @@ mod tests {
     );
     Ok(())
   }
-
-
 
   #[rstest]
   #[case::authz_setup(SecretServiceStub::new().with_app_status_setup())]
