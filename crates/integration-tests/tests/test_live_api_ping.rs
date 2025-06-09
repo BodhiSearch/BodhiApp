@@ -21,6 +21,7 @@ async fn test_live_api_ping(
     host,
     port,
     handle,
+    ..
   } = live_server?;
   let ping_endpoint = format!("http://{host}:{port}/ping");
   let client = Client::new();

@@ -12,7 +12,7 @@ import { itemVariants, SetupMode } from './types';
 
 type SetupModeCardProps = {
   setupModes: SetupMode[];
-  onSetup: (authz: boolean) => void;
+  onSetup: () => void;
   isLoading: boolean;
 };
 
@@ -25,11 +25,11 @@ export const SetupModeCard = ({
     <motion.div variants={itemVariants}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-center">Choose Your Setup Mode</CardTitle>
+          <CardTitle className="text-center">Setup Your Bodhi App</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Setup modes grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Setup mode display */}
+          <div className="space-y-4">
             {setupModes.map((mode) => (
               <div key={mode.title} className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -40,11 +40,6 @@ export const SetupModeCard = ({
                       {mode.description}
                     </p>
                   </div>
-                  {mode.recommended && (
-                    <span className="ml-auto inline-flex items-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-                      Recommended
-                    </span>
-                  )}
                 </div>
                 <ul className="space-y-2 text-sm">
                   {mode.benefits.map((benefit, index) => (
@@ -58,46 +53,20 @@ export const SetupModeCard = ({
             ))}
           </div>
 
-          <div className="pt-6 space-y-4">
+          <div className="pt-6">
             <Button
               className="w-full relative"
               size="lg"
-              onClick={() => onSetup(true)}
+              onClick={() => onSetup()}
               disabled={isLoading}
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Setting up authenticated instance...
+                  Setting up your secure instance...
                 </>
               ) : (
-                'Setup Authenticated Instance →'
-              )}
-            </Button>
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or
-                </span>
-              </div>
-            </div>
-            <Button
-              variant="outline"
-              className="w-full relative"
-              size="lg"
-              onClick={() => onSetup(false)}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Setting up unauthenticated instance...
-                </>
-              ) : (
-                'Setup Unauthenticated Instance →'
+                'Setup Secure Instance →'
               )}
             </Button>
           </div>

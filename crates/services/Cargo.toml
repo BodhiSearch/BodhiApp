@@ -3,6 +3,10 @@ name = "services"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "setup_client"
+path = "bin/setup_client.rs"
+
 [dependencies]
 objs = { workspace = true }
 errmeta_derive = { workspace = true }
@@ -11,6 +15,7 @@ llama_server_proc = { workspace = true }
 aes-gcm = { workspace = true }
 anyhow = { workspace = true, optional = true }
 base64 = { workspace = true }
+clap = { workspace = true, features = ["derive"] }
 derive-new = { workspace = true }
 async-trait = { workspace = true }
 cookie = { workspace = true }
@@ -49,7 +54,7 @@ ureq = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 validator = { workspace = true, features = ["derive"] }
 walkdir = { workspace = true }
-tokio = { workspace = true, optional = true }
+tokio = { workspace = true, features = ["full"], optional = true }
 utoipa = { workspace = true }
 
 [dev-dependencies]
@@ -87,6 +92,7 @@ keyring = { workspace = true, features = ["linux-native"] }
 keyring = { workspace = true, features = ["windows-native"] }
 
 [features]
+default = ["tokio"]
 test-utils = [
   "rstest",
   "mockall",

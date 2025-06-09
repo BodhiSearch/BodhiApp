@@ -1,6 +1,5 @@
 import { LoginMenu } from '@/components/LoginMenu';
 import {
-  ENDPOINT_APP_INFO,
   ENDPOINT_LOGOUT,
   ENDPOINT_USER_INFO
 } from '@/hooks/useQuery';
@@ -34,21 +33,13 @@ const mockLoggedOutUser = {
   logged_in: false,
 };
 
-const mockAuthzEnabled = {
-  authz: true,
-};
 
-const mockAuthzDisabled = {
-  authz: false,
-};
 
 const server = setupServer(
   rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
     return res(ctx.json(mockLoggedOutUser));
   }),
-  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-    return res(ctx.json(mockAuthzEnabled));
-  }),
+
   rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
     return res(ctx.status(200));
   })
@@ -63,7 +54,7 @@ afterEach(() => {
 });
 
 describe('LoginMenu Component', () => {
-  it('shows login button when logged out and authz enabled', async () => {
+  it('shows login button when logged out', async () => {
     render(<LoginMenu />, { wrapper: createWrapper() });
 
     await waitFor(() => {
@@ -88,21 +79,7 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it('does not show login button when authz disabled', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json(mockAuthzDisabled));
-      })
-    );
 
-    render(<LoginMenu />, { wrapper: createWrapper() });
-
-    await waitFor(() => {
-      const loginButton = screen.queryByRole('button', { name: /login/i });
-      expect(loginButton).not.toBeInTheDocument();
-      expect(screen.getByText(/non-authenticated mode setup/i)).toBeInTheDocument();
-    });
-  });
 
   it('handles logout action', async () => {
     server.use(

@@ -1,6 +1,6 @@
 mod utils;
 
-use crate::utils::{live_server, TestServerHandle};
+use crate::utils::{create_authenticated_session, create_session_cookie, get_oauth_tokens, live_server, TestServerHandle};
 use axum::http::StatusCode;
 use pretty_assertions::assert_eq;
 use serde_json::Value;
@@ -19,12 +19,21 @@ async fn test_live_chat_completions_stream(
     host,
     port,
     handle,
+    app_service,
   } = live_server?;
+
+  // Get OAuth tokens using client credentials flow
+  let (access_token, refresh_token) = get_oauth_tokens(app_service.as_ref()).await?;
+
+  // Create authenticated session
+  let session_id = create_authenticated_session(&app_service, &access_token, &refresh_token).await?;
+  let session_cookie = create_session_cookie(&session_id);
   let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions");
   let client = reqwest::Client::new();
   let response = client
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
+    .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
       "model": "llama2:7b-chat",
       "seed": 42,

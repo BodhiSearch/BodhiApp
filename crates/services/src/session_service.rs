@@ -23,6 +23,9 @@ type Result<T> = std::result::Result<T, SessionServiceError>;
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait SessionService: Send + Sync + std::fmt::Debug {
   fn session_layer(&self) -> SessionManagerLayer<SqliteStore>;
+
+  #[cfg(any(test, feature = "test-utils"))]
+  fn get_session_store(&self) -> &SqliteStore;
 }
 
 #[derive(Debug)]
@@ -48,5 +51,10 @@ impl SessionService for SqliteSessionService {
       .with_secure(false) // TODO: change this when https is supported
       .with_same_site(SameSite::Lax) // TODO: need to have a login session cookie, with SameSite::Lax, and a CSRF cookie, with SameSite::Strict
       .with_name("bodhiapp_session_id")
+  }
+
+  #[cfg(any(test, feature = "test-utils"))]
+  fn get_session_store(&self) -> &SqliteStore {
+    &self.session_store
   }
 }

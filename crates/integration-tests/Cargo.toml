@@ -12,11 +12,13 @@ llama_server_proc = { workspace = true, features = ["test-utils"] }
 server_app = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
+routes_app = { workspace = true, features = ["test-utils"] }
 
 axum = { workspace = true }
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
 dirs = { workspace = true }
+dotenv = { workspace = true }
 fs_extra = { workspace = true }
 rstest = { workspace = true }
 mockall = { workspace = true }
@@ -28,6 +30,12 @@ rand = { workspace = true }
 reqwest = { workspace = true }
 sqlx = { workspace = true, features = ["chrono", "runtime-tokio", "sqlite"] }
 tempfile = { workspace = true }
+tower-sessions = { workspace = true }
+jsonwebtoken = { workspace = true }
+time = { workspace = true }
+cookie = { workspace = true }
+maplit = { workspace = true }
+base64 = { workspace = true }
 
 [lints.rust]
 unexpected_cfgs = { level = "allow" }

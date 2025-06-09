@@ -40,7 +40,7 @@ export default function AppInitializer({
     error: userError,
     isLoading: userLoading,
   } = useUser({
-    enabled: authenticated || !!appInfo?.authz,
+    enabled: authenticated,
   });
 
   useEffect(() => {

@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt};
 use std::sync::Arc;
-use tracing::info;
+
 use utoipa::ToSchema;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -31,14 +31,11 @@ pub enum AppServiceError {
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[schema(example = json!({
     "version": "0.1.0",
-    "authz": true,
     "status": "ready"
 }))]
 pub struct AppInfo {
   /// Application version
   pub version: String,
-  /// Whether authentication is enabled
-  pub authz: bool,
   /// Current application status
   pub status: AppStatus,
 }
@@ -57,26 +54,19 @@ pub async fn app_info_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<AppInfo>, ApiError> {
   let secret_service = &state.app_service().secret_service();
-  let authz = secret_service.authz()?;
   let status = app_status_or_default(secret_service);
   let setting_service = &state.app_service().setting_service();
   Ok(Json(AppInfo {
     version: setting_service.version(),
     status,
-    authz,
   }))
 }
 
-/// Request to setup the application in authenticated or non-authenticated mode
+/// Request to setup the application in authenticated mode
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({
-    "authz": true
-}))]
+#[schema(example = json!({}))]
 pub struct SetupRequest {
-  /// Whether to enable authentication
-  /// - true: Setup app in authenticated mode with role-based access
-  /// - false: Setup app in non-authenticated mode for open access
-  pub authz: bool,
+  // Empty request - always sets up in authenticated mode
 }
 
 /// Response containing the updated application status after setup
@@ -119,7 +109,7 @@ impl IntoResponse for SetupResponse {
 )]
 pub async fn setup_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, ApiError>,
+  WithRejection(Json(_request), _): WithRejection<Json<SetupRequest>, ApiError>,
 ) -> Result<SetupResponse, ApiError> {
   let secret_service = &state.app_service().secret_service();
   let auth_service = &state.app_service().auth_service();
@@ -127,37 +117,28 @@ pub async fn setup_handler(
   if status != AppStatus::Setup {
     return Err(AppServiceError::AlreadySetup)?;
   }
-  if request.authz {
-    let setting_service = &state.app_service().setting_service();
-    let server_host = setting_service.host();
-    let is_loopback =
-      server_host == "localhost" || server_host == "127.0.0.1" || server_host == "0.0.0.0";
-    let hosts = if is_loopback {
-      vec!["localhost", "127.0.0.1", "0.0.0.0"]
-    } else {
-      vec![server_host.as_str()]
-    };
-    let scheme = setting_service.scheme();
-    let port = setting_service.port();
-    let redirect_uris = hosts
-      .into_iter()
-      .map(|host| format!("{scheme}://{host}:{port}/bodhi/v1/auth/callback"))
-      .collect::<Vec<String>>();
-    let app_reg_info = auth_service.register_client(redirect_uris).await?;
-    secret_service.set_app_reg_info(&app_reg_info)?;
-    secret_service.set_authz(true)?;
-    secret_service.set_app_status(&AppStatus::ResourceAdmin)?;
-    Ok(SetupResponse {
-      status: AppStatus::ResourceAdmin,
-    })
+  // Always setup in authenticated mode
+  let setting_service = &state.app_service().setting_service();
+  let server_host = setting_service.host();
+  let is_loopback =
+    server_host == "localhost" || server_host == "127.0.0.1" || server_host == "0.0.0.0";
+  let hosts = if is_loopback {
+    vec!["localhost", "127.0.0.1", "0.0.0.0"]
   } else {
-    info!("setting authz to false");
-    secret_service.set_authz(false)?;
-    secret_service.set_app_status(&AppStatus::Ready)?;
-    Ok(SetupResponse {
-      status: AppStatus::Ready,
-    })
-  }
+    vec![server_host.as_str()]
+  };
+  let scheme = setting_service.scheme();
+  let port = setting_service.port();
+  let redirect_uris = hosts
+    .into_iter()
+    .map(|host| format!("{scheme}://{host}:{port}/bodhi/v1/auth/callback"))
+    .collect::<Vec<String>>();
+  let app_reg_info = auth_service.register_client(redirect_uris).await?;
+  secret_service.set_app_reg_info(&app_reg_info)?;
+  secret_service.set_app_status(&AppStatus::ResourceAdmin)?;
+  Ok(SetupResponse {
+    status: AppStatus::ResourceAdmin,
+  })
 }
 
 /// Response to the ping endpoint
@@ -217,23 +198,13 @@ mod tests {
     AppInfo {
       version: "0.0.0".to_string(),
       status: AppStatus::Setup,
-      authz: true,
     }
   )]
   #[case(
-    SecretServiceStub::new().with_app_status(&AppStatus::Setup).with_authz(true),
+    SecretServiceStub::new().with_app_status(&AppStatus::Setup),
     AppInfo {
       version: "0.0.0".to_string(),
       status: AppStatus::Setup,
-      authz: true,
-    }
-  )]
-  #[case(
-    SecretServiceStub::new().with_app_status(&AppStatus::Setup).with_authz(false),
-    AppInfo {
-      version: "0.0.0".to_string(),
-      status: AppStatus::Setup,
-      authz: false,
     }
   )]
   #[tokio::test]
@@ -263,7 +234,7 @@ mod tests {
   #[rstest]
   #[case(
       SecretServiceStub::new().with_app_status(&AppStatus::Ready),
-      SetupRequest { authz: true },
+      SetupRequest {},
   )]
   #[tokio::test]
   async fn test_setup_handler_error(
@@ -308,7 +279,6 @@ mod tests {
     );
 
     let secret_service = app_service.secret_service();
-    assert!(secret_service.authz().unwrap());
     assert_eq!(AppStatus::Ready, secret_service.app_status().unwrap());
     let app_reg_info = secret_service.app_reg_info().unwrap();
     assert!(app_reg_info.is_none());
@@ -318,16 +288,16 @@ mod tests {
   #[rstest]
   #[case(
       SecretServiceStub::new(),
-      SetupRequest { authz: true },
+      SetupRequest {},
       AppStatus::ResourceAdmin,
   )]
   #[case(
       SecretServiceStub::new().with_app_status(&AppStatus::Setup),
-      SetupRequest { authz: true },
+      SetupRequest {},
       AppStatus::ResourceAdmin,
   )]
   #[tokio::test]
-  async fn test_setup_handler_success_for_authz(
+  async fn test_setup_handler_success(
     #[case] secret_service: SecretServiceStub,
     #[case] request: SetupRequest,
     #[case] expected_status: AppStatus,
@@ -371,61 +341,12 @@ mod tests {
     assert_eq!(StatusCode::OK, response.status());
     let secret_service = app_service.secret_service();
     assert_eq!(expected_status, secret_service.app_status().unwrap(),);
-    assert_eq!(secret_service.authz().unwrap(), request.authz);
     let app_reg_info = secret_service.app_reg_info().unwrap();
-    assert_eq!(request.authz, app_reg_info.is_some());
+    assert!(app_reg_info.is_some());
     Ok(())
   }
 
-  #[rstest]
-  #[case(
-      SecretServiceStub::new(),
-      SetupRequest { authz: false },
-      AppStatus::Ready,
-  )]
-  #[case(
-      SecretServiceStub::new().with_app_status(&AppStatus::Setup),
-      SetupRequest { authz: false },
-      AppStatus::Ready,
-  )]
-  #[tokio::test]
-  async fn test_setup_handler_success_for_non_authz(
-    #[case] secret_service: SecretServiceStub,
-    #[case] request: SetupRequest,
-    #[case] expected_status: AppStatus,
-  ) -> anyhow::Result<()> {
-    let mut mock_auth_service = MockAuthService::default();
-    mock_auth_service.expect_register_client().never();
-    let app_service = Arc::new(
-      AppServiceStubBuilder::default()
-        .secret_service(Arc::new(secret_service))
-        .auth_service(Arc::new(mock_auth_service))
-        .build()?,
-    );
-    let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
-      app_service.clone(),
-    ));
-    let router = Router::new()
-      .route("/setup", post(setup_handler))
-      .with_state(state);
 
-    let response = router
-      .oneshot(
-        Request::post("/setup")
-          .header("Content-Type", "application/json")
-          .body(Body::from(serde_json::to_string(&request)?))?,
-      )
-      .await?;
-
-    assert_eq!(StatusCode::OK, response.status());
-    let secret_service = app_service.secret_service();
-    assert_eq!(expected_status, secret_service.app_status().unwrap(),);
-    let app_reg_info = secret_service.app_reg_info().unwrap();
-    assert_eq!(None, app_reg_info);
-    assert_eq!(false, request.authz);
-    Ok(())
-  }
 
   #[rstest]
   #[tokio::test]
@@ -460,9 +381,7 @@ mod tests {
       .oneshot(
         Request::post("/setup")
           .header("Content-Type", "application/json")
-          .body(Body::from(serde_json::to_string(&SetupRequest {
-            authz: true,
-          })?))?,
+          .body(Body::from(serde_json::to_string(&SetupRequest {})?))?,
       )
       .await?;
 
@@ -483,15 +402,7 @@ mod tests {
 
   #[rstest]
   #[case(
-    r#"{"authz": "invalid"}"#,
-    "failed to parse the request body as JSON, error: \u{2068}Failed to deserialize the JSON body into the target type\u{2069}"
-  )]
-  #[case(
-    r#"{}"#,
-    "failed to parse the request body as JSON, error: \u{2068}Failed to deserialize the JSON body into the target type\u{2069}"
-  )]
-  #[case(
-    r#"{"authz": true,}"#,
+    r#"{"invalid": true,}"#,
     "failed to parse the request body as JSON, error: \u{2068}Failed to parse the request body as JSON\u{2069}"
   )]
   #[tokio::test]
