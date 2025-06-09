@@ -85,7 +85,7 @@ pub fn build_routes(
     // OpenAI Compatible APIs
     .route(ENDPOINT_OAI_MODELS, get(oai_models_handler))
     .route(
-      &format!("{ENDPOINT_OAI_MODELS}/:id"),
+      &format!("{ENDPOINT_OAI_MODELS}/{{id}}"),
       get(oai_model_handler),
     )
     .route(
@@ -98,7 +98,7 @@ pub fn build_routes(
     .route(ENDPOINT_OLLAMA_CHAT, post(ollama_model_chat_handler))
     // Basic Bodhi APIs
     .route(ENDPOINT_MODELS, get(list_local_aliases_handler))
-    .route(&format!("{ENDPOINT_MODELS}/:id"), get(get_alias_handler))
+    .route(&format!("{ENDPOINT_MODELS}/{{id}}"), get(get_alias_handler))
     .route(ENDPOINT_MODEL_FILES, get(list_local_modelfiles_handler))
     .route_layer(from_fn_with_state(
       state.clone(),
@@ -110,15 +110,15 @@ pub fn build_routes(
   // Power user APIs (role=power_user or scope=scope_token_power_user)
   let power_user_apis = Router::new()
     .route(ENDPOINT_MODELS, post(create_alias_handler))
-    .route(&format!("{ENDPOINT_MODELS}/:id"), put(update_alias_handler))
+    .route(&format!("{ENDPOINT_MODELS}/{{id}}"), put(update_alias_handler))
     .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
     .route(ENDPOINT_MODEL_PULL, post(create_pull_request_handler))
     .route(
-      &format!("{ENDPOINT_MODEL_PULL}/:id"),
+      &format!("{ENDPOINT_MODEL_PULL}/{{id}}"),
       post(pull_by_alias_handler),
     )
     .route(
-      &format!("{ENDPOINT_MODEL_PULL}/:id"),
+      &format!("{ENDPOINT_MODEL_PULL}/{{id}}"),
       get(get_download_status_handler),
     )
     .route_layer(from_fn_with_state(
@@ -139,7 +139,7 @@ pub fn build_routes(
     .route(ENDPOINT_TOKENS, post(create_token_handler))
     .route(ENDPOINT_TOKENS, get(list_tokens_handler))
     .route(
-      &format!("{ENDPOINT_TOKENS}/:token_id"),
+      &format!("{ENDPOINT_TOKENS}/{{token_id}}"),
       put(update_token_handler),
     )
     .route_layer(from_fn_with_state(
@@ -150,11 +150,11 @@ pub fn build_routes(
   let admin_session_apis = Router::new()
     .route(ENDPOINT_SETTINGS, get(list_settings_handler))
     .route(
-      &format!("{ENDPOINT_SETTINGS}/:key"),
+      &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       put(update_setting_handler),
     )
     .route(
-      &format!("{ENDPOINT_SETTINGS}/:key"),
+      &format!("{ENDPOINT_SETTINGS}/{{key}}"),
       delete(delete_setting_handler),
     )
     .route_layer(from_fn_with_state(

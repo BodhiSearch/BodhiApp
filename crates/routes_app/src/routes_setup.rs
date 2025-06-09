@@ -401,7 +401,7 @@ mod tests {
   #[rstest]
   #[case(
     r#"{"invalid": true,}"#,
-    "failed to parse the request body as JSON, error: \u{2068}Failed to parse the request body as JSON\u{2069}"
+    "failed to parse the request body as JSON, error: \u{2068}Failed to parse the request body as JSON: trailing comma at line 1 column 18\u{2069}"
   )]
   #[tokio::test]
   async fn test_setup_handler_bad_request(

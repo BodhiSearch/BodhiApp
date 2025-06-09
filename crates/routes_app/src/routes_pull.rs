@@ -472,9 +472,9 @@ mod tests {
     let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::new()), service);
     Router::new()
       .route("/modelfiles/pull", post(create_pull_request_handler))
-      .route("/modelfiles/pull/:alias", post(pull_by_alias_handler))
+      .route("/modelfiles/pull/{alias}", post(pull_by_alias_handler))
       .route(
-        "/modelfiles/pull/status/:id",
+        "/modelfiles/pull/status/{id}",
         get(get_download_status_handler),
       )
       .route("/modelfiles/pull/downloads", get(list_downloads_handler))

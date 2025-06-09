@@ -1,18 +1,16 @@
 use crate::{shared_rw::SharedContext, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
-use axum::async_trait;
 use objs::ObjValidationError;
 use services::{AliasNotFoundError, AppService, HubServiceError};
-use std::sync::Arc;
+use std::{future::Future, pin::Pin, sync::Arc};
 
-#[async_trait]
 pub trait RouterState: std::fmt::Debug + Send + Sync {
   fn app_service(&self) -> Arc<dyn AppService>;
 
-  async fn chat_completions(
+  fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-  ) -> Result<reqwest::Response>;
+  ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>>;
 }
 
 #[derive(Debug, Clone)]
@@ -48,23 +46,24 @@ pub enum RouterStateError {
 
 type Result<T> = std::result::Result<T, RouterStateError>;
 
-#[async_trait]
 impl RouterState for DefaultRouterState {
   fn app_service(&self) -> Arc<dyn AppService> {
     self.app_service.clone()
   }
 
-  async fn chat_completions(
+  fn chat_completions(
     &self,
     request: CreateChatCompletionRequest,
-  ) -> Result<reqwest::Response> {
-    let alias = self
-      .app_service
-      .data_service()
-      .find_alias(&request.model)
-      .ok_or_else(|| AliasNotFoundError(request.model.clone()))?;
-    let response = self.ctx.chat_completions(request, alias).await?;
-    Ok(response)
+  ) -> Pin<Box<dyn Future<Output = Result<reqwest::Response>> + Send + '_>> {
+    Box::pin(async move {
+      let alias = self
+        .app_service
+        .data_service()
+        .find_alias(&request.model)
+        .ok_or_else(|| AliasNotFoundError(request.model.clone()))?;
+      let response = self.ctx.chat_completions(request, alias).await?;
+      Ok(response)
+    })
   }
 }
 

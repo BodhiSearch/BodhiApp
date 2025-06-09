@@ -360,7 +360,7 @@ mod tests {
     Router::new()
       .route("/api/tokens", post(create_token_handler))
       .route("/api/tokens", get(list_tokens_handler))
-      .route("/api/tokens/:token_id", put(update_token_handler))
+      .route("/api/tokens/{token_id}", put(update_token_handler))
       .with_state(Arc::new(router_state))
   }
 

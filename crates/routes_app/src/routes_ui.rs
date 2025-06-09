@@ -15,9 +15,9 @@ pub fn chats_router() -> Router<Arc<dyn RouterState>> {
   Router::new()
     .route("/chats", get(ui_chats_handler))
     .route("/chats", delete(ui_chats_delete_handler))
-    .route("/chats/:id", get(ui_chat_handler))
-    .route("/chats/:id", post(ui_chat_new_handler))
-    .route("/chats/:id", delete(ui_chat_delete_handler))
+    .route("/chats/{id}", get(ui_chat_handler))
+    .route("/chats/{id}", post(ui_chat_new_handler))
+    .route("/chats/{id}", delete(ui_chat_delete_handler))
 }
 
 async fn ui_chats_handler(

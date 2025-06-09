@@ -91,7 +91,7 @@ mod tests {
     #[case] status: u16,
     #[case] expected: Value,
   ) -> anyhow::Result<()> {
-    let router = Router::new().route("/:input", get(handler_return_different_error_objs));
+    let router = Router::new().route("/{input}", get(handler_return_different_error_objs));
     let req = Request::get(format!("/{}", input))
       .body(Body::empty())
       .unwrap();

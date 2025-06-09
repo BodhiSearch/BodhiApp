@@ -256,7 +256,7 @@ mod tests {
   fn test_router(router_state_stub: DefaultRouterState) -> Router {
     Router::new()
       .route("/api/models", get(list_local_aliases_handler))
-      .route("/api/models/:id", get(get_alias_handler))
+      .route("/api/models/{id}", get(get_alias_handler))
       .with_state(Arc::new(router_state_stub))
   }
 

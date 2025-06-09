@@ -124,7 +124,7 @@ mod tests {
     );
     Router::new()
       .route("/api/models", post(create_alias_handler))
-      .route("/api/models/:id", put(update_alias_handler))
+      .route("/api/models/{id}", put(update_alias_handler))
       .with_state(Arc::new(router_state))
   }
 
