@@ -52,6 +52,7 @@ Modular technical architecture documentation organized by technology stack and d
 - **[Testing Strategy](01-architecture/testing-strategy.md)** - High-level testing approach and quality assurance strategy
 - **[Frontend Testing](01-architecture/frontend-testing.md)** - Frontend testing patterns, React components, and user interactions
 - **[Backend Testing](01-architecture/backend-testing.md)** - Backend testing approaches, database testing, and API integration
+- **[Backend Testing Utils](01-architecture/backend-testing-utils.md)** - Test utilities pattern with feature flags for cross-crate test object sharing
 - **[Build & Configuration](01-architecture/build-config.md)** - Build systems, configuration management, and deployment patterns
 
 #### Reference Documents
@@ -90,6 +91,7 @@ Feature documentation organized by development status and implementation timelin
 - **[Reset to Authz](02-features/completed-stories/story-authz-20250111-reset-to-authz.md)** - Authentication mode reset functionality
 
 #### Planned Features
+- **[App Setup Refactoring](02-features/planned/20250609-app-setup-refactoring.md)** - Modular initialization library for multiple deployment modes (production, test, CLI, Docker)
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
@@ -219,6 +221,7 @@ Historical documents, deprecated content, and reference materials preserved for 
 - **API Integration**: [API Integration](01-architecture/api-integration.md) → [Rust Backend](01-architecture/rust-backend.md)
 - **Conventions**: [Development Conventions](01-architecture/development-conventions.md)
 - **Testing**: [Testing Strategy](01-architecture/testing-strategy.md) → [Frontend Testing](01-architecture/frontend-testing.md) → [Backend Testing](01-architecture/backend-testing.md)
+- **Test Utilities**: [Backend Testing Utils](01-architecture/backend-testing-utils.md) - Cross-crate test object sharing with feature flags
 - **Build & Deploy**: [Build & Configuration](01-architecture/build-config.md)
 - **Crate Details**: [Individual Crate Docs](03-crates/)
 
