@@ -129,9 +129,10 @@ pub async fn setup_handler(
   };
   let scheme = setting_service.scheme();
   let port = setting_service.port();
+  let callback_path = setting_service.login_callback_path();
   let redirect_uris = hosts
     .into_iter()
-    .map(|host| format!("{scheme}://{host}:{port}/bodhi/v1/auth/callback"))
+    .map(|host| format!("{scheme}://{host}:{port}{callback_path}"))
     .collect::<Vec<String>>();
   let app_reg_info = auth_service.register_client(redirect_uris).await?;
   secret_service.set_app_reg_info(&app_reg_info)?;

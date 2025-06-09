@@ -94,7 +94,7 @@ impl NativeCommand {
         let menu = Menu::with_items(app, &[&homepage, &quit])?;
         TrayIconBuilder::new()
           .menu(&menu)
-          .menu_on_left_click(true)
+          .show_menu_on_left_click(true)
           .icon(app.default_window_icon().unwrap().clone())
           .on_menu_event(move |app, event| {
             on_menu_event(app, event, &addr);

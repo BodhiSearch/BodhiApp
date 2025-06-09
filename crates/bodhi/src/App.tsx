@@ -47,7 +47,7 @@ function App() {
                   <Route path="/ui/pull" element={<PullPage />} />
                   <Route path="/ui/login" element={<LoginPage />} />
                   <Route
-                    path="/auth/callback"
+                    path="/ui/auth/callback"
                     element={<OAuthCallbackPage />}
                   />
                   <Route path="/ui/settings" element={<SettingsPage />} />
