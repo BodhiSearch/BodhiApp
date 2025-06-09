@@ -50,7 +50,6 @@ time = { workspace = true }
 tower-sessions = { workspace = true }
 tower-sessions-sqlx-store = { workspace = true, features = ["sqlite"] }
 tracing = { workspace = true, features = ["async-await", "log"] }
-ureq = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 walkdir = { workspace = true }
 tokio = { workspace = true, features = ["full"], optional = true }

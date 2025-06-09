@@ -44,7 +44,7 @@ impl RunCommand {
                 "downloading files to run model alias '{}'",
                 remote_model.alias
               );
-              command.execute(service.clone())?;
+              command.execute(service.clone()).await?;
               match service.data_service().find_alias(&alias) {
                 Some(alias_obj) => alias_obj,
                 None => return Err(RemoteModelNotFoundError::new(alias))?,

@@ -200,7 +200,7 @@ pub async fn create_pull_request_handler(
       filename: payload.filename,
       snapshot: None,
     };
-    let result = command.execute(app_service.clone());
+    let result = command.execute(app_service.clone()).await;
     update_download_status(app_service, request_id, result).await;
   });
 
@@ -328,7 +328,7 @@ pub async fn pull_by_alias_handler(
 
   spawn(async move {
     let command = PullCommand::ByAlias { alias };
-    let result = command.execute(app_service.clone());
+    let result = command.execute(app_service.clone()).await;
     update_download_status(app_service, request_id, result).await;
   });
 

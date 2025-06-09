@@ -44,7 +44,7 @@ type Result<T> = std::result::Result<T, CreateCommandError>;
 
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
+  pub async fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     if service.data_service().find_alias(&self.alias).is_some() {
       if !self.update {
         return Err(AliasExistsError(self.alias.clone()).into());
@@ -71,7 +71,7 @@ impl CreateCommand {
         if self.auto_download {
           service
             .hub_service()
-            .download(&self.repo, &self.filename, self.snapshot)?
+            .download(&self.repo, &self.filename, self.snapshot).await?
         } else {
           return Err(CreateCommandError::HubServiceError(
             HubFileNotFoundError::new(
@@ -122,7 +122,8 @@ mod test {
   use std::sync::Arc;
 
   #[rstest]
-  fn test_create_execute_updates_if_exists() -> anyhow::Result<()> {
+  #[tokio::test]
+  async fn test_create_execute_updates_if_exists() -> anyhow::Result<()> {
     let create_cmd = CreateCommand {
       alias: "tinyllama:instruct".to_string(),
       repo: Repo::tinyllama(),
@@ -155,7 +156,7 @@ mod test {
       .data_service()
       .find_alias("tinyllama:instruct")
       .unwrap();
-    let result = create_cmd.execute(service.clone());
+    let result = create_cmd.execute(service.clone()).await;
     assert!(result.is_ok());
     let updated_alias = service
       .data_service()
@@ -190,7 +191,8 @@ mod test {
   #[case(None)]
   #[case(Some("main".to_string()))]
   #[case(Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
-  fn test_cmd_create_downloads_model_saves_alias(
+  #[tokio::test]
+  async fn test_cmd_create_downloads_model_saves_alias(
     #[case] snapshot: Option<String>,
     mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
@@ -213,7 +215,7 @@ mod test {
         .with_data_service()
         .build()?,
     );
-    create.execute(service.clone())?;
+    create.execute(service.clone()).await?;
     let created = service
       .data_service()
       .find_alias("testalias:instruct")

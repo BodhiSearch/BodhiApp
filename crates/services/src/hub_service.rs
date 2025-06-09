@@ -82,9 +82,10 @@ impl_error_from!(std::io::Error, HubServiceError::IoError, ::objs::IoError);
 type Result<T> = std::result::Result<T, HubServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+#[async_trait::async_trait]
 pub trait HubService: std::fmt::Debug + Send + Sync {
   #[allow(clippy::needless_lifetimes)]
-  fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile>;
+  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile>;
 
   fn list_local_models(&self) -> Vec<HubFile>;
 
@@ -123,8 +124,9 @@ impl HfHubService {
   }
 }
 
+#[async_trait::async_trait]
 impl HubService for HfHubService {
-  fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
     if self.local_file_exists(repo, filename, snapshot.clone())? {
       return self.find_local_file(repo, filename, snapshot.clone());
     }
@@ -135,7 +137,7 @@ impl HubService for HfHubService {
     let from_cache = hf_repo.get(filename);
     let path = match from_cache {
       Some(path) => path,
-      None => self.download_sync(model_repo, filename)?,
+      None => self.download_async(model_repo, filename).await?,
     };
     let result = HubFile::try_from(path)?;
     Ok(result)
@@ -409,8 +411,8 @@ impl HfHubService {
     self.progress_bar = progress_bar;
   }
 
-  fn download_sync(&self, model_repo: hf_hub::Repo, filename: &str) -> Result<PathBuf> {
-    use hf_hub::api::sync::{ApiBuilder, ApiError};
+  async fn download_async(&self, model_repo: hf_hub::Repo, filename: &str) -> Result<PathBuf> {
+    use hf_hub::api::tokio::{ApiBuilder, ApiError};
 
     let api = ApiBuilder::from_cache(self.cache.clone())
       .with_progress(self.progress_bar)
@@ -426,28 +428,27 @@ impl HfHubService {
       })?;
     tracing::info!("Downloading from url {}", model_repo.api_url());
     let repo = model_repo.url();
-    let path = match api.repo(model_repo).download(filename) {
+    let path = match api.repo(model_repo).download(filename).await {
       Ok(path) => path,
       Err(err) => {
         let error_msg = err.to_string();
         let err = match err {
-          ApiError::RequestError(ureq_err) => match *ureq_err {
-            ureq::Error::Status(status, _response) if status == 403 => {
-              HubApiError::new(error_msg, status, repo, HubApiErrorKind::GatedAccess)
+          ApiError::RequestError(reqwest_err) => {
+            let status = reqwest_err.status().map(|s| s.as_u16()).unwrap_or(500);
+            match status {
+              403 => HubApiError::new(error_msg, status, repo, HubApiErrorKind::GatedAccess),
+              401 if self.token.is_none() => {
+                HubApiError::new(error_msg, status, repo, HubApiErrorKind::MayBeNotExists)
+              }
+              404 if self.token.is_some() => {
+                HubApiError::new(error_msg, status, repo, HubApiErrorKind::NotExists)
+              }
+              _ if reqwest_err.is_connect() || reqwest_err.is_timeout() => {
+                HubApiError::new(error_msg, 500, repo, HubApiErrorKind::Transport)
+              }
+              _ => HubApiError::new(error_msg, status, repo, HubApiErrorKind::Unknown),
             }
-            ureq::Error::Status(status, _response) if self.token.is_none() && status == 401 => {
-              HubApiError::new(error_msg, status, repo, HubApiErrorKind::MayBeNotExists)
-            }
-            ureq::Error::Status(status, _response) if self.token.is_some() && status == 404 => {
-              HubApiError::new(error_msg, status, repo, HubApiErrorKind::NotExists)
-            }
-            ureq::Error::Status(status, _response) => {
-              HubApiError::new(error_msg, status, repo, HubApiErrorKind::Unknown)
-            }
-            ureq::Error::Transport(_transport) => {
-              HubApiError::new(error_msg, 500, repo, HubApiErrorKind::Transport)
-            }
-          },
+          }
           _ => HubApiError::new(error_msg, 500, repo, HubApiErrorKind::Request),
         };
         return Err(HubServiceError::HubApiError(err));
@@ -558,7 +559,8 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     Some("b19ae5e0a40d142016ea898e0ae6a1eb3f847b3f".to_string()),
     "1"
   )]
-  fn test_hf_hub_service_download_public_file_with_snapshot(
+  #[tokio::test]
+  async fn test_hf_hub_service_download_public_file_with_snapshot(
     temp_hf_home: TempDir,
     #[case] token: Option<String>,
     #[case] snapshot: Option<String>,
@@ -570,7 +572,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       &Repo::try_from("amir36/test-model-repo")?,
       "tokenizer_config.json",
       snapshot.clone(),
-    )?;
+    ).await?;
     assert!(local_model_file.path().exists());
     let mut sha = snapshot.unwrap_or("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string());
     if sha == "main" {
@@ -604,7 +606,8 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
   #[case::anon_latest("amir36/test-gated-repo", Some("57a2b0118ef1cb0ab5d9544e5d9600d189f66a72".to_string()))]
   #[case::anon_older("amir36/test-gated-repo", Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()))]
   #[case::anon_not_exists("amir36/test-gated-repo", Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
-  fn test_hf_hub_service_download_gets_unauth_error_if_downloading_as_anon(
+  #[tokio::test]
+  async fn test_hf_hub_service_download_gets_unauth_error_if_downloading_as_anon(
     temp_hf_home: TempDir,
     #[case] repo: String,
     #[case] snapshot: Option<String>,
@@ -614,7 +617,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       &Repo::try_from(repo.clone())?,
       "tokenizer_config.json",
       snapshot.clone(),
-    );
+    ).await;
     assert!(local_model_file.is_err());
     let sha = snapshot.unwrap_or("main".to_string());
     let error = strfmt!(UNAUTH_ERR, repo => repo.clone(), sha)?;
@@ -651,7 +654,8 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()),
     GATED_ERR
   )]
-  fn test_hf_hub_service_download_gated_error_if_downloading_with_token_for_gated_repo(
+  #[tokio::test]
+  async fn test_hf_hub_service_download_gated_error_if_downloading_with_token_for_gated_repo(
     temp_hf_home: TempDir,
     #[case] token: Option<String>,
     #[case] snapshot: Option<String>,
@@ -662,7 +666,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       &Repo::try_from("amir36/test-gated-repo")?,
       "tokenizer_config.json",
       snapshot.clone(),
-    );
+    ).await;
     assert!(local_model_file.is_err());
     let sha = snapshot.unwrap_or("main".to_string());
     let error = strfmt!(error, repo => "amir36/test-gated-repo", sha)?;
@@ -701,7 +705,8 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
   #[case(hf_test_token_allowed(), None)]
   #[case(hf_test_token_allowed(), Some("main".to_string()))]
   #[case(hf_test_token_allowed(), Some("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string()))]
-  fn test_hf_hub_service_download_not_found_if_downloading_with_token_for_not_exists_repo(
+  #[tokio::test]
+  async fn test_hf_hub_service_download_not_found_if_downloading_with_token_for_not_exists_repo(
     temp_hf_home: TempDir,
     #[case] token: Option<String>,
     #[case] snapshot: Option<String>,
@@ -710,7 +715,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     let error = strfmt!(MAYBE_NOT_EXISTS, sha)?;
     let service = build_hf_service(token, temp_hf_home);
     let repo = Repo::try_from("amir36/not-exists")?;
-    let local_model_file = service.download(&repo, "tokenizer_config.json", snapshot);
+    let local_model_file = service.download(&repo, "tokenizer_config.json", snapshot).await;
     assert!(local_model_file.is_err());
     let err = local_model_file.unwrap_err();
     match err {
@@ -735,7 +740,8 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
   #[case( Some("main".to_string()), "2")]
   #[case( Some("57a2b0118ef1cb0ab5d9544e5d9600d189f66a72".to_string()), "2" )]
   #[case( Some("6bbcc8a332f15cf670db6ec9e70f68427ae2ce27".to_string()), "1" )]
-  fn test_hf_hub_service_download_gated_file_allowed(
+  #[tokio::test]
+  async fn test_hf_hub_service_download_gated_file_allowed(
     #[with(hf_test_token_allowed(), true)]
     #[from(test_hf_service)]
     hf_service: TestHfService,
@@ -746,7 +752,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
       &Repo::try_from("amir36/test-gated-repo")?,
       "tokenizer_config.json",
       snapshot.clone(),
-    )?;
+    ).await?;
     let path = local_model_file.path();
     assert!(path.exists());
     let sha = if snapshot.is_none() || snapshot.clone().unwrap() == "main" {
