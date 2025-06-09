@@ -59,13 +59,14 @@ impl TestHfService {
 
 type Result<T> = std::result::Result<T, HubServiceError>;
 
+#[async_trait::async_trait]
 impl HubService for TestHfService {
   #[allow(clippy::needless_lifetimes)]
-  fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
     if self.allow_downloads {
-      self.inner.download(repo, filename, snapshot)
+      self.inner.download(repo, filename, snapshot).await
     } else {
-      self.inner_mock.download(repo, filename, snapshot)
+      self.inner_mock.download(repo, filename, snapshot).await
     }
   }
 
@@ -107,15 +108,16 @@ pub struct OfflineHubService {
   inner: HfHubService,
 }
 
+#[async_trait::async_trait]
 impl HubService for OfflineHubService {
-  fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
     if !self
       .inner
       .local_file_exists(repo, filename, snapshot.clone())?
     {
       panic!("tried to download file in test");
     }
-    self.inner.download(repo, filename, snapshot)
+    self.inner.download(repo, filename, snapshot).await
   }
 
   fn list_local_models(&self) -> Vec<HubFile> {

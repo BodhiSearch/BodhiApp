@@ -19,6 +19,7 @@ thiserror = { workspace = true }
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }

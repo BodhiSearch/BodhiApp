@@ -38,7 +38,7 @@ type Result<T> = std::result::Result<T, PullCommandError>;
 
 impl PullCommand {
   #[allow(clippy::result_large_err)]
-  pub fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
+  pub async fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
     match &self {
       PullCommand::ByAlias { alias } => {
         if service.data_service().find_alias(alias).is_some() {
@@ -50,7 +50,7 @@ impl PullCommand {
         let local_model_file =
           service
             .hub_service()
-            .download(&model.repo, &model.filename, None)?;
+            .download(&model.repo, &model.filename, None).await?;
         // Chat template download removed since llama.cpp now handles chat templates
         let alias = AliasBuilder::default()
           .alias(model.alias)
@@ -83,7 +83,7 @@ impl PullCommand {
         } else {
           service
             .hub_service()
-            .download(repo, filename, snapshot.clone())?;
+            .download(repo, filename, snapshot.clone()).await?;
           println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
         Ok(())
@@ -106,7 +106,8 @@ mod test {
   use std::{fs, sync::Arc};
 
   #[rstest]
-  fn test_pull_by_alias_fails_if_alias_exists() -> anyhow::Result<()> {
+  #[tokio::test]
+  async fn test_pull_by_alias_fails_if_alias_exists() -> anyhow::Result<()> {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
       .build()?;
@@ -114,7 +115,7 @@ mod test {
     let pull = PullCommand::ByAlias {
       alias: alias.to_string(),
     };
-    let result = pull.execute(Arc::new(service));
+    let result = pull.execute(Arc::new(service)).await;
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
@@ -124,7 +125,8 @@ mod test {
   }
 
   #[rstest]
-  fn test_pull_by_alias_creates_new_alias(
+  #[tokio::test]
+  async fn test_pull_by_alias_creates_new_alias(
     mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
     let remote_model = RemoteModel::testalias();
@@ -145,7 +147,7 @@ mod test {
       alias: remote_model.alias,
     };
     let service = Arc::new(service);
-    pull.execute(service.clone())?;
+    pull.execute(service.clone()).await?;
     let created_alias = service
       .data_service()
       .find_alias("testalias:instruct")
@@ -159,7 +161,8 @@ mod test {
   #[case(Some("main".to_string()))]
   #[case(Some("b32046744d93031a26c8e925de2c8932c305f7b9".to_string()))]
   #[anyhow_trace::anyhow_trace]
-  fn test_pull_by_repo_file_only_pulls_the_model(
+  #[tokio::test]
+  async fn test_pull_by_repo_file_only_pulls_the_model(
     #[case] snapshot: Option<String>,
     mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
@@ -178,12 +181,13 @@ mod test {
     let service = AppServiceStubBuilder::default()
       .hub_service(Arc::new(test_hf_service))
       .build()?;
-    pull.execute(Arc::new(service))?;
+    pull.execute(Arc::new(service)).await?;
     Ok(())
   }
 
   #[rstest]
-  fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file() -> anyhow::Result<()> {
+  #[tokio::test]
+  async fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file() -> anyhow::Result<()> {
     let service = AppServiceStubBuilder::default()
       .with_hub_service()
       .with_data_service()
@@ -192,7 +196,7 @@ mod test {
     let command = PullCommand::ByAlias {
       alias: "testalias:instruct".to_string(),
     };
-    command.execute(service.clone())?;
+    command.execute(service.clone()).await?;
     let alias = service
       .bodhi_home()
       .join(ALIASES_DIR)

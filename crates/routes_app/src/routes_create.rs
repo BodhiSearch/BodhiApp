@@ -61,7 +61,7 @@ pub async fn create_alias_handler(
 ) -> Result<(StatusCode, Json<AliasResponse>), ApiError> {
   let command = CreateCommand::try_from(payload)?;
   let alias = command.alias.clone();
-  command.execute(state.app_service())?;
+  command.execute(state.app_service()).await?;
   let alias = state
     .app_service()
     .data_service()
@@ -84,7 +84,7 @@ pub async fn update_alias_handler(
   payload.alias = Some(id.clone());
   let mut command = CreateCommand::try_from(payload)?;
   command.update = true;
-  command.execute(state.app_service())?;
+  command.execute(state.app_service()).await?;
   let alias = state
     .app_service()
     .data_service()
