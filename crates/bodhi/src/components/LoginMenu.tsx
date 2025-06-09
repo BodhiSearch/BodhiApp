@@ -37,8 +37,6 @@ export function LoginMenu() {
     );
   }
 
-
-
   return (
     <div className="p-2" data-testid="login-menu-default">
       <Button

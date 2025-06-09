@@ -51,8 +51,6 @@ pub async fn _impl(
   req: Request,
   next: Next,
 ) -> Result<Response, ApiAuthError> {
-
-
   // Get headers
   let role_header = req.headers().get(KEY_RESOURCE_ROLE);
   let scope_header = req.headers().get(KEY_RESOURCE_SCOPE);
@@ -386,6 +384,4 @@ mod tests {
     );
     Ok(())
   }
-
-
 }
