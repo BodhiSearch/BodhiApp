@@ -2,7 +2,6 @@
 
 export type AliasResponse = {
     alias: string;
-    chat_template: string;
     context_params: GptContextParams;
     filename: string;
     model_params: {};
@@ -35,10 +34,6 @@ export type ApiTokenResponse = {
  */
 export type AppInfo = {
     /**
-     * Whether authentication is enabled
-     */
-    authz: boolean;
-    /**
      * Current application status
      */
     status: AppStatus;
@@ -57,26 +52,6 @@ export type ChatRequest = {
     model: string;
     options?: null | Options;
     stream?: boolean | null;
-};
-
-/**
- * Chat template identifier for built-in templates
- */
-export type ChatTemplateId = 'llama3' | 'llama2' | 'llama2-legacy' | 'phi3' | 'gemma' | 'deepseek' | 'command-r' | 'openchat' | 'tinyllama';
-
-/**
- * Chat template type that can be either built-in or from a repository
- */
-export type ChatTemplateType = 'Embedded' | {
-    /**
-     * Built-in chat template using Id
-     */
-    Id: ChatTemplateId;
-} | {
-    /**
-     * Custom chat template from a repository
-     */
-    Repo: Repo;
 };
 
 /**
@@ -244,7 +219,6 @@ export type Options = {
 export type PaginatedResponseAliasResponse = {
     data: Array<{
         alias: string;
-        chat_template: string;
         context_params: GptContextParams;
         filename: string;
         model_params: {};
@@ -341,15 +315,10 @@ export type SettingMetadata = {
 export type SettingSource = 'system' | 'command_line' | 'environment' | 'settings_file' | 'default';
 
 /**
- * Request to setup the application in authenticated or non-authenticated mode
+ * Request to setup the application in authenticated mode
  */
 export type SetupRequest = {
-    /**
-     * Whether to enable authentication
-     * - true: Setup app in authenticated mode with role-based access
-     * - false: Setup app in non-authenticated mode for open access
-     */
-    authz: boolean;
+    [key: string]: unknown;
 };
 
 /**
@@ -509,31 +478,6 @@ export type ListOllamaModelsResponses = {
 };
 
 export type ListOllamaModelsResponse = ListOllamaModelsResponses[keyof ListOllamaModelsResponses];
-
-export type ListChatTemplatesData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/bodhi/v1/chat_templates';
-};
-
-export type ListChatTemplatesErrors = {
-    /**
-     * Internal server error
-     */
-    500: OpenAiApiError;
-};
-
-export type ListChatTemplatesError = ListChatTemplatesErrors[keyof ListChatTemplatesErrors];
-
-export type ListChatTemplatesResponses = {
-    /**
-     * List of available chat templates
-     */
-    200: Array<ChatTemplateType>;
-};
-
-export type ListChatTemplatesResponse = ListChatTemplatesResponses[keyof ListChatTemplatesResponses];
 
 export type GetAppInfoData = {
     body?: never;
