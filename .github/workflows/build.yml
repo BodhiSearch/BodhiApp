@@ -88,6 +88,16 @@ jobs:
           HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
           HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
           CI_DEFAULT_VARIANT: cpu
+          # Integration test environment variables
+          INTEG_TEST_AUTH_URL: ${{ vars.INTEG_TEST_AUTH_URL }}
+          INTEG_TEST_AUTH_REALM: ${{ vars.INTEG_TEST_AUTH_REALM }}
+          INTEG_TEST_CLIENT_ID: ${{ secrets.INTEG_TEST_CLIENT_ID }}
+          INTEG_TEST_CLIENT_SECRET: ${{ secrets.INTEG_TEST_CLIENT_SECRET }}
+          INTEG_TEST_USERNAME: ${{ vars.INTEG_TEST_USERNAME }}
+          INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
+          INTEG_TEST_ISSUER: ${{ vars.INTEG_TEST_ISSUER }}
+          INTEG_TEST_KID: ${{ vars.INTEG_TEST_KID }}
+          INTEG_TEST_PUBLIC_KEY: ${{ vars.INTEG_TEST_PUBLIC_KEY }}
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
         if: success()
