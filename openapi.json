@@ -268,62 +268,6 @@
         ]
       }
     },
-    "/bodhi/v1/chat_templates": {
-      "get": {
-        "tags": [
-          "models"
-        ],
-        "summary": "List available chat templates (both built-in and from repositories)",
-        "operationId": "listChatTemplates",
-        "responses": {
-          "200": {
-            "description": "List of available chat templates",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ChatTemplateType"
-                  }
-                },
-                "example": [
-                  {
-                    "id": "llama2"
-                  },
-                  {
-                    "id": "llama3"
-                  },
-                  {
-                    "id": "gemma"
-                  },
-                  {
-                    "repo": "meta-llama/Llama-2-70b-chat-hf"
-                  },
-                  {
-                    "repo": "mistralai/Mistral-7B-Instruct-v0.1"
-                  }
-                ]
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIApiError"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer_auth": []
-          }
-        ]
-      }
-    },
     "/bodhi/v1/info": {
       "get": {
         "tags": [
@@ -1956,16 +1900,12 @@
           "filename",
           "snapshot",
           "source",
-          "chat_template",
           "model_params",
           "request_params",
           "context_params"
         ],
         "properties": {
           "alias": {
-            "type": "string"
-          },
-          "chat_template": {
             "type": "string"
           },
           "context_params": {
@@ -2055,14 +1995,9 @@
         "description": "Application information and status",
         "required": [
           "version",
-          "authz",
           "status"
         ],
         "properties": {
-          "authz": {
-            "type": "boolean",
-            "description": "Whether authentication is enabled"
-          },
           "status": {
             "$ref": "#/components/schemas/AppStatus",
             "description": "Current application status"
@@ -2073,7 +2008,6 @@
           }
         },
         "example": {
-          "authz": true,
           "status": "ready",
           "version": "0.1.0"
         }
@@ -2136,59 +2070,6 @@
             ]
           }
         }
-      },
-      "ChatTemplateId": {
-        "type": "string",
-        "description": "Chat template identifier for built-in templates",
-        "enum": [
-          "llama3",
-          "llama2",
-          "llama2-legacy",
-          "phi3",
-          "gemma",
-          "deepseek",
-          "command-r",
-          "openchat",
-          "tinyllama"
-        ]
-      },
-      "ChatTemplateType": {
-        "oneOf": [
-          {
-            "type": "string",
-            "description": "Chat template embedded in the GGUF model file",
-            "enum": [
-              "Embedded"
-            ]
-          },
-          {
-            "type": "object",
-            "description": "Built-in chat template using Id",
-            "required": [
-              "Id"
-            ],
-            "properties": {
-              "Id": {
-                "$ref": "#/components/schemas/ChatTemplateId",
-                "description": "Built-in chat template using Id"
-              }
-            }
-          },
-          {
-            "type": "object",
-            "description": "Custom chat template from a repository",
-            "required": [
-              "Repo"
-            ],
-            "properties": {
-              "Repo": {
-                "$ref": "#/components/schemas/Repo",
-                "description": "Custom chat template from a repository"
-              }
-            }
-          }
-        ],
-        "description": "Chat template type that can be either built-in or from a repository"
       },
       "CreateApiTokenRequest": {
         "type": "object",
@@ -2846,16 +2727,12 @@
                 "filename",
                 "snapshot",
                 "source",
-                "chat_template",
                 "model_params",
                 "request_params",
                 "context_params"
               ],
               "properties": {
                 "alias": {
-                  "type": "string"
-                },
-                "chat_template": {
                   "type": "string"
                 },
                 "context_params": {
@@ -3237,19 +3114,8 @@
       },
       "SetupRequest": {
         "type": "object",
-        "description": "Request to setup the application in authenticated or non-authenticated mode",
-        "required": [
-          "authz"
-        ],
-        "properties": {
-          "authz": {
-            "type": "boolean",
-            "description": "Whether to enable authentication\n- true: Setup app in authenticated mode with role-based access\n- false: Setup app in non-authenticated mode for open access"
-          }
-        },
-        "example": {
-          "authz": true
-        }
+        "description": "Request to setup the application in authenticated mode",
+        "example": {}
       },
       "SetupResponse": {
         "type": "object",
