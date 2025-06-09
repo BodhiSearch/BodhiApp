@@ -339,12 +339,17 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     )
   }
 
+  fn login_callback_path(&self) -> String {
+    "/ui/auth/callback".to_string()
+  }
+
   fn login_callback_url(&self) -> String {
     format!(
-      "{}://{}:{}/ui/auth/callback",
+      "{}://{}:{}{}",
       self.scheme(),
       self.host(),
-      self.port()
+      self.port(),
+      self.login_callback_path()
     )
   }
   fn secrets_path(&self) -> PathBuf {

@@ -41,9 +41,9 @@ async fn internal_main() -> Result<(), ApiError> {
 
   // Register a new client with default redirect URIs
   let redirect_uris = vec![
-    "http://localhost:1135/bodhi/v1/auth/callback".to_string(),
-    "http://0.0.0.0:1135/bodhi/v1/auth/callback".to_string(),
-    "http://127.0.0.1:1135/bodhi/v1/auth/callback".to_string(),
+    "http://localhost:1135/ui/auth/callback".to_string(),
+    "http://0.0.0.0:1135/ui/auth/callback".to_string(),
+    "http://127.0.0.1:1135/ui/auth/callback".to_string(),
   ];
 
   println!("Registering client with auth server...");
