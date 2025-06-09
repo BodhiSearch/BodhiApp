@@ -23,8 +23,8 @@ runs:
           librsvg2-dev \
           patchelf
     - uses: Swatinem/rust-cache@v2
-    - name: install Rust 1.82.0
-      uses: dtolnay/rust-toolchain@1.82.0
+    - name: install Rust 1.87.0
+      uses: dtolnay/rust-toolchain@1.87.0
       with:
         targets: ${{ inputs.target }}
         components: rustfmt,clippy,llvm-tools
