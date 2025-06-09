@@ -8,13 +8,11 @@ objs = { workspace = true }
 errmeta_derive = { workspace = true }
 services = { workspace = true }
 
-clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
 include_dir = { workspace = true }
 prettytable = { workspace = true }
 rstest = { workspace = true, optional = true }
-strum = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 serde_yaml = { workspace = true }
 

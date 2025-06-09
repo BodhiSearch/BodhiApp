@@ -92,6 +92,7 @@ Feature documentation organized by development status and implementation timelin
 
 #### Planned Features
 - **[App Setup Refactoring](02-features/planned/20250609-app-setup-refactoring.md)** - Modular initialization library for multiple deployment modes (production, test, CLI, Docker)
+- **[Remove Defunct CLI](02-features/planned/20250609-remove-defunct-cli.md)** - Remove CLI implementation to eliminate security gaps in auth-only mode architecture
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
