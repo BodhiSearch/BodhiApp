@@ -595,7 +595,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     Ok(())
   }
 
-  const UNAUTH_ERR: &str = "request error: https://huggingface.co/{repo}/resolve/{sha}/tokenizer_config.json: status code 401";
+  const UNAUTH_ERR: &str = "request error: HTTP status client error (401 Unauthorized) for url (https://huggingface.co/{repo}/resolve/{sha}/tokenizer_config.json)";
 
   #[rstest]
   #[case::anon_not_exists("amir36/not-exists", None)]
@@ -639,7 +639,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     Ok(())
   }
 
-  const GATED_ERR: &str = "request error: https://huggingface.co/amir36/test-gated-repo/resolve/{sha}/tokenizer_config.json: status code 403";
+  const GATED_ERR: &str = "request error: HTTP status client error (403 Forbidden) for url (https://huggingface.co/amir36/test-gated-repo/resolve/{sha}/tokenizer_config.json)";
 
   #[rstest]
   #[case(hf_test_token_public(), None, GATED_ERR)]
@@ -688,7 +688,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     Ok(())
   }
 
-  const MAYBE_NOT_EXISTS: &str = "request error: https://huggingface.co/amir36/not-exists/resolve/{sha}/tokenizer_config.json: status code 404";
+  const MAYBE_NOT_EXISTS: &str = "request error: HTTP status client error (404 Not Found) for url (https://huggingface.co/amir36/not-exists/resolve/{sha}/tokenizer_config.json)";
 
   #[rstest]
   #[anyhow_trace]
