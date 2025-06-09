@@ -6,7 +6,7 @@ use axum::{
 };
 use objs::{ApiError, AppError, ErrorType, Role, RoleError, TokenScope, TokenScopeError};
 use server_core::RouterState;
-use services::{SecretServiceError, SecretServiceExt};
+use services::SecretServiceError;
 use std::sync::Arc;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -47,15 +47,11 @@ pub async fn api_auth_middleware(
 pub async fn _impl(
   required_role: Role,
   required_scope: Option<TokenScope>,
-  State(state): State<Arc<dyn RouterState>>,
+  State(_state): State<Arc<dyn RouterState>>,
   req: Request,
   next: Next,
 ) -> Result<Response, ApiAuthError> {
-  // Check if authorization is disabled
-  let authz = &state.app_service().secret_service().authz()?;
-  if !authz {
-    return Ok(next.run(req).await);
-  }
+
 
   // Get headers
   let role_header = req.headers().get(KEY_RESOURCE_ROLE);
@@ -109,7 +105,7 @@ mod tests {
   use server_core::{
     test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext, RouterState,
   };
-  use services::test_utils::{AppServiceStubBuilder, SecretServiceStub};
+  use services::test_utils::AppServiceStubBuilder;
   use std::sync::Arc;
   use tower::ServiceExt;
 
@@ -391,41 +387,5 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[tokio::test]
-  async fn test_api_auth_middleware_skips_if_authz_disabled(
-    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-    #[values(Role::User, Role::PowerUser, Role::Manager, Role::Admin)] required_role: Role,
-    #[values(Role::User, Role::PowerUser, Role::Manager, Role::Admin)] header_role: Role,
-  ) -> anyhow::Result<()> {
-    // Given
-    let secret_service = SecretServiceStub::new()
-      .with_authz_disabled()
-      .with_app_status_ready();
-    let app_service = AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
-      .build()?;
-    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
-      Arc::new(app_service),
-    ));
 
-    let router = Router::new()
-      .route("/test", get(test_handler))
-      .route_layer(from_fn_with_state(
-        state.clone(),
-        move |state, req, next| api_auth_middleware(required_role, None, state, req, next),
-      ))
-      .with_state(state);
-    let req = Request::builder()
-      .uri("/test")
-      .header(KEY_RESOURCE_ROLE, header_role.to_string())
-      .body(Body::empty())?;
-
-    // Then - Should pass through without checking auth
-    let response = router.oneshot(req).await?;
-    assert_eq!(StatusCode::OK, response.status());
-
-    Ok(())
-  }
 }

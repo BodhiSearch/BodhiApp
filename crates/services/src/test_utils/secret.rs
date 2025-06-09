@@ -37,18 +37,7 @@ impl SecretServiceStub {
     self.with_app_status(&AppStatus::Setup)
   }
 
-  pub fn with_authz(self, authz: bool) -> Self {
-    self.set_authz(authz).unwrap();
-    self
-  }
 
-  pub fn with_authz_disabled(self) -> Self {
-    self.with_authz(false)
-  }
-
-  pub fn with_authz_enabled(self) -> Self {
-    self.with_authz(true)
-  }
 
   pub fn with_app_reg_info(self, app_reg_info: &AppRegInfo) -> Self {
     self.set_app_reg_info(app_reg_info).unwrap();
@@ -97,7 +86,7 @@ impl SecretService for SecretServiceStub {
 
 impl Default for SecretServiceStub {
   fn default() -> Self {
-    Self::new().with_app_status_ready().with_authz_enabled()
+    Self::new().with_app_status_ready()
   }
 }
 

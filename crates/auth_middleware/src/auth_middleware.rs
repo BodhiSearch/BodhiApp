@@ -8,7 +8,7 @@ use axum::{
 use objs::{ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError};
 use server_core::RouterState;
 use services::{
-  AppStatus, AuthServiceError, SecretService, SecretServiceError, SecretServiceExt, TokenError,
+  AppStatus, AuthServiceError, SecretServiceError, TokenError,
 };
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -93,11 +93,6 @@ pub async fn auth_middleware(
     );
   }
 
-  // Check if authorization is disabled
-  if !authz_status(&secret_service) {
-    return Ok(next.run(req).await);
-  }
-
   // Check for token in session
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
     let header = header
@@ -154,10 +149,7 @@ pub async fn inject_session_auth_info(
     return Ok(next.run(req).await);
   }
 
-  // Check if authorization is disabled
-  if !authz_status(&secret_service) {
-    return Ok(next.run(req).await);
-  }
+
 
   // Try to get token from session
   if let Some(access_token) = session
@@ -182,9 +174,7 @@ pub async fn inject_session_auth_info(
   Ok(next.run(req).await)
 }
 
-fn authz_status(secret_service: &Arc<dyn SecretService>) -> bool {
-  secret_service.authz().unwrap_or(true)
-}
+
 
 #[cfg(test)]
 mod tests {
@@ -319,45 +309,7 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[case("/with_auth")]
-  #[case("/with_optional_auth")]
-  #[tokio::test]
-  async fn test_auth_middleware_skips_if_app_status_ready_and_authz_false(
-    #[case] path: &str,
-  ) -> anyhow::Result<()> {
-    let secret_service = SecretServiceStub::new()
-      .with_authz_disabled()
-      .with_app_status_ready();
-    let app_service = AppServiceStubBuilder::default()
-      .secret_service(Arc::new(secret_service))
-      .with_session_service()
-      .await
-      .with_db_service()
-      .await
-      .build()?;
-    let app_service = Arc::new(app_service);
-    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::new()),
-      app_service.clone(),
-    ));
-    let req = Request::get(path).body(Body::empty())?;
-    let router = test_router(state);
-    let response = router.clone().oneshot(req).await?;
-    assert_eq!(StatusCode::IM_A_TEAPOT, response.status());
-    let response_json = response.json::<TestResponse>().await?;
-    assert_eq!(
-      TestResponse {
-        x_resource_token: None,
-        x_resource_role: None,
-        x_resource_scope: None,
-        authorization_header: None,
-        path: path.to_string(),
-      },
-      response_json
-    );
-    Ok(())
-  }
+
 
   #[rstest]
   #[case::authz_setup(SecretServiceStub::new().with_app_status_setup())]

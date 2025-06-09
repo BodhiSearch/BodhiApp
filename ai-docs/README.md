@@ -90,6 +90,7 @@ Feature documentation organized by development status and implementation timelin
 - **[Reset to Authz](02-features/completed-stories/story-authz-20250111-reset-to-authz.md)** - Authentication mode reset functionality
 
 #### Planned Features
+- **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
 

@@ -16,6 +16,9 @@ use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, Redire
 use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError};
 use serde::{Deserialize, Serialize};
 
+pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
+pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
+
 #[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct AuthInitiateResponse {
   /// OAuth2 authorization URL
@@ -244,11 +247,11 @@ pub async fn auth_callback_handler(
 
   // Store tokens in session
   session
-    .insert("access_token", access_token)
+    .insert(SESSION_KEY_ACCESS_TOKEN, access_token)
     .await
     .map_err(LoginError::from)?;
   session
-    .insert("refresh_token", refresh_token)
+    .insert(SESSION_KEY_REFRESH_TOKEN, refresh_token)
     .await
     .map_err(LoginError::from)?;
 

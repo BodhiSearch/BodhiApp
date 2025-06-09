@@ -57,7 +57,7 @@ const benefits = [
 const setupModes = [
   {
     title: 'Authenticated Mode',
-    description: 'Recommended',
+    description: 'Secure setup with user authentication',
     benefits: [
       'User authentication',
       'Multi-user support with RBAC',
@@ -69,21 +69,6 @@ const setupModes = [
     ],
     icon: '🔐',
     recommended: true,
-  },
-  {
-    title: 'Non-Authenticated Mode',
-    description: 'For quick/minimal setup',
-    benefits: [
-      'Quick setup',
-      'No email/login required',
-      'No authentication or user management feature',
-      'No API tokens',
-      'No user/token-wise usage tracking',
-      'Public/insecure API endpoints',
-      'Not compatible with Auth-only mode features',
-    ],
-    icon: '⚡️',
-    recommended: false,
   },
 ];
 
@@ -112,8 +97,8 @@ function SetupContent() {
     },
   });
 
-  const handleSetup = (authz: boolean) => {
-    setup({ authz });
+  const handleSetup = () => {
+    setup({});
   };
 
   return (

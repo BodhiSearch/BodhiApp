@@ -3,7 +3,6 @@ use serde::de::DeserializeOwned;
 use crate::{AppRegInfo, AppStatus, SecretService, SecretServiceError};
 
 const KEY_APP_STATUS: &str = "app_status";
-const KEY_APP_AUTHZ: &str = "app_authz";
 const KEY_APP_REG_INFO: &str = "app_reg_info";
 
 type Result<T> = std::result::Result<T, SecretServiceError>;
@@ -32,10 +31,6 @@ where
 }
 
 pub trait SecretServiceExt {
-  fn authz(&self) -> Result<bool>;
-
-  fn set_authz(&self, authz: bool) -> Result<()>;
-
   fn app_reg_info(&self) -> Result<Option<AppRegInfo>>;
 
   fn set_app_reg_info(&self, app_reg_info: &AppRegInfo) -> Result<()>;
@@ -46,15 +41,6 @@ pub trait SecretServiceExt {
 }
 
 impl<T: AsRef<dyn SecretService>> SecretServiceExt for T {
-  fn authz(&self) -> Result<bool> {
-    let authz = get_secret::<_, bool>(self, KEY_APP_AUTHZ)?;
-    Ok(authz.unwrap_or(true))
-  }
-
-  fn set_authz(&self, authz: bool) -> Result<()> {
-    set_secret(self, KEY_APP_AUTHZ, authz)
-  }
-
   fn app_reg_info(&self) -> Result<Option<AppRegInfo>> {
     get_secret::<_, AppRegInfo>(self, KEY_APP_REG_INFO)
   }
@@ -90,13 +76,6 @@ mod tests {
     let key = generate_random_key();
     let service = DefaultSecretService::new(&key, &secrets_path)?;
 
-    assert!(service.authz()?);
-    service.set_authz(false)?;
-    assert!(!service.authz()?);
-    service.set_authz(true)?;
-    assert!(service.authz()?);
-    service.set_authz(false)?; //to test later
-
     assert!(service.app_reg_info()?.is_none());
 
     service.set_app_reg_info(&app_reg_info)?;
@@ -110,14 +89,11 @@ mod tests {
     service.set_app_status(&new_status)?;
     assert_eq!(new_status, service.app_status()?);
 
-    assert!(!service.authz()?);
     assert_eq!(service.app_reg_info()?.unwrap(), app_reg_info);
     assert_eq!(service.app_status()?, AppStatus::Setup);
-    assert!(!service.authz()?);
     drop(service);
 
     let service = DefaultSecretService::new(&key, &secrets_path)?;
-    assert!(!service.authz()?);
     assert_eq!(service.app_reg_info()?.unwrap(), app_reg_info);
     assert_eq!(service.app_status()?, AppStatus::Setup);
     Ok(())

@@ -120,7 +120,7 @@ export function useUser(options?: { enabled?: boolean }) {
 }
 
 type SetupRequest = {
-  authz: boolean;
+  // Empty request - always sets up in authenticated mode
 };
 
 export function useSetupApp(options?: {
