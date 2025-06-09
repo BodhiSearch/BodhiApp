@@ -51,7 +51,6 @@ pub async fn llama2_7b_setup(
   if env_test_path.exists() {
     dotenv::from_filename(&env_test_path).ok();
   }
-  assert!(env_test_path.exists(), "Failed to find .env.test file");
   let temp_dir = tempfile::tempdir().unwrap();
   let cache_dir = temp_dir.path().join(".cache");
   std::fs::create_dir_all(&cache_dir).unwrap();
