@@ -1,7 +1,7 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use keyring::Entry;
 use objs::{AppError, ErrorType};
-use rand::{rngs::OsRng, RngCore};
+use rand::{rng, RngCore};
 use sha2::{Digest, Sha256};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -82,7 +82,7 @@ impl KeyringStore for SystemKeyringStore {
 
 pub fn generate_random_key() -> Vec<u8> {
   let mut generated = vec![0u8; 32];
-  OsRng.fill_bytes(&mut generated);
+  rng().fill_bytes(&mut generated);
   generated
 }
 
