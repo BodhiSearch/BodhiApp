@@ -48,8 +48,10 @@ pub async fn llama2_7b_setup(
     .join("tests")
     .join("resources")
     .join(".env.test");
+  if env_test_path.exists() {
+    dotenv::from_filename(&env_test_path).ok();
+  }
   assert!(env_test_path.exists(), "Failed to find .env.test file");
-  dotenv::from_filename(&env_test_path).ok();
   let temp_dir = tempfile::tempdir().unwrap();
   let cache_dir = temp_dir.path().join(".cache");
   std::fs::create_dir_all(&cache_dir).unwrap();
