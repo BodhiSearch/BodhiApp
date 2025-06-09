@@ -182,7 +182,7 @@ mod tests {
       DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
     Router::new()
       .route("/v1/models", axum::routing::get(oai_models_handler))
-      .route("/v1/models/:id", axum::routing::get(oai_model_handler))
+      .route("/v1/models/{id}", axum::routing::get(oai_model_handler))
       .with_state(Arc::new(router_state))
   }
 

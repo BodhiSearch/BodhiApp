@@ -703,7 +703,7 @@ mod tests {
       .with_state(state);
 
     let mut client = TestServer::new(router)?;
-    client.do_save_cookies();
+    client.save_cookies();
 
     // Perform login request
     let login_resp = client.post("/auth/initiate").await;
@@ -832,7 +832,7 @@ mod tests {
       .with_state(state);
 
     let mut client = TestServer::new(router)?;
-    client.do_save_cookies();
+    client.save_cookies();
 
     let login_resp = client.post("/auth/initiate").await;
     login_resp.assert_status(StatusCode::UNAUTHORIZED);
@@ -915,7 +915,7 @@ mod tests {
       .with_state(state);
 
     let mut client = TestServer::new(router)?;
-    client.do_save_cookies();
+    client.save_cookies();
 
     // Simulate login to set up session
     let login_resp = client.post("/auth/initiate").await;
@@ -978,7 +978,7 @@ mod tests {
       .with_state(state);
 
     let mut client = TestServer::new(router)?;
-    client.do_save_cookies();
+    client.save_cookies();
 
     let resp = client.post("/test/session/new").await;
     resp.assert_status(StatusCode::CREATED);

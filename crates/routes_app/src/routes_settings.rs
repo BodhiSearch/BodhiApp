@@ -269,8 +269,8 @@ mod tests {
     let router_state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), app_service);
     Router::new()
       .route(ENDPOINT_SETTINGS, get(list_settings_handler))
-      .route("/v1/bodhi/settings/:key", put(update_setting_handler))
-      .route("/v1/bodhi/settings/:key", delete(delete_setting_handler))
+      .route("/v1/bodhi/settings/{key}", put(update_setting_handler))
+      .route("/v1/bodhi/settings/{key}", delete(delete_setting_handler))
       .with_state(Arc::new(router_state))
   }
 
