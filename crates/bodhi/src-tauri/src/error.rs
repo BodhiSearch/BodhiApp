@@ -1,14 +1,12 @@
-use commands::{
-  AliasCommandError, CreateCommandError, EnvCommandError, ListCommandError, PullCommandError,
-};
+use commands::{CreateCommandError, PullCommandError};
 use objs::{impl_error_from, AppError, BuilderError, ErrorType, IoError, LocalizationSetupError};
-use server_app::{RunCommandError, ServeError};
+use server_app::ServeError;
 use server_core::ContextError;
 use services::{
   db::DbError, DataServiceError, KeyringError, SecretServiceError, SessionServiceError,
 };
 
-use crate::convert::ConvertError;
+
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -32,19 +30,10 @@ pub enum BodhiError {
   #[error(transparent)]
   SessionServiceError(#[from] SessionServiceError),
   #[error(transparent)]
-  AliasCommandError(#[from] AliasCommandError),
-  #[error(transparent)]
   PullCommandError(#[from] PullCommandError),
   #[error(transparent)]
-  RunCommandError(#[from] RunCommandError),
-  #[error(transparent)]
   CreateCommandError(#[from] CreateCommandError),
-  #[error(transparent)]
-  ListCommandError(#[from] ListCommandError),
-  #[error(transparent)]
-  EnvCommandError(#[from] EnvCommandError),
-  #[error(transparent)]
-  ConvertError(#[from] ConvertError),
+
   #[error(transparent)]
   LocalizationSetup(#[from] LocalizationSetupError),
   #[error(transparent)]

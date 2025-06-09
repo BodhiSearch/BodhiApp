@@ -992,7 +992,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
- "clap 4.5.28",
  "derive-new",
  "derive_builder 0.20.2",
  "errmeta_derive",
@@ -1004,7 +1003,6 @@ dependencies = [
  "rstest",
  "serde_yaml",
  "services",
- "strum",
  "thiserror 1.0.69",
 ]
 
