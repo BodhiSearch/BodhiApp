@@ -104,4 +104,7 @@ ts-client: ## Build the TypeScript types package
 	@cd ts-client && npm install && npm run build && npm run test && npm run bundle
 	@echo "✓ ts-client package built successfully"
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client help
+ui.test:
+	cd crates/bodhi && pnpm run test
+
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client ui.test help
