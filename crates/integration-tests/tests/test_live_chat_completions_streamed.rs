@@ -1,6 +1,9 @@
 mod utils;
 
-use crate::utils::{create_authenticated_session, create_session_cookie, get_oauth_tokens, live_server, TestServerHandle};
+use crate::utils::{
+  create_authenticated_session, create_session_cookie, get_oauth_tokens, live_server,
+  TestServerHandle,
+};
 use axum::http::StatusCode;
 use pretty_assertions::assert_eq;
 use serde_json::Value;
@@ -26,7 +29,8 @@ async fn test_live_chat_completions_stream(
   let (access_token, refresh_token) = get_oauth_tokens(app_service.as_ref()).await?;
 
   // Create authenticated session
-  let session_id = create_authenticated_session(&app_service, &access_token, &refresh_token).await?;
+  let session_id =
+    create_authenticated_session(&app_service, &access_token, &refresh_token).await?;
   let session_cookie = create_session_cookie(&session_id);
   let chat_endpoint = format!("http://{host}:{port}/v1/chat/completions");
   let client = reqwest::Client::new();
@@ -69,7 +73,11 @@ async fn test_live_chat_completions_stream(
   handle.shutdown().await?;
   let actual = streams[0..max(streams.len() - 1, 0)]
     .iter()
-    .map(|stream| stream["choices"][0]["delta"]["content"].as_str().unwrap())
+    .map(|stream| {
+      stream["choices"][0]["delta"]["content"]
+        .as_str()
+        .unwrap_or_default()
+    })
     .collect::<Vec<_>>();
 
   // Check that the response contains "Tuesday" in some form
