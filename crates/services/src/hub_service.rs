@@ -85,7 +85,12 @@ type Result<T> = std::result::Result<T, HubServiceError>;
 #[async_trait::async_trait]
 pub trait HubService: std::fmt::Debug + Send + Sync {
   #[allow(clippy::needless_lifetimes)]
-  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile>;
+  async fn download(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+  ) -> Result<HubFile>;
 
   fn list_local_models(&self) -> Vec<HubFile>;
 
@@ -126,7 +131,12 @@ impl HfHubService {
 
 #[async_trait::async_trait]
 impl HubService for HfHubService {
-  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+  async fn download(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+  ) -> Result<HubFile> {
     if self.local_file_exists(repo, filename, snapshot.clone())? {
       return self.find_local_file(repo, filename, snapshot.clone());
     }
@@ -568,11 +578,13 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
   ) -> anyhow::Result<()> {
     let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let service = build_hf_service(token, temp_hf_home);
-    let local_model_file = service.download(
-      &Repo::try_from("amir36/test-model-repo")?,
-      "tokenizer_config.json",
-      snapshot.clone(),
-    ).await?;
+    let local_model_file = service
+      .download(
+        &Repo::try_from("amir36/test-model-repo")?,
+        "tokenizer_config.json",
+        snapshot.clone(),
+      )
+      .await?;
     assert!(local_model_file.path().exists());
     let mut sha = snapshot.unwrap_or("7de0799b8c9c12eff96e5c9612e39b041b3f4f5b".to_string());
     if sha == "main" {
@@ -613,11 +625,13 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     #[case] snapshot: Option<String>,
   ) -> anyhow::Result<()> {
     let service = build_hf_service(None, temp_hf_home);
-    let local_model_file = service.download(
-      &Repo::try_from(repo.clone())?,
-      "tokenizer_config.json",
-      snapshot.clone(),
-    ).await;
+    let local_model_file = service
+      .download(
+        &Repo::try_from(repo.clone())?,
+        "tokenizer_config.json",
+        snapshot.clone(),
+      )
+      .await;
     assert!(local_model_file.is_err());
     let sha = snapshot.unwrap_or("main".to_string());
     let error = strfmt!(UNAUTH_ERR, repo => repo.clone(), sha)?;
@@ -662,11 +676,13 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     #[case] error: &str,
   ) -> anyhow::Result<()> {
     let service = build_hf_service(token, temp_hf_home);
-    let local_model_file = service.download(
-      &Repo::try_from("amir36/test-gated-repo")?,
-      "tokenizer_config.json",
-      snapshot.clone(),
-    ).await;
+    let local_model_file = service
+      .download(
+        &Repo::try_from("amir36/test-gated-repo")?,
+        "tokenizer_config.json",
+        snapshot.clone(),
+      )
+      .await;
     assert!(local_model_file.is_err());
     let sha = snapshot.unwrap_or("main".to_string());
     let error = strfmt!(error, repo => "amir36/test-gated-repo", sha)?;
@@ -715,7 +731,9 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     let error = strfmt!(MAYBE_NOT_EXISTS, sha)?;
     let service = build_hf_service(token, temp_hf_home);
     let repo = Repo::try_from("amir36/not-exists")?;
-    let local_model_file = service.download(&repo, "tokenizer_config.json", snapshot).await;
+    let local_model_file = service
+      .download(&repo, "tokenizer_config.json", snapshot)
+      .await;
     assert!(local_model_file.is_err());
     let err = local_model_file.unwrap_err();
     match err {
@@ -748,11 +766,13 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     #[case] snapshot: Option<String>,
     #[case] version: &str,
   ) -> anyhow::Result<()> {
-    let local_model_file = hf_service.download(
-      &Repo::try_from("amir36/test-gated-repo")?,
-      "tokenizer_config.json",
-      snapshot.clone(),
-    ).await?;
+    let local_model_file = hf_service
+      .download(
+        &Repo::try_from("amir36/test-gated-repo")?,
+        "tokenizer_config.json",
+        snapshot.clone(),
+      )
+      .await?;
     let path = local_model_file.path();
     assert!(path.exists());
     let sha = if snapshot.is_none() || snapshot.clone().unwrap() == "main" {

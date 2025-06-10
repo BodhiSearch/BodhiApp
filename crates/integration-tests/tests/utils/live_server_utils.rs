@@ -12,10 +12,11 @@ use services::{
   hash_key,
   test_utils::{bodhi_home_setting, test_auth_service, EnvWrapperStub, OfflineHubService},
   AppRegInfoBuilder, AppService, AppStatus, DefaultAppService, DefaultSecretService,
-  DefaultSettingService, HfHubService, InitService, LocalDataService, MokaCacheService,
+  DefaultSettingService, HfHubService,LocalDataService, MokaCacheService,
   SecretServiceExt, SettingService, SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
   BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
+use lib_bodhiserver::InitService;
 use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;

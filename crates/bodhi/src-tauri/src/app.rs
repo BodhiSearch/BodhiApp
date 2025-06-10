@@ -122,8 +122,6 @@ async fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<()> {
   );
   let service = Arc::new(app_service);
 
-
-
   // Parse command line arguments using clap
   let cli = Cli::parse();
 

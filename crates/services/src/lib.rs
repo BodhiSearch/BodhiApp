@@ -10,7 +10,6 @@ mod data_service;
 pub mod db;
 mod env_wrapper;
 mod hub_service;
-mod init_service;
 mod keyring_service;
 mod macros;
 mod obj_exts;
@@ -27,7 +26,6 @@ pub use cache_service::*;
 pub use data_service::*;
 pub use env_wrapper::*;
 pub use hub_service::*;
-pub use init_service::*;
 pub use keyring_service::*;
 // obj_exts module is currently empty after chat template removal
 pub use objs::*;

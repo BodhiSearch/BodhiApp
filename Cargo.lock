@@ -2961,6 +2961,7 @@ dependencies = [
  "dotenv",
  "fs_extra",
  "jsonwebtoken",
+ "lib_bodhiserver",
  "llama_server_proc",
  "maplit",
  "objs",
@@ -3198,7 +3199,17 @@ dependencies = [
 name = "lib_bodhiserver"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "derive-new",
  "include_dir",
+ "maplit",
+ "mockall",
+ "objs",
+ "rstest",
+ "serde_yaml",
+ "services",
+ "tempfile",
+ "thiserror 2.0.12",
 ]
 
 [[package]]

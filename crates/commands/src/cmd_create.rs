@@ -71,7 +71,8 @@ impl CreateCommand {
         if self.auto_download {
           service
             .hub_service()
-            .download(&self.repo, &self.filename, self.snapshot).await?
+            .download(&self.repo, &self.filename, self.snapshot)
+            .await?
         } else {
           return Err(CreateCommandError::HubServiceError(
             HubFileNotFoundError::new(
