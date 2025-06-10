@@ -1,4 +1,4 @@
-use crate::{EnvWrapper, SettingService, BODHI_HOME, HF_HOME};
+use services::{EnvWrapper, SettingService, BODHI_HOME, HF_HOME};
 use objs::{EnvType, SettingSource};
 use std::{
   fs::{self, File},
@@ -94,14 +94,6 @@ impl InitService {
         path: session_db_path.display().to_string(),
       })?;
     }
-    let models_file = setting_service.models_yaml();
-    if !models_file.exists() {
-      let contents = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/models.yaml"));
-      fs::write(&models_file, contents).map_err(|err| InitServiceError::IoFileWrite {
-        source: err,
-        path: models_file.display().to_string(),
-      })?;
-    }
     Ok(())
   }
 
@@ -148,9 +140,9 @@ impl InitService {
 #[cfg(test)]
 mod tests {
   use super::{InitService, InitServiceError};
-  use crate::{
+  use services::{
     test_utils::{
-      EnvWrapperStub, TEST_ALIASES_DIR, TEST_MODELS_YAML, TEST_PROD_DB, TEST_SESSION_DB,
+      EnvWrapperStub, TEST_ALIASES_DIR, TEST_PROD_DB, TEST_SESSION_DB,
       TEST_SETTINGS_YAML,
     },
     DefaultSettingService, MockEnvWrapper, MockSettingService, SettingService, BODHI_HOME, HF_HOME,
@@ -245,7 +237,6 @@ mod tests {
     assert!(bodhi_home.join(TEST_ALIASES_DIR).exists());
     assert!(bodhi_home.join(TEST_PROD_DB).exists());
     assert!(bodhi_home.join(TEST_SESSION_DB).exists());
-    assert!(bodhi_home.join(TEST_MODELS_YAML).exists());
     Ok(())
   }
 

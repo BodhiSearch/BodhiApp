@@ -47,10 +47,10 @@ impl PullCommand {
         let Some(model) = service.data_service().find_remote_model(alias)? else {
           return Err(RemoteModelNotFoundError::new(alias.clone()))?;
         };
-        let local_model_file =
-          service
-            .hub_service()
-            .download(&model.repo, &model.filename, None).await?;
+        let local_model_file = service
+          .hub_service()
+          .download(&model.repo, &model.filename, None)
+          .await?;
         // Chat template download removed since llama.cpp now handles chat templates
         let alias = AliasBuilder::default()
           .alias(model.alias)
@@ -83,7 +83,8 @@ impl PullCommand {
         } else {
           service
             .hub_service()
-            .download(repo, filename, snapshot.clone()).await?;
+            .download(repo, filename, snapshot.clone())
+            .await?;
           println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
         Ok(())
@@ -187,7 +188,8 @@ mod test {
 
   #[rstest]
   #[tokio::test]
-  async fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file() -> anyhow::Result<()> {
+  async fn test_pull_by_alias_downloaded_model_using_stubs_create_alias_file() -> anyhow::Result<()>
+  {
     let service = AppServiceStubBuilder::default()
       .with_hub_service()
       .with_data_service()

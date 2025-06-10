@@ -4,8 +4,23 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+objs = { workspace = true }
+services = { workspace = true }
 
+derive-new = { workspace = true }
 include_dir = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+services = { workspace = true, features = ["test-utils"] }
+
+anyhow = { workspace = true }
+maplit = { workspace = true }
+mockall = { workspace = true }
+rstest = { workspace = true }
+serde_yaml = { workspace = true }
+tempfile = { workspace = true }
+
 
 [features]
 test-utils = []

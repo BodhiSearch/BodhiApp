@@ -110,7 +110,10 @@ pub fn build_routes(
   // Power user APIs (role=power_user or scope=scope_token_power_user)
   let power_user_apis = Router::new()
     .route(ENDPOINT_MODELS, post(create_alias_handler))
-    .route(&format!("{ENDPOINT_MODELS}/{{id}}"), put(update_alias_handler))
+    .route(
+      &format!("{ENDPOINT_MODELS}/{{id}}"),
+      put(update_alias_handler),
+    )
     .route(ENDPOINT_MODEL_PULL, get(list_downloads_handler))
     .route(ENDPOINT_MODEL_PULL, post(create_pull_request_handler))
     .route(

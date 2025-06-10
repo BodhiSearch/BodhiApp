@@ -13,6 +13,7 @@ server_app = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
 routes_app = { workspace = true, features = ["test-utils"] }
+lib_bodhiserver = { workspace = true, features = ["test-utils"] }
 
 axum = { workspace = true }
 anyhow = { workspace = true }

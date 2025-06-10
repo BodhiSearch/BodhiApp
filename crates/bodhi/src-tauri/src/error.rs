@@ -6,8 +6,6 @@ use services::{
   db::DbError, DataServiceError, KeyringError, SecretServiceError, SessionServiceError,
 };
 
-
-
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum BodhiError {

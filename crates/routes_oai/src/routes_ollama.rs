@@ -3,9 +3,9 @@ use async_openai::types::{
   ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestMessage,
   ChatCompletionRequestSystemMessage, ChatCompletionRequestSystemMessageContent,
   ChatCompletionRequestUserMessage, ChatCompletionRequestUserMessageContent,
-  ChatCompletionResponseMessage, ChatCompletionStreamResponseDelta,
-  CreateChatCompletionRequest, CreateChatCompletionResponse, CreateChatCompletionStreamResponse,
-  FinishReason, ResponseFormat, Role, Stop,
+  ChatCompletionResponseMessage, ChatCompletionStreamResponseDelta, CreateChatCompletionRequest,
+  CreateChatCompletionResponse, CreateChatCompletionStreamResponse, FinishReason, ResponseFormat,
+  Role, Stop,
 };
 use axum::{
   body::Body,

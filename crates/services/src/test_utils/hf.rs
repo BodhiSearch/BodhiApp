@@ -62,7 +62,12 @@ type Result<T> = std::result::Result<T, HubServiceError>;
 #[async_trait::async_trait]
 impl HubService for TestHfService {
   #[allow(clippy::needless_lifetimes)]
-  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+  async fn download(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+  ) -> Result<HubFile> {
     if self.allow_downloads {
       self.inner.download(repo, filename, snapshot).await
     } else {
@@ -110,7 +115,12 @@ pub struct OfflineHubService {
 
 #[async_trait::async_trait]
 impl HubService for OfflineHubService {
-  async fn download(&self, repo: &Repo, filename: &str, snapshot: Option<String>) -> Result<HubFile> {
+  async fn download(
+    &self,
+    repo: &Repo,
+    filename: &str,
+    snapshot: Option<String>,
+  ) -> Result<HubFile> {
     if !self
       .inner
       .local_file_exists(repo, filename, snapshot.clone())?
