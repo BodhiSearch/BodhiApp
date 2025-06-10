@@ -3201,11 +3201,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "derive-new",
+ "derive_builder 0.20.2",
  "include_dir",
  "maplit",
  "mockall",
  "objs",
  "rstest",
+ "serde_json",
  "serde_yaml",
  "services",
  "tempfile",
