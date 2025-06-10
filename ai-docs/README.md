@@ -144,6 +144,7 @@ Implementation guides, technical knowledge, and learning resources for developer
 - **[Chat UI](06-knowledge-transfer/chat-ui.md)** - Chat interface implementation patterns and user experience design
 - **[Model Parameters](06-knowledge-transfer/model-parameters.md)** - Model configuration, parameter management, and optimization guides
 - **[Setup Processes](06-knowledge-transfer/setup-processes.md)** - Application installation, setup procedures, and configuration workflows
+- **[Dependency Management](06-knowledge-transfer/unused-upgrade-dependencies.md)** - Comprehensive guide for Rust workspace dependency management, including unused dependency removal, systematic upgrade strategies, and handling major version blockers
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
