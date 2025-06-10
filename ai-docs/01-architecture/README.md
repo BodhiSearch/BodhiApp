@@ -15,6 +15,7 @@ This section contains modular technical architecture documentation for the Bodhi
 - **[Rust Backend](rust-backend.md)** - Rust backend development, service patterns, and database integration
 - **[Tauri Desktop](tauri-desktop.md)** - Desktop application architecture and native OS integration
 - **[Authentication](authentication.md)** - OAuth2 integration, JWT handling, and security implementation
+- **[Backend Error & L10n](01-architecture/backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
 
 ### Development Standards
 - **[API Integration](api-integration.md)** - Frontend-backend integration patterns, query hooks, and error handling
@@ -92,6 +93,7 @@ This section contains modular technical architecture documentation for the Bodhi
 1. **Architecture**: [System Overview](system-overview.md) - High-level system design
 2. **Application Lifecycle**: [App Status & Lifecycle](app-status.md) - State management
 3. **Standards**: [Development Conventions](development-conventions.md) - Coding standards
+4. **Error**: [Backend Error & L10n](backend-error-l10n.md) - Error handling and internationalization system
 
 ## Documentation Organization
 
