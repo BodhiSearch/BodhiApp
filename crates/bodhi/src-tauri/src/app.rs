@@ -105,6 +105,7 @@ async fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<()> {
     .load_resource(routes_app::l10n::L10N_RESOURCES)?
     .load_resource(routes_all::l10n::L10N_RESOURCES)?
     .load_resource(server_app::l10n::L10N_RESOURCES)?
+    .load_resource(lib_bodhiserver::l10n::L10N_RESOURCES)?
     .load_resource(crate::l10n::L10N_RESOURCES)?;
 
   let app_service = DefaultAppService::new(

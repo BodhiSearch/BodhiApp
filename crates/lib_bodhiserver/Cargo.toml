@@ -1,0 +1,11 @@
+[package]
+name = "lib_bodhiserver"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+
+include_dir = { workspace = true }
+
+[features]
+test-utils = []
