@@ -49,8 +49,7 @@ impl TryFrom<PathBuf> for HubFile {
     value.pop();
     if value
       .file_name()
-      .and_then(|f| f.to_str())
-      .map_or(true, |name| name != "snapshots")
+      .and_then(|f| f.to_str()) != Some("snapshots")
     {
       return Err(ObjValidationError::FilePatternMismatch(path_str));
     }

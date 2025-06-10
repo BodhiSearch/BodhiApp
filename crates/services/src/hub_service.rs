@@ -313,20 +313,20 @@ impl HubService for HfHubService {
       .into_iter()
       .filter_map(|e| e.ok())
       .filter(|entry| entry.file_type().is_file())
-      .filter(|entry| entry.path().extension().map_or(false, |ext| ext == "gguf"))
+      .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "gguf"))
       .filter(|entry| {
         entry
           .path()
           .parent()
           .and_then(|p| p.parent())
-          .map_or(false, |p| p.ends_with("snapshots"))
+          .is_some_and(|p| p.ends_with("snapshots"))
       })
       .filter_map(|entry| {
         let path = entry.path();
         let models_dir = path.ancestors().find(|p| {
           p.file_name()
             .and_then(|n| n.to_str())
-            .map_or(false, |name| name.starts_with("models--"))
+            .is_some_and(|name| name.starts_with("models--"))
         })?;
 
         let dir_name = models_dir.file_name()?.to_str()?;

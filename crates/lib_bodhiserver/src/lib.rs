@@ -3,8 +3,8 @@ pub mod test_utils;
 #[cfg(all(not(feature = "test-utils"), test))]
 pub mod test_utils;
 
-mod init_service;
-pub use init_service::*;
+mod app_dirs_builder;
+pub use app_dirs_builder::*;
 
 pub mod l10n {
   use include_dir::Dir;

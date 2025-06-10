@@ -412,11 +412,11 @@ impl DefaultSettingService {
     bodhi_home: Setting,
     mut system_settings: Vec<Setting>,
     settings_file: PathBuf,
-  ) -> Result<Self> {
+  ) -> Self {
     system_settings.push(bodhi_home.clone());
     let service = Self::new(env_wrapper, settings_file, system_settings);
     service.init_defaults(bodhi_home);
-    Ok(service)
+    service
   }
 
   fn init_defaults(&self, bodhi_home: Setting) {
@@ -753,7 +753,7 @@ mod tests {
       bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
       vec![],
       path.clone(),
-    )?;
+    );
     for (key, expected) in [
       (
         BODHI_HOME,
@@ -824,7 +824,7 @@ TEST_NUMBER: 8080
       bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
       vec![],
       path.clone(),
-    )?;
+    );
     assert_eq!(
       Some("file_value".to_string()),
       service.get_setting("TEST_KEY"),
@@ -1085,7 +1085,7 @@ SOME_OTHER_KEY: value
       bodhi_home_setting(temp_dir.path(), SettingSource::Default),
       app_settings,
       path.clone(),
-    )?;
+    );
 
     // Check that the value from app_settings is returned
     assert_eq!(
@@ -1133,7 +1133,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
       bodhi_home_setting(bodhi_home.path(), SettingSource::Default),
       vec![],
       settings_file.clone(),
-    )?;
+    );
     let bodhi_home = bodhi_home.path().to_path_buf();
     // WHEN
     let settings = setting_service

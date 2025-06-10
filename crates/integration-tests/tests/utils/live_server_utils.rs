@@ -1,7 +1,8 @@
 #![allow(dead_code)]
 
 use fs_extra::dir::{copy, CopyOptions};
-use objs::{test_utils::setup_l10n, EnvType, FluentLocalizationService, SettingSource};
+use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder};
+use objs::{test_utils::setup_l10n, EnvType, FluentLocalizationService};
 use rand::Rng;
 use routes_app::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use rstest::fixture;
@@ -10,13 +11,12 @@ use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   db::{DbService, DefaultTimeService, SqliteDbService},
   hash_key,
-  test_utils::{bodhi_home_setting, test_auth_service, EnvWrapperStub, OfflineHubService},
-  AppRegInfoBuilder, AppService, AppStatus, DefaultAppService, DefaultSecretService,
-  DefaultSettingService, HfHubService,LocalDataService, MokaCacheService,
-  SecretServiceExt, SettingService, SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
-  BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
+  test_utils::{test_auth_service, EnvWrapperStub, OfflineHubService},
+  AppRegInfoBuilder, AppService, AppStatus, DefaultAppService, DefaultSecretService, HfHubService,
+  LocalDataService, MokaCacheService, SecretServiceExt, SettingService, SqliteSessionService,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
+  BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
-use lib_bodhiserver::InitService;
 use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
@@ -108,22 +108,21 @@ pub async fn llama2_7b_setup(
   let issuer = std::env::var("INTEG_TEST_ISSUER").expect("INTEG_TEST_ISSUER not set");
   let kid = std::env::var("INTEG_TEST_KID").expect("INTEG_TEST_KID not set");
   let public_key = std::env::var("INTEG_TEST_PUBLIC_KEY").expect("INTEG_TEST_PUBLIC_KEY not set");
+  let auth_url = std::env::var("INTEG_TEST_AUTH_URL").expect("INTEG_TEST_AUTH_URL not set");
+  let auth_realm = std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM not set");
 
-  let env_wrapper = Arc::new(EnvWrapperStub::new(envs));
-  let init_service = InitService::new(env_wrapper.clone(), EnvType::Development);
-  init_service.setup_bodhi_home_dir()?;
-  let setting_service = DefaultSettingService::new_with_defaults(
-    env_wrapper,
-    bodhi_home_setting(&bodhi_home, SettingSource::Environment),
-    vec![],
-    bodhi_home.join("settings.yaml"),
-  )?;
-  init_service.set_bodhi_home(&setting_service)?;
+  let env_wrapper: Arc<dyn services::EnvWrapper> = Arc::new(EnvWrapperStub::new(envs));
+  let options = AppOptionsBuilder::development()
+    .env_wrapper(env_wrapper)
+    .auth_url(auth_url.clone())
+    .auth_realm(auth_realm.clone())
+    .build()?;
+  let setting_service = setup_app_dirs(options)?;
   let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
     hf_cache, false, None,
   )));
   let data_service = LocalDataService::new(bodhi_home.clone(), hub_service.clone());
-  let auth_service = test_auth_service("http://id.localhost:8080");
+  let auth_service = test_auth_service(&auth_url);
 
   let app_db_path = setting_service.app_db_path();
   let session_db_path = setting_service.session_db_path();

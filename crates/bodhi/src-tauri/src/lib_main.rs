@@ -1,10 +1,7 @@
 use crate::app::main_internal;
-use lib_bodhiserver::{InitService};
-use objs::{ApiError, AppType, OpenAIApiError, Setting, SettingMetadata, SettingSource};
-use services::{
-  DefaultEnvWrapper, DefaultSettingService, SettingService, BODHI_APP_TYPE, BODHI_AUTH_REALM,
-  BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, SETTINGS_YAML,
-};
+use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder};
+use objs::{ApiError, AppType, OpenAIApiError};
+use services::{DefaultEnvWrapper, DefaultSettingService};
 use std::sync::Arc;
 
 #[cfg(feature = "production")]
@@ -16,9 +13,7 @@ mod env_config {
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
-  pub fn set_feature_settings(
-    _setting_service: &mut DefaultSettingService,
-  ) -> Result<(), ApiError> {
+  pub fn set_feature_settings(_setting_service: &DefaultSettingService) -> Result<(), ApiError> {
     Ok(())
   }
 }
@@ -59,10 +54,30 @@ pub const APP_TYPE: AppType = AppType::Native;
 pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
-  let env_wrapper = Arc::new(DefaultEnvWrapper::default());
-  let init_service = InitService::new(env_wrapper.clone(), ENV_TYPE.clone());
-  let (bodhi_home, source) = match init_service.setup_bodhi_home_dir() {
-    Ok(bodhi_home) => bodhi_home,
+  let env_wrapper: Arc<dyn services::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
+
+  // Construct AppOptions explicitly for production code clarity
+  let app_options = match AppOptionsBuilder::default()
+    .env_wrapper(env_wrapper.clone())
+    .env_type(ENV_TYPE.clone())
+    .app_type(APP_TYPE.clone())
+    .app_version(env!("CARGO_PKG_VERSION"))
+    .auth_url(AUTH_URL)
+    .auth_realm(AUTH_REALM)
+    .build()
+  {
+    Ok(options) => options,
+    Err(err) => {
+      eprintln!(
+        "fatal error, building app options, error: {}\nexiting...",
+        err
+      );
+      std::process::exit(1);
+    }
+  };
+
+  let setting_service = match setup_app_dirs(app_options) {
+    Ok(setting_service) => setting_service,
     Err(err) => {
       eprintln!(
         "fatal error, setting up app dirs, error: {}\nexiting...",
@@ -71,83 +86,9 @@ pub fn _main() {
       std::process::exit(1);
     }
   };
-  let settings_file = bodhi_home.join(SETTINGS_YAML);
-  let app_settings: Vec<Setting> = vec![
-    Setting {
-      key: BODHI_ENV_TYPE.to_string(),
-      value: serde_yaml::Value::String(ENV_TYPE.to_string()),
-      source: SettingSource::System,
-      metadata: SettingMetadata::String,
-    },
-    Setting {
-      key: BODHI_APP_TYPE.to_string(),
-      value: serde_yaml::Value::String(APP_TYPE.to_string()),
-      source: SettingSource::System,
-      metadata: SettingMetadata::String,
-    },
-    Setting {
-      key: BODHI_VERSION.to_string(),
-      value: serde_yaml::Value::String(env!("CARGO_PKG_VERSION").to_string()),
-      source: SettingSource::System,
-      metadata: SettingMetadata::String,
-    },
-    Setting {
-      key: BODHI_AUTH_URL.to_string(),
-      value: serde_yaml::Value::String(AUTH_URL.to_string()),
-      source: SettingSource::System,
-      metadata: SettingMetadata::String,
-    },
-    Setting {
-      key: BODHI_AUTH_REALM.to_string(),
-      value: serde_yaml::Value::String(AUTH_REALM.to_string()),
-      source: SettingSource::System,
-      metadata: SettingMetadata::String,
-    },
-  ];
-  let mut setting_service = DefaultSettingService::new_with_defaults(
-    env_wrapper,
-    Setting {
-      key: BODHI_HOME.to_string(),
-      value: serde_yaml::Value::String(bodhi_home.display().to_string()),
-      source,
-      metadata: SettingMetadata::String,
-    },
-    app_settings,
-    settings_file,
-  )
-  .unwrap_or_else(|err| {
-    let err: ApiError = err.into();
-    eprintln!(
-      "fatal error, setting up setting service, error: {}\nexiting...",
-      err
-    );
-    std::process::exit(1);
-  });
-  setting_service.load_default_env();
-  set_feature_settings(&mut setting_service).unwrap_or_else(|err| {
+  if let Err(err) = set_feature_settings(&setting_service) {
     eprintln!(
       "fatal error, setting up feature settings, error: {}\nexiting...",
-      err
-    );
-    std::process::exit(1);
-  });
-  if let Err(err) = init_service.set_bodhi_home(&setting_service) {
-    eprintln!(
-      "fatal error, setting up bodhi home, error: {}\nexiting...",
-      err
-    );
-    std::process::exit(1);
-  }
-  if let Err(err) = InitService::setup_hf_home(&setting_service) {
-    eprintln!(
-      "fatal error, setting up huggingface home, error: {}\nexiting...",
-      err
-    );
-    std::process::exit(1);
-  }
-  if let Err(err) = InitService::setup_logs_dir(&setting_service) {
-    eprintln!(
-      "fatal error, setting up logs dir, error: {}\nexiting...",
       err
     );
     std::process::exit(1);

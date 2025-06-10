@@ -285,7 +285,7 @@ mod tests {
       bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
       vec![],
       settings_yaml,
-    )?;
+    );
     for (key, value) in settings {
       setting_service.set_setting_value(&key, &value);
     }

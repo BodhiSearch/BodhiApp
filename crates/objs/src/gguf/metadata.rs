@@ -320,7 +320,9 @@ mod tests {
       -9223372036854775808,
       md.get("test_int64").unwrap().as_i64()?
     );
+    #[allow(clippy::approx_constant)]
     let expected_pi = 3.14159;
+    #[allow(clippy::approx_constant)]
     let expected_e = 2.718281828459045;
     assert!((md.get("test_float32").unwrap().as_f32()? - expected_pi).abs() < f32::EPSILON);
     assert!((md.get("test_float64").unwrap().as_f64()? - expected_e).abs() < f64::EPSILON);
