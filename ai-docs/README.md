@@ -40,6 +40,7 @@ Modular technical architecture documentation organized by technology stack and d
 #### Technology Stack Guides
 - **[Frontend React](01-architecture/frontend-react.md)** - React+Vite development patterns, component structure, and TypeScript conventions
 - **[Rust Backend](01-architecture/rust-backend.md)** - Rust backend development, service patterns, database integration, real-time communication (SSE/WebSocket), logging & observability, and settings service architecture
+- **[Backend Error & L10n](01-architecture/backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
 - **[Tauri Desktop](01-architecture/tauri-desktop.md)** - Desktop application architecture and native OS integration
 - **[Authentication](01-architecture/authentication.md)** - OAuth2 integration, JWT handling, and security implementation
 
@@ -91,8 +92,14 @@ Feature documentation organized by development status and implementation timelin
 - **[Reset to Authz](02-features/completed-stories/story-authz-20250111-reset-to-authz.md)** - Authentication mode reset functionality
 
 #### Planned Features
+<<<<<<< Updated upstream
 - **[App Setup Refactoring](02-features/planned/20250609-app-setup-refactoring.md)** - Modular initialization library for multiple deployment modes (production, test, CLI, Docker)
 - **[Remove Defunct CLI](02-features/planned/20250609-remove-defunct-cli.md)** - Remove CLI implementation to eliminate security gaps in auth-only mode architecture
+=======
+- **[App Setup Refactoring - Requirements](02-features/planned/20250609-app-setup-refactoring.md)** - Requirements specification for publishable library crate enabling multiple deployment modes
+- **[App Setup Refactoring - Technical Solution](02-features/planned/20250609-app-setup-refactoring-tech.md)** - Technical implementation approach using existing codebase patterns and builder patterns
+- **[App Setup Refactoring - Simple Approach](02-features/planned/20250609-app-setup-refactoring-simple.md)** - High-ROI simplified approach focusing on code deduplication and test improvements
+>>>>>>> Stashed changes
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
