@@ -6,6 +6,9 @@ pub mod test_utils;
 mod app_dirs_builder;
 pub use app_dirs_builder::*;
 
+mod app_service_builder;
+pub use app_service_builder::*;
+
 pub mod l10n {
   use include_dir::Dir;
 

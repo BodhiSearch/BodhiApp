@@ -1,4 +1,5 @@
 use commands::{CreateCommandError, PullCommandError};
+use lib_bodhiserver::AppServiceBuilderError;
 use objs::{impl_error_from, AppError, BuilderError, ErrorType, IoError, LocalizationSetupError};
 use server_app::ServeError;
 use server_core::ContextError;
@@ -40,11 +41,19 @@ pub enum BodhiError {
   KeyringError(#[from] KeyringError),
   #[error(transparent)]
   Serve(#[from] ServeError),
+  #[error(transparent)]
+  AppServiceBuilder(AppServiceBuilderError),
   #[cfg(feature = "native")]
   #[error(transparent)]
   Native(#[from] crate::native::NativeError),
 }
 
 impl_error_from!(::std::io::Error, BodhiError::Io, objs::IoError);
+
+impl From<AppServiceBuilderError> for BodhiError {
+  fn from(err: AppServiceBuilderError) -> Self {
+    BodhiError::AppServiceBuilder(err)
+  }
+}
 
 pub(crate) type Result<T> = std::result::Result<T, BodhiError>;
