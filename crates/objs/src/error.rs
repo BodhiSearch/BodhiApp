@@ -47,7 +47,7 @@ impl ErrorType {
   }
 }
 
-pub trait AppError: std::error::Error {
+pub trait AppError: std::error::Error + Send + Sync + 'static {
   fn error_type(&self) -> String;
 
   fn status(&self) -> u16 {
@@ -63,6 +63,13 @@ pub trait AppError: std::error::Error {
 impl<T: AppError + 'static> From<T> for Box<dyn AppError> {
   fn from(error: T) -> Self {
     Box::new(error)
+  }
+}
+
+// Manual implementation to make Box<dyn AppError> work with std::error::Error
+impl std::error::Error for Box<dyn AppError> {
+  fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+    (**self).source()
   }
 }
 

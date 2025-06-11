@@ -1,8 +1,9 @@
-use crate::app::main_internal;
-use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder};
+use crate::{app::aexecute, error::BodhiError};
+use lib_bodhiserver::{build_app_service, setup_app_dirs, AppOptionsBuilder};
 use objs::{ApiError, AppType, OpenAIApiError};
-use services::{DefaultEnvWrapper, DefaultSettingService};
+use services::{DefaultEnvWrapper, DefaultSettingService, SettingService};
 use std::sync::Arc;
+use tokio::runtime::Builder;
 
 #[cfg(feature = "production")]
 mod env_config {
@@ -108,6 +109,15 @@ pub fn _main() {
   }
   #[cfg(not(feature = "native"))]
   drop(_guard);
+}
+
+fn main_internal(setting_service: Arc<dyn SettingService>) -> Result<(), BodhiError> {
+  let runtime = Builder::new_multi_thread().enable_all().build()?;
+  runtime.block_on(async move {
+    // Build the complete app service using the lib_bodhiserver function
+    let app_service = Arc::new(build_app_service(setting_service.clone()).await?);
+    aexecute(app_service).await
+  })
 }
 
 #[cfg(not(feature = "native"))]

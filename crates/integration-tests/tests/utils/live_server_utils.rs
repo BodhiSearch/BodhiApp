@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use fs_extra::dir::{copy, CopyOptions};
-use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder};
+use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder, AppServiceBuilder};
 use objs::{test_utils::setup_l10n, EnvType, FluentLocalizationService};
 use rand::Rng;
 use routes_app::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
@@ -9,15 +9,12 @@ use rstest::fixture;
 use serde_json::Value;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
-  db::{DbService, DefaultTimeService, SqliteDbService},
   hash_key,
   test_utils::{test_auth_service, EnvWrapperStub, OfflineHubService},
-  AppRegInfoBuilder, AppService, AppStatus, DefaultAppService, DefaultSecretService, HfHubService,
-  LocalDataService, MokaCacheService, SecretServiceExt, SettingService, SqliteSessionService,
-  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH,
-  BODHI_HOME, BODHI_LOGS, HF_HOME,
+  AppRegInfoBuilder, AppService, AppStatus, DefaultSecretService, HfHubService, LocalDataService,
+  SecretServiceExt, SettingService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY,
+  BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
-use sqlx::SqlitePool;
 use std::{collections::HashMap, path::Path, sync::Arc};
 use tempfile::TempDir;
 use tower_sessions::session::{Id, Record};
@@ -61,7 +58,7 @@ pub async fn llama2_7b_setup(
   copy_test_dir("tests/data/live/bodhi", &bodhi_home);
 
   let bodhi_logs = bodhi_home.join("logs");
-  let hf_cache = hf_home.join("hub");
+  let _hf_cache = hf_home.join("hub");
   let execs_dir = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("..")
     .join("llama_server_proc")
@@ -117,26 +114,8 @@ pub async fn llama2_7b_setup(
     .auth_url(auth_url.clone())
     .auth_realm(auth_realm.clone())
     .build()?;
-  let setting_service = setup_app_dirs(options)?;
-  let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
-    hf_cache, false, None,
-  )));
-  let data_service = LocalDataService::new(bodhi_home.clone(), hub_service.clone());
-  let auth_service = test_auth_service(&auth_url);
+  let setting_service = Arc::new(setup_app_dirs(options)?);
 
-  let app_db_path = setting_service.app_db_path();
-  let session_db_path = setting_service.session_db_path();
-
-  let app_pool = SqlitePool::connect_lazy(&format!("sqlite:{}", app_db_path.display())).unwrap();
-  let session_pool =
-    SqlitePool::connect_lazy(&format!("sqlite:{}", session_db_path.display())).unwrap();
-
-  let time_service = Arc::new(DefaultTimeService);
-  let db_service = SqliteDbService::new(app_pool, time_service.clone());
-  // Migrate databases to ensure they exist
-  db_service.migrate().await.unwrap();
-  let session_service = SqliteSessionService::new(session_pool);
-  session_service.migrate().await.unwrap();
   // Create AppRegInfo with values from environment
   let app_reg_info = AppRegInfoBuilder::test_default()
     .client_id(client_id)
@@ -148,25 +127,35 @@ pub async fn llama2_7b_setup(
     .build()
     .unwrap();
 
+  // Create secret service with test configuration
   let encryption_key = setting_service.encryption_key().unwrap();
   let encryption_key = hash_key(&encryption_key);
   let secret_service = DefaultSecretService::new(&encryption_key, &setting_service.secrets_path())?;
   secret_service.set_app_reg_info(&app_reg_info)?;
   secret_service.set_app_status(&AppStatus::Ready)?;
 
-  let cache_service = MokaCacheService::default();
-  let service = DefaultAppService::new(
-    Arc::new(setting_service),
-    hub_service,
-    Arc::new(data_service),
-    Arc::new(auth_service),
-    Arc::new(db_service),
-    Arc::new(session_service),
-    Arc::new(secret_service),
-    Arc::new(cache_service),
-    localization_service.clone(),
-    time_service,
-  );
+  // Create mock hub service for offline testing
+  let hf_cache = setting_service.hf_cache();
+  let hub_service = Arc::new(OfflineHubService::new(HfHubService::new(
+    hf_cache, false, None,
+  )));
+
+  // Create data service with mock hub service
+  let bodhi_home = setting_service.bodhi_home();
+  let data_service = Arc::new(LocalDataService::new(bodhi_home, hub_service.clone()));
+
+  // Create mock auth service for testing
+  let auth_service = test_auth_service(&auth_url);
+
+  // Build app service with custom services for testing
+  let service = AppServiceBuilder::new(setting_service)
+    .hub_service(hub_service)?
+    .data_service(data_service)?
+    .auth_service(Arc::new(auth_service))?
+    .secret_service(Arc::new(secret_service))?
+    .localization_service(localization_service.clone())?
+    .build()
+    .await?;
   Ok((temp_dir, Arc::new(service)))
 }
 

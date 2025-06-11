@@ -32,6 +32,18 @@ impl From<JsonRejection> for ApiError {
 pub static EN_US: Lazy<LanguageIdentifier> =
   Lazy::new(|| LanguageIdentifier::from_str("en-US").unwrap());
 
+impl From<Box<dyn AppError>> for ApiError {
+  fn from(value: Box<dyn AppError>) -> Self {
+    ApiError {
+      name: value.to_string(),
+      error_type: value.error_type(),
+      status: value.status(),
+      code: value.code(),
+      args: value.args(),
+    }
+  }
+}
+
 impl<T: AppError + 'static> From<T> for ApiError {
   fn from(value: T) -> Self {
     let value = value.borrow();

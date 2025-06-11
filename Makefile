@@ -11,8 +11,9 @@ test: ## Run all tests (Rust, Node, Python)
 	cd openai-pysdk-compat && poetry run pytest || true
 
 format: ## Format code in all projects (Rust, Node, Python)
-	cd crates/bodhi && npm run format && npm run lint
 	cargo fmt --all
+	cargo clippy --fix --allow-dirty --allow-staged
+	cd crates/bodhi && npm run format
 	cd openai-pysdk-compat && poetry run ruff format .
 
 ci.clean: ## Clean all cargo packages

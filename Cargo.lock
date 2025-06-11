@@ -3200,18 +3200,28 @@ name = "lib_bodhiserver"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "auth_middleware",
+ "commands",
  "derive-new",
  "derive_builder 0.20.2",
+ "errmeta_derive",
  "include_dir",
+ "llama_server_proc",
  "maplit",
  "mockall",
  "objs",
+ "routes_all",
+ "routes_app",
+ "routes_oai",
  "rstest",
  "serde_json",
  "serde_yaml",
+ "server_app",
+ "server_core",
  "services",
  "tempfile",
  "thiserror 2.0.12",
+ "tokio",
 ]
 
 [[package]]
