@@ -126,4 +126,4 @@ export function expectNavigation(mockRouter: any) {
 }
 
 // Re-export commonly used testing utilities
-export { createWrapper, createFullWrapper } from './wrapper';
+export { createWrapper, createFullWrapper } from '@/tests/wrapper';
