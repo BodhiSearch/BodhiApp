@@ -1,7 +1,14 @@
+'use client';
+
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { HelpCircle } from 'lucide-react';
 
@@ -53,7 +60,12 @@ export function SettingSlider({
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-2">
-          <span className={cn('text-sm tabular-nums text-muted-foreground', isDisabled && 'opacity-50')}>
+          <span
+            className={cn(
+              'text-sm tabular-nums text-muted-foreground',
+              isDisabled && 'opacity-50'
+            )}
+          >
             {currentValue}
           </span>
           <Switch
@@ -73,7 +85,10 @@ export function SettingSlider({
         step={step}
         onValueChange={(values) => onValueChange(values[0])}
         disabled={isDisabled}
-        className={cn('[&_[role=slider]]:h-4 [&_[role=slider]]:w-4', isDisabled && 'opacity-50')}
+        className={cn(
+          '[&_[role=slider]]:h-4 [&_[role=slider]]:w-4',
+          isDisabled && 'opacity-50'
+        )}
         aria-label={label}
       />
     </div>

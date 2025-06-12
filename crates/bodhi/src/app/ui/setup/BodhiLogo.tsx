@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { itemVariants } from '@/app/ui/setup/types';
+import { itemVariants } from './types';
 
 export const BodhiLogo = () => {
   return (

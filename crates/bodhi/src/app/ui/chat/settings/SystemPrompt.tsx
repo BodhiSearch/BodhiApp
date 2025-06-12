@@ -1,7 +1,14 @@
+'use client';
+
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { HelpCircle } from 'lucide-react';
 
@@ -10,8 +17,16 @@ interface SystemPromptProps {
   tooltip: string;
 }
 
-export function SystemPrompt({ isLoading = false, tooltip }: SystemPromptProps) {
-  const { systemPrompt, systemPrompt_enabled, setSystemPrompt, setSystemPromptEnabled } = useChatSettings();
+export function SystemPrompt({
+  isLoading = false,
+  tooltip,
+}: SystemPromptProps) {
+  const {
+    systemPrompt,
+    systemPrompt_enabled,
+    setSystemPrompt,
+    setSystemPromptEnabled,
+  } = useChatSettings();
 
   // Determine if interactions should be disabled
   const isDisabled = isLoading || !systemPrompt_enabled;

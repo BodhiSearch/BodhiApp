@@ -10,6 +10,12 @@ export const metadata = {
     template: APP_TITLE_TEMPLATE,
   },
   description: APP_DESCRIPTION,
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: APP_DEFAULT_TITLE,
+  },
   formatDetection: {
     telephone: false,
   },
@@ -30,4 +36,8 @@ export const metadata = {
     },
     description: APP_DESCRIPTION,
   },
+} as const;
+
+export const viewport = {
+  themeColor: '#f69435',
 } as const;

@@ -1,12 +1,30 @@
-import { lazy, Suspense } from 'react';
+'use client';
 
-// Lazy load the actual page component
-const NewModelPageContent = lazy(() => import('@/app/ui/models/new/NewModelPage'));
+import React from 'react';
+import { useSearchParams } from 'next/navigation';
+import AliasForm from '@/app/ui/models/AliasForm';
+import AppInitializer from '@/components/AppInitializer';
 
-export default function NewModelPage() {
+function NewModelContent() {
+  const searchParams = useSearchParams();
+
+  const initialData = {
+    alias: '',
+    repo: searchParams?.get('repo') || '',
+    filename: searchParams?.get('filename') || '',
+    snapshot: searchParams?.get('snapshot') || '',
+    chat_template: '',
+    request_params: {},
+    context_params: {},
+  };
+
+  return <AliasForm isEditMode={false} initialData={initialData} />;
+}
+
+export default function NewModel() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <NewModelPageContent />
-    </Suspense>
+    <AppInitializer allowedStatus="ready" authenticated={true}>
+      <NewModelContent />
+    </AppInitializer>
   );
 }

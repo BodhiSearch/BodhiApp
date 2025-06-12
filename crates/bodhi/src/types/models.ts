@@ -7,6 +7,7 @@ export interface Page {
 
 export interface AppInfo {
   status: AppStatus;
+  authz: boolean;
   version: string;
 }
 
@@ -31,6 +32,7 @@ export interface Model {
   filename: string;
   snapshot: string;
   source?: string;
+  chat_template: string;
   request_params: OAIRequestParams;
   context_params: GptContextParams;
 }
@@ -68,6 +70,7 @@ export interface CreateAliasRequest {
   alias: string;
   repo: string;
   filename: string;
+  chat_template: string;
   family?: string;
   request_params?: OAIRequestParams;
   context_params?: GptContextParams;
@@ -108,7 +111,12 @@ export interface Setting {
   key: string;
   current_value: string | number | boolean;
   default_value: string | number | boolean;
-  source: 'system' | 'command_line' | 'environment' | 'settings_file' | 'default';
+  source:
+    | 'system'
+    | 'command_line'
+    | 'environment'
+    | 'settings_file'
+    | 'default';
   metadata: {
     type: 'string' | 'number' | 'boolean' | 'option';
     options?: string[];

@@ -28,7 +28,9 @@ export function showErrorParams(
 
 describe('showSuccessParams', () => {
   it('should return the correct params', () => {
-    expect(showSuccessParams('Success', 'Alias test-alias successfully created')).toEqual({
+    expect(
+      showSuccessParams('Success', 'Alias test-alias successfully created')
+    ).toEqual({
       title: 'Success',
       description: 'Alias test-alias successfully created',
       duration: 1000,
@@ -38,7 +40,9 @@ describe('showSuccessParams', () => {
 
 describe('showErrorParams', () => {
   it('should return the correct params', () => {
-    expect(showErrorParams('Error', 'Alias test-alias successfully created')).toEqual({
+    expect(
+      showErrorParams('Error', 'Alias test-alias successfully created')
+    ).toEqual({
       title: 'Error',
       description: 'Alias test-alias successfully created',
       variant: 'destructive',

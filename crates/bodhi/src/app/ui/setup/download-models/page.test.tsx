@@ -1,6 +1,6 @@
 import ModelDownloadPage, { ModelDownloadContent } from '@/app/ui/setup/download-models/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES_PULL, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-
+import { showErrorParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, within } from '@testing-library/react';
 import { rest } from 'msw';
@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 // Add ModelCard mock after existing mocks
-vi.mock('@/app/ui/setup/download-models/download-models/ModelCard', () => ({
+vi.mock('@/app/ui/setup/download-models/ModelCard', () => ({
   ModelCard: ({ model }: any) => (
     <div data-testid={`model-card-${model.id}`}>
       <div>Name: {model.name}</div>
@@ -76,12 +76,13 @@ const mockModels = [
 ];
 
 describe('ModelDownloadPage access control', () => {
-  it('should redirect to login when app is ready and user not authenticated', async () => {
+  it('should render the page when app is ready without auth', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
             version: '0.1.0',
+            authz: false,
             status: 'ready',
           })
         );
@@ -101,7 +102,8 @@ describe('ModelDownloadPage access control', () => {
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
     });
-    expect(pushMock).toHaveBeenCalledWith('/ui/login');
+    expect(screen.getByText('Recommended Models')).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it('should redirect to /ui/setup if app status is setup', async () => {
@@ -132,12 +134,13 @@ describe('ModelDownloadPage access control', () => {
     expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
-  it('should render the page when app is ready and user is logged in', async () => {
+  it('should render the page when app is ready with auth and user is logged in', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
             version: '0.1.0',
+            authz: true,
             status: 'ready',
           })
         );
@@ -163,12 +166,13 @@ describe('ModelDownloadPage access control', () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it('should redirect to /ui/login when app is ready but user is not logged in', async () => {
+  it('should redirect to /ui/login when app is ready with auth but user is not logged in', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
             version: '0.1.0',
+            authz: true,
             status: 'ready',
           })
         );

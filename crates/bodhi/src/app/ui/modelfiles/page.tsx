@@ -8,7 +8,13 @@ import { useModelFiles } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { ExternalLink, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { CopyableContent } from '@/components/CopyableContent';
@@ -60,17 +66,26 @@ function ModelFilesContent() {
     direction: 'asc',
   });
 
-  const { data, isLoading, error } = useModelFiles(page, pageSize, sort.column, sort.direction);
+  const { data, isLoading, error } = useModelFiles(
+    page,
+    pageSize,
+    sort.column,
+    sort.direction
+  );
 
   const toggleSort = (column: string) => {
     setSort((prevSort) => ({
       column,
-      direction: prevSort.column === column && prevSort.direction === 'asc' ? 'desc' : 'asc',
+      direction:
+        prevSort.column === column && prevSort.direction === 'asc'
+          ? 'desc'
+          : 'asc',
     }));
     setPage(1);
   };
 
-  const getItemId = (modelFile: ModelFile) => `${modelFile.repo}${modelFile.filename}${modelFile.snapshot}`;
+  const getItemId = (modelFile: ModelFile) =>
+    `${modelFile.repo}${modelFile.filename}${modelFile.snapshot}`;
 
   const getHuggingFaceUrl = (repo: string) => {
     return `https://huggingface.co/${repo}`;
@@ -82,21 +97,41 @@ function ModelFilesContent() {
       <div className="flex flex-col gap-2">
         <CopyableContent text={modelFile.repo} className="font-medium" />
         <CopyableContent text={modelFile.filename} className="text-sm" />
-        <span className="text-xs text-muted-foreground">{bytesToGB(modelFile.size)}</span>
-        <div className="flex gap-2 justify-end pt-2 border-t">{renderActions(modelFile)}</div>
+        <span className="text-xs text-muted-foreground">
+          {bytesToGB(modelFile.size)}
+        </span>
+        <div className="flex gap-2 justify-end pt-2 border-t">
+          {renderActions(modelFile)}
+        </div>
       </div>
     </TableCell>,
     // Tablet/Desktop columns
-    <TableCell key="repo" className="hidden sm:table-cell max-w-[180px]" data-testid="repo-cell">
+    <TableCell
+      key="repo"
+      className="hidden sm:table-cell max-w-[180px]"
+      data-testid="repo-cell"
+    >
       <CopyableContent text={modelFile.repo} />
     </TableCell>,
-    <TableCell key="filename" className="hidden sm:table-cell" data-testid="filename-cell">
+    <TableCell
+      key="filename"
+      className="hidden sm:table-cell"
+      data-testid="filename-cell"
+    >
       <CopyableContent text={modelFile.filename} />
     </TableCell>,
-    <TableCell key="size" className="hidden sm:table-cell text-right" data-testid="size-cell">
+    <TableCell
+      key="size"
+      className="hidden sm:table-cell text-right"
+      data-testid="size-cell"
+    >
       {bytesToGB(modelFile.size)}
     </TableCell>,
-    <TableCell key="actions" className="hidden sm:table-cell" data-testid="actions-cell">
+    <TableCell
+      key="actions"
+      className="hidden sm:table-cell"
+      data-testid="actions-cell"
+    >
       <div className="flex gap-2 justify-end">{renderActions(modelFile)}</div>
     </TableCell>,
   ];
@@ -127,15 +162,17 @@ function ModelFilesContent() {
 
   if (error) {
     const errorMessage =
-      error.response?.data?.error?.message || error.message || 'An unexpected error occurred. Please try again.';
+      error.response?.data?.error?.message ||
+      error.message ||
+      'An unexpected error occurred. Please try again.';
     return <ErrorPage message={errorMessage} />;
   }
 
   return (
     <div data-testid="modelfiles-content" className="container mx-auto p-4">
       <UserOnboarding storageKey="modelfiles-banner-dismissed">
-        Welcome to Model Management! Here you can view all your downloaded models and access their HuggingFace
-        repositories.
+        Welcome to Model Management! Here you can view all your downloaded
+        models and access their HuggingFace repositories.
       </UserOnboarding>
 
       <DataTable
@@ -153,7 +190,8 @@ function ModelFilesContent() {
           <DialogHeader>
             <DialogTitle>Coming Soon</DialogTitle>
             <DialogDescription>
-              Delete modelfile feature is not yet implemented. Stay tuned for our next update.
+              Delete modelfile feature is not yet implemented. Stay tuned for
+              our next update.
             </DialogDescription>
           </DialogHeader>
         </DialogContent>
@@ -162,7 +200,11 @@ function ModelFilesContent() {
       <div className="mt-6">
         <Pagination
           page={page}
-          totalPages={data ? Math.ceil((data.total as number) / (data.page_size as number)) : 1}
+          totalPages={
+            data
+              ? Math.ceil((data.total as number) / (data.page_size as number))
+              : 1
+          }
           onPageChange={setPage}
         />
       </div>

@@ -1,8 +1,14 @@
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
-import { ModelInfo } from '@/app/ui/setup/download-models/types';
-import { RatingStars } from '@/app/ui/setup/download-models/RatingStars';
+import { ModelInfo } from './types';
+import { RatingStars } from './RatingStars';
 
 interface ModelCardProps {
   model: ModelInfo;
@@ -16,7 +22,9 @@ export const ModelCard = ({ model, onDownload }: ModelCardProps) => {
         <CardTitle className="text-lg flex justify-between items-start">
           <div>
             {model.name}
-            <div className="text-sm font-normal text-muted-foreground">{model.repo}</div>
+            <div className="text-sm font-normal text-muted-foreground">
+              {model.repo}
+            </div>
           </div>
         </CardTitle>
       </CardHeader>
@@ -71,7 +79,9 @@ export const ModelCard = ({ model, onDownload }: ModelCardProps) => {
               </div>
               <div className="flex justify-between text-sm text-muted-foreground mt-2">
                 <span>
-                  {model.downloadState.progress !== undefined && <>{model.downloadState.progress}%</>}
+                  {model.downloadState.progress !== undefined && (
+                    <>{model.downloadState.progress}%</>
+                  )}
                   {model.downloadState.speed && (
                     <>
                       {model.downloadState.progress !== undefined && ' • '}
@@ -79,7 +89,9 @@ export const ModelCard = ({ model, onDownload }: ModelCardProps) => {
                     </>
                   )}
                 </span>
-                {model.downloadState.timeRemaining && <span>{model.downloadState.timeRemaining} remaining</span>}
+                {model.downloadState.timeRemaining && (
+                  <span>{model.downloadState.timeRemaining} remaining</span>
+                )}
               </div>
             </div>
             <Button variant="outline" size="sm" disabled>
@@ -87,9 +99,15 @@ export const ModelCard = ({ model, onDownload }: ModelCardProps) => {
             </Button>
           </>
         ) : (
-          <Button className="w-full" disabled={model.downloadState?.status === 'completed'} onClick={onDownload}>
+          <Button
+            className="w-full"
+            disabled={model.downloadState?.status === 'completed'}
+            onClick={onDownload}
+          >
             <Download className="mr-2 h-4 w-4" />
-            {model.downloadState?.status === 'completed' ? 'Download Complete' : 'Download Model'}
+            {model.downloadState?.status === 'completed'
+              ? 'Download Complete'
+              : 'Download Model'}
           </Button>
         )}
       </CardFooter>

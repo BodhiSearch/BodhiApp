@@ -5,6 +5,7 @@ export const ALIAS_FORM_TOOLTIPS = {
   alias: "A unique name for your model configuration. Use this to reference your settings in chat.",
   repo: "The repository containing your model file. Usually points to a Hugging Face repository.",
   filename: "The GGUF model file to use from the selected repository.",
+  chatTemplate: "Template that defines how to format messages for the model.",
 
   // Request Parameters
   temperature: "Controls creativity: Low (0.2) for focused responses, High (0.8) for more varied outputs.",

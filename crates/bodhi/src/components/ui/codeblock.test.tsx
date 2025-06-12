@@ -1,4 +1,4 @@
-
+'use client'
 
 import { CodeBlock } from '@/components/ui/codeblock'
 import * as hooks from '@/hooks/use-copy-to-clipboard'

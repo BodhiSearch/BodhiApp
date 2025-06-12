@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { ModelCard } from '@/app/ui/setup/download-models/ModelCard';
-import { DownloadState, ModelInfo } from '@/app/ui/setup/download-models/types';
+import { ModelCard } from './ModelCard';
+import { DownloadState, ModelInfo } from './types';
 
 // Base model info to be extended for different test cases
 const baseModel: ModelInfo = {

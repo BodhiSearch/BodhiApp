@@ -1,6 +1,6 @@
 {
   "extends": [
-    "eslint:recommended",
+    "next/core-web-vitals",
     "plugin:@typescript-eslint/recommended",
     "prettier"
   ],
@@ -9,21 +9,18 @@
     "prettier"
   ],
   "rules": {
-    "prettier/prettier": "error",
-    "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/no-unused-vars": [
+    "prettier/prettier": [
       "error",
       {
-        "argsIgnorePattern": "^_",
-        "varsIgnorePattern": "^_"
+        "semi": true,
+        "singleQuote": true,
+        "tabWidth": 2,
+        "trailingComma": "es5",
+        "endOfLine": "lf"
       }
     ]
   },
   "ignorePatterns": [
-    "dist/**",
-    "public/sw.js",
-    "public/swe-worker-**.js",
-    "public/workbox-**.js",
     "src/**/*.test.tsx",
     "tests/**/*.test.tsx",
     "src/components/ui/**/*",

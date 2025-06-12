@@ -1,4 +1,6 @@
-
+public/sw.js*
+public/swe-worker*
+public/workbox-*.js*
 
 .env.*
 !.env.example
@@ -17,15 +19,12 @@
 # testing
 /coverage
 
-# vite
+# next.js
+/.next/
 /out/
 
 # production
 /build
-/dist
-
-# generated files
-/src/generated
 
 # misc
 .DS_Store
@@ -44,6 +43,7 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+next-env.d.ts
 
 # old-chat-app
 old-chat-app/

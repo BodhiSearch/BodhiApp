@@ -58,7 +58,10 @@ export function useChatCompletion() {
       RequestExts
   >(async ({ request, headers, onDelta, onMessage, onFinish, onError }) => {
     const baseUrl =
-      apiClient.defaults.baseURL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+      apiClient.defaults.baseURL ||
+      (typeof window !== 'undefined'
+        ? window.location.origin
+        : 'http://localhost');
 
     try {
       const response = await fetch(`${baseUrl}/v1/chat/completions`, {
@@ -85,7 +88,9 @@ export function useChatCompletion() {
           onError(errorData);
         } else {
           const errorMessage =
-            typeof errorData === 'string' ? errorData : errorData.error?.message || 'Unknown error occurred';
+            typeof errorData === 'string'
+              ? errorData
+              : errorData.error?.message || 'Unknown error occurred';
           throw new Error(errorMessage);
         }
         return;
@@ -102,7 +107,11 @@ export function useChatCompletion() {
           if (done) break;
 
           const chunk = decoder.decode(value);
-          const lines = chunk.split('\n').filter((line) => line.trim() !== '' && line.trim() !== 'data: [DONE]');
+          const lines = chunk
+            .split('\n')
+            .filter(
+              (line) => line.trim() !== '' && line.trim() !== 'data: [DONE]'
+            );
 
           for (const line of lines) {
             try {
@@ -160,7 +169,8 @@ export function useChatCompletion() {
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
 
       if (onError) {
         onError(errorMessage);

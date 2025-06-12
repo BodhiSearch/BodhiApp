@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useCallback } from 'react';
 
 interface UseCopyToClipboardProps {
@@ -9,7 +11,9 @@ interface UseCopyToClipboardReturn {
   copyToClipboard: (text: string) => Promise<void>;
 }
 
-export function useCopyToClipboard({ timeout = 2000 }: UseCopyToClipboardProps = {}): UseCopyToClipboardReturn {
+export function useCopyToClipboard({
+  timeout = 2000,
+}: UseCopyToClipboardProps = {}): UseCopyToClipboardReturn {
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const copyToClipboard = useCallback(

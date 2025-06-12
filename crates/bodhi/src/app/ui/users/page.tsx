@@ -1,12 +1,28 @@
-import { lazy, Suspense } from 'react';
+import AppInitializer from '@/components/AppInitializer';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Lazy load the actual page component
-const UsersPageContent = lazy(() => import('@/app/ui/users/UsersPage'));
+export function UsersPageContent() {
+  return (
+    <div className="container mx-auto py-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center">Coming Soon</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8">
+            We&apos;re working hard to bring you these amazing features. Thanks
+            and Stay Tuned!
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default function UsersPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <AppInitializer authenticated={true} allowedStatus="ready">
       <UsersPageContent />
-    </Suspense>
+    </AppInitializer>
   );
 }

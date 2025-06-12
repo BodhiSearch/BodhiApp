@@ -93,7 +93,6 @@ describe('useChat', () => {
       chatDB.setCurrentChat(initialChat);
 
       const chunks = [
-        '{"choices":[{"delta":{"content": null}}]}',
         '{"choices":[{"delta":{"content":" Hello"}}]}',
         '{"choices":[{"delta":{"content":" world"}}]}',
         '[DONE]'
