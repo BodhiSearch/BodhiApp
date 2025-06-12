@@ -1,6 +1,10 @@
+use std::io;
+
 use commands::{CreateCommandError, PullCommandError};
 use lib_bodhiserver::AppServiceBuilderError;
-use objs::{impl_error_from, AppError, BuilderError, ErrorType, IoError, LocalizationSetupError};
+use objs::{
+  impl_error_from, AppError, BuilderError, ErrorMessage, ErrorType, IoError, LocalizationSetupError,
+};
 use server_app::ServeError;
 use server_core::ContextError;
 use services::{
@@ -57,3 +61,17 @@ impl From<AppServiceBuilderError> for BodhiError {
 }
 
 pub(crate) type Result<T> = std::result::Result<T, BodhiError>;
+
+#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
+#[error_meta(trait_to_impl = AppError)]
+pub enum AppInitError {
+  #[error("io_error: error spawning async runtime: {0}")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  AsyncRuntime(#[from] io::Error),
+}
+
+impl From<AppInitError> for ErrorMessage {
+  fn from(value: AppInitError) -> Self {
+    ErrorMessage::new(value.code(), value.error_type(), value.to_string())
+  }
+}

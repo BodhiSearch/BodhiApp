@@ -1,6 +1,6 @@
-use crate::{app::aexecute, error::BodhiError};
+use crate::{app::start, error::AppInitError};
 use lib_bodhiserver::{build_app_service, setup_app_dirs, AppOptionsBuilder};
-use objs::{ApiError, AppType, OpenAIApiError};
+use objs::{ApiError, AppType, ErrorMessage, ErrorType, OpenAIApiError};
 use services::{DefaultEnvWrapper, DefaultSettingService, SettingService};
 use std::sync::Arc;
 use tokio::runtime::Builder;
@@ -55,10 +55,18 @@ pub const APP_TYPE: AppType = AppType::Native;
 pub const APP_TYPE: AppType = AppType::Container;
 
 pub fn _main() {
+  if let Err(err) = execute() {
+    tracing::error!("fatal error: {err}\nexiting application");
+    std::process::exit(1);
+  }
+}
+
+#[allow(clippy::result_large_err)]
+fn execute() -> Result<(), ErrorMessage> {
   let env_wrapper: Arc<dyn services::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
 
   // Construct AppOptions explicitly for production code clarity
-  let app_options = match AppOptionsBuilder::default()
+  let app_options = AppOptionsBuilder::default()
     .env_wrapper(env_wrapper.clone())
     .env_type(ENV_TYPE.clone())
     .app_type(APP_TYPE.clone())
@@ -66,58 +74,50 @@ pub fn _main() {
     .auth_url(AUTH_URL)
     .auth_realm(AUTH_REALM)
     .build()
-  {
-    Ok(options) => options,
-    Err(err) => {
-      eprintln!(
-        "fatal error, building app options, error: {}\nexiting...",
-        err
-      );
-      std::process::exit(1);
-    }
-  };
+    .map_err(|err| {
+      ErrorMessage::new(
+        "app_options_builder_error".to_string(),
+        ErrorType::InternalServer.to_string(),
+        err.to_string(),
+      )
+    })?;
 
-  let setting_service = match setup_app_dirs(app_options) {
-    Ok(setting_service) => setting_service,
-    Err(err) => {
-      eprintln!(
-        "fatal error, setting up app dirs, error: {}\nexiting...",
-        err
-      );
-      std::process::exit(1);
-    }
-  };
-  if let Err(err) = set_feature_settings(&setting_service) {
-    eprintln!(
-      "fatal error, setting up feature settings, error: {}\nexiting...",
-      err
-    );
-    std::process::exit(1);
-  }
+  let setting_service = setup_app_dirs(app_options)?;
 
   #[cfg(not(feature = "native"))]
   let _guard = setup_logs(&setting_service);
-  let result = main_internal(Arc::new(setting_service));
-  if let Err(err) = result {
-    tracing::warn!(?err, "application exited with error");
-    let err: ApiError = err.into();
-    let err: OpenAIApiError = err.into();
-    eprintln!("fatal error: {}\nexiting...", err);
-    std::process::exit(1);
-  } else {
-    tracing::info!("application exited with success");
-  }
+
+  let result = aexecute(Arc::new(setting_service));
+
   #[cfg(not(feature = "native"))]
   drop(_guard);
+
+  result
 }
 
-fn main_internal(setting_service: Arc<dyn SettingService>) -> Result<(), BodhiError> {
-  let runtime = Builder::new_multi_thread().enable_all().build()?;
-  runtime.block_on(async move {
+fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<(), ErrorMessage> {
+  let runtime = Builder::new_multi_thread()
+    .enable_all()
+    .build()
+    .map_err(AppInitError::from)?;
+  let result: Result<(), ErrorMessage> = runtime.block_on(async move {
     // Build the complete app service using the lib_bodhiserver function
     let app_service = Arc::new(build_app_service(setting_service.clone()).await?);
-    aexecute(app_service).await
-  })
+    match start(app_service).await {
+      Err(err) => {
+        tracing::warn!(?err, "application exited with error");
+        let err: ApiError = err.into();
+        let err: OpenAIApiError = err.into();
+        let err: ErrorMessage = err.into();
+        Err(err)
+      }
+      Ok(_) => {
+        tracing::info!("application exited with success");
+        Ok(())
+      }
+    }
+  });
+  result
 }
 
 #[cfg(not(feature = "native"))]

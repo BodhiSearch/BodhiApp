@@ -28,6 +28,7 @@ tauri-plugin-log = { workspace = true, optional = true }
 axum = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
+serde_json = { workspace = true }
 tracing = { workspace = true, features = ["async-await", "log"] }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

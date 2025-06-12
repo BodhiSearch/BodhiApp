@@ -582,6 +582,7 @@ dependencies = [
  "routes_app",
  "routes_oai",
  "rstest",
+ "serde_json",
  "serde_yaml",
  "server_app",
  "server_core",

@@ -1,46 +1,16 @@
-use objs::{ApiError, AppError, ErrorType, FluentLocalizationService, LocalizationService};
+use objs::{ApiError, ErrorMessage, FluentLocalizationService, LocalizationService};
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
   hash_key, AuthService, CacheService, DataService, DefaultAppService, DefaultSecretService,
   HfHubService, HubService, KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService,
   SecretService, SessionService, SettingService, SqliteSessionService, SystemKeyringStore,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
+
+use crate::AppServiceBuilderError;
 
 const SECRET_KEY: &str = "secret_key";
 
-#[derive(Debug, thiserror::Error)]
-pub enum AppServiceBuilderError {
-  #[error("{0}")]
-  Generic(String),
-  #[error("Service already set: {service_name}")]
-  ServiceAlreadySet { service_name: String },
-}
-
-impl From<Box<dyn AppError>> for AppServiceBuilderError {
-  fn from(err: Box<dyn AppError>) -> Self {
-    let api_error: ApiError = ApiError::from(err);
-    let message =
-      serde_json::to_string_pretty(&api_error).unwrap_or_else(|err| format!("{:?}", err));
-    AppServiceBuilderError::Generic(message)
-  }
-}
-
-impl AppError for AppServiceBuilderError {
-  fn error_type(&self) -> String {
-    ErrorType::InternalServer.to_string()
-  }
-
-  fn code(&self) -> String {
-    "app_service_builder_error".to_string()
-  }
-
-  fn args(&self) -> std::collections::HashMap<String, String> {
-    let mut map: HashMap<String, String> = HashMap::new();
-    map.insert("message".to_string(), self.to_string());
-    map
-  }
-}
 /// A comprehensive service builder that handles dependency injection and automatic dependency resolution.
 /// Services can be provided externally or built automatically from settings.
 /// Prevents duplicate builds and provides clear error messages for dependency issues.
@@ -88,9 +58,9 @@ impl AppServiceBuilder {
     service: Arc<dyn HubService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.hub_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "hub_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "hub_service".to_string(),
+      ));
     }
     self.hub_service = Some(service);
     Ok(self)
@@ -102,9 +72,9 @@ impl AppServiceBuilder {
     service: Arc<dyn DataService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.data_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "data_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "data_service".to_string(),
+      ));
     }
     self.data_service = Some(service);
     Ok(self)
@@ -116,9 +86,9 @@ impl AppServiceBuilder {
     service: Arc<dyn TimeService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.time_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "time_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "time_service".to_string(),
+      ));
     }
     self.time_service = Some(service);
     Ok(self)
@@ -127,9 +97,9 @@ impl AppServiceBuilder {
   /// Sets the database service.
   pub fn db_service(mut self, service: Arc<dyn DbService>) -> Result<Self, AppServiceBuilderError> {
     if self.db_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "db_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "db_service".to_string(),
+      ));
     }
     self.db_service = Some(service);
     Ok(self)
@@ -141,9 +111,9 @@ impl AppServiceBuilder {
     service: Arc<dyn SessionService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.session_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "session_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "session_service".to_string(),
+      ));
     }
     self.session_service = Some(service);
     Ok(self)
@@ -155,9 +125,9 @@ impl AppServiceBuilder {
     service: Arc<dyn SecretService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.secret_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "secret_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "secret_service".to_string(),
+      ));
     }
     self.secret_service = Some(service);
     Ok(self)
@@ -169,9 +139,9 @@ impl AppServiceBuilder {
     service: Arc<dyn CacheService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.cache_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "cache_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "cache_service".to_string(),
+      ));
     }
     self.cache_service = Some(service);
     Ok(self)
@@ -183,9 +153,9 @@ impl AppServiceBuilder {
     service: Arc<dyn AuthService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.auth_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "auth_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "auth_service".to_string(),
+      ));
     }
     self.auth_service = Some(service);
     Ok(self)
@@ -197,17 +167,18 @@ impl AppServiceBuilder {
     service: Arc<dyn LocalizationService>,
   ) -> Result<Self, AppServiceBuilderError> {
     if self.localization_service.is_some() {
-      return Err(AppServiceBuilderError::ServiceAlreadySet {
-        service_name: "localization_service".to_string(),
-      });
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "localization_service".to_string(),
+      ));
     }
     self.localization_service = Some(service);
     Ok(self)
   }
 
   /// Builds the complete DefaultAppService, resolving all dependencies automatically.
-  pub async fn build(mut self) -> Result<DefaultAppService, AppServiceBuilderError> {
+  pub async fn build(mut self) -> Result<DefaultAppService, ErrorMessage> {
     // Build services in dependency order
+    let localization_service = self.get_or_build_localization_service()?;
     let hub_service = self.get_or_build_hub_service();
     let data_service = self.get_or_build_data_service(hub_service.clone());
     let time_service = self.get_or_build_time_service();
@@ -216,7 +187,6 @@ impl AppServiceBuilder {
     let secret_service = self.get_or_build_secret_service()?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = self.get_or_build_auth_service();
-    let localization_service = self.get_or_build_localization_service()?;
 
     // Build and return the complete app service
     let app_service = DefaultAppService::new(
@@ -271,7 +241,7 @@ impl AppServiceBuilder {
   async fn get_or_build_db_service(
     &mut self,
     time_service: Arc<dyn TimeService>,
-  ) -> Result<Arc<dyn DbService>, Box<dyn AppError>> {
+  ) -> Result<Arc<dyn DbService>, ApiError> {
     if let Some(service) = self.db_service.take() {
       return Ok(service);
     }
@@ -287,9 +257,7 @@ impl AppServiceBuilder {
   }
 
   /// Gets or builds the session service.
-  async fn get_or_build_session_service(
-    &mut self,
-  ) -> Result<Arc<dyn SessionService>, Box<dyn AppError>> {
+  async fn get_or_build_session_service(&mut self) -> Result<Arc<dyn SessionService>, ApiError> {
     if let Some(service) = self.session_service.take() {
       return Ok(service);
     }
@@ -305,7 +273,7 @@ impl AppServiceBuilder {
   }
 
   /// Gets or builds the secret service.
-  fn get_or_build_secret_service(&mut self) -> Result<Arc<dyn SecretService>, Box<dyn AppError>> {
+  fn get_or_build_secret_service(&mut self) -> Result<Arc<dyn SecretService>, ApiError> {
     if let Some(service) = self.secret_service.take() {
       return Ok(service);
     }
@@ -353,7 +321,7 @@ impl AppServiceBuilder {
   /// Gets or builds the localization service.
   fn get_or_build_localization_service(
     &mut self,
-  ) -> Result<Arc<dyn LocalizationService>, AppServiceBuilderError> {
+  ) -> Result<Arc<dyn LocalizationService>, ErrorMessage> {
     if let Some(service) = self.localization_service.take() {
       return Ok(service);
     }
@@ -368,7 +336,7 @@ impl AppServiceBuilder {
 /// This function orchestrates the creation of all required services and their dependencies.
 pub async fn build_app_service(
   setting_service: Arc<dyn SettingService>,
-) -> Result<DefaultAppService, AppServiceBuilderError> {
+) -> Result<DefaultAppService, ErrorMessage> {
   AppServiceBuilder::new(setting_service).build().await
 }
 
@@ -376,7 +344,7 @@ pub async fn build_app_service(
 /// This ensures that error messages and other localized content are available.
 fn load_all_localization_resources(
   localization_service: &FluentLocalizationService,
-) -> Result<(), Box<dyn AppError>> {
+) -> Result<(), ErrorMessage> {
   localization_service
     .load_resource(objs::l10n::L10N_RESOURCES)?
     .load_resource(objs::gguf::l10n::L10N_RESOURCES)?
@@ -398,15 +366,14 @@ fn load_all_localization_resources(
 mod tests {
   use super::{AppServiceBuilder, AppServiceBuilderError};
   use crate::{setup_app_dirs, AppOptionsBuilder};
-  use objs::{test_utils::empty_bodhi_home, AppError, FluentLocalizationService};
+  use objs::{test_utils::empty_bodhi_home, FluentLocalizationService};
   use rstest::rstest;
   use services::{test_utils::FrozenTimeService, AppService, MockSecretService, SettingService};
   use std::sync::Arc;
   use tempfile::TempDir;
 
   #[rstest]
-  #[case(&AppServiceBuilderError::Generic("test error".to_string()), "test error")]
-  #[case(&AppServiceBuilderError::ServiceAlreadySet {service_name: "test_service".to_string()}, "Service already set: test_service")]
+  #[case(&AppServiceBuilderError::ServiceAlreadySet("test_service".to_string()), "Service already set: test_service")]
   fn test_error_messages_objs(#[case] error: &AppServiceBuilderError, #[case] expected: &str) {
     assert_eq!(expected, error.to_string());
   }
@@ -571,28 +538,6 @@ mod tests {
   }
 
   #[rstest]
-  fn test_error_conversions() {
-    // Test Generic error variant
-    let generic_error = AppServiceBuilderError::Generic("test error".to_string());
-    assert_eq!(generic_error.to_string(), "test error");
-
-    // Test ServiceAlreadySet error variant
-    let already_set_error = AppServiceBuilderError::ServiceAlreadySet {
-      service_name: "test_service".to_string(),
-    };
-    assert_eq!(
-      already_set_error.to_string(),
-      "Service already set: test_service"
-    );
-
-    // Test Box<dyn AppError> conversion
-    let db_error = services::db::DbError::TokenValidation("test error".to_string());
-    let boxed_error: Box<dyn AppError> = Box::new(db_error);
-    let builder_error: AppServiceBuilderError = boxed_error.into();
-    assert!(matches!(builder_error, AppServiceBuilderError::Generic(_)));
-  }
-
-  #[rstest]
   fn test_service_already_set_errors() -> anyhow::Result<()> {
     let setting_service = Arc::new(services::test_utils::SettingServiceStub::default());
     let mock_secret_service = Arc::new(MockSecretService::new());
@@ -604,12 +549,9 @@ mod tests {
     let result = builder.secret_service(mock_secret_service);
 
     assert!(result.is_err());
-    match result.unwrap_err() {
-      AppServiceBuilderError::ServiceAlreadySet { service_name } => {
-        assert_eq!(service_name, "secret_service");
-      }
-      _ => panic!("Expected ServiceAlreadySet error"),
-    }
+    assert!(matches!(
+      result.unwrap_err(),
+      AppServiceBuilderError::ServiceAlreadySet(service) if service == "secret_service".to_string()));
 
     Ok(())
   }
