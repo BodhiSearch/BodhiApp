@@ -13,6 +13,8 @@ This section contains documentation for current and planned features of the Bodh
 ### Planned Features
 - **[User Management](planned/user-management.md)** - Multi-user support and role management
 - **[Remote Models](planned/remote-models.md)** - Remote model integration and cloud sync
+- **[Vite to Next.js Migration V1](planned/20250612-vite-to-nextjs.md)** - Initial migration plan (deprecated)
+- **[Vite to Next.js Migration V2](planned/vite-to-nextjs-v2.md)** - Revised migration strategy based on V1 learnings
 
 ## Feature Categories
 
