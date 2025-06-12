@@ -164,7 +164,7 @@ describe('PullPage access control', () => {
   it('should redirect to /ui/login if user is not logged in', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready', authz: true }));
+        return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: false }));

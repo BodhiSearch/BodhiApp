@@ -68,11 +68,10 @@ export default function AppInitializer({
 
   useEffect(() => {
     if (appLoading || userLoading || appError || userError) return;
-    if (authenticated && appInfo?.authz && !userInfo?.logged_in) {
+    if (authenticated && !userInfo?.logged_in) {
       router.push('/ui/login');
     }
   }, [
-    appInfo?.authz,
     authenticated,
     userInfo,
     router,
@@ -127,7 +126,7 @@ export default function AppInitializer({
     }
   }
 
-  if (authenticated && appInfo?.authz && !userInfo?.logged_in) {
+  if (authenticated && !userInfo?.logged_in) {
     return <Loading message="Redirecting to login..." />;
   }
 

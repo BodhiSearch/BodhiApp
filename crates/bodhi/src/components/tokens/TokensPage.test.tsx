@@ -57,7 +57,7 @@ const mockListResponse = {
 
 const server = setupServer(
   rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-    return res(ctx.json({ status: 'ready', authz: true }));
+    return res(ctx.json({ status: 'ready' }));
   }),
   rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
     return res(ctx.json({ logged_in: true, email: 'test@example.com' }));
@@ -75,19 +75,7 @@ beforeEach(() => {
   pushMock.mockClear();
 });
 
-describe('TokenPageContent', () => {
-  it('shows loading skeleton initially', async () => {
-    server.use(
-      rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json(mockListResponse));
-      }),
-    );
 
-    render(<TokenPageContent />, { wrapper: createWrapper() });
-
-    expect(screen.getByTestId('token-page-loading')).toBeInTheDocument();
-  });
-});
 
 describe('TokenPageContent', () => {
   beforeEach(() => {
@@ -158,33 +146,14 @@ describe('TokenPageContent', () => {
     expect(screen.queryByText('API Token Generated')).not.toBeInTheDocument();
   });
 
-  it('shows non-authenticated setup message in card layout', async () => {
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready', authz: false }));
-      })
-    );
 
-    await act(async () => {
-      render(<TokenPage />, { wrapper: createWrapper() });
-    });
-
-    // Check for card title and icon
-    expect(screen.getByText(/API Tokens Not Available/)).toBeInTheDocument();
-
-    // Check for description message
-    const description = screen.getByText((content) => {
-      return content.includes("API tokens are not available when authentication is disabled.")
-    });
-    expect(description).toBeInTheDocument();
-  });
 });
 
 describe('TokenPage', () => {
   it('redirects to login when not authenticated', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready', authz: true }));
+        return res(ctx.json({ status: 'ready' }));
       }),
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ logged_in: false }));

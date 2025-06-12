@@ -55,7 +55,6 @@ const mockSettings: Setting[] = [
 const mockAppInfo: AppInfo = {
   version: '0.1.0',
   status: 'ready',
-  authz: false,
 };
 
 const mockUserInfo = {
@@ -360,7 +359,7 @@ describe('useSetupApp', () => {
     });
 
     await act(async () => {
-      await setupResult.current.mutateAsync({ authz: false });
+      await setupResult.current.mutateAsync({});
     });
 
     // Verify both queries were invalidated and refetched
@@ -381,7 +380,7 @@ describe('useSetupApp', () => {
     });
 
     await act(async () => {
-      await result.current.mutateAsync({ authz: false });
+      await result.current.mutateAsync({});
     });
 
     expect(onSuccess).toHaveBeenCalledWith({
@@ -411,7 +410,7 @@ describe('useSetupApp', () => {
 
     await act(async () => {
       try {
-        await result.current.mutateAsync({ authz: false });
+        await result.current.mutateAsync({});
       } catch (error) {
         // Expected error
       }
