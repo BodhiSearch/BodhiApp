@@ -1,5 +1,5 @@
 import * as React from 'react';
-import Link from '@/components/Link';
+import Link from 'next/link';
 import { Menu, ChevronsUpDown, Sun, Moon, Monitor } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';

@@ -1,8 +1,7 @@
 import { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import { BrowserRouter, createMemoryRouter, RouterProvider } from 'react-router-dom';
 
-// Create a simple wrapper that only includes essential providers
+// Create a simple wrapper that only includes essential providers for Next.js
 export const createWrapper = () => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -14,23 +13,16 @@ export const createWrapper = () => {
   });
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
   Wrapper.displayName = 'TestClientWrapper';
   return Wrapper;
 };
 
-// Enhanced wrapper for testing routing behavior
+// Enhanced wrapper for testing routing behavior (simplified for Next.js)
 export interface RouterTestOptions {
-  initialEntries?: string[];
-  initialIndex?: number;
-  routes?: Array<{
-    path: string;
-    element: ReactNode;
-  }>;
+  initialPath?: string;
 }
 
 export const createRouterWrapper = (options: RouterTestOptions = {}) => {
@@ -43,39 +35,12 @@ export const createRouterWrapper = (options: RouterTestOptions = {}) => {
     },
   });
 
-  const { initialEntries = ['/'], initialIndex = 0, routes = [] } = options;
-
-  // Create memory router for controlled testing
-  const router = createMemoryRouter(
-    routes.length > 0
-      ? routes.map((route) => ({
-          path: route.path,
-          element: route.element,
-        }))
-      : [
-          {
-            path: '*',
-            element: <div data-testid="router-outlet" />,
-          },
-        ],
-    {
-      initialEntries,
-      initialIndex,
-      future: {
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      },
-    }
-  );
-
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <RouterProvider router={router}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </RouterProvider>
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
   Wrapper.displayName = 'TestRouterWrapper';
-  return { Wrapper, router };
+  return { Wrapper };
 };
 
 // Create a more comprehensive wrapper for tests that need all providers
@@ -112,9 +77,7 @@ export const createFullWrapper = () => {
     }
 
     return (
-      <BrowserRouter>
-        <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>
-      </BrowserRouter>
+      <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>
     );
   };
 

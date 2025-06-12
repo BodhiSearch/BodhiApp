@@ -78,8 +78,8 @@ function scanPagesDirectory(dir, baseDir = dir) {
   return files;
 }
 
-// Scan pages directory to get all routes
-const pagesDir = path.resolve(__dirname, '../src/pages');
+// Scan app/ui directory to get all routes
+const pagesDir = path.resolve(__dirname, '../src/app/ui');
 const pageFiles = scanPagesDirectory(pagesDir);
 
 // Convert page files to routes

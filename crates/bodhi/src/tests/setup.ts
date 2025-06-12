@@ -34,6 +34,22 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+// Mock Next.js Image component
+vi.mock('next/image', () => ({
+  default: vi.fn().mockImplementation(({ src, alt, width, height, className, ...props }) => {
+    const React = require('react');
+    return React.createElement('img', { src, alt, width, height, className, ...props });
+  }),
+}));
+
+// Mock Next.js Link component
+vi.mock('next/link', () => ({
+  default: vi.fn().mockImplementation(({ href, children, target, ...props }) => {
+    const React = require('react');
+    return React.createElement('a', { href, target, ...props }, children);
+  }),
+}));
+
 // Export mocks for use in tests
 export { mockNavigate, mockLocation };
 

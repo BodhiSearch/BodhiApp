@@ -47,7 +47,7 @@ ci.app-pnpm: ## Install pnpm dependencies for the app
 	cd crates/bodhi && pnpm install
 
 ci.ui: ## Run UI tests with coverage
-	cd crates/bodhi && pnpm run test -- --coverage
+	cd crates/bodhi && pnpm run test
 
 release-ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."
