@@ -2,33 +2,12 @@ import { ALIAS_FORM_TOOLTIPS } from '@/components/models/tooltips';
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import {
-  useCreateModel,
-  useModelFiles,
-  useUpdateModel,
-} from '@/hooks/useQuery';
-import {
-  AliasFormData,
-  contextParamsSchema,
-  createAliasSchema,
-  requestParamsSchema,
-} from '@/schemas/alias';
+import { useCreateModel, useModelFiles, useUpdateModel } from '@/hooks/useQuery';
+import { AliasFormData, contextParamsSchema, createAliasSchema, requestParamsSchema } from '@/schemas/alias';
 import { Model } from '@/types/models';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
@@ -106,9 +85,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const filenameOptions = useMemo(() => {
     if (!modelsData || !currentRepo) return [];
     const filenameSet = new Set(
-      modelsData.data
-        .filter((model) => model.repo === currentRepo)
-        .map((model) => model.filename)
+      modelsData.data.filter((model) => model.repo === currentRepo).map((model) => model.filename)
     );
     return Array.from(filenameSet)
       .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()))
@@ -183,13 +160,8 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     }
   );
 
-  const renderParamFields = (
-    paramType: 'request_params' | 'context_params'
-  ) => {
-    const schema =
-      paramType === 'request_params'
-        ? requestParamsSchema
-        : contextParamsSchema;
+  const renderParamFields = (paramType: 'request_params' | 'context_params') => {
+    const schema = paramType === 'request_params' ? requestParamsSchema : contextParamsSchema;
     return Object.entries(schema.shape).map(([key, field]) => {
       const fieldId = `${paramType}-${key}`;
       return (
@@ -202,9 +174,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
             <FormItem className="space-y-2 mb-4">
               <FormFieldWithTooltip
                 label={key}
-                tooltip={
-                  ALIAS_FORM_TOOLTIPS[key as keyof typeof ALIAS_FORM_TOOLTIPS]
-                }
+                tooltip={ALIAS_FORM_TOOLTIPS[key as keyof typeof ALIAS_FORM_TOOLTIPS]}
                 htmlFor={fieldId}
               >
                 <FormControl>
@@ -221,11 +191,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                       }
                       onChange={(e) =>
                         formField.onChange(
-                          e.target.value
-                            ? e.target.value
-                                .split(',')
-                                .map((item) => item.trim())
-                            : undefined
+                          e.target.value ? e.target.value.split(',').map((item) => item.trim()) : undefined
                         )
                       }
                       placeholder="Comma-separated values"
@@ -235,33 +201,17 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                       {...formField}
                       id={fieldId}
                       type={field instanceof z.ZodNumber ? 'number' : 'text'}
-                      min={
-                        field instanceof z.ZodNumber
-                          ? (field.minValue ?? undefined)
-                          : undefined
-                      }
-                      max={
-                        field instanceof z.ZodNumber
-                          ? (field.maxValue ?? undefined)
-                          : undefined
-                      }
-                      step={
-                        field instanceof z.ZodNumber && !field.isInt
-                          ? 0.1
-                          : undefined
-                      }
+                      min={field instanceof z.ZodNumber ? (field.minValue ?? undefined) : undefined}
+                      max={field instanceof z.ZodNumber ? (field.maxValue ?? undefined) : undefined}
+                      step={field instanceof z.ZodNumber && !field.isInt ? 0.1 : undefined}
                       value={formField.value ?? ''}
                       onChange={(e) => {
                         const inputValue = e.target.value;
                         if (inputValue === '') {
                           formField.onChange(undefined);
                         } else if (field instanceof z.ZodNumber) {
-                          const numValue = field.isInt
-                            ? parseInt(inputValue, 10)
-                            : parseFloat(inputValue);
-                          formField.onChange(
-                            isNaN(numValue) ? undefined : numValue
-                          );
+                          const numValue = field.isInt ? parseInt(inputValue, 10) : parseFloat(inputValue);
+                          formField.onChange(isNaN(numValue) ? undefined : numValue);
                         } else {
                           formField.onChange(inputValue);
                         }
@@ -292,11 +242,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               name="alias"
               render={({ field }) => (
                 <FormItem>
-                  <FormFieldWithTooltip
-                    label="Alias"
-                    tooltip={ALIAS_FORM_TOOLTIPS.alias}
-                    htmlFor="alias"
-                  >
+                  <FormFieldWithTooltip label="Alias" tooltip={ALIAS_FORM_TOOLTIPS.alias} htmlFor="alias">
                     <FormControl>
                       <Input {...field} id="alias" disabled={isEditMode} />
                     </FormControl>
@@ -312,21 +258,11 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               name="repo"
               render={({ field }) => (
                 <FormItem>
-                  <FormFieldWithTooltip
-                    label="Repo"
-                    tooltip={ALIAS_FORM_TOOLTIPS.repo}
-                    htmlFor="repo-select"
-                  >
+                  <FormFieldWithTooltip label="Repo" tooltip={ALIAS_FORM_TOOLTIPS.repo} htmlFor="repo-select">
                     <FormControl>
                       <ComboBoxResponsive
-                        selectedStatus={
-                          field.value
-                            ? { value: field.value, label: field.value }
-                            : null
-                        }
-                        setSelectedStatus={(selected) =>
-                          field.onChange(selected?.value || '')
-                        }
+                        selectedStatus={field.value ? { value: field.value, label: field.value } : null}
+                        setSelectedStatus={(selected) => field.onChange(selected?.value || '')}
                         statuses={repoOptions}
                         placeholder="Select repo"
                         id="repo-select"
@@ -351,14 +287,8 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                   >
                     <FormControl>
                       <ComboBoxResponsive
-                        selectedStatus={
-                          field.value
-                            ? { value: field.value, label: field.value }
-                            : null
-                        }
-                        setSelectedStatus={(selected) =>
-                          field.onChange(selected?.value || '')
-                        }
+                        selectedStatus={field.value ? { value: field.value, label: field.value } : null}
+                        setSelectedStatus={(selected) => field.onChange(selected?.value || '')}
                         statuses={filenameOptions}
                         placeholder="Select filename"
                         id="filename-select"
@@ -380,11 +310,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 onClick={() => setIsRequestExpanded(!isRequestExpanded)}
               >
                 <CardTitle>Request Parameters</CardTitle>
-                {isRequestExpanded ? (
-                  <ChevronUp size={20} />
-                ) : (
-                  <ChevronDown size={20} />
-                )}
+                {isRequestExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </CardHeader>
               <CardContent
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${isRequestExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
@@ -401,11 +327,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 onClick={() => setIsContextExpanded(!isContextExpanded)}
               >
                 <CardTitle>Context Parameters</CardTitle>
-                {isContextExpanded ? (
-                  <ChevronUp size={20} />
-                ) : (
-                  <ChevronDown size={20} />
-                )}
+                {isContextExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
               </CardHeader>
               <CardContent
                 className={`overflow-hidden transition-all duration-300 ease-in-out ${isContextExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
@@ -417,9 +339,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
         </div>
 
         <div className="flex justify-center mt-8">
-          <Button type="submit">
-            {isEditMode ? 'Update' : 'Create'} Model Alias
-          </Button>
+          <Button type="submit">{isEditMode ? 'Update' : 'Create'} Model Alias</Button>
         </div>
       </form>
     </Form>

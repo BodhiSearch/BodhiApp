@@ -1,21 +1,9 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { SetupProgress } from '@/components/setup/SetupProgress';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardFooter,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  ChevronDown,
-  ChevronUp,
-  CheckCircle2,
-  XCircle,
-  Download,
-} from 'lucide-react';
+import { ChevronDown, ChevronUp, CheckCircle2, XCircle, Download } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 // Animation variants
@@ -83,8 +71,7 @@ const stubEnginesWithStates: (EngineOption & {
   {
     id: 'cuda-opt',
     name: 'CUDA-Optimized Engine',
-    description:
-      'Optimal for NVIDIA GPUs with CUDA support. Best performance for your hardware.',
+    description: 'Optimal for NVIDIA GPUs with CUDA support. Best performance for your hardware.',
     downloadUrl: '/api/download/cuda-opt',
     compatible: true,
     size: '85MB',
@@ -141,10 +128,7 @@ function DownloadButton({
   fullWidth?: boolean;
 }) {
   return (
-    <Button
-      className={fullWidth ? 'w-full mt-4' : 'min-w-[120px]'}
-      onClick={onDownload}
-    >
+    <Button className={fullWidth ? 'w-full mt-4' : 'min-w-[120px]'} onClick={onDownload}>
       <Download className="mr-2 h-4 w-4" />
       Download {engine.size}
     </Button>
@@ -155,10 +139,7 @@ function DownloadProgress({ progress }: { progress: number }) {
   return (
     <div className="space-y-2">
       <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-        <div
-          className="h-full bg-primary transition-all duration-500"
-          style={{ width: `${progress}%` }}
-        />
+        <div className="h-full bg-primary transition-all duration-500" style={{ width: `${progress}%` }} />
       </div>
       <div className="flex justify-between text-sm text-muted-foreground">
         <span>Downloading... {progress}%</span>
@@ -179,13 +160,7 @@ function DownloadComplete() {
   );
 }
 
-function DownloadError({
-  error,
-  onRetry,
-}: {
-  error: string;
-  onRetry: () => void;
-}) {
+function DownloadError({ error, onRetry }: { error: string; onRetry: () => void }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-destructive">
@@ -224,31 +199,20 @@ function EngineCard({
 }) {
   return (
     <Card
-      className={`cursor-pointer transition-colors h-full flex flex-col ${
-        isSelected ? 'border-primary' : ''
-      }`}
+      className={`cursor-pointer transition-colors h-full flex flex-col ${isSelected ? 'border-primary' : ''}`}
       onClick={onSelect}
     >
       <CardHeader>
         <CardTitle className="text-lg">{engine.name}</CardTitle>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col">
-        <p className="text-sm text-muted-foreground flex-1">
-          {engine.description}
-        </p>
+        <p className="text-sm text-muted-foreground flex-1">{engine.description}</p>
         <div className="mt-4">
-          {downloadState.status === 'idle' && (
-            <DownloadButton engine={engine} onDownload={() => {}} fullWidth />
-          )}
-          {downloadState.status === 'downloading' && (
-            <DownloadProgress progress={downloadState.progress || 0} />
-          )}
+          {downloadState.status === 'idle' && <DownloadButton engine={engine} onDownload={() => {}} fullWidth />}
+          {downloadState.status === 'downloading' && <DownloadProgress progress={downloadState.progress || 0} />}
           {downloadState.status === 'complete' && <DownloadComplete />}
           {downloadState.status === 'error' && (
-            <DownloadError
-              error={downloadState.error || 'Download failed'}
-              onRetry={() => {}}
-            />
+            <DownloadError error={downloadState.error || 'Download failed'} onRetry={() => {}} />
           )}
         </div>
       </CardContent>
@@ -258,9 +222,7 @@ function EngineCard({
 
 function LLMEngineContent() {
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
-  const [selectedEngine, setSelectedEngine] = useState<EngineOption>(
-    stubEnginesWithStates[0]
-  );
+  const [selectedEngine, setSelectedEngine] = useState<EngineOption>(stubEnginesWithStates[0]);
   const [, setDownloadState] = useState<{
     status: 'idle' | 'downloading' | 'complete' | 'error';
     progress?: number;
@@ -301,13 +263,9 @@ function LLMEngineContent() {
           <CardContent className="space-y-6">
             {/* Add recommendation message */}
             <div className="text-center text-muted-foreground mb-4">
-              <p>
-                Based on hardware analysis, we have picked the most suitable LLM
-                engine for optimal performance.
-              </p>
+              <p>Based on hardware analysis, we have picked the most suitable LLM engine for optimal performance.</p>
               <p className="text-sm mt-2">
-                You can choose from our recommendations or explore other
-                available engines.
+                You can choose from our recommendations or explore other available engines.
               </p>
             </div>
 
@@ -317,9 +275,7 @@ function LLMEngineContent() {
                 .filter(([key]) => key !== 'technicalDetails')
                 .map(([key, value]) => (
                   <div key={key} className="space-y-1">
-                    <div className="text-sm font-medium">
-                      {key.toUpperCase()}
-                    </div>
+                    <div className="text-sm font-medium">{key.toUpperCase()}</div>
                     <div className="text-sm text-muted-foreground">{value}</div>
                   </div>
                 ))}
@@ -334,30 +290,20 @@ function LLMEngineContent() {
                 onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
               >
                 Technical Details
-                {showTechnicalDetails ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
+                {showTechnicalDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
 
               {/* Technical Details Content - Always visible on md+ screens */}
-              <div
-                className={`space-y-2 text-sm ${showTechnicalDetails ? 'block' : 'hidden'} md:block`}
-              >
+              <div className={`space-y-2 text-sm ${showTechnicalDetails ? 'block' : 'hidden'} md:block`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {Object.entries(stubHardware.technicalDetails).map(
-                    ([key, value]) => (
-                      <div key={key} className="space-y-1">
-                        <div className="font-medium">{key}</div>
-                        <div className="text-muted-foreground">
-                          {Array.isArray(value)
-                            ? value.join(', ')
-                            : value.toString()}
-                        </div>
+                  {Object.entries(stubHardware.technicalDetails).map(([key, value]) => (
+                    <div key={key} className="space-y-1">
+                      <div className="font-medium">{key}</div>
+                      <div className="text-muted-foreground">
+                        {Array.isArray(value) ? value.join(', ') : value.toString()}
                       </div>
-                    )
-                  )}
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -373,9 +319,7 @@ function LLMEngineContent() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Add recommended label */}
-            <div className="text-sm font-medium text-muted-foreground mb-2">
-              Recommended for Your Hardware
-            </div>
+            <div className="text-sm font-medium text-muted-foreground mb-2">Recommended for Your Hardware</div>
 
             {/* Recommended Engines */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -402,42 +346,27 @@ function LLMEngineContent() {
                 onClick={() => setShowAllEngines(!showAllEngines)}
               >
                 Show All Available Engines
-                {showAllEngines ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
+                {showAllEngines ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
 
               {showAllEngines && (
                 <div className="space-y-2">
                   {additionalEngines.map((engine) => (
-                    <div
-                      key={engine.id}
-                      className="flex items-center gap-4 p-4 border rounded-lg"
-                    >
+                    <div key={engine.id} className="flex items-center gap-4 p-4 border rounded-lg">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center">
-                          <h4 className="font-medium truncate">
-                            {engine.name}
-                          </h4>
+                          <h4 className="font-medium truncate">{engine.name}</h4>
                           <CompatibilityBadge compatible={engine.compatible} />
                         </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {engine.description}
-                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">{engine.description}</p>
                         {!engine.compatible && (
                           <p className="text-xs text-destructive mt-1">
-                            Warning: This engine may not perform optimally on
-                            your hardware
+                            Warning: This engine may not perform optimally on your hardware
                           </p>
                         )}
                       </div>
                       <div className="flex-shrink-0">
-                        <DownloadButton
-                          engine={engine}
-                          onDownload={handleDownload}
-                        />
+                        <DownloadButton engine={engine} onDownload={handleDownload} />
                       </div>
                     </div>
                   ))}

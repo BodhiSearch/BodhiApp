@@ -15,9 +15,7 @@ const EmptyState = () => (
   <div className="flex h-full items-center justify-center">
     <div className="text-center space-y-3">
       <h3 className="text-lg font-semibold">Welcome to Chat</h3>
-      <p className="text-muted-foreground">
-        Start a conversation by typing a message below.
-      </p>
+      <p className="text-muted-foreground">Start a conversation by typing a message below.</p>
     </div>
   </div>
 );
@@ -45,13 +43,7 @@ const ChatInput = memo(function ChatInput({
     <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto max-w-3xl px-4 py-2">
         <div className="relative flex items-center rounded-lg border bg-background shadow-sm">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute left-2 h-8 w-8"
-            onClick={createNewChat}
-          >
+          <Button type="button" variant="ghost" size="icon" className="absolute left-2 h-8 w-8" onClick={createNewChat}>
             <Plus className="h-5 w-5" />
             <span className="sr-only">New chat</span>
           </Button>
@@ -64,11 +56,7 @@ const ChatInput = memo(function ChatInput({
                 !isModelSelected && 'ring-2 ring-destructive'
               )}
               rows={1}
-              placeholder={
-                isModelSelected
-                  ? 'Ask me anything...'
-                  : 'Please select a model first'
-              }
+              placeholder={isModelSelected ? 'Ask me anything...' : 'Please select a model first'}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -101,9 +89,7 @@ const ChatInput = memo(function ChatInput({
           </form>
         </div>
 
-        <p className="px-2 py-2 text-center text-xs text-muted-foreground">
-          Chat assistant can make mistakes.
-        </p>
+        <p className="px-2 py-2 text-center text-xs text-muted-foreground">Chat assistant can make mistakes.</p>
       </div>
     </div>
   );
@@ -115,25 +101,15 @@ interface MessageListProps {
   assistantMessage: Message;
 }
 
-const MessageList = memo(function MessageList({
-  messages,
-  userMessage,
-  assistantMessage,
-}: MessageListProps) {
+const MessageList = memo(function MessageList({ messages, userMessage, assistantMessage }: MessageListProps) {
   return (
     <div className="space-y-2 py-2">
       {messages.map((message, i) => (
         <ChatMessage key={`history-${i}`} message={message} />
       ))}
-      {userMessage.content && (
-        <ChatMessage key="user-current" message={userMessage} />
-      )}
+      {userMessage.content && <ChatMessage key="user-current" message={userMessage} />}
       {assistantMessage.content && (
-        <ChatMessage
-          key="assistant-current"
-          message={assistantMessage}
-          isStreaming={true}
-        />
+        <ChatMessage key="assistant-current" message={assistantMessage} isStreaming={true} />
       )}
       <ScrollAnchor />
     </div>
@@ -145,14 +121,7 @@ export function ChatUI() {
   const { showError } = useToastMessages();
   const { model } = useChatSettings();
   const { open: openSettings, setOpen: setOpenSettings } = useSidebar();
-  const {
-    input,
-    setInput,
-    isLoading: streamLoading,
-    append,
-    userMessage,
-    assistantMessage,
-  } = useChat();
+  const { input, setInput, isLoading: streamLoading, append, userMessage, assistantMessage } = useChat();
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -166,10 +135,7 @@ export function ChatUI() {
     if (!input.trim() || streamLoading) return;
     // Check if model is selected
     if (!model) {
-      showError(
-        'No Model Selected',
-        'Please select an Alias/Model from settings before sending a message.'
-      );
+      showError('No Model Selected', 'Please select an Alias/Model from settings before sending a message.');
       // Open settings panel if it's not already open
       if (!openSettings) {
         setOpenSettings(true);
@@ -188,8 +154,7 @@ export function ChatUI() {
         <div className="absolute inset-0 overflow-y-auto">
           <div className="sticky top-0 h-8 bg-background/80 backdrop-blur-sm z-30" />
           <div className="px-3">
-            {(currentChat === null || !currentChat?.messages?.length) &&
-            !userMessage.content ? (
+            {(currentChat === null || !currentChat?.messages?.length) && !userMessage.content ? (
               <EmptyState />
             ) : (
               <MessageList

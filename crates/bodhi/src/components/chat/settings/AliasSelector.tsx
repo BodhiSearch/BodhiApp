@@ -1,12 +1,7 @@
 import { ComboBoxResponsive } from '@/components/Combobox';
 import { CopyButton } from '@/components/CopyButton';
 import { Label } from '@/components/ui/label';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { HelpCircle } from 'lucide-react';
 
@@ -16,11 +11,7 @@ interface AliasSelectorProps {
   tooltip: string;
 }
 
-export function AliasSelector({
-  models,
-  isLoading = false,
-  tooltip,
-}: AliasSelectorProps) {
+export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelectorProps) {
   const { model, setModel } = useChatSettings();
 
   // Transform models array to match ComboBoxResponsive's Status type
@@ -43,10 +34,7 @@ export function AliasSelector({
                 <TooltipTrigger asChild>
                   <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
                 </TooltipTrigger>
-                <TooltipContent
-                  sideOffset={8}
-                  className="data-[side=bottom]:slide-in-from-top-2"
-                >
+                <TooltipContent sideOffset={8} className="data-[side=bottom]:slide-in-from-top-2">
                   <p className="max-w-xs text-sm">{tooltip}</p>
                 </TooltipContent>
               </Tooltip>

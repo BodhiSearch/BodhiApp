@@ -8,8 +8,7 @@ import { useCallback, useState } from 'react';
 
 export function useChat() {
   const [input, setInput] = useState('');
-  const [abortController, setAbortController] =
-    useState<AbortController | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [userMessage, setUserMessage] = useState<Message>({
     role: 'user',
     content: '',
@@ -38,10 +37,7 @@ export function useChat() {
       try {
         const requestMessages =
           chatSettings.systemPrompt_enabled && chatSettings.systemPrompt
-            ? [
-                { role: 'system' as const, content: chatSettings.systemPrompt },
-                ...userMessages,
-              ]
+            ? [{ role: 'system' as const, content: chatSettings.systemPrompt }, ...userMessages]
             : userMessages;
 
         const headers: Record<string, string> = {};
@@ -106,25 +102,14 @@ export function useChat() {
           },
         });
       } catch (error) {
-        const errorMessage =
-          error instanceof Error
-            ? error.message
-            : 'An unexpected error occurred';
+        const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
 
         showError('Error', errorMessage);
         // Reset state since this is a complete failure (couldn't even make the request)
         resetToPreSubmissionState(userContent);
       }
     },
-    [
-      chatSettings,
-      currentChat,
-      append,
-      createOrUpdateChat,
-      showError,
-      setCurrentChatId,
-      resetToPreSubmissionState,
-    ]
+    [chatSettings, currentChat, append, createOrUpdateChat, showError, setCurrentChatId, resetToPreSubmissionState]
   );
 
   // Helper function to extract error message
@@ -133,15 +118,9 @@ export function useChat() {
 
     if (error && typeof error === 'object') {
       if ('error' in error && error.error && typeof error.error === 'object') {
-        return (
-          (error.error as { message?: string }).message ||
-          'Error sending message to AI assistant.'
-        );
+        return (error.error as { message?: string }).message || 'Error sending message to AI assistant.';
       }
-      return (
-        (error as { message?: string }).message ||
-        'Error sending message to AI assistant.'
-      );
+      return (error as { message?: string }).message || 'Error sending message to AI assistant.';
     }
 
     return 'Error sending message to AI assistant.';
@@ -153,10 +132,7 @@ export function useChat() {
       setUserMessage({ role: 'user' as const, content });
 
       const existingMessages = currentChat?.messages || [];
-      const newMessages = [
-        ...existingMessages,
-        { role: 'user' as const, content },
-      ];
+      const newMessages = [...existingMessages, { role: 'user' as const, content }];
 
       const controller = new AbortController();
       setAbortController(controller);

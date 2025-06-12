@@ -102,8 +102,7 @@ export default defineConfig(async () => ({
             },
           },
           {
-            urlPattern: ({ url, sameOrigin }) =>
-              sameOrigin && url.pathname.startsWith('/api/'),
+            urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith('/api/'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'apis',

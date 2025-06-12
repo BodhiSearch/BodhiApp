@@ -1,10 +1,4 @@
-import {
-  ListTokensResponse,
-  TokenResponse,
-  useCreateToken,
-  useListTokens,
-  useUpdateToken,
-} from '@/hooks/useApiTokens';
+import { ListTokensResponse, TokenResponse, useCreateToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { ApiError } from '@/types/models';
@@ -98,10 +92,7 @@ describe('useListTokens', () => {
   it('handles error response', async () => {
     server.use(
       rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Test Error' } })
-        );
+        return res(ctx.status(500), ctx.json({ error: { message: 'Test Error' } }));
       })
     );
 
@@ -186,9 +177,7 @@ describe('useCreateToken', () => {
 
     // Verify list query was invalidated and refetched with new data
     await waitFor(() => {
-      expect(listResult.current.dataUpdatedAt).toBeGreaterThan(
-        initialDataUpdatedAt
-      );
+      expect(listResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       expect(listResult.current.data?.data.length).toBe(2);
       expect(listResult.current.data?.total).toBe(2);
     });

@@ -58,19 +58,10 @@ beforeAll(() => {
   console.error = (...args) => {
     // Check if any of the arguments contain our expected error messages
     const errorString = args
-      .map((arg) =>
-        typeof arg === 'string'
-          ? arg
-          : arg instanceof Error
-            ? arg.message
-            : arg?.toString?.()
-      )
+      .map((arg) => (typeof arg === 'string' ? arg : arg instanceof Error ? arg.message : arg?.toString?.()))
       .join(' ');
 
-    if (
-      errorString.includes('Request failed with status code ') ||
-      errorString.includes('Network Error')
-    ) {
+    if (errorString.includes('Request failed with status code ') || errorString.includes('Network Error')) {
       return;
     }
     originalError.call(console, ...args);

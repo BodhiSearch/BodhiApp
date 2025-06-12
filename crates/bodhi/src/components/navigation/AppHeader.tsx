@@ -6,20 +6,9 @@ import { siGithub } from 'simple-icons';
 // Using the same URL from setup/complete/page.tsx
 const GITHUB_REPO_URL = 'https://github.com/BodhiSearch/BodhiApp';
 
-function SimpleIcon({
-  icon,
-  className,
-}: {
-  icon: { path: string };
-  className?: string;
-}) {
+function SimpleIcon({ icon, className }: { icon: { path: string }; className?: string }) {
   return (
-    <svg
-      role="img"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="currentColor"
-    >
+    <svg role="img" viewBox="0 0 24 24" className={className} fill="currentColor">
       <path d={icon.path} />
     </svg>
   );
@@ -38,10 +27,7 @@ export function AppHeader() {
   }
 
   return (
-    <header
-      className="sticky top-0 z-50 h-16 border-b bg-header-elevated/90 backdrop-blur-sm"
-      data-testid="app-header"
-    >
+    <header className="sticky top-0 z-50 h-16 border-b bg-header-elevated/90 backdrop-blur-sm" data-testid="app-header">
       <div className="flex h-full items-center justify-between px-4">
         <div className="flex h-full items-center">
           <AppNavigation />

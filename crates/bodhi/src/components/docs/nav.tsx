@@ -54,10 +54,7 @@ interface NavGroupProps {
 
 function NavGroup({ item }: NavGroupProps) {
   return (
-    <div
-      className="grid gap-1 w-full"
-      data-testid={`nav-group-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
-    >
+    <div className="grid gap-1 w-full" data-testid={`nav-group-${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
       <Link
         href={item.href || '#'}
         className={cn(
@@ -92,10 +89,7 @@ function NavGroupChildren({ item }: NavGroupChildrenProps) {
       data-testid={`nav-group-children-${item.title.toLowerCase().replace(/\s+/g, '-')}`}
     >
       {item.children!.map((child, index) => (
-        <NavItem
-          key={`${item.title}-child-${child.title}-${index}`}
-          item={child}
-        />
+        <NavItem key={`${item.title}-child-${child.title}-${index}`} item={child} />
       ))}
     </div>
   );

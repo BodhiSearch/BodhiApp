@@ -19,14 +19,12 @@ import { useEffect } from 'react';
 const benefits = [
   {
     title: 'Complete Privacy',
-    description:
-      'Your chat data stays on your device. No data sharing/transfer out of your device.',
+    description: 'Your chat data stays on your device. No data sharing/transfer out of your device.',
     icon: '🔒',
   },
   {
     title: 'Always Free',
-    description:
-      'Run unlimited AI inferences locally without usage fees or API costs.',
+    description: 'Run unlimited AI inferences locally without usage fees or API costs.',
     icon: '💰',
   },
   {
@@ -36,8 +34,7 @@ const benefits = [
   },
   {
     title: 'Local Performance',
-    description:
-      "Direct access to your hardware's capabilities without latency.",
+    description: "Direct access to your hardware's capabilities without latency.",
     icon: '⚡',
   },
   {
@@ -48,8 +45,7 @@ const benefits = [
   },
   {
     title: 'Solid Foundation',
-    description:
-      'Leverages open-source eco-system: HuggingFace, llama.cpp, etc.',
+    description: 'Leverages open-source eco-system: HuggingFace, llama.cpp, etc.',
     icon: '🌟',
   },
 ];
@@ -75,10 +71,7 @@ const setupModes = [
 function SetupContent() {
   const router = useRouter();
   const { showError } = useToastMessages();
-  const [, setHasShownModelsPage] = useLocalStorage(
-    FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
-    false
-  );
+  const [, setHasShownModelsPage] = useLocalStorage(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, false);
 
   useEffect(() => {
     setHasShownModelsPage(false);
@@ -112,20 +105,13 @@ function SetupContent() {
         <SetupProgress currentStep={1} totalSteps={4} />
         <WelcomeCard />
 
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 gap-4"
-          variants={itemVariants}
-        >
+        <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-4" variants={itemVariants}>
           {benefits.map((benefit) => (
             <BenefitCard key={benefit.title} {...benefit} />
           ))}
         </motion.div>
 
-        <SetupModeCard
-          setupModes={setupModes}
-          onSetup={handleSetup}
-          isLoading={isLoading}
-        />
+        <SetupModeCard setupModes={setupModes} onSetup={handleSetup} isLoading={isLoading} />
       </motion.div>
     </main>
   );

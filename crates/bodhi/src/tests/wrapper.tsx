@@ -1,10 +1,6 @@
 import { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
-import {
-  BrowserRouter,
-  createMemoryRouter,
-  RouterProvider,
-} from 'react-router-dom';
+import { BrowserRouter, createMemoryRouter, RouterProvider } from 'react-router-dom';
 
 // Create a simple wrapper that only includes essential providers
 export const createWrapper = () => {
@@ -18,9 +14,7 @@ export const createWrapper = () => {
   });
 
   const Wrapper = ({ children }: { children: ReactNode }) => (
-    <BrowserRouter
-      future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-    >
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </BrowserRouter>
   );
@@ -119,9 +113,7 @@ export const createFullWrapper = () => {
 
     return (
       <BrowserRouter>
-        <QueryClientProvider client={queryClient}>
-          {content}
-        </QueryClientProvider>
+        <QueryClientProvider client={queryClient}>{content}</QueryClientProvider>
       </BrowserRouter>
     );
   };

@@ -30,8 +30,7 @@ function getPathOrder(slug: string, docsDir: string): number {
     }
 
     const fullPath = path.join(docsDir, ...slug.split('/'));
-    const isDirectory =
-      fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+    const isDirectory = fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
 
     if (isDirectory) {
       const metaPath = path.join(fullPath, '_meta.json');
@@ -57,10 +56,7 @@ function getPathOrder(slug: string, docsDir: string): number {
 }
 
 function getAllDocSlugs(docsDirectory: string): string[] {
-  const getAllFiles = (
-    dirPath: string,
-    arrayOfFiles: string[] = []
-  ): string[] => {
+  const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []): string[] => {
     try {
       if (!fs.existsSync(dirPath)) {
         return arrayOfFiles;
@@ -74,9 +70,7 @@ function getAllDocSlugs(docsDirectory: string): string[] {
           arrayOfFiles = getAllFiles(filePath, arrayOfFiles);
         } else if (path.extname(file) === MD_EXTENSION) {
           const relativePath = path.relative(docsDirectory, filePath);
-          const pathSlug = relativePath
-            .replace(/\.md$/, '')
-            .replaceAll(path.sep, '/');
+          const pathSlug = relativePath.replace(/\.md$/, '').replaceAll(path.sep, '/');
           arrayOfFiles.push(pathSlug);
         }
       });
@@ -95,10 +89,7 @@ function getDocDetails(filePath: string, docsDirectory: string): DocDetails {
   try {
     const fileContents = fs.readFileSync(filePath, 'utf8');
     const { data } = matter(fileContents);
-    const derivedSlug = path
-      .relative(docsDirectory, filePath)
-      .replace(/\.md$/, '')
-      .replaceAll(path.sep, '/');
+    const derivedSlug = path.relative(docsDirectory, filePath).replace(/\.md$/, '').replaceAll(path.sep, '/');
 
     return {
       title: data.title || formatTitle(derivedSlug),
@@ -108,10 +99,7 @@ function getDocDetails(filePath: string, docsDirectory: string): DocDetails {
     };
   } catch (e) {
     console.error(`Error reading doc details for ${filePath}:`, e);
-    const derivedSlug = path
-      .relative(docsDirectory, filePath)
-      .replace(/\.md$/, '')
-      .replaceAll(path.sep, '/');
+    const derivedSlug = path.relative(docsDirectory, filePath).replace(/\.md$/, '').replaceAll(path.sep, '/');
     return {
       title: formatTitle(derivedSlug),
       description: '',
@@ -176,10 +164,7 @@ function generateDocsData(): DocsData {
 
   // Generate content for each doc
   allSlugs.forEach((slug) => {
-    const filePath = path.join(
-      docsDirectory,
-      `${slug.replaceAll('/', path.sep)}.md`
-    );
+    const filePath = path.join(docsDirectory, `${slug.replaceAll('/', path.sep)}.md`);
     if (fs.existsSync(filePath)) {
       const fileContent = fs.readFileSync(filePath, 'utf-8');
       const { content, data } = matter(fileContent);
@@ -202,10 +187,7 @@ export function docsGeneratorPlugin(): Plugin {
       const docsData = generateDocsData();
 
       // Write the generated data to a virtual module
-      const outputPath = path.join(
-        process.cwd(),
-        'src/generated/docs-data.json'
-      );
+      const outputPath = path.join(process.cwd(), 'src/generated/docs-data.json');
       const outputDir = path.dirname(outputPath);
 
       if (!fs.existsSync(outputDir)) {
@@ -213,11 +195,7 @@ export function docsGeneratorPlugin(): Plugin {
       }
 
       fs.writeFileSync(outputPath, JSON.stringify(docsData, null, 2));
-      console.log(
-        '📚 Generated docs data for',
-        docsData.allSlugs.length,
-        'documents'
-      );
+      console.log('📚 Generated docs data for', docsData.allSlugs.length, 'documents');
     },
     resolveId(id) {
       if (id === 'virtual:docs-data') {

@@ -1,9 +1,5 @@
 // React Router equivalents for Next.js navigation
-import {
-  useNavigate,
-  useLocation,
-  useSearchParams as useRouterSearchParams,
-} from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams as useRouterSearchParams } from 'react-router-dom';
 
 // Equivalent to Next.js useRouter
 export function useRouter() {
