@@ -1,4 +1,6 @@
-use crate::{AppError, ErrorType};
+use crate::{
+  LocaleNotSupportedError, LocalizationMessageError, LocalizationSetupError, RwLockReadError,
+};
 use fluent::{concurrent::FluentBundle, FluentArgs, FluentResource};
 use include_dir::Dir;
 use std::{
@@ -6,7 +8,6 @@ use std::{
   str::FromStr,
   sync::{LazyLock, RwLock},
 };
-use thiserror::Error;
 use unic_langid::LanguageIdentifier;
 
 pub trait LocalizationService: std::fmt::Debug + Send + Sync {
@@ -17,48 +18,6 @@ pub trait LocalizationService: std::fmt::Debug + Send + Sync {
     args: Option<HashMap<String, String>>,
   ) -> Result<String, LocalizationMessageError>;
 }
-
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("locale_not_supported")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
-pub struct LocaleNotSupportedError {
-  locale: String,
-}
-
-#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
-#[error("l10n_rwlock_read")]
-#[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
-pub struct RwLockReadError {
-  reason: String,
-}
-
-#[derive(Debug, PartialEq, Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum LocalizationMessageError {
-  #[error(transparent)]
-  RwLockRead(#[from] RwLockReadError),
-  #[error("message_not_found")]
-  #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-message_not_found")]
-  MessageNotFound(String),
-  #[error("format_pattern")]
-  #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-format_pattern")]
-  FormatPattern(String),
-  #[error(transparent)]
-  LocaleNotSupported(#[from] LocaleNotSupportedError),
-}
-
-#[derive(Debug, PartialEq, Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum LocalizationSetupError {
-  #[error("rwlock_write")]
-  #[error_meta(error_type = ErrorType::InternalServer, code = "localization_error-rwlock_write")]
-  RwLockWrite(String),
-  #[error(transparent)]
-  RwLockRead(#[from] RwLockReadError),
-  #[error(transparent)]
-  LocaleNotSupported(#[from] LocaleNotSupportedError),
-}
-
 // basic support for locales
 pub static SUPPORTED_LOCALES: LazyLock<Vec<LanguageIdentifier>> = LazyLock::new(|| {
   vec![
@@ -169,12 +128,14 @@ impl FluentLocalizationService {
     resources: Vec<String>,
   ) -> Result<(), LocalizationSetupError> {
     if !SUPPORTED_LOCALES.contains(&locale) {
-      return Err(LocaleNotSupportedError::new(locale.to_string()))?;
+      return Err(LocalizationSetupError::LocaleNotSupported(
+        locale.to_string(),
+      ))?;
     }
     let mut bundles = self
       .bundles
       .write()
-      .map_err(|err| RwLockReadError::new(err.to_string()))?;
+      .map_err(|err| LocalizationSetupError::RwLockWrite(err.to_string()))?;
     let bundle = match bundles.get_mut(&locale) {
       Some(bundle) => bundle,
       None => {
@@ -396,7 +357,7 @@ mod tests {
     let result = localization_service.load_locale(lang_id, resources);
     assert!(result.is_err());
     assert_eq!(
-      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string())),
+      LocalizationSetupError::LocaleNotSupported("en-UK".to_string()),
       result.unwrap_err()
     );
   }
@@ -408,7 +369,7 @@ mod tests {
     let result = localization_service.load_resource(&RESOURCES_UNSUPPORTED);
     assert!(result.is_err());
     assert_eq!(
-      LocalizationSetupError::LocaleNotSupported(LocaleNotSupportedError::new("en-UK".to_string())),
+      LocalizationSetupError::LocaleNotSupported("en-UK".to_string()),
       result.unwrap_err()
     );
   }
@@ -426,14 +387,12 @@ mod tests {
     let lang_id = LanguageIdentifier::from_str("ja-JP").unwrap();
     let result = localization_service.get_message(&lang_id, "test-key", None);
     assert!(result.is_err());
-    match result.unwrap_err() {
-      LocalizationMessageError::LocaleNotSupported(LocaleNotSupportedError { locale }) => {
-        assert_eq!(locale, "ja-JP");
-      }
-      err => {
-        panic!("expected LocaleNotSupported error, got {:?}", err);
-      }
-    }
+    assert_eq!(
+      result.unwrap_err(),
+      LocalizationMessageError::LocaleNotSupported(LocaleNotSupportedError::new(
+        "ja-JP".to_string()
+      ))
+    );
   }
 
   #[rstest]
