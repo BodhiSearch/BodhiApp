@@ -13,7 +13,7 @@ import {
   it,
   vi
 } from 'vitest';
-import { OAuthCallbackPage } from '@/components/auth/OAuthCallbackPage';
+import OAuthCallbackPage from '@/pages/OAuthCallbackPage';
 import { ROUTE_AUTH_CALLBACK, ROUTE_CHAT, ROUTE_LOGIN } from '@/lib/constants';
 
 // Mock window.location with proper getter/setter support

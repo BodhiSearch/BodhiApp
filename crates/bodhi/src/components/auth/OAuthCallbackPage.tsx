@@ -4,7 +4,7 @@ import { useRouter } from '@/lib/navigation';
 import { ROUTE_AUTH_CALLBACK, ROUTE_CHAT, ROUTE_LOGIN } from '@/lib/constants';
 import { useEffect, useState, useRef } from 'react';
 
-export function OAuthCallbackPage() {
+export function OAuthCallbackPageContent() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [processed, setProcessed] = useState(false);
@@ -97,4 +97,4 @@ export function OAuthCallbackPage() {
   );
 }
 
-export default OAuthCallbackPage;
+export default OAuthCallbackPageContent;
