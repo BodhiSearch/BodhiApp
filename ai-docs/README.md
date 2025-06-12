@@ -96,6 +96,8 @@ Feature documentation organized by development status and implementation timelin
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
+- **[Vite to Next.js Migration V1](02-features/planned/20250612-vite-to-nextjs.md)** - Initial migration plan (deprecated)
+- **[Vite to Next.js Migration V2](02-features/planned/vite-to-nextjs-v2.md)** - Revised migration strategy with systematic file-by-file approach
 
 ### 🔧 [Crates](03-crates/) - Individual Rust Crate Documentation
 Detailed documentation for each Rust crate in the workspace, covering implementation details and APIs
