@@ -1,3 +1,4 @@
+'use client';
 
 import { createWrapper } from '@/tests/wrapper';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -13,19 +14,25 @@ import {
   it,
   vi,
 } from 'vitest';
-import Setup from '@/app/ui/setup/SetupPage';
+import Setup from '@/app/ui/setup/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
 
 // Mock the router
 const pushMock = vi.fn();
-vi.mock('@/lib/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
   useSearchParams: () => ({
     get: () => null,
   }),
+}));
+
+// Mock the Image component
+vi.mock('next/image', () => ({
+  // eslint-disable-next-line @next/next/no-img-element
+  default: () => <img alt="mocked image" />,
 }));
 
 // Setup MSW server

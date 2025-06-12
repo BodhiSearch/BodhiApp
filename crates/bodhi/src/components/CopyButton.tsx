@@ -7,7 +7,13 @@ import { useState } from 'react';
 interface CopyButtonProps {
   text: string;
   size?: 'default' | 'sm' | 'lg' | 'icon';
-  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  variant?:
+    | 'default'
+    | 'destructive'
+    | 'outline'
+    | 'secondary'
+    | 'ghost'
+    | 'link';
   className?: string;
   showToast?: boolean;
 }

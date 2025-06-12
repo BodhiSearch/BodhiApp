@@ -9,14 +9,22 @@ interface ChatMessageProps {
   isStreaming?: boolean;
 }
 
-export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) {
+export function ChatMessage({
+  message,
+  isStreaming = false,
+}: ChatMessageProps) {
   const isUser = message.role === 'user';
   const metadata = message.metadata;
 
   const formatNumber = (num: number) => num.toFixed(2);
 
   return (
-    <div className={cn('group relative flex items-start gap-3 p-3', isUser ? 'bg-background' : 'bg-muted/30')}>
+    <div
+      className={cn(
+        'group relative flex items-start gap-3 p-3',
+        isUser ? 'bg-background' : 'bg-muted/30'
+      )}
+    >
       <div
         className={cn(
           'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border shadow mt-1',
@@ -27,7 +35,9 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="text-xs font-medium mb-1.5">{isUser ? 'You' : 'Assistant'}</div>
+        <div className="text-xs font-medium mb-1.5">
+          {isUser ? 'You' : 'Assistant'}
+        </div>
 
         <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>
 
@@ -38,15 +48,21 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
                 <div className="flex items-center gap-2">
                   <span>Query: {metadata.usage.prompt_tokens} tokens</span>
                   <span>•</span>
-                  <span>Response: {metadata.usage.completion_tokens} tokens</span>
+                  <span>
+                    Response: {metadata.usage.completion_tokens} tokens
+                  </span>
                 </div>
               )}
-              {metadata?.timings?.prompt_per_second && metadata?.timings?.predicted_per_second && (
-                <div className="flex items-center gap-2">
-                  <span>•</span>
-                  <span>Speed: {formatNumber(metadata.timings.predicted_per_second)} t/s</span>
-                </div>
-              )}
+              {metadata?.timings?.prompt_per_second &&
+                metadata?.timings?.predicted_per_second && (
+                  <div className="flex items-center gap-2">
+                    <span>•</span>
+                    <span>
+                      Speed:{' '}
+                      {formatNumber(metadata.timings.predicted_per_second)} t/s
+                    </span>
+                  </div>
+                )}
             </div>
             <CopyButton
               text={message.content}

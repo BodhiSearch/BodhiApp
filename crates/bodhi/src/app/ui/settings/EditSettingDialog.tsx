@@ -1,3 +1,5 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,7 +10,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useUpdateSetting } from '@/hooks/useQuery';
 import { Setting } from '@/types/models';
@@ -21,7 +29,11 @@ interface EditSettingDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDialogProps) {
+export function EditSettingDialog({
+  setting,
+  open,
+  onOpenChange,
+}: EditSettingDialogProps) {
   const [value, setValue] = useState(String(setting.current_value));
   const { showSuccess, showError } = useToastMessages();
 
@@ -45,8 +57,14 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
         return;
       }
       if (setting.metadata.range) {
-        if (parsedValue < setting.metadata.range.min || parsedValue > setting.metadata.range.max) {
-          showError('Error', `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`);
+        if (
+          parsedValue < setting.metadata.range.min ||
+          parsedValue > setting.metadata.range.max
+        ) {
+          showError(
+            'Error',
+            `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`
+          );
           return;
         }
       }
@@ -65,7 +83,11 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
       case 'boolean':
         return (
           <div className="flex items-center gap-2">
-            <Switch id="value" checked={value === 'true'} onCheckedChange={(checked) => setValue(String(checked))} />
+            <Switch
+              id="value"
+              checked={value === 'true'}
+              onCheckedChange={(checked) => setValue(String(checked))}
+            />
             <label
               htmlFor="value"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -132,10 +154,13 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
           <div className="flex flex-col gap-2">
             {renderInput()}
             <div className="flex flex-col gap-1">
-              <p className="text-xs text-muted-foreground break-words">Default: {String(setting.default_value)}</p>
+              <p className="text-xs text-muted-foreground break-words">
+                Default: {String(setting.default_value)}
+              </p>
               {setting.metadata.type === 'number' && setting.metadata.range && (
                 <p className="text-xs text-muted-foreground">
-                  Range: {setting.metadata.range.min} - {setting.metadata.range.max}
+                  Range: {setting.metadata.range.min} -{' '}
+                  {setting.metadata.range.max}
                 </p>
               )}
             </div>
@@ -143,10 +168,18 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="w-full sm:w-auto"
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={updateSetting.isLoading} className="w-full sm:w-auto">
+          <Button
+            onClick={handleSubmit}
+            disabled={updateSetting.isLoading}
+            className="w-full sm:w-auto"
+          >
             {updateSetting.isLoading ? 'Updating...' : 'Save'}
           </Button>
         </DialogFooter>

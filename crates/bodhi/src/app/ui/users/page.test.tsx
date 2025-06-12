@@ -1,4 +1,4 @@
-import { UsersPageContent } from "./UsersPage";
+import { UsersPageContent } from "@/app/ui/users/page";
 import { render, screen } from "@testing-library/react";
 
 describe("UsersPageContent", () => {

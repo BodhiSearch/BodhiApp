@@ -1,3 +1,5 @@
+'use client';
+
 import { useNavigation } from '@/hooks/use-navigation';
 import {
   Breadcrumb,
@@ -13,7 +15,10 @@ export function AppBreadcrumb() {
   const { item, parent } = currentItem;
 
   return (
-    <div className="flex-1 flex h-16 items-center gap-2 px-4" data-testid="app-breadcrumb">
+    <div
+      className="flex-1 flex h-16 items-center gap-2 px-4"
+      data-testid="app-breadcrumb"
+    >
       <Image
         src="/bodhi-logo/bodhi-logo-60.svg"
         alt="Bodhi Logo"
@@ -33,7 +38,10 @@ export function AppBreadcrumb() {
           {parent?.href && (
             <>
               <BreadcrumbItem>
-                <BreadcrumbLink href={parent.href} data-testid="breadcrumb-parent">
+                <BreadcrumbLink
+                  href={parent.href}
+                  data-testid="breadcrumb-parent"
+                >
                   {parent.title}
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -41,7 +49,10 @@ export function AppBreadcrumb() {
             </>
           )}
           <BreadcrumbItem>
-            <BreadcrumbLink href={item.href || '#'} data-testid="breadcrumb-current">
+            <BreadcrumbLink
+              href={item.href || '#'}
+              data-testid="breadcrumb-current"
+            >
               {item.title}
             </BreadcrumbLink>
           </BreadcrumbItem>

@@ -3,19 +3,22 @@
 import { recommendedModels } from '@/app/ui/setup/download-models/data';
 import { ModelCard } from '@/app/ui/setup/download-models/ModelCard';
 import { ModelInfo } from '@/app/ui/setup/download-models/types';
-import { SetupProgress } from '../SetupProgress';
-import { containerVariants, itemVariants } from '../types';
+import { SetupProgress } from '@/app/ui/setup/SetupProgress';
+import { containerVariants, itemVariants } from '@/app/ui/setup/types';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useDownloads, usePullModel } from '@/hooks/useQuery';
-import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_COMPLETE } from '@/lib/constants';
+import {
+  FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
+  ROUTE_SETUP_COMPLETE,
+} from '@/lib/constants';
 import { motion } from 'framer-motion';
-import { useRouter } from '@/lib/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { BodhiLogo } from '../BodhiLogo';
+import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 
 export function ModelDownloadContent() {
   const router = useRouter();
@@ -30,7 +33,10 @@ export function ModelDownloadContent() {
       showError('Error', message);
     },
   });
-  const [, setHasShownModelsPage] = useLocalStorage(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, true);
+  const [, setHasShownModelsPage] = useLocalStorage(
+    FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
+    true
+  );
 
   useEffect(() => {
     setHasShownModelsPage(true);
@@ -63,10 +69,18 @@ export function ModelDownloadContent() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {recommendedModels.map((model) => {
                   const status =
-                    downloads?.data.find((d) => d.repo === model.repo && d.filename === model.filename)?.status ||
-                    'idle';
+                    downloads?.data.find(
+                      (d) =>
+                        d.repo === model.repo && d.filename === model.filename
+                    )?.status || 'idle';
                   model.downloadState = { status };
-                  return <ModelCard key={model.id} model={model} onDownload={() => handleModelDownload(model)} />;
+                  return (
+                    <ModelCard
+                      key={model.id}
+                      model={model}
+                      onDownload={() => handleModelDownload(model)}
+                    />
+                  );
                 })}
               </div>
             </CardContent>
@@ -78,14 +92,18 @@ export function ModelDownloadContent() {
           <Card>
             <CardContent className="py-4">
               <p className="text-sm text-center text-muted-foreground">
-                Downloads will continue in the background. You can download additional models later on the Models page.
+                Downloads will continue in the background. You can download
+                additional models later on the Models page.
               </p>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div variants={itemVariants} className="flex justify-end">
-          <Button variant="outline" onClick={() => router.push(ROUTE_SETUP_COMPLETE)}>
+          <Button
+            variant="outline"
+            onClick={() => router.push(ROUTE_SETUP_COMPLETE)}
+          >
             Continue
           </Button>
         </motion.div>

@@ -1,6 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
 import React, { useState } from 'react';
 
@@ -43,7 +50,11 @@ export function DataTable<T>({
     if (sort.column !== columnId) {
       return <ArrowUpDown className="ml-2 h-4 w-4" />;
     }
-    return sort.direction === 'asc' ? <ChevronUp className="ml-2 h-4 w-4" /> : <ChevronDown className="ml-2 h-4 w-4" />;
+    return sort.direction === 'asc' ? (
+      <ChevronUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ChevronDown className="ml-2 h-4 w-4" />
+    );
   };
 
   const toggleRowExpansion = (name: string) => {
@@ -71,7 +82,11 @@ export function DataTable<T>({
       {renderRow(item)}
       {showExpand && (
         <TableCell>
-          <Button variant="ghost" size="sm" onClick={() => toggleRowExpansion(getItemId(item))}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => toggleRowExpansion(getItemId(item))}
+          >
             {expandedRow === getItemId(item) ? <ChevronUp /> : <ChevronDown />}
           </Button>
         </TableCell>
@@ -84,9 +99,16 @@ export function DataTable<T>({
       <TableHeader>
         <TableRow>
           {columns.map((column) => (
-            <TableHead key={column.id} className={`min-w-8 ${column.className || ''}`}>
+            <TableHead
+              key={column.id}
+              className={`min-w-8 ${column.className || ''}`}
+            >
               {column.sorted ? (
-                <Button variant="ghost" onClick={() => onSortChange(column.id)} className="h-8 px-2 font-medium">
+                <Button
+                  variant="ghost"
+                  onClick={() => onSortChange(column.id)}
+                  className="h-8 px-2 font-medium"
+                >
                   {column.name}
                   {renderSortIcon(column.id)}
                 </Button>
@@ -99,7 +121,9 @@ export function DataTable<T>({
               )}
             </TableHead>
           ))}
-          {renderExpandedRow && <TableHead className="w-10" data-testid="expanded-row-head" />}
+          {renderExpandedRow && (
+            <TableHead className="w-10" data-testid="expanded-row-head" />
+          )}
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -111,7 +135,9 @@ export function DataTable<T>({
               {renderTableRows(item, true)}
               {expandedRow === getItemId(item) && (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 1}>{expandedContent}</TableCell>
+                  <TableCell colSpan={columns.length + 1}>
+                    {expandedContent}
+                  </TableCell>
                 </TableRow>
               )}
             </React.Fragment>
@@ -135,13 +161,23 @@ export function Pagination({
 }) {
   return (
     <div className="flex justify-center gap-4">
-      <Button size="sm" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1} className="px-6">
+      <Button
+        size="sm"
+        onClick={() => onPageChange(Math.max(1, page - 1))}
+        disabled={page === 1}
+        className="px-6"
+      >
         Previous
       </Button>
       <span className="flex items-center">
         {page}/{totalPages}
       </span>
-      <Button size="sm" onClick={() => onPageChange(page + 1)} disabled={page === totalPages} className="px-6">
+      <Button
+        size="sm"
+        onClick={() => onPageChange(page + 1)}
+        disabled={page === totalPages}
+        className="px-6"
+      >
         Next
       </Button>
     </div>

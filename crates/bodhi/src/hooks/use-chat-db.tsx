@@ -1,4 +1,12 @@
-import { createContext, useContext, useCallback, useState, useEffect } from 'react';
+'use client';
+
+import {
+  createContext,
+  useContext,
+  useCallback,
+  useState,
+  useEffect,
+} from 'react';
 import { Chat } from '@/types/chat';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { nanoid } from '@/lib/utils';
@@ -39,9 +47,14 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
     return [];
   });
 
-  const [currentChatId, setCurrentChatId] = useLocalStorage<string | null>(CURRENT_CHAT_ID_KEY, null);
+  const [currentChatId, setCurrentChatId] = useLocalStorage<string | null>(
+    CURRENT_CHAT_ID_KEY,
+    null
+  );
 
-  const currentChat = currentChatId ? (chats.find((chat) => chat.id === currentChatId) ?? null) : null;
+  const currentChat = currentChatId
+    ? (chats.find((chat) => chat.id === currentChatId) ?? null)
+    : null;
 
   useEffect(() => {
     localStorage.setItem(CHATS_STORAGE_KEY, JSON.stringify(chats));
@@ -73,7 +86,11 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
           newChats = newChats.slice(0, MAX_CHATS);
         }
       } else {
-        newChats = [updatedChat, ...prev.slice(0, index), ...prev.slice(index + 1)];
+        newChats = [
+          updatedChat,
+          ...prev.slice(0, index),
+          ...prev.slice(index + 1),
+        ];
       }
       return newChats;
     });
@@ -91,7 +108,9 @@ export function ChatDBProvider({ children }: { children: React.ReactNode }) {
 
       // If it's current chat, try to find an empty chat first
       setChats((prev) => {
-        const emptyChat = prev.find((chat) => chat.id !== id && chat.messages.length === 0);
+        const emptyChat = prev.find(
+          (chat) => chat.id !== id && chat.messages.length === 0
+        );
 
         if (emptyChat) {
           // Found empty chat - delete current and switch to empty

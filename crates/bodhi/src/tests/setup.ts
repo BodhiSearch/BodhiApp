@@ -1,10 +1,6 @@
 import '@testing-library/jest-dom';
 import { vi, beforeAll, afterAll } from 'vitest';
 
-// Configure API client for tests
-import apiClient from '@/lib/apiClient';
-apiClient.defaults.baseURL = 'http://localhost:3000';
-
 // Mock ResizeObserver
 class MockResizeObserver {
   observe() {}
@@ -13,45 +9,6 @@ class MockResizeObserver {
 }
 
 global.ResizeObserver = MockResizeObserver;
-
-// Mock React Router navigation functions
-const mockNavigate = vi.fn();
-const mockLocation = {
-  pathname: '/',
-  search: '',
-  hash: '',
-  state: null,
-  key: 'default',
-};
-
-vi.mock('react-router-dom', async () => {
-  const actual = await vi.importActual('react-router-dom');
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-    useLocation: () => mockLocation,
-    useSearchParams: () => [new URLSearchParams(), vi.fn()],
-  };
-});
-
-// Mock Next.js Image component
-vi.mock('next/image', () => ({
-  default: vi.fn().mockImplementation(({ src, alt, width, height, className, ...props }) => {
-    const React = require('react');
-    return React.createElement('img', { src, alt, width, height, className, ...props });
-  }),
-}));
-
-// Mock Next.js Link component
-vi.mock('next/link', () => ({
-  default: vi.fn().mockImplementation(({ href, children, target, ...props }) => {
-    const React = require('react');
-    return React.createElement('a', { href, target, ...props }, children);
-  }),
-}));
-
-// Export mocks for use in tests
-export { mockNavigate, mockLocation };
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
@@ -74,10 +31,19 @@ beforeAll(() => {
   console.error = (...args) => {
     // Check if any of the arguments contain our expected error messages
     const errorString = args
-      .map((arg) => (typeof arg === 'string' ? arg : arg instanceof Error ? arg.message : arg?.toString?.()))
+      .map((arg) =>
+        typeof arg === 'string'
+          ? arg
+          : arg instanceof Error
+            ? arg.message
+            : arg?.toString?.()
+      )
       .join(' ');
 
-    if (errorString.includes('Request failed with status code ') || errorString.includes('Network Error')) {
+    if (
+      errorString.includes('Request failed with status code ') ||
+      errorString.includes('Network Error')
+    ) {
       return;
     }
     originalError.call(console, ...args);

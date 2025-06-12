@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { ChatMessage } from '@/app/ui/chat/ChatMessage';
+import { ChatMessage } from './ChatMessage';
 import { Message } from '@/types/chat';
 import { vi } from 'vitest';
 import userEvent from '@testing-library/user-event';

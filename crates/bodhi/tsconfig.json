@@ -1,24 +1,26 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
     "lib": [
-      "ES2021",
-      "DOM",
-      "DOM.Iterable"
+      "dom",
+      "dom.iterable",
+      "esnext"
     ],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
-    "module": "ESNext",
+    "module": "esnext",
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "react-jsx",
+    "jsx": "preserve",
     "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "baseUrl": ".",
     "paths": {
       "@/*": [
@@ -27,20 +29,18 @@
     },
     "noImplicitAny": true,
     "strictFunctionTypes": true,
-    "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noImplicitReturns": true
   },
   "include": [
     "src/**/*.ts",
-    "src/**/*.tsx"
+    "src/**/*.tsx",
+    "next-env.d.ts",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "old-chat-app",
-    "dist",
-    "out",
-    "vite.config.ts"
+    ".next",
+    "out"
   ]
 }

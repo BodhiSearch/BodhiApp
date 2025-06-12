@@ -4,45 +4,37 @@
 
 @layer base {
   :root {
-    /* Font configuration */
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-
     /* Base colors */
-    --background: 240 10% 98%;
-    /* Slightly off-white for base layer */
+    --background: 240 10% 98%;    /* Slightly off-white for base layer */
     --foreground: 240 10% 3.9%;
-
+    
     /* Component colors */
-    --card: 0 0% 100%;
-    /* Pure white for content */
+    --card: 0 0% 100%;            /* Pure white for content */
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
-
+    
     /* Header colors */
-    --header: 0 0% 100%;
-    /* White base for header */
-    --header-alpha: 80%;
-    /* Transparency for blur effect */
-    --header-elevated: 240 10% 94%;
-    /* Slightly darker than background for light theme */
-
+    --header: 0 0% 100%;          /* White base for header */
+    --header-alpha: 80%;          /* Transparency for blur effect */
+    --header-elevated: 240 10% 94%;  /* Slightly darker than background for light theme */
+    
     /* Primary colors */
     --primary: 250 95% 64%;
     --primary-foreground: 0 0% 100%;
-
+    
     /* Secondary colors */
     --secondary: 240 4.8% 95.9%;
     --secondary-foreground: 240 5.9% 10%;
-
+    
     /* Muted colors */
     --muted: 240 4.8% 95.9%;
     --muted-foreground: 240 3.8% 46.1%;
-
+    
     /* Accent colors */
     --accent: 240 4.8% 95.9%;
     --accent-foreground: 240 5.9% 10%;
-
+    
     /* Status colors */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
@@ -52,7 +44,7 @@
     --warning-foreground: 0 0% 98%;
     --info: 199 89% 48%;
     --info-foreground: 0 0% 98%;
-
+    
     /* UI elements */
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
@@ -74,40 +66,34 @@
   }
 
   .dark {
-    --background: 240 10% 1%;
-    /* Almost black for base layer: #020203 */
+    --background: 240 10% 1%;     /* Almost black for base layer: #020203 */
     --foreground: 0 0% 98%;
-
-    --card: 240 10% 4.5%;
-    /* Noticeably lighter for content: #0B0B0D */
+    
+    --card: 240 10% 4.5%;         /* Noticeably lighter for content: #0B0B0D */
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 4.5%;
-    /* Match card background */
+    --popover: 240 10% 4.5%;      /* Match card background */
     --popover-foreground: 0 0% 98%;
-
+    
     /* Header colors */
-    --header: 240 10% 5%;
-    /* Slightly lighter than card: #0D0D0F */
-    --header-alpha: 80%;
-    /* More opacity in dark mode for contrast */
-    --header-elevated: 240 10% 10%;
-    /* Slightly lighter than header for dark theme */
-
+    --header: 240 10% 5%;         /* Slightly lighter than card: #0D0D0F */
+    --header-alpha: 80%;          /* More opacity in dark mode for contrast */
+    --header-elevated: 240 10% 10%;  /* Slightly lighter than header for dark theme */
+    
     --primary: 250 95% 64%;
     --primary-foreground: 0 0% 100%;
-
+    
     --secondary: 240 3.7% 15.9%;
     --secondary-foreground: 0 0% 98%;
-
+    
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
-
+    
     --accent: 240 3.7% 15.9%;
     --accent-foreground: 0 0% 98%;
-
+    
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-
+    
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 250 95% 64%;
@@ -131,48 +117,29 @@
   * {
     @apply border-border;
   }
-
+  
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: var(--font-sans);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    text-rendering: optimizeLegibility;
-    font-feature-settings: 'rlig' 1, 'calt' 1;
-    letter-spacing: -0.011em;
   }
-
-  /* Optimize text rendering for better smoothness */
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6,
-  p,
-  span,
-  div {
-    text-rendering: optimizeLegibility;
-  }
-
+  
   /* Add responsive text sizing */
   h1 {
     @apply text-3xl font-bold md:text-4xl;
   }
-
+  
   h2 {
     @apply text-2xl font-bold md:text-3xl;
   }
-
+  
   h3 {
     @apply text-xl font-bold md:text-2xl;
   }
-
+  
   /* Add common spacing utilities */
   .content-spacing {
     @apply space-y-6;
   }
-
+  
   .section-spacing {
     @apply py-8 md:py-12;
   }
@@ -183,11 +150,11 @@
   .page-container {
     @apply container mx-auto px-4 sm:px-6 lg:px-8;
   }
-
+  
   .card-container {
     @apply rounded-lg border bg-card p-6 shadow-sm;
   }
-
+  
   .form-container {
     @apply max-w-2xl mx-auto space-y-6;
   }
@@ -196,11 +163,11 @@
   .card-elevated {
     @apply border-border rounded-lg shadow-sm;
   }
-
+  
   .header-section {
     @apply border-b border-border bg-muted/50;
   }
-
+  
   .content-section {
     @apply bg-card p-4 space-y-3;
   }
@@ -214,11 +181,9 @@
   0% {
     transform: translateX(-100%);
   }
-
   50% {
     transform: translateX(100%);
   }
-
   100% {
     transform: translateX(-100%);
   }

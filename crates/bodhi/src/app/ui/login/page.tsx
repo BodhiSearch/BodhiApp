@@ -2,38 +2,37 @@
 
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
-import { useOAuthInitiate } from '@/hooks/useOAuth';
-import { useState } from 'react';
+import { useLogoutHandler } from '@/hooks/useLogoutHandler';
+import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
+import { ROUTE_DEFAULT } from '@/lib/constants';
 
 export function LoginContent() {
-  const [error, setError] = useState<string | null>(null);
+  const { data: userInfo, isLoading: userLoading } = useUser();
+  const { data: appInfo, isLoading: appLoading } = useAppInfo();
+  const { logout, isLoading: isLoggingOut } = useLogoutHandler();
 
-  const oauthInitiate = useOAuthInitiate({
-    onSuccess: (response) => {
-      // Handle redirect to OAuth provider
-      window.location.href = response.auth_url;
-    },
-    onError: (message: string) => {
-      setError(message);
-    },
-  });
+  const isNonAuthz = appInfo && !appInfo.authz;
 
-  const handleLogin = () => {
-    setError(null); // Clear any previous errors
-    oauthInitiate.mutate();
-  };
+  if (userLoading || appLoading) {
+    return <AuthCard title="Loading..." isLoading={true} />;
+  }
 
-  if (error) {
+  if (userInfo?.logged_in) {
     return (
       <AuthCard
-        title="Authentication Error"
-        description={error}
+        title="Welcome"
+        description={`You are logged in as ${userInfo.email}`}
         actions={[
           {
-            label: 'Try Again',
-            onClick: handleLogin,
-            variant: 'default',
-            disabled: oauthInitiate.isLoading,
+            label: 'Go to Home',
+            href: ROUTE_DEFAULT,
+            variant: 'secondary',
+          },
+          {
+            label: isLoggingOut ? 'Logging out...' : 'Log Out',
+            onClick: () => logout(),
+            disabled: isLoggingOut,
+            variant: 'destructive',
           },
         ]}
       />
@@ -42,17 +41,26 @@ export function LoginContent() {
 
   return (
     <AuthCard
-      title="Welcome to Bodhi"
-      description="Sign in to access your AI assistant"
+      title="Login"
+      description={
+        isNonAuthz ? (
+          <>
+            This app is setup in non-authenticated mode.
+            <br />
+            User login is not available.
+          </>
+        ) : (
+          'Login to use the Bodhi App'
+        )
+      }
       actions={[
         {
-          label: 'Sign In',
-          onClick: handleLogin,
-          variant: 'default',
-          disabled: oauthInitiate.isLoading,
+          label: 'Login',
+          href: ENDPOINT_APP_LOGIN,
+          disabled: isNonAuthz,
         },
       ]}
-      isLoading={oauthInitiate.isLoading}
+      disabled={isNonAuthz}
     />
   );
 }

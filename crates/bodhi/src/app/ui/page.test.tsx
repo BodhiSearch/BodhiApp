@@ -1,3 +1,5 @@
+'use client';
+
 import { render, screen, waitFor } from '@testing-library/react';
 import {
   describe,
@@ -17,7 +19,7 @@ import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 
 const pushMock = vi.fn();
-vi.mock('@/lib/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),

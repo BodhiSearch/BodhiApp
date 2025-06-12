@@ -1,7 +1,7 @@
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLogout } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT } from '@/lib/constants';
-import { useRouter } from '@/lib/navigation';
+import { useRouter } from 'next/navigation';
 
 export function useLogoutHandler() {
   const router = useRouter();
@@ -15,7 +15,9 @@ export function useLogoutHandler() {
     onError: (error) => {
       console.error('Logout failed:', error);
       const errorMessage =
-        error.response?.data?.error?.message || error.message || 'An unexpected error occurred. Please try again.';
+        error.response?.data?.error?.message ||
+        error.message ||
+        'An unexpected error occurred. Please try again.';
       showError('Logout failed', `Message: ${errorMessage}. Try again later.`);
     },
   });

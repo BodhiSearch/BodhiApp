@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react';
+'use client';
+
+import React from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import { ChatHistory } from '@/app/ui/chat/ChatHistory';
 import { ChatUI } from '@/app/ui/chat/ChatUI';
@@ -12,11 +14,11 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { ChatDBProvider, useChatDB } from '@/hooks/use-chat-db';
+import { ChatDBProvider } from '@/hooks/use-chat-db';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { cn } from '@/lib/utils';
 import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
-import { useSearchParams } from '@/lib/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // Define custom CSS properties for TypeScript
@@ -56,7 +58,11 @@ function ChatWithSettings() {
         )}
         aria-label="Toggle settings"
       >
-        {showSettingsPanel ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
+        {showSettingsPanel ? (
+          <X className="h-5 w-5" />
+        ) : (
+          <Settings2 className="h-5 w-5" />
+        )}
       </SidebarTrigger>
       <SettingsSidebar />
     </>
@@ -64,39 +70,15 @@ function ChatWithSettings() {
 }
 
 function ChatWithHistory() {
-  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-settings-open', true);
+  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage(
+    'sidebar-settings-open',
+    true
+  );
   const { open, openMobile, isMobile } = useSidebar();
   const showHistoryPanel = isMobile ? openMobile : open;
   const searchParams = useSearchParams();
-  const { currentChatId, setCurrentChatId, chats } = useChatDB();
-
-  // Get chat ID from URL
-  const urlChatId = searchParams?.get('id');
   const alias = searchParams?.get('alias');
   const initialData = alias ? { model: alias } : undefined;
-
-  // Sync URL chat ID with current chat ID
-  useEffect(() => {
-    if (urlChatId && urlChatId !== currentChatId) {
-      // Check if the chat exists before setting it
-      const chatExists = chats.some(chat => chat.id === urlChatId);
-      if (chatExists) {
-        setCurrentChatId(urlChatId);
-      } else {
-        // If chat doesn't exist, remove the invalid ID from URL
-        searchParams?.delete('id');
-      }
-    }
-  }, [urlChatId, currentChatId, setCurrentChatId, chats, searchParams]);
-
-  // Update URL when current chat changes
-  useEffect(() => {
-    if (currentChatId && currentChatId !== urlChatId) {
-      searchParams?.set('id', currentChatId);
-    } else if (!currentChatId && urlChatId) {
-      searchParams?.delete('id');
-    }
-  }, [currentChatId, urlChatId, searchParams]);
 
   return (
     <>
@@ -119,7 +101,11 @@ function ChatWithHistory() {
             )}
             aria-label="Toggle history"
           >
-            {showHistoryPanel ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
+            {showHistoryPanel ? (
+              <PanelLeftClose className="h-5 w-5" />
+            ) : (
+              <PanelLeftOpen className="h-5 w-5" />
+            )}
           </SidebarTrigger>
           <ChatSettingsProvider initialData={initialData}>
             <SidebarProvider
@@ -139,10 +125,17 @@ function ChatWithHistory() {
 }
 
 function ChatPageContent() {
-  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-history-open', true);
+  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage(
+    'sidebar-history-open',
+    true
+  );
   return (
     <ChatDBProvider>
-      <SidebarProvider style={sidebarStyles} open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+      <SidebarProvider
+        style={sidebarStyles}
+        open={isSidebarOpen}
+        onOpenChange={setIsSidebarOpen}
+      >
         <ChatWithHistory />
       </SidebarProvider>
     </ChatDBProvider>

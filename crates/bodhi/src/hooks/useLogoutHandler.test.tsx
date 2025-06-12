@@ -26,7 +26,7 @@ vi.mock('@/hooks/use-toast', () => ({
 const server = setupServer();
 const pushMock = vi.fn();
 
-vi.mock('@/lib/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),

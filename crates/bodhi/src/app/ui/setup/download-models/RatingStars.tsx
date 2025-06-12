@@ -10,7 +10,11 @@ export const RatingStars = ({ rating }: RatingStarsProps) => {
       {[1, 2, 3, 4, 5].map((star) => (
         <Star
           key={star}
-          className={`h-4 w-4 ${star <= rating ? 'fill-primary text-primary' : 'fill-muted text-muted-foreground'}`}
+          className={`h-4 w-4 ${
+            star <= rating
+              ? 'fill-primary text-primary'
+              : 'fill-muted text-muted-foreground'
+          }`}
         />
       ))}
     </div>

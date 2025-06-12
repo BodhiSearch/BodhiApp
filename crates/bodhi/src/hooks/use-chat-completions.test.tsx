@@ -89,7 +89,6 @@ describe('useChatCompletion', () => {
   describe('streaming completion', () => {
     it('should handle streaming response with callbacks', async () => {
       const chunks = [
-        '{"choices":[{"delta":{"content": null}}]}',
         '{"choices":[{"delta":{"content":" The"}}]}',
         '{"choices":[{"delta":{"content":" day"}}]}',
         '{"choices":[{"delta":{"content":" that"}}]}',
