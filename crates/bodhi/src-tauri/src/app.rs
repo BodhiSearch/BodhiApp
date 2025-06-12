@@ -37,7 +37,7 @@ enum Commands {
   },
 }
 
-pub async fn aexecute(app_service: Arc<dyn AppService>) -> Result<()> {
+pub async fn start(app_service: Arc<dyn AppService>) -> Result<()> {
   // Parse command line arguments using clap
   let cli = Cli::parse();
   match cli.command {

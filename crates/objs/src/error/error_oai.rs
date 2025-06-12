@@ -1,10 +1,4 @@
-use crate::{
-  ApiError, AppError, ErrorMessage, FluentLocalizationService, LocalizationService, EN_US,
-};
-use axum::{
-  body::Body,
-  response::{IntoResponse, Response},
-};
+use crate::ErrorMessage;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -33,52 +27,6 @@ impl std::fmt::Display for OpenAIApiError {
       self.status,
       serde_json::to_string(self).unwrap()
     )
-  }
-}
-
-const DEFAULT_ERR_MSG: &str = "something went wrong, try again later";
-
-impl From<ApiError> for OpenAIApiError {
-  fn from(value: ApiError) -> Self {
-    let ApiError {
-      error_type,
-      status,
-      code,
-      args,
-      ..
-    } = value;
-    let instance = FluentLocalizationService::get_instance();
-    let message = instance
-      .get_message(&EN_US, &code, Some(args))
-      .unwrap_or_else(|err| {
-        tracing::warn!(
-          "failed to get message: err: {}, code={}, args={:?}",
-          err,
-          err.code(),
-          err.args()
-        );
-        DEFAULT_ERR_MSG.to_string()
-      });
-    OpenAIApiError {
-      error: ErrorBody {
-        message,
-        r#type: error_type,
-        code: Some(code),
-        param: None,
-      },
-      status,
-    }
-  }
-}
-
-impl IntoResponse for ApiError {
-  fn into_response(self) -> Response {
-    let openai_error: OpenAIApiError = self.into();
-    Response::builder()
-      .status(openai_error.status)
-      .header("Content-Type", "application/json")
-      .body(Body::from(serde_json::to_string(&openai_error).unwrap()))
-      .unwrap()
   }
 }
 

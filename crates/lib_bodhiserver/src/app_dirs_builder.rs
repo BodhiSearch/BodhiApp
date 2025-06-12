@@ -6,32 +6,11 @@ use services::{
 };
 use std::{
   fs::{self, File},
-  io,
   path::PathBuf,
   sync::Arc,
 };
 
-#[derive(Debug, thiserror::Error)]
-pub enum AppDirsBuilderError {
-  #[error("failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
-  BodhiHomeNotFound,
-  #[error("failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
-  HfHomeNotFound,
-  #[error("io_error: failed to create directory {path}, error: {source}")]
-  DirCreate {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
-  #[error("io_error: failed to update file {path}, error: {source}")]
-  IoFileWrite {
-    #[source]
-    source: io::Error,
-    path: String,
-  },
-  #[error("setting_error: failed to update the setting, check $BODHI_HOME/settings.yaml has write permission")]
-  SettingServiceError,
-}
+use crate::AppDirsBuilderError;
 
 /// Configuration options for setting up application directories and settings.
 /// Uses the builder pattern for flexible configuration with sensible defaults.
@@ -233,18 +212,6 @@ mod tests {
   };
   use std::{env::VarError, sync::Arc};
   use tempfile::TempDir;
-
-  #[rstest]
-  #[case(AppDirsBuilderError::BodhiHomeNotFound,
-    "failed to automatically set BODHI_HOME. Set it through environment variable $BODHI_HOME and try again.")]
-  #[case(AppDirsBuilderError::HfHomeNotFound,
-    "failed to automatically set HF_HOME. Set it through environment variable $HF_HOME and try again.")]
-  fn test_app_dirs_builder_error_messages(
-    #[case] error: AppDirsBuilderError,
-    #[case] message: String,
-  ) {
-    assert_eq!(message, error.to_string());
-  }
 
   #[rstest]
   fn test_create_bodhi_home_from_env(empty_bodhi_home: TempDir) -> anyhow::Result<()> {

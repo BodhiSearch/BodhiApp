@@ -12,9 +12,11 @@ test: ## Run all tests (Rust, Node, Python)
 
 format: ## Format code in all projects (Rust, Node, Python)
 	cargo fmt --all
-	cargo clippy --fix --allow-dirty --allow-staged
 	cd crates/bodhi && npm run format
 	cd openai-pysdk-compat && poetry run ruff format .
+
+format.all: format ## Format code in all projects (Rust, Node, Python), and run Clippy
+	cargo clippy --fix --allow-dirty --allow-staged
 
 ci.clean: ## Clean all cargo packages
 	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
