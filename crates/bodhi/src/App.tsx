@@ -12,7 +12,7 @@ import ModelsPage from '@/pages/ModelsPage';
 import ModelFilesPage from '@/pages/ModelFilesPage';
 import PullPage from '@/pages/PullPage';
 import LoginPage from '@/pages/LoginPage';
-import OAuthCallbackPage from '@/components/auth/OAuthCallbackPage';
+import OAuthCallbackPage from '@/pages/OAuthCallbackPage';
 import SettingsPage from '@/pages/SettingsPage';
 import TokensPage from '@/pages/TokensPage';
 import UsersPage from '@/pages/UsersPage';

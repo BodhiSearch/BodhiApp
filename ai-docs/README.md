@@ -140,6 +140,7 @@ Marketing materials, community outreach, and promotional content for product pos
 ### 📚 [Knowledge Transfer](06-knowledge-transfer/) - Learning Resources
 Implementation guides, technical knowledge, and learning resources for developers and users
 
+- **[Static Site Generation](06-knowledge-transfer/STATIC_SITE_GENERATION.md)** - React Router static site generation with dynamic route discovery and page organization patterns
 - **[LLM Resource Server](06-knowledge-transfer/llm-resource-server.md)** - OAuth2 resource server architecture, vision, and implementation guide
 - **[Chat UI](06-knowledge-transfer/chat-ui.md)** - Chat interface implementation patterns and user experience design
 - **[Model Parameters](06-knowledge-transfer/model-parameters.md)** - Model configuration, parameter management, and optimization guides

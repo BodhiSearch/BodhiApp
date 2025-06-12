@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import AppInitializer from '@/components/AppInitializer';
 import { ChatHistory } from '@/components/chat/ChatHistory';
 import { ChatUI } from '@/components/chat/ChatUI';
@@ -12,7 +12,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { ChatDBProvider } from '@/hooks/use-chat-db';
+import { ChatDBProvider, useChatDB } from '@/hooks/use-chat-db';
 import { ChatSettingsProvider } from '@/hooks/use-chat-settings';
 import { cn } from '@/lib/utils';
 import { PanelLeftOpen, PanelLeftClose, Settings2, X } from 'lucide-react';
@@ -68,8 +68,35 @@ function ChatWithHistory() {
   const { open, openMobile, isMobile } = useSidebar();
   const showHistoryPanel = isMobile ? openMobile : open;
   const searchParams = useSearchParams();
+  const { currentChatId, setCurrentChatId, chats } = useChatDB();
+
+  // Get chat ID from URL
+  const urlChatId = searchParams?.get('id');
   const alias = searchParams?.get('alias');
   const initialData = alias ? { model: alias } : undefined;
+
+  // Sync URL chat ID with current chat ID
+  useEffect(() => {
+    if (urlChatId && urlChatId !== currentChatId) {
+      // Check if the chat exists before setting it
+      const chatExists = chats.some(chat => chat.id === urlChatId);
+      if (chatExists) {
+        setCurrentChatId(urlChatId);
+      } else {
+        // If chat doesn't exist, remove the invalid ID from URL
+        searchParams?.delete('id');
+      }
+    }
+  }, [urlChatId, currentChatId, setCurrentChatId, chats, searchParams]);
+
+  // Update URL when current chat changes
+  useEffect(() => {
+    if (currentChatId && currentChatId !== urlChatId) {
+      searchParams?.set('id', currentChatId);
+    } else if (!currentChatId && urlChatId) {
+      searchParams?.delete('id');
+    }
+  }, [currentChatId, urlChatId, searchParams]);
 
   return (
     <>

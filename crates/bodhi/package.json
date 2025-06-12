@@ -8,7 +8,9 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run build:static",
+    "build:static": "node scripts/generate-static-routes.js",
+    "build:vite": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "test": "vitest run",
@@ -92,6 +94,7 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.6.2",
     "vite": "^6.0.3",
+    "vite-ssg": "^27.0.1",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.2"
   },

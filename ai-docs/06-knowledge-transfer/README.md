@@ -5,6 +5,7 @@ This section contains technical knowledge, implementation guides, and learning r
 ## Contents
 
 ### Technical Implementation
+- **[Static Site Generation](STATIC_SITE_GENERATION.md)** - React Router static site generation with dynamic route discovery
 - **[LLM Resource Server](llm-resource-server.md)** - Comprehensive OAuth2 resource server vision and architecture
 - **[Chat UI](chat-ui.md)** - Chat interface implementation and patterns
 - **[Model Parameters](model-parameters.md)** - Model configuration and parameter management
