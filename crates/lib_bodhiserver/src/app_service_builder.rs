@@ -273,6 +273,7 @@ impl AppServiceBuilder {
   }
 
   /// Gets or builds the secret service.
+  #[allow(clippy::result_large_err)]
   fn get_or_build_secret_service(&mut self) -> Result<Arc<dyn SecretService>, ApiError> {
     if let Some(service) = self.secret_service.take() {
       return Ok(service);
@@ -551,7 +552,7 @@ mod tests {
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
-      AppServiceBuilderError::ServiceAlreadySet(service) if service == "secret_service".to_string()));
+      AppServiceBuilderError::ServiceAlreadySet(service) if service == *"secret_service"));
 
     Ok(())
   }

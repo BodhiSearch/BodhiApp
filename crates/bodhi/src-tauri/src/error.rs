@@ -1,77 +1,53 @@
 use std::io;
 
-use commands::{CreateCommandError, PullCommandError};
-use lib_bodhiserver::AppServiceBuilderError;
-use objs::{
-  impl_error_from, AppError, BuilderError, ErrorMessage, ErrorType, IoError, LocalizationSetupError,
-};
-use server_app::ServeError;
-use server_core::ContextError;
-use services::{
-  db::DbError, DataServiceError, KeyringError, SecretServiceError, SessionServiceError,
-};
+use objs::{AppError, ErrorMessage, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum BodhiError {
+pub enum AppExecuteError {
   #[error("unreachable")]
-  #[error_meta(error_type = ErrorType::InternalServer)]
+  #[error_meta(error_type=ErrorType::InternalServer)]
   Unreachable(String),
   #[error("native_not_supported")]
-  #[error_meta(error_type = ErrorType::BadRequest)]
+  #[error_meta(error_type=ErrorType::InternalServer)]
   NativeNotSupported,
-  #[error(transparent)]
-  Context(#[from] ContextError),
-  #[error(transparent)]
-  DataService(#[from] DataServiceError),
-  #[error(transparent)]
-  Io(#[from] IoError),
-  #[error(transparent)]
-  Db(#[from] DbError),
-  #[error(transparent)]
-  BuilderError(#[from] BuilderError),
-  #[error(transparent)]
-  SessionServiceError(#[from] SessionServiceError),
-  #[error(transparent)]
-  PullCommandError(#[from] PullCommandError),
-  #[error(transparent)]
-  CreateCommandError(#[from] CreateCommandError),
-
-  #[error(transparent)]
-  LocalizationSetup(#[from] LocalizationSetupError),
-  #[error(transparent)]
-  SecretService(#[from] SecretServiceError),
-  #[error(transparent)]
-  KeyringError(#[from] KeyringError),
-  #[error(transparent)]
-  Serve(#[from] ServeError),
-  #[error(transparent)]
-  AppServiceBuilder(AppServiceBuilderError),
-  #[cfg(feature = "native")]
-  #[error(transparent)]
-  Native(#[from] crate::native::NativeError),
 }
-
-impl_error_from!(::std::io::Error, BodhiError::Io, objs::IoError);
-
-impl From<AppServiceBuilderError> for BodhiError {
-  fn from(err: AppServiceBuilderError) -> Self {
-    BodhiError::AppServiceBuilder(err)
-  }
-}
-
-pub(crate) type Result<T> = std::result::Result<T, BodhiError>;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum AppInitError {
+pub enum AppSetupError {
   #[error("io_error: error spawning async runtime: {0}")]
   #[error_meta(error_type = ErrorType::InternalServer)]
   AsyncRuntime(#[from] io::Error),
 }
 
-impl From<AppInitError> for ErrorMessage {
-  fn from(value: AppInitError) -> Self {
+impl From<AppSetupError> for ErrorMessage {
+  fn from(value: AppSetupError) -> Self {
     ErrorMessage::new(value.code(), value.error_type(), value.to_string())
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use objs::{ErrorMessage, ErrorType};
+  use std::io;
+
+  use crate::error::AppSetupError;
+
+  #[test]
+  fn test_app_setup_error_async_runtime_to_error_message() {
+    // Simulate an io::Error
+    let io_err = io::Error::other("simulated async runtime failure");
+    // Convert to AppSetupError
+    let app_setup_err = AppSetupError::AsyncRuntime(io_err);
+    // Convert to ErrorMessage
+    let err_msg: ErrorMessage = app_setup_err.into();
+    // Check the error message fields using PartialEq
+    let expected = ErrorMessage::new(
+      "app_setup_error-async_runtime".to_string(),
+      ErrorType::InternalServer.to_string(),
+      "io_error: error spawning async runtime: simulated async runtime failure".to_string(),
+    );
+    assert_eq!(err_msg, expected);
   }
 }

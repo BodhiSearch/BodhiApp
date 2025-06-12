@@ -1,11 +1,10 @@
 #[cfg(feature = "native")]
 use crate::native;
 
-use crate::{
-  convert::build_serve_command,
-  error::{BodhiError, Result},
-};
+use crate::error::AppExecuteError;
 use clap::{Parser, Subcommand};
+use objs::ApiError;
+use server_app::ServeCommand;
 use services::AppService;
 use std::sync::Arc;
 
@@ -37,7 +36,7 @@ enum Commands {
   },
 }
 
-pub async fn start(app_service: Arc<dyn AppService>) -> Result<()> {
+pub async fn start(app_service: Arc<dyn AppService>) -> Result<(), ApiError> {
   // Parse command line arguments using clap
   let cli = Cli::parse();
   match cli.command {
@@ -51,18 +50,18 @@ pub async fn start(app_service: Arc<dyn AppService>) -> Result<()> {
             .aexecute(Some(crate::ui::router()))
             .await?;
         } else {
-          Err(BodhiError::Unreachable(
+          Err(AppExecuteError::Unreachable(
             r#"setting_service.is_native() returned true, but cfg!(feature = "native") is false"#
               .to_string(),
           ))?;
         }
       } else {
-        Err(BodhiError::NativeNotSupported)?;
+        Err(AppExecuteError::NativeNotSupported)?;
       }
     }
     Some(Commands::Serve { host, port }) => {
       // Server deployment mode
-      let serve_command = build_serve_command(host, port)?;
+      let serve_command = ServeCommand::ByParams { host, port };
       serve_command
         .aexecute(app_service, Some(crate::ui::router()))
         .await?;
@@ -76,13 +75,13 @@ pub async fn start(app_service: Arc<dyn AppService>) -> Result<()> {
             .aexecute(Some(crate::ui::router()))
             .await?;
         } else {
-          Err(BodhiError::Unreachable(
+          Err(AppExecuteError::Unreachable(
             r#"setting_service.is_native() returned true, but cfg!(feature = "native") is false"#
               .to_string(),
           ))?;
         }
       } else {
-        Err(BodhiError::NativeNotSupported)?;
+        Err(AppExecuteError::NativeNotSupported)?;
       }
     }
   }
