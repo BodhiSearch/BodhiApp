@@ -7,7 +7,6 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod app;
-mod convert;
 mod error;
 pub mod lib_main;
 mod ui;

@@ -1,27 +1,29 @@
-use crate::{app::start, error::AppInitError};
+use crate::{app::start, error::AppSetupError};
 use lib_bodhiserver::{build_app_service, setup_app_dirs, AppOptionsBuilder};
-use objs::{ApiError, AppType, ErrorMessage, ErrorType, OpenAIApiError};
-use services::{DefaultEnvWrapper, DefaultSettingService, SettingService};
+use objs::{AppType, ErrorMessage, ErrorType, OpenAIApiError};
+use services::{DefaultEnvWrapper, SettingService};
 use std::sync::Arc;
 use tokio::runtime::Builder;
 
 #[cfg(feature = "production")]
 mod env_config {
-  use objs::{ApiError, EnvType};
+  use objs::{EnvType, ErrorMessage};
   use services::DefaultSettingService;
 
   pub static ENV_TYPE: EnvType = EnvType::Production;
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
   pub static AUTH_REALM: &str = "bodhi";
 
-  pub fn set_feature_settings(_setting_service: &DefaultSettingService) -> Result<(), ApiError> {
+  pub fn set_feature_settings(
+    _setting_service: &DefaultSettingService,
+  ) -> Result<(), ErrorMessage> {
     Ok(())
   }
 }
 
 #[cfg(not(feature = "production"))]
 mod env_config {
-  use objs::{ApiError, EnvType};
+  use objs::{EnvType, ErrorMessage};
   use services::DefaultSettingService;
 
   pub static ENV_TYPE: EnvType = EnvType::Development;
@@ -30,7 +32,7 @@ mod env_config {
 
   #[cfg(not(feature = "native"))]
   #[allow(clippy::result_large_err)]
-  pub fn set_feature_settings(setting_service: &DefaultSettingService) -> Result<(), ApiError> {
+  pub fn set_feature_settings(setting_service: &DefaultSettingService) -> Result<(), ErrorMessage> {
     use services::{SettingService, BODHI_EXEC_LOOKUP_PATH};
 
     setting_service.set_default(
@@ -41,7 +43,9 @@ mod env_config {
   }
   #[cfg(feature = "native")]
   #[allow(clippy::result_large_err)]
-  pub fn set_feature_settings(_setting_service: &DefaultSettingService) -> Result<(), ApiError> {
+  pub fn set_feature_settings(
+    _setting_service: &DefaultSettingService,
+  ) -> Result<(), ErrorMessage> {
     Ok(())
   }
 }
@@ -83,6 +87,7 @@ fn execute() -> Result<(), ErrorMessage> {
     })?;
 
   let setting_service = setup_app_dirs(app_options)?;
+  set_feature_settings(&setting_service)?;
 
   #[cfg(not(feature = "native"))]
   let _guard = setup_logs(&setting_service);
@@ -99,14 +104,13 @@ fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<(), ErrorMessage
   let runtime = Builder::new_multi_thread()
     .enable_all()
     .build()
-    .map_err(AppInitError::from)?;
+    .map_err(AppSetupError::from)?;
   let result: Result<(), ErrorMessage> = runtime.block_on(async move {
     // Build the complete app service using the lib_bodhiserver function
     let app_service = Arc::new(build_app_service(setting_service.clone()).await?);
     match start(app_service).await {
       Err(err) => {
         tracing::warn!(?err, "application exited with error");
-        let err: ApiError = err.into();
         let err: OpenAIApiError = err.into();
         let err: ErrorMessage = err.into();
         Err(err)
@@ -122,16 +126,19 @@ fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<(), ErrorMessage
 
 #[cfg(not(feature = "native"))]
 fn setup_logs(
-  setting_service: &DefaultSettingService,
-) -> Result<tracing_appender::non_blocking::WorkerGuard, crate::error::BodhiError> {
-  use crate::error::Result;
+  setting_service: &services::DefaultSettingService,
+) -> Result<tracing_appender::non_blocking::WorkerGuard, crate::error::AppSetupError> {
+  use crate::error::AppSetupError;
   use services::{SettingService, BODHI_LOG_STDOUT};
   use std::path::Path;
   use tracing::level_filters::LevelFilter;
   use tracing_appender::non_blocking::WorkerGuard;
   use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-  fn setup_logs(setting_service: &DefaultSettingService, logs_dir: &Path) -> Result<WorkerGuard> {
+  fn setup_logs(
+    setting_service: &services::DefaultSettingService,
+    logs_dir: &Path,
+  ) -> Result<WorkerGuard, AppSetupError> {
     let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
     let log_level: LevelFilter = setting_service.log_level().into();

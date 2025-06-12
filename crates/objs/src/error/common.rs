@@ -2,7 +2,7 @@ use axum::http::StatusCode;
 use serde::Serialize;
 use std::{collections::HashMap, str::FromStr};
 
-#[derive(Debug, thiserror::Error, Serialize, derive_new::new)]
+#[derive(Debug, thiserror::Error, Serialize, derive_new::new, PartialEq)]
 pub struct ErrorMessage {
   code: String,
   r#type: String,
