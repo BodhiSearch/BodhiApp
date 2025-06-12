@@ -76,13 +76,12 @@ const mockModels = [
 ];
 
 describe('ModelDownloadPage access control', () => {
-  it('should render the page when app is ready without auth', async () => {
+  it('should redirect to login when app is ready and user not authenticated', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
             version: '0.1.0',
-            authz: false,
             status: 'ready',
           })
         );
@@ -102,8 +101,7 @@ describe('ModelDownloadPage access control', () => {
     await act(async () => {
       render(<ModelDownloadPage />, { wrapper: createWrapper() });
     });
-    expect(screen.getByText('Recommended Models')).toBeInTheDocument();
-    expect(pushMock).not.toHaveBeenCalled();
+    expect(pushMock).toHaveBeenCalledWith('/ui/login');
   });
 
   it('should redirect to /ui/setup if app status is setup', async () => {
@@ -134,13 +132,12 @@ describe('ModelDownloadPage access control', () => {
     expect(pushMock).toHaveBeenCalledWith('/ui/setup');
   });
 
-  it('should render the page when app is ready with auth and user is logged in', async () => {
+  it('should render the page when app is ready and user is logged in', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
             version: '0.1.0',
-            authz: true,
             status: 'ready',
           })
         );
@@ -166,13 +163,12 @@ describe('ModelDownloadPage access control', () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it('should redirect to /ui/login when app is ready with auth but user is not logged in', async () => {
+  it('should redirect to /ui/login when app is ready but user is not logged in', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(
           ctx.json({
             version: '0.1.0',
-            authz: true,
             status: 'ready',
           })
         );

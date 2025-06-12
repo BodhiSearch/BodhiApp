@@ -34,7 +34,6 @@ const server = setupServer(
       ctx.status(200),
       ctx.json({
         status: 'ready',
-        authz: false,
       })
     );
   })

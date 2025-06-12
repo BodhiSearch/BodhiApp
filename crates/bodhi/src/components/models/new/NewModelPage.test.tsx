@@ -190,7 +190,7 @@ describe('CreateAliasPage access control', () => {
   it('should redirect to /ui/login if user is not logged in', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'ready', authz: true }));
+        return res(ctx.json({ status: 'ready' }));
       })
     );
     server.use(

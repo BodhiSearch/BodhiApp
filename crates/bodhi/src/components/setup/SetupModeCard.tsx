@@ -72,18 +72,9 @@ export const SetupModeCard = ({
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <div className="flex items-center gap-2 p-4 border rounded-lg bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
-            <span className="text-2xl">⚠️</span>
-            <div className="text-sm">
-              <p>
-                You cannot switch your choice later. You will need to reinstall
-                the app, losing your data, in the process.
-              </p>
-            </div>
-          </div>
           <p className="text-sm text-muted-foreground text-center w-full">
-            Please review the features carefully and make your choice based on
-            your requirements.
+            Your Bodhi App will be configured with secure authentication and all
+            the features listed above.
           </p>
         </CardFooter>
       </Card>

@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
 import {
@@ -20,7 +19,6 @@ import {
   useListTokens,
   useUpdateToken,
 } from '@/hooks/useApiTokens';
-import { useAppInfo } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
@@ -49,7 +47,6 @@ function StatusBadge({ status }: { status: string }) {
 
 export function TokenPageContent() {
   const [token, setToken] = useState<TokenResponse | null>(null);
-  const { data: appInfo, isLoading: appLoading } = useAppInfo();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sort] = useState<SortState>({
@@ -69,10 +66,7 @@ export function TokenPageContent() {
 
   const { data: tokensData, isLoading: tokensLoading } = useListTokens(
     page,
-    pageSize,
-    {
-      enabled: !appLoading && appInfo?.authz === true,
-    }
+    pageSize
   );
 
   const handleStatusChange = (token: ApiToken, checked: boolean) => {
@@ -90,50 +84,6 @@ export function TokenPageContent() {
   const handleDialogClose = () => {
     setToken(null);
   };
-
-  if (appLoading) {
-    return (
-      <div
-        className="container mx-auto px-4 sm:px-6 lg:px-8 py-6"
-        data-testid="token-page-loading"
-      >
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-5 w-5" />
-              <Skeleton className="h-8 w-32" />
-            </div>
-            <Skeleton className="h-4 w-3/4 mt-2" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-1/4" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!appInfo?.authz) {
-    return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              API Tokens Not Available
-            </CardTitle>
-            <CardDescription>
-              API tokens are not available when authentication is disabled. You
-              can make API calls without tokens in this mode.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
 
   const renderRow = (token: ApiToken) => (
     <>
