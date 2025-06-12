@@ -17,7 +17,8 @@ pub struct ApiError {
 
 impl std::fmt::Display for ApiError {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{}", serde_json::to_string(self).unwrap())
+    let msg = serde_json::to_string(self).unwrap_or_else(|err| format!("{:?}", err));
+    write!(f, "{msg}")
   }
 }
 

@@ -1,4 +1,6 @@
-use crate::{ApiError, AppError, FluentLocalizationService, LocalizationService, EN_US};
+use crate::{
+  ApiError, AppError, ErrorMessage, FluentLocalizationService, LocalizationService, EN_US,
+};
 use axum::{
   body::Body,
   response::{IntoResponse, Response},
@@ -77,5 +79,15 @@ impl IntoResponse for ApiError {
       .header("Content-Type", "application/json")
       .body(Body::from(serde_json::to_string(&openai_error).unwrap()))
       .unwrap()
+  }
+}
+
+impl From<OpenAIApiError> for ErrorMessage {
+  fn from(value: OpenAIApiError) -> Self {
+    Self::new(
+      value.error.code.unwrap_or("unknown".to_string()),
+      value.error.r#type,
+      value.error.message,
+    )
   }
 }
