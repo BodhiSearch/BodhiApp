@@ -1,6 +1,4 @@
-public/sw.js*
-public/swe-worker*
-public/workbox-*.js*
+
 
 .env.*
 !.env.example
