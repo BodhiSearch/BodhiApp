@@ -18,33 +18,20 @@ export const ModelList = ({ additionalModels }: ModelListProps) => {
           <Button
             variant="ghost"
             className="w-full justify-between py-3 h-auto"
-            onClick={() =>
-              setExpandedCategory(
-                expandedCategory === category ? null : category
-              )
-            }
+            onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
           >
             {category}
-            {expandedCategory === category ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
+            {expandedCategory === category ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
 
           {expandedCategory === category && (
             <div className="space-y-2 p-2">
               {models.map((model) => (
-                <div
-                  key={model.id}
-                  className="flex flex-col gap-2 p-3 rounded-lg bg-card"
-                >
+                <div key={model.id} className="flex flex-col gap-2 p-3 rounded-lg bg-card">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-medium">{model.name}</h4>
-                      <p className="text-xs text-muted-foreground">
-                        {model.repo}
-                      </p>
+                      <p className="text-xs text-muted-foreground">{model.repo}</p>
                     </div>
                   </div>
 
@@ -54,24 +41,18 @@ export const ModelList = ({ additionalModels }: ModelListProps) => {
                       <div>{model.size}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">
-                        Parameters
-                      </div>
+                      <div className="text-xs text-muted-foreground">Parameters</div>
                       <div>{model.parameters}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-muted-foreground">
-                        License
-                      </div>
+                      <div className="text-xs text-muted-foreground">License</div>
                       <div>{model.license}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        Quality
-                      </span>
+                      <span className="text-xs text-muted-foreground">Quality</span>
                       <RatingStars rating={model.ratings.quality} />
                     </div>
                   </div>
@@ -90,12 +71,9 @@ export const ModelList = ({ additionalModels }: ModelListProps) => {
                           </div>
                           <div className="flex justify-between text-sm text-muted-foreground mt-2">
                             <span>
-                              {model.downloadState.progress}% •{' '}
-                              {model.downloadState.speed}
+                              {model.downloadState.progress}% • {model.downloadState.speed}
                             </span>
-                            <span>
-                              {model.downloadState.timeRemaining} remaining
-                            </span>
+                            <span>{model.downloadState.timeRemaining} remaining</span>
                           </div>
                         </div>
                         <Button variant="outline" size="sm">
@@ -103,13 +81,9 @@ export const ModelList = ({ additionalModels }: ModelListProps) => {
                         </Button>
                       </div>
                     ) : (
-                      <Button
-                        disabled={model.downloadState?.status === 'completed'}
-                      >
+                      <Button disabled={model.downloadState?.status === 'completed'}>
                         <Download className="mr-2 h-4 w-4" />
-                        {model.downloadState?.status === 'completed'
-                          ? 'Download Complete'
-                          : 'Download'}
+                        {model.downloadState?.status === 'completed' ? 'Download Complete' : 'Download'}
                       </Button>
                     )}
                   </div>

@@ -63,32 +63,21 @@ export default function DocsMainPage() {
       <header className="mb-8">
         <h1 className="text-3xl font-bold mb-4">Documentation</h1>
         <p className="text-lg text-gray-600">
-          Welcome to the Bodhi App documentation. Find guides, API references,
-          and tutorials to help you get started.
+          Welcome to the Bodhi App documentation. Find guides, API references, and tutorials to help you get started.
         </p>
       </header>
 
       <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
         {docGroups.map((group) => (
-          <div
-            key={group.key || group.title}
-            className="border rounded-lg p-6 hover:shadow-lg transition-shadow"
-          >
+          <div key={group.key || group.title} className="border rounded-lg p-6 hover:shadow-lg transition-shadow">
             <h2 className="text-xl font-semibold mb-4">{group.title}</h2>
             <ul className="space-y-2">
               {group.items.map((item) => (
                 <li key={item.slug}>
-                  <Link
-                    href={`/docs/${item.slug}`}
-                    className="text-blue-600 hover:text-blue-800 hover:underline"
-                  >
+                  <Link href={`/docs/${item.slug}`} className="text-blue-600 hover:text-blue-800 hover:underline">
                     {item.title}
                   </Link>
-                  {item.description && (
-                    <p className="text-sm text-gray-600 mt-1">
-                      {item.description}
-                    </p>
-                  )}
+                  {item.description && <p className="text-sm text-gray-600 mt-1">{item.description}</p>}
                 </li>
               ))}
             </ul>
@@ -100,8 +89,7 @@ export default function DocsMainPage() {
         <div className="text-center py-12">
           <h2 className="text-xl font-semibold mb-4">No Documentation Found</h2>
           <p className="text-gray-600">
-            Documentation files should be placed in the{' '}
-            <code className="bg-gray-100 px-2 py-1 rounded">src/docs</code>{' '}
+            Documentation files should be placed in the <code className="bg-gray-100 px-2 py-1 rounded">src/docs</code>{' '}
             directory.
           </p>
         </div>

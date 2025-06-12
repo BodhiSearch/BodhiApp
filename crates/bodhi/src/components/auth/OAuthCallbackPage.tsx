@@ -39,10 +39,7 @@ export function OAuthCallbackPage() {
         const currentUrl = window.location.href;
 
         // Only process if this looks like a callback URL with parameters
-        if (
-          !currentUrl.includes(ROUTE_AUTH_CALLBACK) ||
-          !window.location.search
-        ) {
+        if (!currentUrl.includes(ROUTE_AUTH_CALLBACK) || !window.location.search) {
           setError('Invalid callback URL');
           setProcessed(true);
           processingRef.current = false;

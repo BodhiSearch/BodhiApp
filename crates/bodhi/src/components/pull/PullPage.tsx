@@ -42,10 +42,7 @@ function PullPageContent() {
   const toggleSort = (column: string) => {
     setSort((prevSort) => ({
       column,
-      direction:
-        prevSort.column === column && prevSort.direction === 'asc'
-          ? 'desc'
-          : 'asc',
+      direction: prevSort.column === column && prevSort.direction === 'asc' ? 'desc' : 'asc',
     }));
     setPage(1); // Reset to first page when sorting
   };
@@ -80,9 +77,8 @@ function PullPageContent() {
   return (
     <div className="container mx-auto space-y-8 px-4 py-8 sm:px-6 lg:px-8">
       <UserOnboarding storageKey="pull-banner-dismissed">
-        Welcome to Download Models! Here you can download model files from
-        Huggingface to your local storage, and monitor the status of your
-        downloads.
+        Welcome to Download Models! Here you can download model files from Huggingface to your local storage, and
+        monitor the status of your downloads.
       </UserOnboarding>
 
       <div>
@@ -101,11 +97,7 @@ function PullPageContent() {
       <div className="mt-6 mb-4">
         <Pagination
           page={page}
-          totalPages={
-            data
-              ? Math.ceil((data.total as number) / (data.page_size as number))
-              : 1
-          }
+          totalPages={data ? Math.ceil((data.total as number) / (data.page_size as number)) : 1}
           onPageChange={setPage}
         />
       </div>

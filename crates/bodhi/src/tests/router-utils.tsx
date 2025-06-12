@@ -22,10 +22,7 @@ export interface RouterTestOptions {
  * Simple utility to render components with router context
  * This is the most practical approach for most testing scenarios
  */
-export function renderWithRouter(
-  ui: ReactNode,
-  options: RouterTestOptions & RenderOptions = {}
-) {
+export function renderWithRouter(ui: ReactNode, options: RouterTestOptions & RenderOptions = {}) {
   const {
     initialEntries = ['/'],
     initialIndex = 0,

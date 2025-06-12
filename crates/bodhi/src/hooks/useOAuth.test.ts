@@ -1,21 +1,9 @@
 import { renderHook } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createWrapper } from '@/tests/wrapper';
-import {
-  useOAuthInitiate,
-  useOAuthCallback,
-  oauthUtils,
-} from '@/hooks/useOAuth';
+import { useOAuthInitiate, useOAuthCallback, oauthUtils } from '@/hooks/useOAuth';
 
 // Mock window.location with proper setter support
 const mockLocation = {
@@ -45,8 +33,7 @@ const server = setupServer(
     return res(
       ctx.status(401),
       ctx.json({
-        auth_url:
-          'https://oauth-server.com/auth?client_id=test&redirect_uri=http://localhost:3000/ui/auth/callback',
+        auth_url: 'https://oauth-server.com/auth?client_id=test&redirect_uri=http://localhost:3000/ui/auth/callback',
       })
     );
   }),
@@ -54,11 +41,7 @@ const server = setupServer(
   // Auth callback endpoint - handles POST requests
   rest.post(`*/bodhi/v1/auth/callback`, (req, res, ctx) => {
     // Default success with 303 redirect
-    return res(
-      ctx.status(303),
-      ctx.set('Location', '/ui/chat'),
-      ctx.json({ success: true })
-    );
+    return res(ctx.status(303), ctx.set('Location', '/ui/chat'), ctx.json({ success: true }));
   })
 );
 
@@ -77,8 +60,7 @@ describe('useOAuthInitiate', () => {
 
     await vi.waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith({
-        auth_url:
-          'https://oauth-server.com/auth?client_id=test&redirect_uri=http://localhost:3000/ui/auth/callback',
+        auth_url: 'https://oauth-server.com/auth?client_id=test&redirect_uri=http://localhost:3000/ui/auth/callback',
       });
     });
   });
@@ -180,8 +162,7 @@ describe('useOAuthCallback', () => {
 
 describe('oauthUtils', () => {
   it('should extract OAuth parameters from URL', () => {
-    const url =
-      'http://localhost:3000/ui/auth/callback?code=test_code&state=test_state';
+    const url = 'http://localhost:3000/ui/auth/callback?code=test_code&state=test_state';
     const params = oauthUtils.extractOAuthParams(url);
 
     expect(params).toEqual({
@@ -194,8 +175,7 @@ describe('oauthUtils', () => {
   });
 
   it('should extract OAuth error parameters from URL', () => {
-    const url =
-      'http://localhost:3000/ui/auth/callback?error=access_denied&error_description=User%20denied%20access';
+    const url = 'http://localhost:3000/ui/auth/callback?error=access_denied&error_description=User%20denied%20access';
     const params = oauthUtils.extractOAuthParams(url);
 
     expect(params).toEqual({

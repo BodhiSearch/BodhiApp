@@ -1,8 +1,5 @@
 import { useMutationQuery } from '@/hooks/useQuery';
-import {
-  ENDPOINT_AUTH_INITIATE,
-  ENDPOINT_AUTH_CALLBACK,
-} from '@/hooks/useQuery';
+import { ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_CALLBACK } from '@/hooks/useQuery';
 import { ErrorResponse } from '@/types/models';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useMutation, UseMutationResult } from 'react-query';
@@ -37,16 +34,8 @@ export interface AuthInitiateResponse {
 export const useOAuthInitiate = (options?: {
   onSuccess?: (response: AuthInitiateResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<
-  AxiosResponse<AuthInitiateResponse>,
-  AxiosError<ErrorResponse>,
-  void
-> => {
-  return useMutation<
-    AxiosResponse<AuthInitiateResponse>,
-    AxiosError<ErrorResponse>,
-    void
-  >(
+}): UseMutationResult<AxiosResponse<AuthInitiateResponse>, AxiosError<ErrorResponse>, void> => {
+  return useMutation<AxiosResponse<AuthInitiateResponse>, AxiosError<ErrorResponse>, void>(
     async () => {
       const response = await apiClient.post<AuthInitiateResponse>(
         ENDPOINT_AUTH_INITIATE,
@@ -73,9 +62,7 @@ export const useOAuthInitiate = (options?: {
           }
         }
 
-        const message =
-          error?.response?.data?.error?.message ||
-          'Failed to initiate OAuth flow';
+        const message = error?.response?.data?.error?.message || 'Failed to initiate OAuth flow';
         console.error('Failed to initiate OAuth flow:', error);
         options?.onError?.(message);
       },
@@ -90,43 +77,33 @@ export const useOAuthInitiate = (options?: {
 export const useOAuthCallback = (options?: {
   onSuccess?: (location?: string) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<
-  AxiosResponse<void>,
-  AxiosError<ErrorResponse>,
-  AuthCallbackRequest
-> => {
-  return useMutationQuery<void, AuthCallbackRequest>(
-    ENDPOINT_AUTH_CALLBACK,
-    'post',
-    {
-      onSuccess: (response) => {
-        // Check if this is a 303 redirect response with Location header
-        if (response.status === 303) {
-          const location = response.headers.location;
-          options?.onSuccess?.(location);
-          return;
-        }
+}): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, AuthCallbackRequest> => {
+  return useMutationQuery<void, AuthCallbackRequest>(ENDPOINT_AUTH_CALLBACK, 'post', {
+    onSuccess: (response) => {
+      // Check if this is a 303 redirect response with Location header
+      if (response.status === 303) {
+        const location = response.headers.location;
+        options?.onSuccess?.(location);
+        return;
+      }
 
-        // For other successful responses, pass undefined as location
-        options?.onSuccess?.(undefined);
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        // Backend returns 303 redirect on success, but axios treats it as an error due to maxRedirects: 0
-        if (error.response?.status === 303) {
-          const location = error.response.headers.location;
-          options?.onSuccess?.(location);
-          return;
-        }
+      // For other successful responses, pass undefined as location
+      options?.onSuccess?.(undefined);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      // Backend returns 303 redirect on success, but axios treats it as an error due to maxRedirects: 0
+      if (error.response?.status === 303) {
+        const location = error.response.headers.location;
+        options?.onSuccess?.(location);
+        return;
+      }
 
-        // Handle validation errors (422) and other errors
-        const message =
-          error?.response?.data?.error?.message ||
-          'Failed to complete OAuth callback';
-        console.error('Failed to complete OAuth callback:', error);
-        options?.onError?.(message);
-      },
-    }
-  );
+      // Handle validation errors (422) and other errors
+      const message = error?.response?.data?.error?.message || 'Failed to complete OAuth callback';
+      console.error('Failed to complete OAuth callback:', error);
+      options?.onError?.(message);
+    },
+  });
 };
 
 /**
@@ -148,12 +125,7 @@ export const oauthUtils = {
 
     // Extract all additional parameters
     const additional_params: Record<string, string> = {};
-    const knownParams = new Set([
-      'code',
-      'state',
-      'error',
-      'error_description',
-    ]);
+    const knownParams = new Set(['code', 'state', 'error', 'error_description']);
 
     for (const [key, value] of searchParams.entries()) {
       if (!knownParams.has(key)) {

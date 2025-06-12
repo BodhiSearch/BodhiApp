@@ -5,10 +5,7 @@ interface CopyableContentProps {
   className?: string;
 }
 
-export function CopyableContent({
-  text,
-  className = '',
-}: CopyableContentProps) {
+export function CopyableContent({ text, className = '' }: CopyableContentProps) {
   return (
     <div className={`relative flex items-center group ${className}`}>
       <span className="truncate">{text}</span>

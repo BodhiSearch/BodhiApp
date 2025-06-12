@@ -18,13 +18,8 @@ export function LoginMenu() {
 
   if (userInfo?.logged_in) {
     return (
-      <div
-        className="p-2 space-y-1.5 text-center"
-        data-testid="login-menu-logged-in"
-      >
-        <p className="text-xs text-muted-foreground">
-          Logged in as {userInfo.email}
-        </p>
+      <div className="p-2 space-y-1.5 text-center" data-testid="login-menu-logged-in">
+        <p className="text-xs text-muted-foreground">Logged in as {userInfo.email}</p>
         <Button
           variant="destructive"
           className="w-full border border-destructive"

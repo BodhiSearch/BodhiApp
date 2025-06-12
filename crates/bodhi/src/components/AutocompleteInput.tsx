@@ -24,9 +24,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
   useEffect(() => {
     if (suggestions && value) {
-      const filtered = suggestions.filter((suggestion) =>
-        suggestion.toLowerCase().includes(value.toLowerCase())
-      );
+      const filtered = suggestions.filter((suggestion) => suggestion.toLowerCase().includes(value.toLowerCase()));
       setFilteredSuggestions(filtered);
     } else {
       setFilteredSuggestions(suggestions || []);
@@ -64,16 +62,12 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
         case 'ArrowDown':
           event.preventDefault();
           setActiveSuggestionIndex((prevIndex) =>
-            prevIndex < filteredSuggestions.length - 1
-              ? prevIndex + 1
-              : prevIndex
+            prevIndex < filteredSuggestions.length - 1 ? prevIndex + 1 : prevIndex
           );
           break;
         case 'ArrowUp':
           event.preventDefault();
-          setActiveSuggestionIndex((prevIndex) =>
-            prevIndex > 0 ? prevIndex - 1 : -1
-          );
+          setActiveSuggestionIndex((prevIndex) => (prevIndex > 0 ? prevIndex - 1 : -1));
           break;
         case 'Enter':
           event.preventDefault();

@@ -20,8 +20,7 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Get slug from either props (for lazy loading) or router params
-  const slug =
-    params?.slug || (routerParams['*'] ? routerParams['*'].split('/') : []);
+  const slug = params?.slug || (routerParams['*'] ? routerParams['*'].split('/') : []);
   const slugString = Array.isArray(slug) ? slug.join('/') : slug;
 
   useEffect(() => {
@@ -36,10 +35,7 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
         setLoading(true);
         setError(null);
 
-        const [docContent, details] = await Promise.all([
-          getDocContent(slugString),
-          getDocDetails(slugString),
-        ]);
+        const [docContent, details] = await Promise.all([getDocContent(slugString), getDocDetails(slugString)]);
 
         if (!docContent || !details) {
           notFound();
@@ -88,9 +84,7 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Document Not Found</h1>
-          <p className="text-gray-600">
-            The requested document could not be found.
-          </p>
+          <p className="text-gray-600">The requested document could not be found.</p>
         </div>
       </div>
     );
@@ -101,9 +95,7 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
       <article className="prose prose-lg max-w-none">
         <header className="mb-8">
           <h1 className="text-3xl font-bold mb-2">{docDetails.title}</h1>
-          {docDetails.description && (
-            <p className="text-lg text-gray-600">{docDetails.description}</p>
-          )}
+          {docDetails.description && <p className="text-lg text-gray-600">{docDetails.description}</p>}
         </header>
 
         <div className="markdown-content">
@@ -115,12 +107,7 @@ export default function DocsSlugPage({ params }: DocsSlugPageProps) {
                 const isInline = !props.node || props.node.tagName !== 'pre';
 
                 return !isInline && match ? (
-                  <SyntaxHighlighter
-                    style={tomorrow as any}
-                    language={match[1]}
-                    PreTag="div"
-                    {...props}
-                  >
+                  <SyntaxHighlighter style={tomorrow as any} language={match[1]} PreTag="div" {...props}>
                     {String(children).replace(/\n$/, '')}
                   </SyntaxHighlighter>
                 ) : (

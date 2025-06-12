@@ -1,11 +1,5 @@
 import { motion } from 'framer-motion';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { itemVariants, SetupMode } from './types';
@@ -16,11 +10,7 @@ type SetupModeCardProps = {
   isLoading: boolean;
 };
 
-export const SetupModeCard = ({
-  setupModes,
-  onSetup,
-  isLoading,
-}: SetupModeCardProps) => {
+export const SetupModeCard = ({ setupModes, onSetup, isLoading }: SetupModeCardProps) => {
   return (
     <motion.div variants={itemVariants}>
       <Card>
@@ -36,9 +26,7 @@ export const SetupModeCard = ({
                   <span className="text-2xl">{mode.icon}</span>
                   <div>
                     <h3 className="font-semibold">{mode.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {mode.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{mode.description}</p>
                   </div>
                 </div>
                 <ul className="space-y-2 text-sm">
@@ -54,12 +42,7 @@ export const SetupModeCard = ({
           </div>
 
           <div className="pt-6">
-            <Button
-              className="w-full relative"
-              size="lg"
-              onClick={() => onSetup()}
-              disabled={isLoading}
-            >
+            <Button className="w-full relative" size="lg" onClick={() => onSetup()} disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -73,8 +56,7 @@ export const SetupModeCard = ({
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground text-center w-full">
-            Your Bodhi App will be configured with secure authentication and all
-            the features listed above.
+            Your Bodhi App will be configured with secure authentication and all the features listed above.
           </p>
         </CardFooter>
       </Card>

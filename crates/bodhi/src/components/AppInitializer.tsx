@@ -19,22 +19,11 @@ interface AppInitializerProps {
   authenticated?: boolean;
 }
 
-export default function AppInitializer({
-  children,
-  allowedStatus,
-  authenticated = false,
-}: AppInitializerProps) {
+export default function AppInitializer({ children, allowedStatus, authenticated = false }: AppInitializerProps) {
   const router = useRouter();
-  const [hasShownModelsPage] = useLocalStorage(
-    FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
-    false
-  );
+  const [hasShownModelsPage] = useLocalStorage(FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, false);
 
-  const {
-    data: appInfo,
-    error: appError,
-    isLoading: appLoading,
-  } = useAppInfo();
+  const { data: appInfo, error: appError, isLoading: appLoading } = useAppInfo();
   const {
     data: userInfo,
     error: userError,
@@ -71,15 +60,7 @@ export default function AppInitializer({
     if (authenticated && !userInfo?.logged_in) {
       router.push('/ui/login');
     }
-  }, [
-    authenticated,
-    userInfo,
-    router,
-    appLoading,
-    userLoading,
-    appError,
-    userError,
-  ]);
+  }, [authenticated, userInfo, router, appLoading, userLoading, appError, userError]);
 
   if (appLoading || userLoading) {
     return <Loading message="Initializing app..." />;
@@ -90,8 +71,7 @@ export default function AppInitializer({
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(appError.response?.data as ErrorResponse)?.error?.message ||
-            appError.message}
+          {(appError.response?.data as ErrorResponse)?.error?.message || appError.message}
         </AlertDescription>
       </Alert>
     );
@@ -102,8 +82,7 @@ export default function AppInitializer({
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(userError.response?.data as ErrorResponse)?.error?.message ||
-            userError.message}
+          {(userError.response?.data as ErrorResponse)?.error?.message || userError.message}
         </AlertDescription>
       </Alert>
     );
@@ -114,9 +93,7 @@ export default function AppInitializer({
       return (
         <Alert variant="destructive">
           <AlertTitle>Error</AlertTitle>
-          <AlertDescription>
-            {`unexpected status from /app/info endpoint - '${appInfo.status}'`}
-          </AlertDescription>
+          <AlertDescription>{`unexpected status from /app/info endpoint - '${appInfo.status}'`}</AlertDescription>
         </Alert>
       );
     }

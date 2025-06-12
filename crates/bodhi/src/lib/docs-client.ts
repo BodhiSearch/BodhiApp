@@ -33,9 +33,7 @@ export async function getAllDocSlugs(): Promise<string[]> {
   return data?.allSlugs || [];
 }
 
-export async function getDocsForSlug(
-  slugPath: string[] | null
-): Promise<DocGroup[]> {
+export async function getDocsForSlug(slugPath: string[] | null): Promise<DocGroup[]> {
   const data = await getDocsData();
   if (!data) return [];
 
@@ -55,9 +53,7 @@ export async function getDocsForSlug(
   return groupDocsClient(relevantSlugs, data);
 }
 
-export async function getDocContent(
-  slug: string
-): Promise<{ content: string; data: any } | null> {
+export async function getDocContent(slug: string): Promise<{ content: string; data: any } | null> {
   const data = await getDocsData();
   return data?.docContents[slug] || null;
 }

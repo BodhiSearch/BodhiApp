@@ -15,9 +15,7 @@ export function useLogoutHandler() {
     onError: (error) => {
       console.error('Logout failed:', error);
       const errorMessage =
-        error.response?.data?.error?.message ||
-        error.message ||
-        'An unexpected error occurred. Please try again.';
+        error.response?.data?.error?.message || error.message || 'An unexpected error occurred. Please try again.';
       showError('Logout failed', `Message: ${errorMessage}. Try again later.`);
     },
   });

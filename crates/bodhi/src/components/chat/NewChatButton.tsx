@@ -13,9 +13,7 @@ export const NewChatButton = () => {
         <div className="flex flex-col gap-4 p-2 space-y-1 pb-2">
           <Button
             variant="ghost"
-            className={cn(
-              'w-full justify-start gap-2 px-2 font-normal hover:bg-muted/50'
-            )}
+            className={cn('w-full justify-start gap-2 px-2 font-normal hover:bg-muted/50')}
             onClick={createNewChat}
             data-testid="new-chat-button"
           >

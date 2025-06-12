@@ -1,13 +1,7 @@
 import { SetupProgress } from '@/components/setup/SetupProgress';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
@@ -50,10 +44,7 @@ export function ResourceAdminContent() {
   };
 
   return (
-    <main
-      className="min-h-screen bg-background p-4 md:p-8"
-      data-testid="resource-admin-page"
-    >
+    <main className="min-h-screen bg-background p-4 md:p-8" data-testid="resource-admin-page">
       <motion.div
         className="mx-auto max-w-4xl space-y-8 p-4 md:p-8"
         variants={containerVariants}
@@ -71,9 +62,8 @@ export function ResourceAdminContent() {
             <CardContent className="space-y-6">
               <div className="prose dark:prose-invert mx-auto">
                 <p className="text-center text-muted-foreground">
-                  You are setting up Bodhi App in authenticated mode. The email
-                  address you log in with will be granted admin role for this
-                  app instance.
+                  You are setting up Bodhi App in authenticated mode. The email address you log in with will be granted
+                  admin role for this app instance.
                 </p>
               </div>
 
@@ -91,12 +81,7 @@ export function ResourceAdminContent() {
               {error ? (
                 <>
                   <div className="text-red-600 text-center">{error}</div>
-                  <Button
-                    className="w-full"
-                    size="lg"
-                    onClick={handleLogin}
-                    variant="default"
-                  >
+                  <Button className="w-full" size="lg" onClick={handleLogin} variant="default">
                     Try Again
                   </Button>
                 </>
@@ -105,9 +90,7 @@ export function ResourceAdminContent() {
                   Continue with Login →
                 </Button>
               )}
-              <p className="text-sm text-muted-foreground text-center">
-                Login with a valid email address to continue
-              </p>
+              <p className="text-sm text-muted-foreground text-center">Login with a valid email address to continue</p>
             </CardFooter>
           </Card>
         </motion.div>
