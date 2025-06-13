@@ -21,7 +21,6 @@ import {
 } from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import {
-  useChatTemplates,
   useCreateModel,
   useModelFiles,
   useUpdateModel,
@@ -91,7 +90,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     isEditMode && Object.keys(initialData?.context_params || {}).length > 0
   );
 
-  const { data: chatTemplates } = useChatTemplates();
   const { data: modelsData } = useModelFiles(1, 100, 'alias', 'asc');
 
   const [currentRepo, setCurrentRepo] = useState(initialData?.repo || '');
@@ -122,13 +120,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
       }));
   }, [modelsData, currentRepo]);
 
-  const chatTemplateOptions = useMemo(() => {
-    if (!chatTemplates) return [];
-    return chatTemplates.map((template) => ({
-      value: template,
-      label: template,
-    }));
-  }, [chatTemplates]);
+
 
   const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasSchema),
@@ -137,7 +129,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
       alias: initialData?.alias || '',
       repo: initialData?.repo || '',
       filename: initialData?.filename || '',
-      chat_template: initialData?.chat_template || '',
       request_params: initialData?.request_params || {},
       context_params: initialData?.context_params || {},
     },
@@ -383,37 +374,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
               )}
             />
 
-            {/* Chat Template field with ComboBoxResponsive */}
-            <FormField
-              control={form.control}
-              name="chat_template"
-              render={({ field }) => (
-                <FormItem>
-                  <FormFieldWithTooltip
-                    label="Chat Template"
-                    tooltip={ALIAS_FORM_TOOLTIPS.chatTemplate}
-                    htmlFor="chat-template-select"
-                  >
-                    <FormControl>
-                      <ComboBoxResponsive
-                        selectedStatus={
-                          field.value
-                            ? { value: field.value, label: field.value }
-                            : null
-                        }
-                        setSelectedStatus={(selected) =>
-                          field.onChange(selected?.value || '')
-                        }
-                        statuses={chatTemplateOptions}
-                        placeholder="Select chat template"
-                        id="chat-template-select"
-                      />
-                    </FormControl>
-                  </FormFieldWithTooltip>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
           </CardContent>
         </Card>
 

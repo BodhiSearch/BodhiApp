@@ -1,5 +1,5 @@
 import EditAliasPage from '@/app/ui/models/edit/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
@@ -65,7 +65,6 @@ const mockModelData = {
   alias: 'test-alias',
   repo: 'owner1/repo1',
   filename: 'file1.gguf',
-  chat_template: 'llama2',
 };
 
 const mockModelsResponse = {
@@ -76,7 +75,7 @@ const mockModelsResponse = {
   ],
 };
 
-const mockChatTemplatesResponse = ['llama2', 'llama3'];
+
 
 const server = setupServer();
 
@@ -107,9 +106,7 @@ describe('EditAliasPage', () => {
       rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
         return res(ctx.json(mockModelsResponse));
       }),
-      rest.get(`*${ENDPOINT_CHAT_TEMPLATES}`, (_, res, ctx) => {
-        return res(ctx.json(mockChatTemplatesResponse));
-      }),
+
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
         return res(ctx.json({
           data: [
@@ -136,13 +133,9 @@ describe('EditAliasPage', () => {
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/chat template/i)).toBeInTheDocument();
 
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole('combobox', { name: /chat template/i })
-    ).toBeInTheDocument();
 
     expect(
       screen.getByRole('button', { name: /update model alias/i })
@@ -151,7 +144,6 @@ describe('EditAliasPage', () => {
     expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
     expect(screen.getByRole('combobox', { name: /repo/i })).toHaveTextContent('owner1/repo1');
     expect(screen.getByRole('combobox', { name: /filename/i })).toHaveTextContent('file1.gguf');
-    expect(screen.getByRole('combobox', { name: /chat template/i })).toHaveTextContent('llama2');
   });
 
   it('submits the form with updated data', async () => {
@@ -187,17 +179,7 @@ describe('EditAliasPage', () => {
     }
     await user.click(file3Option);
 
-    // Open chat template combobox
-    await user.click(screen.getByRole('combobox', { name: /chat template/i }));
-    const chatTemplatePopover = screen.getByRole('dialog');
-    const chatTemplateItems = within(chatTemplatePopover).getAllByRole('option');
-    const llama3Option = chatTemplateItems.find(item =>
-      item.textContent?.includes('llama3')
-    );
-    if (!llama3Option) {
-      throw new Error('Could not find llama3 option');
-    }
-    await user.click(llama3Option);
+
 
     await user.click(
       screen.getByRole('button', { name: /update model alias/i })

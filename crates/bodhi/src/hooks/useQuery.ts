@@ -37,7 +37,7 @@ export const ENDPOINT_LOGOUT = `${BODHI_API_BASE}/logout`;
 export const ENDPOINT_MODEL_FILES = `${BODHI_API_BASE}/modelfiles`;
 export const ENDPOINT_MODEL_FILES_PULL = `${BODHI_API_BASE}/modelfiles/pull`;
 export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
-export const ENDPOINT_CHAT_TEMPLATES = `${BODHI_API_BASE}/chat_templates`;
+
 export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
 export const ENDPOINT_SETTINGS = `${BODHI_API_BASE}/settings`;
 
@@ -237,9 +237,7 @@ export function useUpdateModel(
   );
 }
 
-export function useChatTemplates() {
-  return useQuery<string[]>('chatTemplates', ENDPOINT_CHAT_TEMPLATES);
-}
+
 
 export function useFeaturedModels() {
   return useQuery<FeaturedModel[]>(

@@ -42,7 +42,6 @@ const mockModelsResponse = {
       repo: 'test-repo',
       filename: 'test-file.bin',
       snapshot: 'abc123',
-      chat_template: 'test-template',
       request_params: {},
       context_params: {},
     },

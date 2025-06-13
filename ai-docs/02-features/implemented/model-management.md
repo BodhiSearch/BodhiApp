@@ -138,7 +138,7 @@ GET    /api/modelfiles/status   # Check download status
 │ ○ Basic Information        │
 │ ○ Model Selection          │
 │ ○ Parameter Configuration  │
-│ ○ Template Selection       │
+
 └─────────────────────────────┘
 ```
 
