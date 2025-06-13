@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// TODO: make this configurable
 const apiClient = axios.create({
   baseURL: '',
   maxRedirects: 0,

@@ -168,7 +168,7 @@ export function MyForm() {
 
 ### Query Hooks Usage
 ```typescript
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "react-query";
 import { getModels } from "@/lib/api";
 
 export function ModelsList() {

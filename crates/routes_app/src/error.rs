@@ -31,6 +31,9 @@ pub enum LoginError {
   ParseError(#[from] ParseError),
   #[error(transparent)]
   JsonWebToken(#[from] JsonWebTokenError),
+  #[error("state_digest_mismatch")]
+  #[error_meta(error_type = ErrorType::BadRequest)]
+  StateDigestMismatch,
 }
 
 #[cfg(test)]
@@ -57,6 +60,7 @@ mod tests {
   #[case(&CreateAliasError::AliasMismatch { path: "pathalias".to_string(), request: "requestalias".to_string() }, "alias in path 'pathalias' does not match alias in request 'requestalias'")]
   #[case(&LogoutError::SessionDelete(serde_json::from_str::<String>("{invalid").unwrap_err().into()), "failed to delete session, error: invalid type: map, expected a string at line 1 column 0")]
   #[case(&PullError::FileAlreadyExists { repo: "test/repo".to_string(), filename: "filename.gguf".to_string(), snapshot: "main".to_string() }, "file filename.gguf already exists in repo test/repo with snapshot main")]
+  #[case(&LoginError::StateDigestMismatch, "state parameter in callback does not match with the one sent in login request")]
   fn test_error_messages_routes_app(
     #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
     #[case] error: &dyn AppError,

@@ -26,14 +26,16 @@ import {
 } from 'react-query';
 
 // backend endpoints
-export const ENDPOINT_APP_LOGIN = '/app/login';
-
 export const BODHI_API_BASE = '/bodhi/v1';
+
+export const ENDPOINT_UI_LOGIN = '/ui/login';
 
 export const ENDPOINT_APP_INFO = `${BODHI_API_BASE}/info`;
 export const ENDPOINT_APP_SETUP = `${BODHI_API_BASE}/setup`;
 export const ENDPOINT_USER_INFO = `${BODHI_API_BASE}/user`;
 export const ENDPOINT_LOGOUT = `${BODHI_API_BASE}/logout`;
+export const ENDPOINT_AUTH_INITIATE = `${BODHI_API_BASE}/auth/initiate`;
+export const ENDPOINT_AUTH_CALLBACK = `${BODHI_API_BASE}/auth/callback`;
 export const ENDPOINT_MODEL_FILES = `${BODHI_API_BASE}/modelfiles`;
 export const ENDPOINT_MODEL_FILES_PULL = `${BODHI_API_BASE}/modelfiles/pull`;
 export const ENDPOINT_MODELS = `${BODHI_API_BASE}/models`;
@@ -75,7 +77,11 @@ export function useQuery<T>(
 export function useMutationQuery<T, V>(
   endpoint: string | ((variables: V) => string),
   method: 'post' | 'put' | 'delete' = 'post',
-  options?: UseMutationOptions<AxiosResponse<T>, AxiosError<ErrorResponse>, V>
+  options?: UseMutationOptions<AxiosResponse<T>, AxiosError<ErrorResponse>, V>,
+  axiosConfig?: {
+    validateStatus?: (status: number) => boolean;
+    headers?: Record<string, string>;
+  }
 ): UseMutationResult<AxiosResponse<T>, AxiosError<ErrorResponse>, V> {
   const queryClient = useQueryClient();
 
@@ -86,8 +92,9 @@ export function useMutationQuery<T, V>(
       const response = await apiClient[method]<T>(_endpoint, variables, {
         headers: {
           'Content-Type': 'application/json',
+          ...axiosConfig?.headers,
         },
-        validateStatus: (status) => status >= 200 && status < 400,
+        validateStatus: axiosConfig?.validateStatus || ((status) => status >= 200 && status < 400),
       });
       return response;
     },

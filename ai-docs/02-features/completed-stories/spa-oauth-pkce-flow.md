@@ -20,7 +20,7 @@ Transform the current OAuth authentication flow from backend-managed redirects t
 2. Backend generates PKCE, state, stores in session → returns auth URL
 3. Frontend redirects user to auth URL
 4. User authenticates with Keycloak
-5. Keycloak → Frontend callback (React Router)
+5. Keycloak → Frontend callback (/ui/auth/callback)
 6. Frontend → POST /bodhi/v1/auth/callback with all redirect query parameters
 7. Backend validates parameters, exchanges code for tokens → stores in session → returns success
 8. On error, backend forms i18n error and sends to frontend for display. Frontend provides mechanism to try login again.
@@ -136,11 +136,10 @@ Frontend sends all query parameters from OAuth redirect URL:
   "state": "state-parameter-from-oauth-server", 
   "error": "optional-error-from-oauth-server",
   "error_description": "optional-error-description-from-oauth-server",
-  "additional_params": {
-    "session_state": "dynamic-session-state",
-    "iss": "issuer-parameter",
-    "custom_param": "any-other-oauth-parameter"
-  }
+  // additional params received from the query are sent as is in body
+  "session_state": "dynamic-session-state",
+  "iss": "issuer-parameter",
+  "custom_param": "any-other-oauth-parameter"
 }
 ```
 

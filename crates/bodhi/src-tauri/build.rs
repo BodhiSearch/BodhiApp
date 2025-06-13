@@ -62,7 +62,7 @@ fn copy_frontend(bodhiapp_dir: &Path) -> Result<(), anyhow::Error> {
   let out_dir = std::env::var("OUT_DIR").context("Failed to get OUT_DIR environment variable")?;
   let out_dir = Path::new(&out_dir);
   let dest_dir = out_dir.join("static");
-  let source_dir = bodhiapp_dir.join("dist");
+  let source_dir = bodhiapp_dir.join("out");
   fs_extra::dir::copy(source_dir, dest_dir, &{
     let mut options = CopyOptions::new();
     options.copy_inside = true;

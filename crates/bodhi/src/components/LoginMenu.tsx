@@ -2,15 +2,32 @@
 
 import { Button } from '@/components/ui/button';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import { ENDPOINT_APP_LOGIN, useAppInfo, useUser } from '@/hooks/useQuery';
-import Link from 'next/link';
+import { useOAuthInitiate } from '@/hooks/useOAuth';
+import { useUser } from '@/hooks/useQuery';
+import { useState } from 'react';
 
 export function LoginMenu() {
   const { data: userInfo, isLoading: userLoading } = useUser();
-  const { data: appInfo, isLoading: appLoading } = useAppInfo();
   const { logout, isLoading: isLoggingOut } = useLogoutHandler();
+  const [error, setError] = useState<string | null>(null);
 
-  if (userLoading || appLoading) {
+  const oauthInitiate = useOAuthInitiate({
+    onSuccess: (response) => {
+      // Handle redirect based on backend response
+      // 401 response: auth_url in body (login required)
+      // 303 response: Location header (already authenticated)
+      if (response.data?.auth_url) {
+        window.location.href = response.data.auth_url;
+      } else if (response.headers?.location) {
+        window.location.href = response.headers.location;
+      }
+    },
+    onError: (message) => {
+      setError(message);
+    },
+  });
+
+  if (userLoading) {
     return null;
   }
 
@@ -37,11 +54,17 @@ export function LoginMenu() {
 
   return (
     <div className="p-2" data-testid="login-menu-default">
-      <Link href={ENDPOINT_APP_LOGIN} className="block">
-        <Button variant="default" className="w-full border border-primary">
-          Login
-        </Button>
-      </Link>
+      {error && (
+        <p className="text-destructive text-xs mb-2 text-center">{error}</p>
+      )}
+      <Button
+        variant="default"
+        className="w-full border border-primary"
+        onClick={() => oauthInitiate.mutate()}
+        disabled={oauthInitiate.isLoading}
+      >
+        {oauthInitiate.isLoading ? 'Redirecting...' : 'Login'}
+      </Button>
     </div>
   );
 }

@@ -17,8 +17,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/hooks/use-navigation';
 import { NavigationItem } from '@/types/navigation';
-import { LoginMenu } from '@/components/LoginMenu';
 import { useTheme } from '@/components/ThemeProvider';
+import { LoginMenu } from '@/components/LoginMenu';
 
 export function AppNavigation() {
   const isMobile = useIsMobile();

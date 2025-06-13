@@ -1,0 +1,62 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+coverage/
+
+# Generated files
+src-tauri/gen/
+src-tauri/target/
+
+# Binary files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.ico
+*.svg
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# Lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Logs
+*.log
+_logs/
+
+# Scratch files
+scratch/
+
+# Config files that should maintain their format
+.husky/
+.vscode/
+.env*
+.gitignore
+.npmignore
+
+# Test fixtures and generated test files
+src/components/ui/__tests__/
+src/components/docs/__tests__/
+*.html
+
+# Generated files
+src/generated/
+
+# Tauri specific
+src-tauri/icons/
+src-tauri/capabilities/
+public/
+
+# macOS files
+.DS_Store
+
+# Other
+*.diff
+*.patch
