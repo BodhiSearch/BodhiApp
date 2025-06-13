@@ -73,7 +73,7 @@ export function TokenPageContent() {
     page,
     pageSize,
     {
-      enabled: !appLoading && appInfo?.authz === true,
+      enabled: !appLoading,
     }
   );
 
@@ -118,24 +118,7 @@ export function TokenPageContent() {
     );
   }
 
-  if (!appInfo?.authz) {
-    return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              API Tokens Not Available
-            </CardTitle>
-            <CardDescription>
-              API tokens are not available when authentication is disabled. You
-              can make API calls without tokens in this mode.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
+
 
   const renderRow = (token: ApiToken) => (
     <>

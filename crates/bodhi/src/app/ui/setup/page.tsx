@@ -56,38 +56,7 @@ const benefits = [
   },
 ];
 
-const setupModes = [
-  {
-    title: 'Authenticated Mode',
-    description: 'Recommended',
-    benefits: [
-      'User authentication',
-      'Multi-user support with RBAC',
-      'Secure API endpoints',
-      'API Tokens',
-      'Resource usage tracking (coming soon)',
-      'User/token level usage quotas (coming soon)',
-      'Compatible with future Auth-only mode features',
-    ],
-    icon: '🔐',
-    recommended: true,
-  },
-  {
-    title: 'Non-Authenticated Mode',
-    description: 'For quick/minimal setup',
-    benefits: [
-      'Quick setup',
-      'No email/login required',
-      'No authentication or user management feature',
-      'No API tokens',
-      'No user/token-wise usage tracking',
-      'Public/insecure API endpoints',
-      'Not compatible with Auth-only mode features',
-    ],
-    icon: '⚡️',
-    recommended: false,
-  },
-];
+
 
 function SetupContent() {
   const router = useRouter();
@@ -114,8 +83,8 @@ function SetupContent() {
     },
   });
 
-  const handleSetup = (authz: boolean) => {
-    setup({ authz });
+  const handleSetup = () => {
+    setup({});
   };
 
   return (
@@ -139,7 +108,6 @@ function SetupContent() {
         </motion.div>
 
         <SetupModeCard
-          setupModes={setupModes}
           onSetup={handleSetup}
           isLoading={isLoading}
         />
