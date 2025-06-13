@@ -1,5 +1,5 @@
 import CreateAliasPage from '@/app/ui/models/new/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_CHAT_TEMPLATES, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_MODEL_FILES, ENDPOINT_MODELS, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
@@ -70,7 +70,7 @@ const mockModelsResponse = {
   ],
 };
 
-const mockChatTemplatesResponse = ['llama2', 'llama3'];
+
 
 const server = setupServer();
 
@@ -101,9 +101,7 @@ describe('CreateAliasPage', () => {
       rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
         return res(ctx.json(mockModelsResponse));
       }),
-      rest.get(`*${ENDPOINT_CHAT_TEMPLATES}`, (_, res, ctx) => {
-        return res(ctx.json(mockChatTemplatesResponse));
-      }),
+
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
         return res(ctx.json({ data: [{ repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' }, { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' }] }));
       }),
@@ -124,14 +122,10 @@ describe('CreateAliasPage', () => {
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/chat template/i)).toBeInTheDocument();
 
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(
       screen.getByRole('combobox', { name: /filename/i })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('combobox', { name: /chat template/i })
     ).toBeInTheDocument();
 
     expect(
@@ -165,17 +159,7 @@ describe('CreateAliasPage', () => {
       'file1.gguf'
     );
 
-    // Open chat template combobox
-    await user.click(screen.getByRole('combobox', { name: /chat template/i }));
-    const chatTemplatePopover = screen.getByRole('dialog');
-    const chatTemplateItems = within(chatTemplatePopover).getAllByRole('option');
-    const llama2Option = chatTemplateItems.find(item =>
-      item.textContent?.includes('llama2')
-    );
-    if (!llama2Option) {
-      throw new Error('Could not find llama2 option');
-    }
-    await user.click(llama2Option);
+
 
     await user.click(
       screen.getByRole('button', { name: /create model alias/i })

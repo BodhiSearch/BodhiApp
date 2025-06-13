@@ -13,7 +13,6 @@ function NewModelContent() {
     repo: searchParams?.get('repo') || '',
     filename: searchParams?.get('filename') || '',
     snapshot: searchParams?.get('snapshot') || '',
-    chat_template: '',
     request_params: {},
     context_params: {},
   };
