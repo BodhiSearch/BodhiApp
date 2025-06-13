@@ -1,28 +1,28 @@
-# React Router Testing Guide
+# Next.js Testing Guide
 
-This guide outlines the improved testing approach for React Router components in our Vite+React project.
+This guide outlines the testing approach for Next.js components in our Next.js v14 project.
 
 ## Overview
 
-We've migrated from Next.js to React Router and enhanced our testing utilities to provide better, more maintainable tests. The new approach offers:
+Our Next.js application uses a comprehensive testing strategy that provides better, more maintainable tests. The approach offers:
 
-- **Eliminated React Router v7 warnings** with proper future flags
+- **Next.js App Router testing** with proper configuration
 - **Reduced boilerplate** through reusable utilities
 - **Better separation** between unit and integration tests
 - **Simplified mocking** for navigation hooks
 
 ## Key Improvements
 
-✅ **Fixed React Router v7 warnings** by adding future flags to BrowserRouter
+✅ **Next.js App Router testing** with proper configuration and mocking
 ✅ **Simplified testing utilities** that are actually practical to use
 ✅ **Better mock patterns** that reduce repetitive code
-✅ **Clear separation** between unit tests (mocked) and integration tests (real router)
+✅ **Clear separation** between unit tests (mocked) and integration tests
 
 ## Testing Utilities
 
 ### 1. Enhanced Wrapper (`createWrapper`)
 
-The basic wrapper now includes React Router v7 future flags to eliminate warnings:
+The basic wrapper includes Next.js testing configuration:
 
 ```tsx
 import { createWrapper } from '@/tests/wrapper';
@@ -30,25 +30,23 @@ import { createWrapper } from '@/tests/wrapper';
 render(<Component />, { wrapper: createWrapper() });
 ```
 
-### 2. Router Testing Utilities (`renderWithRouter`)
+### 2. Next.js Navigation Testing
 
-For integration testing with actual routing behavior:
+For testing Next.js navigation behavior:
 
 ```tsx
-import { renderWithRouter } from '@/tests/router-utils';
+import { render, screen } from '@testing-library/react';
+import { useRouter } from 'next/navigation';
 
-const { getCurrentPath } = renderWithRouter(
-  <NavigationComponent />,
-  {
-    initialEntries: ['/docs/getting-started/'],
-    routes: [
-      { path: '/docs/getting-started/', element: <DocsPage /> },
-      { path: '/docs/features/', element: <FeaturesPage /> },
-    ],
-  }
-);
-
-expect(getCurrentPath()).toBe('/docs/getting-started/');
+// Mock Next.js navigation
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+  }),
+  usePathname: () => '/current-path',
+}));
 ```
 
 ### 3. Mock Navigation (`createMockNavigation`)
@@ -61,7 +59,7 @@ import { createMockNavigation } from '@/tests/router-utils';
 const mockNav = createMockNavigation();
 mockNav.setCurrentPath('/dashboard');
 
-vi.mock('@/lib/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => mockNav.mockRouter,
   usePathname: () => mockNav.mockPathname(),
 }));
@@ -69,26 +67,23 @@ vi.mock('@/lib/navigation', () => ({
 
 ## Testing Patterns
 
-### Pattern 1: Integration Tests (Recommended for routing logic)
+### Pattern 1: Integration Tests (Recommended for navigation logic)
 
 ```tsx
 describe('Navigation Integration', () => {
   it('should navigate between pages correctly', async () => {
     const user = userEvent.setup();
-    
-    const { expectCurrentPath } = renderWithRouter(
-      <App />,
-      {
-        initialEntries: ['/'],
-        routes: [
-          { path: '/', element: <HomePage /> },
-          { path: '/about', element: <AboutPage /> },
-        ],
-      }
-    );
+    const mockPush = vi.fn();
+
+    vi.mock('next/navigation', () => ({
+      useRouter: () => ({ push: mockPush }),
+      usePathname: () => '/',
+    }));
+
+    render(<NavigationComponent />);
 
     await user.click(screen.getByText('About'));
-    expectCurrentPath('/about');
+    expect(mockPush).toHaveBeenCalledWith('/about');
   });
 });
 ```
@@ -129,7 +124,7 @@ navAssertions.toHaveNavigatedTo('/dashboard');
 
 ## Migration Guide
 
-### Before (Old Pattern)
+### Before (Complex Pattern)
 ```tsx
 // Lots of repetitive mocking
 vi.mock('next/navigation', () => ({
@@ -144,22 +139,20 @@ vi.mock('next/link', () => ({
 render(<Component />, { wrapper: createWrapper() });
 ```
 
-### After (New Pattern)
+### After (Simplified Pattern)
 ```tsx
-// Clean, focused testing
-const { expectCurrentPath } = renderWithRouter(
-  <Component />,
-  { initialEntries: ['/test'] }
-);
+// Clean, focused testing with utilities
+const mockRouter = createMockNavigation();
+mockRouter.setCurrentPath('/test');
 
-expectCurrentPath('/test');
+render(<Component />, { wrapper: createWrapper() });
 ```
 
 ## Best Practices
 
 ### 1. Choose the Right Testing Approach
 
-- **Integration tests**: Use `renderWithRouter` for testing routing logic and navigation flows
+- **Integration tests**: Use Next.js navigation mocks for testing routing logic and navigation flows
 - **Unit tests**: Use `createMockNavigation` for testing component behavior in isolation
 
 ### 2. Test Real User Interactions
@@ -199,21 +192,21 @@ describe('Navigation Component', () => {
 
 ## Common Issues and Solutions
 
-### Issue: React Router v7 Future Flag Warnings
-**Solution**: Use the enhanced wrapper with future flags enabled.
+### Issue: Next.js Navigation Hooks Not Working in Tests
+**Solution**: Mock `next/navigation` hooks properly with vi.mock.
 
 ### Issue: Link Component Not Working in Tests
-**Solution**: Use `renderWithRouter` instead of manual Link mocking.
+**Solution**: Use Next.js Link component mocking or test utilities.
 
 ### Issue: Cannot Test Navigation State Changes
-**Solution**: Use the router utilities to inspect and control navigation state.
+**Solution**: Use the navigation utilities to inspect and control navigation state.
 
-### Issue: Tests Are Slow Due to Full Router Setup
-**Solution**: Use `createMockNavigation` for simple unit tests that don't need routing.
+### Issue: Tests Are Slow Due to Complex Setup
+**Solution**: Use `createMockNavigation` for simple unit tests that don't need full navigation.
 
 ## Examples
 
 See the following files for complete examples:
-- `src/tests/examples/improved-navigation.test.tsx` - Complete Navigation component testing
-- `src/tests/router-utils.test.tsx` - Testing utility examples
-- `src/tests/router-utils.tsx` - Utility implementations
+- `src/tests/examples/navigation.test.tsx` - Complete Navigation component testing
+- `src/tests/navigation-utils.test.tsx` - Testing utility examples
+- `src/tests/navigation-utils.tsx` - Utility implementations

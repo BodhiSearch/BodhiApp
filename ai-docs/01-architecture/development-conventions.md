@@ -15,7 +15,7 @@ This document outlines the coding standards, naming conventions, and best practi
 ```
 crates/
 ├── objs/                    # Application common objects
-├── bodhi/                   # Frontend application (React+Vite)
+├── bodhi/                   # Frontend application (Next.js v14)
 ├── services/                # Backend services (Rust)
 ├── auth_middleware/         # Authentication middleware
 ├── commands/                # CLI interface

@@ -501,7 +501,7 @@ Hey! Would really appreciate if you could share this with your team:
 
 ### Development Stack Details
 1. Frontend Architecture
-   - React+Vite with React Router
+   - React+Next.js v14 with App Router
    - React components with client-side rendering
    - TypeScript for type safety
    - TailwindCSS for styling

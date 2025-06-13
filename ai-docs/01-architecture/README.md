@@ -11,7 +11,7 @@ This section contains modular technical architecture documentation for the Bodhi
 - **[Roadmap](roadmap.md)** - Strategic direction, planned improvements, and future architecture evolution
 
 ### Technology Stack Guides
-- **[Frontend React](frontend-react.md)** - React+Vite development patterns, component structure, and TypeScript conventions
+- **[Frontend Next.js](frontend-react.md)** - Next.js v14 development patterns, component structure, and TypeScript conventions
 - **[Rust Backend](rust-backend.md)** - Rust backend development, service patterns, and database integration
 - **[Tauri Desktop](tauri-desktop.md)** - Desktop application architecture and native OS integration
 - **[Authentication](authentication.md)** - OAuth2 integration, JWT handling, and security implementation
@@ -38,7 +38,7 @@ This section contains modular technical architecture documentation for the Bodhi
 
 ### System Design Philosophy
 - **Rust-First Backend** - Type-safe, performant backend services with clear service boundaries
-- **React+TypeScript Frontend** - Modern, component-based UI with strong typing and accessibility
+- **Next.js+TypeScript Frontend** - Modern, full-stack React framework with strong typing and SSG capabilities
 - **Desktop-Native Integration** - Tauri-based desktop app with native OS capabilities
 - **Security by Design** - OAuth2, JWT, and role-based access control throughout
 - **Developer Experience** - Clear patterns, consistent conventions, and comprehensive tooling
@@ -47,10 +47,10 @@ This section contains modular technical architecture documentation for the Bodhi
 
 ### Frontend Technologies
 - **React 18+ with TypeScript** - Component-based UI with strong typing
-- **Vite** - Fast build tooling and development server
+- **Next.js v14.2.6** - Full-stack React framework with SSG capabilities
 - **Tailwind CSS + Shadcn/ui** - Utility-first styling with component library
-- **React Query** - Data fetching, caching, and synchronization
-- **React Router** - Client-side routing and navigation
+- **React Query v3.39.3** - Data fetching, caching, and synchronization
+- **Next.js App Router** - File-based routing and navigation
 
 ### Backend Technologies
 - **Rust** - Systems programming language for performance and safety
@@ -69,11 +69,12 @@ This section contains modular technical architecture documentation for the Bodhi
 - **ESLint + Prettier** - Code quality and formatting
 - **MSW** - API mocking for reliable tests
 - **Cargo** - Rust package manager and build system
+- **PWA Support** - Progressive Web App capabilities with @ducanh2912/next-pwa
 
 ## Quick Reference Guide
 
 ### For Frontend Development
-1. **Start with**: [Frontend React](frontend-react.md) - Component patterns and TypeScript conventions
+1. **Start with**: [Frontend Next.js](frontend-react.md) - Next.js patterns and TypeScript conventions
 2. **API Integration**: [API Integration](api-integration.md) - Query hooks and error handling
 3. **UI Components**: [UI Design System](ui-design-system.md) - Design tokens and component usage
 4. **Testing**: [Testing Strategy](testing-strategy.md) - Frontend testing patterns

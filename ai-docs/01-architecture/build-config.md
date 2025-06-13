@@ -21,60 +21,69 @@ The Bodhi App uses a multi-platform build system supporting:
 
 ### Build Tools
 - **Cargo** - Rust package manager and build system
-- **Vite** - Frontend build tool and development server
+- **Next.js** - Frontend build tool and development server
 - **Tauri** - Desktop application bundling
 - **xtask** - Custom build automation
 
 ## Frontend Build Configuration
 
-### Vite Configuration
-```typescript
-// crates/bodhi/vite.config.ts
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+### Next.js Configuration
+```javascript
+// crates/bodhi/next.config.mjs
+import withPWAInit from '@ducanh2912/next-pwa';
+import createMDX from '@next/mdx';
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
-        },
-      },
-    },
-  },
-  server: {
-    port: 1420,
-    proxy: {
-      '/bodhi': 'http://localhost:3000',
-      '/v1': 'http://localhost:3000',
-      '/app': 'http://localhost:3000',
-    },
+const withPWA = withPWAInit({
+  dest: 'public',
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  register: true,
+  workboxOptions: {
+    disableDevLogs: true,
+  }
+});
+
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [],
+    rehypePlugins: [],
   },
 });
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  reactStrictMode: true,
+  output: 'export',
+  trailingSlash: true,
+  transpilePackages: ['geist'],
+  images: {
+    unoptimized: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  webpack: (config) => {
+    config.watchOptions = {
+      ignored: ['**/node_modules/', '**/old-chat-app/**'],
+    };
+    return config;
+  },
+};
+
+export default withPWA(withMDX(nextConfig));
 ```
 
 ### Package.json Scripts
 ```json
 {
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "lint": "next lint",
+    "eslint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "format": "prettier --write .",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"
@@ -566,13 +575,13 @@ strip = true
 ```
 
 ### Frontend Bundle Optimization
-```typescript
-// vite.config.ts - Bundle optimization
-export default defineConfig({
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
+```javascript
+// next.config.mjs - Bundle optimization
+const nextConfig = {
+  output: 'export',
+  webpack: (config) => {
+    // Custom webpack optimizations
+    config.optimization = {
           vendor: ['react', 'react-dom'],
           ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
           query: ['@tanstack/react-query'],

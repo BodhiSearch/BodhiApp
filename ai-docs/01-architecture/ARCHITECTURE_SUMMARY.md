@@ -8,7 +8,7 @@ BodhiApp is a comprehensive Rust-based application that provides local Large Lan
 
 ### Technology Stack
 - **Backend**: Rust with Axum HTTP framework
-- **Frontend**: React + TypeScript + Vite + TailwindCSS + Shadcn UI
+- **Frontend**: React + TypeScript + Next.js v14 + TailwindCSS + Shadcn UI
 - **Desktop**: Tauri for native desktop application
 - **LLM Integration**: llama.cpp for local inference
 - **Database**: SQLite with SQLx
@@ -20,7 +20,7 @@ BodhiApp is a comprehensive Rust-based application that provides local Large Lan
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend Layer                           │
-│  React + TypeScript + Vite + TailwindCSS + Shadcn UI      │
+│  React + TypeScript + Next.js v14 + TailwindCSS + Shadcn UI│
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐

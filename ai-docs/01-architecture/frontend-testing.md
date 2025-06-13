@@ -29,7 +29,7 @@ This document provides comprehensive guidance for frontend testing patterns, fra
 ## Technology Stack
 
 ### Core Testing Tools
-- **Vitest** - Fast unit testing framework with Vite integration
+- **Vitest** - Fast unit testing framework with Next.js integration
 - **Testing Library** - Component testing utilities with accessibility focus
 - **MSW (Mock Service Worker)** - API mocking for reliable tests
 - **Happy DOM** - Lightweight DOM environment for testing
@@ -109,34 +109,29 @@ describe('DataComponent', () => {
 });
 ```
 
-### React Router Testing Patterns
+### Next.js Navigation Testing Patterns
 
-#### Router Test Utilities
+#### Navigation Test Utilities
 ```typescript
-// src/tests/router-utils.tsx
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { render } from '@testing-library/react';
+// src/tests/navigation-utils.tsx
+import { vi } from 'vitest';
 
-export function renderWithRouter(
-  component: React.ReactElement,
-  initialEntries: string[] = ['/']
-) {
-  const router = createMemoryRouter(
-    [{ path: '*', element: component }],
-    { initialEntries }
-  );
-
+export function createMockRouter() {
   return {
-    ...render(<RouterProvider router={router} />),
-    router,
+    push: vi.fn(),
+    replace: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    refresh: vi.fn(),
+    prefetch: vi.fn(),
   };
 }
 
 export function createMockNavigation() {
-  const navigate = vi.fn();
-  const location = { pathname: '/', search: '', hash: '', state: null };
-  
-  return { navigate, location };
+  const mockRouter = createMockRouter();
+  const pathname = '/';
+
+  return { mockRouter, pathname };
 }
 
 // Custom assertion utility
@@ -530,9 +525,9 @@ it('OAuth test')
 - **Issue**: Testing wrapper components without specific logic
 - **Solution**: Focus testing on content components that contain the actual functionality
 
-### React Router v7 Testing Issues
+### Next.js Navigation Testing Issues
 - **Issue**: Navigation not working in tests
-- **Solution**: Use `createMemoryRouter` instead of `BrowserRouter` in tests
+- **Solution**: Mock `next/navigation` hooks properly in tests
 
 ### State Management Testing
 - **Issue**: React Query cache persisting between tests

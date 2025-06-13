@@ -17,7 +17,7 @@ The documentation is structured into the following main sections:
 
 ### Recent Documentation Updates
 
-**Architecture Content Recovery (January 2025)**: The architecture documentation has been comprehensively updated to recover valuable knowledge that was lost during the migration from monolithic to modular documentation structure. Key recovered content includes:
+**Architecture Content Recovery (January 2025)**: The architecture documentation has been comprehensively updated to recover valuable knowledge that was lost during documentation reorganization. Key recovered content includes:
 
 - **Enhanced System Overview**: Restored key features section with OpenAI/Ollama compatibility details, authentication flow diagrams, token system explanations, and model aliases concept
 - **New Architectural Decisions Document**: Captures rationale for key design choices including embedded web server architecture, configuration hierarchy, and technology trade-offs
@@ -38,7 +38,7 @@ Modular technical architecture documentation organized by technology stack and d
 - **[Roadmap](01-architecture/roadmap.md)** - Strategic direction, planned improvements, and future architecture evolution including microservices, performance enhancements, and security improvements
 
 #### Technology Stack Guides
-- **[Frontend React](01-architecture/frontend-react.md)** - React+Vite development patterns, component structure, and TypeScript conventions
+- **[Frontend Next.js](01-architecture/frontend-react.md)** - Next.js v14 development patterns, component structure, and TypeScript conventions
 - **[Rust Backend](01-architecture/rust-backend.md)** - Rust backend development, service patterns, database integration, real-time communication (SSE/WebSocket), logging & observability, and settings service architecture
 - **[Backend Error & L10n](01-architecture/backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
 - **[Tauri Desktop](01-architecture/tauri-desktop.md)** - Desktop application architecture and native OS integration
@@ -96,8 +96,6 @@ Feature documentation organized by development status and implementation timelin
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
-- **[Vite to Next.js Migration V1](02-features/planned/20250612-vite-to-nextjs.md)** - Initial migration plan (deprecated)
-- **[Vite to Next.js Migration V2](02-features/planned/vite-to-nextjs-v2.md)** - Revised migration strategy with systematic file-by-file approach
 
 ### 🔧 [Crates](03-crates/) - Individual Rust Crate Documentation
 Detailed documentation for each Rust crate in the workspace, covering implementation details and APIs
@@ -142,7 +140,6 @@ Marketing materials, community outreach, and promotional content for product pos
 ### 📚 [Knowledge Transfer](06-knowledge-transfer/) - Learning Resources
 Implementation guides, technical knowledge, and learning resources for developers and users
 
-- **[Static Site Generation](06-knowledge-transfer/STATIC_SITE_GENERATION.md)** - React Router static site generation with dynamic route discovery and page organization patterns
 - **[LLM Resource Server](06-knowledge-transfer/llm-resource-server.md)** - OAuth2 resource server architecture, vision, and implementation guide
 - **[Chat UI](06-knowledge-transfer/chat-ui.md)** - Chat interface implementation patterns and user experience design
 - **[Model Parameters](06-knowledge-transfer/model-parameters.md)** - Model configuration, parameter management, and optimization guides
@@ -152,7 +149,6 @@ Implementation guides, technical knowledge, and learning resources for developer
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
 
-- **[Migration Records](99-archive/nextjs-to-react-migration.md)** - Complete documentation of NextJS to React migration process
 - **[Archive README](99-archive/README.md)** - Archive organization, purpose, and content overview
 - **[Samples](99-archive/samples/)** - Historical code samples and examples (directory structure preserved)
 
@@ -161,14 +157,14 @@ Historical documents, deprecated content, and reference materials preserved for 
 ### By User Type
 
 #### For Developers
-1. **Getting Started**: [System Overview](01-architecture/system-overview.md) → [Frontend React](01-architecture/frontend-react.md) → [Development Conventions](01-architecture/development-conventions.md)
+1. **Getting Started**: [System Overview](01-architecture/system-overview.md) → [Frontend Next.js](01-architecture/frontend-react.md) → [Development Conventions](01-architecture/development-conventions.md)
 2. **API Integration**: [API Integration](01-architecture/api-integration.md) → [Rust Backend](01-architecture/rust-backend.md)
 3. **Architecture Understanding**: [Architectural Decisions](01-architecture/architectural-decisions.md) → [Roadmap](01-architecture/roadmap.md)
 4. **Technical Details**: [System Overview](01-architecture/system-overview.md) → [Crates Documentation](03-crates/)
 5. **Current Work**: [Active Stories](02-features/active-stories/) → [Frontend Testing](01-architecture/frontend-testing.md)
 
 #### For Designers
-1. **Design System**: [UI Design System](01-architecture/ui-design-system.md) → [Frontend React](01-architecture/frontend-react.md)
+1. **Design System**: [UI Design System](01-architecture/ui-design-system.md) → [Frontend Next.js](01-architecture/frontend-react.md)
 2. **User Experience**: [System Overview](01-architecture/system-overview.md) → [Chat UI](06-knowledge-transfer/chat-ui.md)
 3. **Implementation**: [Implemented Features](02-features/implemented/) → [Active Stories](02-features/active-stories/)
 
@@ -213,7 +209,7 @@ Historical documents, deprecated content, and reference materials preserved for 
 #### Chat Interface
 - **Implementation**: [Chat Interface](02-features/implemented/chat-interface.md)
 - **User Experience**: [Chat UI](06-knowledge-transfer/chat-ui.md)
-- **Technical Details**: [Frontend React](01-architecture/frontend-react.md)
+- **Technical Details**: [Frontend Next.js](01-architecture/frontend-react.md)
 
 #### Setup & Configuration
 - **Setup Process**: [Setup Processes](06-knowledge-transfer/setup-processes.md)
