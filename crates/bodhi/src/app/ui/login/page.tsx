@@ -3,12 +3,31 @@
 import AppInitializer from '@/components/AppInitializer';
 import { AuthCard } from '@/components/AuthCard';
 import { useLogoutHandler } from '@/hooks/useLogoutHandler';
-import { ENDPOINT_APP_LOGIN, useUser } from '@/hooks/useQuery';
+import { useOAuthInitiate } from '@/hooks/useOAuth';
+import { useUser } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT } from '@/lib/constants';
+import { useState } from 'react';
 
 export function LoginContent() {
   const { data: userInfo, isLoading: userLoading } = useUser();
   const { logout, isLoading: isLoggingOut } = useLogoutHandler();
+  const [error, setError] = useState<string | null>(null);
+
+  const oauthInitiate = useOAuthInitiate({
+    onSuccess: (response) => {
+      // Handle redirect based on backend response
+      // 401 response: auth_url in body (login required)
+      // 303 response: Location header (already authenticated)
+      if (response.data?.auth_url) {
+        window.location.href = response.data.auth_url;
+      } else if (response.headers?.location) {
+        window.location.href = response.headers.location;
+      }
+    },
+    onError: (message) => {
+      setError(message);
+    },
+  });
 
   if (userLoading) {
     return <AuthCard title="Loading..." isLoading={true} />;
@@ -39,11 +58,19 @@ export function LoginContent() {
   return (
     <AuthCard
       title="Login"
-      description="Login to use the Bodhi App"
+      description={
+        <div className="space-y-4">
+          <p>Login to use the Bodhi App</p>
+          {error && (
+            <p className="text-destructive text-sm">{error}</p>
+          )}
+        </div>
+      }
       actions={[
         {
-          label: 'Login',
-          href: ENDPOINT_APP_LOGIN,
+          label: oauthInitiate.isLoading ? 'Redirecting...' : 'Login',
+          onClick: () => oauthInitiate.mutate(),
+          disabled: oauthInitiate.isLoading,
         },
       ]}
     />

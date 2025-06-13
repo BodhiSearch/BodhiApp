@@ -5,6 +5,7 @@ This section contains technical knowledge, implementation guides, and learning r
 ## Contents
 
 ### Technical Implementation
+- **[OAuth Testing Fixes](oauth-testing-fixes.md)** - Comprehensive analysis of OAuth testing issues and solutions, including apiClient baseURL configuration, hook consistency patterns, MSW setup requirements, and AppInitializer component testing strategies
 - **[LLM Resource Server](llm-resource-server.md)** - Comprehensive OAuth2 resource server vision and architecture
 - **[Chat UI](chat-ui.md)** - Chat interface implementation and patterns
 - **[Model Parameters](model-parameters.md)** - Model configuration and parameter management
@@ -41,9 +42,10 @@ How to configure and customize Bodhi App:
 3. **[Model Parameters](model-parameters.md)** - Understand model configuration options
 
 ### For Developers
-1. **[LLM Resource Server](llm-resource-server.md)** - OAuth2 resource server architecture and client integration
-2. **[Model Parameters](model-parameters.md)** - Deep dive into model configuration
-3. **[Chat UI](chat-ui.md)** - Learn implementation patterns and best practices
+1. **[OAuth Testing Fixes](oauth-testing-fixes.md)** - Essential frontend testing patterns and OAuth integration testing
+2. **[LLM Resource Server](llm-resource-server.md)** - OAuth2 resource server architecture and client integration
+3. **[Model Parameters](model-parameters.md)** - Deep dive into model configuration
+4. **[Chat UI](chat-ui.md)** - Learn implementation patterns and best practices
 
 ### For System Administrators
 1. **[Setup Processes](setup-processes.md)** - Installation and deployment procedures

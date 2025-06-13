@@ -112,7 +112,7 @@ pub fn access_token_with_exp(exp: i64) -> Value {
           ]
         }
       },
-      "scope": "openid scope_user profile email scope_power_user",
+      "scope": "openid profile email roles",
       "sid": Uuid::new_v4().to_string(),
       "email_verified": true,
       "name": "Test User",

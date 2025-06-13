@@ -1,5 +1,6 @@
 export const CURRENT_CHAT_KEY = 'current-chat';
 export const ROUTE_CHAT = '/ui/chat';
+export const ROUTE_LOGIN = '/ui/login';
 
 export const ROUTE_DEFAULT = '/ui/chat';
 export const ROUTE_RESOURCE_ADMIN = '/ui/setup/resource-admin';

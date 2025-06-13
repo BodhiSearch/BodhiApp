@@ -464,7 +464,7 @@ mod tests {
           "token_type": "Bearer",
           "expires_in": 3600,
           "refresh_expires_in": 172800,
-          "scope": "openid scope_user profile email scope_power_user",
+          "scope": "openid profile email roles",
         })
         .to_string(),
       )

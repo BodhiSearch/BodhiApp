@@ -10,9 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { ENDPOINT_APP_LOGIN } from '@/hooks/useQuery';
+import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { motion } from 'framer-motion';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
+import { useState } from 'react';
 
 // Animation variants
 const containerVariants = {
@@ -34,6 +35,21 @@ const itemVariants = {
 };
 
 function ResourceAdminContent() {
+  const [error, setError] = useState<string | null>(null);
+
+  const oauthInitiate = useOAuthInitiate({
+    onSuccess: (response) => {
+      if (response.data?.auth_url) {
+        window.location.href = response.data.auth_url;
+      } else if (response.headers?.location) {
+        window.location.href = response.headers.location;
+      }
+    },
+    onError: (message) => {
+      setError(message);
+    },
+  });
+
   return (
     <main
       className="min-h-screen bg-background p-4 md:p-8"
@@ -60,6 +76,9 @@ function ResourceAdminContent() {
                   address you log in with will be granted admin role for this
                   app instance.
                 </p>
+                {error && (
+                  <p className="text-destructive text-sm text-center">{error}</p>
+                )}
               </div>
 
               <div className="space-y-4 text-sm">
@@ -76,9 +95,10 @@ function ResourceAdminContent() {
               <Button
                 className="w-full"
                 size="lg"
-                onClick={() => (window.location.href = ENDPOINT_APP_LOGIN)}
+                onClick={() => oauthInitiate.mutate()}
+                disabled={oauthInitiate.isLoading}
               >
-                Continue with Login →
+                {oauthInitiate.isLoading ? 'Redirecting...' : 'Continue with Login →'}
               </Button>
               <p className="text-sm text-muted-foreground text-center">
                 Login with a valid email address to continue

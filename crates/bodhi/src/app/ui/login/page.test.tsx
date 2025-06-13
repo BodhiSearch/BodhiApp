@@ -1,5 +1,5 @@
 import LoginPage, { LoginContent } from '@/app/ui/login/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import {
   act,
@@ -76,6 +76,12 @@ describe('LoginContent with user not Logged In', () => {
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));
+      }),
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(ctx.status(500), ctx.json({ error: { message: 'OAuth configuration error' } }));
+      }),
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
+        return res(ctx.status(200), ctx.json({}));
       })
     );
   });
@@ -99,6 +105,140 @@ describe('LoginContent with user not Logged In', () => {
     expect(loginButton).toHaveClass('w-full');
     expect(loginButton).not.toBeDisabled();
   });
+
+  it('handles OAuth initiation when login required and redirects to auth URL', async () => {
+    // Mock window.location.href
+    const mockLocation = { href: '' };
+    Object.defineProperty(window, 'location', {
+      value: mockLocation,
+      writable: true,
+    });
+
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(401), // 401 when login required
+          ctx.json({ auth_url: 'https://oauth.example.com/auth?client_id=test' })
+        );
+      })
+    );
+
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+
+    const loginButton = screen.getByRole('button', { name: 'Login' });
+    await userEvent.click(loginButton);
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
+    });
+  });
+
+  it('shows redirecting state during OAuth initiation', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.delay(100),
+          ctx.status(401), // 401 when login required
+          ctx.json({ auth_url: 'https://oauth.example.com/auth?client_id=test' })
+        );
+      })
+    );
+
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+
+    const loginButton = screen.getByRole('button', { name: 'Login' });
+    await userEvent.click(loginButton);
+
+    // Check for redirecting state immediately after click
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+    });
+  });
+
+  it('displays error message when OAuth initiation fails', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({
+            error: {
+              message: 'OAuth configuration error',
+              type: 'internal_server_error',
+              code: 'oauth_config_error',
+            },
+          })
+        );
+      })
+    );
+
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+
+    const loginButton = screen.getByRole('button', { name: 'Login' });
+    await userEvent.click(loginButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
+    });
+
+    // Verify login button is still available after error
+    expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument();
+  });
+
+  it('displays generic error message when OAuth initiation fails without specific message', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(ctx.status(500));
+      })
+    );
+
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+
+    const loginButton = screen.getByRole('button', { name: 'Login' });
+    await userEvent.click(loginButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to initiate OAuth flow')).toBeInTheDocument();
+    });
+  });
+
+  it('handles already authenticated user with 303 redirect', async () => {
+    // Mock window.location.href
+    const mockLocation = { href: '' };
+    Object.defineProperty(window, 'location', {
+      value: mockLocation,
+      writable: true,
+    });
+
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(303), // 303 when already authenticated
+          ctx.set('Location', 'http://localhost:3000/ui/chat'),
+          ctx.json({}) // Empty body for 303 response
+        );
+      })
+    );
+
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+
+    const loginButton = screen.getByRole('button', { name: 'Login' });
+    await userEvent.click(loginButton);
+
+    // Should redirect to the location header value
+    await waitFor(() => {
+      expect(window.location.href).toBe('http://localhost:3000/ui/chat');
+    });
+  });
 });
 
 describe('LoginContent with user Logged In', () => {
@@ -106,14 +246,17 @@ describe('LoginContent with user Logged In', () => {
     vi.resetAllMocks();
     pushMock.mockClear();
     server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(
           ctx.status(200),
           ctx.json({ logged_in: true, email: 'test@example.com' })
         );
       }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));
+      }),
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
+        return res(ctx.status(200), ctx.json({}));
       })
     );
   });
@@ -131,7 +274,7 @@ describe('LoginContent with user Logged In', () => {
 
   it('calls logout function when logout button is clicked and pushes the route in location', async () => {
     server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (req, res, ctx) => {
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
         return res(
           ctx.status(200),
           ctx.set('Location', 'http://localhost:1135/ui/test/login'),
@@ -179,8 +322,6 @@ describe('LoginContent with user Logged In', () => {
     expect(logoutButton).toHaveClass('w-full');
   });
 });
-
-
 
 describe('LoginContent access control', () => {
   it('redirects to setup when app is not setup', async () => {

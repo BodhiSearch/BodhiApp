@@ -1,16 +1,6 @@
-import '@testing-library/jest-dom';
-import { vi, beforeAll, afterAll } from 'vitest';
+import { vi } from 'vitest';
 
-// Mock ResizeObserver
-class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
-}
-
-global.ResizeObserver = MockResizeObserver;
-
-// Mock window.matchMedia
+// Mock window.matchMedia BEFORE framer-motion is imported
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
@@ -24,6 +14,32 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: vi.fn(),
   })),
 });
+
+// Mock framer-motion to avoid animation and browser API issues in tests
+vi.mock('framer-motion', () => {
+  const React = require('react');
+  return {
+    motion: new Proxy({}, {
+      get: (target, prop) => {
+        return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
+      }
+    }),
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+    useAnimation: () => ({}),
+  };
+});
+
+import '@testing-library/jest-dom';
+import { beforeAll, afterAll } from 'vitest';
+
+// Mock ResizeObserver
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+global.ResizeObserver = MockResizeObserver;
 
 // Suppress console errors for specific messages
 const originalError = console.error;
