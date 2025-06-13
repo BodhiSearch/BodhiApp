@@ -21,9 +21,8 @@ Bodhi App is regularly updated with new features and improvements. Update instru
 
 ## Setup & Configuration
 
-### What is the difference between authenticated and non‑authenticated mode?
-- **Authenticated Mode:** Enhanced security and role‑based access control.
-- **Non‑Authenticated Mode:** Quick, open access for local testing and exploration, with limited features.
+### What authentication features does Bodhi App provide?
+Bodhi App operates in authenticated mode with enhanced security and role‑based access control, providing secure multi-user access with API tokens and user management.
 
 ### How do I access the app settings?
 Visit the **Settings** page to view and update configuration settings. Changes take effect immediately without requiring an application restart.

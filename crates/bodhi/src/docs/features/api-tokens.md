@@ -73,8 +73,7 @@ On the API Tokens page, you can:
 - **Review Regularly:** Monitor usage and revoke unused or potentially compromised tokens.
 - **Cache Verification Data:** Token verification is cached for performance and enhanced security.
 
-## Non-authenticated Mode
-The API tokens feature is not available for non-authenticated mode. Any one or any app, with access to you over the network, can access your API endpoints as they are public and unauthenticated.
+
 
 ## Summary
 

@@ -119,7 +119,7 @@ describe('Setup Page', () => {
     });
   });
 
-  test.skip(`sets up authenticated instance and redirects to ${ROUTE_RESOURCE_ADMIN}`, async () => {
+  test.skip(`sets up app and redirects to ${ROUTE_RESOURCE_ADMIN}`, async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
         return res(ctx.json({ status: 'setup' }));
@@ -131,10 +131,10 @@ describe('Setup Page', () => {
 
     render(<Setup />, { wrapper: createWrapper() });
 
-    const unauthButton = await screen.findByText(
-      'Setup Unauthenticated Instance →'
+    const setupButton = await screen.findByText(
+      'Setup Bodhi App →'
     );
-    fireEvent.click(unauthButton);
+    fireEvent.click(setupButton);
 
     await waitFor(() => {
       expect(pushMock).toHaveBeenCalledWith(ROUTE_RESOURCE_ADMIN);
@@ -153,10 +153,10 @@ describe('Setup Page', () => {
 
     render(<Setup />, { wrapper: createWrapper() });
 
-    const authButton = await screen.findByText(
-      'Setup Authenticated Instance →'
+    const setupButton = await screen.findByText(
+      'Setup Bodhi App →'
     );
-    fireEvent.click(authButton);
+    fireEvent.click(setupButton);
 
     await waitFor(() => {
       expect(

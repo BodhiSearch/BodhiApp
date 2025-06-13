@@ -14,8 +14,6 @@ export function LoginMenu() {
     return null;
   }
 
-  const isNonAuthz = appInfo && !appInfo.authz;
-
   if (userInfo?.logged_in) {
     return (
       <div
@@ -32,22 +30,6 @@ export function LoginMenu() {
           disabled={isLoggingOut}
         >
           {isLoggingOut ? 'Logging out...' : 'Log Out'}
-        </Button>
-      </div>
-    );
-  }
-
-  if (isNonAuthz) {
-    return (
-      <div className="p-2" data-testid="login-menu-non-authz">
-        <Button
-          variant="ghost"
-          className="w-full space-y-1 items-start"
-          disabled
-        >
-          <p className="text-xs text-muted-foreground">
-            Non-Authenticated Mode Setup
-          </p>
         </Button>
       </div>
     );

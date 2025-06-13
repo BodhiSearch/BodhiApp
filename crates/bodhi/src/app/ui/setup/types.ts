@@ -4,13 +4,7 @@ export type Benefit = {
   icon: string;
 };
 
-export type SetupMode = {
-  title: string;
-  description: string;
-  benefits: string[];
-  icon: string;
-  recommended: boolean;
-};
+
 
 export type SetupRequirement = {
   title: string;

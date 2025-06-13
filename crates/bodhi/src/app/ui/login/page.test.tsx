@@ -53,7 +53,7 @@ describe('LoginContent loading states', () => {
         return res(
           ctx.delay(100),
           ctx.status(200),
-          ctx.json({ status: 'ready', authz: true })
+          ctx.json({ status: 'ready' })
         );
       })
     );
@@ -74,8 +74,8 @@ describe('LoginContent with user not Logged In', () => {
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
         return res(ctx.status(200), ctx.json({ logged_in: false }));
       }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready', authz: true }));
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+        return res(ctx.status(200), ctx.json({ status: 'ready' }));
       })
     );
   });
@@ -180,37 +180,7 @@ describe('LoginContent with user Logged In', () => {
   });
 });
 
-describe('LoginContent with non-authz mode', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
-    server.use(
-      rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ logged_in: false }));
-      }),
-      rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(ctx.status(200), ctx.json({ status: 'ready', authz: false }));
-      })
-    );
-  });
 
-  it('should display non-authz warning and disable login button', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
-    });
-    expect(screen.getByText('This app is setup in non-authenticated mode.User login is not available.')).toBeInTheDocument();
-    const loginButton = screen.getByRole('button', { name: /login/i });
-    expect(loginButton).toBeDisabled();
-  });
-
-  it('applies correct styling to disabled state', async () => {
-    await act(async () => {
-      render(<LoginContent />, { wrapper: createWrapper() });
-    });
-    const container = screen.getByRole('button', { name: /login/i }).closest('div');
-    expect(container).toHaveClass('opacity-50 pointer-events-none');
-  });
-});
 
 describe('LoginContent access control', () => {
   it('redirects to setup when app is not setup', async () => {
