@@ -35,7 +35,7 @@ This approach means that **no Tauri-specific testing or debugging tools are need
 │                    (Tauri)                             │
 ├─────────────────────────────────────────────────────────┤
 │              WebView (React Frontend)                   │
-│           React + TypeScript + Vite                    │
+│           React + TypeScript + Next.js v14             │
 ├─────────────────────────────────────────────────────────┤
 │               Tauri Core (Rust)                        │
 │          Native APIs + Backend Services                │

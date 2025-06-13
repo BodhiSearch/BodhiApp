@@ -1,10 +1,10 @@
-# Frontend React Development
+# Frontend Next.js Development
 
-This document provides focused guidance for React+TypeScript frontend development in the Bodhi App, including component patterns, development conventions, and best practices.
+This document provides focused guidance for Next.js+TypeScript frontend development in the Bodhi App, including component patterns, development conventions, and best practices.
 
 ## Required Documentation References
 
-**MUST READ before any React changes:**
+**MUST READ before any Next.js changes:**
 - `ai-docs/01-architecture/api-integration.md` - API integration patterns and query hooks
 - `ai-docs/01-architecture/development-conventions.md` - Naming conventions and component structure
 
@@ -18,9 +18,9 @@ This document provides focused guidance for React+TypeScript frontend developmen
 
 ### Core Technologies
 - **React 18+** with TypeScript for component-based UI development
-- **Vite** for fast build tooling and development server
-- **React Router** for client-side routing and navigation
-- **React Query** for data fetching, caching, and synchronization
+- **Next.js v14.2.6** for full-stack React framework with SSG capabilities
+- **Next.js App Router** for file-based routing and navigation
+- **React Query v3.39.3** for data fetching, caching, and synchronization
 
 ### UI & Styling
 - **Tailwind CSS** - Utility-first CSS framework
@@ -34,19 +34,25 @@ This document provides focused guidance for React+TypeScript frontend developmen
 
 ## Project Structure
 
-### Component Organization
+### Next.js App Directory Organization
 ```
 src/
-├── components/           # Feature-specific components
-│   ├── auth/            # Authentication components
-│   ├── chat/            # Chat interface components
-│   ├── models/          # Model management components
-│   ├── navigation/      # Navigation and header components
-│   ├── setup/           # Setup wizard components
-│   ├── tokens/          # API tokens components
+├── app/                 # Next.js App Router directory
+│   ├── ui/              # UI pages and layouts
+│   │   ├── auth/        # Authentication pages
+│   │   ├── chat/        # Chat interface pages
+│   │   ├── models/      # Model management pages
+│   │   ├── setup/       # Setup wizard pages
+│   │   ├── tokens/      # API tokens pages
+│   │   └── users/       # User management pages
+│   ├── docs/            # Documentation pages
+│   ├── globals.css      # Global styles
+│   ├── layout.tsx       # Root layout component
+│   └── page.tsx         # Root page (redirects to /ui)
+├── components/          # Reusable UI components
+│   ├── navigation/      # Navigation components
 │   ├── ui/              # Common UI components (shadcn/ui)
-│   └── users/           # User management components
-├── pages/               # Page components for routing
+│   └── ThemeProvider.tsx # Theme provider
 ├── hooks/               # Custom React hooks
 ├── lib/                 # Utility functions and API clients
 ├── types/               # TypeScript type definitions
@@ -54,10 +60,10 @@ src/
 ```
 
 ### File Organization Patterns
+- **Pages**: Use Next.js App Router convention (`page.tsx`, `layout.tsx`)
 - **Components**: Use PascalCase (`ComponentName.tsx`) not kebab-case
 - **Tests**: `ComponentName.test.tsx` in same directory as component
-- **Feature-based organization**: `components/` directory (auth/, chat/, models/, navigation/, etc.)
-- **Page components**: Separate structure from feature components
+- **Feature-based organization**: Pages in `app/ui/<feature>/` directories
 - **Custom hooks**: `hooks/` directory with proper naming (`use-feature-name.ts`)
 
 ## Component Development Patterns
@@ -210,32 +216,35 @@ export function useCreateModel(options?: {
 
 ## Routing Patterns
 
-### Route Configuration
-```typescript
-// App.tsx
-<Routes>
-  <Route path="/" element={<Navigate to="/ui" replace />} />
-  <Route path="/ui" element={<HomePage />} />
-  <Route path="/ui/chat" element={<ChatPage />} />
-  <Route path="/ui/models" element={<ModelsPage />} />
-  <Route path="/ui/setup/*" element={<SetupPage />} />
-  <Route path="*" element={<NotFoundPage />} />
-</Routes>
+### Next.js App Router Structure
+```text
+src/app/
+├── page.tsx                 # Root page (redirects to /ui)
+├── layout.tsx              # Root layout
+├── ui/
+│   ├── page.tsx            # UI home page
+│   ├── chat/
+│   │   └── page.tsx        # Chat page
+│   ├── models/
+│   │   └── page.tsx        # Models page
+│   └── setup/
+│       └── page.tsx        # Setup page
+└── not-found.tsx           # 404 page
 ```
 
 ### Navigation Hooks
 ```typescript
-import { useNavigate, useLocation } from "react-router-dom";
+import { useRouter, usePathname } from "next/navigation";
 
 export function NavigationComponent() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const router = useRouter();
+  const pathname = usePathname();
 
   const handleNavigation = () => {
-    navigate("/ui/models");
+    router.push("/ui/models");
   };
 
-  const isActive = location.pathname === "/ui/models";
+  const isActive = pathname === "/ui/models";
 }
 ```
 
@@ -396,13 +405,16 @@ export const ExpensiveComponent = memo(({ data }: Props) => {
 cd crates/bodhi
 
 # Development
-npm run dev
+npm run dev            # Next.js development server
 
 # Build
-npm run build
+npm run build          # Next.js production build
+
+# Start
+npm run start          # Start production server
 
 # Testing
-npm run test           # Watch mode
+npm run test           # Vitest test runner
 
 # Code quality
 npm run format

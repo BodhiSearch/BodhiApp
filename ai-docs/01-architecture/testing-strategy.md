@@ -29,7 +29,7 @@ This document provides a high-level overview of testing approaches and quality a
 ### Technology-Specific Approaches
 
 #### Frontend Testing Stack
-- **Vitest** - Fast unit testing framework with Vite integration
+- **Vitest** - Fast unit testing framework with Next.js integration
 - **Testing Library** - Component testing utilities with accessibility focus
 - **MSW (Mock Service Worker)** - API mocking for reliable tests
 - **Happy DOM** - Lightweight DOM environment for testing

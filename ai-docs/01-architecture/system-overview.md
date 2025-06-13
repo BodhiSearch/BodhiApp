@@ -65,7 +65,7 @@ Bodhi App is a comprehensive Rust-based application that provides local Large La
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Frontend Layer                           │
-│  React + TypeScript + Vite + TailwindCSS + Shadcn UI      │
+│  React + TypeScript + Next.js v14 + TailwindCSS + Shadcn UI│
 └─────────────────────────────────────────────────────────────┘
                               │
 ┌─────────────────────────────────────────────────────────────┐
@@ -248,7 +248,7 @@ Model aliases provide user-friendly names for complex model configurations:
 
 ### Key Technologies
 - **Backend**: Rust, Axum, SQLx, Tokio
-- **Frontend**: React, TypeScript, Vite, TailwindCSS, Shadcn UI
+- **Frontend**: React, TypeScript, Next.js v14, TailwindCSS, Shadcn UI
 - **Desktop**: Tauri
 - **LLM**: llama.cpp integration
 - **API**: OpenAI-compatible endpoints

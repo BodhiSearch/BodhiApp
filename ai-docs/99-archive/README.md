@@ -11,6 +11,8 @@ This section contains historical documents, deprecated materials, and reference 
 
 ### Migration Records
 - **[NextJS to React Migration](nextjs-to-react-migration.md)** - Complete migration documentation
+- **[Vite to Next.js Migration V1](20250612-vite-to-nextjs.md)** - Initial migration plan (deprecated)
+- **[Vite to Next.js Migration V2](vite-to-nextjs-v2.md)** - Revised migration strategy (deprecated)
 - **[Project Conventions](project-conventions.md)** - Previous coding standards and practices
 
 ### Deprecated UI Documentation
@@ -54,7 +56,7 @@ This archive preserves the evolution of the Bodhi App project, including:
 
 ### Migration Documentation
 Complete records of major migrations and refactoring:
-- **Framework Migrations** - NextJS to React+Vite transition
+- **Framework Migrations** - NextJS to React+Vite transition (and back to Next.js)
 - **Structure Changes** - Component organization evolution
 - **Convention Updates** - Coding standard improvements
 - **Deprecation Records** - What was removed and why

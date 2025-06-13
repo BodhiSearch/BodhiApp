@@ -1,5 +1,8 @@
 # Remove Non-Authenticated Mode from Frontend
 
+for references about the app, check file ai-docs/README.md and ai-docs/01-architecture/README.md and follow the references provided there for more info.
+all the frontend code is in crates/bodhi/src
+
 ## Overview
 Following the backend changes to remove non-authenticated mode installation option, this story focuses on cleaning up all frontend code related to the now-deprecated non-authenticated mode. The goal is to simplify the frontend codebase by removing conditional logic that checks for `authz` status, updating authentication flows, and ensuring all components assume authenticated-only operation.
 
@@ -22,7 +25,7 @@ Frontend Behavior:
 - No authz checks in components (always assume authenticated)
 - Simplified login flow without non-authenticated mode messaging
 - Streamlined AppInitializer with authentication-only logic
-- Setup flow proceeds directly to authenticated setup, change the mode setup screen from 2-col to single column, with only Setup button option, removing other info related to this mode setup
+- Setup flow proceeds directly to authenticated setup, change the mode setup screen from 2-col to single column, with single only Setup button option, removing other info related to this mode setup
 - Few steps of setup screens require public access of pages, after Resource Admin, screens are only served to authenticated, otherwise redirected appropriately
 - No authz parameter in API requests
 - Types updated to remove authz fields
