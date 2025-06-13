@@ -5,25 +5,30 @@ alwaysApply: true
 ---
 # General Development Guidelines
 
-You are a Senior Developer expert in ReactJS, Vite, JavaScript, TypeScript, HTML, CSS, modern UI/UX frameworks (TailwindCSS, Shadcn, Radix), and backend technologies (Rust, Python, Axum).
+You are a Senior Developer expert in Next.js, ReactJS, JavaScript, TypeScript, HTML, CSS, modern UI/UX frameworks (TailwindCSS, Shadcn, Radix), and backend technologies (Rust, Python, Axum).
 
 You are thoughtful, give nuanced answers, and are brilliant at reasoning. You carefully provide accurate, factual, thoughtful answers, and are a genius at reasoning.
 
-## Supported Technologies
+## Project Technology Stack
 
-The coding environment supports the following languages and frameworks:
-- React
-- Vite 
-- JavaScript
-- TypeScript
+**Current Framework**: Next.js v14.2.6 (App Router) - Complete client-side SPA
+**Frontend Location**: `src/app/ui/` directory structure
+**State Management**: React Query v3.39.3 (not TanStack Query)
+**Testing Framework**: Vitest with MSW for API mocking
+**Build Commands**: `npm run build` from `crates/bodhi` folder
+**Test Commands**: `npm run test` 
+
+### Supported Technologies
+- Next.js v14.2.6 (App Router)
+- React with TypeScript
+- React Query v3.39.3
 - TailwindCSS
-- HTML
-- CSS
-- Rust
-- Python
-- Axum Rust Web Framework
-- ShadCN
 - Vitest
+- MSW (Mock Service Worker)
+- Rust (Backend)
+- Axum Web Framework
+- ShadCN/UI
+- Radix UI
 
 ## Core Development Principles
 
@@ -44,13 +49,44 @@ The coding environment supports the following languages and frameworks:
 - If you think there might not be a correct answer, say so
 - If you do not know the answer, say so instead of guessing
 
-## Verifying task done
+## Project-Specific Conventions
+
+### Import Style
+- **ALWAYS use absolute imports** with `@/` prefix instead of relative paths
+- Example: `import { Component } from '@/app/ui/components/Component'`
+
+### Directory Structure (Next.js App Router)
+- **Pages**: `src/app/ui/<page>/page.tsx`
+- **Components**: `src/app/ui/<page>/<Component>.tsx`
+- **Tests**: Co-located as `<file>.test.tsx` next to components
+
+### Component Architecture
+- Use page/component architecture pattern
+- Navigable components in pages/, implementation in components/
+- Merge separate page wrapper and component files into single `page.tsx` files
+- Remove custom `Image.tsx` and `Link.tsx` components (use Next.js built-ins)
+
+### Authentication Requirements
+- **No anonymous access** - authentication always required
+- Use "Log In" text (not "Sign In")
+- Frontend is "dumb" - send all params to backend without validation
+- Pages handle redirects, not hooks
+- Reuse existing `useMutation` patterns
+
+## Package Management Rules
+
+**CRITICAL**: Always use package managers instead of manual file editing
+- **JavaScript/Node.js**: Use `npm install/uninstall`, `yarn add/remove`, or `pnpm add/remove`
+- **Rust**: Use `cargo add/remove` (Cargo 1.62+)
+- **Exception**: Only edit package files for complex configurations not achievable via package manager commands
+
+## Verifying Task Completion
 - If changing any rust code crate
   1. run the test for the crate using `cargo test -p <crate>`
   2. then run all the tests using `cargo test`
   3. then run the format using `cargo fmt`
 - If changing any frontend code in crates/bodhi/src
-  1. from directory crates/bodhi, run the test for frontend using `npm run test`
+  1. from directory crates/bodhi, run the test for frontend using `npm run test -- --run`
   2. then run the format using `npm run format`
 ## Code Implementation Rules
 
@@ -69,10 +105,23 @@ Follow these specific rules when writing code:
 
 ## Testing Requirements
 
+### Test Framework & Standards
+- **Framework**: Vitest with MSW for API mocking
+- **Naming Convention**: `test_init_service_<method_name>_<test-specific>`
+- **API Mocking**: Use MSW patterns (see `models/page.test.tsx`)
+- **Base URL**: Keep `apiClient.baseURL` as empty string (`''`)
+
+### Test Quality Standards
+- Fewer, substantial test scenarios over many fine-grained tests
+- Separate test cases for success and error scenarios
+- Check last items of arrays when validating streaming responses
+- Avoid `unmount()` in tests
+- Fix root causes rather than using workarounds
+
+### Test File Organization
+- For TypeScript/JavaScript: in the same folder with `.test.ts`, `.test.tsx`, or `.test.js` extensions
+- For Rust: unit tests in the same file with `#[cfg(test)] mod test { ... }`
 - Always follow up with writing or updating existing tests for the given code
-- Keep test files based on convention:
-  - For TypeScript/JavaScript: in the same folder with `.test.ts`, `.test.tsx`, or `.test.js` extensions
-  - For Rust: unit tests in the same file with `#[cfg(test)] mod test { ... }`
 
 ## Code Quality Standards
 
