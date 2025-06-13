@@ -59,6 +59,7 @@ Modular technical architecture documentation organized by technology stack and d
 #### Reference Documents
 - **[Architecture Summary](01-architecture/ARCHITECTURE_SUMMARY.md)** - High-level architectural overview and key decisions
 - **[Testing Guide](01-architecture/TESTING_GUIDE.md)** - Comprehensive testing guidelines and best practices
+- **[AI IDE Memories](01-architecture/ai-ide-memories.md)** - Refined and consistent memories for AI IDE interactions with the BodhiApp project
 
 ### ⚡ [Features](02-features/) - Application Capabilities
 Feature documentation organized by development status and implementation timeline

@@ -1,0 +1,235 @@
+# Augment Code Guidelines - BodhiApp
+
+## Project Overview
+
+BodhiApp frontend is a complete client-side SPA built with Next.js v14.2.6 App Router, featuring a Rust backend with OAuth 2.0 authentication. The application provides AI chat capabilities with model management, supporting both desktop (Tauri) and web deployments.
+
+## Technology Stack
+
+### Frontend
+- **Framework**: Next.js v14.2.6 (App Router) - Complete client-side SPA
+- **State Management**: React Query v3.39.3 (NOT TanStack Query)
+- **Styling**: TailwindCSS + Shadcn/UI + Radix UI
+- **Testing**: Vitest with MSW for API mocking
+- **PWA**: @ducanh2912/next-pwa configuration
+
+### Backend
+- **Language**: Rust with Axum web framework
+- **Database**: SQLite with SQLx (async, compile-time checked queries)
+- **Runtime**: Tokio for async operations
+- **Authentication**: OAuth 2.0 Authorization Code flow with PKCE
+
+### Development Commands
+```bash
+# Frontend development (from crates/bodhi)
+npm run dev          # Start development server
+npm run build        # Production build
+npm run test         # Run tests in watch mode
+npm run format       # Format code
+
+# Backend development (from project root)
+cargo test           # Run all tests
+cargo test -p <crate> # Run specific crate tests
+cargo fmt            # Format Rust code
+cargo clippy         # Lint Rust code
+```
+## Core Development Principles
+
+### Code Quality Standards
+- Use 2-space indentation consistently
+- Follow DRY principles and write complete, functional, bug-free code
+- Use descriptive variable/function names with "handle" prefix for event functions
+- Focus on readable code over performance optimization
+- Always write/update tests for new code
+- Fix multiple compilation failures in same file in single iteration
+
+### Import & File Organization
+- **ALWAYS use absolute imports** with `@/` prefix instead of relative paths
+- **Directory Structure**: 
+  - Pages: `src/app/ui/<page>/page.tsx`
+  - Components: `src/app/ui/<page>/<Component>.tsx`
+  - Tests: Co-located as `<file>.test.tsx` next to components
+
+### Component Architecture
+- Use page/component architecture pattern
+- Merge separate page wrapper and component files into single `page.tsx` files
+- Layout requires `'use client'` directive with AppHeader and theme handling
+
+## Authentication & Security
+
+### OAuth Implementation
+- **Flow**: SPA-managed OAuth 2.0 Authorization Code flow with PKCE
+- **Frontend Role**: "Dumb" frontend - send all query params to backend without validation
+- **Backend Responsibility**: Handle all OAuth logic, errors, and redirects
+- **Anonymous Access**: Eliminated - authentication always required
+
+### Security Standards
+- **State Parameter**: Cryptographic validation using SHA-256 digest
+- **State Composition**: `scope + 8char_random_id`
+- **Token Client Scopes**: Include `scope_user` (`offline_access` at token scope level)
+- **Client Level Roles**: resource_user, resource_power_user, resource_manager, resource_admin
+- **Pages handle redirects**, not hooks
+- **Reuse existing `useMutation` patterns**
+
+## Testing Standards
+
+### Framework & Configuration
+- **Frontend**: Vitest with MSW for API mocking
+- **Naming Convention**: `test_<file_name>_<method_name>_<test-specific>`
+- **API Mocking**: Use MSW patterns (reference `models/page.test.tsx`)
+- **Base URL**: Keep `apiClient.baseURL` as empty string (`''`)
+
+### Quality Principles
+- Fewer, substantial test scenarios over many fine-grained tests
+- Separate test cases for success and error scenarios
+- Check last items of arrays when validating streaming responses
+- Avoid `unmount()` in tests
+- Fix root causes rather than using workarounds
+
+### Integration Testing
+- Create encrypted secrets files, set AppStatus to Ready
+- Obtain auth tokens and insert session data, set up cookies
+- Use test-utils feature flag pattern for Rust components
+- OAuth test scopes: `'openid email profile roles'`
+
+## Package Management
+
+### Critical Rules
+- **ALWAYS use package managers** instead of manual file editing
+- **JavaScript/Node.js**: Use `npm install/uninstall`, or `pnpm add/remove`
+- **Rust**: Use `cargo add/remove` (Cargo 1.62+)
+- **Exception**: Only edit package files for complex configurations not achievable via package manager commands
+
+## Documentation Standards
+
+### Structure & Organization
+- **AI-first documentation** with hierarchical organization
+- **All documentation must be factually verified** against source code with `filename:linenumber` references
+- **Update `ai-docs/README.md`** when adding/updating files in `ai-docs/` folder
+- **Generate knowledge transfer docs** in `ai-docs/06-knowledge-transfer/` after major tasks
+
+### File Conventions
+- Use kebab-case for file names (e.g., `model-management.md`)
+- Include cross-references to related documents using relative paths
+- Follow hierarchical organization by purpose and audience
+- README.md files function as navigation/index tools
+
+## API Integration Patterns
+
+### Frontend-Backend Communication
+- **Backend Integration**: Uses `useQuery.ts` and `apiClient.ts`
+- **Routing Preference**: Query parameter-based (e.g., `/chat/?id=<id>`) over path parameters
+- **Error Handling**: Let backend handle errors/redirects
+- **Data Fetching**: Use React Query patterns consistently
+
+### Authentication Flow
+- `/auth/initiate` returns:
+  - 401 with `auth_url` when login required
+  - 303 with UI home location when already authenticated
+
+## Migration & Framework Preferences
+
+### Technology Choices
+- **Next.js v14.2.6** preferred over React Router + Vite for SSG capabilities
+- **For Tauri apps** 
+- **Preserve functional features** during framework migrations
+- **Focus structural changes** on framework requirements only
+
+### Build Configuration
+- **PWA**: Configuration with `@ducanh2912/next-pwa`
+- **Webpack**: Settings for ignored folders
+- **PostCSS**: Use `postcss.config.mjs` instead of `.js`
+- **Static Assets**: Include `public/` folder
+- **Build-time markdown generation** preferred over runtime processing
+
+## Service & Library Design
+
+### Architecture Patterns
+- Unified app initialization with single service call pattern
+- Service builder pattern with dependency injection
+- Multi-phase initialization: setup → load/create configs → apply overrides → initialize components
+- Error enums with `thiserror` over struct-based errors
+
+### Library Design
+- Separate publishable library crates with platform-agnostic design
+- builder patterns using `derive-builder` crate
+- Functional approaches over object wrappers for test utilities
+
+## Development Workflow
+
+### Task Verification
+1. **Rust changes**: Run `cargo test -p <crate>`, then `cargo test`, then `cargo fmt`
+2. **Frontend changes**: From `crates/bodhi`, run `npm run test`, then `npm run format`
+
+### Code Implementation
+- Follow established patterns from similar existing files
+- Include all required imports and proper naming conventions
+- Fully implement all requested functionality - leave NO todos or placeholders
+- Always follow up with writing or updating tests
+
+## Documentation References
+
+For detailed implementation guidance, always reference:
+- **`ai-docs/01-architecture/`** - Technical architecture and development standards
+- **`ai-docs/02-features/`** - Feature implementation status and requirements
+- **`ai-docs/03-crates/`** - Individual Rust crate documentation
+- **`ai-docs/06-knowledge-transfer/`** - Implementation guides and tutorials
+
+## Key Constraints
+
+- **No anonymous access** - authentication always required
+- **Keep React Query v3.39.3** - do not upgrade to TanStack Query
+- **Preserve PWA functionality** during framework migrations
+- **Clean code removal** without explanatory comments when deleting functionality
+- **Fix root causes** of issues rather than using workarounds
+
+## Error Handling & Debugging
+
+### Frontend Error Patterns
+- Use React Query error boundaries and error states
+- Handle API errors gracefully with user-friendly messages
+- Log errors appropriately for debugging without exposing sensitive data
+- Implement retry logic for transient failures
+
+### Backend Error Standards
+- Use `thiserror` for error enums with proper error conversion
+- Implement proper HTTP status codes and error responses
+- Include error metadata for internationalization support
+
+## Performance & Optimization
+
+### Frontend Security
+- Validate all user inputs on the frontend for UX, but rely on backend validation for security
+- Implement proper CSRF protection patterns
+- Use secure storage for sensitive data (avoid localStorage for tokens)
+- Follow OAuth 2.0 security best practices
+
+### Backend Security
+- Implement proper input validation and sanitization
+- Use parameterized queries to prevent SQL injection
+- Follow principle of least privilege for database access
+
+## Accessibility & UX Standards
+
+## Monitoring & Observability
+
+### Logging Standards
+- Implement structured logging with appropriate log levels
+- Include correlation IDs for request tracing
+- Log security events and authentication attempts
+- Avoid logging sensitive information
+
+## Contributing Guidelines
+
+### Code Review Standards
+- Review for security vulnerabilities and performance issues
+- Ensure proper test coverage for new features
+- Verify documentation updates accompany code changes
+- Check for adherence to established patterns and conventions
+
+### Git Workflow
+- Use descriptive commit messages following conventional commits
+- Ensure all tests pass
+- Update documentation as part of feature development
+
+This comprehensive guideline ensures consistent development practices across the BodhiApp project while maintaining high code quality, security, and user experience standards.
