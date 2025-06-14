@@ -198,15 +198,23 @@ export function useLogout(
   options?: UseMutationOptions<AxiosResponse<void>, AxiosError<ErrorResponse>, void, unknown>
 ): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, void, unknown> {
   const queryClient = useQueryClient();
-  return useMutationQuery<void, void>(ENDPOINT_LOGOUT, 'post', {
-    ...options,
-    onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries();
-      if (options?.onSuccess) {
-        options.onSuccess(data, variables, context);
-      }
+  return useMutationQuery<void, void>(
+    ENDPOINT_LOGOUT,
+    'post',
+    {
+      ...options,
+      onSuccess: (data, variables, context) => {
+        queryClient.invalidateQueries();
+        if (options?.onSuccess) {
+          options.onSuccess(data, variables, context);
+        }
+      },
     },
-  });
+    {
+      maxRedirects: 0, // Don't follow redirects automatically
+      validateStatus: (status) => status === 303 || status === 200 || status === 201, // Accept 303 redirects and success codes
+    }
+  );
 }
 
 export function useDownloads(page: number, pageSize: number) {

@@ -2,31 +2,20 @@
 
 ## Overview
 
-Bodhi App implements a flexible authentication system that supports both single-user and multi-user scenarios. The system is designed around OAuth2/OpenID Connect standards with Keycloak as the identity provider, while also supporting a no-authentication mode for local development and personal use.
+Bodhi App implements a secure authentication system based on OAuth2/OpenID Connect standards with Keycloak as the identity provider. The system requires authentication for all access, supporting both single-user and multi-user scenarios with role-based access control.
 
-## Authentication Modes
+## Authentication Architecture
 
-### 1. No Authentication Mode
-**Use Case**: Personal use, local development, single-user scenarios
-
-**Characteristics**:
-- No login required
-- All features immediately accessible
-- No user management overhead
-- Suitable for desktop applications
-- Local configuration only
-
-**Security Model**: Trust-based (local environment assumed secure)
-
-### 2. OAuth2 Authentication Mode
-**Use Case**: Multi-user environments, team collaboration, enterprise deployments
+### OAuth2 Authentication (Required)
+**Use Case**: All deployments - single-user, multi-user, team collaboration, enterprise
 
 **Characteristics**:
-- External identity provider (Keycloak)
+- External identity provider (Keycloak) required
 - Role-based access control
 - Secure token management
-- Multi-user support
+- Multi-user support with single-user capability
 - Centralized user management
+- "Dumb frontend" architecture - all validation on backend
 
 **Security Model**: Zero-trust with token-based authentication
 
@@ -38,18 +27,7 @@ Application Start
     ↓
 Check Configuration
     ↓
-┌─────────────────┐    ┌──────────────────┐
-│ No Auth Mode    │    │ OAuth2 Mode      │
-│ - Direct Access │    │ - Setup Required │
-│ - Local Config  │    │ - External Auth  │
-└─────────────────┘    └──────────────────┘
-    ↓                      ↓
-Ready to Use          Registration Flow
-```
-
-### OAuth2 Setup Flow
-```
-Setup Initiation
+OAuth2 Setup Required
     ↓
 External Auth Server Configuration
     ↓
@@ -66,17 +44,37 @@ User Access Request
     ↓
 Authentication Check
     ↓
+┌─────────────┐    ┌─────────────┐
+│ Valid Token │    │ No/Invalid  │
+│ - Continue  │    │ - Redirect  │
+└─────────────┘    └─────────────┘
+                       ↓
+                OAuth2 Login Flow
+                       ↓
+                Frontend sends ALL
+                query params to backend
+                       ↓
+                Backend validates and
+                determines redirect
+```
+
+### Backend-Driven Authentication Logic
+```
+Frontend Request
+    ↓
+Send all data to backend
+    ↓
+Backend validates OAuth params
+    ↓
 ┌─────────────────┐    ┌──────────────────┐
-│ No Auth Mode    │    │ OAuth2 Mode      │
-│ - Allow Access  │    │ - Check Token    │
+│ Valid OAuth     │    │ Invalid OAuth    │
+│ - Create session│    │ - Return error   │
+│ - HTTP 303      │    │ - Error message  │
+│ - Location hdr  │    │ - HTTP 4xx       │
 └─────────────────┘    └──────────────────┘
-                           ↓
-                    ┌─────────────┐    ┌─────────────┐
-                    │ Valid Token │    │ No/Invalid  │
-                    │ - Continue  │    │ - Redirect  │
-                    └─────────────┘    └─────────────┘
-                                           ↓
-                                    OAuth2 Login Flow
+    ↓                      ↓
+Frontend redirects     Frontend shows error
+to Location header     and redirects to login
 ```
 
 ## Role-Based Access Control
@@ -186,10 +184,10 @@ Expiration/Logout      Manual Revocation
 ## Deployment Considerations
 
 ### Single-User Deployment
-- **Desktop Application**: No authentication overhead
-- **Local Development**: Simplified setup
-- **Personal Use**: Direct feature access
-- **Offline Capability**: No external dependencies
+- **Desktop Application**: OAuth2 required but simplified setup
+- **Local Development**: Keycloak instance required
+- **Personal Use**: Single user with admin role
+- **Secure by Default**: No authentication bypass options
 
 ### Multi-User Deployment
 - **Server Environment**: Centralized authentication
@@ -197,11 +195,11 @@ Expiration/Logout      Manual Revocation
 - **Enterprise Integration**: Existing identity infrastructure
 - **Scalability**: Support for growing user base
 
-### Hybrid Deployment
-- **Development to Production**: Smooth transition path
-- **Feature Parity**: Same features regardless of auth mode
-- **Configuration Driven**: Runtime authentication mode selection
-- **Migration Support**: Convert between authentication modes
+### Deployment Consistency
+- **Unified Architecture**: Same authentication flow for all deployments
+- **Security First**: No authentication bypass modes
+- **Configuration Driven**: OAuth2 server configuration only
+- **Simplified Maintenance**: Single authentication path to support
 
 ## Operational Aspects
 
@@ -225,10 +223,10 @@ Expiration/Logout      Manual Revocation
 
 ## Design Principles
 
-### Flexibility
-- **Mode Selection**: Choose appropriate authentication for use case
-- **Progressive Enhancement**: Start simple, add security as needed
-- **Configuration Driven**: Runtime behavior modification
+### Consistency
+- **Single Authentication Path**: OAuth2 required for all deployments
+- **Secure by Default**: No authentication bypass options
+- **Configuration Driven**: OAuth2 server configuration only
 
 ### Security
 - **Defense in Depth**: Multiple security layers
@@ -266,5 +264,5 @@ Expiration/Logout      Manual Revocation
 
 - **[Implementation Details](../02-features/implemented/authentication.md)** - Technical implementation
 - **[App Status System](app-status.md)** - Application state management
-- **[Backend Integration](backend-integration.md)** - API integration patterns
-- **[Frontend Architecture](frontend-architecture.md)** - UI authentication integration
+- **[API Integration](api-integration.md)** - "Dumb frontend" patterns and OAuth examples
+- **[Frontend Next.js](frontend-react.md)** - Frontend authentication patterns and backend-driven validation

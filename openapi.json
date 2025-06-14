@@ -306,8 +306,8 @@
         "summary": "Logout the current user by destroying their session",
         "operationId": "logoutUser",
         "responses": {
-          "200": {
-            "description": "Logout successful, redirects to login page",
+          "303": {
+            "description": "Logout successful, redirect to login page",
             "headers": {
               "Location": {
                 "schema": {

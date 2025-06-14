@@ -1,12 +1,16 @@
 vi.mock('framer-motion', () => {
   const React = require('react');
   return {
-    motion: new Proxy({}, {
-      get: (_target, _prop) => {
-        return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
+    motion: new Proxy(
+      {},
+      {
+        get: (_target, _prop) => {
+          return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
+        },
       }
-    }),
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+    ),
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
     useAnimation: () => ({}),
   };
 });
@@ -32,16 +36,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT } from '@/lib/constants';
@@ -153,7 +148,7 @@ describe('ResourceAdminPage', () => {
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
           ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
+          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
         );
       })
     );
@@ -177,7 +172,7 @@ describe('ResourceAdminPage', () => {
         return res(
           ctx.delay(100),
           ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
+          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
         );
       })
     );
@@ -258,10 +253,7 @@ describe('ResourceAdminPage', () => {
         return res(ctx.json({ status: 'resource-admin' }));
       }),
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(303),
-          ctx.set('Location', 'https://example.com/redirected'),
-        );
+        return res(ctx.status(303), ctx.set('Location', 'https://example.com/redirected'));
       })
     );
 

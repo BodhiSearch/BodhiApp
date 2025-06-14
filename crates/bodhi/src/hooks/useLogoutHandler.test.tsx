@@ -9,32 +9,20 @@ import { setupServer } from 'msw/node';
 import React from 'react';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock useToast hook
-const toastMock = vi.fn();
-vi.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({ toast: toastMock }),
-}));
-
 const server = setupServer();
-const pushMock = vi.fn();
-
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: pushMock,
-  }),
-}));
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
 beforeEach(() => {
   server.resetHandlers();
-  pushMock.mockClear();
-  toastMock.mockClear();
 });
 
 // Simple component that uses the useLogoutHandler hook
-const LogoutButton: React.FC = () => {
-  const { logout, isLoading: isLoggingOut } = useLogoutHandler();
+const LogoutButton: React.FC<{ onSuccess?: (response: any) => void; onError?: (message: string) => void }> = ({
+  onSuccess,
+  onError,
+}) => {
+  const { logout, isLoading: isLoggingOut } = useLogoutHandler({ onSuccess, onError });
   return (
     <Button onClick={() => logout()} disabled={isLoggingOut}>
       {isLoggingOut ? 'Logging out...' : 'Log Out'}
@@ -43,25 +31,22 @@ const LogoutButton: React.FC = () => {
 };
 
 describe('useLogoutHandler', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
-    toastMock.mockClear();
-  });
+  it('calls onSuccess callback when logout succeeds', async () => {
+    const mockOnSuccess = vi.fn();
+    const mockOnError = vi.fn();
 
-  it('renders logout button and handles successful logout', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
         return res(
           ctx.delay(100),
-          ctx.status(200),
-          ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.json({})
+          ctx.status(201),
+          ctx.set('Location', 'http://localhost:1135/ui/login'),
+          ctx.set('Content-Length', '0')
         );
       })
     );
 
-    render(<LogoutButton />, { wrapper: createWrapper() });
+    render(<LogoutButton onSuccess={mockOnSuccess} onError={mockOnError} />, { wrapper: createWrapper() });
 
     const logoutButton = screen.getByRole('button', { name: 'Log Out' });
     expect(logoutButton).toBeInTheDocument();
@@ -70,17 +55,53 @@ describe('useLogoutHandler', () => {
 
     expect(screen.getByRole('button', { name: 'Logging out...' })).toBeInTheDocument();
     expect(logoutButton).toBeDisabled();
+
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith('http://localhost:1135/ui/test/login');
+      expect(mockOnSuccess).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 201,
+          headers: expect.objectContaining({ location: 'http://localhost:1135/ui/login' }),
+        })
+      );
       expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
     });
+
     expect(logoutButton).not.toBeDisabled();
+    expect(mockOnError).not.toHaveBeenCalled();
   });
 
-  it('handles logout API error and shows toast message', async () => {
+  it('calls onError callback when logout fails', async () => {
+    const mockOnSuccess = vi.fn();
+    const mockOnError = vi.fn();
+
     server.use(
-      rest.post(`*${ENDPOINT_LOGOUT}`, (req, res, ctx) => {
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
         return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
+      })
+    );
+
+    render(<LogoutButton onSuccess={mockOnSuccess} onError={mockOnError} />, { wrapper: createWrapper() });
+
+    const logoutButton = screen.getByRole('button', { name: 'Log Out' });
+    await userEvent.click(logoutButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
+    });
+
+    expect(logoutButton).not.toBeDisabled();
+    expect(mockOnSuccess).not.toHaveBeenCalled();
+    expect(mockOnError).toHaveBeenCalledWith('Internal Server Error');
+  });
+
+  it('handles logout without callbacks', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
+        return res(
+          ctx.status(201),
+          ctx.set('Location', 'http://localhost:1135/ui/login'),
+          ctx.set('Content-Length', '0')
+        );
       })
     );
 
@@ -94,14 +115,5 @@ describe('useLogoutHandler', () => {
     });
 
     expect(logoutButton).not.toBeDisabled();
-    expect(pushMock).not.toHaveBeenCalled();
-
-    // Check if toast was called with the correct error message
-    expect(toastMock).toHaveBeenCalledWith({
-      variant: 'destructive',
-      title: 'Logout failed',
-      description: 'Message: Internal Server Error. Try again later.',
-      duration: 5000,
-    });
   });
 });

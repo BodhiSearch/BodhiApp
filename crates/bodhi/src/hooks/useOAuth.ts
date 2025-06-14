@@ -24,10 +24,15 @@ export function useOAuthInitiate(
   options?: UseOAuthInitiateOptions
 ): UseMutationResult<AxiosResponse<AuthInitiateResponse>, AxiosError<ErrorResponse>, void> {
   return useMutation<AxiosResponse<AuthInitiateResponse>, AxiosError<ErrorResponse>, void>(
-    () => apiClient.post(ENDPOINT_AUTH_INITIATE, {}, {
-      maxRedirects: 0, // Don't follow redirects automatically
-      validateStatus: (status) => status === 303 || status === 200 // Accept 303 redirects and 200 success
-    }),
+    () =>
+      apiClient.post(
+        ENDPOINT_AUTH_INITIATE,
+        {},
+        {
+          maxRedirects: 0, // Don't follow redirects automatically
+          validateStatus: (status) => status === 303 || status === 200, // Accept 303 redirects and 200 success
+        }
+      ),
     {
       onSuccess: (response) => {
         options?.onSuccess?.(response);

@@ -13,18 +13,90 @@ This document provides comprehensive guidance for frontend-backend API integrati
 
 ## Architecture Overview
 
-The frontend uses a layered approach for backend communication:
+The frontend uses a **"dumb frontend"** layered approach for backend communication, where the frontend focuses on data presentation and the backend handles all business logic:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                React Components                         │
+│  React Components (Presentation & User Interaction)     │
 ├─────────────────────────────────────────────────────────┤
-│  Custom Hooks (useQuery, useMutation)                   │
+│  Custom Hooks (Data Operations, useQuery, useMutation)  |
 ├─────────────────────────────────────────────────────────┤
 │  API Client (Axios) + Query Client (React Query)        │
 ├─────────────────────────────────────────────────────────┤
-│  Backend API Endpoints                                  │
+│  Backend API Endpoints (Business Logic & Validation)    │
 └─────────────────────────────────────────────────────────┘
+```
+
+### Dumb Frontend Principles
+
+1. **Pass-Through Pattern**: Frontend sends all available data to backend without filtering
+2. **Backend-Driven Logic**: All validation, business rules, and flow control on backend
+3. **Minimal Frontend Validation**: Only basic UX validation (required fields, format hints)
+4. **Error Display**: Show backend-provided error messages without interpretation
+5. **Page-Based Actions**: Components handle UI actions, hooks handle data operations
+
+### Example: OAuth Callback Pattern
+
+The OAuth callback demonstrates the dumb frontend approach - send all query parameters to backend and let backend handle validation and flow control:
+
+**✅ Preferred: Pass-through all parameters**
+```typescript
+// OAuth callback page - send ALL query params to backend
+export function OAuthCallbackPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  useEffect(() => {
+    // Send ALL query parameters to backend - no filtering or validation
+    const allParams = Object.fromEntries(searchParams.entries());
+    oauthCallback.mutate(allParams); // ✅ Backend handles all OAuth logic
+  }, []);
+
+  return <div>Processing authentication...</div>;
+}
+
+// Hook focuses only on API call
+export function useOAuthCallback(options?: {
+  onSuccess?: (response: any) => void;
+  onError?: (message: string) => void;
+}) {
+  return useMutation({
+    mutationFn: (params: Record<string, string>) =>
+      apiClient.post('/auth/callback', params), // ✅ Send all params as-is
+    onSuccess: (response) => {
+      options?.onSuccess?.(response);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Authentication failed';
+      options?.onError?.(message); // ✅ Pass backend error message
+    },
+  });
+}
+```
+
+**❌ Avoid: Frontend validation and filtering**
+```typescript
+// Don't do this - frontend shouldn't validate OAuth parameters
+export function OAuthCallbackPage() {
+  const searchParams = useSearchParams();
+
+  // ❌ Frontend shouldn't validate OAuth flow
+  const code = searchParams.get('code');
+  const state = searchParams.get('state');
+  const error = searchParams.get('error');
+
+  if (error) {
+    setError('OAuth error: ' + error); // ❌ Frontend interpreting OAuth errors
+    return;
+  }
+
+  if (!code || !state) {
+    setError('Invalid OAuth response'); // ❌ Frontend making business decisions
+    return;
+  }
+
+  // ❌ Frontend filtering data before sending to backend
+  oauthCallback.mutate({ code, state }); // Missing other potential params
+}
 ```
 
 ## API Client Configuration

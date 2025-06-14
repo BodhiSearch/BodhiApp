@@ -38,14 +38,14 @@ Modular technical architecture documentation organized by technology stack and d
 - **[Roadmap](01-architecture/roadmap.md)** - Strategic direction, planned improvements, and future architecture evolution including microservices, performance enhancements, and security improvements
 
 #### Technology Stack Guides
-- **[Frontend Next.js](01-architecture/frontend-react.md)** - Next.js v14 development patterns, component structure, and TypeScript conventions
+- **[Frontend Next.js](01-architecture/frontend-react.md)** - Next.js v14 development patterns, "dumb frontend" architecture, component structure, TypeScript conventions, and backend-driven validation patterns
 - **[Rust Backend](01-architecture/rust-backend.md)** - Rust backend development, service patterns, database integration, real-time communication (SSE/WebSocket), logging & observability, and settings service architecture
 - **[Backend Error & L10n](01-architecture/backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
 - **[Tauri Desktop](01-architecture/tauri-desktop.md)** - Desktop application architecture and native OS integration
 - **[Authentication](01-architecture/authentication.md)** - OAuth2 integration, JWT handling, and security implementation
 
 #### Development Standards
-- **[API Integration](01-architecture/api-integration.md)** - Frontend-backend integration patterns, query hooks, error handling, local storage integration, implementation anomalies, and best practices summary
+- **[API Integration](01-architecture/api-integration.md)** - Frontend-backend integration patterns, "dumb frontend" principles, OAuth callback examples, query hooks, error handling, and best practices summary
 - **[Development Conventions](01-architecture/development-conventions.md)** - Coding standards, naming conventions, best practices, verification status, and source code references
 - **[UI Design System](01-architecture/ui-design-system.md)** - Design system foundations, component library, and visual consistency
 

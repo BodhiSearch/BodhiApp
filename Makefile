@@ -44,10 +44,10 @@ ci.build: ## Build the Tauri application
 	cargo tauri build $${TARGET:+--target $${TARGET}} --ci --config '{"tauri": {"updater": {"active": false}}}'
 
 ci.app-pnpm: ## Install pnpm dependencies for the app
-	cd crates/bodhi && pnpm install
+	cd crates/bodhi && npm install
 
 ci.ui: ## Run UI tests with coverage
-	cd crates/bodhi && pnpm run test
+	cd crates/bodhi && npm run test
 
 release-ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."
@@ -108,6 +108,6 @@ ts-client: ## Build the TypeScript types package
 	@echo "✓ ts-client package built successfully"
 
 ui.test:
-	cd crates/bodhi && pnpm run test
+	cd crates/bodhi && npm run test
 
 .PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client ui.test help

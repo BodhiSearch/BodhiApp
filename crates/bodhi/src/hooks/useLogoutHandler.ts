@@ -1,22 +1,20 @@
-import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useLogout } from '@/hooks/useQuery';
-import { ROUTE_DEFAULT } from '@/lib/constants';
-import { useRouter } from 'next/navigation';
 
-export function useLogoutHandler() {
-  const router = useRouter();
-  const { showError } = useToastMessages();
+interface UseLogoutHandlerOptions {
+  onSuccess?: (response: any) => void;
+  onError?: (message: string) => void;
+}
 
+export function useLogoutHandler(options?: UseLogoutHandlerOptions) {
   const { mutate: logout, isLoading } = useLogout({
     onSuccess: (response) => {
-      const redirectUrl = response.headers['location'] || ROUTE_DEFAULT;
-      router.push(redirectUrl);
+      options?.onSuccess?.(response);
     },
     onError: (error) => {
       console.error('Logout failed:', error);
       const errorMessage =
         error.response?.data?.error?.message || error.message || 'An unexpected error occurred. Please try again.';
-      showError('Logout failed', `Message: ${errorMessage}. Try again later.`);
+      options?.onError?.(errorMessage);
     },
   });
 

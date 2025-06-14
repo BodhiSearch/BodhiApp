@@ -3,11 +3,7 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createWrapper } from '@/tests/wrapper';
-import {
-  extractOAuthParams,
-  useOAuthCallback,
-  useOAuthInitiate,
-} from './useOAuth';
+import { extractOAuthParams, useOAuthCallback, useOAuthInitiate } from './useOAuth';
 import { ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE } from './useQuery';
 
 const server = setupServer();
@@ -17,7 +13,8 @@ afterAll(() => server.close());
 
 describe('extractOAuthParams', () => {
   it('extracts all query parameters without filtering', () => {
-    const url = 'https://example.com/callback?code=abc123&state=xyz789&error=access_denied&error_description=User%20denied%20access';
+    const url =
+      'https://example.com/callback?code=abc123&state=xyz789&error=access_denied&error_description=User%20denied%20access';
     const params = extractOAuthParams(url);
 
     expect(params).toEqual({
@@ -29,7 +26,8 @@ describe('extractOAuthParams', () => {
   });
 
   it('extracts all parameters including custom ones', () => {
-    const url = 'https://example.com/callback?code=abc123&state=xyz789&session_state=sess123&iss=https://issuer.com&custom_param=value';
+    const url =
+      'https://example.com/callback?code=abc123&state=xyz789&session_state=sess123&iss=https://issuer.com&custom_param=value';
     const params = extractOAuthParams(url);
 
     expect(params).toEqual({
@@ -59,14 +57,14 @@ describe('useOAuthInitiate', () => {
         return res(
           ctx.status(303), // 303 redirect to OAuth URL
           ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
+          ctx.set('Content-Length', '0')
         );
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     result.current.mutate();
 
@@ -102,10 +100,9 @@ describe('useOAuthInitiate', () => {
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     result.current.mutate();
 
@@ -127,10 +124,9 @@ describe('useOAuthInitiate', () => {
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     result.current.mutate();
 
@@ -148,14 +144,16 @@ describe('useOAuthInitiate', () => {
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(303)); // No Location header
+        return res(
+          ctx.status(303), // No Location header
+          ctx.set('Content-Length', '0')
+        );
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     result.current.mutate();
 
@@ -182,10 +180,9 @@ describe('useOAuthInitiate', () => {
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     result.current.mutate();
 
@@ -205,17 +202,13 @@ describe('useOAuthCallback', () => {
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({ success: true })
-        );
+        return res(ctx.status(200), ctx.set('Content-Length', '0'));
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     const callbackRequest = {
       code: 'auth_code_123',
@@ -231,7 +224,6 @@ describe('useOAuthCallback', () => {
     expect(mockOnSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 200,
-        data: { success: true },
       })
     );
     expect(mockOnError).not.toHaveBeenCalled();
@@ -256,10 +248,9 @@ describe('useOAuthCallback', () => {
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     const callbackRequest = {
       code: 'invalid_code',
@@ -286,10 +277,9 @@ describe('useOAuthCallback', () => {
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     const callbackRequest = {
       code: 'auth_code_123',
@@ -312,17 +302,13 @@ describe('useOAuthCallback', () => {
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (req, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({ success: true })
-        );
+        return res(ctx.status(200), ctx.set('Content-Length', '0'));
       })
     );
 
-    const { result } = renderHook(
-      () => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }),
-      { wrapper: createWrapper() }
-    );
+    const { result } = renderHook(() => useOAuthCallback({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
 
     const callbackRequest = {
       code: 'auth_code_123',

@@ -5,7 +5,7 @@ use axum::{
   body::Body,
   extract::State,
   http::{
-    header::{HeaderMap, LOCATION},
+    header::{HeaderMap, LOCATION, CONTENT_LENGTH},
     StatusCode,
   },
   response::{IntoResponse, Response},
@@ -74,6 +74,7 @@ pub async fn auth_initiate_handler(
         Response::builder()
           .status(StatusCode::SEE_OTHER)
           .header(LOCATION, ui_home)
+          .header(CONTENT_LENGTH, "0")
           .body(Body::empty())
           .unwrap()
           .into_response(),
@@ -121,6 +122,7 @@ pub async fn auth_initiate_handler(
         Response::builder()
           .status(StatusCode::SEE_OTHER)
           .header(LOCATION, login_url)
+          .header(CONTENT_LENGTH, "0")
           .body(Body::empty())
           .unwrap()
           .into_response(),
@@ -291,6 +293,7 @@ pub async fn auth_callback_handler(
     Response::builder()
       .status(StatusCode::SEE_OTHER)
       .header(LOCATION, ui_setup_resume)
+      .header(CONTENT_LENGTH, "0")
       .body(Body::empty())
       .unwrap()
       .into_response(),
@@ -346,7 +349,7 @@ pub enum LogoutError {
     tag = "auth",
     operation_id = "logoutUser",
     responses(
-        (status = 200, description = "Logout successful, redirects to login page",
+        (status = 303, description = "Logout successful, redirect to login page",
          headers(
              ("Location" = String, description = "Frontend login page URL")
          )
@@ -361,10 +364,10 @@ pub async fn logout_handler(
   let setting_service = state.app_service().setting_service();
   session.delete().await.map_err(LogoutError::from)?;
   let ui_login = format!("{}/ui/login", setting_service.frontend_url());
-  // TODO: sending 200 instead of 302 to avoid axios/xmlhttprequest following redirects
   let response = Response::builder()
-    .status(StatusCode::OK)
+    .status(StatusCode::SEE_OTHER)
     .header(LOCATION, ui_login)
+    .header(CONTENT_LENGTH, "0")
     .body(Body::empty())
     .unwrap();
   Ok(response)
@@ -1150,7 +1153,7 @@ mod tests {
     assert!(record.is_some());
 
     let resp = client.post("/app/logout").await;
-    resp.assert_status(StatusCode::OK);
+    resp.assert_status(StatusCode::SEE_OTHER);
     let location = resp.header("Location");
     let location = location.to_str().unwrap();
     assert_eq!("http://localhost:1135/ui/login", location);
