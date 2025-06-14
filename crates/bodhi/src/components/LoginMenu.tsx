@@ -5,8 +5,9 @@ import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { ROUTE_DEFAULT } from '@/lib/constants';
+import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { useState } from 'react';
+import { redirect, useRouter } from 'next/navigation';
 
 export function LoginMenu() {
   const { data: userInfo, isLoading: userLoading } = useUser();
@@ -16,7 +17,7 @@ export function LoginMenu() {
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.headers?.location || ROUTE_DEFAULT;
-      window.location.href = redirectUrl;
+      redirect(redirectUrl);
     },
     onError: (message) => {
       // Reset local storage and cookies on logout failure
@@ -30,7 +31,7 @@ export function LoginMenu() {
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
       // Redirect to login page
-      window.location.href = '/ui/login';
+      redirect(ROUTE_LOGIN);
     },
   });
 
@@ -39,7 +40,7 @@ export function LoginMenu() {
       // Handle redirect based on backend response
       // 303 response: Location header (OAuth URL or already authenticated)
       if (response.headers?.location) {
-        window.location.href = response.headers.location;
+        redirect(response.headers.location);
       } else {
         setError('Auth URL not found in response. Please try again.');
       }
