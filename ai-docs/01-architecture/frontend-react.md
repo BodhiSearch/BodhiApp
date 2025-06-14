@@ -265,13 +265,125 @@ export function NavigationComponent() {
 - Prefer composition over prop drilling
 - Keep context providers focused and specific
 
-## Page-Based Action Handling Convention
+## Frontend Architecture Philosophy
 
-### Principle: Pages Handle Actions, Hooks Handle Queries
+### Dumb Frontend Principle
 
-For better code clarity and maintainability, **page components should handle action-based logic** (redirects, navigation, UI state changes) while **hooks should focus purely on data operations**.
+The Bodhi App follows a **"dumb frontend"** architecture where the frontend focuses on presentation and user interaction while the backend handles all business logic, validation, and flow control decisions.
 
-### Pattern: OAuth Flow Example
+#### Core Principles
+
+1. **Backend-Driven Logic**: All business logic, validation, and flow decisions happen on the backend
+2. **Frontend as Presentation Layer**: Frontend focuses on displaying data and collecting user input
+3. **Minimal Frontend Validation**: Only basic UX validation (required fields, format hints) - rely on backend for security
+4. **Pass-Through Pattern**: Frontend sends all available data to backend without filtering or interpretation
+
+### Backend-Driven Validation and Logic Flow
+
+**✅ Preferred: Send all data to backend**
+```typescript
+// OAuth callback - send ALL query parameters to backend
+export function OAuthCallbackPage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  const oauthCallback = useOAuthCallback({
+    onSuccess: (response) => {
+      // Backend determines where to redirect
+      const redirectUrl = response.headers?.location || '/ui/chat';
+      window.location.href = redirectUrl;
+    },
+    onError: (message) => {
+      // Display backend-provided error message
+      setError(message);
+      router.push('/ui/login');
+    },
+  });
+
+  useEffect(() => {
+    // Send ALL query params to backend - let backend validate and process
+    const allParams = Object.fromEntries(searchParams.entries());
+    oauthCallback.mutate(allParams); // ✅ Backend handles all validation
+  }, []);
+
+  return <div>Processing authentication...</div>;
+}
+```
+
+**❌ Avoid: Frontend validation and logic**
+```typescript
+// Don't do this - frontend shouldn't validate OAuth parameters
+export function OAuthCallbackPage() {
+  const searchParams = useSearchParams();
+
+  // ❌ Frontend shouldn't validate OAuth flow
+  const code = searchParams.get('code');
+  const state = searchParams.get('state');
+
+  if (!code || !state) {
+    setError('Invalid OAuth response'); // ❌ Frontend making business decisions
+    return;
+  }
+
+  // ❌ Frontend filtering data before sending to backend
+  oauthCallback.mutate({ code, state });
+}
+```
+
+### Page-Based Action Handling Convention
+
+**Pages handle actions, hooks handle data operations** - this separation ensures clear responsibility boundaries and better testability.
+
+#### Pattern: OAuth Flow Example
+
+**✅ Preferred: Page handles redirects and UI logic**
+```typescript
+// Hook focuses on data operation only
+export const useOAuthInitiate = (options?: {
+  onSuccess?: (response: AuthInitiateResponse) => void;
+  onError?: (message: string) => void;
+}) => {
+  return useMutation({
+    onSuccess: (response) => {
+      options?.onSuccess?.(response); // ✅ Just call callback with full response
+    },
+    onError: (error) => {
+      const message = error?.response?.data?.error?.message || 'Authentication failed';
+      options?.onError?.(message); // ✅ Pass backend error message
+    },
+  });
+};
+
+// Page component handles the redirect logic
+export function LoginPage() {
+  const [error, setError] = useState<string | null>(null);
+
+  const oauthInitiate = useOAuthInitiate({
+    onSuccess: (response) => {
+      // Backend provides redirect URL via Location header
+      const authUrl = response.headers?.location;
+      if (authUrl) {
+        window.location.href = authUrl; // ✅ Page handles redirect
+      } else {
+        setError('No authentication URL provided'); // ✅ Handle missing data
+      }
+    },
+    onError: (message) => {
+      setError(message); // ✅ Display backend error
+    },
+  });
+
+  return (
+    <AuthCard
+      error={error}
+      actions={[{
+        label: 'Sign In',
+        onClick: () => oauthInitiate.mutate(), // ✅ Page triggers action
+      }]}
+    />
+  );
+}
+```
 
 **❌ Avoid: Hook handling redirects**
 ```typescript
@@ -285,48 +397,108 @@ export const useOAuthInitiate = () => {
 };
 ```
 
-**✅ Preferred: Page handles redirects**
+### Benefits of Dumb Frontend Architecture
+
+1. **Security**: All validation and business logic on backend prevents client-side bypasses
+2. **Consistency**: Single source of truth for business rules and validation
+3. **Maintainability**: Changes to business logic only require backend updates
+4. **Testability**: Easier to test data operations separately from UI behavior
+5. **Flexibility**: Frontend can be easily replaced or multiple frontends can share same backend
+6. **Error Handling**: Backend provides consistent, localized error messages
+
+### Error Handling Patterns
+
+Following the dumb frontend principle, error handling should primarily display backend-provided messages rather than interpreting or transforming errors on the frontend.
+
+**✅ Preferred: Display backend errors directly**
 ```typescript
-// Hook focuses on data operation only
-export const useOAuthInitiate = (options?: {
-  onSuccess?: (response: AuthInitiateResponse) => void;
+export function useCreateModel(options?: {
+  onSuccess?: (model: Model) => void;
   onError?: (message: string) => void;
-}) => {
+}) {
   return useMutation({
+    mutationFn: createModel,
     onSuccess: (response) => {
-      options?.onSuccess?.(response.data); // ✅ Just call callback
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      // Use backend-provided error message
+      const message = error?.response?.data?.error?.message || 'An unexpected error occurred';
+      options?.onError?.(message); // ✅ Pass backend message directly
     },
   });
-};
+}
 
-// Page component handles the redirect logic
-export function LoginPage() {
-  const oauthInitiate = useOAuthInitiate({
-    onSuccess: (response) => {
-      window.location.href = response.auth_url; // ✅ Page handles redirect
+// Page handles error display
+export function ModelsPage() {
+  const [error, setError] = useState<string | null>(null);
+
+  const createModel = useCreateModel({
+    onSuccess: (model) => {
+      router.push(`/ui/models/${model.id}`);
     },
     onError: (message) => {
-      setError(message);
+      setError(message); // ✅ Display backend error as-is
     },
   });
 
   return (
-    <AuthCard
-      actions={[{
-        label: 'Sign In',
-        onClick: () => oauthInitiate.mutate(), // ✅ Page triggers action
-      }]}
-    />
+    <div>
+      {error && <ErrorAlert message={error} />}
+      {/* Rest of component */}
+    </div>
   );
 }
 ```
 
-### Benefits of This Pattern
+**❌ Avoid: Frontend error interpretation**
+```typescript
+onError: (error: AxiosError<ErrorResponse>) => {
+  // ❌ Don't interpret or transform backend errors
+  if (error.response?.status === 400) {
+    setError('Invalid input provided');
+  } else if (error.response?.status === 500) {
+    setError('Server error occurred');
+  }
+  // Backend should provide appropriate messages
+}
+```
 
-1. **Clearer Separation of Concerns**: Hooks focus on data, pages focus on user experience
-2. **Better Testability**: Easier to test data operations separately from UI behavior
-3. **Improved Reusability**: Hooks can be reused in different contexts with different action handling
-4. **Enhanced Developer Experience**: Developers can easily understand where redirects and UI changes happen
+### Data Validation Patterns
+
+**✅ Frontend validation for UX only**
+```typescript
+const formSchema = z.object({
+  name: z.string().min(1, "Name is required"), // ✅ Basic UX validation
+  email: z.string().email("Please enter a valid email"), // ✅ Format hint
+});
+
+// Always send to backend for authoritative validation
+const onSubmit = async (data: FormData) => {
+  try {
+    await createUser(data); // ✅ Backend does real validation
+  } catch (error) {
+    // Display backend validation errors
+    setError(error.response?.data?.error?.message);
+  }
+};
+```
+
+**❌ Avoid: Complex frontend business logic**
+```typescript
+// ❌ Don't implement business rules on frontend
+const onSubmit = async (data: FormData) => {
+  if (data.role === 'admin' && !data.permissions.includes('manage_users')) {
+    setError('Admins must have user management permissions');
+    return; // ❌ Business logic belongs on backend
+  }
+
+  if (data.email.endsWith('@competitor.com')) {
+    setError('Competitor emails not allowed');
+    return; // ❌ Business rules belong on backend
+  }
+};
+```
 
 ## Testing Requirements
 

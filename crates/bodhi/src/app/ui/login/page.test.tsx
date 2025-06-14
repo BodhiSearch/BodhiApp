@@ -1,24 +1,11 @@
 import LoginPage, { LoginContent } from '@/app/ui/login/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import {
-  act,
-  render,
-  screen,
-  waitFor
-} from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi
-} from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the hooks
 const server = setupServer();
@@ -43,18 +30,10 @@ describe('LoginContent loading states', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.json({ logged_in: false })
-        );
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ logged_in: false }));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.json({ status: 'ready' })
-        );
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ status: 'ready' }));
       })
     );
   });
@@ -81,7 +60,11 @@ describe('LoginContent with user not Logged In', () => {
         return res(ctx.status(500), ctx.json({ error: { message: 'OAuth configuration error' } }));
       }),
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({}));
+        return res(
+          ctx.status(201),
+          ctx.set('Location', 'http://localhost:1135/ui/login'),
+          ctx.set('Content-Length', '0')
+        );
       })
     );
   });
@@ -92,9 +75,7 @@ describe('LoginContent with user not Logged In', () => {
     });
     const loginButton = screen.getByRole('button', { name: 'Login' });
     expect(loginButton).toBeDefined();
-    expect(
-      screen.getByText('Login to use the Bodhi App')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Login to use the Bodhi App')).toBeInTheDocument();
   });
 
   it('renders login button with correct styling', async () => {
@@ -118,7 +99,7 @@ describe('LoginContent with user not Logged In', () => {
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
           ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
+          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
         );
       })
     );
@@ -141,7 +122,7 @@ describe('LoginContent with user not Logged In', () => {
         return res(
           ctx.delay(100),
           ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
+          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
         );
       })
     );
@@ -221,7 +202,7 @@ describe('LoginContent with user not Logged In', () => {
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
           ctx.status(303), // 303 when already authenticated
-          ctx.set('Location', 'http://localhost:3000/ui/chat'),
+          ctx.set('Location', 'http://localhost:3000/ui/chat')
         );
       })
     );
@@ -265,16 +246,17 @@ describe('LoginContent with user Logged In', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({ logged_in: true, email: 'test@example.com' })
-        );
+        return res(ctx.status(200), ctx.json({ logged_in: true, email: 'test@example.com' }));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));
       }),
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json({}));
+        return res(
+          ctx.status(201),
+          ctx.set('Location', 'http://localhost:1135/ui/login'),
+          ctx.set('Content-Length', '0')
+        );
       })
     );
   });
@@ -283,20 +265,23 @@ describe('LoginContent with user Logged In', () => {
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
     });
-    expect(
-      screen.getByText('You are logged in as test@example.com')
-    ).toBeInTheDocument();
+    expect(screen.getByText('You are logged in as test@example.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Go to Home' })).toBeInTheDocument();
   });
 
-  it('calls logout function when logout button is clicked and pushes the route in location', async () => {
+  it('calls logout function when logout button is clicked and redirects to location', async () => {
+    // Mock window.location.href
+    const originalLocation = window.location;
+    delete (window as any).location;
+    window.location = { ...originalLocation, href: '' };
+
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
         return res(
-          ctx.status(200),
+          ctx.status(201),
           ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.json({})
+          ctx.set('Content-Length', '0')
         );
       })
     );
@@ -305,9 +290,13 @@ describe('LoginContent with user Logged In', () => {
     });
     const logoutButton = screen.getByRole('button', { name: 'Log Out' });
     await userEvent.click(logoutButton);
-    expect(pushMock).toHaveBeenCalledWith(
-      'http://localhost:1135/ui/test/login'
-    );
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('http://localhost:1135/ui/test/login');
+    });
+
+    // Restore window.location
+    window.location = originalLocation;
   });
 
   it('disables logout button and shows loading text when logging out', async () => {
@@ -315,9 +304,9 @@ describe('LoginContent with user Logged In', () => {
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
         return res(
           ctx.delay(100),
-          ctx.status(200),
+          ctx.status(201),
           ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.json({})
+          ctx.set('Content-Length', '0')
         );
       })
     );

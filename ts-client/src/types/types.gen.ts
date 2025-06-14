@@ -520,13 +520,6 @@ export type LogoutUserErrors = {
 
 export type LogoutUserError = LogoutUserErrors[keyof LogoutUserErrors];
 
-export type LogoutUserResponses = {
-    /**
-     * Logout successful, redirects to login page
-     */
-    200: unknown;
-};
-
 export type ListModelFilesData = {
     body?: never;
     path?: never;

@@ -379,7 +379,6 @@ rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
   return res(
     ctx.status(200),
     ctx.set('Location', '/ui/chat'),
-    ctx.json({})
   );
 })
 ```
