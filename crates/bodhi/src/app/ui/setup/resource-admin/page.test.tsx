@@ -1,16 +1,12 @@
 vi.mock('framer-motion', () => {
   const React = require('react');
   return {
-    motion: new Proxy(
-      {},
-      {
-        get: (_target, _prop) => {
-          return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
-        },
+    motion: new Proxy({}, {
+      get: (_target, _prop) => {
+        return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
       }
-    ),
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
+    }),
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
     useAnimation: () => ({}),
   };
 });
@@ -36,7 +32,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT } from '@/lib/constants';
@@ -133,7 +138,7 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  it.skip('handles OAuth initiation when login required and redirects to auth URL', async () => {
+  it('handles OAuth initiation when login required and redirects to auth URL', async () => {
     // Mock window.location.href
     const mockLocation = { href: '' };
     Object.defineProperty(window, 'location', {
@@ -147,19 +152,15 @@ describe('ResourceAdminPage', () => {
       }),
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
-          ctx.status(401), // 401 when login required
-          ctx.json({
-            auth_url: 'https://oauth.example.com/auth?client_id=test',
-          })
+          ctx.status(303), // 303 redirect to OAuth URL
+          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
         );
       })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
-    const loginButton = await screen.findByRole('button', {
-      name: 'Continue with Login →',
-    });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -167,7 +168,7 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  it.skip('shows redirecting state during OAuth initiation', async () => {
+  it('shows redirecting state during OAuth initiation', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -175,19 +176,15 @@ describe('ResourceAdminPage', () => {
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
           ctx.delay(100),
-          ctx.status(401), // 401 when login required
-          ctx.json({
-            auth_url: 'https://oauth.example.com/auth?client_id=test',
-          })
+          ctx.status(303), // 303 redirect to OAuth URL
+          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
         );
       })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
-    const loginButton = await screen.findByRole('button', {
-      name: 'Continue with Login →',
-    });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
     // Check for redirecting state immediately after click
@@ -196,7 +193,7 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  it.skip('displays error message when OAuth initiation fails', async () => {
+  it('displays error message when OAuth initiation fails', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -217,9 +214,7 @@ describe('ResourceAdminPage', () => {
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
-    const loginButton = await screen.findByRole('button', {
-      name: 'Continue with Login →',
-    });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
@@ -230,7 +225,7 @@ describe('ResourceAdminPage', () => {
     expect(screen.getByRole('button', { name: 'Continue with Login →' })).toBeInTheDocument();
   });
 
-  it.skip('displays generic error message when OAuth initiation fails without specific message', async () => {
+  it('displays generic error message when OAuth initiation fails without specific message', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -242,17 +237,15 @@ describe('ResourceAdminPage', () => {
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
-    const loginButton = await screen.findByRole('button', {
-      name: 'Continue with Login →',
-    });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Failed to initiate OAuth flow')).toBeInTheDocument();
+      expect(screen.getByText('Failed to initiate OAuth authentication')).toBeInTheDocument();
     });
   });
 
-  it.skip('redirects to location when OAuth initiation returns 303', async () => {
+  it('redirects to location when OAuth initiation returns 303', async () => {
     // Mock window.location.href
     const mockLocation = { href: '' };
     Object.defineProperty(window, 'location', {
@@ -265,15 +258,16 @@ describe('ResourceAdminPage', () => {
         return res(ctx.json({ status: 'resource-admin' }));
       }),
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(303), ctx.set('Location', 'https://example.com/redirected'), ctx.json({}));
+        return res(
+          ctx.status(303),
+          ctx.set('Location', 'https://example.com/redirected'),
+        );
       })
     );
 
     render(<ResourceAdminPage />, { wrapper: createWrapper() });
 
-    const loginButton = await screen.findByRole('button', {
-      name: 'Continue with Login →',
-    });
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
     await waitFor(() => {

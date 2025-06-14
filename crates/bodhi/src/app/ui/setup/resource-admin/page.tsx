@@ -33,10 +33,12 @@ function ResourceAdminContent() {
 
   const oauthInitiate = useOAuthInitiate({
     onSuccess: (response) => {
-      if (response.data?.auth_url) {
-        window.location.href = response.data.auth_url;
-      } else if (response.headers?.location) {
+      // Handle redirect based on backend response
+      // 303 response: Location header (OAuth URL or already authenticated)
+      if (response.headers?.location) {
         window.location.href = response.headers.location;
+      } else {
+        setError('Auth URL not found in response. Please try again.');
       }
     },
     onError: (message) => {

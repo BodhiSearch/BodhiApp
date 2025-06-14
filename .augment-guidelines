@@ -92,6 +92,9 @@ cargo clippy         # Lint Rust code
 - Use test-utils feature flag pattern for Rust components
 - OAuth test scopes: `'openid email profile roles'`
 
+### Misc
+- Do not refactor code for backwards compatability unless specified in prompt
+
 ## Package Management
 
 ### Critical Rules
