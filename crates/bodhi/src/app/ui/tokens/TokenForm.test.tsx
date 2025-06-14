@@ -125,7 +125,12 @@ describe('TokenDialog', () => {
     const onTokenCreated = vi.fn();
     server.use(
       rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.status(400), ctx.json({ error: { message: 'Failed to generate token. Please try again.' } }));
+        return res(
+          ctx.status(400),
+          ctx.json({
+            error: { message: 'Failed to generate token. Please try again.' },
+          })
+        );
       })
     );
     render(<TokenForm onTokenCreated={onTokenCreated} />, {

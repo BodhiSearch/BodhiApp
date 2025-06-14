@@ -84,7 +84,9 @@ describe('ModelFilesPage', () => {
     // Test mobile view (< sm)
     mockMatchMedia(false);
 
-    const { unmount } = render(<ModelFilesPage />, { wrapper: createWrapper() });
+    const { unmount } = render(<ModelFilesPage />, {
+      wrapper: createWrapper(),
+    });
 
     // Wait for data to load
     await screen.findByTestId('combined-cell');
