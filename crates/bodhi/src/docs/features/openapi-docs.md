@@ -1,6 +1,6 @@
 ---
-title: "API Reference"
-description: "API documentation and integration guide for Bodhi App"
+title: 'API Reference'
+description: 'API documentation and integration guide for Bodhi App'
 order: 260
 ---
 
@@ -11,6 +11,7 @@ Bodhi App provides comprehensive, auto-generated API documentation powered. This
 ## Overview
 
 Our API documentation covers all public and authenticated endpoints and is continuously updated as new features are added. The Swagger UI makes it easy to:
+
 - Browse detailed API specifications, including endpoint descriptions and data schemas.
 - Interactively test API endpoints with real-time requests.
 - Understand available authentication methods, such as browser session and API token-based authentication, without needing to review lengthy manual documentation.
@@ -18,6 +19,7 @@ Our API documentation covers all public and authenticated endpoints and is conti
 ## How to Access the Documentation
 
 You can access the interactive API documentation in two ways:
+
 - From within Bodhi App, select the **API Documentation** option from the menu.
 - Or directly visit:  
   `http://<your-bodhi-instance>/swagger-ui`
@@ -37,6 +39,7 @@ Happy integrating!
 ## Quick Start Examples
 
 ### Chat Completion API
+
 ```bash
 curl -X POST http://localhost:1135/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -51,6 +54,7 @@ curl -X POST http://localhost:1135/v1/chat/completions \
 ```
 
 ### Model List API
+
 ```bash
 curl http://localhost:1135/v1/models \
   -H "Authorization: Bearer YOUR_API_TOKEN"

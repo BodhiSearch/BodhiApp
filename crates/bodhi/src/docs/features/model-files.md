@@ -1,6 +1,6 @@
 ---
-title: "Model Files"
-description: "View and manage the model files downloaded from HuggingFace."
+title: 'Model Files'
+description: 'View and manage the model files downloaded from HuggingFace.'
 order: 220
 ---
 

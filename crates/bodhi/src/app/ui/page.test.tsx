@@ -1,22 +1,18 @@
 'use client';
 
 import { render, screen, waitFor } from '@testing-library/react';
-import {
-  describe,
-  it,
-  vi,
-  expect,
-  beforeEach,
-  beforeAll,
-  afterAll,
-  afterEach,
-} from 'vitest';
+import { describe, it, vi, expect, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import UiPage from '@/app/ui/page';
 import { createWrapper } from '@/tests/wrapper';
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
-import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
+import {
+  FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED,
+  ROUTE_DEFAULT,
+  ROUTE_RESOURCE_ADMIN,
+  ROUTE_SETUP_DOWNLOAD_MODELS,
+} from '@/lib/constants';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({

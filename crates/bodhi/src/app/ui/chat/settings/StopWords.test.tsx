@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event';
 
 // Mock useChatSettings
 vi.mock('@/hooks/use-chat-settings', () => ({
-  useChatSettings: vi.fn()
+  useChatSettings: vi.fn(),
 }));
 
 // Example of mocking Input component with proper disabled state handling
@@ -232,12 +232,15 @@ describe('StopWords', () => {
       currentStop = newStop;
     });
 
-    vi.mocked(chatSettings.useChatSettings).mockImplementation(() => ({
-      stop: currentStop,
-      stop_enabled: true,
-      setStop: mockSetStop,
-      setStopEnabled: vi.fn(),
-    } as any));
+    vi.mocked(chatSettings.useChatSettings).mockImplementation(
+      () =>
+        ({
+          stop: currentStop,
+          stop_enabled: true,
+          setStop: mockSetStop,
+          setStopEnabled: vi.fn(),
+        }) as any
+    );
 
     render(<StopWords />);
 
@@ -257,7 +260,7 @@ describe('StopWords', () => {
 
     // Add another word
     await user.type(input, 'another{Enter}');
-    
+
     // Verify final array state
     expect(mockSetStop).toHaveBeenCalledWith(['test', 'another']);
   });

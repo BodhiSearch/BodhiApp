@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { createContext, useContext, useCallback, useEffect, useState } from 'react';
 
 interface ChatSettings {
   model: string;
@@ -83,17 +77,13 @@ interface ChatSettingsContextType extends ChatSettings {
   setSeedEnabled: (enabled: boolean) => void;
   setSystemPrompt: (prompt: string | undefined) => void;
   setSystemPromptEnabled: (enabled: boolean) => void;
-  setResponseFormat: (
-    format: ChatSettings['response_format'] | undefined
-  ) => void;
+  setResponseFormat: (format: ChatSettings['response_format'] | undefined) => void;
   setResponseFormatEnabled: (enabled: boolean) => void;
   getRequestSettings: () => Omit<
     ChatSettings,
     | 'systemPrompt'
     | keyof {
-        [K in keyof ChatSettings as K extends `${string}_enabled`
-          ? K
-          : never]: never;
+        [K in keyof ChatSettings as K extends `${string}_enabled` ? K : never]: never;
       }
   >;
   reset: () => void;
@@ -101,9 +91,7 @@ interface ChatSettingsContextType extends ChatSettings {
   setApiTokenEnabled: (enabled: boolean) => void;
 }
 
-const ChatSettingsContext = createContext<ChatSettingsContextType | undefined>(
-  undefined
-);
+const ChatSettingsContext = createContext<ChatSettingsContextType | undefined>(undefined);
 
 export function ChatSettingsProvider({
   children,
@@ -145,10 +133,7 @@ export function ChatSettingsProvider({
 
   // Generic setter that handles both value and enabled state
   const setSetting = useCallback(
-    <K extends keyof Omit<ChatSettings, `${string}_enabled`>>(
-      key: K,
-      value: ChatSettings[K] | undefined
-    ) => {
+    <K extends keyof Omit<ChatSettings, `${string}_enabled`>>(key: K, value: ChatSettings[K] | undefined) => {
       setSettings((prev) => {
         const next = { ...prev };
         if (value === undefined) {
@@ -168,12 +153,9 @@ export function ChatSettingsProvider({
 
   // Create setters for both value and enabled state
   const createSetters = useCallback(
-    <K extends keyof Omit<ChatSettings, 'model' | `${string}_enabled`>>(
-      key: K
-    ) => {
+    <K extends keyof Omit<ChatSettings, 'model' | `${string}_enabled`>>(key: K) => {
       return {
-        setValue: (value: ChatSettings[K] | undefined) =>
-          setSetting(key, value),
+        setValue: (value: ChatSettings[K] | undefined) => setSetting(key, value),
         setEnabled: (enabled: boolean) =>
           setSettings((prev) => ({
             ...prev,
@@ -191,27 +173,15 @@ export function ChatSettingsProvider({
     [setSetting]
   );
 
-  const { setValue: setTemperature, setEnabled: setTemperatureEnabled } =
-    createSetters('temperature');
-  const { setValue: setTopP, setEnabled: setTopPEnabled } =
-    createSetters('top_p');
+  const { setValue: setTemperature, setEnabled: setTemperatureEnabled } = createSetters('temperature');
+  const { setValue: setTopP, setEnabled: setTopPEnabled } = createSetters('top_p');
   const { setValue: setN, setEnabled: setNEnabled } = createSetters('n');
-  const { setValue: setStream, setEnabled: setStreamEnabled } =
-    createSetters('stream');
-  const { setValue: setMaxTokens, setEnabled: setMaxTokensEnabled } =
-    createSetters('max_tokens');
-  const {
-    setValue: setPresencePenalty,
-    setEnabled: setPresencePenaltyEnabled,
-  } = createSetters('presence_penalty');
-  const {
-    setValue: setFrequencyPenalty,
-    setEnabled: setFrequencyPenaltyEnabled,
-  } = createSetters('frequency_penalty');
-  const { setValue: setLogitBias, setEnabled: setLogitBiasEnabled } =
-    createSetters('logit_bias');
-  const { setValue: setStopRaw, setEnabled: setStopEnabled } =
-    createSetters('stop');
+  const { setValue: setStream, setEnabled: setStreamEnabled } = createSetters('stream');
+  const { setValue: setMaxTokens, setEnabled: setMaxTokensEnabled } = createSetters('max_tokens');
+  const { setValue: setPresencePenalty, setEnabled: setPresencePenaltyEnabled } = createSetters('presence_penalty');
+  const { setValue: setFrequencyPenalty, setEnabled: setFrequencyPenaltyEnabled } = createSetters('frequency_penalty');
+  const { setValue: setLogitBias, setEnabled: setLogitBiasEnabled } = createSetters('logit_bias');
+  const { setValue: setStopRaw, setEnabled: setStopEnabled } = createSetters('stop');
   const setStop = useCallback(
     (stop: string[] | string | undefined) => {
       if (stop === undefined) {
@@ -223,14 +193,10 @@ export function ChatSettingsProvider({
     },
     [setStopRaw]
   );
-  const { setValue: setSeed, setEnabled: setSeedEnabled } =
-    createSetters('seed');
-  const { setValue: setSystemPrompt, setEnabled: setSystemPromptEnabled } =
-    createSetters('systemPrompt');
-  const { setValue: setResponseFormat, setEnabled: setResponseFormatEnabled } =
-    createSetters('response_format');
-  const { setValue: setApiToken, setEnabled: setApiTokenEnabled } =
-    createSetters('api_token');
+  const { setValue: setSeed, setEnabled: setSeedEnabled } = createSetters('seed');
+  const { setValue: setSystemPrompt, setEnabled: setSystemPromptEnabled } = createSetters('systemPrompt');
+  const { setValue: setResponseFormat, setEnabled: setResponseFormatEnabled } = createSetters('response_format');
+  const { setValue: setApiToken, setEnabled: setApiTokenEnabled } = createSetters('api_token');
 
   const getRequestSettings = useCallback(() => {
     const requestSettings: Record<string, unknown> = {};
@@ -248,10 +214,7 @@ export function ChatSettingsProvider({
     }
 
     // Include other settings only if they're enabled and defined
-    const settingsToCheck: (keyof Omit<
-      ChatSettings,
-      'model' | `${string}_enabled`
-    >)[] = [
+    const settingsToCheck: (keyof Omit<ChatSettings, 'model' | `${string}_enabled`>)[] = [
       'temperature',
       'top_p',
       'n',
@@ -322,9 +285,7 @@ export function ChatSettingsProvider({
 export function useChatSettings() {
   const context = useContext(ChatSettingsContext);
   if (context === undefined) {
-    throw new Error(
-      'useChatSettings must be used within a ChatSettingsProvider'
-    );
+    throw new Error('useChatSettings must be used within a ChatSettingsProvider');
   }
   return context;
 }

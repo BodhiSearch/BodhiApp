@@ -7,16 +7,7 @@ import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pushMock = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -64,7 +55,7 @@ const server = setupServer(
   }),
   rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
     return res(ctx.status(200), ctx.json(mockListResponse));
-  }),
+  })
 );
 
 beforeAll(() => server.listen());
@@ -80,7 +71,7 @@ describe('TokenPageContent', () => {
     server.use(
       rest.get(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json(mockListResponse));
-      }),
+      })
     );
 
     render(<TokenPageContent />, { wrapper: createWrapper() });
@@ -157,8 +148,6 @@ describe('TokenPageContent', () => {
     await user.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.queryByText('API Token Generated')).not.toBeInTheDocument();
   });
-
-
 });
 
 describe('TokenPage', () => {
@@ -214,7 +203,7 @@ describe('token status updates', () => {
       expect(toast).toHaveBeenCalledWith(showSuccessParams('Token Updated', 'Token status changed to inactive'));
     });
   });
-})
+});
 
 describe('token status update', () => {
   it('handles token status update error', async () => {
@@ -238,4 +227,3 @@ describe('token status update', () => {
     });
   });
 });
-

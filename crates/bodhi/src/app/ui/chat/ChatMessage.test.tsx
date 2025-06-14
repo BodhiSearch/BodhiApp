@@ -6,19 +6,13 @@ import userEvent from '@testing-library/user-event';
 
 // Mock the markdown component
 vi.mock('@/components/ui/markdown', () => ({
-  MemoizedReactMarkdown: ({ children }: { children: string }) => (
-    <div data-testid="markdown">{children}</div>
-  ),
+  MemoizedReactMarkdown: ({ children }: { children: string }) => <div data-testid="markdown">{children}</div>,
 }));
 
 // Mock the copy button component
 vi.mock('@/components/CopyButton', () => ({
   CopyButton: ({ text, className }: { text: string; className?: string }) => (
-    <button 
-      data-testid="copy-button" 
-      data-copy-text={text}
-      className={className}
-    >
+    <button data-testid="copy-button" data-copy-text={text} className={className}>
       Copy
     </button>
   ),
@@ -61,7 +55,7 @@ describe('ChatMessage', () => {
 
       expect(screen.getByText('Assistant')).toBeInTheDocument();
       expect(screen.getByTestId('markdown')).toHaveTextContent('Test message content');
-      
+
       // Find copy button by test id, regardless of visibility
       const copyButton = screen.getByTestId('copy-button');
       expect(copyButton).toBeInTheDocument();
@@ -166,4 +160,4 @@ describe('ChatMessage', () => {
       expect(copyButton).toHaveAttribute('data-copy-text', 'Test message content');
     });
   });
-}); 
+});

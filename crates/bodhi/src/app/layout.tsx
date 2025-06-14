@@ -5,10 +5,7 @@ import '@/app/globals.css';
 import { cn } from '@/lib/utils';
 import ClientProviders from '@/components/ClientProviders';
 import { Toaster } from '@/components/ui/toaster';
-import {
-  NavigationProvider,
-  defaultNavigationItems,
-} from '@/hooks/use-navigation';
+import { NavigationProvider, defaultNavigationItems } from '@/hooks/use-navigation';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { AppHeader } from '@/components/navigation/AppHeader';
 
@@ -41,19 +38,13 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={cn(
-          'min-h-screen bg-background font-sans antialiased',
-          fontSans.variable
-        )}
+        className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}
         suppressHydrationWarning
       >
         <ThemeProvider defaultTheme="system" storageKey="bodhi-ui-theme">
           <ClientProviders>
             <NavigationProvider items={defaultNavigationItems}>
-              <div
-                className="flex min-h-screen flex-col"
-                data-testid="root-layout"
-              >
+              <div className="flex min-h-screen flex-col" data-testid="root-layout">
                 <AppHeader />
                 <main className="flex-1" data-testid="app-main">
                   {children}

@@ -1,10 +1,5 @@
 import { LoginMenu } from '@/components/LoginMenu';
-import {
-  ENDPOINT_APP_INFO,
-  ENDPOINT_AUTH_INITIATE,
-  ENDPOINT_LOGOUT,
-  ENDPOINT_USER_INFO
-} from '@/hooks/useQuery';
+import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -191,11 +186,7 @@ describe('LoginMenu Component', () => {
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(303),
-          ctx.set('Location', 'https://example.com/redirected'),
-          ctx.json({})
-        );
+        return res(ctx.status(303), ctx.set('Location', 'https://example.com/redirected'), ctx.json({}));
       })
     );
 

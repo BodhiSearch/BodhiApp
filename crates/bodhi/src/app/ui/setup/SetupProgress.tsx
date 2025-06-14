@@ -42,13 +42,7 @@ export function SetupProgress({ currentStep, totalSteps }: SetupProgressProps) {
                   {isCompleted ? (
                     <Check className="h-4 w-4 text-primary-foreground" />
                   ) : (
-                    <span
-                      className={`text-sm ${
-                        isCurrent
-                          ? 'text-primary-foreground'
-                          : 'text-muted-foreground'
-                      }`}
-                    >
+                    <span className={`text-sm ${isCurrent ? 'text-primary-foreground' : 'text-muted-foreground'}`}>
                       {index + 1}
                     </span>
                   )}

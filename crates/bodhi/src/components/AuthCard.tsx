@@ -28,18 +28,9 @@ function LoadingState() {
   );
 }
 
-export function AuthCard({
-  title,
-  description,
-  actions = [],
-  disabled = false,
-  isLoading = false,
-}: AuthCardProps) {
+export function AuthCard({ title, description, actions = [], disabled = false, isLoading = false }: AuthCardProps) {
   return (
-    <div
-      className="w-full max-w-xl mx-auto px-4"
-      data-testid="auth-card-container"
-    >
+    <div className="w-full max-w-xl mx-auto px-4" data-testid="auth-card-container">
       <Card data-testid="auth-card" className="card-elevated bg-card">
         <CardHeader className="header-section" data-testid="auth-card-header">
           <CardTitle className="text-3xl text-center">{title}</CardTitle>
@@ -50,17 +41,12 @@ export function AuthCard({
           ) : (
             <>
               {description && (
-                <div
-                  className="text-base text-muted-foreground text-center mb-6"
-                  data-testid="auth-card-description"
-                >
+                <div className="text-base text-muted-foreground text-center mb-6" data-testid="auth-card-description">
                   {description}
                 </div>
               )}
               <div
-                className={`space-y-4 ${
-                  disabled ? 'opacity-50 pointer-events-none' : 'opacity-100'
-                }`}
+                className={`space-y-4 ${disabled ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}
                 data-testid="auth-card-actions"
               >
                 {actions.map((action, index) =>

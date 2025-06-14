@@ -25,20 +25,9 @@ const itemVariants = {
 };
 
 // Simple Icon component
-function SimpleIcon({
-  icon,
-  className,
-}: {
-  icon: { path: string };
-  className?: string;
-}) {
+function SimpleIcon({ icon, className }: { icon: { path: string }; className?: string }) {
   return (
-    <svg
-      role="img"
-      viewBox="0 0 24 24"
-      className={className}
-      fill="currentColor"
-    >
+    <svg role="img" viewBox="0 0 24 24" className={className} fill="currentColor">
       <path d={icon.path} />
     </svg>
   );
@@ -48,8 +37,7 @@ const socialLinks = [
   {
     title: 'Star on GitHub',
     icon: <SimpleIcon icon={siGithub} className="h-5 w-5" />,
-    description:
-      'Support the project, track updates, and contribute to development',
+    description: 'Support the project, track updates, and contribute to development',
     url: 'https://github.com/BodhiSearch/BodhiApp',
     stats: '',
     color: 'hover:bg-zinc-100 dark:hover:bg-zinc-800',
@@ -90,10 +78,7 @@ const resourceLinks = [
 // Magic UI Confetti component
 function Confetti() {
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center pointer-events-none"
-      aria-hidden="true"
-    >
+    <div className="fixed inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
       <div className="w-full h-full max-w-7xl mx-auto flex justify-center">
         <div className="w-full h-full grid grid-cols-7 gap-4">
           {Array.from({ length: 70 }).map((_, i) => (
@@ -107,13 +92,9 @@ function Confetti() {
               <div
                 className="w-2 h-2 rotate-45 animate-spin"
                 style={{
-                  backgroundColor: [
-                    '#ff0000',
-                    '#00ff00',
-                    '#0000ff',
-                    '#ffff00',
-                    '#ff00ff',
-                  ][Math.floor(Math.random() * 5)],
+                  backgroundColor: ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff'][
+                    Math.floor(Math.random() * 5)
+                  ],
                   animationDuration: `${Math.random() * 2 + 1}s`,
                 }}
               />
@@ -159,8 +140,7 @@ function SetupCompleteContent() {
         <motion.div variants={itemVariants} className="text-center space-y-4">
           <h1 className="text-4xl font-bold">🎉 Setup Complete!</h1>
           <p className="text-muted-foreground">
-            Your Bodhi App is ready to use. Join our community to get the most
-            out of it!
+            Your Bodhi App is ready to use. Join our community to get the most out of it!
           </p>
         </motion.div>
 
@@ -185,15 +165,9 @@ function SetupCompleteContent() {
                   <div className="flex-1">
                     <h3 className="font-medium flex items-center gap-2">
                       {link.title}
-                      {link.stats && (
-                        <span className="text-sm text-muted-foreground">
-                          {link.stats}
-                        </span>
-                      )}
+                      {link.stats && <span className="text-sm text-muted-foreground">{link.stats}</span>}
                     </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {link.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{link.description}</p>
                   </div>
                   <ArrowRight className="h-4 w-4 text-muted-foreground" />
                 </motion.a>
@@ -220,9 +194,7 @@ function SetupCompleteContent() {
                   {link.icon}
                   <div>
                     <h3 className="font-medium">{link.title}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {link.description}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{link.description}</p>
                   </div>
                   <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground" />
                 </motion.a>
@@ -232,15 +204,8 @@ function SetupCompleteContent() {
         </motion.div>
 
         {/* Start Using App Button */}
-        <motion.div
-          variants={itemVariants}
-          className="flex justify-center pt-4"
-        >
-          <Button
-            size="lg"
-            onClick={() => router.push(ROUTE_CHAT)}
-            className="px-8"
-          >
+        <motion.div variants={itemVariants} className="flex justify-center pt-4">
+          <Button size="lg" onClick={() => router.push(ROUTE_CHAT)} className="px-8">
             Start Using Bodhi App →
           </Button>
         </motion.div>

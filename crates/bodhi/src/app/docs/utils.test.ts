@@ -1,21 +1,11 @@
-import {
-  getAllDocSlugs,
-  getDocDetails,
-  getDocsForSlug,
-} from '@/app/docs/utils';
+import { getAllDocSlugs, getDocDetails, getDocsForSlug } from '@/app/docs/utils';
 import fs from 'fs';
 import path from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Constants
 const TEST_DOCS_DIR = path.join('src', 'app', 'docs', '__tests__', 'test-docs');
-const EMPTY_TEST_DOCS_DIR = path.join(
-  'src',
-  'app',
-  'docs',
-  '__tests__',
-  'empty-test-docs'
-);
+const EMPTY_TEST_DOCS_DIR = path.join('src', 'app', 'docs', '__tests__', 'empty-test-docs');
 
 describe('Documentation Utils', () => {
   const originalEnv = process.env.DOCS_DIR;
@@ -31,12 +21,7 @@ describe('Documentation Utils', () => {
 
   describe('getAllDocSlugs', () => {
     it('should return all markdown files paths without extension', () => {
-      const expectedPaths = [
-        'root-doc',
-        'another-doc',
-        'nested/nested-doc',
-        'nested/deep/deep-nested',
-      ].sort();
+      const expectedPaths = ['root-doc', 'another-doc', 'nested/nested-doc', 'nested/deep/deep-nested'].sort();
 
       const paths = getAllDocSlugs().sort();
 
@@ -50,10 +35,7 @@ describe('Documentation Utils', () => {
       const paths = getAllDocSlugs();
 
       expect(paths).toEqual([]);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Error reading docs directory:',
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Error reading docs directory:', expect.any(Error));
 
       consoleSpy.mockRestore();
     });
@@ -80,12 +62,7 @@ describe('Documentation Utils', () => {
       });
 
       it('should handle nested doc paths', () => {
-        const fullPath = path.join(
-          process.cwd(),
-          TEST_DOCS_DIR,
-          'nested',
-          'nested-doc.md'
-        );
+        const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'nested', 'nested-doc.md');
         const details = getDocDetails(fullPath);
 
         expect(details).toEqual({
@@ -97,13 +74,7 @@ describe('Documentation Utils', () => {
       });
 
       it('should handle deeply nested doc paths', () => {
-        const fullPath = path.join(
-          process.cwd(),
-          TEST_DOCS_DIR,
-          'nested',
-          'deep',
-          'deep-nested.md'
-        );
+        const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'nested', 'deep', 'deep-nested.md');
         const details = getDocDetails(fullPath);
 
         expect(details).toEqual({
@@ -126,11 +97,7 @@ description: "Some description"
         );
 
         try {
-          const fullPath = path.join(
-            process.cwd(),
-            TEST_DOCS_DIR,
-            'no-title.md'
-          );
+          const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'no-title.md');
           const details = getDocDetails(fullPath);
 
           expect(details).toEqual({
@@ -151,11 +118,7 @@ description: "Some description"
         fs.writeFileSync(testFilePath, '# Just content without frontmatter');
 
         try {
-          const fullPath = path.join(
-            process.cwd(),
-            TEST_DOCS_DIR,
-            'no-frontmatter.md'
-          );
+          const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'no-frontmatter.md');
           const details = getDocDetails(fullPath);
 
           expect(details).toEqual({
@@ -174,11 +137,7 @@ description: "Some description"
     describe('error handling', () => {
       it('should handle file read errors gracefully', () => {
         const consoleSpy = vi.spyOn(console, 'error');
-        const fullPath = path.join(
-          process.cwd(),
-          TEST_DOCS_DIR,
-          'non-existent-file.md'
-        );
+        const fullPath = path.join(process.cwd(), TEST_DOCS_DIR, 'non-existent-file.md');
         const details = getDocDetails(fullPath);
 
         expect(details).toEqual({
@@ -296,9 +255,7 @@ description: "Some description"
       it('should exclude the current path from results', () => {
         const groups = getDocsForSlug(['nested', 'nested-doc']);
 
-        expect(groups.flatMap((g) => g.items).map((i) => i.slug)).not.toContain(
-          'nested/nested-doc'
-        );
+        expect(groups.flatMap((g) => g.items).map((i) => i.slug)).not.toContain('nested/nested-doc');
       });
     });
 
@@ -312,10 +269,7 @@ description: "Some description"
       it('should sort items within groups by order', () => {
         const groups = getDocsForSlug(['nested']);
 
-        expect(groups[0].items.map((item) => item.slug)).toEqual([
-          'nested/nested-doc',
-          'nested/deep/deep-nested',
-        ]);
+        expect(groups[0].items.map((item) => item.slug)).toEqual(['nested/nested-doc', 'nested/deep/deep-nested']);
       });
     });
 

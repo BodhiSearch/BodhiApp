@@ -96,8 +96,8 @@ describe('PullForm', () => {
             error: {
               message: 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"',
               type: 'invalid_request_error',
-              code: 'pull_error-file_already_exists'
-            }
+              code: 'pull_error-file_already_exists',
+            },
           })
         );
       })
@@ -113,16 +113,16 @@ describe('PullForm', () => {
 
     // Check for toast error message
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"'));
+      expect(mockToast).toHaveBeenCalledWith(
+        showErrorParams('Error', 'file "model.gguf" already exists in repo "test/repo" with snapshot "main"')
+      );
     });
 
     // Check that form fields are in error state
     const formMessages = screen.getAllByRole('alert');
     expect(formMessages).toHaveLength(1); // One for each field
-    formMessages.forEach(message => {
-      expect(message).toHaveTextContent(
-        'file "model.gguf" already exists in repo "test/repo" with snapshot "main"'
-      );
+    formMessages.forEach((message) => {
+      expect(message).toHaveTextContent('file "model.gguf" already exists in repo "test/repo" with snapshot "main"');
     });
   });
 
@@ -141,8 +141,8 @@ describe('PullForm', () => {
             error: {
               message: 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"',
               type: 'invalid_request_error',
-              code: 'pull_error-file_already_exists'
-            }
+              code: 'pull_error-file_already_exists',
+            },
           })
         );
       })
@@ -151,7 +151,9 @@ describe('PullForm', () => {
 
     // Wait for error message in toast
     await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(showErrorParams('Error', 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"'));
+      expect(mockToast).toHaveBeenCalledWith(
+        showErrorParams('Error', 'file "model1.gguf" already exists in repo "test/repo1" with snapshot "main"')
+      );
     });
 
     // Verify error state before reset
@@ -192,4 +194,4 @@ describe('PullForm', () => {
       expect(screen.getByText('model2.gguf')).toBeInTheDocument();
     });
   });
-}); 
+});

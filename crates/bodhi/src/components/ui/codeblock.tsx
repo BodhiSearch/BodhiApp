@@ -12,8 +12,8 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface CodeBlockProps {
-  language: string
-  value: string
+  language: string;
+  value: string;
 }
 
 // Map of supported programming languages to their file extensions
@@ -68,13 +68,13 @@ LanguageLabel.displayName = 'LanguageLabel';
 
 export const CodeBlock: FC<CodeBlockProps> = memo(({ language, value }) => {
   const { theme } = useTheme();
-  const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 })
+  const { isCopied, copyToClipboard } = useCopyToClipboard({ timeout: 2000 });
 
   const handleCopy = () => {
     if (!isCopied) {
-      copyToClipboard(value)
+      copyToClipboard(value);
     }
-  }
+  };
 
   // Normalize language identifier
   const normalizedLanguage = (language.toLowerCase() as SupportedLanguage) || 'text';
@@ -94,12 +94,12 @@ export const CodeBlock: FC<CodeBlockProps> = memo(({ language, value }) => {
           borderRadius: '0.5rem',
         }}
         codeTagProps={{
-          className: 'syntax-highlighter-code'
+          className: 'syntax-highlighter-code',
         }}
       >
         {value}
       </SyntaxHighlighter>
     </div>
-  )
-})
-CodeBlock.displayName = 'CodeBlock'
+  );
+});
+CodeBlock.displayName = 'CodeBlock';

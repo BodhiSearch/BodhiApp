@@ -143,4 +143,4 @@ describe('Nav', () => {
     const nav = screen.getByRole('navigation');
     expect(nav).toBeEmptyDOMElement();
   });
-}); 
+});

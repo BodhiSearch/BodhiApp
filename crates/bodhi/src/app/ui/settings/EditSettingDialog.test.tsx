@@ -10,15 +10,12 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
 
 // Add PointerEvent mock
-function createMockPointerEvent(
-  type: string,
-  props: PointerEventInit = {}
-): PointerEvent {
+function createMockPointerEvent(type: string, props: PointerEventInit = {}): PointerEvent {
   const event = new Event(type, props) as PointerEvent;
   Object.assign(event, {
     button: props.button ?? 0,
     ctrlKey: props.ctrlKey ?? false,
-    pointerType: props.pointerType ?? "mouse",
+    pointerType: props.pointerType ?? 'mouse',
   });
   return event;
 }
@@ -42,8 +39,8 @@ const mockSettings: Record<string, Setting> = {
     default_value: '/home/user/.bodhi',
     source: 'default',
     metadata: {
-      type: 'string'
-    }
+      type: 'string',
+    },
   },
   number: {
     key: 'BODHI_PORT',
@@ -54,9 +51,9 @@ const mockSettings: Record<string, Setting> = {
       type: 'number',
       range: {
         min: 1025,
-        max: 65535
-      }
-    }
+        max: 65535,
+      },
+    },
   },
   option: {
     key: 'BODHI_LOG_LEVEL',
@@ -65,8 +62,8 @@ const mockSettings: Record<string, Setting> = {
     source: 'settings_file',
     metadata: {
       type: 'option',
-      options: ['error', 'warn', 'info', 'debug', 'trace']
-    }
+      options: ['error', 'warn', 'info', 'debug', 'trace'],
+    },
   },
   boolean: {
     key: 'BODHI_LOG_STDOUT',
@@ -74,9 +71,9 @@ const mockSettings: Record<string, Setting> = {
     default_value: false,
     source: 'settings_file',
     metadata: {
-      type: 'boolean'
-    }
-  }
+      type: 'boolean',
+    },
+  },
 };
 
 const server = setupServer(
@@ -89,8 +86,8 @@ const server = setupServer(
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
-    toast: mockToast
-  })
+    toast: mockToast,
+  }),
 }));
 
 beforeAll(() => server.listen());
@@ -103,28 +100,18 @@ afterEach(() => {
 
 describe('EditSettingDialog', () => {
   it('renders string input correctly', () => {
-    render(
-      <EditSettingDialog
-        setting={mockSettings.string}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByRole('textbox')).toHaveValue('/home/user/.bodhi');
     expect(screen.getByText('Default: /home/user/.bodhi')).toBeInTheDocument();
   });
 
   it('renders number input with range correctly', () => {
-    render(
-      <EditSettingDialog
-        setting={mockSettings.number}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.number} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     const input = screen.getByRole('spinbutton') as HTMLInputElement;
     expect(input).toHaveValue(1135);
@@ -134,28 +121,18 @@ describe('EditSettingDialog', () => {
   });
 
   it('renders option select correctly', () => {
-    render(
-      <EditSettingDialog
-        setting={mockSettings.option}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.option} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByRole('combobox')).toBeInTheDocument();
     expect(screen.getByText('info')).toBeInTheDocument();
   });
 
   it('renders boolean switch correctly', () => {
-    render(
-      <EditSettingDialog
-        setting={mockSettings.boolean}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.boolean} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByRole('switch')).toBeInTheDocument();
     expect(screen.getByText('Enabled')).toBeInTheDocument();
@@ -169,22 +146,17 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.string}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.clear(screen.getByRole('textbox'));
     await user.type(screen.getByRole('textbox'), '/new/path');
     await user.click(screen.getByRole('button', { name: /save/i }));
 
     expect(mockToast).toHaveBeenCalledWith({
-      title: "Success",
-      description: "Setting updated successfully",
+      title: 'Success',
+      description: 'Setting updated successfully',
       duration: 1000,
     });
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
@@ -198,14 +170,9 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.number}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.number} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.clear(screen.getByRole('spinbutton'));
     await user.type(screen.getByRole('spinbutton'), '2000');
@@ -218,14 +185,9 @@ describe('EditSettingDialog', () => {
   it('shows error for invalid number range', async () => {
     const user = userEvent.setup();
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.number}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.number} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.clear(screen.getByRole('spinbutton'));
     await user.type(screen.getByRole('spinbutton'), '100');
@@ -243,14 +205,9 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.option}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.option} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     // Click the select trigger button to open the dropdown
     const selectTrigger = screen.getByRole('combobox');
@@ -276,14 +233,9 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.boolean}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.boolean} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.click(screen.getByRole('switch'));
     await user.click(screen.getByRole('button', { name: /save/i }));
@@ -300,21 +252,16 @@ describe('EditSettingDialog', () => {
           ctx.status(500),
           ctx.json({
             error: {
-              message: 'Server error'
-            }
+              message: 'Server error',
+            },
           })
         );
       })
     );
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.string}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.clear(screen.getByRole('textbox'));
     await user.type(screen.getByRole('textbox'), '/new/path');
@@ -327,14 +274,9 @@ describe('EditSettingDialog', () => {
   it('closes dialog on cancel', async () => {
     const user = userEvent.setup();
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.string}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.click(screen.getByRole('button', { name: /cancel/i }));
     expect(mockOnOpenChange).toHaveBeenCalledWith(false);
@@ -351,14 +293,9 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.string}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.clear(screen.getByRole('textbox'));
     await user.type(screen.getByRole('textbox'), '/new/path');
@@ -382,14 +319,9 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(
-      <EditSettingDialog
-        setting={mockSettings.string}
-        open={true}
-        onOpenChange={mockOnOpenChange}
-      />,
-      { wrapper: createWrapper() }
-    );
+    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+      wrapper: createWrapper(),
+    });
 
     await user.clear(screen.getByRole('textbox'));
     await user.type(screen.getByRole('textbox'), '/new/path');
@@ -406,4 +338,4 @@ describe('EditSettingDialog', () => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Setting updated successfully'));
     });
   });
-}); 
+});

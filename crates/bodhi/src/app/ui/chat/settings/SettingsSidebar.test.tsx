@@ -8,7 +8,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 // Mock the child components
 vi.mock('@/app/ui/chat/settings/AliasSelector', () => ({
-  AliasSelector: ({ models, isLoading }: { models: any[], isLoading: boolean }) => (
+  AliasSelector: ({ models, isLoading }: { models: any[]; isLoading: boolean }) => (
     <div data-testid="alias-selector" data-loading={isLoading}>
       Models count: {models.length}
     </div>
@@ -16,37 +16,25 @@ vi.mock('@/app/ui/chat/settings/AliasSelector', () => ({
 }));
 
 vi.mock('@/app/ui/chat/settings/SystemPrompt', () => ({
-  SystemPrompt: ({ isLoading }: { isLoading: boolean }) => (
-    <div data-testid="system-prompt" data-loading={isLoading} />
-  ),
+  SystemPrompt: ({ isLoading }: { isLoading: boolean }) => <div data-testid="system-prompt" data-loading={isLoading} />,
 }));
 
 vi.mock('@/app/ui/chat/settings/StopWords', () => ({
-  StopWords: ({ isLoading }: { isLoading: boolean }) => (
-    <div data-testid="stop-words" data-loading={isLoading} />
-  ),
+  StopWords: ({ isLoading }: { isLoading: boolean }) => <div data-testid="stop-words" data-loading={isLoading} />,
 }));
 
 vi.mock('@/app/ui/chat/settings/SettingSlider', () => ({
-  SettingSlider: ({ label, isLoading }: { label: string, isLoading: boolean }) => (
+  SettingSlider: ({ label, isLoading }: { label: string; isLoading: boolean }) => (
     <div data-testid={`setting-slider-${label.toLowerCase().replace(' ', '-')}`} data-loading={isLoading} />
   ),
 }));
 
 // Mock UI components
 vi.mock('@/components/ui/sidebar', () => ({
-  Sidebar: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar">{children}</div>
-  ),
-  SidebarHeader: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-header">{children}</div>
-  ),
-  SidebarContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-content">{children}</div>
-  ),
-  SidebarGroup: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-group">{children}</div>
-  ),
+  Sidebar: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar">{children}</div>,
+  SidebarHeader: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-header">{children}</div>,
+  SidebarContent: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-content">{children}</div>,
+  SidebarGroup: ({ children }: { children: React.ReactNode }) => <div data-testid="sidebar-group">{children}</div>,
 }));
 
 vi.mock('@/components/ui/switch', () => ({
@@ -96,13 +84,9 @@ vi.mock('@/hooks/use-chat-settings', () => ({
 // Mock the Tooltip components from shadcn
 vi.mock('@/components/ui/tooltip', () => ({
   Tooltip: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TooltipContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-content">{children}</div>
-  ),
+  TooltipContent: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip-content">{children}</div>,
   TooltipProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="tooltip-trigger">{children}</div>
-  ),
+  TooltipTrigger: ({ children }: { children: React.ReactNode }) => <div data-testid="tooltip-trigger">{children}</div>,
 }));
 
 // Setup MSW server
@@ -195,8 +179,8 @@ describe('SettingsSidebar', () => {
           ctx.status(500),
           ctx.json({
             error: {
-              message: 'Test error message'
-            }
+              message: 'Test error message',
+            },
           })
         );
       })

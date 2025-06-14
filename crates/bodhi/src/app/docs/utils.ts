@@ -29,8 +29,7 @@ export function getPathOrder(slug: string): number {
     const fullPath = path.join(...rootDocs, ...slug.split('/'));
 
     // Check if it's a directory
-    const isDirectory =
-      fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
+    const isDirectory = fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory();
 
     if (isDirectory) {
       const metaPath = path.join(fullPath, '_meta.json');
@@ -60,10 +59,7 @@ export function getPathOrder(slug: string): number {
 export function getAllDocSlugs() {
   const docsDirectory = path.join(process.cwd(), ...getDocsDirectory());
 
-  const getAllFiles = (
-    dirPath: string,
-    arrayOfFiles: string[] = []
-  ): string[] => {
+  const getAllFiles = (dirPath: string, arrayOfFiles: string[] = []): string[] => {
     try {
       const files = fs.readdirSync(dirPath);
 
@@ -73,9 +69,7 @@ export function getAllDocSlugs() {
           arrayOfFiles = getAllFiles(filePath, arrayOfFiles);
         } else if (path.extname(file) === MD_EXTENSION) {
           const relativePath = path.relative(docsDirectory, filePath);
-          const pathSlug = relativePath
-            .replace(/\.md$/, '')
-            .replaceAll(path.sep, '/');
+          const pathSlug = relativePath.replace(/\.md$/, '').replaceAll(path.sep, '/');
           arrayOfFiles.push(pathSlug);
         }
       });
@@ -96,10 +90,7 @@ export const getDocDetails = (filePath: string): DocDetails => {
     const fileContents = fs.readFileSync(filePath, 'utf8');
     const { data } = matter(fileContents);
     const docsDirectory = path.join(process.cwd(), ...getDocsDirectory());
-    const derivedSlug = path
-      .relative(docsDirectory, filePath)
-      .replace(/\.md$/, '')
-      .replaceAll(path.sep, '/');
+    const derivedSlug = path.relative(docsDirectory, filePath).replace(/\.md$/, '').replaceAll(path.sep, '/');
 
     return {
       title: data.title || formatTitle(derivedSlug),
@@ -110,10 +101,7 @@ export const getDocDetails = (filePath: string): DocDetails => {
   } catch (e) {
     console.error(`Error reading doc details for ${filePath}:`, e);
     const docsDirectory = path.join(process.cwd(), ...getDocsDirectory());
-    const derivedSlug = path
-      .relative(docsDirectory, filePath)
-      .replace(/\.md$/, '')
-      .replaceAll(path.sep, '/');
+    const derivedSlug = path.relative(docsDirectory, filePath).replace(/\.md$/, '').replaceAll(path.sep, '/');
     return {
       title: formatTitle(derivedSlug),
       description: '',

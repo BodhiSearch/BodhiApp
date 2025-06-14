@@ -4,16 +4,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/DataTable', () => ({
   DataTable: ({ data, renderRow }: any) => (
@@ -119,10 +110,7 @@ describe('ModelFilesPage', () => {
   it('handles API error', async () => {
     server.use(
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (req, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Internal Server Error' } })
-        );
+        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
       })
     );
     await act(async () => {
@@ -157,10 +145,7 @@ describe('ModelFilesPage', () => {
         hfButton.click();
       });
 
-      expect(windowOpenSpy).toHaveBeenCalledWith(
-        'https://huggingface.co/test-repo',
-        '_blank'
-      );
+      expect(windowOpenSpy).toHaveBeenCalledWith('https://huggingface.co/test-repo', '_blank');
 
       windowOpenSpy.mockRestore();
     });

@@ -4,13 +4,7 @@ import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
 import AppInitializer from '@/components/AppInitializer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/hooks/useQuery';
 import { cn } from '@/lib/utils';
@@ -93,8 +87,7 @@ const SETTINGS_CONFIG: SettingsConfig = {
       {
         key: 'BODHI_KEEP_ALIVE_SECS',
         editable: true,
-        description:
-          'Keep alive timeout for llama-server (in seconds). range 300 (5 mins)..=86400 (1 day)',
+        description: 'Keep alive timeout for llama-server (in seconds). range 300 (5 mins)..=86400 (1 day)',
       },
     ],
   },
@@ -211,20 +204,15 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
   return (
     <div className="flex flex-col gap-4 sm:container sm:mx-auto sm:py-4">
       <UserOnboarding storageKey="settings-banner-dismissed">
-        Welcome to Settings! Here you can view and manage your
-        application&apos;s configuration. It also shows the current value, and
-        the source of that value. Some settings are editable while others are
-        read-only.
+        Welcome to Settings! Here you can view and manage your application&apos;s configuration. It also shows the
+        current value, and the source of that value. Some settings are editable while others are read-only.
       </UserOnboarding>
 
       {Object.entries(config).map(([groupKey, group]) => {
         const Icon = group.icon;
 
         return (
-          <Card
-            key={groupKey}
-            className="border-x-0 sm:border-x rounded-none sm:rounded-lg"
-          >
+          <Card key={groupKey} className="border-x-0 sm:border-x rounded-none sm:rounded-lg">
             <CardHeader className="px-4 py-4">
               <div className="flex items-center gap-2">
                 <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -245,8 +233,7 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                       'flex flex-col sm:flex-row gap-3',
                       'p-4 rounded-lg border',
                       'bg-card hover:bg-accent/5',
-                      setting.source !== 'default' &&
-                        'border-primary/20 bg-primary/5'
+                      setting.source !== 'default' && 'border-primary/20 bg-primary/5'
                     )}
                   >
                     {/* Main content section */}
@@ -255,29 +242,16 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                       <div className="space-y-1">
                         <div className="flex items-center flex-wrap gap-1.5">
                           {(() => {
-                            const TypeIcon =
-                              SETTING_ICONS[
-                                setting.metadata
-                                  .type as keyof typeof SETTING_ICONS
-                              ];
-                            return (
-                              <TypeIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />
-                            );
+                            const TypeIcon = SETTING_ICONS[setting.metadata.type as keyof typeof SETTING_ICONS];
+                            return <TypeIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground shrink-0" />;
                           })()}
-                          <div className="font-medium text-sm sm:text-base truncate">
-                            {setting.key}
-                          </div>
-                          <Badge
-                            variant={getSourceBadgeVariant(setting.source)}
-                            className="text-xs h-5 px-1.5"
-                          >
+                          <div className="font-medium text-sm sm:text-base truncate">{setting.key}</div>
+                          <Badge variant={getSourceBadgeVariant(setting.source)} className="text-xs h-5 px-1.5">
                             {setting.source}
                           </Badge>
                         </div>
                         {description && (
-                          <div className="text-xs sm:text-sm text-primary font-medium">
-                            {description}
-                          </div>
+                          <div className="text-xs sm:text-sm text-primary font-medium">{description}</div>
                         )}
                       </div>
 
@@ -286,25 +260,17 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
                         {/* Only show current value if source is not system */}
                         {setting.source !== 'system' && (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs sm:text-sm text-muted-foreground shrink-0">
-                              Current:
-                            </span>
+                            <span className="text-xs sm:text-sm text-muted-foreground shrink-0">Current:</span>
                             <span className="text-xs sm:text-sm text-muted-foreground truncate">
                               {String(setting.current_value)}
                             </span>
-                            {setting.metadata.type === 'string' && (
-                              <CopyButton
-                                text={String(setting.current_value)}
-                              />
-                            )}
+                            {setting.metadata.type === 'string' && <CopyButton text={String(setting.current_value)} />}
                           </div>
                         )}
 
                         {/* Default value */}
                         <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground/60 shrink-0">
-                            Default:
-                          </span>
+                          <span className="text-xs text-muted-foreground/60 shrink-0">Default:</span>
                           <span className="text-xs text-muted-foreground/60 truncate">
                             {String(setting.default_value)}
                           </span>
@@ -314,10 +280,7 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
 
                     {/* Actions section */}
                     <div className="flex items-center gap-2 shrink-0">
-                      <Badge
-                        variant="outline"
-                        className="text-xs h-5 px-1.5 shrink-0"
-                      >
+                      <Badge variant="outline" className="text-xs h-5 px-1.5 shrink-0">
                         {setting.metadata.type}
                       </Badge>
                       {editable && (
@@ -353,16 +316,9 @@ export function SettingsPageContent({ config }: SettingsPageContentProps) {
 
 function SettingsSkeleton({ config }: { config: SettingsConfig }) {
   return (
-    <div
-      className="flex flex-col gap-4 sm:container sm:mx-auto sm:py-4"
-      data-testid="settings-skeleton-container"
-    >
+    <div className="flex flex-col gap-4 sm:container sm:mx-auto sm:py-4" data-testid="settings-skeleton-container">
       {Object.keys(config).map((group) => (
-        <Card
-          key={group}
-          className="border-x-0 sm:border-x rounded-none sm:rounded-lg"
-          data-testid="settings-skeleton"
-        >
+        <Card key={group} className="border-x-0 sm:border-x rounded-none sm:rounded-lg" data-testid="settings-skeleton">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Skeleton className="h-5 w-5" />
@@ -372,10 +328,7 @@ function SettingsSkeleton({ config }: { config: SettingsConfig }) {
           </CardHeader>
           <CardContent className="space-y-4">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex items-start justify-between p-4 rounded-lg border"
-              >
+              <div key={i} className="flex items-start justify-between p-4 rounded-lg border">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Skeleton className="h-4 w-4" />

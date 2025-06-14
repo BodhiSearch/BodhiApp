@@ -61,9 +61,7 @@ export function LoginContent() {
       description={
         <div className="space-y-4">
           <p>Login to use the Bodhi App</p>
-          {error && (
-            <p className="text-destructive text-sm">{error}</p>
-          )}
+          {error && <p className="text-destructive text-sm">{error}</p>}
         </div>
       }
       actions={[

@@ -38,15 +38,19 @@ vi.mock('gray-matter', () => {
 });
 
 describe('DocsSlugPage', () => {
-  const mockGroups = [createMockGroup({
-    title: 'Nested',
-    key: 'nested',
-    items: [createMockDoc({
-      title: 'Nested Doc',
-      description: 'A nested document',
-      slug: 'nested/nested-doc',
-    })],
-  })];
+  const mockGroups = [
+    createMockGroup({
+      title: 'Nested',
+      key: 'nested',
+      items: [
+        createMockDoc({
+          title: 'Nested Doc',
+          description: 'A nested document',
+          slug: 'nested/nested-doc',
+        }),
+      ],
+    }),
+  ];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -54,11 +58,7 @@ describe('DocsSlugPage', () => {
 
   describe('generateStaticParams', () => {
     it('generates params for all doc paths and their parent directories', () => {
-      vi.mocked(getAllDocSlugs).mockReturnValue([
-        'docs/intro',
-        'docs/nested/guide',
-        'docs/nested/deep/advanced',
-      ]);
+      vi.mocked(getAllDocSlugs).mockReturnValue(['docs/intro', 'docs/nested/guide', 'docs/nested/deep/advanced']);
 
       const params = generateStaticParams();
 
@@ -164,7 +164,6 @@ describe('DocsSlugPage', () => {
         stringify: () => '',
       }));
 
-
       await act(async () => {
         const page = await DocsSlugPage({ params: { slug: ['test-doc'] } });
         render(page);
@@ -201,14 +200,11 @@ describe('DocsSlugPage', () => {
         throw new Error('File read error');
       });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await DocsSlugPage({ params: { slug: ['error-doc'] } });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Error loading doc page for error-doc:',
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Error loading doc page for error-doc:', expect.any(Error));
       expect(notFound).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
@@ -225,17 +221,14 @@ describe('DocsSlugPage', () => {
         throw new Error('Markdown processing error');
       });
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       await DocsSlugPage({ params: { slug: ['invalid-doc'] } });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        'Error loading doc page for invalid-doc:',
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('Error loading doc page for invalid-doc:', expect.any(Error));
       expect(notFound).toHaveBeenCalled();
 
       consoleSpy.mockRestore();
     });
   });
-}); 
+});

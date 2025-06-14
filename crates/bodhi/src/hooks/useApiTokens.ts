@@ -1,8 +1,4 @@
-import {
-  API_TOKENS_ENDPOINT,
-  useMutationQuery,
-  useQuery,
-} from '@/hooks/useQuery';
+import { API_TOKENS_ENDPOINT, useMutationQuery, useQuery } from '@/hooks/useQuery';
 import { useQueryClient } from 'react-query';
 import { AxiosResponse, AxiosError } from 'axios';
 import { UseMutationResult } from 'react-query';
@@ -38,11 +34,7 @@ export interface UpdateTokenRequest {
 }
 
 // Hooks
-export function useListTokens(
-  page: number = 1,
-  pageSize: number = 10,
-  options?: { enabled?: boolean }
-) {
+export function useListTokens(page: number = 1, pageSize: number = 10, options?: { enabled?: boolean }) {
   return useQuery<ListTokensResponse>(
     ['tokens', page.toString(), pageSize.toString()],
     API_TOKENS_ENDPOINT,
@@ -54,53 +46,35 @@ export function useListTokens(
 export function useCreateToken(options?: {
   onSuccess?: (response: TokenResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<
-  AxiosResponse<TokenResponse>,
-  AxiosError<ErrorResponse>,
-  CreateTokenRequest
-> {
+}): UseMutationResult<AxiosResponse<TokenResponse>, AxiosError<ErrorResponse>, CreateTokenRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<TokenResponse, CreateTokenRequest>(
-    API_TOKENS_ENDPOINT,
-    'post',
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(['tokens']);
-        options?.onSuccess?.(response.data);
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message =
-          error?.response?.data?.error?.message || 'Failed to generate token';
-        options?.onError?.(message);
-      },
-    }
-  );
+  return useMutationQuery<TokenResponse, CreateTokenRequest>(API_TOKENS_ENDPOINT, 'post', {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries(['tokens']);
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to generate token';
+      options?.onError?.(message);
+    },
+  });
 }
 
 export function useUpdateToken(options?: {
   onSuccess?: (token: ApiToken) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<
-  AxiosResponse<ApiToken>,
-  AxiosError<ErrorResponse>,
-  UpdateTokenRequest
-> {
+}): UseMutationResult<AxiosResponse<ApiToken>, AxiosError<ErrorResponse>, UpdateTokenRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<ApiToken, UpdateTokenRequest>(
-    (params) => `${API_TOKENS_ENDPOINT}/${params.id}`,
-    'put',
-    {
-      onSuccess: (response) => {
-        queryClient.invalidateQueries(['tokens']);
-        options?.onSuccess?.(response.data);
-      },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message =
-          error?.response?.data?.error?.message || 'Failed to update token';
-        options?.onError?.(message);
-      },
-    }
-  );
+  return useMutationQuery<ApiToken, UpdateTokenRequest>((params) => `${API_TOKENS_ENDPOINT}/${params.id}`, 'put', {
+    onSuccess: (response) => {
+      queryClient.invalidateQueries(['tokens']);
+      options?.onSuccess?.(response.data);
+    },
+    onError: (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to update token';
+      options?.onError?.(message);
+    },
+  });
 }

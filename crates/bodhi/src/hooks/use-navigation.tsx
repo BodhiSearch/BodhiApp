@@ -17,13 +17,7 @@ import {
   BookText,
 } from 'lucide-react';
 import { usePathname } from 'next/navigation';
-import {
-  ReactNode,
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-} from 'react';
+import { ReactNode, createContext, useContext, useEffect, useMemo } from 'react';
 
 // Rename and export the default navigation items
 export const defaultNavigationItems: NavigationItem[] = [
@@ -141,19 +135,14 @@ interface NavigationProviderProps {
   items?: NavigationItem[];
 }
 
-export function NavigationProvider({
-  children,
-  items = defaultNavigationItems,
-}: NavigationProviderProps) {
+export function NavigationProvider({ children, items = defaultNavigationItems }: NavigationProviderProps) {
   const pathname = usePathname();
 
   const currentItem = useMemo(() => {
     // First check top-level items
     if (pathname?.startsWith('/docs/')) {
       const docsItem = items.find((item) => item.title === 'Documentation');
-      const docsSubItem = docsItem?.items?.find(
-        (item) => item.href === '/docs/'
-      );
+      const docsSubItem = docsItem?.items?.find((item) => item.href === '/docs/');
       return { item: docsSubItem!, parent: docsItem! };
     }
     const topLevelItem = items.find((item) => item.href === pathname);
@@ -170,9 +159,7 @@ export function NavigationProvider({
           }
           // Check for sub-sub-items
           if (subItem.items) {
-            const subSubItem = subItem.items.find(
-              (subSubItem) => subSubItem.href === pathname
-            );
+            const subSubItem = subItem.items.find((subSubItem) => subSubItem.href === pathname);
             if (subSubItem) {
               return { item: subSubItem, parent: subItem };
             }
@@ -213,11 +200,7 @@ export function NavigationProvider({
     [pathname, currentItem, items]
   );
 
-  return (
-    <NavigationContext.Provider value={value}>
-      {children}
-    </NavigationContext.Provider>
-  );
+  return <NavigationContext.Provider value={value}>{children}</NavigationContext.Provider>;
 }
 
 export const useNavigation = () => useContext(NavigationContext);

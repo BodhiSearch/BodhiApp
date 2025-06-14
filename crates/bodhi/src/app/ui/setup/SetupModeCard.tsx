@@ -1,10 +1,5 @@
 import { motion } from 'framer-motion';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { itemVariants } from './types';
@@ -14,10 +9,7 @@ type SetupModeCardProps = {
   isLoading: boolean;
 };
 
-export const SetupModeCard = ({
-  onSetup,
-  isLoading,
-}: SetupModeCardProps) => {
+export const SetupModeCard = ({ onSetup, isLoading }: SetupModeCardProps) => {
   return (
     <motion.div variants={itemVariants}>
       <Card>
@@ -31,9 +23,7 @@ export const SetupModeCard = ({
               <span className="text-4xl">🔐</span>
               <div>
                 <h3 className="text-xl font-semibold">Authenticated Mode</h3>
-                <p className="text-sm text-muted-foreground">
-                  Secure setup with user authentication
-                </p>
+                <p className="text-sm text-muted-foreground">Secure setup with user authentication</p>
               </div>
             </div>
             <ul className="space-y-2 text-sm text-left max-w-md mx-auto">
@@ -57,12 +47,7 @@ export const SetupModeCard = ({
           </div>
 
           <div className="pt-6">
-            <Button
-              className="w-full relative"
-              size="lg"
-              onClick={onSetup}
-              disabled={isLoading}
-            >
+            <Button className="w-full relative" size="lg" onClick={onSetup} disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

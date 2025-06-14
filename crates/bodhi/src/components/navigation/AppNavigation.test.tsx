@@ -104,9 +104,7 @@ describe('AppNavigation', () => {
 
   it('should render navigation menu button', () => {
     renderNavigation();
-    expect(
-      screen.getByTestId('navigation-menu-button')
-    ).toBeInTheDocument();
+    expect(screen.getByTestId('navigation-menu-button')).toBeInTheDocument();
   });
 
   it('should show visible items and hide skipped items in dropdown', async () => {
@@ -121,24 +119,22 @@ describe('AppNavigation', () => {
 
     // Verify visible items are shown
     const parentItem = within(menuContent).getByRole('menuitem', {
-      name: /Parent Item/i
+      name: /Parent Item/i,
     });
     expect(parentItem).toBeInTheDocument();
 
     const regularItem = within(menuContent).getByRole('menuitem', {
-      name: /Regular Item.*Regular visible item/i
+      name: /Regular Item.*Regular visible item/i,
     });
     expect(regularItem).toBeInTheDocument();
 
     // Verify hidden item is not shown
     expect(
       within(menuContent).queryByRole('menuitem', {
-        name: /Hidden Child/i
+        name: /Hidden Child/i,
       })
     ).not.toBeInTheDocument();
-    expect(
-      within(menuContent).queryByText('This item should be hidden but selectable')
-    ).not.toBeInTheDocument();
+    expect(within(menuContent).queryByText('This item should be hidden but selectable')).not.toBeInTheDocument();
   });
 
   it('should render all parent items regardless of skip property', async () => {
@@ -170,25 +166,23 @@ describe('AppNavigation', () => {
     const menuContent = screen.getByTestId('navigation-menu-content');
 
     // Find the parent menu item
-    const parentMenuItem = within(menuContent)
-      .getByRole('menuitem', {
-        name: /Parent Item.*Parent Item/i
-      });
+    const parentMenuItem = within(menuContent).getByRole('menuitem', {
+      name: /Parent Item.*Parent Item/i,
+    });
 
     // Verify parent is highlighted
     expect(parentMenuItem).toHaveClass('bg-accent');
 
     // Verify regular item is not highlighted
-    const regularMenuItem = within(menuContent)
-      .getByRole('menuitem', {
-        name: /Regular Item.*Regular visible item/i
-      });
+    const regularMenuItem = within(menuContent).getByRole('menuitem', {
+      name: /Regular Item.*Regular visible item/i,
+    });
     expect(regularMenuItem).not.toHaveClass('bg-accent');
 
     // Verify the hidden child is not rendered
     expect(
       within(menuContent).queryByRole('menuitem', {
-        name: /Hidden Child/i
+        name: /Hidden Child/i,
       })
     ).not.toBeInTheDocument();
   });
@@ -207,17 +201,15 @@ describe('AppNavigation', () => {
     const menuContent = screen.getByTestId('navigation-menu-content');
 
     // Verify regular item is highlighted
-    const regularMenuItem = within(menuContent)
-      .getByRole('menuitem', {
-        name: /Regular Item.*Regular visible item/i
-      });
+    const regularMenuItem = within(menuContent).getByRole('menuitem', {
+      name: /Regular Item.*Regular visible item/i,
+    });
     expect(regularMenuItem).toHaveClass('bg-accent');
 
     // Verify parent item is not highlighted
-    const parentMenuItem = within(menuContent)
-      .getByRole('menuitem', {
-        name: /Parent Item.*Parent Item/i
-      });
+    const parentMenuItem = within(menuContent).getByRole('menuitem', {
+      name: /Parent Item.*Parent Item/i,
+    });
     expect(parentMenuItem).not.toHaveClass('bg-accent');
   });
 });

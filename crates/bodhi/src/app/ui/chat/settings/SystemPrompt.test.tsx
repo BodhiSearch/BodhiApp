@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 // Mock useChatSettings
 vi.mock('@/hooks/use-chat-settings', () => ({
-  useChatSettings: vi.fn()
+  useChatSettings: vi.fn(),
 }));
 
 describe('SystemPrompt', () => {

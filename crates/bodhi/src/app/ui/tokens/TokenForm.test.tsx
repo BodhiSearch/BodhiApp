@@ -54,7 +54,7 @@ describe('TokenForm', () => {
       render(<TokenForm onTokenCreated={onTokenCreated} />, {
         wrapper: createWrapper(),
       });
-    })
+    });
 
     await user.type(screen.getByLabelText('Token Name (Optional)'), 'Test Token');
     await user.click(screen.getByRole('button', { name: 'Generate Token' }));
@@ -93,7 +93,11 @@ describe('TokenDialog', () => {
     const onTokenCreated = vi.fn();
     server.use(
       rest.post(`*${API_TOKENS_ENDPOINT}`, (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(201), ctx.json({ message: 'Failed to generate token. Please try again.' }));
+        return res(
+          ctx.delay(100),
+          ctx.status(201),
+          ctx.json({ message: 'Failed to generate token. Please try again.' })
+        );
       })
     );
 
@@ -101,7 +105,7 @@ describe('TokenDialog', () => {
       render(<TokenForm onTokenCreated={onTokenCreated} />, {
         wrapper: createWrapper(),
       });
-    })
+    });
 
     const submitButton = screen.getByRole('button', { name: 'Generate Token' });
     const input = screen.getByLabelText('Token Name (Optional)');
@@ -141,4 +145,4 @@ describe('TokenDialog', () => {
     });
     expect(onTokenCreated).not.toHaveBeenCalled();
   });
-})
+});

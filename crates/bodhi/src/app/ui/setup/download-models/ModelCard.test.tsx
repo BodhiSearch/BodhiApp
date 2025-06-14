@@ -89,4 +89,4 @@ describe('ModelCard', () => {
     expect(screen.getByText('Apache 2.0')).toBeInTheDocument();
     expect(screen.getByText('Q4_K_M')).toBeInTheDocument();
   });
-}); 
+});

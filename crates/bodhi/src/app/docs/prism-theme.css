@@ -5,7 +5,7 @@
 }
 
 /* Code block styles */
-pre[class*="language-"] {
+pre[class*='language-'] {
   @apply my-6 rounded-lg overflow-hidden;
 }
 
@@ -39,13 +39,13 @@ pre[class*="language-"] {
 }
 
 /* Task list styles */
-.markdown-content input[type="checkbox"] {
+.markdown-content input[type='checkbox'] {
   @apply mr-2;
 }
 
 /* Add Prism Tomorrow theme styles directly here */
-code[class*="language-"],
-pre[class*="language-"] {
+code[class*='language-'],
+pre[class*='language-'] {
   color: #ccc;
   background: none;
   font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;

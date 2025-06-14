@@ -1,14 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { TokenResponse, useCreateToken } from '@/hooks/useApiTokens';
@@ -62,11 +55,7 @@ export function TokenForm({ onTokenCreated }: TokenFormProps) {
             <FormItem>
               <FormLabel>Token Name (Optional)</FormLabel>
               <FormControl>
-                <Input
-                  placeholder="Enter a name for your token"
-                  disabled={isLoading}
-                  {...field}
-                />
+                <Input placeholder="Enter a name for your token" disabled={isLoading} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

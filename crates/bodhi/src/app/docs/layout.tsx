@@ -55,9 +55,7 @@ function buildNavigation(): NavItem[] {
           let parent = currentLevel.find((item) => item.slug === parentSlug);
           if (!parent) {
             parent = {
-              title: parts[i]
-                .replace(/-/g, ' ')
-                .replace(/\b\w/g, (c) => c.toUpperCase()),
+              title: parts[i].replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
               slug: parentSlug,
               children: [],
             };
@@ -65,28 +63,20 @@ function buildNavigation(): NavItem[] {
           }
           parent.children = parent.children || [];
           currentLevel = parent.children;
-          currentLevel.sort(
-            (a, b) => getPathOrder(a.slug) - getPathOrder(b.slug)
-          );
+          currentLevel.sort((a, b) => getPathOrder(a.slug) - getPathOrder(b.slug));
         }
         currentLevel.push({
           title,
           slug: slug,
         });
-        currentLevel.sort(
-          (a, b) => getPathOrder(a.slug) - getPathOrder(b.slug)
-        );
+        currentLevel.sort((a, b) => getPathOrder(a.slug) - getPathOrder(b.slug));
       }
     });
 
   return nav;
 }
 
-export default function DocsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function DocsLayout({ children }: { children: React.ReactNode }) {
   const navigation = buildNavigation();
 
   return (

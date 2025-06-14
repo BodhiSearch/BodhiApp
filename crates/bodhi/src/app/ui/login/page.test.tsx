@@ -1,24 +1,11 @@
 import LoginPage, { LoginContent } from '@/app/ui/login/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import {
-  act,
-  render,
-  screen,
-  waitFor
-} from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi
-} from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the hooks
 const server = setupServer();
@@ -43,18 +30,10 @@ describe('LoginContent loading states', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.json({ logged_in: false })
-        );
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ logged_in: false }));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (req, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(200),
-          ctx.json({ status: 'ready' })
-        );
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ status: 'ready' }));
       })
     );
   });
@@ -92,9 +71,7 @@ describe('LoginContent with user not Logged In', () => {
     });
     const loginButton = screen.getByRole('button', { name: 'Login' });
     expect(loginButton).toBeDefined();
-    expect(
-      screen.getByText('Login to use the Bodhi App')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Login to use the Bodhi App')).toBeInTheDocument();
   });
 
   it('renders login button with correct styling', async () => {
@@ -247,10 +224,7 @@ describe('LoginContent with user Logged In', () => {
     pushMock.mockClear();
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({ logged_in: true, email: 'test@example.com' })
-        );
+        return res(ctx.status(200), ctx.json({ logged_in: true, email: 'test@example.com' }));
       }),
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));
@@ -265,9 +239,7 @@ describe('LoginContent with user Logged In', () => {
     await act(async () => {
       render(<LoginContent />, { wrapper: createWrapper() });
     });
-    expect(
-      screen.getByText('You are logged in as test@example.com')
-    ).toBeInTheDocument();
+    expect(screen.getByText('You are logged in as test@example.com')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Go to Home' })).toBeInTheDocument();
   });
@@ -275,11 +247,7 @@ describe('LoginContent with user Logged In', () => {
   it('calls logout function when logout button is clicked and pushes the route in location', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.json({})
-        );
+        return res(ctx.status(200), ctx.set('Location', 'http://localhost:1135/ui/test/login'), ctx.json({}));
       })
     );
     await act(async () => {
@@ -287,9 +255,7 @@ describe('LoginContent with user Logged In', () => {
     });
     const logoutButton = screen.getByRole('button', { name: 'Log Out' });
     await userEvent.click(logoutButton);
-    expect(pushMock).toHaveBeenCalledWith(
-      'http://localhost:1135/ui/test/login'
-    );
+    expect(pushMock).toHaveBeenCalledWith('http://localhost:1135/ui/test/login');
   });
 
   it('disables logout button and shows loading text when logging out', async () => {

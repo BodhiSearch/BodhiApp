@@ -13,11 +13,7 @@ vi.mock('@/hooks/use-chat-db', () => ({
 
 // Create a wrapper component with SidebarProvider
 function Wrapper({ children }: { children: React.ReactNode }) {
-  return (
-    <SidebarProvider>
-      {children}
-    </SidebarProvider>
-  );
+  return <SidebarProvider>{children}</SidebarProvider>;
 }
 
 describe('ChatHistory', () => {
@@ -69,7 +65,7 @@ describe('ChatHistory', () => {
     expect(screen.getByText('TODAY')).toBeInTheDocument();
     expect(screen.getByText('YESTERDAY')).toBeInTheDocument();
     expect(screen.getByText('PREVIOUS 7 DAYS')).toBeInTheDocument();
-    
+
     expect(screen.getByText('Today Chat')).toBeInTheDocument();
     expect(screen.getByText('Yesterday Chat')).toBeInTheDocument();
     expect(screen.getByText('Previous Chat')).toBeInTheDocument();

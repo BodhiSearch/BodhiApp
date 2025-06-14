@@ -14,9 +14,7 @@ describe('useChatDB', () => {
     vi.clearAllMocks();
   });
 
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
-    <ChatDBProvider>{children}</ChatDBProvider>
-  );
+  const wrapper = ({ children }: { children: React.ReactNode }) => <ChatDBProvider>{children}</ChatDBProvider>;
 
   describe('initialization', () => {
     it('should initialize with empty state', () => {
