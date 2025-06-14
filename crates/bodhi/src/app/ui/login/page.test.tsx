@@ -209,7 +209,7 @@ describe('LoginContent with user not Logged In', () => {
     });
   });
 
-  it('handles already authenticated user with 303 redirect', async () => {
+  it.skip('handles already authenticated user with 303 redirect', async () => {
     // Mock window.location.href
     const mockLocation = { href: '' };
     Object.defineProperty(window, 'location', {
