@@ -7,9 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
     "test": "vitest --run",
-    "eslint": "eslint . --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "format": "prettier --write .",
     "prepare": "husky"
   },
@@ -107,8 +106,5 @@
     "*.{json,md}": [
       "prettier --write"
     ]
-  },
-  "prettier": {
-    "endOfLine": "lf"
   }
 }
