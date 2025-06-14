@@ -82,7 +82,9 @@ describe('DocsSlugPage', () => {
     it('renders docs index for directory with nested docs', async () => {
       vi.mocked(getDocsForSlug).mockReturnValue(mockGroups);
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
+      vi.mocked(fs.statSync).mockReturnValue({
+        isDirectory: () => true,
+      } as any);
 
       const page = await DocsSlugPage({ params: { slug: ['nested'] } });
       render(page);
@@ -128,7 +130,9 @@ describe('DocsSlugPage', () => {
 
       vi.mocked(getDocsForSlug).mockReturnValue(multipleGroups);
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => true } as any);
+      vi.mocked(fs.statSync).mockReturnValue({
+        isDirectory: () => true,
+      } as any);
 
       const page = await DocsSlugPage({ params: { slug: ['docs'] } });
       render(page);
@@ -151,7 +155,9 @@ describe('DocsSlugPage', () => {
     it('renders markdown content for document files', async () => {
       vi.mocked(getDocsForSlug).mockReturnValue([]);
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+      vi.mocked(fs.statSync).mockReturnValue({
+        isDirectory: () => false,
+      } as any);
       vi.mocked(fs.readFileSync).mockReturnValue(mockMarkdownContent);
 
       // Mock matter with proper return value
@@ -195,7 +201,9 @@ describe('DocsSlugPage', () => {
     it('handles file read errors gracefully', async () => {
       vi.mocked(getDocsForSlug).mockReturnValue([]);
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+      vi.mocked(fs.statSync).mockReturnValue({
+        isDirectory: () => false,
+      } as any);
       vi.mocked(fs.readFileSync).mockImplementation(() => {
         throw new Error('File read error');
       });
@@ -213,7 +221,9 @@ describe('DocsSlugPage', () => {
     it('handles markdown processing errors gracefully', async () => {
       vi.mocked(getDocsForSlug).mockReturnValue([]);
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+      vi.mocked(fs.statSync).mockReturnValue({
+        isDirectory: () => false,
+      } as any);
       vi.mocked(fs.readFileSync).mockReturnValue('invalid markdown');
 
       // Mock matter to throw error

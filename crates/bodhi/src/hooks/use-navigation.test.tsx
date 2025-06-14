@@ -58,7 +58,9 @@ describe('useNavigation', () => {
   it('should return root level item when path matches', () => {
     mockUsePathname.mockReturnValue('/ui/root/');
 
-    const { result } = renderHook(() => useNavigation(), { wrapper: renderWithProvider });
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: renderWithProvider,
+    });
 
     expect(result.current.currentItem).toEqual({
       item: expect.objectContaining({
@@ -72,7 +74,9 @@ describe('useNavigation', () => {
   it('should return sub-item with parent when path matches', () => {
     mockUsePathname.mockReturnValue('/ui/child/');
 
-    const { result } = renderHook(() => useNavigation(), { wrapper: renderWithProvider });
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: renderWithProvider,
+    });
 
     expect(result.current.currentItem.item).toEqual(
       expect.objectContaining({
@@ -93,7 +97,9 @@ describe('useNavigation', () => {
   it('should return sub-sub-item with immediate parent when path matches', () => {
     mockUsePathname.mockReturnValue('/ui/child/grandchild/');
 
-    const { result } = renderHook(() => useNavigation(), { wrapper: renderWithProvider });
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: renderWithProvider,
+    });
 
     expect(result.current.currentItem.item).toEqual(
       expect.objectContaining({
@@ -114,7 +120,9 @@ describe('useNavigation', () => {
   it('should default to Home when no path matches', () => {
     mockUsePathname.mockReturnValue('/non/existent/path');
 
-    const { result } = renderHook(() => useNavigation(), { wrapper: renderWithProvider });
+    const { result } = renderHook(() => useNavigation(), {
+      wrapper: renderWithProvider,
+    });
 
     expect(result.current.currentItem).toEqual({
       item: expect.objectContaining({

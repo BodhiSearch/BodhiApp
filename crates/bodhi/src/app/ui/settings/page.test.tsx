@@ -168,7 +168,9 @@ describe('SettingsPageContent', () => {
 
 describe('SettingsPage', () => {
   it('shows loading skeleton initially', () => {
-    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, {
+      wrapper: createWrapper(),
+    });
     expect(screen.getAllByTestId('settings-skeleton')).toHaveLength(3); // 3 setting groups
   });
 
@@ -179,13 +181,17 @@ describe('SettingsPage', () => {
       })
     );
 
-    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, {
+      wrapper: createWrapper(),
+    });
     expect(await screen.findByText(/Failed to fetch settings/)).toBeInTheDocument();
   });
 
   it('displays settings grouped by category', async () => {
     await act(async () => {
-      render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+      render(<SettingsPageContent config={TEST_CONFIG} />, {
+        wrapper: createWrapper(),
+      });
     });
 
     // Check group titles
@@ -200,7 +206,9 @@ describe('SettingsPage', () => {
 
   it('shows setting source badges', async () => {
     await act(async () => {
-      render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+      render(<SettingsPageContent config={TEST_CONFIG} />, {
+        wrapper: createWrapper(),
+      });
     });
 
     // Use getAllByText for badges since there might be multiple
@@ -213,16 +221,22 @@ describe('SettingsPage', () => {
   });
 
   it('shows edit button only for BODHI_EXEC_VARIANT', async () => {
-    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, {
+      wrapper: createWrapper(),
+    });
     await screen.findByText('BODHI_EXEC_VARIANT');
 
-    const editButtons = screen.getAllByRole('button', { name: /edit setting/i });
+    const editButtons = screen.getAllByRole('button', {
+      name: /edit setting/i,
+    });
     expect(editButtons).toHaveLength(1);
   });
 
   it('opens and closes edit dialog', async () => {
     const user = userEvent.setup();
-    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
+    render(<SettingsPageContent config={TEST_CONFIG} />, {
+      wrapper: createWrapper(),
+    });
 
     // Wait for content and click edit
     await screen.findByText('BODHI_EXEC_VARIANT');

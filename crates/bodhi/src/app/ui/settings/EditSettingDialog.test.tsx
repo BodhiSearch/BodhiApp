@@ -215,7 +215,9 @@ describe('EditSettingDialog', () => {
 
     // Wait for and click the option
     const listbox = await screen.findByRole('listbox');
-    const optionElement = within(listbox).getByRole('option', { name: /debug/i });
+    const optionElement = within(listbox).getByRole('option', {
+      name: /debug/i,
+    });
     await user.click(optionElement);
 
     // Click save

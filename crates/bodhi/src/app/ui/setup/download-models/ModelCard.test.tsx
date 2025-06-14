@@ -70,7 +70,10 @@ describe('ModelCard', () => {
   it('should render card with error download state', () => {
     const model = {
       ...baseModel,
-      downloadState: { status: 'error', message: 'Download failed' } as DownloadState,
+      downloadState: {
+        status: 'error',
+        message: 'Download failed',
+      } as DownloadState,
     };
 
     render(<ModelCard model={model} onDownload={handleDownload} />);
