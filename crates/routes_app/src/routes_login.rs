@@ -40,12 +40,10 @@ use utoipa::ToSchema;
     operation_id = "initiateOAuthFlow",
     request_body = (),
     responses(
-        (status = 401, description = "User not authenticated, OAuth initiation required",
+        (status = 303, description = "User not authenticated, redirect to OAuth authorization URL",
          headers(
-             ("WWW-Authenticate" = String, description = "Bearer realm=\"OAuth\"")
-         ),
-         body = AuthInitiateResponse,
-         example = json!({"auth_url": "https://id.getbodhi.app/realms/bodhi/protocol/openid-connect/auth?client_id=..."})
+             ("Location" = String, description = "OAuth authorization URL")
+         )
         ),
         (status = 303, description = "User already authenticated, redirect to home",
          headers(
@@ -82,7 +80,7 @@ pub async fn auth_initiate_handler(
       )
     }
     None => {
-      // User not authenticated, return auth URL with 401 status
+      // User not authenticated, redirect to auth URL with 303 status
       let secret_service = app_service.secret_service();
       let app_reg_info = secret_service
         .app_reg_info()?
@@ -119,16 +117,11 @@ pub async fn auth_initiate_handler(
         setting_service.login_url(), client_id, callback_url, state, code_challenge, scope_normalized
       );
 
-      let response_body = AuthInitiateResponse {
-        auth_url: login_url,
-      };
-
       Ok(
         Response::builder()
-          .status(StatusCode::UNAUTHORIZED)
-          .header("WWW-Authenticate", "Bearer realm=\"OAuth\"")
-          .header("Content-Type", "application/json")
-          .body(Body::from(serde_json::to_string(&response_body).unwrap()))
+          .status(StatusCode::SEE_OTHER)
+          .header(LOCATION, login_url)
+          .body(Body::empty())
           .unwrap()
           .into_response(),
       )
@@ -566,10 +559,9 @@ mod tests {
       .await?;
 
     let status = resp.status();
-    let resp_json = resp.json::<serde_json::Value>().await?;
-    let location = resp_json["auth_url"].as_str().unwrap();
+    assert_eq!(status, StatusCode::SEE_OTHER);
+    let location = resp.headers().get("location").unwrap().to_str()?;
     assert!(location.starts_with(login_url));
-    assert_eq!(status, StatusCode::UNAUTHORIZED);
 
     let url = Url::parse(location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
@@ -614,9 +606,9 @@ mod tests {
     test_auth_initiate_handler_with_token(
       temp_bodhi_home,
       token,
-      StatusCode::UNAUTHORIZED,
-      None,
+      StatusCode::SEE_OTHER,
       Some("http://id.localhost/realms/test-realm/protocol/openid-connect/auth"),
+      None,
     )
     .await
   }
@@ -671,10 +663,12 @@ mod tests {
         .starts_with(location));
     }
     if let Some(auth_url) = auth_url {
-      assert!(resp.json::<serde_json::Value>().await?["auth_url"]
-        .as_str()
+      assert!(resp
+        .headers()
+        .get("location")
         .unwrap()
-        .starts_with(auth_url),);
+        .to_str()?
+        .starts_with(auth_url));
     }
     Ok(())
   }
@@ -780,9 +774,8 @@ mod tests {
 
     // Perform login request
     let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::UNAUTHORIZED);
-    let resp_json = login_resp.json::<serde_json::Value>();
-    let location = resp_json["auth_url"].as_str().unwrap();
+    login_resp.assert_status(StatusCode::SEE_OTHER);
+    let location = login_resp.headers().get("location").unwrap().to_str()?;
     let url = Url::parse(location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
@@ -908,9 +901,8 @@ mod tests {
     client.save_cookies();
 
     let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::UNAUTHORIZED);
-    let resp_json = login_resp.json::<serde_json::Value>();
-    let location = resp_json["auth_url"].as_str().unwrap();
+    login_resp.assert_status(StatusCode::SEE_OTHER);
+    let location = login_resp.headers().get("location").unwrap().to_str()?;
     let url = Url::parse(location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
     let state = format!("{}{}", state_prefix, query_params.get("state").unwrap());
@@ -1013,9 +1005,8 @@ mod tests {
 
     // Perform login request to set up session
     let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::UNAUTHORIZED);
-    let resp_json = login_resp.json::<serde_json::Value>();
-    let location = resp_json["auth_url"].as_str().unwrap();
+    login_resp.assert_status(StatusCode::SEE_OTHER);
+    let location = login_resp.headers().get("location").unwrap().to_str()?;
     let url = Url::parse(location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
     let valid_state = query_params.get("state").unwrap();
@@ -1090,9 +1081,8 @@ mod tests {
 
     // Simulate login to set up session
     let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::UNAUTHORIZED);
-    let resp_json = login_resp.json::<serde_json::Value>();
-    let location = resp_json["auth_url"].as_str().unwrap();
+    login_resp.assert_status(StatusCode::SEE_OTHER);
+    let location = login_resp.headers().get("location").unwrap().to_str()?;
     let url = Url::parse(location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
     let state = query_params.get("state").unwrap().to_string();

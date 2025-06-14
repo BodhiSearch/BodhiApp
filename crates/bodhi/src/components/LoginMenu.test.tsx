@@ -1,5 +1,10 @@
 import { LoginMenu } from '@/components/LoginMenu';
-import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
+import {
+  ENDPOINT_APP_INFO,
+  ENDPOINT_AUTH_INITIATE,
+  ENDPOINT_LOGOUT,
+  ENDPOINT_USER_INFO
+} from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -46,8 +51,8 @@ const server = setupServer(
   }),
   rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
     return res(
-      ctx.status(401), // 401 when login required
-      ctx.json({ auth_url: 'https://oauth.example.com/auth?client_id=test' })
+      ctx.status(303), // 303 redirect to OAuth URL
+      ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
     );
   })
 );
@@ -82,7 +87,7 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it.skip('handles OAuth initiation on login button click', async () => {
+  it('handles OAuth initiation on login button click', async () => {
     // Mock window.location.href
     const originalLocation = window.location;
     delete (window as any).location;
@@ -113,9 +118,7 @@ describe('LoginMenu Component', () => {
 
     render(<LoginMenu />, { wrapper: createWrapper() });
 
-    const logoutButton = await screen.findByRole('button', {
-      name: /log out/i,
-    });
+    const logoutButton = await screen.findByRole('button', { name: /log out/i });
     await userEvent.click(logoutButton);
 
     expect(screen.getByRole('button', { name: /logging out/i })).toBeInTheDocument();
@@ -132,7 +135,7 @@ describe('LoginMenu Component', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it.skip('shows error message when OAuth initiation fails', async () => {
+  it('shows error message when OAuth initiation fails', async () => {
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
@@ -158,15 +161,13 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it.skip('shows redirecting state during OAuth initiation', async () => {
+  it('shows redirecting state during OAuth initiation', async () => {
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
           ctx.delay(100),
-          ctx.status(401), // 401 when login required
-          ctx.json({
-            auth_url: 'https://oauth.example.com/auth?client_id=test',
-          })
+          ctx.status(303), // 303 redirect to OAuth URL
+          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
         );
       })
     );
@@ -182,7 +183,7 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it.skip('redirects to location when OAuth initiation returns 303', async () => {
+  it('redirects to location when OAuth initiation returns 303', async () => {
     // Mock window.location.href
     const originalLocation = window.location;
     delete (window as any).location;
@@ -190,7 +191,11 @@ describe('LoginMenu Component', () => {
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(303), ctx.set('Location', 'https://example.com/redirected'), ctx.json({}));
+        return res(
+          ctx.status(303),
+          ctx.set('Location', 'https://example.com/redirected'),
+          ctx.json({})
+        );
       })
     );
 
@@ -205,5 +210,22 @@ describe('LoginMenu Component', () => {
 
     // Restore window.location
     window.location = originalLocation;
+  });
+
+  it('shows error when 303 response has no Location header', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(ctx.status(303)); // No Location header
+      })
+    );
+
+    render(<LoginMenu />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: /login/i });
+    await userEvent.click(loginButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Auth URL not found in response. Please try again.')).toBeInTheDocument();
+    });
   });
 });

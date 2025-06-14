@@ -16,12 +16,11 @@ export function LoginContent() {
   const oauthInitiate = useOAuthInitiate({
     onSuccess: (response) => {
       // Handle redirect based on backend response
-      // 401 response: auth_url in body (login required)
-      // 303 response: Location header (already authenticated)
-      if (response.data?.auth_url) {
-        window.location.href = response.data.auth_url;
-      } else if (response.headers?.location) {
+      // 303 response: Location header (OAuth URL or already authenticated)
+      if (response.headers?.location) {
         window.location.href = response.headers.location;
+      } else {
+        setError('Auth URL not found in response. Please try again.');
       }
     },
     onError: (message) => {
