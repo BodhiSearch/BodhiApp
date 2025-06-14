@@ -6,14 +6,17 @@ import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { redirect } from 'next/navigation';
 
 const mockPush = vi.fn();
+const mockRedirect = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     refresh: vi.fn(),
   }),
   usePathname: () => '/',
+  redirect: vi.fn(),
 }));
 
 const mockToast = vi.fn();
@@ -53,7 +56,10 @@ const server = setupServer(
 );
 
 beforeAll(() => server.listen());
-afterEach(() => server.resetHandlers());
+afterEach(() => {
+  server.resetHandlers();
+  vi.clearAllMocks();
+});
 afterAll(() => server.close());
 
 describe('LoginMenu Component', () => {
@@ -83,30 +89,17 @@ describe('LoginMenu Component', () => {
   });
 
   it('handles OAuth initiation on login button click', async () => {
-    // Mock window.location.href
-    const originalLocation = window.location;
-    delete (window as any).location;
-    window.location = { ...originalLocation, href: '' };
-
     render(<LoginMenu />, { wrapper: createWrapper() });
 
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
+      expect(redirect).toHaveBeenCalledWith('https://oauth.example.com/auth?client_id=test');
     });
-
-    // Restore window.location
-    window.location = originalLocation;
   });
 
-  it('handles logout action', async () => {
-    // Mock window.location.href
-    const originalLocation = window.location;
-    delete (window as any).location;
-    window.location = { ...originalLocation, href: '' };
-
+  it('handles logout action with external redirect URL', async () => {
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json(mockLoggedInUser));
@@ -129,11 +122,30 @@ describe('LoginMenu Component', () => {
     expect(screen.getByRole('button', { name: /logging out/i })).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(window.location.href).toBe('http://localhost:1135/ui/login');
+      expect(redirect).toHaveBeenCalledWith('http://localhost:1135/ui/login');
     });
+  });
 
-    // Restore window.location
-    window.location = originalLocation;
+  it('handles logout action with internal redirect URL', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
+        return res(ctx.json(mockLoggedInUser));
+      }),
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
+        return res(ctx.delay(100), ctx.status(201), ctx.set('Location', '/ui/login'), ctx.set('Content-Length', '0'));
+      })
+    );
+
+    render(<LoginMenu />, { wrapper: createWrapper() });
+
+    const logoutButton = await screen.findByRole('button', { name: /log out/i });
+    await userEvent.click(logoutButton);
+
+    expect(screen.getByRole('button', { name: /logging out/i })).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(redirect).toHaveBeenCalledWith('/ui/login');
+    });
   });
 
   it('handles logout error', async () => {
@@ -156,14 +168,14 @@ describe('LoginMenu Component', () => {
     });
 
     expect(logoutButton).not.toBeDisabled();
+
+    // Should redirect to login page on error
+    await waitFor(() => {
+      expect(redirect).toHaveBeenCalledWith('/ui/login');
+    });
   });
 
   it('handles logout with missing Location header', async () => {
-    // Mock window.location.href
-    const originalLocation = window.location;
-    delete (window as any).location;
-    window.location = { ...originalLocation, href: '' };
-
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json(mockLoggedInUser));
@@ -179,11 +191,8 @@ describe('LoginMenu Component', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('/ui/chat');
+      expect(redirect).toHaveBeenCalledWith('/ui/chat');
     });
-
-    // Restore window.location
-    window.location = originalLocation;
   });
 
   it('shows nothing during loading', async () => {
@@ -246,11 +255,6 @@ describe('LoginMenu Component', () => {
   });
 
   it('redirects to location when OAuth initiation returns 303', async () => {
-    // Mock window.location.href
-    const originalLocation = window.location;
-    delete (window as any).location;
-    window.location = { ...originalLocation, href: '' };
-
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(ctx.status(303), ctx.set('Location', 'https://example.com/redirected'));
@@ -263,11 +267,8 @@ describe('LoginMenu Component', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('https://example.com/redirected');
+      expect(redirect).toHaveBeenCalledWith('https://example.com/redirected');
     });
-
-    // Restore window.location
-    window.location = originalLocation;
   });
 
   it('shows error when 303 response has no Location header', async () => {

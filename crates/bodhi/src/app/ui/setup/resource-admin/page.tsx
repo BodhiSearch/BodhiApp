@@ -8,6 +8,7 @@ import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { motion } from 'framer-motion';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 import { useState } from 'react';
+import { redirect } from 'next/navigation';
 
 // Animation variants
 const containerVariants = {
@@ -36,7 +37,7 @@ function ResourceAdminContent() {
       // Handle redirect based on backend response
       // 303 response: Location header (OAuth URL or already authenticated)
       if (response.headers?.location) {
-        window.location.href = response.headers.location;
+        redirect(response.headers.location);
       } else {
         setError('Auth URL not found in response. Please try again.');
       }

@@ -6,18 +6,25 @@ import { useLogoutHandler } from '@/hooks/useLogoutHandler';
 import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { ROUTE_DEFAULT } from '@/lib/constants';
+import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
 import { useState } from 'react';
+import { useRouter, redirect } from 'next/navigation';
 
 export function LoginContent() {
   const { data: userInfo, isLoading: userLoading } = useUser();
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.headers?.location || ROUTE_DEFAULT;
-      window.location.href = redirectUrl;
+      // For internal URLs, use router.push; for external URLs, use window.location.href
+      if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
+        redirect(redirectUrl);
+      } else {
+        router.push(redirectUrl);
+      }
     },
     onError: (message) => {
       // Reset local storage and cookies on logout failure
@@ -31,7 +38,7 @@ export function LoginContent() {
       });
       showError('Logout failed', `Message: ${message}. Redirecting to login page.`);
       // Redirect to login page
-      window.location.href = '/ui/login';
+      router.push(ROUTE_LOGIN);
     },
   });
 
@@ -40,7 +47,13 @@ export function LoginContent() {
       // Handle redirect based on backend response
       // 303 response: Location header (OAuth URL or already authenticated)
       if (response.headers?.location) {
-        window.location.href = response.headers.location;
+        const redirectUrl = response.headers.location;
+        // For external URLs (OAuth), use window.location.href; for internal routes, use router.push
+        if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
+          redirect(redirectUrl);
+        } else {
+          router.push(redirectUrl);
+        }
       } else {
         setError('Auth URL not found in response. Please try again.');
       }

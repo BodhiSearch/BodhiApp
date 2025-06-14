@@ -6,6 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { redirect } from 'next/navigation';
 
 // Mock the hooks
 const server = setupServer();
@@ -14,6 +15,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
   }),
+  redirect: vi.fn(),
 }));
 
 beforeAll(() => server.listen());
@@ -88,13 +90,6 @@ describe('LoginContent with user not Logged In', () => {
   });
 
   it('handles OAuth initiation when login required and redirects to auth URL', async () => {
-    // Mock window.location.href
-    const mockLocation = { href: '' };
-    Object.defineProperty(window, 'location', {
-      value: mockLocation,
-      writable: true,
-    });
-
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
@@ -112,7 +107,7 @@ describe('LoginContent with user not Logged In', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
+      expect(redirect).toHaveBeenCalledWith('https://oauth.example.com/auth?client_id=test');
     });
   });
 
@@ -190,14 +185,7 @@ describe('LoginContent with user not Logged In', () => {
     });
   });
 
-  it('handles already authenticated user with 303 redirect', async () => {
-    // Mock window.location.href
-    const mockLocation = { href: '' };
-    Object.defineProperty(window, 'location', {
-      value: mockLocation,
-      writable: true,
-    });
-
+  it('handles already authenticated user with 303 redirect to external URL', async () => {
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
@@ -216,7 +204,30 @@ describe('LoginContent with user not Logged In', () => {
 
     // Should redirect to the location header value
     await waitFor(() => {
-      expect(window.location.href).toBe('http://localhost:3000/ui/chat');
+      expect(redirect).toHaveBeenCalledWith('http://localhost:3000/ui/chat');
+    });
+  });
+
+  it('handles already authenticated user with 303 redirect to internal URL', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(303), // 303 when already authenticated
+          ctx.set('Location', '/ui/chat')
+        );
+      })
+    );
+
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+
+    const loginButton = screen.getByRole('button', { name: 'Login' });
+    await userEvent.click(loginButton);
+
+    // Should use router.push for internal URLs
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat');
     });
   });
 
@@ -270,12 +281,7 @@ describe('LoginContent with user Logged In', () => {
     expect(screen.getByRole('button', { name: 'Go to Home' })).toBeInTheDocument();
   });
 
-  it('calls logout function when logout button is clicked and redirects to location', async () => {
-    // Mock window.location.href
-    const originalLocation = window.location;
-    delete (window as any).location;
-    window.location = { ...originalLocation, href: '' };
-
+  it('calls logout function when logout button is clicked and redirects to external location', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
         return res(
@@ -292,11 +298,25 @@ describe('LoginContent with user Logged In', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('http://localhost:1135/ui/test/login');
+      expect(redirect).toHaveBeenCalledWith('http://localhost:1135/ui/test/login');
     });
+  });
 
-    // Restore window.location
-    window.location = originalLocation;
+  it('calls logout function when logout button is clicked and redirects to internal location', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
+        return res(ctx.status(201), ctx.set('Location', '/ui/login'), ctx.set('Content-Length', '0'));
+      })
+    );
+    await act(async () => {
+      render(<LoginContent />, { wrapper: createWrapper() });
+    });
+    const logoutButton = screen.getByRole('button', { name: 'Log Out' });
+    await userEvent.click(logoutButton);
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/login');
+    });
   });
 
   it('disables logout button and shows loading text when logging out', async () => {
