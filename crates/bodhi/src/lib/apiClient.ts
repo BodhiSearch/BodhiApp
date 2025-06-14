@@ -1,7 +1,8 @@
 import axios from 'axios';
 
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 const apiClient = axios.create({
-  baseURL: '',
+  baseURL: isTest ? 'http://localhost:3000' : '',
   maxRedirects: 0,
 });
 

@@ -31,6 +31,7 @@ vi.mock('framer-motion', () => {
 
 import '@testing-library/jest-dom';
 import { beforeAll, afterAll } from 'vitest';
+import apiClient from "@/lib/apiClient";
 
 // Mock ResizeObserver
 class MockResizeObserver {
@@ -44,6 +45,7 @@ global.ResizeObserver = MockResizeObserver;
 // Suppress console errors for specific messages
 const originalError = console.error;
 beforeAll(() => {
+  apiClient.defaults.baseURL = 'http://localhost:3000';
   console.error = (...args) => {
     // Check if any of the arguments contain our expected error messages
     const errorString = args

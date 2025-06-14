@@ -93,6 +93,7 @@ Feature documentation organized by development status and implementation timelin
 - **[Reset to Authz](02-features/completed-stories/story-authz-20250111-reset-to-authz.md)** - Authentication mode reset functionality
 
 #### Planned Features
+- **[NPM Dependency Upgrade](02-features/planned/20250613-npm-dependency-upgrade.md)** - Comprehensive strategy for safely upgrading npm dependencies in the BodhiApp frontend, including risk-based batching, testing procedures, and rollback plans
 - **[App Setup Refactoring](02-features/planned/20250610-lib-bodhiserver.md)** - Technical specification for `lib_bodhiserver` library crate to centralize initialization logic, eliminate code duplication between production and test paths, and enable multiple deployment modes (Tauri, CLI, Docker)
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
@@ -145,7 +146,8 @@ Implementation guides, technical knowledge, and learning resources for developer
 - **[Chat UI](06-knowledge-transfer/chat-ui.md)** - Chat interface implementation patterns and user experience design
 - **[Model Parameters](06-knowledge-transfer/model-parameters.md)** - Model configuration, parameter management, and optimization guides
 - **[Setup Processes](06-knowledge-transfer/setup-processes.md)** - Application installation, setup procedures, and configuration workflows
-- **[Dependency Management](06-knowledge-transfer/unused-upgrade-dependencies.md)** - Comprehensive guide for Rust workspace dependency management, including unused dependency removal, systematic upgrade strategies, and handling major version blockers
+- **[Rust Dependency Management](06-knowledge-transfer/unused-upgrade-dependencies.md)** - Comprehensive guide for Rust workspace dependency management, including unused dependency removal, systematic upgrade strategies, and handling major version blockers
+- **[NPM Dependency Upgrades](02-features/planned/20250613-npm-dependency-upgrade.md)** - Strategic approach to upgrading npm dependencies in the frontend, with risk-based batching and testing procedures
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
