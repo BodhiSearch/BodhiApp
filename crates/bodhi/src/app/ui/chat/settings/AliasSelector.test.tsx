@@ -5,15 +5,14 @@ import { createWrapper } from '@/tests/wrapper';
 import * as chatSettings from '@/hooks/use-chat-settings';
 
 // Mock useMediaQuery hook
-vi.mock("@/hooks/use-media-query", () => ({
+vi.mock('@/hooks/use-media-query', () => ({
   useMediaQuery: (query: string) => {
     return true;
-  }
-}))
-vi.mock("@/components/CopyButton", () => ({
-  CopyButton: () => <div>Copy Button</div>
-}))
-
+  },
+}));
+vi.mock('@/components/CopyButton', () => ({
+  CopyButton: () => <div>Copy Button</div>,
+}));
 
 // Mock required HTMLElement methods and styles for Radix UI and Vaul components
 Object.assign(window.HTMLElement.prototype, {
@@ -35,7 +34,7 @@ Object.assign(window.HTMLElement.prototype, {
 
 // Mock useChatSettings
 vi.mock('@/hooks/use-chat-settings', () => ({
-  useChatSettings: vi.fn()
+  useChatSettings: vi.fn(),
 }));
 
 const mockModels = [
@@ -44,7 +43,7 @@ const mockModels = [
   },
   {
     alias: 'tinyllama-chat',
-  }
+  },
 ];
 
 describe('AliasSelector', () => {
@@ -58,7 +57,7 @@ describe('AliasSelector', () => {
 
   it('renders in disabled state when loading', () => {
     render(<AliasSelector models={mockModels} isLoading={true} />, {
-      wrapper: createWrapper()
+      wrapper: createWrapper(),
     });
 
     const select = screen.getByRole('combobox');
@@ -67,7 +66,7 @@ describe('AliasSelector', () => {
 
   it('renders in enabled state when not loading', () => {
     render(<AliasSelector models={mockModels} isLoading={false} />, {
-      wrapper: createWrapper()
+      wrapper: createWrapper(),
     });
 
     const select = screen.getByRole('combobox');
@@ -76,7 +75,7 @@ describe('AliasSelector', () => {
 
   it('shows placeholder text when no model is selected', () => {
     render(<AliasSelector models={mockModels} />, {
-      wrapper: createWrapper()
+      wrapper: createWrapper(),
     });
 
     expect(screen.getByText('Select alias')).toBeInTheDocument();
@@ -89,7 +88,7 @@ describe('AliasSelector', () => {
     } as any);
 
     render(<AliasSelector models={mockModels} />, {
-      wrapper: createWrapper()
+      wrapper: createWrapper(),
     });
 
     expect(screen.getByText('gpt-4')).toBeInTheDocument();
@@ -103,7 +102,7 @@ describe('AliasSelector', () => {
     } as any);
 
     render(<AliasSelector models={mockModels} />, {
-      wrapper: createWrapper()
+      wrapper: createWrapper(),
     });
 
     const select = screen.getByRole('combobox');
@@ -117,13 +116,13 @@ describe('AliasSelector', () => {
 
   it('renders all provided model options', () => {
     render(<AliasSelector models={mockModels} />, {
-      wrapper: createWrapper()
+      wrapper: createWrapper(),
     });
 
     const select = screen.getByRole('combobox');
     fireEvent.click(select);
 
-    mockModels.forEach(model => {
+    mockModels.forEach((model) => {
       expect(screen.getByText(model.alias)).toBeInTheDocument();
     });
   });

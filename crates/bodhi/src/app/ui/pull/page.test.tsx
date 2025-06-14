@@ -4,16 +4,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import PullPage from '@/app/ui/pull/page';
 
 vi.mock('@/app/ui/pull/PullForm', () => ({
@@ -115,7 +106,7 @@ describe('PullPage', () => {
 
     // Find and click the expand button for the error row
     const rows = screen.getAllByRole('row');
-    const errorRow = rows.find(row => row.textContent?.includes('test/repo3'));
+    const errorRow = rows.find((row) => row.textContent?.includes('test/repo3'));
     const expandButton = errorRow?.querySelector('button');
     expect(expandButton).toBeInTheDocument();
     await user.click(expandButton!);
@@ -128,10 +119,7 @@ describe('PullPage', () => {
   it('handles API error', async () => {
     server.use(
       rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Internal Server Error' } })
-        );
+        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
       })
     );
 

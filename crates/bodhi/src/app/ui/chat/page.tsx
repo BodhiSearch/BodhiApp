@@ -58,11 +58,7 @@ function ChatWithSettings() {
         )}
         aria-label="Toggle settings"
       >
-        {showSettingsPanel ? (
-          <X className="h-5 w-5" />
-        ) : (
-          <Settings2 className="h-5 w-5" />
-        )}
+        {showSettingsPanel ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
       </SidebarTrigger>
       <SettingsSidebar />
     </>
@@ -70,10 +66,7 @@ function ChatWithSettings() {
 }
 
 function ChatWithHistory() {
-  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage(
-    'sidebar-settings-open',
-    true
-  );
+  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-settings-open', true);
   const { open, openMobile, isMobile } = useSidebar();
   const showHistoryPanel = isMobile ? openMobile : open;
   const searchParams = useSearchParams();
@@ -101,11 +94,7 @@ function ChatWithHistory() {
             )}
             aria-label="Toggle history"
           >
-            {showHistoryPanel ? (
-              <PanelLeftClose className="h-5 w-5" />
-            ) : (
-              <PanelLeftOpen className="h-5 w-5" />
-            )}
+            {showHistoryPanel ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
           </SidebarTrigger>
           <ChatSettingsProvider initialData={initialData}>
             <SidebarProvider
@@ -125,17 +114,10 @@ function ChatWithHistory() {
 }
 
 function ChatPageContent() {
-  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage(
-    'sidebar-history-open',
-    true
-  );
+  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage('sidebar-history-open', true);
   return (
     <ChatDBProvider>
-      <SidebarProvider
-        style={sidebarStyles}
-        open={isSidebarOpen}
-        onOpenChange={setIsSidebarOpen}
-      >
+      <SidebarProvider style={sidebarStyles} open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
         <ChatWithHistory />
       </SidebarProvider>
     </ChatDBProvider>

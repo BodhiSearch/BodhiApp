@@ -19,7 +19,7 @@ describe('useChatSettings', () => {
         model: '',
         temperature_enabled: false,
         stream_enabled: true,
-        max_tokens_enabled: false
+        max_tokens_enabled: false,
         // ... other enabled states
       });
     });
@@ -84,8 +84,8 @@ describe('useChatSettings', () => {
 
       act(() => {
         result.current.setModel('gpt-4');
-        result.current.setTemperature(0.7);  // This automatically enables it
-        result.current.setTopP(0.9);         // This automatically enables it
+        result.current.setTemperature(0.7); // This automatically enables it
+        result.current.setTopP(0.9); // This automatically enables it
         result.current.setTopPEnabled(false); // Manually disable top_p
       });
 
@@ -93,7 +93,7 @@ describe('useChatSettings', () => {
       expect(requestSettings).toEqual({
         model: 'gpt-4',
         temperature: 0.7,
-        stream: true
+        stream: true,
       });
       expect(requestSettings).not.toHaveProperty('top_p');
     });
@@ -124,8 +124,8 @@ describe('useChatSettings', () => {
 
       act(() => {
         result.current.setModel('gpt-4');
-        result.current.setTemperature(0.7);  // Should automatically enable
-        result.current.setTopP(0.9);         // Should automatically enable
+        result.current.setTemperature(0.7); // Should automatically enable
+        result.current.setTopP(0.9); // Should automatically enable
         result.current.setTopPEnabled(false); // Manually disable
       });
 
@@ -135,19 +135,22 @@ describe('useChatSettings', () => {
         temperature: 0.7,
         temperature_enabled: true,
         top_p: 0.9,
-        top_p_enabled: false
+        top_p_enabled: false,
       });
     });
 
     it('should load persisted settings from localStorage', () => {
       // Setup initial state in localStorage
-      localStorage.setItem('chat-settings', JSON.stringify({
-        model: 'gpt-4',
-        temperature: 0.7,
-        temperature_enabled: true,
-        top_p: 0.9,
-        top_p_enabled: false
-      }));
+      localStorage.setItem(
+        'chat-settings',
+        JSON.stringify({
+          model: 'gpt-4',
+          temperature: 0.7,
+          temperature_enabled: true,
+          top_p: 0.9,
+          top_p_enabled: false,
+        })
+      );
 
       const { result } = renderHook(() => useChatSettings(), { wrapper });
 
@@ -161,11 +164,14 @@ describe('useChatSettings', () => {
 
     it('should merge localStorage data with default enabled states', () => {
       // Setup partial state in localStorage
-      localStorage.setItem('chat-settings', JSON.stringify({
-        model: 'gpt-4',
-        temperature: 0.7
-        // Note: no enabled states specified
-      }));
+      localStorage.setItem(
+        'chat-settings',
+        JSON.stringify({
+          model: 'gpt-4',
+          temperature: 0.7,
+          // Note: no enabled states specified
+        })
+      );
 
       const { result } = renderHook(() => useChatSettings(), { wrapper });
 
@@ -223,13 +229,11 @@ describe('useChatSettings', () => {
       const initialData = {
         model: 'test-model',
         temperature: 0.8,
-        temperature_enabled: true
+        temperature_enabled: true,
       };
 
       const { result } = renderHook(() => useChatSettings(), {
-        wrapper: ({ children }) => (
-          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
-        )
+        wrapper: ({ children }) => <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>,
       });
 
       expect(result.current.model).toBe('test-model');
@@ -241,22 +245,23 @@ describe('useChatSettings', () => {
 
     it('should apply initialData over localStorage values', () => {
       // Set up localStorage with some values
-      localStorage.setItem('chat-settings', JSON.stringify({
-        model: 'stored-model',
-        temperature: 0.5,
-        temperature_enabled: false
-      }));
+      localStorage.setItem(
+        'chat-settings',
+        JSON.stringify({
+          model: 'stored-model',
+          temperature: 0.5,
+          temperature_enabled: false,
+        })
+      );
 
       const initialData = {
         model: 'initial-model',
         temperature: 0.9,
-        temperature_enabled: true
+        temperature_enabled: true,
       };
 
       const { result } = renderHook(() => useChatSettings(), {
-        wrapper: ({ children }) => (
-          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
-        )
+        wrapper: ({ children }) => <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>,
       });
 
       // Initial data should override localStorage values
@@ -267,14 +272,12 @@ describe('useChatSettings', () => {
 
     it('should handle partial initialData', () => {
       const initialData = {
-        model: 'test-model'
+        model: 'test-model',
         // Only setting model, other settings should use defaults
       };
 
       const { result } = renderHook(() => useChatSettings(), {
-        wrapper: ({ children }) => (
-          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
-        )
+        wrapper: ({ children }) => <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>,
       });
 
       expect(result.current.model).toBe('test-model');
@@ -287,21 +290,19 @@ describe('useChatSettings', () => {
       const initialData = {
         model: 'test-model',
         temperature: 0.8,
-        temperature_enabled: true
+        temperature_enabled: true,
       };
 
       renderHook(() => useChatSettings(), {
-        wrapper: ({ children }) => (
-          <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>
-        )
+        wrapper: ({ children }) => <ChatSettingsProvider initialData={initialData}>{children}</ChatSettingsProvider>,
       });
 
       const saved = JSON.parse(localStorage.getItem('chat-settings') || '{}');
       expect(saved).toMatchObject({
         model: 'test-model',
         temperature: 0.8,
-        temperature_enabled: true
+        temperature_enabled: true,
       });
     });
   });
-}); 
+});

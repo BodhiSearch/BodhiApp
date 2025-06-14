@@ -5,13 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 describe('useCopyToClipboard', () => {
   const originalClipboard = navigator.clipboard;
   const mockClipboard = {
-    writeText: vi.fn()
+    writeText: vi.fn(),
   };
 
   beforeEach(() => {
     Object.defineProperty(navigator, 'clipboard', {
       value: mockClipboard,
-      writable: true
+      writable: true,
     });
     vi.useFakeTimers();
   });
@@ -19,7 +19,7 @@ describe('useCopyToClipboard', () => {
   afterEach(() => {
     Object.defineProperty(navigator, 'clipboard', {
       value: originalClipboard,
-      writable: true
+      writable: true,
     });
     vi.clearAllMocks();
     vi.useRealTimers();
@@ -55,7 +55,7 @@ describe('useCopyToClipboard', () => {
   });
 
   it('should handle clipboard errors', async () => {
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockClipboard.writeText.mockRejectedValueOnce(new Error('Clipboard error'));
 
     const { result } = renderHook(() => useCopyToClipboard());
@@ -71,10 +71,10 @@ describe('useCopyToClipboard', () => {
   });
 
   it('should handle missing clipboard API', async () => {
-    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+    const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     Object.defineProperty(navigator, 'clipboard', {
       value: undefined,
-      writable: true
+      writable: true,
     });
 
     const { result } = renderHook(() => useCopyToClipboard());
@@ -88,4 +88,4 @@ describe('useCopyToClipboard', () => {
 
     consoleWarnSpy.mockRestore();
   });
-}); 
+});

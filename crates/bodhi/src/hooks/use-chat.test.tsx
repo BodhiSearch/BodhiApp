@@ -95,7 +95,7 @@ describe('useChat', () => {
       const chunks = [
         '{"choices":[{"delta":{"content":" Hello"}}]}',
         '{"choices":[{"delta":{"content":" world"}}]}',
-        '[DONE]'
+        '[DONE]',
       ];
 
       server.use(
@@ -103,13 +103,13 @@ describe('useChat', () => {
           return res(
             ctx.status(200),
             ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body(chunks.map(chunk => `data: ${chunk}\n\n`).join(''))
+            ctx.body(chunks.map((chunk) => `data: ${chunk}\n\n`).join(''))
           );
         })
       );
 
       const { result } = renderHook(() => useChat(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -158,7 +158,7 @@ describe('useChat', () => {
       );
 
       const { result } = renderHook(() => useChat(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -195,21 +195,20 @@ describe('useChat', () => {
               error: {
                 message: 'Invalid API key provided',
                 type: 'invalid_request_error',
-              }
+              },
             })
           );
         })
       );
 
       const { result } = renderHook(() => useChat(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
         try {
           await result.current.append('Hello');
-        } catch (error) {
-        }
+        } catch (error) {}
       });
 
       // Verify toast was called with error message
@@ -242,7 +241,7 @@ describe('useChat', () => {
       );
 
       const { result } = renderHook(() => useChat(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -278,7 +277,7 @@ describe('useChat', () => {
       );
 
       const { result } = renderHook(() => useChat(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       // Set initial input
@@ -309,23 +308,25 @@ describe('useChat', () => {
       chatDB.setCurrentChat(initialChat);
 
       const formatSSEMessage = (data: any) => `data: ${JSON.stringify(data)}\n\n`;
-      
+
       server.use(
         rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, async (req, res, ctx) => {
           const responseText = [
             formatSSEMessage({
-              choices: [{
-                delta: { content: 'Hello' },
-                finish_reason: null
-              }]
+              choices: [
+                {
+                  delta: { content: 'Hello' },
+                  finish_reason: null,
+                },
+              ],
             }),
             formatSSEMessage({
               error: {
                 message: 'Server error occurred',
-                type: 'server_error'
-              }
+                type: 'server_error',
+              },
             }),
-            'data: [DONE]\n\n'
+            'data: [DONE]\n\n',
           ].join('');
 
           return res(
@@ -333,7 +334,7 @@ describe('useChat', () => {
             ctx.set({
               'Content-Type': 'text/event-stream',
               'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive',
+              Connection: 'keep-alive',
             }),
             ctx.body(responseText)
           );
@@ -341,7 +342,7 @@ describe('useChat', () => {
       );
 
       const { result } = renderHook(() => useChat(), {
-        wrapper: createWrapper()
+        wrapper: createWrapper(),
       });
 
       await act(async () => {
@@ -352,7 +353,7 @@ describe('useChat', () => {
       const savedChat = await chatDB.getChat('1');
       expect(savedChat?.messages).toEqual([
         { role: 'user', content: 'Hello' },
-        { role: 'assistant', content: 'Hello' }
+        { role: 'assistant', content: 'Hello' },
       ]);
 
       // The assistant message should contain the content received before the error

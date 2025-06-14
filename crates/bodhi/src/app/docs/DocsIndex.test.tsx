@@ -70,11 +70,7 @@ describe('DocsIndex', () => {
   });
 
   it('does not render with title and description if not provided', () => {
-    render(
-      <DocsIndex
-        groups={mockGroups}
-      />
-    );
+    render(<DocsIndex groups={mockGroups} />);
 
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
   });
@@ -96,11 +92,7 @@ describe('DocsIndex', () => {
       },
     ];
 
-    render(
-      <DocsIndex
-        groups={groupsWithoutDesc}
-      />
-    );
+    render(<DocsIndex groups={groupsWithoutDesc} />);
 
     expect(screen.getByRole('link', { name: 'Test Doc' })).toBeInTheDocument();
     expect(screen.queryByText(/description/i)).not.toBeInTheDocument();

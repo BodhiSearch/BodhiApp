@@ -1,6 +1,6 @@
 ---
-title: "App Settings"
-description: "Configure and manage application settings directly from the UI in Bodhi App"
+title: 'App Settings'
+description: 'Configure and manage application settings directly from the UI in Bodhi App'
 order: 240
 ---
 
@@ -11,6 +11,7 @@ Bodhi App provides a built-in configuration management interface that allows adm
 ## Overview
 
 The App Settings feature lets you modify various configuration options that determine the behavior and performance of Bodhi App. Currently, you can update the following settings:
+
 - **Execution Variant (BODHI_EXEC_VARIANT):** Select the optimized variant of the Llama.cpp executable that best suits your hardware.
 - **Idle Timeout (BODHI_KEEP_ALIVE_SECS):** Set the duration (in seconds) for the application's keep-alive mechanism.
 
@@ -20,6 +21,7 @@ Additional configuration options will be supported in future updates.
 
 1. **Listing Settings:**  
    The Settings page displays a list of application configurations, each with details such as:
+
    - **Current Value:** The active setting in use.
    - **Default Value:** The value that would be applied if not overridden.
    - **Source:** The origin of the setting (e.g., environment, settings file).
@@ -33,6 +35,7 @@ Additional configuration options will be supported in future updates.
 ## Using the Settings UI
 
 To update a configuration:
+
 - Navigate to the **Settings** page in Bodhi App.
 - Locate the setting you want to change. Editable settings have an **Edit** button.
 - Click **Edit** to open the change dialog.
@@ -42,6 +45,7 @@ To update a configuration:
 ## Supported Settings
 
 Currently, the following settings can be managed via the UI:
+
 - **BODHI_EXEC_VARIANT:** Define the hardware-specific variant for Llama.cpp execution.
 - **BODHI_KEEP_ALIVE_SECS:** Adjust the idle timeout duration for the application.
 
@@ -55,9 +59,8 @@ Other configuration options are under development and will be made available in 
   />
 </p>
 
-
 ## Summary
 
 The App Settings feature in Bodhi App empowers administrators to manage system configurations on the fly, offering enhanced flexibility and reducing operational downtime.
 
-Happy configuring! 
+Happy configuring!

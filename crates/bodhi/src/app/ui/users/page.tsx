@@ -10,8 +10,7 @@ export function UsersPageContent() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8">
-            We&apos;re working hard to bring you these amazing features. Thanks
-            and Stay Tuned!
+            We&apos;re working hard to bring you these amazing features. Thanks and Stay Tuned!
           </div>
         </CardContent>
       </Card>

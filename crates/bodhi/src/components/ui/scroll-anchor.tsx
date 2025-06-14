@@ -17,11 +17,7 @@ interface ScrollAnchorProps {
   behavior?: ScrollBehavior;
 }
 
-export function ScrollAnchor({
-  trackVisibility = true,
-  className = '',
-  behavior = 'smooth'
-}: ScrollAnchorProps) {
+export function ScrollAnchor({ trackVisibility = true, className = '', behavior = 'smooth' }: ScrollAnchorProps) {
   const anchorRef = useRef<HTMLDivElement>(null);
   const prevScrollRef = useRef<number>(0);
 
@@ -38,8 +34,7 @@ export function ScrollAnchor({
     const isScrolledUp = container.scrollTop < prevScrollRef.current;
 
     // Only auto-scroll if at bottom or new content added
-    const shouldScroll = !isScrolledUp ||
-      container.scrollHeight <= container.clientHeight;
+    const shouldScroll = !isScrolledUp || container.scrollHeight <= container.clientHeight;
 
     if (shouldScroll) {
       anchor.scrollIntoView({ behavior });

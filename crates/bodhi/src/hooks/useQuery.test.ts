@@ -16,15 +16,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const mockSettings: Setting[] = [
   {
@@ -55,7 +47,6 @@ const mockSettings: Setting[] = [
 const mockAppInfo: AppInfo = {
   version: '0.1.0',
   status: 'ready',
-
 };
 
 const mockUserInfo = {
@@ -106,10 +97,7 @@ describe('Settings Hooks', () => {
     it('handles error response', async () => {
       server.use(
         rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-          return res(
-            ctx.status(500),
-            ctx.json({ error: { message: 'Test Error' } })
-          );
+          return res(ctx.status(500), ctx.json({ error: { message: 'Test Error' } }));
         })
       );
 
@@ -185,9 +173,7 @@ describe('Settings Hooks', () => {
         } catch (error) {
           const axiosError = error as AxiosError<ApiError>;
           expect(axiosError.response?.status).toBe(400);
-          expect(axiosError.response?.data.message).toBe(
-            'Invalid setting value'
-          );
+          expect(axiosError.response?.data.message).toBe('Invalid setting value');
         }
       });
     });
@@ -217,9 +203,7 @@ describe('Settings Hooks', () => {
 
       // Verify settings query was invalidated and refetched
       await waitFor(() => {
-        expect(settingsResult.current.dataUpdatedAt).toBeGreaterThan(
-          initialDataUpdatedAt
-        );
+        expect(settingsResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       });
     });
   });
@@ -242,12 +226,9 @@ describe('Settings Hooks', () => {
 
     beforeEach(() => {
       server.use(
-        rest.delete(
-          `*${ENDPOINT_SETTINGS}/${deleteData.key}`,
-          (_, res, ctx) => {
-            return res(ctx.status(200), ctx.json(mockDeletedSetting));
-          }
-        )
+        rest.delete(`*${ENDPOINT_SETTINGS}/${deleteData.key}`, (_, res, ctx) => {
+          return res(ctx.status(200), ctx.json(mockDeletedSetting));
+        })
       );
     });
 
@@ -265,18 +246,15 @@ describe('Settings Hooks', () => {
 
     it('handles error response', async () => {
       server.use(
-        rest.delete(
-          `*${ENDPOINT_SETTINGS}/${deleteData.key}`,
-          (_, res, ctx) => {
-            return res(
-              ctx.status(400),
-              ctx.json({
-                error: 'Bad Request',
-                message: 'Cannot delete required setting',
-              })
-            );
-          }
-        )
+        rest.delete(`*${ENDPOINT_SETTINGS}/${deleteData.key}`, (_, res, ctx) => {
+          return res(
+            ctx.status(400),
+            ctx.json({
+              error: 'Bad Request',
+              message: 'Cannot delete required setting',
+            })
+          );
+        })
       );
 
       const { result } = renderHook(() => useDeleteSetting(), {
@@ -291,9 +269,7 @@ describe('Settings Hooks', () => {
         } catch (error) {
           const axiosError = error as AxiosError<ApiError>;
           expect(axiosError.response?.status).toBe(400);
-          expect(axiosError.response?.data.message).toBe(
-            'Cannot delete required setting'
-          );
+          expect(axiosError.response?.data.message).toBe('Cannot delete required setting');
         }
       });
     });
@@ -323,9 +299,7 @@ describe('Settings Hooks', () => {
 
       // Verify settings query was invalidated and refetched
       await waitFor(() => {
-        expect(settingsResult.current.dataUpdatedAt).toBeGreaterThan(
-          initialDataUpdatedAt
-        );
+        expect(settingsResult.current.dataUpdatedAt).toBeGreaterThan(initialDataUpdatedAt);
       });
     });
   });
@@ -339,12 +313,9 @@ describe('useSetupApp', () => {
     const { result: appInfoResult } = renderHook(() => useAppInfo(), {
       wrapper,
     });
-    const { result: userResult } = renderHook(
-      () => useUser({ enabled: true }),
-      {
-        wrapper,
-      }
-    );
+    const { result: userResult } = renderHook(() => useUser({ enabled: true }), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(appInfoResult.current.isSuccess).toBe(true);
@@ -365,12 +336,8 @@ describe('useSetupApp', () => {
 
     // Verify both queries were invalidated and refetched
     await waitFor(() => {
-      expect(appInfoResult.current.dataUpdatedAt).toBeGreaterThan(
-        initialAppInfoUpdatedAt
-      );
-      expect(userResult.current.dataUpdatedAt).toBeGreaterThan(
-        initialUserUpdatedAt
-      );
+      expect(appInfoResult.current.dataUpdatedAt).toBeGreaterThan(initialAppInfoUpdatedAt);
+      expect(userResult.current.dataUpdatedAt).toBeGreaterThan(initialUserUpdatedAt);
     });
   });
 

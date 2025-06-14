@@ -6,23 +6,14 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock useMediaQuery hook
-vi.mock("@/hooks/use-media-query", () => ({
+vi.mock('@/hooks/use-media-query', () => ({
   useMediaQuery: (query: string) => {
     return true;
-  }
-}))
+  },
+}));
 
 // Mock required HTMLElement methods and styles for Radix UI and Vaul components
 Object.assign(window.HTMLElement.prototype, {
@@ -70,8 +61,6 @@ const mockModelsResponse = {
   ],
 };
 
-
-
 const server = setupServer();
 
 beforeAll(() => {
@@ -103,13 +92,17 @@ describe('CreateAliasPage', () => {
       }),
 
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
-        return res(ctx.json({ data: [{ repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' }, { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' }] }));
+        return res(
+          ctx.json({
+            data: [
+              { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' },
+              { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' },
+            ],
+          })
+        );
       }),
       rest.post(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({ alias: 'test-alias' })
-        );
+        return res(ctx.status(200), ctx.json({ alias: 'test-alias' }));
       })
     );
   });
@@ -124,13 +117,9 @@ describe('CreateAliasPage', () => {
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
 
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
-    expect(
-      screen.getByRole('combobox', { name: /filename/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('button', { name: /create model alias/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /create model alias/i })).toBeInTheDocument();
   });
 
   it('submits the form with correct data', async () => {
@@ -154,16 +143,9 @@ describe('CreateAliasPage', () => {
     const options = within(dialog).getAllByRole('option');
     await user.click(options[0]); // owner1/repo1 should be the first option
 
-    await user.type(
-      screen.getByRole('combobox', { name: /filename/i }),
-      'file1.gguf'
-    );
+    await user.type(screen.getByRole('combobox', { name: /filename/i }), 'file1.gguf');
 
-
-
-    await user.click(
-      screen.getByRole('button', { name: /create model alias/i })
-    );
+    await user.click(screen.getByRole('button', { name: /create model alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));

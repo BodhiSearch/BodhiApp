@@ -3,13 +3,7 @@
 import { SetupProgress } from '@/app/ui/setup/SetupProgress';
 import AppInitializer from '@/components/AppInitializer';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { motion } from 'framer-motion';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
@@ -51,10 +45,7 @@ function ResourceAdminContent() {
   });
 
   return (
-    <main
-      className="min-h-screen bg-background p-4 md:p-8"
-      data-testid="resource-admin-page"
-    >
+    <main className="min-h-screen bg-background p-4 md:p-8" data-testid="resource-admin-page">
       <motion.div
         className="mx-auto max-w-4xl space-y-8 p-4 md:p-8"
         variants={containerVariants}
@@ -72,13 +63,10 @@ function ResourceAdminContent() {
             <CardContent className="space-y-6">
               <div className="prose dark:prose-invert mx-auto">
                 <p className="text-center text-muted-foreground">
-                  You are setting up Bodhi App in authenticated mode. The email
-                  address you log in with will be granted admin role for this
-                  app instance.
+                  You are setting up Bodhi App in authenticated mode. The email address you log in with will be granted
+                  admin role for this app instance.
                 </p>
-                {error && (
-                  <p className="text-destructive text-sm text-center">{error}</p>
-                )}
+                {error && <p className="text-destructive text-sm text-center">{error}</p>}
               </div>
 
               <div className="space-y-4 text-sm">
@@ -100,9 +88,7 @@ function ResourceAdminContent() {
               >
                 {oauthInitiate.isLoading ? 'Redirecting...' : 'Continue with Login →'}
               </Button>
-              <p className="text-sm text-muted-foreground text-center">
-                Login with a valid email address to continue
-              </p>
+              <p className="text-sm text-muted-foreground text-center">Login with a valid email address to continue</p>
             </CardFooter>
           </Card>
         </motion.div>

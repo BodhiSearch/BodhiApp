@@ -35,26 +35,25 @@ describe('useChatCompletion', () => {
   describe('non-streaming completion', () => {
     it('should handle successful completion request', async () => {
       const mockResponse = {
-        choices: [{
-          finish_reason: "stop",
-          index: 0,
-          message: {
-            content: 'The day that comes after Monday is Tuesday.',
-            role: "assistant"
-          }
-        }],
+        choices: [
+          {
+            finish_reason: 'stop',
+            index: 0,
+            message: {
+              content: 'The day that comes after Monday is Tuesday.',
+              role: 'assistant',
+            },
+          },
+        ],
         created: 1736234478,
-        model: "llama2-7B-chat",
-        id: "chatcmpl-test",
-        object: "chat.completion"
+        model: 'llama2-7B-chat',
+        id: 'chatcmpl-test',
+        object: 'chat.completion',
       };
 
       server.use(
         rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.set('Content-Type', 'application/json'),
-            ctx.json(mockResponse)
-          );
+          return res(ctx.set('Content-Type', 'application/json'), ctx.json(mockResponse));
         })
       );
 
@@ -65,17 +64,17 @@ describe('useChatCompletion', () => {
       await act(async () => {
         await result.current.append({
           request: {
-            model: "llama2-7B-chat",
+            model: 'llama2-7B-chat',
             messages: [
               {
                 id: '1',
-                role: "user",
-                content: "What day comes after Monday?"
-              }
-            ]
+                role: 'user',
+                content: 'What day comes after Monday?',
+              },
+            ],
           },
           onMessage,
-          onFinish
+          onFinish,
         });
       });
 
@@ -97,7 +96,7 @@ describe('useChatCompletion', () => {
         '{"choices":[{"delta":{"content":" Monday"}}]}',
         '{"choices":[{"delta":{"content":" is"}}]}',
         '{"choices":[{"delta":{"content":" Tuesday."}}]}',
-        '[DONE]'
+        '[DONE]',
       ];
 
       server.use(
@@ -105,7 +104,7 @@ describe('useChatCompletion', () => {
           return res(
             ctx.status(200),
             ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body(chunks.map(chunk => `data: ${chunk}\n\n`).join(''))
+            ctx.body(chunks.map((chunk) => `data: ${chunk}\n\n`).join(''))
           );
         })
       );
@@ -117,18 +116,18 @@ describe('useChatCompletion', () => {
       await act(async () => {
         await result.current.append({
           request: {
-            model: "llama2-7B-chat",
+            model: 'llama2-7B-chat',
             messages: [
               {
                 id: '1',
-                role: "user",
-                content: "What day comes after Monday?"
-              }
+                role: 'user',
+                content: 'What day comes after Monday?',
+              },
             ],
-            stream: true
+            stream: true,
           },
           onDelta,
-          onFinish
+          onFinish,
         });
       });
 
@@ -142,7 +141,7 @@ describe('useChatCompletion', () => {
       expect(onDelta).toHaveBeenCalledWith(' Tuesday.');
       expect(onFinish).toHaveBeenCalledWith({
         role: 'assistant',
-        content: ' The day that comes after Monday is Tuesday.'
+        content: ' The day that comes after Monday is Tuesday.',
       });
     });
 
@@ -151,18 +150,20 @@ describe('useChatCompletion', () => {
 
       const responseText = [
         formatSSEMessage({
-          choices: [{
-            delta: { content: 'Hello' },
-            finish_reason: null
-          }]
+          choices: [
+            {
+              delta: { content: 'Hello' },
+              finish_reason: null,
+            },
+          ],
         }),
         formatSSEMessage({
           error: {
             message: 'Server error occurred',
-            type: 'server_error'
-          }
+            type: 'server_error',
+          },
         }),
-        'data: [DONE]\n\n'
+        'data: [DONE]\n\n',
       ].join('');
 
       server.use(
@@ -172,7 +173,7 @@ describe('useChatCompletion', () => {
             ctx.set({
               'Content-Type': 'text/event-stream',
               'Cache-Control': 'no-cache',
-              'Connection': 'keep-alive',
+              Connection: 'keep-alive',
             }),
             ctx.body(responseText)
           );
@@ -187,19 +188,19 @@ describe('useChatCompletion', () => {
       await act(async () => {
         await result.current.append({
           request: {
-            model: "llama2-7B-chat",
+            model: 'llama2-7B-chat',
             messages: [
               {
                 id: '1',
-                role: "user",
-                content: "What day comes after Monday?"
-              }
+                role: 'user',
+                content: 'What day comes after Monday?',
+              },
             ],
-            stream: true
+            stream: true,
           },
           onDelta,
           onFinish,
-          onError
+          onError,
         });
       });
 
@@ -209,7 +210,7 @@ describe('useChatCompletion', () => {
       // Current behavior: Stream continues and finishes with partial content
       expect(onFinish).toHaveBeenCalledWith({
         role: 'assistant',
-        content: 'Hello'
+        content: 'Hello',
       });
 
       // Current behavior: Error in stream is not reported
@@ -220,35 +221,34 @@ describe('useChatCompletion', () => {
   describe('metadata handling', () => {
     it('should include metadata in non-streaming response', async () => {
       const mockResponse = {
-        choices: [{
-          finish_reason: "stop",
-          index: 0,
-          message: {
-            content: 'Test response',
-            role: "assistant"
-          }
-        }],
+        choices: [
+          {
+            finish_reason: 'stop',
+            index: 0,
+            message: {
+              content: 'Test response',
+              role: 'assistant',
+            },
+          },
+        ],
         created: 1736234478,
-        model: "test-model",
+        model: 'test-model',
         usage: {
           completion_tokens: 16,
           prompt_tokens: 5,
-          total_tokens: 21
+          total_tokens: 21,
         },
         timings: {
           prompt_per_second: 41.7157,
-          predicted_per_second: 31.04
+          predicted_per_second: 31.04,
         },
-        id: "chatcmpl-test",
-        object: "chat.completion"
+        id: 'chatcmpl-test',
+        object: 'chat.completion',
       };
 
       server.use(
         rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.set('Content-Type', 'application/json'),
-            ctx.json(mockResponse)
-          );
+          return res(ctx.set('Content-Type', 'application/json'), ctx.json(mockResponse));
         })
       );
 
@@ -259,11 +259,11 @@ describe('useChatCompletion', () => {
       await act(async () => {
         await result.current.append({
           request: {
-            model: "test-model",
-            messages: [{ role: "user", content: "test" }]
+            model: 'test-model',
+            messages: [{ role: 'user', content: 'test' }],
           },
           onMessage,
-          onFinish
+          onFinish,
         });
       });
 
@@ -273,24 +273,28 @@ describe('useChatCompletion', () => {
         timings: {
           prompt_per_second: mockResponse.timings.prompt_per_second,
           predicted_per_second: mockResponse.timings.predicted_per_second,
-        }
+        },
       };
 
-      expect(onMessage).toHaveBeenCalledWith(expect.objectContaining({
-        content: 'Test response',
-        role: 'assistant',
-        metadata: expectedMetadata
-      }));
-      expect(onFinish).toHaveBeenCalledWith(expect.objectContaining({
-        metadata: expectedMetadata
-      }));
+      expect(onMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          content: 'Test response',
+          role: 'assistant',
+          metadata: expectedMetadata,
+        })
+      );
+      expect(onFinish).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: expectedMetadata,
+        })
+      );
     });
 
     it('should include metadata in streaming response', async () => {
       const streamChunks = [
         '{"choices":[{"delta":{"content":"Hello"},"finish_reason":null}]}',
         '{"choices":[{"delta":{"content":" world"},"finish_reason":null}]}',
-        `{"choices":[{"delta":{},"finish_reason":"stop"}],"model":"test-model","usage":{"completion_tokens":16,"prompt_tokens":5,"total_tokens":21},"timings":{"prompt_per_second":41.7157,"predicted_per_second":31.04}}`
+        `{"choices":[{"delta":{},"finish_reason":"stop"}],"model":"test-model","usage":{"completion_tokens":16,"prompt_tokens":5,"total_tokens":21},"timings":{"prompt_per_second":41.7157,"predicted_per_second":31.04}}`,
       ];
 
       server.use(
@@ -298,7 +302,7 @@ describe('useChatCompletion', () => {
           return res(
             ctx.status(200),
             ctx.set('Content-Type', 'text/event-stream'),
-            ctx.body(streamChunks.map(chunk => `data: ${chunk}\n\n`).join(''))
+            ctx.body(streamChunks.map((chunk) => `data: ${chunk}\n\n`).join(''))
           );
         })
       );
@@ -310,12 +314,12 @@ describe('useChatCompletion', () => {
       await act(async () => {
         await result.current.append({
           request: {
-            model: "test-model",
-            messages: [{ role: "user", content: "test" }],
-            stream: true
+            model: 'test-model',
+            messages: [{ role: 'user', content: 'test' }],
+            stream: true,
           },
           onDelta,
-          onFinish
+          onFinish,
         });
       });
 
@@ -329,38 +333,37 @@ describe('useChatCompletion', () => {
           usage: {
             completion_tokens: 16,
             prompt_tokens: 5,
-            total_tokens: 21
+            total_tokens: 21,
           },
           timings: {
             prompt_per_second: 41.7157,
-            predicted_per_second: 31.04
-          }
-        }
+            predicted_per_second: 31.04,
+          },
+        },
       });
     });
 
     it('should handle missing metadata fields gracefully', async () => {
       const mockResponse = {
-        choices: [{
-          finish_reason: "stop",
-          index: 0,
-          message: {
-            content: 'Test response',
-            role: "assistant"
-          }
-        }],
-        model: "test-model",
+        choices: [
+          {
+            finish_reason: 'stop',
+            index: 0,
+            message: {
+              content: 'Test response',
+              role: 'assistant',
+            },
+          },
+        ],
+        model: 'test-model',
         // No usage or timings data
-        id: "chatcmpl-test",
-        object: "chat.completion"
+        id: 'chatcmpl-test',
+        object: 'chat.completion',
       };
 
       server.use(
         rest.post(`*${ENDPOINT_OAI_CHAT_COMPLETIONS}`, (req, res, ctx) => {
-          return res(
-            ctx.set('Content-Type', 'application/json'),
-            ctx.json(mockResponse)
-          );
+          return res(ctx.set('Content-Type', 'application/json'), ctx.json(mockResponse));
         })
       );
 
@@ -371,22 +374,22 @@ describe('useChatCompletion', () => {
       await act(async () => {
         await result.current.append({
           request: {
-            model: "test-model",
-            messages: [{ role: "user", content: "test" }]
+            model: 'test-model',
+            messages: [{ role: 'user', content: 'test' }],
           },
           onMessage,
-          onFinish
+          onFinish,
         });
       });
 
       // Message should be delivered without metadata
       expect(onMessage).toHaveBeenCalledWith({
         content: 'Test response',
-        role: 'assistant'
+        role: 'assistant',
       });
       expect(onFinish).toHaveBeenCalledWith({
         content: 'Test response',
-        role: 'assistant'
+        role: 'assistant',
       });
     });
   });

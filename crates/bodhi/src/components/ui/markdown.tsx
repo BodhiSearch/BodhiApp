@@ -26,7 +26,7 @@ const components: Partial<Components> = {
         </code>
       );
     }
-    
+
     // Handle code blocks
     return (
       <CodeBlock
@@ -37,33 +37,17 @@ const components: Partial<Components> = {
       />
     );
   },
-  p: ({ children }) => (
-    <p className="leading-7 [&:not(:first-child)]:mt-4">{children}</p>
-  ),
-  ul: ({ children }) => (
-    <ul className="my-4 ml-6 list-disc marker:text-muted-foreground">{children}</ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="my-4 ml-6 list-decimal marker:text-muted-foreground">{children}</ol>
-  ),
-  li: ({ children }) => (
-    <li className="mt-2">{children}</li>
-  ),
-  h1: ({ children }) => (
-    <h1 className="mt-6 scroll-m-20 text-4xl font-bold">{children}</h1>
-  ),
-  h2: ({ children }) => (
-    <h2 className="mt-6 scroll-m-20 text-3xl font-semibold">{children}</h2>
-  ),
-  h3: ({ children }) => (
-    <h3 className="mt-6 scroll-m-20 text-2xl font-semibold">{children}</h3>
-  ),
-  h4: ({ children }) => (
-    <h4 className="mt-6 scroll-m-20 text-xl font-semibold">{children}</h4>
-  ),
+  p: ({ children }) => <p className="leading-7 [&:not(:first-child)]:mt-4">{children}</p>,
+  ul: ({ children }) => <ul className="my-4 ml-6 list-disc marker:text-muted-foreground">{children}</ul>,
+  ol: ({ children }) => <ol className="my-4 ml-6 list-decimal marker:text-muted-foreground">{children}</ol>,
+  li: ({ children }) => <li className="mt-2">{children}</li>,
+  h1: ({ children }) => <h1 className="mt-6 scroll-m-20 text-4xl font-bold">{children}</h1>,
+  h2: ({ children }) => <h2 className="mt-6 scroll-m-20 text-3xl font-semibold">{children}</h2>,
+  h3: ({ children }) => <h3 className="mt-6 scroll-m-20 text-2xl font-semibold">{children}</h3>,
+  h4: ({ children }) => <h4 className="mt-6 scroll-m-20 text-xl font-semibold">{children}</h4>,
   a: ({ children, href }) => (
-    <a 
-      href={href} 
+    <a
+      href={href}
       className="font-medium underline underline-offset-4 hover:text-primary"
       target="_blank"
       rel="noopener noreferrer"
@@ -72,9 +56,7 @@ const components: Partial<Components> = {
     </a>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="mt-4 border-l-2 border-muted pl-4 italic text-muted-foreground">
-      {children}
-    </blockquote>
+    <blockquote className="mt-4 border-l-2 border-muted pl-4 italic text-muted-foreground">{children}</blockquote>
   ),
   hr: () => <hr className="my-6 border-muted" />,
   table: ({ children }) => (
@@ -82,12 +64,8 @@ const components: Partial<Components> = {
       <table className="w-full border-collapse text-sm">{children}</table>
     </div>
   ),
-  th: ({ children }) => (
-    <th className="border border-muted px-4 py-2 text-left font-bold">{children}</th>
-  ),
-  td: ({ children }) => (
-    <td className="border border-muted px-4 py-2">{children}</td>
-  ),
+  th: ({ children }) => <th className="border border-muted px-4 py-2 text-left font-bold">{children}</th>,
+  td: ({ children }) => <td className="border border-muted px-4 py-2">{children}</td>,
 };
 
 export const MemoizedReactMarkdown: FC<Options> = memo(
@@ -97,16 +75,16 @@ export const MemoizedReactMarkdown: FC<Options> = memo(
         remarkPlugins={[remarkGfm, remarkMath]}
         className={cn(
           // Base styles
-          "space-y-4",
+          'space-y-4',
           // Text formatting
-          "text-base leading-7",
+          'text-base leading-7',
           // Lists
-          "[&>ul]:list-disc [&>ol]:list-decimal",
-          "[&>ul]:ml-6 [&>ol]:ml-6",
+          '[&>ul]:list-disc [&>ol]:list-decimal',
+          '[&>ul]:ml-6 [&>ol]:ml-6',
           // Code blocks
-          "[&>pre]:my-4 [&>pre]:overflow-auto",
-          "[&>pre]:rounded-lg [&>pre]:bg-muted",
-          "[&>pre]:p-4",
+          '[&>pre]:my-4 [&>pre]:overflow-auto',
+          '[&>pre]:rounded-lg [&>pre]:bg-muted',
+          '[&>pre]:p-4',
           // Custom className
           className
         )}
@@ -117,7 +95,5 @@ export const MemoizedReactMarkdown: FC<Options> = memo(
       </ReactMarkdown>
     </div>
   ),
-  (prevProps, nextProps) =>
-    prevProps.children === nextProps.children &&
-    prevProps.className === nextProps.className
+  (prevProps, nextProps) => prevProps.children === nextProps.children && prevProps.className === nextProps.className
 );

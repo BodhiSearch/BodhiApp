@@ -4,16 +4,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import Setup from '@/app/ui/setup/page';
 import { ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP } from '@/hooks/useQuery';
 import { ROUTE_DEFAULT, ROUTE_RESOURCE_ADMIN } from '@/lib/constants';
@@ -109,9 +100,7 @@ describe('Setup Page', () => {
 
     render(<Setup />, { wrapper: createWrapper() });
 
-    const authButton = await screen.findByText(
-      'Setup Authenticated Instance →'
-    );
+    const authButton = await screen.findByText('Setup Authenticated Instance →');
     fireEvent.click(authButton);
 
     await waitFor(() => {
@@ -131,9 +120,7 @@ describe('Setup Page', () => {
 
     render(<Setup />, { wrapper: createWrapper() });
 
-    const setupButton = await screen.findByText(
-      'Setup Bodhi App →'
-    );
+    const setupButton = await screen.findByText('Setup Bodhi App →');
     fireEvent.click(setupButton);
 
     await waitFor(() => {
@@ -153,15 +140,11 @@ describe('Setup Page', () => {
 
     render(<Setup />, { wrapper: createWrapper() });
 
-    const setupButton = await screen.findByText(
-      'Setup Bodhi App →'
-    );
+    const setupButton = await screen.findByText('Setup Bodhi App →');
     fireEvent.click(setupButton);
 
     await waitFor(() => {
-      expect(
-        screen.getByText('Error while setting up app: Setup failed')
-      ).toBeInTheDocument();
+      expect(screen.getByText('Error while setting up app: Setup failed')).toBeInTheDocument();
     });
   });
 });

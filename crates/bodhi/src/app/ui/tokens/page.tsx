@@ -6,22 +6,11 @@ import AppInitializer from '@/components/AppInitializer';
 import { DataTable, Pagination, SortState } from '@/components/DataTable';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
-import {
-  ApiToken,
-  TokenResponse,
-  useListTokens,
-  useUpdateToken,
-} from '@/hooks/useApiTokens';
+import { ApiToken, TokenResponse, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import { useAppInfo } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { Shield } from 'lucide-react';
@@ -69,13 +58,9 @@ export function TokenPageContent() {
     },
   });
 
-  const { data: tokensData, isLoading: tokensLoading } = useListTokens(
-    page,
-    pageSize,
-    {
-      enabled: !appLoading,
-    }
-  );
+  const { data: tokensData, isLoading: tokensLoading } = useListTokens(page, pageSize, {
+    enabled: !appLoading,
+  });
 
   const handleStatusChange = (token: ApiToken, checked: boolean) => {
     updateToken({
@@ -95,10 +80,7 @@ export function TokenPageContent() {
 
   if (appLoading) {
     return (
-      <div
-        className="container mx-auto px-4 sm:px-6 lg:px-8 py-6"
-        data-testid="token-page-loading"
-      >
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6" data-testid="token-page-loading">
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
@@ -118,8 +100,6 @@ export function TokenPageContent() {
     );
   }
 
-
-
   const renderRow = (token: ApiToken) => (
     <>
       <TableCell>{token.name || '-'}</TableCell>
@@ -133,12 +113,8 @@ export function TokenPageContent() {
           <StatusBadge status={token.status} />
         </div>
       </TableCell>
-      <TableCell className="hidden md:table-cell">
-        {new Date(token.created_at).toLocaleString()}
-      </TableCell>
-      <TableCell className="hidden md:table-cell">
-        {new Date(token.updated_at).toLocaleString()}
-      </TableCell>
+      <TableCell className="hidden md:table-cell">{new Date(token.created_at).toLocaleString()}</TableCell>
+      <TableCell className="hidden md:table-cell">{new Date(token.updated_at).toLocaleString()}</TableCell>
     </>
   );
 
@@ -150,16 +126,13 @@ export function TokenPageContent() {
             <Shield className="h-5 w-5" />
             API Tokens
           </CardTitle>
-          <CardDescription>
-            Generate and manage API tokens for programmatic access to the API
-          </CardDescription>
+          <CardDescription>Generate and manage API tokens for programmatic access to the API</CardDescription>
         </CardHeader>
         <CardContent>
           <Alert>
             <Shield className="h-4 w-4" />
             <AlertDescription>
-              API tokens provide full access to the API. Keep them secure.
-              Tokens cannot be viewed again after creation.
+              API tokens provide full access to the API. Keep them secure. Tokens cannot be viewed again after creation.
             </AlertDescription>
           </Alert>
           <div className="mt-6">
@@ -180,12 +153,7 @@ export function TokenPageContent() {
                 <Pagination
                   page={page}
                   totalPages={
-                    tokensData
-                      ? Math.ceil(
-                          (tokensData.total as number) /
-                            (tokensData.page_size as number)
-                        )
-                      : 1
+                    tokensData ? Math.ceil((tokensData.total as number) / (tokensData.page_size as number)) : 1
                   }
                   onPageChange={setPage}
                 />
@@ -194,9 +162,7 @@ export function TokenPageContent() {
           </div>
         </CardContent>
       </Card>
-      {token && (
-        <TokenDialog token={token} onClose={handleDialogClose} open={!!token} />
-      )}
+      {token && <TokenDialog token={token} onClose={handleDialogClose} open={!!token} />}
     </div>
   );
 }

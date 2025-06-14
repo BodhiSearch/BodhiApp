@@ -7,15 +7,7 @@ import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import React from 'react';
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock useToast hook
 const toastMock = vi.fn();
@@ -76,17 +68,11 @@ describe('useLogoutHandler', () => {
 
     await userEvent.click(logoutButton);
 
-    expect(
-      screen.getByRole('button', { name: 'Logging out...' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Logging out...' })).toBeInTheDocument();
     expect(logoutButton).toBeDisabled();
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith(
-        'http://localhost:1135/ui/test/login'
-      );
-      expect(
-        screen.getByRole('button', { name: 'Log Out' })
-      ).toBeInTheDocument();
+      expect(pushMock).toHaveBeenCalledWith('http://localhost:1135/ui/test/login');
+      expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
     });
     expect(logoutButton).not.toBeDisabled();
   });
@@ -94,10 +80,7 @@ describe('useLogoutHandler', () => {
   it('handles logout API error and shows toast message', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (req, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Internal Server Error' } })
-        );
+        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
       })
     );
 
@@ -107,9 +90,7 @@ describe('useLogoutHandler', () => {
     await userEvent.click(logoutButton);
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: 'Log Out' })
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
     });
 
     expect(logoutButton).not.toBeDisabled();

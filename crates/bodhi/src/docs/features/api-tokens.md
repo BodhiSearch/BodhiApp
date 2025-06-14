@@ -1,6 +1,6 @@
 ---
-title: "API Tokens"
-description: "Manage API tokens for secure external access to Bodhi App"
+title: 'API Tokens'
+description: 'Manage API tokens for secure external access to Bodhi App'
 order: 250
 ---
 
@@ -23,15 +23,15 @@ API tokens in Bodhi App:
 
 When you generate an API token, the system:
 
-1. **Generates the Token:**  
+1. **Generates the Token:**
    - Navigate to **Settings > API Tokens**.
    - Optionally provide a descriptive name.
    - **Important:** The token is displayed only once—copy and store it securely.
-2. **Stores & Validates the Token:**  
+2. **Stores & Validates the Token:**
    - Saves the token along with its metadata (creation date, status, etc.) in the database.
    - Validates using cryptographic signature checks.
    - Monitors usage to automatically deactivate tokens idle for over 30 days.
-3. **Enables Token Usage:**  
+3. **Enables Token Usage:**
    - Include the token in the `Authorization` header of API requests, for example:
      ```bash
      curl -H "Authorization: Bearer your-token-here" \
@@ -73,10 +73,8 @@ On the API Tokens page, you can:
 - **Review Regularly:** Monitor usage and revoke unused or potentially compromised tokens.
 - **Cache Verification Data:** Token verification is cached for performance and enhanced security.
 
-
-
 ## Summary
 
 Bodhi App's API Token Management system offers a clear and secure method for external integrations. By following best practices for creation, storage, and management, you ensure seamless and secure access to your Bodhi App instance.
 
-Happy integrating! 
+Happy integrating!

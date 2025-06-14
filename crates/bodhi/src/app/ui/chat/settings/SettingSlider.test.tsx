@@ -42,12 +42,7 @@ vi.mock('@/components/ui/slider', () => ({
 // Mock the Switch component
 vi.mock('@/components/ui/switch', () => ({
   Switch: ({ checked, onCheckedChange, ...props }: any) => (
-    <button
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onCheckedChange(!checked)}
-      {...props}
-    />
+    <button role="switch" aria-checked={checked} onClick={() => onCheckedChange(!checked)} {...props} />
   ),
 }));
 
@@ -145,4 +140,4 @@ describe('SettingSlider', () => {
       expect(onEnabledChange).not.toHaveBeenCalled();
     });
   });
-}); 
+});

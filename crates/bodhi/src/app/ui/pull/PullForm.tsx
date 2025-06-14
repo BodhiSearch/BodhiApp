@@ -7,14 +7,7 @@ import { pullModelSchema, type PullModelFormData } from '@/schemas/pull';
 import { usePullModel, useModelFiles } from '@/hooks/useQuery';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AutocompleteInput } from '@/components/AutocompleteInput';
 import { useToastMessages } from '@/hooks/use-toast-messages';
@@ -50,16 +43,10 @@ export function PullForm() {
 
   const { data: modelsData, isLoading: modelsLoading } = useModelFiles(1, 100);
 
-  const repos = Array.from(
-    new Set(modelsData?.data.map((model) => model.repo) || [])
-  ).sort();
+  const repos = Array.from(new Set(modelsData?.data.map((model) => model.repo) || [])).sort();
 
   const filenames = Array.from(
-    new Set(
-      modelsData?.data
-        .filter((model) => model.repo === form.watch('repo'))
-        .map((model) => model.filename) || []
-    )
+    new Set(modelsData?.data.filter((model) => model.repo === form.watch('repo')).map((model) => model.filename) || [])
   ).sort();
 
   const onSubmit = (data: PullModelFormData) => {
@@ -87,12 +74,7 @@ export function PullForm() {
                 <FormItem>
                   <FormLabel htmlFor="repo">Repository</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      id="repo"
-                      ref={repoInputRef}
-                      placeholder="Enter repository"
-                    />
+                    <Input {...field} id="repo" ref={repoInputRef} placeholder="Enter repository" />
                   </FormControl>
                   <AutocompleteInput
                     value={field.value}
@@ -113,12 +95,7 @@ export function PullForm() {
                 <FormItem>
                   <FormLabel htmlFor="filename">Filename</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      id="filename"
-                      ref={filenameInputRef}
-                      placeholder="Enter filename"
-                    />
+                    <Input {...field} id="filename" ref={filenameInputRef} placeholder="Enter filename" />
                   </FormControl>
                   <AutocompleteInput
                     value={field.value}
@@ -133,12 +110,7 @@ export function PullForm() {
             />
 
             <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReset}
-                disabled={isLoading}
-              >
+              <Button type="button" variant="outline" onClick={handleReset} disabled={isLoading}>
                 Reset
               </Button>
               <Button type="submit" disabled={isLoading}>

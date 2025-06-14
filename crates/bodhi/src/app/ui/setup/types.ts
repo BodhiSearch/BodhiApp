@@ -4,8 +4,6 @@ export type Benefit = {
   icon: string;
 };
 
-
-
 export type SetupRequirement = {
   title: string;
   description: string;

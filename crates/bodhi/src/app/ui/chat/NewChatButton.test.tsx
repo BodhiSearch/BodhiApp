@@ -13,11 +13,7 @@ vi.mock('@/hooks/use-chat-db', () => ({
 
 // Test wrapper component
 const renderWithSidebar = (component: React.ReactNode) => {
-  return render(
-    <SidebarProvider>
-      {component}
-    </SidebarProvider>
-  );
+  return render(<SidebarProvider>{component}</SidebarProvider>);
 };
 
 describe('NewChatButton', () => {

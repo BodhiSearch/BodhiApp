@@ -10,9 +10,7 @@ interface IconMapperProps {
 
 export function IconMapper({ name, className }: IconMapperProps) {
   // @ts-ignore
-  const Icon = (Icons as Record<string, LucideIcon>)[
-    name.charAt(0).toUpperCase() + name.slice(1)
-  ];
+  const Icon = (Icons as Record<string, LucideIcon>)[name.charAt(0).toUpperCase() + name.slice(1)];
 
   if (!Icon) {
     return null;

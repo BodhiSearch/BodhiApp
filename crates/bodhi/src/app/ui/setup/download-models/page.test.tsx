@@ -5,16 +5,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen, within } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock framer-motion
 vi.mock('framer-motion', () => ({
@@ -46,9 +37,7 @@ vi.mock('@/app/ui/setup/download-models/ModelCard', () => ({
     <div data-testid={`model-card-${model.id}`}>
       <div>Name: {model.name}</div>
       <div>Status: {model.downloadState.status}</div>
-      {model.downloadState.status === 'pending' && (
-        <div>Progress: {model.downloadState.progress}%</div>
-      )}
+      {model.downloadState.status === 'pending' && <div>Progress: {model.downloadState.progress}%</div>}
     </div>
   ),
 }));
@@ -76,8 +65,6 @@ const mockModels = [
 ];
 
 describe('ModelDownloadPage access control', () => {
-
-
   it('should redirect to /ui/setup if app status is setup', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
@@ -97,7 +84,7 @@ describe('ModelDownloadPage access control', () => {
       }),
       rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(ctx.json({ data: [], page: 1, page_size: 100 }));
-      }),
+      })
     );
 
     await act(async () => {
@@ -127,7 +114,7 @@ describe('ModelDownloadPage access control', () => {
       }),
       rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(ctx.json({ data: [], page: 1, page_size: 100 }));
-      }),
+      })
     );
 
     await act(async () => {
@@ -158,7 +145,7 @@ describe('ModelDownloadPage access control', () => {
       }),
       rest.get(`*${ENDPOINT_MODEL_FILES_PULL}`, (_, res, ctx) => {
         return res(ctx.json({ data: [], page: 1, page_size: 100 }));
-      }),
+      })
     );
 
     await act(async () => {

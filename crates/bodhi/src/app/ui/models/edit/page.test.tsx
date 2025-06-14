@@ -6,23 +6,14 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock useMediaQuery hook
-vi.mock("@/hooks/use-media-query", () => ({
+vi.mock('@/hooks/use-media-query', () => ({
   useMediaQuery: (query: string) => {
     return true;
-  }
-}))
+  },
+}));
 
 // Mock required HTMLElement methods and styles for Radix UI and Vaul components
 Object.assign(window.HTMLElement.prototype, {
@@ -75,8 +66,6 @@ const mockModelsResponse = {
   ],
 };
 
-
-
 const server = setupServer();
 
 beforeAll(() => {
@@ -108,19 +97,18 @@ describe('EditAliasPage', () => {
       }),
 
       rest.get(`*${ENDPOINT_MODEL_FILES}`, (_, res, ctx) => {
-        return res(ctx.json({
-          data: [
-            { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' },
-            { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' },
-            { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main' }
-          ]
-        }));
+        return res(
+          ctx.json({
+            data: [
+              { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' },
+              { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' },
+              { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main' },
+            ],
+          })
+        );
       }),
       rest.put(`*${ENDPOINT_MODELS}/test-alias`, (_, res, ctx) => {
-        return res(
-          ctx.status(200),
-          ctx.json({ alias: 'test-alias' })
-        );
+        return res(ctx.status(200), ctx.json({ alias: 'test-alias' }));
       })
     );
   });
@@ -137,9 +125,7 @@ describe('EditAliasPage', () => {
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('button', { name: /update model alias/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /update model alias/i })).toBeInTheDocument();
 
     expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
     expect(screen.getByRole('combobox', { name: /repo/i })).toHaveTextContent('owner1/repo1');
@@ -159,9 +145,7 @@ describe('EditAliasPage', () => {
     await user.click(screen.getByRole('combobox', { name: /repo/i }));
     const repoPopover = screen.getByRole('dialog');
     const repoItems = within(repoPopover).getAllByRole('option');
-    const owner2Repo2Option = repoItems.find(item =>
-      item.textContent?.includes('owner2/repo2')
-    );
+    const owner2Repo2Option = repoItems.find((item) => item.textContent?.includes('owner2/repo2'));
     if (!owner2Repo2Option) {
       throw new Error('Could not find owner2/repo2 option');
     }
@@ -171,19 +155,13 @@ describe('EditAliasPage', () => {
     await user.click(screen.getByRole('combobox', { name: /filename/i }));
     const filenamePopover = screen.getByRole('dialog');
     const filenameItems = within(filenamePopover).getAllByRole('option');
-    const file3Option = filenameItems.find(item =>
-      item.textContent?.includes('file3.gguf')
-    );
+    const file3Option = filenameItems.find((item) => item.textContent?.includes('file3.gguf'));
     if (!file3Option) {
       throw new Error('Could not find file3.gguf option');
     }
     await user.click(file3Option);
 
-
-
-    await user.click(
-      screen.getByRole('button', { name: /update model alias/i })
-    );
+    await user.click(screen.getByRole('button', { name: /update model alias/i }));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully updated'));
@@ -193,9 +171,7 @@ describe('EditAliasPage', () => {
   it('displays error message when model data fails to load', async () => {
     server.use(
       rest.get(`*${ENDPOINT_MODELS}/:alias`, (req, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Internal Server Error' } }));
+        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
       })
     );
 

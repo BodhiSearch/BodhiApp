@@ -19,19 +19,23 @@ Object.defineProperty(window, 'matchMedia', {
 vi.mock('framer-motion', () => {
   const React = require('react');
   return {
-    motion: new Proxy({}, {
-      get: (target, prop) => {
-        return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
+    motion: new Proxy(
+      {},
+      {
+        get: (target, prop) => {
+          return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
+        },
       }
-    }),
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) => React.createElement(React.Fragment, null, children),
+    ),
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
+      React.createElement(React.Fragment, null, children),
     useAnimation: () => ({}),
   };
 });
 
 import '@testing-library/jest-dom';
 import { beforeAll, afterAll } from 'vitest';
-import apiClient from "@/lib/apiClient";
+import apiClient from '@/lib/apiClient';
 
 // Mock ResizeObserver
 class MockResizeObserver {
@@ -49,19 +53,10 @@ beforeAll(() => {
   console.error = (...args) => {
     // Check if any of the arguments contain our expected error messages
     const errorString = args
-      .map((arg) =>
-        typeof arg === 'string'
-          ? arg
-          : arg instanceof Error
-            ? arg.message
-            : arg?.toString?.()
-      )
+      .map((arg) => (typeof arg === 'string' ? arg : arg instanceof Error ? arg.message : arg?.toString?.()))
       .join(' ');
 
-    if (
-      errorString.includes('Request failed with status code ') ||
-      errorString.includes('Network Error')
-    ) {
+    if (errorString.includes('Request failed with status code ') || errorString.includes('Network Error')) {
       return;
     }
     originalError.call(console, ...args);

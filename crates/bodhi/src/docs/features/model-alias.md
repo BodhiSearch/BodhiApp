@@ -1,6 +1,6 @@
 ---
-title: "Model Aliases"
-description: "Configure and manage your model alias configurations in Bodhi"
+title: 'Model Aliases'
+description: 'Configure and manage your model alias configurations in Bodhi'
 order: 210
 ---
 
@@ -9,6 +9,7 @@ order: 210
 Model Aliases in Bodhi App provide a streamlined way to manage and apply LLM configurations for inference.
 
 There are two kinds of model aliases:
+
 1. **User Defined Model Alias**
 2. **GGUF Model File Defined Alias**
 
@@ -25,15 +26,15 @@ alias: myllama3
 repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
 filename: Meta-Llama-3-8B-Instruct.Q8_0.gguf
 context_params:
-  n_ctx: 2048         # Maximum tokens in the prompt
-  n_threads: 4        # Number of CPU threads to use
-  n_parallel: 1       # Default parallel requests
-  n_predict: 4096     # Limit on tokens to generate
-  n_keep: 24          # Tokens to keep from the initial prompt
+  n_ctx: 2048 # Maximum tokens in the prompt
+  n_threads: 4 # Number of CPU threads to use
+  n_parallel: 1 # Default parallel requests
+  n_predict: 4096 # Limit on tokens to generate
+  n_keep: 24 # Tokens to keep from the initial prompt
 request_params:
-  seed: 42            # Ensures determinism
-  temperature: 0.7    # Adjusts response randomness
-  frequency_penalty: 0.8  # Reduces repetition
+  seed: 42 # Ensures determinism
+  temperature: 0.7 # Adjusts response randomness
+  frequency_penalty: 0.8 # Reduces repetition
   stop:
     - <|start_header_id|>
     - <|end_header_id|>
@@ -62,13 +63,12 @@ A Model Alias YAML file includes the following keys:
   - **temperature:** Adjusts the randomness of responses.
   - **top_p:** Sets the token probability threshold.
 
-
-
 ## GGUF Model File Defined Alias
 
 A GGUF Model File Defined Alias leverages complete metadata embedded in the GGUF file. In this case, all the default request and context parameters are used, and you cannot override them. This method is the quickest, most direct way to run a model within the app.
 
 The model alias ID for this type is typically a combination of the model repository and the quantization detail. For example, for a repo `QuantFactory/Meta-Llama-3-8B-Instruct-GGUF` and filename `Meta-Llama-3-8B-Instruct.Q8_0.gguf`, the model alias ID would be:
+
 ```
 QuantFactory/Meta-Llama-3-8B-Instruct-GGUF:Q8_0
 ```
@@ -76,12 +76,14 @@ QuantFactory/Meta-Llama-3-8B-Instruct-GGUF:Q8_0
 ## How Model Aliases Work
 
 For a **User Defined Model Alias**, when you reference the alias ID in your chat settings or API calls (using the `model` parameter), Bodhi App will:
+
 1. Launch the LLM inference server (if not already running) with the provided `context_params` settings.
 2. Apply the `request_params` as the default settings on the request.
 3. Forward the request to the inference server.
 4. Stream back the response received from the inference server.
 
 Similarly, for a **GGUF Model File Defined Alias**, the process is:
+
 1. Launch the LLM inference server, if not already running, with default server settings.
 2. Forward the request to the inference server.
 3. Stream back the response.
@@ -128,21 +130,25 @@ Bodhi App's Model Alias system is designed to simplify advanced model configurat
 When configuring model aliases, consider these key performance factors:
 
 ### Memory Usage vs Thread Count
+
 - Higher thread counts (`n_threads`) can improve inference speed
 - But each thread requires additional memory
 - Recommended: Start with `n_threads` = number of CPU cores / 2
 
 ### Context Size Impact
+
 - Larger context sizes (`n_ctx`) allow for longer conversations
 - But increase memory usage and initial load time
 - Recommended: Start with 2048 tokens and adjust based on needs
 
 ### Quantization Effects
+
 - Lower bit models (Q4_K_M) use less memory but may reduce quality
 - Higher bit models (Q8_0) provide better quality but use more memory
 - Recommended: Test different quantization levels for your use case
 
 ### Optimization Tips
+
 - Set `n_parallel` based on your expected concurrent usage
 - Use `n_keep` to maintain important context while reducing memory usage
 - Consider using `stop` sequences to prevent unnecessary token generation

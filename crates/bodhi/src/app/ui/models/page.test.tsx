@@ -4,16 +4,7 @@ import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/components/DataTable', () => ({
   DataTable: ({ data, renderRow }: any) => (
@@ -141,32 +132,29 @@ describe('ModelsPage', () => {
   it('handles API error', async () => {
     server.use(
       rest.get(`*${ENDPOINT_MODELS}`, (req, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Internal Server Error' } })
-        );
+        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
       })
     );
     await act(async () => {
       render(<ModelsPage />, { wrapper: createWrapper() });
     });
 
-    expect(
-      screen.getByText('Internal Server Error')
-    ).toBeInTheDocument();
+    expect(screen.getByText('Internal Server Error')).toBeInTheDocument();
   });
 
   describe('action buttons', () => {
     it('shows FilePlus2 button for model source type', async () => {
       const modelData = {
         ...mockModelsResponse,
-        data: [{
-          alias: 'test-model',
-          source: 'model',
-          repo: 'test-repo',
-          filename: 'test-file.bin',
-          snapshot: 'abc123'
-        }]
+        data: [
+          {
+            alias: 'test-model',
+            source: 'model',
+            repo: 'test-repo',
+            filename: 'test-file.bin',
+            snapshot: 'abc123',
+          },
+        ],
       };
 
       server.use(
@@ -186,20 +174,20 @@ describe('ModelsPage', () => {
         newButton.click();
       });
 
-      expect(pushMock).toHaveBeenCalledWith(
-        '/ui/models/new?repo=test-repo&filename=test-file.bin&snapshot=abc123'
-      );
+      expect(pushMock).toHaveBeenCalledWith('/ui/models/new?repo=test-repo&filename=test-file.bin&snapshot=abc123');
     });
 
     it('shows edit button for non-model source type', async () => {
       const modelData = {
         ...mockModelsResponse,
-        data: [{
-          alias: 'test-alias',
-          source: 'alias',
-          repo: 'test-repo',
-          filename: 'test-file.bin'
-        }]
+        data: [
+          {
+            alias: 'test-alias',
+            source: 'alias',
+            repo: 'test-repo',
+            filename: 'test-file.bin',
+          },
+        ],
       };
 
       server.use(
@@ -252,10 +240,7 @@ describe('ModelsPage', () => {
         hfButton.click();
       });
 
-      expect(windowOpenSpy).toHaveBeenCalledWith(
-        'https://huggingface.co/test-repo/blob/main/test-file.bin',
-        '_blank'
-      );
+      expect(windowOpenSpy).toHaveBeenCalledWith('https://huggingface.co/test-repo/blob/main/test-file.bin', '_blank');
 
       windowOpenSpy.mockRestore();
     });
@@ -264,10 +249,7 @@ describe('ModelsPage', () => {
   it('displays error message when API call fails', async () => {
     server.use(
       rest.get(`*${ENDPOINT_MODELS}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Internal Server Error' } })
-        );
+        return res(ctx.status(500), ctx.json({ error: { message: 'Internal Server Error' } }));
       })
     );
 

@@ -1,13 +1,6 @@
 {
-  "extends": [
-    "next/core-web-vitals",
-    "plugin:@typescript-eslint/recommended",
-    "prettier"
-  ],
-  "plugins": [
-    "@typescript-eslint",
-    "prettier"
-  ],
+  "extends": ["next/core-web-vitals", "plugin:@typescript-eslint/recommended", "prettier"],
+  "plugins": ["@typescript-eslint", "prettier"],
   "rules": {
     "prettier/prettier": [
       "error",
@@ -20,10 +13,5 @@
       }
     ]
   },
-  "ignorePatterns": [
-    "src/**/*.test.tsx",
-    "tests/**/*.test.tsx",
-    "src/components/ui/**/*",
-    "src/hooks/use-toast.ts"
-  ]
+  "ignorePatterns": ["src/**/*.test.tsx", "tests/**/*.test.tsx", "src/components/ui/**/*", "src/hooks/use-toast.ts"]
 }

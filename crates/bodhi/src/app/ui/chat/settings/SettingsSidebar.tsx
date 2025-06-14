@@ -8,19 +8,9 @@ import { SETTINGS_TOOLTIPS } from '@/app/ui/chat/settings/tooltips';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarHeader,
-} from '@/components/ui/sidebar';
+import { Sidebar, SidebarContent, SidebarGroup, SidebarHeader } from '@/components/ui/sidebar';
 import { Switch } from '@/components/ui/switch';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
 import { useModels } from '@/hooks/useQuery';
 import { HelpCircle } from 'lucide-react';
@@ -59,12 +49,7 @@ export function SettingsSidebar() {
   const models = modelsResponse?.data || [];
 
   return (
-    <Sidebar
-      inner={true}
-      side="right"
-      variant="floating"
-      data-testid="settings-sidebar"
-    >
+    <Sidebar inner={true} side="right" variant="floating" data-testid="settings-sidebar">
       <SidebarHeader className="px-4 py-2 bg-muted">
         <h2 className="text-lg font-semibold">Settings</h2>
       </SidebarHeader>
@@ -72,18 +57,10 @@ export function SettingsSidebar() {
         <SidebarGroup className="pb-20">
           <div className="space-y-6">
             <div className="space-y-2">
-              <AliasSelector
-                models={models}
-                isLoading={isLoading}
-                tooltip={SETTINGS_TOOLTIPS.alias}
-              />
+              <AliasSelector models={models} isLoading={isLoading} tooltip={SETTINGS_TOOLTIPS.alias} />
             </div>
 
-            <SettingRow
-              label="Stream Response"
-              tooltip={SETTINGS_TOOLTIPS.stream}
-              htmlFor="stream-mode"
-            >
+            <SettingRow label="Stream Response" tooltip={SETTINGS_TOOLTIPS.stream} htmlFor="stream-mode">
               <Switch
                 id="stream-mode"
                 checked={settings.stream}
@@ -94,11 +71,7 @@ export function SettingsSidebar() {
             </SettingRow>
 
             <div className="space-y-2">
-              <SettingRow
-                label="API Token"
-                tooltip={SETTINGS_TOOLTIPS.apiToken}
-                htmlFor="api-token-enabled"
-              >
+              <SettingRow label="API Token" tooltip={SETTINGS_TOOLTIPS.apiToken} htmlFor="api-token-enabled">
                 <Switch
                   id="api-token-enabled"
                   checked={settings.api_token_enabled}
@@ -111,20 +84,14 @@ export function SettingsSidebar() {
                 type="password"
                 id="api-token"
                 value={settings.api_token || ''}
-                onChange={(e) =>
-                  settings.setApiToken(e.target.value || undefined)
-                }
+                onChange={(e) => settings.setApiToken(e.target.value || undefined)}
                 disabled={isLoading || !settings.api_token_enabled}
                 placeholder="Enter your API token"
               />
             </div>
 
             <div className="space-y-2">
-              <SettingRow
-                label="Seed"
-                tooltip={SETTINGS_TOOLTIPS.seed}
-                htmlFor="seed-enabled"
-              >
+              <SettingRow label="Seed" tooltip={SETTINGS_TOOLTIPS.seed} htmlFor="seed-enabled">
                 <Switch
                   id="seed-enabled"
                   checked={settings.seed_enabled}
@@ -137,23 +104,15 @@ export function SettingsSidebar() {
                 type="number"
                 id="seed-input"
                 value={settings.seed}
-                onChange={(e) =>
-                  settings.setSeed(parseInt(e.target.value) || 0)
-                }
+                onChange={(e) => settings.setSeed(parseInt(e.target.value) || 0)}
                 min={0}
                 max={999999}
                 disabled={isLoading || !settings.seed_enabled}
               />
             </div>
 
-            <SystemPrompt
-              isLoading={isLoading}
-              tooltip={SETTINGS_TOOLTIPS.systemPrompt}
-            />
-            <StopWords
-              isLoading={isLoading}
-              tooltip={SETTINGS_TOOLTIPS.stopWords}
-            />
+            <SystemPrompt isLoading={isLoading} tooltip={SETTINGS_TOOLTIPS.systemPrompt} />
+            <StopWords isLoading={isLoading} tooltip={SETTINGS_TOOLTIPS.stopWords} />
 
             <SettingSlider
               label="Temperature"

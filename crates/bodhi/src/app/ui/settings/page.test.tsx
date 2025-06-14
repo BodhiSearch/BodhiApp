@@ -11,14 +11,13 @@ import { FileText, Settings, Terminal } from 'lucide-react';
 
 // Mock EditSettingDialog component
 vi.mock('@/app/ui/settings/EditSettingDialog', () => ({
-  EditSettingDialog: ({ setting, open, onOpenChange }: any) => (
+  EditSettingDialog: ({ setting, open, onOpenChange }: any) =>
     open ? (
       <div role="dialog" data-testid="mock-edit-dialog">
         <span>Editing: {setting.key}</span>
         <button onClick={() => onOpenChange(false)}>Close</button>
       </div>
-    ) : null
-  )
+    ) : null,
 }));
 
 const mockSettings: Setting[] = [
@@ -28,8 +27,8 @@ const mockSettings: Setting[] = [
     default_value: '/home/user/.cache/bodhi',
     source: 'default',
     metadata: {
-      type: 'string'
-    }
+      type: 'string',
+    },
   },
   {
     key: 'BODHI_LOG_LEVEL',
@@ -38,8 +37,8 @@ const mockSettings: Setting[] = [
     source: 'settings_file',
     metadata: {
       type: 'option',
-      options: ['error', 'warn', 'info', 'debug', 'trace']
-    }
+      options: ['error', 'warn', 'info', 'debug', 'trace'],
+    },
   },
   {
     key: 'BODHI_PORT',
@@ -50,9 +49,9 @@ const mockSettings: Setting[] = [
       type: 'number',
       range: {
         min: 1025,
-        max: 65535
-      }
-    }
+        max: 65535,
+      },
+    },
   },
   {
     key: 'BODHI_EXEC_VARIANT',
@@ -60,9 +59,9 @@ const mockSettings: Setting[] = [
     default_value: 'metal',
     source: 'settings_file',
     metadata: {
-      type: 'string'
-    }
-  }
+      type: 'string',
+    },
+  },
 ];
 
 const server = setupServer(
@@ -90,8 +89,8 @@ const TEST_CONFIG = {
         key: 'BODHI_PORT',
         editable: false,
         description: 'Server Port',
-      }
-    ]
+      },
+    ],
   },
   logging: {
     title: 'Test Logging Config',
@@ -102,8 +101,8 @@ const TEST_CONFIG = {
         key: 'BODHI_LOG_LEVEL',
         editable: false,
         description: 'Test log level',
-      }
-    ]
+      },
+    ],
   },
   execution: {
     title: 'Test Execution Config',
@@ -114,9 +113,9 @@ const TEST_CONFIG = {
         key: 'BODHI_EXEC_VARIANT',
         editable: true,
         description: 'Test execution path',
-      }
-    ]
-  }
+      },
+    ],
+  },
 };
 
 describe('SettingsPageContent', () => {
@@ -127,10 +126,7 @@ describe('SettingsPageContent', () => {
       })
     );
 
-    render(
-      <SettingsPageContent config={TEST_CONFIG} />,
-      { wrapper: createWrapper() }
-    );
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
     expect(screen.getAllByTestId('settings-skeleton')).toHaveLength(3);
   });
 
@@ -141,17 +137,14 @@ describe('SettingsPageContent', () => {
           ctx.status(500),
           ctx.json({
             error: {
-              message: 'Test error'
-            }
+              message: 'Test error',
+            },
           })
         );
       })
     );
 
-    render(
-      <SettingsPageContent config={TEST_CONFIG} />,
-      { wrapper: createWrapper() }
-    );
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
     // Wait for the error message to appear
     const errorMessage = await screen.findByText('Test error');
@@ -165,10 +158,7 @@ describe('SettingsPageContent', () => {
       })
     );
 
-    render(
-      <SettingsPageContent config={TEST_CONFIG} />,
-      { wrapper: createWrapper() }
-    );
+    render(<SettingsPageContent config={TEST_CONFIG} />, { wrapper: createWrapper() });
 
     await screen.findByText('Test App Config');
     expect(screen.getByText('Test Logging Config')).toBeInTheDocument();
@@ -185,10 +175,7 @@ describe('SettingsPage', () => {
   it('shows error when api fails', async () => {
     server.use(
       rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({ error: { message: 'Failed to fetch settings' } })
-        );
+        return res(ctx.status(500), ctx.json({ error: { message: 'Failed to fetch settings' } }));
       })
     );
 
@@ -250,4 +237,4 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: /close/i }));
     expect(dialog).not.toBeInTheDocument();
   });
-}); 
+});

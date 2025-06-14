@@ -1,14 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import {
   Drawer,
   DrawerContent,
@@ -17,11 +10,7 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { useState } from 'react';
 
@@ -64,17 +53,11 @@ export function ComboBoxResponsive({
             type="button"
             disabled={loading}
           >
-            <span className="truncate">
-              {selectedStatus ? selectedStatus.label : placeholder}
-            </span>
+            <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-full p-0" align="start">
-          <StatusList
-            setOpen={setOpen}
-            setSelectedStatus={setSelectedStatus}
-            statuses={statuses}
-          />
+          <StatusList setOpen={setOpen} setSelectedStatus={setSelectedStatus} statuses={statuses} />
         </PopoverContent>
       </Popover>
     );
@@ -93,25 +76,17 @@ export function ComboBoxResponsive({
           type="button"
           disabled={loading}
         >
-          <span className="truncate">
-            {selectedStatus ? selectedStatus.label : placeholder}
-          </span>
+          <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
         </Button>
       </DrawerTrigger>
       <DrawerContent>
         <div className="mx-4 mt-4">
           <DrawerHeader>
             <DrawerTitle>Select Status</DrawerTitle>
-            <DrawerDescription>
-              Choose a status from the list below
-            </DrawerDescription>
+            <DrawerDescription>Choose a status from the list below</DrawerDescription>
           </DrawerHeader>
           <div className="border-t">
-            <StatusList
-              setOpen={setOpen}
-              setSelectedStatus={setSelectedStatus}
-              statuses={statuses}
-            />
+            <StatusList setOpen={setOpen} setSelectedStatus={setSelectedStatus} statuses={statuses} />
           </div>
         </div>
       </DrawerContent>
@@ -139,9 +114,7 @@ function StatusList({
               key={status.value}
               value={status.value}
               onSelect={(value) => {
-                setSelectedStatus(
-                  statuses.find((priority) => priority.value === value) || null
-                );
+                setSelectedStatus(statuses.find((priority) => priority.value === value) || null);
                 setOpen(false);
               }}
             >

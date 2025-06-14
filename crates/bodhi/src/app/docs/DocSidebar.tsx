@@ -10,10 +10,7 @@ import { usePathname } from 'next/navigation';
 
 export const DOCS_BASE_PATH = '/docs';
 
-function getCurrentFolderNavigation(
-  navigation: NavItem[],
-  currentPath: string | null
-): NavItem[] {
+function getCurrentFolderNavigation(navigation: NavItem[], currentPath: string | null): NavItem[] {
   if (!currentPath || currentPath === '/docs') {
     return navigation;
   }
@@ -24,9 +21,7 @@ function getCurrentFolderNavigation(
 
   // Traverse the navigation tree to find the current folder's items
   for (const part of pathParts) {
-    const found = currentLevel.find(
-      (item) => item.slug === part || item.slug.endsWith('/' + part)
-    );
+    const found = currentLevel.find((item) => item.slug === part || item.slug.endsWith('/' + part));
     if (found && found.children) {
       currentLevel = found.children;
       result = found.children;
@@ -49,9 +44,7 @@ export function DocSidebar({ navigation }: DocSidebarProps) {
       <Navigation items={navigation} />
       {pathname !== '/docs' && currentFolderNav.length > 0 && (
         <div className="mt-6 px-4" data-testid="section-navigation">
-          <h2 className="text-sm font-semibold mb-2 text-muted-foreground">
-            In This Section
-          </h2>
+          <h2 className="text-sm font-semibold mb-2 text-muted-foreground">In This Section</h2>
           <ul className="space-y-2">
             {currentFolderNav.map((item) => (
               <li key={item.slug} data-testid={`section-item-${item.slug}`}>
@@ -98,11 +91,7 @@ export function DocSidebar({ navigation }: DocSidebarProps) {
             <Menu className="h-4 w-4" />
           </Button>
         </SheetTrigger>
-        <SheetContent
-          side="left"
-          className="w-80 p-0"
-          data-testid="mobile-sidebar"
-        >
+        <SheetContent side="left" className="w-80 p-0" data-testid="mobile-sidebar">
           <div className="h-16 border-b px-6 flex items-center">
             <Link href={DOCS_BASE_PATH}>
               <h2 className="text-lg font-semibold">Home</h2>

@@ -6,13 +6,7 @@ import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
 import { Model, SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
-import {
-  Pencil,
-  MessageSquare,
-  ExternalLink,
-  FilePlus2,
-  Plus,
-} from 'lucide-react';
+import { Pencil, MessageSquare, ExternalLink, FilePlus2, Plus } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -56,15 +50,10 @@ const columns = [
 ];
 
 const SourceBadge = ({ source }: { source: string | undefined }) => {
-  const colorClass =
-    source === 'model'
-      ? 'bg-green-500/10 text-green-500'
-      : 'bg-blue-500/10 text-blue-500';
+  const colorClass = source === 'model' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500';
 
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium w-fit ${colorClass}`}
-    >
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium w-fit ${colorClass}`}>
       {source || ''}
     </span>
   );
@@ -79,20 +68,12 @@ function ModelsPageContent() {
     direction: 'asc',
   });
 
-  const { data, isLoading, error } = useModels(
-    page,
-    pageSize,
-    sort.column,
-    sort.direction
-  );
+  const { data, isLoading, error } = useModels(page, pageSize, sort.column, sort.direction);
 
   const toggleSort = (column: string) => {
     setSort((prevSort) => ({
       column,
-      direction:
-        prevSort.column === column && prevSort.direction === 'asc'
-          ? 'desc'
-          : 'asc',
+      direction: prevSort.column === column && prevSort.direction === 'asc' ? 'desc' : 'asc',
     }));
     setPage(1); // Reset to first page when sorting
   };
@@ -103,9 +84,7 @@ function ModelsPageContent() {
     router.push(`/ui/models/edit?alias=${alias}`);
   };
   const handleNew = (model: Model) => {
-    router.push(
-      `/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`
-    );
+    router.push(`/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
   };
   const handleChat = (model: Model) => {
     router.push(`/ui/chat?alias=${model.alias}`);
@@ -152,12 +131,7 @@ function ModelsPageContent() {
           variant="ghost"
           size="sm"
           className="h-8 w-8 p-0"
-          onClick={() =>
-            window.open(
-              getHuggingFaceFileUrl(model.repo, model.filename),
-              '_blank'
-            )
-          }
+          onClick={() => window.open(getHuggingFaceFileUrl(model.repo, model.filename), '_blank')}
           title="Open in HuggingFace"
         >
           <ExternalLink className="h-4 w-4" />
@@ -181,10 +155,7 @@ function ModelsPageContent() {
         <CopyableContent text={model.repo} className="text-sm" />
 
         {/* Filename */}
-        <CopyableContent
-          text={model.filename}
-          className="text-xs text-muted-foreground"
-        />
+        <CopyableContent text={model.filename} className="text-xs text-muted-foreground" />
 
         {/* Source */}
         <div className="w-fit">
@@ -192,9 +163,7 @@ function ModelsPageContent() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 pt-2 border-t">
-          {actionUi(model)}
-        </div>
+        <div className="flex items-center gap-1 pt-2 border-t">{actionUi(model)}</div>
       </div>
     </TableCell>,
     // Tablet view (name+source column)
@@ -218,65 +187,39 @@ function ModelsPageContent() {
     >
       <div className="flex flex-col gap-1">
         <CopyableContent text={model.repo} className="text-sm" />
-        <CopyableContent
-          text={model.filename}
-          className="text-xs text-muted-foreground"
-        />
+        <CopyableContent text={model.filename} className="text-xs text-muted-foreground" />
       </div>
     </TableCell>,
     // Desktop view (separate columns)
-    <TableCell
-      key="alias"
-      className="max-w-[250px] truncate hidden lg:table-cell"
-      data-testid="alias-cell"
-    >
+    <TableCell key="alias" className="max-w-[250px] truncate hidden lg:table-cell" data-testid="alias-cell">
       <CopyableContent text={model.alias} />
     </TableCell>,
-    <TableCell
-      key="repo"
-      className="max-w-[200px] truncate hidden lg:table-cell"
-      data-testid="repo-cell"
-    >
+    <TableCell key="repo" className="max-w-[200px] truncate hidden lg:table-cell" data-testid="repo-cell">
       <CopyableContent text={model.repo} />
     </TableCell>,
-    <TableCell
-      key="filename"
-      className="max-w-[200px] truncate hidden lg:table-cell"
-      data-testid="filename-cell"
-    >
+    <TableCell key="filename" className="max-w-[200px] truncate hidden lg:table-cell" data-testid="filename-cell">
       <CopyableContent text={model.filename} />
     </TableCell>,
-    <TableCell
-      key="source"
-      className="max-w-[100px] hidden lg:table-cell"
-      data-testid="source-cell"
-    >
+    <TableCell key="source" className="max-w-[100px] hidden lg:table-cell" data-testid="source-cell">
       <div className="w-fit">
         <SourceBadge source={model.source} />
       </div>
     </TableCell>,
-    <TableCell
-      key="actions"
-      className="w-[140px] whitespace-nowrap hidden sm:table-cell"
-    >
+    <TableCell key="actions" className="w-[140px] whitespace-nowrap hidden sm:table-cell">
       {actionUi(model)}
     </TableCell>,
   ];
 
   if (error) {
-    const errorMessage =
-      error.response?.data?.error?.message ||
-      error.message ||
-      'An unexpected error occurred';
+    const errorMessage = error.response?.data?.error?.message || error.message || 'An unexpected error occurred';
     return <ErrorPage message={errorMessage} />;
   }
 
   return (
     <div data-testid="models-content" className="container mx-auto p-4">
       <UserOnboarding storageKey="models-banner-dismissed">
-        Welcome to Models! Here you can manage your model aliases and access
-        their configurations. Create new aliases or edit existing ones to
-        customize your model settings.
+        Welcome to Models! Here you can manage your model aliases and access their configurations. Create new aliases or
+        edit existing ones to customize your model settings.
       </UserOnboarding>
 
       <div className="flex justify-end m2-4">
@@ -300,11 +243,7 @@ function ModelsPageContent() {
       <div className="mt-6 mb-4">
         <Pagination
           page={page}
-          totalPages={
-            data
-              ? Math.ceil((data.total as number) / (data.page_size as number))
-              : 1
-          }
+          totalPages={data ? Math.ceil((data.total as number) / (data.page_size as number)) : 1}
           onPageChange={setPage}
         />
       </div>

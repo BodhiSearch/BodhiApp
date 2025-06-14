@@ -1,5 +1,5 @@
 ---
-title: "Chat UI"
+title: 'Chat UI'
 description: "A comprehensive guide to using Bodhi App's Chat Interface"
 order: 201
 ---
@@ -26,7 +26,7 @@ Every conversation and setting is stored locally in your browser. This means you
 
 ## The Chat History Panel
 
-The left panel displays your previous conversations grouped by the time they were started—such as *Today*, *Yesterday*, and *Previous 7 Days*. You can click on any conversation to reopen it. A dedicated delete option lets you permanently remove a conversation from your browser's local storage, so use it with caution.
+The left panel displays your previous conversations grouped by the time they were started—such as _Today_, _Yesterday_, and _Previous 7 Days_. You can click on any conversation to reopen it. A dedicated delete option lets you permanently remove a conversation from your browser's local storage, so use it with caution.
 
 ## The Main Chat Panel
 
@@ -44,34 +44,33 @@ The right panel is your command center for configuring how the AI responds. Here
 
 - **Model/Alias Selection:**  
   Choose from available GGUF models or your custom aliases using a dropdown selector.
-  
 - **Adjustable Parameters:**  
   Customize AI behavior with controls that include sliders, numeric inputs, and tag-based inputs:
-  
+
   - **Temperature:** Adjusts response creativity.
   - **Top P:** Sets the probability threshold for token selection.
   - **Seed:** Ensures consistency in generated responses.
   - **Max Tokens:** Determines the maximum response length.
   - **Stop Words:** Allows specification of up to four phrases to stop the response immediately.
-  
+
   Each setting is paired with a tooltip to help you understand its impact. In addition, every control comes with a toggle switch. When disabled, the system reverts to backend default values.
-  
+
 - **Security Notice:**  
   If you use your API token, remember it is stored in plain text on your browser. For security, remove it from the input after you're done.
-  
 - **Popular Reference Parameters:**  
   For advanced users, here are sample configurations:
-  
-  - **Creative Writing:**  
+
+  - **Creative Writing:**
 
 ```yaml
-Temperature: 0.8  
-Top P: 0.9  
+Temperature: 0.8
+Top P: 0.9
 Presence Penalty: 0.6
 Frequency Penalty: 0.3
 Max Tokens: 2048
-```  
-  - **Technical Responses:**  
+```
+
+- **Technical Responses:**
 
 ```yaml
 Temperature: 0.2
@@ -80,7 +79,7 @@ Presence Penalty: 0.1
 Frequency Penalty: 0.1
 ```
 
-  - **Balanced Conversation:**  
+- **Balanced Conversation:**
 
 ```yaml
 Temperature: 0.5
@@ -94,6 +93,7 @@ Frequency Penalty: 0.4
 Both the Chat History and Settings Panels are collapsible. This allows you to maximize your workspace if you have limited screen space or wish to focus solely on your conversation. You can toggle each panel independently.
 
 You have two options to start a new conversation:
+
 - Click the **+** button in the main chat input area.
 - Use the new chat option in the Chat History Panel.
 
@@ -101,4 +101,4 @@ You have two options to start a new conversation:
 
 Bodhi App's Chat UI is thoughtfully designed to combine ease of use with powerful functionality. Enjoy interacting with the AI assistant and experiment with the settings to tailor the experience to your needs. Always remember that your configurations and history are stored locally, so manage your data wisely.
 
-Happy chatting! 
+Happy chatting!
