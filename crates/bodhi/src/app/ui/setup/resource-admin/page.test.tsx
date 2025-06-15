@@ -1,22 +1,8 @@
-vi.mock('framer-motion', () => {
-  const React = require('react');
-  return {
-    motion: new Proxy(
-      {},
-      {
-        get: (_target, _prop) => {
-          return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
-        },
-      }
-    ),
-    AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
-      React.createElement(React.Fragment, null, children),
-    useAnimation: () => ({}),
-  };
-});
-
 // Mock the router
+import { redirect } from 'next/navigation';
+
 const pushMock = vi.fn();
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
@@ -24,6 +10,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => ({
     get: () => null,
   }),
+  redirect: vi.fn(),
 }));
 
 // Mock the Image component
@@ -134,13 +121,6 @@ describe('ResourceAdminPage', () => {
   });
 
   it('handles OAuth initiation when login required and redirects to auth URL', async () => {
-    // Mock window.location.href
-    const mockLocation = { href: '' };
-    Object.defineProperty(window, 'location', {
-      value: mockLocation,
-      writable: true,
-    });
-
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -159,7 +139,7 @@ describe('ResourceAdminPage', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
+      expect(redirect).toHaveBeenCalledWith('https://oauth.example.com/auth?client_id=test');
     });
   });
 
@@ -253,7 +233,7 @@ describe('ResourceAdminPage', () => {
         return res(ctx.json({ status: 'resource-admin' }));
       }),
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(303), ctx.set('Location', 'https://example.com/redirected'));
+        return res(ctx.status(303), ctx.set('Location', '/ui/home'));
       })
     );
 
@@ -263,7 +243,7 @@ describe('ResourceAdminPage', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(window.location.href).toBe('https://example.com/redirected');
+      expect(redirect).toHaveBeenCalledWith('/ui/home');
     });
   });
 });
