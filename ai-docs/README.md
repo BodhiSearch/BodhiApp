@@ -13,6 +13,7 @@ The documentation is structured into the following main sections:
 - **📖 Reference** - Technical reference materials
 - **📢 Marketing** - Product positioning and community outreach
 - **📚 Knowledge Transfer** - Implementation guides and tutorials
+- **🔬 Research** - Technical research and architectural analysis
 - **📦 Archive** - Historical materials and deprecated content
 
 ### Recent Documentation Updates
@@ -91,6 +92,9 @@ Feature documentation organized by development status and implementation timelin
 - **[Setup Resource Admin](02-features/completed-stories/story-20250130-setup-resource-admin.md)** - Resource server admin setup
 - **[Login Info Non-Authz](02-features/completed-stories/story-authz-20250111-login-info-non-authz.md)** - Non-authenticated mode login information
 - **[Reset to Authz](02-features/completed-stories/story-authz-20250111-reset-to-authz.md)** - Authentication mode reset functionality
+- **[App Initialization Refactoring](02-features/completed-stories/20250614-app-initialization-refactoring.md)** - CLI-first architecture refactoring to parse command line arguments before app initialization, enabling command-specific initialization path
+- **[NPM Dependency Upgrade](02-features/completed-stories/20250613-npm-dependency-upgrade.md)** - Comprehensive strategy for safely upgrading npm dependencies in the BodhiApp frontend, including risk-based batching, testing procedures, and rollback plan
+- **[App Setup Refactoring](02-features/completed-stories/20250610-lib-bodhiserver.md)** - Technical specification for `lib_bodhiserver` library crate to centralize initialization logic, eliminate code duplication between production and test paths, and e
 
 #### Planned Features
 - **[NAPI-RS FFI UI Testing](02-features/planned/20250615-napi-ffi-ui-testing.md)** - Implementation specification for NAPI-RS based FFI layer to expose lib_bodhiserver functionality for TypeScript/JavaScript UI testing with programmatic server control
@@ -147,7 +151,12 @@ Implementation guides, technical knowledge, and learning resources for developer
 - **[Setup Processes](06-knowledge-transfer/setup-processes.md)** - Application installation, setup procedures, and configuration workflows
 - **[Rust Dependency Management](06-knowledge-transfer/unused-upgrade-dependencies.md)** - Comprehensive guide for Rust workspace dependency management, including unused dependency removal, systematic upgrade strategies, and handling major version blockers
 - **[NPM Dependency Upgrades](02-features/completed-stories/20250613-npm-dependency-upgrade.md)** - Strategic approach to upgrading npm dependencies in the frontend, with risk-based batching and testing procedures
-- **[FFI UI Testing Research](06-knowledge-transfer/20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing lib_bodhiserver to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation
+
+### 🔬 [Research](07-research/) - Technical Research & Analysis
+Technical research documents, dependency analysis, and architectural investigation reports
+
+- **[Bodhi Dependency Isolation Analysis](02-features/completed-stories/20250615-bodhi-dependency-isolation-analysis.md)** - Comprehensive analysis of dependencies in crates/bodhi that need abstraction through lib_bodhiserver for C-FFI compatibility, with detailed implementation plan
+- **[FFI UI Testing Research](07-research/20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing lib_bodhiserver to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
@@ -260,6 +269,7 @@ When adding or updating documentation:
 - **Reference**: Technical reference materials and tool integration guides
 - **Marketing**: Product positioning, community outreach, promotional materials
 - **Knowledge Transfer**: Learning resources, guides, and implementation patterns
+- **Research**: Technical research documents, dependency analysis, and architectural investigations
 - **Archive**: Historical materials and deprecated content
 
 ## Support and Feedback

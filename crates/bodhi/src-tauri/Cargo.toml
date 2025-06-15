@@ -9,32 +9,19 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 errmeta_derive = { workspace = true }
-objs = { workspace = true }
-llama_server_proc = { workspace = true }
-services = { workspace = true }
-commands = { workspace = true }
-server_core = { workspace = true }
-auth_middleware = { workspace = true }
-routes_oai = { workspace = true }
-routes_app = { workspace = true }
-routes_all = { workspace = true }
-server_app = { workspace = true }
 lib_bodhiserver = { workspace = true }
 
 include_dir = { workspace = true }
 tauri = { workspace = true, features = ["tray-icon"], optional = true }
 tauri-plugin-log = { workspace = true, optional = true }
 
-axum = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 serde_yaml = { workspace = true }
-serde_json = { workspace = true }
 tracing = { workspace = true, features = ["async-await", "log"] }
 tracing-appender = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tokio = { workspace = true, features = ["full"] }
 thiserror = { workspace = true }
-tower-serve-static = { workspace = true }
 
 # futures-util = { workspace = true }
 webbrowser = { workspace = true, optional = true }

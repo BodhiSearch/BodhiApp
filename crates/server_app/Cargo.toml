@@ -27,6 +27,7 @@ serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 thiserror = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
+tower-serve-static = { workspace = true }
 tracing = { workspace = true }
 
 [dev-dependencies]

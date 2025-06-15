@@ -3,6 +3,7 @@ use crate::{
   ShutdownCallback, TaskJoinError, VariantChangeListener,
 };
 use axum::Router;
+use include_dir::Dir;
 use llama_server_proc::exec_path_from;
 use objs::{impl_error_from, AppError, SettingSource};
 use routes_all::build_routes;
@@ -10,6 +11,7 @@ use server_core::{ContextError, DefaultSharedContext, SharedContext};
 use services::{AppService, SettingServiceError, BODHI_HOST, BODHI_PORT};
 use std::{path::PathBuf, sync::Arc};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
+use tower_serve_static::ServeDir;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -72,9 +74,9 @@ impl ServeCommand {
   pub async fn aexecute(
     &self,
     service: Arc<dyn AppService>,
-    static_router: Option<Router>,
+    static_dir: Option<&'static Dir<'static>>,
   ) -> Result<()> {
-    let handle = self.get_server_handle(service, static_router).await?;
+    let handle = self.get_server_handle(service, static_dir).await?;
     handle.shutdown_on_ctrlc().await?;
     Ok::<(), ServeError>(())
   }
@@ -83,7 +85,7 @@ impl ServeCommand {
   pub async fn get_server_handle(
     &self,
     service: Arc<dyn AppService>,
-    static_router: Option<Router>,
+    static_dir: Option<&'static Dir<'static>>,
   ) -> Result<ServerShutdownHandle> {
     let ServeCommand::ByParams { host, port } = self;
     let setting_service = service.setting_service();
@@ -144,6 +146,12 @@ impl ServeCommand {
     ));
     setting_service.add_listener(keep_alive.clone());
     ctx.add_state_listener(keep_alive).await;
+
+    // Create static router from directory if provided
+    let static_router = static_dir.map(|dir| {
+      let static_service = ServeDir::new(dir).append_index_html_on_directories(true);
+      Router::new().fallback_service(static_service)
+    });
 
     let app = build_routes(ctx.clone(), service, static_router);
 

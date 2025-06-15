@@ -1,12 +1,9 @@
 use crate::app::AppCommand;
 use crate::common::build_app_options;
-use axum::Router;
-use lib_bodhiserver::{build_app_service, setup_app_dirs};
-use objs::{AppError, AppType, ErrorMessage, ErrorType, LogLevel};
-use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
-use services::{
-  AppService, DefaultEnvWrapper, SettingService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS,
-  BODHI_LOG_STDOUT,
+use lib_bodhiserver::{
+  build_app_service, setup_app_dirs, AppError, AppService, AppType, DefaultEnvWrapper,
+  ErrorMessage, ErrorType, LogLevel, ServeCommand, ServeError, ServerShutdownHandle,
+  SettingService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT,
 };
 use std::sync::{Arc, Mutex};
 use tauri::{
@@ -45,7 +42,10 @@ impl NativeCommand {
 
   // TODO: modbile entry point as marked by default tauri app generator
   // #[cfg_attr(mobile, tauri::mobile_entry_point)]
-  pub async fn aexecute(&self, static_router: Option<Router>) -> Result<()> {
+  pub async fn aexecute(
+    &self,
+    static_dir: Option<&'static include_dir::Dir<'static>>,
+  ) -> Result<()> {
     let app_service = self.service.clone();
     let setting_service = self.service.setting_service();
     let ui = self.ui;
@@ -90,7 +90,7 @@ impl NativeCommand {
         app.manage(shared_server_handle.clone());
         tokio::spawn(async move {
           match cmd
-          .get_server_handle(app_service, static_router)
+          .get_server_handle(app_service, static_dir)
           .await {
             Ok(server_handle) => {shared_server_handle.lock().unwrap().replace(server_handle);},
             Err(err) => {
@@ -178,7 +178,7 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent, addr: &str) {
 }
 
 pub fn initialize_and_execute(_command: AppCommand) -> std::result::Result<(), ErrorMessage> {
-  let env_wrapper: Arc<dyn services::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
+  let env_wrapper: Arc<dyn lib_bodhiserver::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
 
   // Construct AppOptions explicitly for production code clarity
   let app_options = build_app_options(env_wrapper, APP_TYPE)?;
@@ -200,7 +200,7 @@ fn aexecute(setting_service: Arc<dyn SettingService>) -> std::result::Result<(),
 
     // Launch native app with UI
     match NativeCommand::new(app_service, true)
-      .aexecute(Some(crate::ui::router()))
+      .aexecute(Some(&crate::ui::ASSETS))
       .await
     {
       Err(err) => {
