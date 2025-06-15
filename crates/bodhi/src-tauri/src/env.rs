@@ -1,7 +1,7 @@
 // production constants
 #[cfg(feature = "production")]
 mod env_config {
-  use objs::EnvType;
+  use lib_bodhiserver::EnvType;
 
   pub static ENV_TYPE: EnvType = EnvType::Production;
   pub static AUTH_URL: &str = "https://id.getbodhi.app";
@@ -11,7 +11,7 @@ mod env_config {
 // development constants
 #[cfg(not(feature = "production"))]
 mod env_config {
-  use objs::EnvType;
+  use lib_bodhiserver::EnvType;
 
   pub static ENV_TYPE: EnvType = EnvType::Development;
   pub static AUTH_URL: &str = "https://dev-id.getbodhi.app";

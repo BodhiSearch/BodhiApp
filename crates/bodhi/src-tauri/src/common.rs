@@ -1,7 +1,7 @@
 use crate::env::{AUTH_REALM, AUTH_URL, ENV_TYPE};
-use lib_bodhiserver::{AppOptions, AppOptionsBuilder};
-use objs::{AppType, ErrorMessage, ErrorType};
-use services::EnvWrapper;
+use lib_bodhiserver::{
+  AppOptions, AppOptionsBuilder, AppType, EnvWrapper, ErrorMessage, ErrorType,
+};
 use std::sync::Arc;
 
 pub fn build_app_options(

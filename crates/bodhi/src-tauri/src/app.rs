@@ -29,10 +29,10 @@ enum Commands {
   /// Start the server in deployment mode
   Serve {
     /// Host address to bind to
-    #[arg(short = 'H', long, default_value = services::DEFAULT_HOST)]
+    #[arg(short = 'H', long, default_value = lib_bodhiserver::DEFAULT_HOST)]
     host: String,
     /// Port number to bind to
-    #[arg(short, long, default_value_t = services::DEFAULT_PORT)]
+    #[arg(short, long, default_value_t = lib_bodhiserver::DEFAULT_PORT)]
     port: u16,
   },
 }
@@ -112,9 +112,9 @@ mod server_test {
   #[rstest]
   #[case(vec!["bodhi", "serve", "-H", "0.0.0.0", "-p", "8080"], "0.0.0.0", 8080)]
   #[case(vec!["bodhi", "serve", "--host", "127.0.0.1", "--port", "3000"], "127.0.0.1", 3000)]
-  #[case(vec!["bodhi", "serve", "-p", "8080"], services::DEFAULT_HOST, 8080)]
-  #[case(vec!["bodhi", "serve", "-H", "0.0.0.0"], "0.0.0.0", services::DEFAULT_PORT)]
-  #[case(vec!["bodhi", "serve"], services::DEFAULT_HOST, services::DEFAULT_PORT)]
+  #[case(vec!["bodhi", "serve", "-p", "8080"], lib_bodhiserver::DEFAULT_HOST, 8080)]
+  #[case(vec!["bodhi", "serve", "-H", "0.0.0.0"], "0.0.0.0", lib_bodhiserver::DEFAULT_PORT)]
+  #[case(vec!["bodhi", "serve"], lib_bodhiserver::DEFAULT_HOST, lib_bodhiserver::DEFAULT_PORT)]
   fn test_cli_serve_valid(
     #[case] args: Vec<&str>,
     #[case] expected_host: &str,

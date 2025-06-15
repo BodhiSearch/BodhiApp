@@ -9,6 +9,7 @@ This section contains documentation for current and planned features of the Bodh
 - **[Model Management](implemented/model-management.md)** - Model alias and configuration system
 - **[Authentication](implemented/authentication.md)** - User authentication and authorization
 - **[Navigation](implemented/navigation.md)** - Application navigation system
+- **[Bodhi Dependency Isolation Analysis](completed-stories/20250615-bodhi-dependency-isolation-analysis.md)** - Comprehensive analysis of dependencies in crates/bodhi that need abstraction through lib_bodhiserver for C-FFI compatibility, with detailed implementation plan
 
 ### Planned Features
 - **[User Management](planned/user-management.md)** - Multi-user support and role management

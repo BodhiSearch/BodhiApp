@@ -1,8 +1,8 @@
 use crate::app::AppCommand;
-use lib_bodhiserver::{build_app_service, setup_app_dirs};
-use objs::{AppType, ErrorMessage, ErrorType};
-use server_app::ServeCommand;
-use services::{DefaultEnvWrapper, SettingService, BODHI_LOG_STDOUT};
+use lib_bodhiserver::{
+  build_app_service, setup_app_dirs, AppType, DefaultEnvWrapper, ErrorMessage, ErrorType,
+  ServeCommand, SettingService, BODHI_LOG_STDOUT,
+};
 use std::sync::Arc;
 use tokio::runtime::Builder;
 use tracing::level_filters::LevelFilter;
@@ -12,8 +12,7 @@ use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, Env
 // Server-specific constants
 #[cfg(feature = "production")]
 mod env_config {
-  use objs::ErrorMessage;
-  use services::DefaultSettingService;
+  use lib_bodhiserver::{DefaultSettingService, ErrorMessage};
 
   pub fn set_feature_settings(
     _setting_service: &DefaultSettingService,
@@ -24,12 +23,12 @@ mod env_config {
 
 #[cfg(not(feature = "production"))]
 mod env_config {
-  use objs::ErrorMessage;
-  use services::DefaultSettingService;
+  use lib_bodhiserver::{
+    DefaultSettingService, ErrorMessage, SettingService, BODHI_EXEC_LOOKUP_PATH,
+  };
 
   #[allow(clippy::result_large_err)]
   pub fn set_feature_settings(setting_service: &DefaultSettingService) -> Result<(), ErrorMessage> {
-    use services::{SettingService, BODHI_EXEC_LOOKUP_PATH};
     setting_service.set_default(
       BODHI_EXEC_LOOKUP_PATH,
       &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
@@ -44,7 +43,7 @@ use env_config::*;
 const APP_TYPE: AppType = AppType::Container;
 
 pub fn initialize_and_execute(command: AppCommand) -> Result<(), ErrorMessage> {
-  let env_wrapper: Arc<dyn services::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
+  let env_wrapper: Arc<dyn lib_bodhiserver::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
 
   // Construct AppOptions explicitly for production code clarity
   let app_options = build_app_options(env_wrapper, APP_TYPE)?;
@@ -86,7 +85,7 @@ fn aexecute(
       }
     };
     command
-      .aexecute(app_service, Some(crate::ui::router()))
+      .aexecute(app_service, Some(&crate::ui::ASSETS))
       .await
       .map_err(|err| {
         ErrorMessage::new(
@@ -101,7 +100,7 @@ fn aexecute(
   result
 }
 
-fn setup_logs(setting_service: &services::DefaultSettingService) -> WorkerGuard {
+fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> WorkerGuard {
   let logs_dir = setting_service.logs_dir();
   let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
   let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);

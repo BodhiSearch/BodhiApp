@@ -1,6 +1,6 @@
 use std::io;
 
-use objs::{AppError, ErrorMessage, ErrorType};
+use lib_bodhiserver::{AppError, ErrorMessage, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
