@@ -151,12 +151,7 @@ Implementation guides, technical knowledge, and learning resources for developer
 - **[Setup Processes](06-knowledge-transfer/setup-processes.md)** - Application installation, setup procedures, and configuration workflows
 - **[Rust Dependency Management](06-knowledge-transfer/unused-upgrade-dependencies.md)** - Comprehensive guide for Rust workspace dependency management, including unused dependency removal, systematic upgrade strategies, and handling major version blockers
 - **[NPM Dependency Upgrades](02-features/completed-stories/20250613-npm-dependency-upgrade.md)** - Strategic approach to upgrading npm dependencies in the frontend, with risk-based batching and testing procedures
-
-### 🔬 [Research](07-research/) - Technical Research & Analysis
-Technical research documents, dependency analysis, and architectural investigation reports
-
-- **[Bodhi Dependency Isolation Analysis](02-features/completed-stories/20250615-bodhi-dependency-isolation-analysis.md)** - Comprehensive analysis of dependencies in crates/bodhi that need abstraction through lib_bodhiserver for C-FFI compatibility, with detailed implementation plan
-- **[FFI UI Testing Research](07-research/20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing lib_bodhiserver to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation
+- **[FFI UI Testing Research](07-research/20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing lib_bodhiserver to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation and dependency isolation integration
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
