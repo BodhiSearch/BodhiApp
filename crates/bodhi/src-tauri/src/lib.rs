@@ -1,14 +1,17 @@
 #[cfg(feature = "native")]
-pub mod native;
+mod native_init;
+#[cfg(not(feature = "native"))]
+mod server_init;
 
 #[cfg(feature = "test-utils")]
 pub mod test_utils;
 #[cfg(all(not(feature = "test-utils"), test))]
 pub mod test_utils;
 
-mod app;
+pub mod app;
+mod common;
+pub mod env;
 mod error;
-pub mod lib_main;
 mod ui;
 
 pub mod l10n {

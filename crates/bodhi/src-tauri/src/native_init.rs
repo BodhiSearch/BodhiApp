@@ -1,7 +1,13 @@
+use crate::app::AppCommand;
+use crate::common::build_app_options;
 use axum::Router;
-use objs::{AppError, ErrorType, LogLevel};
+use lib_bodhiserver::{build_app_service, setup_app_dirs};
+use objs::{AppError, AppType, ErrorMessage, ErrorType, LogLevel};
 use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
-use services::{AppService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT};
+use services::{
+  AppService, DefaultEnvWrapper, SettingService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS,
+  BODHI_LOG_STDOUT,
+};
 use std::sync::{Arc, Mutex};
 use tauri::{
   menu::{Menu, MenuEvent, MenuItem},
@@ -9,6 +15,9 @@ use tauri::{
   tray::TrayIconBuilder,
   AppHandle, Manager, Window, WindowEvent,
 };
+use tokio::runtime::Builder;
+
+const APP_TYPE: AppType = AppType::Native;
 
 pub struct NativeCommand {
   service: Arc<dyn AppService>,
@@ -123,7 +132,9 @@ impl NativeCommand {
 
 fn on_window_event(window: &Window, event: &WindowEvent) {
   if let WindowEvent::CloseRequested { api, .. } = event {
-    window.hide().unwrap();
+    if let Err(err) = window.hide() {
+      tracing::warn!(?err, "error hiding window");
+    }
     api.prevent_close();
   }
 }
@@ -131,7 +142,9 @@ fn on_window_event(window: &Window, event: &WindowEvent) {
 fn on_menu_event(app: &AppHandle, event: MenuEvent, addr: &str) {
   match event.id.as_ref() {
     "homepage" => {
-      webbrowser::open(addr).expect("should not fail to open homepage");
+      if let Err(err) = webbrowser::open(addr) {
+        tracing::warn!(?err, "error opening browser");
+      }
     }
     "quit" => {
       let server_handle = app.state::<ServerHandleState>();
@@ -162,4 +175,49 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent, addr: &str) {
     }
     &_ => {}
   }
+}
+
+pub fn initialize_and_execute(_command: AppCommand) -> std::result::Result<(), ErrorMessage> {
+  let env_wrapper: Arc<dyn services::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
+
+  // Construct AppOptions explicitly for production code clarity
+  let app_options = build_app_options(env_wrapper, APP_TYPE)?;
+
+  let setting_service = setup_app_dirs(app_options)?;
+  // Native mode doesn't use file-based logging - Tauri handles logging
+  let result = aexecute(Arc::new(setting_service));
+  result
+}
+
+fn aexecute(setting_service: Arc<dyn SettingService>) -> std::result::Result<(), ErrorMessage> {
+  let runtime = Builder::new_multi_thread()
+    .enable_all()
+    .build()
+    .map_err(crate::error::AppSetupError::from)?;
+  let result: std::result::Result<(), ErrorMessage> = runtime.block_on(async move {
+    // Build the complete app service using the lib_bodhiserver function
+    let app_service = Arc::new(build_app_service(setting_service.clone()).await?);
+
+    // Launch native app with UI
+    match NativeCommand::new(app_service, true)
+      .aexecute(Some(crate::ui::router()))
+      .await
+    {
+      Err(err) => {
+        tracing::warn!(?err, "application exited with error");
+        // Convert NativeError to ErrorMessage directly
+        let err_msg = ErrorMessage::new(
+          "native_error".to_string(),
+          ErrorType::InternalServer.to_string(),
+          err.to_string(),
+        );
+        Err(err_msg)
+      }
+      Ok(_) => {
+        tracing::info!("application exited with success");
+        Ok(())
+      }
+    }
+  });
+  result
 }
