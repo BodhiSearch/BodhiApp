@@ -93,9 +93,7 @@ Feature documentation organized by development status and implementation timelin
 - **[Reset to Authz](02-features/completed-stories/story-authz-20250111-reset-to-authz.md)** - Authentication mode reset functionality
 
 #### Planned Features
-- **[App Initialization Refactoring](02-features/completed-stories/20250614-app-initialization-refactoring.md)** - CLI-first architecture refactoring to parse command line arguments before app initialization, enabling command-specific initialization paths and improved resource efficiency
-- **[NPM Dependency Upgrade](02-features/completed-stories/20250613-npm-dependency-upgrade.md)** - Comprehensive strategy for safely upgrading npm dependencies in the BodhiApp frontend, including risk-based batching, testing procedures, and rollback plans
-- **[App Setup Refactoring](02-features/completed-stories/20250610-lib-bodhiserver.md)** - Technical specification for `lib_bodhiserver` library crate to centralize initialization logic, eliminate code duplication between production and test paths, and enable multiple deployment modes (Tauri, CLI, Docker)
+- **[NAPI-RS FFI UI Testing](02-features/planned/20250615-napi-ffi-ui-testing.md)** - Implementation specification for NAPI-RS based FFI layer to expose lib_bodhiserver functionality for TypeScript/JavaScript UI testing with programmatic server control
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
@@ -149,6 +147,7 @@ Implementation guides, technical knowledge, and learning resources for developer
 - **[Setup Processes](06-knowledge-transfer/setup-processes.md)** - Application installation, setup procedures, and configuration workflows
 - **[Rust Dependency Management](06-knowledge-transfer/unused-upgrade-dependencies.md)** - Comprehensive guide for Rust workspace dependency management, including unused dependency removal, systematic upgrade strategies, and handling major version blockers
 - **[NPM Dependency Upgrades](02-features/completed-stories/20250613-npm-dependency-upgrade.md)** - Strategic approach to upgrading npm dependencies in the frontend, with risk-based batching and testing procedures
+- **[FFI UI Testing Research](06-knowledge-transfer/20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing lib_bodhiserver to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
