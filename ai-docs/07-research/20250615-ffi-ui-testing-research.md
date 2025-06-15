@@ -2,19 +2,26 @@
 
 ## Executive Summary
 
-This document analyzes technical approaches for exposing the `lib_bodhiserver` Rust crate through FFI interfaces to enable UI testing from TypeScript/JavaScript. After comprehensive research, **NAPI-RS emerges as the optimal solution** for BodhiApp's requirements, offering the best balance of simplicity, reliability, and ROI.
+This document analyzes technical approaches for exposing the `lib_bodhiserver` Rust crate through FFI interfaces to enable UI testing from TypeScript/JavaScript. After comprehensive research and analysis of the **dependency isolation refactoring**, **NAPI-RS emerges as the optimal solution** for BodhiApp's requirements, offering the best balance of simplicity, reliability, and ROI.
 
-## Current Architecture Analysis
+## Current Architecture Analysis (Post-Dependency Isolation)
 
 ### lib_bodhiserver Structure
 
-The `lib_bodhiserver` crate provides a clean, platform-agnostic initialization API:
+The `lib_bodhiserver` crate has been significantly refactored to provide a clean, FFI-ready interface:
 
 **Core Components:**
 - `AppOptions` - Configuration struct using `derive_builder` pattern
 - `setup_app_dirs()` - Directory and settings initialization  
 - `build_app_service()` - Complete service dependency resolution
 - `AppServiceBuilder` - Flexible service construction with dependency injection
+- **Re-exports** - All domain objects and service interfaces centralized
+
+**Dependency Isolation Achievements:**
+- ✅ **Single Dependency Gateway**: All functionality accessible through `lib_bodhiserver`
+- ✅ **Clean Re-exports**: Domain objects (`AppType`, `ErrorMessage`) and service interfaces re-exported
+- ✅ **Simplified Server Interface**: `ServeCommand::aexecute()` accepts `Option<&'static Dir<'static>>`
+- ✅ **Eliminated Complex Dependencies**: No direct `axum`, `server_app`, or `services` dependencies in client code
 
 **Current Usage Pattern:**
 ```rust
@@ -22,13 +29,44 @@ The `lib_bodhiserver` crate provides a clean, platform-agnostic initialization A
 let app_options = build_app_options(env_wrapper, APP_TYPE)?;
 let setting_service = setup_app_dirs(app_options)?;
 let app_service = build_app_service(Arc::new(setting_service)).await?;
+
+// Server startup with static assets
+let command = ServeCommand::ByParams { host, port };
+command.aexecute(app_service, Some(&crate::ui::ASSETS)).await?;
 ```
 
-**FFI Compatibility Challenges:**
-1. **Complex Types**: `Arc<dyn EnvWrapper>`, `Arc<dyn SettingService>` 
+**Remaining FFI Compatibility Challenges:**
+1. **Complex Types**: `Arc<dyn AppService>`, `Arc<dyn SettingService>` 
 2. **Async Functions**: `build_app_service()` returns `Result<DefaultAppService, ErrorMessage>`
 3. **Builder Pattern**: `AppOptionsBuilder` with method chaining
-4. **Error Handling**: Custom error types with `thiserror` integration
+4. **Dir<'static> Dependency**: Static asset handling requires compile-time embedding
+
+### Dir<'static> Challenge and Solution
+
+**Current Implementation:**
+```rust
+// crates/bodhi/src-tauri/src/ui.rs
+pub static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
+
+// Usage in server_init.rs
+command.aexecute(app_service, Some(&crate::ui::ASSETS)).await?;
+```
+
+**FFI Challenge**: `Dir<'static>` requires compile-time embedding via `include_dir!` macro, which cannot be used dynamically from FFI.
+
+**Proposed Solution**: Create utility function in `lib_bodhiserver` that accepts a path and returns `Dir<'static>`:
+
+```rust
+// New utility function in lib_bodhiserver
+pub fn create_static_dir_from_path(path: &str) -> Result<&'static Dir<'static>, ErrorMessage> {
+    // Implementation that analyzes path and creates Dir<'static>
+    // This enables FFI clients to pass asset paths dynamically
+}
+
+// FFI usage pattern
+let assets_dir = lib_bodhiserver::create_static_dir_from_path("/path/to/assets")?;
+command.aexecute(app_service, Some(assets_dir)).await?;
+```
 
 ## FFI Technology Analysis
 
@@ -42,25 +80,38 @@ let app_service = build_app_service(Arc::new(setting_service)).await?;
 - **TypeScript Generation**: Automatic `.d.ts` file generation
 - **Zero-Copy Operations**: Efficient data transfer via Buffer/TypedArray
 
-**Architecture Fit:**
+**Architecture Fit with Isolated lib_bodhiserver:**
 ```rust
 #[napi]
-pub struct AppInitializer {
-    inner: Option<Arc<DefaultAppService>>,
+pub struct BodhiApp {
+    app_service: Option<Arc<dyn lib_bodhiserver::AppService>>,
+    server_handle: Option<lib_bodhiserver::ServerShutdownHandle>,
 }
 
 #[napi]
-impl AppInitializer {
+impl BodhiApp {
     #[napi(constructor)]
     pub fn new() -> Self { /* ... */ }
     
     #[napi]
     pub async fn initialize(&mut self, config: AppConfig) -> napi::Result<()> {
-        // Wraps lib_bodhiserver initialization
+        // Convert AppConfig to lib_bodhiserver::AppOptions
+        // Call lib_bodhiserver::setup_app_dirs()
+        // Call lib_bodhiserver::build_app_service()
     }
     
     #[napi]
-    pub async fn shutdown(&mut self) -> napi::Result<()> { /* ... */ }
+    pub async fn start_server(&mut self, host: String, port: u16, assets_path: Option<String>) -> napi::Result<String> {
+        let assets_dir = if let Some(path) = assets_path {
+            Some(lib_bodhiserver::create_static_dir_from_path(&path)?)
+        } else {
+            None
+        };
+        
+        let command = lib_bodhiserver::ServeCommand::ByParams { host, port };
+        command.aexecute(self.app_service.clone().unwrap(), assets_dir).await?;
+        Ok(format!("http://{}:{}", host, port))
+    }
 }
 ```
 
@@ -110,9 +161,9 @@ impl AppInitializer {
 
 ## Technical Feasibility Assessment
 
-### NAPI-RS Implementation Strategy
+### NAPI-RS Implementation Strategy (Updated)
 
-**Phase 1: Core FFI Layer**
+**Phase 1: Core FFI Layer with Isolated Dependencies**
 ```rust
 // New crate: crates/lib_bodhiserver_napi/
 #[napi(object)]
@@ -127,30 +178,72 @@ pub struct AppConfig {
 
 #[napi]
 pub struct BodhiApp {
-    app_service: Option<Arc<DefaultAppService>>,
-    server_handle: Option<ServerShutdownHandle>,
+    app_service: Option<Arc<dyn lib_bodhiserver::AppService>>,
+    server_handle: Option<lib_bodhiserver::ServerShutdownHandle>,
 }
 
 #[napi]
 impl BodhiApp {
     #[napi(constructor)]
-    pub fn new() -> Self { /* ... */ }
-    
-    #[napi]
-    pub async fn initialize(&mut self, config: AppConfig) -> napi::Result<()> {
-        // Convert AppConfig to AppOptions
-        // Call lib_bodhiserver::setup_app_dirs()
-        // Call lib_bodhiserver::build_app_service()
+    pub fn new() -> Self {
+        Self {
+            app_service: None,
+            server_handle: None,
+        }
     }
     
     #[napi]
-    pub async fn start_server(&mut self, host: String, port: u16) -> napi::Result<String> {
-        // Start HTTP server, return server URL
+    pub async fn initialize(&mut self, config: AppConfig) -> napi::Result<()> {
+        // Convert AppConfig to lib_bodhiserver::AppOptions using re-exported types
+        let env_wrapper = Arc::new(lib_bodhiserver::DefaultEnvWrapper::default());
+        let app_options = lib_bodhiserver::AppOptionsBuilder::default()
+            .env_wrapper(env_wrapper)
+            .env_type(config.env_type.parse().map_err(|e| napi::Error::from_reason(format!("Invalid env_type: {}", e)))?)
+            .app_type(config.app_type.parse().map_err(|e| napi::Error::from_reason(format!("Invalid app_type: {}", e)))?)
+            .app_version(config.app_version)
+            .auth_url(config.auth_url)
+            .auth_realm(config.auth_realm)
+            .build()
+            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+            
+        let setting_service = lib_bodhiserver::setup_app_dirs(app_options)
+            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+            
+        let app_service = lib_bodhiserver::build_app_service(Arc::new(setting_service)).await
+            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+            
+        self.app_service = Some(Arc::new(app_service));
+        Ok(())
+    }
+    
+    #[napi]
+    pub async fn start_server(&mut self, host: String, port: u16, assets_path: Option<String>) -> napi::Result<String> {
+        let app_service = self.app_service.as_ref()
+            .ok_or_else(|| napi::Error::from_reason("App not initialized"))?;
+            
+        let assets_dir = if let Some(path) = assets_path {
+            Some(lib_bodhiserver::create_static_dir_from_path(&path)
+                .map_err(|e| napi::Error::from_reason(e.to_string()))?)
+        } else {
+            None
+        };
+        
+        let command = lib_bodhiserver::ServeCommand::ByParams { host: host.clone(), port };
+        let handle = command.get_server_handle(app_service.clone(), assets_dir).await
+            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+            
+        self.server_handle = Some(handle);
+        Ok(format!("http://{}:{}", host, port))
     }
     
     #[napi]
     pub async fn shutdown(&mut self) -> napi::Result<()> {
-        // Clean shutdown of all services
+        if let Some(handle) = self.server_handle.take() {
+            handle.shutdown().await
+                .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        }
+        self.app_service = None;
+        Ok(())
     }
 }
 ```
@@ -179,8 +272,8 @@ export class BodhiTestServer {
         await this.app.initialize({ ...defaultConfig, ...config });
     }
     
-    async startServer(port = 0): Promise<string> {
-        return await this.app.startServer('127.0.0.1', port);
+    async startServer(port = 0, assetsPath?: string): Promise<string> {
+        return await this.app.startServer('127.0.0.1', port, assetsPath);
     }
     
     async shutdown(): Promise<void> {
@@ -212,7 +305,7 @@ describe('UI Integration Tests', () => {
         await server.initialize({
             bodhiHome: await createTempDir(),
         });
-        const serverUrl = await server.startServer();
+        const serverUrl = await server.startServer(0, '/path/to/test/assets');
         // Configure UI test environment with serverUrl
     });
     
@@ -229,16 +322,16 @@ describe('UI Integration Tests', () => {
 ## Implementation Complexity Analysis
 
 ### NAPI-RS Complexity: **Low-Medium**
-- **Type Mapping**: Straightforward for most types
+- **Type Mapping**: Straightforward with isolated dependencies
 - **Async Handling**: Native support with JavaScript Promises  
 - **Error Handling**: Automatic conversion to JavaScript exceptions
 - **Build Integration**: Standard Rust + npm toolchain
 
 ### Required Refactoring: **Minimal**
 - Create new `lib_bodhiserver_napi` crate
-- Implement wrapper types for FFI compatibility
+- Implement `create_static_dir_from_path()` utility function
 - Add NAPI-RS build configuration
-- No changes to existing `lib_bodhiserver` API
+- **No changes to existing `lib_bodhiserver` API** (already isolated)
 
 ### Maintenance Overhead: **Low**
 - NAPI-RS handles most FFI complexity automatically
@@ -253,22 +346,25 @@ describe('UI Integration Tests', () => {
 2. **Proven Reliability**: Used by major production systems
 3. **Excellent Async Support**: Native Promise integration
 4. **Strong TypeScript Integration**: Automatic type generation
-5. **Minimal Refactoring**: Preserves existing architecture
+5. **Minimal Refactoring**: Leverages existing dependency isolation
 6. **Active Ecosystem**: Strong community and documentation
+7. **Clean Architecture**: Works perfectly with isolated `lib_bodhiserver`
 
 **Alternative Consideration:**
 UniFFI could be viable for future multi-language support, but NAPI-RS provides the most direct path to TypeScript/JavaScript integration for UI testing requirements.
 
 ## Next Steps
 
-1. **Create Implementation Specification**: Detailed phase-wise implementation plan
-2. **Prototype Development**: Basic NAPI-RS wrapper for core functionality
-3. **Integration Testing**: Verify compatibility with existing test infrastructure
-4. **Documentation**: TypeScript API documentation and usage examples
+1. **Implement Dir<'static> Utility**: Create `create_static_dir_from_path()` function
+2. **Create Implementation Specification**: Detailed phase-wise implementation plan
+3. **Prototype Development**: Basic NAPI-RS wrapper for core functionality
+4. **Integration Testing**: Verify compatibility with existing test infrastructure
+5. **Documentation**: TypeScript API documentation and usage examples
 
 ## References
 
 - **NAPI-RS Documentation**: https://napi.rs/
 - **UniFFI Documentation**: https://mozilla.github.io/uniffi-rs/
 - **Current lib_bodhiserver Implementation**: `crates/lib_bodhiserver/src/`
+- **Dependency Isolation Analysis**: `ai-docs/02-features/completed-stories/20250615-bodhi-dependency-isolation-analysis.md`
 - **Integration Test Patterns**: `crates/integration-tests/tests/utils/live_server_utils.rs`
