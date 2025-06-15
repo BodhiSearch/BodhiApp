@@ -4,17 +4,6 @@ use objs::{AppError, ErrorMessage, ErrorType};
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
-pub enum AppExecuteError {
-  #[error("unreachable")]
-  #[error_meta(error_type=ErrorType::InternalServer)]
-  Unreachable(String),
-  #[error("native_not_supported")]
-  #[error_meta(error_type=ErrorType::InternalServer)]
-  NativeNotSupported,
-}
-
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
 pub enum AppSetupError {
   #[error("io_error: error spawning async runtime: {0}")]
   #[error_meta(error_type = ErrorType::InternalServer)]

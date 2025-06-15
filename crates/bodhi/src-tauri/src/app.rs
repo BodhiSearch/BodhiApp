@@ -1,12 +1,18 @@
+// Function signature for delegation to feature-specific modules
+// Implementation will be provided by conditional compilation
 #[cfg(feature = "native")]
-use crate::native;
+pub use crate::native_init::initialize_and_execute;
+#[cfg(not(feature = "native"))]
+pub use crate::server_init::initialize_and_execute;
 
-use crate::error::AppExecuteError;
 use clap::{Parser, Subcommand};
-use objs::ApiError;
-use server_app::ServeCommand;
-use services::AppService;
-use std::sync::Arc;
+
+// Command enum for delegation to feature-specific initialization
+#[derive(Debug, Clone)]
+pub enum AppCommand {
+  Server(String, u16), // host, port
+  Default,
+}
 
 #[derive(Parser, Debug)]
 #[command(name = "bodhi")]
@@ -19,12 +25,7 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-  /// Launch the native application with system tray
-  App {
-    /// Show the UI window on startup
-    #[arg(long)]
-    ui: bool,
-  },
+  #[cfg(not(feature = "native"))]
   /// Start the server in deployment mode
   Serve {
     /// Host address to bind to
@@ -36,63 +37,27 @@ enum Commands {
   },
 }
 
-pub async fn start(app_service: Arc<dyn AppService>) -> Result<(), ApiError> {
-  // Parse command line arguments using clap
-  let cli = Cli::parse();
-  match cli.command {
-    #[allow(unused_variables)]
-    Some(Commands::App { ui }) => {
-      // Launch native app with optional UI flag
-      if app_service.setting_service().is_native() {
-        if cfg!(feature = "native") {
-          #[cfg(feature = "native")]
-          native::NativeCommand::new(app_service, ui)
-            .aexecute(Some(crate::ui::router()))
-            .await?;
-        } else {
-          Err(AppExecuteError::Unreachable(
-            r#"setting_service.is_native() returned true, but cfg!(feature = "native") is false"#
-              .to_string(),
-          ))?;
-        }
-      } else {
-        Err(AppExecuteError::NativeNotSupported)?;
-      }
-    }
-    Some(Commands::Serve { host, port }) => {
-      // Server deployment mode
-      let serve_command = ServeCommand::ByParams { host, port };
-      serve_command
-        .aexecute(app_service, Some(crate::ui::router()))
-        .await?;
-    }
-    None => {
-      // No subcommand - launch native app if supported (default behavior)
-      if app_service.setting_service().is_native() {
-        if cfg!(feature = "native") {
-          #[cfg(feature = "native")]
-          native::NativeCommand::new(app_service, true)
-            .aexecute(Some(crate::ui::router()))
-            .await?;
-        } else {
-          Err(AppExecuteError::Unreachable(
-            r#"setting_service.is_native() returned true, but cfg!(feature = "native") is false"#
-              .to_string(),
-          ))?;
-        }
-      } else {
-        Err(AppExecuteError::NativeNotSupported)?;
-      }
-    }
+// CLI-first entry point
+pub fn main(args: &[String]) {
+  let cli = Cli::parse_from(args);
+  let command = match cli.command {
+    #[cfg(not(feature = "native"))]
+    Some(Commands::Serve { host, port }) => AppCommand::Server(host, port),
+    None => AppCommand::Default,
+    #[allow(unreachable_patterns)]
+    Some(_) => AppCommand::Default,
+  };
+
+  if let Err(err) = initialize_and_execute(command) {
+    tracing::error!("fatal error: {err}\nexiting application");
+    std::process::exit(1);
   }
-  Ok(())
 }
 
 #[cfg(test)]
 mod tests {
   use super::*;
   use clap::{CommandFactory, Parser};
-  use rstest::rstest;
 
   #[test]
   fn test_cli_debug_assert() -> anyhow::Result<()> {
@@ -101,7 +66,33 @@ mod tests {
   }
 
   #[test]
-  fn test_cli_no_subcommand() -> anyhow::Result<()> {
+  fn test_cli_help() -> anyhow::Result<()> {
+    let args = vec!["bodhi", "--help"];
+    let cli = Cli::try_parse_from(args);
+    assert!(cli.is_err());
+    let error_msg = cli.unwrap_err().to_string();
+    assert!(error_msg.contains("Bodhi App") || error_msg.contains("AI Model Management"));
+    Ok(())
+  }
+
+  #[test]
+  fn test_cli_version() -> anyhow::Result<()> {
+    let args = vec!["bodhi", "--version"];
+    let cli = Cli::try_parse_from(args);
+    assert!(cli.is_err()); // clap exits with error code for --version
+    Ok(())
+  }
+}
+
+#[cfg(not(feature = "native"))]
+#[cfg(test)]
+mod server_test {
+  use crate::app::{Cli, Commands};
+  use clap::Parser;
+  use rstest::rstest;
+
+  #[rstest]
+  fn test_cli_non_native() -> anyhow::Result<()> {
     let args = vec!["bodhi"];
     let cli = Cli::try_parse_from(args)?;
     assert!(cli.command.is_none());
@@ -109,38 +100,12 @@ mod tests {
   }
 
   #[test]
-  fn test_cli_app_basic() -> anyhow::Result<()> {
-    let args = vec!["bodhi", "app"];
-    let cli = Cli::try_parse_from(args)?;
-    match cli.command {
-      Some(Commands::App { ui }) => {
-        assert!(!ui);
-      }
-      _ => panic!("Expected App command"),
-    }
-    Ok(())
-  }
-
-  #[test]
-  fn test_cli_app_with_ui() -> anyhow::Result<()> {
-    let args = vec!["bodhi", "app", "--ui"];
-    let cli = Cli::try_parse_from(args)?;
-    match cli.command {
-      Some(Commands::App { ui }) => {
-        assert!(ui);
-      }
-      _ => panic!("Expected App command with ui=true"),
-    }
-    Ok(())
-  }
-
-  #[test]
-  fn test_cli_app_invalid_args() -> anyhow::Result<()> {
-    let args = vec!["bodhi", "app", "--extra", "args"];
+  fn test_cli_unknown_command() -> anyhow::Result<()> {
+    let args = vec!["bodhi", "unknown"];
     let cli = Cli::try_parse_from(args);
     assert!(cli.is_err());
     let error_msg = cli.unwrap_err().to_string();
-    assert!(error_msg.contains("unexpected argument '--extra'"));
+    assert!(error_msg.contains("unrecognized subcommand"));
     Ok(())
   }
 
@@ -218,6 +183,22 @@ mod tests {
     assert!(error_msg.contains("a value is required"));
     Ok(())
   }
+}
+
+#[cfg(feature = "native")]
+#[cfg(test)]
+mod native_test {
+  use crate::app::Cli;
+  use clap::Parser;
+  use rstest::rstest;
+
+  #[rstest]
+  fn test_cli_native() -> anyhow::Result<()> {
+    let args = vec!["bodhi"];
+    let cli = Cli::try_parse_from(args)?;
+    assert!(matches!(cli.command, None));
+    Ok(())
+  }
 
   #[test]
   fn test_cli_unknown_command() -> anyhow::Result<()> {
@@ -225,25 +206,19 @@ mod tests {
     let cli = Cli::try_parse_from(args);
     assert!(cli.is_err());
     let error_msg = cli.unwrap_err().to_string();
-    assert!(error_msg.contains("unrecognized subcommand"));
+    assert!(
+      error_msg.contains("unexpected argument") || error_msg.contains("unrecognized subcommand")
+    );
     Ok(())
   }
 
-  #[test]
-  fn test_cli_help() -> anyhow::Result<()> {
-    let args = vec!["bodhi", "--help"];
+  #[rstest]
+  fn test_cli_native_invalid_subcommand() -> anyhow::Result<()> {
+    let args = vec!["bodhi", "serve"];
     let cli = Cli::try_parse_from(args);
     assert!(cli.is_err());
     let error_msg = cli.unwrap_err().to_string();
-    assert!(error_msg.contains("Bodhi App") || error_msg.contains("AI Model Management"));
-    Ok(())
-  }
-
-  #[test]
-  fn test_cli_version() -> anyhow::Result<()> {
-    let args = vec!["bodhi", "--version"];
-    let cli = Cli::try_parse_from(args);
-    assert!(cli.is_err()); // clap exits with error code for --version
+    assert_eq!("error: unexpected argument 'serve' found\n\nUsage: bodhi\n\nFor more information, try '--help'.\n", error_msg);
     Ok(())
   }
 }

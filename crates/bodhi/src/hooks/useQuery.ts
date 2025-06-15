@@ -209,10 +209,6 @@ export function useLogout(
           options.onSuccess(data, variables, context);
         }
       },
-    },
-    {
-      maxRedirects: 0, // Don't follow redirects automatically
-      validateStatus: (status) => status === 303 || status === 200 || status === 201, // Accept 303 redirects and success codes
     }
   );
 }
