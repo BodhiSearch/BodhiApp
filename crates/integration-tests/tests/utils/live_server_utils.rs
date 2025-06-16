@@ -102,9 +102,7 @@ pub async fn llama2_7b_setup(
   let client_id = std::env::var("INTEG_TEST_CLIENT_ID").expect("INTEG_TEST_CLIENT_ID not set");
   let client_secret =
     std::env::var("INTEG_TEST_CLIENT_SECRET").expect("INTEG_TEST_CLIENT_SECRET not set");
-  let issuer = std::env::var("INTEG_TEST_ISSUER").expect("INTEG_TEST_ISSUER not set");
-  let kid = std::env::var("INTEG_TEST_KID").expect("INTEG_TEST_KID not set");
-  let public_key = std::env::var("INTEG_TEST_PUBLIC_KEY").expect("INTEG_TEST_PUBLIC_KEY not set");
+  // JWT validation fields no longer needed - using database-backed token integrity validation
   let auth_url = std::env::var("INTEG_TEST_AUTH_URL").expect("INTEG_TEST_AUTH_URL not set");
   let auth_realm = std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM not set");
 
@@ -120,10 +118,6 @@ pub async fn llama2_7b_setup(
   let app_reg_info = AppRegInfoBuilder::test_default()
     .client_id(client_id)
     .client_secret(client_secret)
-    .issuer(issuer)
-    .kid(kid)
-    .public_key(public_key)
-    .alg(jsonwebtoken::Algorithm::RS256)
     .build()
     .unwrap();
 

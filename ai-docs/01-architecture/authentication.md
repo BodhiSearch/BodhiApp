@@ -108,6 +108,22 @@ User
 
 ## Token Management
 
+### AppRegInfo Structure
+**OAuth Client Registration Information**:
+```rust
+pub struct AppRegInfo {
+  pub client_id: String,     // OAuth2 client identifier
+  pub client_secret: String, // OAuth2 client secret
+}
+```
+
+**Security Design**: AppRegInfo contains only OAuth2 client credentials. JWT validation fields (public_key, alg, kid, issuer) are intentionally excluded because:
+
+1. **Server-Side Token Storage**: All tokens are created and stored server-side, preventing external interception
+2. **Database-Backed Integrity**: Token validation uses cryptographic hash verification against database records
+3. **OAuth2 Backend Validation**: Token authenticity verified through Keycloak backend during refresh operations
+4. **Simplified Security Model**: Fewer cryptographic operations and key management requirements
+
 ### Session-Based Authentication
 **Use Case**: Web UI interactions, browser-based access
 
@@ -145,9 +161,25 @@ Expiration/Logout      Manual Revocation
 
 ### Authentication Security
 - **OAuth2/OpenID Connect**: Industry standard protocols
-- **JWT Tokens**: Stateless, verifiable tokens
+- **JWT Claims Parsing**: Token claims validation without signature verification
+- **Database Token Integrity**: SHA-256 hash verification prevents token tampering
 - **Token Rotation**: Automatic refresh for active sessions
 - **Secure Storage**: Encrypted session management
+
+### JWT Validation Architecture
+**Current Implementation**: Database-backed token integrity validation instead of JWT signature validation
+
+**Security Rationale**:
+- **No External Token Exposure**: Tokens created and stored server-side only
+- **Hash-Based Integrity**: SHA-256 hash verification prevents tampering
+- **OAuth2 Backend Validation**: Keycloak validates token authenticity during operations
+- **Reduced Attack Surface**: No local JWT signature validation code to exploit
+
+**Token Validation Flow**:
+1. Parse JWT claims (no signature verification)
+2. Database lookup by user_id and token_id (jti claim)
+3. Cryptographic hash verification for integrity
+4. Business logic validation (iat, typ, azp, exp)
 
 ### Authorization Security
 - **Principle of Least Privilege**: Users get minimum required access

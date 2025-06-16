@@ -180,7 +180,7 @@ mod tests {
     routing::{get, post},
     Router,
   };
-  use jsonwebtoken::Algorithm;
+
   use objs::{test_utils::setup_l10n, FluentLocalizationService, ReqwestError};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -309,10 +309,6 @@ mod tests {
       .times(1)
       .return_once(|_redirect_uris| {
         Ok(AppRegInfo {
-          public_key: "public_key".to_string(),
-          alg: Algorithm::RS256,
-          kid: "kid".to_string(),
-          issuer: "issuer".to_string(),
           client_id: "client_id".to_string(),
           client_secret: "client_secret".to_string(),
         })
