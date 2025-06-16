@@ -3204,6 +3204,7 @@ dependencies = [
  "derive_builder 0.20.2",
  "errmeta_derive",
  "include_dir",
+ "jsonwebtoken",
  "llama_server_proc",
  "maplit",
  "mockall",
@@ -3230,10 +3231,6 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "objs",
- "services",
- "thiserror 2.0.12",
- "tokio",
 ]
 
 [[package]]

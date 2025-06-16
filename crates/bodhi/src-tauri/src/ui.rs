@@ -1,3 +1,2 @@
-use include_dir::{include_dir, Dir};
-
-pub static ASSETS: Dir<'static> = include_dir!("$CARGO_MANIFEST_DIR/../out");
+// Re-export embedded UI assets from lib_bodhiserver
+pub use lib_bodhiserver::EMBEDDED_UI_ASSETS as ASSETS;

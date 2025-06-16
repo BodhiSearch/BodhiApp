@@ -310,7 +310,7 @@ if (!nativeBinding) {
   throw new Error(`Failed to load native binding`)
 }
 
-const { AppState, BodhiApp } = nativeBinding
+const { NapiAppState, BodhiApp } = nativeBinding
 
-module.exports.AppState = AppState
+module.exports.NapiAppState = NapiAppState
 module.exports.BodhiApp = BodhiApp

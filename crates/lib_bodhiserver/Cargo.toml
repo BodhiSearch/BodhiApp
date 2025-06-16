@@ -2,6 +2,7 @@
 name = "lib_bodhiserver"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [dependencies]
 errmeta_derive = { workspace = true }
@@ -19,9 +20,13 @@ server_app = { workspace = true }
 derive_builder = { workspace = true }
 derive-new = { workspace = true }
 include_dir = { workspace = true }
+jsonwebtoken = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = { workspace = true }
 thiserror = { workspace = true }
+
+[build-dependencies]
+anyhow = { workspace = true }
 
 [dev-dependencies]
 objs = { workspace = true, features = ["test-utils"] }
@@ -37,4 +42,4 @@ tokio = { workspace = true, features = ["test-util"] }
 
 
 [features]
-test-utils = []
+test-utils = ["services/test-utils", "objs/test-utils"]

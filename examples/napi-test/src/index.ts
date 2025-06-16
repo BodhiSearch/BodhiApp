@@ -44,9 +44,9 @@ async function testBodhiAppFFI(): Promise<void> {
     await app.initialize(config);
     console.log(`✅ App initialized with status: ${app.getStatus()}`);
     
-    // Step 3: Start the server with a fixed port for testing
-    console.log('🌐 Starting HTTP server...');
-    const serverUrl = await app.startServer('127.0.0.1', testPort, undefined);
+    // Step 3: Start the server with embedded assets
+    console.log('🌐 Starting HTTP server with embedded UI assets...');
+    const serverUrl = await app.startServer('127.0.0.1', testPort);
     console.log(`✅ Server started at: ${serverUrl}`);
     console.log(`📊 App status: ${app.getStatus()}`);
     
