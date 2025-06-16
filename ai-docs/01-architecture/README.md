@@ -13,9 +13,10 @@ This section contains modular technical architecture documentation for the Bodhi
 ### Technology Stack Guides
 - **[Frontend Next.js](frontend-react.md)** - Next.js v14 development patterns, "dumb frontend" architecture, component structure, TypeScript conventions, and backend-driven validation
 - **[Rust Backend](rust-backend.md)** - Rust backend development, service patterns, and database integration
+- **[Backend Settings Service](backend-settings-service.md)** - Comprehensive settings architecture with cascaded configuration, environment-specific settings, API integration, and testing infrastructure
 - **[Tauri Desktop](tauri-desktop.md)** - Desktop application architecture and native OS integration
 - **[Authentication](authentication.md)** - OAuth2 integration, JWT handling, and security implementation
-- **[Backend Error & L10n](01-architecture/backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
+- **[Backend Error & L10n](backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
 
 ### Development Standards
 - **[API Integration](api-integration.md)** - Frontend-backend integration patterns, "dumb frontend" principles, OAuth callback examples, query hooks, and error handling
@@ -82,9 +83,10 @@ This section contains modular technical architecture documentation for the Bodhi
 
 ### For Backend Development
 1. **Start with**: [Rust Backend](rust-backend.md) - Service patterns and database integration
-2. **Authentication**: [Authentication](authentication.md) - OAuth2 and security implementation
-3. **API Design**: [API Integration](api-integration.md) - Endpoint patterns and error handling
-4. **Testing**: [Testing Strategy](testing-strategy.md) - Backend testing approaches
+2. **Configuration**: [Backend Settings Service](backend-settings-service.md) - Settings architecture and configuration management
+3. **Authentication**: [Authentication](authentication.md) - OAuth2 and security implementation
+4. **API Design**: [API Integration](api-integration.md) - Endpoint patterns and error handling
+5. **Testing**: [Testing Strategy](testing-strategy.md) - Backend testing approaches
 
 ### For Desktop Development
 1. **Start with**: [Tauri Desktop](tauri-desktop.md) - Native integration patterns
@@ -94,8 +96,9 @@ This section contains modular technical architecture documentation for the Bodhi
 ### For System Understanding
 1. **Architecture**: [System Overview](system-overview.md) - High-level system design
 2. **Application Lifecycle**: [App Status & Lifecycle](app-status.md) - State management
-3. **Standards**: [Development Conventions](development-conventions.md) - Coding standards
-4. **Error**: [Backend Error & L10n](backend-error-l10n.md) - Error handling and internationalization system
+3. **Configuration**: [Backend Settings Service](backend-settings-service.md) - Settings and configuration architecture
+4. **Standards**: [Development Conventions](development-conventions.md) - Coding standards
+5. **Error**: [Backend Error & L10n](backend-error-l10n.md) - Error handling and internationalization system
 
 ## Documentation Organization
 

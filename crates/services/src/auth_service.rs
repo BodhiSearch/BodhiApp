@@ -332,7 +332,7 @@ mod tests {
   use crate::{
     test_utils::test_auth_service, AppRegInfo, AuthService, AuthServiceError, JsonWebTokenError,
   };
-  use jsonwebtoken::{errors::ErrorKind, Algorithm};
+  use jsonwebtoken::errors::ErrorKind;
   use mockito::{Matcher, Server};
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
@@ -373,10 +373,6 @@ mod tests {
       .with_header("content-type", "application/json")
       .with_body(
         json!({
-            "public_key": "test-public-key",
-            "alg": "RS256",
-            "kid": "test-kid",
-            "issuer": "test-issuer",
             "client_id": "test-client",
             "client_secret": "test-secret"
         })
@@ -394,10 +390,6 @@ mod tests {
     let app_reg_info = result.unwrap();
     assert_eq!(
       AppRegInfo {
-        public_key: "test-public-key".to_string(),
-        alg: Algorithm::RS256,
-        kid: "test-kid".to_string(),
-        issuer: "test-issuer".to_string(),
         client_id: "test-client".to_string(),
         client_secret: "test-secret".to_string(),
       },

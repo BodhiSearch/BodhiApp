@@ -1,6 +1,6 @@
 use crate::config::AppConfig;
 use lib_bodhiserver::{
-  build_app_service, jsonwebtoken, setup_app_dirs, AppRegInfo, AppService, AppStatus,
+  build_app_service, setup_app_dirs, AppRegInfo, AppService, AppStatus,
   SecretServiceExt, ServeCommand, ServerShutdownHandle, EMBEDDED_UI_ASSETS,
 };
 use napi_derive::napi;
@@ -63,10 +63,6 @@ impl BodhiApp {
     let app_reg_info = AppRegInfo {
       client_id: "resource-28f0cef6-cd2d-45c3-a162-f7a6a9ff30ce".to_string(),
       client_secret: "WxfJHaMUfqwcE8dUmaqvsZWqwq4TonlS".to_string(),
-      public_key: "-----BEGIN CERTIFICATE-----\nMIICozCCAYsCBgGUZPIIvzANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDDAp0ZXN0LXJlYWxtMB4XDTI1MDExNDEzMTExMVoXDTM1MDExNDEzMTI1MVowFTETMBEGA1UEAwwKdGVzdC1yZWFsbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAL5Qu+5Wr5+csyHEIrrssKMiA2/yJ92OHdJpHkYaLUdj+rDXEchrutHfJsHBsins5WgeU1oELFNre7p6Czy7uBoqZ7j6Ub6tkJDKABmC6yfm41HhQjU1Zp+QYEXv/MTNO5p6Xhm9+WXSqfpfJ4jpI2k4CkRpad14hizOPkIhU3ansf1H4KWXFNHND/xnNsrZVL8KDXtfroju/E6e55Dlu9qhuBDLUEOHCfcKTbsNuIMQNpVy89mjpwDMXa+XUGFGSrxp2cCk/Cwv8gIWDGZPYmPfpsf9HTlBDHYw3gUozv8SRB60CwIVPiKViETZJvzx0cbhQpBRALgHPcW+fH3hnUcCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAHOars+WGG+tToqRqTJ2+O0VmqpRuAOkh5B+8sY62ve/welWrWSYDrWeDAljS2+gvnbhK1VA8YtwjG+K6Jt9kDs6um6xOblJmZDboBTSNVtycp0Zw9GOzwJIhhtWziR4tOZ6i7UuzzkOETcIbEDEAxhVcSB4PYntOcqEtVtFzhROC9XFGebe9XBnSf2NoIf42R1Z7s572uTjBb3+++yAritqQxq3hP/igkx0jpIm74/dcIZdkVDweaetnWatxcGtVw1PLRBBYSuP8ztR8C5H4Zg0IZgkudEIuB5U2TxhM++7NfYJUBkGwDUlxRxBxqxQMcy+VtTHZMpCwksIabb/+pg==\n-----END CERTIFICATE-----".to_string(),
-      alg: jsonwebtoken::Algorithm::RS256,
-      kid: "H086HvhGMJgK9Y2i5mUSQbZMjc5G6lsavkI0Ram-2CU".to_string(),
-      issuer: "https://dev-id.getbodhi.app/realms/test-realm".to_string(),
     };
 
     // Set app registration info and status to Ready for testing

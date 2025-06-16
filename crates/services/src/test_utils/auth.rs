@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose::STANDARD, Engine};
 use chrono::{Duration, Utc};
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{encode, EncodingKey, Header};
 use once_cell::sync::Lazy;
 use rsa::{
   pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey},
@@ -63,12 +63,8 @@ pub static OTHER_PRIVATE_KEY: Lazy<RsaPrivateKey> = Lazy::new(|| {
 impl AppRegInfoBuilder {
   pub fn test_default() -> Self {
     Self::default()
-      .public_key(PUBLIC_KEY_BASE64.to_string())
-      .issuer(ISSUER.to_string())
       .client_id(TEST_CLIENT_ID.to_string())
       .client_secret(TEST_CLIENT_SECRET.to_string())
-      .alg(Algorithm::RS256)
-      .kid(TEST_KID.to_string())
       .to_owned()
   }
 }

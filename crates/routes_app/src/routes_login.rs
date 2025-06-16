@@ -516,10 +516,6 @@ mod tests {
         SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
                 client_id: "test_client_id".to_string(),
                 client_secret: "test_client_secret".to_string(),
-                public_key: "test_public_key".to_string(),
-                alg: jsonwebtoken::Algorithm::RS256,
-                kid: "test_kid".to_string(),
-                issuer: "test_issuer".to_string(),
             }),
     )]
   #[tokio::test]
@@ -746,10 +742,6 @@ mod tests {
       .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
-        public_key: "test_public_key".to_string(),
-        alg: jsonwebtoken::Algorithm::RS256,
-        kid: "test_kid".to_string(),
-        issuer: "test_issuer".to_string(),
       })
       .with_app_status(&AppStatus::Ready);
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -878,10 +870,6 @@ mod tests {
       .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
-        public_key: "test_public_key".to_string(),
-        alg: jsonwebtoken::Algorithm::RS256,
-        kid: "test_kid".to_string(),
-        issuer: "test_issuer".to_string(),
       })
       .with_app_status(&AppStatus::Ready);
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -969,10 +957,6 @@ mod tests {
       .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
-        public_key: "test_public_key".to_string(),
-        alg: jsonwebtoken::Algorithm::RS256,
-        kid: "test_kid".to_string(),
-        issuer: "test_issuer".to_string(),
       })
       .with_app_status(&AppStatus::Ready);
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -1047,10 +1031,6 @@ mod tests {
       .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
-        public_key: "test_public_key".to_string(),
-        alg: jsonwebtoken::Algorithm::RS256,
-        kid: "test_kid".to_string(),
-        issuer: "test_issuer".to_string(),
       })
       .with_app_status(&AppStatus::Ready);
     let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
@@ -1393,10 +1373,6 @@ mod tests {
       .with_app_reg_info(&AppRegInfo {
         client_id: "test_client_id".to_string(),
         client_secret: "test_client_secret".to_string(),
-        public_key: "test_public_key".to_string(),
-        alg: jsonwebtoken::Algorithm::RS256,
-        kid: "test_kid".to_string(),
-        issuer: "test_issuer".to_string(),
       })
       .with_app_status(&AppStatus::ResourceAdmin);
     let secret_service = Arc::new(secret_service);

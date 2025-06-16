@@ -41,6 +41,7 @@ Modular technical architecture documentation organized by technology stack and d
 #### Technology Stack Guides
 - **[Frontend Next.js](01-architecture/frontend-react.md)** - Next.js v14 development patterns, "dumb frontend" architecture, component structure, TypeScript conventions, and backend-driven validation patterns
 - **[Rust Backend](01-architecture/rust-backend.md)** - Rust backend development, service patterns, database integration, real-time communication (SSE/WebSocket), logging & observability, and settings service architecture
+- **[Backend Settings Service](01-architecture/backend-settings-service.md)** - Comprehensive settings architecture with cascaded configuration, environment-specific settings, API integration, and testing infrastructure
 - **[Backend Error & L10n](01-architecture/backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
 - **[Tauri Desktop](01-architecture/tauri-desktop.md)** - Desktop application architecture and native OS integration
 - **[Authentication](01-architecture/authentication.md)** - OAuth2 integration, JWT handling, and security implementation
@@ -99,6 +100,7 @@ Feature documentation organized by development status and implementation timelin
 #### Planned Features
 - **[NAPI-RS FFI API Testing](02-features/completed-stories/20250615-napi-ffi-ui-testing.md)** - Implementation specification for NAPI-RS based FFI layer to expose lib_bodhiserver functionality for TypeScript/JavaScript API testing with programmatic server control (100% Complete)
 - **[NAPI-RS FFI Playwright UI Testing](02-features/planned/20250615-napi-ffi-playwright-ui-testing.md)** - Implementation specification for enabling Playwright UI testing through NAPI-RS FFI by resolving static asset serving issues and implementing comprehensive browser-based test scenarios
+- **[AppRegInfo JWT Simplification](02-features/planned/appreginfo-jwt-simplification.md)** - Remove unused JWT validation fields from AppRegInfo and implement runtime fetching of JWT validation parameters from Keycloak well-known endpoints
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
@@ -155,6 +157,11 @@ Implementation guides, technical knowledge, and learning resources for developer
 - **[FFI UI Testing Research](07-research/20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing lib_bodhiserver to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation and dependency isolation integration
 - **[NAPI-RS FFI Implementation](06-knowledge-transfer/20250615-napi-ffi-ui-testing.md)** - NAPI-RS FFI implementation guide and handoff documentation
 - **[NAPI-RS FFI Continuation](06-knowledge-transfer/20250616-napi-ffi-continuation-prompt.md)** - Continuation prompt for NAPI-RS FFI technical debt resolution and production readiness
+
+### 🔬 [Research](07-research/) - Technical Research & Analysis
+Technical research documents, dependency analysis, and architectural investigations
+
+- **[AppRegInfo JWT Simplification Analysis](07-research/appreginfo-jwt-simplification-analysis.md)** - Comprehensive analysis of JWT validation fields in AppRegInfo, revealing unused dead code and proposing runtime parameter fetching architecture
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
@@ -269,6 +276,10 @@ When adding or updating documentation:
 - **Knowledge Transfer**: Learning resources, guides, and implementation patterns
 - **Research**: Technical research documents, dependency analysis, and architectural investigations
 - **Archive**: Historical materials and deprecated content
+
+### Documentation Update Rules
+- **Feature Specifications (`ai-docs/02-features/`)**: Historical documents that reflect what was true at the time of creation. **Do not update these after creation** - they serve as historical records of requirements and implementation plans.
+- **Architecture Documentation (`ai-docs/01-architecture/`)**: Living documents that reflect the current truth for the git commit. **Update these documents** when the architecture, patterns, or implementation details change to maintain accuracy.
 
 ## Support and Feedback
 
