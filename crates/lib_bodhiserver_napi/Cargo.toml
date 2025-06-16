@@ -1,0 +1,32 @@
+[package]
+name = "lib_bodhiserver_napi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Single dependency on isolated lib_bodhiserver
+lib_bodhiserver = { workspace = true }
+# Services dependency for test utilities
+services = { workspace = true, features = ["test-utils"] }
+# Objs dependency for localization service
+objs = { workspace = true, features = ["test-utils"] }
+
+# NAPI-RS dependencies
+napi = { version = "2.0", features = ["async", "serde-json"] }
+napi-derive = "2.0"
+
+# Async runtime (already included in lib_bodhiserver)
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+
+# Error handling
+thiserror = { workspace = true }
+
+[build-dependencies]
+napi-build = "2.0"
+
+[features]
+default = []
+test-utils = ["lib_bodhiserver/test-utils"]

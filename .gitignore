@@ -1,3 +1,6 @@
+crates/lib_bodhiserver_napi/node_modules
+examples/napi-test/node_modules
+
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json
 !/.vscode/keybindings-win.json
