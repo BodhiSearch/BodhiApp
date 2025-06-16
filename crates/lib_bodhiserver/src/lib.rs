@@ -6,10 +6,12 @@ pub mod test_utils;
 mod app_dirs_builder;
 mod app_service_builder;
 mod error;
+mod static_dir_utils;
 
 pub use app_dirs_builder::*;
 pub use app_service_builder::*;
 pub use error::*;
+pub use static_dir_utils::*;
 
 // Re-exports for crates/bodhi dependency isolation
 // Domain objects from objs crate
@@ -17,8 +19,8 @@ pub use objs::{AppError, AppType, EnvType, ErrorMessage, ErrorType, LogLevel};
 
 // Service interfaces and implementations from services crate
 pub use services::{
-  AppService, DefaultEnvWrapper, DefaultSettingService, EnvWrapper, SettingService,
-  BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT, DEFAULT_HOST, DEFAULT_PORT,
+  AppService, DefaultAppService, DefaultEnvWrapper, DefaultSettingService, EnvWrapper,
+  SettingService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT, DEFAULT_HOST, DEFAULT_PORT,
 };
 
 // Server management from server_app crate

@@ -13,6 +13,7 @@ members = [
   "crates/routes_all",
   "crates/server_app",
   "crates/lib_bodhiserver",
+  "crates/lib_bodhiserver_napi",
   "crates/bodhi/src-tauri",
   "crates/integration-tests",
 ]
@@ -32,6 +33,7 @@ routes_app = { path = "crates/routes_app" }
 routes_all = { path = "crates/routes_all" }
 server_app = { path = "crates/server_app" }
 lib_bodhiserver = { path = "crates/lib_bodhiserver" }
+lib_bodhiserver_napi = { path = "crates/lib_bodhiserver_napi" }
 bodhi = { path = "crates/bodhi/src-tauri" }
 
 aes-gcm = "0.10.3"
@@ -140,6 +142,11 @@ validator = "0.20.0"
 walkdir = "2.5.0"
 webbrowser = "1.0.4"
 xtaskops = "0.4.2"
+
+# NAPI-RS dependencies for FFI bindings
+napi = "2.0"
+napi-derive = "2.0"
+napi-build = "2.0"
 
 # [profile.release.package.bodhi]
 # codegen-units = 1

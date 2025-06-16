@@ -1,0 +1,43 @@
+{
+  "name": "@bodhiapp/server-bindings",
+  "version": "0.1.0",
+  "description": "NAPI-RS bindings for BodhiApp server functionality",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "napi": {
+    "name": "bodhiapp-server-bindings",
+    "triples": {
+      "defaults": true
+    }
+  },
+  "scripts": {
+    "build": "napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "vitest",
+    "artifacts": "napi artifacts"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^2.18.0",
+    "vitest": "^1.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BodhiSearch/BodhiApp.git",
+    "directory": "crates/lib_bodhiserver_napi"
+  },
+  "license": "MIT",
+  "keywords": [
+    "napi-rs",
+    "rust",
+    "nodejs",
+    "ffi",
+    "bodhiapp"
+  ]
+}
