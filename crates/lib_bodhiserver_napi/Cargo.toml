@@ -7,26 +7,10 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-# Single dependency on isolated lib_bodhiserver
 lib_bodhiserver = { workspace = true }
-# Services dependency for test utilities
-services = { workspace = true, features = ["test-utils"] }
-# Objs dependency for localization service
-objs = { workspace = true, features = ["test-utils"] }
 
-# NAPI-RS dependencies
-napi = { version = "2.0", features = ["async", "serde-json"] }
-napi-derive = "2.0"
-
-# Async runtime (already included in lib_bodhiserver)
-tokio = { workspace = true, features = ["rt-multi-thread"] }
-
-# Error handling
-thiserror = { workspace = true }
+napi = { workspace = true, features = ["async", "serde-json"] }
+napi-derive = { workspace = true }
 
 [build-dependencies]
-napi-build = "2.0"
-
-[features]
-default = []
-test-utils = ["lib_bodhiserver/test-utils"]
+napi-build = { workspace = true }

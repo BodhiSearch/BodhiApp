@@ -1,3 +1,4 @@
+use lib_bodhiserver::DefaultEnvWrapper;
 use napi_derive::napi;
 
 /// FFI-compatible configuration for BodhiApp initialization
@@ -45,40 +46,36 @@ impl TryFrom<AppConfig> for lib_bodhiserver::AppOptions {
   type Error = String;
 
   fn try_from(config: AppConfig) -> Result<Self, Self::Error> {
-    use lib_bodhiserver::{AppOptionsBuilder, AppType, EnvType, EnvWrapper};
-    use services::{
-      test_utils::EnvWrapperStub, BODHI_ENCRYPTION_KEY, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME,
-      BODHI_PORT,
+    use lib_bodhiserver::{
+      AppOptionsBuilder, AppType, EnvType, EnvWrapper, BODHI_ENCRYPTION_KEY,
+      BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_PORT,
     };
-    use std::collections::HashMap;
     use std::str::FromStr;
     use std::sync::Arc;
 
-    // Create environment variables map
-    let mut env_vars = HashMap::new();
-
-    // Set encryption key if provided (for testing)
-    if let Some(encryption_key) = config.encryption_key {
-      env_vars.insert(BODHI_ENCRYPTION_KEY.to_string(), encryption_key);
-    }
+    let mut env_wrapper = DefaultEnvWrapper::default();
 
     // Set bodhi_home if provided
     if let Some(bodhi_home) = config.bodhi_home {
-      env_vars.insert(BODHI_HOME.to_string(), bodhi_home);
+      env_wrapper.set_var(BODHI_HOME, &bodhi_home);
+    }
+
+    // Set encryption key if provided (for testing)
+    if let Some(encryption_key) = config.encryption_key {
+      env_wrapper.set_var(BODHI_ENCRYPTION_KEY, &encryption_key);
     }
 
     // Set exec lookup path if provided
     if let Some(exec_lookup_path) = config.exec_lookup_path {
-      env_vars.insert(BODHI_EXEC_LOOKUP_PATH.to_string(), exec_lookup_path);
+      env_wrapper.set_var(BODHI_EXEC_LOOKUP_PATH, &exec_lookup_path);
     }
 
     // Set port if provided
     if let Some(port) = config.port {
-      env_vars.insert(BODHI_PORT.to_string(), port.to_string());
+      env_wrapper.set_var(BODHI_PORT, &port.to_string());
     }
 
-    let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(EnvWrapperStub::new(env_vars));
-
+    let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(env_wrapper);
     let env_type =
       EnvType::from_str(&config.env_type).map_err(|e| format!("Invalid env_type: {}", e))?;
     let app_type =

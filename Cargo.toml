@@ -18,7 +18,7 @@ members = [
   "crates/integration-tests",
 ]
 resolver = "2"
-exclude = ["demo-vite-react-app/src-tauri"]
+exclude = []
 
 [workspace.dependencies]
 errmeta_derive = { path = "crates/errmeta_derive" }
@@ -88,6 +88,9 @@ minijinja = "2.10.2"
 mockall = "0.13.1"
 mockito = "1.7.0"
 mousse = "0.1.1"
+napi = "2.16.17"
+napi-derive = "2.16.13"
+napi-build = "2.2.1"
 oauth2 = "5.0.0"
 once_cell = "1.21.3"
 pbkdf2 = "0.12.2"
@@ -143,10 +146,6 @@ walkdir = "2.5.0"
 webbrowser = "1.0.4"
 xtaskops = "0.4.2"
 
-# NAPI-RS dependencies for FFI bindings
-napi = "2.0"
-napi-derive = "2.0"
-napi-build = "2.0"
 
 # [profile.release.package.bodhi]
 # codegen-units = 1

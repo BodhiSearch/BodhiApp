@@ -369,7 +369,9 @@ mod tests {
   use crate::{setup_app_dirs, AppOptionsBuilder};
   use objs::{test_utils::empty_bodhi_home, FluentLocalizationService};
   use rstest::rstest;
-  use services::{test_utils::FrozenTimeService, AppService, MockSecretService, SettingService};
+  use services::{
+    test_utils::FrozenTimeService, AppService, MockCacheService, MockSecretService, SettingService,
+  };
   use std::sync::Arc;
   use tempfile::TempDir;
 
@@ -383,16 +385,13 @@ mod tests {
   #[tokio::test]
   async fn test_app_service_builder_new(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let bodhi_home_str = bodhi_home.display().to_string();
 
-    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
+    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
     let setting_service = Arc::new(setup_app_dirs(options)?);
 
-    let builder = AppServiceBuilder::new(setting_service.clone());
+    let builder = AppServiceBuilder::new(setting_service);
 
-    // Verify builder is created with correct settings
     assert_eq!(builder.setting_service.bodhi_home(), bodhi_home);
-
     Ok(())
   }
 
@@ -400,14 +399,10 @@ mod tests {
   #[tokio::test]
   async fn test_app_service_builder_with_custom_services(
     empty_bodhi_home: TempDir,
-    #[from(objs::test_utils::setup_l10n)] _localization_service: &Arc<
-      objs::FluentLocalizationService,
-    >,
+    #[from(objs::test_utils::setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let bodhi_home_str = bodhi_home.display().to_string();
-
-    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
+    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
     let setting_service = Arc::new(setup_app_dirs(options)?);
 
     // Create mock services
@@ -420,12 +415,10 @@ mod tests {
       .returning(|_| Ok(Some("test_value".to_string())));
 
     let time_service = Arc::new(FrozenTimeService::default());
-    let localization_service = FluentLocalizationService::get_instance();
 
     let app_service = AppServiceBuilder::new(setting_service.clone())
       .secret_service(Arc::new(mock_secret_service))?
       .time_service(time_service.clone())?
-      .localization_service(localization_service.clone())?
       .build()
       .await?;
 
@@ -441,9 +434,6 @@ mod tests {
   #[tokio::test]
   async fn test_app_service_builder_with_multiple_services(
     empty_bodhi_home: TempDir,
-    #[from(objs::test_utils::setup_l10n)] _localization_service: &Arc<
-      objs::FluentLocalizationService,
-    >,
   ) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let bodhi_home_str = bodhi_home.display().to_string();
@@ -460,73 +450,9 @@ mod tests {
       .expect_get_secret_string()
       .returning(|_| Ok(Some("test_value".to_string())));
 
-    // Create mock localization service (using a simple Arc wrapper)
-    let mock_localization_service = FluentLocalizationService::get_instance();
-
     let app_service = AppServiceBuilder::new(setting_service.clone())
       .secret_service(Arc::new(mock_secret_service))?
-      .localization_service(mock_localization_service)?
-      .build()
-      .await?;
-
-    // Verify all services are properly initialized
-    assert_eq!(app_service.setting_service().bodhi_home(), bodhi_home);
-    assert!(setting_service.app_db_path().exists());
-    assert!(setting_service.session_db_path().exists());
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_build_app_service_default(
-    empty_bodhi_home: TempDir,
-    #[from(objs::test_utils::setup_l10n)] _localization_service: &Arc<
-      objs::FluentLocalizationService,
-    >,
-  ) -> anyhow::Result<()> {
-    let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let bodhi_home_str = bodhi_home.display().to_string();
-
-    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
-    let setting_service = Arc::new(setup_app_dirs(options)?);
-
-    // Use mock secret service to avoid keyring access
-    let mock_secret_service = MockSecretService::new();
-
-    let app_service = AppServiceBuilder::new(setting_service.clone())
-      .secret_service(Arc::new(mock_secret_service))?
-      .localization_service(FluentLocalizationService::get_instance())?
-      .build()
-      .await?;
-
-    // Verify all services are properly initialized
-    assert_eq!(app_service.setting_service().bodhi_home(), bodhi_home);
-    assert!(setting_service.app_db_path().exists());
-    assert!(setting_service.session_db_path().exists());
-
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_builder_dependency_resolution(
-    empty_bodhi_home: TempDir,
-    #[from(objs::test_utils::setup_l10n)] _localization_service: &Arc<
-      objs::FluentLocalizationService,
-    >,
-  ) -> anyhow::Result<()> {
-    let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let bodhi_home_str = bodhi_home.display().to_string();
-
-    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
-    let setting_service = Arc::new(setup_app_dirs(options)?);
-
-    // Test that dependencies are resolved automatically with mock secret service
-    let mock_secret_service = MockSecretService::new();
-    let app_service = AppServiceBuilder::new(setting_service.clone())
-      .secret_service(Arc::new(mock_secret_service))?
-      .localization_service(FluentLocalizationService::get_instance())?
+      .cache_service(Arc::new(MockCacheService::new()))?
       .build()
       .await?;
 

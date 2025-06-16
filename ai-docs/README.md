@@ -97,7 +97,8 @@ Feature documentation organized by development status and implementation timelin
 - **[App Setup Refactoring](02-features/completed-stories/20250610-lib-bodhiserver.md)** - Technical specification for `lib_bodhiserver` library crate to centralize initialization logic, eliminate code duplication between production and test paths, and e
 
 #### Planned Features
-- **[NAPI-RS FFI UI Testing](02-features/planned/20250615-napi-ffi-ui-testing.md)** - Implementation specification for NAPI-RS based FFI layer to expose lib_bodhiserver functionality for TypeScript/JavaScript UI testing with programmatic server control
+- **[NAPI-RS FFI API Testing](02-features/completed-stories/20250615-napi-ffi-ui-testing.md)** - Implementation specification for NAPI-RS based FFI layer to expose lib_bodhiserver functionality for TypeScript/JavaScript API testing with programmatic server control (100% Complete)
+- **[NAPI-RS FFI Playwright UI Testing](02-features/planned/20250615-napi-ffi-playwright-ui-testing.md)** - Implementation specification for enabling Playwright UI testing through NAPI-RS FFI by resolving static asset serving issues and implementing comprehensive browser-based test scenarios
 - **[Remove Non-Authenticated Mode](02-features/planned/remove-non-authenticated-mode.md)** - Simplify app by removing non-authenticated installation option, requiring OAuth2 for all installations
 - **[User Management](02-features/planned/user-management.md)** - Multi-user support, user administration, and role management
 - **[Remote Models](02-features/planned/remote-models.md)** - Remote model integration, cloud sync, and distributed inference
@@ -152,6 +153,8 @@ Implementation guides, technical knowledge, and learning resources for developer
 - **[Rust Dependency Management](06-knowledge-transfer/unused-upgrade-dependencies.md)** - Comprehensive guide for Rust workspace dependency management, including unused dependency removal, systematic upgrade strategies, and handling major version blockers
 - **[NPM Dependency Upgrades](02-features/completed-stories/20250613-npm-dependency-upgrade.md)** - Strategic approach to upgrading npm dependencies in the frontend, with risk-based batching and testing procedures
 - **[FFI UI Testing Research](07-research/20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing lib_bodhiserver to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation and dependency isolation integration
+- **[NAPI-RS FFI Implementation](06-knowledge-transfer/20250615-napi-ffi-ui-testing.md)** - NAPI-RS FFI implementation guide and handoff documentation
+- **[NAPI-RS FFI Continuation](06-knowledge-transfer/20250616-napi-ffi-continuation-prompt.md)** - Continuation prompt for NAPI-RS FFI technical debt resolution and production readiness
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context

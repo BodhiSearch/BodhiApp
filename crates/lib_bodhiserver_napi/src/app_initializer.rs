@@ -1,16 +1,16 @@
 use crate::config::AppConfig;
 use lib_bodhiserver::{
-  build_app_service, create_static_dir_from_path, setup_app_dirs, ServeCommand,
-  ServerShutdownHandle,
+  build_app_service, jsonwebtoken, setup_app_dirs, AppRegInfo, AppService, AppStatus,
+  SecretServiceExt, ServeCommand, ServerShutdownHandle, EMBEDDED_UI_ASSETS,
 };
 use napi_derive::napi;
-use objs::{test_utils::set_mock_localization_service, FluentLocalizationService};
 use std::sync::Arc;
 
-/// Application state enumeration for tracking lifecycle
+/// NAPI application state enumeration for tracking lifecycle
+/// Renamed from AppState to avoid confusion with objs::AppStatus
 #[napi]
 #[derive(Debug, PartialEq)]
-pub enum AppState {
+pub enum NapiAppState {
   Uninitialized,
   Ready,
   Running,
@@ -20,7 +20,7 @@ pub enum AppState {
 /// Main NAPI wrapper for BodhiApp server functionality
 #[napi]
 pub struct BodhiApp {
-  state: AppState,
+  state: NapiAppState,
   app_service: Option<Arc<lib_bodhiserver::DefaultAppService>>,
   server_handle: Option<ServerShutdownHandle>,
 }
@@ -31,7 +31,7 @@ impl BodhiApp {
   #[napi(constructor)]
   pub fn new() -> Self {
     Self {
-      state: AppState::Uninitialized,
+      state: NapiAppState::Uninitialized,
       app_service: None,
       server_handle: None,
     }
@@ -43,13 +43,9 @@ impl BodhiApp {
   /// and builds all required services using the isolated lib_bodhiserver interface.
   #[napi]
   pub async unsafe fn initialize(&mut self, config: AppConfig) -> napi::Result<()> {
-    if self.state != AppState::Uninitialized {
+    if self.state != NapiAppState::Uninitialized {
       return Err(napi::Error::from_reason("App already initialized"));
     }
-
-    // Initialize localization service for test environment
-    let localization_service = Arc::new(FluentLocalizationService::new_standalone());
-    set_mock_localization_service(localization_service.clone());
 
     // Convert FFI config to lib_bodhiserver AppOptions
     let app_options: lib_bodhiserver::AppOptions = config
@@ -63,8 +59,29 @@ impl BodhiApp {
       .await
       .map_err(|e| napi::Error::from_reason(e.to_string()))?;
 
+    // Configure authentication using integration test values (similar to live_server_utils.rs)
+    let app_reg_info = AppRegInfo {
+      client_id: "resource-28f0cef6-cd2d-45c3-a162-f7a6a9ff30ce".to_string(),
+      client_secret: "WxfJHaMUfqwcE8dUmaqvsZWqwq4TonlS".to_string(),
+      public_key: "-----BEGIN CERTIFICATE-----\nMIICozCCAYsCBgGUZPIIvzANBgkqhkiG9w0BAQsFADAVMRMwEQYDVQQDDAp0ZXN0LXJlYWxtMB4XDTI1MDExNDEzMTExMVoXDTM1MDExNDEzMTI1MVowFTETMBEGA1UEAwwKdGVzdC1yZWFsbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAL5Qu+5Wr5+csyHEIrrssKMiA2/yJ92OHdJpHkYaLUdj+rDXEchrutHfJsHBsins5WgeU1oELFNre7p6Czy7uBoqZ7j6Ub6tkJDKABmC6yfm41HhQjU1Zp+QYEXv/MTNO5p6Xhm9+WXSqfpfJ4jpI2k4CkRpad14hizOPkIhU3ansf1H4KWXFNHND/xnNsrZVL8KDXtfroju/E6e55Dlu9qhuBDLUEOHCfcKTbsNuIMQNpVy89mjpwDMXa+XUGFGSrxp2cCk/Cwv8gIWDGZPYmPfpsf9HTlBDHYw3gUozv8SRB60CwIVPiKViETZJvzx0cbhQpBRALgHPcW+fH3hnUcCAwEAATANBgkqhkiG9w0BAQsFAAOCAQEAHOars+WGG+tToqRqTJ2+O0VmqpRuAOkh5B+8sY62ve/welWrWSYDrWeDAljS2+gvnbhK1VA8YtwjG+K6Jt9kDs6um6xOblJmZDboBTSNVtycp0Zw9GOzwJIhhtWziR4tOZ6i7UuzzkOETcIbEDEAxhVcSB4PYntOcqEtVtFzhROC9XFGebe9XBnSf2NoIf42R1Z7s572uTjBb3+++yAritqQxq3hP/igkx0jpIm74/dcIZdkVDweaetnWatxcGtVw1PLRBBYSuP8ztR8C5H4Zg0IZgkudEIuB5U2TxhM++7NfYJUBkGwDUlxRxBxqxQMcy+VtTHZMpCwksIabb/+pg==\n-----END CERTIFICATE-----".to_string(),
+      alg: jsonwebtoken::Algorithm::RS256,
+      kid: "H086HvhGMJgK9Y2i5mUSQbZMjc5G6lsavkI0Ram-2CU".to_string(),
+      issuer: "https://dev-id.getbodhi.app/realms/test-realm".to_string(),
+    };
+
+    // Set app registration info and status to Ready for testing
+    app_service
+      .secret_service()
+      .set_app_reg_info(&app_reg_info)
+      .map_err(|e| napi::Error::from_reason(format!("Failed to set app reg info: {}", e)))?;
+
+    app_service
+      .secret_service()
+      .set_app_status(&AppStatus::Ready)
+      .map_err(|e| napi::Error::from_reason(format!("Failed to set app status: {}", e)))?;
+
     self.app_service = Some(Arc::new(app_service));
-    self.state = AppState::Ready;
+    self.state = NapiAppState::Ready;
 
     Ok(())
   }
@@ -74,18 +91,12 @@ impl BodhiApp {
   /// # Arguments
   /// * `host` - The host address to bind to (e.g., "127.0.0.1")
   /// * `port` - The port number to bind to (0 for automatic port selection)
-  /// * `assets_path` - Optional path to static assets directory
   ///
   /// # Returns
   /// The server URL (e.g., "http://127.0.0.1:3000")
   #[napi]
-  pub async unsafe fn start_server(
-    &mut self,
-    host: String,
-    port: u16,
-    assets_path: Option<String>,
-  ) -> napi::Result<String> {
-    if self.state != AppState::Ready {
+  pub async unsafe fn start_server(&mut self, host: String, port: u16) -> napi::Result<String> {
+    if self.state != NapiAppState::Ready {
       return Err(napi::Error::from_reason(
         "App not initialized or already running",
       ));
@@ -96,12 +107,8 @@ impl BodhiApp {
       .as_ref()
       .ok_or_else(|| napi::Error::from_reason("App service not available"))?;
 
-    // Handle assets using the utility function
-    let assets_dir = if let Some(path) = assets_path {
-      Some(create_static_dir_from_path(&path).map_err(|e| napi::Error::from_reason(e.to_string()))?)
-    } else {
-      None
-    };
+    // Use embedded UI assets from lib_bodhiserver
+    let assets_dir = Some(&EMBEDDED_UI_ASSETS);
 
     let command = ServeCommand::ByParams {
       host: host.clone(),
@@ -123,7 +130,7 @@ impl BodhiApp {
     };
 
     self.server_handle = Some(handle);
-    self.state = AppState::Running;
+    self.state = NapiAppState::Running;
 
     Ok(format!("http://{}:{}", host, actual_port))
   }
@@ -139,19 +146,19 @@ impl BodhiApp {
     }
 
     self.app_service = None;
-    self.state = AppState::Shutdown;
+    self.state = NapiAppState::Shutdown;
 
     Ok(())
   }
 
-  /// Gets the current application state
+  /// Gets the current NAPI application state
   #[napi]
   pub fn get_status(&self) -> u32 {
     match self.state {
-      AppState::Uninitialized => 0,
-      AppState::Ready => 1,
-      AppState::Running => 2,
-      AppState::Shutdown => 3,
+      NapiAppState::Uninitialized => 0,
+      NapiAppState::Ready => 1,
+      NapiAppState::Running => 2,
+      NapiAppState::Shutdown => 3,
     }
   }
 }

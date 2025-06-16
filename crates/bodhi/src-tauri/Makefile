@@ -1,7 +1,7 @@
 .PHONY: build_frontend ci.check-macos-vars ci.sign-binaries
 
 build_frontend:
-	cd .. && pnpm install && pnpm run build
+	cd .. && npm install && npm run build
 
 # Required env vars for macOS signing
 REQUIRED_MACOS_VARS := APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY

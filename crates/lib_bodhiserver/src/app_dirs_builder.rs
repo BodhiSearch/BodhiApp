@@ -274,9 +274,8 @@ mod tests {
   #[rstest]
   fn test_setup_app_dirs_integration(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let bodhi_home_str = bodhi_home.display().to_string();
     let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(EnvWrapperStub::new(maplit::hashmap! {
-      BODHI_HOME.to_string() => bodhi_home_str.clone(),
+      BODHI_HOME.to_string() => bodhi_home.display().to_string(),
     }));
     let options = AppOptionsBuilder::development()
       .env_wrapper(env_wrapper)
@@ -330,10 +329,9 @@ mod tests {
     empty_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let bodhi_home_str = bodhi_home.display().to_string();
 
     // Set up real settings service - setup_app_dirs already calls setup_hf_home
-    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
+    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
     let setting_service = setup_app_dirs(options)?;
 
     // HF_HOME should be set by setup_app_dirs
@@ -358,10 +356,9 @@ mod tests {
   #[rstest]
   fn test_setup_logs_dir_success(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let bodhi_home_str = bodhi_home.display().to_string();
 
     // Set up real settings service
-    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
+    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
     let setting_service = setup_app_dirs(options)?;
 
     let result = super::setup_logs_dir(&setting_service)?;
@@ -377,7 +374,6 @@ mod tests {
   #[rstest]
   fn test_build_system_settings() -> anyhow::Result<()> {
     let options = AppOptionsBuilder::development().build()?;
-
     let settings = super::build_system_settings(&options);
 
     assert_eq!(settings.len(), 5);

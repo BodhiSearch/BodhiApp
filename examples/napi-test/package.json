@@ -8,17 +8,20 @@
     "start": "node dist/index.js",
     "dev": "ts-node src/index.ts",
     "test": "npm run build && npm run start",
+    "test:ui": "npm run build && npx playwright test",
+    "test:ui:headed": "npm run build && npx playwright test --headed",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@bodhiapp/server-bindings": "file:../../crates/lib_bodhiserver_napi",
+    "@bodhiapp/server-bindings": "file:../../crates/lib_bodhiserver_napi/bodhiapp-server-bindings-0.1.0.tgz",
     "node-fetch": "^2.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.40.0",
     "@types/node": "^20.0.0",
     "@types/node-fetch": "^2.6.0",
-    "typescript": "^5.0.0",
-    "ts-node": "^10.9.0"
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
