@@ -1,7 +1,7 @@
 use crate::app::AppCommand;
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, AppType, DefaultEnvWrapper, ErrorMessage, ErrorType,
-  ServeCommand, SettingService, BODHI_LOG_STDOUT,
+  build_app_service, setup_app_dirs, AppType, ErrorMessage, ErrorType, ServeCommand,
+  SettingService, BODHI_LOG_STDOUT,
 };
 use std::sync::Arc;
 use tokio::runtime::Builder;
@@ -43,11 +43,8 @@ use env_config::*;
 const APP_TYPE: AppType = AppType::Container;
 
 pub fn initialize_and_execute(command: AppCommand) -> Result<(), ErrorMessage> {
-  let env_wrapper: Arc<dyn lib_bodhiserver::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
-
-  // Construct AppOptions explicitly for production code clarity
-  let app_options = build_app_options(env_wrapper, APP_TYPE)?;
-  let setting_service = setup_app_dirs(app_options)?;
+  let app_options = build_app_options(APP_TYPE)?;
+  let setting_service = setup_app_dirs(&app_options)?;
   set_feature_settings(&setting_service)?;
 
   // Server mode uses file-based logging

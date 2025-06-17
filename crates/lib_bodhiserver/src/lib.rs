@@ -4,11 +4,13 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod app_dirs_builder;
+mod app_options;
 mod app_service_builder;
 mod error;
 mod ui_assets;
 
 pub use app_dirs_builder::*;
+pub use app_options::*;
 pub use app_service_builder::*;
 pub use error::*;
 pub use ui_assets::EMBEDDED_UI_ASSETS;
@@ -53,17 +55,16 @@ pub use services::{
   HF_HOME,
 };
 
+// Re-export services module for external access
+pub use services;
+
 // External dependencies needed for AppRegInfo
 pub use jsonwebtoken;
 
 // Server management from server_app crate
 pub use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
 
-// Test utilities (behind feature flag)
-#[cfg(feature = "test-utils")]
-pub use objs::test_utils::{set_mock_localization_service, setup_l10n};
-#[cfg(feature = "test-utils")]
-pub use services::test_utils::{EnvWrapperStub, SecretServiceStub};
+
 
 pub mod l10n {
   use include_dir::Dir;

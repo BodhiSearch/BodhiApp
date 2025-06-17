@@ -12,5 +12,18 @@ lib_bodhiserver = { workspace = true }
 napi = { workspace = true, features = ["async", "serde-json"] }
 napi-derive = { workspace = true }
 
+
 [build-dependencies]
 napi-build = { workspace = true }
+
+[dev-dependencies]
+objs = { workspace = true, features = ["test-utils"] }
+services = { workspace = true, features = ["test-utils"] }
+lib_bodhiserver = { workspace = true, features = ["test-utils"] }
+
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tempfile = { workspace = true }
+rstest = { workspace = true }
+
+[features]
+test-utils = []

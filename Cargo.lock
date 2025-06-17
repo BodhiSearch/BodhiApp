@@ -3218,6 +3218,7 @@ dependencies = [
  "server_app",
  "server_core",
  "services",
+ "strum",
  "tempfile",
  "thiserror 2.0.12",
  "tokio",
@@ -3231,6 +3232,11 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "objs",
+ "rstest",
+ "services",
+ "tempfile",
+ "tokio",
 ]
 
 [[package]]

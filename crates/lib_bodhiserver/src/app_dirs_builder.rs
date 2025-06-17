@@ -1,41 +1,21 @@
-use derive_builder::Builder;
-use objs::{AppType, EnvType, Setting, SettingMetadata, SettingSource};
+use objs::{Setting, SettingMetadata, SettingSource};
 use services::{
-  DefaultSettingService, EnvWrapper, SettingService, BODHI_APP_TYPE, BODHI_AUTH_REALM,
-  BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
+  DefaultSettingService, SettingService, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+  BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
 };
 use std::{
   fs::{self, File},
   path::PathBuf,
-  sync::Arc,
 };
 
+use crate::app_options::AppOptions;
 use crate::AppDirsBuilderError;
-
-/// Configuration options for setting up application directories and settings.
-/// Uses the builder pattern for flexible configuration with sensible defaults.
-#[derive(Debug, Clone, Builder)]
-#[builder(setter(into, strip_option))]
-pub struct AppOptions {
-  /// Environment wrapper for accessing environment variables and system paths
-  pub env_wrapper: Arc<dyn EnvWrapper>,
-  /// Environment type (Development, Production, etc.)
-  pub env_type: EnvType,
-  /// Application type (Native, Container, etc.)
-  pub app_type: AppType,
-  /// Application version string
-  pub app_version: String,
-  /// Authentication server URL
-  pub auth_url: String,
-  /// Authentication realm
-  pub auth_realm: String,
-}
 
 /// Primary entry point for setting up all application directories and configuration.
 /// This function orchestrates the complete initialization process.
-pub fn setup_app_dirs(options: AppOptions) -> Result<DefaultSettingService, AppDirsBuilderError> {
-  let (bodhi_home, source) = create_bodhi_home(&options)?;
-  let setting_service = setup_settings(&options, bodhi_home, source)?;
+pub fn setup_app_dirs(options: &AppOptions) -> Result<DefaultSettingService, AppDirsBuilderError> {
+  let (bodhi_home, source) = create_bodhi_home(options)?;
+  let setting_service = setup_settings(options, bodhi_home, source)?;
   setup_bodhi_subdirs(&setting_service)?;
   setup_hf_home(&setting_service)?;
   setup_logs_dir(&setting_service)?;
@@ -76,7 +56,18 @@ fn setup_settings(
     app_settings,
     settings_file,
   );
+
+  // Load default environment first
   setting_service.load_default_env();
+
+  // Apply app settings from options using the setting service
+  for (key, value) in &options.app_settings {
+    // Get the metadata for this setting to parse it correctly
+    let metadata = setting_service.get_setting_metadata(key);
+    let parsed_value = metadata.parse(serde_yaml::Value::String(value.clone()));
+    setting_service.set_setting_with_source(key, &parsed_value, SettingSource::SettingsFile);
+  }
+
   Ok(setting_service)
 }
 
@@ -191,7 +182,7 @@ fn setup_hf_home(setting_service: &dyn SettingService) -> Result<PathBuf, AppDir
 fn setup_logs_dir(setting_service: &dyn SettingService) -> Result<PathBuf, AppDirsBuilderError> {
   let logs_dir = setting_service.logs_dir();
   if !logs_dir.exists() {
-    std::fs::create_dir_all(&logs_dir).map_err(|err| AppDirsBuilderError::DirCreate {
+    fs::create_dir_all(&logs_dir).map_err(|err| AppDirsBuilderError::DirCreate {
       source: err,
       path: logs_dir.display().to_string(),
     })?;
@@ -201,27 +192,28 @@ fn setup_logs_dir(setting_service: &dyn SettingService) -> Result<PathBuf, AppDi
 
 #[cfg(test)]
 mod tests {
-  use super::{setup_app_dirs, AppDirsBuilderError, AppOptionsBuilder};
+  use super::{setup_app_dirs, AppDirsBuilderError};
+  use crate::{AppOptions, AppOptionsBuilder};
   use mockall::predicate::eq;
   use objs::test_utils::{empty_bodhi_home, temp_dir};
+  use objs::{AppType, EnvType};
   use rstest::rstest;
   use services::{
-    test_utils::{EnvWrapperStub, TEST_ALIASES_DIR, TEST_PROD_DB, TEST_SESSION_DB},
+    test_utils::{TEST_ALIASES_DIR, TEST_PROD_DB, TEST_SESSION_DB},
     EnvWrapper, MockEnvWrapper, MockSettingService, SettingService, BODHI_APP_TYPE,
     BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, HF_HOME,
   };
-  use std::{env::VarError, sync::Arc};
+  use std::collections::HashMap;
+  use std::env::VarError;
+  use std::sync::Arc;
   use tempfile::TempDir;
 
   #[rstest]
   fn test_create_bodhi_home_from_env(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let bodhi_home_str = bodhi_home.display().to_string();
-    let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(EnvWrapperStub::new(maplit::hashmap! {
-      BODHI_HOME.to_string() => bodhi_home_str.clone(),
-    }));
     let options = AppOptionsBuilder::development()
-      .env_wrapper(env_wrapper)
+      .set_env(BODHI_HOME, &bodhi_home_str)
       .build()?;
     let (result_path, source) = super::create_bodhi_home(&options)?;
     assert_eq!(result_path, bodhi_home);
@@ -232,16 +224,13 @@ mod tests {
 
   #[rstest]
   fn test_create_bodhi_home_from_home_dir(temp_dir: TempDir) -> anyhow::Result<()> {
-    let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(EnvWrapperStub::new(maplit::hashmap! {
-      "HOME".to_string() => temp_dir.path().display().to_string(),
-    }));
     let options = AppOptionsBuilder::development()
-      .env_wrapper(env_wrapper)
+      .set_env("HOME", &temp_dir.path().display().to_string())
       .build()?;
     let (result_path, source) = super::create_bodhi_home(&options)?;
     let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
-    assert_eq!(result_path, expected_path);
     assert_eq!(source, objs::SettingSource::Default);
+    assert_eq!(result_path, expected_path);
     assert!(expected_path.exists());
     Ok(())
   }
@@ -259,9 +248,17 @@ mod tests {
       .times(1)
       .return_once(|| None);
     let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(mock_env_wrapper);
-    let options = AppOptionsBuilder::development()
-      .env_wrapper(env_wrapper)
-      .build()?;
+    let options = AppOptions::new(
+      env_wrapper,
+      EnvType::Development,
+      AppType::Native,
+      "1.0.0".to_string(),
+      "http://localhost:8080".to_string(),
+      "bodhi".to_string(),
+      HashMap::new(),
+      None,
+      None,
+    );
     let result = super::find_bodhi_home(&options);
     assert!(result.is_err());
     assert!(matches!(
@@ -274,13 +271,10 @@ mod tests {
   #[rstest]
   fn test_setup_app_dirs_integration(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
-    let env_wrapper: Arc<dyn EnvWrapper> = Arc::new(EnvWrapperStub::new(maplit::hashmap! {
-      BODHI_HOME.to_string() => bodhi_home.display().to_string(),
-    }));
     let options = AppOptionsBuilder::development()
-      .env_wrapper(env_wrapper)
+      .set_env(BODHI_HOME, &bodhi_home.display().to_string())
       .build()?;
-    let _settings_service = setup_app_dirs(options)?;
+    let _settings_service = setup_app_dirs(&options)?;
     assert!(bodhi_home.join(TEST_ALIASES_DIR).exists());
     assert!(bodhi_home.join(TEST_PROD_DB).exists());
     assert!(bodhi_home.join(TEST_SESSION_DB).exists());
@@ -295,7 +289,7 @@ mod tests {
 
     // Set up real settings service with HF_HOME pre-configured
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
-    let setting_service = setup_app_dirs(options)?;
+    let setting_service = setup_app_dirs(&options)?;
 
     // Set the HF_HOME setting
     setting_service.set_setting(HF_HOME, &hf_home.display().to_string());
@@ -332,7 +326,7 @@ mod tests {
 
     // Set up real settings service - setup_app_dirs already calls setup_hf_home
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
-    let setting_service = setup_app_dirs(options)?;
+    let setting_service = setup_app_dirs(&options)?;
 
     // HF_HOME should be set by setup_app_dirs
     let hf_home_setting = setting_service.get_setting(HF_HOME);
@@ -359,7 +353,7 @@ mod tests {
 
     // Set up real settings service
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
-    let setting_service = setup_app_dirs(options)?;
+    let setting_service = setup_app_dirs(&options)?;
 
     let result = super::setup_logs_dir(&setting_service)?;
     let expected_logs_dir = setting_service.logs_dir();
@@ -395,7 +389,7 @@ mod tests {
     let version_setting = settings.iter().find(|s| s.key == BODHI_VERSION).unwrap();
     assert_eq!(
       version_setting.value,
-      serde_yaml::Value::String("1.0.0".to_string())
+      serde_yaml::Value::String(env!("CARGO_PKG_VERSION").to_string())
     );
 
     let auth_url_setting = settings.iter().find(|s| s.key == BODHI_AUTH_URL).unwrap();
@@ -420,7 +414,7 @@ mod tests {
 
     // Set up real settings service
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
-    let setting_service = setup_app_dirs(options)?;
+    let setting_service = setup_app_dirs(&options)?;
 
     // The setup_app_dirs already calls setup_bodhi_subdirs, so we just verify the results
     let aliases_dir = setting_service.aliases_dir();
