@@ -1,9 +1,9 @@
 use crate::app::AppCommand;
 use crate::common::build_app_options;
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, AppError, AppService, AppType, DefaultEnvWrapper,
-  ErrorMessage, ErrorType, LogLevel, ServeCommand, ServeError, ServerShutdownHandle,
-  SettingService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT,
+  build_app_service, setup_app_dirs, AppError, AppService, AppServiceBuilder, AppType,
+  DefaultEnvWrapper, ErrorMessage, ErrorType, LogLevel, ServeCommand, ServeError,
+  ServerShutdownHandle, SettingService, BODHI_EXEC_LOOKUP_PATH, BODHI_LOGS, BODHI_LOG_STDOUT,
 };
 use std::sync::{Arc, Mutex};
 use tauri::{
@@ -178,12 +178,10 @@ fn on_menu_event(app: &AppHandle, event: MenuEvent, addr: &str) {
 }
 
 pub fn initialize_and_execute(_command: AppCommand) -> std::result::Result<(), ErrorMessage> {
-  let env_wrapper: Arc<dyn lib_bodhiserver::EnvWrapper> = Arc::new(DefaultEnvWrapper::default());
-
   // Construct AppOptions explicitly for production code clarity
-  let app_options = build_app_options(env_wrapper, APP_TYPE)?;
+  let app_options = build_app_options(APP_TYPE)?;
 
-  let setting_service = setup_app_dirs(app_options)?;
+  let setting_service = setup_app_dirs(&app_options)?;
   // Native mode doesn't use file-based logging - Tauri handles logging
   let result = aexecute(Arc::new(setting_service));
   result

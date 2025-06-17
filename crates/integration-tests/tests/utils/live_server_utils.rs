@@ -2,7 +2,7 @@
 
 use fs_extra::dir::{copy, CopyOptions};
 use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder, AppServiceBuilder};
-use objs::{test_utils::setup_l10n, EnvType, FluentLocalizationService};
+use objs::{test_utils::setup_l10n, FluentLocalizationService};
 use rand::Rng;
 use routes_app::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use rstest::fixture;
@@ -10,12 +10,12 @@ use serde_json::Value;
 use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   hash_key,
-  test_utils::{test_auth_service, EnvWrapperStub, OfflineHubService},
+  test_utils::{test_auth_service, OfflineHubService},
   AppRegInfoBuilder, AppService, AppStatus, DefaultSecretService, HfHubService, LocalDataService,
-  SecretServiceExt, SettingService, BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY,
-  BODHI_ENV_TYPE, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
+  SecretServiceExt, SettingService, BODHI_ENCRYPTION_KEY, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME,
+  BODHI_LOGS, HF_HOME,
 };
-use std::{collections::HashMap, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 use tempfile::TempDir;
 use tower_sessions::session::{Id, Record};
 use tower_sessions::SessionStore;
@@ -42,16 +42,16 @@ pub async fn llama2_7b_setup(
   #[from(setup_l10n)] localization_service: &Arc<FluentLocalizationService>,
 ) -> anyhow::Result<(TempDir, Arc<dyn AppService>)> {
   // Load environment variables from .env.test
-  let env_test_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+  let env_test_path = Path::new(env!("CARGO_MANIFEST_DIR"))
     .join("tests")
     .join("resources")
     .join(".env.test");
   if env_test_path.exists() {
     dotenv::from_filename(&env_test_path).ok();
   }
-  let temp_dir = tempfile::tempdir().unwrap();
+  let temp_dir = tempfile::tempdir()?;
   let cache_dir = temp_dir.path().join(".cache");
-  std::fs::create_dir_all(&cache_dir).unwrap();
+  std::fs::create_dir_all(&cache_dir)?;
 
   let bodhi_home = cache_dir.join("bodhi");
   let hf_home = dirs::home_dir().unwrap().join(".cache").join("huggingface");
@@ -63,40 +63,7 @@ pub async fn llama2_7b_setup(
     .join("..")
     .join("llama_server_proc")
     .join("bin")
-    .canonicalize()
-    .unwrap();
-  let envs = HashMap::from([
-    (
-      String::from("HOME"),
-      temp_dir.path().to_str().unwrap().to_string(),
-    ),
-    (
-      BODHI_HOME.to_string(),
-      bodhi_home.to_str().unwrap().to_string(),
-    ),
-    (
-      BODHI_LOGS.to_string(),
-      bodhi_logs.to_str().unwrap().to_string(),
-    ),
-    (HF_HOME.to_string(), hf_home.to_str().unwrap().to_string()),
-    (
-      BODHI_EXEC_LOOKUP_PATH.to_string(),
-      execs_dir.display().to_string(),
-    ),
-    (BODHI_ENV_TYPE.to_string(), EnvType::Development.to_string()),
-    (
-      BODHI_AUTH_URL.to_string(),
-      std::env::var("INTEG_TEST_AUTH_URL").unwrap(),
-    ),
-    (
-      BODHI_AUTH_REALM.to_string(),
-      std::env::var("INTEG_TEST_AUTH_REALM").unwrap(),
-    ),
-    (
-      BODHI_ENCRYPTION_KEY.to_string(),
-      "test-encryption-key".to_string(),
-    ),
-  ]);
+    .canonicalize()?;
 
   // Get OpenID configuration values from environment
   let client_id = std::env::var("INTEG_TEST_CLIENT_ID").expect("INTEG_TEST_CLIENT_ID not set");
@@ -106,20 +73,23 @@ pub async fn llama2_7b_setup(
   let auth_url = std::env::var("INTEG_TEST_AUTH_URL").expect("INTEG_TEST_AUTH_URL not set");
   let auth_realm = std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM not set");
 
-  let env_wrapper: Arc<dyn services::EnvWrapper> = Arc::new(EnvWrapperStub::new(envs));
   let options = AppOptionsBuilder::development()
-    .env_wrapper(env_wrapper)
-    .auth_url(auth_url.clone())
-    .auth_realm(auth_realm.clone())
+    .auth_url(&auth_url)
+    .auth_realm(&auth_realm)
+    .set_env("HOME", temp_dir.path().to_str().unwrap())
+    .set_env(BODHI_HOME, &bodhi_home.display().to_string())
+    .set_env(BODHI_LOGS, &bodhi_logs.display().to_string())
+    .set_env(HF_HOME, &hf_home.display().to_string())
+    .set_env(BODHI_EXEC_LOOKUP_PATH, &execs_dir.display().to_string())
+    .set_env(BODHI_ENCRYPTION_KEY, "test-encryption-key")
     .build()?;
-  let setting_service = Arc::new(setup_app_dirs(options)?);
+  let setting_service = Arc::new(setup_app_dirs(&options)?);
 
   // Create AppRegInfo with values from environment
   let app_reg_info = AppRegInfoBuilder::test_default()
     .client_id(client_id)
     .client_secret(client_secret)
-    .build()
-    .unwrap();
+    .build()?;
 
   // Create secret service with test configuration
   let encryption_key = setting_service.encryption_key().unwrap();
@@ -167,8 +137,7 @@ pub async fn live_server(
   };
   let handle = serve_command
     .get_server_handle(app_service.clone(), None)
-    .await
-    .unwrap();
+    .await?;
   Ok(TestServerHandle {
     temp_cache_dir,
     host,

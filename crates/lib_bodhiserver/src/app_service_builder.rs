@@ -1,13 +1,13 @@
+use crate::{AppServiceBuilderError, AppStateOption};
 use objs::{ApiError, ErrorMessage, FluentLocalizationService, LocalizationService};
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
-  hash_key, AuthService, CacheService, DataService, DefaultAppService, DefaultSecretService,
-  HfHubService, HubService, KeycloakAuthService, KeyringStore, LocalDataService, MokaCacheService,
-  SecretService, SessionService, SettingService, SqliteSessionService, SystemKeyringStore,
+  hash_key, AppService, AuthService, CacheService, DataService, DefaultAppService,
+  DefaultSecretService, HfHubService, HubService, KeycloakAuthService, KeyringStore,
+  LocalDataService, MokaCacheService, SecretService, SecretServiceExt, SessionService,
+  SettingService, SqliteSessionService, SystemKeyringStore,
 };
 use std::sync::Arc;
-
-use crate::AppServiceBuilderError;
 
 const SECRET_KEY: &str = "secret_key";
 
@@ -201,7 +201,6 @@ impl AppServiceBuilder {
       localization_service,
       time_service,
     );
-
     Ok(app_service)
   }
 
@@ -333,14 +332,6 @@ impl AppServiceBuilder {
   }
 }
 
-/// Builds a complete DefaultAppService from a settings service.
-/// This function orchestrates the creation of all required services and their dependencies.
-pub async fn build_app_service(
-  setting_service: Arc<dyn SettingService>,
-) -> Result<DefaultAppService, ErrorMessage> {
-  AppServiceBuilder::new(setting_service).build().await
-}
-
 /// Loads all localization resources from all crates in the workspace.
 /// This ensures that error messages and other localized content are available.
 fn load_all_localization_resources(
@@ -360,6 +351,45 @@ fn load_all_localization_resources(
     .load_resource(server_app::l10n::L10N_RESOURCES)?
     .load_resource(crate::l10n::L10N_RESOURCES)?;
 
+  Ok(())
+}
+
+pub async fn build_app_service(
+  setting_service: Arc<dyn SettingService>,
+) -> Result<DefaultAppService, ErrorMessage> {
+  AppServiceBuilder::new(setting_service).build().await
+}
+
+pub fn update_with_option(
+  service: &Arc<dyn AppService>,
+  option: AppStateOption,
+) -> Result<(), ErrorMessage> {
+  // Set app registration info if provided
+  if let Some(app_reg_info) = option.app_reg_info {
+    service
+      .secret_service()
+      .set_app_reg_info(&app_reg_info)
+      .map_err(|e| {
+        ErrorMessage::new(
+          "secret_service_error".to_string(),
+          "internal_server_error".to_string(),
+          e.to_string(),
+        )
+      })?;
+  }
+  // Set app status if provided
+  if let Some(app_status) = option.app_status {
+    service
+      .secret_service()
+      .set_app_status(&app_status)
+      .map_err(|e| {
+        ErrorMessage::new(
+          "secret_service_error".to_string(),
+          "internal_server_error".to_string(),
+          e.to_string(),
+        )
+      })?;
+  }
   Ok(())
 }
 
@@ -387,7 +417,7 @@ mod tests {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
 
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
-    let setting_service = Arc::new(setup_app_dirs(options)?);
+    let setting_service = Arc::new(setup_app_dirs(&options)?);
 
     let builder = AppServiceBuilder::new(setting_service);
 
@@ -403,7 +433,7 @@ mod tests {
   ) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home.display().to_string()).build()?;
-    let setting_service = Arc::new(setup_app_dirs(options)?);
+    let setting_service = Arc::new(setup_app_dirs(&options)?);
 
     // Create mock services
     let mut mock_secret_service = MockSecretService::new();
@@ -434,12 +464,13 @@ mod tests {
   #[tokio::test]
   async fn test_app_service_builder_with_multiple_services(
     empty_bodhi_home: TempDir,
+    #[from(objs::test_utils::setup_l10n)] _l10n: &Arc<FluentLocalizationService>,
   ) -> anyhow::Result<()> {
     let bodhi_home = empty_bodhi_home.path().join("bodhi");
     let bodhi_home_str = bodhi_home.display().to_string();
 
     let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str).build()?;
-    let setting_service = Arc::new(setup_app_dirs(options)?);
+    let setting_service = Arc::new(setup_app_dirs(&options)?);
 
     // Create mock secret service
     let mut mock_secret_service = MockSecretService::new();
@@ -479,6 +510,32 @@ mod tests {
     assert!(matches!(
       result.unwrap_err(),
       AppServiceBuilderError::ServiceAlreadySet(service) if service == *"secret_service"));
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_setup_app_dirs_with_app_settings(empty_bodhi_home: TempDir) -> anyhow::Result<()> {
+    use services::BODHI_PORT;
+
+    let bodhi_home = empty_bodhi_home.path().join("bodhi_enhanced");
+    let bodhi_home_str = bodhi_home.display().to_string();
+
+    // Create options with app settings
+    let options = AppOptionsBuilder::with_bodhi_home(&bodhi_home_str)
+      .set_env("TEST_VAR", "test_value")
+      .set_app_setting(BODHI_PORT, "9090")
+      .set_system_setting(services::BODHI_ENV_TYPE, "development")?
+      .build()?;
+
+    let setting_service = setup_app_dirs(&options)?;
+
+    // Verify configuration was applied
+    assert_eq!(setting_service.get_setting(BODHI_PORT).unwrap(), "9090");
+
+    // Verify the service is properly initialized
+    assert!(!setting_service.is_production());
+    assert!(setting_service.bodhi_home().exists());
 
     Ok(())
   }

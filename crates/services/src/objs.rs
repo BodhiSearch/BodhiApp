@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, derive_builder::Builder)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder)]
 pub struct AppRegInfo {
   pub client_id: String,
   pub client_secret: String,

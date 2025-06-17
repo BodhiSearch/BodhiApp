@@ -37,7 +37,10 @@ impl EnvWrapper for DefaultEnvWrapper {
   }
 
   fn home_dir(&self) -> Option<PathBuf> {
-    dirs::home_dir()
+    match self.env_vars.get("HOME") {
+      Some(path) => Some(PathBuf::from(path)),
+      None => dirs::home_dir(),
+    }
   }
 
   fn load(&self, envfile: &Path) {
