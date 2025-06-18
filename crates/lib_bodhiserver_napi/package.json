@@ -1,43 +1,57 @@
 {
-  "name": "@bodhiapp/server-bindings",
-  "version": "0.1.0",
-  "description": "NAPI-RS bindings for BodhiApp server functionality",
+  "name": "bodhiapp-server-bindings",
+  "version": "1.0.0",
+  "description": "NAPI-RS bindings for BodhiApp server with integrated tests",
   "main": "index.js",
   "types": "index.d.ts",
+  "type": "module",
   "napi": {
     "name": "bodhiapp-server-bindings",
     "triples": {
-      "defaults": true
+      "defaults": true,
+      "additional": [
+        "x86_64-pc-windows-msvc",
+        "aarch64-apple-darwin",
+        "x86_64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu"
+      ]
     }
   },
   "scripts": {
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm",
+    "build": "napi build --platform --release --js false --dts index.d.ts",
+    "build:debug": "napi build --platform --js false --dts index.d.ts",
+    "build:release": "napi build --platform --release --js false --dts index.d.ts",
     "test": "vitest",
-    "artifacts": "napi artifacts"
+    "test:run": "vitest run",
+    "test:config": "vitest run --testNamePattern='Configuration'",
+    "test:integration": "vitest run --testNamePattern='Integration'",
+    "test:live": "vitest run --testNamePattern='Live Server'",
+    "test:playwright": "playwright test",
+    "test:playwright:ui": "playwright test --ui",
+    "test:playwright:headed": "playwright test --headed",
+    "test:all": "npm run test:run && npm run test:playwright",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write ."
+  },
+  "dependencies": {
+    "vitest": "^2.1.8"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^2.18.0",
-    "vitest": "^1.0.0",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0"
+    "@biomejs/biome": "^1.9.4",
+    "@playwright/test": "^1.48.2",
+    "@napi-rs/cli": "^2.18.4"
   },
-  "files": [
-    "index.js",
-    "index.d.ts"
-  ],
+  "engines": {
+    "node": ">=18"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/BodhiSearch/BodhiApp.git",
-    "directory": "crates/lib_bodhiserver_napi"
+    "url": "https://github.com/BodhiSearch/BodhiApp.git"
   },
-  "license": "MIT",
-  "keywords": [
-    "napi-rs",
-    "rust",
-    "nodejs",
-    "ffi",
-    "bodhiapp"
-  ]
+  "license": "MIT"
 }

@@ -18,7 +18,8 @@ pub use ui_assets::EMBEDDED_UI_ASSETS;
 // Re-exports for crates/bodhi dependency isolation
 // Domain objects from objs crate
 pub use objs::{
-  AppError, AppType, EnvType, ErrorMessage, ErrorType, FluentLocalizationService, LogLevel,
+  ApiError, AppError, AppType, EnvType, ErrorMessage, ErrorType, FluentLocalizationService,
+  LogLevel, OpenAIApiError,
 };
 
 // Service interfaces and implementations from services crate
@@ -63,8 +64,6 @@ pub use jsonwebtoken;
 
 // Server management from server_app crate
 pub use server_app::{ServeCommand, ServeError, ServerShutdownHandle};
-
-
 
 pub mod l10n {
   use include_dir::Dir;

@@ -3228,12 +3228,18 @@ dependencies = [
 name = "lib_bodhiserver_napi"
 version = "0.1.0"
 dependencies = [
+ "dirs 6.0.0",
  "lib_bodhiserver",
+ "log",
  "napi",
  "napi-build",
  "napi-derive",
  "objs",
+ "rand 0.9.1",
+ "reqwest",
  "rstest",
+ "serde",
+ "serde_json",
  "services",
  "tempfile",
  "tokio",

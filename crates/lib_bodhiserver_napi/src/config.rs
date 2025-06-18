@@ -1,173 +1,344 @@
-use lib_bodhiserver::{
-  AppOptions, AppOptionsBuilder, DefaultEnvWrapper, ErrorMessage, BODHI_APP_TYPE, BODHI_AUTH_REALM,
-  BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_VERSION,
-};
+use lib_bodhiserver::{AppOptions, AppOptionsBuilder, AppOptionsError};
 use napi_derive::napi;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-/// FFI-compatible configuration for BodhiApp initialization
+/// Flexible configuration options for the Bodhi server that can be passed across NAPI boundary
 #[napi(object)]
-#[derive(Debug, Clone)]
-pub struct AppConfig {
-  /// Environment type (Development, Production, etc.)
-  pub env_type: String,
-  /// Application type (Container, Native, etc.)
-  pub app_type: String,
-  /// Application version string
-  pub app_version: String,
-  /// Authentication server URL
-  pub auth_url: String,
-  /// Authentication realm
-  pub auth_realm: String,
-
-  // Enhanced configuration fields
-  /// Environment variables to be set (including sensitive/test keys, exec path, port, etc.)
-  pub environment_vars: Option<std::collections::HashMap<String, String>>,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NapiAppOptions {
+  /// Environment variables to set
+  pub env_vars: HashMap<String, String>,
   /// App settings (configurable via settings.yaml)
-  pub app_settings: Option<std::collections::HashMap<String, String>>,
-  /// OAuth client credentials
-  pub oauth_client_id: Option<String>,
-  /// OAuth client secret
-  pub oauth_client_secret: Option<String>,
-  /// App initialization status
+  pub app_settings: HashMap<String, String>,
+  /// System settings (immutable)
+  pub system_settings: HashMap<String, String>,
+  /// OAuth client ID (optional)
+  pub client_id: Option<String>,
+  /// OAuth client secret (optional)
+  pub client_secret: Option<String>,
+  /// App status as string (optional)
   pub app_status: Option<String>,
 }
 
-impl AppConfig {
-  fn build_options(config: &AppConfig) -> Result<AppOptionsBuilder, ErrorMessage> {
-    Ok(
-      AppOptionsBuilder::new()
-        .set_system_setting(BODHI_ENV_TYPE, &config.env_type)?
-        .set_system_setting(BODHI_APP_TYPE, &config.app_type)?
-        .set_system_setting(BODHI_VERSION, &config.app_version)?
-        .set_system_setting(BODHI_AUTH_URL, &config.auth_url)?
-        .set_system_setting(BODHI_AUTH_REALM, &config.auth_realm)?,
-    )
+/// Create a new NapiAppOptions with empty configuration
+#[napi]
+pub fn create_napi_app_options() -> NapiAppOptions {
+  NapiAppOptions {
+    env_vars: HashMap::new(),
+    app_settings: HashMap::new(),
+    system_settings: HashMap::new(),
+    client_id: None,
+    client_secret: None,
+    app_status: None,
   }
 }
 
-impl TryFrom<AppConfig> for AppOptions {
-  type Error = String;
+/// Set an environment variable
+#[napi]
+pub fn set_env_var(mut config: NapiAppOptions, key: String, value: String) -> NapiAppOptions {
+  config.env_vars.insert(key, value);
+  config
+}
 
-  fn try_from(config: AppConfig) -> Result<Self, Self::Error> {
-    use lib_bodhiserver::{AppStatus, AppType, EnvType, EnvWrapper};
-    use std::str::FromStr;
-    use std::sync::Arc;
+/// Set an app setting (configurable via settings.yaml)
+#[napi]
+pub fn set_app_setting(mut config: NapiAppOptions, key: String, value: String) -> NapiAppOptions {
+  config.app_settings.insert(key, value);
+  config
+}
 
-    let mut env_wrapper = DefaultEnvWrapper::default();
+/// Set a system setting (immutable)
+#[napi]
+pub fn set_system_setting(
+  mut config: NapiAppOptions,
+  key: String,
+  value: String,
+) -> NapiAppOptions {
+  config.system_settings.insert(key, value);
+  config
+}
 
-    // Set environment variables if provided
-    if let Some(ref env_vars) = config.environment_vars {
-      for (key, value) in env_vars {
-        env_wrapper.set_var(key, value);
-      }
+/// Set OAuth client credentials
+#[napi]
+pub fn set_client_credentials(
+  mut config: NapiAppOptions,
+  client_id: String,
+  client_secret: String,
+) -> NapiAppOptions {
+  config.client_id = Some(client_id);
+  config.client_secret = Some(client_secret);
+  config
+}
+
+/// Set app status
+#[napi]
+pub fn set_app_status(mut config: NapiAppOptions, status: String) -> napi::Result<NapiAppOptions> {
+  // Validate the status string by trying to parse it
+  use lib_bodhiserver::services::AppStatus;
+  match status.parse::<AppStatus>() {
+    Ok(_) => {
+      config.app_status = Some(status);
+      Ok(config)
     }
-
-    let _env_wrapper: Arc<dyn EnvWrapper> = Arc::new(env_wrapper);
-    let _env_type =
-      EnvType::from_str(&config.env_type).map_err(|e| format!("Invalid env_type: {}", e))?;
-    let _app_type =
-      AppType::from_str(&config.app_type).map_err(|e| format!("Invalid app_type: {}", e))?;
-
-    // Use the new builder interface with system settings
-    let mut builder = AppConfig::build_options(&config).map_err(|e| e.to_string())?;
-
-    // Set all environment_vars in builder
-    if let Some(ref env_vars) = config.environment_vars {
-      for (key, value) in env_vars {
-        builder = builder.set_env(key, value);
-      }
-    }
-
-    // Set app settings if provided
-    if let Some(app_settings) = config.app_settings {
-      for (key, value) in app_settings {
-        builder = builder.set_app_setting(&key, &value);
-      }
-    }
-
-    // Set OAuth credentials if provided
-    if let Some(client_id) = config.oauth_client_id {
-      if let Some(client_secret) = config.oauth_client_secret {
-        builder = builder.set_app_reg_info(&client_id, &client_secret);
-      }
-    }
-
-    // Set app status if provided
-    if let Some(status_str) = config.app_status {
-      if let Ok(status) = AppStatus::from_str(&status_str) {
-        builder = builder.set_app_status(status);
-      }
-    }
-
-    let options = builder
-      .build()
-      .map_err(|e| format!("Failed to build AppOptions: {}", e))?;
-
-    Ok(options)
+    Err(_) => Err(napi::Error::new(
+      napi::Status::GenericFailure,
+      format!("Invalid app status: {}", status),
+    )),
   }
 }
+
+/// Build AppOptions from NapiAppOptions
+#[napi]
+pub fn build_app_options(config: NapiAppOptions) -> napi::Result<()> {
+  match try_build_app_options_internal(config) {
+    Ok(_) => Ok(()),
+    Err(e) => Err(napi::Error::new(
+      napi::Status::GenericFailure,
+      format!("Failed to build AppOptions: {}", e),
+    )),
+  }
+}
+
+/// Internal function to build AppOptions (not exposed to NAPI)
+pub fn try_build_app_options_internal(
+  config: NapiAppOptions,
+) -> Result<AppOptions, AppOptionsError> {
+  let mut builder = AppOptionsBuilder::new();
+
+  // Set environment variables
+  for (key, value) in config.env_vars {
+    builder = builder.set_env(&key, &value);
+  }
+
+  // Set app settings
+  for (key, value) in config.app_settings {
+    builder = builder.set_app_setting(&key, &value);
+  }
+
+  // Set system settings
+  for (key, value) in config.system_settings {
+    builder = builder.set_system_setting(&key, &value)?;
+  }
+
+  // Set OAuth client credentials if both are provided
+  if let (Some(client_id), Some(client_secret)) = (config.client_id, config.client_secret) {
+    builder = builder.set_app_reg_info(&client_id, &client_secret);
+  }
+
+  // Set app status if provided
+  if let Some(status_str) = config.app_status {
+    use lib_bodhiserver::services::AppStatus;
+    let status = status_str.parse::<AppStatus>().map_err(|_| {
+      AppOptionsError::ValidationError(format!("Invalid app status: {}", status_str))
+    })?;
+    builder = builder.set_app_status(status);
+  }
+
+  builder.build()
+}
+
+// Export constants for safe configuration
+#[napi]
+pub const BODHI_HOME: &str = "BODHI_HOME";
+
+#[napi]
+pub const BODHI_HOST: &str = "BODHI_HOST";
+
+#[napi]
+pub const BODHI_PORT: &str = "BODHI_PORT";
+
+#[napi]
+pub const BODHI_SCHEME: &str = "BODHI_SCHEME";
+
+#[napi]
+pub const BODHI_LOG_LEVEL: &str = "BODHI_LOG_LEVEL";
+
+#[napi]
+pub const BODHI_LOG_STDOUT: &str = "BODHI_LOG_STDOUT";
+
+#[napi]
+pub const BODHI_LOGS: &str = "BODHI_LOGS";
+
+#[napi]
+pub const BODHI_ENV_TYPE: &str = "BODHI_ENV_TYPE";
+
+#[napi]
+pub const BODHI_APP_TYPE: &str = "BODHI_APP_TYPE";
+
+#[napi]
+pub const BODHI_VERSION: &str = "BODHI_VERSION";
+
+#[napi]
+pub const BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
+
+#[napi]
+pub const BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
+
+#[napi]
+pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
+
+#[napi]
+pub const BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
+
+#[napi]
+pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
+
+#[napi]
+pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
+
+#[napi]
+pub const HF_HOME: &str = "HF_HOME";
+
+#[napi]
+pub const DEFAULT_HOST: &str = "localhost";
+
+#[napi]
+pub const DEFAULT_PORT: u16 = 1135;
 
 #[cfg(test)]
 mod tests {
   use super::*;
-  use std::collections::HashMap;
 
   #[test]
-  fn test_app_config_development_defaults() {
-    let config = AppConfig::development();
+  fn test_create_napi_app_options() {
+    let config = create_napi_app_options();
+    assert!(config.env_vars.is_empty());
+    assert!(config.app_settings.is_empty());
+    assert!(config.system_settings.is_empty());
+    assert!(config.client_id.is_none());
+    assert!(config.client_secret.is_none());
+    assert!(config.app_status.is_none());
+  }
 
-    // Verify basic fields
-    assert_eq!(config.env_type, "development");
-    assert_eq!(config.app_type, "container");
-    assert_eq!(config.app_version, "1.0.0-test");
-    assert_eq!(config.auth_url, "https://dev-id.getbodhi.app");
-    assert_eq!(config.auth_realm, "bodhi");
+  #[test]
+  fn test_set_env_var() {
+    let config = create_napi_app_options();
+    let config = set_env_var(config, "TEST_KEY".to_string(), "test_value".to_string());
 
-    // Verify enhanced fields
     assert_eq!(
-      config.oauth_client_id,
-      Some("test_client_id".to_string())
+      config.env_vars.get("TEST_KEY"),
+      Some(&"test_value".to_string())
     );
+  }
+
+  #[test]
+  fn test_set_app_setting() {
+    let config = create_napi_app_options();
+    let config = set_app_setting(
+      config,
+      "setting_key".to_string(),
+      "setting_value".to_string(),
+    );
+
     assert_eq!(
-      config.oauth_client_secret,
-      Some("test_client_secret".to_string())
+      config.app_settings.get("setting_key"),
+      Some(&"setting_value".to_string())
     );
+  }
+
+  #[test]
+  fn test_set_system_setting() {
+    let config = create_napi_app_options();
+    let config = set_system_setting(config, "BODHI_VERSION".to_string(), "1.0.0".to_string());
+
+    assert_eq!(
+      config.system_settings.get("BODHI_VERSION"),
+      Some(&"1.0.0".to_string())
+    );
+  }
+
+  #[test]
+  fn test_set_client_credentials() {
+    let config = create_napi_app_options();
+    let config = set_client_credentials(config, "client123".to_string(), "secret456".to_string());
+
+    assert_eq!(config.client_id, Some("client123".to_string()));
+    assert_eq!(config.client_secret, Some("secret456".to_string()));
+  }
+
+  #[test]
+  fn test_set_app_status() {
+    let config = create_napi_app_options();
+    let config = set_app_status(config, "ready".to_string()).unwrap();
+
     assert_eq!(config.app_status, Some("ready".to_string()));
   }
 
   #[test]
-  fn test_app_config_with_enhanced_fields() {
-    let mut env_vars = HashMap::new();
-    env_vars.insert("TEST_VAR".to_string(), "test_value".to_string());
+  fn test_set_app_status_invalid() {
+    let config = create_napi_app_options();
+    let result = set_app_status(config, "invalid".to_string());
 
-    let mut app_settings = HashMap::new();
-    app_settings.insert("BODHI_PORT".to_string(), "9090".to_string());
+    assert!(result.is_err());
+  }
 
-    let config = AppConfig {
-      env_type: "development".to_string(),
-      app_type: "container".to_string(),
-      app_version: "1.0.0-test".to_string(),
-      auth_url: "https://test.example.com".to_string(),
-      auth_realm: "test-realm".to_string(),
-      environment_vars: Some(env_vars),
-      app_settings: Some(app_settings),
-      oauth_client_id: Some("test_client_id".to_string()),
-      oauth_client_secret: Some("test_client_secret".to_string()),
-      app_status: Some("Ready".to_string()),
-    };
+  #[test]
+  fn test_build_app_options_success() {
+    let mut config = create_napi_app_options();
+    config = set_system_setting(
+      config,
+      BODHI_ENV_TYPE.to_string(),
+      "development".to_string(),
+    );
+    config = set_system_setting(config, BODHI_APP_TYPE.to_string(), "native".to_string());
+    config = set_system_setting(config, BODHI_VERSION.to_string(), "1.0.0".to_string());
+    config = set_system_setting(
+      config,
+      BODHI_AUTH_URL.to_string(),
+      "http://localhost:8080".to_string(),
+    );
+    config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhi".to_string());
 
-    // Test conversion to AppOptions
-    let result = AppOptions::try_from(config);
+    let result = build_app_options(config);
     if let Err(e) = &result {
-      println!("Conversion error: {}", e);
+      println!("Error: {}", e);
     }
     assert!(result.is_ok());
+  }
 
-    let options = result.unwrap();
-    assert_eq!(options.env_type, lib_bodhiserver::EnvType::Development);
-    assert_eq!(options.app_type, lib_bodhiserver::AppType::Container);
-    assert_eq!(options.app_version, "1.0.0-test");
-    assert_eq!(options.auth_url, "https://test.example.com");
-    assert_eq!(options.auth_realm, "test-realm");
+  #[test]
+  fn test_constants() {
+    assert_eq!(BODHI_HOME, "BODHI_HOME");
+    assert_eq!(BODHI_HOST, "BODHI_HOST");
+    assert_eq!(BODHI_PORT, "BODHI_PORT");
+    assert_eq!(DEFAULT_HOST, "localhost");
+    assert_eq!(DEFAULT_PORT, 1135);
+  }
+
+  #[test]
+  fn test_try_build_app_options_internal() {
+    let mut config = create_napi_app_options();
+    config = set_env_var(config, "TEST_ENV".to_string(), "test_value".to_string());
+    config = set_app_setting(
+      config,
+      "test_setting".to_string(),
+      "setting_value".to_string(),
+    );
+    config = set_system_setting(
+      config,
+      BODHI_ENV_TYPE.to_string(),
+      "development".to_string(),
+    );
+    config = set_system_setting(config, BODHI_APP_TYPE.to_string(), "native".to_string());
+    config = set_system_setting(config, BODHI_VERSION.to_string(), "1.0.0".to_string());
+    config = set_system_setting(
+      config,
+      BODHI_AUTH_URL.to_string(),
+      "http://localhost:8080".to_string(),
+    );
+    config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhi".to_string());
+    config = set_client_credentials(config, "client123".to_string(), "secret456".to_string());
+    config = set_app_status(config, "ready".to_string()).unwrap();
+
+    let result = try_build_app_options_internal(config);
+    assert!(result.is_ok());
+
+    let app_options = result.unwrap();
+    assert_eq!(app_options.app_version, "1.0.0");
+    assert_eq!(app_options.auth_url, "http://localhost:8080");
+    assert_eq!(app_options.auth_realm, "bodhi");
+    assert!(app_options.app_reg_info.is_some());
+    assert!(app_options.app_status.is_some());
   }
 }

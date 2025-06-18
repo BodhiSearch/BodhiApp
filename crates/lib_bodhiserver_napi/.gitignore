@@ -1,1 +1,4 @@
 bodhiapp-server-bindings*
+**/node_modules
+**/playwright-report/
+**/test-results/
