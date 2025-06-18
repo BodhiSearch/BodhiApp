@@ -36,7 +36,9 @@ test.describe('App Initializer Redirect Tests', () => {
       expect(currentPath).toBe('/ui/login/');
     });
 
-    test('should redirect protected paths to login page when app status is ready', async ({ page }) => {
+    test('should redirect protected paths to login page when app status is ready', async ({
+      page,
+    }) => {
       const protectedPaths = ['/ui/chat', '/ui/models', '/ui/settings'];
 
       for (const path of protectedPaths) {
@@ -51,7 +53,9 @@ test.describe('App Initializer Redirect Tests', () => {
       }
     });
 
-    test('should serve login page when accessing login directly with ready status', async ({ page }) => {
+    test('should serve login page when accessing login directly with ready status', async ({
+      page,
+    }) => {
       await page.goto(`${baseUrl}/ui/login`);
       await waitForSPAReady(page);
 
@@ -100,7 +104,9 @@ test.describe('App Initializer Redirect Tests', () => {
       expect(currentPath).toBe('/ui/setup/');
     });
 
-    test('should redirect protected paths to setup page when app status is setup', async ({ page }) => {
+    test('should redirect protected paths to setup page when app status is setup', async ({
+      page,
+    }) => {
       const protectedPaths = ['/ui/chat', '/ui/models', '/ui/settings', '/ui/login'];
 
       for (const path of protectedPaths) {
@@ -142,7 +148,9 @@ test.describe('App Initializer Redirect Tests', () => {
       }
     });
 
-    test('should redirect root path to setup page when app status is resource-admin', async ({ page }) => {
+    test('should redirect root path to setup page when app status is resource-admin', async ({
+      page,
+    }) => {
       await page.goto(baseUrl);
       await waitForSPAReady(page);
 
@@ -180,4 +188,4 @@ test.describe('App Initializer Redirect Tests', () => {
       expect(currentPath).toBe('/ui/setup/');
     });
   });
-}); 
+});
