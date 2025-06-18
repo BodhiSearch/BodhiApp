@@ -1,4 +1,10 @@
-use axum::{body::Body, extract::State, response::Response};
+use axum::{
+  body::Body,
+  extract::State,
+  http::StatusCode,
+  response::{IntoResponse, Response},
+  Json,
+};
 use objs::{ApiError, AppError, SerdeJsonError};
 use serde_json::json;
 use server_core::RouterState;
@@ -35,4 +41,12 @@ pub async fn dev_secrets_handler(
   )
 }
 
-// TODO: write tests
+pub async fn envs_handler(State(state): State<Arc<dyn RouterState>>) -> Result<Response, ApiError> {
+  let envs = state
+    .app_service()
+    .setting_service()
+    .list()
+    .into_iter()
+    .collect::<Vec<_>>();
+  Ok((StatusCode::OK, Json(envs)).into_response())
+}

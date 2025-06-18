@@ -3,20 +3,23 @@ use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
 use utoipa::ToSchema;
 
-#[derive(Debug, Clone, PartialEq, Default, strum::EnumString, strum::Display)]
+#[derive(Debug, Clone, PartialEq, Default, strum::EnumString, strum::Display, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum EnvType {
   Production,
   #[default]
   Development,
 }
+
 impl EnvType {
   pub fn is_production(&self) -> bool {
     self == &EnvType::Production
   }
 }
 
-#[derive(Debug, Clone, PartialEq, strum::EnumString, strum::Display)]
+#[derive(Debug, Clone, PartialEq, strum::EnumString, strum::Display, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum AppType {
   Native,

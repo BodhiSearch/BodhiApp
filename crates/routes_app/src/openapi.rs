@@ -47,6 +47,7 @@ make_ui_endpoint!(ENDPOINT_SETTINGS, "settings");
 
 // dev-only debugging info endpoint
 pub const ENDPOINT_DEV_SECRETS: &str = "/dev/secrets";
+pub const ENDPOINT_DEV_ENVS: &str = "/dev/envs";
 
 /// API documentation configuration
 #[derive(OpenApi)]
