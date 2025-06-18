@@ -22,8 +22,8 @@ fn _main() -> anyhow::Result<()> {
   validate_frontend_assets(&bodhi_dir)?;
 
   // Set rerun conditions
-  println!("cargo:rerun-if-changed=../bodhi/src");
-  println!("cargo:rerun-if-changed=../bodhi/package.json");
+  // println!("cargo:rerun-if-changed=../bodhi/src");
+  // println!("cargo:rerun-if-changed=../bodhi/package.json");
   println!("cargo:rerun-if-changed=../bodhi/next.config.js");
 
   Ok(())

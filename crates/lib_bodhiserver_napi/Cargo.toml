@@ -9,9 +9,16 @@ crate-type = ["cdylib"]
 [dependencies]
 lib_bodhiserver = { workspace = true }
 
+dirs = { workspace = true }
+log = { workspace = true }
 napi = { workspace = true, features = ["async", "serde-json"] }
 napi-derive = { workspace = true }
-
+rand = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 
 [build-dependencies]
 napi-build = { workspace = true }
@@ -21,9 +28,9 @@ objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 lib_bodhiserver = { workspace = true, features = ["test-utils"] }
 
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tempfile = { workspace = true }
 rstest = { workspace = true }
+tempfile = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [features]
 test-utils = []
