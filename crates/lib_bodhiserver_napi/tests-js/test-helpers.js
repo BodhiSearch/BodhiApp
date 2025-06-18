@@ -103,6 +103,10 @@ function createFullTestConfig(bindings, options = {}) {
     logLevel = 'info',
     logStdout = true,
     envVars = {},
+    authUrl = 'http://localhost:8080',
+    authRealm = 'bodhi',
+    clientId = null,
+    clientSecret = null,
   } = options;
 
   let config = bindings.createNapiAppOptions();
@@ -124,8 +128,13 @@ function createFullTestConfig(bindings, options = {}) {
   config = bindings.setSystemSetting(config, bindings.BODHI_ENV_TYPE, 'development');
   config = bindings.setSystemSetting(config, bindings.BODHI_APP_TYPE, 'container');
   config = bindings.setSystemSetting(config, bindings.BODHI_VERSION, '1.0.0-test');
-  config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_URL, 'http://localhost:8080');
-  config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_REALM, 'bodhi');
+  config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_URL, authUrl);
+  config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_REALM, authRealm);
+
+  // Set client credentials if provided
+  if (clientId && clientSecret) {
+    config = bindings.setClientCredentials(config, clientId, clientSecret);
+  }
 
   return config;
 }
