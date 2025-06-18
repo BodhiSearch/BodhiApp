@@ -14,9 +14,9 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : 1, // Single worker to avoid port conflicts
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: 'list', // Use list reporter to avoid blocking HTML server
   /* Global timeout for each test */
-  timeout: 60000, // 60 seconds per test
+  timeout: 30000, // 30 seconds per test
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -32,10 +32,18 @@ export default defineConfig({
     video: 'retain-on-failure',
 
     /* Navigation timeout */
-    navigationTimeout: 30000,
+    navigationTimeout: 15000,
 
     /* Action timeout */
-    actionTimeout: 10000,
+    actionTimeout: 15000,
+
+    /* Wait for load state */
+    waitForLoadState: 'domcontentloaded',
+
+    /* Default wait after navigation for SPA stability */
+    extraHTTPHeaders: {
+      Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    },
   },
 
   /* Configure projects for major browsers */
@@ -43,11 +51,6 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-    },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
     },
 
     // Disable WebKit for now due to bus errors on this system

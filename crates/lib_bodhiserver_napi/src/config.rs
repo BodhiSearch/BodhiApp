@@ -1,4 +1,4 @@
-use lib_bodhiserver::{AppOptions, AppOptionsBuilder, AppOptionsError};
+use lib_bodhiserver::{AppOptionsBuilder, AppOptionsError};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -74,7 +74,6 @@ pub fn set_client_credentials(
 /// Set app status
 #[napi]
 pub fn set_app_status(mut config: NapiAppOptions, status: String) -> napi::Result<NapiAppOptions> {
-  // Validate the status string by trying to parse it
   use lib_bodhiserver::services::AppStatus;
   match status.parse::<AppStatus>() {
     Ok(_) => {
@@ -91,7 +90,7 @@ pub fn set_app_status(mut config: NapiAppOptions, status: String) -> napi::Resul
 /// Build AppOptions from NapiAppOptions
 #[napi]
 pub fn build_app_options(config: NapiAppOptions) -> napi::Result<()> {
-  match try_build_app_options_internal(config) {
+  match try_build_app_options_internal(config).map(|builder| builder.build()) {
     Ok(_) => Ok(()),
     Err(e) => Err(napi::Error::new(
       napi::Status::GenericFailure,
@@ -103,8 +102,8 @@ pub fn build_app_options(config: NapiAppOptions) -> napi::Result<()> {
 /// Internal function to build AppOptions (not exposed to NAPI)
 pub fn try_build_app_options_internal(
   config: NapiAppOptions,
-) -> Result<AppOptions, AppOptionsError> {
-  let mut builder = AppOptionsBuilder::new();
+) -> Result<AppOptionsBuilder, AppOptionsError> {
+  let mut builder = AppOptionsBuilder::default();
 
   // Set environment variables
   for (key, value) in config.env_vars {
@@ -134,8 +133,7 @@ pub fn try_build_app_options_internal(
     })?;
     builder = builder.set_app_status(status);
   }
-
-  builder.build()
+  Ok(builder)
 }
 
 // Export constants for safe configuration
@@ -307,7 +305,7 @@ mod tests {
   }
 
   #[test]
-  fn test_try_build_app_options_internal() {
+  fn test_try_build_app_options_internal() -> anyhow::Result<()> {
     let mut config = create_napi_app_options();
     config = set_env_var(config, "TEST_ENV".to_string(), "test_value".to_string());
     config = set_app_setting(
@@ -331,7 +329,7 @@ mod tests {
     config = set_client_credentials(config, "client123".to_string(), "secret456".to_string());
     config = set_app_status(config, "ready".to_string()).unwrap();
 
-    let result = try_build_app_options_internal(config);
+    let result = try_build_app_options_internal(config)?.build();
     assert!(result.is_ok());
 
     let app_options = result.unwrap();
@@ -340,5 +338,6 @@ mod tests {
     assert_eq!(app_options.auth_realm, "bodhi");
     assert!(app_options.app_reg_info.is_some());
     assert!(app_options.app_status.is_some());
+    Ok(())
   }
 }

@@ -28,6 +28,7 @@ objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 lib_bodhiserver = { workspace = true, features = ["test-utils"] }
 
+anyhow = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

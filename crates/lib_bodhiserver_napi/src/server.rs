@@ -1,7 +1,10 @@
-use crate::config::{try_build_app_options_internal, NapiAppOptions};
+use crate::{
+  config::{try_build_app_options_internal, NapiAppOptions},
+  BODHI_HOST, BODHI_PORT,
+};
 use lib_bodhiserver::{
-  build_app_service, setup_app_dirs, ApiError, OpenAIApiError, ServeCommand, ServerShutdownHandle,
-  DEFAULT_HOST, DEFAULT_PORT, EMBEDDED_UI_ASSETS,
+  build_app_service, setup_app_dirs, update_with_option, ApiError, AppService, OpenAIApiError,
+  ServeCommand, ServerShutdownHandle, DEFAULT_HOST, DEFAULT_PORT, EMBEDDED_UI_ASSETS,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -49,7 +52,7 @@ impl BodhiServer {
     self
       .config
       .env_vars
-      .get("BODHI_HOST")
+      .get(BODHI_HOST)
       .cloned()
       .unwrap_or_else(|| DEFAULT_HOST.to_string())
   }
@@ -60,7 +63,7 @@ impl BodhiServer {
     self
       .config
       .env_vars
-      .get("BODHI_PORT")
+      .get(BODHI_PORT)
       .and_then(|port_str| port_str.parse().ok())
       .unwrap_or(DEFAULT_PORT)
   }
@@ -78,9 +81,14 @@ impl BodhiServer {
         ));
       }
     }
-
     // Build app options from the config
-    let app_options = try_build_app_options_internal(self.config.clone()).map_err(|e| {
+    let builder = try_build_app_options_internal(self.config.clone()).map_err(|e| {
+      Error::new(
+        Status::GenericFailure,
+        format!("Failed to build app options: {}", e),
+      )
+    })?;
+    let app_options = builder.build().map_err(|e| {
       Error::new(
         Status::GenericFailure,
         format!("Failed to build app options: {}", e),
@@ -96,7 +104,7 @@ impl BodhiServer {
     })?);
 
     // Build the app service
-    let app_service = Arc::new(
+    let app_service: Arc<dyn AppService> = Arc::new(
       build_app_service(setting_service.clone())
         .await
         .map_err(|e| {
@@ -106,7 +114,8 @@ impl BodhiServer {
           )
         })?,
     );
-
+    update_with_option(&app_service, (&app_options).into())
+      .map_err(|err| Error::new(Status::GenericFailure, err))?;
     // Create and start the server
     let serve_command = ServeCommand::ByParams {
       host: self.host(),
@@ -263,12 +272,7 @@ mod tests {
     let server = BodhiServer::new(config).expect("Failed to create server");
 
     // Test that we can access config values
-    assert!(!server
-      .config()
-      .env_vars
-      .get("BODHI_HOME")
-      .unwrap()
-      .is_empty());
+    assert!(!server.config().env_vars.get(BODHI_HOME).unwrap().is_empty());
     assert_eq!(server.host(), "127.0.0.1");
     assert!(server.port() > 0);
   }
@@ -307,7 +311,7 @@ mod tests {
     let server = BodhiServer::new(config.clone()).expect("Failed to create server");
 
     assert_eq!(
-      server.config().env_vars.get("BODHI_HOME"),
+      server.config().env_vars.get(BODHI_HOME),
       Some(&"/tmp/bodhi".to_string())
     );
     assert_eq!(server.host(), "127.0.0.1");
@@ -319,12 +323,7 @@ mod tests {
     let (config, _temp_dir) = test_config;
     let server = BodhiServer::new(config).expect("Failed to create server");
 
-    assert!(!server
-      .config()
-      .env_vars
-      .get("BODHI_HOME")
-      .unwrap()
-      .is_empty());
+    assert!(!server.config().env_vars.get(BODHI_HOME).unwrap().is_empty());
     assert_eq!(server.host(), "127.0.0.1");
     assert!(server.port() > 0);
   }

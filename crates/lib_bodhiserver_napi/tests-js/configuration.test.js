@@ -6,7 +6,7 @@ import {
   createTestConfig,
   createTestServer,
   createFullTestConfig,
-} from '../src/utils/test-helpers.js';
+} from './test-helpers.js';
 
 describe('Configuration API Tests', () => {
   let bindings;
