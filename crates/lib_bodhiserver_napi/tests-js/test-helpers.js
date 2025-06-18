@@ -2,13 +2,14 @@ import { join, dirname } from 'path';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
+import { expect } from '@playwright/test';
 
 // Get the current directory for ES modules
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Get the path to the NAPI bindings
-const napiBindingsPath = join(__dirname, '..', '..', 'index.js');
+const napiBindingsPath = join(__dirname, '..', 'index.js');
 
 /**
  * Load the NAPI bindings
@@ -46,7 +47,7 @@ function createTestConfig(bindings, options = {}) {
     bodhiHome = createTempDir(),
     host = '127.0.0.1',
     port = randomPort(),
-    execLookupPath = join(__dirname, '..', '..', '..', 'llama_server_proc', 'bin'),
+    execLookupPath = join(__dirname, '..', '..', 'llama_server_proc', 'bin'),
   } = options;
 
   let config = bindings.createNapiAppOptions();
@@ -80,6 +81,7 @@ function createTestServer(bindings, options = {}) {
 
   if (appStatus) {
     config = bindings.setAppStatus(config, appStatus);
+    expect(config.appStatus).toBe(appStatus);
   }
 
   const server = new bindings.BodhiServer(config);
@@ -97,7 +99,7 @@ function createFullTestConfig(bindings, options = {}) {
     bodhiHome = createTempDir(),
     host = '127.0.0.1',
     port = randomPort(),
-    execLookupPath = join(__dirname, '..', '..', '..', 'llama_server_proc', 'bin'),
+    execLookupPath = join(__dirname, '..', '..', 'llama_server_proc', 'bin'),
     logLevel = 'info',
     logStdout = true,
     envVars = {},

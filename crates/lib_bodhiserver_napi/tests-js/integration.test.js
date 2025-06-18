@@ -5,7 +5,7 @@ import {
   createTestServer,
   waitForServer,
   sleep,
-} from '../src/utils/test-helpers.js';
+} from './test-helpers.js';
 
 describe('Integration Tests', () => {
   let bindings;

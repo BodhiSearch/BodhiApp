@@ -4,17 +4,18 @@ import {
   waitForServer,
   sleep,
   createTestServer,
-} from './test-helpers.js';
+} from '../test-helpers.js';
 
 /**
  * Server manager for Playwright tests
  * Handles server lifecycle and provides URL for browser tests
  */
 export class PlaywrightServerManager {
-  constructor() {
+  constructor(serverConfig = {}) {
     this.server = null;
     this.bindings = null;
     this.baseUrl = null;
+    this.serverConfig = serverConfig;
   }
 
   /**
@@ -50,23 +51,30 @@ export class PlaywrightServerManager {
   }
 
   /**
-   * Start a server for testing
-   * @param {Object} options - Server configuration options
+   * Start a server for testing using constructor configuration
    * @returns {Promise<string>} The server URL
    */
-  async startServer(options = {}) {
+  async startServer() {
     if (!this.bindings) {
       await this.initialize();
     }
 
-    // Create server with temp directory and random port
-    const host = options.host || '127.0.0.1';
-    const port = options.port || randomPort();
+    // Use constructor configuration
+    const config = this.serverConfig;
+    const host = config.host || '127.0.0.1';
+    const port = config.port || randomPort();
 
-    this.server = createTestServer(this.bindings, { host, port });
+    // Create server using createTestServer from test-helpers which handles appStatus
+    this.server = createTestServer(this.bindings, {
+      host,
+      port,
+      ...(config.appStatus && { appStatus: config.appStatus }),
+    });
 
     try {
-      console.log(`Starting server on ${host}:${port}...`);
+      console.log(
+        `Starting server on ${host}:${port}${config.appStatus ? ` with appStatus: ${config.appStatus}` : ''}...`
+      );
 
       // Start the server
       await this.server.start();
@@ -150,10 +158,11 @@ export class PlaywrightServerManager {
 
 /**
  * Create a server manager for Playwright tests
+ * @param {Object} serverConfig - Server configuration options
  * @returns {PlaywrightServerManager} New server manager instance
  */
-function createServerManager() {
-  return new PlaywrightServerManager();
+function createServerManager(serverConfig = {}) {
+  return new PlaywrightServerManager(serverConfig);
 }
 
 /**

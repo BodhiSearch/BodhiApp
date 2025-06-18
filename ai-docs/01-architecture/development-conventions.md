@@ -363,6 +363,57 @@ async fn test_name(
 }
 ```
 
+### Testing Best Practices
+
+#### Core Principles
+- **No console.log statements** - Tests should be silent and rely on assertions
+- **No if-else loops** - Tests should be deterministic with clear expectations
+- **No try-catch blocks** - Let test frameworks handle errors naturally
+- **No fuzzy testing** - Tests should have definitive, precise assertions
+- **Definitive assertions** - Each test should have clear pass/fail criteria
+
+#### SPA Testing with Playwright
+For Single Page Applications, use proper waiting strategies:
+
+```javascript
+/**
+ * Wait for SPA to be fully loaded and rendered
+ */
+async function waitForSPAReady(page) {
+  // Wait for DOM content to be loaded
+  await page.waitForLoadState('domcontentloaded');
+  
+  // Wait for body to have substantial content (SPA has rendered)
+  await page.waitForFunction(() => {
+    const body = document.body;
+    return body && body.innerHTML.length > 1000;
+  }, { timeout: 10000 });
+  
+  // Additional 3s wait for SPA to stabilize
+  await page.waitForTimeout(3000);
+}
+```
+
+**SPA Testing Guidelines:**
+- Use `page.waitForLoadState('domcontentloaded')` for initial load
+- Use `page.waitForFunction()` for dynamic content to appear
+- Use `page.waitForTimeout(3000)` as fallback for SPA stabilization
+- **Avoid `networkidle`** - doesn't work reliably with SPAs
+- Always wait for page to be ready before making assertions
+
+#### Playwright Configuration
+```javascript
+// playwright.config.js
+export default defineConfig({
+  timeout: 30000, // 30 seconds per test
+  use: {
+    navigationTimeout: 15000,
+    actionTimeout: 15000,
+    waitForLoadState: 'domcontentloaded',
+  },
+});
+```
+
 ## Accessibility Guidelines
 
 ### Semantic HTML

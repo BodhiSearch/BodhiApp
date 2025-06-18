@@ -3213,6 +3213,7 @@ dependencies = [
  "routes_app",
  "routes_oai",
  "rstest",
+ "serde",
  "serde_json",
  "serde_yaml",
  "server_app",
@@ -3228,6 +3229,7 @@ dependencies = [
 name = "lib_bodhiserver_napi"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "dirs 6.0.0",
  "lib_bodhiserver",
  "log",

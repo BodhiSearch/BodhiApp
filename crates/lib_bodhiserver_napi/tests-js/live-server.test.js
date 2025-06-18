@@ -5,7 +5,7 @@ import {
   createTestServer,
   waitForServer,
   sleep,
-} from '../src/utils/test-helpers.js';
+} from './test-helpers.js';
 
 // These tests require the actual llama-server binary to be available
 // They will be skipped if the server cannot be started
