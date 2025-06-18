@@ -16,7 +16,7 @@ fn _main() -> anyhow::Result<()> {
   let bodhi_dir = manifest_dir.join("../bodhi");
 
   // Build frontend
-  build_frontend(&bodhi_dir)?;
+  // build_frontend(&bodhi_dir)?;
 
   // Validate assets exist
   validate_frontend_assets(&bodhi_dir)?;
@@ -24,11 +24,12 @@ fn _main() -> anyhow::Result<()> {
   // Set rerun conditions
   // println!("cargo:rerun-if-changed=../bodhi/src");
   // println!("cargo:rerun-if-changed=../bodhi/package.json");
-  println!("cargo:rerun-if-changed=../bodhi/next.config.js");
+  // println!("cargo:rerun-if-changed=../bodhi/next.config.js");
 
   Ok(())
 }
 
+#[allow(unused)]
 fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
   println!("cargo:warning=Building frontend in {:?}", bodhi_dir);
 
