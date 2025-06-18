@@ -49,6 +49,7 @@ impl From<&AppOptions> for AppStateOption {
 }
 
 /// Custom builder for AppOptions that handles internal state management
+#[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct AppOptionsBuilder {
   // Internal storage for environment variables
   environment_vars: HashMap<String, String>,
@@ -67,21 +68,6 @@ pub struct AppOptionsBuilder {
 }
 
 impl AppOptionsBuilder {
-  /// Creates a new builder instance
-  pub fn new() -> Self {
-    Self {
-      environment_vars: HashMap::new(),
-      env_type: None,
-      app_type: None,
-      app_version: None,
-      auth_url: None,
-      auth_realm: None,
-      app_settings: HashMap::new(),
-      app_reg_info: None,
-      app_status: None,
-    }
-  }
-
   /// Sets an environment variable
   pub fn set_env(mut self, key: &str, value: &str) -> Self {
     self
@@ -108,9 +94,9 @@ impl AppOptionsBuilder {
         let app_type = value.parse::<AppType>()?;
         Ok(self.app_type(app_type))
       }
-      BODHI_VERSION => Ok(self.app_version(&value.to_string())),
-      BODHI_AUTH_URL => Ok(self.auth_url(&value.to_string())),
-      BODHI_AUTH_REALM => Ok(self.auth_realm(&value.to_string())),
+      BODHI_VERSION => Ok(self.app_version(value)),
+      BODHI_AUTH_URL => Ok(self.auth_url(value)),
+      BODHI_AUTH_REALM => Ok(self.auth_realm(value)),
       key => Err(AppOptionsError::UnknownSystemSetting(key.to_string())),
     }
   }

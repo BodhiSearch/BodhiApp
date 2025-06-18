@@ -5,7 +5,7 @@ use services::BODHI_HOME;
 impl AppOptionsBuilder {
   /// Creates a development configuration builder for testing
   pub fn development() -> Self {
-    Self::new()
+    Self::default()
       .env_type(EnvType::Development)
       .app_type(AppType::Container)
       .app_version(env!("CARGO_PKG_VERSION"))
@@ -16,10 +16,5 @@ impl AppOptionsBuilder {
   /// Creates a builder with a specific bodhi home directory for testing
   pub fn with_bodhi_home(bodhi_home: &str) -> Self {
     Self::development().set_env(BODHI_HOME, bodhi_home)
-  }
-
-  /// Creates a default builder (alias for new) for testing
-  pub fn default() -> Self {
-    Self::new()
   }
 }
