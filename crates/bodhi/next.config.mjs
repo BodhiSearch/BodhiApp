@@ -25,6 +25,7 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   transpilePackages: ['geist'],
+  productionBrowserSourceMaps: true,
   images: {
     unoptimized: true,
   },
