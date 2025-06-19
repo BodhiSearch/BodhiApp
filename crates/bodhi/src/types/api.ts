@@ -18,3 +18,7 @@ export interface PullModelRequest {
   repo: string;
   filename: string;
 }
+
+export interface RedirectResponse {
+  location: string;
+}

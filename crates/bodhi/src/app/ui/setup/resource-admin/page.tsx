@@ -7,8 +7,10 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { motion } from 'framer-motion';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
+import { handleSmartRedirect } from '@/lib/utils';
 import { useState } from 'react';
 import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 // Animation variants
 const containerVariants = {
@@ -31,21 +33,38 @@ const itemVariants = {
 
 function ResourceAdminContent() {
   const [error, setError] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
+  const router = useRouter();
 
-  const oauthInitiate = useOAuthInitiate({
+  const { mutate: initiateOAuth, isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
+      // Clear any previous errors and set redirecting state
+      setError(null);
+      setRedirecting(true);
+
       // Handle redirect based on backend response
-      // 303 response: Location header (OAuth URL or already authenticated)
-      if (response.headers?.location) {
-        redirect(response.headers.location);
-      } else {
+      const location = response.data?.location;
+      if (!location) {
         setError('Auth URL not found in response. Please try again.');
+        setRedirecting(false);
+        return;
       }
+
+      // Handle redirect using smart URL detection
+      handleSmartRedirect(location, router);
     },
     onError: (message) => {
       setError(message);
+      setRedirecting(false);
     },
   });
+
+  const handleOAuthInitiate = () => {
+    setError(null); // Clear any previous errors
+    initiateOAuth();
+  };
+
+  const isButtonDisabled = isLoading || redirecting;
 
   return (
     <main className="min-h-screen bg-background p-4 md:p-8" data-testid="resource-admin-page">
@@ -83,13 +102,8 @@ function ResourceAdminContent() {
               </div>
             </CardContent>
             <CardFooter className="flex flex-col gap-4">
-              <Button
-                className="w-full"
-                size="lg"
-                onClick={() => oauthInitiate.mutate()}
-                disabled={oauthInitiate.isLoading}
-              >
-                {oauthInitiate.isLoading ? 'Redirecting...' : 'Continue with Login →'}
+              <Button className="w-full" size="lg" onClick={handleOAuthInitiate} disabled={isButtonDisabled}>
+                {isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Continue with Login →'}
               </Button>
               <p className="text-sm text-muted-foreground text-center">Login with a valid email address to continue</p>
             </CardFooter>

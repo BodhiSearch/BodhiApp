@@ -5,10 +5,10 @@ use axum::{
   body::Body,
   extract::State,
   http::{
-    header::{HeaderMap, CONTENT_LENGTH, LOCATION},
+    header::{HeaderMap, CACHE_CONTROL, CONTENT_LENGTH, LOCATION},
     StatusCode,
   },
-  response::{IntoResponse, Response},
+  response::Response,
   Json,
 };
 use base64::{engine::general_purpose, Engine as _};
@@ -19,10 +19,13 @@ use serde::{Deserialize, Serialize};
 pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
 pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
 
-#[derive(Debug, Serialize, Deserialize, utoipa::ToSchema)]
-pub struct AuthInitiateResponse {
-  /// OAuth2 authorization URL
-  pub auth_url: String,
+#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[schema(example = json!({
+    "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
+}))]
+pub struct RedirectResponse {
+  /// The URL to redirect to for OAuth authentication
+  pub location: String,
 }
 
 use server_core::RouterState;
@@ -32,7 +35,7 @@ use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use utoipa::ToSchema;
 
-/// Start OAuth flow and return authorization URL
+/// Start OAuth flow - returns location for OAuth provider or home
 #[utoipa::path(
     post,
     path = ENDPOINT_AUTH_INITIATE,
@@ -40,16 +43,8 @@ use utoipa::ToSchema;
     operation_id = "initiateOAuthFlow",
     request_body = (),
     responses(
-        (status = 303, description = "User not authenticated, redirect to OAuth authorization URL",
-         headers(
-             ("Location" = String, description = "OAuth authorization URL")
-         )
-        ),
-        (status = 303, description = "User already authenticated, redirect to home",
-         headers(
-             ("Location" = String, description = "Frontend home page URL")
-         )
-        ),
+        (status = 201, description = "User not authenticated, return OAuth authorization URL", body = RedirectResponse),
+        (status = 200, description = "User already authenticated, return home page URL", body = RedirectResponse),
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
 )]
@@ -57,78 +52,59 @@ pub async fn auth_initiate_handler(
   headers: HeaderMap,
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Response, ApiError> {
+) -> Result<impl axum::response::IntoResponse, ApiError> {
   let app_service = state.app_service();
   let setting_service = app_service.setting_service();
 
-  // Check if user is already authenticated
-  match headers.get(KEY_RESOURCE_TOKEN) {
-    Some(_) => {
-      // User is already authenticated, redirect to home
-      let ui_home = format!(
-        "{}{}",
-        setting_service.frontend_url(),
-        setting_service.frontend_default_path()
-      );
-      Ok(
-        Response::builder()
-          .status(StatusCode::SEE_OTHER)
-          .header(LOCATION, ui_home)
-          .header(CONTENT_LENGTH, "0")
-          .body(Body::empty())
-          .unwrap()
-          .into_response(),
-      )
-    }
-    None => {
-      // User not authenticated, redirect to auth URL with 303 status
-      let secret_service = app_service.secret_service();
-      let app_reg_info = secret_service
-        .app_reg_info()?
-        .ok_or(LoginError::AppRegInfoNotFound)?;
-      let callback_url = setting_service.login_callback_url();
-      let client_id = app_reg_info.client_id;
-
-      // Generate 8-character random ID for secure state
-      let session_random_id = generate_random_string(8);
-      session
-        .insert("session_random_id", &session_random_id)
-        .await
-        .map_err(LoginError::from)?;
-
-      // Generate PKCE parameters
-      let (code_verifier, code_challenge) = generate_pkce();
-      session
-        .insert("pkce_verifier", &code_verifier)
-        .await
-        .map_err(LoginError::from)?;
-
-      // Define scope array and normalize it for consistent state generation
-      let scope_array = ["openid", "email", "profile", "roles"];
-      let scope_normalized = normalize_scope(&scope_array);
-
-      let state = generate_secure_state(&scope_normalized, &session_random_id);
-      session
-        .insert("oauth_state", &state)
-        .await
-        .map_err(LoginError::from)?;
-
-      let login_url = format!(
-        "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope={}",
-        setting_service.login_url(), client_id, callback_url, state, code_challenge, scope_normalized
-      );
-
-      Ok(
-        Response::builder()
-          .status(StatusCode::SEE_OTHER)
-          .header(LOCATION, login_url)
-          .header(CONTENT_LENGTH, "0")
-          .body(Body::empty())
-          .unwrap()
-          .into_response(),
-      )
-    }
+  // Early return if user is already authenticated
+  if headers.get(KEY_RESOURCE_TOKEN).is_some() {
+    let ui_home = format!(
+      "{}{}",
+      setting_service.frontend_url(),
+      setting_service.frontend_default_path()
+    );
+    return Ok((
+      StatusCode::OK,
+      [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],
+      Json(RedirectResponse { location: ui_home }),
+    ));
   }
+
+  // User not authenticated, generate auth URL
+  let secret_service = app_service.secret_service();
+  let app_reg_info = secret_service
+    .app_reg_info()?
+    .ok_or(LoginError::AppRegInfoNotFound)?;
+  let callback_url = setting_service.login_callback_url();
+  let client_id = app_reg_info.client_id;
+
+  // Generate simple random state for CSRF protection
+  let state = generate_random_string(32);
+  session
+    .insert("oauth_state", &state)
+    .await
+    .map_err(LoginError::from)?;
+
+  // Generate PKCE parameters
+  let (code_verifier, code_challenge) = generate_pkce();
+  session
+    .insert("pkce_verifier", &code_verifier)
+    .await
+    .map_err(LoginError::from)?;
+
+  let scope = ["openid", "email", "profile", "roles"].join("%20");
+  let login_url = format!(
+    "{}?response_type=code&client_id={}&redirect_uri={}&state={}&code_challenge={}&code_challenge_method=S256&scope={}",
+    setting_service.login_url(), client_id, callback_url, state, code_challenge, scope
+  );
+
+  Ok((
+    StatusCode::CREATED,
+    [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],
+    Json(RedirectResponse {
+      location: login_url,
+    }),
+  ))
 }
 
 /// Complete OAuth flow with authorization code
@@ -139,11 +115,7 @@ pub async fn auth_initiate_handler(
     operation_id = "completeOAuthFlow",
     request_body = AuthCallbackRequest,
     responses(
-        (status = 303, description = "OAuth flow completed successfully, redirect to app",
-         headers(
-             ("Location" = String, description = "Frontend app page URL")
-         )
-        ),
+        (status = 200, description = "OAuth flow completed successfully, return redirect URL", body = RedirectResponse),
         (status = 422, description = "OAuth error or invalid request", body = OpenAIApiError),
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
@@ -152,7 +124,7 @@ pub async fn auth_callback_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
   Json(request): Json<AuthCallbackRequest>,
-) -> Result<Response, ApiError> {
+) -> Result<Json<RedirectResponse>, ApiError> {
   let app_service = state.app_service();
   let setting_service = app_service.setting_service();
   let secret_service = app_service.secret_service();
@@ -216,16 +188,9 @@ pub async fn auth_callback_handler(
     )
     .await?;
 
-  // Get stored session data for later validation
-  let stored_session_random_id = session
-    .get::<String>("session_random_id")
-    .await
-    .map_err(LoginError::from)?
-    .ok_or(LoginError::SessionInfoNotFound)?;
-
-  // Clean up OAuth session data and PKCE parameters
+  // Clean up OAuth state and PKCE parameters
   session
-    .remove::<String>("session_random_id")
+    .remove::<String>("oauth_state")
     .await
     .map_err(LoginError::from)?;
   session
@@ -237,19 +202,9 @@ pub async fn auth_callback_handler(
   let mut access_token = token_response.0.secret().to_string();
   let mut refresh_token = token_response.1.secret().to_string();
 
-  // Extract claims from JWT token to get the actual scope for state validation
+  // Extract claims from JWT token to get user email
   let claims = extract_claims::<Claims>(&access_token)?;
   let email = claims.email.clone();
-
-  // Validate secure state parameter using scope from JWT token
-  let jwt_scope = &claims.scope;
-  let scope_parts: Vec<&str> = jwt_scope.split_whitespace().collect();
-  let normalized_scope = normalize_scope(&scope_parts);
-
-  // Validate the state parameter using the actual scope from the JWT token
-  if !validate_secure_state(received_state, &normalized_scope, &stored_session_random_id) {
-    return Err(LoginError::StateDigestMismatch)?;
-  }
 
   if status_resource_admin {
     auth_service
@@ -289,49 +244,16 @@ pub async fn auth_callback_handler(
   };
 
   // Return successful redirect
-  Ok(
-    Response::builder()
-      .status(StatusCode::SEE_OTHER)
-      .header(LOCATION, ui_setup_resume)
-      .header(CONTENT_LENGTH, "0")
-      .body(Body::empty())
-      .unwrap()
-      .into_response(),
-  )
+  Ok(Json(RedirectResponse {
+    location: ui_setup_resume,
+  }))
 }
+
 pub fn generate_pkce() -> (String, String) {
   let code_verifier = generate_random_string(43);
   let code_challenge =
     general_purpose::URL_SAFE_NO_PAD.encode(Sha256::digest(code_verifier.as_bytes()));
   (code_verifier, code_challenge)
-}
-
-/// Generate a secure state parameter using cryptographic digest
-/// Format: SHA256(scope + session_id_initials + session_random_id)
-/// Scope should be sorted and joined with %20
-fn generate_secure_state(scope: &str, session_random_id: &str) -> String {
-  let mut hasher = Sha256::new();
-  hasher.update(scope.as_bytes());
-  hasher.update(session_random_id.as_bytes());
-  let digest = hasher.finalize();
-  general_purpose::URL_SAFE_NO_PAD.encode(digest)
-}
-
-/// Sort and join scope array with %20 for consistent state generation
-fn normalize_scope(scopes: &[&str]) -> String {
-  let mut sorted_scopes = scopes.to_vec();
-  sorted_scopes.sort();
-  sorted_scopes.join("%20")
-}
-
-/// Validate the state parameter against stored session values
-fn validate_secure_state(
-  received_state: &str,
-  scope: &str,
-  stored_session_random_id: &str,
-) -> bool {
-  let expected_state = generate_secure_state(scope, stored_session_random_id);
-  received_state == expected_state
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -463,11 +385,11 @@ pub struct AuthCallbackRequest {
 mod tests {
   use crate::{
     auth_callback_handler, auth_initiate_handler, generate_pkce, logout_handler,
-    routes_login::{generate_secure_state, normalize_scope},
-    user_info_handler, UserInfo,
+    user_info_handler, UserInfo, RedirectResponse,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::{inject_session_auth_info, KEY_RESOURCE_TOKEN};
+  use auth_middleware::{inject_session_auth_info, generate_random_string, KEY_RESOURCE_TOKEN};
+  use axum::body::to_bytes;
   use axum::{
     body::Body,
     http::{status::StatusCode, Request},
@@ -558,11 +480,12 @@ mod tests {
       .await?;
 
     let status = resp.status();
-    assert_eq!(status, StatusCode::SEE_OTHER);
-    let location = resp.headers().get("location").unwrap().to_str()?;
-    assert!(location.starts_with(login_url));
+    assert_eq!(status, StatusCode::CREATED);
+    let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
+    let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
+    assert!(body.location.starts_with(login_url));
 
-    let url = Url::parse(location)?;
+    let url = Url::parse(&body.location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
     assert_eq!("code", query_params.get("response_type").unwrap());
     assert_eq!("test_client_id", query_params.get("client_id").unwrap());
@@ -571,7 +494,7 @@ mod tests {
     assert!(query_params.contains_key("code_challenge"));
     assert_eq!("S256", query_params.get("code_challenge_method").unwrap());
     assert_eq!(
-      "email openid profile roles",
+      "openid email profile roles",
       query_params.get("scope").unwrap()
     );
 
@@ -588,7 +511,7 @@ mod tests {
     test_auth_initiate_handler_with_token(
       temp_bodhi_home,
       token,
-      StatusCode::SEE_OTHER,
+      StatusCode::OK,
       Some("http://frontend.localhost:3000/ui/chat"),
       None,
     )
@@ -605,7 +528,7 @@ mod tests {
     test_auth_initiate_handler_with_token(
       temp_bodhi_home,
       token,
-      StatusCode::SEE_OTHER,
+      StatusCode::CREATED,
       Some("http://id.localhost/realms/test-realm/protocol/openid-connect/auth"),
       None,
     )
@@ -653,21 +576,13 @@ mod tests {
       )
       .await?;
     assert_eq!(resp.status(), status);
+    let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
+    let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
     if let Some(location) = location {
-      assert!(resp
-        .headers()
-        .get("location")
-        .unwrap()
-        .to_str()?
-        .starts_with(location));
+      assert!(body.location.starts_with(location));
     }
     if let Some(auth_url) = auth_url {
-      assert!(resp
-        .headers()
-        .get("location")
-        .unwrap()
-        .to_str()?
-        .starts_with(auth_url));
+      assert!(body.location.starts_with(auth_url));
     }
     Ok(())
   }
@@ -769,9 +684,9 @@ mod tests {
 
     // Perform login request
     let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::SEE_OTHER);
-    let location = login_resp.headers().get("location").unwrap().to_str()?;
-    let url = Url::parse(location)?;
+    login_resp.assert_status(StatusCode::CREATED);
+    let body: RedirectResponse = login_resp.json();
+    let url = Url::parse(&body.location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
     // Extract state and code_challenge from the login response
@@ -785,10 +700,11 @@ mod tests {
         "state": state,
       }})
       .await;
-    resp.assert_status(StatusCode::SEE_OTHER);
+    resp.assert_status(StatusCode::OK);
+    let callback_body: RedirectResponse = resp.json();
     assert_eq!(
       "http://frontend.localhost:3000/ui/chat",
-      resp.headers().get("location").unwrap().to_str()?,
+      callback_body.location
     );
     let session_id = resp.cookie("bodhiapp_session_id");
     let access_token = session_service
@@ -892,9 +808,9 @@ mod tests {
     client.save_cookies();
 
     let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::SEE_OTHER);
-    let location = login_resp.headers().get("location").unwrap().to_str()?;
-    let url = Url::parse(location)?;
+    login_resp.assert_status(StatusCode::CREATED);
+    let body: RedirectResponse = login_resp.json();
+    let url = Url::parse(&body.location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
     let state = format!("{}{}", state_prefix, query_params.get("state").unwrap());
     let code = if code_present {
@@ -927,98 +843,7 @@ mod tests {
     Ok(())
   }
 
-  #[rstest]
-  #[tokio::test]
-  async fn test_auth_callback_handler_secure_state_fails_if_token_scope_does_not_match(
-    temp_bodhi_home: TempDir,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
-    let claims = json! {{
-      "exp": (Utc::now() + chrono::Duration::hours(1)).timestamp(),
-      "iat": Utc::now().timestamp(),
-      "jti": Uuid::new_v4().to_string(),
-      "iss": "test_issuer".to_string(),
-      "sub": Uuid::new_v4().to_string(),
-      "typ": "Bearer",
-      "azp": "test_client_id",
-      "session_state": Uuid::new_v4().to_string(),
-      "scope": "email openid profile roles scope_admin",
-      "sid": Uuid::new_v4().to_string(),
-      "email_verified": true,
-      "name": "Test User",
-      "preferred_username": "testuser@email.com",
-      "given_name": "Test",
-      "family_name": "User",
-      "email": "testuser@email.com"
-    }};
 
-    let dbfile = temp_bodhi_home.path().join("test.db");
-    let secret_service = SecretServiceStub::new()
-      .with_app_reg_info(&AppRegInfo {
-        client_id: "test_client_id".to_string(),
-        client_secret: "test_client_secret".to_string(),
-      })
-      .with_app_status(&AppStatus::Ready);
-    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
-    let mut mock_auth_service = MockAuthService::default();
-    let (token, _) = build_token(claims).unwrap();
-    mock_auth_service
-      .expect_exchange_auth_code()
-      .times(1)
-      .return_once(move |_, _, _, _, _| {
-        Ok((
-          AccessToken::new(token.clone()),
-          RefreshToken::new("test_refresh_token".to_string()),
-        ))
-      });
-    let app_service: AppServiceStub = AppServiceStubBuilder::default()
-      .auth_service(Arc::new(mock_auth_service))
-      .secret_service(Arc::new(secret_service))
-      .with_sqlite_session_service(session_service.clone())
-      .build()?;
-    let app_service = Arc::new(app_service);
-    let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
-      app_service.clone(),
-    ));
-    let router = Router::new()
-      .route("/auth/initiate", post(auth_initiate_handler))
-      .route("/auth/callback", post(auth_callback_handler))
-      .layer(app_service.session_service().session_layer())
-      .with_state(state);
-
-    let mut client = TestServer::new(router)?;
-    client.save_cookies();
-
-    // Perform login request to set up session
-    let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::SEE_OTHER);
-    let location = login_resp.headers().get("location").unwrap().to_str()?;
-    let url = Url::parse(location)?;
-    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
-    let valid_state = query_params.get("state").unwrap();
-
-    // Test with valid state - should proceed to token exchange and then fail validation
-    // because the JWT token will have a different scope than what was used to generate the state
-    let resp = client
-      .post("/auth/callback")
-      .json(&json! {{
-        "code": "test_code",
-        "state": valid_state,
-      }})
-      .await;
-    // This should fail during state validation after token exchange
-    // because the mock JWT token scope won't match the scope used to generate the state
-    resp.assert_status(StatusCode::BAD_REQUEST);
-    let error = resp.json::<Value>();
-    assert_eq!("login_error-state_digest_mismatch", error["error"]["code"]);
-    assert!(error["error"]["message"]
-      .as_str()
-      .unwrap()
-      .contains("state parameter in callback does not match"));
-
-    Ok(())
-  }
 
   #[rstest]
   #[tokio::test]
@@ -1064,9 +889,9 @@ mod tests {
 
     // Simulate login to set up session
     let login_resp = client.post("/auth/initiate").await;
-    login_resp.assert_status(StatusCode::SEE_OTHER);
-    let location = login_resp.headers().get("location").unwrap().to_str()?;
-    let url = Url::parse(location)?;
+    login_resp.assert_status(StatusCode::CREATED);
+    let body: RedirectResponse = login_resp.json();
+    let url = Url::parse(&body.location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
     let state = query_params.get("state").unwrap().to_string();
     let code = "test_code".to_string();
@@ -1337,10 +1162,8 @@ mod tests {
     let (token, _) = token;
     let mut server = Server::new_async().await;
     let keycloak_url = server.url();
-    let scope = normalize_scope(&["openid", "email", "profile", "roles"]);
     let id = Id::default();
-    let random_id: String = id.to_string().chars().take(8).collect();
-    let state = generate_secure_state(&scope, &random_id);
+    let state = generate_random_string(32); // Use simple random state like the actual implementation
     let app_service =
       setup_app_service_resource_admin(&temp_bodhi_home, &id, &keycloak_url, &state).await?;
     setup_keycloak_mocks_resource_admin(&mut server, &token).await;
@@ -1355,7 +1178,6 @@ mod tests {
     keycloak_url: &str,
     state: &str,
   ) -> anyhow::Result<Arc<AppServiceStub>> {
-    let random_string: String = id.to_string().chars().into_iter().take(8).collect();
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let mut record = Record {
@@ -1363,7 +1185,6 @@ mod tests {
       data: maplit::hashmap! {
         "oauth_state".to_string() => Value::String(state.to_string()),
         "pkce_verifier".to_string() => Value::String("test_pkce_verifier".to_string()),
-        "session_random_id".to_string()  => Value::String(random_string)
       },
       expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
     };
@@ -1506,12 +1327,13 @@ mod tests {
     response: Response,
     app_service: Arc<AppServiceStub>,
   ) -> anyhow::Result<()> {
-    assert_eq!("", response.text().await.unwrap());
-    // assert_eq!(StatusCode::SEE_OTHER, response.status());
-    // assert_eq!(
-    //   "http://frontend.localhost:3000/ui/setup/download-models",
-    //   response.headers().get("Location").unwrap().to_str()?,
-    // );
+    assert_eq!(StatusCode::OK, response.status());
+    let body_bytes = to_bytes(response.into_body(), usize::MAX).await?;
+    let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
+    assert_eq!(
+      "http://frontend.localhost:3000/ui/setup/download-models",
+      body.location
+    );
     let secret_service = app_service.secret_service();
     let updated_status = secret_service.app_status().unwrap();
     assert_eq!(AppStatus::Ready, updated_status);

@@ -48,16 +48,17 @@ describe('extractOAuthParams', () => {
 });
 
 describe('useOAuthInitiate', () => {
-  it('handles successful OAuth initiation with 303 redirect', async () => {
+  it('handles successful OAuth initiation for unauthenticated user with 201 created', async () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
-          ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test'),
-          ctx.set('Content-Length', '0')
+          ctx.status(201), // 201 created - new OAuth session resources
+          ctx.json({
+            location: 'https://oauth.example.com/auth?client_id=test',
+          })
         );
       })
     );
@@ -74,8 +75,42 @@ describe('useOAuthInitiate', () => {
 
     expect(mockOnSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 303,
-        headers: expect.objectContaining({ location: 'https://oauth.example.com/auth?client_id=test' }),
+        status: 201,
+        data: { location: 'https://oauth.example.com/auth?client_id=test' },
+      })
+    );
+    expect(mockOnError).not.toHaveBeenCalled();
+  });
+
+  it('handles already authenticated user with 200 response', async () => {
+    const mockOnSuccess = vi.fn();
+    const mockOnError = vi.fn();
+
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(200), // 200 OK - user already authenticated
+          ctx.json({
+            location: 'http://localhost:3000/ui/chat',
+          })
+        );
+      })
+    );
+
+    const { result } = renderHook(() => useOAuthInitiate({ onSuccess: mockOnSuccess, onError: mockOnError }), {
+      wrapper: createWrapper(),
+    });
+
+    result.current.mutate();
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockOnSuccess).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 200,
+        data: { location: 'http://localhost:3000/ui/chat' },
       })
     );
     expect(mockOnError).not.toHaveBeenCalled();
@@ -138,15 +173,15 @@ describe('useOAuthInitiate', () => {
     expect(mockOnSuccess).not.toHaveBeenCalled();
   });
 
-  it('handles 303 response without Location header', async () => {
+  it('handles response without location in JSON', async () => {
     const mockOnSuccess = vi.fn();
     const mockOnError = vi.fn();
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
-          ctx.status(303), // No Location header
-          ctx.set('Content-Length', '0')
+          ctx.status(201),
+          ctx.json({}) // Empty JSON response without location
         );
       })
     );
@@ -163,8 +198,8 @@ describe('useOAuthInitiate', () => {
 
     expect(mockOnSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
-        status: 303,
-        headers: expect.any(Object),
+        status: 201,
+        data: {},
       })
     );
     expect(mockOnError).not.toHaveBeenCalled();
@@ -202,7 +237,12 @@ describe('useOAuthCallback', () => {
 
     server.use(
       rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.set('Content-Length', '0'));
+        return res(
+          ctx.status(200),
+          ctx.json({
+            location: 'http://localhost:3000/ui/chat',
+          })
+        );
       })
     );
 
@@ -224,6 +264,7 @@ describe('useOAuthCallback', () => {
     expect(mockOnSuccess).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 200,
+        data: { location: 'http://localhost:3000/ui/chat' },
       })
     );
     expect(mockOnError).not.toHaveBeenCalled();

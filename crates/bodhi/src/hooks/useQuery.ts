@@ -67,8 +67,8 @@ export function useMutationQuery<T, V>(
   method: 'post' | 'put' | 'delete' = 'post',
   options?: UseMutationOptions<AxiosResponse<T>, AxiosError<ErrorResponse>, V>,
   axiosConfig?: {
-    validateStatus?: (status: number) => boolean;
     headers?: Record<string, string>;
+    skipCacheInvalidation?: boolean;
   }
 ): UseMutationResult<AxiosResponse<T>, AxiosError<ErrorResponse>, V> {
   const queryClient = useQueryClient();
@@ -81,15 +81,16 @@ export function useMutationQuery<T, V>(
           'Content-Type': 'application/json',
           ...axiosConfig?.headers,
         },
-        validateStatus: axiosConfig?.validateStatus || ((status) => status >= 200 && status < 400),
       });
       return response;
     },
     {
       ...options,
       onSuccess: (data, variables, context) => {
-        const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
-        queryClient.invalidateQueries(_endpoint);
+        if (!axiosConfig?.skipCacheInvalidation) {
+          const _endpoint = typeof endpoint === 'function' ? endpoint(variables) : endpoint;
+          queryClient.invalidateQueries(_endpoint);
+        }
         if (options?.onSuccess) {
           options.onSuccess(data, variables, context);
         }

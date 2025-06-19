@@ -1,15 +1,14 @@
 import { LoginMenu } from '@/components/LoginMenu';
 import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
-import { createWrapper } from '@/tests/wrapper';
+import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { redirect } from 'next/navigation';
 
 const mockPush = vi.fn();
-const mockRedirect = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -49,17 +48,22 @@ const server = setupServer(
   }),
   rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
     return res(
-      ctx.status(303), // 303 redirect to OAuth URL
-      ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
+      ctx.status(201), // 201 Created for new OAuth session
+      ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
     );
   })
 );
 
-beforeAll(() => server.listen());
-afterEach(() => {
+beforeAll(() => {
+  server.listen();
+});
+
+beforeEach(() => {
+  mockWindowLocation('http://localhost:3000/ui/login');
   server.resetHandlers();
   vi.clearAllMocks();
 });
+
 afterAll(() => server.close());
 
 describe('LoginMenu Component', () => {
@@ -94,8 +98,141 @@ describe('LoginMenu Component', () => {
     const loginButton = await screen.findByRole('button', { name: /login/i });
     await userEvent.click(loginButton);
 
+    // Should show "Redirecting..." after successful response and remain disabled
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('https://oauth.example.com/auth?client_id=test');
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
+    });
+  });
+
+  it('handles OAuth initiation with same-origin redirect URL', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(200), // 200 OK for already authenticated user
+          ctx.json({ location: 'http://localhost:3000/ui/chat' })
+        );
+      })
+    );
+
+    render(<LoginMenu />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: /login/i });
+    await userEvent.click(loginButton);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/ui/chat');
+    });
+  });
+
+  it('shows initiating and redirecting states during OAuth initiation', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.delay(100),
+          ctx.status(201), // 201 Created for new OAuth session
+          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
+        );
+      })
+    );
+
+    render(<LoginMenu />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: /login/i });
+    await userEvent.click(loginButton);
+
+    // Check for initiating state during request
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /initiating/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /initiating/i })).toBeDisabled();
+    });
+
+    // Check for redirecting state after successful response
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+    });
+  });
+
+  it('shows error message when OAuth initiation fails and re-enables button', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(500),
+          ctx.json({
+            error: {
+              message: 'OAuth configuration error',
+              type: 'internal_server_error',
+              code: 'oauth_config_error',
+            },
+          })
+        );
+      })
+    );
+
+    render(<LoginMenu />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: /login/i });
+    await userEvent.click(loginButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
+    });
+
+    // Verify login button is re-enabled after error
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /login/i })).not.toBeDisabled();
+    });
+  });
+
+  it('shows error when response has no location field and re-enables button', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(ctx.status(201), ctx.json({})); // No location field
+      })
+    );
+
+    render(<LoginMenu />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: /login/i });
+    await userEvent.click(loginButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Auth URL not found in response. Please try again.')).toBeInTheDocument();
+    });
+
+    // Verify button is re-enabled after error
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /login/i })).not.toBeDisabled();
+    });
+  });
+
+  it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
+    server.use(
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(ctx.status(201), ctx.json({ location: 'invalid-url-format' }));
+      })
+    );
+
+    render(<LoginMenu />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: /login/i });
+    await userEvent.click(loginButton);
+
+    // Should show "Redirecting..." and remain disabled even for invalid URLs
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('invalid-url-format');
     });
   });
 
@@ -204,87 +341,5 @@ describe('LoginMenu Component', () => {
 
     const { container } = render(<LoginMenu />, { wrapper: createWrapper() });
     expect(container).toBeEmptyDOMElement();
-  });
-
-  it('shows error message when OAuth initiation fails', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'OAuth configuration error',
-              type: 'internal_server_error',
-              code: 'oauth_config_error',
-            },
-          })
-        );
-      })
-    );
-
-    render(<LoginMenu />, { wrapper: createWrapper() });
-
-    const loginButton = await screen.findByRole('button', { name: /login/i });
-    await userEvent.click(loginButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
-    });
-  });
-
-  it('shows redirecting state during OAuth initiation', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
-        );
-      })
-    );
-
-    render(<LoginMenu />, { wrapper: createWrapper() });
-
-    const loginButton = await screen.findByRole('button', { name: /login/i });
-    await userEvent.click(loginButton);
-
-    // Check for redirecting state immediately after click
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
-    });
-  });
-
-  it('redirects to location when OAuth initiation returns 303', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(303), ctx.set('Location', 'https://example.com/redirected'));
-      })
-    );
-
-    render(<LoginMenu />, { wrapper: createWrapper() });
-
-    const loginButton = await screen.findByRole('button', { name: /login/i });
-    await userEvent.click(loginButton);
-
-    await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('https://example.com/redirected');
-    });
-  });
-
-  it('shows error when 303 response has no Location header', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(303)); // No Location header
-      })
-    );
-
-    render(<LoginMenu />, { wrapper: createWrapper() });
-
-    const loginButton = await screen.findByRole('button', { name: /login/i });
-    await userEvent.click(loginButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('Auth URL not found in response. Please try again.')).toBeInTheDocument();
-    });
   });
 });

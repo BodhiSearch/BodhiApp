@@ -1,8 +1,14 @@
-// Mock the router
-import { redirect } from 'next/navigation';
+import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
+import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE } from '@/hooks/useQuery';
+import { ROUTE_DEFAULT } from '@/lib/constants';
 
 const pushMock = vi.fn();
-
 vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: pushMock,
@@ -13,41 +19,31 @@ vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }));
 
-// Mock the Image component
 vi.mock('next/image', () => ({
   default: () => <img alt="mocked image" />,
 }));
 
-import { createWrapper } from '@/tests/wrapper';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { rest } from 'msw';
-import { setupServer } from 'msw/node';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import ResourceAdminPage from '@/app/ui/setup/resource-admin/page';
-import { ENDPOINT_APP_INFO, ENDPOINT_AUTH_INITIATE } from '@/hooks/useQuery';
-import { ROUTE_DEFAULT } from '@/lib/constants';
+const server = setupServer(
+  rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+    return res(ctx.json({ status: 'resource-admin' }));
+  })
+);
 
-// Setup MSW server
-const server = setupServer();
+beforeAll(() => {
+  server.listen();
+});
 
-beforeAll(() => server.listen());
 afterAll(() => server.close());
-afterEach(() => server.resetHandlers());
+
+beforeEach(() => {
+  mockWindowLocation('http://localhost:3000/ui/setup/resource-admin');
+  server.resetHandlers();
+  pushMock.mockClear();
+  vi.clearAllMocks();
+});
 
 describe('ResourceAdminPage', () => {
-  beforeEach(() => {
-    vi.resetAllMocks();
-    pushMock.mockClear();
-    server.use(
-      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
-        return res(ctx.json({ status: 'resource-admin' }));
-      })
-    );
-  });
-
-  it.skip('renders the resource admin page when status is resource-admin', async () => {
-    // Skipped due to framer-motion compatibility issues in test environment
+  it('renders the resource admin page when status is resource-admin', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -120,15 +116,15 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  it('handles OAuth initiation when login required and redirects to auth URL', async () => {
+  it('handles OAuth initiation with external OAuth provider URL', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
       }),
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
-          ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
+          ctx.status(201), // 201 Created for new OAuth session
+          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
         );
       })
     );
@@ -138,12 +134,47 @@ describe('ResourceAdminPage', () => {
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
+    // Should show "Redirecting..." after successful response and remain disabled
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('https://oauth.example.com/auth?client_id=test');
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
     });
   });
 
-  it('shows redirecting state during OAuth initiation', async () => {
+  it('handles OAuth initiation with same-origin redirect URL', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+        return res(ctx.json({ status: 'resource-admin' }));
+      }),
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(
+          ctx.status(200), // 200 OK for already authenticated user
+          ctx.json({ location: 'http://localhost:3000/ui/chat' })
+        );
+      })
+    );
+
+    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    await userEvent.click(loginButton);
+
+    // Should show "Redirecting..." after successful response and remain disabled
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(pushMock).toHaveBeenCalledWith('/ui/chat');
+    });
+  });
+
+  it('shows initiating and redirecting states during OAuth initiation', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -151,8 +182,8 @@ describe('ResourceAdminPage', () => {
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
           ctx.delay(100),
-          ctx.status(303), // 303 redirect to OAuth URL
-          ctx.set('Location', 'https://oauth.example.com/auth?client_id=test')
+          ctx.status(201), // 201 Created for new OAuth session
+          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
         );
       })
     );
@@ -162,13 +193,20 @@ describe('ResourceAdminPage', () => {
     const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
     await userEvent.click(loginButton);
 
-    // Check for redirecting state immediately after click
+    // Check for initiating state during request
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /initiating/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /initiating/i })).toBeDisabled();
+    });
+
+    // Check for redirecting state after successful response
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
     });
   });
 
-  it('displays error message when OAuth initiation fails', async () => {
+  it('displays error message when OAuth initiation fails and re-enables button', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -196,8 +234,11 @@ describe('ResourceAdminPage', () => {
       expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
     });
 
-    // Verify login button is still available after error
-    expect(screen.getByRole('button', { name: 'Continue with Login →' })).toBeInTheDocument();
+    // Verify login button is re-enabled after error
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Continue with Login →' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Continue with Login →' })).not.toBeDisabled();
+    });
   });
 
   it('displays generic error message when OAuth initiation fails without specific message', async () => {
@@ -220,20 +261,16 @@ describe('ResourceAdminPage', () => {
     });
   });
 
-  it('redirects to location when OAuth initiation returns 303', async () => {
-    // Mock window.location.href
-    const mockLocation = { href: '' };
-    Object.defineProperty(window, 'location', {
-      value: mockLocation,
-      writable: true,
-    });
-
+  it('handles missing location in successful response and re-enables button', async () => {
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
       }),
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(ctx.status(303), ctx.set('Location', '/ui/home'));
+        return res(
+          ctx.status(201),
+          ctx.json({}) // No location field
+        );
       })
     );
 
@@ -243,7 +280,39 @@ describe('ResourceAdminPage', () => {
     await userEvent.click(loginButton);
 
     await waitFor(() => {
-      expect(redirect).toHaveBeenCalledWith('/ui/home');
+      expect(screen.getByText('Auth URL not found in response. Please try again.')).toBeInTheDocument();
+    });
+
+    // Verify button is re-enabled after error
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Continue with Login →' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Continue with Login →' })).not.toBeDisabled();
+    });
+  });
+
+  it('handles invalid URL in response by treating as external and keeping button disabled', async () => {
+    server.use(
+      rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
+        return res(ctx.json({ status: 'resource-admin' }));
+      }),
+      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
+        return res(ctx.status(201), ctx.json({ location: 'invalid-url-format' }));
+      })
+    );
+
+    render(<ResourceAdminPage />, { wrapper: createWrapper() });
+
+    const loginButton = await screen.findByRole('button', { name: 'Continue with Login →' });
+    await userEvent.click(loginButton);
+
+    // Should show "Redirecting..." and remain disabled even for invalid URLs
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /redirecting/i })).toBeDisabled();
+    });
+
+    await waitFor(() => {
+      expect(window.location.href).toBe('invalid-url-format');
     });
   });
 });

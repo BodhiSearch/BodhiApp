@@ -7,6 +7,7 @@ import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
+import { handleSmartRedirect } from '@/lib/utils';
 import { useState } from 'react';
 import { useRouter, redirect } from 'next/navigation';
 
@@ -14,12 +15,12 @@ export function LoginContent() {
   const { data: userInfo, isLoading: userLoading } = useUser();
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
 
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
       const redirectUrl = response.headers?.location || ROUTE_DEFAULT;
-      // For internal URLs, use router.push; for external URLs, use window.location.href
       if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
         redirect(redirectUrl);
       } else {
@@ -42,26 +43,35 @@ export function LoginContent() {
     },
   });
 
-  const oauthInitiate = useOAuthInitiate({
+  const { mutate: initiateOAuth, isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
+      // Clear any previous errors and set redirecting state
+      setError(null);
+      setRedirecting(true);
+
       // Handle redirect based on backend response
-      // 303 response: Location header (OAuth URL or already authenticated)
-      if (response.headers?.location) {
-        const redirectUrl = response.headers.location;
-        // For external URLs (OAuth), use window.location.href; for internal routes, use router.push
-        if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
-          redirect(redirectUrl);
-        } else {
-          router.push(redirectUrl);
-        }
-      } else {
+      const location = response.data?.location;
+      if (!location) {
         setError('Auth URL not found in response. Please try again.');
+        setRedirecting(false);
+        return;
       }
+
+      // Handle redirect using smart URL detection
+      handleSmartRedirect(location, router);
     },
     onError: (message) => {
       setError(message);
+      setRedirecting(false);
     },
   });
+
+  const handleOAuthInitiate = () => {
+    setError(null); // Clear any previous errors
+    initiateOAuth();
+  };
+
+  const isLoginButtonDisabled = isLoading || redirecting;
 
   if (userLoading) {
     return <AuthCard title="Loading..." isLoading={true} />;
@@ -100,9 +110,9 @@ export function LoginContent() {
       }
       actions={[
         {
-          label: oauthInitiate.isLoading ? 'Redirecting...' : 'Login',
-          onClick: () => oauthInitiate.mutate(),
-          disabled: oauthInitiate.isLoading,
+          label: isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Login',
+          onClick: handleOAuthInitiate,
+          disabled: isLoginButtonDisabled,
         },
       ]}
     />
