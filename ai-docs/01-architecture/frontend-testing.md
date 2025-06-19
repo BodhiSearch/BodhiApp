@@ -1,6 +1,6 @@
 # Frontend Testing
 
-This document provides comprehensive guidance for frontend testing patterns, frameworks, and quality assurance approaches in the Bodhi App React frontend, based on lessons learned from OAuth testing fixes and current codebase patterns.
+> **AI Coding Assistant Guide**: This document provides concise frontend testing conventions and patterns for the Bodhi App React frontend. Focus on key concepts and established patterns rather than detailed implementation examples.
 
 ## Required Documentation References
 
@@ -45,22 +45,88 @@ This document provides comprehensive guidance for frontend testing patterns, fra
 
 ### ApiClient Test Environment Setup
 
-**Key Discovery**: The most critical aspect of frontend testing is proper apiClient configuration for test environments. This was discovered during OAuth testing fixes.
-
+- write test such that baseURL hardcoding is not needed in apiClient.
 ```typescript
 // crates/bodhi/src/lib/apiClient.ts
-const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
 const apiClient = axios.create({
-  baseURL: isTest ? 'http://localhost:3000' : '',
+  baseURL: '',
   maxRedirects: 0,
 });
 ```
 
-**Why This Matters**:
-- **Empty baseURL Problem**: When `baseURL: ''`, axios cannot construct valid URLs from relative paths
-- **MSW Interception**: MSW requires valid URLs to intercept requests using wildcard patterns (`*`)
-- **AppInitializer Components**: Pages using `AppInitializer` call `useAppInfo()` immediately, which fails without proper baseURL
-- **Test Environment Detection**: Using `NODE_ENV === 'test'` ensures production behavior is unchanged
+**Base URL Testing Pattern**:
+- Use wild card patter with path for msw to mock
+- Hardcoding base url will cause problems in production
+
+## Test Utilities and Standardization
+
+### Standardized Test Wrapper
+
+**Standard Test Wrapper Pattern**:
+```typescript
+// crates/bodhi/src/tests/wrapper.tsx
+import { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from 'react-query';
+
+export const createWrapper = () => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        refetchOnMount: false,
+      },
+    },
+  });
+  const Wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+  Wrapper.displayName = 'TestClientWrapper';
+  return Wrapper;
+};
+```
+
+### Standardized Window.Location Mocking
+
+**Critical Discovery**: Consistent `window.location` mocking is essential for reliable OAuth and navigation testing.
+
+**✅ Standardized Utility - Use This Pattern**:
+```typescript
+// crates/bodhi/src/tests/wrapper.tsx
+/**
+ * Mock window.location for tests
+ * @param href - The URL to mock as window.location.href
+ */
+export const mockWindowLocation = (href: string) => {
+  ...
+};
+```
+
+**Usage Pattern in Tests**:
+```typescript
+import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
+
+describe('ComponentWithNavigation', () => {
+  beforeEach(() => {
+    mockWindowLocation('http://localhost:3000/ui/login');
+    // Reset for each test to prevent race conditions
+  });
+
+  it('handles external URL redirect', async () => {
+    // Test will use the mocked location
+    render(<ComponentWithNavigation />, { wrapper: createWrapper() });
+    
+    // Component can read and write to window.location.href
+    expect(window.location.href).toBe('http://localhost:3000/ui/login');
+  });
+});
+```
+
+**Why This Utility is Required**:
+- **Consistent Behavior**: Same mocking approach across all test files
+- **Read/Write Support**: Supports both reading and writing to `window.location.href`
+- **Race Condition Prevention**: Proper setup in `beforeEach` prevents test interference
+- **URL Parsing**: Automatically extracts protocol and host from provided URL
+- **Configurable**: Supports both external and same-origin URL testing scenarios
 
 ## Hook Testing Patterns
 
@@ -87,9 +153,6 @@ export function useOAuthInitiate(options?: {
         options?.onError?.(message);
       },
     },
-    {
-      validateStatus: (status) => status >= 200 && status < 500, // Accept 401 responses
-    }
   );
 }
 ```
@@ -111,31 +174,6 @@ return useMutation<AxiosResponse<T>, AxiosError<ErrorResponse>, V>(
 - **Automatic query invalidation**: Built-in cache invalidation patterns
 - **Error handling consistency**: Standardized error response handling
 - **Test compatibility**: Works reliably with MSW patterns
-
-### Test Wrapper Utilities
-
-**Standard Test Wrapper Pattern**:
-```typescript
-// crates/bodhi/src/tests/wrapper.tsx
-import { ReactNode } from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
-
-export const createWrapper = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        refetchOnMount: false,
-      },
-    },
-  });
-  const Wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-  );
-  Wrapper.displayName = 'TestClientWrapper';
-  return Wrapper;
-};
-```
 
 **Hook Testing Example**:
 ```typescript
@@ -192,6 +230,7 @@ export default function ResourceAdminPage() {
 ```typescript
 describe('ResourceAdminPage', () => {
   beforeEach(() => {
+    mockWindowLocation('http://localhost:3000/ui/setup/resource-admin');
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
@@ -203,8 +242,8 @@ describe('ResourceAdminPage', () => {
     server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
-          ctx.status(401), // 401 when login required
-          ctx.json({ auth_url: 'https://oauth.example.com/auth?client_id=test' })
+          ctx.status(201), // 201 when creating new OAuth session
+          ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
         );
       })
     );
@@ -234,6 +273,35 @@ describe('SimpleComponent', () => {
 });
 ```
 
+### OAuth Flow Testing Patterns
+
+**Current OAuth Implementation**: The OAuth flow now uses JSON responses instead of HTTP redirects, with proper status codes and button state management.
+
+#### OAuth Initiate Testing
+```typescript
+const pushMock = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: pushMock,
+  }),
+}));
+
+describe('NavigationComponent', () => {
+  beforeEach(() => {
+    pushMock.mockClear();
+  });
+
+  it('navigates to correct route', async () => {
+    render(<NavigationComponent />);
+
+    await userEvent.click(screen.getByText('Go to Models'));
+
+    expect(pushMock).toHaveBeenCalledWith('/ui/models');
+  });
+});
+```
+
+### Form Testing Patterns
 ### Next.js Navigation Testing
 
 **Standard Navigation Mock Pattern**:
@@ -260,65 +328,6 @@ describe('NavigationComponent', () => {
 });
 ```
 
-### Form Testing Patterns
-
-#### OAuth Flow Testing
-```typescript
-describe('OAuth Form Testing', () => {
-  it('handles OAuth initiation with proper error handling', async () => {
-    // Mock window.location.href for redirect testing
-    const mockLocation = { href: '' };
-    Object.defineProperty(window, 'location', {
-      value: mockLocation,
-      writable: true,
-    });
-
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(401), // 401 when login required
-          ctx.json({ auth_url: 'https://oauth.example.com/auth?client_id=test' })
-        );
-      })
-    );
-
-    render(<LoginContent />, { wrapper: createWrapper() });
-
-    const loginButton = screen.getByRole('button', { name: 'Login' });
-    await userEvent.click(loginButton);
-
-    await waitFor(() => {
-      expect(window.location.href).toBe('https://oauth.example.com/auth?client_id=test');
-    });
-  });
-
-  it('displays error message when OAuth fails', async () => {
-    server.use(
-      rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
-        return res(
-          ctx.status(500),
-          ctx.json({
-            error: {
-              message: 'OAuth configuration error',
-              type: 'internal_server_error',
-            },
-          })
-        );
-      })
-    );
-
-    render(<LoginContent />, { wrapper: createWrapper() });
-
-    const loginButton = screen.getByRole('button', { name: 'Login' });
-    await userEvent.click(loginButton);
-
-    await waitFor(() => {
-      expect(screen.getByText('OAuth configuration error')).toBeInTheDocument();
-    });
-  });
-});
-```
-
 ## MSW (Mock Service Worker) Configuration
 
 ### Critical MSW Setup Requirements
@@ -335,7 +344,10 @@ const server = setupServer();
 
 beforeAll(() => server.listen());
 afterAll(() => server.close());
-afterEach(() => server.resetHandlers());
+beforeEach(() => {
+  server.resetHandlers();
+  // Other test setup
+});
 ```
 
 #### Wildcard Pattern Usage
@@ -349,8 +361,8 @@ server.use(
   }),
   rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
     return res(
-      ctx.status(401),
-      ctx.json({ auth_url: 'https://oauth.example.com/auth' })
+      ctx.status(201),
+      ctx.json({ location: 'https://oauth.example.com/auth' })
     );
   })
 );
@@ -367,8 +379,8 @@ server.use(
 ```typescript
 rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
   return res(
-    ctx.status(401), // 401 when login required
-    ctx.json({ auth_url: 'https://oauth.example.com/auth?client_id=test' })
+    ctx.status(201), // 201 Created for new OAuth session
+    ctx.json({ location: 'https://oauth.example.com/auth?client_id=test' })
   );
 })
 ```
@@ -378,7 +390,7 @@ rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
 rest.post(`*${ENDPOINT_AUTH_CALLBACK}`, (_, res, ctx) => {
   return res(
     ctx.status(200),
-    ctx.set('Location', '/ui/chat'),
+    ctx.json({ location: '/ui/chat' })
   );
 })
 ```
@@ -404,12 +416,18 @@ rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
 **Per-Test Handler Override Pattern**:
 ```typescript
 describe('OAuth Error Handling', () => {
-  it('displays error message when OAuth initiation fails', async () => {
-    // Override default handler for this specific test
+  beforeEach(() => {
+    mockWindowLocation('http://localhost:3000/ui/setup/resource-admin');
     server.use(
       rest.get(`*${ENDPOINT_APP_INFO}`, (_, res, ctx) => {
         return res(ctx.json({ status: 'resource-admin' }));
-      }),
+      })
+    );
+  });
+
+  it('displays error message when OAuth initiation fails', async () => {
+    // Override default handler for this specific test
+    server.use(
       rest.post(`*${ENDPOINT_AUTH_INITIATE}`, (_, res, ctx) => {
         return res(
           ctx.status(500),
@@ -736,17 +754,22 @@ export default defineConfig({
 - **Use environment detection** (`NODE_ENV === 'test'`) for test-specific configuration
 - **Understand the axios + MSW interaction** - empty baseURL prevents valid URL construction
 
-#### 2. Hook Consistency is Essential
+#### 2. Standardized Test Utilities are Essential
+- **Use mockWindowLocation utility** from `@/tests/wrapper` for all location mocking
+- **Call mockWindowLocation in beforeEach** to prevent race conditions between tests
+- **Use createWrapper utility** for consistent React Query setup
+
+#### 3. Hook Consistency is Essential
 - **Standardize on useMutationQuery** for all mutation hooks
 - **Use parameterized helpers** with smart fallbacks for backward compatibility
 - **Support custom axios configuration** for OAuth flows requiring 401 acceptance
 
-#### 3. MSW Patterns Must Be Consistent
+#### 4. MSW Patterns Must Be Consistent
 - **Always use wildcard patterns** (`*${ENDPOINT}`) for URL matching
 - **Mock required endpoints** for AppInitializer components (ENDPOINT_APP_INFO)
-- **Set up server in beforeAll/afterAll** with resetHandlers in afterEach
+- **Set up server in beforeAll/afterAll** with resetHandlers in beforeEach
 
-#### 4. Component Testing Focus
+#### 5. Component Testing Focus
 - **Test content components** rather than wrapper pages
 - **Separate success and error scenarios** into different test cases
 - **Avoid unmount() usage** which indicates merged test scenarios
@@ -757,6 +780,12 @@ export default defineConfig({
 - **Mock animation libraries** (framer-motion) to prevent test failures
 - **Suppress expected console errors** to reduce noise in test output
 
+#### 6. OAuth Flow Testing Specifics
+- **Test button state management** - disabled during flow, enabled only on error
+- **Test both same-origin and external URL handling** with proper mocking
+- **Verify all parameters are sent to backend** in callback testing
+- **Test status code differences** (201 for new sessions, 200 for authenticated users)
+
 ### Testing Checklist
 
 **Before Writing Tests**:
@@ -766,6 +795,7 @@ export default defineConfig({
 - [ ] Are you testing the content component, not the wrapper?
 
 **During Test Writing**:
+- [ ] Are you using mockWindowLocation in beforeEach?
 - [ ] Are success and error scenarios in separate test cases?
 - [ ] Are you avoiding unmount() usage?
 - [ ] Are test names descriptive and specific?
@@ -795,7 +825,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';
-import { createWrapper } from '@/tests/wrapper';
+import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
 import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 ```
 
@@ -814,7 +844,7 @@ import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 - `crates/bodhi/src/hooks/useQuery.ts:77-113` - useMutationQuery implementation with axios config
 - `crates/bodhi/src/hooks/useOAuth.ts:33-60` - OAuth hook using useMutationQuery pattern
 - `crates/bodhi/src/tests/setup.ts:1-77` - Global test environment setup
-- `crates/bodhi/src/tests/wrapper.tsx:4-18` - Standard test wrapper utility
+- `crates/bodhi/src/tests/wrapper.tsx:1-43` - Standardized test utilities including mockWindowLocation
 - `crates/bodhi/vitest.config.ts:5-28` - Vitest configuration for frontend tests
 
 **Example Test Files**:
@@ -822,7 +852,8 @@ import { ENDPOINT_APP_INFO } from '@/hooks/useQuery';
 - `crates/bodhi/src/app/ui/setup/resource-admin/page.test.tsx` - OAuth flow testing
 - `crates/bodhi/src/hooks/useOAuth.test.ts` - Hook testing with MSW
 - `crates/bodhi/src/components/AppInitializer.test.tsx` - Component testing patterns
+- `crates/bodhi/src/app/ui/auth/callback/page.test.tsx` - OAuth callback testing with parameter handling
 
 ---
 
-*This guide reflects lessons learned from OAuth testing fixes and current codebase patterns. For backend testing patterns, see [Backend Testing](backend-testing.md). For complete testing implementation examples, see [TESTING_GUIDE.md](TESTING_GUIDE.md).*
+*This guide reflects lessons learned from OAuth testing fixes and standardized test utilities. For backend testing patterns, see [Backend Testing](backend-testing.md). For complete testing implementation examples, see [TESTING_GUIDE.md](TESTING_GUIDE.md).*

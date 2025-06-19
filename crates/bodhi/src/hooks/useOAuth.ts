@@ -1,46 +1,48 @@
-import { useMutation, UseMutationResult } from 'react-query';
+import { UseMutationResult } from 'react-query';
 import { AxiosResponse, AxiosError } from 'axios';
-import apiClient from '@/lib/apiClient';
+import { useMutationQuery } from '@/hooks/useQuery';
+import { ErrorResponse } from '@/types/models';
+import { useCallback } from 'react';
+import { RedirectResponse } from '@/types/api';
 
 export const ENDPOINT_AUTH_INITIATE = '/bodhi/v1/auth/initiate';
 export const ENDPOINT_AUTH_CALLBACK = '/bodhi/v1/auth/callback';
 
-interface AuthInitiateResponse {
-  auth_url?: string;
-}
-
-interface ErrorResponse {
-  error?: {
-    message?: string;
-  };
-}
-
 interface UseOAuthInitiateOptions {
-  onSuccess?: (response: AxiosResponse<AuthInitiateResponse>) => void;
+  onSuccess?: (response: AxiosResponse<RedirectResponse>) => void;
   onError?: (message: string) => void;
 }
 
 export function useOAuthInitiate(
   options?: UseOAuthInitiateOptions
-): UseMutationResult<AxiosResponse<AuthInitiateResponse>, AxiosError<ErrorResponse>, void> {
-  return useMutation<AxiosResponse<AuthInitiateResponse>, AxiosError<ErrorResponse>, void>(
-    () =>
-      apiClient.post(
-        ENDPOINT_AUTH_INITIATE,
-        {},
-        {
-          maxRedirects: 0, // Don't follow redirects automatically
-          validateStatus: (status) => status === 303 || status === 200, // Accept 303 redirects and 200 success
-        }
-      ),
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void> {
+  const handleSuccess = useCallback(
+    (response: AxiosResponse<RedirectResponse>) => {
+      options?.onSuccess?.(response);
+    },
+    [options?.onSuccess]
+  );
+
+  const handleError = useCallback(
+    (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to initiate OAuth authentication';
+      options?.onError?.(message);
+    },
+    [options?.onError]
+  );
+
+  return useMutationQuery<RedirectResponse, void>(
+    ENDPOINT_AUTH_INITIATE,
+    'post',
     {
-      onSuccess: (response) => {
-        options?.onSuccess?.(response);
+      onSuccess: handleSuccess,
+      onError: handleError,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to initiate OAuth authentication';
-        options?.onError?.(message);
-      },
+      skipCacheInvalidation: true,
     }
   );
 }
@@ -63,13 +65,15 @@ export function extractOAuthParams(url: string): Record<string, string> {
 
 // OAuth callback interfaces
 interface OAuthCallbackRequest {
-  code: string;
-  state: string;
-  [key: string]: string;
+  code?: string;
+  state?: string;
+  error?: string;
+  error_description?: string;
+  [key: string]: string | undefined;
 }
 
 interface OAuthCallbackResponse {
-  success?: boolean;
+  location: string;
 }
 
 interface UseOAuthCallbackOptions {
@@ -81,16 +85,33 @@ interface UseOAuthCallbackOptions {
 export function useOAuthCallback(
   options?: UseOAuthCallbackOptions
 ): UseMutationResult<AxiosResponse<OAuthCallbackResponse>, AxiosError<ErrorResponse>, OAuthCallbackRequest> {
-  return useMutation<AxiosResponse<OAuthCallbackResponse>, AxiosError<ErrorResponse>, OAuthCallbackRequest>(
-    (callbackData: OAuthCallbackRequest) => apiClient.post(ENDPOINT_AUTH_CALLBACK, callbackData),
+  const handleSuccess = useCallback(
+    (response: AxiosResponse<OAuthCallbackResponse>) => {
+      options?.onSuccess?.(response);
+    },
+    [options?.onSuccess]
+  );
+
+  const handleError = useCallback(
+    (error: AxiosError<ErrorResponse>) => {
+      const message = error?.response?.data?.error?.message || 'Failed to complete OAuth authentication';
+      options?.onError?.(message);
+    },
+    [options?.onError]
+  );
+
+  return useMutationQuery<OAuthCallbackResponse, OAuthCallbackRequest>(
+    ENDPOINT_AUTH_CALLBACK,
+    'post',
     {
-      onSuccess: (response) => {
-        options?.onSuccess?.(response);
+      onSuccess: handleSuccess,
+      onError: handleError,
+    },
+    {
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
-      onError: (error: AxiosError<ErrorResponse>) => {
-        const message = error?.response?.data?.error?.message || 'Failed to complete OAuth authentication';
-        options?.onError?.(message);
-      },
+      skipCacheInvalidation: true,
     }
   );
 }

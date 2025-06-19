@@ -6,6 +6,7 @@ import { useOAuthInitiate } from '@/hooks/useOAuth';
 import { useUser } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { ROUTE_DEFAULT, ROUTE_LOGIN } from '@/lib/constants';
+import { handleSmartRedirect } from '@/lib/utils';
 import { useState } from 'react';
 import { redirect, useRouter } from 'next/navigation';
 
@@ -13,6 +14,8 @@ export function LoginMenu() {
   const { data: userInfo, isLoading: userLoading } = useUser();
   const { showError } = useToastMessages();
   const [error, setError] = useState<string | null>(null);
+  const [redirecting, setRedirecting] = useState(false);
+  const router = useRouter();
 
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
@@ -35,20 +38,35 @@ export function LoginMenu() {
     },
   });
 
-  const oauthInitiate = useOAuthInitiate({
+  const { mutate: initiateOAuth, isLoading } = useOAuthInitiate({
     onSuccess: (response) => {
+      // Clear any previous errors and set redirecting state
+      setError(null);
+      setRedirecting(true);
+
       // Handle redirect based on backend response
-      // 303 response: Location header (OAuth URL or already authenticated)
-      if (response.headers?.location) {
-        redirect(response.headers.location);
-      } else {
+      const location = response.data?.location;
+      if (!location) {
         setError('Auth URL not found in response. Please try again.');
+        setRedirecting(false);
+        return;
       }
+
+      // Handle redirect using smart URL detection
+      handleSmartRedirect(location, router);
     },
     onError: (message) => {
       setError(message);
+      setRedirecting(false);
     },
   });
+
+  const handleOAuthInitiate = () => {
+    setError(null); // Clear any previous errors
+    initiateOAuth();
+  };
+
+  const isLoginButtonDisabled = isLoading || redirecting;
 
   if (userLoading) {
     return null;
@@ -76,10 +94,10 @@ export function LoginMenu() {
       <Button
         variant="default"
         className="w-full border border-primary"
-        onClick={() => oauthInitiate.mutate()}
-        disabled={oauthInitiate.isLoading}
+        onClick={handleOAuthInitiate}
+        disabled={isLoginButtonDisabled}
       >
-        {oauthInitiate.isLoading ? 'Redirecting...' : 'Login'}
+        {isLoading ? 'Initiating...' : redirecting ? 'Redirecting...' : 'Login'}
       </Button>
     </div>
   );

@@ -1,6 +1,6 @@
 # Frontend Next.js Development
 
-This document provides focused guidance for Next.js+TypeScript frontend development in the Bodhi App, including component patterns, development conventions, and best practices.
+> **AI Coding Assistant Guide**: This document provides concise Next.js+TypeScript frontend development conventions for the Bodhi App. Focus on established patterns and architectural principles rather than detailed implementation examples.
 
 ## Required Documentation References
 
@@ -12,14 +12,13 @@ This document provides focused guidance for Next.js+TypeScript frontend developm
 - `ai-docs/01-architecture/ui-design-system.md` - UI/UX patterns and component usage
 
 **FOR TESTING:**
-- `ai-docs/01-architecture/testing-strategy.md` - Testing patterns and utilities
+- `ai-docs/01-architecture/frontend-testing.md` - Testing patterns and utilities
 
 ## Technology Stack
 
 ### Core Technologies
 - **React 18+** with TypeScript for component-based UI development
-- **Next.js v14.2.6** for full-stack React framework with SSG capabilities
-- **Next.js App Router** for file-based routing and navigation
+- **Next.js v14.2.6** with App Router for file-based routing and navigation
 - **React Query v3.39.3** for data fetching, caching, and synchronization
 
 ### UI & Styling
@@ -39,8 +38,9 @@ This document provides focused guidance for Next.js+TypeScript frontend developm
 src/
 ├── app/                 # Next.js App Router directory
 │   ├── ui/              # UI pages and layouts
-│   │   ├── auth/        # Authentication pages
+│   │   ├── auth/callback/ # OAuth callback page
 │   │   ├── chat/        # Chat interface pages
+│   │   ├── login/       # Login page
 │   │   ├── models/      # Model management pages
 │   │   ├── setup/       # Setup wizard pages
 │   │   ├── tokens/      # API tokens pages
@@ -214,6 +214,95 @@ export function useCreateModel(options?: {
 }
 ```
 
+### Mutation Hook Usage with Variable Extraction
+
+**✅ Preferred: Extract variables for clarity and disable states**
+```typescript
+export function CreateModelForm() {
+  const [error, setError] = useState<string | null>(null);
+
+  // Extract mutate function and loading state for clarity
+  const { mutate: createModel, isLoading } = useCreateModel({
+    onSuccess: (model) => router.push(`/ui/models/${model.id}`),
+    onError: (message) => setError(message),
+  });
+  const handleSubmit = (data: ModelFormData) => {
+    createModel(data); // Clear function name
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      {error && <ErrorAlert message={error} />}
+    <Button
+      type="submit"
+        disabled={isLoading} // Prevent double-clicks
+      >
+        {isLoading ? 'Creating...' : 'Create Model'}
+      </Button>
+    </form>
+    <Button
+      type="submit"
+      disabled={isLoading} // Prevent double-clicks
+    >
+      {isLoading ? 'Creating...' : 'Create Model'}
+    </Button>
+  );
+}
+```
+
+**❌ Avoid**: Using mutation object directly with verbose property access.
+```typescript
+  return (
+    <Button
+      onClick={() => createModelMutation.mutate(data)} // ❌ Less clear
+      disabled={createModelMutation.isLoading} // ❌ Verbose
+    >
+      {createModelMutation.isLoading ? 'Creating...' : 'Create Model'} // ❌ Repetitive
+    </Button>
+```
+
+## OAuth Authentication Patterns
+
+### OAuth Flow Implementation
+
+**Current Implementation**: JSON responses (not HTTP redirects), button state management, smart URL handling.
+
+### OAuth Hook Pattern
+```typescript
+export function useOAuthInitiate(options?: { onSuccess?, onError? }) {
+  return useMutationQuery<AuthInitiateResponse, void>(
+    ENDPOINT_AUTH_INITIATE, 'post', options,
+  );
+}
+```
+
+### OAuth Status Codes and Responses
+- **201 Created**: New OAuth session created (user not authenticated)
+- **200 OK**: User already authenticated, redirect to app
+- **422 Unprocessable Entity**: Validation error
+- **500 Internal Server Error**: Server error during token exchange
+
+### Smart URL Handling Pattern
+```typescript
+// Use the standardized utility for consistent URL handling
+import { handleSmartRedirect } from '@/lib/utils';
+
+const { mutate: initiateOAuth } = useOAuthInitiate({
+  onSuccess: (response) => {
+    const location = response.data?.location;
+    if (location) {
+      handleSmartRedirect(location, router); // Handles same-origin vs external
+    }
+  },
+});
+```
+
+**Implementation Details**:
+- **Same-origin detection**: Compares protocol and host with current URL
+- **Next.js router**: Uses `router.push()` for same-origin URLs with pathname + search + hash
+- **External URLs**: Uses `window.location.href` for different origins
+- **Error handling**: Treats invalid URLs as external for graceful fallback
+
 ## Routing Patterns
 
 ### Next.js App Router Structure
@@ -222,30 +311,18 @@ src/app/
 ├── page.tsx                 # Root page (redirects to /ui)
 ├── layout.tsx              # Root layout
 ├── ui/
-│   ├── page.tsx            # UI home page
-│   ├── chat/
-│   │   └── page.tsx        # Chat page
-│   ├── models/
-│   │   └── page.tsx        # Models page
-│   └── setup/
-│       └── page.tsx        # Setup page
-└── not-found.tsx           # 404 page
+│   ├── auth/callback/page.tsx    # OAuth callback page
+│   ├── login/page.tsx           # Login page
+│   ├── chat/page.tsx            # Chat page
+│   └── models/page.tsx          # Models page
 ```
 
 ### Navigation Hooks
 ```typescript
 import { useRouter, usePathname } from "next/navigation";
 
-export function NavigationComponent() {
-  const router = useRouter();
-  const pathname = usePathname();
-
-  const handleNavigation = () => {
-    router.push("/ui/models");
-  };
-
-  const isActive = pathname === "/ui/models";
-}
+const router = useRouter();
+const pathname = usePathname();
 ```
 
 ## State Management
@@ -271,117 +348,60 @@ export function NavigationComponent() {
 
 The Bodhi App follows a **"dumb frontend"** architecture where the frontend focuses on presentation and user interaction while the backend handles all business logic, validation, and flow control decisions.
 
+### Benefits of Dumb Frontend Architecture
+
+1. **Security**: All validation and business logic on backend prevents client-side bypasses
+2. **Consistency**: Single source of truth for business rules and validation
+3. **Maintainability**: Changes to business logic only require backend updates
+4. **Testability**: Easier to test data operations separately from UI behavior
+5. **Flexibility**: Frontend can be easily replaced or multiple frontends can share same backend
+6. **Error Handling**: Backend provides consistent, localized error messages
+
 #### Core Principles
 
 1. **Backend-Driven Logic**: All business logic, validation, and flow decisions happen on the backend
 2. **Frontend as Presentation Layer**: Frontend focuses on displaying data and collecting user input
-3. **Minimal Frontend Validation**: Only basic UX validation (required fields, format hints) - rely on backend for security
-4. **Pass-Through Pattern**: Frontend sends all available data to backend without filtering or interpretation
+3. **Minimal Frontend Validation**: Only basic UX validation - rely on backend for security
+4. **Pass-Through Pattern**: Frontend sends all available data to backend without filtering
 
 ### Backend-Driven Validation and Logic Flow
 
-**✅ Preferred: Send all data to backend**
+**✅ Preferred**: Send all data to backend
 ```typescript
 // OAuth callback - send ALL query parameters to backend
-export function OAuthCallbackPage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+const { mutate: oauthCallback } = useOAuthCallback({
+  onSuccess: (response) => handleRedirect(response.data?.location),
+  onError: (message) => setError(message),
+});
 
-  const oauthCallback = useOAuthCallback({
-    onSuccess: (response) => {
-      // Backend determines where to redirect
-      const redirectUrl = response.headers?.location || '/ui/chat';
-      window.location.href = redirectUrl;
-    },
-    onError: (message) => {
-      // Display backend-provided error message
-      setError(message);
-      router.push('/ui/login');
-    },
-  });
-
-  useEffect(() => {
-    // Send ALL query params to backend - let backend validate and process
-    const allParams = Object.fromEntries(searchParams.entries());
-    oauthCallback.mutate(allParams); // ✅ Backend handles all validation
-  }, []);
-
-  return <div>Processing authentication...</div>;
-}
+useEffect(() => {
+  const allParams = Object.fromEntries(searchParams.entries());
+  oauthCallback(allParams); // Backend handles all validation
+}, []);
 ```
 
-**❌ Avoid: Frontend validation and logic**
-```typescript
-// Don't do this - frontend shouldn't validate OAuth parameters
-export function OAuthCallbackPage() {
-  const searchParams = useSearchParams();
-
-  // ❌ Frontend shouldn't validate OAuth flow
-  const code = searchParams.get('code');
-  const state = searchParams.get('state');
-
-  if (!code || !state) {
-    setError('Invalid OAuth response'); // ❌ Frontend making business decisions
-    return;
-  }
-
-  // ❌ Frontend filtering data before sending to backend
-  oauthCallback.mutate({ code, state });
-}
-```
+**❌ Avoid**: Frontend validation and filtering of business logic
 
 ### Page-Based Action Handling Convention
 
-**Pages handle actions, hooks handle data operations** - this separation ensures clear responsibility boundaries and better testability.
+**Pattern**: Pages handle actions and redirects, hooks handle data operations.
 
-#### Pattern: OAuth Flow Example
-
-**✅ Preferred: Page handles redirects and UI logic**
 ```typescript
 // Hook focuses on data operation only
-export const useOAuthInitiate = (options?: {
-  onSuccess?: (response: AuthInitiateResponse) => void;
-  onError?: (message: string) => void;
-}) => {
+export const useOAuthInitiate = (options) => {
   return useMutation({
-    onSuccess: (response) => {
-      options?.onSuccess?.(response); // ✅ Just call callback with full response
-    },
-    onError: (error) => {
-      const message = error?.response?.data?.error?.message || 'Authentication failed';
-      options?.onError?.(message); // ✅ Pass backend error message
-    },
+    onSuccess: (response) => options?.onSuccess?.(response),
+    onError: (error) => options?.onError?.(message),
   });
 };
 
-// Page component handles the redirect logic
+// Page handles redirect logic
 export function LoginPage() {
-  const [error, setError] = useState<string | null>(null);
-
-  const oauthInitiate = useOAuthInitiate({
-    onSuccess: (response) => {
-      // Backend provides redirect URL via Location header
-      const authUrl = response.headers?.location;
-      if (authUrl) {
-        window.location.href = authUrl; // ✅ Page handles redirect
-      } else {
-        setError('No authentication URL provided'); // ✅ Handle missing data
-      }
-    },
-    onError: (message) => {
-      setError(message); // ✅ Display backend error
-    },
+  const { mutate: initiateOAuth, isLoading } = useOAuthInitiate({
+    onSuccess: (response) => handleRedirect(response.data?.location),
+    onError: (message) => setError(message),
   });
-
-  return (
-    <AuthCard
-      error={error}
-      actions={[{
-        label: 'Sign In',
-        onClick: () => oauthInitiate.mutate(), // ✅ Page triggers action
-      }]}
-    />
-  );
+  // Page triggers action and handles UI state
 }
 ```
 
@@ -397,57 +417,13 @@ export const useOAuthInitiate = () => {
 };
 ```
 
-### Benefits of Dumb Frontend Architecture
-
-1. **Security**: All validation and business logic on backend prevents client-side bypasses
-2. **Consistency**: Single source of truth for business rules and validation
-3. **Maintainability**: Changes to business logic only require backend updates
-4. **Testability**: Easier to test data operations separately from UI behavior
-5. **Flexibility**: Frontend can be easily replaced or multiple frontends can share same backend
-6. **Error Handling**: Backend provides consistent, localized error messages
-
 ### Error Handling Patterns
 
-Following the dumb frontend principle, error handling should primarily display backend-provided messages rather than interpreting or transforming errors on the frontend.
-
-**✅ Preferred: Display backend errors directly**
+**✅ Preferred**: Display backend errors directly
 ```typescript
-export function useCreateModel(options?: {
-  onSuccess?: (model: Model) => void;
-  onError?: (message: string) => void;
-}) {
-  return useMutation({
-    mutationFn: createModel,
-    onSuccess: (response) => {
-      options?.onSuccess?.(response.data);
-    },
-    onError: (error: AxiosError<ErrorResponse>) => {
-      // Use backend-provided error message
-      const message = error?.response?.data?.error?.message || 'An unexpected error occurred';
-      options?.onError?.(message); // ✅ Pass backend message directly
-    },
-  });
-}
-
-// Page handles error display
-export function ModelsPage() {
-  const [error, setError] = useState<string | null>(null);
-
-  const createModel = useCreateModel({
-    onSuccess: (model) => {
-      router.push(`/ui/models/${model.id}`);
-    },
-    onError: (message) => {
-      setError(message); // ✅ Display backend error as-is
-    },
-  });
-
-  return (
-    <div>
-      {error && <ErrorAlert message={error} />}
-      {/* Rest of component */}
-    </div>
-  );
+onError: (error: AxiosError<ErrorResponse>) => {
+  const message = error?.response?.data?.error?.message || 'An unexpected error occurred';
+  options?.onError?.(message); // Pass backend message directly
 }
 ```
 
@@ -466,107 +442,34 @@ onError: (error: AxiosError<ErrorResponse>) => {
 
 ### Data Validation Patterns
 
-**✅ Frontend validation for UX only**
+**✅ Frontend validation for UX only**:
 ```typescript
 const formSchema = z.object({
-  name: z.string().min(1, "Name is required"), // ✅ Basic UX validation
-  email: z.string().email("Please enter a valid email"), // ✅ Format hint
+  name: z.string().min(1, "Name is required"), // Basic UX validation
+  email: z.string().email("Please enter a valid email"), // Format hint
 });
 
 // Always send to backend for authoritative validation
-const onSubmit = async (data: FormData) => {
-  try {
-    await createUser(data); // ✅ Backend does real validation
-  } catch (error) {
-    // Display backend validation errors
-    setError(error.response?.data?.error?.message);
-  }
-};
 ```
 
-**❌ Avoid: Complex frontend business logic**
-```typescript
-// ❌ Don't implement business rules on frontend
-const onSubmit = async (data: FormData) => {
-  if (data.role === 'admin' && !data.permissions.includes('manage_users')) {
-    setError('Admins must have user management permissions');
-    return; // ❌ Business logic belongs on backend
-  }
-
-  if (data.email.endsWith('@competitor.com')) {
-    setError('Competitor emails not allowed');
-    return; // ❌ Business rules belong on backend
-  }
-};
-```
+**❌ Avoid**: Complex frontend business logic validation
 
 ## Testing Requirements
 
 ### Component Testing
-```typescript
-import { render, screen } from "@testing-library/react";
-import { ComponentName } from "./ComponentName";
+- Use `@testing-library/react` for component testing
+- Use `createWrapper` from `@/tests/wrapper` for React Query setup
+- Use `mockWindowLocation` from `@/tests/wrapper` for navigation testing
 
-describe("ComponentName", () => {
-  it("renders correctly", () => {
-    render(<ComponentName prop1="test" />);
-    expect(screen.getByText("test")).toBeInTheDocument();
+### OAuth Testing Patterns
+```typescript
+import { createWrapper, mockWindowLocation } from '@/tests/wrapper';
+
+describe('OAuth Flow', () => {
+  beforeEach(() => {
+    mockWindowLocation('http://localhost:3000/ui/login');
   });
-});
-```
-
-### Testing with React Query
-```typescript
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: { retry: false },
-    mutations: { retry: false },
-  },
-});
-
-const renderWithQueryClient = (component: React.ReactElement) => {
-  const testQueryClient = createTestQueryClient();
-  return render(
-    <QueryClientProvider client={testQueryClient}>
-      {component}
-    </QueryClientProvider>
-  );
-};
-```
-
-## Performance Considerations
-
-### Code Splitting
-```typescript
-import { lazy, Suspense } from "react";
-
-const LazyComponent = lazy(() => import("./LazyComponent"));
-
-export function App() {
-  return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <LazyComponent />
-    </Suspense>
-  );
-}
-```
-
-### Memoization
-```typescript
-import { memo, useMemo, useCallback } from "react";
-
-export const ExpensiveComponent = memo(({ data }: Props) => {
-  const processedData = useMemo(() => {
-    return expensiveCalculation(data);
-  }, [data]);
-
-  const handleClick = useCallback(() => {
-    // Handle click
-  }, []);
-
-  return <div>{processedData}</div>;
+  // Test button states, URL handling, parameter passing
 });
 ```
 
@@ -575,31 +478,18 @@ export const ExpensiveComponent = memo(({ data }: Props) => {
 ### Commands
 ```bash
 cd crates/bodhi
-
-# Development
-npm run dev            # Next.js development server
-
-# Build
-npm run build          # Next.js production build
-
-# Start
-npm run start          # Start production server
-
-# Testing
-npm run test           # Vitest test runner
-
-# Code quality
-npm run format
-npm run lint
+npm run dev            # Development server
+npm run build          # Production build
+npm run test           # Test runner
+npm run format         # Code formatting
 ```
 
 ## Related Documentation
-
 - **[API Integration](api-integration.md)** - Frontend-backend integration patterns
 - **[UI Design System](ui-design-system.md)** - Design tokens and component usage
-- **[Testing Strategy](testing-strategy.md)** - Frontend testing patterns
-- **[Development Conventions](development-conventions.md)** - Coding standards and best practices
+- **[Frontend Testing](frontend-testing.md)** - Testing patterns and OAuth testing
+- **[Development Conventions](development-conventions.md)** - Coding standards
 
 ---
 
-*For detailed API integration patterns, see [API Integration](api-integration.md). For UI component usage, see [UI Design System](ui-design-system.md).*
+*For detailed implementation examples, reference actual code files in the codebase rather than this guide.*
