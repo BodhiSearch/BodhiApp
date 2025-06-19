@@ -13,7 +13,6 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@ducanh2912/next-pwa": "^10.2.9",
     "@hookform/resolvers": "^3.10.0",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
