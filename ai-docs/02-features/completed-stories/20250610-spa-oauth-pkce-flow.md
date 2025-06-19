@@ -7,23 +7,27 @@ Transform the current OAuth authentication flow from backend-managed redirects t
 
 ### Current Flow (Backend-Managed) - DEPRECATED
 ```
-1. Frontend → GET /app/login [DEPRECATED - now /bodhi/v1/auth/initiate]
+0. Frontend on /ui/setup/resource-admin or /ui/login
+1. Frontend → GET /app/login
 2. Backend generates PKCE, stores in session → redirects to Keycloak
 3. User authenticates with Keycloak
-4. Keycloak → GET /app/login/callback?code=...&state=... [DEPRECATED - now /bodhi/v1/auth/callback]
+4. Keycloak → GET /app/login/callback?code=...&state=...
 5. Backend exchanges code for tokens → stores in session → redirects to frontend
 ```
 
-### Desired Flow (SPA-Managed)
+### Desired Flow (SPA-Managed) - **CURRENT IMPLEMENTATION**
 ```
-1. Frontend → POST /bodhi/v1/auth/initiate
-2. Backend generates PKCE, state, stores in session → returns auth URL
-3. Frontend redirects user to auth URL
+0. Frontend on /ui/setup/resource-admin/ or /ui/login/
+1. Frontend on click of Login Button → POST /bodhi/v1/auth/initiate
+2. Backend generates PKCE, state, stores in session → returns 200 with JSON body {"location": "..."}
+3. Frontend performs window.location.href = location to navigate user to OAuth provider
 4. User authenticates with Keycloak
-5. Keycloak → Frontend callback (/ui/auth/callback)
+5. Keycloak → Frontend callback (/ui/auth/callback?code=...)
 6. Frontend → POST /bodhi/v1/auth/callback with all redirect query parameters
-7. Backend validates parameters, exchanges code for tokens → stores in session → returns success
-8. On error, backend forms i18n error and sends to frontend for display. Frontend provides mechanism to try login again.
+7. Backend validates parameters, exchanges code for tokens → stores in session → returns 200 with {"location": "..."}
+8. Fronted does a router push (/ui/chat or /ui/setup/download-models)
+9. On error, backend returns 422/500 with error details for frontend to display
+10. Gives option to retry, where it does a POST /bodhi/v1/auth/initiate similar to /ui/login/ or /ui/setup/resource-admin/, and does the redirect
 ```
 
 ## Core Features
@@ -31,13 +35,11 @@ Transform the current OAuth authentication flow from backend-managed redirects t
 ### 1. SPA OAuth Flow Management
 
 #### Frontend Capabilities
-- Initiate OAuth flow via API call
-- Handle OAuth callback in React Router
+- Initiate OAuth flow via API call, redirect to generated auth server url
+- Handle OAuth callback
 - Extract all query parameters from redirect URL
-- Send all parameters to backend for validation
-- Manage authentication state transitions
-- Handle OAuth errors and edge cases
-- Maintain PKCE security throughout flow
+- Send all parameters to backend for validation and token exchange
+- dumb frontend, with all validation and logic flows at backend
 
 #### Backend API Endpoints
 ```
@@ -52,28 +54,8 @@ POST /bodhi/v1/auth/callback
 - Handle additional OAuth 2.1 parameters dynamically
 - Exchange authorization code for tokens
 - Store tokens in session
-- Return authentication status
+- Return authentication status and redirect to appropriate page based on app status
 ```
-
-### 2. PKCE Security Implementation
-
-#### Code Verifier Generation
-- Generate cryptographically secure 43-character code verifier
-- Create SHA256 hash for code challenge
-- Use S256 challenge method for maximum security
-- Store verifier securely in backend session
-
-#### State Parameter Security
-- Generate cryptographically secure state parameter
-- Store state in backend session during initiation
-- Validate state parameter during callback processing
-- Prevent CSRF attacks through state verification
-
-#### Session Security
-- Maintain PKCE parameters in secure session storage
-- Clear sensitive parameters after successful exchange
-- Implement session timeout for incomplete flows
-- Protect against session fixation attacks
 
 ### 3. Client Type Differentiation
 
@@ -95,6 +77,10 @@ POST /bodhi/v1/auth/callback
 
 ### POST /bodhi/v1/auth/initiate
 **Purpose:** Start OAuth flow and return authorization URL
+**Security:**
+- Generates and stores PKCE code_verifier in session
+- Generates and stores simple random state parameter (32 characters) in session
+- Returns authorization URL in JSON response
 
 **Request:**
 ```json
@@ -102,31 +88,35 @@ POST /bodhi/v1/auth/callback
 ```
 
 **Response:**
-If requires login:
 ```
-HTTP/1.1 401 Unauthorized
-WWW-Authenticate: Bearer realm="OAuth"
+HTTP/1.1 200 OK 
 Content-Type: application/json
 
 {
-  "auth_url": "https://id.getbodhi.app/realms/bodhi/protocol/openid-connect/auth?client_id=...",
+  "location": "https://id.getbodhi.app/realms/bodhi/protocol/openid-connect/auth?client_id=...",
 }
 ```
 
-If is already logged-in:
+If user is already logged-in:
 ```
-HTTP/1.1 303 See Other
-Location: /ui/app/home
-Content-Length: 0
-```
+HTTP/1.1 200 OK
+Content-Type: application/json
 
-**Security:**
-- Generates and stores PKCE code_verifier in session
-- Generates and stores state parameter in session
-- Returns authorization URL
+{
+  "location": "/ui/chat"
+}
+```
+- Frontend on receiving full URL (https://) performs redirect using `window.location.href`
+- On receiving relative path, performs router navigation using Next.js router
 
 ### POST /bodhi/v1/auth/callback
 **Purpose:** Complete OAuth flow with all redirect parameters
+**Security:**
+- Validates state parameter against session (simple string comparison)
+- Retrieves code_verifier from session
+- Exchanges code for tokens using PKCE
+- Stores tokens in session
+- Clears state and PKCE parameters from session
 
 **Request:**
 Frontend sends all query parameters from OAuth redirect URL:
@@ -136,19 +126,24 @@ Frontend sends all query parameters from OAuth redirect URL:
   "state": "state-parameter-from-oauth-server", 
   "error": "optional-error-from-oauth-server",
   "error_description": "optional-error-description-from-oauth-server",
-  // additional params received from the query are sent as is in body
   "session_state": "dynamic-session-state",
   "iss": "issuer-parameter",
   "custom_param": "any-other-oauth-parameter"
+  ...
 }
 ```
 
 **Response:**
 Success:
 ```
-HTTP/1.1 303 See Other
-Location: /ui/app/home
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "location": "/ui/chat"
+}
 ```
+
 Error:
 ```
 HTTP/1.1 422 Unprocessible Entity
@@ -164,12 +159,30 @@ Content-Type: application/json
 }
 ```
 
-**Security:**
-- Validates state parameter against session
-- Retrieves code_verifier from session
-- Exchanges code for tokens using PKCE
-- Stores tokens in session
-- Clears PKCE parameters from session
+## Frontend Implementation
+
+### OAuth Callback Page (`/ui/auth/callback/page.tsx`)
+**Purpose:** Handle OAuth redirect callback and complete authentication flow
+**Key Features:**
+- Extract all query parameters from URL without Next.js `useSearchParams` (to avoid SSR issues)
+- Send parameters to backend via `/bodhi/v1/auth/callback` endpoint
+- Prevent duplicate requests using `useRef` pattern
+- Handle success by redirecting to backend-provided location
+- Display user-friendly error messages with retry option
+- Use loading state during processing
+
+**Implementation Requirements:**
+- Use `window.location.search` and `URLSearchParams` for parameter extraction
+- Implement duplicate request prevention with `hasProcessedRef`
+- Handle both success and error states with appropriate UI
+- Use `window.location.href` for external redirects, router for internal navigation
+
+### State Management Hook Updates
+**Updated `useOAuth.ts`:**
+- Use standard `useMutationQuery` pattern from `useQuery.ts`
+- Return JSON responses instead of handling redirects
+- Include `skipCacheInvalidation: true` for auth endpoints
+- Extract all URL parameters in callback function
 
 ## Security Considerations
 
@@ -180,9 +193,9 @@ Content-Type: application/json
 - **Cleanup**: Clear verifiers immediately after successful token exchange
 
 ### 2. State Parameter Protection
-- **CSRF Prevention**: Generate cryptographically secure state parameters
+- **CSRF Prevention**: Generate cryptographically secure 32-character random state parameters
 - **Session Binding**: Store state in backend session tied to user session
-- **Validation**: Strict state parameter validation during callback
+- **Validation**: Simple string comparison validation during callback (adequate for CSRF protection)
 - **Timeout**: Implement reasonable timeout for state parameter validity
 
 ### 3. Session Security
@@ -191,9 +204,15 @@ Content-Type: application/json
 - **Session Rotation**: Rotate session IDs after successful authentication
 - **Cleanup**: Clear incomplete OAuth flows after timeout
 
-### 4. Redirect URI Validation
+### 4. Frontend Security
+- **Duplicate Request Prevention**: Use React `useRef` to prevent double API calls
+- **Parameter Extraction**: Extract all URL parameters to backend for validation
+- **Error Handling**: Provide clear error messages without exposing sensitive information
+
+### 5. Redirect URI Validation
 - **Protocol Enforcement**: Enforce HTTPS in production environments
 - **Localhost Support**: Allow localhost for development environments
+- **JSON Response**: Use JSON responses instead of HTTP redirects to avoid CORS issues
 
 ## Implementation Phases
 
