@@ -53,20 +53,20 @@ jobs:
         id: cache-hf
         with:
           path: ${{ env.USER_HOME }}\.cache\huggingface
-          key: hf-cache-Windows-llama2-7b-chat
+          key: hf-cache-Windows-phi4-mini-instruct
 
-      - name: Check and Download Llama model
+      - name: Check and Download Phi-4 model
         if: steps.cache-hf.outputs.cache-hit != 'true'
         shell: pwsh
         run: |
           $HF_PATH = Join-Path $env:USERPROFILE ".cache\huggingface"
-          $SNAPSHOT_DIR = Join-Path $HF_PATH "hub\models--TheBloke--Llama-2-7B-Chat-GGUF\snapshots\191239b3e26b2882fb562ffccdd1cf0f65402adb"
+          $SNAPSHOT_DIR = Join-Path $HF_PATH "hub\models--bartowski--microsoft_Phi-4-mini-instruct-GGUF\snapshots\7ff82c2aaa4dde30121698a973765f39be5288c0"
 
           New-Item -ItemType Directory -Force -Path $SNAPSHOT_DIR
 
-          $MODEL_PATH = Join-Path $SNAPSHOT_DIR "llama-2-7b-chat.Q4_K_M.gguf"
+          $MODEL_PATH = Join-Path $SNAPSHOT_DIR "microsoft_Phi-4-mini-instruct-Q4_K_M.gguf"
           if (-not (Test-Path $MODEL_PATH)) {
-            $MODEL_URL = "https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/191239b3e26b2882fb562ffccdd1cf0f65402adb/llama-2-7b-chat.Q4_K_M.gguf?download=true"
+            $MODEL_URL = "https://huggingface.co/bartowski/microsoft_Phi-4-mini-instruct-GGUF/resolve/915429cb42fe8eba71bd1d3117a7d63070892268/microsoft_Phi-4-mini-instruct-Q4_K_M.gguf?download=true"
             curl.exe -L $MODEL_URL -o $MODEL_PATH
           }
       - name: Download tokenizer config

@@ -40,7 +40,7 @@ async fn test_live_chat_completions_non_streamed(
     .header("Content-Type", "application/json")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
-      "model": "llama2:7b-chat",
+      "model": "phi4:mini-instruct",
       "seed": 42,
       "messages": [
         {
@@ -63,7 +63,7 @@ async fn test_live_chat_completions_non_streamed(
     .as_str()
     .unwrap();
   assert!(content.contains("Tuesday"));
-  assert_eq!("llama2:7b-chat", response["model"]);
+  assert_eq!("phi4:mini-instruct", response["model"]);
   assert_eq!("stop", response["choices"][0]["finish_reason"]);
   Ok(())
 }

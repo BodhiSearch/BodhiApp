@@ -59,8 +59,7 @@ pip install -U "huggingface_hub[cli]"
 - download model
 
 ```pwsh
-huggingface-cli download --revision 191239b3e26b2882fb562ffccdd1cf0f65402adb TheBloke/Llama-2-7B-Chat-GGUF llama-2-7b-chat.Q4_K_M.gguf
-huggingface-cli download --revision a2cb7a712bb6e5e736ca7f8cd98167f81a0b5bd8 meta-llama/Llama-2-13b-chat-hf tokenizer_config.json
+huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
 ```
 
 ## checks
