@@ -102,7 +102,8 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
   let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
   let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
   let log_level: LevelFilter = setting_service.log_level().into();
-  let filter = EnvFilter::new(log_level.to_string());
+  let log_level = log_level.to_string();
+  let filter = EnvFilter::new(&log_level);
   let filter = filter.add_directive("hf_hub=error".parse().expect("is a valid directive"));
 
   // Check if we should output to stdout
@@ -142,8 +143,8 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
   #[cfg(debug_assertions)]
   {
     println!(
-      "logging to stdout: {}, log_level: {} ({})",
-      enable_stdout, log_level, level_str
+      "logging to stdout: {}, log_level: {}",
+      enable_stdout, log_level
     );
   }
   guard

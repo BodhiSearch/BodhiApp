@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
+use auth_middleware::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use fs_extra::dir::{copy, CopyOptions};
 use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder, AppServiceBuilder};
 use objs::{test_utils::setup_l10n, FluentLocalizationService};
 use rand::Rng;
-use routes_app::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
 use rstest::fixture;
 use serde_json::Value;
 use server_app::{ServeCommand, ServerShutdownHandle};

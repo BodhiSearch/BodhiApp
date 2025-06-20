@@ -2954,6 +2954,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
+ "auth_middleware",
  "axum",
  "cookie",
  "dirs 6.0.0",
