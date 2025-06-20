@@ -61,7 +61,7 @@ jobs:
           key: hf-cache-phi4-mini-instruct
           enableCrossOsArchive: true
 
-      - name: Check and Download Llama model
+      - name: Check and Download model
         if: steps.cache-hf.outputs.cache-hit != 'true'
         run: |
           huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
