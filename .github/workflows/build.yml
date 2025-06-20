@@ -31,7 +31,13 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libglib2.0-dev pkg-config
+          sudo apt-get install -y \
+            libglib2.0-dev \
+            pkg-config \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
       - name: envs
         shell: bash
         run: |
