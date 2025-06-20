@@ -1,21 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { createServerManager } from './playwright-helpers.js';
-import { config } from 'dotenv';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
-
-// Load test environment variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-config({ path: join(__dirname, '.env.test') });
-
-/**
- * Wait for SPA to be fully loaded and rendered
- */
-async function waitForSPAReady(page) {
-  await page.waitForLoadState('networkidle');
-  await page.waitForLoadState('domcontentloaded');
-}
+import { createServerManager, waitForSPAReady, getCurrentPath } from './playwright-helpers.js';
 
 /**
  * Get test environment variables with defaults
@@ -49,43 +33,25 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
   });
 
   test.afterAll(async () => {
-    if (serverManager) {
-      await serverManager.stopServer();
-    }
+    await serverManager.stopServer();
   });
 
-  test('should redirect unauthenticated users to login page', async ({ page }) => {
+  test('should redirect unauthenticated users and show functional login page', async ({ page }) => {
     const testPaths = ['/', '/ui/chat', '/ui/models', '/ui/settings'];
 
+    // Test redirect behavior for all protected paths
     for (const path of testPaths) {
       await page.goto(`${baseUrl}${path}`);
       await waitForSPAReady(page);
 
       const pageContent = await page.content();
-      const currentPath = new URL(page.url()).pathname;
+      const currentPath = getCurrentPath(page);
 
       expect(pageContent.length).toBeGreaterThan(1000);
       expect(currentPath).toBe('/ui/login/');
     }
-  });
 
-  test('should display functional login page with authentication configured', async ({ page }) => {
-    await page.goto(`${baseUrl}/ui/login`);
-    await waitForSPAReady(page);
-
-    const pageContent = await page.content();
-    const currentPath = new URL(page.url()).pathname;
-    const loginButton = page.locator(
-      'button:has-text("Log In"), button:has-text("Login"), button:has-text("Sign In"), button[type="submit"]'
-    );
-
-    expect(pageContent.length).toBeGreaterThan(1000);
-    expect(currentPath).toBe('/ui/login/');
-    await expect(loginButton.first()).toBeVisible();
-  });
-
-  test.skip('should complete OAuth authentication flow to protected content', async ({ page }) => {
-    // This test is skipped due to known bug with login button
+    // Verify login page functionality
     await page.goto(`${baseUrl}/ui/login`);
     await waitForSPAReady(page);
 
@@ -93,12 +59,20 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
       'button:has-text("Log In"), button:has-text("Login"), button:has-text("Sign In"), button[type="submit"]'
     );
     await expect(loginButton.first()).toBeVisible();
+  });
 
+  test('should complete full OAuth authentication flow to protected content', async ({ page }) => {
+    await page.goto(`${baseUrl}/ui/login`);
+    await waitForSPAReady(page);
+
+    // Click login button to initiate OAuth flow
+    const loginButton = page.locator(
+      'button:has-text("Log In"), button:has-text("Login"), button:has-text("Sign In"), button[type="submit"]'
+    );
     await loginButton.first().click();
 
     // Should redirect to auth server
-    await page.waitForURL((url) => url.includes('dev-id.getbodhi.app'));
-    expect(page.url()).toContain('dev-id.getbodhi.app');
+    await page.waitForURL((url) => url.origin === 'https://dev-id.getbodhi.app');
 
     // Fill in auth server credentials
     const usernameField = page.locator('input[name="username"], input[type="email"], #username');
@@ -114,10 +88,9 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
     await passwordField.fill(testConfig.password);
     await submitButton.click();
 
-    // Should redirect back to app callback then to chat
-    await page.waitForURL((url) => url.includes('/ui/callback') || url.includes('/ui/chat'));
-
-    const finalPath = new URL(page.url()).pathname;
+    // Should redirect back to app and land on chat page
+    await page.waitForURL((url) => url.pathname === '/ui/chat/');
+    const finalPath = getCurrentPath(page);
     expect(finalPath).toBe('/ui/chat/');
   });
 });

@@ -1,4 +1,12 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config } from 'dotenv';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Load test environment variables globally
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+config({ path: join(__dirname, 'tests-js', 'playwright', '.env.test') });
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -6,17 +14,17 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests-js/playwright',
   /* Run tests in files in parallel */
-  fullyParallel: false, // Important: Sequential execution for server tests
+  fullyParallel: false, // Sequential execution for server tests
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : 1, // Single worker to avoid port conflicts
+  workers: 1, // Single worker to avoid port conflicts
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'list', // Use list reporter to avoid blocking HTML server
   /* Global timeout for each test */
-  timeout: 30000, // 30 seconds per test
+  timeout: 10000, // Set to 10s as per guidelines
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -32,10 +40,10 @@ export default defineConfig({
     video: 'retain-on-failure',
 
     /* Navigation timeout */
-    navigationTimeout: 15000,
+    navigationTimeout: 10000, // Consistent with global timeout
 
     /* Action timeout */
-    actionTimeout: 15000,
+    actionTimeout: 10000, // Consistent with global timeout
 
     /* Wait for load state */
     waitForLoadState: 'domcontentloaded',

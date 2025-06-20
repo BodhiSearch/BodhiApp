@@ -2,7 +2,6 @@ import { join, dirname } from 'path';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { fileURLToPath } from 'url';
-import { expect } from '@playwright/test';
 
 // Get the current directory for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -37,53 +36,13 @@ function createTempDir() {
 }
 
 /**
- * Create a basic test configuration using new API
- * @param {Object} bindings - The NAPI bindings
- * @param {Object} options - Configuration options
- * @returns {Object} NapiAppOptions object
- */
-function createTestConfig(bindings, options = {}) {
-  const {
-    bodhiHome = createTempDir(),
-    host = '127.0.0.1',
-    port = randomPort(),
-    execLookupPath = join(__dirname, '..', '..', 'llama_server_proc', 'bin'),
-  } = options;
-
-  let config = bindings.createNapiAppOptions();
-
-  // Set basic environment variables
-  config = bindings.setEnvVar(config, bindings.BODHI_HOME, bodhiHome);
-  config = bindings.setEnvVar(config, bindings.BODHI_HOST, host);
-  config = bindings.setEnvVar(config, bindings.BODHI_PORT, port.toString());
-  config = bindings.setEnvVar(config, bindings.BODHI_EXEC_LOOKUP_PATH, execLookupPath);
-
-  // Set basic system settings
-  config = bindings.setSystemSetting(config, bindings.BODHI_ENV_TYPE, 'development');
-  config = bindings.setSystemSetting(config, bindings.BODHI_APP_TYPE, 'container');
-  config = bindings.setSystemSetting(config, bindings.BODHI_VERSION, '1.0.0-test');
-  config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_URL, 'http://localhost:8080');
-  config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_REALM, 'bodhi');
-
-  return config;
-}
-
-/**
  * Create a test server with a temporary directory
  * @param {Object} bindings - The NAPI bindings
  * @param {Object} options - Configuration options
  * @returns {Object} BodhiServer instance
  */
 function createTestServer(bindings, options = {}) {
-  const { host = '127.0.0.1', port = randomPort(), appStatus = null } = options;
-
-  let config = createFullTestConfig(bindings, { host, port });
-
-  if (appStatus) {
-    config = bindings.setAppStatus(config, appStatus);
-    expect(config.appStatus).toBe(appStatus);
-  }
-
+  let config = createFullTestConfig(bindings, options);
   const server = new bindings.BodhiServer(config);
   return server;
 }
@@ -95,34 +54,36 @@ function createTestServer(bindings, options = {}) {
  * @returns {Object} NapiAppOptions object
  */
 function createFullTestConfig(bindings, options = {}) {
+  const appHome = createTempDir();
   const {
-    bodhiHome = createTempDir(),
     host = '127.0.0.1',
     port = randomPort(),
     execLookupPath = join(__dirname, '..', '..', 'llama_server_proc', 'bin'),
-    logLevel = 'info',
+    logLevel = 'debug',
     logStdout = true,
     envVars = {},
-    authUrl = 'http://localhost:8080',
+    authUrl = 'https://dev-id.getbodhi.app',
     authRealm = 'bodhi',
     clientId = null,
     clientSecret = null,
+    appStatus = 'ready',
   } = options;
 
   let config = bindings.createNapiAppOptions();
-
-  // Set basic environment variables
-  config = bindings.setEnvVar(config, bindings.BODHI_HOME, bodhiHome);
-  config = bindings.setEnvVar(config, bindings.BODHI_HOST, host);
-  config = bindings.setEnvVar(config, bindings.BODHI_PORT, port.toString());
-  config = bindings.setEnvVar(config, bindings.BODHI_EXEC_LOOKUP_PATH, execLookupPath);
-  config = bindings.setEnvVar(config, bindings.BODHI_LOG_LEVEL, logLevel);
-  config = bindings.setEnvVar(config, bindings.BODHI_LOG_STDOUT, logStdout.toString());
 
   // Set any additional environment variables
   for (const [key, value] of Object.entries(envVars)) {
     config = bindings.setEnvVar(config, key, value);
   }
+
+  // Set basic environment variables
+  config = bindings.setEnvVar(config, 'HOME', appHome);
+  config = bindings.setEnvVar(config, bindings.BODHI_HOST, host);
+  config = bindings.setEnvVar(config, bindings.BODHI_PORT, port.toString());
+  // Set app settings
+  config = bindings.setAppSetting(config, bindings.BODHI_EXEC_LOOKUP_PATH, execLookupPath);
+  config = bindings.setAppSetting(config, bindings.BODHI_LOG_LEVEL, logLevel);
+  config = bindings.setAppSetting(config, bindings.BODHI_LOG_STDOUT, logStdout.toString());
 
   // Set basic system settings
   config = bindings.setSystemSetting(config, bindings.BODHI_ENV_TYPE, 'development');
@@ -130,6 +91,10 @@ function createFullTestConfig(bindings, options = {}) {
   config = bindings.setSystemSetting(config, bindings.BODHI_VERSION, '1.0.0-test');
   config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_URL, authUrl);
   config = bindings.setSystemSetting(config, bindings.BODHI_AUTH_REALM, authRealm);
+
+  if (appStatus) {
+    config = bindings.setAppStatus(config, appStatus);
+  }
 
   // Set client credentials if provided
   if (clientId && clientSecret) {
@@ -174,7 +139,6 @@ export {
   loadBindings,
   randomPort,
   createTempDir,
-  createTestConfig,
   createTestServer,
   createFullTestConfig,
   sleep,

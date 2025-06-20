@@ -1,4 +1,4 @@
-use lib_bodhiserver::{AppOptionsBuilder, AppOptionsError};
+use lib_bodhiserver::{AppOptionsBuilder, AppOptionsError, AppStatus};
 use napi_derive::napi;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -87,18 +87,6 @@ pub fn set_app_status(mut config: NapiAppOptions, status: String) -> napi::Resul
   }
 }
 
-/// Build AppOptions from NapiAppOptions
-#[napi]
-pub fn build_app_options(config: NapiAppOptions) -> napi::Result<()> {
-  match try_build_app_options_internal(config).map(|builder| builder.build()) {
-    Ok(_) => Ok(()),
-    Err(e) => Err(napi::Error::new(
-      napi::Status::GenericFailure,
-      format!("Failed to build AppOptions: {}", e),
-    )),
-  }
-}
-
 /// Internal function to build AppOptions (not exposed to NAPI)
 pub fn try_build_app_options_internal(
   config: NapiAppOptions,
@@ -127,7 +115,6 @@ pub fn try_build_app_options_internal(
 
   // Set app status if provided
   if let Some(status_str) = config.app_status {
-    use lib_bodhiserver::services::AppStatus;
     let status = status_str.parse::<AppStatus>().map_err(|_| {
       AppOptionsError::ValidationError(format!("Invalid app status: {}", status_str))
     })?;

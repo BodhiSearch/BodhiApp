@@ -1,11 +1,5 @@
 import { describe, test, expect, beforeAll, afterEach } from 'vitest';
-import {
-  loadBindings,
-  createTestConfig,
-  createTestServer,
-  waitForServer,
-  sleep,
-} from './test-helpers.js';
+import { loadBindings, createTestConfig, createTestServer } from './test-helpers.js';
 
 describe('Integration Tests', () => {
   let bindings;
@@ -18,209 +12,112 @@ describe('Integration Tests', () => {
   afterEach(async () => {
     // Clean up any running servers after each test
     for (const server of runningServers) {
-      try {
-        if (await server.isRunning()) {
-          await server.stop();
-        }
-      } catch (error) {
-        console.warn('Failed to stop server during cleanup:', error.message);
+      const isRunning = await server.isRunning();
+      if (isRunning) {
+        await server.stop();
       }
     }
     runningServers.length = 0;
   });
 
-  describe('Server Lifecycle Management', () => {
-    test('should initially report server as not running', async () => {
-      const config = createTestConfig(bindings);
-      const server = new bindings.BodhiServer(config);
+  describe('Server Configuration and Properties', () => {
+    test('should create server with proper configuration structure and URL generation', () => {
+      const server = createTestServer(bindings, { host: 'test-host', port: 12345 });
       runningServers.push(server);
 
-      const isRunning = await server.isRunning();
-      expect(isRunning).toBe(false);
+      // Test configuration structure
+      expect(server.config.envVars).toBeDefined();
+      expect(server.config.appSettings).toBeDefined();
+      expect(server.config.systemSettings).toBeDefined();
+      expect(typeof server.config.envVars).toBe('object');
+      expect(typeof server.config.appSettings).toBe('object');
+      expect(typeof server.config.systemSettings).toBe('object');
+
+      // Test server properties
+      expect(server.host()).toBe('test-host');
+      expect(server.port()).toBe(12345);
+      expect(server.serverUrl()).toBe('http://test-host:12345');
+      expect(server.config.envVars['HOME']).toBeDefined();
+      expect(server.config.envVars[bindings.BODHI_HOST]).toBe('test-host');
+      expect(parseInt(server.config.envVars[bindings.BODHI_PORT])).toBe(12345);
     });
 
-    test('should create server with temp dir and verify configuration', () => {
+    test('should create server with test helpers and maintain configuration immutability', () => {
       const server = createTestServer(bindings, { host: '127.0.0.1', port: 28000 });
       runningServers.push(server);
 
+      // Test helper-created server
       expect(server.host()).toBe('127.0.0.1');
       expect(server.port()).toBe(28000);
-      expect(server.config.envVars[bindings.BODHI_HOME]).toBeDefined();
-      expect(server.config.envVars[bindings.BODHI_HOME].length).toBeGreaterThan(0);
       expect(server.serverUrl()).toBe('http://127.0.0.1:28000');
-    });
+      expect(server.config.envVars['HOME']).toBeDefined();
 
-    test('should handle server URL generation correctly', () => {
-      const config = createTestConfig(bindings, {
-        host: 'localhost',
-        port: 9999,
-      });
-      const server = new bindings.BodhiServer(config);
-      runningServers.push(server);
-
-      expect(server.serverUrl()).toBe('http://localhost:9999');
-      expect(server.host()).toBe('localhost');
-      expect(server.port()).toBe(9999);
-    });
-  });
-
-  describe('Server Properties and Methods', () => {
-    test('should expose correct configuration properties', () => {
-      const originalConfig = createTestConfig(bindings, {
-        host: 'test-host',
-        port: 12345,
-      });
-      const server = new bindings.BodhiServer(originalConfig);
-      runningServers.push(server);
-
-      const serverConfig = server.config;
-      expect(serverConfig.envVars[bindings.BODHI_HOST]).toBe('test-host');
-      expect(parseInt(serverConfig.envVars[bindings.BODHI_PORT])).toBe(12345);
-      expect(serverConfig.envVars[bindings.BODHI_HOME]).toBe(
-        originalConfig.envVars[bindings.BODHI_HOME]
-      );
-    });
-
-    test('should maintain configuration immutability', () => {
-      const config = createTestConfig(bindings);
-      const server = new bindings.BodhiServer(config);
-      runningServers.push(server);
-
+      // Test immutability - values should remain constant
       const originalHost = server.host();
       const originalPort = server.port();
       const originalUrl = server.serverUrl();
 
-      // Verify that the server maintains its configuration
       expect(server.host()).toBe(originalHost);
       expect(server.port()).toBe(originalPort);
       expect(server.serverUrl()).toBe(originalUrl);
     });
-  });
 
-  describe('Factory Method Variations', () => {
-    test('should create server with specified host and port', () => {
-      const host = '0.0.0.0';
-      const port = 15000;
-      const server = createTestServer(bindings, { host, port });
-      runningServers.push(server);
+    test('should handle default and random value generation properly', () => {
+      // Test with default host
+      const serverWithDefaultHost = createTestServer(bindings, { port: 16000 });
+      runningServers.push(serverWithDefaultHost);
+      expect(serverWithDefaultHost.host()).toBe('127.0.0.1');
+      expect(serverWithDefaultHost.port()).toBe(16000);
 
-      expect(server.host()).toBe(host);
-      expect(server.port()).toBe(port);
-    });
+      // Test with random port
+      const serverWithRandomPort = createTestServer(bindings, { host: 'localhost' });
+      runningServers.push(serverWithRandomPort);
+      expect(serverWithRandomPort.host()).toBe('localhost');
+      expect(serverWithRandomPort.port()).toBeGreaterThanOrEqual(20000);
+      expect(serverWithRandomPort.port()).toBeLessThan(30000);
 
-    test('should create server with random port when port is not specified', () => {
-      const host = 'localhost';
-      const server = createTestServer(bindings, { host });
-      runningServers.push(server);
-
-      expect(server.host()).toBe(host);
-      expect(server.port()).toBeGreaterThanOrEqual(20000);
-      expect(server.port()).toBeLessThan(30000);
-    });
-
-    test('should create server with default host when host is not specified', () => {
-      const port = 16000;
-      const server = createTestServer(bindings, { port });
-      runningServers.push(server);
-
-      expect(server.host()).toBe('127.0.0.1');
-      expect(server.port()).toBe(port);
-    });
-
-    test('should create server with random host and port when both are not specified', () => {
-      const server = createTestServer(bindings);
-      runningServers.push(server);
-
-      expect(server.host()).toBe('127.0.0.1');
-      expect(server.port()).toBeGreaterThanOrEqual(20000);
-      expect(server.port()).toBeLessThan(30000);
+      // Test with both defaults
+      const serverWithDefaults = createTestServer(bindings);
+      runningServers.push(serverWithDefaults);
+      expect(serverWithDefaults.host()).toBe('127.0.0.1');
+      expect(serverWithDefaults.port()).toBeGreaterThanOrEqual(20000);
+      expect(serverWithDefaults.port()).toBeLessThan(30000);
     });
   });
 
-  describe('Configuration Edge Cases', () => {
-    test('should handle server with minimal configuration', () => {
-      const config = createTestConfig(bindings, {
-        host: '127.0.0.1',
-        port: 20001,
-      });
-
-      const server = new bindings.BodhiServer(config);
+  describe('Server Lifecycle and State Management', () => {
+    test('should initially report not running and maintain proper server state', async () => {
+      const server = createTestServer(bindings, { host: '127.0.0.1', port: 20001 });
       runningServers.push(server);
 
-      expect(server).toBeDefined();
-      expect(server.host()).toBe('127.0.0.1');
-      expect(server.port()).toBe(20001);
+      // Initially should not be running
+      expect(await server.isRunning()).toBe(false);
+
+      // Should maintain not-running state consistently
+      expect(await server.isRunning()).toBe(false);
     });
 
-    test('should handle different port ranges', () => {
-      const ports = [20000, 25000, 29999];
-
-      for (const port of ports) {
-        const config = createTestConfig(bindings, { port });
-        const server = new bindings.BodhiServer(config);
-        runningServers.push(server);
-
-        expect(server.port()).toBe(port);
-      }
-    });
-
-    test('should handle various host configurations', () => {
-      const hosts = ['127.0.0.1', 'localhost', '0.0.0.0'];
-
-      for (const host of hosts) {
-        const config = createTestConfig(bindings, { host });
-        const server = new bindings.BodhiServer(config);
-        runningServers.push(server);
-
-        expect(server.host()).toBe(host);
-      }
-    });
-  });
-
-  describe('Configuration Structure Validation', () => {
-    test('should have proper configuration structure', () => {
-      const config = createTestConfig(bindings);
-      const server = new bindings.BodhiServer(config);
+    test('should contain all required configuration variables for complete setup', () => {
+      const server = createTestServer(bindings, { host: 'test-host', port: 12345 });
       runningServers.push(server);
 
       const serverConfig = server.config;
 
-      // Verify the structure matches NapiAppOptions
-      expect(serverConfig.envVars).toBeDefined();
-      expect(serverConfig.appSettings).toBeDefined();
-      expect(serverConfig.systemSettings).toBeDefined();
-      expect(typeof serverConfig.envVars).toBe('object');
-      expect(typeof serverConfig.appSettings).toBe('object');
-      expect(typeof serverConfig.systemSettings).toBe('object');
-    });
-
-    test('should contain required environment variables', () => {
-      const config = createTestConfig(bindings);
-      const server = new bindings.BodhiServer(config);
-      runningServers.push(server);
-
-      const serverConfig = server.config;
-
-      // Check that basic required environment variables are set
-      expect(serverConfig.envVars[bindings.BODHI_HOME]).toBeDefined();
+      // Required environment variables
+      expect(serverConfig.envVars['HOME']).toBeDefined();
       expect(serverConfig.envVars[bindings.BODHI_HOST]).toBeDefined();
       expect(serverConfig.envVars[bindings.BODHI_PORT]).toBeDefined();
-      expect(serverConfig.envVars[bindings.BODHI_EXEC_LOOKUP_PATH]).toBeDefined();
-    });
 
-    test('should contain required system settings', () => {
-      const config = createTestConfig(bindings);
-      const server = new bindings.BodhiServer(config);
-      runningServers.push(server);
+      // For full test config, also check system settings
+      const fullTestServer = createTestServer(bindings);
+      runningServers.push(fullTestServer);
 
-      const serverConfig = server.config;
-
-      // Check that basic required system settings are set
-      expect(serverConfig.systemSettings[bindings.BODHI_ENV_TYPE]).toBeDefined();
-      expect(serverConfig.systemSettings[bindings.BODHI_APP_TYPE]).toBeDefined();
-      expect(serverConfig.systemSettings[bindings.BODHI_VERSION]).toBeDefined();
-      expect(serverConfig.systemSettings[bindings.BODHI_AUTH_URL]).toBeDefined();
-      expect(serverConfig.systemSettings[bindings.BODHI_AUTH_REALM]).toBeDefined();
+      const fullConfig = fullTestServer.config;
+      expect(fullConfig.systemSettings[bindings.BODHI_ENV_TYPE]).toBeDefined();
+      expect(fullConfig.systemSettings[bindings.BODHI_APP_TYPE]).toBeDefined();
+      expect(fullConfig.systemSettings[bindings.BODHI_VERSION]).toBeDefined();
+      expect(fullConfig.systemSettings[bindings.BODHI_AUTH_URL]).toBeDefined();
+      expect(fullConfig.systemSettings[bindings.BODHI_AUTH_REALM]).toBeDefined();
     });
   });
 });

@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import {
   loadBindings,
   randomPort,
@@ -26,133 +27,41 @@ export class PlaywrightServerManager {
   }
 
   /**
-   * Check if server is responding to HTTP requests
-   * @param {string} url - URL to check
-   * @param {number} maxAttempts - Maximum number of attempts
-   * @returns {Promise<boolean>} True if server responds
-   */
-  async waitForHttpResponse(url, maxAttempts = 30) {
-    for (let i = 0; i < maxAttempts; i++) {
-      try {
-        const response = await fetch(url, {
-          method: 'GET',
-          signal: AbortSignal.timeout(5000), // 5 second timeout
-        });
-
-        // Accept any response (even errors) as long as the server is responding
-        console.log(`Server health check: ${response.status} ${response.statusText}`);
-        return true;
-      } catch (error) {
-        console.log(`Server health check attempt ${i + 1}/${maxAttempts}: ${error.message}`);
-        await sleep(1000);
-      }
-    }
-    return false;
-  }
-
-  /**
    * Start a server for testing using constructor configuration
    * @returns {Promise<string>} The server URL
    */
   async startServer() {
-    if (!this.bindings) {
-      await this.initialize();
-    }
+    await this.initialize();
+    this.server = createTestServer(this.bindings, this.serverConfig);
 
-    // Use constructor configuration
-    const config = this.serverConfig;
-    const host = config.host || '127.0.0.1';
-    const port = config.port || randomPort();
+    await this.server.start();
+    const isRunning = await waitForServer(this.server, 30, 1000);
 
-    // Create server using createTestServer from test-helpers which handles appStatus
-    this.server = createTestServer(this.bindings, {
-      host,
-      port,
-      ...(config.appStatus && { appStatus: config.appStatus }),
-    });
+    // Server must be running - fail if not
+    expect(isRunning).toBe(true);
 
-    try {
-      console.log(
-        `Starting server on ${host}:${port}${config.appStatus ? ` with appStatus: ${config.appStatus}` : ''}...`
-      );
-
-      // Start the server
-      await this.server.start();
-
-      // Wait for server to report as running
-      const isRunning = await waitForServer(this.server, 30, 1000);
-
-      if (!isRunning) {
-        throw new Error('Server did not start within timeout');
-      }
-
-      this.baseUrl = this.server.serverUrl();
-      console.log(`Server started on ${this.baseUrl}`);
-
-      // Wait for HTTP responses to be available
-      const isResponding = await this.waitForHttpResponse(this.baseUrl, 15);
-
-      if (!isResponding) {
-        console.warn(
-          'Server started but not responding to HTTP requests - this may be expected in dev environment'
-        );
-        // Don't throw error, let the test handle it
-      }
-
-      return this.baseUrl;
-    } catch (error) {
-      // If server startup fails, it's likely due to missing llama-server binary
-      // This is expected in development environments
-      throw new Error(`Server startup failed: ${error.message}`);
-    }
+    this.baseUrl = this.server.serverUrl();
+    return this.baseUrl;
   }
 
   /**
    * Stop the server
    */
   async stopServer() {
-    if (this.server) {
-      try {
-        if (await this.server.isRunning()) {
-          console.log('Stopping server...');
-          await this.server.stop();
-          console.log('Server stopped');
-        }
-      } catch (error) {
-        console.warn('Failed to stop server:', error.message);
-      }
-      this.server = null;
-      this.baseUrl = null;
+    const isRunning = await this.server.isRunning();
+    if (isRunning) {
+      await this.server.stop();
     }
+    this.server = null;
+    this.baseUrl = null;
   }
 
   /**
    * Get the server URL
-   * @returns {string|null} The server URL or null if not started
+   * @returns {string} The server URL
    */
   getBaseUrl() {
     return this.baseUrl;
-  }
-
-  /**
-   * Check if server is running
-   * @returns {Promise<boolean>} True if server is running
-   */
-  async isRunning() {
-    if (!this.server) return false;
-    try {
-      return await this.server.isRunning();
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Get server configuration
-   * @returns {Object|null} Server configuration or null if not started
-   */
-  getConfig() {
-    return this.server ? this.server.config : null;
   }
 }
 
@@ -161,73 +70,36 @@ export class PlaywrightServerManager {
  * @param {Object} serverConfig - Server configuration options
  * @returns {PlaywrightServerManager} New server manager instance
  */
-function createServerManager(serverConfig = {}) {
+export function createServerManager(serverConfig = {}) {
   return new PlaywrightServerManager(serverConfig);
 }
 
 /**
- * Wait for a page to load and check for specific elements
+ * Wait for SPA to be fully loaded and rendered
  * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {string} url - URL to navigate to
- * @param {Object} options - Wait options
- * @returns {Promise<void>}
  */
-async function waitForPageLoad(page, url, options = {}) {
-  const { timeout = 30000, waitUntil = 'domcontentloaded' } = options;
-
-  try {
-    await page.goto(url, {
-      waitUntil,
-      timeout,
-    });
-
-    // Wait for the page to be fully loaded
-    await page.waitForLoadState('domcontentloaded');
-  } catch (error) {
-    console.log(`Page load failed for ${url}: ${error.message}`);
-    throw error;
-  }
+export async function waitForSPAReady(page) {
+  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
 }
 
 /**
- * Check if the current page URL matches expected pattern
+ * Wait for page redirect to expected path
  * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {string|RegExp} expectedPath - Expected path or pattern
- * @returns {Promise<boolean>} True if URL matches
+ * @param {string} expectedPath - Expected path to redirect to
  */
-async function checkCurrentPath(page, expectedPath) {
-  const currentUrl = page.url();
-  const url = new URL(currentUrl);
-
-  if (typeof expectedPath === 'string') {
-    return url.pathname === expectedPath;
-  } else if (expectedPath instanceof RegExp) {
-    return expectedPath.test(url.pathname);
-  }
-
-  return false;
+export async function waitForRedirect(page, expectedPath) {
+  await page.waitForURL((url) => {
+    const pathname = new URL(url).pathname;
+    return pathname === expectedPath;
+  });
 }
 
 /**
- * Wait for a redirect to occur
+ * Get current page path
  * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {string|RegExp} expectedPath - Expected redirect path
- * @param {number} timeout - Timeout in milliseconds
- * @returns {Promise<string>} The final URL after redirect
+ * @returns {string} Current page path
  */
-async function waitForRedirect(page, expectedPath, timeout = 10000) {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeout) {
-    if (await checkCurrentPath(page, expectedPath)) {
-      return page.url();
-    }
-    await sleep(100);
-  }
-
-  throw new Error(
-    `Redirect to ${expectedPath} did not occur within ${timeout}ms. Current URL: ${page.url()}`
-  );
+export function getCurrentPath(page) {
+  return new URL(page.url()).pathname;
 }
-
-export { createServerManager, waitForPageLoad, checkCurrentPath, waitForRedirect };
