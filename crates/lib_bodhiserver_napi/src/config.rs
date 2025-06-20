@@ -259,7 +259,7 @@ mod tests {
   }
 
   #[test]
-  fn test_build_app_options_success() {
+  fn test_build_app_options_success() -> anyhow::Result<()> {
     let mut config = create_napi_app_options();
     config = set_system_setting(
       config,
@@ -275,11 +275,8 @@ mod tests {
     );
     config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhi".to_string());
 
-    let result = build_app_options(config);
-    if let Err(e) = &result {
-      println!("Error: {}", e);
-    }
-    assert!(result.is_ok());
+    let _ = try_build_app_options_internal(config)?;
+    Ok(())
   }
 
   #[test]
