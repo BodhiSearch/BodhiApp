@@ -58,14 +58,13 @@ jobs:
         id: cache-hf
         with:
           path: ${{ env.USER_HOME }}/.cache/huggingface
-          key: hf-cache-llama2-7b-chat
+          key: hf-cache-phi4-mini-instruct
           enableCrossOsArchive: true
 
       - name: Check and Download Llama model
         if: steps.cache-hf.outputs.cache-hit != 'true'
         run: |
-          huggingface-cli download --revision 191239b3e26b2882fb562ffccdd1cf0f65402adb TheBloke/Llama-2-7B-Chat-GGUF llama-2-7b-chat.Q4_K_M.gguf
-          huggingface-cli download --revision main --token ${{ secrets.CI_HF_TOKEN }} meta-llama/Llama-2-13b-chat-hf tokenizer_config.json
+          huggingface-cli download --revision 191239b3e26b2882fb562ffccdd1cf0f65402adb bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
 
       - name: setup-rust
         uses: ./.github/actions/setup-rust
