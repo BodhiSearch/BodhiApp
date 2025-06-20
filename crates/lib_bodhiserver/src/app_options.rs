@@ -1,4 +1,4 @@
-use crate::AppOptionsError;
+use crate::{AppOptionsError, DefaultEnvWrapper};
 use objs::{AppType, EnvType};
 use services::{
   AppRegInfo, AppStatus, EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
@@ -171,9 +171,7 @@ impl AppOptionsBuilder {
 
   /// Builds an environment wrapper with collected environment variables
   fn build_env_wrapper_from_vars(&self) -> Result<Arc<dyn EnvWrapper>, AppOptionsError> {
-    use services::DefaultEnvWrapper;
     let mut env_wrapper = DefaultEnvWrapper::default();
-    // Apply collected environment variables (if any)
     for (key, value) in &self.environment_vars {
       env_wrapper.set_var(key, value);
     }
