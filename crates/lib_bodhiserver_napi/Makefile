@@ -1,5 +1,5 @@
 # Makefile for lib_bodhiserver_napi
-.PHONY: all build build-debug build-release test test-js test-js-config test-js-integration test-js-live test-playwright test-playwright-ui test-playwright-headed clean format-js dev install-js
+.PHONY: all build build-debug build-release test test-js test-js-config test-js-integration test-js-live test-playwright test-playwright-ui test-playwright-headed test-playwright-ci clean format-js dev install-js
 
 # Default target
 all: build test
@@ -46,6 +46,10 @@ test-playwright-ui: build-debug install-js
 # Run Playwright tests in headed mode (visible browser)
 test-playwright-headed: build-debug install-js
 	npm run test:playwright:headed -- --reporter=line
+
+# Run Playwright tests in CI mode
+test-playwright-ci: build-debug install-js
+	npm run test:playwright:ci
 
 # Format all code
 format: format-rust format-js

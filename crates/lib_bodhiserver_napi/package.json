@@ -28,6 +28,7 @@
     "test:integration": "vitest run --testNamePattern='Integration'",
     "test:live": "vitest run --testNamePattern='Live Server'",
     "test:playwright": "playwright test --reporter=list",
+    "test:playwright:ci": "playwright test --reporter=github",
     "test:playwright:ui": "playwright test --ui",
     "test:playwright:headed": "playwright test --headed",
     "test:all": "npm run test:run && npm run test:playwright",

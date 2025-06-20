@@ -22,9 +22,13 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1, // Single worker to avoid port conflicts
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'list', // Use list reporter to avoid blocking HTML server
+  reporter: process.env.CI ? [
+    ['github'], // GitHub Actions reporter for CI
+    ['html', { open: 'never' }], // HTML report without auto-opening
+    ['junit', { outputFile: 'test-results/junit.xml' }] // JUnit for test results
+  ] : 'list', // Use list reporter locally
   /* Global timeout for each test */
-  timeout: 10000, // Set to 10s as per guidelines
+  timeout: process.env.PLAYWRIGHT_TIMEOUT ? parseInt(process.env.PLAYWRIGHT_TIMEOUT) : 10000, // Configurable timeout
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -58,7 +62,11 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        // Use headless mode in CI or when explicitly set
+        headless: process.env.CI || process.env.PLAYWRIGHT_HEADLESS === 'true',
+      },
     },
 
     // Disable WebKit for now due to bus errors on this system

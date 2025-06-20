@@ -138,3 +138,46 @@ jobs:
         run: make ci.ts-client-check
       - name: Check ts-client tests pass
         run: make ci.ts-client-test
+      - name: Setup Playwright
+        uses: ./.github/actions/setup-playwright
+        with:
+          platform: ${{ matrix.platform }}
+          working-directory: crates/lib_bodhiserver_napi
+      - name: Run Playwright tests
+        shell: bash
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          # Build the NAPI binding first
+          npm run build:debug
+          # Run Playwright tests with CI configuration
+          npm run test:playwright:ci
+        env:
+          CI: true
+          # Use headless mode in CI
+          PLAYWRIGHT_HEADLESS: true
+          # Increase timeout for CI environment
+          PLAYWRIGHT_TIMEOUT: 30000
+      - name: Publish Playwright test results
+        uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Playwright Tests (${{ matrix.target }})
+          path: crates/lib_bodhiserver_napi/test-results/junit.xml
+          reporter: java-junit
+          fail-on-error: true
+      - name: Upload Playwright test results
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results-${{ matrix.target }}
+          path: |
+            crates/lib_bodhiserver_napi/test-results/
+            crates/lib_bodhiserver_napi/playwright-report/
+          retention-days: 7
+      - name: Upload Playwright HTML report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{ matrix.target }}
+          path: crates/lib_bodhiserver_napi/playwright-report/
+          retention-days: 7
