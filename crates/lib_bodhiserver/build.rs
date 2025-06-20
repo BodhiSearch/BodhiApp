@@ -16,7 +16,9 @@ fn _main() -> anyhow::Result<()> {
   let bodhi_dir = manifest_dir.join("../bodhi");
 
   // Build frontend
-  // build_frontend(&bodhi_dir)?;
+  if is_ci() {
+    build_frontend(&bodhi_dir)?;
+  }
 
   // Validate assets exist
   validate_frontend_assets(&bodhi_dir)?;
@@ -27,6 +29,11 @@ fn _main() -> anyhow::Result<()> {
   // println!("cargo:rerun-if-changed=../bodhi/next.config.js");
 
   Ok(())
+}
+
+fn is_ci() -> bool {
+  env::var("CI").map(|v| v == "true").unwrap_or(false)
+    && env::var("CI_RELEASE").map(|v| v == "true").unwrap_or(false)
 }
 
 #[allow(unused)]
