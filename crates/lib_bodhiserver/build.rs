@@ -33,7 +33,6 @@ fn _main() -> anyhow::Result<()> {
 
 fn is_ci() -> bool {
   env::var("CI").map(|v| v == "true").unwrap_or(false)
-    && env::var("CI_RELEASE").map(|v| v == "true").unwrap_or(false)
 }
 
 #[allow(unused)]
