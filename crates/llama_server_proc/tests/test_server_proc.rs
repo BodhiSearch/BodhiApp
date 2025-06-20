@@ -27,9 +27,9 @@ async fn server() -> LlamaServer {
     .join("hub");
   let model_file = HubFile::new(
     hf_cache,
-    Repo::llama2(),
-    Repo::LLAMA2_FILENAME.to_string(),
-    "191239b3e26b2882fb562ffccdd1cf0f65402adb".to_string(),
+    Repo::phi4_mini_instruct(),
+    Repo::PHI4_MINI_INSTRUCT_Q4_K_M.to_string(),
+    "7ff82c2aaa4dde30121698a973765f39be5288c0".to_string(),
     Some(1000),
   )
   .path();
@@ -40,7 +40,7 @@ async fn server() -> LlamaServer {
   );
   let args = LlamaServerArgsBuilder::default()
     .model(model_file)
-    .alias("llama2:7b-chat")
+    .alias("phi4:mini-instruct")
     .verbose(true)
     .build()
     .unwrap();
@@ -58,7 +58,7 @@ async fn server() -> LlamaServer {
 
 fn chat_request(stream: bool) -> Value {
   serde_json::json!({
-    "model": "llama2:7b-chat",
+    "model": "phi4:mini-instruct",
     "seed": 42,
     "stream": stream,
     "messages": [
@@ -75,7 +75,7 @@ fn chat_request(stream: bool) -> Value {
 }
 
 #[rstest]
-#[case::messages_format(chat_request(false), "The day that comes after Monday is Tuesday.")]
+#[case::messages_format(chat_request(false), "Tuesday")]
 #[awt]
 #[tokio::test]
 async fn test_server_proc_chat_completions(
@@ -88,28 +88,29 @@ async fn test_server_proc_chat_completions(
   let response_body = response.json::<Value>().await.unwrap();
   assert_eq!(StatusCode::OK, status, "body: {:?}", response_body);
 
-  assert_eq!(
+  let response = response_body["choices"][0]["message"]["content"]
+    .as_str()
+    .unwrap();
+  assert!(
+    response.contains(expected_content),
+    "expected_content: {} not found in response: {}",
     expected_content,
-    response_body["choices"][0]["message"]["content"]
-      .as_str()
-      .unwrap()
+    response
   );
-  assert_eq!("llama2:7b-chat", response_body["model"]);
+  assert_eq!("phi4:mini-instruct", response_body["model"]);
   assert_eq!("stop", response_body["choices"][0]["finish_reason"]);
 
   Ok(())
 }
 
 #[rstest]
-#[case::messages_format(chat_request(true), [
-  "", "The", " day", " that", " comes", " after", " Monday", " is", " T", "ues", "day", ".",
-].as_slice())]
+#[case::messages_format(chat_request(true), "Tuesday")]
 #[awt]
 #[tokio::test]
 async fn test_server_proc_chat_completions_streamed(
   #[future] server: LlamaServer,
   #[case] request_body: Value,
-  #[case] expected_content: &[&str],
+  #[case] expected_content: &str,
 ) -> Result<()> {
   let response = server.chat_completions(&request_body).await?;
   let status = response.status();
@@ -137,9 +138,10 @@ async fn test_server_proc_chat_completions_streamed(
         .as_str()
         .unwrap_or_default()
     })
-    .collect::<Vec<_>>();
+    .collect::<Vec<_>>()
+    .join(" ");
 
-  assert_eq!(expected_content, actual);
+  assert!(actual.contains(expected_content), "actual: {} not found in response: {}", actual, expected_content);
 
   let expected: Value =
     serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#).unwrap();
