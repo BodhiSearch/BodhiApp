@@ -1,6 +1,9 @@
 use crate::{LoginError, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO};
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
-use auth_middleware::{app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN};
+use auth_middleware::{
+  app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN, SESSION_KEY_ACCESS_TOKEN,
+  SESSION_KEY_REFRESH_TOKEN,
+};
 use axum::{
   body::Body,
   extract::State,
@@ -15,9 +18,7 @@ use base64::{engine::general_purpose, Engine as _};
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError};
 use serde::{Deserialize, Serialize};
-
-pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
-pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
+use tracing::instrument;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[schema(example = json!({
@@ -48,6 +49,7 @@ use utoipa::ToSchema;
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
 )]
+#[instrument(skip_all, level = "debug")]
 pub async fn auth_initiate_handler(
   headers: HeaderMap,
   session: Session,
@@ -120,6 +122,7 @@ pub async fn auth_initiate_handler(
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
 )]
+#[instrument(skip_all, level = "debug")]
 pub async fn auth_callback_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -150,10 +153,12 @@ pub async fn auth_callback_handler(
     .await
     .map_err(LoginError::from)?
     .ok_or(LoginError::SessionInfoNotFound)?;
+
   let received_state = request
     .state
     .as_ref()
     .ok_or_else(|| BadRequestError::new("missing state parameter".to_string()))?;
+
   if stored_state != *received_state {
     return Err(BadRequestError::new(
       "state parameter in callback does not match with the one sent in login request".to_string(),
@@ -279,6 +284,7 @@ pub enum LogoutError {
         (status = 500, description = "Session deletion failed", body = OpenAIApiError)
     )
 )]
+#[instrument(skip_all, level = "debug")]
 pub async fn logout_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -330,6 +336,7 @@ pub struct UserInfo {
         )
     )
 )]
+#[instrument(skip_all, level = "debug")]
 pub async fn user_info_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
@@ -384,11 +391,11 @@ pub struct AuthCallbackRequest {
 #[cfg(test)]
 mod tests {
   use crate::{
-    auth_callback_handler, auth_initiate_handler, generate_pkce, logout_handler,
-    user_info_handler, UserInfo, RedirectResponse,
+    auth_callback_handler, auth_initiate_handler, generate_pkce, logout_handler, user_info_handler,
+    RedirectResponse, UserInfo,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::{inject_session_auth_info, generate_random_string, KEY_RESOURCE_TOKEN};
+  use auth_middleware::{generate_random_string, inject_session_auth_info, KEY_RESOURCE_TOKEN};
   use axum::body::to_bytes;
   use axum::{
     body::Body,
@@ -842,8 +849,6 @@ mod tests {
     );
     Ok(())
   }
-
-
 
   #[rstest]
   #[tokio::test]
