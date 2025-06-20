@@ -116,19 +116,34 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
 
   if enable_stdout {
     subscriber
-      .with(fmt::layer().with_writer(std::io::stdout))
-      .with(fmt::layer().with_writer(non_blocking))
+      .with(
+        fmt::layer()
+          .with_writer(std::io::stdout)
+          .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::CLOSE)
+          .with_target(true),
+      )
+      .with(
+        fmt::layer()
+          .with_writer(non_blocking)
+          .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::CLOSE)
+          .with_target(true),
+      )
       .init();
   } else {
     subscriber
-      .with(fmt::layer().with_writer(non_blocking))
+      .with(
+        fmt::layer()
+          .with_writer(non_blocking)
+          .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::CLOSE)
+          .with_target(true),
+      )
       .init();
   }
   #[cfg(debug_assertions)]
   {
     println!(
-      "logging to stdout: {}, log_level: {}",
-      enable_stdout, log_level
+      "logging to stdout: {}, log_level: {} ({})",
+      enable_stdout, log_level, level_str
     );
   }
   guard
