@@ -40,7 +40,7 @@ fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
   println!("cargo:warning=Building frontend in {:?}", bodhi_dir);
 
   // Install dependencies
-  let status = Command::new("npm")
+  let status = create_npm_command()
     .args(["install"])
     .current_dir(bodhi_dir)
     .status()
@@ -51,7 +51,7 @@ fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
   }
 
   // Build frontend
-  let status = Command::new("npm")
+  let status = create_npm_command()
     .args(["run", "build"])
     .current_dir(bodhi_dir)
     .status()
@@ -62,6 +62,16 @@ fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
   }
 
   Ok(())
+}
+
+fn create_npm_command() -> Command {
+  if cfg!(target_os = "windows") {
+    let mut cmd = Command::new("cmd");
+    cmd.args(["/C", "npm"]);
+    cmd
+  } else {
+    Command::new("npm")
+  }
 }
 
 fn validate_frontend_assets(bodhi_dir: &Path) -> anyhow::Result<()> {
