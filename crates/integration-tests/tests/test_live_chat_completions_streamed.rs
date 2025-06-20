@@ -39,7 +39,7 @@ async fn test_live_chat_completions_stream(
     .header("Content-Type", "application/json")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
-      "model": "llama2:7b-chat",
+      "model": "phi4:mini-instruct",
       "seed": 42,
       "stream": true,
       "messages": [

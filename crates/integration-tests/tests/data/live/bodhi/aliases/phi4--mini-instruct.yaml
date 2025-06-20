@@ -1,0 +1,4 @@
+alias: phi4:mini-instruct
+repo: bartowski/microsoft_Phi-4-mini-instruct-GGUF
+filename: microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
+snapshot: 7ff82c2aaa4dde30121698a973765f39be5288c0
