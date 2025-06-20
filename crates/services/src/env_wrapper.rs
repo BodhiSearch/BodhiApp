@@ -26,6 +26,7 @@ impl DefaultEnvWrapper {
 
 impl EnvWrapper for DefaultEnvWrapper {
   fn var(&self, key: &str) -> Result<String, VarError> {
+    // TODO: should check internal map first before checking the environment
     match std::env::var(key) {
       Ok(value) => Ok(value),
       Err(VarError::NotPresent) => match self.env_vars.get(key) {

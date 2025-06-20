@@ -10,6 +10,10 @@ use server_core::RouterState;
 use services::{AppStatus, AuthServiceError, SecretServiceError, TokenError};
 use std::sync::Arc;
 use tower_sessions::Session;
+use tracing::instrument;
+
+pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
+pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
 
 pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 pub const KEY_RESOURCE_ROLE: &str = "X-Resource-Access";
@@ -61,6 +65,7 @@ pub enum AuthError {
   SignatureMismatch(String),
 }
 
+#[instrument(skip_all, level = "debug")]
 pub async fn auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -80,7 +85,7 @@ pub async fn auth_middleware(
     app_service.cache_service(),
     app_service.db_service(),
   );
-  // Check app status
+  // TODO: remove, frontend should check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
     return Ok(
       Redirect::to(&format!(
@@ -105,7 +110,7 @@ pub async fn auth_middleware(
       .insert(KEY_RESOURCE_SCOPE, token_scope.to_string().parse().unwrap());
     Ok(next.run(req).await)
   } else if let Some(access_token) = session
-    .get::<String>("access_token")
+    .get::<String>(SESSION_KEY_ACCESS_TOKEN)
     .await
     .map_err(AuthError::from)?
   {
@@ -124,6 +129,7 @@ pub async fn auth_middleware(
   }
 }
 
+#[instrument(skip_all, level = "debug")]
 pub async fn inject_session_auth_info(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,

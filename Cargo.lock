@@ -341,6 +341,7 @@ dependencies = [
  "tokio",
  "tower",
  "tower-sessions",
+ "tracing",
 ]
 
 [[package]]
@@ -5318,6 +5319,7 @@ dependencies = [
  "tokio",
  "tower",
  "tower-sessions",
+ "tracing",
  "url",
  "utoipa",
  "uuid",
