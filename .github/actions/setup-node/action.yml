@@ -1,5 +1,5 @@
 name: setup-node
-description: setup node and pnpm
+description: setup node and npm with caching
 inputs:
   platform:
     description: "Platform to build for"
@@ -8,41 +8,36 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: pnpm/action-setup@v3
-      with:
-        version: 9
-        run_install: false
-
     - name: setup node
       uses: actions/setup-node@v4
       with:
         node-version: lts/iron
         registry-url: 'https://registry.npmjs.org'
 
-    - name: Get pnpm store directory (Windows)
+    - name: Get npm cache directory (Windows)
       if: inputs.platform == 'windows-latest'
       shell: pwsh
-      run: echo "STORE_PATH=$(pnpm store path --silent)" >> $env:GITHUB_ENV
+      run: echo "NPM_CACHE_DIR=$(npm config get cache)" >> $env:GITHUB_ENV
 
-    - name: Get pnpm store directory (Unix)
+    - name: Get npm cache directory (Unix)
       if: inputs.platform != 'windows-latest'
       shell: bash
-      run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      run: echo "NPM_CACHE_DIR=$(npm config get cache)" >> $GITHUB_ENV
 
-    - uses: actions/cache@v4
-      name: Setup pnpm cache
+    - name: Cache npm dependencies
+      uses: actions/cache@v4
       with:
-        path: ${{ env.STORE_PATH }}
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+        path: ${{ env.NPM_CACHE_DIR }}
+        key: ${{ runner.os }}-npm-${{ hashFiles('crates/bodhi/package-lock.json', 'crates/lib_bodhiserver_napi/package-lock.json', 'ts-client/package-lock.json') }}
         restore-keys: |
-          ${{ runner.os }}-pnpm-store-
+          ${{ runner.os }}-npm-
 
-    - name: Install app pnpm dependencies (Windows)
+    - name: Install app npm dependencies (Windows)
       if: inputs.platform == 'windows-latest'
       shell: pwsh
       run: make -f Makefile.win.mk ci.app-pnpm
 
-    - name: Install app pnpm dependencies (Unix)
+    - name: Install app npm dependencies (Unix)
       if: inputs.platform != 'windows-latest'
       shell: bash
       run: make ci.app-pnpm

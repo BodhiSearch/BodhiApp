@@ -1,0 +1,91 @@
+name: setup-playwright
+description: Setup Playwright and install browsers with caching
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+  working-directory:
+    description: "Working directory for Playwright"
+    required: false
+    default: "crates/lib_bodhiserver_napi"
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node and npm
+      uses: ./.github/actions/setup-node
+      with:
+        platform: ${{ inputs.platform }}
+
+    - name: Install Playwright dependencies (Windows)
+      if: inputs.platform == 'windows-latest'
+      shell: pwsh
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci
+
+    - name: Install Playwright dependencies (Unix)
+      if: inputs.platform != 'windows-latest'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci
+
+    - name: Get Playwright version
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        # Ensure package.json exists and get Playwright version
+        if [ -f "package.json" ]; then
+          PLAYWRIGHT_VERSION=$(npm list @playwright/test --depth=0 --json 2>/dev/null | jq -r '.dependencies["@playwright/test"].version // empty')
+          if [ -z "$PLAYWRIGHT_VERSION" ] || [ "$PLAYWRIGHT_VERSION" = "null" ]; then
+            # Fallback to reading from package.json
+            PLAYWRIGHT_VERSION=$(node -p "require('./package.json').devDependencies['@playwright/test'] || require('./package.json').dependencies['@playwright/test']" 2>/dev/null || echo "1.48.2")
+          fi
+          echo "PLAYWRIGHT_VERSION=$PLAYWRIGHT_VERSION" >> $GITHUB_ENV
+        else
+          echo "PLAYWRIGHT_VERSION=1.48.2" >> $GITHUB_ENV
+        fi
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@v4
+      id: playwright-cache
+      with:
+        path: |
+          ~/.cache/ms-playwright
+          ~/Library/Caches/ms-playwright
+          %USERPROFILE%\AppData\Local\ms-playwright
+        key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-playwright-
+
+    - name: Install Playwright browsers (Windows)
+      if: inputs.platform == 'windows-latest' && steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: pwsh
+      working-directory: ${{ inputs.working-directory }}
+      run: npx playwright install --with-deps chromium
+
+    - name: Install Playwright browsers (Unix)
+      if: inputs.platform != 'windows-latest' && steps.playwright-cache.outputs.cache-hit != 'true'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npx playwright install --with-deps chromium
+
+    - name: Install Playwright system dependencies (Linux only)
+      if: runner.os == 'Linux'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        # Install system dependencies for Playwright on Linux
+        sudo apt-get update
+        sudo apt-get install -y \
+          libnss3 \
+          libnspr4 \
+          libatk-bridge2.0-0 \
+          libdrm2 \
+          libxkbcommon0 \
+          libxcomposite1 \
+          libxdamage1 \
+          libxrandr2 \
+          libgbm1 \
+          libxss1 \
+          libasound2 \
+          libatspi2.0-0 

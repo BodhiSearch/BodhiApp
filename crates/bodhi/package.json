@@ -97,6 +97,9 @@
     "vite-tsconfig-paths": "^5.0.1",
     "vitest": "^2.1.9"
   },
+  "engines": {
+    "node": ">=18"
+  },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
       "eslint --fix",
