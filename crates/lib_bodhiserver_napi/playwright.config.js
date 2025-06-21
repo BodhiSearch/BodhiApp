@@ -65,7 +65,7 @@ export default defineConfig({
       use: { 
         ...devices['Desktop Chrome'],
         // Use headless mode in CI or when explicitly set
-        headless: process.env.CI || process.env.PLAYWRIGHT_HEADLESS === 'true',
+        headless: !!process.env.CI || process.env.PLAYWRIGHT_HEADLESS === 'true',
       },
     },
 
