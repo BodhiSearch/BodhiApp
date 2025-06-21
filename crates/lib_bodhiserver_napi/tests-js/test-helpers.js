@@ -8,7 +8,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Get the path to the NAPI bindings
-const napiBindingsPath = join(__dirname, '..', 'index.js');
+const napiBindingsPath = join(__dirname, '..', 'index.cjs');
 
 /**
  * Load the NAPI bindings

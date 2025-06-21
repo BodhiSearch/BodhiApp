@@ -2,7 +2,7 @@
   "name": "@bodhiapp/app-bindings",
   "version": "1.0.0",
   "description": "NAPI-RS bindings for BodhiApp server with integrated tests",
-  "main": "index.js",
+  "main": "index.cjs",
   "types": "index.d.ts",
   "type": "module",
   "napi": {
@@ -19,9 +19,9 @@
     }
   },
   "scripts": {
-    "build": "napi build --platform --release --js false --dts index.d.ts",
-    "build:debug": "napi build --platform --js false --dts index.d.ts",
-    "build:release": "napi build --platform --release --js false --dts index.d.ts",
+    "build": "napi build --platform --release --js index.cjs --dts index.d.ts",
+    "build:debug": "napi build --platform --js index.cjs --dts index.d.ts",
+    "build:release": "napi build --platform --release --js index.cjs --dts index.d.ts",
     "test": "vitest run",
     "test:run": "vitest run",
     "test:config": "vitest run --testNamePattern='Configuration'",

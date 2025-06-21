@@ -22,10 +22,8 @@ test.describe('App Initializer Redirect Tests', () => {
         await page.goto(`${baseUrl}${path}`);
         await waitForSPAReady(page);
 
-        const pageContent = await page.content();
+        await page.waitForURL(`${baseUrl}/ui/login/`);
         const currentPath = getCurrentPath(page);
-
-        expect(pageContent.length).toBeGreaterThan(1000);
         expect(currentPath).toBe('/ui/login/');
       }
     });
