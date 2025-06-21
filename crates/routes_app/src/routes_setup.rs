@@ -7,7 +7,7 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError};
+use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_SETUP, API_TAG_SYSTEM};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt};
@@ -43,7 +43,7 @@ pub struct AppInfo {
 #[utoipa::path(
     get,
     path = ENDPOINT_APP_INFO,
-    tag = "system",
+    tag = API_TAG_SYSTEM,
     operation_id = "getAppInfo",
     responses(
         (status = 200, description = "Returns the status information about the Application", body = AppInfo),
@@ -90,7 +90,7 @@ impl IntoResponse for SetupResponse {
 #[utoipa::path(
     post,
     path = ENDPOINT_APP_SETUP,
-    tag = "setup",
+    tag = API_TAG_SETUP,
     operation_id = "setupApp",
     request_body = SetupRequest,
     responses(
@@ -153,7 +153,7 @@ pub struct PingResponse {
 #[utoipa::path(
     get,
     path = ENDPOINT_PING,
-    tag = "system",
+    tag = API_TAG_SYSTEM,
     operation_id = "pingServer",
     responses(
         (status = 200, description = "Server is healthy", 

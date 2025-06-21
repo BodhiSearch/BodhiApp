@@ -4,7 +4,7 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{Alias, ApiError, OpenAIApiError};
+use objs::{Alias, ApiError, OpenAIApiError, API_TAG_OPENAI};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
@@ -78,7 +78,7 @@ impl utoipa::ToSchema for ListModelResponseWrapper {}
 #[utoipa::path(
     get,
     path = ENDPOINT_OAI_MODELS,
-    tag = "openai",
+    tag = API_TAG_OPENAI,
     operation_id = "listModels",
     responses(
         (status = 200, description = "List of available models", 
