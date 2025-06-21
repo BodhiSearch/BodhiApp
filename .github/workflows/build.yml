@@ -192,6 +192,11 @@ jobs:
     needs: build
     # if: needs.build.outputs.coverage-success == 'true'
     timeout-minutes: 20
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+      actions: read
     strategy:
       fail-fast: false
       matrix:
@@ -263,6 +268,34 @@ jobs:
           ls -la index.*
           echo "✅ llama-server binary:"
           ls -la ../llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server
+      - name: Run NAPI binding tests
+        id: napi-tests
+        continue-on-error: true
+        shell: bash
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          # Run tests with JUnit reporter for test-reporter integration
+          npx vitest run --reporter=junit --outputFile=test-results/vitest-junit.xml --reporter=verbose
+        env:
+          CI: true
+          BODHI_EXEC_VARIANT: cpu
+      - name: Publish NAPI binding test results
+        uses: dorny/test-reporter@v1
+        if: (success() || failure()) && steps.napi-tests.outcome != 'skipped'
+        with:
+          name: NAPI Binding Tests (${{ matrix.target }})
+          path: crates/lib_bodhiserver_napi/test-results/vitest-junit.xml
+          reporter: java-junit
+          fail-on-error: false
+      - name: Upload NAPI test results
+        uses: actions/upload-artifact@v4
+        if: always() && steps.napi-tests.outcome != 'skipped'
+        with:
+          name: napi-test-results-${{ matrix.target }}
+          path: |
+            crates/lib_bodhiserver_napi/coverage/
+            crates/lib_bodhiserver_napi/test-results/
+          retention-days: 1
       - name: Run Playwright tests
         id: playwright-run
         shell: bash
@@ -291,7 +324,7 @@ jobs:
           name: Playwright Tests (${{ matrix.target }})
           path: crates/lib_bodhiserver_napi/test-results/junit.xml
           reporter: java-junit
-          fail-on-error: true
+          fail-on-error: false
       - name: Upload Playwright test results
         uses: actions/upload-artifact@v4
         if: failure() && steps.playwright-run.outcome != 'skipped'
@@ -308,3 +341,27 @@ jobs:
           name: playwright-report-${{ matrix.target }}
           path: crates/lib_bodhiserver_napi/playwright-report/
           retention-days: 7
+      - name: Check test results and fail if any failed
+        if: always()
+        shell: bash
+        run: |
+          echo "Checking test results..."
+          echo "NAPI tests outcome: ${{ steps.napi-tests.outcome }}"
+          echo "Playwright tests outcome: ${{ steps.playwright-run.outcome }}"
+
+          if [[ "${{ steps.napi-tests.outcome }}" == "failure" ]]; then
+            echo "❌ NAPI binding tests failed"
+            TESTS_FAILED=true
+          fi
+
+          if [[ "${{ steps.playwright-run.outcome }}" == "failure" ]]; then
+            echo "❌ Playwright tests failed"
+            TESTS_FAILED=true
+          fi
+
+          if [[ "$TESTS_FAILED" == "true" ]]; then
+            echo "💔 One or more test suites failed. Check uploaded artifacts for details."
+            exit 1
+          else
+            echo "✅ All test suites passed!"
+          fi
