@@ -108,7 +108,61 @@ ts-client: ## Build the TypeScript types package
 	@cd ts-client && npm install && npm run build && npm run test && npm run bundle
 	@echo "✓ ts-client package built successfully"
 
+# Function to check git branch status
+define check_git_branch
+	@CURRENT_BRANCH=$$(git branch --show-current) && \
+	if [ "$$CURRENT_BRANCH" != "main" ]; then \
+		read -p "Warning: You are not on main branch (current: $$CURRENT_BRANCH). Continue? [y/N] " confirm && \
+		if [ "$$confirm" != "y" ]; then \
+			echo "Aborting release." && exit 1; \
+		fi \
+	fi && \
+	echo "Fetching latest changes from remote..." && \
+	git fetch origin main && \
+	LOCAL_HEAD=$$(git rev-parse HEAD) && \
+	REMOTE_HEAD=$$(git rev-parse origin/main) && \
+	if [ "$$LOCAL_HEAD" != "$$REMOTE_HEAD" ]; then \
+		echo "Warning: Your local main branch is different from origin/main" && \
+		echo "Local:  $$LOCAL_HEAD" && \
+		echo "Remote: $$REMOTE_HEAD" && \
+		read -p "Continue anyway? [y/N] " confirm && \
+		if [ "$$confirm" != "y" ]; then \
+			echo "Aborting release." && exit 1; \
+		fi \
+	fi
+endef
+
+# Function to safely delete existing tag
+define delete_tag_if_exists
+	echo "Checking for existing tag $(1)..." && \
+	if git rev-parse "$(1)" >/dev/null 2>&1; then \
+		read -p "Tag $(1) already exists. Delete and recreate? [y/N] " confirm && \
+		if [ "$$confirm" = "y" ]; then \
+			echo "Deleting existing tag $(1)..." && \
+			git tag -d "$(1)" 2>/dev/null || true && \
+			git push --delete origin "$(1)" 2>/dev/null || true; \
+		else \
+			echo "Aborting release." && exit 1; \
+		fi \
+	fi
+endef
+
+release-app-bindings: ## Create and push tag for app-bindings package release
+	@echo "Preparing to release @bodhiapp/app-bindings package..."
+	$(call check_git_branch)
+	@CURRENT_VERSION=$$(npm view @bodhiapp/app-bindings version 2>/dev/null || echo "0.0.0") && \
+	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION" && \
+	NEXT_VERSION="$$MAJOR.$$MINOR.$$((PATCH + 1))" && \
+	echo "Current version on npmjs: $$CURRENT_VERSION" && \
+	echo "Next version to release: $$NEXT_VERSION" && \
+	TAG_NAME="bodhi-app-bindings/v$$NEXT_VERSION" && \
+	$(call delete_tag_if_exists,$$TAG_NAME) && \
+	echo "Creating tag $$TAG_NAME..." && \
+	git tag "$$TAG_NAME" && \
+	git push origin "$$TAG_NAME" && \
+	echo "Tag $$TAG_NAME pushed. GitHub workflow will handle the release process."
+
 ui.test:
 	cd crates/bodhi && npm run test
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client ui.test help
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test help

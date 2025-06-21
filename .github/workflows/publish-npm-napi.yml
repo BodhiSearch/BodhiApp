@@ -1,0 +1,190 @@
+name: Publish app-bindings
+
+on:
+  push:
+    tags:
+      - "bodhi-app-bindings/v*"
+
+# Prevent concurrent releases
+concurrency:
+  group: npm-napi-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+env:
+  CI: true
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            build: npm run build:release -- --target aarch64-apple-darwin
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: npm run build:release -- --target x86_64-unknown-linux-gnu
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            build: npm run build:release -- --target x86_64-pc-windows-msvc
+    name: Build ${{ matrix.settings.target }}
+    runs-on: ${{ matrix.settings.host }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          platform: ${{ matrix.settings.host }}
+          target: ${{ matrix.settings.target }}
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-node
+        with:
+          platform: ${{ matrix.settings.host }}
+      - name: Install dependencies
+        working-directory: crates/lib_bodhiserver_napi
+        run: npm ci
+      - name: Build
+        working-directory: crates/lib_bodhiserver_napi
+        run: ${{ matrix.settings.build }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: |
+            crates/lib_bodhiserver_napi/*.node
+            crates/lib_bodhiserver_napi/index.cjs
+            crates/lib_bodhiserver_napi/index.d.ts
+          if-no-files-found: error
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: build
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+
+      - name: Extract version information
+        id: version
+        working-directory: ./crates/lib_bodhiserver_napi
+        run: |
+          # Extract the version from the tag
+          TAG_VERSION=${GITHUB_REF#refs/tags/bodhi-app-bindings/v}
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "release_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+
+          # Calculate the next patch version for post-release
+          IFS='.' read -ra VERSION_PARTS <<< "$TAG_VERSION"
+          NEXT_PATCH=$((${VERSION_PARTS[2]} + 1))
+          NEXT_VERSION="${VERSION_PARTS[0]}.${VERSION_PARTS[1]}.$NEXT_PATCH-dev"
+          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        working-directory: crates/lib_bodhiserver_napi
+        run: npm ci
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Move artifacts
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          for dir in ../../artifacts/bindings-*; do
+            if [ -d "$dir" ]; then
+              cp "$dir"/*.node . || true
+              cp "$dir"/index.cjs . || true
+              cp "$dir"/index.d.ts . || true
+            fi
+          done
+          ls -la *.node
+          ls -la index.*
+
+      - name: Update version for release
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          # Set version from tag directly
+          npm version ${{ steps.version.outputs.tag_version }} --no-git-tag-version
+
+      - name: Verify build artifacts
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          if [ ! -f "*.node" ]; then
+            echo "Build artifacts not found"
+            exit 1
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            crates/lib_bodhiserver_napi/*.node
+            crates/lib_bodhiserver_napi/README.md
+            crates/lib_bodhiserver_napi/package.json
+          name: "app-bindings v${{ steps.version.outputs.tag_version }}"
+          body: |
+            app-bindings Release v${{ steps.version.outputs.tag_version }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+
+      - name: Publish to npm
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+          npm run prepublishOnly
+          npm publish
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Verify NPM Package
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          # Wait for NPM to index the package
+          sleep 10
+          PUBLISHED_VERSION=$(npm view @bodhiapp/app-bindings version 2>/dev/null || echo "not found")
+          if [ "$PUBLISHED_VERSION" = "not found" ]; then
+            echo "Package not found on NPM"
+            exit 1
+          fi
+          echo "Successfully published version $PUBLISHED_VERSION"
+
+      - name: Configure Git for version bump
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Pull latest changes
+        run: |
+          # Fetch only the latest commit from main
+          git fetch --depth=1 origin main
+          git checkout -B main origin/main
+
+      - name: Bump version and add -dev suffix
+        run: |
+          cd ./crates/lib_bodhiserver_napi
+          npm version ${{ steps.version.outputs.next_version }} --no-git-tag-version
+          cd ../..
+          git add crates/lib_bodhiserver_napi/package.json
+          git commit -m "chore: bump app-bindings version to ${{ steps.version.outputs.next_version }} after release [skip ci]"
+          git push origin main

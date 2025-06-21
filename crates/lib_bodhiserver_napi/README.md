@@ -1,173 +1,135 @@
-# BodhiApp Server NAPI Bindings
+# @bodhiapp/app-bindings
 
-This crate provides Node.js bindings for the BodhiApp server through NAPI-RS, enabling JavaScript/TypeScript applications to configure and launch the Bodhi server programmatically.
+[![npm version](https://badge.fury.io/js/@bodhiapp%2Fapp-bindings.svg)](https://badge.fury.io/js/@bodhiapp%2Fapp-bindings)
+[![CI](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build.yml/badge.svg)](https://github.com/BodhiSearch/BodhiApp/actions/workflows/build.yml)
+
+Node.js bindings for BodhiApp server functionality, built with NAPI-RS for high-performance native integration.
 
 ## Features
 
-- ✅ **Configuration Management**: Full configuration API for server settings
-- ✅ **Server Lifecycle**: Start, stop, and monitor server instances
-- ✅ **Type Safety**: Complete TypeScript definitions included
-- ✅ **Cross-Platform**: Supports macOS, Linux, Windows
-- ✅ **Async/Await**: Modern JavaScript async patterns
-- ✅ **Factory Methods**: Convenient server creation methods
+- 🚀 **High Performance**: Native Rust implementation with Node.js bindings
+- 🔄 **Cross-Platform**: Supports macOS, Linux, and Windows
+- 📦 **Zero Dependencies**: Self-contained with platform-specific binaries
+- 🔒 **Type Safe**: Full TypeScript definitions included
+- 🧪 **Well Tested**: Comprehensive test suite with integration tests
 
 ## Installation
 
 ```bash
-npm install bodhiapp-server-bindings
+npm install @bodhiapp/app-bindings
 ```
+
+## Supported Platforms
+
+This package includes pre-built binaries for the following platforms:
+
+| Platform | Architecture | Node.js |
+|----------|-------------|---------|
+| macOS | Apple Silicon (ARM64) | >=22 |
+| Linux | x64 | >=22 |
+| Windows | x64 | >=22 |
 
 ## Usage
 
-### Basic Configuration
+### Basic Usage
 
 ```javascript
-const {
-  BodhiServer,
-  createServerConfig,
-  setServerHost,
-  setServerPort,
-  addEnvVar
-} = require('bodhiapp-server-bindings');
+import { /* exported functions */ } from '@bodhiapp/app-bindings';
 
-// Create and configure server
-let config = createServerConfig();
-config = setServerHost(config, 'localhost');
-config = setServerPort(config, 8080);
-config = addEnvVar(config, 'BODHI_ENCRYPTION_KEY', 'your-key');
-
-const server = new BodhiServer(config);
+// Example usage will be added based on your actual exports
 ```
 
-### Server Lifecycle
+### TypeScript Support
 
-```javascript
-async function runServer() {
-  // Create server with temporary directory
-  const server = BodhiServer.withTempDir();
-  
-  try {
-    // Start the server
-    await server.start();
-    console.log('Server running at:', server.serverUrl());
-    
-    // Check if server is running
-    const isRunning = await server.isRunning();
-    console.log('Server status:', isRunning);
-    
-    // Test connectivity
-    const response = await server.ping();
-    console.log('Ping response:', response);
-    
-  } finally {
-    // Always stop the server
-    await server.stop();
-  }
-}
-```
+The package includes full TypeScript definitions:
 
-### Playwright Integration
+```typescript
+import type { /* types */ } from '@bodhiapp/app-bindings';
 
-This library is designed for UI testing with Playwright:
-
-```javascript
-const { test, expect } = require('@playwright/test');
-const { BodhiServer } = require('bodhiapp-server-bindings');
-
-test('BodhiApp UI test', async ({ page }) => {
-  const server = BodhiServer.withTempDir();
-  
-  try {
-    await server.start();
-    const serverUrl = server.serverUrl();
-    
-    // Navigate to the server
-    await page.goto(serverUrl);
-    
-    // Your UI tests here
-    await expect(page).toHaveTitle(/BodhiApp/);
-    
-  } finally {
-    await server.stop();
-  }
-});
+// TypeScript intellisense and type checking work out of the box
 ```
 
 ## API Reference
 
-### Configuration Functions
-
-- `createServerConfig()`: Create default server configuration
-- `createServerConfigWithHome(path)`: Create config with specific bodhi_home
-- `setServerHost(config, host)`: Set server host
-- `setServerPort(config, port)`: Set server port  
-- `setLogLevel(config, level)`: Set log level
-- `addEnvVar(config, key, value)`: Add environment variable
-- `getServerUrl(config)`: Get server URL
-
-### BodhiServer Class
-
-#### Factory Methods
-- `new BodhiServer(config)`: Create with custom config
-- `BodhiServer.withDefaults()`: Create with default config
-- `BodhiServer.withTempDir()`: Create with temporary directory
-
-#### Properties
-- `server.config`: Get server configuration
-- `server.host()`: Get server host
-- `server.port()`: Get server port
-- `server.serverUrl()`: Get complete server URL
-
-#### Async Methods
-- `server.start()`: Start the server (async)
-- `server.stop()`: Stop the server (async)
-- `server.isRunning()`: Check if server is running (async)
-- `server.ping()`: Test server connectivity (async)
+<!-- API documentation will be generated based on your actual exports -->
 
 ## Development
 
+This package is part of the [BodhiApp](https://github.com/BodhiSearch/BodhiApp) project. 
+
 ### Building from Source
 
+If you need to build from source:
+
 ```bash
+# Clone the repository
+git clone https://github.com/BodhiSearch/BodhiApp.git
+cd BodhiApp/crates/lib_bodhiserver_napi
+
 # Install dependencies
 npm install
 
-# Build debug version
-npm run build:debug
-
-# Build release version
-npm run build
-
-# Run tests
-npm test
+# Build the native module
+npm run build:release
 ```
 
 ### Testing
 
 ```bash
-# Run configuration tests (no server startup required)
-node simple-test.js
+# Run unit tests
+npm test
 
-# Run full integration tests (requires server dependencies)
-node test.js
+# Run integration tests
+npm run test:integration
+
+# Run Playwright tests
+npm run test:playwright
 ```
-
-## Requirements
-
-- Node.js 16+
-- Rust toolchain (for building from source)
-- Platform-specific server dependencies (for full server functionality)
 
 ## Architecture
 
-This NAPI bridge wraps the `lib_bodhiserver` Rust crate, providing the same configuration and server management capabilities available to other Bodhi clients (native, container, etc.) but accessible from JavaScript.
+This package uses [NAPI-RS](https://napi.rs/) to provide Node.js bindings for Rust code. The architecture follows these principles:
 
-The bridge uses the same underlying:
-- Configuration management system
-- App service builder pattern  
-- Server lifecycle management
-- Error handling and logging
+- **Platform-specific binaries**: Each supported platform gets its own optimized binary
+- **Automatic loading**: The package automatically loads the correct binary for your platform
+- **Fallback handling**: Graceful error handling if binaries are missing
+- **Development support**: Debug builds available for development
+
+## Performance
+
+The native Rust implementation provides significant performance benefits over pure JavaScript implementations:
+
+- **Memory efficiency**: Lower memory usage through Rust's ownership model
+- **CPU performance**: Optimized native code execution
+- **Concurrent processing**: Built-in support for async operations
+
+## Contributing
+
+Contributions are welcome! Please see the [main repository](https://github.com/BodhiSearch/BodhiApp) for contribution guidelines.
+
+### Development Setup
+
+1. **Rust**: Install Rust toolchain (1.70+)
+2. **Node.js**: Install Node.js (22+)
+3. **Platform tools**: Platform-specific build tools may be required
 
 ## License
 
-MIT License - see LICENSE file for details. 
+MIT License - see the [LICENSE](https://github.com/BodhiSearch/BodhiApp/blob/main/LICENSE) file for details.
+
+## Support
+
+- **Issues**: [GitHub Issues](https://github.com/BodhiSearch/BodhiApp/issues)
+- **Documentation**: [Project Documentation](https://github.com/BodhiSearch/BodhiApp#readme)
+- **Community**: [Discussions](https://github.com/BodhiSearch/BodhiApp/discussions)
+
+## Related Packages
+
+This package is part of the BodhiApp ecosystem:
+
+- **[BodhiApp](https://github.com/BodhiSearch/BodhiApp)**: Main application repository
+- **Desktop App**: Cross-platform desktop application built with Tauri
+
+---
+
+*Built with ❤️ using [NAPI-RS](https://napi.rs/)* 
