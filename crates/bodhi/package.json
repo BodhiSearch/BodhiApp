@@ -98,7 +98,7 @@
     "vitest": "^2.1.9"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
