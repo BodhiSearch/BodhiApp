@@ -1,0 +1,49 @@
+# Source files (publish only dist/)
+src/
+
+# Lock files are kept in git for reproducible CI builds but excluded from npm package
+package-lock.json
+
+# Development and build tools
+node_modules/
+tests/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Build configuration
+tsconfig.json
+openapi-ts.config.ts
+*.config.js
+*.config.ts
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Keep only these files in the published package:
+# - package.json
+# - README.md
+# - LICENSE (if exists)  
+# - dist/ (compiled output) 

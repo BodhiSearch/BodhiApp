@@ -22,8 +22,7 @@ test-results/
 playwright-report/
 coverage/
 
-# Lock files (for libraries - consumers should generate their own)
-package-lock.json
+# Lock files are kept in git for reproducible CI builds but excluded from npm package
 
 # Build outputs
 *.node
