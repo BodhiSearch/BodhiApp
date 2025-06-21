@@ -1,6 +1,6 @@
 {
   "name": "@bodhiapp/app-bindings",
-  "version": "1.0.0",
+  "version": "0.0.2-dev",
   "description": "NAPI-RS bindings for BodhiApp server with integrated tests",
   "main": "index.cjs",
   "types": "index.d.ts",
@@ -79,5 +79,12 @@
     "index.d.ts",
     "*.node"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "optionalDependencies": {
+    "@bodhiapp/app-bindings-win32-x64-msvc": "0.0.1",
+    "@bodhiapp/app-bindings-darwin-x64": "0.0.1",
+    "@bodhiapp/app-bindings-linux-x64-gnu": "0.0.1",
+    "@bodhiapp/app-bindings-darwin-arm64": "0.0.1",
+    "@bodhiapp/app-bindings-linux-arm64-gnu": "0.0.1"
+  }
 }
