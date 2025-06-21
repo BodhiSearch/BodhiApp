@@ -11,7 +11,7 @@ runs:
     - name: setup node
       uses: actions/setup-node@v4
       with:
-        node-version: lts/iron
+        node-version: lts/jod 
         registry-url: 'https://registry.npmjs.org'
 
     - name: Get npm cache directory (Windows)
