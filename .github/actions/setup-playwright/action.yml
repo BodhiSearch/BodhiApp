@@ -67,25 +67,19 @@ runs:
       if: inputs.platform != 'windows-latest' && steps.playwright-cache.outputs.cache-hit != 'true'
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: npx playwright install --with-deps chromium
-
-    - name: Install Playwright system dependencies (Linux only)
-      if: runner.os == 'Linux'
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
       run: |
-        # Install system dependencies for Playwright on Linux
-        sudo apt-get update
-        sudo apt-get install -y \
-          libnss3 \
-          libnspr4 \
-          libatk-bridge2.0-0 \
-          libdrm2 \
-          libxkbcommon0 \
-          libxcomposite1 \
-          libxdamage1 \
-          libxrandr2 \
-          libgbm1 \
-          libxss1 \
-          libasound2 \
-          libatspi2.0-0 
+        # Pre-install Ubuntu 24.04 compatibility packages to avoid Playwright dependency issues
+        if [[ "$RUNNER_OS" == "Linux" ]]; then
+          UBUNTU_VERSION=$(lsb_release -rs 2>/dev/null || echo "22.04")
+          if [[ "$UBUNTU_VERSION" == "24.04" ]]; then
+            echo "Ubuntu 24.04 detected, pre-installing compatibility packages..."
+            sudo apt-get update
+            # Install the specific packages that are missing/renamed in Ubuntu 24.04
+            sudo apt-get install -y \
+              libasound2t64 \
+              libicu74 \
+              libffi8 \
+              libx264-164
+          fi
+        fi
+        npx playwright install --with-deps chromium 
