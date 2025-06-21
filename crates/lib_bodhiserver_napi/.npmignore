@@ -1,0 +1,62 @@
+# Rust files
+src/
+target/
+Cargo.toml
+Cargo.lock
+build.rs
+
+# Build artifacts (keep only the final .node files)
+*.tmp
+*.temp
+
+# Testing
+tests-js/
+test-results/
+playwright-report/
+coverage/
+*.log
+
+# Development files
+.vscode/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+
+# CI/CD
+.github/
+Makefile
+
+# Documentation source
+docs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node.js development
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor
+.vscode/
+.idea/
+*.sublime-*
+
+# Development configs
+biome.json
+playwright.config.js
+vitest.config.js
+
+# Keep only these files in the published package:
+# - package.json
+# - README.md
+# - LICENSE (if exists)
+# - index.cjs
+# - index.d.ts  
+# - *.node (platform binaries) 
