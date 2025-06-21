@@ -91,6 +91,20 @@ jobs:
         shell: bash
         run: |
           make ci.clean
+      - name: Build llama_server_proc binaries for Playwright tests
+        shell: bash
+        run: |
+          # Build the llama_server_proc project to generate platform-specific binaries
+          cargo build -p llama_server_proc
+        env:
+          CI_DEFAULT_VARIANT: cpu
+      - name: Upload llama_server_proc binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: llama-server-binaries-${{ matrix.target }}
+          path: |
+            crates/llama_server_proc/bin/**/*
+          retention-days: 1
       # - name: Generate code coverage
       #   id: coverage
       #   shell: bash
@@ -203,12 +217,21 @@ jobs:
         with:
           name: napi-bindings-${{ matrix.target }}
           path: crates/lib_bodhiserver_napi/
+      - name: Download llama_server_proc binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: llama-server-binaries-${{ matrix.target }}
+          path: crates/llama_server_proc/bin/
+      - name: Set executable permissions for llama-server binaries
+        shell: bash
+        run: |
+          find crates/llama_server_proc/bin -name "*llama-server*" -type f -exec chmod +x {} \;
       - name: Install dependencies
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
         run: |
           npm ci
-      - name: Verify NAPI bindings exist
+      - name: Verify NAPI bindings and llama-server binaries exist
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
         run: |
@@ -216,8 +239,11 @@ jobs:
             echo "Error: NAPI bindings not found. Build may have failed."
             exit 1
           fi
+          echo "NAPI bindings found:"
           ls -la app-bindings.*.node
           ls -la index.*
+          echo "llama-server binaries:"
+          find ../llama_server_proc/bin -name "*llama-server*" -type f | head -10
       - name: Run Playwright tests
         id: playwright-run
         shell: bash
