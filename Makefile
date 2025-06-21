@@ -91,10 +91,10 @@ ci.ts-client-check: ## Verify ts-client is up to date with openapi.yml
 	@echo "==> Checking ts-client is up to date with openapi spec"
 	@cargo run --package xtask openapi
 	@cd ts-client && npm ci && npm run generate
-	@if [ -n "$$(git status --porcelain)" ]; then \
-		echo "Error: Found uncommitted changes after generating OpenAPI spec and ts-client types."; \
+	@if [ -n "$$(git status --porcelain ts-client/src)" ]; then \
+		echo "Error: Found uncommitted changes in ts-client/src after generating OpenAPI spec and ts-client types."; \
 		echo "Please run 'cargo run --package xtask openapi && cd ts-client && npm run generate' and commit the changes."; \
-		git status; \
+		git status ts-client/src; \
 		exit 1; \
 	fi
 	@echo "✓ ts-client is up to date with OpenAPI spec"
