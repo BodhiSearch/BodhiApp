@@ -222,7 +222,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: llama-server-binaries-${{ matrix.target }}
-          path: crates/llama_server_proc/
+          path: crates/llama_server_proc/bin/
+      - name: Debug artifact structure
+        shell: bash
+        run: |
+          echo "Checking artifact download structure:"
+          echo "Contents of crates/llama_server_proc/:"
+          find crates/llama_server_proc/ -type f 2>/dev/null || echo "Directory not found"
+          echo "Contents of crates/llama_server_proc/bin/:"
+          find crates/llama_server_proc/bin/ -type f 2>/dev/null || echo "bin/ directory not found"
       - name: Verify llama-server binary exists and set permissions
         shell: bash
         run: |
