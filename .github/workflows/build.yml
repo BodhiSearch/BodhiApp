@@ -275,7 +275,7 @@ jobs:
           npm run test:playwright:ci
         env:
           CI: true
-          CI_DEFAULT_VARIANT: cpu
+          BODHI_EXEC_VARIANT: cpu
           # Use headless mode in CI
           PLAYWRIGHT_HEADLESS: true
           # Increase timeout for CI environment
