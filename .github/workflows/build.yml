@@ -78,7 +78,6 @@ jobs:
         shell: bash
         run: |
           huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
-
       - name: setup-rust
         uses: ./.github/actions/setup-rust
         with:
@@ -92,21 +91,6 @@ jobs:
         shell: bash
         run: |
           make ci.clean
-      - name: Build llama_server_proc binaries for Playwright tests
-        shell: bash
-        run: |
-          # Build the llama_server_proc project - build.rs handles binary placement
-          cargo build -p llama_server_proc
-          echo "Build completed. Checking generated binaries:"
-          find crates/llama_server_proc/bin -type f 2>/dev/null || echo "No binaries found yet"
-        env:
-          CI_DEFAULT_VARIANT: cpu
-      - name: Upload llama_server_proc binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: llama-server-binaries-${{ matrix.target }}
-          path: crates/llama_server_proc/bin/
-          retention-days: 1
       - name: Generate code coverage
         id: coverage
         shell: bash
@@ -134,6 +118,12 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
           flags: ${{ matrix.target }},bodhi
+      - name: Upload llama_server_proc binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: llama-server-binaries-${{ matrix.target }}
+          path: crates/llama_server_proc/bin/
+          retention-days: 1
       - name: Run UI Tests
         shell: bash
         run: |
