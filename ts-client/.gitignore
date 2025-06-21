@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# Lock files (for libraries - consumers should generate their own)
+package-lock.json
+
 # Build output
 dist/
 
