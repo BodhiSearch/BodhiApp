@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterEach } from 'vitest';
-import { loadBindings, createTestConfig, createTestServer } from './test-helpers.js';
+import { loadBindings, createTestServer } from './test-helpers.js';
 
 describe('Integration Tests', () => {
   let bindings;

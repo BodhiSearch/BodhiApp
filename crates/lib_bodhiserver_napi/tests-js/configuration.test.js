@@ -2,8 +2,6 @@ import { describe, test, expect, beforeAll } from 'vitest';
 import {
   loadBindings,
   createTempDir,
-  randomPort,
-  createTestConfig,
   createTestServer,
   createFullTestConfig,
 } from './test-helpers.js';
