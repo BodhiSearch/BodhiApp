@@ -278,6 +278,8 @@ jobs:
           # Increase timeout for CI environment
           PLAYWRIGHT_TIMEOUT: 30000
           # Authentication environment variables for integration tests
+          INTEG_TEST_CLIENT_ID: ${{ secrets.INTEG_TEST_CLIENT_ID }}
+          INTEG_TEST_CLIENT_SECRET: ${{ secrets.INTEG_TEST_CLIENT_SECRET }}
           INTEG_TEST_AUTH_URL: ${{ vars.INTEG_TEST_AUTH_URL }}
           INTEG_TEST_AUTH_REALM: ${{ vars.INTEG_TEST_AUTH_REALM }}
           INTEG_TEST_USERNAME: ${{ secrets.INTEG_TEST_USERNAME }}

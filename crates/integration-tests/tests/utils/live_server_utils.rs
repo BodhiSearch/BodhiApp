@@ -86,7 +86,7 @@ pub async fn llama2_7b_setup(
   let setting_service = Arc::new(setup_app_dirs(&options)?);
 
   // Create AppRegInfo with values from environment
-  let app_reg_info = AppRegInfoBuilder::test_default()
+  let app_reg_info = AppRegInfoBuilder::default()
     .client_id(client_id)
     .client_secret(client_secret)
     .build()?;
