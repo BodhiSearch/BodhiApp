@@ -3,7 +3,7 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError, SettingInfo};
+use objs::{ApiError, AppError, ErrorType, OpenAIApiError, SettingInfo, API_TAG_SETTINGS};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_KEEP_ALIVE_SECS};
@@ -41,7 +41,7 @@ pub struct UpdateSettingRequest {
 #[utoipa::path(
     get,
     path = ENDPOINT_SETTINGS,
-    tag = "settings",
+    tag = API_TAG_SETTINGS,
     operation_id = "listSettings",
     responses(
         (status = 200, description = "List of application settings", body = Vec<SettingInfo>,
@@ -94,7 +94,7 @@ pub async fn list_settings_handler(
 #[utoipa::path(
     put,
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
-    tag = "settings",
+    tag = API_TAG_SETTINGS,
     operation_id = "updateSetting",
     params(
         ("key" = String, Path, description = "Setting key to update")
@@ -175,7 +175,7 @@ pub async fn update_setting_handler(
 #[utoipa::path(
     delete,
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
-    tag = "settings", 
+    tag = API_TAG_SETTINGS,
     operation_id = "deleteSetting",
     params(
         ("key" = String, Path, description = "Setting key to reset")

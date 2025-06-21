@@ -45,6 +45,26 @@ export type AppInfo = {
 
 export type AppStatus = 'setup' | 'ready' | 'resource-admin';
 
+export type AuthCallbackRequest = {
+    /**
+     * OAuth authorization code from successful authentication
+     */
+    code?: string | null;
+    /**
+     * OAuth error code if authentication failed
+     */
+    error?: string | null;
+    /**
+     * OAuth error description if authentication failed
+     */
+    error_description?: string | null;
+    /**
+     * OAuth state parameter for CSRF protection
+     */
+    state?: string | null;
+    [key: string]: string | (string | null) | (string | null) | (string | null) | (string | null) | undefined;
+};
+
 export type ChatRequest = {
     format?: string | null;
     keep_alive?: null | Duration;
@@ -286,6 +306,13 @@ export type PingResponse = {
     message: string;
 };
 
+export type RedirectResponse = {
+    /**
+     * The URL to redirect to for OAuth authentication
+     */
+    location: string;
+};
+
 export type Repo = {
     name: string;
     user: string;
@@ -478,6 +505,64 @@ export type ListOllamaModelsResponses = {
 };
 
 export type ListOllamaModelsResponse = ListOllamaModelsResponses[keyof ListOllamaModelsResponses];
+
+export type CompleteOAuthFlowData = {
+    body: AuthCallbackRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/auth/callback';
+};
+
+export type CompleteOAuthFlowErrors = {
+    /**
+     * OAuth error or invalid request
+     */
+    422: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CompleteOAuthFlowError = CompleteOAuthFlowErrors[keyof CompleteOAuthFlowErrors];
+
+export type CompleteOAuthFlowResponses = {
+    /**
+     * OAuth flow completed successfully, return redirect URL
+     */
+    200: RedirectResponse;
+};
+
+export type CompleteOAuthFlowResponse = CompleteOAuthFlowResponses[keyof CompleteOAuthFlowResponses];
+
+export type InitiateOAuthFlowData = {
+    body: unknown;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/auth/initiate';
+};
+
+export type InitiateOAuthFlowErrors = {
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type InitiateOAuthFlowError = InitiateOAuthFlowErrors[keyof InitiateOAuthFlowErrors];
+
+export type InitiateOAuthFlowResponses = {
+    /**
+     * User already authenticated, return home page URL
+     */
+    200: RedirectResponse;
+    /**
+     * User not authenticated, return OAuth authorization URL
+     */
+    201: RedirectResponse;
+};
+
+export type InitiateOAuthFlowResponse = InitiateOAuthFlowResponses[keyof InitiateOAuthFlowResponses];
 
 export type GetAppInfoData = {
     body?: never;

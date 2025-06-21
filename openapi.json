@@ -268,6 +268,108 @@
         ]
       }
     },
+    "/bodhi/v1/auth/callback": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Complete OAuth flow with authorization code",
+        "operationId": "completeOAuthFlow",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AuthCallbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OAuth flow completed successfully, return redirect URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "OAuth error or invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/bodhi/v1/auth/initiate": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start OAuth flow - returns location for OAuth provider or home",
+        "operationId": "initiateOAuthFlow",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "default": null
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "User already authenticated, return home page URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectResponse"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "User not authenticated, return OAuth authorization URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RedirectResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bodhi/v1/info": {
       "get": {
         "tags": [
@@ -2021,6 +2123,44 @@
         ],
         "example": "ready"
       },
+      "AuthCallbackRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OAuth authorization code from successful authentication"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OAuth error code if authentication failed"
+          },
+          "error_description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OAuth error description if authentication failed"
+          },
+          "state": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "OAuth state parameter for CSRF protection"
+          }
+        },
+        "additionalProperties": {
+          "type": "string",
+          "description": "Additional OAuth 2.1 parameters sent by the authorization server",
+          "additionalProperties": true
+        }
+      },
       "ChatRequest": {
         "type": "object",
         "required": [
@@ -2987,6 +3127,21 @@
           }
         }
       },
+      "RedirectResponse": {
+        "type": "object",
+        "required": [
+          "location"
+        ],
+        "properties": {
+          "location": {
+            "type": "string",
+            "description": "The URL to redirect to for OAuth authentication"
+          }
+        },
+        "example": {
+          "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
+        }
+      },
       "Repo": {
         "type": "object",
         "required": [
@@ -3285,6 +3440,14 @@
     {
       "name": "models",
       "description": "Model files and aliases"
+    },
+    {
+      "name": "openai",
+      "description": "OpenAI-compatible API endpoints"
+    },
+    {
+      "name": "settings",
+      "description": "Application settings management"
     },
     {
       "name": "ollama",

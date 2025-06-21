@@ -141,7 +141,12 @@ async fn test_server_proc_chat_completions_streamed(
     .collect::<Vec<_>>()
     .join(" ");
 
-  assert!(actual.contains(expected_content), "actual: {} not found in response: {}", actual, expected_content);
+  assert!(
+    actual.contains(expected_content),
+    "actual: {} not found in response: {}",
+    actual,
+    expected_content
+  );
 
   let expected: Value =
     serde_json::from_str(r#"[{"delta":{},"finish_reason":"stop","index":0}]"#).unwrap();

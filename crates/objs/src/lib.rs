@@ -4,6 +4,7 @@ pub mod test_utils;
 pub mod test_utils;
 
 mod alias;
+mod api_tags;
 mod envs;
 mod error;
 pub mod gguf;
@@ -18,6 +19,7 @@ mod token_scope;
 mod utils;
 
 pub use alias::*;
+pub use api_tags::*;
 pub use envs::*;
 pub use error::*;
 pub use gpt_params::*;

@@ -2,7 +2,7 @@ use crate::ENDPOINT_OAI_CHAT_COMPLETIONS;
 use async_openai::types::CreateChatCompletionRequest;
 use axum::{body::Body, extract::State, response::Response, Json};
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, ErrorType, OpenAIApiError};
+use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_OPENAI};
 use server_core::RouterState;
 use std::sync::Arc;
 
@@ -18,7 +18,7 @@ pub enum HttpError {
 #[utoipa::path(
     post,
     path = ENDPOINT_OAI_CHAT_COMPLETIONS,
-    tag = "openai",
+    tag = API_TAG_OPENAI,
     operation_id = "createChatCompletion",
     request_body(
         content = serde_json::Value,

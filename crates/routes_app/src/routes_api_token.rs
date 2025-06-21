@@ -6,7 +6,7 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, EntityError, ErrorType, OpenAIApiError};
+use objs::{ApiError, AppError, EntityError, ErrorType, OpenAIApiError, API_TAG_API_KEYS};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
@@ -68,7 +68,7 @@ pub enum ApiTokenError {
 #[utoipa::path(
     post,
     path = ENDPOINT_TOKENS,
-    tag = "api-keys",
+    tag = API_TAG_API_KEYS,
     operation_id = "createApiToken",
     request_body = CreateApiTokenRequest,
     responses(
@@ -126,7 +126,7 @@ pub async fn create_token_handler(
 #[utoipa::path(
     put,
     path = ENDPOINT_TOKENS.to_owned() + "/{id}",
-    tag = "api-keys",
+    tag = API_TAG_API_KEYS,
     operation_id = "updateApiToken",
     params(
         ("id" = String, Path, description = "Token identifier",
@@ -212,7 +212,7 @@ pub async fn update_token_handler(
 #[utoipa::path(
     get,
     path = ENDPOINT_TOKENS,
-    tag = "api-keys",
+    tag = API_TAG_API_KEYS,
     operation_id = "listApiTokens",
     params(
         PaginationSortParams

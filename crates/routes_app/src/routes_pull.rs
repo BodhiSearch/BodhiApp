@@ -7,7 +7,9 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use chrono::Utc;
 use commands::{PullCommand, PullCommandError};
-use objs::{ApiError, AppError, ErrorType, ObjValidationError, OpenAIApiError, Repo};
+use objs::{
+  ApiError, AppError, ErrorType, ObjValidationError, OpenAIApiError, Repo, API_TAG_MODELS,
+};
 use serde::Deserialize;
 use server_core::RouterState;
 use services::db::ItemNotFound;
@@ -53,7 +55,7 @@ pub enum PullError {
 #[utoipa::path(
     get,
     path = ENDPOINT_MODEL_PULL,
-    tag = "models",
+    tag = API_TAG_MODELS,
     operation_id = "listDownloads",
     params(
         PaginationSortParams
@@ -98,7 +100,7 @@ pub async fn list_downloads_handler(
 #[utoipa::path(
     post,
     path = ENDPOINT_MODEL_PULL,
-    tag = "models",
+    tag = API_TAG_MODELS,
     operation_id = "pullModelFile",
     request_body(
         content = NewDownloadRequest,
@@ -211,7 +213,7 @@ pub async fn create_pull_request_handler(
 #[utoipa::path(
     post,
     path = ENDPOINT_MODEL_PULL.to_owned() + "/{alias}",
-    tag = "models",
+    tag = API_TAG_MODELS,
     operation_id = "pullModelByAlias",
     params(
         ("alias" = String, Path,
@@ -339,7 +341,7 @@ pub async fn pull_by_alias_handler(
 #[utoipa::path(
     get,
     path = ENDPOINT_MODEL_PULL.to_owned() + "/{id}",
-    tag = "models",
+    tag = API_TAG_MODELS,
     operation_id = "getDownloadStatus",
     params(
         ("id" = String, Path, description = "Download request identifier",

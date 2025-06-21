@@ -6,7 +6,7 @@ use axum::{
   extract::{Query, State},
   Json,
 };
-use objs::{Alias, ApiError, HubFile, OpenAIApiError};
+use objs::{Alias, ApiError, HubFile, OpenAIApiError, API_TAG_MODELS};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ use std::sync::Arc;
 #[utoipa::path(
     get,
     path = ENDPOINT_MODELS,
-    tag = "models",
+    tag = API_TAG_MODELS,
     operation_id = "listModelAliases",
     params(
         PaginationSortParams
@@ -76,7 +76,7 @@ pub async fn list_local_aliases_handler(
 #[utoipa::path(
     get,
     path = ENDPOINT_MODEL_FILES,
-    tag = "models",
+    tag = API_TAG_MODELS,
     operation_id = "listModelFiles",
     params(
         PaginationSortParams
@@ -178,7 +178,7 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
 #[utoipa::path(
     get,
     path = ENDPOINT_MODELS.to_owned() + "/{alias}",
-    tag = "models",
+    tag = API_TAG_MODELS,
     operation_id = "getAlias",
     params(
         ("alias" = String, Path, description = "Alias identifier for the model")

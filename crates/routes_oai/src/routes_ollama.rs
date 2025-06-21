@@ -16,7 +16,7 @@ use axum::{
 };
 use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
-use objs::{Alias, GGUF};
+use objs::{Alias, API_TAG_OLLAMA, GGUF};
 use serde::{Deserialize, Serialize, Serializer};
 use server_core::RouterState;
 use std::{collections::HashMap, fs, sync::Arc, time::UNIX_EPOCH};
@@ -58,7 +58,7 @@ pub struct OllamaError {
 #[utoipa::path(
     get,
     path = ENDPOINT_OLLAMA_TAGS,
-    tag = "ollama",
+    tag = API_TAG_OLLAMA,
     operation_id = "listOllamaModels",
     responses(
         (status = 200, description = "List of available models", body = ModelsResponse,
@@ -165,7 +165,7 @@ pub struct ShowResponse {
 #[utoipa::path(
     post,
     path = ENDPOINT_OLLAMA_SHOW,
-    tag = "ollama",
+    tag = API_TAG_OLLAMA,
     operation_id = "showOllamaModel",
     request_body(
         content = ShowRequest,
@@ -457,7 +457,7 @@ pub struct Options {
 #[utoipa::path(
     post,
     path = ENDPOINT_OLLAMA_CHAT,
-    tag = "ollama",
+    tag = API_TAG_OLLAMA,
     operation_id = "chatOllamaModel",
     request_body(
         content = ChatRequest,

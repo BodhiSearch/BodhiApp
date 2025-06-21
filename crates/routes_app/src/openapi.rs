@@ -1,14 +1,19 @@
 use crate::{
   AliasResponse, ApiTokenResponse, AppInfo, CreateApiTokenRequest, NewDownloadRequest,
   SetupRequest, SetupResponse, UpdateSettingRequest, UserInfo, __path_app_info_handler,
-  __path_create_pull_request_handler, __path_create_token_handler, __path_delete_setting_handler,
-  __path_get_alias_handler, __path_get_download_status_handler, __path_list_downloads_handler,
+  __path_auth_callback_handler, __path_auth_initiate_handler, __path_create_pull_request_handler,
+  __path_create_token_handler, __path_delete_setting_handler, __path_get_alias_handler,
+  __path_get_download_status_handler, __path_list_downloads_handler,
   __path_list_local_aliases_handler, __path_list_local_modelfiles_handler,
   __path_list_settings_handler, __path_list_tokens_handler, __path_logout_handler,
   __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
   __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
 };
-use objs::{OpenAIApiError, Repo, SettingInfo, SettingMetadata, SettingSource};
+use objs::{
+  OpenAIApiError, Repo, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS,
+  API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP,
+  API_TAG_SYSTEM,
+};
 use routes_oai::{
   __path_chat_completions_handler, __path_oai_models_handler, __path_ollama_model_chat_handler,
   __path_ollama_model_show_handler, __path_ollama_models_handler,
@@ -92,12 +97,14 @@ For API keys, specify required scope when creating the token.
         (url = "http://localhost:1135", description = "Local running instance"),
     ),
     tags(
-        (name = "system", description = "System information and operations"),
-        (name = "setup", description = "Application setup and initialization"),
-        (name = "auth", description = "Authentication and session management"),
-        (name = "api-keys", description = "API keys management"),
-        (name = "models", description = "Model files and aliases"),
-        (name = "ollama", description = "Ollama-compatible API endpoints"),
+        (name = API_TAG_SYSTEM, description = "System information and operations"),
+        (name = API_TAG_SETUP, description = "Application setup and initialization"),
+        (name = API_TAG_AUTH, description = "Authentication and session management"),
+        (name = API_TAG_API_KEYS, description = "API keys management"),
+        (name = API_TAG_MODELS, description = "Model files and aliases"),
+        (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
+        (name = API_TAG_SETTINGS, description = "Application settings management"),
+        (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
     ),
     components(
         schemas(
@@ -124,30 +131,46 @@ For API keys, specify required scope when creating the token.
         responses( ),
     ),
     paths(
-        app_info_handler,
-        setup_handler,
-        logout_handler,
+        // System endpoints
         ping_handler,
+        app_info_handler,
+
+        // Setup endpoints
+        setup_handler,
+
+        // Authentication endpoints
+        auth_initiate_handler,
+        auth_callback_handler,
+        logout_handler,
         user_info_handler,
+
+        // API Keys endpoints
+        create_token_handler,
+        list_tokens_handler,
+        update_token_handler,
+
+        // Models endpoints
+        list_local_aliases_handler,
+        get_alias_handler,
         list_local_modelfiles_handler,
         list_downloads_handler,
         create_pull_request_handler,
         pull_by_alias_handler,
-        list_local_aliases_handler,
-
-        get_alias_handler,
-        create_token_handler,
         get_download_status_handler,
-        list_tokens_handler,
-        update_token_handler,
-        oai_models_handler,
-        chat_completions_handler,
-        ollama_models_handler,
-        ollama_model_show_handler,
-        ollama_model_chat_handler,
+
+        // Settings endpoints
         list_settings_handler,
         update_setting_handler,
-        delete_setting_handler
+        delete_setting_handler,
+
+        // OpenAI endpoints
+        oai_models_handler,
+        chat_completions_handler,
+
+        // Ollama endpoints
+        ollama_models_handler,
+        ollama_model_show_handler,
+        ollama_model_chat_handler
     )
 )]
 pub struct BodhiOpenAPIDoc;

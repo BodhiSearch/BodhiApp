@@ -16,7 +16,7 @@ use axum::{
 };
 use base64::{engine::general_purpose, Engine as _};
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
-use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError};
+use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
@@ -40,7 +40,7 @@ use utoipa::ToSchema;
 #[utoipa::path(
     post,
     path = ENDPOINT_AUTH_INITIATE,
-    tag = "auth",
+    tag = API_TAG_AUTH,
     operation_id = "initiateOAuthFlow",
     request_body = (),
     responses(
@@ -113,7 +113,7 @@ pub async fn auth_initiate_handler(
 #[utoipa::path(
     post,
     path = ENDPOINT_AUTH_CALLBACK,
-    tag = "auth",
+    tag = API_TAG_AUTH,
     operation_id = "completeOAuthFlow",
     request_body = AuthCallbackRequest,
     responses(
@@ -273,7 +273,7 @@ pub enum LogoutError {
 #[utoipa::path(
     post,
     path = ENDPOINT_LOGOUT,
-    tag = "auth",
+    tag = API_TAG_AUTH,
     operation_id = "logoutUser",
     responses(
         (status = 303, description = "Logout successful, redirect to login page",
@@ -321,7 +321,7 @@ pub struct UserInfo {
 #[utoipa::path(
     get,
     path = ENDPOINT_USER_INFO,
-    tag = "auth",
+    tag = API_TAG_AUTH,
     operation_id = "getCurrentUser",
     responses(
         (status = 200, description = "Returns current user information", body = UserInfo),
@@ -385,6 +385,7 @@ pub struct AuthCallbackRequest {
   pub error_description: Option<String>,
   /// Additional OAuth 2.1 parameters sent by the authorization server
   #[serde(flatten)]
+  #[schema(additional_properties = true)]
   pub additional_params: HashMap<String, String>,
 }
 
