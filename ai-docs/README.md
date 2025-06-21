@@ -41,6 +41,7 @@ Modular technical architecture documentation organized by technology stack and d
 #### Technology Stack Guides
 - **[Frontend Next.js](01-architecture/frontend-react.md)** - Next.js v14 development patterns, "dumb frontend" architecture, component structure, TypeScript conventions, and backend-driven validation patterns
 - **[Rust Backend](01-architecture/rust-backend.md)** - Rust backend development, service patterns, database integration, real-time communication (SSE/WebSocket), logging & observability, and settings service architecture
+- **[Backend OpenAPI](01-architecture/backend-openapi-utoipa.md)** - OpenAPI documentation with utoipa, API tag constants, authentication patterns, and project-specific conventions
 - **[Backend Settings Service](01-architecture/backend-settings-service.md)** - Comprehensive settings architecture with cascaded configuration, environment-specific settings, API integration, and testing infrastructure
 - **[Backend Error & L10n](01-architecture/backend-error-l10n.md)** - Error handling and internationalization system using Fluent, custom ErrorMeta macro, and singleton localization service
 - **[Tauri Desktop](01-architecture/tauri-desktop.md)** - Desktop application architecture and native OS integration
@@ -135,7 +136,7 @@ Detailed documentation for each Rust crate in the workspace, covering implementa
 ### 📖 [Reference](04-reference/) - Technical Reference Materials
 Technical reference documentation and external tool integration guides
 
-- **[utoipa](04-reference/utoipa.md)** - OpenAPI documentation generation with utoipa crate
+*Currently being reorganized - content moved to appropriate architecture sections*
 
 ### 📢 [Marketing](05-marketing/) - Product Marketing
 Marketing materials, community outreach, and promotional content for product positioning
