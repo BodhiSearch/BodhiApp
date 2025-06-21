@@ -1,4 +1,6 @@
 app-bindings*
+index.cjs
+index.d.ts
 **/node_modules
 **/playwright-report/
 **/test-results/

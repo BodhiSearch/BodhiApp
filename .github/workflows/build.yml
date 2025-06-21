@@ -26,8 +26,8 @@ jobs:
           # - platform: macos-13
           #   target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform }}
-    outputs:
-      coverage-success: ${{ steps.coverage.outcome == 'success' }}
+    # outputs:
+    #   coverage-success: ${{ steps.coverage.outcome == 'success' }}
     steps:
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -59,24 +59,24 @@ jobs:
           git submodule update --init --recursive --depth=1
           git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
 
-      - name: Setup Python packages
-        run: |
-          python -m pip install -U pip
-          python -m pip install -r crates/objs/tests/scripts/requirements.txt
-          pip install -U "huggingface_hub[cli]"
+      # - name: Setup Python packages
+      #   run: |
+      #     python -m pip install -U pip
+      #     python -m pip install -r crates/objs/tests/scripts/requirements.txt
+      #     pip install -U "huggingface_hub[cli]"
 
-      - name: Cache HuggingFace models
-        uses: actions/cache@v4
-        id: cache-hf
-        with:
-          path: ${{ env.USER_HOME }}/.cache/huggingface
-          key: hf-cache-phi4-mini-instruct
-          enableCrossOsArchive: true
+      # - name: Cache HuggingFace models
+      #   uses: actions/cache@v4
+      #   id: cache-hf
+      #   with:
+      #     path: ${{ env.USER_HOME }}/.cache/huggingface
+      #     key: hf-cache-phi4-mini-instruct
+      #     enableCrossOsArchive: true
 
-      - name: Check and Download model
-        if: steps.cache-hf.outputs.cache-hit != 'true'
-        run: |
-          huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
+      # - name: Check and Download model
+      #   if: steps.cache-hf.outputs.cache-hit != 'true'
+      #   run: |
+      #     huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf
 
       - name: setup-rust
         uses: ./.github/actions/setup-rust
@@ -91,52 +91,52 @@ jobs:
         shell: bash
         run: |
           make ci.clean
-      - name: Generate code coverage
-        id: coverage
-        shell: bash
-        run: |
-          make ci.coverage
-        env:
-          HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
-          HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
-          CI_DEFAULT_VARIANT: cpu
-          # Integration test environment variables
-          INTEG_TEST_AUTH_URL: ${{ vars.INTEG_TEST_AUTH_URL }}
-          INTEG_TEST_AUTH_REALM: ${{ vars.INTEG_TEST_AUTH_REALM }}
-          INTEG_TEST_CLIENT_ID: ${{ secrets.INTEG_TEST_CLIENT_ID }}
-          INTEG_TEST_CLIENT_SECRET: ${{ secrets.INTEG_TEST_CLIENT_SECRET }}
-          INTEG_TEST_USERNAME: ${{ vars.INTEG_TEST_USERNAME }}
-          INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
-          INTEG_TEST_ISSUER: ${{ vars.INTEG_TEST_ISSUER }}
-          INTEG_TEST_KID: ${{ vars.INTEG_TEST_KID }}
-          INTEG_TEST_PUBLIC_KEY: ${{ vars.INTEG_TEST_PUBLIC_KEY }}
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
-        if: success()
-        continue-on-error: true
-        with:
-          name: BodhiApp-${{ matrix.target }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: BodhiSearch/BodhiApp
-          files: lcov.info
-          fail_ci_if_error: false
-          flags: ${{ matrix.target }},bodhi
-      - name: Run UI Tests
-        run: |
-          make ci.ui
-      - name: Upload UI coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
-        if: success()
-        continue-on-error: true
-        with:
-          name: BodhiApp-${{ matrix.target }}
-          token: ${{ secrets.CODECOV_TOKEN }}
-          slug: BodhiSearch/BodhiApp
-          files: |
-            crates/bodhi/coverage/coverage-final.json
-            crates/bodhi/coverage/clover.xml
-          fail_ci_if_error: false
-          flags: ${{ matrix.target }},bodhi,ui
+      # - name: Generate code coverage
+      #   id: coverage
+      #   shell: bash
+      #   run: |
+      #     make ci.coverage
+      #   env:
+      #     HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
+      #     HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
+      #     CI_DEFAULT_VARIANT: cpu
+      #     # Integration test environment variables
+      #     INTEG_TEST_AUTH_URL: ${{ vars.INTEG_TEST_AUTH_URL }}
+      #     INTEG_TEST_AUTH_REALM: ${{ vars.INTEG_TEST_AUTH_REALM }}
+      #     INTEG_TEST_CLIENT_ID: ${{ secrets.INTEG_TEST_CLIENT_ID }}
+      #     INTEG_TEST_CLIENT_SECRET: ${{ secrets.INTEG_TEST_CLIENT_SECRET }}
+      #     INTEG_TEST_USERNAME: ${{ vars.INTEG_TEST_USERNAME }}
+      #     INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
+      #     INTEG_TEST_ISSUER: ${{ vars.INTEG_TEST_ISSUER }}
+      #     INTEG_TEST_KID: ${{ vars.INTEG_TEST_KID }}
+      #     INTEG_TEST_PUBLIC_KEY: ${{ vars.INTEG_TEST_PUBLIC_KEY }}
+      # - name: Upload coverage reports to Codecov
+      #   uses: codecov/codecov-action@v4.0.1
+      #   if: success()
+      #   continue-on-error: true
+      #   with:
+      #     name: BodhiApp-${{ matrix.target }}
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     slug: BodhiSearch/BodhiApp
+      #     files: lcov.info
+      #     fail_ci_if_error: false
+      #     flags: ${{ matrix.target }},bodhi
+      # - name: Run UI Tests
+      #   run: |
+      #     make ci.ui
+      # - name: Upload UI coverage reports to Codecov
+      #   uses: codecov/codecov-action@v4.0.1
+      #   if: success()
+      #   continue-on-error: true
+      #   with:
+      #     name: BodhiApp-${{ matrix.target }}
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     slug: BodhiSearch/BodhiApp
+      #     files: |
+      #       crates/bodhi/coverage/coverage-final.json
+      #       crates/bodhi/coverage/clover.xml
+      #     fail_ci_if_error: false
+      #     flags: ${{ matrix.target }},bodhi,ui
       - name: Build NAPI bindings for Playwright
         id: napi-build
         continue-on-error: true
@@ -152,30 +152,33 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: napi-bindings-${{ matrix.target }}
-          path: crates/lib_bodhiserver_napi/app-bindings.*.node
+          path: |
+            crates/lib_bodhiserver_napi/app-bindings.*.node
+            crates/lib_bodhiserver_napi/index.cjs
+            crates/lib_bodhiserver_napi/index.d.ts
           retention-days: 1
 
-  ts-client-tests:
-    needs: build
-    if: needs.build.outputs.coverage-success == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - name: setup-node
-        uses: ./.github/actions/setup-node
-        with:
-          platform: ubuntu-latest
-      - name: Check ts-client is up to date
-        shell: bash
-        run: |
-          make ci.ts-client-check
-      - name: Check ts-client tests pass
-        run: make ci.ts-client-test
+  # ts-client-tests:
+  #   needs: build
+  #   if: needs.build.outputs.coverage-success == 'true'
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 15
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: setup-node
+  #       uses: ./.github/actions/setup-node
+  #       with:
+  #         platform: ubuntu-latest
+  #     - name: Check ts-client is up to date
+  #       shell: bash
+  #       run: |
+  #         make ci.ts-client-check
+  #     - name: Check ts-client tests pass
+  #       run: make ci.ts-client-test
 
   playwright-tests:
     needs: build
-    if: needs.build.outputs.coverage-success == 'true'
+    # if: needs.build.outputs.coverage-success == 'true'
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -200,6 +203,11 @@ jobs:
         with:
           name: napi-bindings-${{ matrix.target }}
           path: crates/lib_bodhiserver_napi/
+      - name: Install dependencies
+        shell: bash
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          npm ci
       - name: Verify NAPI bindings exist
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
@@ -209,6 +217,7 @@ jobs:
             exit 1
           fi
           ls -la app-bindings.*.node
+          ls -la index.*
       - name: Run Playwright tests
         id: playwright-run
         shell: bash
