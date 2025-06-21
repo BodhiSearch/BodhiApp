@@ -1,12 +1,12 @@
 {
-  "name": "bodhiapp-server-bindings",
+  "name": "@bodhiapp/app-bindings",
   "version": "1.0.0",
   "description": "NAPI-RS bindings for BodhiApp server with integrated tests",
   "main": "index.js",
   "types": "index.d.ts",
   "type": "module",
   "napi": {
-    "name": "bodhiapp-server-bindings",
+    "name": "app-bindings",
     "triples": {
       "defaults": true,
       "additional": [
@@ -50,6 +50,9 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "repository": {
     "type": "git",
