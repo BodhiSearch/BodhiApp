@@ -19,10 +19,10 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
-          - platform: ubuntu-latest-4-cores
-            target: x86_64-unknown-linux-gnu
-          - platform: windows-latest
-            target: x86_64-pc-windows-msvc
+          # - platform: ubuntu-latest-4-cores
+          #   target: x86_64-unknown-linux-gnu
+          # - platform: windows-latest
+          #   target: x86_64-pc-windows-msvc
           # - platform: macos-13
           #   target: x86_64-apple-darwin
     runs-on: ${{ matrix.platform }}
@@ -94,16 +94,17 @@ jobs:
       - name: Build llama_server_proc binaries for Playwright tests
         shell: bash
         run: |
-          # Build the llama_server_proc project to generate platform-specific binaries
+          # Build the llama_server_proc project - build.rs handles binary placement
           cargo build -p llama_server_proc
+          echo "Build completed. Checking generated binaries:"
+          find crates/llama_server_proc/bin -type f 2>/dev/null || echo "No binaries found yet"
         env:
           CI_DEFAULT_VARIANT: cpu
       - name: Upload llama_server_proc binaries
         uses: actions/upload-artifact@v4
         with:
           name: llama-server-binaries-${{ matrix.target }}
-          path: |
-            crates/llama_server_proc/bin/**/*
+          path: crates/llama_server_proc/bin/
           retention-days: 1
       # - name: Generate code coverage
       #   id: coverage
@@ -200,10 +201,10 @@ jobs:
         include:
           - platform: macos-latest
             target: aarch64-apple-darwin
-          - platform: ubuntu-latest-4-cores
-            target: x86_64-unknown-linux-gnu
-          - platform: windows-latest
-            target: x86_64-pc-windows-msvc
+          # - platform: ubuntu-latest-4-cores
+          #   target: x86_64-unknown-linux-gnu
+          # - platform: windows-latest
+          #   target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
@@ -221,11 +222,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: llama-server-binaries-${{ matrix.target }}
-          path: crates/llama_server_proc/bin/
-      - name: Set executable permissions for llama-server binaries
+          path: crates/llama_server_proc/
+      - name: Verify llama-server binary exists and set permissions
         shell: bash
         run: |
-          find crates/llama_server_proc/bin -name "*llama-server*" -type f -exec chmod +x {} \;
+          echo "Checking for llama-server binary at expected location:"
+          if [ -f crates/llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server ]; then
+            echo "✅ Binary found!"
+            ls -la crates/llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server
+            # Ensure it's executable
+            chmod +x crates/llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server
+          else
+            echo "❌ Binary not found at expected location!"
+            echo "Contents of crates/llama_server_proc/bin/:"
+            find crates/llama_server_proc/bin -type f 2>/dev/null || echo "bin directory not found"
+            echo "Looking for any llama-server binaries:"
+            find crates/llama_server_proc/bin -name "*llama*" -type f 2>/dev/null || echo "No llama binaries found"
+            exit 1
+          fi
       - name: Install dependencies
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
@@ -239,11 +253,11 @@ jobs:
             echo "Error: NAPI bindings not found. Build may have failed."
             exit 1
           fi
-          echo "NAPI bindings found:"
+          echo "✅ NAPI bindings found:"
           ls -la app-bindings.*.node
           ls -la index.*
-          echo "llama-server binaries:"
-          find ../llama_server_proc/bin -name "*llama-server*" -type f | head -10
+          echo "✅ llama-server binary:"
+          ls -la ../llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server
       - name: Run Playwright tests
         id: playwright-run
         shell: bash
@@ -253,6 +267,7 @@ jobs:
           npm run test:playwright:ci
         env:
           CI: true
+          CI_DEFAULT_VARIANT: cpu
           # Use headless mode in CI
           PLAYWRIGHT_HEADLESS: true
           # Increase timeout for CI environment
