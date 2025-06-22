@@ -3,7 +3,7 @@ name: Publish app-bindings
 on:
   push:
     tags:
-      - "bodhi-app-bindings/v*"
+      - 'bodhi-app-bindings/v*'
 
 # Prevent concurrent releases
 concurrency:
@@ -28,12 +28,12 @@ jobs:
           - host: macos-latest
             target: aarch64-apple-darwin
             build: npm run build:release -- --target aarch64-apple-darwin
-          # - host: ubuntu-latest
-          #   target: x86_64-unknown-linux-gnu
-          #   build: npm run build:release -- --target x86_64-unknown-linux-gnu
-          # - host: windows-latest
-          #   target: x86_64-pc-windows-msvc
-          #   build: npm run build:release -- --target x86_64-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: npm run build:release -- --target x86_64-unknown-linux-gnu
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            build: npm run build:release -- --target x86_64-pc-windows-msvc
     name: Build ${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
     timeout-minutes: 60
@@ -119,18 +119,18 @@ jobs:
         with:
           path: artifacts
 
-      - name: Move artifacts
+      - name: Move artifacts to current directory
         working-directory: crates/lib_bodhiserver_napi
         run: |
+          # Copy all built binaries to current directory where NAPI-RS expects them
           for dir in ../../artifacts/bindings-*; do
             if [ -d "$dir" ]; then
-              cp "$dir"/*.node . || true
-              cp "$dir"/index.cjs . || true
-              cp "$dir"/index.d.ts . || true
+              echo "Copying artifacts from $dir"
+              cp "$dir"/*.node . 2>/dev/null || echo "No .node files in $dir"
             fi
           done
-          ls -la *.node
-          ls -la index.*
+          echo "Current directory contents:"
+          ls -la *.node 2>/dev/null || echo "No .node files found"
 
       - name: Update version for release
         working-directory: crates/lib_bodhiserver_napi
@@ -138,13 +138,13 @@ jobs:
           # Set version from tag directly
           npm version ${{ steps.version.outputs.tag_version }} --no-git-tag-version
 
-      - name: Verify build artifacts
+      - name: Verify artifacts are ready
         working-directory: crates/lib_bodhiserver_napi
         run: |
-          if ! ls *.node 1> /dev/null 2>&1; then
-            echo "Build artifacts not found"
-            exit 1
-          fi
+          echo "Checking for .node files in current directory..."
+          ls -la *.node || exit 1
+          echo "Found the following binaries:"
+          ls *.node
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -153,7 +153,7 @@ jobs:
             crates/lib_bodhiserver_napi/*.node
             crates/lib_bodhiserver_napi/README.md
             crates/lib_bodhiserver_napi/package.json
-          name: "app-bindings v${{ steps.version.outputs.tag_version }}"
+          name: 'app-bindings v${{ steps.version.outputs.tag_version }}'
           body: |
             app-bindings Release v${{ steps.version.outputs.tag_version }}
           draft: false
@@ -162,26 +162,60 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
 
-      - name: Publish to npm
+      - name: Publish to npm (multiplatform)
         working-directory: crates/lib_bodhiserver_napi
         run: |
           echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > .npmrc
+
+          # Run prepublishOnly to prepare platform packages and main package
+          echo "Running prepublishOnly..."
           npm run prepublishOnly
-          npm publish
+
+          # Check what was created
+          echo "Contents after prepublishOnly:"
+          ls -la
+
+          # Publish platform-specific packages first (if any were created)
+          if [ -d "npm" ]; then
+            echo "Publishing platform packages..."
+            for platform_dir in npm/*; do
+              if [ -d "$platform_dir" ] && [ -f "$platform_dir/package.json" ]; then
+                echo "Publishing platform package: $platform_dir"
+                cd "$platform_dir"
+                npm publish --access public
+                cd ../..
+              else
+                echo "Skipping $platform_dir - no package.json found"
+              fi
+            done
+          else
+            echo "No npm directory found - publishing only main package"
+          fi
+
+          # Finally, publish the main package
+          echo "Publishing main package..."
+          npm publish --access public
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Verify NPM Package
         working-directory: crates/lib_bodhiserver_napi
         run: |
-          # Wait for NPM to index the package
-          sleep 10
+          # Wait for NPM to index the packages
+          sleep 30
+
+          # Check main package
           PUBLISHED_VERSION=$(npm view @bodhiapp/app-bindings version 2>/dev/null || echo "not found")
           if [ "$PUBLISHED_VERSION" = "not found" ]; then
-            echo "Package not found on NPM"
+            echo "Main package not found on NPM"
             exit 1
           fi
-          echo "Successfully published version $PUBLISHED_VERSION"
+          echo "Successfully published main package version $PUBLISHED_VERSION"
+
+          # Check a few platform packages (they should exist if napi prepublish worked)
+          echo "Checking platform packages..."
+          npm view @bodhiapp/app-bindings-darwin-arm64 version 2>/dev/null && echo "Darwin ARM64 package found" || echo "Darwin ARM64 package not found (may not exist yet)"
+          npm view @bodhiapp/app-bindings-linux-x64-gnu version 2>/dev/null && echo "Linux x64 package found" || echo "Linux x64 package not found (may not exist yet)"
 
       - name: Configure Git for version bump
         run: |
