@@ -1,7 +1,7 @@
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { defineConfig, devices } from '@playwright/test';
 import { config } from 'dotenv';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 
 // Load test environment variables globally
 const __filename = fileURLToPath(import.meta.url);
@@ -22,13 +22,15 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1, // Single worker to avoid port conflicts
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: process.env.CI ? [
-    ['github'], // GitHub Actions reporter for CI
-    ['html', { open: 'never' }], // HTML report without auto-opening
-    ['junit', { outputFile: 'test-results/junit.xml' }] // JUnit for test results
-  ] : 'list', // Use list reporter locally
+  reporter: process.env.CI
+    ? [
+        ['github'], // GitHub Actions reporter for CI
+        ['html', { open: 'never' }], // HTML report without auto-opening
+        ['junit', { outputFile: 'test-results/junit.xml' }], // JUnit for test results
+      ]
+    : 'list', // Use list reporter locally
   /* Global timeout for each test */
-  timeout: process.env.PLAYWRIGHT_TIMEOUT ? parseInt(process.env.PLAYWRIGHT_TIMEOUT) : 10000, // Configurable timeout
+  timeout: process.env.PLAYWRIGHT_TIMEOUT ? Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT) : 10000, // Configurable timeout
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -62,7 +64,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { 
+      use: {
         ...devices['Desktop Chrome'],
         // Use headless mode in CI or when explicitly set
         headless: !!process.env.CI || process.env.PLAYWRIGHT_HEADLESS === 'true',

@@ -1,10 +1,10 @@
 import { expect } from '@playwright/test';
 import {
+  createTestServer,
   loadBindings,
   randomPort,
-  waitForServer,
   sleep,
-  createTestServer,
+  waitForServer,
 } from '../test-helpers.js';
 
 /**

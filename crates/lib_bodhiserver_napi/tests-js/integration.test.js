@@ -1,5 +1,5 @@
-import { describe, test, expect, beforeAll, afterEach } from 'vitest';
-import { loadBindings, createTestServer } from './test-helpers.js';
+import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { createTestServer, loadBindings } from './test-helpers.js';
 
 describe('Integration Tests', () => {
   let bindings;
@@ -39,7 +39,7 @@ describe('Integration Tests', () => {
       expect(server.serverUrl()).toBe('http://test-host:12345');
       expect(server.config.envVars['HOME']).toBeDefined();
       expect(server.config.envVars[bindings.BODHI_HOST]).toBe('test-host');
-      expect(parseInt(server.config.envVars[bindings.BODHI_PORT])).toBe(12345);
+      expect(Number.parseInt(server.config.envVars[bindings.BODHI_PORT])).toBe(12345);
     });
 
     test('should create server with test helpers and maintain configuration immutability', () => {

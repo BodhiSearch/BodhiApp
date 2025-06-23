@@ -19,7 +19,6 @@
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
     "build:release": "napi build --platform --release",
-    "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version",
     "test": "vitest run",
     "test:run": "vitest run",
@@ -38,14 +37,12 @@
     "check": "biome check .",
     "check:fix": "biome check --write ."
   },
-  "dependencies": {
-    "dotenv": "^16.5.0",
-    "vitest": "^2.1.8"
-  },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@napi-rs/cli": "^3.0.0-alpha.72",
-    "@playwright/test": "^1.48.2"
+    "@playwright/test": "^1.48.2",
+    "dotenv": "^16.5.0",
+    "vitest": "^2.1.8"
   },
   "engines": {
     "node": ">=22"
@@ -56,7 +53,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/BodhiSearch/BodhiApp.git",
+    "url": "https://github.com/BodhiSearch/BodhiApp",
     "directory": "crates/lib_bodhiserver_napi"
   },
   "homepage": "https://github.com/BodhiSearch/BodhiApp#readme",
@@ -74,11 +71,5 @@
   "files": [
     "index.d.ts",
     "index.js"
-  ],
-  "license": "MIT",
-  "optionalDependencies": {
-    "@bodhiapp/app-bindings-darwin-x64": "0.0.1",
-    "@bodhiapp/app-bindings-linux-x64-gnu": "0.0.1",
-    "@bodhiapp/app-bindings-win32-x64-msvc": "0.0.1"
-  }
+  ]
 }
