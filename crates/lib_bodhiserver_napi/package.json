@@ -1,6 +1,6 @@
 {
   "name": "@bodhiapp/app-bindings",
-  "version": "0.0.1",
+  "version": "0.0.3-dev",
   "description": "NAPI-RS bindings for BodhiApp server with integrated tests",
   "main": "index.js",
   "types": "index.d.ts",
