@@ -408,14 +408,13 @@
         "summary": "Logout the current user by destroying their session",
         "operationId": "logoutUser",
         "responses": {
-          "303": {
-            "description": "Logout successful, redirect to login page",
-            "headers": {
-              "Location": {
+          "200": {
+            "description": "Logout successful, return redirect URL",
+            "content": {
+              "application/json": {
                 "schema": {
-                  "type": "string"
-                },
-                "description": "Frontend login page URL"
+                  "$ref": "#/components/schemas/RedirectResponse"
+                }
               }
             }
           },
