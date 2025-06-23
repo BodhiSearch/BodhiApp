@@ -25,15 +25,15 @@ jobs:
       fail-fast: false
       matrix:
         settings:
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            build: npm run build:release -- --target aarch64-apple-darwin
+          # - host: macos-latest
+          #   target: aarch64-apple-darwin
+          #   build: npm run build:release -- --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             build: npm run build:release -- --target x86_64-unknown-linux-gnu
-          - host: windows-latest
-            build: npm run build:release:win
-            target: x86_64-pc-windows-msvc
+          # - host: windows-latest
+          #   build: npm run build:release:win
+          #   target: x86_64-pc-windows-msvc
     name: build-${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
     timeout-minutes: 60
