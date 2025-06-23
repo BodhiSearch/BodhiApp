@@ -58,11 +58,11 @@ jobs:
           git submodule sync --recursive
           git submodule update --init --recursive --depth=1
           git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
-      - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+      - uses: Swatinem/rust-cache@v2
+      - name: install Rust 1.87.0
+        uses: dtolnay/rust-toolchain@1.87.0
         with:
-          platform: ${{ matrix.settings.host }}
-          target: ${{ matrix.settings.target }}
+          targets: ${{ matrix.settings.target }}
       - name: Setup Node.js
         uses: ./.github/actions/setup-node
         with:
