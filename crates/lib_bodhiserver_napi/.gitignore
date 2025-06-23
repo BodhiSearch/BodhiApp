@@ -1,4 +1,5 @@
 app-bindings*
+npm/
 index.cjs
 index.d.ts
 **/node_modules
