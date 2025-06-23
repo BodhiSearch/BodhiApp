@@ -23,7 +23,6 @@ choco install -y make
 choco install -y cmake
 choco install -y llvm
 choco install -y nodejs
-npm install -g pnpm
 ```
 
 ## python

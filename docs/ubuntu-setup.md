@@ -61,7 +61,6 @@ cargo install cargo-llvm-cov tauri-cli@^2.0.0
 ```bash
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
-sudo npm install -g pnpm
 ```
 
 ## huggingface-cli
