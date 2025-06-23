@@ -20,7 +20,6 @@
     "build:debug": "napi build --platform",
     "build:release": "napi build --platform --release",
     "build:release:win": "napi build --platform --release --target x86_64-pc-windows-msvc",
-    "version": "napi version",
     "test": "vitest run",
     "test:run": "vitest run",
     "test:config": "vitest run --testNamePattern='Configuration'",
