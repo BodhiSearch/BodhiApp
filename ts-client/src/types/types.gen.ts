@@ -605,6 +605,15 @@ export type LogoutUserErrors = {
 
 export type LogoutUserError = LogoutUserErrors[keyof LogoutUserErrors];
 
+export type LogoutUserResponses = {
+    /**
+     * Logout successful, return redirect URL
+     */
+    200: RedirectResponse;
+};
+
+export type LogoutUserResponse = LogoutUserResponses[keyof LogoutUserResponses];
+
 export type ListModelFilesData = {
     body?: never;
     path?: never;
