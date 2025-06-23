@@ -32,7 +32,7 @@ jobs:
             target: x86_64-unknown-linux-gnu
             build: npm run build:release -- --target x86_64-unknown-linux-gnu
           - host: windows-latest
-            build: npm run build:release -- --target x86_64-pc-windows-msvc
+            build: npm run build:release:win
             target: x86_64-pc-windows-msvc
     name: build-${{ matrix.settings.target }}
     runs-on: ${{ matrix.settings.host }}
