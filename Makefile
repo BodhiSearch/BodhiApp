@@ -44,7 +44,7 @@ ci.build: ## Build the Tauri application
 	cd crates/bodhi/src-tauri && \
 	cargo tauri build $${TARGET:+--target $${TARGET}} --ci --config '{"tauri": {"updater": {"active": false}}}'
 
-ci.app-pnpm: ## Install pnpm dependencies for the app
+ci.app-npm: ## Install npm dependencies for the app
 	cd crates/bodhi && npm install
 
 ci.ui: ## Run UI tests with coverage
@@ -165,4 +165,4 @@ release-app-bindings: ## Create and push tag for app-bindings package release
 ui.test:
 	cd crates/bodhi && npm run test
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test help
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test help

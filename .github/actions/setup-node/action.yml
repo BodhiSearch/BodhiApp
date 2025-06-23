@@ -35,9 +35,9 @@ runs:
     - name: Install app npm dependencies (Windows)
       if: inputs.platform == 'windows-latest'
       shell: pwsh
-      run: make -f Makefile.win.mk ci.app-pnpm
+      run: make -f Makefile.win.mk ci.app-npm
 
     - name: Install app npm dependencies (Unix)
       if: inputs.platform != 'windows-latest'
       shell: bash
-      run: make ci.app-pnpm
+      run: make ci.app-npm

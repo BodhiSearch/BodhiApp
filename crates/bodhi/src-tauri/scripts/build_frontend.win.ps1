@@ -9,7 +9,7 @@ if (Test-Path out) {
 }
 
 Write-Host 'Installing dependencies...'
-pnpm install
+npm install
 
 Write-Host 'Building frontend...'
-pnpm run build
+npm run build

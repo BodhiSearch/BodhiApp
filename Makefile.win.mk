@@ -34,10 +34,10 @@ ci.build:
 		cargo tauri build --ci --config '{\"tauri\": {\"updater\": {\"active\": false}}}'; \
 	}"
 
-ci.app-pnpm:
-	pwsh -Command "Push-Location crates/bodhi; pnpm install; Pop-Location"
+ci.app-npm:
+	pwsh -Command "Push-Location crates/bodhi; npm install; Pop-Location"
 
 ci.ui:
-	pwsh -Command "Push-Location crates/bodhi; pnpm run test run --coverage; Pop-Location"
+	pwsh -Command "Push-Location crates/bodhi; npm run test run --coverage; Pop-Location"
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-pnpm ci.ui
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui
