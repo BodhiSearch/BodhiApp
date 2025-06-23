@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { createServerManager, waitForSPAReady, getCurrentPath } from './playwright-helpers.js';
+import { expect, test } from '@playwright/test';
+import { createServerManager, getCurrentPath, waitForSPAReady } from './playwright-helpers.js';
 
 test.describe('App Initializer Redirect Tests', () => {
   test.describe('App Status Ready - Authentication Flow', () => {

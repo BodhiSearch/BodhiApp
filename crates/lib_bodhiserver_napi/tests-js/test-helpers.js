@@ -1,6 +1,6 @@
-import { join, dirname } from 'path';
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
+import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 // Get the current directory for ES modules
@@ -42,7 +42,7 @@ function createTempDir() {
  * @returns {Object} BodhiServer instance
  */
 function createTestServer(bindings, options = {}) {
-  let config = createFullTestConfig(bindings, options);
+  const config = createFullTestConfig(bindings, options);
   const server = new bindings.BodhiServer(config);
   return server;
 }

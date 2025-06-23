@@ -1,9 +1,9 @@
-import { describe, test, expect, beforeAll } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import {
-  loadBindings,
+  createFullTestConfig,
   createTempDir,
   createTestServer,
-  createFullTestConfig,
+  loadBindings,
 } from './test-helpers.js';
 
 describe('Configuration API Tests', () => {

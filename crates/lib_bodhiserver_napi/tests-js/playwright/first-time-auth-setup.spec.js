@@ -1,9 +1,9 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import {
   createServerManager,
-  waitForSPAReady,
-  waitForRedirect,
   getCurrentPath,
+  waitForRedirect,
+  waitForSPAReady,
 } from './playwright-helpers.js';
 
 /**
@@ -48,7 +48,7 @@ test.describe('First-Time Authentication Setup Flow', () => {
     await page.goto(baseUrl);
     await waitForSPAReady(page);
 
-    let currentPath = getCurrentPath(page);
+    const currentPath = getCurrentPath(page);
     expect(currentPath).toBe('/ui/setup/');
 
     // Verify setup page content (Step 1 of 4)
