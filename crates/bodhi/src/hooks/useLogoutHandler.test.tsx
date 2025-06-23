@@ -37,12 +37,7 @@ describe('useLogoutHandler', () => {
 
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(201),
-          ctx.set('Location', 'http://localhost:1135/ui/login'),
-          ctx.set('Content-Length', '0')
-        );
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
       })
     );
 
@@ -59,8 +54,8 @@ describe('useLogoutHandler', () => {
     await waitFor(() => {
       expect(mockOnSuccess).toHaveBeenCalledWith(
         expect.objectContaining({
-          status: 201,
-          headers: expect.objectContaining({ location: 'http://localhost:1135/ui/login' }),
+          status: 200,
+          data: expect.objectContaining({ location: 'http://localhost:1135/ui/login' }),
         })
       );
       expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
@@ -97,11 +92,7 @@ describe('useLogoutHandler', () => {
   it('handles logout without callbacks', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.set('Location', 'http://localhost:1135/ui/login'),
-          ctx.set('Content-Length', '0')
-        );
+        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
       })
     );
 

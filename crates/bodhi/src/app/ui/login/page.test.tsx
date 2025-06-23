@@ -67,11 +67,7 @@ describe('LoginContent with user not Logged In', () => {
         return res(ctx.status(500), ctx.json({ error: { message: 'OAuth configuration error' } }));
       }),
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.set('Location', 'http://localhost:1135/ui/login'),
-          ctx.set('Content-Length', '0')
-        );
+        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
       })
     );
   });
@@ -323,11 +319,7 @@ describe('LoginContent with user Logged In', () => {
         return res(ctx.status(200), ctx.json({ status: 'ready' }));
       }),
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.set('Location', 'http://localhost:1135/ui/login'),
-          ctx.set('Content-Length', '0')
-        );
+        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
       })
     );
   });
@@ -344,11 +336,7 @@ describe('LoginContent with user Logged In', () => {
   it('calls logout function when logout button is clicked and redirects to external location', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.status(201),
-          ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.set('Content-Length', '0')
-        );
+        return res(ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/test/login' }));
       })
     );
     await act(async () => {
@@ -365,7 +353,7 @@ describe('LoginContent with user Logged In', () => {
   it('calls logout function when logout button is clicked and redirects to internal location', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.set('Location', '/ui/login'), ctx.set('Content-Length', '0'));
+        return res(ctx.status(200), ctx.json({ location: '/ui/login' }));
       })
     );
     await act(async () => {
@@ -382,12 +370,7 @@ describe('LoginContent with user Logged In', () => {
   it('disables logout button and shows loading text when logging out', async () => {
     server.use(
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(201),
-          ctx.set('Location', 'http://localhost:1135/ui/test/login'),
-          ctx.set('Content-Length', '0')
-        );
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/test/login' }));
       })
     );
 

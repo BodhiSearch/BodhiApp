@@ -5,13 +5,11 @@ use auth_middleware::{
   SESSION_KEY_REFRESH_TOKEN,
 };
 use axum::{
-  body::Body,
   extract::State,
   http::{
-    header::{HeaderMap, CACHE_CONTROL, CONTENT_LENGTH, LOCATION},
+    header::{HeaderMap, CACHE_CONTROL},
     StatusCode,
   },
-  response::Response,
   Json,
 };
 use base64::{engine::general_purpose, Engine as _};
@@ -276,11 +274,7 @@ pub enum LogoutError {
     tag = API_TAG_AUTH,
     operation_id = "logoutUser",
     responses(
-        (status = 303, description = "Logout successful, redirect to login page",
-         headers(
-             ("Location" = String, description = "Frontend login page URL")
-         )
-        ),
+        (status = 200, description = "Logout successful, return redirect URL", body = RedirectResponse),
         (status = 500, description = "Session deletion failed", body = OpenAIApiError)
     )
 )]
@@ -288,17 +282,11 @@ pub enum LogoutError {
 pub async fn logout_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Response, ApiError> {
+) -> Result<Json<RedirectResponse>, ApiError> {
   let setting_service = state.app_service().setting_service();
   session.delete().await.map_err(LogoutError::from)?;
   let ui_login = format!("{}/ui/login", setting_service.frontend_url());
-  let response = Response::builder()
-    .status(StatusCode::SEE_OTHER)
-    .header(LOCATION, ui_login)
-    .header(CONTENT_LENGTH, "0")
-    .body(Body::empty())
-    .unwrap();
-  Ok(response)
+  Ok(Json(RedirectResponse { location: ui_login }))
 }
 
 /// Information about the currently logged in user
@@ -964,10 +952,9 @@ mod tests {
     assert!(record.is_some());
 
     let resp = client.post("/app/logout").await;
-    resp.assert_status(StatusCode::SEE_OTHER);
-    let location = resp.header("Location");
-    let location = location.to_str().unwrap();
-    assert_eq!("http://localhost:1135/ui/login", location);
+    resp.assert_status(StatusCode::OK);
+    let body: RedirectResponse = resp.json();
+    assert_eq!("http://localhost:1135/ui/login", body.location);
     let record = session_service.get_session_record(session_id).await;
     assert!(record.is_none());
     Ok(())

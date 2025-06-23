@@ -242,12 +242,7 @@ describe('LoginMenu Component', () => {
         return res(ctx.json(mockLoggedInUser));
       }),
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(
-          ctx.delay(100),
-          ctx.status(201),
-          ctx.set('Location', 'http://localhost:1135/ui/login'),
-          ctx.set('Content-Length', '0')
-        );
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: 'http://localhost:1135/ui/login' }));
       })
     );
 
@@ -269,7 +264,7 @@ describe('LoginMenu Component', () => {
         return res(ctx.json(mockLoggedInUser));
       }),
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.status(201), ctx.set('Location', '/ui/login'), ctx.set('Content-Length', '0'));
+        return res(ctx.delay(100), ctx.status(200), ctx.json({ location: '/ui/login' }));
       })
     );
 
@@ -312,13 +307,13 @@ describe('LoginMenu Component', () => {
     });
   });
 
-  it('handles logout with missing Location header', async () => {
+  it('handles logout with missing location field', async () => {
     server.use(
       rest.get(`*${ENDPOINT_USER_INFO}`, (_, res, ctx) => {
         return res(ctx.json(mockLoggedInUser));
       }),
       rest.post(`*${ENDPOINT_LOGOUT}`, (_, res, ctx) => {
-        return res(ctx.status(201), ctx.set('Content-Length', '0')); // No Location header
+        return res(ctx.status(200), ctx.json({})); // No location field
       })
     );
 

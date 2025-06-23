@@ -20,7 +20,7 @@ export function LoginContent() {
 
   const { logout, isLoading: isLoggingOut } = useLogoutHandler({
     onSuccess: (response) => {
-      const redirectUrl = response.headers?.location || ROUTE_DEFAULT;
+      const redirectUrl = response.data?.location || ROUTE_DEFAULT;
       if (redirectUrl.startsWith('http://') || redirectUrl.startsWith('https://')) {
         redirect(redirectUrl);
       } else {
