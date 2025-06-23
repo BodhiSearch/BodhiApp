@@ -334,13 +334,13 @@ mod tests {
 
     // Check responses
     let responses = &post_op.responses;
-    assert!(responses.responses.contains_key("303"));
+    assert!(responses.responses.contains_key("200"));
     assert!(responses.responses.contains_key("500"));
 
-    // Verify headers in 303 response
-    let success_response = responses.responses.get("303").unwrap();
+    // Verify JSON response in 200 response
+    let success_response = responses.responses.get("200").unwrap();
     if let RefOr::T(response) = success_response {
-      assert!(response.headers.contains_key("Location"));
+      assert!(response.content.contains_key("application/json"));
     }
   }
 
