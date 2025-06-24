@@ -94,6 +94,11 @@ jobs:
         uses: ./.github/actions/setup-node
         with:
           platform: ubuntu-latest
+      - name: Setup Provenance
+        run: npm publish --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Extract version information
         id: version
         working-directory: ./crates/lib_bodhiserver_napi
@@ -139,7 +144,16 @@ jobs:
       - name: Publish to NPM
         working-directory: crates/lib_bodhiserver_napi
         run: |
+          # Publish main package
           npm publish --access public
+
+          # Publish platform-specific packages
+          for platform_dir in npm/*/; do
+            if [ -d "$platform_dir" ]; then
+              echo "Publishing from $platform_dir"
+              (cd "$platform_dir" && npm publish --access public)
+            fi
+          done
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -157,11 +171,19 @@ jobs:
           fi
           echo "Successfully published main package version $PUBLISHED_VERSION"
 
-          # Check platform packages
+          # Check platform packages that were built
           echo "Checking platform packages..."
-          npm view @bodhiapp/app-bindings-darwin-arm64 version 2>/dev/null && echo "Darwin ARM64 package found" || echo "Darwin ARM64 package not found (may not exist yet)"
-          npm view @bodhiapp/app-bindings-linux-x64-gnu version 2>/dev/null && echo "Linux x64 package found" || echo "Linux x64 package not found (may not exist yet)"
-          npm view @bodhiapp/app-bindings-win32-x64-msvc version 2>/dev/null && echo "Windows x64 package found" || echo "Windows x64 package not found (may not exist yet)"
+          for platform_dir in npm/*/; do
+            if [ -d "$platform_dir" ]; then
+              PACKAGE_NAME=$(node -p "require('./$platform_dir/package.json').name")
+              PACKAGE_VERSION=$(npm view "$PACKAGE_NAME" version 2>/dev/null || echo "not found")
+              if [ "$PACKAGE_VERSION" != "not found" ]; then
+                echo "Successfully verified $PACKAGE_NAME version $PACKAGE_VERSION"
+              else
+                echo "Warning: $PACKAGE_NAME not found on NPM (may still be indexing)"
+              fi
+            fi
+          done
 
       - name: Configure Git for version bump
         run: |
