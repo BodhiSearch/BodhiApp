@@ -1,22 +1,23 @@
 {
   "name": "@bodhiapp/app-bindings",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "NAPI-RS bindings for BodhiApp server with integrated tests",
   "main": "index.js",
   "types": "index.d.ts",
-  "type": "module",
   "napi": {
     "binaryName": "app-bindings",
     "targets": [
-      "aarch64-apple-darwin"
+      "x86_64-unknown-linux-gnu",
+      "aarch64-apple-darwin",
+      "x86_64-pc-windows-msvc"
     ]
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "create-npm-dirs": "napi create-npm-dirs",
+    "create-npm-dirs": "napi create-npm-dir --target x86_64-unknown-linux-gnu && napi create-npm-dir --target x86_64-pc-windows-msvc && napi create-npm-dir --target aarch64-apple-darwin",
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
-    "build:release": "napi build --platform --release",
+    "build:release": "napi build --platform --release --js index.js --dts index.d.ts",
     "build:release:win": "napi build --platform --release --target x86_64-pc-windows-msvc",
     "test": "vitest run",
     "test:run": "vitest run",
@@ -37,7 +38,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
-    "@napi-rs/cli": "=3.0.0-alpha.72",
+    "@napi-rs/cli": "^2.18.4",
     "@playwright/test": "^1.48.2",
     "dotenv": "^16.5.0",
     "vitest": "^2.1.8"
