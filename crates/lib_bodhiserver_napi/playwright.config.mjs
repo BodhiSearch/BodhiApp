@@ -13,6 +13,7 @@ config({ path: join(__dirname, 'tests-js', 'playwright', '.env.test') });
  */
 export default defineConfig({
   testDir: './tests-js/playwright',
+  testMatch: '**/*.spec.mjs',
   /* Run tests in files in parallel */
   fullyParallel: false, // Sequential execution for server tests
   /* Fail the build on CI if you accidentally left test.only in the source code. */

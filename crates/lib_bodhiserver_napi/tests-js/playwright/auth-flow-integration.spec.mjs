@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createServerManager, getCurrentPath, waitForSPAReady } from './playwright-helpers.js';
+import { createServerManager, getCurrentPath, waitForSPAReady } from './playwright-helpers.mjs';
 
 /**
  * Get test environment variables with defaults

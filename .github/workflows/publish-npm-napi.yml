@@ -18,6 +18,9 @@ permissions:
 env:
   CI: true
   RUST_BACKTRACE: 1
+  DEBUG: napi:*
+  APP_NAME: app-bindings
+  MACOSX_DEPLOYMENT_TARGET: '10.13'
 
 jobs:
   build:
@@ -78,7 +81,7 @@ jobs:
         with:
           name: bindings-${{ matrix.settings.target }}
           path: |
-            crates/lib_bodhiserver_napi/*.node
+            crates/lib_bodhiserver_napi/${{ env.APP_NAME }}.*.node
           if-no-files-found: error
 
   publish:
@@ -94,11 +97,6 @@ jobs:
         uses: ./.github/actions/setup-node
         with:
           platform: ubuntu-latest
-      - name: Setup Provenance
-        run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Extract version information
         id: version
         working-directory: ./crates/lib_bodhiserver_napi
@@ -141,12 +139,10 @@ jobs:
         working-directory: crates/lib_bodhiserver_napi
         run: ls -R ./npm
 
-      - name: Publish to NPM
+      - name: Publish Platform Packages to NPM
         working-directory: crates/lib_bodhiserver_napi
         run: |
-          # Publish main package
-          npm publish --access public
-
+          npm config set provenance true
           # Publish platform-specific packages
           for platform_dir in npm/*/; do
             if [ -d "$platform_dir" ]; then
@@ -155,35 +151,25 @@ jobs:
             fi
           done
         env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Update optional dependencies and publish main package
+        working-directory: crates/lib_bodhiserver_napi
+        run: |
+          npm run update-optional-dependencies
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
 
       - name: Verify NPM Package
         working-directory: crates/lib_bodhiserver_napi
-        run: |
-          # Wait for NPM to index the packages
-          sleep 30
+        run: npm run verify-packages
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.release_version }}
 
-          # Check main package
-          PUBLISHED_VERSION=$(npm view @bodhiapp/app-bindings version 2>/dev/null || echo "not found")
-          if [ "$PUBLISHED_VERSION" = "not found" ]; then
-            echo "Main package not found on NPM"
-            exit 1
-          fi
-          echo "Successfully published main package version $PUBLISHED_VERSION"
-
-          # Check platform packages that were built
-          echo "Checking platform packages..."
-          for platform_dir in npm/*/; do
-            if [ -d "$platform_dir" ]; then
-              PACKAGE_NAME=$(node -p "require('./$platform_dir/package.json').name")
-              PACKAGE_VERSION=$(npm view "$PACKAGE_NAME" version 2>/dev/null || echo "not found")
-              if [ "$PACKAGE_VERSION" != "not found" ]; then
-                echo "Successfully verified $PACKAGE_NAME version $PACKAGE_VERSION"
-              else
-                echo "Warning: $PACKAGE_NAME not found on NPM (may still be indexing)"
-              fi
-            fi
-          done
 
       - name: Configure Git for version bump
         run: |

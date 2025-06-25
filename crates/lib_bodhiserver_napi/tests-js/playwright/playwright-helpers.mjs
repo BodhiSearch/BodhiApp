@@ -5,7 +5,7 @@ import {
   randomPort,
   sleep,
   waitForServer,
-} from '../test-helpers.js';
+} from '../test-helpers.mjs';
 
 /**
  * Server manager for Playwright tests

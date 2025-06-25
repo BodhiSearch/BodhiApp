@@ -4,7 +4,7 @@ import {
   createTempDir,
   createTestServer,
   loadBindings,
-} from './test-helpers.js';
+} from './test-helpers.mjs';
 
 describe('Configuration API Tests', () => {
   let bindings;

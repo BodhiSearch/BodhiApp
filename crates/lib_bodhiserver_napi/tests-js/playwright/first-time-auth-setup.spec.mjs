@@ -4,7 +4,7 @@ import {
   getCurrentPath,
   waitForRedirect,
   waitForSPAReady,
-} from './playwright-helpers.js';
+} from './playwright-helpers.mjs';
 
 /**
  * Get test environment variables with defaults
