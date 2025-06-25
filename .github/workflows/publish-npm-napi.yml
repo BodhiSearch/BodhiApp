@@ -20,7 +20,6 @@ env:
   RUST_BACKTRACE: 1
   DEBUG: napi:*
   APP_NAME: app-bindings
-  MACOSX_DEPLOYMENT_TARGET: '10.13'
 
 jobs:
   build:
