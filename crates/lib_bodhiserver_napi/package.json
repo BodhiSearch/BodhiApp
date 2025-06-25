@@ -1,6 +1,6 @@
 {
   "name": "@bodhiapp/app-bindings",
-  "version": "0.0.8",
+  "version": "0.0.10-dev",
   "description": "NAPI-RS bindings for BodhiApp server with integrated tests",
   "main": "index.js",
   "types": "index.d.ts",
@@ -77,6 +77,8 @@
     "index.js"
   ],
   "optionalDependencies": {
-    "@bodhiapp/app-bindings-darwin-arm64": "0.0.8"
+    "@bodhiapp/app-bindings-darwin-arm64": "0.0.9",
+    "@bodhiapp/app-bindings-linux-x64-gnu": "0.0.9",
+    "@bodhiapp/app-bindings-win32-x64-msvc": "0.0.9"
   }
 }
