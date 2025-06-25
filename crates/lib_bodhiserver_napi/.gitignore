@@ -1,7 +1,5 @@
 app-bindings*
 npm/
-index.js
-index.d.ts
 **/node_modules
 **/playwright-report/
 **/test-results/
