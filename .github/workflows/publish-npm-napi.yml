@@ -186,7 +186,7 @@ jobs:
         run: |
           cd ./crates/lib_bodhiserver_napi
           npm version ${{ steps.version.outputs.next_version }} --no-git-tag-version
-          cd ../..
-          git add crates/lib_bodhiserver_napi/package.json crates/lib_bodhiserver_napi/package-lock.json
+          npm install
+          git add package.json package-lock.json
           git commit -m "chore: bump app-bindings version to ${{ steps.version.outputs.next_version }} after release [skip ci]"
           git push origin main
