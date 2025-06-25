@@ -7,16 +7,15 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Get the path to the NAPI bindings
-const napiBindingsPath = join(__dirname, '..', 'index.js');
-
 /**
- * Load the NAPI bindings
+ * Load the NAPI bindings using dynamic import
  * @returns {Object} The NAPI bindings object
  */
 async function loadBindings() {
-  const bindings = await import(napiBindingsPath);
-  return bindings.default || bindings;
+  // Dynamic import of the local NAPI bindings during development
+  const appBindingsModule = await import('../index.js');
+  // CommonJS modules are wrapped in a default export when dynamically imported
+  return appBindingsModule.default;
 }
 
 /**
