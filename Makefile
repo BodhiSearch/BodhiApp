@@ -9,6 +9,7 @@ test: ## Run all tests (Rust, Node, Python)
 	cargo test
 	cargo test -p bodhi --features native
 	cd crates/bodhi && npm install && npm test
+	cd crates/lib_bodhiserver_napi && npm install && npm run test
 # 	cd openai-pysdk-compat && poetry run pytest || true
 
 format: ## Format code in all projects (Rust, Node, Python)

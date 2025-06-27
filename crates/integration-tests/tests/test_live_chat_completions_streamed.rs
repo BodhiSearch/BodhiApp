@@ -38,6 +38,7 @@ async fn test_live_chat_completions_stream(
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
     .header("Cookie", session_cookie.to_string())
+    .header("Sec-Fetch-Site", "same-origin")
     .json(&serde_json::json!({
       "model": "phi4:mini-instruct",
       "seed": 42,

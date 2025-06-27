@@ -251,7 +251,7 @@ The absence of JWT signature validation in the current implementation is **archi
 - **OAuth Code Exchange**: Server exchanges OAuth authorization code for tokens directly with Keycloak backend
 - **Server-Side Storage**: Tokens stored in secure server-side sessions (`tower_sessions` with SQLite backend)
 - **No External Exposure**: Tokens never transmitted to client-side JavaScript or exposed externally
-- **Session Security**: Session cookies use `SameSite::Lax` with secure session management
+- **Session Security**: Session cookies use `SameSite::Strict` with secure session management and same-origin enforcement
 
 #### 2. **Offline Token Security** ✅ **VALIDATED**
 **File**: `crates/routes_app/src/routes_api_token.rs:103-115`

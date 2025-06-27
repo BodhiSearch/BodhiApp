@@ -231,6 +231,6 @@ pub fn create_session_cookie(session_id: &str) -> Cookie {
   Cookie::build(("bodhiapp_session_id", session_id))
     .path("/")
     .http_only(true)
-    .same_site(cookie::SameSite::Lax)
+    .same_site(cookie::SameSite::Strict)
     .build()
 }

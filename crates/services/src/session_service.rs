@@ -53,7 +53,7 @@ impl SessionService for SqliteSessionService {
   fn session_layer(&self) -> SessionManagerLayer<SqliteStore> {
     SessionManagerLayer::new(self.session_store.clone())
       .with_secure(false) // TODO: change this when https is supported
-      .with_same_site(SameSite::Lax) // TODO: need to have a login session cookie, with SameSite::Lax, and a CSRF cookie, with SameSite::Strict
+      .with_same_site(SameSite::Strict) // The cookie is now only sent for same-site/origin requests, blocking cross-site XHR usage
       .with_name("bodhiapp_session_id")
   }
 
