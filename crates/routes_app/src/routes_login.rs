@@ -504,14 +504,16 @@ mod tests {
     token: (String, String),
   ) -> anyhow::Result<()> {
     let (token, _) = token;
-    test_auth_initiate_handler_with_token(
-      temp_bodhi_home,
-      token,
-      StatusCode::OK,
-      Some("http://frontend.localhost:3000/ui/chat"),
-      None,
-    )
-    .await
+    let (status, body) = auth_initiate_handler_with_token_response(temp_bodhi_home, token).await?;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+      body
+        .location
+        .starts_with("http://frontend.localhost:3000/ui/chat"),
+      "{} does not start with http://frontend.localhost:3000/ui/chat",
+      body.location
+    );
+    Ok(())
   }
 
   #[rstest]
@@ -521,23 +523,18 @@ mod tests {
     expired_token: (String, String),
   ) -> anyhow::Result<()> {
     let (token, _) = expired_token;
-    test_auth_initiate_handler_with_token(
-      temp_bodhi_home,
-      token,
-      StatusCode::CREATED,
-      Some("http://id.localhost/realms/test-realm/protocol/openid-connect/auth"),
-      None,
-    )
-    .await
+    let (status, body) = auth_initiate_handler_with_token_response(temp_bodhi_home, token).await?;
+    assert_eq!(status, StatusCode::CREATED);
+    assert!(body
+      .location
+      .starts_with("http://id.localhost/realms/test-realm/protocol/openid-connect/auth"));
+    Ok(())
   }
 
-  async fn test_auth_initiate_handler_with_token(
+  async fn auth_initiate_handler_with_token_response(
     temp_bodhi_home: TempDir,
     token: String,
-    status: StatusCode,
-    location: Option<&str>,
-    auth_url: Option<&str>,
-  ) -> anyhow::Result<()> {
+  ) -> anyhow::Result<(StatusCode, RedirectResponse)> {
     let dbfile = temp_bodhi_home.path().join("test.db");
     let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let record = set_token_in_session(&session_service, &token).await?;
@@ -568,19 +565,14 @@ mod tests {
       .oneshot(
         Request::post("/auth/initiate")
           .header("Cookie", format!("bodhiapp_session_id={}", record.id))
+          .header("Sec-Fetch-Site", "same-origin")
           .json(json! {{}})?,
       )
       .await?;
-    assert_eq!(resp.status(), status);
+    let status = resp.status();
     let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
     let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
-    if let Some(location) = location {
-      assert!(body.location.starts_with(location));
-    }
-    if let Some(auth_url) = auth_url {
-      assert!(body.location.starts_with(auth_url));
-    }
-    Ok(())
+    Ok((status, body))
   }
 
   async fn set_token_in_session(

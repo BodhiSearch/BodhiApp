@@ -38,6 +38,7 @@ async fn test_live_chat_completions_non_streamed(
   let response = client
     .post(&chat_endpoint)
     .header("Content-Type", "application/json")
+    .header("Sec-Fetch-Site", "same-origin")
     .header("Cookie", session_cookie.to_string())
     .json(&serde_json::json!({
       "model": "phi4:mini-instruct",

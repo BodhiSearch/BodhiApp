@@ -8,10 +8,7 @@ macro_rules! make_ui_endpoint {
 use crate::proxy_router;
 use auth_middleware::{api_auth_middleware, auth_middleware, inject_session_auth_info};
 use axum::{
-  body::Body,
-  http::StatusCode,
   middleware::from_fn_with_state,
-  response::Response,
   routing::{delete, get, post, put},
   Router,
 };
@@ -21,19 +18,18 @@ use routes_app::{
   create_pull_request_handler, create_token_handler, delete_setting_handler, dev_secrets_handler,
   envs_handler, get_alias_handler, get_download_status_handler, list_downloads_handler,
   list_local_aliases_handler, list_local_modelfiles_handler, list_settings_handler,
-  list_tokens_handler, logout_handler, pull_by_alias_handler, setup_handler, update_alias_handler,
-  update_setting_handler, update_token_handler, user_info_handler, BodhiOpenAPIDoc,
-  OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK,
-  ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_LOGOUT,
-  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS,
-  ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+  list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler, setup_handler,
+  update_alias_handler, update_setting_handler, update_token_handler, user_info_handler,
+  BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
+  ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS,
+  ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
+  ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,
   ollama_model_show_handler, ollama_models_handler, ENDPOINT_OAI_CHAT_COMPLETIONS,
   ENDPOINT_OAI_MODELS, ENDPOINT_OLLAMA_CHAT, ENDPOINT_OLLAMA_SHOW, ENDPOINT_OLLAMA_TAGS,
 };
-use serde_json::json;
 use server_core::{DefaultRouterState, RouterState, SharedContext};
 use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
 use std::sync::Arc;
@@ -54,15 +50,7 @@ pub fn build_routes(
 
   // Public APIs (no auth required)
   let mut public_apis = Router::new()
-    .route(
-      ENDPOINT_PING,
-      get(|| async {
-        Response::builder()
-          .status(StatusCode::OK)
-          .body(Body::from(json!({"message": "pong"}).to_string()))
-          .unwrap()
-      }),
-    )
+    .route(ENDPOINT_PING, get(ping_handler))
     .route(ENDPOINT_APP_INFO, get(app_info_handler))
     .route(ENDPOINT_APP_SETUP, post(setup_handler))
     // TODO: having as api/ui/logout coz of status code as 200 instead of 302 because of automatic follow redirect by axios

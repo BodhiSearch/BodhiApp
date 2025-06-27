@@ -113,6 +113,26 @@ This document captures key architectural decisions, their rationale, and the ben
 - Better error messages for users and developers
 - Easier maintenance of error handling logic
 
+### 6. Session Cookie Same-Origin Enforcement
+
+**Decision**: Accept session cookies **only** for requests that explicitly declare a `Sec-Fetch-Site` header value of `same-origin`, and set the session cookie itself to `SameSite::Strict`. Any cross-site request (including those originating from browser extensions) will therefore be denied access to the user's authenticated session.
+
+**Rationale**:
+- **CSRF Hardening**: The combination of the `SameSite::Strict` cookie attribute and runtime verification of `Sec-Fetch-Site` eliminates cross-site request-forgery vectors that might otherwise bypass relaxed SameSite implementations.
+- **Extension Isolation**: Prevents Chrome/Firefox extensions from silently reusing the authenticated browser session when performing background XHR/fetch requests to the Bodhi backend.
+- **Defense in Depth**: Adds a server-side guard in addition to client-side cookie attributes, ensuring older or non-compliant user agents cannot abuse cookies.
+- **Standards-Based**: Relies on Fetch Metadata Request Headers, a widely-supported web standard designed specifically for this purpose.
+
+**Implementation**:
+- Middleware helper `is_same_site` in `crates/auth_middleware/src/auth_middleware.rs` checks the request headers and short-circuits with `401 Unauthorized` when the header is missing or not `same-origin`.
+- Session cookie builder switched from `SameSite::Lax` to `SameSite::Strict` in `crates/services/src/session_service.rs`.
+- Integration tests (`crates/integration-tests/...`) and unit tests cover both positive (same-origin) and negative (cross-site) scenarios to guarantee enforcement.
+
+**Benefits**:
+- Eliminates remaining CSRF attack surface for authenticated endpoints.
+- Protects user data from malicious third-party sites and untrusted browser extensions.
+- Aligns with the project's zero-trust security posture and "dumb frontend" design, ensuring that only the official Bodhi UI can leverage the session.
+
 ## Design Patterns
 
 ### Dependency Injection Pattern

@@ -19,6 +19,18 @@ pub const KEY_RESOURCE_TOKEN: &str = "X-Resource-Token";
 pub const KEY_RESOURCE_ROLE: &str = "X-Resource-Access";
 pub const KEY_RESOURCE_SCOPE: &str = "X-Resource-Scope";
 
+const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
+
+/// Returns true if the request originates from the same site ("same-origin").
+fn is_same_origin(headers: &HeaderMap) -> bool {
+  matches!(
+    headers
+      .get(SEC_FETCH_SITE_HEADER)
+      .and_then(|v| v.to_str().ok()),
+    Some("same-origin")
+  )
+}
+
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
 pub enum AuthError {
@@ -109,21 +121,25 @@ pub async fn auth_middleware(
       .headers_mut()
       .insert(KEY_RESOURCE_SCOPE, token_scope.to_string().parse().unwrap());
     Ok(next.run(req).await)
-  } else if let Some(access_token) = session
-    .get::<String>(SESSION_KEY_ACCESS_TOKEN)
-    .await
-    .map_err(AuthError::from)?
-  {
-    let (access_token, role) = token_service
-      .get_valid_session_token(session, access_token)
-      .await?;
-    req
-      .headers_mut()
-      .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
-    req
-      .headers_mut()
-      .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
-    Ok(next.run(req).await)
+  } else if is_same_origin(&_headers) {
+    if let Some(access_token) = session
+      .get::<String>(SESSION_KEY_ACCESS_TOKEN)
+      .await
+      .map_err(AuthError::from)?
+    {
+      let (access_token, role) = token_service
+        .get_valid_session_token(session, access_token)
+        .await?;
+      req
+        .headers_mut()
+        .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+      req
+        .headers_mut()
+        .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+      Ok(next.run(req).await)
+    } else {
+      Err(AuthError::InvalidAccess)?
+    }
   } else {
     Err(AuthError::InvalidAccess)?
   }
@@ -153,23 +169,25 @@ pub async fn inject_session_auth_info(
     return Ok(next.run(req).await);
   }
 
-  // Try to get token from session
-  if let Some(access_token) = session
-    .get::<String>("access_token")
-    .await
-    .map_err(AuthError::from)?
-  {
-    if let Ok((validated_token, role)) = token_service
-      .get_valid_session_token(session, access_token)
+  // Try to get token from session only for same-origin requests
+  if is_same_origin(req.headers()) {
+    if let Some(access_token) = session
+      .get::<String>("access_token")
       .await
+      .map_err(AuthError::from)?
     {
-      req
-        .headers_mut()
-        .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
-      req
-        .headers_mut()
-        .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
-      return Ok(next.run(req).await);
+      if let Ok((validated_token, role)) = token_service
+        .get_valid_session_token(session, access_token)
+        .await
+      {
+        req
+          .headers_mut()
+          .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
+        req
+          .headers_mut()
+          .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+        return Ok(next.run(req).await);
+      }
     }
   }
   // Continue with the request, even if no valid token was found
@@ -396,6 +414,7 @@ mod tests {
 
     let req = Request::get(path)
       .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Sec-Fetch-Site", "same-origin")
       .body(Body::empty())?;
     let router = test_router(state);
 
@@ -484,6 +503,7 @@ mod tests {
 
     let req = Request::get(path)
       .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Sec-Fetch-Site", "same-origin")
       .body(Body::empty())?;
     let router = test_router(state);
 
@@ -586,6 +606,7 @@ mod tests {
 
     let req = Request::get("/with_auth")
       .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Sec-Fetch-Site", "same-origin")
       .body(Body::empty())?;
     let router = test_router(state);
 
@@ -817,6 +838,7 @@ mod tests {
     let router = test_router(state);
     let req = Request::get("/with_auth")
       .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Sec-Fetch-Site", "same-origin")
       .header("Authorization", format!("Bearer {}", offline_token))
       .body(Body::empty())?;
     let response = router.oneshot(req).await?;
@@ -832,6 +854,46 @@ mod tests {
       },
       actual
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_session_ignored_when_cross_site(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+    use axum::http::StatusCode;
+    use pretty_assertions::assert_eq;
+
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    // create dummy session record
+    let id = tower_sessions::session::Id::default();
+    let mut record = tower_sessions::session::Record {
+      id,
+      data: maplit::hashmap! {
+        "access_token".to_string() => serde_json::Value::String("dummy".to_string()),
+      },
+      expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
+    };
+    session_service.session_store.create(&mut record).await?;
+
+    let app_service = AppServiceStubBuilder::default()
+      .with_secret_service()
+      .session_service(session_service.clone())
+      .with_db_service()
+      .await
+      .build()?;
+    let state: Arc<dyn RouterState> = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::new()),
+      Arc::new(app_service),
+    ));
+    let router = test_router(state);
+    // cross-site header
+    let req = Request::get("/with_auth")
+      .header("Cookie", format!("bodhiapp_session_id={}", id))
+      .header("Sec-Fetch-Site", "cross-site")
+      .body(Body::empty())?;
+    let response = router.oneshot(req).await?;
+    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
     Ok(())
   }
 }
