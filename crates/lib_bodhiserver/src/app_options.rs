@@ -150,19 +150,19 @@ impl AppOptionsBuilder {
       env_wrapper,
       env_type: self
         .env_type
-        .ok_or_else(|| AppOptionsError::ValidationError("env_type".to_string()))?,
+        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_ENV_TYPE.to_string()))?,
       app_type: self
         .app_type
-        .ok_or_else(|| AppOptionsError::ValidationError("app_type".to_string()))?,
+        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_APP_TYPE.to_string()))?,
       app_version: self
         .app_version
-        .ok_or_else(|| AppOptionsError::ValidationError("app_version".to_string()))?,
+        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_VERSION.to_string()))?,
       auth_url: self
         .auth_url
-        .ok_or_else(|| AppOptionsError::ValidationError("auth_url".to_string()))?,
+        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_AUTH_URL.to_string()))?,
       auth_realm: self
         .auth_realm
-        .ok_or_else(|| AppOptionsError::ValidationError("auth_realm".to_string()))?,
+        .ok_or_else(|| AppOptionsError::ValidationError(BODHI_AUTH_REALM.to_string()))?,
       app_settings: self.app_settings,
       app_reg_info: self.app_reg_info,
       app_status: self.app_status,
