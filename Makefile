@@ -5,12 +5,17 @@ help: ## Show this help message
 	@echo 'Targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9._-]+:.*?## / {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-test: ## Run all tests (Rust, Node, Python)
+test.backend:
 	cargo test
 	cargo test -p bodhi --features native
+
+test.ui:
 	cd crates/bodhi && npm install && npm test
+
+test.napi:
 	cd crates/lib_bodhiserver_napi && npm install && npm run test
-# 	cd openai-pysdk-compat && poetry run pytest || true
+
+test: test.backend test.ui test.napi
 
 format: ## Format code in all projects (Rust, Node, Python)
 	cargo fmt --all
