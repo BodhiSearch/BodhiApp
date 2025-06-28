@@ -61,12 +61,32 @@ export declare class BodhiServer {
   host(): string
   /** Get the server port */
   port(): number
-  /** Start the Bodhi server */
+  /**
+   * Start the Bodhi server
+   *
+   * # Safety
+   * Safe to call from JavaScript/Node.js context via NAPI bindings.
+   */
   start(): Promise<void>
-  /** Stop the Bodhi server */
+  /**
+   * Stop the Bodhi server
+   *
+   * # Safety
+   * Safe to call from JavaScript/Node.js context via NAPI bindings.
+   */
   stop(): Promise<void>
-  /** Check if the server is running */
+  /**
+   * Check if the server is running
+   *
+   * # Safety
+   * Safe to call from JavaScript/Node.js context via NAPI bindings.
+   */
   isRunning(): Promise<boolean>
-  /** Get server ping status */
+  /**
+   * Get server ping status
+   *
+   * # Safety
+   * Safe to call from JavaScript/Node.js context via NAPI bindings.
+   */
   ping(): Promise<boolean>
 }
