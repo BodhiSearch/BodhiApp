@@ -7,6 +7,7 @@ auth_error-token_not_found = API token not found
 auth_error-signature_key = signature key is invalid, error: {$var_0}
 auth_error-invalid_token = invalid token, error: {$var_0}
 auth_error-signature_mismatch = signature mismatch, error: {$var_0}
+auth_error-app_status_invalid = app status is invalid for this operation: {$var_0}
 auth_error-missing_roles = no valid roles found for current user
 api_auth_error-forbidden = insufficient privileges to access this resource
 api_auth_error-missing_auth = missing authentication header

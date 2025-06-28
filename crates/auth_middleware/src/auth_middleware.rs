@@ -3,7 +3,7 @@ use axum::{
   extract::{Request, State},
   http::HeaderMap,
   middleware::Next,
-  response::{IntoResponse, Redirect, Response},
+  response::Response,
 };
 use objs::{ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError};
 use server_core::RouterState;
@@ -75,6 +75,9 @@ pub enum AuthError {
   #[error("signature_mismatch")]
   #[error_meta(error_type = ErrorType::Authentication)]
   SignatureMismatch(String),
+  #[error("app_status_invalid")]
+  #[error_meta(error_type = ErrorType::InvalidAppState)]
+  AppStatusInvalid(AppStatus),
 }
 
 #[instrument(skip_all, level = "debug")]
@@ -99,13 +102,7 @@ pub async fn auth_middleware(
   );
   // TODO: remove, frontend should check app status
   if app_status_or_default(&secret_service) == AppStatus::Setup {
-    return Ok(
-      Redirect::to(&format!(
-        "{}/ui/setup",
-        app_service.setting_service().frontend_url()
-      ))
-      .into_response(),
-    );
+    return Err(AuthError::AppStatusInvalid(AppStatus::Setup).into());
   }
 
   // Check for token in session
@@ -332,7 +329,8 @@ mod tests {
   #[case::authz_missing(SecretServiceStub::new())]
   #[tokio::test]
   #[anyhow_trace]
-  async fn test_auth_middleware_redirects_to_setup_for_app_status_setup_or_missing(
+  async fn test_auth_middleware_returns_app_status_invalid_for_app_status_setup_or_missing(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     #[case] secret_service: SecretServiceStub,
   ) -> anyhow::Result<()> {
     let app_service = AppServiceStubBuilder::default()
@@ -355,10 +353,17 @@ mod tests {
     let req = Request::get("/with_auth").body(Body::empty())?;
     let router = test_router(state);
     let response = router.clone().oneshot(req).await?;
-    assert_eq!(StatusCode::SEE_OTHER, response.status());
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, response.status());
+    let body: Value = response.json().await?;
     assert_eq!(
-      "https://bodhi.app:443/ui/setup",
-      response.headers().get("Location").unwrap()
+      json! {{
+        "error": {
+          "code": "auth_error-app_status_invalid",
+          "type": "invalid_app_state",
+          "message": "app status is invalid for this operation: \u{2068}setup\u{2069}"
+        }
+      }},
+      body
     );
     assert_optional_auth_passthrough(&router).await?;
     Ok(())
