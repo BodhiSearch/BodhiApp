@@ -163,7 +163,9 @@ pub struct PingResponse {
         )
     )
 )]
+#[tracing::instrument]
 pub async fn ping_handler() -> Json<PingResponse> {
+  tracing::info!("ping request received");
   Json(PingResponse {
     message: "pong".to_string(),
   })

@@ -3247,6 +3247,9 @@ dependencies = [
  "services",
  "tempfile",
  "tokio",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]

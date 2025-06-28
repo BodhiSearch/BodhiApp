@@ -4,13 +4,17 @@ use crate::{
 };
 use lib_bodhiserver::{
   build_app_service, setup_app_dirs, update_with_option, ApiError, AppService, OpenAIApiError,
-  ServeCommand, ServerShutdownHandle, DEFAULT_HOST, DEFAULT_PORT, EMBEDDED_UI_ASSETS,
+  ServeCommand, ServerShutdownHandle, SettingService, BODHI_LOG_STDOUT, DEFAULT_HOST, DEFAULT_PORT,
+  EMBEDDED_UI_ASSETS,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::sync::Arc;
 use tempfile::TempDir;
 use tokio::sync::Mutex;
+use tracing::level_filters::LevelFilter;
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
 /// The main Bodhi server wrapper for NAPI
 #[napi]
@@ -18,6 +22,7 @@ pub struct BodhiServer {
   config: NapiAppOptions,
   shutdown_handle: Arc<Mutex<Option<ServerShutdownHandle>>>,
   temp_dir: Option<TempDir>,
+  log_guard: Option<WorkerGuard>,
 }
 
 #[napi]
@@ -29,6 +34,7 @@ impl BodhiServer {
       config,
       shutdown_handle: Arc::new(Mutex::new(None)),
       temp_dir: None,
+      log_guard: None,
     })
   }
 
@@ -69,6 +75,9 @@ impl BodhiServer {
   }
 
   /// Start the Bodhi server
+  ///
+  /// # Safety
+  /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
   pub async unsafe fn start(&mut self) -> Result<()> {
     // Check if server is already running
@@ -102,6 +111,10 @@ impl BodhiServer {
         format!("Failed to setup app dirs: {}", e),
       )
     })?);
+
+    // Setup logging
+    let log_guard = setup_logs(&setting_service);
+    self.log_guard = Some(log_guard);
 
     // Build the app service
     let app_service: Arc<dyn AppService> = Arc::new(
@@ -144,6 +157,9 @@ impl BodhiServer {
   }
 
   /// Stop the Bodhi server
+  ///
+  /// # Safety
+  /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
   pub async unsafe fn stop(&mut self) -> Result<()> {
     let handle = {
@@ -159,11 +175,17 @@ impl BodhiServer {
         )
       })?;
     }
-
+    // Clean up log guard
+    if let Some(guard) = self.log_guard.take() {
+      drop(guard);
+    }
     Ok(())
   }
 
   /// Check if the server is running
+  ///
+  /// # Safety
+  /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
   pub async unsafe fn is_running(&self) -> Result<bool> {
     let handle_guard = self.shutdown_handle.lock().await;
@@ -171,6 +193,9 @@ impl BodhiServer {
   }
 
   /// Get server ping status
+  ///
+  /// # Safety
+  /// Safe to call from JavaScript/Node.js context via NAPI bindings.
   #[napi]
   pub async unsafe fn ping(&self) -> Result<bool> {
     let is_running = {
@@ -191,12 +216,76 @@ impl BodhiServer {
   }
 }
 
+fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> WorkerGuard {
+  let logs_dir = setting_service.logs_dir();
+  let file_appender = tracing_appender::rolling::daily(logs_dir, "bodhi.log");
+  let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+  let log_level: LevelFilter = setting_service.log_level().into();
+  let log_level = log_level.to_string();
+  let filter = EnvFilter::new(&log_level);
+  let filter = filter.add_directive("hf_hub=error".parse().expect("is a valid directive"));
+
+  // Check if we should output to stdout
+  let enable_stdout = cfg!(debug_assertions)
+    || setting_service
+      .get_setting(BODHI_LOG_STDOUT)
+      .map(|v| v == "1" || v.to_lowercase() == "true")
+      .unwrap_or(false);
+
+  let subscriber = tracing_subscriber::registry().with(filter);
+
+  let result = if enable_stdout {
+    subscriber
+      .with(
+        fmt::layer()
+          .with_writer(std::io::stdout)
+          .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::CLOSE)
+          .with_target(true),
+      )
+      .with(
+        fmt::layer()
+          .with_writer(non_blocking)
+          .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::CLOSE)
+          .with_target(true),
+      )
+      .try_init()
+  } else {
+    subscriber
+      .with(
+        fmt::layer()
+          .with_writer(non_blocking)
+          .with_span_events(fmt::format::FmtSpan::ENTER | fmt::format::FmtSpan::CLOSE)
+          .with_target(true),
+      )
+      .try_init()
+  };
+  // Handle the case where subscriber is already set (e.g., in tests)
+  if result.is_err() {
+    #[cfg(debug_assertions)]
+    {
+      println!("logging subscriber already set, continuing with existing setup");
+    }
+  } else {
+    #[cfg(debug_assertions)]
+    {
+      println!(
+        "logging to stdout: {}, log_level: {}",
+        enable_stdout, log_level
+      );
+    }
+  }
+  guard
+}
+
 impl Drop for BodhiServer {
   fn drop(&mut self) {
-    // We can't use async in Drop, but we can at least handle temp_dir cleanup
+    // We can't use async in Drop, but we can at least handle cleanup
     // The server shutdown should happen explicitly via stop()
     if let Some(_temp_dir) = self.temp_dir.take() {
       // temp_dir will be automatically cleaned up when dropped
+    }
+    if let Some(_log_guard) = self.log_guard.take() {
+      // log_guard will be automatically cleaned up when dropped
     }
   }
 }
