@@ -322,6 +322,7 @@ dependencies = [
  "anyhow_trace",
  "axum",
  "chrono",
+ "dotenv",
  "errmeta_derive",
  "include_dir",
  "jsonwebtoken",
@@ -330,6 +331,7 @@ dependencies = [
  "objs",
  "pretty_assertions",
  "rand 0.9.1",
+ "reqwest",
  "rstest",
  "serde",
  "serde_json",
@@ -342,6 +344,7 @@ dependencies = [
  "tower",
  "tower-sessions",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

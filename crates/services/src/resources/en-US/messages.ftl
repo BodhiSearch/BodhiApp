@@ -50,4 +50,7 @@ keyring_error-decode_error = invalid format: {$var_0}
 auth_service_error-token_exchange_error = token exchange failed: {$var_0}
 db_error-token_validation = token is not valid: {$var_0}
 token_error-invalid_token = token is invalid: {$var_0}
+token_error-invalid_issuer = token issuer is invalid: {$var_0}
+token_error-scope_empty = user does not have any privileges on this system
+token_error-expired = token has expired
 setting_service_error-invalid_source = cannot set setting for environment as source

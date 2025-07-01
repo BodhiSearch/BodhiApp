@@ -34,6 +34,15 @@ pub enum TokenError {
   InvalidToken(String),
   #[error(transparent)]
   SerdeJson(#[from] SerdeJsonError),
+  #[error("invalid_issuer")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  InvalidIssuer(String),
+  #[error("scope_empty")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  ScopeEmpty,
+  #[error("expired")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  Expired,
 }
 
 impl_error_from!(
@@ -49,6 +58,9 @@ pub struct ResourceClaims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ScopeClaims {
+  pub iss: String,
+  pub azp: String,
+  pub exp: u64,
   pub scope: String,
 }
 
@@ -60,6 +72,8 @@ pub struct IdClaims {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExpClaims {
+  pub jti: String,
+  pub sub: String,
   pub exp: u64,
   pub scope: String,
 }
@@ -73,6 +87,7 @@ pub struct Claims {
   pub sub: String,
   pub typ: String,
   pub azp: String,
+  pub aud: Option<String>,
   pub scope: String,
   pub email: String,
   #[serde(default)]
