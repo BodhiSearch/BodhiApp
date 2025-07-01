@@ -74,6 +74,8 @@ Feature documentation organized by development status and implementation timelin
 - **[Navigation](02-features/implemented/navigation.md)** - Application navigation system and routing architecture
 
 #### Active Development Stories
+- **[OAuth 2.0 Token Exchange](02-features/20250628-token-exchange.md)** - Cross-client token validation with Keycloak integration for enhanced security and interoperability
+  - **[Technical Specification](02-features/20250628-token-exchange-tech-spec.md)** - Detailed technical implementation guide with code patterns and testing strategies
 - **[API Tokens](02-features/active-stories/api-tokens.md)** - API token management and programmatic access
 - **[App Settings](02-features/active-stories/app-settings.md)** - Application configuration and user preferences
 - **[Model Alias Revamp](02-features/active-stories/model-alias-revamp.md)** - Enhanced model alias system and management
@@ -165,6 +167,7 @@ Implementation guides, technical knowledge, and learning resources for developer
 Technical research documents, dependency analysis, and architectural investigations
 
 - **[AppRegInfo JWT Simplification Analysis](07-research/appreginfo-jwt-simplification-analysis.md)** - Comprehensive analysis of JWT validation fields in AppRegInfo, revealing unused dead code and proposing runtime parameter fetching architecture
+- **[OAuth 2.1 Token Exchange Security Research](07-research/token-exchange.md)** - Research on secure token exchange patterns for preventing privilege escalation when third-party clients access our resource server, with scope-limited exchange recommendations
 
 ### 📦 [Archive](99-archive/) - Historical Materials
 Historical documents, deprecated content, and reference materials preserved for context
