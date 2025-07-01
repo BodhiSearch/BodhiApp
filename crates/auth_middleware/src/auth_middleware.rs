@@ -5,7 +5,10 @@ use axum::{
   middleware::Next,
   response::Response,
 };
-use objs::{ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError};
+
+use objs::{
+  ApiError, AppError, AppRegInfoMissingError, ErrorType, RoleError, TokenScopeError, UserScopeError,
+};
 use server_core::RouterState;
 use services::{AppStatus, AuthServiceError, SecretServiceError, TokenError};
 use std::sync::Arc;
@@ -42,6 +45,9 @@ pub enum AuthError {
   #[error(transparent)]
   #[error_meta(error_type = ErrorType::Authentication)]
   TokenScope(#[from] TokenScopeError),
+  #[error(transparent)]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  UserScope(#[from] UserScopeError),
   #[error("missing_roles")]
   #[error_meta(error_type = ErrorType::Authentication)]
   MissingRoles,
@@ -99,8 +105,9 @@ pub async fn auth_middleware(
     secret_service.clone(),
     app_service.cache_service(),
     app_service.db_service(),
+    app_service.setting_service(),
   );
-  // TODO: remove, frontend should check app status
+
   if app_status_or_default(&secret_service) == AppStatus::Setup {
     return Err(AuthError::AppStatusInvalid(AppStatus::Setup).into());
   }
@@ -110,13 +117,14 @@ pub async fn auth_middleware(
     let header = header
       .to_str()
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
-    let (access_token, token_scope) = token_service.validate_bearer_token(header).await?;
+    let (access_token, resource_scope) = token_service.validate_bearer_token(header).await?;
     req
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
-    req
-      .headers_mut()
-      .insert(KEY_RESOURCE_SCOPE, token_scope.to_string().parse().unwrap());
+    req.headers_mut().insert(
+      KEY_RESOURCE_SCOPE,
+      resource_scope.to_string().parse().unwrap(),
+    );
     Ok(next.run(req).await)
   } else if is_same_origin(&_headers) {
     if let Some(access_token) = session
@@ -159,6 +167,7 @@ pub async fn inject_session_auth_info(
     secret_service.clone(),
     app_service.cache_service(),
     app_service.db_service(),
+    app_service.setting_service(),
   );
 
   // Check app status

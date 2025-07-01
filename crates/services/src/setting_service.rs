@@ -331,6 +331,10 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     )
   }
 
+  fn auth_issuer(&self) -> String {
+    format!("{}/realms/{}", self.auth_url(), self.auth_realm())
+  }
+
   fn token_url(&self) -> String {
     format!(
       "{}/realms/{}/protocol/openid-connect/token",

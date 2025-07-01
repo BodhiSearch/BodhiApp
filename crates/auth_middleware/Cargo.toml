@@ -33,9 +33,13 @@ mockall = { workspace = true }
 rstest = { workspace = true }
 tempfile = { workspace = true }
 tower = { workspace = true, features = ["util"] }
+tower-sessions = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 pretty_assertions = { workspace = true }
 maplit = { workspace = true }
+uuid = { workspace = true }
+reqwest = { workspace = true }
+dotenv = { workspace = true }
 
 [features]
 test-utils = ["rstest", "services/test-utils"]

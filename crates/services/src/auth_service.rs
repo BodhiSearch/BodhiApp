@@ -65,6 +65,15 @@ pub trait AuthService: Send + Sync + std::fmt::Debug {
     scopes: Vec<String>,
   ) -> Result<(String, Option<String>)>;
 
+  async fn exchange_app_token(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    app_client_id: &str,
+    subject_token: &str,
+    scopes: Vec<String>,
+  ) -> Result<(String, Option<String>)>;
+
   async fn make_resource_admin(
     &self,
     client_id: &str,
@@ -213,6 +222,60 @@ impl AuthService for KeycloakAuthService {
     }
   }
 
+  async fn exchange_app_token(
+    &self,
+    client_id: &str,
+    client_secret: &str,
+    app_client_id: &str,
+    subject_token: &str,
+    scopes: Vec<String>,
+  ) -> Result<(String, Option<String>)> {
+    let client = reqwest::Client::new();
+    let response = client
+      .post(self.auth_token_url())
+      .form(&[
+        ("grant_type", "client_credentials"),
+        ("client_id", client_id),
+        ("client_secret", client_secret),
+      ])
+      .send()
+      .await?;
+    let client_creds: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+      if response.status().is_success() {
+        response.json().await?
+      } else {
+        let error = response.json::<KeycloakError>().await?;
+        return Err(AuthServiceError::AuthServiceApiError(error.error));
+      };
+    let response = client
+      .post(self.auth_token_url())
+      .form(&[
+        (
+          "grant_type",
+          "urn:ietf:params:oauth:grant-type:token-exchange",
+        ),
+        ("subject_token", subject_token),
+        ("client_id", app_client_id),
+        ("audience", client_id),
+        ("scope", &scopes.join(" ")),
+      ])
+      .bearer_auth(client_creds.access_token().secret())
+      .send()
+      .await?;
+    let token_response: StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType> =
+      if response.status().is_success() {
+        response.json().await?
+      } else {
+        let error = response.json::<KeycloakError>().await?;
+        return Err(AuthServiceError::AuthServiceApiError(error.error));
+      };
+    let access_token = token_response.access_token().secret().to_string();
+    let refresh_token = token_response
+      .refresh_token()
+      .map(|s| s.secret().to_string());
+    Ok((access_token, refresh_token))
+  }
+
   async fn refresh_token(
     &self,
     client_id: &str,
@@ -273,7 +336,7 @@ impl AuthService for KeycloakAuthService {
     let response = client
       .post(self.auth_token_url())
       .form(&params)
-      .header("Authorization", format!("Berarer {}", subject_token))
+      // .header("Authorization", format!("Berarer {}", subject_token))
       .header(HEADER_BODHI_APP_VERSION, &self.app_version)
       .send()
       .await?;
