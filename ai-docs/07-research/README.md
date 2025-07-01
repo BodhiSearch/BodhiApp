@@ -10,6 +10,9 @@ This section contains technical research documents, dependency analysis, and arc
 ### FFI & Language Interoperability
 - **[FFI UI Testing Research](20250615-ffi-ui-testing-research.md)** - Comprehensive analysis of FFI approaches for exposing `lib_bodhiserver` to TypeScript/JavaScript for UI testing, with NAPI-RS recommendation
 
+### Security & Authentication
+- **[OAuth 2.1 Token Exchange Security Research](token-exchange.md)** - Research on secure token exchange patterns for preventing privilege escalation when third-party clients access our resource server, with scope-limited exchange recommendations
+
 ## Purpose
 
 Research documents serve multiple purposes:
