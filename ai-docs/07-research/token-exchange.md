@@ -4,6 +4,8 @@
 
 This research investigates secure OAuth 2.1 token exchange patterns for preventing privilege escalation when third-party clients exchange tokens for access to our resource server. The key finding is that **scope-limited token exchange with explicit consent mechanisms** is the standard approach, implemented through authorization server policies rather than built-in consent screens.
 
+**Implementation Status**: A working implementation has been completed for Keycloak v23 using a two-step token exchange process with user scope-based authorization. This serves as a temporary solution while preparing for Keycloak v26 migration.
+
 ## Problem Statement
 
 **Current Architecture:**
@@ -434,9 +436,35 @@ The recommended approach leverages **Keycloak's standard token exchange V2** wit
 
 The key insight is using **role-equivalent scopes** (`scope_user_admin`) rather than fine-grained scopes (`read:basic`), which aligns perfectly with BodhiApp's existing authorization model and simplifies the implementation.
 
+## Current Implementation (Keycloak v23)
+
+The research findings have been successfully implemented in the BodhiApp backend for Keycloak v23. The implementation includes:
+
+### Key Implementation Details
+- **Two-Step Token Exchange**: Uses client credentials grant followed by token exchange for Keycloak v23 compatibility
+- **User Scope Mapping**: Direct mapping from `scope_user_*` to internal `UserScope` enum and `Role` system
+- **Secure Caching**: Token caching using JWT ID (JTI) for performance without compromising security
+- **Comprehensive Validation**: Issuer validation, expiration checking, and scope enforcement
+
+### Implementation Location
+- **Main Specification**: `ai-docs/02-features/20250628-token-exchange.md`
+- **Auth Middleware**: `crates/auth_middleware/src/auth_middleware.rs`
+- **Token Service**: `crates/auth_middleware/src/token_service.rs`
+- **Auth Service**: `crates/services/src/auth_service.rs`
+- **User Scope Types**: `crates/objs/src/user_scope.rs` and `crates/objs/src/resource_scope.rs`
+
+### Alignment with Research
+The implementation successfully incorporates the research recommendations:
+- ✅ Scope-limited token exchange prevents privilege escalation
+- ✅ Claims-based authorization using scope mappings
+- ✅ Issuer validation for security boundaries
+- ✅ Integration with existing authorization middleware
+- ✅ Comprehensive testing including security scenarios
+
 ## References
 
 1. [RFC 8693 - OAuth 2.0 Token Exchange](https://datatracker.ietf.org/doc/html/rfc8693)
-2. [Keycloak Token Exchange Documentation](https://www.keycloak.org/securing-apps/token-exchange)
+2. [Keycloak v23 Token Exchange Documentation](https://www.keycloak.org/docs/23.0.0/securing_apps/index.html#_token-exchange)
 3. [Keycloak Server Administration Guide](https://www.keycloak.org/docs/latest/server_admin/index.html)
 4. [OAuth 2.0 Security Best Current Practice](https://www.ietf.org/archive/id/draft-ietf-oauth-security-topics-29.html)
+5. [BodhiApp Token Exchange Implementation](../02-features/20250628-token-exchange.md) - Current working implementation

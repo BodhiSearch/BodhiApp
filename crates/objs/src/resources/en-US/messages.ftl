@@ -21,6 +21,7 @@ chat_template_error-embed_chat_template_not_found = chat template not found in g
 chat_template_error-unknown_file_extension = unknown file extension for chat template: {$error}
 entity_error-not_found = {$var_0} with given id not found
 role_error-invalid_role_name = invalid role name: {$var_0}
+resource_scope_error-invalid_scope = invalid resource scope: {$var_0}
 app_reg_info_missing = app registration info is missing
 settings_metadata_error-invalid_value_type = cannot parse {$var_1} as {$var_0}
 settings_metadata_error-invalid_value = passed value is not a valid value: {$var_0}
