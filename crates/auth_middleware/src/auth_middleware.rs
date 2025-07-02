@@ -121,6 +121,7 @@ pub async fn auth_middleware(
     req
       .headers_mut()
       .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+
     req.headers_mut().insert(
       KEY_RESOURCE_SCOPE,
       resource_scope.to_string().parse().unwrap(),

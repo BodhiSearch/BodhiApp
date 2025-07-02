@@ -12,7 +12,7 @@ use axum::{
   routing::{delete, get, post, put},
   Router,
 };
-use objs::{Role, TokenScope};
+use objs::{Role, TokenScope, UserScope};
 use routes_app::{
   app_info_handler, auth_callback_handler, auth_initiate_handler, create_alias_handler,
   create_pull_request_handler, create_token_handler, delete_setting_handler, dev_secrets_handler,
@@ -93,7 +93,14 @@ pub fn build_routes(
     .route_layer(from_fn_with_state(
       state.clone(),
       move |state, req, next| {
-        api_auth_middleware(Role::User, Some(TokenScope::User), state, req, next)
+        api_auth_middleware(
+          Role::User,
+          Some(TokenScope::User),
+          Some(UserScope::User),
+          state,
+          req,
+          next,
+        )
       },
     ));
 
@@ -120,6 +127,7 @@ pub fn build_routes(
         api_auth_middleware(
           Role::PowerUser,
           Some(TokenScope::PowerUser),
+          Some(UserScope::PowerUser),
           state,
           req,
           next,
@@ -137,7 +145,7 @@ pub fn build_routes(
     )
     .route_layer(from_fn_with_state(
       state.clone(),
-      move |state, req, next| api_auth_middleware(Role::PowerUser, None, state, req, next),
+      move |state, req, next| api_auth_middleware(Role::PowerUser, None, None, state, req, next),
     ));
 
   let admin_session_apis = Router::new()
@@ -152,7 +160,7 @@ pub fn build_routes(
     )
     .route_layer(from_fn_with_state(
       state.clone(),
-      move |state, req, next| api_auth_middleware(Role::Admin, None, state, req, next),
+      move |state, req, next| api_auth_middleware(Role::Admin, None, None, state, req, next),
     ));
 
   // Combine all protected APIs
