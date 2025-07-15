@@ -5,6 +5,7 @@ This section contains marketing materials, community outreach strategies, and pr
 ## Contents
 
 ### Marketing Materials
+- **[Bodhi Platform Overview](bodhi-platform.md)** - Comprehensive business and marketing overview of the Bodhi Platform for stakeholders, investors, and marketing teams
 - **[Product Positioning](product-positioning.md)** - Product messaging and value proposition
 - **[Launch Materials](launch-materials.md)** - Product Hunt and launch campaign content
 - **[Community Outreach](community-outreach.md)** - Community engagement strategies

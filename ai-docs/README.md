@@ -33,6 +33,7 @@ The documentation is structured into the following main sections:
 Modular technical architecture documentation organized by technology stack and development concerns for efficient discovery and focused guidance. This section has been comprehensively updated to recover valuable architectural knowledge and strategic context that was previously lost during documentation reorganization.
 
 #### Core System Architecture
+- **[Bodhi Platform](01-architecture/bodhi-platform.md)** - Comprehensive platform architecture covering all components (Bodhi App, Browser Extension, Bodhi.js Library, Authentication Server) and their integration patterns for secure Web AI
 - **[System Overview](01-architecture/system-overview.md)** - High-level application architecture, crate organization, data flows, key features (including OpenAI/Ollama compatibility), authentication flows, token system, and model aliases
 - **[App Status & Lifecycle](01-architecture/app-status.md)** - Application state machine, status transitions, and lifecycle management
 - **[Architectural Decisions](01-architecture/architectural-decisions.md)** - Key architectural decisions, rationale, and design patterns including embedded web server choice, configuration hierarchy, and technology trade-offs
@@ -143,6 +144,7 @@ Technical reference documentation and external tool integration guides
 ### 📢 [Marketing](05-marketing/) - Product Marketing
 Marketing materials, community outreach, and promotional content for product positioning
 
+- **[Bodhi Platform Overview](05-marketing/bodhi-platform.md)** - Comprehensive business and marketing overview of the Bodhi Platform for stakeholders, investors, and marketing teams
 - **[Product Positioning](05-marketing/product-positioning.md)** - Product messaging, unique selling propositions, and target audience analysis
 - **[Launch Materials](05-marketing/launch-materials.md)** - Product Hunt campaign content and launch strategy materials
 - **[Community Outreach](05-marketing/community-outreach.md)** - Community engagement strategies and outreach plans
@@ -180,9 +182,9 @@ Historical documents, deprecated content, and reference materials preserved for 
 ### By User Type
 
 #### For Developers
-1. **Getting Started**: [System Overview](01-architecture/system-overview.md) → [Frontend Next.js](01-architecture/frontend-react.md) → [Development Conventions](01-architecture/development-conventions.md)
+1. **Getting Started**: [Bodhi Platform](01-architecture/bodhi-platform.md) → [System Overview](01-architecture/system-overview.md) → [Development Conventions](01-architecture/development-conventions.md)
 2. **API Integration**: [API Integration](01-architecture/api-integration.md) → [Rust Backend](01-architecture/rust-backend.md)
-3. **Architecture Understanding**: [Architectural Decisions](01-architecture/architectural-decisions.md) → [Roadmap](01-architecture/roadmap.md)
+3. **Architecture Understanding**: [Bodhi Platform](01-architecture/bodhi-platform.md) → [Architectural Decisions](01-architecture/architectural-decisions.md) → [Roadmap](01-architecture/roadmap.md)
 4. **Technical Details**: [System Overview](01-architecture/system-overview.md) → [Crates Documentation](03-crates/)
 5. **Current Work**: [Active Stories](02-features/active-stories/) → [Frontend Testing](01-architecture/frontend-testing.md)
 
@@ -192,11 +194,11 @@ Historical documents, deprecated content, and reference materials preserved for 
 3. **Implementation**: [Implemented Features](02-features/implemented/) → [Active Stories](02-features/active-stories/)
 
 #### For Product Managers
-1. **Product Understanding**: [System Overview](01-architecture/system-overview.md) → [Features Overview](02-features/)
+1. **Product Understanding**: [Bodhi Platform](01-architecture/bodhi-platform.md) → [System Overview](01-architecture/system-overview.md) → [Features Overview](02-features/)
 2. **Current Capabilities**: [Implemented Features](02-features/implemented/) → [Completed Stories](02-features/completed-stories/)
 3. **Strategic Direction**: [Roadmap](01-architecture/roadmap.md) → [Architectural Decisions](01-architecture/architectural-decisions.md)
 4. **Feature Planning**: [Planned Features](02-features/planned/) → [Active Stories](02-features/active-stories/)
-5. **Marketing**: [Product Positioning](05-marketing/product-positioning.md) → [Marketing Materials](05-marketing/)
+5. **Marketing**: [Bodhi Platform Marketing](05-marketing/bodhi-platform.md) → [Product Positioning](05-marketing/product-positioning.md) → [Marketing Materials](05-marketing/)
 
 #### For Users
 1. **Setup**: [Setup Processes](06-knowledge-transfer/setup-processes.md) → [Setup Wizard](02-features/active-stories/setup-wizard.md)
