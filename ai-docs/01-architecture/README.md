@@ -5,6 +5,7 @@ This section contains modular technical architecture documentation for the Bodhi
 ## Contents
 
 ### Core System Architecture
+- **[Bodhi Platform](bodhi-platform.md)** - Comprehensive platform architecture covering all components (Bodhi App, Browser Extension, Bodhi.js Library, Authentication Server) and their integration patterns
 - **[System Overview](system-overview.md)** - High-level application architecture, crate organization, and data flows
 - **[App Status & Lifecycle](app-status.md)** - Application state machine, status transitions, and lifecycle management
 - **[Architectural Decisions](architectural-decisions.md)** - Key architectural decisions, rationale, and design patterns
@@ -94,11 +95,12 @@ This section contains modular technical architecture documentation for the Bodhi
 3. **Build Process**: [Build & Configuration](build-config.md) - Desktop build and packaging
 
 ### For System Understanding
-1. **Architecture**: [System Overview](system-overview.md) - High-level system design
-2. **Application Lifecycle**: [App Status & Lifecycle](app-status.md) - State management
-3. **Configuration**: [Backend Settings Service](backend-settings-service.md) - Settings and configuration architecture
-4. **Standards**: [Development Conventions](development-conventions.md) - Coding standards
-5. **Error**: [Backend Error & L10n](backend-error-l10n.md) - Error handling and internationalization system
+1. **Platform Overview**: [Bodhi Platform](bodhi-platform.md) - Complete platform architecture and component integration
+2. **Architecture**: [System Overview](system-overview.md) - High-level system design
+3. **Application Lifecycle**: [App Status & Lifecycle](app-status.md) - State management
+4. **Configuration**: [Backend Settings Service](backend-settings-service.md) - Settings and configuration architecture
+5. **Standards**: [Development Conventions](development-conventions.md) - Coding standards
+6. **Error**: [Backend Error & L10n](backend-error-l10n.md) - Error handling and internationalization system
 
 ## Documentation Organization
 

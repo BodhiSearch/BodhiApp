@@ -134,6 +134,15 @@ You are thoughtful, give nuanced answers, and are brilliant at reasoning. You ca
 ## Documentation-Driven Implementation
 
 For specific implementation patterns and detailed guidelines, always reference the appropriate ai-docs files based on the context of your work:
+- All the files in the ai-docs folder are primarily prepare for consumption by AI coding assistants, and NOT human developers
+- So when adding/editing files in ai-docs folder, DO NOT include generally known concepts on technology like React hooks, javascript async etc. These well known technologies and their details are well understood by ai coding assistants, and does not need to be reminded to them
+- What is not known by AI coding assistants is our project specific concepts, that is what is the project domain, architecture, components, conventions, development guidelines etc.
+- So include these project specific details and ignore any general framework or library details
+- When including code snippets, do not include large snippets of code, instead include the core concept as code, and refer to the file from which the code snippet was taken, this helps use the ai coding assistants context window more efficiently
+- Our AI coding assistant is agentic, that is if we have references to other files, it is going to take subsequent action to read those referred files, so use this ability of ai coding assistant by having references to other docs or code file for efficient information packing
+- Whenever adding a new file, add an entry into its folders README.md at appropriate place, and also to the root ai-docs/README.md file as global index of documents in this folder
+- Be very vigilant in adding information, and do not add duplicate information
+- Be very vigilant in adding information, and add it to the right folder/file after thoroughly checking the ai-docs/README.md and ai-docs/{folder}/README.md
 
 ### General Conventions and Standards
 - **`ai-docs/01-architecture/development-conventions.md`** - When setting up new files, naming components, organizing code structure, or establishing coding patterns

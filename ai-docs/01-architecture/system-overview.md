@@ -8,7 +8,7 @@ Bodhi App is an AI-powered application for running Large Language Models (LLMs) 
 
 While many apps that help you run LLMs locally are targeted at technical users, Bodhi App is designed with both technical and non-technical users in mind.
 
-For technical users, it provides OpenAI-compatible chat completions and models API endpoints. It includes comprehensive API documentation following OpenAPI standards and features a built-in SwaggerUI that allows developers to explore and test all API endpoints live.
+For technical users, it provides OpenAI-compatible chat completions and models API endpoints. It includes comprehensive API documentation following OpenAPI standards and features a built-in SwaggerUI that allows developers to explore and tesnbt all API endpoints live.
 
 For non-technical users, it comes with a built-in Chat UI that is quick to start and easy to understand. Users can quickly get started with open-source models and adjust various settings to suit their needs. The app also enables users to discover, explore, and download new open-source models that fit their requirements and are compatible with their local hardware.
 
@@ -162,17 +162,6 @@ sequenceDiagram
     App->>App: Store credentials
     App->>App: Set status: resource-admin
     App->>User: Redirect to admin setup
-```
-
-#### Non-Authenticated Mode Setup
-```mermaid
-sequenceDiagram
-    participant User
-    participant App
-
-    User->>App: POST /setup {authz: false}
-    App->>App: Set status: ready
-    App->>User: Ready for use
 ```
 
 ## Key Design Patterns
