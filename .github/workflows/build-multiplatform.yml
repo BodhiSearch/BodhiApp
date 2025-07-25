@@ -1,11 +1,7 @@
-name: Fast Linux Build and Test
+name: Mac/Linux/Windows Multiplatform Build Flow
 
 on:
   push:
-    branches:
-      - main
-      - working
-  pull_request:
     branches:
       - main
   workflow_dispatch:
@@ -15,13 +11,26 @@ env:
   RUST_BACKTRACE: 1
 
 jobs:
-  build-and-test:
-    runs-on: ubuntu-latest-4-cores
-    timeout-minutes: 30
+  build:
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: ubuntu-latest-4-cores
+            target: x86_64-unknown-linux-gnu
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+          # - platform: macos-13
+          #   target: x86_64-apple-darwin
+    runs-on: ${{ matrix.platform }}
     outputs:
       coverage-success: ${{ steps.build-test.outputs.coverage-success }}
     steps:
       - name: Install Linux dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -31,37 +40,36 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf
-
       - uses: actions/checkout@v4
-
+      
       - name: Setup environment
         uses: ./.github/actions/setup-environment
         with:
-          platform: ubuntu-latest
+          platform: ${{ matrix.platform }}
           gh-pat: ${{ secrets.GH_PAT }}
 
       - name: Setup models
         uses: ./.github/actions/setup-models
         with:
-          platform: ubuntu-latest
+          platform: ${{ matrix.platform }}
 
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          platform: ubuntu-latest
-          target: x86_64-unknown-linux-gnu
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
 
       - name: Setup Node
         uses: ./.github/actions/setup-node
         with:
-          platform: ubuntu-latest
+          platform: ${{ matrix.platform }}
 
       - name: Build and test
         id: build-test
         uses: ./.github/actions/build-and-test
         with:
-          platform: ubuntu-latest
-          target: x86_64-unknown-linux-gnu
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
           hf-test-token-allowed: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
           hf-test-token-public: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
@@ -73,70 +81,95 @@ jobs:
           integ-test-dev-console-client-secret: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
 
       - name: Check TypeScript client
+        if: matrix.platform == 'ubuntu-latest-4-cores'
         uses: ./.github/actions/ts-client-check
         with:
-          platform: ubuntu-latest
+          platform: ${{ matrix.platform }}
 
       - name: Build NAPI bindings
         uses: ./.github/actions/napi-build
         with:
-          platform: ubuntu-latest
-          target: x86_64-unknown-linux-gnu
+          platform: ${{ matrix.platform }}
+          target: ${{ matrix.target }}
 
   playwright-tests:
-    needs: build-and-test
-    if: needs.build-and-test.outputs.coverage-success == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    needs: build
+    if: needs.build.outputs.coverage-success == 'true'
+    timeout-minutes: 20
     permissions:
       checks: write
       contents: read
       pull-requests: write
       actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            target: aarch64-apple-darwin
+          - platform: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - platform: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Playwright
         uses: ./.github/actions/setup-playwright
         with:
-          platform: ubuntu-latest
+          platform: ${{ matrix.platform }}
           working-directory: crates/lib_bodhiserver_napi
-
       - name: Download NAPI artifacts
         uses: actions/download-artifact@v4
         with:
-          name: napi-bindings-x86_64-unknown-linux-gnu
+          name: napi-bindings-${{ matrix.target }}
           path: crates/lib_bodhiserver_napi/
-
       - name: Download llama_server_proc binaries
         uses: actions/download-artifact@v4
         with:
-          name: llama-server-binaries-x86_64-unknown-linux-gnu
+          name: llama-server-binaries-${{ matrix.target }}
           path: crates/llama_server_proc/bin/
-
+      - name: Debug artifact structure
+        shell: bash
+        run: |
+          echo "Checking artifact download structure:"
+          echo "Contents of crates/llama_server_proc/:"
+          find crates/llama_server_proc/ -type f 2>/dev/null || echo "Directory not found"
+          echo "Contents of crates/llama_server_proc/bin/:"
+          find crates/llama_server_proc/bin/ -type f 2>/dev/null || echo "bin/ directory not found"
       - name: Verify llama-server binary exists and set permissions
         shell: bash
         run: |
           echo "Checking for llama-server binary at expected location:"
-          BINARY_PATH="crates/llama_server_proc/bin/x86_64-unknown-linux-gnu/cpu/llama-server"
-          
-          if [ -f "$BINARY_PATH" ]; then
+          # Check for llama-server with or without .exe extension
+          BINARY_PATH=""
+          if [ -f crates/llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server ]; then
+            BINARY_PATH="crates/llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server"
+          elif [ -f crates/llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server.exe ]; then
+            BINARY_PATH="crates/llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server.exe"
+          fi
+
+          if [ -n "$BINARY_PATH" ]; then
             echo "✅ Binary found at: $BINARY_PATH"
             ls -la "$BINARY_PATH"
-            chmod +x "$BINARY_PATH"
+            # Set executable permissions on Unix-like systems only
+            if [[ "$RUNNER_OS" != "Windows" ]]; then
+              chmod +x "$BINARY_PATH"
+            fi
           else
             echo "❌ Binary not found at expected location!"
             echo "Contents of crates/llama_server_proc/bin/:"
             find crates/llama_server_proc/bin -type f 2>/dev/null || echo "bin directory not found"
+            echo "Looking for any llama-server binaries:"
+            find crates/llama_server_proc/bin -name "*llama*" -type f 2>/dev/null || echo "No llama binaries found"
             exit 1
           fi
-
       - name: Install dependencies
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
-        run: npm ci
-
-      - name: Verify NAPI bindings exist
+        run: |
+          npm ci
+      - name: Verify NAPI bindings and llama-server binaries exist
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
         run: |
@@ -147,38 +180,59 @@ jobs:
           echo "✅ NAPI bindings found:"
           ls -la app-bindings.*.node
           ls -la index.*
-
+          echo "✅ llama-server binary:"
+          # Check for binary with or without .exe extension
+          if [ -f ../llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server ]; then
+            ls -la ../llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server
+          elif [ -f ../llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server.exe ]; then
+            ls -la ../llama_server_proc/bin/${{ matrix.target }}/cpu/llama-server.exe
+          else
+            echo "Error: llama-server binary not found!"
+            exit 1
+          fi
       - name: Run NAPI binding tests
         id: napi-tests
         continue-on-error: true
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
         run: |
+          # Run tests with JUnit reporter for test-reporter integration
           npx vitest run --reporter=junit --outputFile=test-results/vitest-junit.xml --reporter=verbose
         env:
           CI: true
           BODHI_EXEC_VARIANT: cpu
-
       - name: Publish NAPI binding test results
         uses: dorny/test-reporter@v1
         if: (success() || failure()) && steps.napi-tests.outcome != 'skipped'
         with:
-          name: NAPI Binding Tests (Linux)
+          name: NAPI Binding Tests (${{ matrix.target }})
           path: crates/lib_bodhiserver_napi/test-results/vitest-junit.xml
           reporter: java-junit
           fail-on-error: false
-
+      - name: Upload NAPI test results
+        uses: actions/upload-artifact@v4
+        if: always() && steps.napi-tests.outcome != 'skipped'
+        with:
+          name: napi-test-results-${{ matrix.target }}
+          path: |
+            crates/lib_bodhiserver_napi/coverage/
+            crates/lib_bodhiserver_napi/test-results/
+          retention-days: 1
       - name: Run Playwright tests
         id: playwright-run
         shell: bash
         working-directory: crates/lib_bodhiserver_napi
         run: |
+          # Run Playwright tests with CI configuration
           npm run test:playwright:ci
         env:
           CI: true
           BODHI_EXEC_VARIANT: cpu
+          # Use headless mode in CI
           PLAYWRIGHT_HEADLESS: true
+          # Increase timeout for CI environment
           PLAYWRIGHT_TIMEOUT: 30000
+          # Authentication environment variables for integration tests
           INTEG_TEST_CLIENT_ID: ${{ secrets.INTEG_TEST_CLIENT_ID }}
           INTEG_TEST_CLIENT_SECRET: ${{ secrets.INTEG_TEST_CLIENT_SECRET }}
           INTEG_TEST_AUTH_URL: ${{ vars.INTEG_TEST_AUTH_URL }}
@@ -187,26 +241,30 @@ jobs:
           INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
           INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_ID }}
           INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
-
       - name: Publish Playwright test results
         uses: dorny/test-reporter@v1
         if: (success() || failure()) && steps.playwright-run.outcome != 'skipped'
         with:
-          name: Playwright Tests (Linux)
+          name: Playwright Tests (${{ matrix.target }})
           path: crates/lib_bodhiserver_napi/test-results/junit.xml
           reporter: java-junit
           fail-on-error: false
-
-      - name: Upload test results on failure
+      - name: Upload Playwright test results
         uses: actions/upload-artifact@v4
-        if: failure()
+        if: failure() && steps.playwright-run.outcome != 'skipped'
         with:
-          name: test-results-linux
+          name: playwright-results-${{ matrix.target }}
           path: |
             crates/lib_bodhiserver_napi/test-results/
             crates/lib_bodhiserver_napi/playwright-report/
           retention-days: 7
-
+      - name: Upload Playwright HTML report
+        uses: actions/upload-artifact@v4
+        if: always() && steps.playwright-run.outcome != 'skipped'
+        with:
+          name: playwright-report-${{ matrix.target }}
+          path: crates/lib_bodhiserver_napi/playwright-report/
+          retention-days: 7
       - name: Check test results and fail if any failed
         if: always()
         shell: bash
@@ -230,4 +288,4 @@ jobs:
             exit 1
           else
             echo "✅ All test suites passed!"
-          fi 
+          fi

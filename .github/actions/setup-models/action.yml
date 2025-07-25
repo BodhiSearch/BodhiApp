@@ -1,0 +1,23 @@
+name: setup-models
+description: Setup HuggingFace model caching and download required models
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Cache HuggingFace models
+      uses: actions/cache@v4
+      id: cache-hf
+      with:
+        path: ${{ env.USER_HOME }}/.cache/huggingface
+        key: hf-cache-phi4-mini-instruct
+        enableCrossOsArchive: true
+
+    - name: Check and Download model
+      if: steps.cache-hf.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        huggingface-cli download --revision 7ff82c2aaa4dde30121698a973765f39be5288c0 bartowski/microsoft_Phi-4-mini-instruct-GGUF microsoft_Phi-4-mini-instruct-Q4_K_M.gguf 

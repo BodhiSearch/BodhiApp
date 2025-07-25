@@ -1,0 +1,34 @@
+name: napi-build
+description: Build NAPI bindings for Playwright and upload artifacts
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+  target:
+    description: "Target to build for"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Build NAPI bindings for Playwright
+      id: napi-build
+      continue-on-error: true
+      working-directory: crates/lib_bodhiserver_napi
+      shell: bash
+      run: |
+        npm ci
+        npm run build:debug
+      env:
+        NPM_CACHE_DIR: ${{ env.NPM_CACHE_DIR }}
+
+    - name: Upload NAPI artifacts
+      if: steps.napi-build.outcome == 'success'
+      uses: actions/upload-artifact@v4
+      with:
+        name: napi-bindings-${{ inputs.target }}
+        path: |
+          crates/lib_bodhiserver_napi/app-bindings.*.node
+          crates/lib_bodhiserver_napi/index.cjs
+          crates/lib_bodhiserver_napi/index.d.ts
+        retention-days: 1 

@@ -1,0 +1,17 @@
+name: ts-client-check
+description: Check ts-client is up to date and run tests
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Check ts-client is up to date
+      shell: bash
+      run: make ci.ts-client-check
+
+    - name: Check ts-client tests pass
+      shell: bash
+      run: make ci.ts-client-test 

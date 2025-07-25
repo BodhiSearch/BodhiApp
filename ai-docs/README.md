@@ -141,6 +141,11 @@ Technical reference documentation and external tool integration guides
 
 *Currently being reorganized - content moved to appropriate architecture sections*
 
+### 🛠️ [Guides](10-guide/) - Implementation Guides & Context Documents
+Practical implementation guides and context documents for AI coding assistants
+
+- **[GitHub Workflows Context](10-guide/github-workflows-context.md)** - Comprehensive context about the BodhiApp GitHub Actions CI/CD system, covering workflow architecture, reusable actions, conventions, and best practices for AI coding assistants working with CI/CD configurations
+
 ### 📢 [Marketing](05-marketing/) - Product Marketing
 Marketing materials, community outreach, and promotional content for product positioning
 

@@ -1,0 +1,100 @@
+name: build-and-test
+description: Execute core build and test suite with coverage reporting
+inputs:
+  platform:
+    description: "Platform to build for"
+    required: true
+  target:
+    description: "Target to build for"
+    required: true
+  codecov-token:
+    description: "Codecov token for coverage upload"
+    required: false
+  hf-test-token-allowed:
+    description: "HuggingFace test token (allowed)"
+    required: false
+  hf-test-token-public:
+    description: "HuggingFace test token (public)"
+    required: false
+  integ-test-auth-url:
+    description: "Integration test auth URL"
+    required: false
+  integ-test-auth-realm:
+    description: "Integration test auth realm"
+    required: false
+  integ-test-username:
+    description: "Integration test username"
+    required: false
+  integ-test-password:
+    description: "Integration test password"
+    required: false
+  integ-test-dev-console-client-id:
+    description: "Integration test dev console client ID"
+    required: false
+  integ-test-dev-console-client-secret:
+    description: "Integration test dev console client secret"
+    required: false
+
+outputs:
+  coverage-success:
+    description: "Whether coverage generation was successful"
+    value: ${{ steps.coverage.outcome == 'success' }}
+
+runs:
+  using: composite
+  steps:
+    - name: Clean build environment
+      shell: bash
+      run: make ci.clean
+
+    - name: Generate code coverage
+      id: coverage
+      shell: bash
+      run: make ci.coverage
+      env:
+        HF_TEST_TOKEN_ALLOWED: ${{ inputs.hf-test-token-allowed }}
+        HF_TEST_TOKEN_PUBLIC: ${{ inputs.hf-test-token-public }}
+        CI_DEFAULT_VARIANT: cpu
+        INTEG_TEST_AUTH_URL: ${{ inputs.integ-test-auth-url }}
+        INTEG_TEST_AUTH_REALM: ${{ inputs.integ-test-auth-realm }}
+        INTEG_TEST_USERNAME: ${{ inputs.integ-test-username }}
+        INTEG_TEST_PASSWORD: ${{ inputs.integ-test-password }}
+        INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ inputs.integ-test-dev-console-client-id }}
+        INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ inputs.integ-test-dev-console-client-secret }}
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      if: success() && inputs.codecov-token != ''
+      continue-on-error: true
+      with:
+        name: BodhiApp-${{ inputs.target }}
+        token: ${{ inputs.codecov-token }}
+        slug: BodhiSearch/BodhiApp
+        files: lcov.info
+        fail_ci_if_error: false
+        flags: ${{ inputs.target }},bodhi
+
+    - name: Upload llama_server_proc binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: llama-server-binaries-${{ inputs.target }}
+        path: crates/llama_server_proc/bin/
+        retention-days: 1
+
+    - name: Run UI Tests
+      shell: bash
+      run: make ci.ui
+
+    - name: Upload UI coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      if: success() && inputs.codecov-token != ''
+      continue-on-error: true
+      with:
+        name: BodhiApp-${{ inputs.target }}
+        token: ${{ inputs.codecov-token }}
+        slug: BodhiSearch/BodhiApp
+        files: |
+          crates/bodhi/coverage/coverage-final.json
+          crates/bodhi/coverage/clover.xml
+        fail_ci_if_error: false
+        flags: ${{ inputs.target }},bodhi,ui 

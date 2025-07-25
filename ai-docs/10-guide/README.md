@@ -1,65 +1,43 @@
-# BodhiApp Integration Guides
+# Implementation Guides & Context Documents
 
-This directory contains comprehensive guides for integrating with BodhiApp APIs and building AI applications using local Large Language Models (LLMs).
+This directory contains practical implementation guides and context documents designed specifically for AI coding assistants working with the BodhiApp project.
 
-## Available Guides
+## Purpose
 
-### [BodhiApp AI Integration Guide](./bodhiapp-ai-integration-guide.md)
-**Target Audience**: AI coding assistants and developers building AI applications  
-**Focus**: User and Power User accessible APIs for chat applications and model management
+These documents provide comprehensive context about specific areas of the codebase, including:
+- Current state and conventions
+- Architectural patterns and decisions
+- Best practices and preferences
+- Implementation peculiarities and gotchas
 
-#### What's Covered:
-- **Core Chat APIs**: Models listing, chat completions (streaming and non-streaming)
-- **Model Management**: Model creation, updates, and downloads (Power User features)
-- **Authentication**: OAuth2/OpenID Connect patterns and API token usage
-- **Error Handling**: Standard error responses and recovery strategies
-- **Ollama Compatibility**: Ollama-compatible endpoints for existing integrations
-- **Best Practices**: Rate limiting, streaming optimization, and production considerations
-- **Complete Examples**: Ready-to-use TypeScript client implementations
+## Current Guides
 
-#### Quick Start:
-```typescript
-// Basic chat completion
-const response = await fetch('/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer YOUR_API_TOKEN',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    model: "llama-3.1-8b-instruct",
-    messages: [{ role: "user", content: "Hello!" }]
-  })
-});
-```
+### CI/CD & DevOps
+- **[GitHub Workflows Context](github-workflows-context.md)** - Complete context about the GitHub Actions CI/CD system, including workflow architecture, reusable actions, platform-specific considerations, and maintenance patterns
 
-## API Endpoints Summary
+## Guide Format
 
-### OpenAI-Compatible Endpoints (`/v1/`)
-- `GET /v1/models` - List available models
-- `POST /v1/chat/completions` - Chat completions with streaming support
+Context documents in this directory follow these principles:
+- **Comprehensive Coverage**: Provide complete picture of the current state
+- **AI-Focused**: Written specifically for AI coding assistant consumption
+- **Implementation-Oriented**: Focus on practical patterns and conventions
+- **Current State**: Reflect the actual implementation, not idealized versions
+- **Maintenance Context**: Include rationale for architectural decisions
 
-### Bodhi-Specific Endpoints (`/bodhi/v1/`)
-- `GET /bodhi/v1/models` - Detailed model information with download status
-- `POST /bodhi/v1/models` - Create/update models (Power User)
-- `POST /bodhi/v1/models/{id}/download` - Download model files (Power User)
+## Adding New Guides
 
-### Ollama-Compatible Endpoints (`/ollama/api/`)
-- `POST /ollama/api/generate` - Generate completions
-- `POST /ollama/api/chat` - Chat with Ollama format
+When adding new context documents:
+1. Focus on areas with complex conventions or non-obvious patterns
+2. Include both current state and historical context where relevant
+3. Document peculiarities and edge cases that might not be obvious
+4. Update this README with appropriate categorization
+5. Reference from the main ai-docs README.md
 
-## Authentication
-- **Session-based**: Browser cookies for web applications
-- **API Token**: Bearer tokens for programmatic access
-- **Roles**: User (basic access) and Power User (enhanced model management)
+## Categories for Future Guides
 
-## For More Information
-- **OpenAPI Specification**: Available at `/bodhi/v1/openapi.json`
-- **Architecture Documentation**: See `ai-docs/01-architecture/` for system design details
-- **Implementation Examples**: See `ai-docs/02-features/` for feature-specific guides
-
-## Related Documentation
-- [API Integration Patterns](../01-architecture/api-integration.md)
-- [Authentication Architecture](../01-architecture/authentication.md)
-- [Frontend React Integration](../01-architecture/frontend-react.md)
-- [Backend Architecture](../01-architecture/backend-architecture.md) 
+Potential areas for future context documents:
+- **Database & Migrations**: Database schema patterns, migration strategies
+- **Authentication Integration**: OAuth2 flows, token management patterns
+- **Frontend State Management**: React Query patterns, state synchronization
+- **Native Integration**: Tauri-specific patterns, OS integration
+- **Testing Strategies**: Test organization, mocking patterns, integration appro
