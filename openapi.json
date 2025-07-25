@@ -3269,7 +3269,27 @@
       "SetupRequest": {
         "type": "object",
         "description": "Request to setup the application in authenticated mode",
-        "example": {}
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "example": "My personal AI server"
+          },
+          "name": {
+            "type": "string",
+            "example": "My Bodhi Server",
+            "minLength": 10
+          }
+        },
+        "example": {
+          "description": "My personal AI server",
+          "name": "My Bodhi Server"
+        }
       },
       "SetupResponse": {
         "type": "object",

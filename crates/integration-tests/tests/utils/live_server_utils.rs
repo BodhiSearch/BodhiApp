@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
-use auth_middleware::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
+use auth_middleware::{
+  test_utils::{AuthServerConfigBuilder, AuthServerTestClient},
+  SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN,
+};
 use fs_extra::dir::{copy, CopyOptions};
 use lib_bodhiserver::{setup_app_dirs, AppOptionsBuilder, AppServiceBuilder};
 use objs::{test_utils::setup_l10n, FluentLocalizationService};
@@ -65,17 +68,38 @@ pub async fn llama2_7b_setup(
     .join("bin")
     .canonicalize()?;
 
-  // Get OpenID configuration values from environment
-  let client_id = std::env::var("INTEG_TEST_CLIENT_ID").expect("INTEG_TEST_CLIENT_ID not set");
-  let client_secret =
-    std::env::var("INTEG_TEST_CLIENT_SECRET").expect("INTEG_TEST_CLIENT_SECRET not set");
   // JWT validation fields no longer needed - using database-backed token integrity validation
-  let auth_url = std::env::var("INTEG_TEST_AUTH_URL").expect("INTEG_TEST_AUTH_URL not set");
-  let auth_realm = std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM not set");
+  let auth_server_url =
+    std::env::var("INTEG_TEST_AUTH_SERVER_URL").expect("INTEG_TEST_AUTH_SERVER_URL not set");
+  let realm = std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM not set");
+  let test_username = std::env::var("INTEG_TEST_USERNAME").expect("INTEG_TEST_USERNAME not set");
+  // Get OpenID configuration values from environment
+  let config = AuthServerConfigBuilder::default()
+    .auth_server_url(&auth_server_url)
+    .realm(&realm)
+    .dev_console_client_id(
+      std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_ID")
+        .expect("INTEG_TEST_DEV_CONSOLE_CLIENT_ID not set"),
+    )
+    .dev_console_client_secret(
+      std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET")
+        .expect("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET not set"),
+    )
+    .build()?;
+  let auth_client = AuthServerTestClient::new(config);
+  let resource_client = auth_client
+    .create_resource_client("integration_test")
+    .await?;
+  let resource_token = auth_client
+    .get_resource_service_token(&resource_client)
+    .await?;
+  auth_client
+    .make_first_resource_admin(&resource_token, &test_username)
+    .await?;
 
   let options = AppOptionsBuilder::development()
-    .auth_url(&auth_url)
-    .auth_realm(&auth_realm)
+    .auth_url(&auth_server_url)
+    .auth_realm(&realm)
     .set_env("HOME", temp_dir.path().to_str().unwrap())
     .set_env(BODHI_HOME, &bodhi_home.display().to_string())
     .set_env(BODHI_LOGS, &bodhi_logs.display().to_string())
@@ -87,8 +111,8 @@ pub async fn llama2_7b_setup(
 
   // Create AppRegInfo with values from environment
   let app_reg_info = AppRegInfoBuilder::default()
-    .client_id(client_id)
-    .client_secret(client_secret)
+    .client_id(resource_client.client_id)
+    .client_secret(resource_client.client_secret.unwrap())
     .build()?;
 
   // Create secret service with test configuration
@@ -109,7 +133,7 @@ pub async fn llama2_7b_setup(
   let data_service = Arc::new(LocalDataService::new(bodhi_home, hub_service.clone()));
 
   // Create mock auth service for testing
-  let auth_service = test_auth_service(&auth_url);
+  let auth_service = test_auth_service(&auth_server_url);
 
   // Build app service with custom services for testing
   let service = AppServiceBuilder::new(setting_service)

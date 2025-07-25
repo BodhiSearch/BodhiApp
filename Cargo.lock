@@ -320,8 +320,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
+ "auth_middleware",
  "axum",
+ "base64 0.22.1",
  "chrono",
+ "derive_builder 0.20.2",
  "dotenv",
  "errmeta_derive",
  "include_dir",
@@ -366,6 +369,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "021e862c184ae977658b36c4500f7feac3221ca5da43e3f25bd04ab6c79a29b5"
 dependencies = [
  "axum-core",
+ "axum-macros",
  "bytes",
  "form_urlencoded",
  "futures-util",
@@ -433,6 +437,17 @@ dependencies = [
  "tower",
  "tower-layer",
  "tower-service",
+]
+
+[[package]]
+name = "axum-macros"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "604fde5e028fea851ce1d8570bbdc034bec850d157f7569d10f347d06808c05c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.102",
 ]
 
 [[package]]

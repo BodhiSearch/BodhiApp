@@ -163,9 +163,20 @@ impl DefaultTokenService {
     // Parse token claims to validate issuer
     let claims = extract_claims::<ScopeClaims>(external_token)?;
 
-    // For now, we'll validate that it's from the same issuer
+    // Validate that it's from the same issuer
     if claims.iss != self.setting_service.auth_issuer() {
       return Err(TokenError::InvalidIssuer(claims.iss))?;
+    }
+
+    // Validate that current client is in the audience
+    if let Some(aud) = &claims.aud {
+      if aud != &app_reg_info.client_id {
+        return Err(TokenError::InvalidAudience(aud.clone()))?;
+      }
+    } else {
+      return Err(TokenError::InvalidToken(
+        "missing audience field".to_string(),
+      ))?;
     }
 
     // Extract user scopes from the external token for exchange
@@ -184,7 +195,6 @@ impl DefaultTokenService {
       .exchange_app_token(
         &app_reg_info.client_id,
         &app_reg_info.client_secret,
-        &claims.azp,
         external_token,
         scopes.iter().map(|s| s.to_string()).collect(),
       )
@@ -792,8 +802,9 @@ mod tests {
       "sub": sub,
       "typ": TOKEN_TYPE_OFFLINE,
       "azp": external_client_id, // Different client
+      "aud": TEST_CLIENT_ID, // Audience is our client
       "session_state": Uuid::new_v4().to_string(),
-      "scope": "openid offline_access scope_user_user",
+      "scope": "openid scope_user_user",
       "sid": Uuid::new_v4().to_string(),
     });
     let (external_token, _) = build_token(external_token_claims)?;
@@ -814,7 +825,6 @@ mod tests {
       .with(
         eq(TEST_CLIENT_ID),
         eq(TEST_CLIENT_SECRET),
-        eq(external_client_id),
         eq(external_token.clone()),
         eq(
           vec!["scope_user_user", "openid", "email", "profile", "roles"]
@@ -824,7 +834,7 @@ mod tests {
         ),
       )
       .times(1)
-      .return_once(|_, _, _, _, _| Ok((exchanged_token_cl, None)));
+      .return_once(|_, _, _, _| Ok((exchanged_token_cl, None)));
     let mut setting_service = MockSettingService::default();
     setting_service
       .expect_auth_issuer()

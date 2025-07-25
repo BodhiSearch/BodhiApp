@@ -64,9 +64,15 @@ pub async fn app_info_handler(
 
 /// Request to setup the application in authenticated mode
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-#[schema(example = json!({}))]
+#[schema(example = json!({
+  "name": "My Bodhi Server",
+  "description": "My personal AI server"
+}))]
 pub struct SetupRequest {
-  // Empty request - always sets up in authenticated mode
+  #[schema(min_length = 10, example = "My Bodhi Server")]
+  pub name: String,
+  #[schema(example = "My personal AI server")]
+  pub description: Option<String>,
 }
 
 /// Response containing the updated application status after setup
@@ -109,7 +115,7 @@ impl IntoResponse for SetupResponse {
 )]
 pub async fn setup_handler(
   State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(_request), _): WithRejection<Json<SetupRequest>, ApiError>,
+  WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, ApiError>,
 ) -> Result<SetupResponse, ApiError> {
   let secret_service = &state.app_service().secret_service();
   let auth_service = &state.app_service().auth_service();
@@ -117,6 +123,15 @@ pub async fn setup_handler(
   if status != AppStatus::Setup {
     return Err(AppServiceError::AlreadySetup)?;
   }
+
+  // Validate server name (minimum 10 characters)
+  if request.name.len() < 10 {
+    // TODO: localize this error message
+    return Err(objs::BadRequestError::new(
+      "Server name must be at least 10 characters long".to_string(),
+    ))?;
+  }
+
   // Always setup in authenticated mode
   let setting_service = &state.app_service().setting_service();
   let server_host = setting_service.host();
@@ -134,7 +149,14 @@ pub async fn setup_handler(
     .into_iter()
     .map(|host| format!("{scheme}://{host}:{port}{callback_path}"))
     .collect::<Vec<String>>();
-  let app_reg_info = auth_service.register_client(redirect_uris).await?;
+
+  let app_reg_info = auth_service
+    .register_client(
+      request.name,
+      request.description.unwrap_or_default(),
+      redirect_uris,
+    )
+    .await?;
   secret_service.set_app_reg_info(&app_reg_info)?;
   secret_service.set_app_status(&AppStatus::ResourceAdmin)?;
   Ok(SetupResponse {
@@ -237,7 +259,10 @@ mod tests {
   #[rstest]
   #[case(
       SecretServiceStub::new().with_app_status(&AppStatus::Ready),
-      SetupRequest {},
+      SetupRequest {
+        name: "Test Server Name".to_string(),
+        description: Some("Test description".to_string()),
+      },
   )]
   #[tokio::test]
   async fn test_setup_handler_error(
@@ -291,12 +316,18 @@ mod tests {
   #[rstest]
   #[case(
       SecretServiceStub::new(),
-      SetupRequest {},
+      SetupRequest {
+        name: "Test Server Name".to_string(),
+        description: Some("Test description".to_string()),
+      },
       AppStatus::ResourceAdmin,
   )]
   #[case(
       SecretServiceStub::new().with_app_status(&AppStatus::Setup),
-      SetupRequest {},
+      SetupRequest {
+        name: "Test Server Name".to_string(),
+        description: Some("Test description".to_string()),
+      },
       AppStatus::ResourceAdmin,
   )]
   #[tokio::test]
@@ -309,7 +340,7 @@ mod tests {
     mock_auth_service
       .expect_register_client()
       .times(1)
-      .return_once(|_redirect_uris| {
+      .return_once(|_name, _description, _redirect_uris| {
         Ok(AppRegInfo {
           client_id: "client_id".to_string(),
           client_secret: "client_secret".to_string(),
@@ -355,7 +386,7 @@ mod tests {
     mock_auth_service
       .expect_register_client()
       .times(1)
-      .return_once(|_redirect_uris| {
+      .return_once(|_name, _description, _redirect_uris| {
         Err(AuthServiceError::Reqwest(ReqwestError::new(
           "failed to register as resource server".to_string(),
         )))
@@ -378,7 +409,10 @@ mod tests {
       .oneshot(
         Request::post("/setup")
           .header("Content-Type", "application/json")
-          .body(Body::from(serde_json::to_string(&SetupRequest {})?))?,
+          .body(Body::from(serde_json::to_string(&SetupRequest {
+            name: "Test Server Name".to_string(),
+            description: Some("Test description".to_string()),
+          })?))?,
       )
       .await?;
 
@@ -436,6 +470,43 @@ mod tests {
       }},
       body
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_setup_handler_validation_error(
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    let mock_auth_service = MockAuthService::default();
+    // No expectation needed as validation should fail before calling auth service
+
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .secret_service(Arc::new(SecretServiceStub::new()))
+        .auth_service(Arc::new(mock_auth_service))
+        .build()?,
+    );
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/setup", post(setup_handler))
+      .with_state(state);
+
+    let resp = router
+      .oneshot(
+        Request::post("/setup")
+          .header("Content-Type", "application/json")
+          .body(Body::from(serde_json::to_string(&SetupRequest {
+            name: "Short".to_string(), // Less than 10 characters
+            description: Some("Test description".to_string()),
+          })?))?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::BAD_REQUEST, resp.status());
     Ok(())
   }
 }

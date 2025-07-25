@@ -47,7 +47,13 @@ async fn internal_main() -> Result<(), ApiError> {
   ];
 
   println!("Registering client with auth server...");
-  let app_reg_info = auth_service.register_client(redirect_uris).await?;
+  let app_reg_info = auth_service
+    .register_client(
+      "CLI Setup Client".to_string(),
+      "Client created via CLI setup tool".to_string(),
+      redirect_uris,
+    )
+    .await?;
 
   println!("Client registered successfully!");
   println!("Client ID: {}", app_reg_info.client_id);

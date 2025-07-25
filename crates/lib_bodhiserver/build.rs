@@ -14,12 +14,11 @@ fn main() {
 fn _main() -> anyhow::Result<()> {
   let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   let bodhi_dir = manifest_dir.join("../bodhi");
-
+  let out_dir = bodhi_dir.join("out");
   // Build frontend
-  if is_ci() {
+  if is_ci() || !out_dir.exists() {
     build_frontend(&bodhi_dir)?;
   }
-
   // Validate assets exist
   validate_frontend_assets(&bodhi_dir)?;
 
@@ -76,20 +75,11 @@ fn create_npm_command() -> Command {
 
 fn validate_frontend_assets(bodhi_dir: &Path) -> anyhow::Result<()> {
   let out_dir = bodhi_dir.join("out");
-
   if !out_dir.exists() {
     bail!(
       "Frontend build output directory does not exist: {:?}",
       out_dir
     );
   }
-
-  // Check for essential files
-  let index_html = out_dir.join("index.html");
-  if !index_html.exists() {
-    bail!("index.html not found in build output");
-  }
-
-  println!("cargo:warning=Frontend assets validated successfully");
   Ok(())
 }

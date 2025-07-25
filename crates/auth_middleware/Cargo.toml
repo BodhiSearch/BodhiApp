@@ -11,14 +11,18 @@ services = { workspace = true }
 server_core = { workspace = true }
 time = { workspace = true }
 
+anyhow = { workspace = true, optional = true }
 axum = { workspace = true }
+base64 = { workspace = true, optional = true }
 chrono = { workspace = true }
+derive_builder = { workspace = true, optional = true }
 jsonwebtoken = { workspace = true }
 rand = { workspace = true }
+reqwest = { workspace = true, optional = true }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
-thiserror = { workspace = true }
 serde_json = { workspace = true, features = ["indexmap"] }
+thiserror = { workspace = true }
 tower-sessions = { workspace = true }
 tracing = { workspace = true }
 
@@ -26,20 +30,22 @@ tracing = { workspace = true }
 objs = { workspace = true, features = ["test-utils"] }
 services = { workspace = true, features = ["test-utils"] }
 server_core = { workspace = true, features = ["test-utils"] }
+auth_middleware = { workspace = true, features = ["test-utils"] }
 
 anyhow = { workspace = true }
 anyhow_trace = { workspace = true }
+axum = { workspace = true, features = ["macros"] }
+dotenv = { workspace = true }
+maplit = { workspace = true }
 mockall = { workspace = true }
+pretty_assertions = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
 rstest = { workspace = true }
 tempfile = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true, features = ["util"] }
 tower-sessions = { workspace = true }
-tokio = { workspace = true, features = ["full"] }
-pretty_assertions = { workspace = true }
-maplit = { workspace = true }
 uuid = { workspace = true }
-reqwest = { workspace = true }
-dotenv = { workspace = true }
 
 [features]
-test-utils = ["rstest", "services/test-utils"]
+test-utils = ["anyhow","base64", "derive_builder", "reqwest", "rstest", "services/test-utils"]

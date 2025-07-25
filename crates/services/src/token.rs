@@ -43,6 +43,9 @@ pub enum TokenError {
   #[error("expired")]
   #[error_meta(error_type = ErrorType::Authentication)]
   Expired,
+  #[error("invalid_audience")]
+  #[error_meta(error_type = ErrorType::Authentication)]
+  InvalidAudience(String),
 }
 
 impl_error_from!(
@@ -60,6 +63,7 @@ pub struct ResourceClaims {
 pub struct ScopeClaims {
   pub iss: String,
   pub azp: String,
+  pub aud: Option<String>,
   pub exp: u64,
   pub scope: String,
 }
