@@ -1,6 +1,5 @@
 import { vi } from 'vitest';
 
-// Mock window.matchMedia BEFORE framer-motion is imported
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query) => ({
@@ -19,19 +18,45 @@ Object.defineProperty(window, 'matchMedia', {
 vi.mock('framer-motion', () => {
   const React = require('react');
   return {
-    motion: new Proxy(
-      {},
-      {
-        get: (target, prop) => {
-          return ({ children, ...rest }: { children?: React.ReactNode }) => React.createElement('div', rest, children);
-        },
-      }
-    ),
+    motion: {
+      div: ({ children, ...props }: any) => {
+        // Filter out framer-motion specific props to avoid React warnings
+        const {
+          animate,
+          initial,
+          exit,
+          variants,
+          transition,
+          whileHover,
+          whileTap,
+          whileFocus,
+          whileInView,
+          drag,
+          dragConstraints,
+          dragElastic,
+          dragMomentum,
+          dragTransition,
+          onDrag,
+          onDragStart,
+          onDragEnd,
+          layout,
+          layoutId,
+          ...filteredProps
+        } = props;
+        return React.createElement('div', filteredProps, children);
+      },
+    },
     AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
     useAnimation: () => ({}),
   };
 });
+
+vi.mock('@/hooks/use-media-query', () => ({
+  useMediaQuery: (query: string) => {
+    return true;
+  },
+}));
 
 import '@testing-library/jest-dom';
 import { beforeAll, afterAll } from 'vitest';
@@ -39,9 +64,9 @@ import apiClient from '@/lib/apiClient';
 
 // Mock ResizeObserver
 class MockResizeObserver {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe() { }
+  unobserve() { }
+  disconnect() { }
 }
 
 global.ResizeObserver = MockResizeObserver;
