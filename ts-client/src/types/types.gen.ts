@@ -345,7 +345,8 @@ export type SettingSource = 'system' | 'command_line' | 'environment' | 'setting
  * Request to setup the application in authenticated mode
  */
 export type SetupRequest = {
-    [key: string]: unknown;
+    description?: string | null;
+    name: string;
 };
 
 /**

@@ -105,6 +105,10 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
   let log_level = log_level.to_string();
   let filter = EnvFilter::new(&log_level);
   let filter = filter.add_directive("hf_hub=error".parse().expect("is a valid directive"));
+  // Reduce verbose middleware logging noise
+  let filter = filter.add_directive("tower_sessions=warn".parse().expect("is a valid directive"));
+  let filter = filter.add_directive("tower_http=warn".parse().expect("is a valid directive"));
+  let filter = filter.add_directive("tower_sessions_core=warn".parse().expect("is a valid directive"));
 
   // Check if we should output to stdout
   let enable_stdout = cfg!(debug_assertions)

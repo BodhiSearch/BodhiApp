@@ -35,7 +35,7 @@ use services::{AppService, SettingService, BODHI_DEV_PROXY_UI};
 use std::sync::Arc;
 use tower_http::{
   cors::{Any, CorsLayer},
-  trace::{DefaultMakeSpan, DefaultOnResponse, TraceLayer},
+  trace::{DefaultMakeSpan, DefaultOnFailure, DefaultOnResponse, TraceLayer},
 };
 use tracing::{debug, info, Level};
 use utoipa::{Modify, OpenApi};
@@ -171,9 +171,11 @@ pub fn build_routes(
     .merge(admin_session_apis)
     .route_layer(from_fn_with_state(state.clone(), auth_middleware));
 
+  // Reduce verbose middleware logging - only log errors and warnings for better signal-to-noise ratio
   let info_trace = TraceLayer::new_for_http()
-    .make_span_with(DefaultMakeSpan::new().level(Level::INFO))
-    .on_response(DefaultOnResponse::new().level(Level::INFO));
+    .make_span_with(DefaultMakeSpan::new().level(Level::DEBUG))
+    .on_response(DefaultOnResponse::new().level(Level::DEBUG))
+    .on_failure(DefaultOnFailure::new().level(Level::ERROR));
 
   let mut openapi = BodhiOpenAPIDoc::openapi();
   OpenAPIEnvModifier::new(app_service.setting_service()).modify(&mut openapi);

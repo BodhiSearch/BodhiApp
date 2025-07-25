@@ -1252,7 +1252,7 @@ mod tests {
     server
       .mock(
         "POST",
-        "/realms/test-realm/bodhi/clients/make-resource-admin",
+        "/realms/test-realm/bodhi/resources/make-resource-admin",
       )
       .match_header("Authorization", "Bearer client_access_token")
       .match_body(Matcher::Json(json!({"username": "testuser@email.com"})))

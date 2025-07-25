@@ -10,6 +10,7 @@ mod error;
 pub mod gguf;
 mod gpt_params;
 mod hub_file;
+pub mod log;
 mod localization_service;
 mod oai;
 mod remote_file;

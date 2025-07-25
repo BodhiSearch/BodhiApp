@@ -1,8 +1,11 @@
 use anyhow_trace::anyhow_trace;
 use auth_middleware::{
-  auth_middleware, KEY_RESOURCE_SCOPE, KEY_RESOURCE_TOKEN, SESSION_KEY_ACCESS_TOKEN,
+  auth_middleware,
+  test_utils::{AuthServerConfig, AuthServerTestClient},
+  KEY_RESOURCE_SCOPE, KEY_RESOURCE_TOKEN, SESSION_KEY_ACCESS_TOKEN,
 };
 use axum::{
+  body::Body,
   extract::State,
   http::{HeaderMap, Request, StatusCode},
   middleware::from_fn_with_state,
@@ -13,7 +16,6 @@ use axum::{
 use dotenv;
 use maplit::hashmap;
 use objs::{test_utils::setup_l10n, ErrorBody, FluentLocalizationService, OpenAIApiError};
-use reqwest::Client;
 use rstest::{fixture, rstest};
 use serde_json::Value;
 use server_core::{
@@ -56,54 +58,6 @@ async fn test_token_info_handler(
     .and_then(|s| s.to_str().ok())
     .map(|s| s.to_string());
   Json(TestTokenResponse { token, scope })
-}
-
-#[fixture]
-#[awt]
-async fn state(
-  #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
-  integ_test_config: &IntegTestConfig,
-) -> anyhow::Result<DefaultRouterState> {
-  let setting_service = SettingServiceStub::new(HashMap::from([
-    (
-      BODHI_AUTH_URL.to_string(),
-      integ_test_config.auth_server_url.clone(),
-    ),
-    (
-      BODHI_AUTH_REALM.to_string(),
-      integ_test_config.realm.clone(),
-    ),
-  ]));
-  let auth_service = Arc::new(KeycloakAuthService::new(
-    "test-app",
-    integ_test_config.auth_server_url.clone(),
-    integ_test_config.realm.clone(),
-  ));
-  let temp_dir = TempDir::new()?;
-  let session_db_path = temp_dir.path().join("session.db");
-  let secret_service = SecretServiceStub::default().with_app_reg_info(
-    &AppRegInfoBuilder::default()
-      .client_id(integ_test_config.resource_client_id.clone())
-      .client_secret(integ_test_config.resource_client_secret.clone())
-      .build()
-      .unwrap(),
-  );
-  let mut app_service_builder = AppServiceStubBuilder::default();
-  let test_db_service = test_db_service(temp_dir).await;
-  app_service_builder
-    .secret_service(Arc::new(secret_service))
-    .setting_service(Arc::new(setting_service))
-    .auth_service(auth_service)
-    .db_service(Arc::new(test_db_service))
-    .cache_service(Arc::new(services::MokaCacheService::default()))
-    .build_session_service(session_db_path)
-    .await;
-  let app_service = app_service_builder.build()?;
-  let state = DefaultRouterState::new(
-    Arc::new(MockSharedContext::default()),
-    Arc::new(app_service),
-  );
-  Ok(state)
 }
 
 fn create_test_router(state: Arc<dyn RouterState>) -> Router {
@@ -170,107 +124,129 @@ fn create_token_create_router(state: Arc<dyn RouterState>) -> Router {
     .with_state(state)
 }
 
-// OAuth token response structure
-#[derive(Debug, serde::Deserialize)]
-struct TokenResponse {
-  access_token: String,
+#[fixture]
+fn auth_client(auth_server_config: &AuthServerConfig) -> AuthServerTestClient {
+  AuthServerTestClient::new(auth_server_config.clone())
 }
 
-// Helper to get OAuth token using password grant (resource owner)
-async fn get_user_token(
-  client: &Client,
-  config: &IntegTestConfig,
-  client_id: &str,
-  client_secret: &str,
-  scopes: &[&str],
-) -> Result<String, anyhow::Error> {
-  let token_url = format!(
-    "{}/realms/{}/protocol/openid-connect/token",
-    config.auth_server_url, config.realm
-  );
-  let scope_string = if scopes.is_empty() {
-    String::new()
-  } else {
-    scopes.join(" ")
-  };
-  let mut params = vec![
-    ("grant_type", "password"),
-    ("client_id", &client_id),
-    ("client_secret", &client_secret),
-    ("username", &config.username),
-    ("password", &config.password),
-  ];
-  if !scope_string.is_empty() {
-    params.push(("scope", &scope_string));
-  }
-  let response = client.post(&token_url).form(&params).send().await?;
-  assert_eq!(
-    response.status(),
-    StatusCode::OK,
-    "Token request failed: {}",
-    response
-      .text()
-      .await
-      .unwrap_or_else(|_| "Unable to read response body".to_string())
-  );
-  let token_response: TokenResponse = response.json().await?;
-  Ok(token_response.access_token)
-}
+// Helper function to create test state with specific client configuration
+async fn create_test_state(
+  _setup_l10n: &Arc<FluentLocalizationService>,
+  config: &AuthServerConfig,
+  resource_client_id: &str,
+  resource_client_secret: &str,
+) -> anyhow::Result<Arc<DefaultRouterState>> {
+  let setting_service = SettingServiceStub::new(HashMap::from([
+    (BODHI_AUTH_URL.to_string(), config.auth_server_url.clone()),
+    (BODHI_AUTH_REALM.to_string(), config.realm.clone()),
+  ]));
 
-// --- Add IntegTestConfig fixture ---
-#[derive(Debug, Clone)]
-struct IntegTestConfig {
-  auth_server_url: String,
-  realm: String,
-  app_client_id: String,
-  app_client_secret: String,
-  resource_client_id: String,
-  resource_client_secret: String,
-  username: String,
-  password: String,
+  let auth_service = Arc::new(KeycloakAuthService::new(
+    "test-app",
+    config.auth_server_url.clone(),
+    config.realm.clone(),
+  ));
+
+  let temp_dir = TempDir::new()?;
+  let session_db_path = temp_dir.path().join("session.db");
+  let secret_service = SecretServiceStub::default().with_app_reg_info(
+    &AppRegInfoBuilder::default()
+      .client_id(resource_client_id.to_string())
+      .client_secret(resource_client_secret.to_string())
+      .build()
+      .unwrap(),
+  );
+
+  let mut app_service_builder = AppServiceStubBuilder::default();
+  let test_db_service = test_db_service(temp_dir).await;
+  app_service_builder
+    .secret_service(Arc::new(secret_service))
+    .setting_service(Arc::new(setting_service))
+    .auth_service(auth_service)
+    .db_service(Arc::new(test_db_service))
+    .cache_service(Arc::new(services::MokaCacheService::default()))
+    .build_session_service(session_db_path)
+    .await;
+
+  let app_service = app_service_builder.build()?;
+  let state = DefaultRouterState::new(
+    Arc::new(MockSharedContext::default()),
+    Arc::new(app_service),
+  );
+  Ok(Arc::new(state))
 }
 
 #[fixture]
 #[once]
-fn integ_test_config() -> IntegTestConfig {
+fn auth_server_config() -> AuthServerConfig {
   let env_path = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/.env.test"));
   if env_path.exists() {
     let _ = dotenv::from_filename(env_path).ok();
   }
-  IntegTestConfig {
+
+  AuthServerConfig {
     auth_server_url: std::env::var("INTEG_TEST_AUTH_SERVER_URL")
       .expect("INTEG_TEST_AUTH_SERVER_URL must be set"),
     realm: std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM must be set"),
-    app_client_id: std::env::var("INTEG_TEST_APP_CLIENT_ID")
-      .expect("INTEG_TEST_APP_CLIENT_ID must be set"),
-    app_client_secret: std::env::var("INTEG_TEST_APP_CLIENT_SECRET")
-      .expect("INTEG_TEST_APP_CLIENT_SECRET must be set"),
-    resource_client_id: std::env::var("INTEG_TEST_RESOURCE_CLIENT_ID")
-      .expect("INTEG_TEST_RESOURCE_CLIENT_ID must be set"),
-    resource_client_secret: std::env::var("INTEG_TEST_RESOURCE_CLIENT_SECRET")
-      .expect("INTEG_TEST_RESOURCE_CLIENT_SECRET must be set"),
-    username: std::env::var("INTEG_TEST_USER").expect("INTEG_TEST_USER must be set"),
-    password: std::env::var("INTEG_TEST_PASSWORD").expect("INTEG_TEST_PASSWORD must be set"),
+    dev_console_client_id: std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_ID")
+      .expect("INTEG_TEST_DEV_CONSOLE_CLIENT_ID must be set"),
+    dev_console_client_secret: std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET")
+      .expect("INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET must be set"),
   }
+}
+
+#[fixture]
+fn test_user() -> (String, String) {
+  (
+    std::env::var("INTEG_TEST_USERNAME").expect("INTEG_TEST_USERNAME must be set"),
+    std::env::var("INTEG_TEST_PASSWORD").expect("INTEG_TEST_PASSWORD must be set"),
+  )
 }
 
 #[rstest]
 #[tokio::test]
-#[awt]
 #[anyhow_trace]
 async fn test_offline_token_exchange_success(
-  #[future] state: anyhow::Result<DefaultRouterState>,
-  integ_test_config: &IntegTestConfig,
+  setup_l10n: &Arc<FluentLocalizationService>,
+  auth_server_config: &AuthServerConfig,
+  test_user: (String, String),
+  auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  let client = Client::new();
-  let user_token = get_user_token(
-    &client,
-    &integ_test_config,
-    &integ_test_config.resource_client_id,
-    &integ_test_config.resource_client_secret,
-    &["openid", "email", "profile", "roles"],
+  let (username, password) = test_user;
+  let dynamic_clients = auth_client
+    .setup_dynamic_clients(&username, &password)
+    .await?;
+  let resource_client_id = dynamic_clients.resource_client.client_id;
+  let resource_client_secret = dynamic_clients
+    .resource_client
+    .client_secret
+    .as_ref()
+    .unwrap();
+  let state = create_test_state(
+    setup_l10n,
+    &auth_server_config,
+    &resource_client_id,
+    &resource_client_secret,
   )
   .await?;
+  let user_token = auth_client
+    .get_user_token(
+      &resource_client_id,
+      &resource_client_secret,
+      &username,
+      &password,
+      &[
+        "openid",
+        "email",
+        "profile",
+        "roles",
+        "offline_access",
+        "scope_token_user",
+      ],
+    )
+    .await?;
+
+  // Step 4: Create session with user token
   let session_id = Id::default();
   let session_data = hashmap! {
     SESSION_KEY_ACCESS_TOKEN.to_string() => Value::String(user_token.clone()),
@@ -280,27 +256,30 @@ async fn test_offline_token_exchange_success(
     data: session_data,
     expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
   };
-  let state = Arc::new(state?);
   state
     .app_service()
     .session_service()
     .get_session_store()
     .create(&mut record)
     .await?;
+
+  // Step 5: Test offline token creation
   let session_cookie = Cookie::build(("bodhiapp_session_id", session_id.to_string()))
     .path("/")
     .http_only(true)
     .same_site(SameSite::Strict)
     .build();
-  let router = create_token_create_router(state.clone());
+  let router = create_token_create_router(state);
   let request = Request::builder()
     .method("POST")
     .uri("/create")
     .header("Content-Type", "application/json")
     .header("Sec-Fetch-Site", "same-origin")
     .header("Cookie", session_cookie.to_string())
-    .body(axum::body::Body::empty())?;
+    .body(Body::empty())?;
   let response = router.oneshot(request).await?;
+
+  // Step 6: Verify response
   assert_eq!(
     StatusCode::OK,
     response.status(),
@@ -310,48 +289,72 @@ async fn test_offline_token_exchange_success(
       .await
       .unwrap_or_else(|_| "Unable to read response body".to_string())
   );
+
   let body: TestTokenResponse = response.json().await?;
   let claims = extract_claims::<OfflineClaims>(&body.token.unwrap())?;
-  assert_eq!(claims.azp, integ_test_config.resource_client_id);
+  assert_eq!(claims.azp, resource_client_id);
   let mut token_scopes = claims.scope.split_whitespace().collect::<Vec<&str>>();
   token_scopes.sort();
   assert_eq!(
-    vec!["offline_access", "openid", "scope_token_user"],
+    vec!["basic", "offline_access", "openid", "scope_token_user"],
     token_scopes,
   );
   Ok(())
 }
 
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_cross_client_token_exchange_success(
-  #[future] state: anyhow::Result<DefaultRouterState>,
-  integ_test_config: &IntegTestConfig,
+  setup_l10n: &Arc<FluentLocalizationService>,
+  auth_server_config: &AuthServerConfig,
+  test_user: (String, String),
+  auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  let client = Client::new();
-  let user_token = get_user_token(
-    &client,
-    &integ_test_config,
-    &integ_test_config.app_client_id,
-    &integ_test_config.app_client_secret,
-    &[
-      "openid",
-      "email",
-      "profile",
-      "roles",
-      "scope_user_power_user",
-    ],
+  let (username, password) = test_user;
+  // Step 1: Setup dynamic clients
+  let dynamic_clients = auth_client
+    .setup_dynamic_clients(&username, &password)
+    .await?;
+
+  // Step 2: Create test state with dynamic client credentials
+  let resource_client_id = dynamic_clients.resource_client.client_id;
+  let resource_client_secret = dynamic_clients
+    .resource_client
+    .client_secret
+    .as_ref()
+    .unwrap();
+  let state = create_test_state(
+    setup_l10n,
+    auth_server_config,
+    &resource_client_id,
+    &resource_client_secret,
   )
   .await?;
-  let state = Arc::new(state?);
-  let router = create_test_router(state.clone());
+  let user_token = auth_client
+    .get_app_user_token_with_scope(
+      &dynamic_clients.app_client.client_id,
+      &username,
+      &password,
+      &[
+        "openid",
+        "email",
+        "profile",
+        "roles",
+        "scope_user_user",
+        &dynamic_clients.resource_scope_name,
+      ],
+    )
+    .await?;
+  let router = create_test_router(state);
   let request = Request::builder()
     .method("GET")
     .uri("/test")
     .header("Authorization", format!("Bearer {}", user_token))
-    .body(axum::body::Body::empty())?;
+    .body(Body::empty())?;
   let response = router.oneshot(request).await?;
+
+  // Step 5: Verify successful token exchange
   assert_eq!(
     StatusCode::OK,
     response.status(),
@@ -361,6 +364,7 @@ async fn test_cross_client_token_exchange_success(
       .await
       .unwrap_or_else(|_| "Unable to read response body".to_string())
   );
+
   let body: TestTokenResponse = response.json().await?;
   assert_eq!(
     body.token.is_some(),
@@ -372,51 +376,77 @@ async fn test_cross_client_token_exchange_success(
     true,
     "Expected X-Resource-Scope header to be set"
   );
-  // --- Decode JWT and assert claims ---
+
+  // Step 6: Decode JWT and assert claims
   let token = body.token.as_ref().unwrap();
   let claims = extract_claims::<Claims>(token)?;
   assert_eq!(
-    claims.email, integ_test_config.username,
+    claims.email, username,
     "JWT email claim should match test user"
   );
+  assert_eq!(claims.azp, resource_client_id);
   let mut scopes = claims.scope.split_whitespace().collect::<Vec<&str>>();
   scopes.sort();
-  let mut expected_scope = vec![
-    "email",
-    "openid",
-    "profile",
-    "roles",
-    "scope_user_power_user",
-  ];
+  let mut expected_scope = vec!["email", "openid", "profile", "roles", "scope_user_user"];
   expected_scope.sort();
   assert_eq!(scopes, expected_scope, "JWT scope should match expected");
   Ok(())
 }
 
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_cross_client_token_exchange_no_user_scope(
-  #[future] state: anyhow::Result<DefaultRouterState>,
-  integ_test_config: &IntegTestConfig,
+  setup_l10n: &Arc<FluentLocalizationService>,
+  auth_server_config: &AuthServerConfig,
+  test_user: (String, String),
+  auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  let client = Client::new();
-  let user_token = get_user_token(
-    &client,
-    &integ_test_config,
-    &integ_test_config.app_client_id,
-    &integ_test_config.app_client_secret,
-    &[],
+  let (username, password) = test_user;
+  // Step 1: Setup dynamic clients
+  let dynamic_clients = auth_client
+    .setup_dynamic_clients(&username, &password)
+    .await?;
+
+  // Step 2: Create test state with dynamic client credentials
+  let resource_client_id = dynamic_clients.resource_client.client_id;
+  let resource_client_secret = dynamic_clients
+    .resource_client
+    .client_secret
+    .as_ref()
+    .unwrap();
+  let state = create_test_state(
+    setup_l10n,
+    auth_server_config,
+    &resource_client_id,
+    &resource_client_secret,
   )
   .await?;
-  let state = Arc::new(state?);
-  let router = create_test_router(state.clone());
+  let user_token = auth_client
+    .get_app_user_token_with_scope(
+      &dynamic_clients.app_client.client_id,
+      &username,
+      &password,
+      &[
+        "openid",
+        "email",
+        "profile",
+        "roles",
+        &dynamic_clients.resource_scope_name,
+      ],
+    )
+    .await?;
+
+  // Step 4: Test token exchange - should return unauthorized
+  let router = create_test_router(state);
   let request = Request::builder()
     .method("GET")
     .uri("/test")
     .header("Authorization", format!("Bearer {}", user_token))
-    .body(axum::body::Body::empty())?;
+    .body(Body::empty())?;
   let response = router.oneshot(request).await?;
+
+  // Step 5: Verify unauthorized response
   assert_eq!(StatusCode::UNAUTHORIZED, response.status());
   let err: OpenAIApiError = response.json().await?;
   assert_eq!(
@@ -435,28 +465,46 @@ async fn test_cross_client_token_exchange_no_user_scope(
 }
 
 #[rstest]
-#[awt]
 #[tokio::test]
+#[anyhow_trace]
 async fn test_cross_client_token_exchange_auth_service_error(
-  #[future] state: anyhow::Result<DefaultRouterState>,
-  integ_test_config: &IntegTestConfig,
+  setup_l10n: &Arc<FluentLocalizationService>,
+  auth_server_config: &AuthServerConfig,
+  test_user: (String, String),
+  auth_client: AuthServerTestClient,
 ) -> anyhow::Result<()> {
-  let client = Client::new();
-  let user_token = get_user_token(
-    &client,
-    &integ_test_config,
-    &integ_test_config.app_client_id,
-    &integ_test_config.app_client_secret,
-    &[],
+  let (username, password) = test_user;
+  // Step 1: Setup dynamic clients
+  let dynamic_clients = auth_client
+    .setup_dynamic_clients(&username, &password)
+    .await?;
+
+  // Step 2: Create test state with dynamic client credentials
+  let state = create_test_state(
+    setup_l10n,
+    auth_server_config,
+    &dynamic_clients.resource_client.client_id,
+    dynamic_clients
+      .resource_client
+      .client_secret
+      .as_ref()
+      .unwrap(),
   )
   .await?;
-  let state = Arc::new(state?);
-  let router = create_test_router(state.clone());
+  let user_token = auth_client
+    .get_app_user_token_with_scope(
+      &dynamic_clients.app_client.client_id,
+      &username,
+      &password,
+      &[],
+    )
+    .await?;
+  let router = create_test_router(state);
   let request = Request::builder()
     .method("GET")
     .uri("/test")
     .header("Authorization", format!("Bearer {}", user_token))
-    .body(axum::body::Body::empty())?;
+    .body(Body::empty())?;
   let response = router.oneshot(request).await?;
   assert!(
     response.status().is_client_error(),

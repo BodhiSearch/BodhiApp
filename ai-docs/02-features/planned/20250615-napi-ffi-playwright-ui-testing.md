@@ -630,18 +630,13 @@ fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
 
 fn validate_frontend_assets(bodhi_dir: &Path) -> anyhow::Result<()> {
     let out_dir = bodhi_dir.join("out");
-
     if !out_dir.exists() {
         bail!("Frontend build output directory does not exist: {:?}", out_dir);
     }
-
-    // Check for essential files
     let index_html = out_dir.join("index.html");
     if !index_html.exists() {
         bail!("index.html not found in build output");
     }
-
-    println!("cargo:warning=Frontend assets validated successfully");
     Ok(())
 }
 ```

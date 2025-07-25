@@ -251,6 +251,46 @@ fn test_with_temp_directory(temp_bodhi_home: TempDir) {
 }
 ```
 
+### 5. **Setup L10n Fixture Usage**
+
+When using the `setup_l10n` fixture in rstest tests, there are two patterns depending on whether you need to interact with the localization service:
+
+**Pattern 1: When you need to use the setup_l10n object**
+```rust
+use objs::{test_utils::setup_l10n, FluentLocalizationService};
+use rstest::rstest;
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_with_localization(
+  #[from(setup_l10n)] setup_l10n: &Arc<FluentLocalizationService>,
+) -> anyhow::Result<()> {
+  // Use setup_l10n object in your test
+  let state = create_test_state(setup_l10n, &config).await?;
+  // ... rest of test
+  Ok(())
+}
+```
+
+**Pattern 2: When you don't interact with setup_l10n directly**
+```rust
+use objs::{test_utils::setup_l10n, FluentLocalizationService};
+use rstest::rstest;
+
+#[rstest]
+#[tokio::test]
+#[anyhow_trace]
+async fn test_without_localization_interaction(
+  #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+) -> anyhow::Result<()> {
+  // setup_l10n is available but not directly used
+  // The underscore prefix prevents unused variable warnings
+  let result = some_test_operation();
+  assert!(result.is_ok());
+  Ok(())
+}
+```
 ### 4. **Cross-Crate Test Integration**
 
 ```rust

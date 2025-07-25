@@ -4,6 +4,7 @@ data_service_error-logs_dir_not_exists = BODHI_LOGS does not exists: {$var_0}
 alias_not_found_error = alias '{$var_0}' not found in $BODHI_HOME/aliases
 alias_exists_error = alias '{$var_0}' already exists in $BODHI_HOME/aliases
 auth_service_error-auth_service_api_error = error from auth service: {$var_0}
+auth_service_error-reqwest_middleware_error = error calling external service: {$var_0}
 hub_api_error = error from huggingface api: {$source}
 hub_service_error-gated_access = {$source}.
   huggingface repo '{$repo}' is requires requesting for access from website.
@@ -51,6 +52,7 @@ auth_service_error-token_exchange_error = token exchange failed: {$var_0}
 db_error-token_validation = token is not valid: {$var_0}
 token_error-invalid_token = token is invalid: {$var_0}
 token_error-invalid_issuer = token issuer is invalid: {$var_0}
+token_error-invalid_audience = token audience is invalid: {$var_0}
 token_error-scope_empty = user does not have any privileges on this system
 token_error-expired = token has expired
 setting_service_error-invalid_source = cannot set setting for environment as source
