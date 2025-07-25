@@ -111,7 +111,8 @@ export function useUser(options?: { enabled?: boolean }) {
 }
 
 type SetupRequest = {
-  // Empty request - always sets up in authenticated mode
+  name: string;
+  description?: string;
 };
 
 export function useSetupApp(options?: {

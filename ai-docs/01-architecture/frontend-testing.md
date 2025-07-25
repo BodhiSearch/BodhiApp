@@ -2,6 +2,29 @@
 
 > **AI Coding Assistant Guide**: This document provides concise frontend testing conventions and patterns for the Bodhi App React frontend. Focus on key concepts and established patterns rather than detailed implementation examples.
 
+## ⚠️ Critical Testing Requirements
+
+### Framer Motion Components
+**IMPORTANT**: Components using `framer-motion` (motion.div, motion.button, etc.) require proper mocking to prevent test failures and React warnings.
+
+**Global Mock Available**: Framer Motion is globally mocked in `src/tests/setup.ts` and filters out animation props (`whileHover`, `whileTap`, `animate`, `initial`, etc.) to prevent React warnings.
+
+**If Tests Still Fail**: Some test files may need local mocks due to import order or specific test configurations. Add this mock at the top of your test file:
+
+```typescript
+vi.mock('framer-motion', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    // Add other motion elements as needed (button, span, etc.)
+  },
+}));
+```
+
+**Symptoms of Missing Mock**:
+- React warnings about unrecognized props (`whileHover`, `whileTap`, etc.)
+- Test timeouts or failures when components use animations
+- Components not rendering properly in tests
+
 ## Required Documentation References
 
 **MUST READ for frontend testing:**
@@ -461,17 +484,28 @@ import { vi } from 'vitest';
 import '@testing-library/jest-dom';
 
 // Mock framer-motion to avoid animation issues in tests
+// IMPORTANT: This global mock filters out framer-motion props to prevent React warnings
 vi.mock('framer-motion', () => {
   const React = require('react');
   return {
     motion: new Proxy({}, {
       get: (target, prop) => {
-        return ({ children, ...rest }: { children?: React.ReactNode }) =>
-          React.createElement('div', rest, children);
+        return ({ children, ...rest }: { children?: React.ReactNode }) => {
+          // Filter out framer-motion specific props to avoid React warnings
+          const {
+            animate, initial, exit, variants, transition,
+            whileHover, whileTap, whileFocus, whileInView,
+            drag, dragConstraints, dragElastic, dragMomentum, dragTransition,
+            onDrag, onDragStart, onDragEnd, layout, layoutId,
+            ...filteredProps
+          } = rest;
+          return React.createElement('div', filteredProps, children);
+        };
       }
     }),
     AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
       React.createElement(React.Fragment, null, children),
+    useAnimation: () => ({}),
   };
 });
 
