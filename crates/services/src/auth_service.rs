@@ -198,7 +198,7 @@ impl AuthService for KeycloakAuthService {
     description: String,
     redirect_uris: Vec<String>,
   ) -> Result<AppRegInfo> {
-    let client_endpoint = format!("{}/clients", self.auth_api_url());
+    let client_endpoint = format!("{}/resources", self.auth_api_url());
     log::log_http_request("POST", &client_endpoint, "auth_service", None);
 
     let request_body = RegisterClientRequest {

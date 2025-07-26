@@ -1,39 +1,38 @@
 import { expect, test } from '@playwright/test';
 import {
-  createServerManager,
   getCurrentPath,
+  randomPort,
   waitForRedirect,
-  waitForSPAReady,
-} from './playwright-helpers.mjs';
-
-/**
- * Get test environment variables with defaults
- */
-function getTestConfig() {
-  return {
-    authUrl: process.env.INTEG_TEST_AUTH_URL,
-    authRealm: process.env.INTEG_TEST_AUTH_REALM,
-    username: process.env.INTEG_TEST_USERNAME,
-    password: process.env.INTEG_TEST_PASSWORD,
-  };
-}
+  waitForSPAReady
+} from '../test-helpers.mjs';
+import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from './auth-server-client.mjs';
+import {
+  createServerManager,
+} from './bodhi-app-server.mjs';
 
 test.describe('First-Time Authentication Setup Flow', () => {
-  let testConfig;
+  let authServerConfig;
+  let testCredentials;
   let serverManager;
   let baseUrl;
+  let authClient;
+  let dynamicClients;
+  let port;
 
   test.beforeAll(async () => {
-    testConfig = getTestConfig();
-    expect(testConfig.username).toBeDefined();
-    expect(testConfig.password).toBeDefined();
-    expect(testConfig.authUrl).toBeDefined();
-    expect(testConfig.authRealm).toBeDefined();
+    authServerConfig = getAuthServerConfig();
+    testCredentials = getTestCredentials();
+    port = randomPort();
+
+    // Create auth server test client and setup dynamic clients
+    authClient = createAuthServerTestClient(authServerConfig);
+    dynamicClients = await authClient.setupDynamicClients(testCredentials.username, testCredentials.password, port);
 
     serverManager = createServerManager({
       appStatus: 'setup',
-      authUrl: testConfig.authUrl,
-      authRealm: testConfig.authRealm,
+      authUrl: authServerConfig.authUrl,
+      authRealm: authServerConfig.authRealm,
+      port,
       logLevel: 'debug',
     });
     baseUrl = await serverManager.startServer();
@@ -55,8 +54,13 @@ test.describe('First-Time Authentication Setup Flow', () => {
     await expect(page.locator('text=Welcome to Bodhi App')).toBeVisible();
     await expect(page.locator('text=Step 1 of 4')).toBeVisible();
 
-    // Click "Setup Bodhi App" button to go to Admin Setup
-    const setupButton = page.locator('button:has-text("Setup Bodhi App")');
+    // Fill in the server setup form
+    const serverNameField = page.locator('input[name="name"]');
+    await expect(serverNameField).toBeVisible();
+    await serverNameField.fill('My Test Bodhi Server');
+
+    // Click "Setup Bodhi Server" button to submit the form
+    const setupButton = page.locator('button:has-text("Setup Bodhi Server")');
     await expect(setupButton).toBeVisible();
     await setupButton.click();
 
@@ -83,17 +87,16 @@ test.describe('First-Time Authentication Setup Flow', () => {
     const passwordField = page.locator(
       'input[name="password"], input[type="password"], textbox[name="Password"]'
     );
+    const submitButton = page.locator(
+      'button[type="submit"], input[type="submit"], button:has-text("Sign In")'
+    );
 
     await expect(emailField).toBeVisible();
     await expect(passwordField).toBeVisible();
 
-    await emailField.fill(testConfig.username);
-    await passwordField.fill(testConfig.password);
-
-    // Click Sign In button
-    const signInButton = page.locator('input:has-text("Sign In")');
-    await expect(signInButton).toBeVisible();
-    await signInButton.click();
+    await emailField.fill(testCredentials.username);
+    await passwordField.fill(testCredentials.password);
+    await submitButton.click();
 
     // Wait for redirect to Download Models page (Step 3 of 4)
     await waitForRedirect(page, '/ui/setup/download-models/');
