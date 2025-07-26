@@ -1,39 +1,39 @@
 import { expect, test } from '@playwright/test';
-import { createServerManager, getCurrentPath, waitForSPAReady } from './playwright-helpers.mjs';
-
-/**
- * Get test environment variables with defaults
- */
-function getTestConfig() {
-  return {
-    authUrl: process.env.INTEG_TEST_AUTH_URL,
-    authRealm: process.env.INTEG_TEST_AUTH_REALM,
-    clientId: process.env.INTEG_TEST_CLIENT_ID,
-    clientSecret: process.env.INTEG_TEST_CLIENT_SECRET,
-    username: process.env.INTEG_TEST_USERNAME,
-    password: process.env.INTEG_TEST_PASSWORD,
-  };
-}
+import { getCurrentPath, randomPort, waitForSPAReady } from '../test-helpers.mjs';
+import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from './auth-server-client.mjs';
+import { createServerManager } from './bodhi-app-server.mjs';
 
 test.describe('OAuth Authentication Flow Integration Tests', () => {
   let serverManager;
   let baseUrl;
-  let testConfig;
+  let authServerConfig;
+  let testCredentials;
+  let authClient;
+  let resourceClient;
+  let port;
 
   test.beforeAll(async () => {
-    testConfig = getTestConfig();
+    authServerConfig = getAuthServerConfig();
+    testCredentials = getTestCredentials();
+    port = randomPort();
+
+    authClient = createAuthServerTestClient(authServerConfig);
+    resourceClient = await authClient.createResourceClient(port);
     serverManager = createServerManager({
       appStatus: 'ready',
-      authUrl: testConfig.authUrl,
-      authRealm: testConfig.authRealm,
-      clientId: testConfig.clientId,
-      clientSecret: testConfig.clientSecret,
+      authUrl: authServerConfig.authUrl,
+      authRealm: authServerConfig.authRealm,
+      clientId: resourceClient.clientId,
+      clientSecret: resourceClient.clientSecret,
+      port,
     });
     baseUrl = await serverManager.startServer();
   });
 
   test.afterAll(async () => {
-    await serverManager.stopServer();
+    if (serverManager) {
+      await serverManager.stopServer();
+    }
   });
 
   test('should redirect unauthenticated users and show functional login page', async ({ page }) => {
@@ -71,8 +71,8 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
     );
     await loginButton.first().click();
 
-    // Should redirect to auth server
-    await page.waitForURL((url) => url.origin === 'https://dev-id.getbodhi.app');
+    // Should redirect to auth server (updated URL)
+    await page.waitForURL((url) => url.origin === authServerConfig.authUrl);
 
     // Fill in auth server credentials
     const usernameField = page.locator('input[name="username"], input[type="email"], #username');
@@ -84,8 +84,8 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
     await expect(usernameField).toBeVisible();
     await expect(passwordField).toBeVisible();
 
-    await usernameField.fill(testConfig.username);
-    await passwordField.fill(testConfig.password);
+    await usernameField.fill(testCredentials.username);
+    await passwordField.fill(testCredentials.password);
     await submitButton.click();
 
     // Should redirect back to app and land on chat page

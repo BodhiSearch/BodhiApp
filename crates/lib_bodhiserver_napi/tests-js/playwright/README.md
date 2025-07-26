@@ -26,20 +26,31 @@ The `first-time-auth-setup.spec.js` test simulates the complete flow for a new u
 Create a `.env.test` file in this directory with the following variables:
 
 ```bash
-# Authentication Server Configuration
-INTEG_TEST_AUTH_URL=https://dev-id.getbodhi.app
+# Authentication Server Configuration (Keycloak v26)
+INTEG_TEST_AUTH_URL=https://main-id.getbodhi.app
 INTEG_TEST_AUTH_REALM=bodhi
 
 # Test User Credentials (required)
-INTEG_TEST_USERNAME=your-test-username@example.com  
-INTEG_TEST_PASSWORD=your-test-password
-
-# Optional: Client Configuration
-INTEG_TEST_CLIENT_ID=
-INTEG_TEST_CLIENT_SECRET=
+INTEG_TEST_USERNAME=user@email.com
+INTEG_TEST_PASSWORD=pass
 ```
 
-**⚠️ Important**: The test requires valid Keycloak credentials. Ensure your test user exists in the specified realm.
+**⚠️ Important Changes in v26**: 
+- The tests now use **dynamic client creation** instead of pre-configured clients
+- Client credentials are created on-demand using the OAuth2 Token Exchange v2 flow
+- The auth server has been updated from `dev-id.getbodhi.app` to `main-id.getbodhi.app`
+- No longer requires `INTEG_TEST_CLIENT_ID` or `INTEG_TEST_CLIENT_SECRET` environment variables
+
+### OAuth2 Token Exchange v2 Flow
+
+The tests implement the new OAuth2 Token Exchange v2 standard with dynamic audience management:
+
+1. **Dev Console Token**: Obtain token using direct access grant for `user@email.com/pass`
+2. **App Client Creation**: Create public app client via `/realms/bodhi/bodhi/apps` endpoint
+3. **Resource Client Creation**: Create confidential resource client via `/realms/bodhi/bodhi/resources` endpoint
+4. **Audience Request**: Resource client requests access via `/realms/bodhi/bodhi/resources/request-access`
+5. **User Consent**: App user authorizes with resource-specific scope
+6. **Token Exchange**: Standard v2 format without explicit audience parameter
 
 ### Running the Tests
 
@@ -62,37 +73,28 @@ npx playwright test --debug
 
 ### Test Scenarios
 
-1. **Happy Path**: Complete successful authentication flow
-2. **Error Handling**: Invalid credentials and error recovery
-3. **Progress Tracking**: Verify setup progress indicators throughout
+The tests cover:
 
-### Technical Details
-
-- **Server Configuration**: Tests start with `appStatus: 'setup'` to simulate first-time setup
-- **Timeout Handling**: Extended timeouts for external auth server redirects
-- **Cross-Origin Flow**: Handles redirects between local app and external Keycloak
-- **SPA Ready Checks**: Waits for full page load and DOM content before interactions
+- **Authentication Flow**: Complete OAuth login/logout cycle
+- **App Initialization**: Different app states (setup, ready, error)
+- **First-Time Setup**: End-to-end setup flow for new users
+- **Dynamic Client Management**: On-demand creation of OAuth clients
+- **Token Exchange**: OAuth2 Token Exchange v2 validation
 
 ### Troubleshooting
 
 **Common Issues:**
 
-1. **Environment Variables**: Ensure `.env.test` file exists with valid credentials
-2. **Network Timeouts**: External auth server may be slow - timeouts are set to 15-20 seconds
-3. **Keycloak Changes**: If auth server HTML structure changes, update selectors
-4. **Server Startup**: Tests manage their own server lifecycle - no manual server start needed
+1. **Authentication Failures**: Ensure test credentials are valid in the Keycloak realm
+2. **Client Creation Errors**: Verify the dev console user has proper permissions
+3. **Token Exchange Failures**: Check that the audience access request completed successfully
+4. **Network Timeouts**: The auth server may be slow; increase timeout values if needed
 
-**Debug Tips:**
+**Debug Mode:**
+```bash
+# Run with verbose logging
+npx playwright test --debug --headed
 
-- Use `--debug` flag to step through tests
-- Check browser developer tools during test execution
-- Review generated screenshots/videos in `test-results/` directory
-- Verify auth server is accessible at configured URL
-
-### Dependencies
-
-- `@playwright/test` - Test framework
-- `dotenv` - Environment variable loading
-- Local NAPI bindings for server management
-
-The tests use the existing `createServerManager` utility to start isolated server instances with specific configurations for each test scenario. 
+# Run specific test file
+npx playwright test first-time-auth-setup.spec.js --debug
+``` 

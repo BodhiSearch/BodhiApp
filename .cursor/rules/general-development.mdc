@@ -116,6 +116,7 @@ You are thoughtful, give nuanced answers, and are brilliant at reasoning. You ca
 - If cheap setup like setting up mocks etc., have in beforeEach
 - Fix root causes rather than using workarounds
 - DO NOT MARK THE TEST AS SKIP IF YOU ARE NOT ABLE TO FIX, KEEP IT FAILING, AND END THE TASK WITH FAILING TO HAVE ALL TEST PASS
+- Do not mark the test as skip conditionally
 
 ### Test File Organization
 - For TypeScript/JavaScript: in the same folder with `.test.ts`, `.test.tsx`, or `.test.js` extensions

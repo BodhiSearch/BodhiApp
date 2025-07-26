@@ -2,8 +2,6 @@ import { expect } from '@playwright/test';
 import {
   createTestServer,
   loadBindings,
-  randomPort,
-  sleep,
   waitForServer,
 } from '../test-helpers.mjs';
 
@@ -11,7 +9,7 @@ import {
  * Server manager for Playwright tests
  * Handles server lifecycle and provides URL for browser tests
  */
-export class PlaywrightServerManager {
+export class BodhiAppServer {
   constructor(serverConfig = {}) {
     this.server = null;
     this.bindings = null;
@@ -68,38 +66,8 @@ export class PlaywrightServerManager {
 /**
  * Create a server manager for Playwright tests
  * @param {Object} serverConfig - Server configuration options
- * @returns {PlaywrightServerManager} New server manager instance
+ * @returns {BodhiAppServer} New server manager instance
  */
 export function createServerManager(serverConfig = {}) {
-  return new PlaywrightServerManager(serverConfig);
-}
-
-/**
- * Wait for SPA to be fully loaded and rendered
- * @param {import('@playwright/test').Page} page - Playwright page object
- */
-export async function waitForSPAReady(page) {
-  await page.waitForLoadState('networkidle');
-  await page.waitForLoadState('domcontentloaded');
-}
-
-/**
- * Wait for page redirect to expected path
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @param {string} expectedPath - Expected path to redirect to
- */
-export async function waitForRedirect(page, expectedPath) {
-  await page.waitForURL((url) => {
-    const pathname = new URL(url).pathname;
-    return pathname === expectedPath;
-  });
-}
-
-/**
- * Get current page path
- * @param {import('@playwright/test').Page} page - Playwright page object
- * @returns {string} Current page path
- */
-export function getCurrentPath(page) {
-  return new URL(page.url()).pathname;
+  return new BodhiAppServer(serverConfig);
 }

@@ -61,7 +61,7 @@ function createFullTestConfig(bindings, options = {}) {
     logLevel = 'debug',
     logStdout = true,
     envVars = {},
-    authUrl = 'https://dev-id.getbodhi.app',
+    authUrl = 'https://main-id.getbodhi.app',
     authRealm = 'bodhi',
     clientId = null,
     clientSecret = null,
@@ -134,12 +134,40 @@ async function waitForServer(server, maxAttempts = 30, interval = 1000) {
   return false;
 }
 
+/**
+ * Wait for SPA to be fully loaded and rendered
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ */
+async function waitForSPAReady(page) {
+  await page.waitForLoadState('networkidle');
+  await page.waitForLoadState('domcontentloaded');
+}
+
+/**
+ * Wait for page redirect to expected path
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @param {string} expectedPath - Expected path to redirect to
+ */
+async function waitForRedirect(page, expectedPath) {
+  await page.waitForURL((url) => {
+    const pathname = new URL(url).pathname;
+    return pathname === expectedPath;
+  });
+}
+
+/**
+ * Get current page path
+ * @param {import('@playwright/test').Page} page - Playwright page object
+ * @returns {string} Current page path
+ */
+function getCurrentPath(page) {
+  return new URL(page.url()).pathname;
+}
+
 export {
-  loadBindings,
-  randomPort,
-  createTempDir,
-  createTestServer,
-  createFullTestConfig,
-  sleep,
-  waitForServer,
+  createFullTestConfig, createTempDir,
+  createTestServer, getCurrentPath, loadBindings,
+  randomPort, sleep, waitForRedirect, waitForServer,
+  waitForSPAReady
 };
+
