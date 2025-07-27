@@ -476,7 +476,11 @@ impl AuthServerTestClient {
   }
 
   /// Complete dynamic client setup following httpyac script pattern
-  pub async fn setup_dynamic_clients(&self, username: &str, password: &str) -> Result<DynamicClients> {
+  pub async fn setup_dynamic_clients(
+    &self,
+    username: &str,
+    password: &str,
+  ) -> Result<DynamicClients> {
     // Step 1: Get Dev Console User Token
     let dev_console_token = self.get_dev_console_user_token(username, password).await?;
 
@@ -486,9 +490,7 @@ impl AuthServerTestClient {
       .await?;
 
     // Step 3: Create Resource Server Client
-    let resource_client = self
-      .create_resource_client("Test Resource Server")
-      .await?;
+    let resource_client = self.create_resource_client("Test Resource Server").await?;
 
     // Step 4: Get Resource Client Service Account Token
     let resource_service_token = self.get_resource_service_token(&resource_client).await?;

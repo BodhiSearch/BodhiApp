@@ -7,12 +7,19 @@ use services::{
   extract_claims, AppRegInfo, AuthService, CacheService, Claims, ExpClaims, OfflineClaims,
   ScopeClaims, SecretService, SecretServiceExt, SettingService, TokenError, TOKEN_TYPE_OFFLINE,
 };
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower_sessions::Session;
 
 const BEARER_PREFIX: &str = "Bearer ";
 const SCOPE_OFFLINE_ACCESS: &str = "offline_access";
 const LEEWAY_SECONDS: i64 = 60; // 1 minute leeway for clock skew
+
+pub fn create_token_digest(bearer_token: &str) -> String {
+  let mut hasher = Sha256::new();
+  hasher.update(bearer_token.as_bytes());
+  format!("{:x}", hasher.finalize())[0..12].to_string()
+}
 
 pub struct DefaultTokenService {
   auth_service: Arc<dyn AuthService>,
@@ -70,9 +77,10 @@ impl DefaultTokenService {
       if bearer_claims.exp < Utc::now().timestamp() as u64 {
         return Err(TokenError::Expired)?;
       }
+      let token_digest = create_token_digest(bearer_token);
       let cached_token = if let Some(access_token) = self
         .cache_service
-        .get(&format!("exchanged_token:{}", &bearer_claims.jti))
+        .get(&format!("exchanged_token:{}", &token_digest))
       {
         let scope_claims = extract_claims::<ScopeClaims>(&access_token)?;
         if scope_claims.exp < Utc::now().timestamp() as u64 {
@@ -88,10 +96,9 @@ impl DefaultTokenService {
         return Ok((access_token, resource_scope));
       }
       let (access_token, resource_scope) = self.handle_external_client_token(bearer_token).await?;
-      self.cache_service.set(
-        &format!("exchanged_token:{}", &bearer_claims.jti),
-        &access_token,
-      );
+      self
+        .cache_service
+        .set(&format!("exchanged_token:{}", &token_digest), &access_token);
       return Ok((access_token, resource_scope));
     };
 
@@ -318,7 +325,9 @@ impl DefaultTokenService {
 
 #[cfg(test)]
 mod tests {
-  use crate::{token_service::SCOPE_OFFLINE_ACCESS, AuthError, DefaultTokenService};
+  use crate::{
+    create_token_digest, token_service::SCOPE_OFFLINE_ACCESS, AuthError, DefaultTokenService,
+  };
   use anyhow_trace::anyhow_trace;
   use chrono::{Duration, Utc};
   use mockall::predicate::*;
@@ -330,13 +339,13 @@ mod tests {
   use services::{
     db::DbService,
     test_utils::{
-      build_token, offline_token_claims, test_db_service, SecretServiceStub, TestDbService, ISSUER,
-      TEST_CLIENT_ID, TEST_CLIENT_SECRET,
+      build_token, offline_token_claims, test_db_service, SecretServiceStub, SettingServiceStub,
+      TestDbService, ISSUER, TEST_CLIENT_ID, TEST_CLIENT_SECRET,
     },
     AppRegInfoBuilder, AuthServiceError, CacheService, MockAuthService, MockSecretService,
     MockSettingService, MokaCacheService, TOKEN_TYPE_OFFLINE,
   };
-  use std::sync::Arc;
+  use std::{collections::HashMap, sync::Arc};
   use uuid::Uuid;
 
   #[rstest]
@@ -856,6 +865,153 @@ mod tests {
     // Then - Should succeed with exchanged token
     assert_eq!(exchanged_token, access_token);
     assert_eq!(ResourceScope::User(UserScope::User), scope);
+    Ok(())
+  }
+
+  #[anyhow_trace]
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_external_client_token_cache_security_prevents_jti_forgery(
+    #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Given - Create a legitimate external token from a different client
+    let external_client_id = "external-client";
+    let sub = Uuid::new_v4().to_string();
+    let jti = Uuid::new_v4().to_string();
+    let legitimate_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": jti.clone(),
+      "iss": ISSUER,
+      "sub": sub.clone(),
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": external_client_id,
+      "aud": TEST_CLIENT_ID,
+      "session_state": Uuid::new_v4().to_string(),
+      "scope": "openid scope_user_user",
+      "sid": Uuid::new_v4().to_string(),
+    });
+    let (legitimate_token, _) = build_token(legitimate_token_claims)?;
+
+    // Create a forged token with the same JTI but different content
+    let forged_token_claims = json!({
+      "exp": (Utc::now() + Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": jti.clone(), // Same JTI as legitimate token
+      "iss": ISSUER,
+      "sub": "malicious-user", // Different subject
+      "typ": TOKEN_TYPE_OFFLINE,
+      "azp": external_client_id,
+      "aud": TEST_CLIENT_ID,
+      "session_state": Uuid::new_v4().to_string(),
+      "scope": "openid scope_user_admin", // Different scope - trying to escalate
+      "sid": Uuid::new_v4().to_string(),
+    });
+    let (forged_token, _) = build_token(forged_token_claims)?;
+
+    // Setup mock auth service - legitimate token succeeds, forged token fails
+    let (legitimate_exchanged_token, _) = build_token(
+      json! {{ "iss": ISSUER, "azp": TEST_CLIENT_ID, "jti": "legitimate-jti", "sub": sub, "exp": Utc::now().timestamp() + 3600, "scope": "scope_user_user"}},
+    )?;
+
+    let app_reg_info = AppRegInfoBuilder::test_default().build()?;
+    let secret_service = SecretServiceStub::default().with_app_reg_info(&app_reg_info);
+    let mut mock_auth = MockAuthService::new();
+    let cache_service = Arc::new(MokaCacheService::default());
+
+    // Expect token exchange for legitimate token to succeed
+    mock_auth
+      .expect_exchange_app_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq(legitimate_token.clone()),
+        eq(
+          vec!["scope_user_user", "openid", "email", "profile", "roles"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>(),
+        ),
+      )
+      .times(1)
+      .return_once({
+        let token = legitimate_exchanged_token.clone();
+        move |_, _, _, _| Ok((token, None))
+      });
+
+    // Expect token exchange for forged token to fail with auth service error
+    mock_auth
+      .expect_exchange_app_token()
+      .with(
+        eq(TEST_CLIENT_ID),
+        eq(TEST_CLIENT_SECRET),
+        eq(forged_token.clone()),
+        eq(
+          vec!["scope_user_admin", "openid", "email", "profile", "roles"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>(),
+        ),
+      )
+      .times(1)
+      .return_once(|_, _, _, _| {
+        Err(AuthServiceError::TokenExchangeError(
+          "forged token rejected".to_string(),
+        ))
+      });
+
+    let setting_service = SettingServiceStub::new(HashMap::from([
+      (
+        "BODHI_AUTH_URL".to_string(),
+        "https://id.mydomain.com".to_string(),
+      ),
+      ("BODHI_AUTH_REALM".to_string(), "myapp".to_string()),
+    ]));
+
+    let token_service = Arc::new(DefaultTokenService::new(
+      Arc::new(mock_auth),
+      Arc::new(secret_service),
+      cache_service.clone(),
+      Arc::new(test_db_service),
+      Arc::new(setting_service),
+    ));
+
+    // When - First validate the legitimate token (this will cache it)
+    let (legitimate_access_token, legitimate_scope) = token_service
+      .validate_bearer_token(&format!("Bearer {}", legitimate_token))
+      .await?;
+
+    // Then - Verify legitimate token works as expected
+    assert_eq!(legitimate_exchanged_token, legitimate_access_token);
+    assert_eq!(ResourceScope::User(UserScope::User), legitimate_scope);
+
+    // When - Try to validate the forged token with same JTI
+    let forged_result = token_service
+      .validate_bearer_token(&format!("Bearer {}", forged_token))
+      .await;
+
+    assert!(matches!(forged_result, Err(AuthError::AuthService(AuthServiceError::TokenExchangeError(_)))));
+    let legitimate_digest = create_token_digest(&legitimate_token);
+    let forged_digest = create_token_digest(&forged_token);
+    assert_ne!(
+      legitimate_digest, forged_digest,
+      "Token digests should be different even with same JTI"
+    );
+
+    let cached_legitimate = cache_service.get(&format!("exchanged_token:{}", legitimate_digest));
+    let cached_forged = cache_service.get(&format!("exchanged_token:{}", forged_digest));
+
+    assert!(
+      cached_legitimate.is_some(),
+      "Legitimate token should be cached"
+    );
+    assert!(
+      cached_forged.is_none(),
+      "Forged token should not be cached due to validation failure"
+    );
+
     Ok(())
   }
 }

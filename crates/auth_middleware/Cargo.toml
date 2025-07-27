@@ -22,6 +22,7 @@ reqwest = { workspace = true, optional = true }
 rstest = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["indexmap"] }
+sha2 = { workspace = true }
 thiserror = { workspace = true }
 tower-sessions = { workspace = true }
 tracing = { workspace = true }
