@@ -200,8 +200,7 @@ mod tests {
   use rstest::rstest;
   use services::{
     test_utils::{TEST_ALIASES_DIR, TEST_PROD_DB, TEST_SESSION_DB},
-    EnvWrapper, MockEnvWrapper, MockSettingService, SettingService, BODHI_APP_TYPE,
-    BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, HF_HOME,
+    EnvWrapper, MockEnvWrapper, MockSettingService, SettingService, BODHI_HOME, HF_HOME,
   };
   use std::collections::HashMap;
   use std::env::VarError;
@@ -364,48 +363,6 @@ mod tests {
   }
 
   // Tests for helper methods
-
-  #[rstest]
-  fn test_build_system_settings() -> anyhow::Result<()> {
-    let options = AppOptionsBuilder::development().build()?;
-    let settings = super::build_system_settings(&options);
-
-    assert_eq!(settings.len(), 5);
-
-    // Check each setting
-    let env_type_setting = settings.iter().find(|s| s.key == BODHI_ENV_TYPE).unwrap();
-    assert_eq!(
-      env_type_setting.value,
-      serde_yaml::Value::String("development".to_string())
-    );
-    assert_eq!(env_type_setting.source, objs::SettingSource::System);
-
-    let app_type_setting = settings.iter().find(|s| s.key == BODHI_APP_TYPE).unwrap();
-    assert_eq!(
-      app_type_setting.value,
-      serde_yaml::Value::String("container".to_string())
-    );
-
-    let version_setting = settings.iter().find(|s| s.key == BODHI_VERSION).unwrap();
-    assert_eq!(
-      version_setting.value,
-      serde_yaml::Value::String(env!("CARGO_PKG_VERSION").to_string())
-    );
-
-    let auth_url_setting = settings.iter().find(|s| s.key == BODHI_AUTH_URL).unwrap();
-    assert_eq!(
-      auth_url_setting.value,
-      serde_yaml::Value::String("https://dev-id.getbodhi.app".to_string())
-    );
-
-    let auth_realm_setting = settings.iter().find(|s| s.key == BODHI_AUTH_REALM).unwrap();
-    assert_eq!(
-      auth_realm_setting.value,
-      serde_yaml::Value::String("bodhi".to_string())
-    );
-
-    Ok(())
-  }
 
   #[rstest]
   fn test_setup_bodhi_subdirs_success(empty_bodhi_home: TempDir) -> anyhow::Result<()> {

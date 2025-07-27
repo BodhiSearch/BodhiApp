@@ -45,7 +45,7 @@ pub fn test_config(temp_dir: TempDir) -> (NapiAppOptions, TempDir) {
   config = set_system_setting(
     config,
     BODHI_AUTH_URL.to_string(),
-    "https://dev-id.getbodhi.app".to_string(),
+    "https://test-id.getbodhi.app".to_string(),
   );
   config = set_system_setting(config, BODHI_AUTH_REALM.to_string(), "bodhiapp".to_string());
 

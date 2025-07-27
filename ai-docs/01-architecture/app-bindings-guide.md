@@ -163,7 +163,7 @@ import { setClientCredentials, setSystemSetting } from '@bodhiapp/app-bindings';
 let config = createNapiAppOptions();
 
 // Set OAuth configuration
-config = setSystemSetting(config, BODHI_AUTH_URL, 'https://dev-id.getbodhi.app');
+config = setSystemSetting(config, BODHI_AUTH_URL, 'https://main-id.getbodhi.app');
 config = setSystemSetting(config, BODHI_AUTH_REALM, 'bodhi');
 config = setClientCredentials(config, 'your-client-id', 'your-client-secret');
 ```
