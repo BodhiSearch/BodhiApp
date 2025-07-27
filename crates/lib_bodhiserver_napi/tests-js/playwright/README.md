@@ -27,7 +27,7 @@ Create a `.env.test` file in this directory with the following variables:
 
 ```bash
 # Authentication Server Configuration (Keycloak v26)
-INTEG_TEST_AUTH_URL=https://main-id.getbodhi.app
+INTEG_TEST_MAIN_AUTH_URL=https://main-id.getbodhi.app
 INTEG_TEST_AUTH_REALM=bodhi
 
 # Test User Credentials (required)

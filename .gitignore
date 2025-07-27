@@ -28,10 +28,6 @@ target/
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-.env
-.env.*
-!.env.sample
-
 .DS_Store
 NOTES-*
 
@@ -179,6 +175,7 @@ celerybeat.pid
 .env.*
 !.env.sample
 !.env.example
+!.env.test.example
 !.env.ci
 .venv
 env/
