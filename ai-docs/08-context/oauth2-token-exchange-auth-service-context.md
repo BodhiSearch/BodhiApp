@@ -187,7 +187,7 @@ grant_type=password&client_id={{app_client_id}}&username={{user_regular}}&passwo
 ### Environment Variables (.env.test)
 
 ```bash
-INTEG_TEST_AUTH_SERVER_URL=https://test-id.getbodhi.app
+INTEG_TEST_AUTH_URL=https://test-id.getbodhi.app
 INTEG_TEST_AUTH_REALM=bodhi
 INTEG_TEST_ADMIN_USERNAME=admin
 INTEG_TEST_ADMIN_PASSWORD=admin_password
