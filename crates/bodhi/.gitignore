@@ -4,6 +4,7 @@ public/workbox-*.js*
 
 .env.*
 !.env.example
+!.env.test.example
 
 
 /src-tauri/bin/*
