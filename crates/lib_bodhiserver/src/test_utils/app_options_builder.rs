@@ -9,7 +9,7 @@ impl AppOptionsBuilder {
       .env_type(EnvType::Development)
       .app_type(AppType::Container)
       .app_version(env!("CARGO_PKG_VERSION"))
-      .auth_url("https://dev-id.getbodhi.app")
+      .auth_url("https://test-id.getbodhi.app")
       .auth_realm("bodhi")
   }
 
