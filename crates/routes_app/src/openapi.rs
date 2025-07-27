@@ -6,8 +6,9 @@ use crate::{
   __path_get_download_status_handler, __path_list_downloads_handler,
   __path_list_local_aliases_handler, __path_list_local_modelfiles_handler,
   __path_list_settings_handler, __path_list_tokens_handler, __path_logout_handler,
-  __path_ping_handler, __path_pull_by_alias_handler, __path_setup_handler,
-  __path_update_setting_handler, __path_update_token_handler, __path_user_info_handler,
+  __path_ping_handler, __path_pull_by_alias_handler, __path_request_access_handler,
+  __path_setup_handler, __path_update_setting_handler, __path_update_token_handler,
+  __path_user_info_handler,
 };
 use objs::{
   OpenAIApiError, Repo, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS,
@@ -20,7 +21,7 @@ use routes_oai::{
 };
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
-  AppStatus, SettingService,
+  AppStatus, RequestAccessRequest, RequestAccessResponse, SettingService,
 };
 use std::sync::Arc;
 use utoipa::{
@@ -42,6 +43,7 @@ make_ui_endpoint!(ENDPOINT_APP_SETUP, "setup");
 make_ui_endpoint!(ENDPOINT_USER_INFO, "user");
 make_ui_endpoint!(ENDPOINT_AUTH_INITIATE, "auth/initiate");
 make_ui_endpoint!(ENDPOINT_AUTH_CALLBACK, "auth/callback");
+make_ui_endpoint!(ENDPOINT_AUTH_REQUEST_ACCESS, "auth/request-access");
 
 make_ui_endpoint!(ENDPOINT_MODEL_FILES, "modelfiles");
 make_ui_endpoint!(ENDPOINT_MODEL_PULL, "modelfiles/pull");
@@ -114,6 +116,8 @@ For API keys, specify required scope when creating the token.
             SetupRequest,
             SetupResponse,
             UserInfo,
+            RequestAccessRequest,
+            RequestAccessResponse,
             NewDownloadRequest,
             DownloadRequest,
             AliasResponse,
@@ -141,6 +145,7 @@ For API keys, specify required scope when creating the token.
         // Authentication endpoints
         auth_initiate_handler,
         auth_callback_handler,
+        request_access_handler,
         logout_handler,
         user_info_handler,
 
@@ -215,8 +220,9 @@ impl Modify for OpenAPIEnvModifier {
 #[cfg(test)]
 mod tests {
   use crate::{
-    BodhiOpenAPIDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_LOGOUT, ENDPOINT_MODELS,
-    ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
+    BodhiOpenAPIDoc, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_REQUEST_ACCESS,
+    ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
+    ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
   };
   use pretty_assertions::assert_eq;
   use serde_json::json;
@@ -401,6 +407,45 @@ mod tests {
     if let RefOr::T(response) = success_response {
       assert!(response.content.get("application/json").is_some());
     }
+  }
+
+  #[test]
+  fn test_request_access_endpoint() {
+    let api_doc = BodhiOpenAPIDoc::openapi();
+
+    // Verify endpoint
+    let paths = &api_doc.paths;
+    let request_access = paths
+      .paths
+      .get(ENDPOINT_AUTH_REQUEST_ACCESS)
+      .expect("Request access endpoint not found");
+    let post_op = request_access
+      .post
+      .as_ref()
+      .expect("POST operation not found");
+
+    // Check operation details
+    assert_eq!(post_op.tags.as_ref().unwrap()[0], "auth");
+    assert_eq!(post_op.operation_id.as_ref().unwrap(), "requestAccess");
+
+    // Check responses
+    let responses = &post_op.responses;
+    assert!(responses.responses.contains_key("200"));
+    assert!(responses.responses.contains_key("400"));
+    assert!(responses.responses.contains_key("500"));
+
+    // Verify response schema references RequestAccessResponse
+    let success_response = responses.responses.get("200").unwrap();
+    if let RefOr::T(response) = success_response {
+      assert!(response.content.get("application/json").is_some());
+    }
+
+    // Verify request body references RequestAccessRequest
+    let request_body = post_op
+      .request_body
+      .as_ref()
+      .expect("Request body not found");
+    assert!(request_body.content.get("application/json").is_some());
   }
 
   #[test]

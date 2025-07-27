@@ -15,6 +15,7 @@ mod routes_pull;
 mod routes_settings;
 mod routes_setup;
 mod routes_ui;
+mod routes_user;
 
 pub use error::*;
 pub use objs::*;
@@ -28,6 +29,7 @@ pub use routes_pull::*;
 pub use routes_settings::*;
 pub use routes_setup::*;
 pub use routes_ui::*;
+pub use routes_user::*;
 
 pub mod l10n {
   use include_dir::Dir;

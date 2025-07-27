@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="OAuth2 authentication test app with PKCE support">
+  <meta name="keywords" content="oauth, keycloak, authentication, test, pkce">
+  <title>OAuth2 Authentication Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    input[type="checkbox"] {
+      margin-right: 8px;
+    }
+
+    .btn {
+      background-color: #007bff;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    .btn:hover {
+      background-color: #0056b3;
+    }
+
+    .btn-secondary {
+      background-color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background-color: #545b62;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #c3e6cb;
+      margin: 20px 0;
+    }
+
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #f5c6cb;
+      margin: 20px 0;
+    }
+
+    .token-display {
+      background-color: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      padding: 15px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 300px;
+      overflow-y: auto;
+      margin: 10px 0;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      font-style: italic;
+      color: #666;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>OAuth2 Authentication Test</h1>
+
+    <div id="config-section">
+      <h2>OAuth Configuration</h2>
+      <form id="oauth-config">
+        <div class="form-group">
+          <label for="auth-server-url">Authorization Server URL:</label>
+          <input type="url" id="auth-server-url" placeholder="http://localhost:8080" required />
+        </div>
+
+        <div class="form-group">
+          <label for="realm">Realm:</label>
+          <input type="text" id="realm" placeholder="bodhi" required />
+        </div>
+
+        <div class="form-group">
+          <label for="client-id">Client ID:</label>
+          <input type="text" id="client-id" placeholder="client-bodhi-dev-console" required />
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="confidential-client" />
+            Confidential Client (requires client secret)
+          </label>
+        </div>
+
+        <div class="form-group" id="client-secret-group">
+          <label for="client-secret">Client Secret:</label>
+          <input type="text" id="client-secret" placeholder="change-me" disabled />
+        </div>
+
+        <div class="form-group">
+          <label for="redirect-uri">Redirect URI:</label>
+          <input type="url" id="redirect-uri" placeholder="http://localhost/index.html" required />
+        </div>
+
+        <div class="form-group">
+          <label for="scope">Scope:</label>
+          <input type="text" id="scope" placeholder="openid profile email" />
+        </div>
+
+        <button type="submit" class="btn">Start OAuth Flow</button>
+        <button type="button" class="btn btn-secondary" onclick="resetApp()">Reset</button>
+      </form>
+    </div>
+
+    <div id="loading-section" class="hidden">
+      <div class="loading">Exchanging authorization code for access token...</div>
+    </div>
+
+    <div id="error-section" class="hidden">
+      <div class="error">
+        <h3>Authentication Error</h3>
+        <div id="error-message"></div>
+      </div>
+      <button class="btn" onclick="resetApp()">Try Again</button>
+    </div>
+
+    <div id="success-section" class="hidden">
+      <div class="success">OAuth flow completed successfully!</div>
+      <h3>Access Token:</h3>
+      <div id="access-token" class="token-display"></div>
+      <h3>Token Response:</h3>
+      <div id="token-response" class="token-display"></div>
+      <button class="btn" onclick="window.location.href='api.html'">Test API Calls</button>
+      <button class="btn btn-secondary" onclick="resetApp()">Reset</button>
+    </div>
+  </div>
+
+  <script>
+    // OAuth state and PKCE variables
+    let oauthState = null;
+    let codeVerifier = null;
+    let codeChallenge = null;
+
+    // Initialize app on page load
+    window.addEventListener('load', function () {
+      // Pre-fill form with default values
+      document.getElementById('auth-server-url').value = 'http://localhost:8080';
+      document.getElementById('realm').value = 'bodhi';
+      document.getElementById('client-id').value = 'client-bodhi-dev-console';
+      document.getElementById('client-secret').value = 'change-me';
+      document.getElementById('redirect-uri').value = window.location.href;
+      document.getElementById('scope').value = 'openid profile email';
+
+      // Handle confidential client checkbox
+      document.getElementById('confidential-client').addEventListener('change', function () {
+        const clientSecretInput = document.getElementById('client-secret');
+        if (this.checked) {
+          clientSecretInput.disabled = false;
+        } else {
+          clientSecretInput.disabled = true;
+        }
+      });
+
+      // Check for OAuth callback
+      handleOAuthCallback();
+    });
+
+    // Handle OAuth configuration form submission
+    document.getElementById('oauth-config').addEventListener('submit', function (e) {
+      e.preventDefault();
+      startOAuthFlow();
+    });
+
+    function startOAuthFlow() {
+      const authServerUrl = document.getElementById('auth-server-url').value.trim();
+      const realm = document.getElementById('realm').value.trim();
+      const clientId = document.getElementById('client-id').value.trim();
+      const isConfidential = document.getElementById('confidential-client').checked;
+      const clientSecret = document.getElementById('client-secret').value.trim();
+      const redirectUri = document.getElementById('redirect-uri').value.trim();
+      const scope = document.getElementById('scope').value.trim();
+
+      if (!authServerUrl || !realm || !clientId || !redirectUri) {
+        alert('Please fill in all required fields');
+        return;
+      }
+
+      // Generate PKCE parameters
+      codeVerifier = generateCodeVerifier();
+      oauthState = generateRandomString(32);
+      generateCodeChallenge(codeVerifier).then(function (codeChallenge) {
+        // Store OAuth config in sessionStorage
+        sessionStorage.setItem('oauthConfig', JSON.stringify({
+          authServerUrl,
+          realm,
+          clientId,
+          isConfidential,
+          clientSecret,
+          redirectUri,
+          scope,
+          codeVerifier,
+          state: oauthState
+        }));
+
+        // Build authorization URL
+        const authUrl = new URL(`${authServerUrl}/realms/${realm}/protocol/openid-connect/auth`);
+        authUrl.searchParams.append('client_id', clientId);
+        authUrl.searchParams.append('redirect_uri', redirectUri);
+        authUrl.searchParams.append('response_type', 'code');
+        authUrl.searchParams.append('scope', scope);
+        authUrl.searchParams.append('state', oauthState);
+
+        // Add PKCE parameters for public clients
+        if (!isConfidential) {
+          authUrl.searchParams.append('code_challenge', codeChallenge);
+          authUrl.searchParams.append('code_challenge_method', 'S256');
+        }
+
+        // Redirect to authorization server
+        window.location.href = authUrl.toString();
+      });
+    }
+
+    function handleOAuthCallback() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      const state = urlParams.get('state');
+      const error = urlParams.get('error');
+
+      if (error) {
+        showError(`OAuth Error: ${error} - ${urlParams.get('error_description') || 'Unknown error'}`);
+        return;
+      }
+
+      if (code && state) {
+        // Get stored OAuth config
+        const storedConfig = sessionStorage.getItem('oauthConfig');
+        if (!storedConfig) {
+          showError('OAuth configuration not found. Please try again.');
+          return;
+        }
+
+        const config = JSON.parse(storedConfig);
+
+        // Verify state parameter
+        if (state !== config.state) {
+          showError('Invalid state parameter. Possible CSRF attack.');
+          return;
+        }
+
+        // Show loading
+        document.getElementById('config-section').classList.add('hidden');
+        document.getElementById('loading-section').classList.remove('hidden');
+
+        // Exchange code for token
+        exchangeCodeForToken(code, config);
+      }
+    }
+
+    async function exchangeCodeForToken(code, config) {
+      try {
+        const tokenUrl = `${config.authServerUrl}/realms/${config.realm}/protocol/openid-connect/token`;
+
+        const tokenParams = new URLSearchParams();
+        tokenParams.append('grant_type', 'authorization_code');
+        tokenParams.append('client_id', config.clientId);
+        tokenParams.append('code', code);
+        tokenParams.append('redirect_uri', config.redirectUri);
+
+        // Add client secret for confidential clients
+        if (config.isConfidential && config.clientSecret) {
+          tokenParams.append('client_secret', config.clientSecret);
+        }
+
+        // Add PKCE code verifier for public clients
+        if (!config.isConfidential) {
+          tokenParams.append('code_verifier', config.codeVerifier);
+        }
+
+        const response = await fetch(tokenUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: tokenParams
+        });
+
+        const tokenData = await response.json();
+
+        if (!response.ok) {
+          throw new Error(`Token exchange failed: ${tokenData.error_description || tokenData.error || 'Unknown error'}`);
+        }
+
+        // Show success
+        document.getElementById('loading-section').classList.add('hidden');
+        document.getElementById('success-section').classList.remove('hidden');
+
+        // Display tokens
+        document.getElementById('access-token').textContent = tokenData.access_token;
+        document.getElementById('token-response').textContent = JSON.stringify(tokenData, null, 2);
+
+        // Store access token for API testing
+        sessionStorage.setItem('accessToken', tokenData.access_token);
+
+        // Clear URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+
+      } catch (error) {
+        console.error('Token exchange error:', error);
+        showError(`Token exchange failed: ${error.message}`);
+      }
+    }
+
+    function showError(message) {
+      document.getElementById('config-section').classList.add('hidden');
+      document.getElementById('loading-section').classList.add('hidden');
+      document.getElementById('error-section').classList.remove('hidden');
+      document.getElementById('error-message').textContent = message;
+    }
+
+    function resetApp() {
+      // Clear session storage
+      sessionStorage.clear();
+
+      // Reset form
+      document.getElementById('oauth-config').reset();
+
+      // Reset visibility
+      document.getElementById('config-section').classList.remove('hidden');
+      document.getElementById('loading-section').classList.add('hidden');
+      document.getElementById('error-section').classList.add('hidden');
+      document.getElementById('success-section').classList.add('hidden');
+
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Reset form values
+      document.getElementById('auth-server-url').value = 'http://localhost:8080';
+      document.getElementById('realm').value = 'bodhi';
+      document.getElementById('client-id').value = 'client-bodhi-dev-console';
+      document.getElementById('client-secret').value = 'change-me';
+      document.getElementById('redirect-uri').value = window.location.href;
+      document.getElementById('scope').value = 'openid profile email';
+      document.getElementById('confidential-client').checked = false;
+      document.getElementById('client-secret').disabled = true;
+    }
+
+    // Utility functions for PKCE
+    function generateRandomString(length) {
+      const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+      let result = '';
+      for (let i = 0; i < length; i++) {
+        result += charset.charAt(Math.floor(Math.random() * charset.length));
+      }
+      return result;
+    }
+
+    function generateCodeVerifier() {
+      return generateRandomString(128);
+    }
+
+    async function generateCodeChallenge(verifier) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(verifier);
+      const digest = await window.crypto.subtle.digest('SHA-256', data);
+      return btoa(String.fromCharCode(...new Uint8Array(digest)))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    }
+  </script>
+</body>
+</html> 

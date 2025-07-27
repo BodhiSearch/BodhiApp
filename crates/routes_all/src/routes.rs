@@ -18,10 +18,10 @@ use routes_app::{
   create_pull_request_handler, create_token_handler, delete_setting_handler, dev_secrets_handler,
   envs_handler, get_alias_handler, get_download_status_handler, list_downloads_handler,
   list_local_aliases_handler, list_local_modelfiles_handler, list_settings_handler,
-  list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler, setup_handler,
+  list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler, request_access_handler, setup_handler,
   update_alias_handler, update_setting_handler, update_token_handler, user_info_handler,
   BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
-  ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS,
+  ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS,
   ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING,
   ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
@@ -68,6 +68,7 @@ pub fn build_routes(
     .route(ENDPOINT_USER_INFO, get(user_info_handler))
     .route(ENDPOINT_AUTH_INITIATE, post(auth_initiate_handler))
     .route(ENDPOINT_AUTH_CALLBACK, post(auth_callback_handler))
+    .route(ENDPOINT_AUTH_REQUEST_ACCESS, post(request_access_handler))
     .route_layer(from_fn_with_state(state.clone(), inject_session_auth_info));
 
   // User level APIs (role=user & scope=scope_token_user)

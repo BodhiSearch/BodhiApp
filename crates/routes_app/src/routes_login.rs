@@ -1,5 +1,5 @@
-use crate::{LoginError, ENDPOINT_LOGOUT, ENDPOINT_USER_INFO};
-use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE};
+use crate::{LoginError, ENDPOINT_LOGOUT};
+use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS};
 use auth_middleware::{
   app_status_or_default, generate_random_string, KEY_RESOURCE_TOKEN, SESSION_KEY_ACCESS_TOKEN,
   SESSION_KEY_REFRESH_TOKEN,
@@ -16,7 +16,15 @@ use base64::{engine::general_purpose, Engine as _};
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
+use server_core::RouterState;
+use services::{
+  extract_claims, AppStatus, Claims, RequestAccessRequest, RequestAccessResponse, SecretServiceExt,
+};
+use sha2::{Digest, Sha256};
+use std::{collections::HashMap, sync::Arc};
+use tower_sessions::Session;
 use tracing::instrument;
+use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
 #[schema(example = json!({
@@ -26,13 +34,6 @@ pub struct RedirectResponse {
   /// The URL to redirect to for OAuth authentication
   pub location: String,
 }
-
-use server_core::RouterState;
-use services::{extract_claims, AppStatus, Claims, SecretServiceExt};
-use sha2::{Digest, Sha256};
-use std::{collections::HashMap, sync::Arc};
-use tower_sessions::Session;
-use utoipa::ToSchema;
 
 /// Start OAuth flow - returns location for OAuth provider or home
 #[utoipa::path(
@@ -288,77 +289,43 @@ pub async fn logout_handler(
   let ui_login = format!("{}/ui/login", setting_service.frontend_url());
   Ok(Json(RedirectResponse { location: ui_login }))
 }
-
-/// Information about the currently logged in user
-#[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
-#[schema(example = json!({
-    "logged_in": true,
-    "email": "user@example.com",
-    "roles": ["admin", "user"]
-}))]
-pub struct UserInfo {
-  /// If user is logged in
-  pub logged_in: bool,
-  /// User's email address
-  pub email: Option<String>,
-  /// List of roles assigned to the user
-  pub roles: Vec<String>,
-}
-
-/// Get information about the currently logged in user
+/// Request access for an app client to this resource server
 #[utoipa::path(
-    get,
-    path = ENDPOINT_USER_INFO,
+    post,
+    path = ENDPOINT_AUTH_REQUEST_ACCESS,
     tag = API_TAG_AUTH,
-    operation_id = "getCurrentUser",
+    operation_id = "requestAccess",
+    request_body = RequestAccessRequest,
     responses(
-        (status = 200, description = "Returns current user information", body = UserInfo),
-        (status = 500, description = "Error in extracting user info from token", body = OpenAIApiError,
-         example = json!({
-             "error": {
-                 "message": "token is invalid",
-                 "type": "authentication_error",
-                 "code": "token_error-invalid_token"
-             }
-         })
-        )
+        (status = 200, description = "Access granted, returns resource scope", body = RequestAccessResponse),
+        (status = 400, description = "Invalid request or app status", body = OpenAIApiError),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
 )]
 #[instrument(skip_all, level = "debug")]
-pub async fn user_info_handler(
-  headers: HeaderMap,
+pub async fn request_access_handler(
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Json<UserInfo>, ApiError> {
-  let not_loggedin = UserInfo {
-    logged_in: false,
-    email: None,
-    roles: Vec::new(),
-  };
-  let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
-    return Ok(Json(not_loggedin));
-  };
-  let Ok(token_str) = token.to_str() else {
-    return Ok(Json(not_loggedin));
-  };
-  if token_str.is_empty() {
-    return Ok(Json(not_loggedin));
-  }
-  let claims: Claims = extract_claims::<Claims>(token_str)?;
-  let roles = if let Ok(Some(reg_info)) = state.app_service().secret_service().app_reg_info() {
-    claims
-      .resource_access
-      .get(&reg_info.client_id)
-      .map(|resource| resource.roles.clone())
-      .unwrap_or_default()
-  } else {
-    vec![]
-  };
+  Json(request): Json<RequestAccessRequest>,
+) -> Result<Json<RequestAccessResponse>, ApiError> {
+  let app_service = state.app_service();
+  let secret_service = app_service.secret_service();
+  let auth_service = app_service.auth_service();
 
-  Ok(Json(UserInfo {
-    logged_in: true,
-    email: Some(claims.email),
-    roles,
-  }))
+  // Get app registration info
+  let app_reg_info = secret_service
+    .app_reg_info()?
+    .ok_or(LoginError::AppRegInfoNotFound)?;
+
+  // Delegate to auth service
+  let scope = auth_service
+    .request_access(
+      &app_reg_info.client_id,
+      &app_reg_info.client_secret,
+      &request.app_client_id,
+    )
+    .await?;
+
+  Ok(Json(RequestAccessResponse { scope }))
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
@@ -380,18 +347,17 @@ pub struct AuthCallbackRequest {
 #[cfg(test)]
 mod tests {
   use crate::{
-    auth_callback_handler, auth_initiate_handler, generate_pkce, logout_handler, user_info_handler,
-    RedirectResponse, UserInfo,
+    auth_callback_handler, auth_initiate_handler, generate_pkce, logout_handler,
+    request_access_handler, RedirectResponse,
   };
   use anyhow_trace::anyhow_trace;
-  use auth_middleware::{generate_random_string, inject_session_auth_info, KEY_RESOURCE_TOKEN};
+  use auth_middleware::{generate_random_string, inject_session_auth_info};
   use axum::body::to_bytes;
   use axum::{
-    body::Body,
     http::{status::StatusCode, Request},
     middleware::from_fn_with_state,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::post,
     Json, Router,
   };
   use axum_test::TestServer;
@@ -411,11 +377,11 @@ mod tests {
   };
   use services::{
     test_utils::{
-      app_reg_info, build_token, expired_token, test_auth_service, token, AppServiceStub,
-      AppServiceStubBuilder, SecretServiceStub, SessionTestExt, SettingServiceStub, TEST_CLIENT_ID,
+      build_token, expired_token, test_auth_service, token, AppServiceStub, AppServiceStubBuilder,
+      SecretServiceStub, SessionTestExt, SettingServiceStub,
     },
-    AppRegInfo, AppService, AuthServiceError, MockAuthService, SecretServiceExt,
-    SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
+    AppRegInfo, AppService, AuthServiceError, MockAuthService, RequestAccessResponse,
+    SecretServiceExt, SqliteSessionService, BODHI_AUTH_REALM, BODHI_AUTH_URL,
   };
   use services::{AppStatus, BODHI_HOST, BODHI_PORT, BODHI_SCHEME};
   use std::{collections::HashMap, sync::Arc};
@@ -954,191 +920,6 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_user_info_handler_valid_token(
-    token: (String, String),
-    app_reg_info: AppRegInfo,
-  ) -> anyhow::Result<()> {
-    let (token, _) = token;
-    let app_service: Arc<dyn AppService> = Arc::new(
-      AppServiceStubBuilder::default()
-        .secret_service(Arc::new(
-          SecretServiceStub::default().with_app_reg_info(&app_reg_info),
-        ))
-        .build()?,
-    );
-    let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
-      app_service.clone(),
-    ));
-    let router = Router::new()
-      .route("/app/user", get(user_info_handler))
-      .with_state(state);
-    let response = router
-      .oneshot(
-        Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-    assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<Value>().await.unwrap();
-    assert_eq!(
-      json! {{
-        "email": "testuser@email.com",
-        "roles": ["resource_manager", "resource_power_user", "resource_user", "resource_admin"],
-        "logged_in": true
-      }},
-      response_json,
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[case::resource_access_field_missing(json!{{}})]
-  #[case::resource_access_field_null(json!{{"resource_access": {}}})]
-  #[case::resource_access_some_other_resource_roles(json!{{"resource_access": {
-        "some-other-test-resource": {
-          "roles": ["resource_manager", "resource_power_user", "resource_user", "resource_admin"]
-        }
-      }}})]
-  #[tokio::test]
-  async fn test_user_info_handler_resource_access_invalid(
-    #[case] claims: Value,
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-    app_reg_info: AppRegInfo,
-  ) -> anyhow::Result<()> {
-    let mut final_claims = json! {{
-      "exp": (Utc::now() + chrono::Duration::hours(1)).timestamp(),
-      "iat": Utc::now().timestamp(),
-      "jti": Uuid::new_v4().to_string(),
-      "iss": "https://id.mydomain.com/realms/myapp".to_string(),
-      "sub": Uuid::new_v4().to_string(),
-      "typ": "Bearer",
-      "azp": TEST_CLIENT_ID,
-      "session_state": Uuid::new_v4().to_string(),
-      "scope": "openid profile email",
-      "sid": Uuid::new_v4().to_string(),
-      "email_verified": true,
-      "name": "Test User",
-      "preferred_username": "testuser@email.com",
-      "given_name": "Test",
-      "family_name": "User",
-      "email": "testuser@email.com",
-    }};
-    if !claims["resource_access"].is_null() {
-      final_claims["resource_access"] = claims["resource_access"].clone();
-    }
-    let (token, _) = build_token(final_claims).unwrap();
-    let app_service: Arc<dyn AppService> = Arc::new(
-      AppServiceStubBuilder::default()
-        .secret_service(Arc::new(
-          SecretServiceStub::default().with_app_reg_info(&app_reg_info),
-        ))
-        .build()?,
-    );
-    let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
-      app_service.clone(),
-    ));
-    let router = Router::new()
-      .route("/app/user", get(user_info_handler))
-      .with_state(state);
-    let response = router
-      .oneshot(
-        Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, token)
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-    assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<Value>().await.unwrap();
-    assert_eq!(
-      json! {{
-        "email": "testuser@email.com",
-        "roles": [],
-        "logged_in": true
-      }},
-      response_json,
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_user_info_handler_empty_token() -> anyhow::Result<()> {
-    let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
-    let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
-      app_service.clone(),
-    ));
-    let router = Router::new()
-      .route("/app/user", get(user_info_handler))
-      .with_state(state);
-    let response = router
-      .oneshot(
-        Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, "")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-    assert_eq!(StatusCode::OK, response.status());
-    let response_json = response.json::<UserInfo>().await?;
-    assert_eq!(
-      UserInfo {
-        logged_in: false,
-        email: None,
-        roles: Vec::new(),
-      },
-      response_json
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
-  async fn test_user_info_handler_invalid_token(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-  ) -> anyhow::Result<()> {
-    let app_service: Arc<dyn AppService> = Arc::new(AppServiceStubBuilder::default().build()?);
-    let state = Arc::new(DefaultRouterState::new(
-      Arc::new(MockSharedContext::default()),
-      app_service.clone(),
-    ));
-    let router = Router::new()
-      .route("/app/user", get(user_info_handler))
-      .with_state(state);
-    let response = router
-      .oneshot(
-        Request::get("/app/user")
-          .header(KEY_RESOURCE_TOKEN, "invalid_token")
-          .body(Body::empty())
-          .unwrap(),
-      )
-      .await
-      .unwrap();
-    assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-    let response = response.json::<Value>().await?;
-    assert_eq!(
-      json! {{
-        "error": {
-          "message": "token is invalid: \u{2068}malformed token format\u{2069}",
-          "code": "token_error-invalid_token",
-          "type": "authentication_error"
-        }
-      }},
-      response
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[tokio::test]
   async fn test_auth_callback_handler_resource_admin(
     #[from(setup_l10n)] _setup_l10n: &Arc<FluentLocalizationService>,
     temp_bodhi_home: TempDir,
@@ -1322,6 +1103,209 @@ mod tests {
     let secret_service = app_service.secret_service();
     let updated_status = secret_service.app_status().unwrap();
     assert_eq!(AppStatus::Ready, updated_status);
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_request_access_handler_success(temp_bodhi_home: TempDir) -> anyhow::Result<()> {
+    let app_client_id = "test_app_client_id";
+    let expected_scope = "scope_resource_test-resource-server";
+
+    // Mock auth server
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    // Mock token endpoint for client credentials
+    let token_mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .match_body(Matcher::AllOf(vec![
+        Matcher::UrlEncoded("grant_type".into(), "client_credentials".into()),
+        Matcher::UrlEncoded("client_id".into(), "test_client_id".into()),
+        Matcher::UrlEncoded("client_secret".into(), "test_client_secret".into()),
+      ]))
+      .with_status(200)
+      .with_body(
+        json!({
+            "access_token": "test_access_token",
+            "token_type": "Bearer",
+            "expires_in": 300,
+        })
+        .to_string(),
+      )
+      .create();
+
+    // Mock request-access endpoint
+    let access_mock = server
+      .mock("POST", "/realms/test-realm/bodhi/resources/request-access")
+      .match_header("Authorization", "Bearer test_access_token")
+      .match_body(Matcher::Json(json!({"app_client_id": app_client_id})))
+      .with_status(200)
+      .with_body(json!({"scope": expected_scope}).to_string())
+      .create();
+
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let secret_service = SecretServiceStub::new()
+      .with_app_reg_info(&AppRegInfo {
+        client_id: "test_client_id".to_string(),
+        client_secret: "test_client_secret".to_string(),
+      })
+      .with_app_status(&AppStatus::Ready);
+    let auth_service = Arc::new(test_auth_service(&url));
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .auth_service(auth_service)
+      .build_session_service(dbfile)
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/auth/request-access", post(request_access_handler))
+      .with_state(state);
+
+    let resp = router
+      .oneshot(Request::post("/auth/request-access").json(json! {{
+        "app_client_id": app_client_id
+      }})?)
+      .await?;
+
+    assert_eq!(StatusCode::OK, resp.status());
+    let body: RequestAccessResponse = resp.json().await?;
+    assert_eq!(expected_scope, body.scope);
+
+    token_mock.assert();
+    access_mock.assert();
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_request_access_handler_no_client_credentials(
+    temp_bodhi_home: TempDir,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Ready); // No app_reg_info set
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .build_session_service(dbfile)
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/auth/request-access", post(request_access_handler))
+      .with_state(state);
+
+    let resp = router
+      .oneshot(Request::post("/auth/request-access").json(json! {{
+        "app_client_id": "test_app_client_id"
+      }})?)
+      .await?;
+
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
+    let error = resp.json::<Value>().await?;
+    let expected_message = "app is not registered, need to register app first";
+    assert_eq!(
+      json! {{
+        "error": {
+          "message": expected_message,
+          "code": "login_error-app_reg_info_not_found",
+          "type": "invalid_app_state"
+        }
+      }},
+      error
+    );
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_request_access_handler_auth_service_error(
+    temp_bodhi_home: TempDir,
+    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
+  ) -> anyhow::Result<()> {
+    let app_client_id = "invalid_app_client_id";
+
+    // Mock auth server with error response
+    let mut server = Server::new_async().await;
+    let url = server.url();
+
+    // Mock token endpoint for client credentials
+    let token_mock = server
+      .mock("POST", "/realms/test-realm/protocol/openid-connect/token")
+      .with_status(200)
+      .with_body(
+        json!({
+            "access_token": "test_access_token",
+            "token_type": "Bearer",
+            "expires_in": 300,
+        })
+        .to_string(),
+      )
+      .create();
+
+    // Mock request-access endpoint with error
+    let access_mock = server
+      .mock("POST", "/realms/test-realm/bodhi/resources/request-access")
+      .with_status(400)
+      .with_body(json!({"error": "app_client_not_found"}).to_string())
+      .create();
+
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let secret_service = SecretServiceStub::new()
+      .with_app_reg_info(&AppRegInfo {
+        client_id: "test_client_id".to_string(),
+        client_secret: "test_client_secret".to_string(),
+      })
+      .with_app_status(&AppStatus::Ready);
+    let auth_service = Arc::new(test_auth_service(&url));
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .auth_service(auth_service)
+      .build_session_service(dbfile)
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/auth/request-access", post(request_access_handler))
+      .with_state(state);
+
+    let resp = router
+      .oneshot(Request::post("/auth/request-access").json(json! {{
+        "app_client_id": app_client_id
+      }})?)
+      .await?;
+
+    assert_eq!(StatusCode::INTERNAL_SERVER_ERROR, resp.status());
+    let error = resp.json::<Value>().await?;
+    assert_eq!(
+      json! {{
+        "error": {
+          "message": "error from auth service: \u{2068}app_client_not_found\u{2069}",
+          "code": "auth_service_error-auth_service_api_error",
+          "type": "internal_server_error"
+        }
+      }},
+      error
+    );
+
+    token_mock.assert();
+    access_mock.assert();
     Ok(())
   }
 }

@@ -370,6 +370,57 @@
         }
       }
     },
+    "/bodhi/v1/auth/request-access": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Request access for an app client to this resource server",
+        "operationId": "requestAccess",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestAccessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Access granted, returns resource scope",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestAccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request or app status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/bodhi/v1/info": {
       "get": {
         "tags": [
@@ -3156,6 +3207,37 @@
           }
         }
       },
+      "RequestAccessRequest": {
+        "type": "object",
+        "required": [
+          "app_client_id"
+        ],
+        "properties": {
+          "app_client_id": {
+            "type": "string"
+          }
+        }
+      },
+      "RequestAccessResponse": {
+        "type": "object",
+        "required": [
+          "scope"
+        ],
+        "properties": {
+          "scope": {
+            "type": "string"
+          }
+        }
+      },
+      "RoleSource": {
+        "type": "string",
+        "description": "Role Source\n`token` - client level user roles are extracted from the token\n`scope_token` - roles are fetched from scope",
+        "enum": [
+          "role",
+          "scope_token",
+          "scope_user"
+        ]
+      },
       "SettingInfo": {
         "type": "object",
         "required": [
@@ -3366,6 +3448,14 @@
           "inactive"
         ]
       },
+      "TokenType": {
+        "type": "string",
+        "description": "Token Type\n`session` - token coming from cookie based http session\n`bearer` - token coming from http Authorization header as bearer token",
+        "enum": [
+          "session",
+          "bearer"
+        ]
+      },
       "UpdateApiTokenRequest": {
         "type": "object",
         "description": "Request to update an existing API token",
@@ -3405,8 +3495,7 @@
         "type": "object",
         "description": "Information about the currently logged in user",
         "required": [
-          "logged_in",
-          "roles"
+          "logged_in"
         ],
         "properties": {
           "email": {
@@ -3420,12 +3509,34 @@
             "type": "boolean",
             "description": "If user is logged in"
           },
-          "roles": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
+          "role": {
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "List of roles assigned to the user"
+          },
+          "role_source": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RoleSource",
+                "description": "Role source"
+              }
+            ]
+          },
+          "token_type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TokenType",
+                "description": "Token type"
+              }
+            ]
           }
         },
         "example": {
