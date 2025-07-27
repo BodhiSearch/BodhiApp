@@ -1,4 +1,5 @@
 bad_request_error = invalid request, reason: {$reason}
+service_unavailable_error = service unavailable, reason: {$reason}
 builder_error-uninitialized_field = builder_error: uninitialized field: {$var_0}
 builder_error-validation_error = builder_error: validation error: {$var_0}
 internal_server_error = internal_server_error: {$reason}

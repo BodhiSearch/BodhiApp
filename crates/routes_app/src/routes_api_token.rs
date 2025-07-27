@@ -6,12 +6,15 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiError, AppError, EntityError, ErrorType, OpenAIApiError, API_TAG_API_KEYS};
+use objs::{
+  ApiError, AppError, EntityError, ErrorType, OpenAIApiError, ServiceUnavailableError,
+  API_TAG_API_KEYS,
+};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
   db::{ApiToken, TokenStatus},
-  extract_claims, AuthServiceError, IdClaims, SecretServiceExt, TokenError,
+  extract_claims, AuthServiceError, IdClaims, TokenError,
 };
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -81,45 +84,13 @@ pub enum ApiTokenError {
     )
 )]
 pub async fn create_token_handler(
-  headers: HeaderMap,
-  State(state): State<Arc<dyn RouterState>>,
-  WithRejection(Json(payload), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
+  _headers: HeaderMap,
+  State(_state): State<Arc<dyn RouterState>>,
+  WithRejection(Json(_payload), _): WithRejection<Json<CreateApiTokenRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<ApiTokenResponse>), ApiError> {
-  let app_service = state.app_service();
-  let secret_service = app_service.secret_service();
-  let auth_service = app_service.auth_service();
-  let db_service = app_service.db_service();
-
-  // Get client credentials
-  let app_reg_info = secret_service.app_reg_info()?;
-  let app_reg_info = app_reg_info.ok_or(ApiTokenError::AppRegMissing)?;
-
-  let token = headers.get(KEY_RESOURCE_TOKEN).map(|token| token.to_str());
-  let Some(Ok(token)) = token else {
-    return Err(ApiTokenError::AccessTokenMissing)?;
-  };
-
-  // Exchange token
-  let (_, offline_token) = auth_service
-    .exchange_token(
-      &app_reg_info.client_id,
-      &app_reg_info.client_secret,
-      token,
-      "urn:ietf:params:oauth:token-type:refresh_token",
-      vec![
-        "openid".to_string(),
-        "offline_access".to_string(),
-        "scope_token_user".to_string(),
-      ],
-    )
-    .await?;
-
-  let offline_token = offline_token.ok_or(ApiTokenError::RefreshTokenMissing)?;
-  let _ = db_service
-    .create_api_token_from(payload.name.unwrap_or_default().as_str(), &offline_token)
-    .await?;
-  let response = ApiTokenResponse { offline_token };
-  Ok((StatusCode::CREATED, Json(response)))
+  Err(ServiceUnavailableError::new(
+    "api token feature is not available".to_string(),
+  ))?
 }
 
 /// Update an existing API token
@@ -365,6 +336,7 @@ mod tests {
   }
 
   #[rstest]
+  #[ignore = "enable when supporting creating api tokens"]
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_success(
@@ -461,6 +433,7 @@ mod tests {
   }
 
   #[rstest]
+  #[ignore = "enable when supporting creating api tokens"]
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_no_name(
@@ -515,6 +488,7 @@ mod tests {
   }
 
   #[rstest]
+  #[ignore = "enable when supporting creating api tokens"]
   #[awt]
   #[tokio::test]
   async fn test_create_token_handler_exchange_error(

@@ -37,6 +37,8 @@ pub enum ErrorType {
   #[default]
   #[strum(serialize = "unknown_error")]
   Unknown,
+  #[strum(serialize = "service_unavailable")]
+  ServiceUnavailable,
 }
 
 impl ErrorType {
@@ -50,6 +52,7 @@ impl ErrorType {
       ErrorType::NotFound => StatusCode::NOT_FOUND.as_u16(),
       ErrorType::Unknown => StatusCode::INTERNAL_SERVER_ERROR.as_u16(),
       ErrorType::Forbidden => StatusCode::FORBIDDEN.as_u16(),
+      ErrorType::ServiceUnavailable => StatusCode::SERVICE_UNAVAILABLE.as_u16(),
     }
   }
 }
