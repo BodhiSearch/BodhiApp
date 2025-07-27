@@ -328,8 +328,9 @@ export type RequestAccessResponse = {
 
 /**
  * Role Source
- * `token` - client level user roles are extracted from the token
- * `scope_token` - roles are fetched from scope
+ * `role` - client level user role
+ * `scope_token` - scope granted token role
+ * `scope_user` - scope granted user role
  */
 export type RoleSource = 'role' | 'scope_token' | 'scope_user';
 
@@ -394,8 +395,8 @@ export type TokenStatus = 'active' | 'inactive';
 
 /**
  * Token Type
- * `session` - token coming from cookie based http session
- * `bearer` - token coming from http Authorization header as bearer token
+ * `session` - token stored in cookie based http session
+ * `bearer` - token received from http authorization header as bearer token
  */
 export type TokenType = 'session' | 'bearer';
 
