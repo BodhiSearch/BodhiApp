@@ -36,6 +36,13 @@ pub enum ObjValidationError {
 }
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
+#[error("service_unavailable_error")]
+#[error_meta(trait_to_impl = AppError, error_type = ErrorType::ServiceUnavailable)]
+pub struct ServiceUnavailableError {
+  reason: String,
+}
+
+#[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
 #[error("bad_request_error")]
 #[error_meta(trait_to_impl = AppError, error_type = ErrorType::BadRequest)]
 pub struct BadRequestError {
