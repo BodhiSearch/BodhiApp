@@ -3231,7 +3231,7 @@
       },
       "RoleSource": {
         "type": "string",
-        "description": "Role Source\n`token` - client level user roles are extracted from the token\n`scope_token` - roles are fetched from scope",
+        "description": "Role Source\n`role` - client level user role\n`scope_token` - scope granted token role\n`scope_user` - scope granted user role",
         "enum": [
           "role",
           "scope_token",
@@ -3450,7 +3450,7 @@
       },
       "TokenType": {
         "type": "string",
-        "description": "Token Type\n`session` - token coming from cookie based http session\n`bearer` - token coming from http Authorization header as bearer token",
+        "description": "Token Type\n`session` - token stored in cookie based http session\n`bearer` - token received from http authorization header as bearer token",
         "enum": [
           "session",
           "bearer"
