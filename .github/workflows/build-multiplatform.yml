@@ -71,14 +71,15 @@ jobs:
           platform: ${{ matrix.platform }}
           target: ${{ matrix.target }}
           codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          hf-test-token-allowed: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
-          hf-test-token-public: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
-          integ-test-auth-url: ${{ vars.INTEG_TEST_AUTH_URL }}
-          integ-test-auth-realm: ${{ vars.INTEG_TEST_AUTH_REALM }}
-          integ-test-username: ${{ secrets.INTEG_TEST_USERNAME }}
-          integ-test-password: ${{ secrets.INTEG_TEST_PASSWORD }}
-          integ-test-dev-console-client-id: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_ID }}
-          integ-test-dev-console-client-secret: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
+        env:
+          HF_TEST_TOKEN_ALLOWED: ${{ secrets.HF_TEST_TOKEN_ALLOWED }}
+          HF_TEST_TOKEN_PUBLIC: ${{ secrets.HF_TEST_TOKEN_PUBLIC }}
+          INTEG_TEST_AUTH_URL: ${{ vars.INTEG_TEST_AUTH_URL }}
+          INTEG_TEST_AUTH_REALM: ${{ vars.INTEG_TEST_AUTH_REALM }}
+          INTEG_TEST_USERNAME: ${{ secrets.INTEG_TEST_USERNAME }}
+          INTEG_TEST_PASSWORD: ${{ secrets.INTEG_TEST_PASSWORD }}
+          INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_ID }}
+          INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ secrets.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET }}
 
       - name: Check TypeScript client
         if: matrix.platform == 'ubuntu-latest-4-cores'

@@ -10,30 +10,6 @@ inputs:
   codecov-token:
     description: "Codecov token for coverage upload"
     required: false
-  hf-test-token-allowed:
-    description: "HuggingFace test token (allowed)"
-    required: false
-  hf-test-token-public:
-    description: "HuggingFace test token (public)"
-    required: false
-  integ-test-auth-url:
-    description: "Integration test auth URL"
-    required: false
-  integ-test-auth-realm:
-    description: "Integration test auth realm"
-    required: false
-  integ-test-username:
-    description: "Integration test username"
-    required: false
-  integ-test-password:
-    description: "Integration test password"
-    required: false
-  integ-test-dev-console-client-id:
-    description: "Integration test dev console client ID"
-    required: false
-  integ-test-dev-console-client-secret:
-    description: "Integration test dev console client secret"
-    required: false
 
 outputs:
   coverage-success:
@@ -52,15 +28,7 @@ runs:
       shell: bash
       run: make ci.coverage
       env:
-        HF_TEST_TOKEN_ALLOWED: ${{ inputs.hf-test-token-allowed }}
-        HF_TEST_TOKEN_PUBLIC: ${{ inputs.hf-test-token-public }}
         CI_DEFAULT_VARIANT: cpu
-        INTEG_TEST_AUTH_URL: ${{ inputs.integ-test-auth-url }}
-        INTEG_TEST_AUTH_REALM: ${{ inputs.integ-test-auth-realm }}
-        INTEG_TEST_USERNAME: ${{ inputs.integ-test-username }}
-        INTEG_TEST_PASSWORD: ${{ inputs.integ-test-password }}
-        INTEG_TEST_DEV_CONSOLE_CLIENT_ID: ${{ inputs.integ-test-dev-console-client-id }}
-        INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET: ${{ inputs.integ-test-dev-console-client-secret }}
 
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1

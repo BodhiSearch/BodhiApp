@@ -185,8 +185,8 @@ fn auth_server_config() -> AuthServerConfig {
   }
 
   AuthServerConfig {
-    auth_server_url: std::env::var("INTEG_TEST_AUTH_SERVER_URL")
-      .expect("INTEG_TEST_AUTH_SERVER_URL must be set"),
+    auth_server_url: std::env::var("INTEG_TEST_AUTH_URL")
+      .expect("INTEG_TEST_AUTH_URL must be set"),
     realm: std::env::var("INTEG_TEST_AUTH_REALM").expect("INTEG_TEST_AUTH_REALM must be set"),
     dev_console_client_id: std::env::var("INTEG_TEST_DEV_CONSOLE_CLIENT_ID")
       .expect("INTEG_TEST_DEV_CONSOLE_CLIENT_ID must be set"),
