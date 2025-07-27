@@ -318,6 +318,21 @@ export type Repo = {
     user: string;
 };
 
+export type RequestAccessRequest = {
+    app_client_id: string;
+};
+
+export type RequestAccessResponse = {
+    scope: string;
+};
+
+/**
+ * Role Source
+ * `token` - client level user roles are extracted from the token
+ * `scope_token` - roles are fetched from scope
+ */
+export type RoleSource = 'role' | 'scope_token' | 'scope_user';
+
 export type SettingInfo = {
     current_value: unknown;
     default_value: unknown;
@@ -378,6 +393,13 @@ export type ShowResponse = {
 export type TokenStatus = 'active' | 'inactive';
 
 /**
+ * Token Type
+ * `session` - token coming from cookie based http session
+ * `bearer` - token coming from http Authorization header as bearer token
+ */
+export type TokenType = 'session' | 'bearer';
+
+/**
  * Request to update an existing API token
  */
 export type UpdateApiTokenRequest = {
@@ -413,7 +435,9 @@ export type UserInfo = {
     /**
      * List of roles assigned to the user
      */
-    roles: Array<string>;
+    role?: string | null;
+    role_source?: null | RoleSource;
+    token_type?: null | TokenType;
 };
 
 export type ChatOllamaModelData = {
@@ -564,6 +588,35 @@ export type InitiateOAuthFlowResponses = {
 };
 
 export type InitiateOAuthFlowResponse = InitiateOAuthFlowResponses[keyof InitiateOAuthFlowResponses];
+
+export type RequestAccessData = {
+    body: RequestAccessRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/auth/request-access';
+};
+
+export type RequestAccessErrors = {
+    /**
+     * Invalid request or app status
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type RequestAccessError = RequestAccessErrors[keyof RequestAccessErrors];
+
+export type RequestAccessResponses = {
+    /**
+     * Access granted, returns resource scope
+     */
+    200: RequestAccessResponse;
+};
+
+export type RequestAccessResponse2 = RequestAccessResponses[keyof RequestAccessResponses];
 
 export type GetAppInfoData = {
     body?: never;

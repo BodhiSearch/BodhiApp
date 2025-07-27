@@ -165,6 +165,7 @@ Brief notes on approach decisions and architectural choices made during developm
 4. **Knowledge Transfer**: `ai-docs/06-knowledge-transfer/` for implementation guides
 
 ### File Organization
+- Name the file with prefix of current date in format `yyyymmdd-<file-name>.md`
 - Place specifications in `ai-docs/02-features/active-stories/`
 - Move completed specs to `ai-docs/02-features/completed-stories/`
 - Update `ai-docs/README.md` when adding new specifications

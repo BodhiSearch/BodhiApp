@@ -93,10 +93,14 @@ export class AuthServerTestClient {
    * @param {number} port - Port number for redirect URI
    * @param {string} name - Client name
    * @param {string} description - Client description
+   * @param {string[]} customRedirectUris - Custom redirect URIs (optional)
    * @returns {Promise<Object>} Created app client info
    */
-  async createAppClient(devConsoleToken, port, name = 'Test App Client', description = 'Test app client for Playwright tests') {
+  async createAppClient(devConsoleToken, port, name = 'Test App Client', description = 'Test app client for Playwright tests', customRedirectUris = null) {
     const appsUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/apps`;
+
+    // Use custom redirect URIs if provided, otherwise use default ones
+    const redirectUris = customRedirectUris || [`http://localhost:${port}/ui/auth/callback`, `http://127.0.0.1:${port}/ui/auth/callback`];
 
     const response = await fetch(appsUrl, {
       method: 'POST',
@@ -107,7 +111,7 @@ export class AuthServerTestClient {
       body: JSON.stringify({
         name,
         description,
-        redirect_uris: [`http://localhost:${port}/ui/auth/callback`, `http://127.0.0.1:${port}/ui/auth/callback`]
+        redirect_uris: redirectUris
       }),
     });
 

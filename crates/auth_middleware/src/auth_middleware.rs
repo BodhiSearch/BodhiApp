@@ -112,8 +112,8 @@ pub async fn auth_middleware(
     return Err(AuthError::AppStatusInvalid(AppStatus::Setup).into());
   }
 
-  // Check for token in session
   if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
+    // Check for bearer token in request header
     let header = header
       .to_str()
       .map_err(|err| AuthError::InvalidToken(err.to_string()))?;
@@ -128,6 +128,7 @@ pub async fn auth_middleware(
     );
     Ok(next.run(req).await)
   } else if is_same_origin(&_headers) {
+    // Check for token in session
     if let Some(access_token) = session
       .get::<String>(SESSION_KEY_ACCESS_TOKEN)
       .await
@@ -175,14 +176,22 @@ pub async fn inject_session_auth_info(
   if app_status_or_default(&secret_service) == AppStatus::Setup {
     return Ok(next.run(req).await);
   }
-
-  // Try to get token from session only for same-origin requests
-  if is_same_origin(req.headers()) {
-    if let Some(access_token) = session
-      .get::<String>("access_token")
-      .await
-      .map_err(AuthError::from)?
-    {
+  if let Some(header) = req.headers().get(axum::http::header::AUTHORIZATION) {
+    if let Ok(header) = header.to_str() {
+      if let Ok((access_token, resource_scope)) = token_service.validate_bearer_token(header).await
+      {
+        req
+          .headers_mut()
+          .insert(KEY_RESOURCE_TOKEN, access_token.parse().unwrap());
+        req.headers_mut().insert(
+          KEY_RESOURCE_SCOPE,
+          resource_scope.to_string().parse().unwrap(),
+        );
+      }
+    }
+  } else if is_same_origin(req.headers()) {
+    // Check for token in session
+    if let Ok(Some(access_token)) = session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
       if let Ok((validated_token, role)) = token_service
         .get_valid_session_token(session, access_token)
         .await
@@ -193,11 +202,10 @@ pub async fn inject_session_auth_info(
         req
           .headers_mut()
           .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
-        return Ok(next.run(req).await);
       }
     }
   }
-  // Continue with the request, even if no valid token was found
+  // Continue with the request
   Ok(next.run(req).await)
 }
 

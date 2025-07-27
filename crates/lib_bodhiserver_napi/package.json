@@ -43,6 +43,7 @@
     "@napi-rs/cli": "^2.18.4",
     "@playwright/test": "^1.48.2",
     "dotenv": "^16.5.0",
+    "express": "^5.1.0",
     "vitest": "^2.1.8"
   },
   "engines": {
