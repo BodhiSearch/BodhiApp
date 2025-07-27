@@ -5,7 +5,7 @@ export function getAuthServerConfig() {
   const config = {
     authUrl: process.env.INTEG_TEST_MAIN_AUTH_URL,
     authRealm: process.env.INTEG_TEST_AUTH_REALM,
-    devConsoleClientSecret: process.env.CLIENT_BODHI_DEV_CONSOLE_SECRET,
+    devConsoleClientSecret: process.env.INTEG_TEST_DEV_CONSOLE_CLIENT_SECRET,
   };
 
   // Validate required environment variables
