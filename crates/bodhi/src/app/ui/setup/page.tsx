@@ -130,7 +130,7 @@ function SetupContent() {
                       <FormItem>
                         <FormLabel>Server Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="My Bodhi Server" {...field} disabled={isLoading} />
+                          <Input placeholder="John Doe's Bodhi App Server" {...field} disabled={isLoading} />
                         </FormControl>
                         <FormMessage />
                         <p className="text-sm text-muted-foreground">
