@@ -18,6 +18,9 @@ Context documents serve to:
 ### Integration & Testing
 - **[Testcontainers Keycloak Integration](testcontainers-keycloak-integration-context.md)** - Context for integrating Testcontainers with Keycloak for comprehensive authentication testing, including Docker setup, test isolation, and CI/CD considerations
 
+### CI/CD & DevOps
+- **[GitHub Workflows Context](github-workflows-context.md)** - Complete context about the GitHub Actions CI/CD system, including workflow architecture, reusable actions, platform-specific considerations, and maintenance patterns
+
 ## Document Guidelines
 
 ### When to Create Context Documents
