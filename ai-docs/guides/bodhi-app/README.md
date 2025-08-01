@@ -39,8 +39,9 @@ npm install @bodhiapp/ts-client
 1. **[Getting Started](getting-started.md)** - Install and set up BodhiApp
 2. **[Embedded UI Guide](embedded-ui.md)** - Learn the built-in interface
 3. **[Authentication](authentication.md)** - Understand API tokens and permissions
-4. **[OpenAI API](openai-api.md)** - Start with familiar OpenAI-compatible endpoints
-5. **[Model Management](model-management.md)** - Download and configure models
+4. **[App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)** - External app integration guide
+5. **[OpenAI API](openai-api.md)** - Start with familiar OpenAI-compatible endpoints
+6. **[Model Management](model-management.md)** - Download and configure models
 
 ## Guide Structure
 
@@ -52,6 +53,7 @@ npm install @bodhiapp/ts-client
 | **[Getting Started](getting-started.md)** | Installation and initial setup | First-time users |
 | **[Embedded UI](embedded-ui.md)** | Built-in React interface guide | Users of the desktop app |
 | **[Authentication](authentication.md)** | API tokens and authorization | API developers |
+| **[App-to-BodhiApp OAuth](app-to-bodhi-oauth.md)** | External app OAuth integration | Third-party app developers |
 | **[OpenAI API](openai-api.md)** | OpenAI-compatible endpoints | Existing OpenAI integrations |
 
 ### API Documentation
@@ -80,6 +82,7 @@ npm install @bodhiapp/ts-client
 ### Authentication & Security
 - **Role-based Access Control**: Admin → Manager → PowerUser → User hierarchy
 - **API Token Management**: Long-lived tokens for programmatic access
+- **OAuth2 Token Exchange**: External app integration with user consent
 - **Scope-based Permissions**: Fine-grained access control
 
 ### Model Management
@@ -108,9 +111,10 @@ npm install @bodhiapp/ts-client
 
 ### For API Integration
 1. Start with [Authentication](authentication.md) to understand tokens
-2. Try [OpenAI API](openai-api.md) for familiar endpoints
-3. Explore [Model Management](model-management.md) for advanced features
-4. Reference [Error Handling](error-handling.md) for troubleshooting
+2. For external apps, see [App-to-BodhiApp OAuth](app-to-bodhi-oauth.md) for OAuth integration
+3. Try [OpenAI API](openai-api.md) for familiar endpoints
+4. Explore [Model Management](model-management.md) for advanced features
+5. Reference [Error Handling](error-handling.md) for troubleshooting
 
 ### For UI Usage
 1. Follow [Getting Started](getting-started.md) for installation
