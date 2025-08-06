@@ -69,6 +69,7 @@ impl LlamaServerArgs {
       self.alias.clone(),
       "--model".to_string(),
       self.model.to_string_lossy().to_string(),
+      "--jinja".to_string(),
     ];
 
     if let Some(seed) = &self.seed {
