@@ -146,7 +146,7 @@ Practical implementation guides and context documents for AI coding assistants a
 
 - **[BodhiApp API Integration Guide](10-guide/bodhiapp-ai-integration-guide.md)** - Comprehensive guide for integrating with BodhiApp APIs, covering authentication, endpoints, and usage patterns for 3rd party projects
 - **[NAPI Bindings Integration Guide](10-guide/app-bindings-guide.md)** - Complete guide for embedding BodhiApp server functionality using the `@bodhiapp/app-bindings` NAPI library, covering installation, configuration, server lifecycle management, and integration testing patterns
-- **[GitHub Workflows Context](08-context/github-workflows-context.md)** - Comprehensive context about the BodhiApp GitHub Actions CI/CD system, covering workflow architecture, reusable actions, conventions, and best practices for AI coding assistants working with CI/CD configurations
+- **[GitHub Workflows Context](context/github-workflows-context.md)** - Comprehensive context about the BodhiApp GitHub Actions CI/CD system, covering workflow architecture, reusable actions, conventions, and best practices for AI coding assistants working with CI/CD configurations
 
 ### 📢 [Marketing](05-marketing/) - Product Marketing
 Marketing materials, community outreach, and promotional content for product positioning
