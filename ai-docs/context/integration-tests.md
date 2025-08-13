@@ -1,0 +1,1 @@
+../../crates/integration-tests/CLAUDE.md

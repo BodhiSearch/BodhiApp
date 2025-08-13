@@ -1,0 +1,1 @@
+../../crates/commands/CLAUDE.md

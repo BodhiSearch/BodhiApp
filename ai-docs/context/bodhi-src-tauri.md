@@ -1,0 +1,1 @@
+../../crates/bodhi/src-tauri/CLAUDE.md
