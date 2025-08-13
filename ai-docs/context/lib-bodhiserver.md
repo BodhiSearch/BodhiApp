@@ -1,0 +1,1 @@
+../../crates/lib_bodhiserver/CLAUDE.md

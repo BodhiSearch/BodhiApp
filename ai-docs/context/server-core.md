@@ -1,0 +1,1 @@
+../../crates/server_core/CLAUDE.md
