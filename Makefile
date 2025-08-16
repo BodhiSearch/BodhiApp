@@ -32,6 +32,10 @@ ci.clean: ## Clean all cargo packages
 ci.coverage: ## Run coverage in CI environment
 	$(MAKE) coverage
 
+clean.ui:
+	rm -rf crates/bodhi/out
+	cargo clean -p lib_bodhiserver -p bodhi
+
 coverage: ## Generate code coverage report
 	cargo build -p llama_server_proc; \
 	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
