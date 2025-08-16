@@ -31,6 +31,7 @@ use utoipa::ToSchema;
     "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
 }))]
 pub struct RedirectResponse {
+  /// The URL to redirect to for OAuth authentication
   pub location: String,
 }
 
