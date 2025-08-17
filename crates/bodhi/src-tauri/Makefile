@@ -4,9 +4,7 @@ build_frontend:
 	cd .. && npm install && npm run build
 
 # Required env vars for macOS signing
-REQUIRED_MACOS_VARS := APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY
-# Generate a random keychain password
-KEYCHAIN_PASSWORD := $(shell openssl rand -base64 24)
+REQUIRED_MACOS_VARS := APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY KEYCHAIN_PASSWORD
 
 ci.check-macos-vars:
 	@for var in $(REQUIRED_MACOS_VARS); do \
@@ -19,11 +17,11 @@ ci.check-macos-vars:
 ci.sign-binaries: ci.check-macos-vars
 	@echo "Signing embedded binaries for macOS..."
 	@echo "$$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
-	@security create-keychain -p "$(KEYCHAIN_PASSWORD)" build.keychain || (echo "Failed to create keychain" && exit 1)
+	@security create-keychain -p "$$KEYCHAIN_PASSWORD" build.keychain || (echo "Failed to create keychain" && exit 1)
 	@security default-keychain -s build.keychain || (echo "Failed to set default keychain" && exit 1)
-	@security unlock-keychain -p "$(KEYCHAIN_PASSWORD)" build.keychain || (echo "Failed to unlock keychain" && exit 1)
+	@security unlock-keychain -p "$$KEYCHAIN_PASSWORD" build.keychain || (echo "Failed to unlock keychain" && exit 1)
 	@security import certificate.p12 -k build.keychain -P "$$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign || (echo "Failed to import certificate" && exit 1)
-	@security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$(KEYCHAIN_PASSWORD)" build.keychain || (echo "Failed to set partition list" && exit 1)
+	@security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$$KEYCHAIN_PASSWORD" build.keychain || (echo "Failed to set partition list" && exit 1)
 
 	@echo "Signing metal binary..."
 	@codesign --force --options runtime --sign "$$APPLE_SIGNING_IDENTITY" --timestamp bin/aarch64-apple-darwin/metal/llama-server || (echo "Failed to sign metal binary" && exit 1)
