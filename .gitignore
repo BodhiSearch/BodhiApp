@@ -2,6 +2,7 @@ crates/lib_bodhiserver_napi/node_modules
 test-results/
 examples/napi-test/node_modules
 artifacts
+docker-data/
 
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json
