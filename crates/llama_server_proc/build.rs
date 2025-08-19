@@ -10,9 +10,12 @@ use std::{
   io::{self},
   path::{Path, PathBuf},
   process::Command,
+  thread,
+  time::{Duration, Instant},
 };
 
 const LOCK_FILE: &str = "bodhi-build.lock";
+const LOCK_TIMEOUT_SECS: u64 = 180;
 
 static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
   let mut set = HashSet::new();
@@ -21,15 +24,15 @@ static LLAMA_SERVER_BUILDS: Lazy<HashSet<LlamaServerBuild>> = Lazy::new(|| {
     "",
     vec!["metal", "cpu"],
   ));
-  // set.insert(LlamaServerBuild::new(
-  //   "aarch64-unknown-linux-gnu",
-  //   "",
-  //   vec!["cpu", "cuda-12.6"],
-  // ));
+  set.insert(LlamaServerBuild::new(
+    "aarch64-unknown-linux-gnu",
+    "",
+    vec!["cpu"],
+  ));
   set.insert(LlamaServerBuild::new(
     "x86_64-unknown-linux-gnu",
     "",
-    vec!["cpu", "cuda-12.6"],
+    vec!["cpu"],
   ));
   set.insert(LlamaServerBuild::new(
     "x86_64-pc-windows-msvc",
@@ -53,10 +56,9 @@ pub fn main() -> Result<()> {
   let lock_path = bin_dir.join(LOCK_FILE);
   let lock_file = File::create(&lock_path).context("Failed to create lock file")?;
 
-  // Take exclusive lock for the entire build process
-  lock_file
-    .lock_exclusive()
-    .context("Failed to acquire lock for llama server bin")?;
+  // Take exclusive lock for the entire build process with timeout
+  try_acquire_exclusive_lock_with_timeout(&lock_file)
+    .context("Failed to acquire exclusive lock for llama server bin")?;
 
   // Rest of the build process
   try_main(&project_dir)?;
@@ -68,7 +70,8 @@ pub fn main() -> Result<()> {
 }
 
 fn try_main(project_dir: &Path) -> Result<()> {
-  let target = env::var("TARGET").unwrap();
+  // Get target from Docker TARGETARCH or fallback to Cargo TARGET
+  let target = get_target_from_platform()?;
   let build = LLAMA_SERVER_BUILDS.iter().find(|i| i.target == target);
 
   let Some(build) = build else {
@@ -87,6 +90,20 @@ fn try_main(project_dir: &Path) -> Result<()> {
     let response = client
       .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases/latest")
       .send()?;
+
+    // Check HTTP status code first
+    if !response.status().is_success() {
+      let status = response.status();
+      let response_text = response
+        .text()
+        .with_context(|| "Failed to read error response text".to_string())?;
+      bail!(
+        "GitHub API request failed with status {}: {}",
+        status,
+        response_text
+      );
+    }
+
     let response_text = response
       .text()
       .with_context(|| "Failed to read response text for latest release".to_string())?;
@@ -110,6 +127,20 @@ fn try_main(project_dir: &Path) -> Result<()> {
       );
     }
     for variant in build.variants.iter() {
+      // Check if binary exists for this platform/variant combination first
+      if !binary_exists_for_platform(&release, build, variant) {
+        bail!(
+          "No pre-built binary available for platform: {}-{}. Available assets: {}",
+          build.target,
+          variant,
+          release
+            .assets
+            .iter()
+            .map(|a| a.name.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+        );
+      }
       fetch_llama_server(&client, build, variant, &release)?;
     }
   } else {
@@ -426,6 +457,64 @@ impl LlamaServerBuild {
       "llama-server".to_string()
     } else {
       format!("llama-server.{}", self.extension)
+    }
+  }
+}
+
+fn binary_exists_for_platform(
+  release: &GithubRelease,
+  build: &LlamaServerBuild,
+  variant: &str,
+) -> bool {
+  let target_file_prefix = format!("llama-server--{}--{}", build.target, variant);
+  release
+    .assets
+    .iter()
+    .any(|asset| asset.name.starts_with(&target_file_prefix))
+}
+
+fn get_target_from_platform() -> Result<String> {
+  // Check for Docker TARGETARCH first (multi-platform builds)
+  if let Ok(target_arch) = env::var("TARGETARCH") {
+    if !target_arch.is_empty() {
+      let target = match target_arch.as_str() {
+        "amd64" => "x86_64-unknown-linux-gnu",
+        "arm64" => "aarch64-unknown-linux-gnu",
+        _ => bail!("Unsupported Docker target architecture: {}", target_arch),
+      };
+      println!(
+        "cargo:warning=Using Docker TARGETARCH: {} -> {}",
+        target_arch, target
+      );
+      return Ok(target.to_string());
+    }
+  }
+
+  // Fallback to Cargo TARGET for non-Docker builds
+  let target = env::var("TARGET").context("TARGET environment variable not set")?;
+  println!("cargo:warning=Using Cargo TARGET: {}", target);
+  Ok(target)
+}
+
+fn try_acquire_exclusive_lock_with_timeout(file: &File) -> Result<()> {
+  let start = Instant::now();
+  loop {
+    match file.try_lock_exclusive() {
+      Ok(()) => {
+        println!("Acquired exclusive lock for llama server bin");
+        return Ok(());
+      }
+      Err(e) if start.elapsed().as_secs() >= LOCK_TIMEOUT_SECS => {
+        bail!(
+          "Timeout waiting for exclusive lock after {}s: {}",
+          LOCK_TIMEOUT_SECS,
+          e
+        );
+      }
+      Err(_) => {
+        println!("Waiting for llama server bin exclusive lock...");
+        thread::sleep(Duration::from_secs(1));
+      }
     }
   }
 }
