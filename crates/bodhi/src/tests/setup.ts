@@ -64,9 +64,9 @@ import apiClient from '@/lib/apiClient';
 
 // Mock ResizeObserver
 class MockResizeObserver {
-  observe() { }
-  unobserve() { }
-  disconnect() { }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
 }
 
 global.ResizeObserver = MockResizeObserver;
