@@ -134,27 +134,11 @@ pub async fn setup_handler(
 
   // Always setup in authenticated mode
   let setting_service = &state.app_service().setting_service();
-  let server_host = setting_service.host();
-  let is_loopback =
-    server_host == "localhost" || server_host == "127.0.0.1" || server_host == "0.0.0.0";
-  let hosts = if is_loopback {
-    vec!["localhost", "127.0.0.1", "0.0.0.0"]
-  } else {
-    vec![server_host.as_str()]
-  };
-  let scheme = setting_service.scheme();
-  let port = setting_service.port();
-  let callback_path = setting_service.login_callback_path();
-  let redirect_uris = hosts
-    .into_iter()
-    .map(|host| format!("{scheme}://{host}:{port}{callback_path}"))
-    .collect::<Vec<String>>();
-
   let app_reg_info = auth_service
     .register_client(
       request.name,
       request.description.unwrap_or_default(),
-      redirect_uris,
+      vec![setting_service.login_callback_url()],
     )
     .await?;
   secret_service.set_app_reg_info(&app_reg_info)?;

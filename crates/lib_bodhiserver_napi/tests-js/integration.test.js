@@ -66,20 +66,20 @@ describe('Integration Tests', () => {
       // Test with default host
       const serverWithDefaultHost = createTestServer(bindings, { port: 16000 });
       runningServers.push(serverWithDefaultHost);
-      expect(serverWithDefaultHost.host()).toBe('127.0.0.1');
+      expect(serverWithDefaultHost.host()).toBe('localhost');
       expect(serverWithDefaultHost.port()).toBe(16000);
 
       // Test with random port
-      const serverWithRandomPort = createTestServer(bindings, { host: 'localhost' });
+      const serverWithRandomPort = createTestServer(bindings, { host: '127.0.0.1' });
       runningServers.push(serverWithRandomPort);
-      expect(serverWithRandomPort.host()).toBe('localhost');
+      expect(serverWithRandomPort.host()).toBe('127.0.0.1');
       expect(serverWithRandomPort.port()).toBeGreaterThanOrEqual(20000);
       expect(serverWithRandomPort.port()).toBeLessThan(30000);
 
       // Test with both defaults
       const serverWithDefaults = createTestServer(bindings);
       runningServers.push(serverWithDefaults);
-      expect(serverWithDefaults.host()).toBe('127.0.0.1');
+      expect(serverWithDefaults.host()).toBe('localhost');
       expect(serverWithDefaults.port()).toBeGreaterThanOrEqual(20000);
       expect(serverWithDefaults.port()).toBeLessThan(30000);
     });

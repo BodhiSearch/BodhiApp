@@ -16,22 +16,22 @@ test.describe('First-Time Authentication Setup Flow', () => {
   let serverManager;
   let baseUrl;
   let authClient;
-  let dynamicClients;
   let port;
+  let serverUrl;
 
   test.beforeAll(async () => {
     authServerConfig = getAuthServerConfig();
     testCredentials = getTestCredentials();
     port = randomPort();
+    serverUrl = `http://localhost:${port}`;
 
     // Create auth server test client and setup dynamic clients
     authClient = createAuthServerTestClient(authServerConfig);
-    dynamicClients = await authClient.setupDynamicClients(testCredentials.username, testCredentials.password, port);
-
     serverManager = createServerManager({
       appStatus: 'setup',
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
+      host: 'localhost',
       port,
       logLevel: 'debug',
     });
@@ -82,20 +82,19 @@ test.describe('First-Time Authentication Setup Flow', () => {
 
     // Fill in authentication credentials and submit
     const emailField = page.locator(
-      'input[name="username"], input[type="email"], textbox[name="Email"]'
+      'input[name="username"]'
     );
     const passwordField = page.locator(
-      'input[name="password"], input[type="password"], textbox[name="Password"]'
+      'input[name="password"]'
     );
-    const submitButton = page.locator(
-      'button[type="submit"], input[type="submit"], button:has-text("Sign In")'
-    );
-
     await expect(emailField).toBeVisible();
     await expect(passwordField).toBeVisible();
-
     await emailField.fill(testCredentials.username);
     await passwordField.fill(testCredentials.password);
+    const submitButton = page.locator(
+      'button[type="submit"]'
+    );
+    await expect(submitButton).toBeVisible();
     await submitButton.click();
 
     // Wait for redirect to Download Models page (Step 3 of 4)

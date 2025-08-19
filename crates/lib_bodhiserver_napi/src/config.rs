@@ -173,6 +173,15 @@ pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 
 #[napi]
+pub const BODHI_PUBLIC_SCHEME: &str = "BODHI_PUBLIC_SCHEME";
+
+#[napi]
+pub const BODHI_PUBLIC_HOST: &str = "BODHI_PUBLIC_HOST";
+
+#[napi]
+pub const BODHI_PUBLIC_PORT: &str = "BODHI_PUBLIC_PORT";
+
+#[napi]
 pub const HF_HOME: &str = "HF_HOME";
 
 #[napi]

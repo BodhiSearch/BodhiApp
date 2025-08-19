@@ -26,12 +26,25 @@ const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
 /// Returns true if the request originates from the same site ("same-origin").
 fn is_same_origin(headers: &HeaderMap) -> bool {
-  matches!(
-    headers
-      .get(SEC_FETCH_SITE_HEADER)
-      .and_then(|v| v.to_str().ok()),
-    Some("same-origin")
-  )
+  let host = headers
+    .get(axum::http::header::HOST)
+    .and_then(|v| v.to_str().ok());
+  let sec_fetch_site = headers
+    .get(SEC_FETCH_SITE_HEADER)
+    .and_then(|v| v.to_str().ok());
+  evaluate_same_origin(host, sec_fetch_site)
+}
+
+#[instrument(level = "debug", ret)]
+fn evaluate_same_origin(host: Option<&str>, sec_fetch_site: Option<&str>) -> bool {
+  if let Some(host) = host {
+    if host.starts_with("localhost:") {
+      let result = matches!(sec_fetch_site, Some("same-origin"));
+      tracing::debug!("is_same_origin: result: {}", result);
+      return result;
+    }
+  }
+  true
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]

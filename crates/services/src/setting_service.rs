@@ -365,10 +365,6 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     format!("{}/ui/auth/callback", self.public_server_url())
   }
 
-  fn login_callback_path(&self) -> String {
-    "/ui/auth/callback".to_string()
-  }
-
   fn secrets_path(&self) -> PathBuf {
     self.bodhi_home().join("secrets.yaml")
   }

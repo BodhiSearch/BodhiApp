@@ -1,11 +1,11 @@
 use crate::{
   config::{try_build_app_options_internal, NapiAppOptions},
-  BODHI_HOST, BODHI_PORT,
+  BODHI_HOST, BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME,
 };
 use lib_bodhiserver::{
   build_app_service, setup_app_dirs, update_with_option, ApiError, AppService, OpenAIApiError,
   ServeCommand, ServerShutdownHandle, SettingService, BODHI_LOG_STDOUT, DEFAULT_HOST, DEFAULT_PORT,
-  EMBEDDED_UI_ASSETS,
+  DEFAULT_SCHEME, EMBEDDED_UI_ASSETS,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -49,29 +49,51 @@ impl BodhiServer {
   pub fn server_url(&self) -> String {
     let host = self.host();
     let port = self.port();
-    format!("http://{}:{}", host, port)
+    let scheme = self.scheme();
+    match (scheme.as_str(), port) {
+      ("http", 80) | ("https", 443) => format!("{}://{}", scheme, host),
+      _ => format!("{}://{}:{}", scheme, host, port),
+    }
   }
 
   /// Get the server host
   #[napi]
   pub fn host(&self) -> String {
-    self
-      .config
-      .env_vars
-      .get(BODHI_HOST)
-      .cloned()
-      .unwrap_or_else(|| DEFAULT_HOST.to_string())
+    if let Some(host) = self.config.env_vars.get(BODHI_PUBLIC_HOST) {
+      return host.to_string();
+    }
+    if let Some(host) = self.config.env_vars.get(BODHI_HOST) {
+      return host.to_string();
+    }
+    DEFAULT_HOST.to_string()
   }
 
   /// Get the server port
   #[napi]
   pub fn port(&self) -> u16 {
-    self
-      .config
-      .env_vars
-      .get(BODHI_PORT)
-      .and_then(|port_str| port_str.parse().ok())
-      .unwrap_or(DEFAULT_PORT)
+    if let Some(port) = self.config.env_vars.get(BODHI_PUBLIC_PORT) {
+      if let Ok(port) = port.parse::<u16>() {
+        return port;
+      }
+    }
+    if let Some(port) = self.config.env_vars.get(BODHI_PORT) {
+      if let Ok(port) = port.parse::<u16>() {
+        return port;
+      }
+    }
+    DEFAULT_PORT
+  }
+
+  /// Get the server scheme
+  #[napi]
+  pub fn scheme(&self) -> String {
+    if let Some(scheme) = self.config.env_vars.get(BODHI_PUBLIC_SCHEME) {
+      return scheme.to_string();
+    }
+    if let Some(scheme) = self.config.env_vars.get(BODHI_SCHEME) {
+      return scheme.to_string();
+    }
+    DEFAULT_SCHEME.to_string()
   }
 
   /// Start the Bodhi server

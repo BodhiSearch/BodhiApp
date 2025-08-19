@@ -90,17 +90,17 @@ export class AuthServerTestClient {
   /**
    * Create an app client (public, no secrets)
    * @param {string} devConsoleToken - Dev console access token
-   * @param {number} port - Port number for redirect URI
+   * @param {number} appUrl - App URL for redirect URI
    * @param {string} name - Client name
    * @param {string} description - Client description
    * @param {string[]} customRedirectUris - Custom redirect URIs (optional)
    * @returns {Promise<Object>} Created app client info
    */
-  async createAppClient(devConsoleToken, port, name = 'Test App Client', description = 'Test app client for Playwright tests', customRedirectUris = null) {
+  async createAppClient(devConsoleToken, appUrl, name = 'Test App Client', description = 'Test app client for Playwright tests', customRedirectUris = null) {
     const appsUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/apps`;
 
     // Use custom redirect URIs if provided, otherwise use default ones
-    const redirectUris = customRedirectUris || [`http://localhost:${port}/ui/auth/callback`, `http://127.0.0.1:${port}/ui/auth/callback`];
+    const redirectUris = customRedirectUris || [`${appUrl}/ui/auth/callback`];
 
     const response = await fetch(appsUrl, {
       method: 'POST',
@@ -125,20 +125,18 @@ export class AuthServerTestClient {
     const data = await response.json();
     return {
       clientId: data.client_id,
-      // App clients don't have secrets
     };
   }
 
   /**
    * Create a resource client (confidential, with secrets)
-   * @param {number} port - Port number for redirect URI
+   * @param {number} serverUrl - Server URL for redirect URI
    * @param {string} name - Client name
    * @param {string} description - Client description
    * @returns {Promise<Object>} Created resource client info
    */
-  async createResourceClient(port, name = 'Test Resource Client', description = 'Test resource client for Playwright tests') {
+  async createResourceClient(serverUrl, name = 'Test Resource Client', description = 'Test resource client for Playwright tests') {
     const resourcesUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources`;
-
     const response = await fetch(resourcesUrl, {
       method: 'POST',
       headers: {
@@ -147,7 +145,7 @@ export class AuthServerTestClient {
       body: JSON.stringify({
         name,
         description,
-        redirect_uris: [`http://localhost:${port}/ui/auth/callback`, `http://127.0.0.1:${port}/ui/auth/callback`]
+        redirect_uris: [`${serverUrl}/ui/auth/callback`]
       }),
     });
 
@@ -233,6 +231,28 @@ export class AuthServerTestClient {
     return data.scope;
   }
 
+  async makeResourceAdmin(resourceClientId, resourceClientSecret, username) {
+    const resourceAdminUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/make-resource-admin`;
+    const resourceToken = await this.getResourceServiceAccountToken(resourceClientId, resourceClientSecret);
+    const response = await fetch(resourceAdminUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resourceToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: username
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log('Make resource admin failed:', response.status, response.statusText);
+      console.log('Error response body:', errorText);
+      throw new Error(`Failed to make resource admin: ${response.status} ${response.statusText}`);
+    }
+  }
+
   /**
    * Perform OAuth2 Token Exchange v2
    * @param {string} resourceClientId - Resource client ID
@@ -271,40 +291,6 @@ export class AuthServerTestClient {
 
     const data = await response.json();
     return data.access_token;
-  }
-
-  /**
-   * Setup dynamic clients for testing (creates app and resource clients on demand)
-   * @param {string} username - Username for authentication
-   * @param {string} password - Password for authentication
-   * @param {number} port - Port number for redirect URIs
-   * @returns {Promise<Object>} Client configuration with IDs and secrets
-   */
-  async setupDynamicClients(username, password, port) {
-    // Get dev console token
-    const devConsoleToken = await this.getDevConsoleToken(username, password);
-
-    // Create app client (public)
-    const appClient = await this.createAppClient(devConsoleToken, port);
-
-    // Create resource client (confidential)
-    const resourceClient = await this.createResourceClient(port);
-
-    // Get resource service account token
-    const resourceToken = await this.getResourceServiceAccountToken(
-      resourceClient.clientId,
-      resourceClient.clientSecret
-    );
-
-    // Request audience access
-    const resourceScope = await this.requestAudienceAccess(resourceToken, appClient.clientId);
-
-    return {
-      appClientId: appClient.clientId,
-      resourceClientId: resourceClient.clientId,
-      resourceClientSecret: resourceClient.clientSecret,
-      resourceScope: resourceScope
-    };
   }
 }
 

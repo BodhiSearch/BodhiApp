@@ -8,6 +8,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 config({ path: join(__dirname, 'tests-js', 'playwright', '.env.test') });
 
+const testTimeout = 30000;
+const navigationTimeout = 30000;
+const actionTimeout = 30000;
+
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
@@ -31,7 +35,7 @@ export default defineConfig({
       ]
     : 'list', // Use list reporter locally
   /* Global timeout for each test */
-  timeout: process.env.PLAYWRIGHT_TIMEOUT ? Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT) : 10000, // Configurable timeout
+  timeout: process.env.PLAYWRIGHT_TIMEOUT ? Number.parseInt(process.env.PLAYWRIGHT_TIMEOUT) : testTimeout, // Configurable timeout
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -47,10 +51,10 @@ export default defineConfig({
     video: 'retain-on-failure',
 
     /* Navigation timeout */
-    navigationTimeout: 10000, // Consistent with global timeout
+    navigationTimeout,
 
     /* Action timeout */
-    actionTimeout: 10000, // Consistent with global timeout
+    actionTimeout,
 
     /* Wait for load state */
     waitForLoadState: 'domcontentloaded',

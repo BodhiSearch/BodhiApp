@@ -46,6 +46,9 @@ export const BODHI_ENCRYPTION_KEY: string
 export const BODHI_EXEC_LOOKUP_PATH: string
 export const BODHI_EXEC_VARIANT: string
 export const BODHI_KEEP_ALIVE_SECS: string
+export const BODHI_PUBLIC_SCHEME: string
+export const BODHI_PUBLIC_HOST: string
+export const BODHI_PUBLIC_PORT: string
 export const HF_HOME: string
 export const DEFAULT_HOST: string
 export const DEFAULT_PORT: number
@@ -61,6 +64,8 @@ export declare class BodhiServer {
   host(): string
   /** Get the server port */
   port(): number
+  /** Get the server scheme */
+  scheme(): string
   /**
    * Start the Bodhi server
    *
