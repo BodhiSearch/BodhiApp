@@ -17,12 +17,14 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 ## Key Components
 
 ### Application Structure (App Router)
+
 - **Root Layout**: Main application layout with navigation and theme provider
 - **Route Groups**: UI routes organized in `/ui` route group for main application
 - **Documentation Routes**: `/docs` for integrated documentation system
 - **API Integration**: Client-side API calls to BodhiApp backend
 
 ### Core Features
+
 - **Chat Interface**: Real-time chat with streaming responses and message history
 - **Model Management**: Create, edit, and manage model aliases and configurations
 - **User Setup**: Guided onboarding flow for first-time users
@@ -30,6 +32,7 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 - **Authentication**: OAuth login/logout with session management
 
 ### UI Components
+
 - **Design System**: Shadcn/ui components with consistent styling
 - **Theme Support**: Dark/light theme toggle with system preference detection
 - **Responsive Layout**: Mobile-first responsive design
@@ -38,12 +41,14 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 ## Dependencies
 
 ### Core Framework
+
 - `next` (14.2.30) - React framework with App Router
 - `react` (^18) - React library for UI components
 - `react-dom` (^18) - React DOM rendering
 - `typescript` (^5) - TypeScript for type safety
 
 ### UI Framework
+
 - `tailwindcss` (^3.4.17) - Utility-first CSS framework
 - `@radix-ui/*` - Headless UI components for accessibility
 - `lucide-react` (^0.515.0) - Icon library
@@ -51,18 +56,21 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 - `tailwind-merge` (^2.6.0) - Conditional TailwindCSS class merging
 
 ### State Management & API
+
 - `react-query` (^3.39.3) - Server state management and caching
 - `axios` (^1.9.0) - HTTP client for API requests
 - `react-hook-form` (^7.57.0) - Form state management
 - `zod` (^3.23.8) - Schema validation
 
 ### Content & Documentation
+
 - `@next/mdx` (^15.3.3) - MDX support for documentation
 - `react-markdown` (^9.1.0) - Markdown rendering
 - `react-syntax-highlighter` (^15.6.1) - Code syntax highlighting
 - `prismjs` (^1.29.0) - Additional syntax highlighting
 
 ### Development Tools
+
 - `vitest` (^2.1.9) - Testing framework
 - `@testing-library/react` (^16.0.0) - React testing utilities
 - `eslint` (^8.57.1) - Code linting
@@ -71,6 +79,7 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 ## Architecture Position
 
 The frontend application sits at the user interface layer:
+
 - **Provides**: Complete web-based user interface for BodhiApp
 - **Communicates**: With BodhiApp HTTP API endpoints for all functionality
 - **Manages**: Client-side state, authentication, and user experience
@@ -79,6 +88,7 @@ The frontend application sits at the user interface layer:
 ## Usage Patterns
 
 ### Application Entry Point
+
 ```tsx
 // src/app/layout.tsx
 'use client';
@@ -109,6 +119,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 ```
 
 ### Chat Interface Implementation
+
 ```tsx
 // src/hooks/use-chat.tsx
 export function useChat() {
@@ -118,48 +129,55 @@ export function useChat() {
   const { currentChat, createOrUpdateChat } = useChatDB();
   const chatSettings = useChatSettings();
 
-  const appendMessage = useCallback(async (content: string) => {
-    const existingMessages = currentChat?.messages || [];
-    const newMessages = [...existingMessages, { role: 'user', content }];
+  const appendMessage = useCallback(
+    async (content: string) => {
+      const existingMessages = currentChat?.messages || [];
+      const newMessages = [...existingMessages, { role: 'user', content }];
 
-    await processCompletion(newMessages);
-  }, [currentChat, processCompletion]);
+      await processCompletion(newMessages);
+    },
+    [currentChat, processCompletion]
+  );
 
-  const processCompletion = useCallback(async (userMessages: Message[]) => {
-    const requestMessages = chatSettings.systemPrompt_enabled 
-      ? [{ role: 'system', content: chatSettings.systemPrompt }, ...userMessages]
-      : userMessages;
+  const processCompletion = useCallback(
+    async (userMessages: Message[]) => {
+      const requestMessages = chatSettings.systemPrompt_enabled
+        ? [{ role: 'system', content: chatSettings.systemPrompt }, ...userMessages]
+        : userMessages;
 
-    await append({
-      request: {
-        ...chatSettings.getRequestSettings(),
-        messages: requestMessages,
-      },
-      onDelta: (chunk) => {
-        // Handle streaming response chunks
-        setAssistantMessage(prev => ({
-          role: 'assistant',
-          content: prev.content + chunk,
-        }));
-      },
-      onFinish: (message) => {
-        // Save completed conversation to local storage
-        createOrUpdateChat({
-          id: currentChat?.id || nanoid(),
-          title: messages[0]?.content.slice(0, 20) || 'New Chat',
-          messages: [...userMessages, message],
-          createdAt: currentChat?.createdAt || Date.now(),
-          updatedAt: Date.now(),
-        });
-      },
-    });
-  }, [chatSettings, currentChat, append, createOrUpdateChat]);
+      await append({
+        request: {
+          ...chatSettings.getRequestSettings(),
+          messages: requestMessages,
+        },
+        onDelta: (chunk) => {
+          // Handle streaming response chunks
+          setAssistantMessage((prev) => ({
+            role: 'assistant',
+            content: prev.content + chunk,
+          }));
+        },
+        onFinish: (message) => {
+          // Save completed conversation to local storage
+          createOrUpdateChat({
+            id: currentChat?.id || nanoid(),
+            title: messages[0]?.content.slice(0, 20) || 'New Chat',
+            messages: [...userMessages, message],
+            createdAt: currentChat?.createdAt || Date.now(),
+            updatedAt: Date.now(),
+          });
+        },
+      });
+    },
+    [chatSettings, currentChat, append, createOrUpdateChat]
+  );
 
   return { input, setInput, isLoading, append: appendMessage };
 }
 ```
 
 ### API Client Configuration
+
 ```tsx
 // src/lib/apiClient.ts
 import axios, { AxiosInstance } from 'axios';
@@ -229,6 +247,7 @@ export const apiClient = new ApiClient();
 ```
 
 ### Component Development with Shadcn/ui
+
 ```tsx
 // src/components/ui/button.tsx
 import { Slot } from '@radix-ui/react-slot';
@@ -270,18 +289,13 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : 'button';
-    return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    );
+    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
   }
 );
 ```
 
 ### Chat UI Implementation
+
 ```tsx
 // src/app/ui/chat/page.tsx
 'use client';
@@ -322,6 +336,7 @@ export default function ChatPage() {
 ## Page Structure and Routing
 
 ### App Router Organization
+
 ```
 src/app/
 ├── layout.tsx                    # Root layout with providers
@@ -352,6 +367,7 @@ src/app/
 ```
 
 ### Component Architecture
+
 ```
 src/components/
 ├── ui/                          # Shadcn/ui base components
@@ -369,6 +385,7 @@ src/components/
 ```
 
 ### Custom Hooks
+
 ```
 src/hooks/
 ├── use-chat.tsx                # Main chat functionality
@@ -384,34 +401,41 @@ src/hooks/
 ## State Management
 
 ### Local Storage for Chat History
+
 ```tsx
 // src/hooks/use-chat-db.tsx
 export function useChatDB() {
   const [chats, setChats] = useLocalStorage<Chat[]>('bodhi-chats', []);
   const [currentChatId, setCurrentChatId] = useLocalStorage<string | null>('bodhi-current-chat', null);
 
-  const createOrUpdateChat = useCallback((chat: Chat) => {
-    setChats(prevChats => {
-      const existingIndex = prevChats.findIndex(c => c.id === chat.id);
-      if (existingIndex >= 0) {
-        const newChats = [...prevChats];
-        newChats[existingIndex] = chat;
-        return newChats;
-      }
-      return [chat, ...prevChats];
-    });
-  }, [setChats]);
+  const createOrUpdateChat = useCallback(
+    (chat: Chat) => {
+      setChats((prevChats) => {
+        const existingIndex = prevChats.findIndex((c) => c.id === chat.id);
+        if (existingIndex >= 0) {
+          const newChats = [...prevChats];
+          newChats[existingIndex] = chat;
+          return newChats;
+        }
+        return [chat, ...prevChats];
+      });
+    },
+    [setChats]
+  );
 
-  const deleteChat = useCallback((chatId: string) => {
-    setChats(prevChats => prevChats.filter(c => c.id !== chatId));
-    if (currentChatId === chatId) {
-      setCurrentChatId(null);
-    }
-  }, [setChats, currentChatId, setCurrentChatId]);
+  const deleteChat = useCallback(
+    (chatId: string) => {
+      setChats((prevChats) => prevChats.filter((c) => c.id !== chatId));
+      if (currentChatId === chatId) {
+        setCurrentChatId(null);
+      }
+    },
+    [setChats, currentChatId, setCurrentChatId]
+  );
 
   return {
     chats,
-    currentChat: chats.find(c => c.id === currentChatId) || null,
+    currentChat: chats.find((c) => c.id === currentChatId) || null,
     currentChatId,
     setCurrentChatId,
     createOrUpdateChat,
@@ -422,6 +446,7 @@ export function useChatDB() {
 ```
 
 ### React Query for Server State
+
 ```tsx
 // src/hooks/useQuery.ts
 import { useQuery as useReactQuery, QueryClient } from 'react-query';
@@ -450,6 +475,7 @@ export function useSettings() {
 ## Styling and Design System
 
 ### TailwindCSS Configuration
+
 ```typescript
 // tailwind.config.ts
 import type { Config } from 'tailwindcss';
@@ -487,6 +513,7 @@ const config: Config = {
 ```
 
 ### CSS Custom Properties
+
 ```css
 /* src/app/globals.css */
 @tailwind base;
@@ -515,6 +542,7 @@ const config: Config = {
 ## Testing Strategy
 
 ### Vitest Configuration
+
 ```typescript
 // vitest.config.ts
 import { defineConfig } from 'vitest/config';
@@ -535,6 +563,7 @@ export default defineConfig({
 ```
 
 ### Component Testing
+
 ```tsx
 // src/components/ui/button.test.tsx
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -558,6 +587,7 @@ describe('Button Component', () => {
 ```
 
 ### Hook Testing
+
 ```tsx
 // src/hooks/use-chat.test.tsx
 import { renderHook, act } from '@testing-library/react';
@@ -588,16 +618,17 @@ describe('useChat', () => {
 ## Build and Deployment
 
 ### Next.js Configuration
+
 ```javascript
 // next.config.mjs
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export',                    // Static export for desktop embedding
+  output: 'export', // Static export for desktop embedding
   trailingSlash: true,
   transpilePackages: ['geist'],
   productionBrowserSourceMaps: true,
   images: {
-    unoptimized: true,                 // Required for static export
+    unoptimized: true, // Required for static export
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -606,6 +637,7 @@ const nextConfig = {
 ```
 
 ### Build Scripts
+
 ```json
 // package.json
 {
@@ -621,6 +653,7 @@ const nextConfig = {
 ```
 
 ### Production Build Process
+
 1. **Static Export**: Next.js builds a static site for embedding in desktop app
 2. **Asset Optimization**: Images and assets are optimized for production
 3. **Code Splitting**: Automatic code splitting for optimal loading
@@ -629,6 +662,7 @@ const nextConfig = {
 ## Development Guidelines
 
 ### Component Development
+
 1. Use TypeScript for all components with proper type definitions
 2. Follow Shadcn/ui patterns for consistent styling
 3. Implement proper accessibility with ARIA attributes
@@ -636,6 +670,7 @@ const nextConfig = {
 5. Use proper error boundaries for error handling
 
 ### State Management Best Practices
+
 1. Use React Query for server state management
 2. Local storage for persistent client state
 3. Context providers for global application state
@@ -643,6 +678,7 @@ const nextConfig = {
 5. Proper cleanup in useEffect hooks
 
 ### Performance Optimization
+
 1. Lazy loading for heavy components
 2. Memoization with React.memo and useMemo
 3. Proper dependency arrays in useEffect and useCallback
@@ -650,6 +686,7 @@ const nextConfig = {
 5. Image optimization and lazy loading
 
 ### Code Quality
+
 - TypeScript strict mode enabled
 - ESLint configuration with Next.js rules
 - Prettier for consistent code formatting
@@ -659,6 +696,7 @@ const nextConfig = {
 ## Security Considerations
 
 ### Client-Side Security
+
 - Secure token storage and transmission
 - Input validation and sanitization
 - XSS prevention in markdown rendering
@@ -666,6 +704,7 @@ const nextConfig = {
 - Secure HTTP headers implementation
 
 ### Authentication Flow
+
 - OAuth2 integration with secure callback handling
 - JWT token management with proper expiration
 - Session cleanup on logout
@@ -674,6 +713,7 @@ const nextConfig = {
 ## Future Extensions
 
 The frontend application can be extended with:
+
 - WebSocket integration for real-time updates
 - Progressive Web App (PWA) capabilities
 - Advanced chat features (file uploads, voice input)
