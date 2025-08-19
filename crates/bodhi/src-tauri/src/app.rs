@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand};
 // Command enum for delegation to feature-specific initialization
 #[derive(Debug, Clone)]
 pub enum AppCommand {
-  Server(String, u16), // host, port
+  Server(Option<String>, Option<u16>), // host, port
   Default,
 }
 
@@ -29,11 +29,11 @@ enum Commands {
   /// Start the server in deployment mode
   Serve {
     /// Host address to bind to
-    #[arg(short = 'H', long, default_value = lib_bodhiserver::DEFAULT_HOST)]
-    host: String,
+    #[arg(short = 'H', long)]
+    host: Option<String>,
     /// Port number to bind to
-    #[arg(short, long, default_value_t = lib_bodhiserver::DEFAULT_PORT)]
-    port: u16,
+    #[arg(short, long)]
+    port: Option<u16>,
   },
 }
 
@@ -110,20 +110,20 @@ mod server_test {
   }
 
   #[rstest]
-  #[case(vec!["bodhi", "serve", "-H", "0.0.0.0", "-p", "8080"], "0.0.0.0", 8080)]
-  #[case(vec!["bodhi", "serve", "--host", "127.0.0.1", "--port", "3000"], "127.0.0.1", 3000)]
-  #[case(vec!["bodhi", "serve", "-p", "8080"], lib_bodhiserver::DEFAULT_HOST, 8080)]
-  #[case(vec!["bodhi", "serve", "-H", "0.0.0.0"], "0.0.0.0", lib_bodhiserver::DEFAULT_PORT)]
-  #[case(vec!["bodhi", "serve"], lib_bodhiserver::DEFAULT_HOST, lib_bodhiserver::DEFAULT_PORT)]
+  #[case(vec!["bodhi", "serve", "-H", "0.0.0.0"], Some("0.0.0.0"), None)]
+  #[case(vec!["bodhi", "serve", "-p", "8080"], None, Some(8080))]
+  #[case(vec!["bodhi", "serve", "-H", "0.0.0.0", "-p", "8080"], Some("0.0.0.0"), Some(8080))]
+  #[case(vec!["bodhi", "serve", "--host", "127.0.0.1", "--port", "3000"], Some("127.0.0.1"), Some(3000))]
+  #[case(vec!["bodhi", "serve"], None, None)]
   fn test_cli_serve_valid(
     #[case] args: Vec<&str>,
-    #[case] expected_host: &str,
-    #[case] expected_port: u16,
+    #[case] expected_host: Option<&str>,
+    #[case] expected_port: Option<u16>,
   ) -> anyhow::Result<()> {
     let cli = Cli::try_parse_from(args)?;
     match cli.command {
       Some(Commands::Serve { host, port }) => {
-        assert_eq!(expected_host, host);
+        assert_eq!(expected_host, host.as_deref());
         assert_eq!(expected_port, port);
       }
       _ => panic!("Expected Serve command"),
@@ -157,7 +157,7 @@ mod server_test {
     let cli = Cli::try_parse_from(args)?;
     match cli.command {
       Some(Commands::Serve { host: _, port }) => {
-        assert_eq!(0, port);
+        assert_eq!(Some(0), port);
       }
       _ => panic!("Expected Serve command"),
     }

@@ -36,7 +36,7 @@ fn copy_llama_bins(project_dir: &Path) -> Result<(), anyhow::Error> {
     .context("Failed to open lock file - ensure llama_server_proc has been built")?;
 
   // Try to acquire the lock, retry if locked
-  let max_attempts = 300; // Maximum 5 minutes wait
+  let max_attempts = 180; // Maximum 3 minutes wait
   let mut attempts = 0;
   while let Err(e) = fs2::FileExt::try_lock_shared(&lock_file) {
     if attempts >= max_attempts {

@@ -1,8 +1,10 @@
 use crate::app::AppCommand;
 use lib_bodhiserver::{
   build_app_service, setup_app_dirs, AppType, ErrorMessage, ErrorType, ServeCommand,
-  SettingService, BODHI_LOG_STDOUT,
+  SettingService, BODHI_HOST, BODHI_LOG_STDOUT, BODHI_PORT,
 };
+use objs::SettingSource;
+use serde_yaml::{Number, Value};
 use std::sync::Arc;
 use tokio::runtime::Builder;
 use tracing::level_filters::LevelFilter;
@@ -46,41 +48,44 @@ pub fn initialize_and_execute(command: AppCommand) -> Result<(), ErrorMessage> {
   let app_options = build_app_options(APP_TYPE)?;
   let setting_service = setup_app_dirs(&app_options)?;
   set_feature_settings(&setting_service)?;
+  if let AppCommand::Server(host, port) = command {
+    if let Some(host) = host {
+      SettingService::set_setting_with_source(
+        &setting_service,
+        BODHI_HOST,
+        &Value::String(host),
+        SettingSource::CommandLine,
+      );
+    }
+    if let Some(port) = port {
+      SettingService::set_setting_with_source(
+        &setting_service,
+        BODHI_PORT,
+        &Value::Number(Number::from(port)),
+        SettingSource::CommandLine,
+      );
+    }
+  }
 
   // Server mode uses file-based logging
   let _guard = setup_logs(&setting_service);
 
-  let result = aexecute(Arc::new(setting_service), command);
+  let result = aexecute(Arc::new(setting_service));
 
   drop(_guard);
   result
 }
 
-fn aexecute(
-  setting_service: Arc<dyn SettingService>,
-  command: AppCommand,
-) -> Result<(), ErrorMessage> {
+fn aexecute(setting_service: Arc<dyn SettingService>) -> Result<(), ErrorMessage> {
   let runtime = Builder::new_multi_thread()
     .enable_all()
     .build()
     .map_err(crate::error::AppSetupError::from)?;
   let result: Result<(), ErrorMessage> = runtime.block_on(async move {
-    // Build the complete app service using the lib_bodhiserver function
-    let app_service = Arc::new(build_app_service(setting_service.clone()).await?);
-
-    // Handle server commands based on the parsed command
-    let command = match command {
-      AppCommand::Server(host, port) => {
-        // Server deployment mode with specific host/port
-        ServeCommand::ByParams { host, port }
-      }
-      AppCommand::Default => {
-        // Default server mode - use settings from configuration
-        let host = setting_service.host();
-        let port = setting_service.port();
-        ServeCommand::ByParams { host, port }
-      }
-    };
+    let host = setting_service.host();
+    let port = setting_service.port();
+    let command = ServeCommand::ByParams { host, port };
+    let app_service = Arc::new(build_app_service(setting_service).await?);
     command
       .aexecute(app_service, Some(&crate::ui::ASSETS))
       .await
@@ -108,7 +113,11 @@ fn setup_logs(setting_service: &lib_bodhiserver::DefaultSettingService) -> Worke
   // Reduce verbose middleware logging noise
   let filter = filter.add_directive("tower_sessions=warn".parse().expect("is a valid directive"));
   let filter = filter.add_directive("tower_http=warn".parse().expect("is a valid directive"));
-  let filter = filter.add_directive("tower_sessions_core=warn".parse().expect("is a valid directive"));
+  let filter = filter.add_directive(
+    "tower_sessions_core=warn"
+      .parse()
+      .expect("is a valid directive"),
+  );
 
   // Check if we should output to stdout
   let enable_stdout = cfg!(debug_assertions)

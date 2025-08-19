@@ -9,6 +9,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 errmeta_derive = { workspace = true }
+objs = { workspace = true }
 lib_bodhiserver = { workspace = true }
 
 include_dir = { workspace = true }
