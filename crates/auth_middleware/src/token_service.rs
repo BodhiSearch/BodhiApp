@@ -992,7 +992,12 @@ mod tests {
       .validate_bearer_token(&format!("Bearer {}", forged_token))
       .await;
 
-    assert!(matches!(forged_result, Err(AuthError::AuthService(AuthServiceError::TokenExchangeError(_)))));
+    assert!(matches!(
+      forged_result,
+      Err(AuthError::AuthService(
+        AuthServiceError::TokenExchangeError(_)
+      ))
+    ));
     let legitimate_digest = create_token_digest(&legitimate_token);
     let forged_digest = create_token_digest(&forged_token);
     assert_ne!(
