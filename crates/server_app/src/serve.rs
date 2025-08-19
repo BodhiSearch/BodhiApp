@@ -122,14 +122,14 @@ impl ServeCommand {
     });
 
     let app = build_routes(ctx.clone(), service, static_router);
+    let scheme = setting_service.scheme();
+    let server_url = format!("{scheme}://{host}:{port}");
+    let public_url = setting_service.public_server_url();
 
     let join_handle: JoinHandle<std::result::Result<(), ServeError>> = tokio::spawn(async move {
       let callback = Box::new(ShutdownContextCallback { ctx });
       match server.start_new(app, Some(callback)).await {
-        Ok(()) => {
-          tracing::info!("server started");
-          Ok(())
-        }
+        Ok(()) => Ok(()),
         Err(err) => {
           tracing::error!(err = ?err, "server encountered an error");
           Err(err)?
@@ -138,8 +138,8 @@ impl ServeCommand {
     });
     match ready_rx.await {
       Ok(()) => {
-        println!("server started on http://{host}:{port}");
-        tracing::info!(addr = format!("{host}:{port}"), "server started");
+        println!("server started on server_url={server_url}, public_url={public_url}");
+        tracing::info!(server_url, public_url, "server started");
       }
       Err(err) => tracing::warn!(?err, "ready channel closed before could receive signal"),
     }

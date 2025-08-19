@@ -6,6 +6,7 @@ macro_rules! make_ui_endpoint {
 }
 
 use crate::proxy_router;
+use auth_middleware::canonical_url_middleware;
 use auth_middleware::{api_auth_middleware, auth_middleware, inject_session_auth_info};
 use axum::{
   middleware::from_fn_with_state,
@@ -194,8 +195,7 @@ pub fn build_routes(
         .allow_headers(Any)
         .allow_credentials(false),
     )
-    .with_state(state)
-    .layer(info_trace);
+    .with_state(state);
 
   let router = apply_ui_router(
     &app_service.setting_service(),
@@ -203,7 +203,13 @@ pub fn build_routes(
     static_router,
     proxy_router("http://localhost:3000".to_string()),
   );
-  router.layer(app_service.session_service().session_layer())
+  router
+    .layer(app_service.session_service().session_layer())
+    .layer(from_fn_with_state(
+      app_service.setting_service(),
+      canonical_url_middleware,
+    ))
+    .layer(info_trace)
 }
 
 fn apply_ui_router(
