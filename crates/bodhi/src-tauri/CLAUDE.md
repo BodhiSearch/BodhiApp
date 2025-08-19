@@ -16,24 +16,28 @@ The `bodhi/src-tauri` crate implements the Tauri desktop application:
 ## Key Components
 
 ### Tauri Application
+
 - Main application entry point with window management
 - Tauri commands for frontend-to-backend communication
 - Native menu system and keyboard shortcuts
 - Window state management and persistence
 
 ### Embedded Server Integration
+
 - BodhiServer integration using `lib_bodhiserver`
 - Local database and file management
 - Authentication service for desktop environment
 - Model management and chat functionality
 
 ### System Integration
+
 - File system access for model storage and configuration
 - System notifications for background operations
 - Platform-specific features (Windows, macOS, Linux)
 - Deep linking and protocol handlers
 
 ### IPC Commands
+
 - Tauri commands for chat completions
 - Model management operations
 - Settings and configuration management
@@ -42,15 +46,18 @@ The `bodhi/src-tauri` crate implements the Tauri desktop application:
 ## Dependencies
 
 ### Tauri Framework
+
 - `tauri` - Main Tauri framework for desktop applications
 - `tauri-build` - Build-time dependencies and configuration
 
 ### Server Integration
+
 - `lib_bodhiserver` - Embedded BodhiApp server
 - `services` - Business logic services
 - `objs` - Domain objects and validation
 
 ### System Integration
+
 - `dirs` - Platform-specific directory access
 - `keyring` - Secure credential storage
 - `notify` - File system change monitoring
@@ -58,6 +65,7 @@ The `bodhi/src-tauri` crate implements the Tauri desktop application:
 ## Architecture Position
 
 The Tauri application sits at the desktop platform layer:
+
 - **Integrates**: Web UI with native desktop functionality
 - **Manages**: System resources and native platform features
 - **Embeds**: Complete BodhiApp server functionality
@@ -66,6 +74,7 @@ The Tauri application sits at the desktop platform layer:
 ## Usage Patterns
 
 ### Application Initialization
+
 ```rust
 use tauri::{App, Manager, State};
 use lib_bodhiserver::BodhiServer;
@@ -95,6 +104,7 @@ fn main() {
 ```
 
 ### Server Integration
+
 ```rust
 #[tauri::command]
 async fn initialize_server(
@@ -114,13 +124,14 @@ async fn initialize_server(
         .map_err(|e| e.to_string())?;
 
     server.start().await.map_err(|e| e.to_string())?;
-    
+
     *state.server.lock().unwrap() = Some(server);
     Ok(())
 }
 ```
 
 ### IPC Commands
+
 ```rust
 #[tauri::command]
 async fn chat_completion(
@@ -129,7 +140,7 @@ async fn chat_completion(
 ) -> Result<ChatCompletionResponse, String> {
     let server = state.server.lock().unwrap();
     let server = server.as_ref().ok_or("Server not initialized")?;
-    
+
     server.chat_completion(request)
         .await
         .map_err(|e| e.to_string())
@@ -141,7 +152,7 @@ async fn list_models(
 ) -> Result<Vec<Model>, String> {
     let server = state.server.lock().unwrap();
     let server = server.as_ref().ok_or("Server not initialized")?;
-    
+
     server.list_models()
         .await
         .map_err(|e| e.to_string())
@@ -154,7 +165,7 @@ async fn create_model(
 ) -> Result<(), String> {
     let server = state.server.lock().unwrap();
     let server = server.as_ref().ok_or("Server not initialized")?;
-    
+
     server.create_model(request)
         .await
         .map_err(|e| e.to_string())
@@ -162,6 +173,7 @@ async fn create_model(
 ```
 
 ### Frontend Integration
+
 ```typescript
 // In the Next.js frontend
 import { invoke } from '@tauri-apps/api/tauri';
@@ -218,35 +230,37 @@ function ChatInterface() {
 ## System Integration
 
 ### File System Access
+
 ```rust
 #[tauri::command]
 async fn select_model_file() -> Result<String, String> {
     use tauri::api::dialog::FileDialogBuilder;
-    
+
     let file_path = FileDialogBuilder::new()
         .add_filter("GGUF Models", &["gguf"])
         .add_filter("All Files", &["*"])
         .pick_file()
         .await
         .ok_or("No file selected")?;
-    
+
     Ok(file_path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
 async fn open_data_directory(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::api::shell;
-    
+
     let data_dir = app.path_resolver()
         .app_data_dir()
         .ok_or("Failed to get data directory")?;
-    
+
     shell::open(&app.shell_scope(), data_dir.to_string_lossy(), None)
         .map_err(|e| e.to_string())
 }
 ```
 
 ### System Notifications
+
 ```rust
 use tauri::api::notification::Notification;
 
@@ -264,6 +278,7 @@ async fn notify_model_download_complete(
 ```
 
 ### System Tray Integration
+
 ```rust
 use tauri::{CustomMenuItem, Menu, MenuItem, SystemTray, SystemTrayMenu, SystemTrayEvent};
 
@@ -271,13 +286,13 @@ fn create_system_tray() -> SystemTray {
     let show = CustomMenuItem::new("show".to_string(), "Show");
     let hide = CustomMenuItem::new("hide".to_string(), "Hide");
     let quit = CustomMenuItem::new("quit".to_string(), "Quit");
-    
+
     let tray_menu = SystemTrayMenu::new()
         .add_item(show)
         .add_item(hide)
         .add_native_item(MenuItem::Separator)
         .add_item(quit);
-    
+
     SystemTray::new().with_menu(tray_menu)
 }
 
@@ -312,6 +327,7 @@ fn handle_system_tray_event(app: &tauri::AppHandle, event: SystemTrayEvent) {
 ## Configuration and Settings
 
 ### Tauri Configuration
+
 ```json
 // tauri.conf.json
 {
@@ -355,19 +371,22 @@ fn handle_system_tray_event(app: &tauri::AppHandle, event: SystemTrayEvent) {
     "systemTray": {
       "iconPath": "icons/tray-icon.png"
     },
-    "windows": [{
-      "title": "Bodhi",
-      "width": 1200,
-      "height": 800,
-      "minWidth": 800,
-      "minHeight": 600,
-      "resizable": true
-    }]
+    "windows": [
+      {
+        "title": "Bodhi",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600,
+        "resizable": true
+      }
+    ]
   }
 }
 ```
 
 ### Application Settings
+
 ```rust
 #[derive(Serialize, Deserialize)]
 struct AppSettings {
@@ -403,14 +422,14 @@ async fn save_settings(
     let config_dir = app.path_resolver()
         .app_config_dir()
         .ok_or("Failed to get config directory")?;
-    
+
     fs::create_dir_all(&config_dir)
         .map_err(|e| e.to_string())?;
-    
+
     let settings_path = config_dir.join("settings.json");
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|e| e.to_string())?;
-    
+
     fs::write(settings_path, content)
         .map_err(|e| e.to_string())
 }
@@ -419,17 +438,18 @@ async fn save_settings(
 ## Auto-Updates
 
 ### Update Configuration
+
 ```rust
 use tauri::updater;
 
 async fn check_for_updates(app: tauri::AppHandle) -> Result<(), String> {
     let update = app.updater().check().await.map_err(|e| e.to_string())?;
-    
+
     if update.is_update_available() {
         update.download_and_install().await.map_err(|e| e.to_string())?;
         app.restart();
     }
-    
+
     Ok(())
 }
 
@@ -443,6 +463,7 @@ async fn manual_update_check(app: tauri::AppHandle) -> Result<bool, String> {
 ## Platform-Specific Features
 
 ### macOS Integration
+
 ```rust
 #[cfg(target_os = "macos")]
 use tauri::api::process::Command;
@@ -468,6 +489,7 @@ async fn set_as_login_item(enable: bool) -> Result<(), String> {
 ```
 
 ### Windows Integration
+
 ```rust
 #[cfg(target_os = "windows")]
 use winreg::{enums::HKEY_CURRENT_USER, RegKey};
@@ -479,7 +501,7 @@ async fn set_startup(enable: bool) -> Result<(), String> {
     let path = Path::new("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
     let key = hkcu.open_subkey_with_flags(&path, KEY_WRITE)
         .map_err(|e| e.to_string())?;
-    
+
     if enable {
         let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
         key.set_value("Bodhi", &exe_path.to_string_lossy().as_ref())
@@ -487,7 +509,7 @@ async fn set_startup(enable: bool) -> Result<(), String> {
     } else {
         key.delete_value("Bodhi").map_err(|e| e.to_string())?;
     }
-    
+
     Ok(())
 }
 ```
@@ -495,6 +517,7 @@ async fn set_startup(enable: bool) -> Result<(), String> {
 ## Development Guidelines
 
 ### Adding New Commands
+
 1. Define Rust function with `#[tauri::command]` attribute
 2. Add proper error handling and type conversion
 3. Register command in `invoke_handler`
@@ -502,12 +525,14 @@ async fn set_startup(enable: bool) -> Result<(), String> {
 5. Include comprehensive error handling
 
 ### State Management
+
 - Use thread-safe state containers (Arc, Mutex)
 - Initialize state in setup function
 - Handle state access errors gracefully
 - Clean up resources on application exit
 
 ### Security Considerations
+
 - Validate all inputs from frontend
 - Use Tauri's allowlist for restricting capabilities
 - Implement proper CSP (Content Security Policy)
@@ -516,18 +541,21 @@ async fn set_startup(enable: bool) -> Result<(), String> {
 ## Testing Strategy
 
 ### Unit Testing
+
 - Test individual Tauri commands
 - Mock server interactions
 - Validate error handling
 - Test state management
 
 ### Integration Testing
+
 - End-to-end application testing
 - Frontend-backend communication
 - File system operations
 - System integration features
 
 ### Platform Testing
+
 - Test on Windows, macOS, and Linux
 - Validate platform-specific features
 - Test installer and update mechanisms
@@ -536,6 +564,7 @@ async fn set_startup(enable: bool) -> Result<(), String> {
 ## Distribution
 
 ### Building for Release
+
 ```bash
 # Build for current platform
 npm run tauri build
@@ -547,6 +576,7 @@ npm run tauri build -- --target x86_64-unknown-linux-gnu
 ```
 
 ### Distribution Channels
+
 - Direct download from GitHub releases
 - Platform-specific stores (Microsoft Store, Mac App Store)
 - Package managers (Homebrew, Chocolatey, Snap)
@@ -555,6 +585,7 @@ npm run tauri build -- --target x86_64-unknown-linux-gnu
 ## Future Extensions
 
 The Tauri application can be extended with:
+
 - Plugin system for community extensions
 - Advanced system integration features
 - Enhanced offline capabilities

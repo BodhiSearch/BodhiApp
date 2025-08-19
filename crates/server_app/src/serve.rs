@@ -5,10 +5,10 @@ use crate::{
 use axum::Router;
 use include_dir::Dir;
 use llama_server_proc::exec_path_from;
-use objs::{impl_error_from, AppError, SettingSource};
+use objs::{impl_error_from, AppError};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContext, SharedContext};
-use services::{AppService, SettingServiceError, BODHI_HOST, BODHI_PORT};
+use services::{AppService, SettingServiceError};
 use std::{path::PathBuf, sync::Arc};
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 use tower_serve_static::ServeDir;
@@ -89,38 +89,6 @@ impl ServeCommand {
   ) -> Result<ServerShutdownHandle> {
     let ServeCommand::ByParams { host, port } = self;
     let setting_service = service.setting_service();
-    let host_source = if let Some(serde_yaml::Value::String(default_host)) =
-      setting_service.get_default_value(BODHI_HOST)
-    {
-      if *host == default_host {
-        SettingSource::Default
-      } else {
-        SettingSource::CommandLine
-      }
-    } else {
-      SettingSource::CommandLine
-    };
-    setting_service.set_setting_with_source(
-      BODHI_HOST,
-      &serde_yaml::Value::String(host.to_string()),
-      host_source,
-    );
-    let port_source = if let Some(serde_yaml::Value::Number(default_port)) =
-      setting_service.get_default_value(BODHI_PORT)
-    {
-      if Some((*port) as u64) == default_port.as_u64() {
-        SettingSource::Default
-      } else {
-        SettingSource::CommandLine
-      }
-    } else {
-      SettingSource::CommandLine
-    };
-    setting_service.set_setting_with_source(
-      BODHI_PORT,
-      &serde_yaml::Value::Number((*port).into()),
-      port_source,
-    );
     let ServerHandle {
       server,
       shutdown,
