@@ -290,8 +290,7 @@ interface ChatCompletionResponse {
     "targets": ["x86_64-pc-windows-msvc", "x86_64-apple-darwin", "aarch64-apple-darwin", "x86_64-unknown-linux-gnu"]
   },
   "scripts": {
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
+    "build": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm"
   }
 }

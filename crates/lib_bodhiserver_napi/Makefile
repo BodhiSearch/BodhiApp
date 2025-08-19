@@ -8,11 +8,8 @@ all: build test
 install-js:
 	npm install
 
-# Build targets
-build: build-debug
-
-build-debug: install-js
-	npm run build:debug
+build: install-js
+	npm run build
 
 build-release: install-js
 	npm run build:release

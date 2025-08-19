@@ -16,10 +16,10 @@
     }
   },
   "scripts": {
+    "clean": "rimraf app-bindings.*.node",
     "artifacts": "napi artifacts",
     "create-npm-dirs": "napi create-npm-dir --target .",
-    "build": "napi build --platform --release",
-    "build:debug": "napi build --platform",
+    "build": "napi build --platform",
     "build:release": "napi build --platform --release",
     "build:release:win": "napi build --platform --release --target x86_64-pc-windows-msvc",
     "update-optional-dependencies": "node scripts/update-optional-dependencies.js",
@@ -44,6 +44,7 @@
     "@playwright/test": "^1.48.2",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "rimraf": "^6.0.1",
     "vitest": "^2.1.8"
   },
   "engines": {

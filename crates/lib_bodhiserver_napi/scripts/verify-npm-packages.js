@@ -7,12 +7,15 @@ const MAX_ATTEMPTS = 5;
 const RETRY_DELAY_MS = 10000; // 10 seconds
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function checkPackageVersion(packageName, expectedVersion) {
   try {
-    const result = execSync(`npm view "${packageName}" version`, { encoding: 'utf8', stdio: 'pipe' });
+    const result = execSync(`npm view "${packageName}" version`, {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
     return result.trim();
   } catch (error) {
     return null;
@@ -51,15 +54,16 @@ async function verifyPackages() {
   packagesToVerify.set(packageName, {
     name: packageName,
     type: 'main',
-    verified: false
+    verified: false,
   });
 
   // Add platform packages
   const npmDir = path.join(process.cwd(), 'npm');
   if (fs.existsSync(npmDir)) {
-    const platformDirs = fs.readdirSync(npmDir, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => dirent.name);
+    const platformDirs = fs
+      .readdirSync(npmDir, { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => dirent.name);
 
     for (const platformDir of platformDirs) {
       const platformPackageName = `${packageName}-${platformDir}`;
@@ -67,7 +71,7 @@ async function verifyPackages() {
         name: platformPackageName,
         type: 'platform',
         platform: platformDir,
-        verified: false
+        verified: false,
       });
     }
   }
@@ -97,7 +101,9 @@ async function verifyPackages() {
         allVerified = false;
         unverifiedPackages.push(`${packageName} (not found)`);
       } else if (publishedVersion !== expectedVersion) {
-        console.log(`  ❌ Version mismatch: expected ${expectedVersion}, found ${publishedVersion}`);
+        console.log(
+          `  ❌ Version mismatch: expected ${expectedVersion}, found ${publishedVersion}`
+        );
         allVerified = false;
         unverifiedPackages.push(`${packageName} (wrong version: ${publishedVersion})`);
       } else {
@@ -108,7 +114,9 @@ async function verifyPackages() {
 
     if (allVerified) {
       console.log('\n🎉 All packages successfully verified!');
-      console.log(`Successfully published ${packagesToVerify.size} packages with version ${expectedVersion}`);
+      console.log(
+        `Successfully published ${packagesToVerify.size} packages with version ${expectedVersion}`
+      );
       process.exit(0);
     }
 
@@ -118,7 +126,7 @@ async function verifyPackages() {
     }
 
     // Show verification progress
-    const verifiedCount = Array.from(packagesToVerify.values()).filter(p => p.verified).length;
+    const verifiedCount = Array.from(packagesToVerify.values()).filter((p) => p.verified).length;
     console.log(`Progress: ${verifiedCount}/${packagesToVerify.size} packages verified`);
 
     if (attempt === MAX_ATTEMPTS) {
@@ -134,10 +142,10 @@ async function verifyPackages() {
 
 // Run the script
 if (require.main === module) {
-  verifyPackages().catch(error => {
+  verifyPackages().catch((error) => {
     console.error('Error during package verification:', error.message);
     process.exit(1);
   });
 }
 
-module.exports = verifyPackages; 
+module.exports = verifyPackages;

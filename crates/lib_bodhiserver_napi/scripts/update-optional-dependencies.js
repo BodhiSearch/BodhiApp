@@ -34,9 +34,10 @@ function updateOptionalDependencies() {
   if (!fs.existsSync(npmDir)) {
     console.log('Warning: npm directory not found, creating empty optionalDependencies');
   } else {
-    const platformDirs = fs.readdirSync(npmDir, { withFileTypes: true })
-      .filter(dirent => dirent.isDirectory())
-      .map(dirent => dirent.name);
+    const platformDirs = fs
+      .readdirSync(npmDir, { withFileTypes: true })
+      .filter((dirent) => dirent.isDirectory())
+      .map((dirent) => dirent.name);
 
     if (platformDirs.length === 0) {
       console.log('Warning: No platform directories found in npm/');

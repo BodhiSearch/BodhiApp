@@ -45,36 +45,37 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       const nameField = page.locator('input[name="name"]');
       const setupSubmitButton = page.locator('button[type="submit"]');
 
-      await expect(nameField).toBeVisible({ timeout: 10000 });
+      await expect(nameField).toBeVisible();
       await nameField.fill('OAuth2 Test Server Instance');
       await setupSubmitButton.click();
 
       // Wait for redirect to resource admin setup
-      await page.waitForURL((url) => url.toString().includes('/ui/setup/resource-admin'), { timeout: 10000 });
+      await page.waitForURL((url) => url.toString().includes('/ui/setup/resource-admin'), );
       await waitForSPAReady(page);
       console.log('✅ Redirected to resource admin setup');
 
       // Complete the setup flow by logging in as resource admin
-      const loginButton = page.locator('button:has-text("Continue with Login"), button:has-text("Login")');
-      await expect(loginButton.first()).toBeVisible({ timeout: 10000 });
+      const loginButton = page.locator('button:has-text("Continue with Login")');
+      await expect(loginButton.first()).toBeVisible();
       await loginButton.first().click();
 
       // Handle OAuth login flow
-      await page.waitForURL((url) => new URL(url).origin === authServerConfig.authUrl, { timeout: 15000 });
+      await page.waitForURL((url) => new URL(url).origin === authServerConfig.authUrl);
       console.log('✅ Redirected to auth server for setup');
 
       // Fill credentials for resource admin setup
-      const usernameField = page.locator('input[name="username"], input[type="email"], #username');
-      const passwordField = page.locator('input[name="password"], input[type="password"], #password');
-      const submitButton = page.locator('button[type="submit"], input[type="submit"], button:has-text("Sign In")');
+      const usernameField = page.locator('input[name="username"], #username');
+      const passwordField = page.locator('input[name="password"], #password');
 
-      await expect(usernameField).toBeVisible({ timeout: 10000 });
+      await expect(usernameField).toBeVisible();
       await usernameField.fill(testCredentials.username);
       await passwordField.fill(testCredentials.password);
+      const submitButton = page.locator('button[type="submit"]');
+      await expect(submitButton).toBeVisible();
       await submitButton.click();
 
       // Wait for redirect back to app after setup completion
-      await page.waitForURL((url) => new URL(url).origin === new URL(baseUrl).origin, { timeout: 20000 });
+      await page.waitForURL((url) => new URL(url).origin === new URL(baseUrl).origin);
       await waitForSPAReady(page);
       console.log('✅ Resource admin setup completed');
 
@@ -139,7 +140,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       console.log('✅ OAuth flow started');
 
       // Handle OAuth login or consent on auth server
-      await page.waitForURL((url) => new URL(url).origin === authServerConfig.authUrl, { timeout: 15000 });
+      await page.waitForURL((url) => new URL(url).origin === authServerConfig.authUrl);
       console.log('✅ Redirected to auth server for OAuth flow');
 
       const consentYesButton = page.locator('button:has-text("Yes")');
@@ -147,12 +148,12 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       await consentYesButton.click();
 
       // Wait for redirect back to test app with token
-      await page.waitForURL((url) => new URL(url).origin === new URL(testAppUrl).origin, { timeout: 20000 });
+      await page.waitForURL((url) => new URL(url).origin === new URL(testAppUrl).origin);
       await page.waitForLoadState('networkidle');
       console.log('✅ Redirected back to test app');
 
       // Wait for token exchange to complete and success section to be visible
-      await expect(page.locator('#success-section')).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('#success-section')).toBeVisible();
       console.log('✅ OAuth token exchange completed successfully');
 
       // Extract the access token from the UI

@@ -55,7 +55,7 @@ function createTestServer(bindings, options = {}) {
 function createFullTestConfig(bindings, options = {}) {
   const appHome = createTempDir();
   const {
-    host = '127.0.0.1',
+    host = 'localhost',
     port = randomPort(),
     execLookupPath = join(__dirname, '..', '..', 'llama_server_proc', 'bin'),
     logLevel = 'debug',
