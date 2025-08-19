@@ -1,0 +1,131 @@
+name: Publish Docker Image
+
+on:
+  push:
+    tags:
+      - 'docker/v*'
+      - 'docker-dev/v*'
+
+# Prevent concurrent releases
+concurrency:
+  group: docker-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+env:
+  CI: true
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Extract version information
+        id: version
+        run: |
+          # Extract the version and variant from the tag
+          if [[ $GITHUB_REF == refs/tags/docker/v* ]]; then
+            TAG_VERSION=${GITHUB_REF#refs/tags/docker/v}
+            BUILD_VARIANT="production"
+            IMAGE_SUFFIX=""
+          elif [[ $GITHUB_REF == refs/tags/docker-dev/v* ]]; then
+            TAG_VERSION=${GITHUB_REF#refs/tags/docker-dev/v}
+            BUILD_VARIANT="development"
+            IMAGE_SUFFIX="-development"
+          else
+            echo "Error: Unsupported tag format: $GITHUB_REF"
+            exit 1
+          fi
+          echo "tag_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "release_version=$TAG_VERSION" >> $GITHUB_OUTPUT
+          echo "build_variant=$BUILD_VARIANT" >> $GITHUB_OUTPUT
+          echo "image_suffix=$IMAGE_SUFFIX" >> $GITHUB_OUTPUT
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Initialize submodules
+        run: |
+          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth=1
+          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=${{ steps.version.outputs.tag_version }}${{ steps.version.outputs.image_suffix }}
+            type=raw,value=latest${{ steps.version.outputs.image_suffix }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            GH_PAT=${{ secrets.GH_PAT }}
+            BUILD_VARIANT=${{ steps.version.outputs.build_variant }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: 'Docker Image ${{ steps.version.outputs.build_variant }} v${{ steps.version.outputs.tag_version }}'
+          body: |
+            Docker Image Release v${{ steps.version.outputs.tag_version }} (${{ steps.version.outputs.build_variant }})
+
+            ## Usage
+
+            Pull and run the image:
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag_version }}${{ steps.version.outputs.image_suffix }}
+            docker run -p 8080:8080 \
+              -v ./bodhi_home:/data/bodhi_home \
+              -v ./hf_home:/data/hf_home \
+              ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag_version }}${{ steps.version.outputs.image_suffix }}
+            ```
+
+            ## Image Details
+            - **Variant**: ${{ steps.version.outputs.build_variant }}
+            - **Platforms**: linux/amd64, linux/arm64
+            - **Registry**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            - **Tag**: ${{ steps.version.outputs.tag_version }}${{ steps.version.outputs.image_suffix }}
+            - **Auth Server**: ${{ steps.version.outputs.build_variant == 'production' && 'https://id.getbodhi.app' || 'https://main-id.getbodhi.app' }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output image details
+        run: |
+          echo "::notice title=Docker Image Published::Image published to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag_version }}${{ steps.version.outputs.image_suffix }}"
+          echo "::notice title=Docker Pull Command::docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.tag_version }}${{ steps.version.outputs.image_suffix }}"
