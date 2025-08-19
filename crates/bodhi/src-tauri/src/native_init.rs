@@ -100,6 +100,7 @@ impl NativeCommand {
         let homepage = MenuItem::with_id(app, "homepage", "Open Homepage", true, None::<&str>)?;
         let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
         let menu = Menu::with_items(app, &[&homepage, &quit])?;
+        let addr = setting_service.public_server_url();
         TrayIconBuilder::new()
           .menu(&menu)
           .show_menu_on_left_click(true)
