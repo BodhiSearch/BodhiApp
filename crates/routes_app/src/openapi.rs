@@ -189,7 +189,7 @@ pub struct OpenAPIEnvModifier {
 impl Modify for OpenAPIEnvModifier {
   fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
     // Add environment-specific server
-    let server_url = self.setting_service.server_url();
+    let server_url = self.setting_service.public_server_url();
     let desc = if self.setting_service.is_production() {
       ""
     } else {

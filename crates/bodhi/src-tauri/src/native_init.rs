@@ -84,7 +84,6 @@ impl NativeCommand {
         );
         let host = setting_service.host();
         let port = setting_service.port();
-        let addr = setting_service.server_url();
         let cmd = ServeCommand::ByParams { host, port };
         let shared_server_handle: Arc<Mutex<Option<ServerShutdownHandle>>> = Arc::new(Mutex::new(None));
         app.manage(shared_server_handle.clone());
@@ -112,7 +111,7 @@ impl NativeCommand {
 
         // Attempt to open the default web browser
         if ui {
-          if let Err(err) = webbrowser::open(setting_service.server_url().as_str()) {
+          if let Err(err) = webbrowser::open(setting_service.public_server_url().as_str()) {
             tracing::info!(?err, "failed to open browser");
           }
         }

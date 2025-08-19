@@ -140,10 +140,19 @@ impl SettingService for SettingServiceStub {
 
   fn get_setting_value_with_source(&self, key: &str) -> (Option<serde_yaml::Value>, SettingSource) {
     let lock = self.settings.read().unwrap();
-    (
-      Some(lock.get(key).cloned().unwrap()),
-      SettingSource::SettingsFile,
-    )
+    match lock.get(key).cloned() {
+      Some(value) => (Some(value), SettingSource::SettingsFile),
+      None if key.starts_with("BODHI_PUBLIC_") => (
+        Some(
+          lock
+            .get(&key.replace("BODHI_PUBLIC_", "BODHI_"))
+            .cloned()
+            .unwrap(),
+        ),
+        SettingSource::SettingsFile,
+      ),
+      None => panic!("Setting with key: {key} not found"),
+    }
   }
 
   fn set_setting_with_source(&self, key: &str, value: &serde_yaml::Value, _source: SettingSource) {

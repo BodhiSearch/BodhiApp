@@ -59,15 +59,12 @@ pub async fn auth_initiate_handler(
 
   // Early return if user is already authenticated
   if headers.get(KEY_RESOURCE_TOKEN).is_some() {
-    let ui_home = format!(
-      "{}{}",
-      setting_service.frontend_url(),
-      setting_service.frontend_default_path()
-    );
     return Ok((
       StatusCode::OK,
       [(CACHE_CONTROL, "no-cache, no-store, must-revalidate")],
-      Json(RedirectResponse { location: ui_home }),
+      Json(RedirectResponse {
+        location: setting_service.frontend_default_url(),
+      }),
     ));
   }
 
@@ -241,10 +238,10 @@ pub async fn auth_callback_handler(
   let ui_setup_resume = if status_resource_admin {
     format!(
       "{}/ui/setup/download-models",
-      setting_service.frontend_url()
+      setting_service.public_server_url()
     )
   } else {
-    format!("{}/ui/chat", setting_service.frontend_url())
+    setting_service.frontend_default_url()
   };
 
   // Return successful redirect
@@ -286,7 +283,7 @@ pub async fn logout_handler(
 ) -> Result<Json<RedirectResponse>, ApiError> {
   let setting_service = state.app_service().setting_service();
   session.delete().await.map_err(LogoutError::from)?;
-  let ui_login = format!("{}/ui/login", setting_service.frontend_url());
+  let ui_login = format!("{}/ui/login", setting_service.public_server_url());
   Ok(Json(RedirectResponse { location: ui_login }))
 }
 /// Request access for an app client to this resource server

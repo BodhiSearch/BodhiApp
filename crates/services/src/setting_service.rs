@@ -32,6 +32,11 @@ pub const BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
 pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 
+// Public-facing host settings for Docker compatibility
+pub const BODHI_PUBLIC_SCHEME: &str = "BODHI_PUBLIC_SCHEME";
+pub const BODHI_PUBLIC_HOST: &str = "BODHI_PUBLIC_HOST";
+pub const BODHI_PUBLIC_PORT: &str = "BODHI_PUBLIC_PORT";
+
 pub const DEFAULT_SCHEME: &str = "http";
 pub const DEFAULT_HOST: &str = "localhost";
 pub const DEFAULT_PORT: u16 = 1135;
@@ -62,6 +67,9 @@ pub const SETTING_VARS: &[&str] = &[
   BODHI_SCHEME,
   BODHI_HOST,
   BODHI_PORT,
+  BODHI_PUBLIC_SCHEME,
+  BODHI_PUBLIC_HOST,
+  BODHI_PUBLIC_PORT,
   BODHI_EXEC_LOOKUP_PATH,
   BODHI_EXEC_VARIANT,
   BODHI_KEEP_ALIVE_SECS,
@@ -276,12 +284,8 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     }
   }
 
-  fn frontend_url(&self) -> String {
-    format!("{}://{}:{}", self.scheme(), self.host(), self.port())
-  }
-
-  fn frontend_default_path(&self) -> String {
-    "/ui/chat".to_string()
+  fn frontend_default_url(&self) -> String {
+    format!("{}/ui/chat", self.public_server_url())
   }
 
   fn app_db_path(&self) -> PathBuf {
@@ -311,8 +315,22 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .expect("BODHI_EXEC_VARIANT should be set")
   }
 
-  fn server_url(&self) -> String {
-    format!("{}://{}:{}", self.scheme(), self.host(), self.port())
+  fn public_server_url(&self) -> String {
+    let scheme = self
+      .get_setting(BODHI_PUBLIC_SCHEME)
+      .unwrap_or_else(|| self.scheme());
+    let host = self
+      .get_setting(BODHI_PUBLIC_HOST)
+      .unwrap_or_else(|| self.host());
+    let port = match self.get_setting_value(BODHI_PUBLIC_PORT) {
+      Some(serde_yaml::Value::Number(n)) => n.as_u64().unwrap_or(self.port() as u64) as u16,
+      Some(serde_yaml::Value::String(s)) => s.parse().unwrap_or(self.port()),
+      _ => self.port(),
+    };
+    match (scheme.as_str(), port) {
+      ("http", 80) | ("https", 443) => format!("{}://{}", scheme, host),
+      _ => format!("{}://{}:{}", scheme, host, port),
+    }
   }
 
   fn hf_cache(&self) -> PathBuf {
@@ -343,19 +361,14 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
     )
   }
 
+  fn login_callback_url(&self) -> String {
+    format!("{}/ui/auth/callback", self.public_server_url())
+  }
+
   fn login_callback_path(&self) -> String {
     "/ui/auth/callback".to_string()
   }
 
-  fn login_callback_url(&self) -> String {
-    format!(
-      "{}://{}:{}{}",
-      self.scheme(),
-      self.host(),
-      self.port(),
-      self.login_callback_path()
-    )
-  }
   fn secrets_path(&self) -> PathBuf {
     self.bodhi_home().join("secrets.yaml")
   }
@@ -670,7 +683,7 @@ impl SettingService for DefaultSettingService {
 
   fn get_setting_metadata(&self, key: &str) -> SettingMetadata {
     match key {
-      BODHI_PORT => SettingMetadata::Number { min: 1, max: 65535 },
+      BODHI_PORT | BODHI_PUBLIC_PORT => SettingMetadata::Number { min: 1, max: 65535 },
       BODHI_LOG_LEVEL => SettingMetadata::option(
         ["error", "warn", "info", "debug", "trace"]
           .iter()
@@ -705,6 +718,9 @@ impl SettingService for DefaultSettingService {
           result
         }
       },
+      BODHI_PUBLIC_HOST => self.get_setting_value(BODHI_HOST),
+      BODHI_PUBLIC_SCHEME => self.get_setting_value(BODHI_SCHEME),
+      BODHI_PUBLIC_PORT => self.get_setting_value(BODHI_PORT),
       _ => defaults.get(key).cloned(),
     })
   }
@@ -728,8 +744,8 @@ mod tests {
     test_utils::{bodhi_home_setting, EnvWrapperStub},
     DefaultSettingService, MockEnvWrapper, MockSettingsChangeListener, SettingService,
     BODHI_EXEC_VARIANT, BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT,
-    BODHI_PORT, BODHI_SCHEME, DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT,
-    DEFAULT_SCHEME, HF_HOME,
+    BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME,
+    DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME,
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
@@ -1219,6 +1235,315 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
       metadata: SettingMetadata::String,
     };
     assert_eq!(expected_host, settings.get(BODHI_HOST).unwrap().clone());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_public_settings_fallback_behavior(temp_dir: TempDir) -> anyhow::Result<()> {
+    let path = temp_dir.path().join("settings.yaml");
+    let env_wrapper = EnvWrapperStub::new(HashMap::new());
+    let service = DefaultSettingService::new_with_defaults(
+      Arc::new(env_wrapper),
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+      vec![],
+      path.clone(),
+    );
+
+    // Test fallback behavior - public settings should use regular settings when not set
+    assert_eq!(
+      service.public_server_url(),
+      "http://localhost:1135" // Uses defaults from regular settings
+    );
+
+    // Test that public setting defaults fallback to regular settings
+    assert_eq!(
+      service
+        .get_default_value(BODHI_PUBLIC_HOST)
+        .unwrap()
+        .as_str()
+        .unwrap(),
+      DEFAULT_HOST
+    );
+    assert_eq!(
+      service
+        .get_default_value(BODHI_PUBLIC_PORT)
+        .unwrap()
+        .as_u64()
+        .unwrap(),
+      DEFAULT_PORT as u64
+    );
+    assert_eq!(
+      service
+        .get_default_value(BODHI_PUBLIC_SCHEME)
+        .unwrap()
+        .as_str()
+        .unwrap(),
+      DEFAULT_SCHEME
+    );
+
+    // Set regular settings and verify public URL uses them
+    service.set_setting(BODHI_HOST, "example.com");
+    service.set_setting(BODHI_PORT, "8080");
+    service.set_setting(BODHI_SCHEME, "https");
+
+    assert_eq!(service.public_server_url(), "https://example.com:8080");
+
+    // Verify fallback still works after setting regular settings
+    assert_eq!(
+      service
+        .get_default_value(BODHI_PUBLIC_HOST)
+        .unwrap()
+        .as_str()
+        .unwrap(),
+      "example.com"
+    );
+    assert_eq!(
+      service
+        .get_default_value(BODHI_PUBLIC_PORT)
+        .unwrap()
+        .as_u64()
+        .unwrap(),
+      8080
+    );
+    assert_eq!(
+      service
+        .get_default_value(BODHI_PUBLIC_SCHEME)
+        .unwrap()
+        .as_str()
+        .unwrap(),
+      "https"
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_public_settings_explicit_override(temp_dir: TempDir) -> anyhow::Result<()> {
+    let path = temp_dir.path().join("settings.yaml");
+    let env_wrapper = EnvWrapperStub::new(HashMap::new());
+    let service = DefaultSettingService::new_with_defaults(
+      Arc::new(env_wrapper),
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+      vec![],
+      path.clone(),
+    );
+
+    // Set regular settings first
+    service.set_setting(BODHI_HOST, "internal.example.com");
+    service.set_setting(BODHI_PORT, "8080");
+    service.set_setting(BODHI_SCHEME, "http");
+
+    assert_eq!(
+      service.public_server_url(),
+      "http://internal.example.com:8080"
+    );
+
+    // Override with explicit public settings
+    service.set_setting(BODHI_PUBLIC_HOST, "public.example.com");
+    service.set_setting(BODHI_PUBLIC_PORT, "443");
+    service.set_setting(BODHI_PUBLIC_SCHEME, "https");
+
+    // Should now use public settings and omit standard port
+    assert_eq!(
+      service.public_server_url(),
+      "https://public.example.com" // Port 443 omitted for https
+    );
+
+    // Test with non-standard port
+    service.set_setting(BODHI_PUBLIC_PORT, "8443");
+    assert_eq!(
+      service.public_server_url(),
+      "https://public.example.com:8443" // Non-standard port included
+    );
+
+    // Test HTTP with standard port
+    service.set_setting(BODHI_PUBLIC_SCHEME, "http");
+    service.set_setting(BODHI_PUBLIC_PORT, "80");
+    assert_eq!(
+      service.public_server_url(),
+      "http://public.example.com" // Port 80 omitted for http
+    );
+
+    // Test HTTP with non-standard port
+    service.set_setting(BODHI_PUBLIC_PORT, "8080");
+    assert_eq!(
+      service.public_server_url(),
+      "http://public.example.com:8080" // Non-standard port included
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("http", "example.com", "80", "http://example.com")] // Standard port omitted for HTTP
+  #[case("https", "example.com", "443", "https://example.com")] // Standard port omitted for HTTPS
+  #[case("https", "example.com", "8080", "https://example.com:8080")] // Non-standard port included
+  #[case("http", "example.com", "8443", "http://example.com:8443")] // Non-standard port included
+  #[case("http", "localhost", "80", "http://localhost")] // Standard port omitted for localhost
+  fn test_public_settings_url_construction_edge_cases(
+    temp_dir: TempDir,
+    #[case] scheme: &str,
+    #[case] host: &str,
+    #[case] port: &str,
+    #[case] expected_url: &str,
+  ) -> anyhow::Result<()> {
+    let path = temp_dir.path().join("settings.yaml");
+    let env_wrapper = EnvWrapperStub::new(HashMap::new());
+    let service = DefaultSettingService::new_with_defaults(
+      Arc::new(env_wrapper),
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+      vec![],
+      path.clone(),
+    );
+
+    service.set_setting(BODHI_PUBLIC_SCHEME, scheme);
+    service.set_setting(BODHI_PUBLIC_HOST, host);
+    service.set_setting(BODHI_PUBLIC_PORT, port);
+
+    assert_eq!(service.public_server_url(), expected_url);
+
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_public_settings_metadata_validation(temp_dir: TempDir) -> anyhow::Result<()> {
+    let path = temp_dir.path().join("settings.yaml");
+    let env_wrapper = EnvWrapperStub::new(HashMap::new());
+    let service = DefaultSettingService::new_with_defaults(
+      Arc::new(env_wrapper),
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+      vec![],
+      path.clone(),
+    );
+
+    // Test that BODHI_PUBLIC_PORT has Number metadata
+    let metadata = service.get_setting_metadata(BODHI_PUBLIC_PORT);
+    assert_eq!(metadata, SettingMetadata::Number { min: 1, max: 65535 });
+
+    // Test that other public settings have String metadata
+    let host_metadata = service.get_setting_metadata(BODHI_PUBLIC_HOST);
+    assert_eq!(host_metadata, SettingMetadata::String);
+
+    let scheme_metadata = service.get_setting_metadata(BODHI_PUBLIC_SCHEME);
+    assert_eq!(scheme_metadata, SettingMetadata::String);
+
+    // Test that public settings appear in the settings list
+    let settings = service.list();
+    let public_host_setting = settings.iter().find(|s| s.key == BODHI_PUBLIC_HOST);
+    let public_port_setting = settings.iter().find(|s| s.key == BODHI_PUBLIC_PORT);
+    let public_scheme_setting = settings.iter().find(|s| s.key == BODHI_PUBLIC_SCHEME);
+
+    assert!(
+      public_host_setting.is_some(),
+      "BODHI_PUBLIC_HOST should be in settings list"
+    );
+    assert!(
+      public_port_setting.is_some(),
+      "BODHI_PUBLIC_PORT should be in settings list"
+    );
+    assert!(
+      public_scheme_setting.is_some(),
+      "BODHI_PUBLIC_SCHEME should be in settings list"
+    );
+
+    // Verify the metadata is correct in the list
+    assert_eq!(
+      public_port_setting.unwrap().metadata,
+      SettingMetadata::Number { min: 1, max: 65535 }
+    );
+    assert_eq!(
+      public_host_setting.unwrap().metadata,
+      SettingMetadata::String
+    );
+    assert_eq!(
+      public_scheme_setting.unwrap().metadata,
+      SettingMetadata::String
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case(
+    // Default settings scenario
+    None, None, None, // No public settings override
+    None, None, None, // No regular settings override
+    "http://localhost:1135",
+    "http://localhost:1135/ui/chat",
+    "http://localhost:1135/ui/auth/callback"
+  )]
+  #[case(
+    // All public settings overridden
+    Some("https"), Some("public.example.com"), Some("443"),
+    None, None, None, // Regular settings not needed
+    "https://public.example.com", // Port 443 omitted
+    "https://public.example.com/ui/chat",
+    "https://public.example.com/ui/auth/callback"
+  )]
+  #[case(
+    // Public settings with non-standard port
+    Some("https"), Some("public.example.com"), Some("8443"),
+    None, None, None,
+    "https://public.example.com:8443",
+    "https://public.example.com:8443/ui/chat",
+    "https://public.example.com:8443/ui/auth/callback"
+  )]
+  #[case(
+    // Mixed scenario: only public host set, fallback to regular scheme/port
+    None, Some("cdn.example.com"), None, // Only public host
+    Some("http"), Some("internal.example.com"), Some("8080"), // Regular settings set
+    "http://cdn.example.com:8080", // Uses public host, regular scheme/port
+    "http://cdn.example.com:8080/ui/chat",
+    "http://cdn.example.com:8080/ui/auth/callback"
+  )]
+  fn test_integration_method_behaviors(
+    temp_dir: TempDir,
+    #[case] public_scheme: Option<&str>,
+    #[case] public_host: Option<&str>,
+    #[case] public_port: Option<&str>,
+    #[case] regular_scheme: Option<&str>,
+    #[case] regular_host: Option<&str>,
+    #[case] regular_port: Option<&str>,
+    #[case] expected_public_url: &str,
+    #[case] expected_frontend_url: &str,
+    #[case] expected_callback_url: &str,
+  ) -> anyhow::Result<()> {
+    let path = temp_dir.path().join("settings.yaml");
+    let env_wrapper = EnvWrapperStub::new(HashMap::new());
+    let service = DefaultSettingService::new_with_defaults(
+      Arc::new(env_wrapper),
+      bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
+      vec![],
+      path.clone(),
+    );
+
+    // Set regular settings if provided
+    if let Some(scheme) = regular_scheme {
+      service.set_setting(BODHI_SCHEME, scheme);
+    }
+    if let Some(host) = regular_host {
+      service.set_setting(BODHI_HOST, host);
+    }
+    if let Some(port) = regular_port {
+      service.set_setting(BODHI_PORT, port);
+    }
+
+    // Set public settings if provided
+    if let Some(scheme) = public_scheme {
+      service.set_setting(BODHI_PUBLIC_SCHEME, scheme);
+    }
+    if let Some(host) = public_host {
+      service.set_setting(BODHI_PUBLIC_HOST, host);
+    }
+    if let Some(port) = public_port {
+      service.set_setting(BODHI_PUBLIC_PORT, port);
+    }
+
+    // Verify all three methods return expected URLs
+    assert_eq!(service.public_server_url(), expected_public_url);
+    assert_eq!(service.frontend_default_url(), expected_frontend_url);
+    assert_eq!(service.login_callback_url(), expected_callback_url);
+
     Ok(())
   }
 }
