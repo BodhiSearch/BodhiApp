@@ -315,18 +315,30 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .expect("BODHI_EXEC_VARIANT should be set")
   }
 
-  fn public_server_url(&self) -> String {
-    let scheme = self
+  fn public_scheme(&self) -> String {
+    self
       .get_setting(BODHI_PUBLIC_SCHEME)
-      .unwrap_or_else(|| self.scheme());
-    let host = self
+      .unwrap_or_else(|| self.scheme())
+  }
+
+  fn public_host(&self) -> String {
+    self
       .get_setting(BODHI_PUBLIC_HOST)
-      .unwrap_or_else(|| self.host());
-    let port = match self.get_setting_value(BODHI_PUBLIC_PORT) {
+      .unwrap_or_else(|| self.host())
+  }
+
+  fn public_port(&self) -> u16 {
+    match self.get_setting_value(BODHI_PUBLIC_PORT) {
       Some(serde_yaml::Value::Number(n)) => n.as_u64().unwrap_or(self.port() as u64) as u16,
       Some(serde_yaml::Value::String(s)) => s.parse().unwrap_or(self.port()),
       _ => self.port(),
-    };
+    }
+  }
+
+  fn public_server_url(&self) -> String {
+    let scheme = self.public_scheme();
+    let host = self.public_host();
+    let port = self.public_port();
     match (scheme.as_str(), port) {
       ("http", 80) | ("https", 443) => format!("{}://{}", scheme, host),
       _ => format!("{}://{}:{}", scheme, host, port),

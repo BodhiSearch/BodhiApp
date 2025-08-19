@@ -60,12 +60,14 @@ export declare class BodhiServer {
   get config(): NapiAppOptions
   /** Get the server URL */
   serverUrl(): string
-  /** Get the server host */
   host(): string
-  /** Get the server port */
   port(): number
+  /** Get the server host */
+  publicHost(): string
+  /** Get the server port */
+  publicPort(): number
   /** Get the server scheme */
-  scheme(): string
+  publicScheme(): string
   /**
    * Start the Bodhi server
    *

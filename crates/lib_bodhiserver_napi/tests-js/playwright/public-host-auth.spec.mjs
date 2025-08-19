@@ -28,7 +28,7 @@ test.describe('Public Host Configuration Authentication Tests', () => {
       authRealm: authServerConfig.authRealm,
       clientId: resourceClient.clientId,
       clientSecret: resourceClient.clientSecret,
-      port: '8080',
+      port: port.toString(),
       host: '0.0.0.0',
       envVars: {
         'BODHI_PUBLIC_HOST': 'localhost',

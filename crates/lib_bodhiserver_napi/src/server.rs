@@ -47,35 +47,25 @@ impl BodhiServer {
   /// Get the server URL
   #[napi]
   pub fn server_url(&self) -> String {
-    let host = self.host();
-    let port = self.port();
-    let scheme = self.scheme();
+    let host = self.public_host();
+    let port = self.public_port();
+    let scheme = self.public_scheme();
     match (scheme.as_str(), port) {
       ("http", 80) | ("https", 443) => format!("{}://{}", scheme, host),
       _ => format!("{}://{}:{}", scheme, host, port),
     }
   }
 
-  /// Get the server host
   #[napi]
   pub fn host(&self) -> String {
-    if let Some(host) = self.config.env_vars.get(BODHI_PUBLIC_HOST) {
-      return host.to_string();
-    }
     if let Some(host) = self.config.env_vars.get(BODHI_HOST) {
       return host.to_string();
     }
     DEFAULT_HOST.to_string()
   }
 
-  /// Get the server port
   #[napi]
   pub fn port(&self) -> u16 {
-    if let Some(port) = self.config.env_vars.get(BODHI_PUBLIC_PORT) {
-      if let Ok(port) = port.parse::<u16>() {
-        return port;
-      }
-    }
     if let Some(port) = self.config.env_vars.get(BODHI_PORT) {
       if let Ok(port) = port.parse::<u16>() {
         return port;
@@ -84,9 +74,29 @@ impl BodhiServer {
     DEFAULT_PORT
   }
 
+  /// Get the server host
+  #[napi]
+  pub fn public_host(&self) -> String {
+    if let Some(host) = self.config.env_vars.get(BODHI_PUBLIC_HOST) {
+      return host.to_string();
+    }
+    self.host()
+  }
+
+  /// Get the server port
+  #[napi]
+  pub fn public_port(&self) -> u16 {
+    if let Some(port) = self.config.env_vars.get(BODHI_PUBLIC_PORT) {
+      if let Ok(port) = port.parse::<u16>() {
+        return port;
+      }
+    }
+    self.port()
+  }
+
   /// Get the server scheme
   #[napi]
-  pub fn scheme(&self) -> String {
+  pub fn public_scheme(&self) -> String {
     if let Some(scheme) = self.config.env_vars.get(BODHI_PUBLIC_SCHEME) {
       return scheme.to_string();
     }
