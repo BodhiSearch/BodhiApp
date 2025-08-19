@@ -246,7 +246,6 @@ define get_ghcr_docker_version
 	PACKAGE_NAME=bodhiapp && \
 	GHCR_RESPONSE=$$(gh api "/orgs/$$REPO_OWNER/packages/container/$$PACKAGE_NAME/versions" 2>/dev/null || echo "Package not found") && \
 	if echo "$$GHCR_RESPONSE" | grep -q "Package not found"; then \
-		echo "No existing $$PACKAGE_NAME package found in GHCR, starting with version 0.0.1" && \
 		echo "0.0.0"; \
 	else \
 		if [ "$(1)" = "production" ]; then \
@@ -327,6 +326,9 @@ release-docker: ## Create and push tag for production Docker image release
 	$(call check_git_branch)
 	@echo "Fetching latest production release version from GHCR..."
 	@CURRENT_VERSION=$$($(call get_ghcr_docker_version,production)) && \
+	if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
+		echo "No existing production releases found in GHCR, starting with version 0.0.1"; \
+	fi && \
 	$(call create_docker_release_tag,production,$$CURRENT_VERSION)
 
 release-docker-dev: ## Create and push tag for development Docker image release
@@ -334,17 +336,28 @@ release-docker-dev: ## Create and push tag for development Docker image release
 	$(call check_git_branch)
 	@echo "Fetching latest development release version from GHCR..."
 	@CURRENT_VERSION=$$($(call get_ghcr_docker_version,development)) && \
+	if [ "$$CURRENT_VERSION" = "0.0.0" ]; then \
+		echo "No existing development releases found in GHCR, starting with version 0.0.1"; \
+	fi && \
 	$(call create_docker_release_tag,development,$$CURRENT_VERSION)
 
 check-docker-versions: ## Check latest versions of both production and development Docker images from GHCR
 	@echo "=== Latest Docker Release Versions (from GHCR) ==="
 	@echo "Production releases (bodhiapp):"
 	@PROD_VERSION=$$($(call get_ghcr_docker_version,production)) && \
-	echo "  Latest: $$PROD_VERSION"
+	if [ "$$PROD_VERSION" = "0.0.0" ]; then \
+		echo "  Latest: No releases found"; \
+	else \
+		echo "  Latest: $$PROD_VERSION"; \
+	fi
 	@echo ""
 	@echo "Development releases (bodhiapp):"
 	@DEV_VERSION=$$($(call get_ghcr_docker_version,development)) && \
-	echo "  Latest: $$DEV_VERSION"
+	if [ "$$DEV_VERSION" = "0.0.0" ]; then \
+		echo "  Latest: No releases found"; \
+	else \
+		echo "  Latest: $$DEV_VERSION"; \
+	fi
 	@echo "==============================="
 
 .PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.build docker.build.multi docker.run docker.push release-docker release-docker-dev check-docker-versions help
