@@ -188,6 +188,32 @@ docker.build: ## Build Docker image for current platform only (fast)
 		--build-arg BUILD_VARIANT=$$BUILD_VARIANT \
 		-t bodhiapp:latest-$$BUILD_VARIANT .
 
+docker.build.optimized: ## Build optimized Docker image for current platform only (fast)
+	@echo "Building optimized Docker image for current platform..."
+	@if [ -z "$(GH_PAT)" ]; then \
+		echo "Error: GH_PAT must be set. Usage: make docker.build.optimized GH_PAT=your_token"; \
+		exit 1; \
+	fi
+	@BUILD_VARIANT=$${BUILD_VARIANT:-development} && \
+	echo "Building optimized with variant: $$BUILD_VARIANT" && \
+	docker buildx build --load \
+		--build-arg GH_PAT=$(GH_PAT) \
+		--build-arg BUILD_VARIANT=$$BUILD_VARIANT \
+		-f Dockerfile \
+		-t bodhiapp:latest-$$BUILD_VARIANT-optimized .
+
+docker.build.dev: ## Build development Docker image (no --release, AMD64 only)
+	@echo "Building development Docker image for local testing..."
+	@if [ -z "$(GH_PAT)" ]; then \
+		echo "Error: GH_PAT must be set. Usage: make docker.build.dev GH_PAT=your_token"; \
+		exit 1; \
+	fi
+	@docker buildx build --load \
+		--build-arg GH_PAT=$(GH_PAT) \
+		--build-arg BUILD_VARIANT=development \
+		-f Dockerfile \
+		-t bodhiapp:dev-local .
+
 docker.build.multi: ## Build multi-platform Docker image (slower)
 	@echo "Building multi-platform Docker image..."
 	@if [ -z "$(GH_PAT)" ]; then \

@@ -867,6 +867,110 @@ dependencies = [
 ]
 
 [[package]]
+name = "chunky-vec"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb7bdea464ae038f09197b82430b921c53619fc8d2bcaf7b151013b3ca008017"
+
+[[package]]
+name = "ci_optims"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "anyhow_trace",
+ "async-openai",
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "base64 0.22.1",
+ "byteorder",
+ "bytes",
+ "chrono",
+ "clap 4.5.40",
+ "convert_case 0.8.0",
+ "cookie",
+ "derive-new",
+ "derive_builder 0.20.2",
+ "dialoguer 0.11.0",
+ "dircpy",
+ "dirs 6.0.0",
+ "dotenv",
+ "fluent",
+ "fluent-resmgr",
+ "fs2",
+ "fs_extra",
+ "futures",
+ "futures-core",
+ "futures-util",
+ "hf-hub",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "include_dir",
+ "indicatif",
+ "jsonwebtoken",
+ "keyring",
+ "lazy_static",
+ "libc",
+ "libloading 0.8.8",
+ "log",
+ "maplit",
+ "memmap2",
+ "mime",
+ "mime_guess",
+ "mini-moka",
+ "minijinja",
+ "oauth2",
+ "once_cell",
+ "pbkdf2",
+ "phf 0.11.3",
+ "pin-project-lite",
+ "portpicker",
+ "proc-macro2",
+ "quote",
+ "rand 0.9.1",
+ "regex",
+ "reqwest",
+ "rsa",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "sha2",
+ "sqlx",
+ "strfmt",
+ "strum",
+ "syn 2.0.102",
+ "sync_wrapper",
+ "tap",
+ "tempfile",
+ "thiserror 2.0.12",
+ "time",
+ "tokio",
+ "tokio-stream",
+ "tokio-util",
+ "tower",
+ "tower-cookies",
+ "tower-http",
+ "tower-serve-static",
+ "tower-sessions",
+ "tower-sessions-sqlx-store",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+ "unic-langid",
+ "url",
+ "utoipa",
+ "utoipa-swagger-ui",
+ "uuid",
+ "validator",
+ "walkdir",
+ "webbrowser",
+]
+
+[[package]]
 name = "cipher"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1708,6 +1812,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "elsa"
+version = "1.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9abf33c656a7256451ebb7d0082c5a471820c31269e49d807c538c252352186e"
+dependencies = [
+ "stable_deref_trait",
+]
+
+[[package]]
 name = "embed-resource"
 version = "3.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1907,11 +2020,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluent-fallback"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38637647e8853f0bae81ffb20f53b2b3b60fec70ab30ad8a84583682fc02629b"
+dependencies = [
+ "async-trait",
+ "chunky-vec",
+ "fluent-bundle",
+ "futures",
+ "once_cell",
+ "pin-cell",
+ "rustc-hash",
+ "unic-langid",
+]
+
+[[package]]
 name = "fluent-langneg"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c4ad0989667548f06ccd0e306ed56b61bd4d35458d54df5ec7587c0e8ed5e94"
 dependencies = [
+ "unic-langid",
+]
+
+[[package]]
+name = "fluent-resmgr"
+version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5579ef08073c77fe7622558d04d56fa548419c81dfd31d549eb5dff9102cc0c3"
+dependencies = [
+ "elsa",
+ "fluent-bundle",
+ "fluent-fallback",
+ "futures",
+ "rustc-hash",
+ "thiserror 2.0.12",
  "unic-langid",
 ]
 
@@ -3548,6 +3692,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "minijinja"
+version = "2.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4e60ac08614cc09062820e51d5d94c2fce16b94ea4e5003bb81b99a95f84e876"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "minimal-lexical"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4511,6 +4664,12 @@ checksum = "67eabc2ef2a60eb7faa00097bd1ffdb5bd28e62bf39990626a582201b7a754e5"
 dependencies = [
  "siphasher 1.0.1",
 ]
+
+[[package]]
+name = "pin-cell"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1f4c4ebd3c5f82080164b7d9cc8e505cd9536fda8c750b779daceb4b7180a7b"
 
 [[package]]
 name = "pin-project"
