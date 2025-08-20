@@ -126,6 +126,7 @@ ENV HF_HOME=/data/hf_home
 ENV BODHI_HOME=/data/bodhi_home
 ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
 ENV BODHI_HOST="0.0.0.0"
+ENV BODHI_PORT="8080"
 
 # Expose port
 EXPOSE 8080
