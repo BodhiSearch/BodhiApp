@@ -95,8 +95,8 @@ ENV BODHI_HOST="0.0.0.0"
 # Expose port
 EXPOSE 8080
 
-# Create volumes for persistent data
-VOLUME ["/data/bodhi_home", "/data/hf_home"]
+# Create single volume for persistent data, as railway only allows single volume
+VOLUME ["/data"]
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
