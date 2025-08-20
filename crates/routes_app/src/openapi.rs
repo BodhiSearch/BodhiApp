@@ -3,12 +3,12 @@ use crate::{
   RedirectResponse, SetupRequest, SetupResponse, UpdateSettingRequest, UserInfo,
   __path_app_info_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
   __path_create_pull_request_handler, __path_create_token_handler, __path_delete_setting_handler,
-  __path_get_alias_handler, __path_get_download_status_handler, __path_list_downloads_handler,
-  __path_list_local_aliases_handler, __path_list_local_modelfiles_handler,
-  __path_list_settings_handler, __path_list_tokens_handler, __path_logout_handler,
-  __path_ping_handler, __path_pull_by_alias_handler, __path_request_access_handler,
-  __path_setup_handler, __path_update_setting_handler, __path_update_token_handler,
-  __path_user_info_handler,
+  __path_get_alias_handler, __path_get_download_status_handler, __path_health_handler,
+  __path_list_downloads_handler, __path_list_local_aliases_handler,
+  __path_list_local_modelfiles_handler, __path_list_settings_handler, __path_list_tokens_handler,
+  __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
+  __path_request_access_handler, __path_setup_handler, __path_update_setting_handler,
+  __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{
   OpenAIApiError, Repo, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS,
@@ -36,6 +36,7 @@ macro_rules! make_ui_endpoint {
 }
 
 pub const ENDPOINT_PING: &str = "/ping";
+pub const ENDPOINT_HEALTH: &str = "/health";
 
 make_ui_endpoint!(ENDPOINT_LOGOUT, "logout");
 make_ui_endpoint!(ENDPOINT_APP_INFO, "info");
@@ -137,6 +138,7 @@ For API keys, specify required scope when creating the token.
     paths(
         // System endpoints
         ping_handler,
+        health_handler,
         app_info_handler,
 
         // Setup endpoints

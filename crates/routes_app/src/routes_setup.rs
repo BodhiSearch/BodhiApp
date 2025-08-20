@@ -1,4 +1,4 @@
-use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_PING};
+use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_HEALTH, ENDPOINT_PING};
 use auth_middleware::app_status_or_default;
 use axum::{
   extract::State,
@@ -172,6 +172,28 @@ pub struct PingResponse {
 #[tracing::instrument]
 pub async fn ping_handler() -> Json<PingResponse> {
   tracing::info!("ping request received");
+  Json(PingResponse {
+    message: "pong".to_string(),
+  })
+}
+
+/// Simple health check endpoint
+#[utoipa::path(
+  get,
+  path = ENDPOINT_HEALTH,
+  tag = API_TAG_SYSTEM,
+  operation_id = "healthCheck",
+  responses(
+      (status = 200, description = "Server is healthy",
+       body = PingResponse,
+       content_type = "application/json",
+       example = json!({"message": "pong"})
+      )
+  )
+)]
+#[tracing::instrument]
+pub async fn health_handler() -> Json<PingResponse> {
+  tracing::info!("health check request received");
   Json(PingResponse {
     message: "pong".to_string(),
   })
