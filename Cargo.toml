@@ -16,6 +16,7 @@ members = [
   "crates/lib_bodhiserver_napi",
   "crates/bodhi/src-tauri",
   "crates/integration-tests",
+  "crates/ci_optims",
 ]
 resolver = "2"
 exclude = []
@@ -35,6 +36,7 @@ server_app = { path = "crates/server_app" }
 lib_bodhiserver = { path = "crates/lib_bodhiserver" }
 lib_bodhiserver_napi = { path = "crates/lib_bodhiserver_napi" }
 bodhi = { path = "crates/bodhi/src-tauri" }
+ci_optims = { path = "crates/ci_optims" }
 
 aes-gcm = "0.10.3"
 anyhow = "1.0.98"
@@ -147,7 +149,16 @@ webbrowser = "1.0.4"
 xtaskops = "0.4.2"
 
 
-# [profile.release.package.bodhi]
-# codegen-units = 1
-# strip = true
-# opt-level = 3
+[profile.release]
+# Optimize for binary size and build speed
+opt-level = "z"    # Optimize for size
+lto = "thin"       # Link-time optimization (thin for faster builds)
+codegen-units = 1  # Better optimization
+strip = true       # Remove debug symbols
+panic = "abort"    # Smaller binaries
+
+[profile.dev]
+# Faster development builds
+opt-level = 0
+debug = true
+incremental = true

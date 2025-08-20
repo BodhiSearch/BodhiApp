@@ -14,7 +14,12 @@ ENV GH_PAT=${GH_PAT}
 ENV TARGETARCH=${TARGETARCH}
 ENV BUILD_VARIANT=${BUILD_VARIANT}
 
-# Install system dependencies for building (removed cmake and build-essential since we're downloading binaries)
+# Enable Rust build optimizations
+ENV CARGO_INCREMENTAL=1
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV RUST_LOG=info
+
+# Install system dependencies for building
 RUN apt-get update && apt-get install -y \
     git \
     pkg-config \
@@ -24,33 +29,62 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js (LTS version 22)
+# Install Node.js (LTS version 22) - needed for all builds
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs
 
 # Set working directory
 WORKDIR /build
 
-# Copy workspace configuration
+# === DEPENDENCY CACHING STAGE ===
+# Copy workspace configuration, filter script, and minimal crates for dependency pre-compilation
 COPY Cargo.toml Cargo.lock ./
+COPY scripts/filter-cargo-toml.py ./scripts/
+COPY crates/ci_optims/ crates/ci_optims/
 
-# Copy all crate source files
+# Create filtered Cargo.toml for dependency-only build and generate new lock file
+RUN python3 scripts/filter-cargo-toml.py Cargo.toml Cargo.filtered.toml && \
+    mv Cargo.filtered.toml Cargo.toml && \
+    cargo generate-lockfile
+
+# Pre-compile all heavy dependencies with consistent optimization level
+RUN if [ "$BUILD_VARIANT" = "production" ]; then \
+      echo "Pre-compiling dependencies for production (release mode)..." && \
+      cargo build --release -p ci_optims; \
+    else \
+      echo "Pre-compiling dependencies for development (debug mode)..." && \
+      cargo build -p ci_optims; \
+    fi
+
+# === APPLICATION BUILD STAGE ===
+# Copy all crate source files and restore original Cargo.toml
 COPY crates/ crates/
 COPY xtask/ xtask/
+
+# Restore original Cargo.toml and regenerate lock file for full workspace
+COPY Cargo.toml ./
+RUN cargo generate-lockfile
 
 # Set CI environment variables to download pre-built binaries
 ENV CI=true
 ENV CI_RELEASE=true
 
-# First build llama_server_proc to download pre-built llama-server binaries from GitHub releases
-RUN cargo build --release -p llama_server_proc --locked
-
-# Then build bodhi binary without native feature (server mode only)
-# Use BUILD_VARIANT to determine features: "production" or "development" (default: production)
-RUN if [ "$BUILD_VARIANT" = "development" ]; then \
-      cargo build --release --bin bodhi --no-default-features --locked; \
+# Build llama_server_proc with consistent optimization level
+RUN if [ "$BUILD_VARIANT" = "production" ]; then \
+      echo "Building llama_server_proc for production (release mode)..." && \
+      cargo build --release -p llama_server_proc; \
     else \
-      cargo build --release --bin bodhi --no-default-features --locked --features production; \
+      echo "Building llama_server_proc for development (debug mode)..." && \
+      cargo build -p llama_server_proc; \
+    fi
+
+# Build bodhi binary with consistent optimization level
+RUN if [ "$BUILD_VARIANT" = "production" ]; then \
+      echo "Building bodhi binary for production (release mode)..." && \
+      cargo build --release --bin bodhi --no-default-features --features production; \
+    else \
+      echo "Building bodhi binary for development (debug mode)..." && \
+      cargo build --bin bodhi --no-default-features; \
     fi
 
 # Runtime stage
@@ -74,7 +108,8 @@ RUN mkdir -p /app /app/bin /data/bodhi_home /data/hf_home && \
     chown -R bodhi:bodhi /app /data
 
 # Copy the built binary from builder stage
-COPY --from=builder /build/target/release/bodhi /app/bodhi
+ARG BUILD_VARIANT=production
+COPY --from=builder /build/target/*/bodhi /app/bodhi
 RUN chown bodhi:bodhi /app/bodhi && chmod +x /app/bodhi
 
 # Copy llama-server executables from builder stage (copied by bodhi build.rs)
