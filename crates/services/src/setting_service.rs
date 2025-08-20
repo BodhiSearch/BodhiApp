@@ -327,6 +327,17 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .unwrap_or_else(|| self.host())
   }
 
+  fn get_public_host_explicit(&self) -> Option<String> {
+    let (value, source) = self.get_setting_value_with_source(BODHI_PUBLIC_HOST);
+    match source {
+      SettingSource::Default => None,
+      _ => value.and_then(|v| match v {
+        Value::String(s) => Some(s),
+        _ => None,
+      }),
+    }
+  }
+
   fn public_port(&self) -> u16 {
     match self.get_setting_value(BODHI_PUBLIC_PORT) {
       Some(serde_yaml::Value::Number(n)) => n.as_u64().unwrap_or(self.port() as u64) as u16,
