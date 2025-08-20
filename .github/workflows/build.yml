@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - working
+    paths:
+      - 'crates/**'
+      - 'xtask/**'
   pull_request:
     branches:
       - main
