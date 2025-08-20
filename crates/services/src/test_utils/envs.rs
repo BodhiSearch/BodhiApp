@@ -149,7 +149,7 @@ impl SettingService for SettingServiceStub {
             .cloned()
             .unwrap(),
         ),
-        SettingSource::SettingsFile,
+        SettingSource::Default,
       ),
       None => panic!("Setting with key: {key} not found"),
     }
