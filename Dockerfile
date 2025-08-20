@@ -130,9 +130,6 @@ ENV BODHI_HOST="0.0.0.0"
 # Expose port
 EXPOSE 8080
 
-# Create single volume for persistent data, as railway only allows single volume
-VOLUME ["/data"]
-
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/ping || exit 1
