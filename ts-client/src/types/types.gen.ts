@@ -1219,6 +1219,22 @@ export type GetCurrentUserResponses = {
 
 export type GetCurrentUserResponse = GetCurrentUserResponses[keyof GetCurrentUserResponses];
 
+export type HealthCheckData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/health';
+};
+
+export type HealthCheckResponses = {
+    /**
+     * Server is healthy
+     */
+    200: PingResponse;
+};
+
+export type HealthCheckResponse = HealthCheckResponses[keyof HealthCheckResponses];
+
 export type PingServerData = {
     body?: never;
     path?: never;

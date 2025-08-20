@@ -1803,6 +1803,30 @@
         }
       }
     },
+    "/health": {
+      "get": {
+        "tags": [
+          "system"
+        ],
+        "summary": "Simple health check endpoint",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Server is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PingResponse"
+                },
+                "example": {
+                  "message": "pong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ping": {
       "get": {
         "tags": [
