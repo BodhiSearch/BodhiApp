@@ -19,7 +19,7 @@ permissions:
 env:
   CI: true
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME_RAW: ${{ github.repository }}
 
 jobs:
   # Extract version information (shared by both jobs)
@@ -31,10 +31,14 @@ jobs:
       build_variant: ${{ steps.version.outputs.build_variant }}
       image_suffix: ${{ steps.version.outputs.image_suffix }}
       is_development: ${{ steps.version.outputs.is_development }}
+      image_name: ${{ steps.version.outputs.image_name }}
     steps:
       - name: Extract version information
         id: version
         run: |
+          # Convert repository name to lowercase for Docker registry
+          IMAGE_NAME=$(echo "${{ env.IMAGE_NAME_RAW }}" | tr '[:upper:]' '[:lower:]')
+          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
           # Extract the version and variant from the tag
           if [[ $GITHUB_REF == refs/tags/docker/v* ]]; then
             TAG_VERSION=${GITHUB_REF#refs/tags/docker/v}
@@ -95,7 +99,7 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64
+            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64
           cache-from: |
             type=gha,scope=amd64-${{ needs.extract-version.outputs.build_variant }}
             type=gha,scope=amd64-deps
@@ -146,7 +150,7 @@ jobs:
           platforms: linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-arm64
+            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-arm64
           cache-from: |
             type=gha,scope=arm64-${{ needs.extract-version.outputs.build_variant }}
             type=gha,scope=arm64-deps
@@ -176,16 +180,16 @@ jobs:
           if [ "${{ needs.extract-version.outputs.is_development }}" = "true" ]; then
             # Development: AMD64 only
             docker buildx imagetools create \
-              --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }} \
-              --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest${{ needs.extract-version.outputs.image_suffix }} \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }} \
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest${{ needs.extract-version.outputs.image_suffix }} \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64
           else
             # Production: Multi-platform
             docker buildx imagetools create \
-              --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }} \
-              --tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest${{ needs.extract-version.outputs.image_suffix }} \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64 \
-              ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-arm64
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }} \
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest${{ needs.extract-version.outputs.image_suffix }} \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64 \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-arm64
           fi
 
   # Create GitHub Release
@@ -206,17 +210,17 @@ jobs:
 
             Pull and run the image:
             ```bash
-            docker pull ghcr.io/${{ github.repository }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
+            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
             docker run -p 8080:8080 \
               -v ./bodhi_home:/data/bodhi_home \
               -v ./hf_home:/data/hf_home \
-              ghcr.io/${{ github.repository }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
             ```
 
             ## Image Details
             - **Variant**: ${{ needs.extract-version.outputs.build_variant }}
             - **Platforms**: ${{ needs.extract-version.outputs.is_development == 'true' && 'linux/amd64' || 'linux/amd64, linux/arm64' }}
-            - **Registry**: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            - **Registry**: ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}
             - **Tag**: ${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
             - **Auth Server**: ${{ needs.extract-version.outputs.build_variant == 'production' && 'https://id.getbodhi.app' || 'https://main-id.getbodhi.app' }}
           draft: false
@@ -226,5 +230,5 @@ jobs:
 
       - name: Output image details
         run: |
-          echo "::notice title=Docker Image Published::Image published to ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
-          echo "::notice title=Docker Pull Command::docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
+          echo "::notice title=Docker Image Published::Image published to ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
+          echo "::notice title=Docker Pull Command::docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
