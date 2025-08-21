@@ -68,14 +68,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        variant: [cpu, cuda, rocm, vulkan]
+        variant:
+          - cpu
+          - cuda
+          - rocm
+          # - vulkan
         include:
           - variant: cpu
             platforms: 'linux/amd64'
           - variant: cuda
             platforms: 'linux/amd64'
-          # - variant: rocm
-          #   platforms: 'linux/amd64'
+          - variant: rocm
+            platforms: 'linux/amd64'
           # - variant: vulkan
           #   platforms: 'linux/amd64'
     steps:
