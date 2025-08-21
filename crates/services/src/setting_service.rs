@@ -22,6 +22,7 @@ pub const BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
 
 // App Settings
 pub const HF_HOME: &str = "HF_HOME";
+pub const HF_TOKEN: &str = "HF_TOKEN";
 pub const BODHI_LOGS: &str = "BODHI_LOGS";
 pub const BODHI_LOG_LEVEL: &str = "BODHI_LOG_LEVEL";
 pub const BODHI_LOG_STDOUT: &str = "BODHI_LOG_STDOUT";

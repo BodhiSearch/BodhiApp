@@ -407,9 +407,13 @@ impl HfHubService {
     }
   }
 
-  pub fn new_from_hf_cache(hf_cache: PathBuf, progress_bar: bool) -> Self {
+  pub fn new_from_hf_cache(
+    hf_cache: PathBuf,
+    hf_env_token: Option<String>,
+    progress_bar: bool,
+  ) -> Self {
     let cache = Cache::new(hf_cache);
-    let token = cache.token();
+    let token = hf_env_token.or_else(|| cache.token());
     Self {
       cache,
       progress_bar,
