@@ -26,15 +26,18 @@ pub async fn canonical_url_middleware(
   request: Request,
   next: Next,
 ) -> Response {
-  let method = request.method();
-  let uri = request.uri();
-  let path = uri.path();
+  // Skip redirect if canonical redirect is disabled
+  if !setting_service.canonical_redirect_enabled() {
+    return next.run(request).await;
+  }
 
   // Skip redirect if public_host is not explicitly set
   if setting_service.get_public_host_explicit().is_none() {
     return next.run(request).await;
   }
-
+  let method = request.method();
+  let uri = request.uri();
+  let path = uri.path();
   // Only redirect GET and HEAD requests to avoid breaking forms and APIs
   if !matches!(method.as_str(), "GET" | "HEAD") {
     return next.run(request).await;
@@ -192,6 +195,7 @@ mod tests {
     expected_status: StatusCode,
     expected_location: Option<&'static str>,
     skip_public_host: bool, // When true, don't set BODHI_PUBLIC_HOST
+    canonical_disabled: bool, // When true, disable canonical redirect setting
   }
 
   fn create_setting_service(scheme: &str, host: &str, port: u16) -> Arc<dyn SettingService> {
@@ -199,11 +203,22 @@ mod tests {
     settings.insert("BODHI_PUBLIC_SCHEME".to_string(), scheme.to_string());
     settings.insert("BODHI_PUBLIC_HOST".to_string(), host.to_string());
     settings.insert("BODHI_PUBLIC_PORT".to_string(), port.to_string());
+    settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "true".to_string());
     Arc::new(SettingServiceStub::default().with_settings(settings))
   }
 
   fn create_setting_service_no_public_host() -> Arc<dyn SettingService> {
-    let settings = HashMap::new();
+    let mut settings = HashMap::new();
+    settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "true".to_string());
+    Arc::new(SettingServiceStub::default().with_settings(settings))
+  }
+
+  fn create_setting_service_canonical_disabled() -> Arc<dyn SettingService> {
+    let mut settings = HashMap::new();
+    settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "false".to_string());
+    settings.insert("BODHI_PUBLIC_SCHEME".to_string(), "https".to_string());
+    settings.insert("BODHI_PUBLIC_HOST".to_string(), "bodhi.example.com".to_string());
+    settings.insert("BODHI_PUBLIC_PORT".to_string(), "443".to_string());
     Arc::new(SettingServiceStub::default().with_settings(settings))
   }
 
@@ -224,6 +239,7 @@ mod tests {
     expected_status: StatusCode::MOVED_PERMANENTLY,
     expected_location: Some("https://bodhi.example.com/test"),
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::redirect_wrong_host(TestScenario {
     name: "redirect when host doesn't match",
@@ -237,6 +253,7 @@ mod tests {
     expected_status: StatusCode::MOVED_PERMANENTLY,
     expected_location: Some("https://bodhi.example.com/test"),
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::redirect_wrong_port(TestScenario {
     name: "redirect when port doesn't match",
@@ -250,6 +267,7 @@ mod tests {
     expected_status: StatusCode::MOVED_PERMANENTLY,
     expected_location: Some("https://bodhi.example.com/test"),
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::redirect_wrong_port_non_standard(TestScenario {
     name: "redirect when canonical uses non-standard port",
@@ -263,6 +281,7 @@ mod tests {
     expected_status: StatusCode::MOVED_PERMANENTLY,
     expected_location: Some("https://bodhi.example.com:8080/test"),
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_canonical_match(TestScenario {
     name: "no redirect when everything matches",
@@ -276,6 +295,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_canonical_match_explicit_port(TestScenario {
     name: "no redirect when everything matches with explicit port",
@@ -289,6 +309,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_canonical_match_non_standard_port(TestScenario {
     name: "no redirect when canonical non-standard port matches",
@@ -302,6 +323,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_post_method(TestScenario {
     name: "no redirect for POST requests",
@@ -315,6 +337,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_health_path(TestScenario {
     name: "no redirect for exempt health path",
@@ -328,6 +351,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_ping_path(TestScenario {
     name: "no redirect for exempt ping path",
@@ -341,6 +365,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::redirect_with_query_params(TestScenario {
     name: "redirect preserves query parameters",
@@ -354,6 +379,7 @@ mod tests {
     expected_status: StatusCode::MOVED_PERMANENTLY,
     expected_location: Some("https://bodhi.example.com/ui/chat?model=gpt-3.5&temp=0.7"),
     skip_public_host: false,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_no_public_host_wrong_host(TestScenario {
     name: "no redirect when public_host not set even with wrong host",
@@ -367,6 +393,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: true,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_no_public_host_wrong_scheme(TestScenario {
     name: "no redirect when public_host not set even with wrong scheme",
@@ -380,6 +407,7 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: true,
+    canonical_disabled: false,
   })]
   #[case::no_redirect_no_public_host_wrong_port(TestScenario {
     name: "no redirect when public_host not set even with wrong port",
@@ -393,10 +421,27 @@ mod tests {
     expected_status: StatusCode::OK,
     expected_location: None,
     skip_public_host: true,
+    canonical_disabled: false,
+  })]
+  #[case::no_redirect_canonical_disabled_wrong_host(TestScenario {
+    name: "no redirect when canonical redirect is disabled even with wrong host",
+    method: Method::GET,
+    path: "/test",
+    host_header: "wrong-host.example.com",
+    forwarded_proto: Some("http"),
+    public_scheme: "https",
+    public_host: "bodhi.example.com",
+    public_port: 443,
+    expected_status: StatusCode::OK,
+    expected_location: None,
+    skip_public_host: false,
+    canonical_disabled: true,
   })]
   #[tokio::test]
   async fn test_canonical_url_middleware_scenarios(#[case] scenario: TestScenario) {
-    let setting_service = if scenario.skip_public_host {
+    let setting_service = if scenario.canonical_disabled {
+      create_setting_service_canonical_disabled()
+    } else if scenario.skip_public_host {
       create_setting_service_no_public_host()
     } else {
       create_setting_service(

@@ -34,6 +34,7 @@ pub const BODHI_EXEC_TARGET: &str = "BODHI_EXEC_TARGET";
 pub const BODHI_EXEC_NAME: &str = "BODHI_EXEC_NAME";
 pub const BODHI_EXEC_VARIANTS: &str = "BODHI_EXEC_VARIANTS";
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
+pub const BODHI_CANONICAL_REDIRECT: &str = "BODHI_CANONICAL_REDIRECT";
 
 // Public-facing host settings for Docker compatibility
 pub const BODHI_PUBLIC_SCHEME: &str = "BODHI_PUBLIC_SCHEME";
@@ -47,6 +48,7 @@ pub const DEFAULT_PORT_STR: &str = "1135";
 pub const DEFAULT_LOG_LEVEL: &str = "warn";
 pub const DEFAULT_LOG_STDOUT: bool = false;
 pub const DEFAULT_KEEP_ALIVE_SECS: i64 = 300;
+pub const DEFAULT_CANONICAL_REDIRECT: bool = true;
 
 pub const SETTINGS_YAML: &str = "settings.yaml";
 
@@ -79,6 +81,7 @@ pub const SETTING_VARS: &[&str] = &[
   BODHI_EXEC_NAME,
   BODHI_EXEC_VARIANTS,
   BODHI_KEEP_ALIVE_SECS,
+  BODHI_CANONICAL_REDIRECT,
 ];
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -448,6 +451,14 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .as_i64()
       .expect("BODHI_KEEP_ALIVE_SECS should be a number")
   }
+
+  fn canonical_redirect_enabled(&self) -> bool {
+    self
+      .get_setting_value(BODHI_CANONICAL_REDIRECT)
+      .unwrap_or(Value::Bool(DEFAULT_CANONICAL_REDIRECT))
+      .as_bool()
+      .expect("BODHI_CANONICAL_REDIRECT should be a boolean")
+  }
 }
 
 #[derive(Debug)]
@@ -568,6 +579,10 @@ impl DefaultSettingService {
       defaults.insert(
         BODHI_KEEP_ALIVE_SECS.to_string(),
         Value::Number(DEFAULT_KEEP_ALIVE_SECS.into()),
+      );
+      defaults.insert(
+        BODHI_CANONICAL_REDIRECT.to_string(),
+        Value::Bool(DEFAULT_CANONICAL_REDIRECT),
       );
     });
   }
@@ -774,6 +789,7 @@ impl SettingService for DefaultSettingService {
         min: 300,
         max: 86400,
       },
+      BODHI_CANONICAL_REDIRECT => SettingMetadata::Boolean,
       _ => SettingMetadata::String,
     }
   }

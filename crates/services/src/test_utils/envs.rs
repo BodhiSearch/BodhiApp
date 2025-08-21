@@ -1,6 +1,6 @@
 use crate::{
   EnvWrapper, SettingService, SettingServiceError, SettingsChangeListener, BODHI_APP_TYPE,
-  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_NAME,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_CANONICAL_REDIRECT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_NAME,
   BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS,
   BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, BODHI_VERSION, HF_HOME,
 };
@@ -180,6 +180,7 @@ fn get_metadata(key: &str) -> SettingMetadata {
   match key {
     BODHI_PORT => SettingMetadata::Number { min: 1, max: 65535 },
     BODHI_LOG_STDOUT => SettingMetadata::Boolean,
+    BODHI_CANONICAL_REDIRECT => SettingMetadata::Boolean,
     BODHI_KEEP_ALIVE_SECS => SettingMetadata::Number {
       min: 300,
       max: 86400,
