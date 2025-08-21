@@ -121,6 +121,7 @@ jobs:
 
   # ARM64 CPU build (uses binary downloads)
   build-arm64-cpu:
+    if: false
     needs: extract-version
     runs-on: ubuntu-latest-8-cores
     timeout-minutes: 90
