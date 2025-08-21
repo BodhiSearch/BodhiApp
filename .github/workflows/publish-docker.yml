@@ -95,6 +95,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push ${{ matrix.variant }} image
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -114,10 +115,9 @@ jobs:
             BUILD_VARIANT=${{ needs.extract-version.outputs.build_variant }}
             CI_DOCKER=true
 
-  # ARM64 CPU build (only for production, uses binary downloads)
+  # ARM64 CPU build (uses binary downloads)
   build-arm64-cpu:
     needs: extract-version
-    if: needs.extract-version.outputs.is_development == 'false'
     runs-on: ubuntu-latest-8-cores
     timeout-minutes: 90
     outputs:
@@ -168,7 +168,7 @@ jobs:
   # Create multi-platform CPU manifest (AMD64 + ARM64)
   create-cpu-manifest:
     needs: [extract-version, build-variants, build-arm64-cpu]
-    if: always() && needs.build-variants.result == 'success' && (needs.extract-version.outputs.is_development == 'true' || needs.build-arm64-cpu.result == 'success')
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Login to Container Registry
@@ -180,26 +180,37 @@ jobs:
 
       - name: Create and push CPU multi-platform manifest
         run: |
-          # Create CPU manifest list combining AMD64 and ARM64
-          if [ "${{ needs.extract-version.outputs.is_development }}" = "true" ]; then
-            # Development: AMD64 only (no ARM64 for dev builds)
+          # Create CPU manifest list combining available architectures
+          IMAGES=""
+
+          # Check if AMD64 CPU image exists (from build-variants matrix)
+          if docker manifest inspect ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }} >/dev/null 2>&1; then
+            echo "AMD64 CPU image found"
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}"
+          fi
+
+          # Check if ARM64 CPU image exists (from build-arm64-cpu job)
+          if docker manifest inspect ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu-arm64${{ needs.extract-version.outputs.image_suffix }} >/dev/null 2>&1; then
+            echo "ARM64 CPU image found"
+            IMAGES="$IMAGES ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu-arm64${{ needs.extract-version.outputs.image_suffix }}"
+          fi
+
+          # Create manifest if at least one image exists
+          if [ -n "$IMAGES" ]; then
+            echo "Creating CPU manifest with images:$IMAGES"
             docker buildx imagetools create \
               --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }} \
               --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest-cpu${{ needs.extract-version.outputs.image_suffix }} \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}
+              $IMAGES
           else
-            # Production: Multi-platform (AMD64 + ARM64)
-            docker buildx imagetools create \
-              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }} \
-              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest-cpu${{ needs.extract-version.outputs.image_suffix }} \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }} \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu-arm64${{ needs.extract-version.outputs.image_suffix }}
+            echo "No CPU images found, skipping manifest creation"
+            exit 1
           fi
 
   # Create GitHub Release (succeeds if any variant builds successfully)
   create-release:
     needs: [extract-version, build-variants, create-cpu-manifest]
-    if: always() && (contains(needs.build-variants.result, 'success') || needs.create-cpu-manifest.result == 'success')
+    if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Release
