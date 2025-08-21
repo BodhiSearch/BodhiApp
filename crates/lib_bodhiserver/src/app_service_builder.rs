@@ -5,7 +5,7 @@ use services::{
   hash_key, AppService, AuthService, CacheService, DataService, DefaultAppService,
   DefaultSecretService, HfHubService, HubService, KeycloakAuthService, KeyringStore,
   LocalDataService, MokaCacheService, SecretService, SecretServiceExt, SessionService,
-  SettingService, SqliteSessionService, SystemKeyringStore,
+  SettingService, SqliteSessionService, SystemKeyringStore, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -211,7 +211,8 @@ impl AppServiceBuilder {
     }
 
     let hf_cache = self.setting_service.hf_cache();
-    Arc::new(HfHubService::new_from_hf_cache(hf_cache, true))
+    let hf_token = self.setting_service.get_env(HF_TOKEN);
+    Arc::new(HfHubService::new_from_hf_cache(hf_cache, hf_token, true))
   }
 
   /// Gets or builds the data service, ensuring hub service dependency is resolved.
