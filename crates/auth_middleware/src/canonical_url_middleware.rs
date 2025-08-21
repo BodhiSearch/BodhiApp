@@ -194,7 +194,7 @@ mod tests {
     public_port: u16,
     expected_status: StatusCode,
     expected_location: Option<&'static str>,
-    skip_public_host: bool, // When true, don't set BODHI_PUBLIC_HOST
+    skip_public_host: bool,   // When true, don't set BODHI_PUBLIC_HOST
     canonical_disabled: bool, // When true, disable canonical redirect setting
   }
 
@@ -217,7 +217,10 @@ mod tests {
     let mut settings = HashMap::new();
     settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "false".to_string());
     settings.insert("BODHI_PUBLIC_SCHEME".to_string(), "https".to_string());
-    settings.insert("BODHI_PUBLIC_HOST".to_string(), "bodhi.example.com".to_string());
+    settings.insert(
+      "BODHI_PUBLIC_HOST".to_string(),
+      "bodhi.example.com".to_string(),
+    );
     settings.insert("BODHI_PUBLIC_PORT".to_string(), "443".to_string());
     Arc::new(SettingServiceStub::default().with_settings(settings))
   }
