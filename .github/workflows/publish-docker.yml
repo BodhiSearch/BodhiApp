@@ -1,4 +1,4 @@
-name: Publish Docker Image (Optimized)
+name: Publish Docker Image (Multi-Variant)
 
 on:
   push:
@@ -22,7 +22,7 @@ env:
   IMAGE_NAME_RAW: ${{ github.repository }}
 
 jobs:
-  # Extract version information (shared by both jobs)
+  # Extract version information (shared by all builds)
   extract-version:
     runs-on: ubuntu-latest
     outputs:
@@ -60,58 +60,61 @@ jobs:
           echo "image_suffix=$IMAGE_SUFFIX" >> $GITHUB_OUTPUT
           echo "is_development=$IS_DEVELOPMENT" >> $GITHUB_OUTPUT
 
-  # AMD64 build (always runs)
-  build-amd64:
+  # Build all variants using matrix strategy
+  build-variants:
     needs: extract-version
     runs-on: ubuntu-latest-8-cores
-    timeout-minutes: 60
-    outputs:
-      image-digest-amd64: ${{ steps.build.outputs.digest }}
+    timeout-minutes: 90
+    strategy:
+      matrix:
+        variant: [cpu, cuda, rocm, vulkan]
+        include:
+          - variant: cpu
+            platforms: 'linux/amd64'
+          - variant: cuda
+            platforms: 'linux/amd64'
+          - variant: rocm
+            platforms: 'linux/amd64'
+          - variant: vulkan
+            platforms: 'linux/amd64'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
-      - name: Initialize submodules
-        run: |
-          git config --global url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf git@github.com:
-          git submodule sync --recursive
-          git submodule update --init --recursive --depth=1
-          git config --global --unset url.https://gh_pat:${{ secrets.GH_PAT }}@github.com/.insteadOf
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push AMD64 image
-        id: build
+      - name: Build and push ${{ matrix.variant }} image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
-          platforms: linux/amd64
+          file: ./devops/${{ matrix.variant }}.Dockerfile
+          platforms: ${{ matrix.platforms }}
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64
+            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-${{ matrix.variant }}${{ needs.extract-version.outputs.image_suffix }}
+            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest-${{ matrix.variant }}${{ needs.extract-version.outputs.image_suffix }}
           cache-from: |
-            type=gha,scope=amd64-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,scope=amd64-deps
+            type=gha,scope=${{ matrix.variant }}-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,scope=${{ matrix.variant }}-deps
           cache-to: |
-            type=gha,mode=max,scope=amd64-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,mode=max,scope=amd64-deps
+            type=gha,mode=max,scope=${{ matrix.variant }}-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,mode=max,scope=${{ matrix.variant }}-deps
           build-args: |
-            GH_PAT=${{ secrets.GH_PAT }}
             BUILD_VARIANT=${{ needs.extract-version.outputs.build_variant }}
+            CI_DOCKER=true
 
-  # ARM64 build (only for production)
-  build-arm64:
+  # ARM64 CPU build (only for production, uses binary downloads)
+  build-arm64-cpu:
     needs: extract-version
     if: needs.extract-version.outputs.is_development == 'false'
     runs-on: ubuntu-latest-8-cores
@@ -134,95 +137,141 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Container Registry
+      - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push ARM64 image
+      - name: Build and push ARM64 CPU image
         id: build
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Dockerfile
+          file: ./devops/cpu-arm64.Dockerfile
           platforms: linux/arm64
           push: true
           tags: |
-            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-arm64
+            ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu-arm64${{ needs.extract-version.outputs.image_suffix }}
           cache-from: |
-            type=gha,scope=arm64-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,scope=arm64-deps
+            type=gha,scope=arm64-cpu-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,scope=arm64-cpu-deps
           cache-to: |
-            type=gha,mode=max,scope=arm64-${{ needs.extract-version.outputs.build_variant }}
-            type=gha,mode=max,scope=arm64-deps
+            type=gha,mode=max,scope=arm64-cpu-${{ needs.extract-version.outputs.build_variant }}
+            type=gha,mode=max,scope=arm64-cpu-deps
           build-args: |
             GH_PAT=${{ secrets.GH_PAT }}
             BUILD_VARIANT=${{ needs.extract-version.outputs.build_variant }}
 
-  # Create multi-platform manifest
-  create-manifest:
-    needs: [extract-version, build-amd64, build-arm64]
-    if: always() && needs.build-amd64.result == 'success' && (needs.extract-version.outputs.is_development == 'true' || needs.build-arm64.result == 'success')
+  # Create multi-platform CPU manifest (AMD64 + ARM64)
+  create-cpu-manifest:
+    needs: [extract-version, build-variants, build-arm64-cpu]
+    if: always() && needs.build-variants.result == 'success' && (needs.extract-version.outputs.is_development == 'true' || needs.build-arm64-cpu.result == 'success')
     runs-on: ubuntu-latest
     steps:
-      - name: Log in to Container Registry
+      - name: Login to Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create and push manifest
+      - name: Create and push CPU multi-platform manifest
         run: |
-          # Create manifest list
+          # Create CPU manifest list combining AMD64 and ARM64
           if [ "${{ needs.extract-version.outputs.is_development }}" = "true" ]; then
-            # Development: AMD64 only
+            # Development: AMD64 only (no ARM64 for dev builds)
             docker buildx imagetools create \
-              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }} \
-              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest${{ needs.extract-version.outputs.image_suffix }} \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }} \
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest-cpu${{ needs.extract-version.outputs.image_suffix }} \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}
           else
-            # Production: Multi-platform
+            # Production: Multi-platform (AMD64 + ARM64)
             docker buildx imagetools create \
-              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }} \
-              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest${{ needs.extract-version.outputs.image_suffix }} \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-amd64 \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}-arm64
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }} \
+              --tag ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:latest-cpu${{ needs.extract-version.outputs.image_suffix }} \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }} \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu-arm64${{ needs.extract-version.outputs.image_suffix }}
           fi
 
-  # Create GitHub Release
+  # Create GitHub Release (succeeds if any variant builds successfully)
   create-release:
-    needs: [extract-version, create-manifest]
-    if: always() && needs.create-manifest.result == 'success'
+    needs: [extract-version, build-variants, create-cpu-manifest]
+    if: always() && (contains(needs.build-variants.result, 'success') || needs.create-cpu-manifest.result == 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: 'Docker Image ${{ needs.extract-version.outputs.build_variant }} v${{ needs.extract-version.outputs.tag_version }}'
+          name: 'Docker Images ${{ needs.extract-version.outputs.build_variant }} ${{ needs.extract-version.outputs.tag_version }}'
           body: |
-            Docker Image Release v${{ needs.extract-version.outputs.tag_version }} (${{ needs.extract-version.outputs.build_variant }})
+            # BodhiApp Docker Images Release ${{ needs.extract-version.outputs.tag_version }} (${{ needs.extract-version.outputs.build_variant }})
 
-            ## Usage
+            ## Available Variants
 
-            Pull and run the image:
+            ### CPU Variant (Multi-platform: AMD64 + ARM64)
             ```bash
-            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
+            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}
             docker run -p 8080:8080 \
               -v ./bodhi_home:/data/bodhi_home \
               -v ./hf_home:/data/hf_home \
-              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}
+
+
+            ⭐ **Multi-platform support**: This image automatically selects the correct architecture (AMD64 or ARM64) for your platform.
+
+            ### CUDA Variant (NVIDIA GPU acceleration)
+            ```bash
+            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cuda${{ needs.extract-version.outputs.image_suffix }}
+            docker run --gpus all -p 8080:8080 \
+              -v ./bodhi_home:/data/bodhi_home \
+              -v ./hf_home:/data/hf_home \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cuda${{ needs.extract-version.outputs.image_suffix }}
+            ```
+
+            ### ROCm Variant (AMD GPU acceleration)
+            ```bash
+            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-rocm${{ needs.extract-version.outputs.image_suffix }}
+            docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 8080:8080 \
+              -v ./bodhi_home:/data/bodhi_home \
+              -v ./hf_home:/data/hf_home \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-rocm${{ needs.extract-version.outputs.image_suffix }}
+            ```
+
+            ### Vulkan Variant (Cross-vendor GPU acceleration)
+            ```bash
+            docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-vulkan${{ needs.extract-version.outputs.image_suffix }}
+            docker run --device=/dev/dri -p 8080:8080 \
+              -v ./bodhi_home:/data/bodhi_home \
+              -v ./hf_home:/data/hf_home \
+              ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-vulkan${{ needs.extract-version.outputs.image_suffix }}
             ```
 
             ## Image Details
             - **Variant**: ${{ needs.extract-version.outputs.build_variant }}
-            - **Platforms**: ${{ needs.extract-version.outputs.is_development == 'true' && 'linux/amd64' || 'linux/amd64, linux/arm64' }}
+            - **Platforms**:
+              - **CPU**: linux/amd64, linux/arm64 (multi-platform)
+              - **GPU variants**: linux/amd64 only
             - **Registry**: ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}
             - **Tag**: ${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}
             - **Auth Server**: ${{ needs.extract-version.outputs.build_variant == 'production' && 'https://id.getbodhi.app' || 'https://main-id.getbodhi.app' }}
+
+            ## Hardware Requirements
+
+            - **CPU**: x86_64 (AMD64) or ARM64 processors (auto-detected)
+            - **CUDA**: NVIDIA GPU with CUDA 12.4+ support (AMD64 only)
+            - **ROCm**: AMD GPU with ROCm 6.4+ support (AMD64 only)
+            - **Vulkan**: GPU with Vulkan API support (AMD64 only)
+
+            ## Benefits
+
+            - **Multi-platform CPU**: Automatic architecture detection for ARM64 and AMD64
+            - **Faster Builds**: No llama-server compilation during build
+            - **GPU Acceleration**: Hardware-optimized variants available
+            - **Smaller Images**: Optimized runtime images
+            - **Better Caching**: Improved Docker layer caching
           draft: false
           prerelease: ${{ needs.extract-version.outputs.is_development == 'true' }}
         env:
@@ -230,5 +279,6 @@ jobs:
 
       - name: Output image details
         run: |
-          echo "::notice title=Docker Image Published::Image published to ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
-          echo "::notice title=Docker Pull Command::docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}${{ needs.extract-version.outputs.image_suffix }}"
+          echo "::notice title=Docker Images Published::Multi-variant images published to ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}"
+          echo "::notice title=Available Variants::cpu, cuda, rocm, vulkan"
+          echo "::notice title=Example Pull::docker pull ${{ env.REGISTRY }}/${{ needs.extract-version.outputs.image_name }}:${{ needs.extract-version.outputs.tag_version }}-cpu${{ needs.extract-version.outputs.image_suffix }}"

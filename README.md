@@ -56,6 +56,65 @@ Download the latest release for your platform from the [Releases](https://github
 
 Unzip and move `Bodhi.app` to your `/Applications` folder, then launch it. You should see the Bodhi App icon in your system tray. Launch the homepage from the system tray menu by selecting `Open Homepage`.
 
+### Docker
+
+Bodhi App is available as Docker images with multiple hardware acceleration variants. Each variant is optimized for specific hardware configurations to provide the best performance.
+
+#### Available Variants
+
+- **CPU Variant**: Standard CPU-only inference for maximum compatibility (multi-platform: AMD64 + ARM64)
+- **CUDA Variant**: NVIDIA GPU acceleration for faster inference on NVIDIA hardware
+- **ROCm Variant**: AMD GPU acceleration for AMD graphics cards
+- **Vulkan Variant**: Cross-vendor GPU acceleration supporting multiple GPU vendors
+
+#### Quick Start
+
+**CPU Variant (Most Compatible - Auto-detects AMD64/ARM64):**
+```bash
+docker run -p 8080:8080 \
+  -v ./bodhi_home:/data/bodhi_home \
+  -v ./hf_home:/data/hf_home \
+  ghcr.io/bodhisearch/bodhiapp:latest-cpu
+```
+
+**CUDA Variant (NVIDIA GPU):**
+```bash
+docker run --gpus all -p 8080:8080 \
+  -v ./bodhi_home:/data/bodhi_home \
+  -v ./hf_home:/data/hf_home \
+  ghcr.io/bodhisearch/bodhiapp:latest-cuda
+```
+
+**ROCm Variant (AMD GPU):**
+```bash
+docker run --device=/dev/kfd --device=/dev/dri --group-add video -p 8080:8080 \
+  -v ./bodhi_home:/data/bodhi_home \
+  -v ./hf_home:/data/hf_home \
+  ghcr.io/bodhisearch/bodhiapp:latest-rocm
+```
+
+**Vulkan Variant (Cross-vendor GPU):**
+```bash
+docker run --device=/dev/dri -p 8080:8080 \
+  -v ./bodhi_home:/data/bodhi_home \
+  -v ./hf_home:/data/hf_home \
+  ghcr.io/bodhisearch/bodhiapp:latest-vulkan
+```
+
+#### Hardware Requirements
+
+- **CPU**: Standard x86_64 (AMD64) or ARM64 processor (auto-detected)
+- **CUDA**: NVIDIA GPU with CUDA 12.4+ support and compatible drivers
+- **ROCm**: AMD GPU with ROCm 6.4+ support and compatible drivers
+- **Vulkan**: GPU with Vulkan API support and compatible drivers
+
+#### Volume Mounts
+
+- `/data/bodhi_home`: Application data, configuration, and downloaded models
+- `/data/hf_home`: HuggingFace cache directory for model downloads
+
+After starting the container, Bodhi App will be available at `http://localhost:8080`.
+
 ### Setup
 
 On first launch, Bodhi App starts with a setup flow. Follow this process to configure and install Bodhi App for your local machine and get started.

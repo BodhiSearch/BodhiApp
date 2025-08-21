@@ -1,18 +1,14 @@
-# Build stage - multi-platform aware
-ARG BUILDPLATFORM
-ARG TARGETPLATFORM
-ARG TARGETARCH
-
-# Use BUILDPLATFORM only if it's set (for multi-platform builds)
+# ARM64 CPU-only build using binary downloads (no base image available)
 FROM rust:1.87.0-bookworm as builder
 
-# Build arguments for GitHub PAT, platform info, and build variant
+# Build arguments for GitHub PAT and build variant
 ARG GH_PAT
-ARG TARGETARCH
 ARG BUILD_VARIANT=production
 ENV GH_PAT=${GH_PAT}
-ENV TARGETARCH=${TARGETARCH}
 ENV BUILD_VARIANT=${BUILD_VARIANT}
+
+# Explicitly disable CI_DOCKER to enable binary downloads for ARM64
+ENV CI_DOCKER=false
 
 # Enable Rust build optimizations
 ENV CARGO_INCREMENTAL=1
@@ -29,7 +25,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js (LTS version 22) - needed for all builds
+# Install Node.js (LTS version 22) - needed for frontend builds
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs
 
@@ -65,16 +61,16 @@ COPY xtask/ xtask/
 COPY Cargo.toml ./
 RUN cargo generate-lockfile
 
-# Set CI environment variables to download pre-built binaries
+# Set CI environment variables to download pre-built binaries for ARM64
 ENV CI=true
 ENV CI_RELEASE=true
 
-# Build llama_server_proc with consistent optimization level
+# Build llama_server_proc with binary downloads (CI_DOCKER=false enables this)
 RUN if [ "$BUILD_VARIANT" = "production" ]; then \
-      echo "Building llama_server_proc for production (release mode)..." && \
+      echo "Building llama_server_proc for ARM64 production (release mode with binary downloads)..." && \
       cargo build --release -p llama_server_proc; \
     else \
-      echo "Building llama_server_proc for development (debug mode)..." && \
+      echo "Building llama_server_proc for ARM64 development (debug mode with binary downloads)..." && \
       cargo build -p llama_server_proc; \
     fi
 
@@ -87,7 +83,7 @@ RUN if [ "$BUILD_VARIANT" = "production" ]; then \
       cargo build --bin bodhi --no-default-features; \
     fi
 
-# Runtime stage
+# === RUNTIME STAGE ===
 FROM debian:bookworm-slim
 
 # Install runtime dependencies
@@ -112,8 +108,8 @@ ARG BUILD_VARIANT=production
 COPY --from=builder /build/target/*/bodhi /app/bodhi
 RUN chown bodhi:bodhi /app/bodhi && chmod +x /app/bodhi
 
-# Copy llama-server executables from builder stage (copied by bodhi build.rs)
-COPY --from=builder /build/crates/bodhi/src-tauri/bin/ /app/bin/
+# Copy llama-server executables from builder stage (downloaded by llama_server_proc build.rs)
+COPY --from=builder /build/crates/llama_server_proc/bin/ /app/bin/
 RUN chown -R bodhi:bodhi /app/bin && find /app/bin -type f -exec chmod +x {} \;
 
 # Switch to non-root user
