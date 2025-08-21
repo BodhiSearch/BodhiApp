@@ -172,7 +172,7 @@ jobs:
 
   # Create multi-platform CPU manifest (AMD64 + ARM64)
   create-cpu-manifest:
-    needs: [extract-version, build-variants, build-arm64-cpu]
+    needs: [extract-version, build-variants]
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     steps:
