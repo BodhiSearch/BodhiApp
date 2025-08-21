@@ -73,7 +73,10 @@ RUN if [ "$BUILD_VARIANT" = "production" ]; then \
 # === FINAL STAGE ===
 FROM runtime
 
-# Copy BodhiApp binary from builder
+# Switch to root for file operations
+USER root
+
+# Copy BodhiApp binary from builder and set ownership
 COPY --from=builder /build/target/*/bodhi /app/bodhi
 RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 
@@ -86,7 +89,6 @@ ENV BODHI_HOST="0.0.0.0"
 ENV BODHI_PORT="8080"
 
 # Create data directories with proper ownership
-USER root
 RUN mkdir -p /data/bodhi_home /data/hf_home && \
     chown -R llama:llama /data
 
