@@ -264,7 +264,7 @@ docker.push: ## Push Docker image to GHCR
 		docker push ghcr.io/bodhisearch/bodhiapp:latest-$$BUILD_VARIANT; \
 	fi
 
-# Function to get current version from GHCR for Docker images
+# Function to get current version from GHCR for Docker images across all variants
 # Usage: $(call get_ghcr_docker_version,variant)
 # variant: production or development
 define get_ghcr_docker_version
@@ -275,9 +275,9 @@ define get_ghcr_docker_version
 		echo "0.0.0"; \
 	else \
 		if [ "$(1)" = "production" ]; then \
-			echo "$$GHCR_RESPONSE" | jq -r '[.[] | select(.metadata.container.tags[]? | test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))] | sort_by(.created_at) | last | .metadata.container.tags[] | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$"))' 2>/dev/null || echo "0.0.0"; \
+			echo "$$GHCR_RESPONSE" | jq -r '[.[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)$$"))] | map(split("-")[0]) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
 		else \
-			echo "$$GHCR_RESPONSE" | jq -r '[.[] | select(.metadata.container.tags[]? | test("^[0-9]+\\.[0-9]+\\.[0-9]+-development$$"))] | sort_by(.created_at) | last | .metadata.container.tags[] | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-development$$"))' 2>/dev/null | sed 's/-development$$//' || echo "0.0.0"; \
+			echo "$$GHCR_RESPONSE" | jq -r '[.[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)-development$$"))] | map(split("-")[0]) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
 		fi \
 	fi
 endef
@@ -369,20 +369,20 @@ release-docker-dev: ## Create and push tag for development Docker image release
 
 check-docker-versions: ## Check latest versions of both production and development Docker images from GHCR
 	@echo "=== Latest Docker Release Versions (from GHCR) ==="
-	@echo "Production releases (bodhiapp):"
+	@echo "Production releases (bodhiapp - all variants: cpu, cuda, rocm, vulkan):"
 	@PROD_VERSION=$$($(call get_ghcr_docker_version,production)) && \
 	if [ "$$PROD_VERSION" = "0.0.0" ]; then \
 		echo "  Latest: No releases found"; \
 	else \
-		echo "  Latest: $$PROD_VERSION"; \
+		echo "  Latest: $$PROD_VERSION (across all variants)"; \
 	fi
 	@echo ""
-	@echo "Development releases (bodhiapp):"
+	@echo "Development releases (bodhiapp - all variants: cpu, cuda, rocm, vulkan):"
 	@DEV_VERSION=$$($(call get_ghcr_docker_version,development)) && \
 	if [ "$$DEV_VERSION" = "0.0.0" ]; then \
 		echo "  Latest: No releases found"; \
 	else \
-		echo "  Latest: $$DEV_VERSION"; \
+		echo "  Latest: $$DEV_VERSION (across all variants)"; \
 	fi
 	@echo "==============================="
 
