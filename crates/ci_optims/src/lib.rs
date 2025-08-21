@@ -41,6 +41,6 @@ use utoipa;
 use uuid;
 
 pub fn dummy_function() {
-    // This function does nothing but ensures all dependencies are linked
-    println!("CI optimizations crate loaded");
+  // This function does nothing but ensures all dependencies are linked
+  println!("CI optimizations crate loaded");
 }

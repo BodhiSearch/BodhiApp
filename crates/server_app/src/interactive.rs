@@ -23,7 +23,6 @@ use server_core::{
 use services::{AppService, DataServiceError, HubServiceError};
 use std::{
   io::{self, Write},
-  path::PathBuf,
   sync::Arc,
   time::Duration,
 };
@@ -104,12 +103,7 @@ impl Interactive {
       .alias(&alias.alias)
       .server_params(&alias.context_params)
       .build()?;
-    let lookup_path = PathBuf::from(service.setting_service().exec_lookup_path());
-    let shared_rw = DefaultSharedContext::new(
-      service.hub_service(),
-      &lookup_path,
-      llama_server_proc::DEFAULT_VARIANT,
-    );
+    let shared_rw = DefaultSharedContext::new(service.hub_service(), service.setting_service());
     shared_rw.reload(Some(server_args)).await?;
     let router_state = DefaultRouterState::new(Arc::new(shared_rw), service);
     pb.finish_and_clear();

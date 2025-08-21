@@ -7,8 +7,6 @@ ARG BUILD_VARIANT=production
 ENV GH_PAT=${GH_PAT}
 ENV BUILD_VARIANT=${BUILD_VARIANT}
 
-# Explicitly disable CI_DOCKER to enable binary downloads for ARM64
-ENV CI_DOCKER=false
 
 # Enable Rust build optimizations
 ENV CARGO_INCREMENTAL=1

@@ -6,9 +6,15 @@ FROM rust:1.87.0-bookworm AS builder
 
 # Build arguments for platform info and build variant
 ARG BUILD_VARIANT=production
-ARG CI_DOCKER=true
+ARG CI_BUILD_TARGET=x86_64-unknown-linux-gnu
+ARG CI_DEFAULT_VARIANT=cuda
+ARG CI_BUILD_VARIANTS=cuda
+ARG CI_EXEC_NAME=llama-server
 ENV BUILD_VARIANT=${BUILD_VARIANT}
-ENV CI_DOCKER=${CI_DOCKER}
+ENV CI_BUILD_TARGET=${CI_BUILD_TARGET}
+ENV CI_DEFAULT_VARIANT=${CI_DEFAULT_VARIANT}
+ENV CI_BUILD_VARIANTS=${CI_BUILD_VARIANTS}
+ENV CI_EXEC_NAME=${CI_EXEC_NAME}
 
 # Enable Rust build optimizations
 ENV CARGO_INCREMENTAL=1
@@ -61,7 +67,7 @@ COPY Cargo.toml ./
 RUN cargo generate-lockfile
 
 # Build bodhi binary with consistent optimization level
-# Note: llama_server_proc will skip with CI_DOCKER=true
+# Note: llama_server_proc will use CI_BUILD_TARGET configuration
 RUN if [ "$BUILD_VARIANT" = "production" ]; then \
       echo "Building bodhi binary for production (release mode)..." && \
       cargo build --release --bin bodhi --no-default-features --features production; \
@@ -84,7 +90,7 @@ RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 ENV RUST_LOG=info
 ENV HF_HOME=/data/hf_home
 ENV BODHI_HOME=/data/bodhi_home
-ENV BODHI_EXEC_LOOKUP_PATH=/app
+ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
 ENV BODHI_HOST="0.0.0.0"
 ENV BODHI_PORT="8080"
 

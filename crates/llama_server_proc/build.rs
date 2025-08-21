@@ -47,8 +47,10 @@ pub fn main() -> Result<()> {
   println!("cargo:rerun-if-changed=Makefile");
   println!("cargo:rerun-if-env-changed=CI");
   println!("cargo:rerun-if-env-changed=CI_RELEASE");
+  println!("cargo:rerun-if-env-changed=CI_BUILD_TARGET");
+  println!("cargo:rerun-if-env-changed=CI_BUILD_VARIANTS");
   println!("cargo:rerun-if-env-changed=CI_DEFAULT_VARIANT");
-  println!("cargo:rerun-if-env-changed=CI_DOCKER");
+  println!("cargo:rerun-if-env-changed=CI_EXEC_NAME");
 
   let project_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
   // Create bin directory and lock file at the start
@@ -71,11 +73,20 @@ pub fn main() -> Result<()> {
 }
 
 fn try_main(project_dir: &Path) -> Result<()> {
-  // Check for Docker CI environment first - bypass llama-server build completely
-  if env::var("CI_DOCKER").unwrap_or("false".to_string()) == "true" {
-    println!("cargo:warning=Skipping llama-server build for Docker CI - using base image binaries");
-    // Set minimal build environment variables for compatibility
-    set_minimal_build_envs()?;
+  // Check for CI environment with explicit configuration
+  if let Ok(ci_target) = env::var("CI_BUILD_TARGET") {
+    println!(
+      "cargo:warning=Using CI build configuration for target: {}",
+      ci_target
+    );
+    let ci_variants = env::var("CI_BUILD_VARIANTS").unwrap_or_else(|_| "cpu".to_string());
+    let ci_default_variant = env::var("CI_DEFAULT_VARIANT").unwrap_or_else(|_| "cpu".to_string());
+    let ci_exec_name = env::var("CI_EXEC_NAME").unwrap_or_else(|_| "llama-server".to_string());
+
+    println!("cargo:rustc-env=BUILD_TARGET={}", ci_target);
+    println!("cargo:rustc-env=BUILD_VARIANTS={}", ci_variants);
+    println!("cargo:rustc-env=DEFAULT_VARIANT={}", ci_default_variant);
+    println!("cargo:rustc-env=EXEC_NAME={}", ci_exec_name);
     return Ok(());
   }
 
@@ -232,16 +243,6 @@ fn set_build_envs(build: &LlamaServerBuild, default_variant: &str) -> Result<()>
   );
   println!("cargo:rustc-env=DEFAULT_VARIANT={}", default_variant);
   println!("cargo:rustc-env=EXEC_NAME={}", build.execname());
-  Ok(())
-}
-
-fn set_minimal_build_envs() -> Result<()> {
-  // Set minimal required environment variables for Docker builds
-  // These maintain compatibility with dependent crates without requiring actual binaries
-  println!("cargo:rustc-env=BUILD_TARGET=docker");
-  println!("cargo:rustc-env=BUILD_VARIANTS=docker");
-  println!("cargo:rustc-env=DEFAULT_VARIANT=docker");
-  println!("cargo:rustc-env=EXEC_NAME=llama-server");
   Ok(())
 }
 

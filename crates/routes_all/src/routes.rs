@@ -15,7 +15,16 @@ use axum::{
 };
 use objs::{Role, TokenScope, UserScope};
 use routes_app::{
-  app_info_handler, auth_callback_handler, auth_initiate_handler, create_alias_handler, create_pull_request_handler, create_token_handler, delete_setting_handler, dev_secrets_handler, envs_handler, get_alias_handler, get_download_status_handler, list_downloads_handler, list_local_aliases_handler, list_local_modelfiles_handler, list_settings_handler, list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler, request_access_handler, setup_handler, update_alias_handler, update_setting_handler, update_token_handler, user_info_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS, ENDPOINT_DEV_ENVS, ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES, ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO
+  app_info_handler, auth_callback_handler, auth_initiate_handler, create_alias_handler,
+  create_pull_request_handler, create_token_handler, delete_setting_handler, dev_secrets_handler,
+  envs_handler, get_alias_handler, get_download_status_handler, list_downloads_handler,
+  list_local_aliases_handler, list_local_modelfiles_handler, list_settings_handler,
+  list_tokens_handler, logout_handler, ping_handler, pull_by_alias_handler, request_access_handler,
+  setup_handler, update_alias_handler, update_setting_handler, update_token_handler,
+  user_info_handler, BodhiOpenAPIDoc, OpenAPIEnvModifier, ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP,
+  ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS, ENDPOINT_DEV_ENVS,
+  ENDPOINT_DEV_SECRETS, ENDPOINT_HEALTH, ENDPOINT_LOGOUT, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  ENDPOINT_MODEL_PULL, ENDPOINT_PING, ENDPOINT_SETTINGS, ENDPOINT_TOKENS, ENDPOINT_USER_INFO,
 };
 use routes_oai::{
   chat_completions_handler, oai_model_handler, oai_models_handler, ollama_model_chat_handler,

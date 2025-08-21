@@ -1,15 +1,10 @@
 use crate::ContextError;
 use async_openai::types::CreateChatCompletionRequest;
-use llama_server_proc::{
-  exec_path_from, LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server,
-};
+use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use objs::Alias;
-use services::HubService;
+use services::{HubService, SettingService};
 use std::fmt::Debug;
-use std::{
-  path::{Path, PathBuf},
-  sync::Arc,
-};
+use std::{path::Path, sync::Arc};
 use tokio::sync::RwLock;
 use tracing::info;
 
@@ -76,38 +71,29 @@ impl ServerFactory for DefaultServerFactory {
 #[derive(Debug)]
 pub struct DefaultSharedContext {
   hub_service: Arc<dyn HubService>,
+  setting_service: Arc<dyn SettingService>,
   factory: Box<dyn ServerFactory>,
-  exec_lookup_path: PathBuf,
   exec_variant: ExecVariant,
   server: RwLock<Option<Box<dyn Server>>>,
   state_listeners: RwLock<Vec<Arc<dyn ServerStateListener>>>,
 }
 
 impl DefaultSharedContext {
-  pub fn new(
-    hub_service: Arc<dyn HubService>,
-    exec_lookup_path: &Path,
-    exec_variant: &str,
-  ) -> Self {
-    Self::with_args(
-      hub_service,
-      Box::new(DefaultServerFactory),
-      exec_lookup_path,
-      exec_variant,
-    )
+  pub fn new(hub_service: Arc<dyn HubService>, setting_service: Arc<dyn SettingService>) -> Self {
+    Self::with_args(hub_service, setting_service, Box::new(DefaultServerFactory))
   }
 
   pub fn with_args(
     hub_service: Arc<dyn HubService>,
+    setting_service: Arc<dyn SettingService>,
     factory: Box<dyn ServerFactory>,
-    exec_lookup_path: &Path,
-    exec_variant: &str,
   ) -> Self {
+    let exec_variant = setting_service.exec_variant();
     Self {
       hub_service,
-      exec_lookup_path: exec_lookup_path.to_path_buf(),
-      exec_variant: ExecVariant::new(exec_variant.to_string()),
+      setting_service,
       factory,
+      exec_variant: ExecVariant::new(exec_variant),
       server: RwLock::new(None),
       state_listeners: RwLock::new(Vec::new()),
     }
@@ -143,10 +129,7 @@ impl SharedContext for DefaultSharedContext {
     let Some(server_args) = server_args else {
       return Ok(());
     };
-    let exec_path = exec_path_from(
-      self.exec_lookup_path.as_ref(),
-      self.exec_variant.get().await.as_ref(),
-    );
+    let exec_path = self.setting_service.exec_path_from();
     if !exec_path.exists() {
       return Err(ContextError::ExecNotExists(
         exec_path.to_string_lossy().to_string(),
@@ -307,6 +290,8 @@ impl Default for ExecVariant {
 
 #[cfg(test)]
 mod test {
+  use std::collections::HashMap;
+
   use crate::{
     shared_rw::{DefaultSharedContext, ModelLoadStrategy, SharedContext},
     test_utils::{bin_path, mock_server, ServerFactoryStub},
@@ -314,15 +299,19 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use async_openai::types::CreateChatCompletionRequest;
   use futures::FutureExt;
-  use llama_server_proc::{test_utils::mock_response, LlamaServerArgsBuilder, MockServer};
+  use llama_server_proc::{
+    test_utils::mock_response, LlamaServerArgsBuilder, MockServer, BUILD_TARGET, BUILD_VARIANTS,
+    DEFAULT_VARIANT, EXEC_NAME,
+  };
   use mockall::predicate::eq;
   use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder};
   use rstest::rstest;
   use serde_json::{json, Value};
   use serial_test::serial;
   use services::{
-    test_utils::{app_service_stub, AppServiceStub},
-    AppService,
+    test_utils::{app_service_stub_builder, AppServiceStubBuilder},
+    AppService, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT,
+    BODHI_EXEC_VARIANTS,
   };
   use tempfile::TempDir;
 
@@ -347,9 +336,22 @@ mod test {
   #[tokio::test]
   async fn test_chat_completions_continue_strategy(
     mut mock_server: MockServer,
-    #[future] app_service_stub: AppServiceStub,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
     bin_path: TempDir,
   ) -> anyhow::Result<()> {
+    let app_service_stub = app_service_stub_builder
+      .with_settings(HashMap::from([
+        (BODHI_EXEC_VARIANT, DEFAULT_VARIANT),
+        (BODHI_EXEC_TARGET, BUILD_TARGET),
+        (BODHI_EXEC_VARIANTS, BUILD_VARIANTS.join(",").as_str()),
+        (BODHI_EXEC_NAME, EXEC_NAME),
+        (
+          BODHI_EXEC_LOOKUP_PATH,
+          bin_path.path().display().to_string().as_str(),
+        ),
+      ]))
+      .build()
+      .unwrap();
     let hf_cache = app_service_stub.hf_cache();
     let model_file = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
@@ -380,9 +382,8 @@ mod test {
     let server_factory = ServerFactoryStub::new(Box::new(mock_server));
     let shared_ctx = DefaultSharedContext::with_args(
       app_service_stub.hub_service(),
+      app_service_stub.setting_service(),
       Box::new(server_factory),
-      bin_path.path(),
-      llama_server_proc::DEFAULT_VARIANT,
     );
     shared_ctx.reload(Some(server_args)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
@@ -402,10 +403,23 @@ mod test {
   #[serial(BodhiServerContext)]
   #[anyhow_trace]
   async fn test_chat_completions_load_strategy(
-    #[future] app_service_stub: AppServiceStub,
-    bin_path: TempDir,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
     mut mock_server: MockServer,
+    bin_path: TempDir,
   ) -> anyhow::Result<()> {
+    let app_service_stub = app_service_stub_builder
+      .with_settings(HashMap::from([
+        (BODHI_EXEC_VARIANT, DEFAULT_VARIANT),
+        (BODHI_EXEC_TARGET, BUILD_TARGET),
+        (BODHI_EXEC_VARIANTS, BUILD_VARIANTS.join(",").as_str()),
+        (BODHI_EXEC_NAME, EXEC_NAME),
+        (
+          BODHI_EXEC_LOOKUP_PATH,
+          bin_path.path().display().to_string().as_str(),
+        ),
+      ]))
+      .build()
+      .unwrap();
     let expected_input: Value = serde_json::from_str(
       r#"{"messages":[{"role":"user","content":"What day comes after Monday?"}],"model":"testalias:instruct"}"#,
     )?;
@@ -419,9 +433,8 @@ mod test {
 
     let shared_ctx = DefaultSharedContext::with_args(
       app_service_stub.hub_service(),
+      app_service_stub.setting_service(),
       Box::new(bodhi_server_factory),
-      bin_path.path(),
-      llama_server_proc::DEFAULT_VARIANT,
     );
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{
       "model": "testalias:instruct",
@@ -433,18 +446,31 @@ mod test {
     Ok(())
   }
 
+  #[anyhow_trace]
   #[rstest]
   #[awt]
   #[tokio::test]
   #[serial(BodhiServerContext)]
-  #[anyhow_trace]
   async fn test_chat_completions_drop_and_load_strategy(
     mut mock_server: MockServer,
     #[from(mock_server)] mut request_server: MockServer,
-    #[future] app_service_stub: AppServiceStub,
-    bin_path: TempDir,
+    #[future] mut app_service_stub_builder: AppServiceStubBuilder,
     temp_hf_home: TempDir,
+    bin_path: TempDir,
   ) -> anyhow::Result<()> {
+    let app_service_stub = app_service_stub_builder
+      .with_settings(HashMap::from([
+        (BODHI_EXEC_VARIANT, DEFAULT_VARIANT),
+        (BODHI_EXEC_TARGET, BUILD_TARGET),
+        (BODHI_EXEC_VARIANTS, BUILD_VARIANTS.join(",").as_str()),
+        (BODHI_EXEC_NAME, EXEC_NAME),
+        (
+          BODHI_EXEC_LOOKUP_PATH,
+          bin_path.path().display().to_string().as_str(),
+        ),
+      ]))
+      .build()
+      .unwrap();
     let hf_cache = temp_hf_home.path().join("huggingface").join("hub");
     let loaded_model = HubFileBuilder::testalias()
       .hf_cache(hf_cache.clone())
@@ -486,9 +512,8 @@ mod test {
       ServerFactoryStub::new_with_instances(vec![Box::new(mock_server), Box::new(request_server)]);
     let shared_ctx = DefaultSharedContext::with_args(
       app_service_stub.hub_service(),
+      app_service_stub.setting_service(),
       Box::new(server_factory),
-      bin_path.path(),
-      llama_server_proc::DEFAULT_VARIANT,
     );
     shared_ctx.reload(Some(loaded_params)).await?;
     let request = serde_json::from_value::<CreateChatCompletionRequest>(json! {{

@@ -30,6 +30,9 @@ pub const BODHI_HOST: &str = "BODHI_HOST";
 pub const BODHI_PORT: &str = "BODHI_PORT";
 pub const BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
 pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
+pub const BODHI_EXEC_TARGET: &str = "BODHI_EXEC_TARGET";
+pub const BODHI_EXEC_NAME: &str = "BODHI_EXEC_NAME";
+pub const BODHI_EXEC_VARIANTS: &str = "BODHI_EXEC_VARIANTS";
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 
 // Public-facing host settings for Docker compatibility
@@ -72,6 +75,9 @@ pub const SETTING_VARS: &[&str] = &[
   BODHI_PUBLIC_PORT,
   BODHI_EXEC_LOOKUP_PATH,
   BODHI_EXEC_VARIANT,
+  BODHI_EXEC_TARGET,
+  BODHI_EXEC_NAME,
+  BODHI_EXEC_VARIANTS,
   BODHI_KEEP_ALIVE_SECS,
 ];
 
@@ -315,6 +321,35 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .expect("BODHI_EXEC_VARIANT should be set")
   }
 
+  fn exec_target(&self) -> String {
+    self
+      .get_setting(BODHI_EXEC_TARGET)
+      .expect("BODHI_EXEC_TARGET should be set")
+  }
+
+  fn exec_name(&self) -> String {
+    self
+      .get_setting(BODHI_EXEC_NAME)
+      .expect("BODHI_EXEC_NAME should be set")
+  }
+
+  fn exec_variants(&self) -> Vec<String> {
+    self
+      .get_setting(BODHI_EXEC_VARIANTS)
+      .expect("BODHI_EXEC_VARIANTS should be set")
+      .split(',')
+      .map(|s| s.trim().to_string())
+      .collect()
+  }
+
+  fn exec_path_from(&self) -> PathBuf {
+    let lookup_path = PathBuf::from(self.exec_lookup_path());
+    let target = self.exec_target();
+    let variant = self.exec_variant();
+    let exec_name = self.exec_name();
+    lookup_path.join(target).join(variant).join(exec_name)
+  }
+
   fn public_scheme(&self) -> String {
     self
       .get_setting(BODHI_PUBLIC_SCHEME)
@@ -511,6 +546,24 @@ impl DefaultSettingService {
       defaults.insert(
         BODHI_EXEC_VARIANT.to_string(),
         Value::String(llama_server_proc::DEFAULT_VARIANT.to_string()),
+      );
+      defaults.insert(
+        BODHI_EXEC_TARGET.to_string(),
+        Value::String(llama_server_proc::BUILD_TARGET.to_string()),
+      );
+      defaults.insert(
+        BODHI_EXEC_NAME.to_string(),
+        Value::String(llama_server_proc::EXEC_NAME.to_string()),
+      );
+      defaults.insert(
+        BODHI_EXEC_VARIANTS.to_string(),
+        Value::String(
+          llama_server_proc::BUILD_VARIANTS
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(","),
+        ),
       );
       defaults.insert(
         BODHI_KEEP_ALIVE_SECS.to_string(),
@@ -711,12 +764,12 @@ impl SettingService for DefaultSettingService {
       ),
       BODHI_LOG_STDOUT => SettingMetadata::Boolean,
       BODHI_EXEC_VARIANT => {
-        let mut options = Vec::new();
-        for variant in llama_server_proc::BUILD_VARIANTS.iter() {
-          options.push(variant.to_string());
-        }
-        SettingMetadata::option(options)
+        let variants = self.exec_variants();
+        SettingMetadata::option(variants)
       }
+      BODHI_EXEC_TARGET => SettingMetadata::String,
+      BODHI_EXEC_NAME => SettingMetadata::String,
+      BODHI_EXEC_VARIANTS => SettingMetadata::String,
       BODHI_KEEP_ALIVE_SECS => SettingMetadata::Number {
         min: 300,
         max: 86400,

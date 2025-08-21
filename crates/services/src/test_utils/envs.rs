@@ -1,9 +1,10 @@
 use crate::{
   EnvWrapper, SettingService, SettingServiceError, SettingsChangeListener, BODHI_APP_TYPE,
-  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_HOME, BODHI_HOST,
-  BODHI_KEEP_ALIVE_SECS, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME,
-  BODHI_VERSION, HF_HOME,
+  BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE, BODHI_EXEC_NAME,
+  BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS,
+  BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, BODHI_VERSION, HF_HOME,
 };
+use llama_server_proc::{BUILD_VARIANTS, DEFAULT_VARIANT, EXEC_NAME};
 use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
 use rstest::fixture;
 use std::{
@@ -91,6 +92,12 @@ impl Default for SettingServiceStub {
       (BODHI_LOG_LEVEL.to_string(), "warn".to_string()),
       (BODHI_LOG_STDOUT.to_string(), "true".to_string()),
       (BODHI_ENCRYPTION_KEY.to_string(), "testkey".to_string()),
+      (BODHI_EXEC_VARIANT.to_string(), DEFAULT_VARIANT.to_string()),
+      (
+        BODHI_EXEC_VARIANTS.to_string(),
+        BUILD_VARIANTS.join(",").to_string(),
+      ),
+      (BODHI_EXEC_NAME.to_string(), EXEC_NAME.to_string()),
     ]);
     Self::new(settings)
   }
