@@ -7,6 +7,7 @@ use services::{
   SNAPSHOT_MAIN,
 };
 use std::sync::Arc;
+use tracing::debug;
 
 #[derive(Debug, Clone, PartialEq, derive_builder::Builder)]
 #[allow(clippy::too_many_arguments)]
@@ -49,9 +50,9 @@ impl CreateCommand {
       if !self.update {
         return Err(AliasExistsError(self.alias.clone()).into());
       }
-      println!("Updating existing alias: '{}'", self.alias);
+      debug!("Updating existing alias: '{}'", self.alias);
     } else {
-      println!("Creating new alias: '{}'", self.alias);
+      debug!("Creating new alias: '{}'", self.alias);
     }
     let file_exists =
       service
@@ -59,7 +60,7 @@ impl CreateCommand {
         .local_file_exists(&self.repo, &self.filename, self.snapshot.clone())?;
     let local_model_file = match file_exists {
       true => {
-        println!(
+        debug!(
           "repo: '{}', filename: '{}', already exists in $HF_HOME",
           &self.repo, &self.filename
         );
@@ -99,7 +100,7 @@ impl CreateCommand {
       .context_params(self.context_params)
       .build()?;
     service.data_service().save_alias(&alias)?;
-    println!(
+    debug!(
       "model alias: '{}' saved to $BODHI_HOME/aliases",
       alias.alias
     );

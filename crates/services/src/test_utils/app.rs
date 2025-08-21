@@ -119,11 +119,17 @@ impl AppServiceStubBuilder {
   }
 
   pub fn with_settings(&mut self, settings: HashMap<&str, &str>) -> &mut Self {
-    let setting_service = SettingServiceStub::default();
-    for (key, value) in settings {
-      setting_service.set_setting(key, value);
+    if let Some(Some(setting_service)) = &self.setting_service {
+      for (key, value) in settings {
+        setting_service.set_setting(key, value);
+      }
+    } else {
+      let setting_service = SettingServiceStub::default();
+      for (key, value) in settings {
+        setting_service.set_setting(key, value);
+      }
+      self.setting_service = Some(Some(Arc::new(setting_service)));
     }
-    self.setting_service = Some(Some(Arc::new(setting_service)));
     self
   }
 

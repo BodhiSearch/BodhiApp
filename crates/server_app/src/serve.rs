@@ -4,14 +4,14 @@ use crate::{
 };
 use axum::Router;
 use include_dir::Dir;
-use llama_server_proc::exec_path_from;
 use objs::{impl_error_from, AppError};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContext, SharedContext};
 use services::{AppService, SettingServiceError};
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 use tokio::{sync::oneshot::Sender, task::JoinHandle};
 use tower_serve_static::ServeDir;
+use tracing::error;
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -95,16 +95,14 @@ impl ServeCommand {
       ready_rx,
     } = build_server_handle(host, *port);
 
-    let exec_variant = service.setting_service().exec_variant();
-    let exec_lookup_path = PathBuf::from(service.setting_service().exec_lookup_path());
-    let exec_path = exec_path_from(&exec_lookup_path, &exec_variant);
+    let exec_path = service.setting_service().exec_path_from();
     if !exec_path.exists() {
-      println!("exec not found at {}", exec_path.to_string_lossy());
+      error!("exec not found at {}", exec_path.to_string_lossy());
       return Err(ContextError::ExecNotExists(
         exec_path.to_string_lossy().to_string(),
       ))?;
     }
-    let ctx = DefaultSharedContext::new(service.hub_service(), &exec_lookup_path, &exec_variant);
+    let ctx = DefaultSharedContext::new(service.hub_service(), service.setting_service());
     let ctx: Arc<dyn SharedContext> = Arc::new(ctx);
     setting_service.add_listener(Arc::new(VariantChangeListener::new(ctx.clone())));
 

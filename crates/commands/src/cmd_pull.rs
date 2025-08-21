@@ -3,6 +3,7 @@ use services::{
   AliasExistsError, AppService, DataServiceError, HubServiceError, RemoteModelNotFoundError,
 };
 use std::sync::Arc;
+use tracing::debug;
 
 #[derive(Debug, PartialEq)]
 pub enum PullCommand {
@@ -62,7 +63,7 @@ impl PullCommand {
           .context_params(model.context_params)
           .build()?;
         service.data_service().save_alias(&alias)?;
-        println!(
+        debug!(
           "model alias: '{}' saved to $BODHI_HOME/aliases",
           alias.alias
         );
@@ -78,14 +79,14 @@ impl PullCommand {
             .hub_service()
             .local_file_exists(repo, filename, snapshot.clone())?;
         if model_file_exists {
-          println!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
+          debug!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
           return Ok(());
         } else {
           service
             .hub_service()
             .download(repo, filename, snapshot.clone())
             .await?;
-          println!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
+          debug!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
         Ok(())
       }

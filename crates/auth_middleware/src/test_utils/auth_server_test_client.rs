@@ -486,11 +486,13 @@ impl AuthServerTestClient {
 
     // Step 2: Create App Client
     let app_client = self
-      .create_app_client(&dev_console_token, "Test App Client")
+      .create_app_client(&dev_console_token, "auth_server_client.rs: Test App Client")
       .await?;
 
     // Step 3: Create Resource Server Client
-    let resource_client = self.create_resource_client("Test Resource Server").await?;
+    let resource_client = self
+      .create_resource_client("auth_server_client.rs: Test Resource Server")
+      .await?;
 
     // Step 4: Get Resource Client Service Account Token
     let resource_service_token = self.get_resource_service_token(&resource_client).await?;

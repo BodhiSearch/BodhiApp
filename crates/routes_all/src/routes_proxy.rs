@@ -5,6 +5,7 @@ use axum::{
   Router,
 };
 use hyper_util::{client::legacy::Client, rt::TokioExecutor};
+use tracing::error;
 
 type HttpClient = Client<(), ()>;
 
@@ -26,7 +27,7 @@ async fn proxy_handler(mut req: Request, backend_url: String) -> Response<Body> 
   match client.request(req).await {
     Ok(res) => res.map(Body::new),
     Err(e) => {
-      eprintln!("Error: {}", e);
+      error!(?e, "error proxying request");
       Response::builder()
         .status(500)
         .body(Body::from("Internal Server Error"))
