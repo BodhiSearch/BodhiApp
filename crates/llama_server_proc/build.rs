@@ -1,4 +1,4 @@
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use fs2::FileExt;
 use once_cell::sync::Lazy;
 use reqwest::header::{HeaderMap, HeaderValue};
@@ -107,45 +107,7 @@ fn try_main(project_dir: &Path) -> Result<()> {
     println!("building all variants");
     clean_bin_dir(project_dir)?;
     let client = build_gh_client(gh_pat)?;
-    let response = client
-      .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases/latest")
-      .send()?;
-
-    // Check HTTP status code first
-    if !response.status().is_success() {
-      let status = response.status();
-      let response_text = response
-        .text()
-        .with_context(|| "Failed to read error response text".to_string())?;
-      bail!(
-        "GitHub API request failed with status {}: {}",
-        status,
-        response_text
-      );
-    }
-
-    let response_text = response
-      .text()
-      .with_context(|| "Failed to read response text for latest release".to_string())?;
-    let release: GithubRelease = serde_json::from_str(&response_text).unwrap_or_else(|err| {
-      panic!(
-        "Failed to deserialize response: {}\nError: {}",
-        response_text, err
-      );
-    });
-    if release.assets.is_empty() {
-      bail!("No assets found in latest release: {}", response_text);
-    } else {
-      println!(
-        "assets: {:?}",
-        release
-          .assets
-          .iter()
-          .map(|a| a.name.clone())
-          .collect::<Vec<String>>()
-          .join(",")
-      );
-    }
+    let release = find_latest_binary_release(&client)?;
     for variant in build.variants.iter() {
       // Check if binary exists for this platform/variant combination first
       if !binary_exists_for_platform(&release, build, variant) {
@@ -183,6 +145,58 @@ fn build_gh_client(gh_pat: String) -> Result<reqwest::blocking::Client, anyhow::
     .default_headers(headers)
     .build()?;
   Ok(client)
+}
+
+fn find_latest_binary_release(client: &reqwest::blocking::Client) -> Result<GithubRelease> {
+  let response = client
+    .get("https://api.github.com/repos/BodhiSearch/llama.cpp/releases")
+    .send()?;
+
+  // Check HTTP status code first
+  if !response.status().is_success() {
+    let status = response.status();
+    let response_text = response
+      .text()
+      .with_context(|| "Failed to read error response text".to_string())?;
+    bail!(
+      "GitHub API request failed with status {}: {}",
+      status,
+      response_text
+    );
+  }
+
+  let response_text = response
+    .text()
+    .with_context(|| "Failed to read response text for releases".to_string())?;
+  let releases: Vec<GithubRelease> = serde_json::from_str(&response_text).unwrap_or_else(|err| {
+    panic!(
+      "Failed to deserialize response: {}\nError: {}",
+      response_text, err
+    );
+  });
+
+  // Find first release with binary assets (non-empty assets)
+  let release = releases.into_iter()
+    .find(|release| !release.assets.is_empty())
+    .ok_or_else(|| {
+      anyhow!("No binary releases found in latest releases. All releases appear to be Docker image releases without binary assets.")
+    })?;
+
+  println!(
+    "cargo:warning=Selected binary release: {}",
+    release.tag_name
+  );
+  println!(
+    "assets: {:?}",
+    release
+      .assets
+      .iter()
+      .map(|a| a.name.clone())
+      .collect::<Vec<String>>()
+      .join(",")
+  );
+
+  Ok(release)
 }
 
 fn get_makefile_args() -> Vec<&'static str> {
@@ -259,6 +273,7 @@ fn build_llama_server(build: &LlamaServerBuild, variant: &str) -> Result<()> {
 
 #[derive(Deserialize)]
 struct GithubRelease {
+  tag_name: String,
   assets: Vec<GithubAsset>,
 }
 
