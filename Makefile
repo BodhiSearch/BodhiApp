@@ -267,6 +267,7 @@ docker.push: ## Push Docker image to GHCR
 # Function to get current version from GHCR for Docker images across all variants
 # Usage: $(call get_ghcr_docker_version,variant)
 # variant: production or development
+# Handles both legacy format (X.Y.Z, X.Y.Z-development) and new multi-variant format (X.Y.Z-cpu, X.Y.Z-cpu-development)
 define get_ghcr_docker_version
 	REPO_OWNER=BodhiSearch && \
 	PACKAGE_NAME=bodhiapp && \
@@ -275,9 +276,9 @@ define get_ghcr_docker_version
 		echo "0.0.0"; \
 	else \
 		if [ "$(1)" = "production" ]; then \
-			echo "$$GHCR_RESPONSE" | jq -r '[.[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)$$"))] | map(split("-")[0]) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
+			echo "$$GHCR_RESPONSE" | jq -r '[ .[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$") or test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)$$")) ] | map(split("-")[0]) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
 		else \
-			echo "$$GHCR_RESPONSE" | jq -r '[.[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)-development$$"))] | map(split("-")[0]) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
+			echo "$$GHCR_RESPONSE" | jq -r '[ .[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-development$$") or test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)-development$$")) ] | map(if test("-development$$") then split("-development")[0] else split("-")[0] end) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
 		fi \
 	fi
 endef
