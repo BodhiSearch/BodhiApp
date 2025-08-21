@@ -175,112 +175,37 @@ release-app-bindings: ## Create and push tag for app-bindings package release
 ui.test:
 	cd crates/bodhi && npm run test
 
-docker.build: ## Build Docker image for current platform only (fast)
-	@echo "Building Docker image for current platform..."
-	@if [ -z "$(GH_PAT)" ]; then \
-		echo "Error: GH_PAT must be set. Usage: make docker.build GH_PAT=your_token"; \
-		exit 1; \
-	fi
-	@BUILD_VARIANT=$${BUILD_VARIANT:-production} && \
-	echo "Building with variant: $$BUILD_VARIANT" && \
-	docker buildx build --load \
-		--build-arg GH_PAT=$(GH_PAT) \
-		--build-arg BUILD_VARIANT=$$BUILD_VARIANT \
-		-t bodhiapp:latest-$$BUILD_VARIANT .
+# Docker build targets - delegated to devops/Makefile
+docker.dev.cpu.amd64: ## Build AMD64 CPU image for local testing
+	@$(MAKE) -C devops dev.cpu.amd64 BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.build.optimized: ## Build optimized Docker image for current platform only (fast)
-	@echo "Building optimized Docker image for current platform..."
-	@if [ -z "$(GH_PAT)" ]; then \
-		echo "Error: GH_PAT must be set. Usage: make docker.build.optimized GH_PAT=your_token"; \
-		exit 1; \
-	fi
-	@BUILD_VARIANT=$${BUILD_VARIANT:-development} && \
-	echo "Building optimized with variant: $$BUILD_VARIANT" && \
-	docker buildx build --load \
-		--build-arg GH_PAT=$(GH_PAT) \
-		--build-arg BUILD_VARIANT=$$BUILD_VARIANT \
-		-f Dockerfile \
-		-t bodhiapp:latest-$$BUILD_VARIANT-optimized .
+docker.dev.cpu.arm64: ## Build ARM64 CPU image (requires GH_PAT)
+	@$(MAKE) -C devops dev.cpu.arm64 GH_PAT=$(GH_PAT) BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.build.dev: ## Build development Docker image (no --release, AMD64 only)
-	@echo "Building development Docker image for local testing..."
-	@if [ -z "$(GH_PAT)" ]; then \
-		echo "Error: GH_PAT must be set. Usage: make docker.build.dev GH_PAT=your_token"; \
-		exit 1; \
-	fi
-	@docker buildx build --load \
-		--build-arg GH_PAT=$(GH_PAT) \
-		--build-arg BUILD_VARIANT=development \
-		-f Dockerfile \
-		-t bodhiapp:dev-local .
+docker.dev.cuda: ## Build NVIDIA CUDA GPU image
+	@$(MAKE) -C devops dev.cuda BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.build.multi: ## Build multi-platform Docker image (slower)
-	@echo "Building multi-platform Docker image..."
-	@if [ -z "$(GH_PAT)" ]; then \
-		echo "Error: GH_PAT must be set. Usage: make docker.build.multi GH_PAT=your_token"; \
-		exit 1; \
-	fi
-	@BUILD_VARIANT=$${BUILD_VARIANT:-production} && \
-	echo "Building multi-platform with variant: $$BUILD_VARIANT" && \
-	docker buildx build --platform linux/amd64,linux/arm64 \
-		--build-arg GH_PAT=$(GH_PAT) \
-		--build-arg BUILD_VARIANT=$$BUILD_VARIANT \
-		-t bodhiapp:latest-$$BUILD_VARIANT .
+docker.run: ## Run locally built Docker image
+	@$(MAKE) -C devops run VARIANT=$${VARIANT:-cpu} ARCH=$${ARCH:-amd64} BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.run: ## Run Docker container locally with volumes (foreground with logs)
-	@echo "Running BodhiApp Docker container in foreground..."
-	@mkdir -p $(shell pwd)/docker-data/bodhi_home $(shell pwd)/docker-data/hf_home
-	@BUILD_VARIANT=$${BUILD_VARIANT:-production} && \
-	echo "Running variant: $$BUILD_VARIANT" && \
-	docker run \
-		--rm \
-		-e BODHI_LOG_STDOUT=true \
-		-e BODHI_LOG_LEVEL=debug \
-		-e BODHI_ENCRYPTION_KEY=some-secure-key \
-		-e BODHI_PUBLIC_HOST=localhost \
-		-e BODHI_PUBLIC_PORT=9090 \
-		-p 9090:1135 \
-		-v $(shell pwd)/docker-data/bodhi_home:/data/bodhi_home \
-		-v $(shell pwd)/docker-data/hf_home:/data/hf_home \
-		bodhiapp:latest-$$BUILD_VARIANT
+docker.run.arm64: ## Run locally built Docker image
+	@$(MAKE) -C devops run VARIANT=$${VARIANT:-cpu} ARCH=$${ARCH:-arm64} BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.push: ## Push Docker image to GHCR
-	@echo "Pushing Docker image to GHCR..."
-	@if [ -z "$(VERSION)" ]; then \
-		echo "Error: VERSION must be specified. Usage: make docker.push VERSION=1.0.0"; \
-		exit 1; \
-	fi
-	@BUILD_VARIANT=$${BUILD_VARIANT:-production} && \
-	echo "Pushing variant: $$BUILD_VARIANT" && \
-	if [ "$$BUILD_VARIANT" = "production" ]; then \
-		docker tag bodhiapp:latest-$$BUILD_VARIANT ghcr.io/bodhisearch/bodhiapp:$(VERSION) && \
-		docker tag bodhiapp:latest-$$BUILD_VARIANT ghcr.io/bodhisearch/bodhiapp:latest && \
-		docker push ghcr.io/bodhisearch/bodhiapp:$(VERSION) && \
-		docker push ghcr.io/bodhisearch/bodhiapp:latest; \
-	else \
-		docker tag bodhiapp:latest-$$BUILD_VARIANT ghcr.io/bodhisearch/bodhiapp:$(VERSION)-$$BUILD_VARIANT && \
-		docker tag bodhiapp:latest-$$BUILD_VARIANT ghcr.io/bodhisearch/bodhiapp:latest-$$BUILD_VARIANT && \
-		docker push ghcr.io/bodhisearch/bodhiapp:$(VERSION)-$$BUILD_VARIANT && \
-		docker push ghcr.io/bodhisearch/bodhiapp:latest-$$BUILD_VARIANT; \
-	fi
+docker.list: ## List all locally built BodhiApp images
+	@$(MAKE) -C devops list-images
+
+docker.clean: ## Remove all locally built BodhiApp images
+	@$(MAKE) -C devops clean
+
+# Note: CI/Release targets below are for CI pipeline use only
+# For local Docker builds, use the docker.build.* targets above
 
 # Function to get current version from GHCR for Docker images across all variants
 # Usage: $(call get_ghcr_docker_version,variant)
 # variant: production or development
-# Handles both legacy format (X.Y.Z, X.Y.Z-development) and new multi-variant format (X.Y.Z-cpu, X.Y.Z-cpu-development)
+# Uses Python script for better maintainability
 define get_ghcr_docker_version
-	REPO_OWNER=BodhiSearch && \
-	PACKAGE_NAME=bodhiapp && \
-	GHCR_RESPONSE=$$(gh api "/orgs/$$REPO_OWNER/packages/container/$$PACKAGE_NAME/versions" 2>/dev/null || echo "Package not found") && \
-	if echo "$$GHCR_RESPONSE" | grep -q "Package not found"; then \
-		echo "0.0.0"; \
-	else \
-		if [ "$(1)" = "production" ]; then \
-			echo "$$GHCR_RESPONSE" | jq -r '[ .[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$$") or test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)$$")) ] | map(split("-")[0]) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
-		else \
-			echo "$$GHCR_RESPONSE" | jq -r '[ .[] | .metadata.container.tags[]? | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+-development$$") or test("^[0-9]+\\.[0-9]+\\.[0-9]+-(cpu|cuda|rocm|vulkan)-development$$")) ] | map(if test("-development$$") then split("-development")[0] else split("-")[0] end) | unique | sort_by(split(".") | map(tonumber)) | last // "0.0.0"' 2>/dev/null || echo "0.0.0"; \
-		fi \
-	fi
+	./scripts/get_ghcr_version.py $(1)
 endef
 
 # Function to increment version and create Docker release tag
@@ -387,4 +312,4 @@ check-docker-versions: ## Check latest versions of both production and developme
 	fi
 	@echo "==============================="
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.build docker.build.multi docker.run docker.push release-docker release-docker-dev check-docker-versions help
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.build.cpu.amd64 docker.build.cpu.arm64 docker.build.cuda docker.build.rocm docker.build.vulkan docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions help
