@@ -211,11 +211,15 @@ export function useLogout(
   });
 }
 
-export function useDownloads(page: number, pageSize: number) {
+export function useDownloads(page: number, pageSize: number, options?: { enablePolling?: boolean }) {
   return useQuery<ListDownloadsResponse>(
     ['downloads', page.toString(), pageSize.toString()],
     ENDPOINT_MODEL_FILES_PULL,
-    { page, page_size: pageSize }
+    { page, page_size: pageSize },
+    {
+      refetchInterval: options?.enablePolling ? 1000 : false, // Poll every 1 second if enabled
+      refetchIntervalInBackground: true, // Continue polling when tab is not focused
+    }
   );
 }
 

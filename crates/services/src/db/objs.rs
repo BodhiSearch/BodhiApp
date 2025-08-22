@@ -69,18 +69,26 @@ pub struct DownloadRequest {
   pub created_at: DateTime<Utc>,
   #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
   pub updated_at: DateTime<Utc>,
+  pub total_bytes: Option<u64>,
+  #[serde(default)]
+  pub downloaded_bytes: u64,
+  #[schema(value_type = String, format = "date-time", example = "2024-11-10T04:52:06.786Z")]
+  pub started_at: Option<DateTime<Utc>>,
 }
 
 impl DownloadRequest {
-  pub fn new_pending(repo: String, filename: String) -> Self {
+  pub fn new_pending(repo: &str, filename: &str, now: DateTime<Utc>) -> Self {
     DownloadRequest {
       id: Uuid::new_v4().to_string(),
-      repo,
-      filename,
+      repo: repo.to_string(),
+      filename: filename.to_string(),
       status: DownloadStatus::Pending,
       error: None,
-      created_at: Utc::now(),
-      updated_at: Utc::now(),
+      created_at: now,
+      updated_at: now,
+      total_bytes: None,
+      downloaded_bytes: 0,
+      started_at: None,
     }
   }
 }
@@ -127,7 +135,9 @@ pub struct ApiToken {
 
 #[cfg(test)]
 mod test {
-  use crate::db::{Conversation, ConversationBuilder, Message, MessageBuilder};
+  use crate::db::{
+    Conversation, ConversationBuilder, DownloadRequest, DownloadStatus, Message, MessageBuilder,
+  };
   use chrono::{DateTime, Utc};
   use rstest::rstest;
 
@@ -181,6 +191,26 @@ mod test {
     let result: Conversation = serde_json::from_str(&input)?;
     assert_eq!(expected, result);
     Ok(())
+  }
+
+  #[test]
+  fn test_download_request_new_pending_initializes_progress_fields() {
+    let request = DownloadRequest::new_pending("test/repo", "test.gguf", Utc::now());
+    assert_eq!(
+      DownloadRequest {
+        id: request.id.clone(),
+        repo: "test/repo".to_string(),
+        filename: "test.gguf".to_string(),
+        status: DownloadStatus::Pending,
+        error: None,
+        created_at: request.created_at.clone(),
+        updated_at: request.updated_at.clone(),
+        total_bytes: None,
+        downloaded_bytes: 0,
+        started_at: None,
+      },
+      request
+    );
   }
 
   #[rstest]

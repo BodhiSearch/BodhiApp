@@ -32,7 +32,7 @@ ci.clean: ## Clean all cargo packages
 ci.coverage: ## Run coverage in CI environment
 	$(MAKE) coverage
 
-clean.ui:
+clean.ui: ## Clean UI
 	rm -rf crates/bodhi/out
 	cargo clean -p lib_bodhiserver -p bodhi
 

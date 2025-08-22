@@ -12,6 +12,8 @@ use std::{
 };
 use walkdir::WalkDir;
 
+use crate::Progress;
+
 pub static SNAPSHOT_MAIN: &str = "main";
 
 #[derive(Debug, PartialEq, thiserror::Error, errmeta_derive::ErrorMeta, derive_new::new)]
@@ -90,6 +92,7 @@ pub trait HubService: std::fmt::Debug + Send + Sync {
     repo: &Repo,
     filename: &str,
     snapshot: Option<String>,
+    progress: Option<Progress>,
   ) -> Result<HubFile>;
 
   fn list_local_models(&self) -> Vec<HubFile>;
@@ -136,6 +139,7 @@ impl HubService for HfHubService {
     repo: &Repo,
     filename: &str,
     snapshot: Option<String>,
+    progress: Option<Progress>,
   ) -> Result<HubFile> {
     if self.local_file_exists(repo, filename, snapshot.clone())? {
       return self.find_local_file(repo, filename, snapshot.clone());
@@ -147,7 +151,11 @@ impl HubService for HfHubService {
     let from_cache = hf_repo.get(filename);
     let path = match from_cache {
       Some(path) => path,
-      None => self.download_async(model_repo, filename).await?,
+      None => {
+        self
+          .download_async_with_progress(model_repo, filename, progress)
+          .await?
+      }
     };
     let result = HubFile::try_from(path)?;
     Ok(result)
@@ -425,11 +433,16 @@ impl HfHubService {
     self.progress_bar = progress_bar;
   }
 
-  async fn download_async(&self, model_repo: hf_hub::Repo, filename: &str) -> Result<PathBuf> {
+  async fn download_async_with_progress(
+    &self,
+    model_repo: hf_hub::Repo,
+    filename: &str,
+    progress: Option<Progress>,
+  ) -> Result<PathBuf> {
     use hf_hub::api::tokio::{ApiBuilder, ApiError};
 
     let api = ApiBuilder::from_cache(self.cache.clone())
-      .with_progress(self.progress_bar)
+      .high()
       .with_token(self.token.clone())
       .build()
       .map_err(|err| {
@@ -442,7 +455,17 @@ impl HfHubService {
       })?;
     tracing::info!("Downloading from url {}", model_repo.api_url());
     let repo = model_repo.url();
-    let path = match api.repo(model_repo).download(filename).await {
+
+    // Use download_with_progress to integrate with our progress tracking system
+    let path = match match progress {
+      Some(progress) => {
+        api
+          .repo(model_repo)
+          .download_with_progress(filename, progress)
+          .await
+      }
+      None => api.repo(model_repo).download(filename).await,
+    } {
       Ok(path) => path,
       Err(err) => {
         let error_msg = err.to_string();
@@ -468,6 +491,7 @@ impl HfHubService {
         return Err(HubServiceError::HubApiError(err));
       }
     };
+
     Ok(path)
   }
 }
@@ -587,6 +611,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         &Repo::try_from("amir36/test-model-repo")?,
         "tokenizer_config.json",
         snapshot.clone(),
+        None,
       )
       .await?;
     assert!(local_model_file.path().exists());
@@ -634,6 +659,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         &Repo::try_from(repo.clone())?,
         "tokenizer_config.json",
         snapshot.clone(),
+        None,
       )
       .await;
     assert!(local_model_file.is_err());
@@ -685,6 +711,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         &Repo::try_from("amir36/test-gated-repo")?,
         "tokenizer_config.json",
         snapshot.clone(),
+        None,
       )
       .await;
     assert!(local_model_file.is_err());
@@ -736,7 +763,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
     let service = build_hf_service(token, temp_hf_home);
     let repo = Repo::try_from("amir36/not-exists")?;
     let local_model_file = service
-      .download(&repo, "tokenizer_config.json", snapshot)
+      .download(&repo, "tokenizer_config.json", snapshot, None)
       .await;
     assert!(local_model_file.is_err());
     let err = local_model_file.unwrap_err();
@@ -775,6 +802,7 @@ An error occurred while requesting access to huggingface repo 'my/repo'."#
         &Repo::try_from("amir36/test-gated-repo")?,
         "tokenizer_config.json",
         snapshot.clone(),
+        None,
       )
       .await?;
     let path = local_model_file.path();

@@ -269,4 +269,8 @@ impl DbService for TestDbService {
       .await
       .tap(|_| self.notify("find_download_request_by_repo_filename"))
   }
+
+  fn now(&self) -> DateTime<Utc> {
+    self.now
+  }
 }

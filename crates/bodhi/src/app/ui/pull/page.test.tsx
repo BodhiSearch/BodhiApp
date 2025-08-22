@@ -27,6 +27,9 @@ const mockDownloadsResponse = {
       status: 'pending',
       error: null,
       updated_at: '2024-01-01T00:00:00Z',
+      total_bytes: 1000000,
+      downloaded_bytes: 500000,
+      started_at: '2024-01-01T00:00:00Z',
     },
     {
       id: '2',
@@ -35,6 +38,9 @@ const mockDownloadsResponse = {
       status: 'completed',
       error: null,
       updated_at: '2024-01-01T00:00:00Z',
+      total_bytes: 2000000,
+      downloaded_bytes: 2000000,
+      started_at: '2024-01-01T00:00:00Z',
     },
     {
       id: '3',
@@ -43,6 +49,9 @@ const mockDownloadsResponse = {
       status: 'error',
       error: 'Download failed',
       updated_at: '2024-01-01T00:00:00Z',
+      total_bytes: 1500000,
+      downloaded_bytes: 750000,
+      started_at: '2024-01-01T00:00:00Z',
     },
   ],
   total: 3,
@@ -114,6 +123,20 @@ describe('PullPage', () => {
     // Now error message should be visible
     expect(screen.getByText('Error:')).toBeInTheDocument();
     expect(screen.getByText('Download failed')).toBeInTheDocument();
+  });
+
+  it('displays progress information for pending downloads', async () => {
+    await act(async () => {
+      render(<PullPage />, { wrapper: createWrapper() });
+    });
+
+    // Check progress bar for pending download
+    expect(screen.getByText('50.0%')).toBeInTheDocument();
+    expect(screen.getByText('488.3 KB / 976.6 KB')).toBeInTheDocument();
+
+    // Check that completed and error downloads show "-" for progress
+    const progressCells = screen.getAllByText('-');
+    expect(progressCells).toHaveLength(2); // completed and error downloads
   });
 
   it('handles API error', async () => {

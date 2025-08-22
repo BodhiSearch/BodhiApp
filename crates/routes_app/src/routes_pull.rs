@@ -16,7 +16,7 @@ use services::db::ItemNotFound;
 use services::RemoteModelNotFoundError;
 use services::{
   db::{DownloadRequest, DownloadStatus},
-  AppService,
+  AppService, DatabaseProgress, Progress,
 };
 use std::sync::Arc;
 use tokio::spawn;
@@ -185,7 +185,11 @@ pub async fn create_pull_request_handler(
     return Ok((StatusCode::OK, Json(existing_request)));
   }
 
-  let download_request = DownloadRequest::new_pending(repo.to_string(), payload.filename.clone());
+  let download_request = DownloadRequest::new_pending(
+    repo.to_string().as_str(),
+    payload.filename.as_str(),
+    state.app_service().time_service().utc_now(),
+  );
 
   state
     .app_service()
@@ -202,7 +206,15 @@ pub async fn create_pull_request_handler(
       filename: payload.filename,
       snapshot: None,
     };
-    let result = command.execute(app_service.clone()).await;
+    let result = command
+      .execute(
+        app_service.clone(),
+        Some(Progress::Database(DatabaseProgress::new(
+          app_service.db_service().clone(),
+          request_id.clone(),
+        ))),
+      )
+      .await;
     update_download_status(app_service, request_id, result).await;
   });
 
@@ -317,8 +329,11 @@ pub async fn pull_by_alias_handler(
     return Ok((StatusCode::OK, Json(existing_request)));
   }
 
-  let download_request =
-    DownloadRequest::new_pending(model.repo.to_string(), model.filename.clone());
+  let download_request = DownloadRequest::new_pending(
+    model.repo.to_string().as_str(),
+    model.filename.as_str(),
+    state.app_service().time_service().utc_now(),
+  );
   state
     .app_service()
     .db_service()
@@ -330,7 +345,15 @@ pub async fn pull_by_alias_handler(
 
   spawn(async move {
     let command = PullCommand::ByAlias { alias };
-    let result = command.execute(app_service.clone()).await;
+    let result = command
+      .execute(
+        app_service.clone(),
+        Some(Progress::Database(DatabaseProgress::new(
+          app_service.db_service().clone(),
+          request_id.clone(),
+        ))),
+      )
+      .await;
     update_download_status(app_service, request_id, result).await;
   });
 
@@ -437,7 +460,7 @@ mod tests {
     routing::{get, post},
     Router,
   };
-  use mockall::predicate::eq;
+  use mockall::predicate::{always, eq};
   use objs::{test_utils::setup_l10n, FluentLocalizationService, HubFile, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -494,14 +517,16 @@ mod tests {
     #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     test_hf_service
+      .inner_mock
       .expect_download()
       .with(
         eq(Repo::testalias()),
         eq(Repo::testalias_model_q4()),
         eq(None),
+        always(),
       )
       .times(1)
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .return_once(|_, _, _, _| Ok(HubFile::testalias()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
     let app_service = app_service_stub_builder
@@ -606,8 +631,11 @@ mod tests {
     db_service: TestDbService,
     #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
-    let pending_request =
-      DownloadRequest::new_pending(Repo::testalias().to_string(), Repo::testalias_model_q4());
+    let pending_request = DownloadRequest::new_pending(
+      &Repo::testalias().to_string(),
+      &Repo::testalias_model_q4(),
+      db_service.now(),
+    );
     db_service.create_download_request(&pending_request).await?;
     let db_service = Arc::new(db_service);
     let app_service = app_service_stub_builder
@@ -655,14 +683,16 @@ mod tests {
     #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     test_hf_service
+      .inner_mock
       .expect_download()
       .with(
         eq(Repo::testalias()),
         eq(Repo::testalias_model_q4()),
         eq(None),
+        always(),
       )
       .times(1)
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .return_once(|_, _, _, _| Ok(HubFile::testalias()));
     let mut rx = db_service.subscribe();
     let db_service = Arc::new(db_service);
     let app_service = app_service_stub_builder
@@ -757,8 +787,7 @@ mod tests {
       .hub_service(Arc::new(test_hf_service))
       .build()?;
     let router = test_router(Arc::new(app_service));
-    let test_request =
-      DownloadRequest::new_pending("test/repo".to_string(), "test.gguf".to_string());
+    let test_request = DownloadRequest::new_pending("test/repo", "test.gguf", db_service.now());
     db_service.create_download_request(&test_request).await?;
 
     let response = router
@@ -831,12 +860,9 @@ mod tests {
     #[future] mut app_service_stub_builder: AppServiceStubBuilder,
   ) -> anyhow::Result<()> {
     // Create test downloads with different statuses
-    let download1 =
-      DownloadRequest::new_pending("test/repo1".to_string(), "file1.gguf".to_string());
-    let mut download2 =
-      DownloadRequest::new_pending("test/repo2".to_string(), "file2.gguf".to_string());
-    let mut download3 =
-      DownloadRequest::new_pending("test/repo3".to_string(), "file3.gguf".to_string());
+    let download1 = DownloadRequest::new_pending("test/repo1", "file1.gguf", db_service.now());
+    let mut download2 = DownloadRequest::new_pending("test/repo2", "file2.gguf", db_service.now());
+    let mut download3 = DownloadRequest::new_pending("test/repo3", "file3.gguf", db_service.now());
 
     let db_service = Arc::new(db_service);
     db_service.create_download_request(&download1).await?;

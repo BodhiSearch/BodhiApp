@@ -14,13 +14,14 @@ import { useDownloads, usePullModel } from '@/hooks/useQuery';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_SETUP_COMPLETE } from '@/lib/constants';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 
 export function ModelDownloadContent() {
   const router = useRouter();
   const { showSuccess, showError } = useToastMessages();
-  const { data: downloads } = useDownloads(1, 100);
+  const [enablePolling, setEnablePolling] = useState(false);
+  const { data: downloads } = useDownloads(1, 100, { enablePolling });
 
   const { mutate: pullModel } = usePullModel({
     onSuccess: () => {
@@ -35,6 +36,12 @@ export function ModelDownloadContent() {
   useEffect(() => {
     setHasShownModelsPage(true);
   }, [setHasShownModelsPage]);
+
+  // Update polling state based on pending downloads
+  useEffect(() => {
+    const hasPendingDownloads = downloads?.data.some((download) => download.status === 'pending') ?? false;
+    setEnablePolling(hasPendingDownloads);
+  }, [downloads]);
 
   const handleModelDownload = (model: ModelInfo) => {
     pullModel({

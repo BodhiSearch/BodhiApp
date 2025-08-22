@@ -1,4 +1,4 @@
-use crate::{HfHubService, HubService, HubServiceError, MockHubService};
+use crate::{HfHubService, HubService, HubServiceError, MockHubService, Progress};
 use derive_new::new;
 use objs::{test_utils::temp_hf_home, Alias, HubFile, Repo};
 use rstest::fixture;
@@ -41,19 +41,13 @@ pub fn test_hf_service(
 pub struct TestHfService {
   _temp_dir: TempDir,
   inner: HfHubService,
-  inner_mock: MockHubService,
+  pub inner_mock: MockHubService,
   allow_downloads: bool,
 }
 
 impl TestHfService {
   pub fn hf_cache(&self) -> PathBuf {
     self._temp_dir.path().join("huggingface").join("hub")
-  }
-
-  pub fn expect_download(
-    &mut self,
-  ) -> &mut crate::__mock_MockHubService_HubService::__download::Expectation {
-    self.inner_mock.expect_download()
   }
 }
 
@@ -67,11 +61,18 @@ impl HubService for TestHfService {
     repo: &Repo,
     filename: &str,
     snapshot: Option<String>,
+    progress: Option<Progress>,
   ) -> Result<HubFile> {
     if self.allow_downloads {
-      self.inner.download(repo, filename, snapshot).await
+      self
+        .inner
+        .download(repo, filename, snapshot, progress)
+        .await
     } else {
-      self.inner_mock.download(repo, filename, snapshot).await
+      self
+        .inner_mock
+        .download(repo, filename, snapshot, progress)
+        .await
     }
   }
 
@@ -120,6 +121,7 @@ impl HubService for OfflineHubService {
     repo: &Repo,
     filename: &str,
     snapshot: Option<String>,
+    progress: Option<Progress>,
   ) -> Result<HubFile> {
     if !self
       .inner
@@ -127,7 +129,10 @@ impl HubService for OfflineHubService {
     {
       panic!("tried to download file in test");
     }
-    self.inner.download(repo, filename, snapshot).await
+    self
+      .inner
+      .download(repo, filename, snapshot, progress)
+      .await
   }
 
   fn list_local_models(&self) -> Vec<HubFile> {

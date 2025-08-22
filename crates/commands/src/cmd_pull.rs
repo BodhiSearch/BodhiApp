@@ -39,18 +39,23 @@ type Result<T> = std::result::Result<T, PullCommandError>;
 
 impl PullCommand {
   #[allow(clippy::result_large_err)]
-  pub async fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
-    match &self {
+  #[allow(clippy::result_large_err)]
+  pub async fn execute(
+    self,
+    service: Arc<dyn AppService>,
+    progress: Option<services::Progress>,
+  ) -> Result<()> {
+    match self {
       PullCommand::ByAlias { alias } => {
-        if service.data_service().find_alias(alias).is_some() {
+        if service.data_service().find_alias(&alias).is_some() {
           return Err(AliasExistsError(alias.clone()).into());
         }
-        let Some(model) = service.data_service().find_remote_model(alias)? else {
+        let Some(model) = service.data_service().find_remote_model(&alias)? else {
           return Err(RemoteModelNotFoundError::new(alias.clone()))?;
         };
         let local_model_file = service
           .hub_service()
-          .download(&model.repo, &model.filename, None)
+          .download(&model.repo, &model.filename, None, progress)
           .await?;
         // Chat template download removed since llama.cpp now handles chat templates
         let alias = AliasBuilder::default()
@@ -77,14 +82,14 @@ impl PullCommand {
         let model_file_exists =
           service
             .hub_service()
-            .local_file_exists(repo, filename, snapshot.clone())?;
+            .local_file_exists(&repo, &filename, snapshot.clone())?;
         if model_file_exists {
           debug!("repo: '{repo}', filename: '{filename}' already exists in $HF_HOME");
           return Ok(());
         } else {
           service
             .hub_service()
-            .download(repo, filename, snapshot.clone())
+            .download(&repo, &filename, snapshot.clone(), progress)
             .await?;
           debug!("repo: '{repo}', filename: '{filename}' downloaded into $HF_HOME");
         }
@@ -97,7 +102,7 @@ impl PullCommand {
 #[cfg(test)]
 mod test {
   use crate::{PullCommand, PullCommandError};
-  use mockall::predicate::eq;
+  use mockall::predicate::{always, eq};
   use objs::{Alias, HubFile, RemoteModel, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -117,7 +122,7 @@ mod test {
     let pull = PullCommand::ByAlias {
       alias: alias.to_string(),
     };
-    let result = pull.execute(Arc::new(service)).await;
+    let result = pull.execute(Arc::new(service), None).await;
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
@@ -133,13 +138,15 @@ mod test {
   ) -> anyhow::Result<()> {
     let remote_model = RemoteModel::testalias();
     test_hf_service
+      .inner_mock
       .expect_download()
       .with(
         eq(Repo::testalias()),
         eq(Repo::TESTALIAS_FILENAME),
         eq(None),
+        always(),
       )
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .return_once(|_, _, _, _| Ok(HubFile::testalias()));
     // Tokenizer download removed since llama.cpp now handles chat templates
     let service = AppServiceStubBuilder::default()
       .hub_service(Arc::new(test_hf_service))
@@ -149,7 +156,7 @@ mod test {
       alias: remote_model.alias,
     };
     let service = Arc::new(service);
-    pull.execute(service.clone()).await?;
+    pull.execute(service.clone(), None).await?;
     let created_alias = service
       .data_service()
       .find_alias("testalias:instruct")
@@ -176,14 +183,15 @@ mod test {
       snapshot: snapshot.clone(),
     };
     test_hf_service
+      .inner_mock
       .expect_download()
-      .with(eq(repo), eq(filename), eq(snapshot))
+      .with(eq(repo), eq(filename), eq(snapshot), always())
       .times(1)
-      .return_once(|_, _, _| Ok(HubFile::testalias_q4()));
+      .return_once(|_, _, _, _| Ok(HubFile::testalias_q4()));
     let service = AppServiceStubBuilder::default()
       .hub_service(Arc::new(test_hf_service))
       .build()?;
-    pull.execute(Arc::new(service)).await?;
+    pull.execute(Arc::new(service), None).await?;
     Ok(())
   }
 
@@ -199,7 +207,7 @@ mod test {
     let command = PullCommand::ByAlias {
       alias: "testalias:instruct".to_string(),
     };
-    command.execute(service.clone()).await?;
+    command.execute(service.clone(), None).await?;
     let alias = service
       .bodhi_home()
       .join(ALIASES_DIR)
