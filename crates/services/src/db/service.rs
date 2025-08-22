@@ -127,6 +127,8 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     repo: &str,
     filename: &str,
   ) -> Result<Vec<DownloadRequest>, DbError>;
+
+  fn now(&self) -> DateTime<Utc>;
 }
 
 #[derive(Debug, Clone, new)]
@@ -330,8 +332,8 @@ impl DbService for SqliteDbService {
 
   async fn create_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
     sqlx::query(
-      "INSERT INTO download_requests (id, repo, filename, status, error, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO download_requests (id, repo, filename, status, error, created_at, updated_at, total_bytes, downloaded_bytes, started_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&request.id)
     .bind(&request.repo)
@@ -340,21 +342,35 @@ impl DbService for SqliteDbService {
     .bind(&request.error)
     .bind(request.created_at.timestamp())
     .bind(request.updated_at.timestamp())
+    .bind(request.total_bytes.map(|b| b as i64))
+    .bind(request.downloaded_bytes as i64)
+    .bind(request.started_at.map(|t| t.timestamp()))
     .execute(&self.pool)
     .await?;
     Ok(())
   }
 
   async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {
-    let result = query_as::<_, (String, String, String, String, Option<String>, i64, i64)>(
-      "SELECT id, repo, filename, status, error, created_at, updated_at FROM download_requests WHERE id = ?",
+    let result = query_as::<_, (String, String, String, String, Option<String>, i64, i64, Option<i64>, i64, Option<i64>)>(
+      "SELECT id, repo, filename, status, error, created_at, updated_at, total_bytes, downloaded_bytes, started_at FROM download_requests WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
     match result {
-      Some((id, repo, filename, status, error, created_at, updated_at)) => {
+      Some((
+        id,
+        repo,
+        filename,
+        status,
+        error,
+        created_at,
+        updated_at,
+        total_bytes,
+        downloaded_bytes,
+        started_at,
+      )) => {
         let Ok(status) = DownloadStatus::from_str(&status) else {
           tracing::warn!("unknown download status: {status} for id: {id}");
           return Ok(None);
@@ -368,6 +384,9 @@ impl DbService for SqliteDbService {
           error,
           created_at: chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
           updated_at: chrono::DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+          total_bytes: total_bytes.map(|b| b as u64),
+          downloaded_bytes: downloaded_bytes as u64,
+          started_at: started_at.and_then(|t| chrono::DateTime::<Utc>::from_timestamp(t, 0)),
         }))
       }
       None => Ok(None),
@@ -375,10 +394,13 @@ impl DbService for SqliteDbService {
   }
 
   async fn update_download_request(&self, request: &DownloadRequest) -> Result<(), DbError> {
-    sqlx::query("UPDATE download_requests SET status = ?, error = ?, updated_at = ? WHERE id = ?")
+    sqlx::query("UPDATE download_requests SET status = ?, error = ?, updated_at = ?, total_bytes = ?, downloaded_bytes = ?, started_at = ? WHERE id = ?")
       .bind(request.status.to_string())
       .bind(&request.error)
       .bind(request.updated_at.timestamp())
+      .bind(request.total_bytes.map(|b| b as i64))
+      .bind(request.downloaded_bytes as i64)
+      .bind(request.started_at.map(|t| t.timestamp()))
       .bind(&request.id)
       .execute(&self.pool)
       .await?;
@@ -401,8 +423,8 @@ impl DbService for SqliteDbService {
       .0 as usize;
 
     // Get paginated results using bind parameters
-    let results = query_as::<_, (String, String, String, String, Option<String>, i64, i64)>(
-      "SELECT id, repo, filename, status, error, created_at, updated_at
+    let results = query_as::<_, (String, String, String, String, Option<String>, i64, i64, Option<i64>, i64, Option<i64>)>(
+      "SELECT id, repo, filename, status, error, created_at, updated_at, total_bytes, downloaded_bytes, started_at
        FROM download_requests
        ORDER BY updated_at DESC
        LIMIT ? OFFSET ?",
@@ -415,7 +437,18 @@ impl DbService for SqliteDbService {
     let items = results
       .into_iter()
       .filter_map(
-        |(id, repo, filename, status, error, created_at, updated_at)| {
+        |(
+          id,
+          repo,
+          filename,
+          status,
+          error,
+          created_at,
+          updated_at,
+          total_bytes,
+          downloaded_bytes,
+          started_at,
+        )| {
           let status = DownloadStatus::from_str(&status).ok()?;
           Some(DownloadRequest {
             id,
@@ -425,6 +458,9 @@ impl DbService for SqliteDbService {
             error,
             created_at: chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
             updated_at: chrono::DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+            total_bytes: total_bytes.map(|b| b as u64),
+            downloaded_bytes: downloaded_bytes as u64,
+            started_at: started_at.and_then(|t| chrono::DateTime::<Utc>::from_timestamp(t, 0)),
           })
         },
       )
@@ -767,8 +803,8 @@ impl DbService for SqliteDbService {
     repo: &str,
     filename: &str,
   ) -> Result<Vec<DownloadRequest>, DbError> {
-    let results = query_as::<_, (String, String, String, String, Option<String>, i64, i64)>(
-      "SELECT id, repo, filename, status, error, created_at, updated_at
+    let results = query_as::<_, (String, String, String, String, Option<String>, i64, i64, Option<i64>, i64, Option<i64>)>(
+      "SELECT id, repo, filename, status, error, created_at, updated_at, total_bytes, downloaded_bytes, started_at
        FROM download_requests
        WHERE repo = ? AND filename = ?
        ORDER BY created_at DESC",
@@ -781,7 +817,18 @@ impl DbService for SqliteDbService {
     let items = results
       .into_iter()
       .filter_map(
-        |(id, repo, filename, status, error, created_at, updated_at)| {
+        |(
+          id,
+          repo,
+          filename,
+          status,
+          error,
+          created_at,
+          updated_at,
+          total_bytes,
+          downloaded_bytes,
+          started_at,
+        )| {
           let status = DownloadStatus::from_str(&status).ok()?;
           Some(DownloadRequest {
             id,
@@ -791,12 +838,19 @@ impl DbService for SqliteDbService {
             error,
             created_at: chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default(),
             updated_at: chrono::DateTime::<Utc>::from_timestamp(updated_at, 0).unwrap_or_default(),
+            total_bytes: total_bytes.map(|b| b as u64),
+            downloaded_bytes: downloaded_bytes as u64,
+            started_at: started_at.and_then(|t| chrono::DateTime::<Utc>::from_timestamp(t, 0)),
           })
         },
       )
       .collect();
 
     Ok(items)
+  }
+
+  fn now(&self) -> DateTime<Utc> {
+    self.time_service.utc_now()
   }
 }
 
@@ -981,17 +1035,8 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let request = DownloadRequest {
-      id: Uuid::new_v4().to_string(),
-      repo: "test/repo".to_string(),
-      filename: "test_file.gguf".to_string(),
-      status: DownloadStatus::Pending,
-      error: None,
-      created_at: now,
-      updated_at: now,
-    };
+    let request = DownloadRequest::new_pending("test/repo", "test_file.gguf", now);
     service.create_download_request(&request).await?;
-
     let fetched = service.get_download_request(&request.id).await?;
     assert!(fetched.is_some());
     assert_eq!(request, fetched.unwrap());
@@ -1007,18 +1052,12 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let mut request = DownloadRequest {
-      id: Uuid::new_v4().to_string(),
-      repo: "test/repo".to_string(),
-      filename: "test_file.gguf".to_string(),
-      status: DownloadStatus::Pending,
-      error: None,
-      created_at: now,
-      updated_at: now,
-    };
+    let mut request = DownloadRequest::new_pending("test/repo", "test_file.gguf", now);
     service.create_download_request(&request).await?;
-
     request.status = DownloadStatus::Completed;
+    request.total_bytes = Some(1000000);
+    request.downloaded_bytes = 1000000;
+    request.started_at = Some(now);
     request.updated_at = now + chrono::Duration::hours(1);
     service.update_download_request(&request).await?;
 
@@ -1032,9 +1071,47 @@ mod test {
         error: None,
         created_at: now,
         updated_at: now + chrono::Duration::hours(1),
+        total_bytes: Some(1000000),
+        downloaded_bytes: 1000000,
+        started_at: Some(now),
       },
       fetched
     );
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_db_service_download_request_progress_tracking(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let mut request = DownloadRequest {
+      id: Uuid::new_v4().to_string(),
+      repo: "test/repo".to_string(),
+      filename: "test_file.gguf".to_string(),
+      status: DownloadStatus::Pending,
+      error: None,
+      created_at: now,
+      updated_at: now,
+      total_bytes: Some(1000000), // 1MB
+      downloaded_bytes: 0,
+      started_at: Some(now),
+    };
+    service.create_download_request(&request).await?;
+
+    // Simulate progress update
+    request.downloaded_bytes = 500000; // 50% downloaded
+    request.updated_at = now + chrono::Duration::seconds(4);
+    service.update_download_request(&request).await?;
+
+    let fetched = service.get_download_request(&request.id).await?.unwrap();
+    assert_eq!(request.downloaded_bytes, fetched.downloaded_bytes);
+    assert_eq!(request.total_bytes, fetched.total_bytes);
+    assert_eq!(request.started_at, fetched.started_at);
     Ok(())
   }
 

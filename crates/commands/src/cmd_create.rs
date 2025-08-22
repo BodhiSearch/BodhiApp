@@ -18,6 +18,7 @@ pub struct CreateCommand {
   pub snapshot: Option<String>,
   // chat_template field removed since llama.cpp now handles chat templates
   #[builder(default = "true")]
+  // #[deprecated(since = "0.1.0", note = "chat templates are now handled by llama.cpp")]
   pub auto_download: bool,
   #[builder(default = "false")]
   pub update: bool,
@@ -72,7 +73,7 @@ impl CreateCommand {
         if self.auto_download {
           service
             .hub_service()
-            .download(&self.repo, &self.filename, self.snapshot)
+            .download(&self.repo, &self.filename, self.snapshot, None)
             .await?
         } else {
           return Err(CreateCommandError::HubServiceError(
@@ -203,13 +204,15 @@ mod test {
       .build()
       .unwrap();
     test_hf_service
+      .inner_mock
       .expect_download()
       .with(
         eq(create.repo.clone()),
         eq(create.filename.clone()),
         eq(snapshot.clone()),
+        always(),
       )
-      .return_once(|_, _, _| Ok(HubFile::testalias()));
+      .return_once(|_, _, _, _| Ok(HubFile::testalias()));
     // Tokenizer download removed since llama.cpp now handles chat templates
     let service = Arc::new(
       AppServiceStubBuilder::default()
