@@ -2,7 +2,10 @@ import { API_TOKENS_ENDPOINT, useMutationQuery, useQuery } from '@/hooks/useQuer
 import { useQueryClient } from 'react-query';
 import { AxiosResponse, AxiosError } from 'axios';
 import { UseMutationResult } from 'react-query';
-import { ErrorResponse } from '@/types/models';
+import { OpenAiApiError } from '@bodhiapp/ts-client';
+
+// Type alias for compatibility
+type ErrorResponse = OpenAiApiError;
 
 export interface CreateTokenRequest {
   name?: string;

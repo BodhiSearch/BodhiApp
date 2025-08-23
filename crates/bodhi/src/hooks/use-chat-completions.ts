@@ -2,7 +2,10 @@ import { useMutation } from 'react-query';
 import { AxiosError } from 'axios';
 import apiClient from '@/lib/apiClient';
 import { Message, MessageMetadata } from '@/types/chat';
-import { ErrorResponse } from '@/types/models';
+import { OpenAiApiError } from '@bodhiapp/ts-client';
+
+// Type alias for compatibility
+type ErrorResponse = OpenAiApiError;
 
 interface ChatCompletionRequest {
   messages: Message[];

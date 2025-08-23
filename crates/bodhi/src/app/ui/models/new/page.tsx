@@ -8,14 +8,19 @@ import AppInitializer from '@/components/AppInitializer';
 function NewModelContent() {
   const searchParams = useSearchParams();
 
-  const initialData = {
-    alias: '',
-    repo: searchParams?.get('repo') || '',
-    filename: searchParams?.get('filename') || '',
-    snapshot: searchParams?.get('snapshot') || '',
-    request_params: {},
-    context_params: {},
-  };
+  const initialData =
+    searchParams?.get('repo') || searchParams?.get('filename')
+      ? {
+          alias: '',
+          repo: searchParams?.get('repo') || '',
+          filename: searchParams?.get('filename') || '',
+          snapshot: searchParams?.get('snapshot') || '',
+          source: 'user',
+          model_params: {},
+          request_params: {},
+          context_params: [],
+        }
+      : undefined;
 
   return <AliasForm isEditMode={false} initialData={initialData} />;
 }

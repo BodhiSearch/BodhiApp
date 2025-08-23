@@ -13,12 +13,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useUpdateSetting } from '@/hooks/useQuery';
-import { Setting } from '@/types/models';
+import { SettingInfo } from '@bodhiapp/ts-client';
 import { useState } from 'react';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 
 interface EditSettingDialogProps {
-  setting: Setting;
+  setting: SettingInfo;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -46,9 +46,9 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
         showError('Error', 'Invalid number');
         return;
       }
-      if (setting.metadata.range) {
-        if (parsedValue < setting.metadata.range.min || parsedValue > setting.metadata.range.max) {
-          showError('Error', `Value must be between ${setting.metadata.range.min} and ${setting.metadata.range.max}`);
+      if (setting.metadata.type === 'number') {
+        if (parsedValue < setting.metadata.min || parsedValue > setting.metadata.max) {
+          showError('Error', `Value must be between ${setting.metadata.min} and ${setting.metadata.max}`);
           return;
         }
       }
@@ -101,8 +101,8 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Enter new value"
-            min={setting.metadata.range?.min}
-            max={setting.metadata.range?.max}
+            min={setting.metadata.type === 'number' ? setting.metadata.min : undefined}
+            max={setting.metadata.type === 'number' ? setting.metadata.max : undefined}
             className="w-full"
           />
         );
@@ -135,9 +135,9 @@ export function EditSettingDialog({ setting, open, onOpenChange }: EditSettingDi
             {renderInput()}
             <div className="flex flex-col gap-1">
               <p className="text-xs text-muted-foreground break-words">Default: {String(setting.default_value)}</p>
-              {setting.metadata.type === 'number' && setting.metadata.range && (
+              {setting.metadata.type === 'number' && (
                 <p className="text-xs text-muted-foreground">
-                  Range: {setting.metadata.range.min} - {setting.metadata.range.max}
+                  Range: {setting.metadata.min} - {setting.metadata.max}
                 </p>
               )}
             </div>

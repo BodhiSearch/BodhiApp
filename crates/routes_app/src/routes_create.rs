@@ -1,23 +1,34 @@
-use crate::AliasResponse;
+use crate::{AliasResponse, ENDPOINT_MODELS};
 use axum::{extract::State, http::StatusCode, Json};
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
-use objs::{ApiError, AppError, ErrorType, GptContextParams, OAIRequestParams, Repo};
+use objs::{ApiError, AppError, ErrorType, OAIRequestParams, OpenAIApiError, Repo, API_TAG_MODELS};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Debug, Serialize, Deserialize, Validate)]
+#[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
 pub struct CreateAliasRequest {
-  alias: Option<String>,
-  repo: Repo,
+  alias: String,
+  repo: String,
   filename: String,
   snapshot: Option<String>,
 
   request_params: Option<OAIRequestParams>,
-  context_params: Option<GptContextParams>,
+  context_params: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Validate, ToSchema)]
+pub struct UpdateAliasRequest {
+  repo: String,
+  filename: String,
+  snapshot: Option<String>,
+
+  request_params: Option<OAIRequestParams>,
+  context_params: Option<Vec<String>>,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
@@ -35,55 +46,80 @@ pub enum CreateAliasError {
   AliasMismatch { path: String, request: String },
 }
 
-impl TryFrom<CreateAliasRequest> for CreateCommand {
-  type Error = CreateAliasError;
-
-  fn try_from(value: CreateAliasRequest) -> Result<Self, Self::Error> {
-    let alias = value.alias.ok_or(CreateAliasError::AliasNotPresent)?;
-    let result = CreateCommand {
-      alias,
-      repo: value.repo,
-      filename: value.filename,
-      snapshot: value.snapshot,
-
-      auto_download: false,
-      update: false,
-      oai_request_params: value.request_params.unwrap_or_default(),
-      context_params: value.context_params.unwrap_or_default(),
-    };
-    Ok(result)
-  }
-}
-
+/// Create Alias
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODELS,
+    tag = API_TAG_MODELS,
+    operation_id = "createAlias",
+    request_body = CreateAliasRequest,
+    responses(
+      (status = 201, description = "Alias created succesfully", body = AliasResponse),
+      (status = 400, description = "Invalid request", body = OpenAIApiError),
+      (status = 500, description = "Internal server error", body = OpenAIApiError)
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
+)]
 pub async fn create_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<AliasResponse>), ApiError> {
-  let command = CreateCommand::try_from(payload)?;
-  let alias = command.alias.clone();
+  let command = CreateCommand::new(
+    &payload.alias,
+    Repo::try_from(payload.repo)?,
+    &payload.filename,
+    payload.snapshot,
+    false,
+    false,
+    payload.request_params.unwrap_or_default(),
+    payload.context_params.unwrap_or_default(),
+  );
   command.execute(state.app_service()).await?;
   let alias = state
     .app_service()
     .data_service()
-    .find_alias(&alias)
-    .ok_or(AliasNotFoundError(alias))?;
+    .find_alias(&payload.alias)
+    .ok_or(AliasNotFoundError(payload.alias))?;
   Ok((StatusCode::CREATED, Json(AliasResponse::from(alias))))
 }
 
+/// Update Alias
+#[utoipa::path(
+    post,
+    path = ENDPOINT_MODELS.to_owned() + "/{id}",
+    tag = API_TAG_MODELS,
+    params(
+        ("id" = String, Path, description = "Alias identifier",
+         example = "llama--3")
+    ),
+    operation_id = "updateAlias",
+    request_body = UpdateAliasRequest,
+    responses(
+      (status = 201, description = "Alias created succesfully", body = AliasResponse),
+      (status = 400, description = "Invalid request", body = OpenAIApiError),
+      (status = 500, description = "Internal server error", body = OpenAIApiError)
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
+)]
 pub async fn update_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   axum::extract::Path(id): axum::extract::Path<String>,
-  WithRejection(Json(mut payload), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
+  WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, ApiError>,
 ) -> Result<(StatusCode, Json<AliasResponse>), ApiError> {
-  if payload.alias.is_some() && payload.alias.as_ref() != Some(&id) {
-    return Err(CreateAliasError::AliasMismatch {
-      path: id.to_string(),
-      request: payload.alias.unwrap(),
-    })?;
-  }
-  payload.alias = Some(id.clone());
-  let mut command = CreateCommand::try_from(payload)?;
-  command.update = true;
+  let command = CreateCommand::new(
+    &id,
+    Repo::try_from(payload.repo)?,
+    payload.filename,
+    payload.snapshot,
+    false,
+    true,
+    payload.request_params.unwrap_or_default(),
+    payload.context_params.unwrap_or_default(),
+  );
   command.execute(state.app_service()).await?;
   let alias = state
     .app_service()
@@ -102,10 +138,7 @@ mod tests {
     routing::{post, put},
     Router,
   };
-  use objs::{
-    test_utils::setup_l10n, FluentLocalizationService,
-    OAIRequestParamsBuilder,
-  };
+  use objs::{test_utils::setup_l10n, FluentLocalizationService, OAIRequestParamsBuilder};
   use pretty_assertions::assert_eq;
   use rstest::{fixture, rstest};
   use serde_json::{json, Value};
@@ -316,46 +349,6 @@ mod tests {
   #[rstest]
   #[awt]
   #[tokio::test]
-  async fn test_update_alias_handler_mismatch(
-    #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
-    #[future] app: Router,
-  ) -> anyhow::Result<()> {
-    let payload = serde_json::json!({
-      "alias": "llama3:different",
-      "repo": "QuantFactory/Meta-Llama-3-8B-Instruct-GGUF",
-      "filename": "Meta-Llama-3-8B-Instruct.Q8_0.gguf",
-
-    });
-
-    let response = app
-      .oneshot(
-        Request::builder()
-          .method(Method::PUT)
-          .uri("/api/models/llama3:instruct")
-          .header("Content-Type", "application/json")
-          .body(Body::from(serde_json::to_string(&payload)?))
-          .unwrap(),
-      )
-      .await?;
-
-    assert_eq!(StatusCode::BAD_REQUEST, response.status());
-    let response = response.json::<Value>().await?;
-    assert_eq!(
-      json! {{
-        "error": {
-          "type": "invalid_request_error",
-          "code": "create_alias_error-alias_mismatch",
-          "message": "alias in path '\u{2068}llama3:instruct\u{2069}' does not match alias in request '\u{2068}llama3:different\u{2069}'"
-        }
-      }},
-      response
-    );
-    Ok(())
-  }
-
-  #[rstest]
-  #[awt]
-  #[tokio::test]
   async fn test_create_alias_handler_missing_alias(
     #[from(setup_l10n)] _localization_service: &Arc<FluentLocalizationService>,
     #[future] app: Router,
@@ -388,8 +381,8 @@ mod tests {
       json! {{
         "error": {
           "type": "invalid_request_error",
-          "code": "create_alias_error-alias_not_present",
-          "message": "alias is not present in request"
+          "code": "json_rejection_error",
+          "message": "failed to parse the request body as JSON, error: \u{2068}Failed to deserialize the JSON body into the target type: missing field `alias` at line 1 column 167\u{2069}"
         }
       }},
       response

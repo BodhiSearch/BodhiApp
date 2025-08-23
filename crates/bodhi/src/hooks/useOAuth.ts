@@ -1,9 +1,11 @@
 import { UseMutationResult } from 'react-query';
 import { AxiosResponse, AxiosError } from 'axios';
 import { useMutationQuery } from '@/hooks/useQuery';
-import { ErrorResponse } from '@/types/models';
 import { useCallback } from 'react';
-import { RedirectResponse } from '@/types/api';
+import { RedirectResponse, OpenAiApiError } from '@bodhiapp/ts-client';
+
+// Type alias for compatibility
+type ErrorResponse = OpenAiApiError;
 
 export const ENDPOINT_AUTH_INITIATE = '/bodhi/v1/auth/initiate';
 export const ENDPOINT_AUTH_CALLBACK = '/bodhi/v1/auth/callback';

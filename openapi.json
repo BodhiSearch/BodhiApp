@@ -538,7 +538,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_LocalModelResponse"
+                  "$ref": "#/components/schemas/PaginatedLocalModelResponse"
                 },
                 "example": {
                   "data": [
@@ -630,7 +630,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_DownloadRequest"
+                  "$ref": "#/components/schemas/PaginatedDownloadResponse"
                 },
                 "example": {
                   "data": [
@@ -1019,7 +1019,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_AliasResponse"
+                  "$ref": "#/components/schemas/PaginatedAliasResponse"
                 },
                 "example": {
                   "data": [
@@ -1042,6 +1042,60 @@
                   "page": 1,
                   "page_size": 10,
                   "total": 1
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Create Alias",
+        "operationId": "createAlias",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAliasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Alias created succesfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1127,6 +1181,74 @@
                     "message": "Alias 'unknown:model' not found",
                     "type": "not_found_error"
                   }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/models/{id}": {
+      "post": {
+        "tags": [
+          "models"
+        ],
+        "summary": "Update Alias",
+        "operationId": "updateAlias",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Alias identifier",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "llama--3"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAliasRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Alias created succesfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AliasResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
                 }
               }
             }
@@ -1526,7 +1648,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedResponse_ApiToken"
+                  "$ref": "#/components/schemas/PaginatedApiTokenResponse"
                 },
                 "example": {
                   "data": [
@@ -2085,7 +2207,10 @@
             "type": "string"
           },
           "context_params": {
-            "$ref": "#/components/schemas/GptContextParams"
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "filename": {
             "type": "string"
@@ -2285,6 +2410,50 @@
           }
         }
       },
+      "CreateAliasRequest": {
+        "type": "object",
+        "required": [
+          "alias",
+          "repo",
+          "filename"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "context_params": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "filename": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "request_params": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OAIRequestParams"
+              }
+            ]
+          },
+          "snapshot": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "CreateApiTokenRequest": {
         "type": "object",
         "description": "Request to create a new API token",
@@ -2309,13 +2478,19 @@
           "filename",
           "status",
           "created_at",
-          "updated_at"
+          "updated_at",
+          "started_at"
         ],
         "properties": {
           "created_at": {
             "type": "string",
             "format": "date-time",
             "example": "2024-11-10T04:52:06.786Z"
+          },
+          "downloaded_bytes": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
           },
           "error": {
             "type": [
@@ -2332,8 +2507,21 @@
           "repo": {
             "type": "string"
           },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-11-10T04:52:06.786Z"
+          },
           "status": {
             "$ref": "#/components/schemas/DownloadStatus"
+          },
+          "total_bytes": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
           },
           "updated_at": {
             "type": "string",
@@ -2377,55 +2565,6 @@
           },
           "type": {
             "type": "string"
-          }
-        }
-      },
-      "GptContextParams": {
-        "type": "object",
-        "properties": {
-          "n_ctx": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "n_keep": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "n_parallel": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "n_predict": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32"
-          },
-          "n_seed": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32",
-            "minimum": 0
-          },
-          "n_threads": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int32",
-            "minimum": 0
           }
         }
       },
@@ -2922,7 +3061,7 @@
           }
         }
       },
-      "PaginatedResponse_AliasResponse": {
+      "PaginatedAliasResponse": {
         "type": "object",
         "required": [
           "data",
@@ -2934,47 +3073,7 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "alias",
-                "repo",
-                "filename",
-                "snapshot",
-                "source",
-                "model_params",
-                "request_params",
-                "context_params"
-              ],
-              "properties": {
-                "alias": {
-                  "type": "string"
-                },
-                "context_params": {
-                  "$ref": "#/components/schemas/GptContextParams"
-                },
-                "filename": {
-                  "type": "string"
-                },
-                "model_params": {
-                  "type": "object",
-                  "additionalProperties": {},
-                  "propertyNames": {
-                    "type": "string"
-                  }
-                },
-                "repo": {
-                  "type": "string"
-                },
-                "request_params": {
-                  "$ref": "#/components/schemas/OAIRequestParams"
-                },
-                "snapshot": {
-                  "type": "string"
-                },
-                "source": {
-                  "type": "string"
-                }
-              }
+              "$ref": "#/components/schemas/AliasResponse"
             }
           },
           "page": {
@@ -2991,7 +3090,7 @@
           }
         }
       },
-      "PaginatedResponse_ApiToken": {
+      "PaginatedApiTokenResponse": {
         "type": "object",
         "required": [
           "data",
@@ -3003,47 +3102,7 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "id",
-                "user_id",
-                "name",
-                "token_id",
-                "token_hash",
-                "status",
-                "created_at",
-                "updated_at"
-              ],
-              "properties": {
-                "created_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "example": "2024-11-10T04:52:06.786Z"
-                },
-                "id": {
-                  "type": "string"
-                },
-                "name": {
-                  "type": "string"
-                },
-                "status": {
-                  "$ref": "#/components/schemas/TokenStatus"
-                },
-                "token_hash": {
-                  "type": "string"
-                },
-                "token_id": {
-                  "type": "string"
-                },
-                "updated_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "example": "2024-11-10T04:52:06.786Z"
-                },
-                "user_id": {
-                  "type": "string"
-                }
-              }
+              "$ref": "#/components/schemas/ApiToken"
             }
           },
           "page": {
@@ -3060,7 +3119,7 @@
           }
         }
       },
-      "PaginatedResponse_DownloadRequest": {
+      "PaginatedDownloadResponse": {
         "type": "object",
         "required": [
           "data",
@@ -3072,45 +3131,7 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "id",
-                "repo",
-                "filename",
-                "status",
-                "created_at",
-                "updated_at"
-              ],
-              "properties": {
-                "created_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "example": "2024-11-10T04:52:06.786Z"
-                },
-                "error": {
-                  "type": [
-                    "string",
-                    "null"
-                  ]
-                },
-                "filename": {
-                  "type": "string"
-                },
-                "id": {
-                  "type": "string"
-                },
-                "repo": {
-                  "type": "string"
-                },
-                "status": {
-                  "$ref": "#/components/schemas/DownloadStatus"
-                },
-                "updated_at": {
-                  "type": "string",
-                  "format": "date-time",
-                  "example": "2024-11-10T04:52:06.786Z"
-                }
-              }
+              "$ref": "#/components/schemas/DownloadRequest"
             }
           },
           "page": {
@@ -3127,7 +3148,7 @@
           }
         }
       },
-      "PaginatedResponse_LocalModelResponse": {
+      "PaginatedLocalModelResponse": {
         "type": "object",
         "required": [
           "data",
@@ -3139,39 +3160,7 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "required": [
-                "repo",
-                "filename",
-                "snapshot",
-                "model_params"
-              ],
-              "properties": {
-                "filename": {
-                  "type": "string"
-                },
-                "model_params": {
-                  "type": "object",
-                  "additionalProperties": {},
-                  "propertyNames": {
-                    "type": "string"
-                  }
-                },
-                "repo": {
-                  "type": "string"
-                },
-                "size": {
-                  "type": [
-                    "integer",
-                    "null"
-                  ],
-                  "format": "int64",
-                  "minimum": 0
-                },
-                "snapshot": {
-                  "type": "string"
-                }
-              }
+              "$ref": "#/components/schemas/LocalModelResponse"
             }
           },
           "page": {
@@ -3214,21 +3203,6 @@
         },
         "example": {
           "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
-        }
-      },
-      "Repo": {
-        "type": "object",
-        "required": [
-          "user",
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "user": {
-            "type": "string"
-          }
         }
       },
       "RequestAccessRequest": {
@@ -3479,6 +3453,46 @@
           "session",
           "bearer"
         ]
+      },
+      "UpdateAliasRequest": {
+        "type": "object",
+        "required": [
+          "repo",
+          "filename"
+        ],
+        "properties": {
+          "context_params": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "filename": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string"
+          },
+          "request_params": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/OAIRequestParams"
+              }
+            ]
+          },
+          "snapshot": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
       },
       "UpdateApiTokenRequest": {
         "type": "object",

@@ -1,4 +1,4 @@
-use crate::{PaginatedResponse, PaginationSortParams, ENDPOINT_TOKENS};
+use crate::{PaginatedApiTokenResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_TOKENS};
 use auth_middleware::KEY_RESOURCE_TOKEN;
 use axum::{
   extract::{Path, Query, State},
@@ -189,7 +189,7 @@ pub async fn update_token_handler(
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of API tokens", body = PaginatedResponse<ApiToken>,
+        (status = 200, description = "List of API tokens", body = PaginatedApiTokenResponse,
          example = json!({
              "data": [
                  {
@@ -240,7 +240,7 @@ pub async fn list_tokens_handler(
   headers: HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
   Query(query): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedResponse<ApiToken>>, ApiError> {
+) -> Result<Json<PaginatedApiTokenResponse>, ApiError> {
   let per_page = query.page_size.min(100);
   let resource_token = headers.get(KEY_RESOURCE_TOKEN).map(|token| token.to_str());
   let Some(Ok(resource_token)) = resource_token else {
@@ -254,19 +254,21 @@ pub async fn list_tokens_handler(
     .list_api_tokens(&user_id, query.page, per_page)
     .await?;
 
-  Ok(Json(PaginatedResponse {
+  let paginated = PaginatedResponse {
     data: tokens,
     total,
     page: query.page,
     page_size: per_page,
-  }))
+  };
+  Ok(Json(paginated.into()))
 }
 
 #[cfg(test)]
 mod tests {
   use super::{list_tokens_handler, update_token_handler};
   use crate::{
-    create_token_handler, wait_for_event, ApiTokenError, PaginatedResponse, UpdateApiTokenRequest,
+    create_token_handler, wait_for_event, ApiTokenError, PaginatedApiTokenResponse,
+    UpdateApiTokenRequest,
   };
   use anyhow_trace::anyhow_trace;
   use auth_middleware::KEY_RESOURCE_TOKEN;
@@ -609,7 +611,7 @@ mod tests {
       .await?;
 
     assert_eq!(response.status(), StatusCode::OK);
-    let list_response = response.json::<PaginatedResponse<ApiToken>>().await?;
+    let list_response = response.json::<PaginatedApiTokenResponse>().await?;
     assert_eq!(list_response.data.len(), 10);
     assert_eq!(list_response.total, 15);
     assert_eq!(list_response.page, 1);
@@ -628,7 +630,7 @@ mod tests {
       .await?;
 
     assert_eq!(response.status(), StatusCode::OK);
-    let list_response = response.json::<PaginatedResponse<ApiToken>>().await?;
+    let list_response = response.json::<PaginatedApiTokenResponse>().await?;
     assert_eq!(list_response.data.len(), 5);
     assert_eq!(list_response.total, 15);
     assert_eq!(list_response.page, 2);
@@ -666,7 +668,7 @@ mod tests {
       .await?;
 
     assert_eq!(response.status(), StatusCode::OK);
-    let list_response = response.json::<PaginatedResponse<ApiToken>>().await?;
+    let list_response = response.json::<PaginatedApiTokenResponse>().await?;
     assert_eq!(list_response.data.len(), 0);
     assert_eq!(list_response.total, 0);
     assert_eq!(list_response.page, 1); // Default page

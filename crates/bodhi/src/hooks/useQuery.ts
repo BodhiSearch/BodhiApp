@@ -1,7 +1,19 @@
 import apiClient from '@/lib/apiClient';
-import { AliasFormData } from '@/schemas/alias';
-import { DownloadRequest, ListDownloadsResponse, PullModelRequest } from '@/types/api';
-import { AppInfo, ErrorResponse, FeaturedModel, Model, ModelFile, Setting, UserInfo } from '@/types/models';
+import { CreateAliasRequest, UpdateAliasRequest } from '@/schemas/alias';
+import {
+  AliasResponse,
+  AppInfo,
+  DownloadRequest,
+  NewDownloadRequest,
+  OpenAiApiError,
+  PaginatedAliasResponse,
+  PaginatedDownloadResponse,
+  PaginatedLocalModelResponse,
+  SettingInfo,
+  SetupRequest,
+  SetupResponse,
+  UserInfo,
+} from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
 import {
   useMutation,
@@ -12,6 +24,9 @@ import {
   UseQueryResult,
   useQuery as useReactQuery,
 } from 'react-query';
+
+// Type alias for compatibility
+type ErrorResponse = OpenAiApiError;
 
 // backend endpoints
 export const BODHI_API_BASE = '/bodhi/v1';
@@ -32,13 +47,6 @@ export const API_TOKENS_ENDPOINT = `${BODHI_API_BASE}/tokens`;
 export const ENDPOINT_SETTINGS = `${BODHI_API_BASE}/settings`;
 
 export const ENDPOINT_OAI_CHAT_COMPLETIONS = '/v1/chat/completions';
-
-type PagedApiResponse<T> = {
-  data: T;
-  total?: number;
-  page?: number;
-  page_size?: number;
-};
 
 export function useQuery<T>(
   key: string | string[],
@@ -110,17 +118,12 @@ export function useUser(options?: { enabled?: boolean }) {
   });
 }
 
-type SetupRequest = {
-  name: string;
-  description?: string;
-};
-
 export function useSetupApp(options?: {
-  onSuccess?: (appInfo: AppInfo) => void;
+  onSuccess?: (appInfo: SetupResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AppInfo>, AxiosError<ErrorResponse>, SetupRequest> {
+}): UseMutationResult<AxiosResponse<SetupResponse>, AxiosError<ErrorResponse>, SetupRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<AppInfo, SetupRequest>(ENDPOINT_APP_SETUP, 'post', {
+  return useMutationQuery<SetupResponse, SetupRequest>(ENDPOINT_APP_SETUP, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries('appInfo');
       queryClient.invalidateQueries('user');
@@ -134,7 +137,7 @@ export function useSetupApp(options?: {
 }
 
 export function useModelFiles(page?: number, pageSize?: number, sort: string = 'repo', sortOrder: string = 'asc') {
-  return useQuery<PagedApiResponse<ModelFile[]>>(
+  return useQuery<PaginatedLocalModelResponse>(
     ['modelFiles', page?.toString() ?? '-1', pageSize?.toString() ?? '-1', sort, sortOrder],
     ENDPOINT_MODEL_FILES,
     { page, page_size: pageSize, sort, sort_order: sortOrder }
@@ -142,7 +145,7 @@ export function useModelFiles(page?: number, pageSize?: number, sort: string = '
 }
 
 export function useModels(page: number, pageSize: number, sort: string, sortOrder: string) {
-  return useQuery<PagedApiResponse<Model[]>>(
+  return useQuery<PaginatedAliasResponse>(
     ['models', page.toString(), pageSize.toString(), sort, sortOrder],
     ENDPOINT_MODELS,
     { page, page_size: pageSize, sort, sort_order: sortOrder }
@@ -150,50 +153,66 @@ export function useModels(page: number, pageSize: number, sort: string, sortOrde
 }
 
 export function useModel(alias: string) {
-  return useQuery<Model>(['model', alias], `${ENDPOINT_MODELS}/${alias}`, undefined, {
+  return useQuery<AliasResponse>(['model', alias], `${ENDPOINT_MODELS}/${alias}`, undefined, {
     enabled: !!alias,
   });
 }
 
 export function useCreateModel(options?: {
-  onSuccess?: (model: Model) => void;
+  onSuccess?: (model: AliasResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Model>, AxiosError<ErrorResponse>, AliasFormData> {
+}): UseMutationResult<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, CreateAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<Model, AliasFormData>(ENDPOINT_MODELS, 'post', {
-    onSuccess: (response) => {
-      queryClient.invalidateQueries(ENDPOINT_MODELS);
-      options?.onSuccess?.(response.data);
+  return useMutation<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, CreateAliasRequest>(
+    async (apiData) => {
+      const response = await apiClient.post<AliasResponse>(ENDPOINT_MODELS, apiData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return response;
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to create model';
-      options?.onError?.(message);
-    },
-  });
+    {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(ENDPOINT_MODELS);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to create model';
+        options?.onError?.(message);
+      },
+    }
+  );
 }
 
 export function useUpdateModel(
   alias: string,
   options?: {
-    onSuccess?: (model: Model) => void;
+    onSuccess?: (model: AliasResponse) => void;
     onError?: (message: string) => void;
   }
-): UseMutationResult<AxiosResponse<Model>, AxiosError<ErrorResponse>, AliasFormData> {
+): UseMutationResult<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, UpdateAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<Model, AliasFormData>(`${ENDPOINT_MODELS}/${alias}`, 'put', {
-    onSuccess: (response) => {
-      queryClient.invalidateQueries(['model', alias]);
-      options?.onSuccess?.(response.data);
+  return useMutation<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, UpdateAliasRequest>(
+    async (apiData) => {
+      const response = await apiClient.put<AliasResponse>(`${ENDPOINT_MODELS}/${alias}`, apiData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return response;
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to update model';
-      options?.onError?.(message);
-    },
-  });
-}
-
-export function useFeaturedModels() {
-  return useQuery<FeaturedModel[]>('featuredModels', 'https://api.getbodhi.app/featured-models');
+    {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['model', alias]);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to update model';
+        options?.onError?.(message);
+      },
+    }
+  );
 }
 
 export function useLogout(
@@ -212,7 +231,7 @@ export function useLogout(
 }
 
 export function useDownloads(page: number, pageSize: number, options?: { enablePolling?: boolean }) {
-  return useQuery<ListDownloadsResponse>(
+  return useQuery<PaginatedDownloadResponse>(
     ['downloads', page.toString(), pageSize.toString()],
     ENDPOINT_MODEL_FILES_PULL,
     { page, page_size: pageSize },
@@ -226,35 +245,35 @@ export function useDownloads(page: number, pageSize: number, options?: { enableP
 export function usePullModel(options?: {
   onSuccess?: (response: DownloadRequest) => void;
   onError?: (message: string, code?: string) => void;
-}): UseMutationResult<AxiosResponse<DownloadRequest>, AxiosError<ErrorResponse>, PullModelRequest> {
+}): UseMutationResult<AxiosResponse<DownloadRequest>, AxiosError<ErrorResponse>, NewDownloadRequest> {
   const queryClient = useQueryClient();
-  return useMutationQuery<DownloadRequest, PullModelRequest>(ENDPOINT_MODEL_FILES_PULL, 'post', {
+  return useMutationQuery<DownloadRequest, NewDownloadRequest>(ENDPOINT_MODEL_FILES_PULL, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries('downloads');
       options?.onSuccess?.(response.data);
     },
     onError: (error: AxiosError<ErrorResponse>) => {
       const message = error?.response?.data?.error?.message || 'Failed to pull model';
-      const code = error?.response?.data?.error?.code;
+      const code = error?.response?.data?.error?.code ?? undefined;
       options?.onError?.(message, code);
     },
   });
 }
 
-export function useSettings(): UseQueryResult<Setting[], AxiosError<ErrorResponse>> {
-  return useQuery<Setting[]>('settings', ENDPOINT_SETTINGS);
+export function useSettings(): UseQueryResult<SettingInfo[], AxiosError<ErrorResponse>> {
+  return useQuery<SettingInfo[]>('settings', ENDPOINT_SETTINGS);
 }
 
 export function useUpdateSetting(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
 }): UseMutationResult<
-  AxiosResponse<Setting>,
+  AxiosResponse<SettingInfo>,
   AxiosError<ErrorResponse>,
   { key: string; value: string | number | boolean }
 > {
   const queryClient = useQueryClient();
-  return useMutationQuery<Setting, { key: string; value: string | number | boolean }>(
+  return useMutationQuery<SettingInfo, { key: string; value: string | number | boolean }>(
     (vars) => `${ENDPOINT_SETTINGS}/${vars.key}`,
     'put',
     {
@@ -273,9 +292,9 @@ export function useUpdateSetting(options?: {
 export function useDeleteSetting(options?: {
   onSuccess?: () => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<Setting>, AxiosError<ErrorResponse>, { key: string }> {
+}): UseMutationResult<AxiosResponse<SettingInfo>, AxiosError<ErrorResponse>, { key: string }> {
   const queryClient = useQueryClient();
-  return useMutationQuery<Setting, { key: string }>((vars) => `${ENDPOINT_SETTINGS}/${vars.key}`, 'delete', {
+  return useMutationQuery<SettingInfo, { key: string }>((vars) => `${ENDPOINT_SETTINGS}/${vars.key}`, 'delete', {
     onSuccess: () => {
       queryClient.invalidateQueries('settings');
       options?.onSuccess?.();

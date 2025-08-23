@@ -8,7 +8,16 @@
   - Update all imports and references
   - _Requirements: 1.1, 1.2_
 
-- [ ] 2. Update Alias serialization and deserialization tests
+- [x] 2. Integrate ts-client and fix type mismatches
+
+  - Replace custom schemas in crates/bodhi/src/schemas/alias.ts with ts-client generated types
+  - Update contextParamsSchema to use string array instead of structured object
+  - Fix any TypeScript compilation errors from type changes
+  - Update frontend components to use generated API types
+  - Run frontend tests to catch integration issues
+  - _Requirements: 1.3, 2.1, 3.3_
+
+- [ ] 3. Update Alias serialization and deserialization tests
 
   - Modify existing alias serialization tests to use new format
   - Add tests for empty context_params arrays
@@ -56,7 +65,7 @@
   - Test error handling for invalid parameter formats
   - _Requirements: 4.3, 4.5, 6.2_
 
-- [ ] 8. Update frontend TypeScript schemas
+- [x] 8. Update frontend TypeScript schemas
 
   - Create separate form and API schemas for context parameters
   - Update createAliasFormSchema with string field for textarea
@@ -64,7 +73,7 @@
   - Add conversion functions between form and API formats
   - _Requirements: 3.3, 3.4_
 
-- [ ] 9. Replace frontend form components with textarea
+- [x] 9. Replace frontend form components with textarea
 
   - Remove structured context parameter form fields
   - Add textarea component for context parameters
@@ -72,7 +81,7 @@
   - Add placeholder text with parameter examples
   - _Requirements: 3.1, 3.2_
 
-- [ ] 10. Update frontend form handling and validation
+- [x] 10. Update frontend form handling and validation
 
   - Modify form submission to convert textarea to string array
   - Update form initialization to convert API data to textarea format

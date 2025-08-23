@@ -1,7 +1,10 @@
 import { ListTokensResponse, TokenResponse, useCreateToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { ApiError } from '@/types/models';
+import { ErrorBody } from '@bodhiapp/ts-client';
+
+// Type alias for compatibility
+type ApiError = ErrorBody;
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { rest } from 'msw';

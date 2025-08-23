@@ -4,7 +4,7 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { EditSettingDialog } from '@/app/ui/settings/EditSettingDialog';
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
-import { Setting } from '@/types/models';
+import { SettingInfo } from '@bodhiapp/ts-client';
 import { createWrapper } from '@/tests/wrapper';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { showErrorParams, showSuccessParams } from '@/lib/utils.test';
@@ -32,7 +32,7 @@ Object.assign(window.HTMLElement.prototype, {
 
 const mockOnOpenChange = vi.fn();
 
-const mockSettings: Record<string, Setting> = {
+const mockSettingInfos: Record<string, SettingInfo> = {
   string: {
     key: 'BODHI_HOME',
     current_value: '/home/user/.bodhi',
@@ -49,10 +49,8 @@ const mockSettings: Record<string, Setting> = {
     source: 'default',
     metadata: {
       type: 'number',
-      range: {
-        min: 1025,
-        max: 65535,
-      },
+      min: 1025,
+      max: 65535,
     },
   },
   option: {
@@ -78,7 +76,7 @@ const mockSettings: Record<string, Setting> = {
 
 const server = setupServer(
   rest.put(`*${ENDPOINT_SETTINGS}/*`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockSettings.string));
+    return res(ctx.status(200), ctx.json(mockSettingInfos.string));
   })
 );
 
@@ -100,7 +98,7 @@ afterEach(() => {
 
 describe('EditSettingDialog', () => {
   it('renders string input correctly', () => {
-    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -109,7 +107,7 @@ describe('EditSettingDialog', () => {
   });
 
   it('renders number input with range correctly', () => {
-    render(<EditSettingDialog setting={mockSettings.number} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.number} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -121,7 +119,7 @@ describe('EditSettingDialog', () => {
   });
 
   it('renders option select correctly', () => {
-    render(<EditSettingDialog setting={mockSettings.option} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.option} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -130,7 +128,7 @@ describe('EditSettingDialog', () => {
   });
 
   it('renders boolean switch correctly', () => {
-    render(<EditSettingDialog setting={mockSettings.boolean} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.boolean} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -142,11 +140,11 @@ describe('EditSettingDialog', () => {
     const user = userEvent.setup();
     server.use(
       rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettings.string, current_value: '/new/path' }));
+        return res(ctx.json({ ...mockSettingInfos.string, current_value: '/new/path' }));
       })
     );
 
-    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -166,11 +164,11 @@ describe('EditSettingDialog', () => {
     const user = userEvent.setup();
     server.use(
       rest.put(`*${ENDPOINT_SETTINGS}/BODHI_PORT`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettings.number, current_value: 2000 }));
+        return res(ctx.json({ ...mockSettingInfos.number, current_value: 2000 }));
       })
     );
 
-    render(<EditSettingDialog setting={mockSettings.number} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.number} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -185,7 +183,7 @@ describe('EditSettingDialog', () => {
   it('shows error for invalid number range', async () => {
     const user = userEvent.setup();
 
-    render(<EditSettingDialog setting={mockSettings.number} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.number} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -201,11 +199,11 @@ describe('EditSettingDialog', () => {
     const user = userEvent.setup();
     server.use(
       rest.put(`*${ENDPOINT_SETTINGS}/BODHI_LOG_LEVEL`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettings.option, current_value: 'debug' }));
+        return res(ctx.json({ ...mockSettingInfos.option, current_value: 'debug' }));
       })
     );
 
-    render(<EditSettingDialog setting={mockSettings.option} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.option} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -231,11 +229,11 @@ describe('EditSettingDialog', () => {
     const user = userEvent.setup();
     server.use(
       rest.put(`*${ENDPOINT_SETTINGS}/BODHI_LOG_STDOUT`, (_, res, ctx) => {
-        return res(ctx.json({ ...mockSettings.boolean, current_value: false }));
+        return res(ctx.json({ ...mockSettingInfos.boolean, current_value: false }));
       })
     );
 
-    render(<EditSettingDialog setting={mockSettings.boolean} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.boolean} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -261,7 +259,7 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -276,7 +274,7 @@ describe('EditSettingDialog', () => {
   it('closes dialog on cancel', async () => {
     const user = userEvent.setup();
 
-    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -295,7 +293,7 @@ describe('EditSettingDialog', () => {
       })
     );
 
-    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 
@@ -317,11 +315,11 @@ describe('EditSettingDialog', () => {
     // Add artificial delay to the response
     server.use(
       rest.put(`*${ENDPOINT_SETTINGS}/BODHI_HOME`, async (_, res, ctx) => {
-        return res(ctx.delay(100), ctx.json(mockSettings.string));
+        return res(ctx.delay(100), ctx.json(mockSettingInfos.string));
       })
     );
 
-    render(<EditSettingDialog setting={mockSettings.string} open={true} onOpenChange={mockOnOpenChange} />, {
+    render(<EditSettingDialog setting={mockSettingInfos.string} open={true} onOpenChange={mockOnOpenChange} />, {
       wrapper: createWrapper(),
     });
 

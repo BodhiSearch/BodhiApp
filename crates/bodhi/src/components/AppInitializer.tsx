@@ -11,7 +11,7 @@ import {
   ROUTE_SETUP,
   ROUTE_SETUP_DOWNLOAD_MODELS,
 } from '@/lib/constants';
-import { AppStatus, ErrorResponse } from '@/types/models';
+import { AppStatus, OpenAiApiError } from '@bodhiapp/ts-client';
 import { useRouter } from 'next/navigation';
 import { ReactNode, useEffect } from 'react';
 
@@ -73,7 +73,7 @@ export default function AppInitializer({ children, allowedStatus, authenticated 
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(appError.response?.data as ErrorResponse)?.error?.message || appError.message}
+          {(appError.response?.data as OpenAiApiError)?.error?.message || appError.message}
         </AlertDescription>
       </Alert>
     );
@@ -84,7 +84,7 @@ export default function AppInitializer({ children, allowedStatus, authenticated 
       <Alert variant="destructive">
         <AlertTitle>Error</AlertTitle>
         <AlertDescription>
-          {(userError.response?.data as ErrorResponse)?.error?.message || userError.message}
+          {(userError.response?.data as OpenAiApiError)?.error?.message || userError.message}
         </AlertDescription>
       </Alert>
     );

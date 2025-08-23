@@ -9,13 +9,3 @@ export interface NavigationItem {
   skip?: boolean;
   target?: string;
 }
-
-export interface NavigationSection {
-  title: string;
-  items: NavigationItem[];
-}
-
-export interface NavigationState {
-  isOpen: boolean;
-  toggle: () => void;
-}

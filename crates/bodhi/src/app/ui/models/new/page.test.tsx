@@ -115,9 +115,11 @@ describe('CreateAliasPage', () => {
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/context parameters/i)).toBeInTheDocument();
 
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /context parameters/i })).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: /create model alias/i })).toBeInTheDocument();
   });
@@ -149,6 +151,76 @@ describe('CreateAliasPage', () => {
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));
+    });
+  });
+
+  it('handles context parameters input correctly', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
+    });
+
+    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+    expect(contextParamsTextarea).toBeInTheDocument();
+
+    // Test context parameters input
+    await user.type(contextParamsTextarea, '--ctx-size 2048\n--parallel 4\n--threads 8');
+    expect(contextParamsTextarea).toHaveValue('--ctx-size 2048\n--parallel 4\n--threads 8');
+
+    // Fill required fields
+    await user.type(screen.getByLabelText(/alias/i), 'test-context-alias');
+
+    // Open repo combobox
+    await user.click(screen.getByRole('combobox', { name: /repo/i }));
+    const dialog = screen.getByRole('dialog');
+    const options = within(dialog).getAllByRole('option');
+    await user.click(options[0]);
+
+    await user.type(screen.getByRole('combobox', { name: /filename/i }), 'file1.gguf');
+
+    await user.click(screen.getByRole('button', { name: /create model alias/i }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully created'));
+    });
+  });
+
+  it('expands and collapses request parameters section', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<CreateAliasPage />, { wrapper: createWrapper() });
+    });
+
+    const requestParamsHeader = screen.getByText('Request Parameters');
+    expect(requestParamsHeader).toBeInTheDocument();
+
+    // Wait for initial render to complete
+    await waitFor(() => {
+      // Initially collapsed, so request param fields should not be visible
+      // Check if the content is hidden via CSS (max-height: 0)
+      const cardContent = requestParamsHeader.closest('.rounded-lg')?.querySelector('.overflow-hidden');
+      expect(cardContent).toHaveClass('max-h-0');
+    });
+
+    // Click to expand
+    await user.click(requestParamsHeader);
+
+    // Now request param fields should be visible
+    await waitFor(() => {
+      const cardContent = requestParamsHeader.closest('.rounded-lg')?.querySelector('.overflow-hidden');
+      expect(cardContent).toHaveClass('max-h-[1000px]');
+      expect(screen.getByLabelText(/temperature/i)).toBeInTheDocument();
+    });
+
+    // Click to collapse
+    await user.click(requestParamsHeader);
+
+    // Fields should be hidden again
+    await waitFor(() => {
+      const cardContent = requestParamsHeader.closest('.rounded-lg')?.querySelector('.overflow-hidden');
+      expect(cardContent).toHaveClass('max-h-0');
     });
   });
 });

@@ -8,7 +8,7 @@ import { ErrorPage } from '@/components/ui/ErrorPage';
 import { TableCell } from '@/components/ui/table';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { useDownloads } from '@/hooks/useQuery';
-import { DownloadRequest } from '@/types/api';
+import { DownloadRequest } from '@bodhiapp/ts-client';
 import { SortState } from '@/types/models';
 import { useEffect, useState } from 'react';
 
@@ -40,11 +40,12 @@ function ProgressDisplay({ download }: { download: DownloadRequest }) {
   // Compute progress percentage from bytes
   const computeProgress = (download: DownloadRequest) => {
     if (!download.total_bytes || download.total_bytes === 0) return 0;
+    if (!download.downloaded_bytes) return 0;
     return (download.downloaded_bytes / download.total_bytes) * 100;
   };
 
-  const formatBytes = (bytes: number) => {
-    if (bytes === 0) return '0 B';
+  const formatBytes = (bytes: number | null | undefined) => {
+    if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));

@@ -2,7 +2,7 @@
 
 export type AliasResponse = {
     alias: string;
-    context_params: GptContextParams;
+    context_params: Array<string>;
     filename: string;
     model_params: {};
     repo: string;
@@ -74,6 +74,15 @@ export type ChatRequest = {
     stream?: boolean | null;
 };
 
+export type CreateAliasRequest = {
+    alias: string;
+    context_params?: Array<string> | null;
+    filename: string;
+    repo: string;
+    request_params?: null | OaiRequestParams;
+    snapshot?: string | null;
+};
+
 /**
  * Request to create a new API token
  */
@@ -86,11 +95,14 @@ export type CreateApiTokenRequest = {
 
 export type DownloadRequest = {
     created_at: string;
+    downloaded_bytes?: number;
     error?: string | null;
     filename: string;
     id: string;
     repo: string;
+    started_at: string;
     status: DownloadStatus;
+    total_bytes?: number | null;
     updated_at: string;
 };
 
@@ -103,15 +115,6 @@ export type ErrorBody = {
     message: string;
     param?: string | null;
     type: string;
-};
-
-export type GptContextParams = {
-    n_ctx?: number | null;
-    n_keep?: number | null;
-    n_parallel?: number | null;
-    n_predict?: number | null;
-    n_seed?: number | null;
-    n_threads?: number | null;
 };
 
 export type ListModelResponseWrapper = {
@@ -236,61 +239,29 @@ export type Options = {
     vocab_only?: boolean | null;
 };
 
-export type PaginatedResponseAliasResponse = {
-    data: Array<{
-        alias: string;
-        context_params: GptContextParams;
-        filename: string;
-        model_params: {};
-        repo: string;
-        request_params: OaiRequestParams;
-        snapshot: string;
-        source: string;
-    }>;
+export type PaginatedAliasResponse = {
+    data: Array<AliasResponse>;
     page: number;
     page_size: number;
     total: number;
 };
 
-export type PaginatedResponseApiToken = {
-    data: Array<{
-        created_at: string;
-        id: string;
-        name: string;
-        status: TokenStatus;
-        token_hash: string;
-        token_id: string;
-        updated_at: string;
-        user_id: string;
-    }>;
+export type PaginatedApiTokenResponse = {
+    data: Array<ApiToken>;
     page: number;
     page_size: number;
     total: number;
 };
 
-export type PaginatedResponseDownloadRequest = {
-    data: Array<{
-        created_at: string;
-        error?: string | null;
-        filename: string;
-        id: string;
-        repo: string;
-        status: DownloadStatus;
-        updated_at: string;
-    }>;
+export type PaginatedDownloadResponse = {
+    data: Array<DownloadRequest>;
     page: number;
     page_size: number;
     total: number;
 };
 
-export type PaginatedResponseLocalModelResponse = {
-    data: Array<{
-        filename: string;
-        model_params: {};
-        repo: string;
-        size?: number | null;
-        snapshot: string;
-    }>;
+export type PaginatedLocalModelResponse = {
+    data: Array<LocalModelResponse>;
     page: number;
     page_size: number;
     total: number;
@@ -311,11 +282,6 @@ export type RedirectResponse = {
      * The URL to redirect to for OAuth authentication
      */
     location: string;
-};
-
-export type Repo = {
-    name: string;
-    user: string;
 };
 
 export type RequestAccessRequest = {
@@ -399,6 +365,14 @@ export type TokenStatus = 'active' | 'inactive';
  * `bearer` - token received from http authorization header as bearer token
  */
 export type TokenType = 'session' | 'bearer';
+
+export type UpdateAliasRequest = {
+    context_params?: Array<string> | null;
+    filename: string;
+    repo: string;
+    request_params?: null | OaiRequestParams;
+    snapshot?: string | null;
+};
 
 /**
  * Request to update an existing API token
@@ -706,7 +680,7 @@ export type ListModelFilesResponses = {
     /**
      * List of supported model files from local HuggingFace cache folder
      */
-    200: PaginatedResponseLocalModelResponse;
+    200: PaginatedLocalModelResponse;
 };
 
 export type ListModelFilesResponse = ListModelFilesResponses[keyof ListModelFilesResponses];
@@ -748,7 +722,7 @@ export type ListDownloadsResponses = {
     /**
      * List of download requests
      */
-    200: PaginatedResponseDownloadRequest;
+    200: PaginatedDownloadResponse;
 };
 
 export type ListDownloadsResponse = ListDownloadsResponses[keyof ListDownloadsResponses];
@@ -912,10 +886,39 @@ export type ListModelAliasesResponses = {
     /**
      * List of configured model aliases
      */
-    200: PaginatedResponseAliasResponse;
+    200: PaginatedAliasResponse;
 };
 
 export type ListModelAliasesResponse = ListModelAliasesResponses[keyof ListModelAliasesResponses];
+
+export type CreateAliasData = {
+    body: CreateAliasRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/models';
+};
+
+export type CreateAliasErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateAliasError = CreateAliasErrors[keyof CreateAliasErrors];
+
+export type CreateAliasResponses = {
+    /**
+     * Alias created succesfully
+     */
+    201: AliasResponse;
+};
+
+export type CreateAliasResponse = CreateAliasResponses[keyof CreateAliasResponses];
 
 export type GetAliasData = {
     body?: never;
@@ -950,6 +953,40 @@ export type GetAliasResponses = {
 };
 
 export type GetAliasResponse = GetAliasResponses[keyof GetAliasResponses];
+
+export type UpdateAliasData = {
+    body: UpdateAliasRequest;
+    path: {
+        /**
+         * Alias identifier
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/models/{id}';
+};
+
+export type UpdateAliasErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type UpdateAliasError = UpdateAliasErrors[keyof UpdateAliasErrors];
+
+export type UpdateAliasResponses = {
+    /**
+     * Alias created succesfully
+     */
+    201: AliasResponse;
+};
+
+export type UpdateAliasResponse = UpdateAliasResponses[keyof UpdateAliasResponses];
 
 export type ListSettingsData = {
     body?: never;
@@ -1119,7 +1156,7 @@ export type ListApiTokensResponses = {
     /**
      * List of API tokens
      */
-    200: PaginatedResponseApiToken;
+    200: PaginatedApiTokenResponse;
 };
 
 export type ListApiTokensResponse = ListApiTokensResponses[keyof ListApiTokensResponses];

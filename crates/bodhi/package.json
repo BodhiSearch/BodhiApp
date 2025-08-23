@@ -13,6 +13,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@bodhiapp/ts-client": "file:../../ts-client",
     "@hookform/resolvers": "^3.10.0",
     "@mdx-js/loader": "^3.1.0",
     "@mdx-js/react": "^3.1.0",
