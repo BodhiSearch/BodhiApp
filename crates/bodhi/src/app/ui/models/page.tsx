@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
-import { Model, SortState } from '@/types/models';
+import { AliasResponse } from '@bodhiapp/ts-client';
+import { SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Pencil, MessageSquare, ExternalLink, FilePlus2, Plus } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
@@ -78,21 +79,21 @@ function ModelsPageContent() {
     setPage(1); // Reset to first page when sorting
   };
 
-  const getItemId = (model: Model) => model.alias;
+  const getItemId = (model: AliasResponse) => model.alias;
 
   const handleEdit = (alias: string) => {
     router.push(`/ui/models/edit?alias=${alias}`);
   };
-  const handleNew = (model: Model) => {
+  const handleNew = (model: AliasResponse) => {
     router.push(`/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
   };
-  const handleChat = (model: Model) => {
+  const handleChat = (model: AliasResponse) => {
     router.push(`/ui/chat?alias=${model.alias}`);
   };
   const getHuggingFaceFileUrl = (repo: string, filename: string) => {
     return `https://huggingface.co/${repo}/blob/main/${filename}`;
   };
-  const actionUi = (model: Model) => {
+  const actionUi = (model: AliasResponse) => {
     const actions =
       model.source === 'model' ? (
         <Button
@@ -144,7 +145,7 @@ function ModelsPageContent() {
     router.push('/ui/models/new');
   };
 
-  const renderRow = (model: Model) => [
+  const renderRow = (model: AliasResponse) => [
     // Mobile view (single column with all items stacked)
     <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
       <div className="flex flex-col gap-2">

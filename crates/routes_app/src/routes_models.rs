@@ -1,6 +1,6 @@
 use crate::{
-  AliasResponse, LocalModelResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODELS,
-  ENDPOINT_MODEL_FILES,
+  AliasResponse, LocalModelResponse, PaginatedAliasResponse, PaginatedLocalModelResponse,
+  PaginatedResponse, PaginationSortParams, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Query, State},
@@ -21,7 +21,7 @@ use std::sync::Arc;
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of configured model aliases", body = PaginatedResponse<AliasResponse>,
+        (status = 200, description = "List of configured model aliases", body = PaginatedAliasResponse,
          example = json!({
              "data": [{
                  "alias": "llama2:chat",
@@ -52,7 +52,7 @@ use std::sync::Arc;
 pub async fn list_local_aliases_handler(
   State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedResponse<AliasResponse>>, ApiError> {
+) -> Result<Json<PaginatedAliasResponse>, ApiError> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
   let mut aliases = state.app_service().data_service().list_aliases()?;
   sort_aliases(&mut aliases, &sort, &sort_order);
@@ -64,12 +64,13 @@ pub async fn list_local_aliases_handler(
     .take(end - start)
     .map(AliasResponse::from)
     .collect();
-  Ok(Json(PaginatedResponse {
+  let paginated = PaginatedResponse {
     data,
     total,
     page,
     page_size,
-  }))
+  };
+  Ok(Json(paginated.into()))
 }
 
 /// List available model files in GGUF format from HuggingFace cache
@@ -82,7 +83,7 @@ pub async fn list_local_aliases_handler(
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of supported model files from local HuggingFace cache folder", body = PaginatedResponse<LocalModelResponse>,
+        (status = 200, description = "List of supported model files from local HuggingFace cache folder", body = PaginatedLocalModelResponse,
          example = json!({
              "data": [{
                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
@@ -104,7 +105,7 @@ pub async fn list_local_aliases_handler(
 pub async fn list_local_modelfiles_handler(
   State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedResponse<LocalModelResponse>>, ApiError> {
+) -> Result<Json<PaginatedLocalModelResponse>, ApiError> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
   let mut models = state.app_service().hub_service().list_local_models();
   sort_models(&mut models, &sort, &sort_order);
@@ -118,12 +119,13 @@ pub async fn list_local_modelfiles_handler(
     .map(Into::into)
     .collect();
 
-  Ok(Json(PaginatedResponse {
+  let paginated = PaginatedResponse {
     data,
     total,
     page,
     page_size,
-  }))
+  };
+  Ok(Json(paginated.into()))
 }
 
 fn extract_pagination_sort_params(params: PaginationSortParams) -> (usize, usize, String, String) {

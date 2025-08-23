@@ -1,6 +1,8 @@
 use anyhow::{bail, Context};
 use std::{
-  env, path::{Path, PathBuf}, process::{Command, Stdio}
+  env,
+  path::{Path, PathBuf},
+  process::{Command, Stdio},
 };
 
 fn main() {

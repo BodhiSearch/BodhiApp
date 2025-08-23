@@ -9,11 +9,13 @@ use services::{
 use std::sync::Arc;
 use tracing::debug;
 
-#[derive(Debug, Clone, PartialEq, derive_builder::Builder)]
+#[derive(Debug, Clone, PartialEq, derive_new::new, derive_builder::Builder)]
 #[allow(clippy::too_many_arguments)]
 pub struct CreateCommand {
+  #[new(into)]
   pub alias: String,
   pub repo: Repo,
+  #[new(into)]
   pub filename: String,
   pub snapshot: Option<String>,
   // chat_template field removed since llama.cpp now handles chat templates
@@ -113,9 +115,7 @@ impl CreateCommand {
 mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
-  use objs::{
-    Alias, AliasBuilder, HubFile, OAIRequestParamsBuilder, Repo,
-  };
+  use objs::{Alias, AliasBuilder, HubFile, OAIRequestParamsBuilder, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{

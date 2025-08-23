@@ -56,6 +56,14 @@ const mockModelData = {
   alias: 'test-alias',
   repo: 'owner1/repo1',
   filename: 'file1.gguf',
+  snapshot: 'main',
+  source: 'user',
+  model_params: {},
+  request_params: {
+    temperature: 0.7,
+    max_tokens: 1000,
+  },
+  context_params: ['--ctx-size 2048', '--parallel 4'],
 };
 
 const mockModelsResponse = {
@@ -121,15 +129,25 @@ describe('EditAliasPage', () => {
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/context parameters/i)).toBeInTheDocument();
 
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /context parameters/i })).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: /update model alias/i })).toBeInTheDocument();
 
+    // Check pre-filled values
     expect(screen.getByLabelText(/alias/i)).toHaveValue('test-alias');
     expect(screen.getByRole('combobox', { name: /repo/i })).toHaveTextContent('owner1/repo1');
     expect(screen.getByRole('combobox', { name: /filename/i })).toHaveTextContent('file1.gguf');
+
+    // Check context parameters are pre-filled
+    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+    expect(contextParamsTextarea).toHaveValue('--ctx-size 2048\n--parallel 4');
+
+    // Request parameters should be expanded since there are existing values
+    expect(screen.getByText('Request Parameters')).toBeInTheDocument();
   });
 
   it('submits the form with updated data', async () => {
@@ -165,6 +183,60 @@ describe('EditAliasPage', () => {
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully updated'));
+    });
+  });
+
+  it('updates context parameters correctly', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
+    });
+
+    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+
+    // Clear existing content and add new context parameters
+    await user.clear(contextParamsTextarea);
+    await user.type(contextParamsTextarea, '--ctx-size 4096\n--threads 16\n--batch-size 512');
+
+    expect(contextParamsTextarea).toHaveValue('--ctx-size 4096\n--threads 16\n--batch-size 512');
+
+    await user.click(screen.getByRole('button', { name: /update model alias/i }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully updated'));
+    });
+  });
+
+  it('handles empty context parameters correctly', async () => {
+    const user = userEvent.setup();
+
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
+    });
+
+    const contextParamsTextarea = screen.getByRole('textbox', { name: /context parameters/i });
+
+    // Clear all context parameters
+    await user.clear(contextParamsTextarea);
+    expect(contextParamsTextarea).toHaveValue('');
+
+    await user.click(screen.getByRole('button', { name: /update model alias/i }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(showSuccessParams('Success', 'Alias test-alias successfully updated'));
+    });
+  });
+
+  it('expands request parameters when there are existing values', async () => {
+    await act(async () => {
+      render(<EditAliasPage />, { wrapper: createWrapper() });
+    });
+
+    // Request parameters should be expanded since mockModelData has request_params
+    await waitFor(() => {
+      expect(screen.getByLabelText(/temperature/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/max_tokens/i)).toBeInTheDocument();
     });
   });
 

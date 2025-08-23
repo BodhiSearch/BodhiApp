@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSettings } from '@/hooks/useQuery';
 import { cn } from '@/lib/utils';
-import { Setting } from '@/types/models';
+import { SettingInfo } from '@bodhiapp/ts-client';
 import {
   Code,
   Database,
@@ -189,7 +189,7 @@ const getSourceBadgeVariant = (source: string) => {
 };
 
 export function SettingsPageContent({ config }: SettingsPageContentProps) {
-  const [editingSetting, setEditingSetting] = useState<Setting | null>(null);
+  const [editingSetting, setEditingSetting] = useState<SettingInfo | null>(null);
   const { data: settings, isLoading, error } = useSettings();
 
   if (isLoading) {

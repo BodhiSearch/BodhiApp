@@ -1,19 +1,20 @@
 use crate::{
-  AliasResponse, ApiTokenResponse, AppInfo, CreateApiTokenRequest, NewDownloadRequest,
-  RedirectResponse, SetupRequest, SetupResponse, UpdateSettingRequest, UserInfo,
-  __path_app_info_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
-  __path_create_pull_request_handler, __path_create_token_handler, __path_delete_setting_handler,
-  __path_get_alias_handler, __path_get_download_status_handler, __path_health_handler,
-  __path_list_downloads_handler, __path_list_local_aliases_handler,
-  __path_list_local_modelfiles_handler, __path_list_settings_handler, __path_list_tokens_handler,
-  __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
-  __path_request_access_handler, __path_setup_handler, __path_update_setting_handler,
+  AliasResponse, ApiTokenResponse, AppInfo, CreateAliasRequest, CreateApiTokenRequest,
+  NewDownloadRequest, PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
+  PaginatedLocalModelResponse, RedirectResponse, SetupRequest, SetupResponse, UpdateAliasRequest,
+  UpdateSettingRequest, UserInfo, __path_app_info_handler, __path_auth_callback_handler,
+  __path_auth_initiate_handler, __path_create_alias_handler, __path_create_pull_request_handler,
+  __path_create_token_handler, __path_delete_setting_handler, __path_get_alias_handler,
+  __path_get_download_status_handler, __path_health_handler, __path_list_downloads_handler,
+  __path_list_local_aliases_handler, __path_list_local_modelfiles_handler,
+  __path_list_settings_handler, __path_list_tokens_handler, __path_logout_handler,
+  __path_ping_handler, __path_pull_by_alias_handler, __path_request_access_handler,
+  __path_setup_handler, __path_update_alias_handler, __path_update_setting_handler,
   __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{
-  OpenAIApiError, Repo, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS,
-  API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP,
-  API_TAG_SYSTEM,
+  OpenAIApiError, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS, API_TAG_AUTH,
+  API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
 use routes_oai::{
   __path_chat_completions_handler, __path_oai_models_handler, __path_ollama_model_chat_handler,
@@ -111,23 +112,34 @@ For API keys, specify required scope when creating the token.
     ),
     components(
         schemas(
+            // common
             OpenAIApiError,
             AppInfo,
             AppStatus,
+            UserInfo,
+            RedirectResponse,
+            PaginatedDownloadResponse,
+            PaginatedAliasResponse,
+            PaginatedApiTokenResponse,
+            PaginatedLocalModelResponse,
+            // setup
             SetupRequest,
             SetupResponse,
-            UserInfo,
             RequestAccessRequest,
             RequestAccessResponse,
-            RedirectResponse,
+            // pull
             NewDownloadRequest,
             DownloadRequest,
+            // create alias
+            CreateAliasRequest,
+            UpdateAliasRequest,
             AliasResponse,
-            Repo,
-            CreateApiTokenRequest,
+            // token
             ApiTokenResponse,
             ApiToken,
+            CreateApiTokenRequest,
             TokenStatus,
+            // settings
             SettingInfo,
             SettingMetadata,
             SettingSource,
@@ -157,6 +169,8 @@ For API keys, specify required scope when creating the token.
         update_token_handler,
 
         // Models endpoints
+        create_alias_handler,
+        update_alias_handler,
         list_local_aliases_handler,
         get_alias_handler,
         list_local_modelfiles_handler,

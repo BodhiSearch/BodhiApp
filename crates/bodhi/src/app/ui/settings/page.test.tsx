@@ -3,7 +3,7 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { SettingsPageContent } from '@/app/ui/settings/page';
 import { ENDPOINT_SETTINGS } from '@/hooks/useQuery';
-import { Setting } from '@/types/models';
+import { SettingInfo } from '@bodhiapp/ts-client';
 import { createWrapper } from '@/tests/wrapper';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
@@ -20,7 +20,7 @@ vi.mock('@/app/ui/settings/EditSettingDialog', () => ({
     ) : null,
 }));
 
-const mockSettings: Setting[] = [
+const mockSettingInfos: SettingInfo[] = [
   {
     key: 'BODHI_HOME',
     current_value: '/home/user/.bodhi',
@@ -47,10 +47,8 @@ const mockSettings: Setting[] = [
     source: 'default',
     metadata: {
       type: 'number',
-      range: {
-        min: 1025,
-        max: 65535,
-      },
+      min: 1025,
+      max: 65535,
     },
   },
   {
@@ -66,7 +64,7 @@ const mockSettings: Setting[] = [
 
 const server = setupServer(
   rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-    return res(ctx.status(200), ctx.json(mockSettings));
+    return res(ctx.status(200), ctx.json(mockSettingInfos));
   })
 );
 
@@ -154,7 +152,7 @@ describe('SettingsPageContent', () => {
   it('renders settings with test configuration', async () => {
     server.use(
       rest.get(`*${ENDPOINT_SETTINGS}`, (_, res, ctx) => {
-        return res(ctx.status(200), ctx.json(mockSettings));
+        return res(ctx.status(200), ctx.json(mockSettingInfos));
       })
     );
 
@@ -216,8 +214,8 @@ describe('SettingsPage', () => {
     const settingsFileBadge = screen.getAllByText('settings_file');
 
     // Verify we have the correct number of default badges
-    expect(defaultBadges).toHaveLength(2); // Based on our mockSettings
-    expect(settingsFileBadge).toHaveLength(2); // Based on our mockSettings
+    expect(defaultBadges).toHaveLength(2); // Based on our mockSettingInfos
+    expect(settingsFileBadge).toHaveLength(2); // Based on our mockSettingInfos
   });
 
   it('shows edit button only for BODHI_EXEC_VARIANT', async () => {

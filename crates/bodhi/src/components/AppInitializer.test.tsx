@@ -4,7 +4,7 @@ import AppInitializer from '@/components/AppInitializer';
 import { ENDPOINT_APP_INFO, ENDPOINT_USER_INFO } from '@/hooks/useQuery';
 import { FLAG_MODELS_DOWNLOAD_PAGE_DISPLAYED, ROUTE_DEFAULT, ROUTE_SETUP_DOWNLOAD_MODELS } from '@/lib/constants';
 import { createWrapper } from '@/tests/wrapper';
-import { AppStatus } from '@/types/models';
+import { AppStatus } from '@bodhiapp/ts-client';
 import { render, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { rest } from 'msw';
 import { setupServer } from 'msw/node';

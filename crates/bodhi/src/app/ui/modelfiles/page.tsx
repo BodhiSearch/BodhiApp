@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
-import { ModelFile, SortState } from '@/types/models';
+import { LocalModelResponse } from '@bodhiapp/ts-client';
+import { SortState } from '@/types/models';
 import { useModelFiles } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { ExternalLink, Trash2 } from 'lucide-react';
@@ -14,8 +15,8 @@ import { UserOnboarding } from '@/components/UserOnboarding';
 import { CopyableContent } from '@/components/CopyableContent';
 
 // Helper function to convert bytes to GB
-const bytesToGB = (bytes: number | undefined): string => {
-  if (bytes === undefined) return '';
+const bytesToGB = (bytes: number | null | undefined): string => {
+  if (bytes === undefined || bytes === null) return '';
   const gb = bytes / (1024 * 1024 * 1024);
   return `${gb.toFixed(2)} GB`;
 };
@@ -70,13 +71,13 @@ function ModelFilesContent() {
     setPage(1);
   };
 
-  const getItemId = (modelFile: ModelFile) => `${modelFile.repo}${modelFile.filename}${modelFile.snapshot}`;
+  const getItemId = (modelFile: LocalModelResponse) => `${modelFile.repo}${modelFile.filename}${modelFile.snapshot}`;
 
   const getHuggingFaceUrl = (repo: string) => {
     return `https://huggingface.co/${repo}`;
   };
 
-  const renderRow = (modelFile: ModelFile) => [
+  const renderRow = (modelFile: LocalModelResponse) => [
     // Mobile view (combined column)
     <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
       <div className="flex flex-col gap-2">
@@ -102,7 +103,7 @@ function ModelFilesContent() {
   ];
 
   // Extract actions to a separate function for reuse
-  const renderActions = (modelFile: ModelFile) => (
+  const renderActions = (modelFile: LocalModelResponse) => (
     <>
       <Button
         variant="ghost"

@@ -6,11 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useCreateModel, useModelFiles, useUpdateModel } from '@/hooks/useQuery';
-import { AliasFormData, contextParamsSchema, createAliasSchema, requestParamsSchema } from '@/schemas/alias';
-import { Model } from '@/types/models';
+import {
+  AliasFormData,
+  AliasResponse,
+  createAliasFormSchema,
+  requestParamsSchema,
+  convertFormToApi,
+  convertFormToUpdateApi,
+  convertApiToForm,
+} from '@/schemas/alias';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +28,7 @@ import { z } from 'zod';
 
 interface AliasFormProps {
   isEditMode: boolean;
-  initialData?: Model;
+  initialData?: AliasResponse;
 }
 
 function FormFieldWithTooltip({
@@ -65,9 +73,6 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const [isRequestExpanded, setIsRequestExpanded] = useState(
     isEditMode && Object.keys(initialData?.request_params || {}).length > 0
   );
-  const [isContextExpanded, setIsContextExpanded] = useState(
-    isEditMode && Object.keys(initialData?.context_params || {}).length > 0
-  );
 
   const { data: modelsData } = useModelFiles(1, 100, 'alias', 'asc');
 
@@ -98,15 +103,17 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   }, [modelsData, currentRepo]);
 
   const form = useForm<AliasFormData>({
-    resolver: zodResolver(createAliasSchema),
+    resolver: zodResolver(createAliasFormSchema),
     mode: 'onSubmit',
-    defaultValues: {
-      alias: initialData?.alias || '',
-      repo: initialData?.repo || '',
-      filename: initialData?.filename || '',
-      request_params: initialData?.request_params || {},
-      context_params: initialData?.context_params || {},
-    },
+    defaultValues: initialData
+      ? convertApiToForm(initialData)
+      : {
+          alias: '',
+          repo: '',
+          filename: '',
+          request_params: {},
+          context_params: '',
+        },
   });
 
   const createModel = useCreateModel({
@@ -139,31 +146,32 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   }, [form]);
 
   const onSubmit = (data: AliasFormData) => {
-    const mutationFn = isEditMode ? updateModel : createModel;
-    mutationFn.mutate(data);
+    if (isEditMode) {
+      const updateApiData = convertFormToUpdateApi(data);
+      updateModel.mutate(updateApiData);
+    } else {
+      const createApiData = convertFormToApi(data);
+      createModel.mutate(createApiData);
+    }
   };
 
   const handleSubmit = form.handleSubmit(
     (data) => {
       const requestErrors = form.formState.errors.request_params;
-      const contextErrors = form.formState.errors.context_params;
-
       if (requestErrors) setIsRequestExpanded(true);
-      if (contextErrors) setIsContextExpanded(true);
 
-      if (!requestErrors && !contextErrors) {
+      if (!requestErrors) {
         onSubmit(data);
       }
     },
     (errors) => {
       // This function is called when form validation fails
       if (errors.request_params) setIsRequestExpanded(true);
-      if (errors.context_params) setIsContextExpanded(true);
     }
   );
 
-  const renderParamFields = (paramType: 'request_params' | 'context_params') => {
-    const schema = paramType === 'request_params' ? requestParamsSchema : contextParamsSchema;
+  const renderParamFields = (paramType: 'request_params') => {
+    const schema = requestParamsSchema;
     return Object.entries(schema.shape).map(([key, field]) => {
       const fieldId = `${paramType}-${key}`;
       return (
@@ -301,44 +309,52 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 </FormItem>
               )}
             />
+
+            {/* Context Parameters - directly below filename */}
+            <FormField
+              control={form.control}
+              name="context_params"
+              render={({ field }) => (
+                <FormItem>
+                  <FormFieldWithTooltip
+                    label="Context Parameters"
+                    tooltip="Enter llama-server parameters, one per line: --ctx-size 2048, --parallel 4"
+                    htmlFor="context_params"
+                  >
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        id="context_params"
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(e.target.value)}
+                        placeholder="Enter llama-server parameters, one per line:&#10;--ctx-size 2048&#10;--parallel 4"
+                        rows={4}
+                        className="font-mono text-sm"
+                      />
+                    </FormControl>
+                  </FormFieldWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col">
-            <Card className="h-auto">
-              <CardHeader
-                className="cursor-pointer flex flex-row items-center justify-between"
-                onClick={() => setIsRequestExpanded(!isRequestExpanded)}
-              >
-                <CardTitle>Request Parameters</CardTitle>
-                {isRequestExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </CardHeader>
-              <CardContent
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${isRequestExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
-              >
-                {renderParamFields('request_params')}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="flex flex-col">
-            <Card className="h-auto">
-              <CardHeader
-                className="cursor-pointer flex flex-row items-center justify-between"
-                onClick={() => setIsContextExpanded(!isContextExpanded)}
-              >
-                <CardTitle>Context Parameters</CardTitle>
-                {isContextExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-              </CardHeader>
-              <CardContent
-                className={`overflow-hidden transition-all duration-300 ease-in-out ${isContextExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
-              >
-                {renderParamFields('context_params')}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        {/* Request Parameters as collapsible section */}
+        <Card className="h-auto">
+          <CardHeader
+            className="cursor-pointer flex flex-row items-center justify-between"
+            onClick={() => setIsRequestExpanded(!isRequestExpanded)}
+          >
+            <CardTitle>Request Parameters</CardTitle>
+            {isRequestExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+          </CardHeader>
+          <CardContent
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${isRequestExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}
+          >
+            {renderParamFields('request_params')}
+          </CardContent>
+        </Card>
 
         <div className="flex justify-center mt-8">
           <Button type="submit">{isEditMode ? 'Update' : 'Create'} Model Alias</Button>

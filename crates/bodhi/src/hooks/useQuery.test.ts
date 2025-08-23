@@ -11,7 +11,11 @@ import {
   useUser,
 } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { ApiError, AppInfo, Setting } from '@/types/models';
+import { ErrorBody, AppInfo, SettingInfo } from '@bodhiapp/ts-client';
+
+// Type aliases for compatibility
+type ApiError = ErrorBody;
+type Setting = SettingInfo;
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { rest } from 'msw';

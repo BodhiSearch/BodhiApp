@@ -1,4 +1,8 @@
 import * as z from 'zod';
+import type { AliasResponse, CreateAliasRequest, UpdateAliasRequest, OaiRequestParams } from '@bodhiapp/ts-client';
+
+// Re-export the generated types for use throughout the app
+export type { AliasResponse, CreateAliasRequest, UpdateAliasRequest, OaiRequestParams };
 
 const preprocessStop = (value: unknown) => {
   if (typeof value === 'string') {
@@ -23,23 +27,58 @@ export const requestParamsSchema = z
   })
   .partial();
 
-export const contextParamsSchema = z
-  .object({
-    n_seed: z.coerce.number().int().min(0).max(4294967295).optional(), // u32 range
-    n_threads: z.coerce.number().int().min(0).max(4294967295).optional(), // u32 range
-    n_ctx: z.coerce.number().int().optional(), // i32 range
-    n_parallel: z.coerce.number().int().optional(), // i32 range
-    n_predict: z.coerce.number().int().optional(), // i32 range
-    n_keep: z.coerce.number().int().optional(), // i32 range
-  })
-  .partial();
-
-export const createAliasSchema = z.object({
+// Form schema - context_params as string for textarea
+export const createAliasFormSchema = z.object({
   alias: z.string().min(1, 'Alias is required'),
   repo: z.string().min(1, 'Repo is required'),
   filename: z.string().min(1, 'Filename is required'),
   request_params: requestParamsSchema,
-  context_params: contextParamsSchema,
+  context_params: z.string().optional(), // string for form textarea
 });
 
-export type AliasFormData = z.infer<typeof createAliasSchema>;
+export type AliasFormData = z.infer<typeof createAliasFormSchema>;
+
+// Conversion functions between form and API formats
+export const convertFormToApi = (formData: AliasFormData): CreateAliasRequest => ({
+  alias: formData.alias,
+  repo: formData.repo,
+  filename: formData.filename,
+  request_params: formData.request_params,
+  context_params: formData.context_params
+    ? formData.context_params
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    : undefined,
+});
+
+export const convertFormToUpdateApi = (formData: AliasFormData): UpdateAliasRequest => ({
+  repo: formData.repo,
+  filename: formData.filename,
+  request_params: formData.request_params,
+  context_params: formData.context_params
+    ? formData.context_params
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    : undefined,
+});
+
+export const convertApiToForm = (apiData: AliasResponse): AliasFormData => ({
+  alias: apiData.alias,
+  repo: apiData.repo,
+  filename: apiData.filename,
+  request_params: apiData.request_params
+    ? {
+        frequency_penalty: apiData.request_params.frequency_penalty ?? undefined,
+        max_tokens: apiData.request_params.max_tokens ?? undefined,
+        presence_penalty: apiData.request_params.presence_penalty ?? undefined,
+        seed: apiData.request_params.seed ?? undefined,
+        stop: apiData.request_params.stop,
+        temperature: apiData.request_params.temperature ?? undefined,
+        top_p: apiData.request_params.top_p ?? undefined,
+        user: apiData.request_params.user ?? undefined,
+      }
+    : {},
+  context_params: Array.isArray(apiData.context_params) ? apiData.context_params.join('\n') : '',
+});

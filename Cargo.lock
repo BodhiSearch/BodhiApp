@@ -1075,6 +1075,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "anyhow_trace",
+ "derive-new",
  "derive_builder 0.20.2",
  "errmeta_derive",
  "include_dir",

@@ -1,4 +1,6 @@
-use crate::{PaginatedResponse, PaginationSortParams, ENDPOINT_MODEL_PULL};
+use crate::{
+  PaginatedDownloadResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODEL_PULL,
+};
 use axum::http::StatusCode;
 use axum::{
   extract::{Path, Query, State},
@@ -61,7 +63,7 @@ pub enum PullError {
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of download requests", body = PaginatedResponse<DownloadRequest>,
+        (status = 200, description = "List of download requests", body = PaginatedDownloadResponse,
          example = json!({
              "data": [{
                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
@@ -81,19 +83,20 @@ pub enum PullError {
 pub async fn list_downloads_handler(
   State(state): State<Arc<dyn RouterState>>,
   Query(query): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedResponse<DownloadRequest>>, ApiError> {
+) -> Result<Json<PaginatedDownloadResponse>, ApiError> {
   let downloads = state
     .app_service()
     .db_service()
     .list_download_requests(query.page, query.page_size)
     .await?;
 
-  Ok(Json(PaginatedResponse {
+  let paginated = PaginatedResponse {
     data: downloads.0,
     total: downloads.1 as usize,
     page: query.page,
     page_size: query.page_size,
-  }))
+  };
+  Ok(Json(paginated.into()))
 }
 
 /// Start a new model file download
@@ -448,12 +451,11 @@ async fn update_download_status(
 
 #[cfg(test)]
 mod tests {
-  use crate::PaginatedResponse;
-
   use super::{
     create_pull_request_handler, get_download_status_handler, list_downloads_handler,
     pull_by_alias_handler,
   };
+  use crate::PaginatedDownloadResponse;
   use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
@@ -892,9 +894,7 @@ mod tests {
 
     assert_eq!(response.status(), StatusCode::OK);
 
-    let body = response
-      .json::<PaginatedResponse<DownloadRequest>>()
-      .await?;
+    let body = response.json::<PaginatedDownloadResponse>().await?;
     assert_eq!(body.data.len(), 3);
     assert_eq!(body.total, 3);
     assert_eq!(body.page, 1);
