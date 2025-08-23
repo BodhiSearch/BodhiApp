@@ -1,0 +1,115 @@
+---
+inclusion: manual
+---
+# Testing Guidelines and Patterns
+
+## Testing Framework & Commands
+
+**Frontend Testing**: Vitest with MSW for API mocking
+**Test Commands**: `npm run test -- --run` (CI) or `npm run test` (watch) from `crates/bodhi`
+**Backend Testing**: Rust with `cargo test`
+
+## Required Documentation References
+
+**MUST READ for testing:**
+- `ai-docs/01-architecture/testing-strategy.md` - High-level testing approach and quality assurance strategy
+- `ai-docs/01-architecture/frontend-testing.md` - Frontend testing patterns, React components, and user interactions
+- `ai-docs/01-architecture/backend-testing.md` - Backend testing approaches, database testing, and API integration
+- `ai-docs/03-crates/integration-tests.md` - End-to-end testing framework
+
+## Critical Testing Standards
+
+### Test Quality Principles
+- **Naming Convention**: `test_init_service_<method_name>_<test-specific>`
+- **Fewer, substantial scenarios** over many fine-grained tests
+- **Separate test cases** for success and error scenarios
+- **Check last items** of arrays when validating streaming responses
+- **Avoid `unmount()`** in tests
+- **Fix root causes** rather than using workarounds
+
+### API Mocking Standards
+- **Use MSW patterns** (reference `models/page.test.tsx`)
+- **Keep `apiClient.baseURL` as empty string** (`''`)
+- **Mock `/auth/initiate`** backend calls for login flow tests
+- **OAuth test scopes**: `'openid email profile roles'`
+
+### Integration Testing Requirements
+- Create encrypted secrets files
+- Set AppStatus to Ready
+- Obtain auth tokens and insert session data
+- Set up cookies properly
+- Use test-utils feature flag pattern for Rust components
+
+## UI/Browser/Playwright Testing Best Practices
+
+### Black-Box Testing Principles
+- **Test user workflows, not implementation details** - Focus on what the user sees and does
+- **No white-box testing** - Don't manipulate internal state, localStorage, or call internal methods
+- **User-centric assertions** - Assert on UI elements, not internal data structures
+- **Real user interactions** - Click buttons, fill forms, navigate pages as a real user would
+
+### Anti-Patterns to Avoid
+- ❌ **Static timeouts** - `await page.waitForTimeout(5000)` - Use element state waiting instead
+- ❌ **Excessive console logging** - Tests should be self-documenting through meaningful assertions
+- ❌ **Testing trivial validations** - Form validation is not core to business logic flows
+- ❌ **Internal method testing** - Don't call `new OAuthDemoApp()` or test PKCE generation directly
+- ❌ **State manipulation** - Don't set localStorage, mock internal state, or bypass user flows
+- ❌ **Implementation-specific assertions** - Don't check localStorage, internal variables, or method calls
+
+### Proper UI Testing Patterns
+- ✅ **Element state waiting** - `await element.waitFor({ state: 'visible' })` before interactions
+- ✅ **Minimal, focused logging** - Only log essential flow milestones, not every step
+- ✅ **Core functionality focus** - Test the main user journey, skip trivial UI details
+- ✅ **End-to-end flows** - Let the real OAuth flow happen, including redirects and callbacks
+- ✅ **UI-based assertions** - Assert on what users see: button text, displayed content, page state
+- ✅ **Real interactions** - Use actual clicks, form fills, and navigation
+
+### Playwright-Specific Guidelines
+- **Wait for elements** before interacting: `await locator.waitFor({ state: 'visible' })`
+- **Use page.goto()** for navigation, not internal routing manipulation
+- **Handle real redirects** - Let OAuth flows redirect to auth servers and back
+- **Assert on visible content** - Check displayed text, button states, form values
+- **Test complete user journeys** - From initial page load to final success state
+
+### Test Structure Best Practices
+- **Single responsibility** - Each test should verify one complete user workflow
+- **Descriptive test names** - Should clearly indicate the user scenario being tested
+- **Minimal setup** - Only set up what's necessary for the user flow
+- **Clean assertions** - Assert on user-visible outcomes, not internal mechanisms
+- **Error scenarios** - Test both happy path and realistic error conditions
+
+### Example: Good vs Bad UI Testing
+
+**BAD - White-box, implementation-focused:**
+```javascript
+// Don't do this - testing internals
+const pkceParams = await page.evaluate(() => {
+  const app = new OAuthDemoApp();
+  return app.generateCodeVerifier();
+});
+expect(pkceParams.length).toBeGreaterThan(43);
+
+// Don't do this - manipulating internal state
+await page.evaluate(() => {
+  localStorage.setItem('oauthAppState', JSON.stringify({phase: 'logged_in'}));
+});
+```
+
+**GOOD - Black-box, user-focused:**
+```javascript
+// Do this - test user workflow
+await page.goto('http://localhost:3000');
+await page.fill('#appClientId', testClientId);
+await page.fill('#bodhiAppUrl', testServerUrl);
+await page.click('#submitBtn');
+await page.waitForSelector('.status.success');
+expect(await page.textContent('#statusMessage')).toContain('Access granted');
+```
+
+## Follow Documentation Patterns
+
+All frontend testing standards, backend testing standards, integration testing guidelines, and testing best practices are comprehensively documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.
+
+## Follow Documentation Patterns
+
+All frontend testing standards, backend testing standards, integration testing guidelines, and testing best practices are comprehensively documented in the referenced ai-docs files above. Refer to those documents for the authoritative guidance rather than duplicating conventions here.
