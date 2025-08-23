@@ -1,0 +1,8 @@
+---
+inclusion: always
+---
+
+- when running any git command, pass environment variable in commandline `GIT_PAGER=cat` so that the results are not paged and we get the results on stdout and are able to analyze it for next step 
+- when generating package.json test target using vitest, always create with `vitest run` so that the test execution do not go in watch mode and we get results for next step
+
+

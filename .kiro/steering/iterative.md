@@ -1,0 +1,236 @@
+---
+inclusion: always
+---
+# Iterative Development Methodology for AI Coding Assistants
+
+## Purpose and Scope
+
+This rule establishes a structured development cycle for AI coding assistants working on BodhiApp features. It integrates specification generation, implementation, testing, and progress tracking to ensure quality, maintainability, and AI continuity across development sessions.
+
+## Core Methodology Principles
+
+### 1. Incremental Development
+- Break down features into small, implementable requirements
+- Complete one requirement fully before moving to the next
+- Maintain working software at each iteration
+- Focus on functional completeness over technical optimization
+
+### 2. Test-Driven Quality
+- Every code change must include corresponding test updates
+- Tests validate functional requirements, not just code coverage
+- Follow existing testing patterns from `.cursor/rules/testing.mdc`
+- Maintain test quality standards throughout development
+
+### 3. Specification Maintenance
+- Keep specifications current with implementation progress
+- Update completion status after each development cycle
+- Document implementation decisions and architectural choices
+- Maintain AI changelog for session continuity
+
+### 4. Continuous Validation
+- Run tests after each implementation cycle
+- Verify functional requirements are met
+- Validate integration with existing features
+- Ensure no regressions in existing functionality
+
+## Development Cycle Process
+
+### Phase 1: Specification Generation
+**Objective**: Create or update functional specifications following `.cursor/rules/spec.mdc`
+
+**Actions**:
+1. **Analyze Requirements**: Break down feature into implementable increments
+2. **Generate Specification**: Create functional spec using established template
+3. **Define Acceptance Criteria**: Establish clear, testable outcomes
+4. **Reference Architecture**: Link to relevant architecture documents
+5. **Plan Implementation**: Identify dependencies and integration points
+
+**Deliverables**:
+- Functional specification document in `ai-docs/02-features/`
+- Clear acceptance criteria and user stories
+- Implementation progress tracking structure
+- Architecture references and existing pattern identification
+
+**Quality Gates**:
+- [ ] Specification follows established template structure
+- [ ] Acceptance criteria are testable and specific
+- [ ] Architecture references are accurate and current
+- [ ] Implementation plan identifies all dependencies
+
+### Phase 2: Implementation
+**Objective**: Implement code based on generated specifications
+
+**Actions**:
+1. **Review Specification**: Understand functional requirements and acceptance criteria
+2. **Identify Patterns**: Reference existing code patterns and conventions
+3. **Implement Incrementally**: Focus on one acceptance criterion at a time
+4. **Follow Conventions**: Adhere to project coding standards and patterns
+5. **Document Decisions**: Record architectural choices and implementation notes
+
+**Deliverables**:
+- Working code that meets acceptance criteria
+- Implementation following project conventions
+- Documentation of architectural decisions
+- Integration with existing codebase patterns
+
+**Quality Gates**:
+- [ ] Code follows project conventions and patterns
+- [ ] Implementation meets functional requirements
+- [ ] Integration points work with existing features
+- [ ] No breaking changes to existing functionality
+
+### Phase 3: Testing
+**Objective**: Add/update tests for all new implementation
+
+**Actions**:
+1. **Review Testing Standards**: Follow patterns from `.cursor/rules/testing.mdc`
+2. **Write Unit Tests**: Test individual functions and components
+3. **Add Integration Tests**: Test feature workflows and API integration
+4. **Update Existing Tests**: Modify tests affected by implementation changes
+5. **Verify Coverage**: Ensure adequate test coverage for new code
+
+**Deliverables**:
+- Unit tests for new functions and components
+- Integration tests for feature workflows
+- Updated existing tests as needed
+- Test coverage meeting project standards
+
+**Quality Gates**:
+- [ ] All new code has corresponding tests
+- [ ] Tests follow established patterns and conventions
+- [ ] Integration tests cover complete user workflows
+- [ ] Test coverage meets project standards (80%+)
+
+### Phase 4: Validation
+**Objective**: Run tests to verify implementation correctness
+
+**Actions**:
+1. **Run Backend Tests**: Execute `cargo test` for Rust code changes
+2. **Run Frontend Tests**: Execute `npm run test` for frontend changes
+3. **Verify Integration**: Run integration tests for complete workflows
+4. **Check Formatting**: Run `cargo fmt` and `npm run format`
+5. **Validate Acceptance Criteria**: Confirm all criteria are met
+
+**Deliverables**:
+- All tests passing
+- Code properly formatted
+- Acceptance criteria validated
+- No regressions in existing functionality
+
+**Quality Gates**:
+- [ ] All tests pass without errors
+- [ ] Code formatting is consistent
+- [ ] Acceptance criteria are demonstrably met
+- [ ] No existing functionality is broken
+
+### Phase 5: Progress Tracking
+**Objective**: Update specification documents with completion status
+
+**Actions**:
+1. **Update Completion Status**: Mark completed acceptance criteria
+2. **Document Implementation Notes**: Record architectural decisions
+3. **Update AI Changelog**: Add session summary for continuity
+4. **Identify Next Steps**: Plan next iteration or requirement
+5. **Update Architecture Docs**: Modify architecture docs if needed
+
+**Deliverables**:
+- Updated specification with current progress
+- Implementation notes and decisions documented
+- AI changelog entry for session continuity
+- Clear next steps identified
+
+**Quality Gates**:
+- [ ] Specification accurately reflects current state
+- [ ] Implementation decisions are documented
+- [ ] AI changelog provides context for next session
+- [ ] Next steps are clearly identified
+
+### Phase 6: Iteration Planning
+**Objective**: Move to next requirement and repeat the cycle
+
+**Actions**:
+1. **Review Remaining Requirements**: Identify next priority requirement
+2. **Assess Dependencies**: Ensure prerequisites are met
+3. **Plan Next Iteration**: Define scope for next development cycle
+4. **Update Project Status**: Reflect progress in project documentation
+5. **Prepare Context**: Set up context for next AI session
+
+**Deliverables**:
+- Next requirement identified and prioritized
+- Dependencies assessed and resolved
+- Iteration scope defined
+- Project status updated
+
+**Quality Gates**:
+- [ ] Next requirement is clearly defined
+- [ ] All dependencies are identified and available
+- [ ] Iteration scope is appropriate for single cycle
+- [ ] Project documentation reflects current progress
+
+## Integration with Existing Rules
+
+### Specification Guidelines
+- **Reference**: `.cursor/rules/spec.mdc`
+- **Integration**: Use established specification template and structure
+- **Focus**: Maintain functional over technical approach
+- **Continuity**: Leverage AI changelog and progress tracking
+
+### Testing Standards
+- **Reference**: `.cursor/rules/testing.mdc`
+- **Integration**: Follow established testing patterns and frameworks
+- **Quality**: Maintain coverage and quality standards
+- **Validation**: Use existing test commands and validation processes
+
+### Development Conventions
+- **Reference**: `.cursor/rules/general-development.mdc`
+- **Integration**: Follow project coding standards and patterns
+- **Architecture**: Reference architecture documents for consistency
+- **Quality**: Maintain code quality and formatting standards
+
+## Cycle Execution Guidelines
+
+### Single Requirement Focus
+- Complete one acceptance criterion fully before moving to next
+- Maintain working software at each step
+- Avoid partial implementations that break existing functionality
+- Focus on functional completeness over optimization
+
+### Quality Maintenance
+- Run tests after each implementation change
+- Maintain code formatting and style consistency
+- Update documentation as implementation progresses
+- Validate acceptance criteria are met before moving forward
+
+### AI Continuity
+- Update AI changelog after each significant milestone
+- Document implementation decisions and architectural choices
+- Maintain clear progress tracking for session handoffs
+- Reference previous decisions and context in new sessions
+
+### Error Recovery
+- If tests fail, fix issues before proceeding to next phase
+- If implementation doesn't meet acceptance criteria, revise approach
+- If dependencies are missing, address them before continuing
+- If specifications are unclear, clarify before implementing
+
+## Success Metrics
+
+### Development Quality
+- All tests pass after each iteration
+- Code follows project conventions consistently
+- Acceptance criteria are demonstrably met
+- No regressions in existing functionality
+
+### AI Continuity
+- Specifications accurately reflect implementation progress
+- AI changelog provides sufficient context for session handoffs
+- Implementation decisions are documented and accessible
+- Next steps are clearly identified and actionable
+
+### Project Progress
+- Features are completed incrementally with working software
+- Documentation stays current with implementation
+- Architecture consistency is maintained
+- Quality standards are upheld throughout development
+
+This methodology ensures consistent, quality-focused development while maintaining AI continuity and specification accuracy throughout the implementation process.
