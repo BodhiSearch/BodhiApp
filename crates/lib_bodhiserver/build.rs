@@ -1,8 +1,6 @@
 use anyhow::{bail, Context};
 use std::{
-  env,
-  path::{Path, PathBuf},
-  process::Command,
+  env, path::{Path, PathBuf}, process::{Command, Stdio}
 };
 
 fn main() {
@@ -42,6 +40,8 @@ fn build_frontend(bodhi_dir: &Path) -> anyhow::Result<()> {
   let status = create_npm_command()
     .args(["install"])
     .current_dir(bodhi_dir)
+    .stdout(Stdio::inherit())
+    .stderr(Stdio::inherit())
     .status()
     .context("Failed to run npm install")?;
 
