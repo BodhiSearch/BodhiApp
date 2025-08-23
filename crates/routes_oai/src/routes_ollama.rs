@@ -666,7 +666,7 @@ mod test {
     );
     assert_eq!("", response["template"]); // Chat template removed since llama.cpp now handles this
     assert_eq!(
-      r#"n_keep: 24
+      r#"- --n-keep 24
 stop:
 - <|start_header_id|>
 - <|end_header_id|>

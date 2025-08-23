@@ -1,5 +1,5 @@
 use crate::{AliasResponse, AliasResponseBuilder};
-use objs::{GptContextParamsBuilder, OAIRequestParamsBuilder, Repo};
+use objs::{OAIRequestParamsBuilder, Repo};
 use std::collections::HashMap;
 
 impl AliasResponse {
@@ -21,12 +21,7 @@ impl AliasResponse {
           .build()
           .unwrap(),
       )
-      .context_params(
-        GptContextParamsBuilder::default()
-          .n_keep(24)
-          .build()
-          .unwrap(),
-      )
+      .context_params(vec!["--n-keep 24".to_string()])
       .build()
       .unwrap()
   }
@@ -46,7 +41,7 @@ impl AliasResponseBuilder {
       .snapshot("b32046744d93031a26c8e925de2c8932c305f7b9".to_string())
       .model_params(HashMap::new())
       .request_params(OAIRequestParamsBuilder::default().build().unwrap())
-      .context_params(GptContextParamsBuilder::default().build().unwrap())
+      .context_params(Vec::<String>::new())
       .to_owned()
   }
 }

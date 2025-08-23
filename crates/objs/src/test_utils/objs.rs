@@ -1,7 +1,7 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, GptContextParams,
-  GptContextParamsBuilder, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder,
-  RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
+  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, GptContextParams, HubFile,
+  HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder, RemoteModel, Repo,
+  TOKENIZER_CONFIG_JSON,
 };
 use std::{path::PathBuf, str::FromStr};
 
@@ -236,10 +236,7 @@ impl AliasBuilder {
       ])
       .build()
       .unwrap();
-    let gpt_params = GptContextParamsBuilder::default()
-      .n_keep(24)
-      .build()
-      .unwrap();
+    let gpt_params = vec!["--n-keep 24".to_string()];
     AliasBuilder::default()
       .alias("llama3:instruct".to_string())
       .repo(Repo::llama3())

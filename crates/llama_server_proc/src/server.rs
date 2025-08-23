@@ -46,11 +46,42 @@ pub struct LlamaServerArgs {
 
 impl LlamaServerArgsBuilder {
   pub fn server_params(mut self, slf: &GptContextParams) -> Self {
-    self.seed = Some(slf.n_seed);
-    self.n_ctx = Some(slf.n_ctx);
-    self.n_predict = Some(slf.n_predict);
-    self.n_parallel = Some(slf.n_parallel);
-    self.n_keep = Some(slf.n_keep);
+    // Parse the string array parameters and extract values
+    for param in slf {
+      let parts: Vec<&str> = param.split_whitespace().collect();
+      if parts.len() >= 2 {
+        match parts[0] {
+          "--seed" => {
+            if let Ok(value) = parts[1].parse::<u32>() {
+              self.seed = Some(Some(value));
+            }
+          }
+          "--ctx-size" => {
+            if let Ok(value) = parts[1].parse::<i32>() {
+              self.n_ctx = Some(Some(value));
+            }
+          }
+          "--n-predict" => {
+            if let Ok(value) = parts[1].parse::<i32>() {
+              self.n_predict = Some(Some(value));
+            }
+          }
+          "--parallel" => {
+            if let Ok(value) = parts[1].parse::<i32>() {
+              self.n_parallel = Some(Some(value));
+            }
+          }
+          "--n-keep" => {
+            if let Ok(value) = parts[1].parse::<i32>() {
+              self.n_keep = Some(Some(value));
+            }
+          }
+          _ => {
+            // Ignore unknown parameters
+          }
+        }
+      }
+    }
     self
   }
 }
@@ -314,5 +345,75 @@ impl Server for LlamaServer {
 impl From<&LlamaServerArgs> for LlamaServerArgs {
   fn from(args: &LlamaServerArgs) -> Self {
     args.clone()
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use std::path::PathBuf;
+
+  #[test]
+  fn test_server_params_parsing() {
+    let context_params = vec![
+      "--ctx-size 2048".to_string(),
+      "--parallel 4".to_string(),
+      "--n-predict 256".to_string(),
+      "--seed 42".to_string(),
+      "--n-keep 24".to_string(),
+    ];
+
+    let args = LlamaServerArgsBuilder::default()
+      .model(PathBuf::from("/path/to/model"))
+      .alias("test-alias".to_string())
+      .server_params(&context_params)
+      .build()
+      .unwrap();
+
+    assert_eq!(args.n_ctx, Some(2048));
+    assert_eq!(args.n_parallel, Some(4));
+    assert_eq!(args.n_predict, Some(256));
+    assert_eq!(args.seed, Some(42));
+    assert_eq!(args.n_keep, Some(24));
+  }
+
+  #[test]
+  fn test_server_params_parsing_with_invalid_values() {
+    let context_params = vec![
+      "--ctx-size invalid".to_string(),
+      "--parallel 4".to_string(),
+      "--unknown-param 123".to_string(),
+    ];
+
+    let args = LlamaServerArgsBuilder::default()
+      .model(PathBuf::from("/path/to/model"))
+      .alias("test-alias".to_string())
+      .server_params(&context_params)
+      .build()
+      .unwrap();
+
+    // Invalid value should be ignored
+    assert_eq!(args.n_ctx, None);
+    // Valid value should be parsed
+    assert_eq!(args.n_parallel, Some(4));
+    // Unknown parameter should be ignored
+  }
+
+  #[test]
+  fn test_server_params_parsing_empty() {
+    let context_params: Vec<String> = vec![];
+
+    let args = LlamaServerArgsBuilder::default()
+      .model(PathBuf::from("/path/to/model"))
+      .alias("test-alias".to_string())
+      .server_params(&context_params)
+      .build()
+      .unwrap();
+
+    assert_eq!(args.n_ctx, None);
+    assert_eq!(args.n_parallel, None);
+    assert_eq!(args.n_predict, None);
+    assert_eq!(args.seed, None);
+    assert_eq!(args.n_keep, None);
   }
 }
