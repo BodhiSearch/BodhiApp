@@ -103,7 +103,7 @@ mod tests {
     Router,
   };
   use objs::{
-    test_utils::setup_l10n, FluentLocalizationService, GptContextParamsBuilder,
+    test_utils::setup_l10n, FluentLocalizationService,
     OAIRequestParamsBuilder,
   };
   use pretty_assertions::assert_eq;
@@ -138,9 +138,9 @@ mod tests {
       "request_params": {
         "temperature": 0.7
       },
-      "context_params": {
-        "n_ctx": 2048
-      }
+      "context_params": [
+        "--ctx-size 2048"
+      ]
     })
   }
 
@@ -158,12 +158,7 @@ mod tests {
           .build()
           .unwrap(),
       )
-      .context_params(
-        GptContextParamsBuilder::default()
-          .n_ctx(2048)
-          .build()
-          .unwrap(),
-      )
+      .context_params(vec!["--ctx-size 2048".to_string()])
       .build()
       .unwrap()
   }
@@ -179,9 +174,9 @@ mod tests {
       "request_params": {
         "temperature": 0.7
       },
-      "context_params": {
-        "n_ctx": 2048
-      }
+      "context_params": [
+        "--ctx-size 2048"
+      ]
     })
   }
 
@@ -199,12 +194,7 @@ mod tests {
           .build()
           .unwrap(),
       )
-      .context_params(
-        GptContextParamsBuilder::default()
-          .n_ctx(2048)
-          .build()
-          .unwrap(),
-      )
+      .context_params(vec!["--ctx-size 2048".to_string()])
       .build()
       .unwrap()
   }
@@ -249,9 +239,9 @@ mod tests {
       "request_params": {
         "temperature": 0.7
       },
-      "context_params": {
-        "n_ctx": 2048
-      }
+      "context_params": [
+        "--ctx-size 2048"
+      ]
     });
 
     let response = app
@@ -290,9 +280,9 @@ mod tests {
         "temperature": 0.8,
         "max_tokens": 2000
       },
-      "context_params": {
-        "n_ctx": 4096
-      }
+      "context_params": [
+        "--ctx-size 4096"
+      ]
     });
 
     let response = app
@@ -316,12 +306,7 @@ mod tests {
           .build()
           .unwrap(),
       )
-      .context_params(
-        GptContextParamsBuilder::default()
-          .n_ctx(4096)
-          .build()
-          .unwrap(),
-      )
+      .context_params(vec!["--ctx-size 4096".to_string()])
       .build()
       .unwrap();
     assert_eq!(expected, updated_alias);
@@ -383,9 +368,9 @@ mod tests {
       "request_params": {
         "temperature": 0.7
       },
-      "context_params": {
-        "n_ctx": 2048
-      }
+      "context_params": [
+        "--ctx-size 2048"
+      ]
     });
 
     let response = app
@@ -423,9 +408,9 @@ mod tests {
       "temperature": 0.8,
       "max_tokens": 2000
     },
-    "context_params": {
-      "n_ctx": 4096
-    }
+    "context_params": [
+      "--ctx-size 4096"
+    ]
   }), Method::POST, "/api/models")]
   #[case(serde_json::json!({
     "alias": "tinyllama:instruct",
@@ -437,9 +422,9 @@ mod tests {
       "temperature": 0.8,
       "max_tokens": 2000
     },
-    "context_params": {
-      "n_ctx": 4096
-    }
+    "context_params": [
+      "--ctx-size 4096"
+    ]
   }), Method::PUT, "/api/models/tinyllama:instruct")]
   #[awt]
   #[tokio::test]

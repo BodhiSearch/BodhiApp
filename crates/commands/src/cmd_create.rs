@@ -114,7 +114,7 @@ mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
   use objs::{
-    Alias, AliasBuilder, GptContextParamsBuilder, HubFile, OAIRequestParamsBuilder, Repo,
+    Alias, AliasBuilder, HubFile, OAIRequestParamsBuilder, Repo,
   };
   use pretty_assertions::assert_eq;
   use rstest::rstest;
@@ -140,14 +140,13 @@ mod test {
         .max_tokens(2048_u16)
         .build()
         .unwrap(),
-      context_params: GptContextParamsBuilder::default()
-        .n_ctx(2048)
-        .n_keep(2048)
-        .n_parallel(2)
-        .n_seed(42_u32)
-        .n_threads(8_u32)
-        .build()
-        .unwrap(),
+      context_params: vec![
+        "--ctx-size 2048".to_string(),
+        "--n-keep 2048".to_string(),
+        "--parallel 2".to_string(),
+        "--seed 42".to_string(),
+        "--threads 8".to_string(),
+      ],
     };
     let service = Arc::new(
       AppServiceStubBuilder::default()
@@ -174,16 +173,13 @@ mod test {
           .build()
           .unwrap(),
       )
-      .context_params(
-        GptContextParamsBuilder::default()
-          .n_ctx(2048)
-          .n_keep(2048)
-          .n_parallel(2)
-          .n_seed(42_u32)
-          .n_threads(8_u32)
-          .build()
-          .unwrap(),
-      )
+      .context_params(vec![
+        "--ctx-size 2048".to_string(),
+        "--n-keep 2048".to_string(),
+        "--parallel 2".to_string(),
+        "--seed 42".to_string(),
+        "--threads 8".to_string(),
+      ])
       .build()
       .unwrap();
     assert_eq!(expected, updated_alias);

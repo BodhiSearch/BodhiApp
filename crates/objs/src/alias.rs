@@ -29,7 +29,7 @@ pub struct Alias {
   #[serde(default, skip_serializing_if = "is_default")]
   #[builder(default)]
   pub request_params: OAIRequestParams,
-  #[serde(default, skip_serializing_if = "is_default")]
+  #[serde(default, skip_serializing_if = "Vec::is_empty")]
   #[builder(default)]
   pub context_params: GptContextParams,
 }
@@ -54,7 +54,7 @@ impl std::fmt::Display for Alias {
 
 #[cfg(test)]
 mod test {
-  use crate::{Alias, AliasBuilder, GptContextParamsBuilder, OAIRequestParamsBuilder, Repo};
+  use crate::{Alias, AliasBuilder, OAIRequestParamsBuilder, Repo};
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
 
@@ -78,14 +78,11 @@ mod test {
         .top_p(0.95)
         .build()
         .unwrap())
-      .context_params(
-        GptContextParamsBuilder::default()
-          .n_ctx(2048)
-          .n_parallel(4u8)
-          .n_predict(256)
-          .build()
-          .unwrap(),
-      )
+      .context_params(vec![
+        "--ctx-size 2048".to_string(),
+        "--parallel 4".to_string(),
+        "--n-predict 256".to_string(),
+      ])
       .build()
       .unwrap(),
     r#"alias: tinyllama:instruct
@@ -96,9 +93,9 @@ request_params:
   temperature: 0.7
   top_p: 0.95
 context_params:
-  n_ctx: 2048
-  n_parallel: 4
-  n_predict: 256
+- --ctx-size 2048
+- --parallel 4
+- --n-predict 256
 "#
   )]
   #[case::minimal(
@@ -126,9 +123,9 @@ request_params:
   temperature: 0.7
   top_p: 0.95
 context_params:
-  n_ctx: 2048
-  n_parallel: 4
-  n_predict: 256
+- --ctx-size 2048
+- --parallel 4
+- --n-predict 256
 "#,
   AliasBuilder::tinyllama()
   .request_params(OAIRequestParamsBuilder::default()
@@ -136,14 +133,11 @@ context_params:
   .top_p(0.95)
   .build()
   .unwrap())
-  .context_params(
-  GptContextParamsBuilder::default()
-    .n_ctx(2048)
-    .n_parallel(4u8)
-    .n_predict(256)
-    .build()
-    .unwrap(),
-  )
+  .context_params(vec![
+    "--ctx-size 2048".to_string(),
+    "--parallel 4".to_string(),
+    "--n-predict 256".to_string(),
+  ])
   .build()
   .unwrap()
   )]
