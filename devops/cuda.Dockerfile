@@ -94,6 +94,10 @@ ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
 ENV BODHI_HOST="0.0.0.0"
 ENV BODHI_PORT="8080"
 
+# Optimal CUDA server arguments (no-webui for security, verbose for debugging)
+ENV BODHI_LLAMACPP_ARGS="--verbose --no-webui --keep 24"
+ENV BODHI_LLAMACPP_ARGS_CUDA="--n-gpu-layers 999 --split-mode layer --tensor-split auto"
+
 # Create data directories with proper ownership
 RUN mkdir -p /data/bodhi_home /data/hf_home && \
     chown -R llama:llama /data

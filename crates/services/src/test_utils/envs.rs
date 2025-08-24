@@ -159,7 +159,7 @@ impl SettingService for SettingServiceStub {
         ),
         SettingSource::Default,
       ),
-      None => panic!("Setting with key: {key} not found"),
+      None => (None, SettingSource::Default),
     }
   }
 

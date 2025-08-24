@@ -27,63 +27,7 @@ pub struct LlamaServerArgs {
   #[builder(default)]
   host: Option<String>,
   #[builder(default)]
-  verbose: bool,
-  #[builder(default)]
-  no_webui: bool,
-  #[builder(default)]
-  embeddings: bool,
-  #[builder(default)]
-  seed: Option<u32>,
-  #[builder(default)]
-  n_ctx: Option<i32>,
-  #[builder(default)]
-  n_predict: Option<i32>,
-  #[builder(default)]
-  n_parallel: Option<i32>,
-  #[builder(default)]
-  n_keep: Option<i32>,
-}
-
-impl LlamaServerArgsBuilder {
-  pub fn server_params(mut self, slf: &Vec<String>) -> Self {
-    // Parse the string array parameters and extract values
-    for param in slf {
-      let parts: Vec<&str> = param.split_whitespace().collect();
-      if parts.len() >= 2 {
-        match parts[0] {
-          "--seed" => {
-            if let Ok(value) = parts[1].parse::<u32>() {
-              self.seed = Some(Some(value));
-            }
-          }
-          "--ctx-size" => {
-            if let Ok(value) = parts[1].parse::<i32>() {
-              self.n_ctx = Some(Some(value));
-            }
-          }
-          "--n-predict" => {
-            if let Ok(value) = parts[1].parse::<i32>() {
-              self.n_predict = Some(Some(value));
-            }
-          }
-          "--parallel" => {
-            if let Ok(value) = parts[1].parse::<i32>() {
-              self.n_parallel = Some(Some(value));
-            }
-          }
-          "--n-keep" => {
-            if let Ok(value) = parts[1].parse::<i32>() {
-              self.n_keep = Some(Some(value));
-            }
-          }
-          _ => {
-            // Ignore unknown parameters
-          }
-        }
-      }
-    }
-    self
-  }
+  pub server_args: Vec<String>,
 }
 
 impl Display for LlamaServerArgs {
@@ -93,6 +37,17 @@ impl Display for LlamaServerArgs {
 }
 
 impl LlamaServerArgs {
+  pub fn new(model: PathBuf, alias: String, server_args: Vec<String>) -> Self {
+    Self {
+      model,
+      alias,
+      api_key: None,
+      port: portpicker::pick_unused_port().unwrap_or(8080),
+      host: None,
+      server_args,
+    }
+  }
+
   // Convert the struct into command line arguments
   pub fn to_args(&self) -> Vec<String> {
     let mut args = vec![
@@ -100,13 +55,7 @@ impl LlamaServerArgs {
       self.alias.clone(),
       "--model".to_string(),
       self.model.to_string_lossy().to_string(),
-      "--jinja".to_string(),
     ];
-
-    if let Some(seed) = &self.seed {
-      args.push("--seed".to_string());
-      args.push(seed.to_string());
-    }
 
     if let Some(api_key) = &self.api_key {
       args.push("--api-key".to_string());
@@ -121,36 +70,10 @@ impl LlamaServerArgs {
     args.push("--port".to_string());
     args.push(self.port.to_string());
 
-    if self.verbose {
-      args.push("--verbose".to_string());
-    }
-
-    if self.no_webui {
-      args.push("--no-webui".to_string());
-    }
-
-    if self.embeddings {
-      args.push("--embeddings".to_string());
-    }
-
-    if let Some(n_ctx) = self.n_ctx {
-      args.push("--ctx-size".to_string());
-      args.push(n_ctx.to_string());
-    }
-
-    if let Some(n_predict) = self.n_predict {
-      args.push("--n-predict".to_string());
-      args.push(n_predict.to_string());
-    }
-
-    if let Some(n_parallel) = self.n_parallel {
-      args.push("--parallel".to_string());
-      args.push(n_parallel.to_string());
-    }
-
-    if let Some(n_keep) = self.n_keep {
-      args.push("--n-keep".to_string());
-      args.push(n_keep.to_string());
+    // Add all server parameters directly
+    for param in &self.server_args {
+      // Split each parameter string on whitespace and add each part as separate argument
+      args.extend(param.split_whitespace().map(String::from));
     }
 
     args
@@ -354,66 +277,40 @@ mod tests {
   use std::path::PathBuf;
 
   #[test]
-  fn test_server_params_parsing() {
-    let context_params = vec![
+  fn test_to_args() {
+    let server_args = vec![
       "--ctx-size 2048".to_string(),
       "--parallel 4".to_string(),
-      "--n-predict 256".to_string(),
       "--seed 42".to_string(),
-      "--n-keep 24".to_string(),
     ];
 
     let args = LlamaServerArgsBuilder::default()
       .model(PathBuf::from("/path/to/model"))
       .alias("test-alias".to_string())
-      .server_params(&context_params)
+      .server_args(server_args)
+      .port(12345 as u16)
       .build()
       .unwrap();
 
-    assert_eq!(args.n_ctx, Some(2048));
-    assert_eq!(args.n_parallel, Some(4));
-    assert_eq!(args.n_predict, Some(256));
-    assert_eq!(args.seed, Some(42));
-    assert_eq!(args.n_keep, Some(24));
-  }
+    let cmd_args = args.to_args();
 
-  #[test]
-  fn test_server_params_parsing_with_invalid_values() {
-    let context_params = vec![
-      "--ctx-size invalid".to_string(),
-      "--parallel 4".to_string(),
-      "--unknown-param 123".to_string(),
-    ];
-
-    let args = LlamaServerArgsBuilder::default()
-      .model(PathBuf::from("/path/to/model"))
-      .alias("test-alias".to_string())
-      .server_params(&context_params)
-      .build()
-      .unwrap();
-
-    // Invalid value should be ignored
-    assert_eq!(args.n_ctx, None);
-    // Valid value should be parsed
-    assert_eq!(args.n_parallel, Some(4));
-    // Unknown parameter should be ignored
-  }
-
-  #[test]
-  fn test_server_params_parsing_empty() {
-    let context_params: Vec<String> = vec![];
-
-    let args = LlamaServerArgsBuilder::default()
-      .model(PathBuf::from("/path/to/model"))
-      .alias("test-alias".to_string())
-      .server_params(&context_params)
-      .build()
-      .unwrap();
-
-    assert_eq!(args.n_ctx, None);
-    assert_eq!(args.n_parallel, None);
-    assert_eq!(args.n_predict, None);
-    assert_eq!(args.seed, None);
-    assert_eq!(args.n_keep, None);
+    // Check core arguments are present
+    assert_eq!(
+      vec![
+        "--alias",
+        "test-alias",
+        "--model",
+        "/path/to/model",
+        "--port",
+        "12345",
+        "--ctx-size",
+        "2048",
+        "--parallel",
+        "4",
+        "--seed",
+        "42"
+      ],
+      cmd_args.iter().map(|s| s.as_str()).collect::<Vec<_>>()
+    );
   }
 }

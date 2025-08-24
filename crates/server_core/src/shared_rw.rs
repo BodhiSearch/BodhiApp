@@ -1,8 +1,8 @@
-use crate::ContextError;
+use crate::{merge_server_args, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use objs::Alias;
-use services::{HubService, SettingService};
+use services::{HubService, SettingService, BODHI_LLAMACPP_ARGS};
 use std::fmt::Debug;
 use std::{path::Path, sync::Arc};
 use tokio::sync::RwLock;
@@ -103,6 +103,26 @@ impl DefaultSharedContext {
     let lock = self.server.read().await;
     lock.as_ref().map(|server| server.get_server_args())
   }
+
+  fn get_setting_args(&self) -> Vec<String> {
+    self
+      .setting_service
+      .get_setting(BODHI_LLAMACPP_ARGS)
+      .unwrap_or_default()
+      .split_whitespace()
+      .map(String::from)
+      .collect()
+  }
+
+  fn get_setting_variant_args(&self, variant: &str) -> Vec<String> {
+    self
+      .setting_service
+      .get_setting(&format!("BODHI_LLAMACPP_ARGS_{}", variant.to_uppercase()))
+      .unwrap_or_default()
+      .split_whitespace()
+      .map(String::from)
+      .collect()
+  }
 }
 
 #[async_trait::async_trait]
@@ -169,6 +189,7 @@ impl SharedContext for DefaultSharedContext {
     alias.request_params.update(&mut request);
     let input_value = serde_json::to_value(request)?;
     let alias_name = alias.alias.clone();
+    let setting_args = self.get_setting_args();
     let result = match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
         let response = server
@@ -179,10 +200,14 @@ impl SharedContext for DefaultSharedContext {
       }
       ModelLoadStrategy::DropAndLoad => {
         drop(lock);
+        let variant = self.exec_variant.get().await;
+        let setting_variant_args = self.get_setting_variant_args(&variant);
+        let merged_args =
+          merge_server_args(&setting_args, &setting_variant_args, &alias.context_params);
         let server_args = LlamaServerArgsBuilder::default()
           .alias(alias.alias)
           .model(model_file.to_string_lossy().to_string())
-          .server_params(&alias.context_params)
+          .server_args(merged_args)
           .build()?;
         self.reload(Some(server_args)).await?;
         let lock = self.server.read().await;
@@ -194,12 +219,14 @@ impl SharedContext for DefaultSharedContext {
         Ok(response)
       }
       ModelLoadStrategy::Load => {
-        // TODO: take context params from alias
-        // TODO: reload keeping lock and doing completions operation
+        let variant = self.exec_variant.get().await;
+        let setting_variant_args = self.get_setting_variant_args(&variant);
+        let merged_args =
+          merge_server_args(&setting_args, &setting_variant_args, &alias.context_params);
         let server_args = LlamaServerArgsBuilder::default()
           .alias(alias.alias)
           .model(model_file.to_string_lossy().to_string())
-          .server_params(&alias.context_params)
+          .server_args(merged_args)
           .build()?;
         drop(lock);
         self.reload(Some(server_args)).await?;
@@ -311,7 +338,7 @@ mod test {
   use services::{
     test_utils::{app_service_stub_builder, AppServiceStubBuilder},
     AppService, BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT,
-    BODHI_EXEC_VARIANTS,
+    BODHI_EXEC_VARIANTS, BODHI_LLAMACPP_ARGS,
   };
   use tempfile::TempDir;
 
@@ -417,6 +444,7 @@ mod test {
           BODHI_EXEC_LOOKUP_PATH,
           bin_path.path().display().to_string().as_str(),
         ),
+        (BODHI_LLAMACPP_ARGS, "--verbose"),
       ]))
       .build()
       .unwrap();
@@ -468,6 +496,7 @@ mod test {
           BODHI_EXEC_LOOKUP_PATH,
           bin_path.path().display().to_string().as_str(),
         ),
+        (BODHI_LLAMACPP_ARGS, "--verbose"),
       ]))
       .build()
       .unwrap();
