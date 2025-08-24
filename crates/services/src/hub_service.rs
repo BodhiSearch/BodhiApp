@@ -443,6 +443,7 @@ impl HfHubService {
 
     let api = ApiBuilder::from_cache(self.cache.clone())
       .high()
+      .with_progress(self.progress_bar)
       .with_token(self.token.clone())
       .build()
       .map_err(|err| {
