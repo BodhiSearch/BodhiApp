@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS download_requests (
     filename TEXT NOT NULL,
     status TEXT NOT NULL,
     error TEXT,
+    total_bytes INTEGER,
+    downloaded_bytes INTEGER DEFAULT 0,
+    started_at INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
