@@ -73,7 +73,11 @@ COPY ts-client/ ts-client/
 
 # Build TS client (requires OpenAPI generation which needs the built Rust code)
 WORKDIR /build/ts-client
-RUN npm install && npm run build
+RUN npm ci && npm run build
+
+# Build TS client (requires OpenAPI generation which needs the built Rust code)
+WORKDIR /build/crates/bodhi
+RUN npm ci && npm run build
 
 # Return to build root
 WORKDIR /build
@@ -98,30 +102,26 @@ USER root
 COPY --from=builder /build/target/*/bodhi /app/bodhi
 RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 
-# Set BODHI_HOME environment variable (needed to find settings.yaml)
+# Configure BodhiApp environment
+ENV RUST_LOG=info
+ENV HF_HOME=/data/hf_home
 ENV BODHI_HOME=/data/bodhi_home
-
-# Create data directories and generate optimized settings for CUDA variant (with CPU fallback)
-RUN mkdir -p /data/bodhi_home /data/hf_home
-
-COPY <<EOF /data/bodhi_home/settings.yaml
-# System Settings (formerly ENV vars - now overridable)
-RUST_LOG: info
-HF_HOME: /data/hf_home
-BODHI_EXEC_LOOKUP_PATH: /app/bin
-BODHI_HOST: "0.0.0.0"
-BODHI_PORT: "8080"
+ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
+ENV BODHI_HOST="0.0.0.0"
+ENV BODHI_PORT="8080"
 
 # Build Configuration
-CI_DEFAULT_VARIANT: cuda
-CI_BUILD_VARIANTS: cuda,cpu
-CI_EXEC_NAME: llama-server
+ENV CI_DEFAULT_VARIANT=cuda
+ENV CI_BUILD_VARIANTS=cuda,cpu
+ENV CI_EXEC_NAME=llama-server
 
 # Server Arguments (visible and maintainable)
-BODHI_LLAMACPP_ARGS: "--jinja --no-webui"
-BODHI_LLAMACPP_ARGS_CUDA: "--n-gpu-layers -1 --flash-attn --batch-size 2048 --ubatch-size 512 --cache-type-k q8_0 --cache-type-v q8_0 --threads 8 --threads-batch 8 --cont-batching --parallel 1 --ctx-size 8192 --no-mmap --mlock"
-BODHI_LLAMACPP_ARGS_CPU: "--threads 4 --no-mmap --cpu-only"
-EOF
+ENV BODHI_LLAMACPP_ARGS="--jinja --no-webui"
+ENV BODHI_LLAMACPP_ARGS_CUDA="--n-gpu-layers -1 --flash-attn --batch-size 2048 --ubatch-size 512 --cache-type-k q8_0 --cache-type-v q8_0 --threads 8 --threads-batch 8 --cont-batching --parallel 1 --ctx-size 8192 --no-mmap --mlock"
+ENV BODHI_LLAMACPP_ARGS_CPU="--threads 4 --no-mmap"
+
+# Create data directories with proper ownership
+RUN mkdir -p /data/bodhi_home /data/hf_home
 
 RUN chown -R llama:llama /data
 

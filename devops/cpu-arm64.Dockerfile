@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # ARM64 CPU-only build using binary downloads (no base image available)
-FROM rust:1.87.0-bookworm as builder
+FROM rust:1.87.0-bookworm AS builder
 
 # Build arguments for GitHub PAT and build variant
 ARG GH_PAT
@@ -122,29 +122,25 @@ RUN chown bodhi:bodhi /app/bodhi && chmod +x /app/bodhi
 COPY --from=builder /build/crates/llama_server_proc/bin/ /app/bin/
 RUN chown -R bodhi:bodhi /app/bin && find /app/bin -type f -exec chmod +x {} \;
 
-# Set BODHI_HOME environment variable (needed to find settings.yaml)
+# Configure BodhiApp environment
+ENV RUST_LOG=info
+ENV HF_HOME=/data/hf_home
 ENV BODHI_HOME=/data/bodhi_home
-
-# Create data directories and generate optimized settings for ARM64 CPU variant
-RUN mkdir -p /data/bodhi_home /data/hf_home
-
-COPY <<EOF /data/bodhi_home/settings.yaml
-# System Settings (formerly ENV vars - now overridable)
-RUST_LOG: info
-HF_HOME: /data/hf_home
-BODHI_EXEC_LOOKUP_PATH: /app/bin
-BODHI_HOST: "0.0.0.0"
-BODHI_PORT: "8080"
+ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
+ENV BODHI_HOST="0.0.0.0"
+ENV BODHI_PORT="8080"
 
 # Build Configuration
-CI_DEFAULT_VARIANT: cpu
-CI_BUILD_VARIANTS: cpu
-CI_EXEC_NAME: llama-server
+ENV CI_DEFAULT_VARIANT=cpu
+ENV CI_BUILD_VARIANTS=cpu
+ENV CI_EXEC_NAME=llama-server
 
 # Server Arguments (visible and maintainable)
-BODHI_LLAMACPP_ARGS: "--jinja --no-webui"
-BODHI_LLAMACPP_ARGS_CPU: "--cpu-only"
-EOF
+ENV BODHI_LLAMACPP_ARGS="--jinja --no-webui"
+ENV BODHI_LLAMACPP_ARGS_CPU=""
+
+# Create data directories with proper ownership
+RUN mkdir -p /data/bodhi_home /data/hf_home
 
 RUN chown -R bodhi:bodhi /data
 
