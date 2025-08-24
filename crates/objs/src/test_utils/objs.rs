@@ -1,7 +1,6 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, HubFile,
-  HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder, RemoteModel, Repo,
-  TOKENIZER_CONFIG_JSON,
+  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, HubFile, HubFileBuilder,
+  OAIRequestParams, OAIRequestParamsBuilder, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
 use std::{path::PathBuf, str::FromStr};
 

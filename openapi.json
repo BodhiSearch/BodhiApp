@@ -2130,7 +2130,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListModelResponseWrapper"
+                  "$ref": "#/components/schemas/ListModelResponse"
                 },
                 "example": {
                   "data": [
@@ -2164,6 +2164,94 @@
                     "code": "invalid_api_key",
                     "message": "Invalid authentication token",
                     "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          }
+        ]
+      }
+    },
+    "/v1/models/{id}": {
+      "get": {
+        "tags": [
+          "openai"
+        ],
+        "summary": "Get details for a specific model",
+        "operationId": "getModel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Model ID to get details for",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "example": "llama2:chat"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Model details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelResponse"
+                },
+                "example": {
+                  "created": 1677610602,
+                  "id": "llama2:chat",
+                  "object": "model",
+                  "owned_by": "system"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid authentication",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "invalid_api_key",
+                    "message": "Invalid authentication token",
+                    "type": "invalid_request_error"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "model_not_found",
+                    "message": "Model 'unknown:model' not found",
+                    "type": "not_found_error"
                   }
                 }
               }
@@ -2568,7 +2656,7 @@
           }
         }
       },
-      "ListModelResponseWrapper": {
+      "ListModelResponse": {
         "type": "object",
         "required": [
           "object",
@@ -2737,6 +2825,36 @@
           },
           "quantization_level": {
             "type": "string"
+          }
+        }
+      },
+      "ModelResponse": {
+        "type": "object",
+        "description": "Describes an OpenAI model offering that can be used with the API.",
+        "required": [
+          "id",
+          "object",
+          "created",
+          "owned_by"
+        ],
+        "properties": {
+          "created": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The Unix timestamp (in seconds) when the model was created.",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "description": "The model identifier, which can be referenced in the API endpoints."
+          },
+          "object": {
+            "type": "string",
+            "description": "The object type, which is always \"model\"."
+          },
+          "owned_by": {
+            "type": "string",
+            "description": "The organization that owns the model."
           }
         }
       },
