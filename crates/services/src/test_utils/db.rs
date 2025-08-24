@@ -1,6 +1,6 @@
 use crate::db::{
-  AccessRequest, ApiToken, Conversation, DbError, DbService, DownloadRequest, Message,
-  RequestStatus, SqliteDbService, TimeService,
+  AccessRequest, ApiToken, DbError, DbService, DownloadRequest, RequestStatus, SqliteDbService,
+  TimeService,
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
@@ -82,51 +82,6 @@ impl TestDbService {
 impl DbService for TestDbService {
   async fn migrate(&self) -> Result<(), DbError> {
     self.inner.migrate().await.tap(|_| self.notify("migrate"))
-  }
-
-  async fn save_conversation(&self, conversation: &mut Conversation) -> Result<(), DbError> {
-    self.inner.save_conversation(conversation).await
-    // .tap(|_| self.notify("save_conversation"))
-  }
-
-  async fn save_message(&self, message: &mut Message) -> Result<(), DbError> {
-    self
-      .inner
-      .save_message(message)
-      .await
-      .tap(|_| self.notify("save_message"))
-  }
-
-  async fn list_conversations(&self) -> Result<Vec<Conversation>, DbError> {
-    self
-      .inner
-      .list_conversations()
-      .await
-      .tap(|_| self.notify("list_conversations"))
-  }
-
-  async fn delete_conversations(&self, id: &str) -> Result<(), DbError> {
-    self
-      .inner
-      .delete_conversations(id)
-      .await
-      .tap(|_| self.notify("delete_conversations"))
-  }
-
-  async fn delete_all_conversations(&self) -> Result<(), DbError> {
-    self
-      .inner
-      .delete_all_conversations()
-      .await
-      .tap(|_| self.notify("delete_all_conversations"))
-  }
-
-  async fn get_conversation_with_messages(&self, id: &str) -> Result<Conversation, DbError> {
-    self
-      .inner
-      .get_conversation_with_messages(id)
-      .await
-      .tap(|_| self.notify("get_conversation_with_messages"))
   }
 
   async fn get_download_request(&self, id: &str) -> Result<Option<DownloadRequest>, DbError> {

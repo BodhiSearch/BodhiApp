@@ -11,7 +11,7 @@ test.backend:
 
 test.ui:
 	cd crates/bodhi && npm install && npm test
-	cd crates/lib_bodhiserver_napi && npm run test
+	cd crates/lib_bodhiserver_napi && npm run build	&& npm run test 
 
 test.napi:
 	cd crates/lib_bodhiserver_napi && npm install && npm run test
@@ -35,7 +35,7 @@ ci.coverage: ## Run coverage in CI environment
 
 clean.ui: ## Clean UI
 	rm -rf crates/bodhi/out
-	cargo clean -p lib_bodhiserver -p bodhi
+	cargo clean -p lib_bodhiserver -p bodhi && rm -rf crates/lib_bodhiserver_napi/app-bindings.*.node
 
 coverage: ## Generate code coverage report
 	cargo build -p llama_server_proc; \
