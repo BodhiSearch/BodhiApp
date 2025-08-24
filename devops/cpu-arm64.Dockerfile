@@ -64,6 +64,17 @@ RUN cargo generate-lockfile
 ENV CI=true
 ENV CI_RELEASE=true
 
+# === TS CLIENT BUILD STAGE ===
+# Copy TS client source and build it
+COPY ts-client/ ts-client/
+
+# Build TS client (requires OpenAPI generation which needs the built Rust code)
+WORKDIR /build/ts-client
+RUN npm install && npm run build
+
+# Return to build root
+WORKDIR /build
+
 # Build llama_server_proc with binary downloads (CI_DOCKER=false enables this)
 RUN if [ "$BUILD_VARIANT" = "production" ]; then \
       echo "Building llama_server_proc for ARM64 production (release mode with binary downloads)..." && \
