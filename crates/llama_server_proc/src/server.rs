@@ -1,6 +1,6 @@
 use crate::error::{Result, ServerError};
 use derive_builder::Builder;
-use objs::{BuilderError, GptContextParams};
+use objs::BuilderError;
 use reqwest::Response;
 use serde_json::Value;
 use std::{
@@ -45,7 +45,7 @@ pub struct LlamaServerArgs {
 }
 
 impl LlamaServerArgsBuilder {
-  pub fn server_params(mut self, slf: &GptContextParams) -> Self {
+  pub fn server_params(mut self, slf: &Vec<String>) -> Self {
     // Parse the string array parameters and extract values
     for param in slf {
       let parts: Vec<&str> = param.split_whitespace().collect();

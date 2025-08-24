@@ -1,5 +1,5 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, GptContextParams, HubFile,
+  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, HubFile,
   HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder, RemoteModel, Repo,
   TOKENIZER_CONFIG_JSON,
 };
@@ -185,7 +185,7 @@ impl RemoteModel {
       Repo::LLAMA3_Q8.to_string(),
       None,
       OAIRequestParams::default(),
-      GptContextParams::default(),
+      Vec::default(),
     )
   }
 
@@ -196,7 +196,7 @@ impl RemoteModel {
       Repo::TESTALIAS_FILENAME.to_string(),
       None,
       OAIRequestParams::default(),
-      GptContextParams::default(),
+      Vec::default(),
     )
   }
 }
@@ -210,7 +210,7 @@ impl AliasBuilder {
       .snapshot(SNAPSHOT)
       .source(AliasSource::User)
       .request_params(OAIRequestParams::default())
-      .context_params(GptContextParams::default())
+      .context_params(Vec::default())
       .to_owned()
   }
 
@@ -256,7 +256,7 @@ impl AliasBuilder {
       .snapshot(Repo::SNAPSHOT_LATEST)
       .source(AliasSource::User)
       .request_params(OAIRequestParams::default())
-      .context_params(GptContextParams::default())
+      .context_params(Vec::default())
       .to_owned()
   }
 }
@@ -290,7 +290,7 @@ impl Alias {
       .snapshot(Repo::SNAPSHOT_LATEST)
       .source(AliasSource::Model)
       .request_params(OAIRequestParams::default())
-      .context_params(GptContextParams::default())
+      .context_params(Vec::default())
       .build()
       .unwrap()
   }
@@ -303,7 +303,7 @@ impl Alias {
       .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb")
       .source(AliasSource::Model)
       .request_params(OAIRequestParams::default())
-      .context_params(GptContextParams::default())
+      .context_params(Vec::default())
       .build()
       .unwrap()
   }
@@ -316,7 +316,7 @@ impl Alias {
       .snapshot("9ca625120374ddaae21f067cb006517d14dc91a6")
       .source(AliasSource::Model)
       .request_params(OAIRequestParams::default())
-      .context_params(GptContextParams::default())
+      .context_params(Vec::default())
       .build()
       .unwrap()
   }

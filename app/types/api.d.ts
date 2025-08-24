@@ -55,17 +55,51 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
-    "/bodhi/v1/chat_templates": {
+    "/bodhi/v1/auth/callback": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** List available chat templates (both built-in and from repositories) */
-        get: operations["listChatTemplates"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Complete OAuth flow with authorization code */
+        post: operations["completeOAuthFlow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/auth/initiate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start OAuth flow - returns location for OAuth provider or home */
+        post: operations["initiateOAuthFlow"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/auth/request-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Request access for an app client to this resource server */
+        post: operations["requestAccess"];
         delete?: never;
         options?: never;
         head?: never;
@@ -184,7 +218,8 @@ export type paths = {
         /** List configured model aliases */
         get: operations["listModelAliases"];
         put?: never;
-        post?: never;
+        /** Create Alias */
+        post: operations["createAlias"];
         delete?: never;
         options?: never;
         head?: never;
@@ -202,6 +237,23 @@ export type paths = {
         get: operations["getAlias"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/bodhi/v1/models/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Alias */
+        post: operations["updateAlias"];
         delete?: never;
         options?: never;
         head?: never;
@@ -311,6 +363,23 @@ export type paths = {
         patch?: never;
         trace?: never;
     };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Simple health check endpoint */
+        get: operations["healthCheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ping": {
         parameters: {
             query?: never;
@@ -368,8 +437,7 @@ export type components = {
     schemas: {
         AliasResponse: {
             alias: string;
-            chat_template: string;
-            context_params: components["schemas"]["GptContextParams"];
+            context_params: string[];
             filename: string;
             model_params: {
                 [key: string]: unknown;
@@ -404,14 +472,11 @@ export type components = {
         /**
          * @description Application information and status
          * @example {
-         *       "authz": true,
          *       "status": "ready",
          *       "version": "0.1.0"
          *     }
          */
         AppInfo: {
-            /** @description Whether authentication is enabled */
-            authz: boolean;
             /** @description Current application status */
             status: components["schemas"]["AppStatus"];
             /** @description Application version */
@@ -422,6 +487,18 @@ export type components = {
          * @enum {string}
          */
         AppStatus: "setup" | "ready" | "resource-admin";
+        AuthCallbackRequest: {
+            /** @description OAuth authorization code from successful authentication */
+            code?: string | null;
+            /** @description OAuth error code if authentication failed */
+            error?: string | null;
+            /** @description OAuth error description if authentication failed */
+            error_description?: string | null;
+            /** @description OAuth state parameter for CSRF protection */
+            state?: string | null;
+        } & {
+            [key: string]: string;
+        };
         ChatRequest: {
             format?: string | null;
             keep_alive?: null | components["schemas"]["Duration"];
@@ -430,18 +507,13 @@ export type components = {
             options?: null | components["schemas"]["Options"];
             stream?: boolean | null;
         };
-        /**
-         * @description Chat template identifier for built-in templates
-         * @enum {string}
-         */
-        ChatTemplateId: "llama3" | "llama2" | "llama2-legacy" | "phi3" | "gemma" | "deepseek" | "command-r" | "openchat" | "tinyllama";
-        /** @description Chat template type that can be either built-in or from a repository */
-        ChatTemplateType: "Embedded" | {
-            /** @description Built-in chat template using Id */
-            Id: components["schemas"]["ChatTemplateId"];
-        } | {
-            /** @description Custom chat template from a repository */
-            Repo: components["schemas"]["Repo"];
+        CreateAliasRequest: {
+            alias: string;
+            context_params?: string[] | null;
+            filename: string;
+            repo: string;
+            request_params?: null | components["schemas"]["OAIRequestParams"];
+            snapshot?: string | null;
         };
         /**
          * @description Request to create a new API token
@@ -459,11 +531,20 @@ export type components = {
              * @example 2024-11-10T04:52:06.786Z
              */
             created_at: string;
+            /** Format: int64 */
+            downloaded_bytes?: number;
             error?: string | null;
             filename: string;
             id: string;
             repo: string;
+            /**
+             * Format: date-time
+             * @example 2024-11-10T04:52:06.786Z
+             */
+            started_at: string;
             status: components["schemas"]["DownloadStatus"];
+            /** Format: int64 */
+            total_bytes?: number | null;
             /**
              * Format: date-time
              * @example 2024-11-10T04:52:06.786Z
@@ -478,20 +559,6 @@ export type components = {
             message: string;
             param?: string | null;
             type: string;
-        };
-        GptContextParams: {
-            /** Format: int32 */
-            n_ctx?: number | null;
-            /** Format: int32 */
-            n_keep?: number | null;
-            /** Format: int32 */
-            n_parallel?: number | null;
-            /** Format: int32 */
-            n_predict?: number | null;
-            /** Format: int32 */
-            n_seed?: number | null;
-            /** Format: int32 */
-            n_threads?: number | null;
         };
         ListModelResponseWrapper: {
             data: {
@@ -630,80 +697,26 @@ export type components = {
             use_mmap?: boolean | null;
             vocab_only?: boolean | null;
         };
-        PaginatedResponse_AliasResponse: {
-            data: {
-                alias: string;
-                chat_template: string;
-                context_params: components["schemas"]["GptContextParams"];
-                filename: string;
-                model_params: {
-                    [key: string]: unknown;
-                };
-                repo: string;
-                request_params: components["schemas"]["OAIRequestParams"];
-                snapshot: string;
-                source: string;
-            }[];
+        PaginatedAliasResponse: {
+            data: components["schemas"]["AliasResponse"][];
             page: number;
             page_size: number;
             total: number;
         };
-        PaginatedResponse_ApiToken: {
-            data: {
-                /**
-                 * Format: date-time
-                 * @example 2024-11-10T04:52:06.786Z
-                 */
-                created_at: string;
-                id: string;
-                name: string;
-                status: components["schemas"]["TokenStatus"];
-                token_hash: string;
-                token_id: string;
-                /**
-                 * Format: date-time
-                 * @example 2024-11-10T04:52:06.786Z
-                 */
-                updated_at: string;
-                user_id: string;
-            }[];
+        PaginatedApiTokenResponse: {
+            data: components["schemas"]["ApiToken"][];
             page: number;
             page_size: number;
             total: number;
         };
-        PaginatedResponse_DownloadRequest: {
-            data: {
-                /**
-                 * Format: date-time
-                 * @example 2024-11-10T04:52:06.786Z
-                 */
-                created_at: string;
-                error?: string | null;
-                filename: string;
-                id: string;
-                repo: string;
-                status: components["schemas"]["DownloadStatus"];
-                /**
-                 * Format: date-time
-                 * @example 2024-11-10T04:52:06.786Z
-                 */
-                updated_at: string;
-            }[];
+        PaginatedDownloadResponse: {
+            data: components["schemas"]["DownloadRequest"][];
             page: number;
             page_size: number;
             total: number;
         };
-        PaginatedResponse_LocalModelResponse: {
-            data: {
-                filename: string;
-                model_params: {
-                    [key: string]: unknown;
-                };
-                repo: string;
-                /** Format: int64 */
-                size?: number | null;
-                snapshot: string;
-            }[];
+        PaginatedLocalModelResponse: {
+            data: components["schemas"]["LocalModelResponse"][];
             page: number;
             page_size: number;
             total: number;
@@ -713,10 +726,27 @@ export type components = {
             /** @description always returns "pong" */
             message: string;
         };
-        Repo: {
-            name: string;
-            user: string;
+        /** @example {
+         *       "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
+         *     } */
+        RedirectResponse: {
+            /** @description The URL to redirect to for OAuth authentication */
+            location: string;
         };
+        RequestAccessRequest: {
+            app_client_id: string;
+        };
+        RequestAccessResponse: {
+            scope: string;
+        };
+        /**
+         * @description Role Source
+         *     `role` - client level user role
+         *     `scope_token` - scope granted token role
+         *     `scope_user` - scope granted user role
+         * @enum {string}
+         */
+        RoleSource: "role" | "scope_token" | "scope_user";
         SettingInfo: {
             current_value: unknown;
             default_value: unknown;
@@ -745,16 +775,17 @@ export type components = {
         /** @enum {string} */
         SettingSource: "system" | "command_line" | "environment" | "settings_file" | "default";
         /**
-         * @description Request to setup the application in authenticated or non-authenticated mode
+         * @description Request to setup the application in authenticated mode
          * @example {
-         *       "authz": true
+         *       "description": "My personal AI server",
+         *       "name": "My Bodhi Server"
          *     }
          */
         SetupRequest: {
-            /** @description Whether to enable authentication
-             *     - true: Setup app in authenticated mode with role-based access
-             *     - false: Setup app in non-authenticated mode for open access */
-            authz: boolean;
+            /** @example My personal AI server */
+            description?: string | null;
+            /** @example My Bodhi Server */
+            name: string;
         };
         /**
          * @description Response containing the updated application status after setup
@@ -785,6 +816,20 @@ export type components = {
         };
         /** @enum {string} */
         TokenStatus: "active" | "inactive";
+        /**
+         * @description Token Type
+         *     `session` - token stored in cookie based http session
+         *     `bearer` - token received from http authorization header as bearer token
+         * @enum {string}
+         */
+        TokenType: "session" | "bearer";
+        UpdateAliasRequest: {
+            context_params?: string[] | null;
+            filename: string;
+            repo: string;
+            request_params?: null | components["schemas"]["OAIRequestParams"];
+            snapshot?: string | null;
+        };
         /**
          * @description Request to update an existing API token
          * @example {
@@ -824,7 +869,9 @@ export type components = {
             /** @description If user is logged in */
             logged_in: boolean;
             /** @description List of roles assigned to the user */
-            roles: string[];
+            role?: string | null;
+            role_source?: null | components["schemas"]["RoleSource"];
+            token_type?: null | components["schemas"]["TokenType"];
         };
     };
     responses: never;
@@ -980,22 +1027,119 @@ export interface operations {
             };
         };
     };
-    listChatTemplates: {
+    completeOAuthFlow: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthCallbackRequest"];
+            };
+        };
         responses: {
-            /** @description List of available chat templates */
+            /** @description OAuth flow completed successfully, return redirect URL */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChatTemplateType"][];
+                    "application/json": components["schemas"]["RedirectResponse"];
+                };
+            };
+            /** @description OAuth error or invalid request */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    initiateOAuthFlow: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": unknown;
+            };
+        };
+        responses: {
+            /** @description User already authenticated, return home page URL */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedirectResponse"];
+                };
+            };
+            /** @description User not authenticated, return OAuth authorization URL */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RedirectResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    requestAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RequestAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description Access granted, returns resource scope */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestAccessResponse"];
+                };
+            };
+            /** @description Invalid request or app status */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
             /** @description Internal server error */
@@ -1047,14 +1191,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Logout successful, redirects to login page */
+            /** @description Logout successful, return redirect URL */
             200: {
                 headers: {
-                    /** @description Frontend login page URL */
-                    Location?: string;
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RedirectResponse"];
+                };
             };
             /** @description Session deletion failed */
             500: {
@@ -1091,7 +1235,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedResponse_LocalModelResponse"];
+                    "application/json": components["schemas"]["PaginatedLocalModelResponse"];
                 };
             };
             /** @description Internal server error */
@@ -1129,7 +1273,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedResponse_DownloadRequest"];
+                    "application/json": components["schemas"]["PaginatedDownloadResponse"];
                 };
             };
             /** @description Internal server error */
@@ -1339,7 +1483,49 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedResponse_AliasResponse"];
+                    "application/json": components["schemas"]["PaginatedAliasResponse"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    createAlias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAliasRequest"];
+            };
+        };
+        responses: {
+            /** @description Alias created succesfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AliasResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
                 };
             };
             /** @description Internal server error */
@@ -1376,6 +1562,54 @@ export interface operations {
             };
             /** @description Alias not found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    updateAlias: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description Alias identifier
+                 * @example llama--3
+                 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAliasRequest"];
+            };
+        };
+        responses: {
+            /** @description Alias created succesfully */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AliasResponse"];
+                };
+            };
+            /** @description Invalid request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1581,7 +1815,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["PaginatedResponse_ApiToken"];
+                    "application/json": components["schemas"]["PaginatedApiTokenResponse"];
                 };
             };
             /** @description Unauthorized - Token missing or invalid */
@@ -1733,6 +1967,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OpenAIApiError"];
+                };
+            };
+        };
+    };
+    healthCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server is healthy */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PingResponse"];
                 };
             };
         };

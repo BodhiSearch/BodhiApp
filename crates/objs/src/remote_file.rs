@@ -1,4 +1,4 @@
-use crate::{GptContextParams, OAIRequestParams, Repo};
+use crate::{OAIRequestParams, Repo};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq, Clone, PartialOrd, derive_new::new)]
@@ -11,5 +11,5 @@ pub struct RemoteModel {
   #[serde(default)]
   pub request_params: OAIRequestParams,
   #[serde(default)]
-  pub context_params: GptContextParams,
+  pub context_params: Vec<String>,
 }

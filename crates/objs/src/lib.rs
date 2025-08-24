@@ -8,7 +8,7 @@ mod api_tags;
 mod envs;
 mod error;
 pub mod gguf;
-mod gpt_params;
+
 mod hub_file;
 mod localization_service;
 pub mod log;
@@ -25,7 +25,7 @@ pub use alias::*;
 pub use api_tags::*;
 pub use envs::*;
 pub use error::*;
-pub use gpt_params::*;
+
 pub use hub_file::*;
 pub use localization_service::*;
 pub use oai::*;
