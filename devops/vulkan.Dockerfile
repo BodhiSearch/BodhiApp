@@ -98,30 +98,26 @@ USER root
 COPY --from=builder /build/target/*/bodhi /app/bodhi
 RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 
-# Set BODHI_HOME environment variable (needed to find settings.yaml)
+# Configure BodhiApp environment
+ENV RUST_LOG=info
+ENV HF_HOME=/data/hf_home
 ENV BODHI_HOME=/data/bodhi_home
-
-# Create data directories and generate optimized settings for Vulkan variant (with CPU fallback)
-RUN mkdir -p /data/bodhi_home /data/hf_home
-
-COPY <<EOF /data/bodhi_home/settings.yaml
-# System Settings (formerly ENV vars - now overridable)
-RUST_LOG: info
-HF_HOME: /data/hf_home
-BODHI_EXEC_LOOKUP_PATH: /app/bin
-BODHI_HOST: "0.0.0.0"
-BODHI_PORT: "8080"
+ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
+ENV BODHI_HOST="0.0.0.0"
+ENV BODHI_PORT="8080"
 
 # Build Configuration
-CI_DEFAULT_VARIANT: vulkan
-CI_BUILD_VARIANTS: vulkan,cpu
-CI_EXEC_NAME: llama-server
+ENV CI_DEFAULT_VARIANT=vulkan
+ENV CI_BUILD_VARIANTS=vulkan,cpu
+ENV CI_EXEC_NAME=llama-server
 
 # Server Arguments (visible and maintainable)
-BODHI_LLAMACPP_ARGS: "--jinja --no-webui --keep 24"
-BODHI_LLAMACPP_ARGS_VULKAN: "--n-gpu-layers 999 --vulkan"
-BODHI_LLAMACPP_ARGS_CPU: "--threads 4 --no-mmap --cpu-only"
-EOF
+ENV BODHI_LLAMACPP_ARGS="--jinja --no-webui --keep 24"
+ENV BODHI_LLAMACPP_ARGS_VULKAN="--n-gpu-layers 999 --vulkan"
+ENV BODHI_LLAMACPP_ARGS_CPU="--threads 4 --no-mmap"
+
+# Create data directories with proper ownership
+RUN mkdir -p /data/bodhi_home /data/hf_home
 
 RUN chown -R llama:llama /data
 
