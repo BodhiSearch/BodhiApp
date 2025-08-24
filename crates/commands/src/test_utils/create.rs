@@ -1,5 +1,5 @@
 use crate::{CreateCommand, CreateCommandBuilder};
-use objs::{GptContextParams, OAIRequestParams, Repo};
+use objs::{OAIRequestParams, Repo};
 
 impl CreateCommand {
   pub fn testalias() -> CreateCommand {
@@ -16,7 +16,7 @@ impl CreateCommandBuilder {
       .snapshot(None)
       // chat_template removed since llama.cpp now handles chat templates
       .oai_request_params(OAIRequestParams::default())
-      .context_params(GptContextParams::default())
+      .context_params(Vec::<String>::default())
       .to_owned()
   }
 }

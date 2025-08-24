@@ -17,7 +17,7 @@
   - Run frontend tests to catch integration issues
   - _Requirements: 1.3, 2.1, 3.3_
 
-- [ ] 3. Update Alias serialization and deserialization tests
+- [x] 3. Update Alias serialization and deserialization tests
 
   - Modify existing alias serialization tests to use new format
   - Add tests for empty context_params arrays
@@ -25,7 +25,7 @@
   - Test JSON serialization with string array format
   - _Requirements: 1.3, 1.4_
 
-- [ ] 3. Update LlamaServerArgs to handle string array parameters
+- [x] 3. Update LlamaServerArgs to handle string array parameters
 
   - Remove individual parameter fields from LlamaServerArgs struct
   - Add context_params field as Vec<String>
@@ -33,7 +33,7 @@
   - Update LlamaServerArgsBuilder to remove server_params method
   - _Requirements: 5.1, 5.2_
 
-- [ ] 4. Create unit tests for LlamaServerArgs parameter processing
+- [x] 4. Create unit tests for LlamaServerArgs parameter processing
 
   - Test to_args() method with various context parameter combinations
   - Test parameter splitting and whitespace handling
@@ -41,7 +41,7 @@
   - Test parameter ordering and deduplication behavior
   - _Requirements: 5.3, 5.4, 6.1_
 
-- [ ] 5. Update API request/response models
+- [x] 5. Update API request/response models
 
   - Modify CreateAliasRequest to use Vec<String> for context_params
   - Update TryFrom implementation for CreateCommand conversion
@@ -49,7 +49,7 @@
   - Remove GptContextParamsBuilder usage in API layer
   - _Requirements: 2.1, 2.3, 2.5_
 
-- [ ] 6. Update API endpoint handlers and validation
+- [x] 6. Update API endpoint handlers and validation
 
   - Modify create_alias_handler to handle new parameter format
   - Update update_alias_handler for string array parameters
@@ -57,7 +57,7 @@
   - Update error handling for format validation
   - _Requirements: 2.4, 4.1, 4.2_
 
-- [ ] 7. Create comprehensive API tests for new parameter format
+- [x] 7. Create comprehensive API tests for new parameter format
 
   - Test alias creation with context_params as string array
   - Test alias updates with new parameter format
@@ -89,7 +89,7 @@
   - Update form state management for new parameter format
   - _Requirements: 3.5, 4.4_
 
-- [ ] 11. Create frontend component tests
+- [x] 11. Create frontend component tests
 
   - Test textarea input and output conversion
   - Test form submission with context parameters
@@ -97,7 +97,7 @@
   - Test parameter display and editing workflows
   - _Requirements: 6.4_
 
-- [ ] 12. Update server process integration
+- [x] 12. Update server process integration
 
   - Modify server startup to use new parameter processing
   - Update server monitoring and logging for new command format
@@ -105,7 +105,7 @@
   - Verify parameter passing to llama-server executable
   - _Requirements: 5.5, 6.5_
 
-- [ ] 13. Create end-to-end integration tests
+- [x] 13. Create end-to-end integration tests
 
   - Test complete workflow from UI form to server startup
   - Test alias creation, editing, and server launch
@@ -113,7 +113,7 @@
   - Test various parameter combinations and edge cases
   - _Requirements: 6.5_
 
-- [ ] 14. Update documentation and cleanup
+- [x] 14. Update documentation and cleanup
 
   - Update API documentation for new parameter format
   - Remove unused GptContextParams-related code
@@ -121,7 +121,7 @@
   - Clean up imports and unused dependencies
   - _Requirements: All_
 
-- [ ] 15. Final testing and validation
+- [x] 15. Final testing and validation
   - Run complete test suite to ensure no regressions
   - Test migration scenarios and error handling
   - Validate UI/UX for parameter management

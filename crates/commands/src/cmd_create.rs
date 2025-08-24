@@ -1,5 +1,5 @@
 use objs::{
-  AliasBuilder, AliasSource, AppError, BuilderError, GptContextParams, OAIRequestParams,
+  AliasBuilder, AliasSource, AppError, BuilderError, OAIRequestParams,
   ObjValidationError, Repo,
 };
 use services::{
@@ -25,7 +25,7 @@ pub struct CreateCommand {
   #[builder(default = "false")]
   pub update: bool,
   pub oai_request_params: OAIRequestParams,
-  pub context_params: GptContextParams,
+  pub context_params: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]

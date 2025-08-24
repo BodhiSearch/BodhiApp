@@ -1,4 +1,4 @@
-use crate::{is_default, to_safe_filename, GptContextParams, OAIRequestParams, Repo};
+use crate::{is_default, to_safe_filename, OAIRequestParams, Repo};
 use derive_new::new;
 use serde::{Deserialize, Serialize};
 
@@ -31,7 +31,7 @@ pub struct Alias {
   pub request_params: OAIRequestParams,
   #[serde(default, skip_serializing_if = "Vec::is_empty")]
   #[builder(default)]
-  pub context_params: GptContextParams,
+  pub context_params: Vec<String>,
 }
 
 impl Alias {

@@ -11,6 +11,7 @@ test.backend:
 
 test.ui:
 	cd crates/bodhi && npm install && npm test
+	cd crates/lib_bodhiserver_napi && npm run test
 
 test.napi:
 	cd crates/lib_bodhiserver_napi && npm install && npm run test
