@@ -67,6 +67,17 @@ COPY xtask/ xtask/
 COPY Cargo.toml ./
 RUN cargo generate-lockfile
 
+# === TS CLIENT BUILD STAGE ===
+# Copy TS client source and build it
+COPY ts-client/ ts-client/
+
+# Build TS client (requires OpenAPI generation which needs the built Rust code)
+WORKDIR /build/ts-client
+RUN npm install && npm run build
+
+# Return to build root
+WORKDIR /build
+
 # Build bodhi binary with consistent optimization level
 # Note: llama_server_proc will use CI_BUILD_TARGET configuration
 RUN if [ "$BUILD_VARIANT" = "production" ]; then \

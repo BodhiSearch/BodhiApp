@@ -29,6 +29,7 @@ help: ## Show Docker build help
 build.cpu.amd64: ## Build AMD64 CPU image for local testing
 	@echo "Building AMD64 CPU image ($(BUILD_VARIANT) variant)..."
 	@cd $(PROJECT_ROOT) && docker buildx build --load \
+		--platform linux/amd64 \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
 		-f devops/cpu.Dockerfile \
 		-t bodhiapp:local-cpu-amd64-$(BUILD_VARIANT) .
@@ -51,6 +52,7 @@ build.cpu.arm64: ## Build ARM64 CPU image (requires GH_PAT)
 build.cuda: ## Build NVIDIA CUDA GPU image (AMD64 only)
 	@echo "Building CUDA GPU image ($(BUILD_VARIANT) variant)..."
 	@cd $(PROJECT_ROOT) && docker buildx build --load \
+		--platform linux/amd64 \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
 		-f devops/cuda.Dockerfile \
 		-t bodhiapp:local-cuda-$(BUILD_VARIANT) .
@@ -59,6 +61,7 @@ build.cuda: ## Build NVIDIA CUDA GPU image (AMD64 only)
 build.rocm: ## Build AMD ROCm GPU image (AMD64 only)
 	@echo "Building ROCm GPU image ($(BUILD_VARIANT) variant)..."
 	@cd $(PROJECT_ROOT) && docker buildx build --load \
+		--platform linux/amd64 \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
 		-f devops/rocm.Dockerfile \
 		-t bodhiapp:local-rocm-$(BUILD_VARIANT) .
@@ -67,6 +70,7 @@ build.rocm: ## Build AMD ROCm GPU image (AMD64 only)
 build.vulkan: ## Build Vulkan GPU image (AMD64 only)
 	@echo "Building Vulkan GPU image ($(BUILD_VARIANT) variant)..."
 	@cd $(PROJECT_ROOT) && docker buildx build --load \
+		--platform linux/amd64 \
 		--build-arg BUILD_VARIANT=$(BUILD_VARIANT) \
 		-f devops/vulkan.Dockerfile \
 		-t bodhiapp:local-vulkan-$(BUILD_VARIANT) .
