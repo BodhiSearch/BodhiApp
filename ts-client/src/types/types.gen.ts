@@ -117,7 +117,7 @@ export type ErrorBody = {
     type: string;
 };
 
-export type ListModelResponseWrapper = {
+export type ListModelResponse = {
     data: Array<{
         /**
          * The Unix timestamp (in seconds) when the model was created.
@@ -168,6 +168,28 @@ export type ModelDetails = {
     parameter_size: string;
     parent_model?: string | null;
     quantization_level: string;
+};
+
+/**
+ * Describes an OpenAI model offering that can be used with the API.
+ */
+export type ModelResponse = {
+    /**
+     * The Unix timestamp (in seconds) when the model was created.
+     */
+    created: number;
+    /**
+     * The model identifier, which can be referenced in the API endpoints.
+     */
+    id: string;
+    /**
+     * The object type, which is always "model".
+     */
+    object: string;
+    /**
+     * The organization that owns the model.
+     */
+    owned_by: string;
 };
 
 export type ModelsResponse = {
@@ -1347,10 +1369,48 @@ export type ListModelsResponses = {
     /**
      * List of available models
      */
-    200: ListModelResponseWrapper;
+    200: ListModelResponse;
 };
 
 export type ListModelsResponse = ListModelsResponses[keyof ListModelsResponses];
+
+export type GetModelData = {
+    body?: never;
+    path: {
+        /**
+         * Model ID to get details for
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/v1/models/{id}';
+};
+
+export type GetModelErrors = {
+    /**
+     * Invalid authentication
+     */
+    401: OpenAiApiError;
+    /**
+     * Model not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetModelError = GetModelErrors[keyof GetModelErrors];
+
+export type GetModelResponses = {
+    /**
+     * Model details
+     */
+    200: ModelResponse;
+};
+
+export type GetModelResponse = GetModelResponses[keyof GetModelResponses];
 
 export type ClientOptions = {
     baseUrl: 'http://localhost:1135' | (string & {});

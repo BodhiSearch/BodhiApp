@@ -1,6 +1,5 @@
 use objs::{
-  AliasBuilder, AliasSource, AppError, BuilderError, OAIRequestParams,
-  ObjValidationError, Repo,
+  AliasBuilder, AliasSource, AppError, BuilderError, OAIRequestParams, ObjValidationError, Repo,
 };
 use services::{
   AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,

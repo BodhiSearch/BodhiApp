@@ -1,5 +1,5 @@
 use crate::ENDPOINT_OAI_MODELS;
-use async_openai::types::{ListModelResponse, Model};
+use async_openai::types::{ListModelResponse as OAIModelListResponse, Model as OAIModel};
 use axum::{
   extract::{Path, State},
   Json,
@@ -10,9 +10,61 @@ use services::AliasNotFoundError;
 use std::sync::Arc;
 use utoipa::openapi::ObjectBuilder;
 
-pub struct ListModelResponseWrapper;
+pub struct ModelResponse;
 
-impl utoipa::PartialSchema for ListModelResponseWrapper {
+impl utoipa::PartialSchema for ModelResponse {
+  fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
+    use utoipa::openapi::schema::{SchemaType, Type};
+
+    ObjectBuilder::new()
+      .property(
+        "id",
+        ObjectBuilder::new()
+          .schema_type(SchemaType::new(Type::String))
+          .description(Some(
+            "The model identifier, which can be referenced in the API endpoints.",
+          )),
+      )
+      .required("id")
+      .property(
+        "object",
+        ObjectBuilder::new()
+          .schema_type(SchemaType::new(Type::String))
+          .description(Some("The object type, which is always \"model\".")),
+      )
+      .required("object")
+      .property(
+        "created",
+        ObjectBuilder::new()
+          .schema_type(SchemaType::new(Type::Integer))
+          .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
+            utoipa::openapi::schema::KnownFormat::Int32,
+          )))
+          .description(Some(
+            "The Unix timestamp (in seconds) when the model was created.",
+          ))
+          .minimum(Some(0f64)),
+      )
+      .required("created")
+      .property(
+        "owned_by",
+        ObjectBuilder::new()
+          .schema_type(SchemaType::new(Type::String))
+          .description(Some("The organization that owns the model.")),
+      )
+      .required("owned_by")
+      .description(Some(
+        "Describes an OpenAI model offering that can be used with the API.",
+      ))
+      .into()
+  }
+}
+
+impl utoipa::ToSchema for ModelResponse {}
+
+pub struct ListModelResponse;
+
+impl utoipa::PartialSchema for ListModelResponse {
   fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
     use utoipa::openapi::schema::{ArrayBuilder, SchemaType, Type};
 
@@ -22,57 +74,13 @@ impl utoipa::PartialSchema for ListModelResponseWrapper {
         ObjectBuilder::new().schema_type(SchemaType::new(Type::String)),
       )
       .required("object")
-      .property(
-        "data",
-        ArrayBuilder::new().items(
-          ObjectBuilder::new()
-            .property(
-              "id",
-              ObjectBuilder::new()
-                .schema_type(SchemaType::new(Type::String))
-                .description(Some(
-                  "The model identifier, which can be referenced in the API endpoints.",
-                )),
-            )
-            .required("id")
-            .property(
-              "object",
-              ObjectBuilder::new()
-                .schema_type(SchemaType::new(Type::String))
-                .description(Some("The object type, which is always \"model\".")),
-            )
-            .required("object")
-            .property(
-              "created",
-              ObjectBuilder::new()
-                .schema_type(SchemaType::new(Type::Integer))
-                .format(Some(utoipa::openapi::schema::SchemaFormat::KnownFormat(
-                  utoipa::openapi::schema::KnownFormat::Int32,
-                )))
-                .description(Some(
-                  "The Unix timestamp (in seconds) when the model was created.",
-                ))
-                .minimum(Some(0f64)),
-            )
-            .required("created")
-            .property(
-              "owned_by",
-              ObjectBuilder::new()
-                .schema_type(SchemaType::new(Type::String))
-                .description(Some("The organization that owns the model.")),
-            )
-            .required("owned_by")
-            .description(Some(
-              "Describes an OpenAI model offering that can be used with the API.",
-            )),
-        ),
-      )
+      .property("data", ArrayBuilder::new().items(ModelResponse::schema()))
       .required("data")
       .into()
   }
 }
 
-impl utoipa::ToSchema for ListModelResponseWrapper {}
+impl utoipa::ToSchema for ListModelResponse {}
 
 /// List available models
 #[utoipa::path(
@@ -82,7 +90,7 @@ impl utoipa::ToSchema for ListModelResponseWrapper {}
     operation_id = "listModels",
     responses(
         (status = 200, description = "List of available models", 
-         body = ListModelResponseWrapper,
+         body = ListModelResponse,
          example = json!({
              "object": "list",
              "data": [
@@ -116,7 +124,7 @@ impl utoipa::ToSchema for ListModelResponseWrapper {}
 )]
 pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterState>>,
-) -> Result<Json<ListModelResponse>, ApiError> {
+) -> Result<Json<OAIModelListResponse>, ApiError> {
   let models = state
     .app_service()
     .data_service()
@@ -124,16 +132,56 @@ pub async fn oai_models_handler(
     .into_iter()
     .map(|alias| to_oai_model(state.clone(), alias))
     .collect::<Vec<_>>();
-  Ok(Json(ListModelResponse {
+  Ok(Json(OAIModelListResponse {
     object: "list".to_string(),
     data: models,
   }))
 }
 
+/// Get details for a specific model
+#[utoipa::path(
+    get,
+    path = "/v1/models/{id}",
+    tag = API_TAG_OPENAI,
+    operation_id = "getModel",
+    params(
+        ("id" = String, Path, description = "Model ID to get details for", example = "llama2:chat")
+    ),
+    responses(
+        (status = 200, description = "Model details",
+         body = ModelResponse,
+         example = json!({
+             "id": "llama2:chat",
+             "object": "model",
+             "created": 1677610602,
+             "owned_by": "system"
+         })),
+        (status = 404, description = "Model not found", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Model 'unknown:model' not found",
+                 "type": "not_found_error",
+                 "code": "model_not_found"
+             }
+         })),
+        (status = 401, description = "Invalid authentication", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Invalid authentication token",
+                 "type": "invalid_request_error",
+                 "code": "invalid_api_key"
+             }
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
+    ),
+    security(
+      ("bearer_auth" = []),
+    ),
+)]
 pub async fn oai_model_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
-) -> Result<Json<Model>, ApiError> {
+) -> Result<Json<OAIModel>, ApiError> {
   let alias = state
     .app_service()
     .data_service()
@@ -143,11 +191,11 @@ pub async fn oai_model_handler(
   Ok(Json(model))
 }
 
-fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
+fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> OAIModel {
   let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = state.app_service().time_service().created_at(&path);
-  Model {
+  OAIModel {
     id: alias.alias,
     object: "model".to_string(),
     created,
