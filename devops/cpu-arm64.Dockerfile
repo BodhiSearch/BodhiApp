@@ -110,17 +110,33 @@ RUN chown bodhi:bodhi /app/bodhi && chmod +x /app/bodhi
 COPY --from=builder /build/crates/llama_server_proc/bin/ /app/bin/
 RUN chown -R bodhi:bodhi /app/bin && find /app/bin -type f -exec chmod +x {} \;
 
+# Set BODHI_HOME environment variable (needed to find settings.yaml)
+ENV BODHI_HOME=/data/bodhi_home
+
+# Create data directories and generate optimized settings for ARM64 CPU variant
+RUN mkdir -p /data/bodhi_home /data/hf_home && \
+    cat > /data/bodhi_home/settings.yaml << 'EOF'
+# System Settings (formerly ENV vars - now overridable)
+RUST_LOG: info
+HF_HOME: /data/hf_home
+BODHI_EXEC_LOOKUP_PATH: /app/bin
+BODHI_HOST: "0.0.0.0"
+BODHI_PORT: "8080"
+
+# Build Configuration
+CI_DEFAULT_VARIANT: cpu
+CI_BUILD_VARIANTS: cpu
+CI_EXEC_NAME: llama-server
+
+# Server Arguments (visible and maintainable)
+BODHI_LLAMACPP_ARGS: "--jinja --no-webui"
+BODHI_LLAMACPP_ARGS_CPU: "--cpu-only"
+EOF
+    chown -R bodhi:bodhi /data
+
 # Switch to non-root user
 USER bodhi
 WORKDIR /app
-
-# Set environment variables
-ENV RUST_LOG=info
-ENV HF_HOME=/data/hf_home
-ENV BODHI_HOME=/data/bodhi_home
-ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
-ENV BODHI_HOST="0.0.0.0"
-ENV BODHI_PORT="8080"
 
 # Expose port
 EXPOSE 8080

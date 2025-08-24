@@ -116,9 +116,7 @@ fn is_flag(token: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-  use super::{
-    is_flag, merge_server_args, parse_args_from_string, parse_args_from_strings,
-  };
+  use super::{is_flag, merge_server_args, parse_args_from_string, parse_args_from_strings};
   use rstest::rstest;
 
   #[rstest]
