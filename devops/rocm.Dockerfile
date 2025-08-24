@@ -94,6 +94,10 @@ ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
 ENV BODHI_HOST="0.0.0.0"
 ENV BODHI_PORT="8080"
 
+# Optimal ROCm server arguments
+ENV BODHI_LLAMACPP_ARGS="--verbose --no-webui --keep 24"
+ENV BODHI_LLAMACPP_ARGS_ROCM="--n-gpu-layers 999 --split-mode row --hipblas"
+
 # Create data directories with proper ownership
 RUN mkdir -p /data/bodhi_home /data/hf_home && \
     chown -R llama:llama /data

@@ -41,7 +41,7 @@ async fn server() -> LlamaServer {
   let args = LlamaServerArgsBuilder::default()
     .model(model_file)
     .alias("phi4:mini-instruct")
-    .verbose(true)
+    .server_args(vec!["--verbose".to_string()])
     .build()
     .unwrap();
 

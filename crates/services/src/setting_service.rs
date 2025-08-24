@@ -37,6 +37,9 @@ pub const BODHI_EXEC_VARIANTS: &str = "BODHI_EXEC_VARIANTS";
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 pub const BODHI_CANONICAL_REDIRECT: &str = "BODHI_CANONICAL_REDIRECT";
 
+// Server arguments settings
+pub const BODHI_LLAMACPP_ARGS: &str = "BODHI_LLAMACPP_ARGS";
+
 // Public-facing host settings for Docker compatibility
 pub const BODHI_PUBLIC_SCHEME: &str = "BODHI_PUBLIC_SCHEME";
 pub const BODHI_PUBLIC_HOST: &str = "BODHI_PUBLIC_HOST";
@@ -83,6 +86,7 @@ pub const SETTING_VARS: &[&str] = &[
   BODHI_EXEC_VARIANTS,
   BODHI_KEEP_ALIVE_SECS,
   BODHI_CANONICAL_REDIRECT,
+  BODHI_LLAMACPP_ARGS,
 ];
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
@@ -584,6 +588,12 @@ impl DefaultSettingService {
       defaults.insert(
         BODHI_CANONICAL_REDIRECT.to_string(),
         Value::Bool(DEFAULT_CANONICAL_REDIRECT),
+      );
+
+      // Server arguments defaults - only base args
+      defaults.insert(
+        BODHI_LLAMACPP_ARGS.to_string(),
+        Value::String("--jinja --no-webui".to_string()),
       );
     });
   }

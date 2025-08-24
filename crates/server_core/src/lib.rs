@@ -8,12 +8,14 @@ mod error;
 mod fwd_sse;
 pub mod middleware;
 mod router_state;
+mod server_args_merge;
 mod shared_rw;
 
 pub use direct_sse::*;
 pub use error::*;
 pub use fwd_sse::*;
 pub use router_state::*;
+pub use server_args_merge::*;
 pub use shared_rw::*;
 
 pub mod l10n {
