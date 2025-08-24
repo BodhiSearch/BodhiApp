@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # ARM64 CPU-only build using binary downloads (no base image available)
 FROM rust:1.87.0-bookworm as builder
 
@@ -114,8 +115,9 @@ RUN chown -R bodhi:bodhi /app/bin && find /app/bin -type f -exec chmod +x {} \;
 ENV BODHI_HOME=/data/bodhi_home
 
 # Create data directories and generate optimized settings for ARM64 CPU variant
-RUN mkdir -p /data/bodhi_home /data/hf_home && \
-    cat > /data/bodhi_home/settings.yaml << 'EOF'
+RUN mkdir -p /data/bodhi_home /data/hf_home
+
+COPY <<EOF /data/bodhi_home/settings.yaml
 # System Settings (formerly ENV vars - now overridable)
 RUST_LOG: info
 HF_HOME: /data/hf_home
@@ -132,7 +134,8 @@ CI_EXEC_NAME: llama-server
 BODHI_LLAMACPP_ARGS: "--jinja --no-webui"
 BODHI_LLAMACPP_ARGS_CPU: "--cpu-only"
 EOF
-    chown -R bodhi:bodhi /data
+
+RUN chown -R bodhi:bodhi /data
 
 # Switch to non-root user
 USER bodhi

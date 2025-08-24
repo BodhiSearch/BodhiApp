@@ -148,6 +148,11 @@ Practical implementation guides and context documents for AI coding assistants a
 - **[NAPI Bindings Integration Guide](10-guide/app-bindings-guide.md)** - Complete guide for embedding BodhiApp server functionality using the `@bodhiapp/app-bindings` NAPI library, covering installation, configuration, server lifecycle management, and integration testing patterns
 - **[GitHub Workflows Context](context/github-workflows-context.md)** - Comprehensive context about the BodhiApp GitHub Actions CI/CD system, covering workflow architecture, reusable actions, conventions, and best practices for AI coding assistants working with CI/CD configurations
 
+### 📖 [Context](context/) - Technical Context & Optimization Guides
+Technical context documents, optimization guides, and infrastructure knowledge for developers and AI coding assistants
+
+- **[CUDA Dockerfile Optimizations](context/cuda-Dockerfile-optimizations.md)** - Comprehensive guide to CUDA optimization flags for llama-server in Docker containers, covering GPU offloading, Flash Attention, KV cache quantization, and performance tuning for NVIDIA RTX hardware
+
 ### 📢 [Marketing](05-marketing/) - Product Marketing
 Marketing materials, community outreach, and promotional content for product positioning
 
