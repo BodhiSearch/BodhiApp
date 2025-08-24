@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Use llama.cpp ROCm base image as runtime foundation
 FROM ghcr.io/bodhisearch/llama.cpp:latest-rocm AS runtime
 
@@ -90,8 +91,9 @@ RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 ENV BODHI_HOME=/data/bodhi_home
 
 # Create data directories and generate optimized settings for ROCm variant (with CPU fallback)
-RUN mkdir -p /data/bodhi_home /data/hf_home && \
-    cat > /data/bodhi_home/settings.yaml << 'EOF'
+RUN mkdir -p /data/bodhi_home /data/hf_home
+
+COPY <<EOF /data/bodhi_home/settings.yaml
 # System Settings (formerly ENV vars - now overridable)
 RUST_LOG: info
 HF_HOME: /data/hf_home
@@ -109,7 +111,8 @@ BODHI_LLAMACPP_ARGS: "--jinja --no-webui --keep 24"
 BODHI_LLAMACPP_ARGS_ROCM: "--n-gpu-layers 999 --split-mode row --hipblas"
 BODHI_LLAMACPP_ARGS_CPU: "--threads 4 --no-mmap --cpu-only"
 EOF
-    chown -R llama:llama /data
+
+RUN chown -R llama:llama /data
 
 # Switch back to non-root user
 USER llama

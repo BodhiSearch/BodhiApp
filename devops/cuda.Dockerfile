@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Use llama.cpp CUDA base image as runtime foundation
 FROM ghcr.io/bodhisearch/llama.cpp:latest-cuda AS runtime
 
@@ -90,8 +91,9 @@ RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 ENV BODHI_HOME=/data/bodhi_home
 
 # Create data directories and generate optimized settings for CUDA variant (with CPU fallback)
-RUN mkdir -p /data/bodhi_home /data/hf_home && \
-    cat > /data/bodhi_home/settings.yaml << 'EOF'
+RUN mkdir -p /data/bodhi_home /data/hf_home
+
+COPY <<EOF /data/bodhi_home/settings.yaml
 # System Settings (formerly ENV vars - now overridable)
 RUST_LOG: info
 HF_HOME: /data/hf_home
@@ -106,10 +108,11 @@ CI_EXEC_NAME: llama-server
 
 # Server Arguments (visible and maintainable)
 BODHI_LLAMACPP_ARGS: "--jinja --no-webui"
-BODHI_LLAMACPP_ARGS_CUDA: "--n-gpu-layers 999 --split-mode layer --tensor-split auto"
+BODHI_LLAMACPP_ARGS_CUDA: "--n-gpu-layers -1 --flash-attn --batch-size 2048 --ubatch-size 512 --cache-type-k q8_0 --cache-type-v q8_0 --threads 8 --threads-batch 8 --cont-batching --parallel 1 --ctx-size 8192 --no-mmap --mlock"
 BODHI_LLAMACPP_ARGS_CPU: "--threads 4 --no-mmap --cpu-only"
 EOF
-    chown -R llama:llama /data
+
+RUN chown -R llama:llama /data
 
 # Switch back to non-root user
 USER llama
