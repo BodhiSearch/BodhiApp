@@ -464,6 +464,15 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .as_bool()
       .expect("BODHI_CANONICAL_REDIRECT should be a boolean")
   }
+
+  fn get_server_args_common(&self) -> Option<String> {
+    self.get_setting(BODHI_LLAMACPP_ARGS)
+  }
+
+  fn get_server_args_variant(&self, variant: &str) -> Option<String> {
+    let key = format!("BODHI_LLAMACPP_ARGS_{}", variant.to_uppercase());
+    self.get_setting(&key)
+  }
 }
 
 #[derive(Debug)]
@@ -759,7 +768,7 @@ impl SettingService for DefaultSettingService {
         metadata: self.get_setting_metadata(&s.key),
       })
       .collect::<Vec<SettingInfo>>();
-    let app_settings = SETTING_VARS
+    let mut app_settings = SETTING_VARS
       .iter()
       .map(|key| {
         let (current_value, source) = self.get_setting_value_with_source(key);
@@ -775,6 +784,24 @@ impl SettingService for DefaultSettingService {
         }
       })
       .collect::<Vec<SettingInfo>>();
+
+    // Add variant-specific server args settings
+    let variants = self.exec_variants();
+    for variant in variants {
+      let variant_key = format!("BODHI_LLAMACPP_ARGS_{}", variant.to_uppercase());
+      let (current_value, source) = self.get_setting_value_with_source(&variant_key);
+      let metadata = self.get_setting_metadata(&variant_key);
+      let current_value = current_value.map(|value| metadata.parse(value));
+
+      app_settings.push(SettingInfo {
+        key: variant_key.clone(),
+        current_value: current_value.unwrap_or(Value::Null),
+        default_value: self.get_default_value(&variant_key).unwrap_or(Value::Null),
+        source,
+        metadata,
+      });
+    }
+
     system_settings.extend(app_settings);
     system_settings
   }
@@ -801,6 +828,8 @@ impl SettingService for DefaultSettingService {
         max: 86400,
       },
       BODHI_CANONICAL_REDIRECT => SettingMetadata::Boolean,
+      BODHI_LLAMACPP_ARGS => SettingMetadata::String,
+      key if key.starts_with("BODHI_LLAMACPP_ARGS_") => SettingMetadata::String,
       _ => SettingMetadata::String,
     }
   }

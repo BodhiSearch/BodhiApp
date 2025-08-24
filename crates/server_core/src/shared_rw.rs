@@ -2,7 +2,7 @@ use crate::{merge_server_args, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
 use objs::Alias;
-use services::{HubService, SettingService, BODHI_LLAMACPP_ARGS};
+use services::{HubService, SettingService};
 use std::fmt::Debug;
 use std::{path::Path, sync::Arc};
 use tokio::sync::RwLock;
@@ -107,7 +107,7 @@ impl DefaultSharedContext {
   fn get_setting_args(&self) -> Vec<String> {
     self
       .setting_service
-      .get_setting(BODHI_LLAMACPP_ARGS)
+      .get_server_args_common()
       .unwrap_or_default()
       .split_whitespace()
       .map(String::from)
@@ -117,7 +117,7 @@ impl DefaultSharedContext {
   fn get_setting_variant_args(&self, variant: &str) -> Vec<String> {
     self
       .setting_service
-      .get_setting(&format!("BODHI_LLAMACPP_ARGS_{}", variant.to_uppercase()))
+      .get_server_args_variant(variant)
       .unwrap_or_default()
       .split_whitespace()
       .map(String::from)

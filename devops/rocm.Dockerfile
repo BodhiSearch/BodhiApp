@@ -8,7 +8,7 @@ FROM rust:1.87.0-bookworm AS builder
 ARG BUILD_VARIANT=production
 ARG CI_BUILD_TARGET=x86_64-unknown-linux-gnu
 ARG CI_DEFAULT_VARIANT=rocm
-ARG CI_BUILD_VARIANTS=rocm
+ARG CI_BUILD_VARIANTS=rocm,cpu
 ARG CI_EXEC_NAME=llama-server
 ENV BUILD_VARIANT=${BUILD_VARIANT}
 ENV CI_BUILD_TARGET=${CI_BUILD_TARGET}
@@ -86,20 +86,29 @@ USER root
 COPY --from=builder /build/target/*/bodhi /app/bodhi
 RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 
-# Configure BodhiApp environment
-ENV RUST_LOG=info
-ENV HF_HOME=/data/hf_home
+# Set BODHI_HOME environment variable (needed to find settings.yaml)
 ENV BODHI_HOME=/data/bodhi_home
-ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
-ENV BODHI_HOST="0.0.0.0"
-ENV BODHI_PORT="8080"
 
-# Optimal ROCm server arguments
-ENV BODHI_LLAMACPP_ARGS="--verbose --no-webui --keep 24"
-ENV BODHI_LLAMACPP_ARGS_ROCM="--n-gpu-layers 999 --split-mode row --hipblas"
-
-# Create data directories with proper ownership
+# Create data directories and generate optimized settings for ROCm variant (with CPU fallback)
 RUN mkdir -p /data/bodhi_home /data/hf_home && \
+    cat > /data/bodhi_home/settings.yaml << 'EOF'
+# System Settings (formerly ENV vars - now overridable)
+RUST_LOG: info
+HF_HOME: /data/hf_home
+BODHI_EXEC_LOOKUP_PATH: /app/bin
+BODHI_HOST: "0.0.0.0"
+BODHI_PORT: "8080"
+
+# Build Configuration
+CI_DEFAULT_VARIANT: rocm
+CI_BUILD_VARIANTS: rocm,cpu
+CI_EXEC_NAME: llama-server
+
+# Server Arguments (visible and maintainable)
+BODHI_LLAMACPP_ARGS: "--jinja --no-webui --keep 24"
+BODHI_LLAMACPP_ARGS_ROCM: "--n-gpu-layers 999 --split-mode row --hipblas"
+BODHI_LLAMACPP_ARGS_CPU: "--threads 4 --no-mmap --cpu-only"
+EOF
     chown -R llama:llama /data
 
 # Switch back to non-root user
