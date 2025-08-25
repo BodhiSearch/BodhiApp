@@ -284,6 +284,7 @@ mod tests {
       Arc::new(EnvWrapperStub::new(envs)),
       bodhi_home_setting(temp_dir.path(), SettingSource::Environment),
       vec![],
+      HashMap::new(),
       settings_yaml,
     );
     for (key, value) in settings {

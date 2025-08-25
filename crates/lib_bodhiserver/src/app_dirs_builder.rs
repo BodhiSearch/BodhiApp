@@ -1,21 +1,27 @@
+use crate::app_options::AppOptions;
+use crate::AppDirsBuilderError;
 use objs::{Setting, SettingMetadata, SettingSource};
+use serde_yaml::Value;
 use services::{
   DefaultSettingService, SettingService, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
   BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
 };
 use std::{
+  collections::HashMap,
+  env,
   fs::{self, File},
   path::PathBuf,
 };
+use tracing::{info, warn};
 
-use crate::app_options::AppOptions;
-use crate::AppDirsBuilderError;
+const DEFAULTS_YAML: &str = "defaults.yaml";
 
 /// Primary entry point for setting up all application directories and configuration.
 /// This function orchestrates the complete initialization process.
 pub fn setup_app_dirs(options: &AppOptions) -> Result<DefaultSettingService, AppDirsBuilderError> {
-  let (bodhi_home, source) = create_bodhi_home(options)?;
-  let setting_service = setup_settings(options, bodhi_home, source)?;
+  let file_defaults = load_defaults_yaml();
+  let (bodhi_home, source) = create_bodhi_home(options, &file_defaults)?;
+  let setting_service = setup_settings(options, bodhi_home, source, file_defaults)?;
   setup_bodhi_subdirs(&setting_service)?;
   setup_hf_home(&setting_service)?;
   setup_logs_dir(&setting_service)?;
@@ -26,8 +32,9 @@ pub fn setup_app_dirs(options: &AppOptions) -> Result<DefaultSettingService, App
 /// Returns the path and source (environment or default).
 fn create_bodhi_home(
   options: &AppOptions,
+  file_defaults: &HashMap<String, Value>,
 ) -> Result<(PathBuf, SettingSource), AppDirsBuilderError> {
-  let (bodhi_home, source) = find_bodhi_home(options)?;
+  let (bodhi_home, source) = find_bodhi_home(options, file_defaults)?;
   if !bodhi_home.exists() {
     fs::create_dir_all(&bodhi_home).map_err(|err| AppDirsBuilderError::DirCreate {
       source: err,
@@ -42,6 +49,7 @@ fn setup_settings(
   options: &AppOptions,
   bodhi_home: PathBuf,
   source: SettingSource,
+  file_defaults: HashMap<String, Value>,
 ) -> Result<DefaultSettingService, AppDirsBuilderError> {
   let settings_file = bodhi_home.join(SETTINGS_YAML);
   let app_settings = build_system_settings(options);
@@ -49,11 +57,12 @@ fn setup_settings(
     options.env_wrapper.clone(),
     Setting {
       key: BODHI_HOME.to_string(),
-      value: serde_yaml::Value::String(bodhi_home.display().to_string()),
+      value: Value::String(bodhi_home.display().to_string()),
       source,
       metadata: SettingMetadata::String,
     },
     app_settings,
+    file_defaults,
     settings_file,
   );
 
@@ -64,7 +73,7 @@ fn setup_settings(
   for (key, value) in &options.app_settings {
     // Get the metadata for this setting to parse it correctly
     let metadata = setting_service.get_setting_metadata(key);
-    let parsed_value = metadata.parse(serde_yaml::Value::String(value.clone()));
+    let parsed_value = metadata.parse(Value::String(value.clone()));
     setting_service.set_setting_with_source(key, &parsed_value, SettingSource::SettingsFile);
   }
 
@@ -107,11 +116,63 @@ fn build_system_settings(options: &AppOptions) -> Vec<Setting> {
   ]
 }
 
-fn find_bodhi_home(options: &AppOptions) -> Result<(PathBuf, SettingSource), AppDirsBuilderError> {
+fn load_defaults_yaml() -> HashMap<String, Value> {
+  let exe_path = match env::current_exe() {
+    Ok(path) => path,
+    Err(err) => {
+      warn!(
+        ?err,
+        "failed to determine executable path for defaults.yaml loading"
+      );
+      return HashMap::new();
+    }
+  };
+
+  let exe_dir = match exe_path.parent() {
+    Some(dir) => dir,
+    None => {
+      warn!(exe_path = %exe_path.display(), "executable path has no parent directory");
+      return HashMap::new();
+    }
+  };
+
+  let defaults_path = exe_dir.join(DEFAULTS_YAML);
+  if !defaults_path.exists() {
+    return HashMap::new();
+  }
+
+  match fs::read_to_string(&defaults_path) {
+    Ok(contents) => match serde_yaml::from_str::<HashMap<String, Value>>(&contents) {
+      Ok(defaults) => {
+        info!(path = %defaults_path.display(), count = defaults.len(), "loaded defaults from file");
+        defaults
+      }
+      Err(err) => {
+        warn!(?err, path = %defaults_path.display(), "failed to parse defaults.yaml, using hardcoded defaults");
+        HashMap::new()
+      }
+    },
+    Err(err) => {
+      warn!(?err, path = %defaults_path.display(), "failed to read defaults.yaml, using hardcoded defaults");
+      HashMap::new()
+    }
+  }
+}
+fn find_bodhi_home(
+  options: &AppOptions,
+  file_defaults: &HashMap<String, Value>,
+) -> Result<(PathBuf, SettingSource), AppDirsBuilderError> {
   let value = options.env_wrapper.var(BODHI_HOME);
   let bodhi_home = match value {
     Ok(value) => (PathBuf::from(value), SettingSource::Environment),
     Err(_) => {
+      if let Some(file_value) = file_defaults.get(BODHI_HOME) {
+        if let Some(path_str) = file_value.as_str() {
+          return Ok((PathBuf::from(path_str), SettingSource::Default));
+        }
+      }
+
+      // Fall back to computed default
       let home_dir = options.env_wrapper.home_dir();
       match home_dir {
         Some(home_dir) => {
@@ -192,12 +253,13 @@ fn setup_logs_dir(setting_service: &dyn SettingService) -> Result<PathBuf, AppDi
 
 #[cfg(test)]
 mod tests {
-  use super::{setup_app_dirs, AppDirsBuilderError};
+  use super::{load_defaults_yaml, setup_app_dirs, AppDirsBuilderError};
   use crate::{AppOptions, AppOptionsBuilder};
   use mockall::predicate::eq;
   use objs::test_utils::{empty_bodhi_home, temp_dir};
-  use objs::{AppType, EnvType};
+  use objs::{AppType, EnvType, SettingSource};
   use rstest::rstest;
+  use serde_yaml::Value;
   use services::{
     test_utils::{TEST_ALIASES_DIR, TEST_PROD_DB, TEST_SESSION_DB},
     EnvWrapper, MockEnvWrapper, MockSettingService, SettingService, BODHI_HOME, HF_HOME,
@@ -214,7 +276,8 @@ mod tests {
     let options = AppOptionsBuilder::development()
       .set_env(BODHI_HOME, &bodhi_home_str)
       .build()?;
-    let (result_path, source) = super::create_bodhi_home(&options)?;
+    let file_defaults = HashMap::new();
+    let (result_path, source) = super::create_bodhi_home(&options, &file_defaults)?;
     assert_eq!(result_path, bodhi_home);
     assert_eq!(source, objs::SettingSource::Environment);
     assert!(bodhi_home.exists());
@@ -226,7 +289,8 @@ mod tests {
     let options = AppOptionsBuilder::development()
       .set_env("HOME", &temp_dir.path().display().to_string())
       .build()?;
-    let (result_path, source) = super::create_bodhi_home(&options)?;
+    let file_defaults = HashMap::new();
+    let (result_path, source) = super::create_bodhi_home(&options, &file_defaults)?;
     let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
     assert_eq!(source, objs::SettingSource::Default);
     assert_eq!(result_path, expected_path);
@@ -258,7 +322,8 @@ mod tests {
       None,
       None,
     );
-    let result = super::find_bodhi_home(&options);
+    let file_defaults = HashMap::new();
+    let result = super::find_bodhi_home(&options, &file_defaults);
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
@@ -426,6 +491,62 @@ mod tests {
       }
     }
 
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_load_defaults_yaml_when_file_does_not_exist() -> anyhow::Result<()> {
+    let defaults = load_defaults_yaml();
+    assert!(defaults.is_empty());
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_find_bodhi_home_uses_file_defaults(temp_dir: TempDir) -> anyhow::Result<()> {
+    let bodhi_home = temp_dir.path().join("bodhi-home");
+    let mut file_defaults = HashMap::new();
+    file_defaults.insert(
+      BODHI_HOME.to_string(),
+      Value::String(bodhi_home.display().to_string()),
+    );
+    let options = AppOptionsBuilder::development().build()?;
+    let (result_path, source) = super::find_bodhi_home(&options, &file_defaults)?;
+    assert_eq!(result_path, bodhi_home);
+    assert_eq!(source, SettingSource::Default);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_find_bodhi_home_env_overrides_file_defaults(temp_dir: TempDir) -> anyhow::Result<()> {
+    let env_bodhi_home = temp_dir.path().join("env-bodhi-home");
+    let defaults_bodhi_home = temp_dir.path().join("defaults-bodhi-home");
+    let options = AppOptionsBuilder::development()
+      .set_env(BODHI_HOME, &env_bodhi_home.display().to_string())
+      .build()?;
+    let mut file_defaults = HashMap::new();
+    file_defaults.insert(
+      BODHI_HOME.to_string(),
+      Value::String(defaults_bodhi_home.display().to_string()),
+    );
+    let (result_path, source) = super::find_bodhi_home(&options, &file_defaults)?;
+    assert_eq!(result_path, env_bodhi_home);
+    assert_eq!(source, SettingSource::Environment);
+    Ok(())
+  }
+
+  #[rstest]
+  fn test_find_bodhi_home_invalid_file_default_falls_back(temp_dir: TempDir) -> anyhow::Result<()> {
+    let mut file_defaults = HashMap::new();
+    file_defaults.insert(BODHI_HOME.to_string(), Value::Number(123.into()));
+    let options = AppOptionsBuilder::development()
+      .set_env("HOME", &temp_dir.path().display().to_string())
+      .build()?;
+
+    let (result_path, source) = super::find_bodhi_home(&options, &file_defaults)?;
+
+    let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
+    assert_eq!(result_path, expected_path);
+    assert_eq!(source, SettingSource::Default);
     Ok(())
   }
 }

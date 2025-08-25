@@ -1,5 +1,6 @@
 use crate::env::{AUTH_REALM, AUTH_URL, ENV_TYPE};
 use lib_bodhiserver::{AppOptions, AppOptionsBuilder, AppType, ErrorMessage};
+
 pub fn build_app_options(app_type: AppType) -> Result<AppOptions, ErrorMessage> {
   Ok(
     AppOptionsBuilder::default()
