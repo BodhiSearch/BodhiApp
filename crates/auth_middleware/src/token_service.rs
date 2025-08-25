@@ -962,7 +962,7 @@ mod tests {
         ))
       });
 
-    let setting_service = SettingServiceStub::new(HashMap::from([
+    let setting_service = SettingServiceStub::with_settings(HashMap::from([
       (
         "BODHI_AUTH_URL".to_string(),
         "https://id.mydomain.com".to_string(),

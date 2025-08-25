@@ -42,6 +42,7 @@ mockall = { workspace = true }
 pretty_assertions = { workspace = true }
 rand = { workspace = true }
 rstest = { workspace = true }
+tempfile = { workspace = true }
 
 [features]
 test-utils = ["rstest", "mockall", "routes_all/test-utils"]

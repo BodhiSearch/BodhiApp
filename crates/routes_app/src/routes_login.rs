@@ -407,7 +407,7 @@ mod tests {
     let callback_url = "http://localhost:3000/ui/auth/callback";
     let login_url = "http://test-id.getbodhi.app/realms/test-realm/protocol/openid-connect/auth";
 
-    let setting_service = SettingServiceStub::new(HashMap::from([
+    let setting_service = SettingServiceStub::with_settings(HashMap::from([
       (BODHI_SCHEME.to_string(), "http".to_string()),
       (BODHI_HOST.to_string(), "localhost".to_string()),
       (BODHI_PORT.to_string(), "3000".to_string()),
@@ -502,7 +502,7 @@ mod tests {
     let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let record = set_token_in_session(&session_service, &token).await?;
     let app_service = AppServiceStubBuilder::default()
-      .setting_service(Arc::new(SettingServiceStub::default().with_settings(
+      .setting_service(Arc::new(SettingServiceStub::default().append_settings(
         HashMap::from([
           (BODHI_SCHEME.to_string(), "http".to_string()),
           (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
@@ -598,7 +598,7 @@ mod tests {
         ))
       });
 
-    let setting_service = SettingServiceStub::default().with_settings(HashMap::from([
+    let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
       (BODHI_SCHEME.to_string(), "http".to_string()),
       (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
       (BODHI_PORT.to_string(), "3000".to_string()),
@@ -961,12 +961,14 @@ mod tests {
       .with_app_status(&AppStatus::ResourceAdmin);
     let secret_service = Arc::new(secret_service);
     let auth_service = Arc::new(test_auth_service(keycloak_url));
-    let setting_service = Arc::new(SettingServiceStub::default().with_settings(HashMap::from([
-      (BODHI_SCHEME.to_string(), "http".to_string()),
-      (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
-      (BODHI_PORT.to_string(), "3000".to_string()),
-      (BODHI_AUTH_URL.to_string(), keycloak_url.to_string()),
-    ])));
+    let setting_service = Arc::new(
+      SettingServiceStub::default().append_settings(HashMap::from([
+        (BODHI_SCHEME.to_string(), "http".to_string()),
+        (BODHI_HOST.to_string(), "frontend.localhost".to_string()),
+        (BODHI_PORT.to_string(), "3000".to_string()),
+        (BODHI_AUTH_URL.to_string(), keycloak_url.to_string()),
+      ])),
+    );
     let app_service = AppServiceStubBuilder::default()
       .secret_service(secret_service)
       .auth_service(auth_service)

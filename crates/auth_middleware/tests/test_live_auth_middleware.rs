@@ -136,7 +136,7 @@ async fn create_test_state(
   resource_client_id: &str,
   resource_client_secret: &str,
 ) -> anyhow::Result<Arc<DefaultRouterState>> {
-  let setting_service = SettingServiceStub::new(HashMap::from([
+  let setting_service = SettingServiceStub::with_settings(HashMap::from([
     (BODHI_AUTH_URL.to_string(), config.auth_server_url.clone()),
     (BODHI_AUTH_REALM.to_string(), config.realm.clone()),
   ]));

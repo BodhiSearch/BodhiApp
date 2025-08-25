@@ -4,7 +4,7 @@ use crate::{
 };
 use axum::Router;
 use include_dir::Dir;
-use objs::{impl_error_from, AppError};
+use objs::{impl_error_from, AppError, ErrorType};
 use routes_all::build_routes;
 use server_core::{ContextError, DefaultSharedContext, SharedContext};
 use services::{AppService, SettingServiceError};
@@ -24,6 +24,9 @@ pub enum ServeError {
   Context(#[from] ContextError),
   #[error(transparent)]
   Server(#[from] ServerError),
+  #[error("unknown")]
+  #[error_meta(error_type = ErrorType::Unknown)]
+  Unknown,
 }
 
 impl_error_from!(tokio::task::JoinError, ServeError::Join, TaskJoinError);
@@ -48,6 +51,7 @@ impl ShutdownCallback for ShutdownContextCallback {
   }
 }
 
+#[derive(Debug)]
 pub struct ServerShutdownHandle {
   join_handle: JoinHandle<Result<()>>,
   shutdown: Sender<()>,
@@ -139,11 +143,65 @@ impl ServeCommand {
         println!("server started on server_url={server_url}, public_url={public_url}");
         tracing::info!(server_url, public_url, "server started");
       }
-      Err(err) => tracing::warn!(?err, "ready channel closed before could receive signal"),
-    }
+      Err(err) => {
+        tracing::warn!(?err, "ready channel closed before could receive signal");
+        let server_result = join_handle.await?;
+        match server_result {
+          Ok(_) => {
+            tracing::warn!("server completed successfully but ready signal was not sent - this should not happen");
+            return Err(ServeError::Unknown);
+          }
+          Err(err) => return Err(err),
+        }
+      }
+    };
     Ok(ServerShutdownHandle {
       join_handle,
       shutdown,
     })
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::{ServeCommand, ServeError, ServerError};
+  use objs::test_utils::temp_dir;
+  use rstest::rstest;
+  use services::test_utils::AppServiceStubBuilder;
+  use std::sync::Arc;
+  use tempfile::TempDir;
+  use tokio::net::TcpListener;
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_server_fails_when_port_already_in_use(temp_dir: TempDir) -> anyhow::Result<()> {
+    // Bind to a random port first to ensure it's in use (use high ports to avoid permission issues)
+    let port = 8000 + (rand::random::<u16>() % 1000); // Use ports 8000-8999
+    let host = "127.0.0.1";
+    let addr = format!("{}:{}", host, port);
+    let _listener = TcpListener::bind(&addr).await?;
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .with_temp_home_as(temp_dir)
+        .with_session_service()
+        .await
+        .with_db_service()
+        .await
+        .build()
+        .unwrap(),
+    );
+    let serve_command = ServeCommand::ByParams {
+      host: host.to_string(),
+      port,
+    };
+    let result = serve_command.get_server_handle(app_service, None).await;
+    assert!(result.is_err());
+    match result.unwrap_err() {
+      ServeError::Server(ServerError::Io(_)) => {
+        // This is expected - binding to port should fail
+      }
+      other => panic!("Expected IO error for port conflict, got: {:?}", other),
+    }
+    Ok(())
   }
 }

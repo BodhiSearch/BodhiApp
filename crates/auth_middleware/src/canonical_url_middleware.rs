@@ -204,13 +204,13 @@ mod tests {
     settings.insert("BODHI_PUBLIC_HOST".to_string(), host.to_string());
     settings.insert("BODHI_PUBLIC_PORT".to_string(), port.to_string());
     settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "true".to_string());
-    Arc::new(SettingServiceStub::default().with_settings(settings))
+    Arc::new(SettingServiceStub::default().append_settings(settings))
   }
 
   fn create_setting_service_no_public_host() -> Arc<dyn SettingService> {
     let mut settings = HashMap::new();
     settings.insert("BODHI_CANONICAL_REDIRECT".to_string(), "true".to_string());
-    Arc::new(SettingServiceStub::default().with_settings(settings))
+    Arc::new(SettingServiceStub::default().append_settings(settings))
   }
 
   fn create_setting_service_canonical_disabled() -> Arc<dyn SettingService> {
@@ -222,7 +222,7 @@ mod tests {
       "bodhi.example.com".to_string(),
     );
     settings.insert("BODHI_PUBLIC_PORT".to_string(), "443".to_string());
-    Arc::new(SettingServiceStub::default().with_settings(settings))
+    Arc::new(SettingServiceStub::default().append_settings(settings))
   }
 
   async fn test_handler() -> &'static str {
