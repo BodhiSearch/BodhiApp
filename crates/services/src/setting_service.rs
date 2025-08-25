@@ -17,6 +17,7 @@ pub const BODHI_HOME: &str = "BODHI_HOME";
 pub const BODHI_ENV_TYPE: &str = "BODHI_ENV_TYPE";
 pub const BODHI_APP_TYPE: &str = "BODHI_APP_TYPE";
 pub const BODHI_VERSION: &str = "BODHI_VERSION";
+pub const BODHI_COMMIT_SHA: &str = "BODHI_COMMIT_SHA";
 pub const BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
 pub const BODHI_AUTH_REALM: &str = "BODHI_AUTH_REALM";
 
@@ -29,21 +30,21 @@ pub const BODHI_LOG_STDOUT: &str = "BODHI_LOG_STDOUT";
 pub const BODHI_SCHEME: &str = "BODHI_SCHEME";
 pub const BODHI_HOST: &str = "BODHI_HOST";
 pub const BODHI_PORT: &str = "BODHI_PORT";
+// Public-facing host settings for Docker compatibility
+pub const BODHI_PUBLIC_SCHEME: &str = "BODHI_PUBLIC_SCHEME";
+pub const BODHI_PUBLIC_HOST: &str = "BODHI_PUBLIC_HOST";
+pub const BODHI_PUBLIC_PORT: &str = "BODHI_PUBLIC_PORT";
+pub const BODHI_CANONICAL_REDIRECT: &str = "BODHI_CANONICAL_REDIRECT";
+// Exec settings
 pub const BODHI_EXEC_LOOKUP_PATH: &str = "BODHI_EXEC_LOOKUP_PATH";
 pub const BODHI_EXEC_VARIANT: &str = "BODHI_EXEC_VARIANT";
 pub const BODHI_EXEC_TARGET: &str = "BODHI_EXEC_TARGET";
 pub const BODHI_EXEC_NAME: &str = "BODHI_EXEC_NAME";
 pub const BODHI_EXEC_VARIANTS: &str = "BODHI_EXEC_VARIANTS";
-pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
-pub const BODHI_CANONICAL_REDIRECT: &str = "BODHI_CANONICAL_REDIRECT";
-
 // Server arguments settings
 pub const BODHI_LLAMACPP_ARGS: &str = "BODHI_LLAMACPP_ARGS";
-
-// Public-facing host settings for Docker compatibility
-pub const BODHI_PUBLIC_SCHEME: &str = "BODHI_PUBLIC_SCHEME";
-pub const BODHI_PUBLIC_HOST: &str = "BODHI_PUBLIC_HOST";
-pub const BODHI_PUBLIC_PORT: &str = "BODHI_PUBLIC_PORT";
+// Server operations settings
+pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 
 pub const DEFAULT_SCHEME: &str = "http";
 pub const DEFAULT_HOST: &str = "localhost";
@@ -69,23 +70,23 @@ pub const BODHI_ENCRYPTION_KEY: &str = "BODHI_ENCRYPTION_KEY";
 pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 
 pub const SETTING_VARS: &[&str] = &[
+  HF_HOME,
   BODHI_LOGS,
   BODHI_LOG_LEVEL,
   BODHI_LOG_STDOUT,
-  HF_HOME,
   BODHI_SCHEME,
   BODHI_HOST,
   BODHI_PORT,
   BODHI_PUBLIC_SCHEME,
   BODHI_PUBLIC_HOST,
   BODHI_PUBLIC_PORT,
+  BODHI_CANONICAL_REDIRECT,
   BODHI_EXEC_LOOKUP_PATH,
   BODHI_EXEC_VARIANT,
   BODHI_EXEC_TARGET,
   BODHI_EXEC_NAME,
   BODHI_EXEC_VARIANTS,
   BODHI_KEEP_ALIVE_SECS,
-  BODHI_CANONICAL_REDIRECT,
   BODHI_LLAMACPP_ARGS,
 ];
 

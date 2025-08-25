@@ -1,16 +1,18 @@
 use crate::app_options::AppOptions;
 use crate::AppDirsBuilderError;
-use objs::{Setting, SettingMetadata, SettingSource};
+use objs::{EnvType, Setting, SettingMetadata, SettingSource};
 use serde_yaml::Value;
 use services::{
-  DefaultSettingService, SettingService, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
-  BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, HF_HOME, SETTINGS_YAML,
+  DefaultSettingService, EnvWrapper, SettingService, BODHI_APP_TYPE, BODHI_AUTH_REALM,
+  BODHI_AUTH_URL, BODHI_COMMIT_SHA, BODHI_ENV_TYPE, BODHI_HOME, BODHI_VERSION, HF_HOME,
+  SETTINGS_YAML,
 };
 use std::{
   collections::HashMap,
   env,
   fs::{self, File},
   path::PathBuf,
+  sync::Arc,
 };
 use tracing::{info, warn};
 
@@ -20,7 +22,11 @@ const DEFAULTS_YAML: &str = "defaults.yaml";
 /// This function orchestrates the complete initialization process.
 pub fn setup_app_dirs(options: &AppOptions) -> Result<DefaultSettingService, AppDirsBuilderError> {
   let file_defaults = load_defaults_yaml();
-  let (bodhi_home, source) = create_bodhi_home(options, &file_defaults)?;
+  let (bodhi_home, source) = create_bodhi_home(
+    options.env_wrapper.clone(),
+    &options.env_type,
+    &file_defaults,
+  )?;
   let setting_service = setup_settings(options, bodhi_home, source, file_defaults)?;
   setup_bodhi_subdirs(&setting_service)?;
   setup_hf_home(&setting_service)?;
@@ -31,10 +37,11 @@ pub fn setup_app_dirs(options: &AppOptions) -> Result<DefaultSettingService, App
 /// Creates the main Bodhi home directory if it doesn't exist.
 /// Returns the path and source (environment or default).
 fn create_bodhi_home(
-  options: &AppOptions,
+  env_wrapper: Arc<dyn EnvWrapper>,
+  env_type: &EnvType,
   file_defaults: &HashMap<String, Value>,
 ) -> Result<(PathBuf, SettingSource), AppDirsBuilderError> {
-  let (bodhi_home, source) = find_bodhi_home(options, file_defaults)?;
+  let (bodhi_home, source) = find_bodhi_home(env_wrapper, env_type, file_defaults)?;
   if !bodhi_home.exists() {
     fs::create_dir_all(&bodhi_home).map_err(|err| AppDirsBuilderError::DirCreate {
       source: err,
@@ -52,7 +59,15 @@ fn setup_settings(
   file_defaults: HashMap<String, Value>,
 ) -> Result<DefaultSettingService, AppDirsBuilderError> {
   let settings_file = bodhi_home.join(SETTINGS_YAML);
-  let app_settings = build_system_settings(options);
+  let app_version = file_defaults
+    .get(BODHI_VERSION)
+    .map(|v| v.as_str())
+    .unwrap_or(None);
+  let app_commit_sha = file_defaults
+    .get(BODHI_COMMIT_SHA)
+    .map(|v| v.as_str())
+    .unwrap_or(None);
+  let app_settings = build_system_settings(options, app_version, app_commit_sha);
   let setting_service = DefaultSettingService::new_with_defaults(
     options.env_wrapper.clone(),
     Setting {
@@ -81,7 +96,11 @@ fn setup_settings(
 }
 
 /// Builds the system settings that are injected into the settings service.
-fn build_system_settings(options: &AppOptions) -> Vec<Setting> {
+fn build_system_settings(
+  options: &AppOptions,
+  app_version: Option<&str>,
+  app_commit_sha: Option<&str>,
+) -> Vec<Setting> {
   vec![
     Setting {
       key: BODHI_ENV_TYPE.to_string(),
@@ -97,7 +116,21 @@ fn build_system_settings(options: &AppOptions) -> Vec<Setting> {
     },
     Setting {
       key: BODHI_VERSION.to_string(),
-      value: serde_yaml::Value::String(options.app_version.clone()),
+      value: serde_yaml::Value::String(
+        app_version
+          .unwrap_or(options.app_version.as_str())
+          .to_string(),
+      ),
+      source: SettingSource::System,
+      metadata: SettingMetadata::String,
+    },
+    Setting {
+      key: BODHI_COMMIT_SHA.to_string(),
+      value: serde_yaml::Value::String(
+        app_commit_sha
+          .unwrap_or(options.app_commit_sha.as_str())
+          .to_string(),
+      ),
       source: SettingSource::System,
       metadata: SettingMetadata::String,
     },
@@ -159,10 +192,11 @@ fn load_defaults_yaml() -> HashMap<String, Value> {
   }
 }
 fn find_bodhi_home(
-  options: &AppOptions,
+  env_wrapper: Arc<dyn EnvWrapper>,
+  env_type: &EnvType,
   file_defaults: &HashMap<String, Value>,
 ) -> Result<(PathBuf, SettingSource), AppDirsBuilderError> {
-  let value = options.env_wrapper.var(BODHI_HOME);
+  let value = env_wrapper.var(BODHI_HOME);
   let bodhi_home = match value {
     Ok(value) => (PathBuf::from(value), SettingSource::Environment),
     Err(_) => {
@@ -173,10 +207,10 @@ fn find_bodhi_home(
       }
 
       // Fall back to computed default
-      let home_dir = options.env_wrapper.home_dir();
+      let home_dir = env_wrapper.home_dir();
       match home_dir {
         Some(home_dir) => {
-          let path = if options.env_type.is_production() {
+          let path = if env_type.is_production() {
             "bodhi"
           } else {
             "bodhi-dev"
@@ -277,7 +311,11 @@ mod tests {
       .set_env(BODHI_HOME, &bodhi_home_str)
       .build()?;
     let file_defaults = HashMap::new();
-    let (result_path, source) = super::create_bodhi_home(&options, &file_defaults)?;
+    let (result_path, source) = super::create_bodhi_home(
+      options.env_wrapper.clone(),
+      &options.env_type,
+      &file_defaults,
+    )?;
     assert_eq!(result_path, bodhi_home);
     assert_eq!(source, objs::SettingSource::Environment);
     assert!(bodhi_home.exists());
@@ -290,7 +328,11 @@ mod tests {
       .set_env("HOME", &temp_dir.path().display().to_string())
       .build()?;
     let file_defaults = HashMap::new();
-    let (result_path, source) = super::create_bodhi_home(&options, &file_defaults)?;
+    let (result_path, source) = super::create_bodhi_home(
+      options.env_wrapper.clone(),
+      &options.env_type,
+      &file_defaults,
+    )?;
     let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
     assert_eq!(source, objs::SettingSource::Default);
     assert_eq!(result_path, expected_path);
@@ -316,6 +358,7 @@ mod tests {
       EnvType::Development,
       AppType::Native,
       "1.0.0".to_string(),
+      "unknown".to_string(),
       "http://localhost:8080".to_string(),
       "bodhi".to_string(),
       HashMap::new(),
@@ -323,7 +366,11 @@ mod tests {
       None,
     );
     let file_defaults = HashMap::new();
-    let result = super::find_bodhi_home(&options, &file_defaults);
+    let result = super::find_bodhi_home(
+      options.env_wrapper.clone(),
+      &options.env_type,
+      &file_defaults,
+    );
     assert!(result.is_err());
     assert!(matches!(
       result.unwrap_err(),
@@ -510,7 +557,11 @@ mod tests {
       Value::String(bodhi_home.display().to_string()),
     );
     let options = AppOptionsBuilder::development().build()?;
-    let (result_path, source) = super::find_bodhi_home(&options, &file_defaults)?;
+    let (result_path, source) = super::find_bodhi_home(
+      options.env_wrapper.clone(),
+      &options.env_type,
+      &file_defaults,
+    )?;
     assert_eq!(result_path, bodhi_home);
     assert_eq!(source, SettingSource::Default);
     Ok(())
@@ -528,7 +579,11 @@ mod tests {
       BODHI_HOME.to_string(),
       Value::String(defaults_bodhi_home.display().to_string()),
     );
-    let (result_path, source) = super::find_bodhi_home(&options, &file_defaults)?;
+    let (result_path, source) = super::find_bodhi_home(
+      options.env_wrapper.clone(),
+      &options.env_type,
+      &file_defaults,
+    )?;
     assert_eq!(result_path, env_bodhi_home);
     assert_eq!(source, SettingSource::Environment);
     Ok(())
@@ -542,7 +597,11 @@ mod tests {
       .set_env("HOME", &temp_dir.path().display().to_string())
       .build()?;
 
-    let (result_path, source) = super::find_bodhi_home(&options, &file_defaults)?;
+    let (result_path, source) = super::find_bodhi_home(
+      options.env_wrapper.clone(),
+      &options.env_type,
+      &file_defaults,
+    )?;
 
     let expected_path = temp_dir.path().join(".cache").join("bodhi-dev");
     assert_eq!(result_path, expected_path);

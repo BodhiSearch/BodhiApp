@@ -2,7 +2,7 @@ use crate::{AppOptionsError, DefaultEnvWrapper};
 use objs::{AppType, EnvType};
 use services::{
   AppRegInfo, AppStatus, EnvWrapper, BODHI_APP_TYPE, BODHI_AUTH_REALM, BODHI_AUTH_URL,
-  BODHI_ENV_TYPE, BODHI_VERSION,
+  BODHI_COMMIT_SHA, BODHI_ENV_TYPE, BODHI_VERSION,
 };
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -19,6 +19,8 @@ pub struct AppOptions {
   pub app_type: AppType,
   /// Application version string
   pub app_version: String,
+  /// Application commit SHA
+  pub app_commit_sha: String,
   /// Authentication server URL
   pub auth_url: String,
   /// Authentication realm
@@ -58,6 +60,7 @@ pub struct AppOptionsBuilder {
   env_type: Option<EnvType>,
   app_type: Option<AppType>,
   app_version: Option<String>,
+  app_commit_sha: Option<String>,
   auth_url: Option<String>,
   auth_realm: Option<String>,
 
@@ -95,6 +98,7 @@ impl AppOptionsBuilder {
         Ok(self.app_type(app_type))
       }
       BODHI_VERSION => Ok(self.app_version(value)),
+      BODHI_COMMIT_SHA => Ok(self.app_commit_sha(value)),
       BODHI_AUTH_URL => Ok(self.auth_url(value)),
       BODHI_AUTH_REALM => Ok(self.auth_realm(value)),
       key => Err(AppOptionsError::UnknownSystemSetting(key.to_string())),
@@ -113,6 +117,11 @@ impl AppOptionsBuilder {
 
   pub fn app_version(mut self, app_version: &str) -> Self {
     self.app_version = Some(app_version.to_string());
+    self
+  }
+
+  pub fn app_commit_sha(mut self, app_commit_sha: &str) -> Self {
+    self.app_commit_sha = Some(app_commit_sha.to_string());
     self
   }
 
@@ -157,6 +166,7 @@ impl AppOptionsBuilder {
       app_version: self
         .app_version
         .ok_or_else(|| AppOptionsError::ValidationError(BODHI_VERSION.to_string()))?,
+      app_commit_sha: self.app_commit_sha.unwrap_or("not-set".to_string()),
       auth_url: self
         .auth_url
         .ok_or_else(|| AppOptionsError::ValidationError(BODHI_AUTH_URL.to_string()))?,

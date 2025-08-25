@@ -31,10 +31,15 @@ mod env_config {
 
   #[allow(clippy::result_large_err)]
   pub fn set_feature_settings(setting_service: &DefaultSettingService) -> Result<(), ErrorMessage> {
-    setting_service.set_default(
-      BODHI_EXEC_LOOKUP_PATH,
-      &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
-    );
+    if setting_service
+      .get_setting(BODHI_EXEC_LOOKUP_PATH)
+      .is_none()
+    {
+      setting_service.set_default(
+        BODHI_EXEC_LOOKUP_PATH,
+        &serde_yaml::Value::String(concat!(env!("CARGO_MANIFEST_DIR"), "/bin").to_string()),
+      );
+    }
     Ok(())
   }
 }

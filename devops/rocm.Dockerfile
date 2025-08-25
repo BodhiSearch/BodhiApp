@@ -7,6 +7,8 @@ FROM rust:1.87.0-bookworm AS builder
 
 # Build arguments for platform info and build variant
 ARG BUILD_VARIANT=production
+ARG BODHI_VERSION
+ARG BODHI_COMMIT_SHA
 ARG CI_BUILD_TARGET=x86_64-unknown-linux-gnu
 ARG CI_DEFAULT_VARIANT=rocm
 ARG CI_BUILD_VARIANTS=rocm,cpu
@@ -58,6 +60,12 @@ RUN if [ "$BUILD_VARIANT" = "production" ]; then \
       cargo build -p ci_optims; \
     fi
 
+# === TS CLIENT BUILD STAGE ===
+# Copy TS client source and generate types
+COPY ts-client/ ts-client/
+COPY openapi.json ./
+RUN cd ts-client && npm ci && npm run build:docker
+
 # === APPLICATION BUILD STAGE ===
 # Copy all crate source files and restore original Cargo.toml
 COPY crates/ crates/
@@ -66,17 +74,6 @@ COPY xtask/ xtask/
 # Restore original Cargo.toml and regenerate lock file for full workspace
 COPY Cargo.toml ./
 RUN cargo generate-lockfile
-
-# === TS CLIENT BUILD STAGE ===
-# Copy TS client source and build it
-COPY ts-client/ ts-client/
-
-# Build TS client (requires OpenAPI generation which needs the built Rust code)
-WORKDIR /build/ts-client
-RUN npm install && npm run build
-
-# Return to build root
-WORKDIR /build
 
 # Build bodhi binary with consistent optimization level
 # Note: llama_server_proc will use CI_BUILD_TARGET configuration
@@ -98,23 +95,41 @@ USER root
 COPY --from=builder /build/target/*/bodhi /app/bodhi
 RUN chown llama:llama /app/bodhi && chmod +x /app/bodhi
 
-# Configure BodhiApp environment
+# Configure BodhiApp environment (only keep RUST_LOG as it's not managed by SettingService)
 ENV RUST_LOG=info
-ENV HF_HOME=/data/hf_home
-ENV BODHI_HOME=/data/bodhi_home
-ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
-ENV BODHI_HOST="0.0.0.0"
-ENV BODHI_PORT="8080"
 
-# Build Configuration
-ENV CI_DEFAULT_VARIANT=rocm
-ENV CI_BUILD_VARIANTS=rocm,cpu
-ENV CI_EXEC_NAME=llama-server
+# Re-declare build arguments for final stage
+ARG BODHI_VERSION
+ARG BODHI_COMMIT_SHA
 
-# Server Arguments (visible and maintainable)
-ENV BODHI_LLAMACPP_ARGS="--jinja --no-webui --keep 24"
-ENV BODHI_LLAMACPP_ARGS_ROCM="--n-gpu-layers 999 --split-mode row --hipblas"
-ENV BODHI_LLAMACPP_ARGS_CPU="--threads 4 --no-mmap"
+# Create defaults.yaml with ROCm-optimized configuration
+COPY <<EOF /app/defaults.yaml
+# BodhiApp Default Configuration for ROCm
+# System paths and directories
+BODHI_HOME: /data/bodhi_home
+HF_HOME: /data/hf_home
+BODHI_EXEC_LOOKUP_PATH: /app/bin
+
+# Version information
+BODHI_VERSION: ${BODHI_VERSION}
+BODHI_COMMIT_SHA: ${BODHI_COMMIT_SHA}
+
+# Server configuration
+BODHI_HOST: "0.0.0.0"
+BODHI_PORT: 8080
+
+# Build configuration - ROCm variant
+BODHI_EXEC_LOOKUP_PATH: /app/bin
+BODHI_EXEC_TARGET: x86_64-unknown-linux-gnu
+BODHI_EXEC_VARIANTS: rocm,cpu
+BODHI_EXEC_VARIANT: rocm
+BODHI_EXEC_NAME: llama-server
+
+# Server arguments
+BODHI_LLAMACPP_ARGS: "--jinja --no-webui --keep 24"
+BODHI_LLAMACPP_ARGS_ROCM: "--n-gpu-layers 999 --split-mode row --hipblas"
+BODHI_LLAMACPP_ARGS_CPU: "--threads 4 --no-mmap"
+EOF
 
 # Create data directories with proper ownership
 RUN mkdir -p /data/bodhi_home /data/hf_home

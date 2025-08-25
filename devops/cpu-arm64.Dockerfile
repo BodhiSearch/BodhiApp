@@ -5,9 +5,10 @@ FROM rust:1.87.0-bookworm AS builder
 # Build arguments for GitHub PAT and build variant
 ARG GH_PAT
 ARG BUILD_VARIANT=production
+ARG BODHI_VERSION
+ARG BODHI_COMMIT_SHA
 ENV GH_PAT=${GH_PAT}
 ENV BUILD_VARIANT=${BUILD_VARIANT}
-
 
 # Enable Rust build optimizations
 ENV CARGO_INCREMENTAL=1
@@ -51,6 +52,12 @@ RUN if [ "$BUILD_VARIANT" = "production" ]; then \
       cargo build -p ci_optims; \
     fi
 
+# === TS CLIENT BUILD STAGE ===
+# Copy TS client source and generate types
+COPY ts-client/ ts-client/
+COPY openapi.json ./
+RUN cd ts-client && npm ci && npm run build:docker
+
 # === APPLICATION BUILD STAGE ===
 # Copy all crate source files and restore original Cargo.toml
 COPY crates/ crates/
@@ -63,17 +70,6 @@ RUN cargo generate-lockfile
 # Set CI environment variables to download pre-built binaries for ARM64
 ENV CI=true
 ENV CI_RELEASE=true
-
-# === TS CLIENT BUILD STAGE ===
-# Copy TS client source and build it
-COPY ts-client/ ts-client/
-
-# Build TS client (requires OpenAPI generation which needs the built Rust code)
-WORKDIR /build/ts-client
-RUN npm install && npm run build
-
-# Return to build root
-WORKDIR /build
 
 # Build llama_server_proc with binary downloads (CI_DOCKER=false enables this)
 RUN if [ "$BUILD_VARIANT" = "production" ]; then \
@@ -122,22 +118,39 @@ RUN chown bodhi:bodhi /app/bodhi && chmod +x /app/bodhi
 COPY --from=builder /build/crates/llama_server_proc/bin/ /app/bin/
 RUN chown -R bodhi:bodhi /app/bin && find /app/bin -type f -exec chmod +x {} \;
 
-# Configure BodhiApp environment
+# Configure BodhiApp environment (only keep RUST_LOG as it's not managed by SettingService)
 ENV RUST_LOG=info
-ENV HF_HOME=/data/hf_home
-ENV BODHI_HOME=/data/bodhi_home
-ENV BODHI_EXEC_LOOKUP_PATH=/app/bin
-ENV BODHI_HOST="0.0.0.0"
-ENV BODHI_PORT="8080"
 
-# Build Configuration
-ENV CI_DEFAULT_VARIANT=cpu
-ENV CI_BUILD_VARIANTS=cpu
-ENV CI_EXEC_NAME=llama-server
+# Re-declare build arguments for final stage
+ARG BODHI_VERSION
+ARG BODHI_COMMIT_SHA
 
-# Server Arguments (visible and maintainable)
-ENV BODHI_LLAMACPP_ARGS="--jinja --no-webui"
-ENV BODHI_LLAMACPP_ARGS_CPU=""
+# Create defaults.yaml with CPU ARM64-optimized configuration
+COPY <<EOF /app/defaults.yaml
+# BodhiApp Default Configuration for CPU ARM64
+# System paths and directories
+BODHI_HOME: /data/bodhi_home
+HF_HOME: /data/hf_home
+
+# Version information
+BODHI_VERSION: ${BODHI_VERSION}
+BODHI_COMMIT_SHA: ${BODHI_COMMIT_SHA}
+
+# Server configuration
+BODHI_HOST: "0.0.0.0"
+BODHI_PORT: 8080
+
+# Build configuration - CPU variant
+BODHI_EXEC_LOOKUP_PATH: /app/bin
+BODHI_EXEC_TARGET: aarch64-unknown-linux-gnu
+BODHI_EXEC_VARIANTS: cpu
+BODHI_EXEC_VARIANT: cpu
+BODHI_EXEC_NAME: llama-server
+
+# Server arguments
+BODHI_LLAMACPP_ARGS: "--jinja --no-webui"
+BODHI_LLAMACPP_ARGS_CPU: "--threads 4 --no-mmap"
+EOF
 
 # Create data directories with proper ownership
 RUN mkdir -p /data/bodhi_home /data/hf_home

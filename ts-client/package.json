@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "build": "npm run generate && npm run bundle",
+    "build:docker": "npm run generate:types && npm run bundle",
     "generate": "npm run generate:openapi && npm run generate:types",
     "generate:openapi": "cd .. && cargo run --package xtask openapi",
     "generate:types": "openapi-ts",
