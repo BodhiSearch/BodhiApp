@@ -155,6 +155,9 @@ pub const BODHI_APP_TYPE: &str = "BODHI_APP_TYPE";
 pub const BODHI_VERSION: &str = "BODHI_VERSION";
 
 #[napi]
+pub const BODHI_COMMIT_SHA: &str = "BODHI_COMMIT_SHA";
+
+#[napi]
 pub const BODHI_AUTH_URL: &str = "BODHI_AUTH_URL";
 
 #[napi]

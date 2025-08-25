@@ -40,6 +40,7 @@ export const BODHI_LOGS: string
 export const BODHI_ENV_TYPE: string
 export const BODHI_APP_TYPE: string
 export const BODHI_VERSION: string
+export const BODHI_COMMIT_SHA: string
 export const BODHI_AUTH_URL: string
 export const BODHI_AUTH_REALM: string
 export const BODHI_ENCRYPTION_KEY: string

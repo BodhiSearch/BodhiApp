@@ -7,6 +7,7 @@ pub fn build_app_options(app_type: AppType) -> Result<AppOptions, ErrorMessage> 
       .env_type(ENV_TYPE.clone())
       .app_type(app_type)
       .app_version(env!("CARGO_PKG_VERSION"))
+      .app_commit_sha("not-set")
       .auth_url(AUTH_URL)
       .auth_realm(AUTH_REALM)
       .build()?,

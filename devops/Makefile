@@ -89,7 +89,7 @@ run: ## Run locally built image (specify VARIANT and ARCH)
 	mkdir -p $(PROJECT_ROOT)/docker-data/bodhi_home $(PROJECT_ROOT)/docker-data/hf_home && \
 	docker run --rm -it \
 		-e BODHI_LOG_STDOUT=true \
-		-e BODHI_LOG_LEVEL=info \
+		-e BODHI_LOG_LEVEL=debug \
 		-e BODHI_ENCRYPTION_KEY=local-dev-key \
 		-e BODHI_PUBLIC_HOST=localhost \
 		-e BODHI_PUBLIC_PORT=8080 \
