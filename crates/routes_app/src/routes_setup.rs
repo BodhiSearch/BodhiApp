@@ -10,10 +10,14 @@ use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_SETUP, API_TAG_SYSTEM};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
-use services::{AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt};
+use services::{
+  AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt, LOGIN_CALLBACK_PATH,
+};
 use std::sync::Arc;
 
 use utoipa::ToSchema;
+
+pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
 
 #[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
 #[error_meta(trait_to_impl = AppError)]
@@ -131,14 +135,23 @@ pub async fn setup_handler(
       "Server name must be at least 10 characters long".to_string(),
     ))?;
   }
-
-  // Always setup in authenticated mode
   let setting_service = &state.app_service().setting_service();
+  let redirect_uris = if LOOPBACK_HOSTS.contains(&setting_service.public_host().as_str()) {
+    let scheme = setting_service.public_scheme();
+    let port = setting_service.public_port();
+    // loopback urls
+    LOOPBACK_HOSTS
+      .iter()
+      .map(|host| format!("{}://{}:{}{}", scheme, host, port, LOGIN_CALLBACK_PATH))
+      .collect()
+  } else {
+    vec![setting_service.login_callback_url()]
+  };
   let app_reg_info = auth_service
     .register_client(
       request.name,
       request.description.unwrap_or_default(),
-      vec![setting_service.login_callback_url()],
+      redirect_uris,
     )
     .await?;
   secret_service.set_app_reg_info(&app_reg_info)?;
@@ -217,10 +230,10 @@ mod tests {
   use serde_json::{json, Value};
   use server_core::{test_utils::ResponseTestExt, DefaultRouterState, MockSharedContext};
   use services::{
-    test_utils::{AppServiceStubBuilder, SecretServiceStub},
+    test_utils::{AppServiceStubBuilder, SecretServiceStub, SettingServiceStub},
     AppRegInfo, AppService, AppStatus, AuthServiceError, MockAuthService, SecretServiceExt,
   };
-  use std::sync::Arc;
+  use std::{collections::HashMap, sync::Arc};
   use tower::ServiceExt;
 
   #[rstest]
@@ -377,6 +390,76 @@ mod tests {
     assert_eq!(StatusCode::OK, response.status());
     let secret_service = app_service.secret_service();
     assert_eq!(expected_status, secret_service.app_status().unwrap(),);
+    let app_reg_info = secret_service.app_reg_info().unwrap();
+    assert!(app_reg_info.is_some());
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_setup_handler_loopback_redirect_uris() -> anyhow::Result<()> {
+    let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
+
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service
+      .expect_register_client()
+      .times(1)
+      .withf(|_name, _description, redirect_uris| {
+        // Verify that all loopback redirect URIs are registered
+        redirect_uris.len() == 3
+          && redirect_uris.contains(&"http://localhost:1135/ui/auth/callback".to_string())
+          && redirect_uris.contains(&"http://127.0.0.1:1135/ui/auth/callback".to_string())
+          && redirect_uris.contains(&"http://0.0.0.0:1135/ui/auth/callback".to_string())
+      })
+      .return_once(|_name, _description, _redirect_uris| {
+        Ok(AppRegInfo {
+          client_id: "client_id".to_string(),
+          client_secret: "client_secret".to_string(),
+        })
+      });
+
+    // Configure with 0.0.0.0 as public host (default)
+    let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
+      (services::BODHI_SCHEME.to_string(), "http".to_string()),
+      (services::BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (services::BODHI_PORT.to_string(), "1135".to_string()),
+    ]));
+
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .secret_service(Arc::new(secret_service))
+        .auth_service(Arc::new(mock_auth_service))
+        .setting_service(Arc::new(setting_service))
+        .build()?,
+    );
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/setup", post(setup_handler))
+      .with_state(state);
+
+    let request = SetupRequest {
+      name: "Test Server Name".to_string(),
+      description: Some("Test description".to_string()),
+    };
+
+    let response = router
+      .oneshot(
+        Request::post("/setup")
+          .header("Content-Type", "application/json")
+          .body(Body::from(serde_json::to_string(&request)?))?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let secret_service = app_service.secret_service();
+    assert_eq!(
+      AppStatus::ResourceAdmin,
+      secret_service.app_status().unwrap()
+    );
     let app_reg_info = secret_service.app_reg_info().unwrap();
     assert!(app_reg_info.is_some());
     Ok(())
