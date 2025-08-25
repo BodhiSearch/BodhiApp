@@ -176,7 +176,7 @@ release-app-bindings: ## Create and push tag for app-bindings package release
 ui.test:
 	cd crates/bodhi && npm run test
 
-# Docker build targets - delegated to devops/Makefile  
+# Docker build targets - delegated to devops/Makefile
 docker.dev.cpu: ## Build CPU image for current platform (use PLATFORM to override)
 	@$(MAKE) -C devops dev.cpu BUILD_VARIANT=$${BUILD_VARIANT:-development} PLATFORM=$${PLATFORM}
 
