@@ -63,8 +63,9 @@ impl From<LogLevel> for tracing::level_filters::LevelFilter {
   }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, PartialOrd, derive_new::new)]
 pub struct Setting {
+  #[new(into)]
   pub key: String,
   pub value: serde_yaml::Value,
   pub source: SettingSource,
