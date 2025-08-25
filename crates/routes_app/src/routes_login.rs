@@ -1,3 +1,4 @@
+use crate::routes_setup::LOOPBACK_HOSTS;
 use crate::{LoginError, ENDPOINT_LOGOUT};
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS};
 use auth_middleware::{
@@ -7,18 +8,20 @@ use auth_middleware::{
 use axum::{
   extract::State,
   http::{
-    header::{HeaderMap, CACHE_CONTROL},
+    header::{HeaderMap, CACHE_CONTROL, HOST},
     StatusCode,
   },
   Json,
 };
 use base64::{engine::general_purpose, Engine as _};
+use oauth2::url::Url;
 use oauth2::{AuthorizationCode, ClientId, ClientSecret, PkceCodeVerifier, RedirectUrl};
 use objs::{ApiError, AppError, BadRequestError, ErrorType, OpenAIApiError, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use server_core::RouterState;
 use services::{
   extract_claims, AppStatus, Claims, RequestAccessRequest, RequestAccessResponse, SecretServiceExt,
+  CHAT_PATH, DOWNLOAD_MODELS_PATH,
 };
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
@@ -73,7 +76,30 @@ pub async fn auth_initiate_handler(
   let app_reg_info = secret_service
     .app_reg_info()?
     .ok_or(LoginError::AppRegInfoNotFound)?;
-  let callback_url = setting_service.login_callback_url();
+  // Determine callback URL - use request host if both public_host and request_host are loopback
+  let callback_url = if LOOPBACK_HOSTS.contains(&setting_service.public_host().as_str()) {
+    headers
+      .get(HOST)
+      .and_then(|host_header| host_header.to_str().ok())
+      .and_then(|host_str| {
+        // Extract host part from host:port string
+        let request_host = host_str.split(':').next().unwrap_or(host_str);
+        if LOOPBACK_HOSTS.contains(&request_host) {
+          Some(format!(
+            "{}://{}:{}{}",
+            setting_service.public_scheme(),
+            request_host,
+            setting_service.public_port(),
+            services::LOGIN_CALLBACK_PATH
+          ))
+        } else {
+          None
+        }
+      })
+      .unwrap_or_else(|| setting_service.login_callback_url())
+  } else {
+    setting_service.login_callback_url()
+  };
   let client_id = app_reg_info.client_id;
 
   // Generate simple random state for CSRF protection
@@ -87,6 +113,12 @@ pub async fn auth_initiate_handler(
   let (code_verifier, code_challenge) = generate_pkce();
   session
     .insert("pkce_verifier", &code_verifier)
+    .await
+    .map_err(LoginError::from)?;
+
+  // Store callback URL in session
+  session
+    .insert("callback_url", &callback_url)
     .await
     .map_err(LoginError::from)?;
 
@@ -174,6 +206,13 @@ pub async fn auth_callback_handler(
     .map_err(LoginError::from)?
     .ok_or(LoginError::SessionInfoNotFound)?;
 
+  // Get callback URL from session
+  let callback_url = session
+    .get::<String>("callback_url")
+    .await
+    .map_err(LoginError::from)?
+    .ok_or(LoginError::SessionInfoNotFound)?;
+
   let app_reg_info = secret_service
     .app_reg_info()?
     .ok_or(LoginError::AppRegInfoNotFound)?;
@@ -184,7 +223,7 @@ pub async fn auth_callback_handler(
       AuthorizationCode::new(code.to_string()),
       ClientId::new(app_reg_info.client_id.clone()),
       ClientSecret::new(app_reg_info.client_secret.clone()),
-      RedirectUrl::new(setting_service.login_callback_url()).map_err(LoginError::from)?,
+      RedirectUrl::new(callback_url.clone()).map_err(LoginError::from)?,
       PkceCodeVerifier::new(pkce_verifier),
     )
     .await?;
@@ -234,15 +273,40 @@ pub async fn auth_callback_handler(
     .await
     .map_err(LoginError::from)?;
 
-  // Determine redirect URL
+  // Determine redirect URL using callback URL host
   let ui_setup_resume = if status_resource_admin {
-    format!(
-      "{}/ui/setup/download-models",
-      setting_service.public_server_url()
-    )
+    // Extract host from callback URL to construct download-models URL
+    if let Ok(parsed_url) = Url::parse(&callback_url) {
+      let mut new_url = parsed_url.clone();
+      new_url.set_path(DOWNLOAD_MODELS_PATH);
+      new_url.set_query(None);
+      new_url.to_string()
+    } else {
+      // Fallback to configured URL if parsing fails
+      format!(
+        "{}{}",
+        setting_service.public_server_url(),
+        DOWNLOAD_MODELS_PATH
+      )
+    }
   } else {
-    setting_service.frontend_default_url()
+    // Extract host from callback URL to construct frontend URL
+    if let Ok(parsed_url) = Url::parse(&callback_url) {
+      let mut new_url = parsed_url.clone();
+      new_url.set_path(CHAT_PATH);
+      new_url.set_query(None);
+      new_url.to_string()
+    } else {
+      // Fallback to configured URL if parsing fails
+      setting_service.frontend_default_url()
+    }
   };
+
+  // Clean up callback URL from session
+  session
+    .remove::<String>("callback_url")
+    .await
+    .map_err(LoginError::from)?;
 
   // Return successful redirect
   Ok(Json(RedirectResponse {
@@ -456,6 +520,130 @@ mod tests {
       "openid email profile roles",
       query_params.get("scope").unwrap()
     );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_initiate_handler_loopback_host_detection(
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let secret_service = SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
+      client_id: "test_client_id".to_string(),
+      client_secret: "test_client_secret".to_string(),
+    });
+
+    // Configure with default 0.0.0.0 host (loopback)
+    let setting_service = SettingServiceStub::with_settings(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (BODHI_PORT.to_string(), "1135".to_string()),
+      (
+        BODHI_AUTH_URL.to_string(),
+        "http://test-id.getbodhi.app".to_string(),
+      ),
+      (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
+    ]));
+
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .setting_service(Arc::new(setting_service))
+      .build_session_service(dbfile)
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/auth/initiate", post(auth_initiate_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    // Request with localhost:1135 Host header
+    let resp = router
+      .oneshot(
+        Request::post("/auth/initiate")
+          .header("Host", "localhost:1135")
+          .json(json! {{}})?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::CREATED, resp.status());
+    let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
+    let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
+
+    let url = Url::parse(&body.location)?;
+    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
+
+    // Should use localhost from Host header instead of configured 0.0.0.0
+    let callback_url = query_params.get("redirect_uri").unwrap();
+    assert_eq!("http://localhost:1135/ui/auth/callback", callback_url);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_auth_initiate_handler_non_loopback_fallback(
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    let secret_service = SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
+      client_id: "test_client_id".to_string(),
+      client_secret: "test_client_secret".to_string(),
+    });
+
+    // Configure with default 0.0.0.0 host (loopback)
+    let setting_service = SettingServiceStub::with_settings(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (BODHI_PORT.to_string(), "1135".to_string()),
+      (
+        BODHI_AUTH_URL.to_string(),
+        "http://test-id.getbodhi.app".to_string(),
+      ),
+      (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
+    ]));
+
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let app_service = AppServiceStubBuilder::default()
+      .secret_service(Arc::new(secret_service))
+      .setting_service(Arc::new(setting_service))
+      .build_session_service(dbfile)
+      .await
+      .build()?;
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+    let router = Router::new()
+      .route("/auth/initiate", post(auth_initiate_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    // Request with non-loopback example.com Host header
+    let resp = router
+      .oneshot(
+        Request::post("/auth/initiate")
+          .header("Host", "example.com:1135")
+          .json(json! {{}})?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::CREATED, resp.status());
+    let body_bytes = to_bytes(resp.into_body(), usize::MAX).await?;
+    let body: RedirectResponse = serde_json::from_slice(&body_bytes)?;
+
+    let url = Url::parse(&body.location)?;
+    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
+
+    // Should fallback to configured callback URL since example.com is not loopback
+    let callback_url = query_params.get("redirect_uri").unwrap();
+    assert_eq!("http://0.0.0.0:1135/ui/auth/callback", callback_url);
 
     Ok(())
   }
@@ -718,6 +906,124 @@ mod tests {
   }
 
   #[rstest]
+  #[tokio::test]
+  #[anyhow_trace]
+  async fn test_auth_callback_handler_with_loopback_callback_url(
+    temp_bodhi_home: TempDir,
+  ) -> anyhow::Result<()> {
+    // Create a token with the correct scope that matches what auth_initiate_handler uses
+    let claims = json! {{
+      "exp": (Utc::now() + chrono::Duration::hours(1)).timestamp(),
+      "iat": Utc::now().timestamp(),
+      "jti": Uuid::new_v4().to_string(),
+      "iss": "test_issuer".to_string(),
+      "sub": Uuid::new_v4().to_string(),
+      "typ": "Bearer",
+      "azp": "test_client_id",
+      "session_state": Uuid::new_v4().to_string(),
+      "scope": "email openid profile roles", // Sorted scope that matches auth_initiate_handler
+      "sid": Uuid::new_v4().to_string(),
+      "email_verified": true,
+      "name": "Test User",
+      "preferred_username": "testuser@email.com",
+      "given_name": "Test",
+      "family_name": "User",
+      "email": "testuser@email.com"
+    }};
+    let (token, _) = build_token(claims).unwrap();
+    let dbfile = temp_bodhi_home.path().join("test.db");
+    let mut mock_auth_service = MockAuthService::default();
+    let token_clone = token.clone();
+    mock_auth_service
+      .expect_exchange_auth_code()
+      .times(1)
+      .return_once(move |_, _, _, _, _| {
+        Ok((
+          AccessToken::new(token_clone.clone()),
+          RefreshToken::new("test_refresh_token".to_string()),
+        ))
+      });
+
+    // Configure with 0.0.0.0 (loopback)
+    let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
+      (BODHI_SCHEME.to_string(), "http".to_string()),
+      (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (BODHI_PORT.to_string(), "1135".to_string()),
+    ]));
+
+    let secret_service = SecretServiceStub::new()
+      .with_app_reg_info(&AppRegInfo {
+        client_id: "test_client_id".to_string(),
+        client_secret: "test_client_secret".to_string(),
+      })
+      .with_app_status(&AppStatus::Ready);
+    let session_service = Arc::new(SqliteSessionService::build_session_service(dbfile).await);
+    let app_service = AppServiceStubBuilder::default()
+      .auth_service(Arc::new(mock_auth_service))
+      .setting_service(Arc::new(setting_service))
+      .secret_service(Arc::new(secret_service))
+      .with_sqlite_session_service(session_service.clone())
+      .build()?;
+
+    let app_service = Arc::new(app_service);
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/auth/initiate", post(auth_initiate_handler))
+      .route("/auth/callback", post(auth_callback_handler))
+      .layer(app_service.session_service().session_layer())
+      .with_state(state);
+
+    let mut client = TestServer::new(router)?;
+    client.save_cookies();
+
+    // Perform login request with Host header
+    let login_resp = client
+      .post("/auth/initiate")
+      .add_header("Host", "localhost:1135")
+      .await;
+    login_resp.assert_status(StatusCode::CREATED);
+    let body: RedirectResponse = login_resp.json();
+    let url = Url::parse(&body.location)?;
+    let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
+
+    // Verify callback URL uses localhost from Host header
+    let callback_url = query_params.get("redirect_uri").unwrap();
+    assert_eq!("http://localhost:1135/ui/auth/callback", callback_url);
+
+    // Extract state for the callback request
+    let state = query_params.get("state").unwrap();
+
+    // Perform callback request
+    let resp = client
+      .post("/auth/callback")
+      .json(&json! {{
+        "code": "test_code",
+        "state": state,
+      }})
+      .await;
+    resp.assert_status(StatusCode::OK);
+    let callback_body: RedirectResponse = resp.json();
+
+    // Final redirect should use localhost from the callback URL
+    assert_eq!("http://localhost:1135/ui/chat", callback_body.location);
+
+    // Verify session contains access token
+    let session_id = resp.cookie("bodhiapp_session_id");
+    let access_token = session_service
+      .get_session_value(session_id.value(), "access_token")
+      .await
+      .unwrap();
+    let access_token = access_token.as_str().unwrap();
+    assert_eq!(token, access_token);
+
+    Ok(())
+  }
+
+  #[rstest]
   #[case(
     "modified-",
     true,
@@ -948,6 +1254,7 @@ mod tests {
       data: maplit::hashmap! {
         "oauth_state".to_string() => Value::String(state.to_string()),
         "pkce_verifier".to_string() => Value::String("test_pkce_verifier".to_string()),
+        "callback_url".to_string() => Value::String(format!("http://frontend.localhost:3000/ui/auth/callback")),
       },
       expiry_date: OffsetDateTime::now_utc() + Duration::days(1),
     };

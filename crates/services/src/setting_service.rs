@@ -57,6 +57,10 @@ pub const DEFAULT_CANONICAL_REDIRECT: bool = true;
 
 pub const SETTINGS_YAML: &str = "settings.yaml";
 
+pub const LOGIN_CALLBACK_PATH: &str = "/ui/auth/callback";
+pub const DOWNLOAD_MODELS_PATH: &str = "/ui/setup/download-models";
+pub const CHAT_PATH: &str = "/ui/chat";
+
 const PROD_DB: &str = "bodhi.sqlite";
 const SESSION_DB: &str = "session.sqlite";
 
@@ -429,7 +433,7 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   }
 
   fn login_callback_url(&self) -> String {
-    format!("{}/ui/auth/callback", self.public_server_url())
+    format!("{}{}", self.public_server_url(), LOGIN_CALLBACK_PATH)
   }
 
   fn secrets_path(&self) -> PathBuf {
