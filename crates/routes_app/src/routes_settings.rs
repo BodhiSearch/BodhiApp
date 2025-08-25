@@ -345,7 +345,7 @@ mod tests {
     let host = SettingInfo {
       key: BODHI_HOST.to_string(),
       current_value: serde_yaml::Value::String("test.host".to_string()),
-      default_value: serde_yaml::Value::String("localhost".to_string()),
+      default_value: serde_yaml::Value::String("0.0.0.0".to_string()),
       source: SettingSource::Environment,
       metadata: SettingMetadata::String,
     };

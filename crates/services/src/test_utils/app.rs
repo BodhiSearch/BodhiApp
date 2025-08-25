@@ -3,7 +3,7 @@ use crate::{
   test_utils::{test_db_service, SecretServiceStub, SettingServiceStub, TestDbService},
   AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, HfHubService, HubService,
   LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
-  SessionService, SettingService, SqliteSessionService, BODHI_HOME, HF_HOME,
+  SessionService, SettingService, SqliteSessionService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir, temp_dir};
@@ -93,17 +93,7 @@ impl AppServiceStubBuilder {
   pub fn with_temp_home_as(&mut self, temp_dir: TempDir) -> &mut Self {
     let temp_home = Arc::new(temp_dir);
     self.temp_home = Some(Some(temp_home.clone()));
-    let settings = HashMap::from([
-      (
-        BODHI_HOME.to_string(),
-        temp_home.path().join("bodhi").display().to_string(),
-      ),
-      (
-        HF_HOME.to_string(),
-        temp_home.path().join("huggingface").display().to_string(),
-      ),
-    ]);
-    let setting_service = SettingServiceStub::new(settings);
+    let setting_service = SettingServiceStub::with_defaults_in(temp_home.clone());
     self.setting_service = Some(Some(Arc::new(setting_service)));
     self
   }

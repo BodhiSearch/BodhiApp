@@ -1,16 +1,18 @@
 use crate::{
   EnvWrapper, SettingService, SettingServiceError, SettingsChangeListener, BODHI_APP_TYPE,
   BODHI_AUTH_REALM, BODHI_AUTH_URL, BODHI_CANONICAL_REDIRECT, BODHI_ENCRYPTION_KEY, BODHI_ENV_TYPE,
-  BODHI_EXEC_NAME, BODHI_EXEC_VARIANT, BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST,
-  BODHI_KEEP_ALIVE_SECS, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME,
-  BODHI_VERSION, HF_HOME,
+  BODHI_EXEC_LOOKUP_PATH, BODHI_EXEC_NAME, BODHI_EXEC_TARGET, BODHI_EXEC_VARIANT,
+  BODHI_EXEC_VARIANTS, BODHI_HOME, BODHI_HOST, BODHI_KEEP_ALIVE_SECS, BODHI_LOGS, BODHI_LOG_LEVEL,
+  BODHI_LOG_STDOUT, BODHI_PORT, BODHI_SCHEME, BODHI_VERSION, HF_HOME,
 };
-use llama_server_proc::{BUILD_VARIANTS, DEFAULT_VARIANT, EXEC_NAME};
+use llama_server_proc::{BUILD_TARGET, BUILD_VARIANTS, DEFAULT_VARIANT, EXEC_NAME};
 use objs::{test_utils::temp_dir, Setting, SettingInfo, SettingMetadata, SettingSource};
 use rstest::fixture;
 use std::{
   collections::HashMap,
   env::VarError,
+  fs::Permissions,
+  os::unix::fs::PermissionsExt,
   path::{Path, PathBuf},
   sync::{Arc, RwLock},
 };
@@ -30,29 +32,53 @@ pub fn hf_test_token_public() -> Option<String> {
 pub fn test_setting_service(
   #[default(HashMap::new())] envs: HashMap<String, String>,
 ) -> SettingServiceStub {
-  SettingServiceStub::new(envs)
+  SettingServiceStub::with_settings(envs)
 }
 
 #[derive(Debug, Clone)]
 pub struct SettingServiceStub {
   settings: Arc<RwLock<HashMap<String, serde_yaml::Value>>>,
   envs: HashMap<String, String>,
+  #[allow(unused)]
+  temp_dir: Arc<TempDir>,
 }
 
 impl SettingServiceStub {
-  pub fn new_with_env(envs: HashMap<String, String>, settings: HashMap<String, String>) -> Self {
+  pub fn new(
+    envs: HashMap<String, String>,
+    settings: HashMap<String, String>,
+    temp_dir: TempDir,
+  ) -> Self {
     let settings = Self::to_settings_value(settings);
     Self {
       settings: Arc::new(RwLock::new(settings)),
       envs,
+      temp_dir: Arc::new(temp_dir),
     }
   }
 
-  pub fn new(settings: HashMap<String, String>) -> Self {
-    Self::new_with_env(HashMap::new(), settings)
+  pub fn with_envs_settings(
+    envs: HashMap<String, String>,
+    settings: HashMap<String, String>,
+  ) -> Self {
+    Self::new(envs, settings, temp_dir())
   }
 
-  pub fn with_settings(self, settings: HashMap<String, String>) -> Self {
+  pub fn with_settings(settings: HashMap<String, String>) -> Self {
+    Self::with_envs_settings(HashMap::new(), settings)
+  }
+
+  pub fn with_defaults_in(temp_dir: Arc<TempDir>) -> Self {
+    let settings = Self::setup(&temp_dir.path());
+    let settings = Self::to_settings_value(settings);
+    Self {
+      settings: Arc::new(RwLock::new(settings)),
+      envs: HashMap::new(),
+      temp_dir,
+    }
+  }
+
+  pub fn append_settings(self, settings: HashMap<String, String>) -> Self {
     let settings = Self::to_settings_value(settings);
     for (key, value) in settings {
       self.set_setting_with_source(key.as_str(), &value, SettingSource::SettingsFile);
@@ -70,12 +96,23 @@ impl SettingServiceStub {
       })
       .collect::<HashMap<String, serde_yaml::Value>>()
   }
-}
 
-impl Default for SettingServiceStub {
-  fn default() -> Self {
+  fn setup(home: &Path) -> HashMap<String, String> {
+    let bodhi = home.join(".cache").join("bodhi");
+    std::fs::create_dir_all(&bodhi).unwrap();
+    let hf_home = home.join(".cache").join("huggingface");
+    std::fs::create_dir_all(&hf_home).unwrap();
+    let logs = bodhi.join("logs");
+    std::fs::create_dir_all(&logs).unwrap();
+    let exec_lookup_path = home.join("bin");
+    let server_exec_dir = exec_lookup_path.join(BUILD_TARGET).join(DEFAULT_VARIANT);
+    std::fs::create_dir_all(&server_exec_dir).unwrap();
+    let server_exec = server_exec_dir.join(EXEC_NAME);
+    std::fs::write(&server_exec, "#!/bin/sh\necho 'mock executable'\n").unwrap();
+    std::fs::set_permissions(&server_exec, Permissions::from_mode(0o755)).unwrap();
+
     let settings = HashMap::from([
-      ("HOME".to_string(), "/tmp/home".to_string()),
+      ("HOME".to_string(), home.display().to_string()),
       (BODHI_ENV_TYPE.to_string(), "development".to_string()),
       (BODHI_APP_TYPE.to_string(), "container".to_string()),
       (BODHI_VERSION.to_string(), "0.0.0".to_string()),
@@ -84,23 +121,37 @@ impl Default for SettingServiceStub {
         "http://id.localhost".to_string(),
       ),
       (BODHI_AUTH_REALM.to_string(), "test-realm".to_string()),
-      (BODHI_HOME.to_string(), "/tmp/bodhi".to_string()),
-      (BODHI_LOGS.to_string(), "/tmp/logs".to_string()),
-      (HF_HOME.to_string(), "/tmp/hf".to_string()),
+      (BODHI_HOME.to_string(), home.display().to_string()),
+      (BODHI_LOGS.to_string(), logs.display().to_string()),
+      (HF_HOME.to_string(), hf_home.display().to_string()),
       (BODHI_SCHEME.to_string(), "http".to_string()),
       (BODHI_HOST.to_string(), "localhost".to_string()),
       (BODHI_PORT.to_string(), "1135".to_string()),
       (BODHI_LOG_LEVEL.to_string(), "warn".to_string()),
       (BODHI_LOG_STDOUT.to_string(), "true".to_string()),
       (BODHI_ENCRYPTION_KEY.to_string(), "testkey".to_string()),
+      (
+        BODHI_EXEC_LOOKUP_PATH.to_string(),
+        exec_lookup_path.display().to_string(),
+      ),
+      (BODHI_EXEC_TARGET.to_string(), BUILD_TARGET.to_string()),
       (BODHI_EXEC_VARIANT.to_string(), DEFAULT_VARIANT.to_string()),
+      (BODHI_EXEC_NAME.to_string(), EXEC_NAME.to_string()),
       (
         BODHI_EXEC_VARIANTS.to_string(),
         BUILD_VARIANTS.join(",").to_string(),
       ),
-      (BODHI_EXEC_NAME.to_string(), EXEC_NAME.to_string()),
+      (BODHI_KEEP_ALIVE_SECS.to_string(), "300".to_string()),
     ]);
-    Self::new(settings)
+    settings
+  }
+}
+
+impl Default for SettingServiceStub {
+  fn default() -> Self {
+    let temp_dir = temp_dir();
+    let settings = Self::setup(&temp_dir.path());
+    Self::new(HashMap::new(), settings, temp_dir)
   }
 }
 

@@ -47,7 +47,7 @@ pub const BODHI_LLAMACPP_ARGS: &str = "BODHI_LLAMACPP_ARGS";
 pub const BODHI_KEEP_ALIVE_SECS: &str = "BODHI_KEEP_ALIVE_SECS";
 
 pub const DEFAULT_SCHEME: &str = "http";
-pub const DEFAULT_HOST: &str = "localhost";
+pub const DEFAULT_HOST: &str = "0.0.0.0";
 pub const DEFAULT_PORT: u16 = 1135;
 pub const DEFAULT_PORT_STR: &str = "1135";
 pub const DEFAULT_LOG_LEVEL: &str = "warn";
@@ -1514,7 +1514,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     let expected_host = SettingInfo {
       key: BODHI_HOST.to_string(),
       current_value: serde_yaml::Value::String("test.host".to_string()),
-      default_value: serde_yaml::Value::String("localhost".to_string()),
+      default_value: serde_yaml::Value::String("0.0.0.0".to_string()),
       source: SettingSource::SettingsFile,
       metadata: SettingMetadata::String,
     };
@@ -1535,7 +1535,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     );
 
     // Test fallback behavior - public settings should use regular settings when not set
-    assert_eq!(service.public_server_url(), "http://localhost:1135");
+    assert_eq!(service.public_server_url(), "http://0.0.0.0:1135");
     helpers::assert_default_value_str(&service, BODHI_PUBLIC_HOST, DEFAULT_HOST);
     assert_eq!(
       service
@@ -1674,9 +1674,9 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     // Default settings scenario
     None, None, None, // No public settings override
     None, None, None, // No regular settings override
-    "http://localhost:1135",
-    "http://localhost:1135/ui/chat",
-    "http://localhost:1135/ui/auth/callback"
+    "http://0.0.0.0:1135",
+    "http://0.0.0.0:1135/ui/chat",
+    "http://0.0.0.0:1135/ui/auth/callback"
   )]
   #[case(
     // All public settings overridden

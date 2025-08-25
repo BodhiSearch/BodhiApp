@@ -75,6 +75,9 @@ impl Server {
     } = self;
     let addr = format!("{}:{}", host, port);
     let listener = TcpListener::bind(&addr).await?;
+    if ready.send(()).is_err() {
+      tracing::warn!("ready receiver dropped before start signal notified")
+    };
     let axum_server = axum::serve(listener, app).with_graceful_shutdown(async move {
       match shutdown_rx.await {
         Ok(()) => {
@@ -87,13 +90,11 @@ impl Server {
           );
         }
       };
+
       if let Some(callback) = callback {
         (*callback).shutdown().await;
       }
     });
-    if ready.send(()).is_err() {
-      tracing::warn!("ready receiver dropped before start signal notified")
-    };
     axum_server.await?;
     Ok(())
   }

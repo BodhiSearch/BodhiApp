@@ -316,7 +316,7 @@ mod tests {
     if let Some(proxy_ui) = config.proxy_ui {
       envs.insert(BODHI_DEV_PROXY_UI.to_string(), proxy_ui);
     }
-    let setting_service = SettingServiceStub::new_with_env(
+    let setting_service = SettingServiceStub::with_envs_settings(
       envs,
       HashMap::from([(BODHI_ENV_TYPE.to_string(), env_type.to_string())]),
     );

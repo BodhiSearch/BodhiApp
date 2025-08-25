@@ -6098,6 +6098,7 @@ dependencies = [
  "serde_yaml",
  "server_core",
  "services",
+ "tempfile",
  "thiserror 2.0.12",
  "tokio",
  "tower-serve-static",
