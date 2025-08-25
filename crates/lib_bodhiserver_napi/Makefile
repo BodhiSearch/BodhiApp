@@ -1,70 +1,73 @@
-# Makefile for lib_bodhiserver_napi
-.PHONY: all build build-debug build-release test test-js test-js-config test-js-integration test-js-live test-playwright test-playwright-ui test-playwright-headed test-playwright-ci clean format-js dev install-js
+# Node.js Bindings for BodhiServer
+.PHONY: help all build build-debug build-release test test-js test-js-config test-js-integration test-js-live test-playwright test-playwright-ui test-playwright-headed test-playwright-ci clean format-js dev install-js
+.DEFAULT_GOAL := help
 
-# Default target
-all: build test
+help: ## Show this help message
+	@echo 'Node.js Bindings for BodhiServer'
+	@echo ''
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Targets:'
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9._-]+:.*?## / {printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+all: build test ## Build and test the Node.js bindings
 
 # Install JavaScript dependencies
-install-js:
+install-js: ## Install JavaScript dependencies
 	npm install
 
-build: install-js
+build: install-js ## Build Node.js bindings (development)
 	npm run build
 
-build-release: install-js
+build-debug: install-js ## Build Node.js bindings in debug mode
+	npm run build
+
+build-release: install-js ## Build Node.js bindings (release/optimized)
 	npm run build:release
 
-# Test targets
-test: test-rust test-js test-playwright
+test: test-rust test-js test-playwright ## Run all tests (Rust, JS, Playwright)
 
-test-rust:
+test-rust: ## Run Rust unit tests
 	cargo test
 
-test-js: build-debug install-js
+test-js: build-debug install-js ## Run JavaScript unit tests
 	npm run test:run
 
-test-js-config: build-debug install-js
+test-js-config: build-debug install-js ## Run JavaScript configuration tests
 	npm run test:config
 
-test-js-integration: build-debug install-js
+test-js-integration: build-debug install-js ## Run JavaScript integration tests
 	npm run test:integration
 
-test-js-live: build-debug install-js
+test-js-live: build-debug install-js ## Run JavaScript live server tests
 	npm run test:live
 
-# Run Playwright browser tests
-test-playwright: build-debug install-js
+test-playwright: build-debug install-js ## Run Playwright browser tests
 	npm run test:playwright -- --reporter=line
 
-# Run Playwright tests with UI mode
-test-playwright-ui: build-debug install-js
+test-playwright-ui: build-debug install-js ## Run Playwright tests with UI mode
 	npm run test:playwright:ui -- --reporter=line
 
-# Run Playwright tests in headed mode (visible browser)
-test-playwright-headed: build-debug install-js
+test-playwright-headed: build-debug install-js ## Run Playwright tests in headed mode (visible browser)
 	npm run test:playwright:headed -- --reporter=line
 
-# Run Playwright tests in CI mode
-test-playwright-ci: build-debug install-js
+test-playwright-ci: build-debug install-js ## Run Playwright tests in CI mode
 	npm run test:playwright:ci
 
-# Format all code
-format: format-rust format-js
+format: format-rust format-js ## Format all code (Rust and JavaScript)
 
-format-rust:
+format-rust: ## Format Rust code
 	cargo fmt
 
-format-js: install-js
+format-js: install-js ## Format JavaScript/TypeScript code
 	npm run format
 
-# Quick development cycle
-dev: format-rust build-debug test-js-config
+dev: format-rust build-debug test-js-config ## Quick development cycle
 
-# Clean targets
-clean: clean-rust clean-js
+clean: clean-rust clean-js ## Clean all build artifacts
 
-clean-rust:
+clean-rust: ## Clean Rust build artifacts
 	cargo clean
 
-clean-js:
+clean-js: ## Clean JavaScript build artifacts and dependencies
 	rm -rf node_modules test-results playwright-report coverage .nyc_output 

@@ -9,8 +9,12 @@
 BUILD_VARIANT ?= development
 PROJECT_ROOT := $(shell dirname $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST)))))
 
-help: ## Show Docker build help
-	@echo 'Docker Build Targets:'
+help: ## Show this help message
+	@echo 'BodhiApp Docker Build System'
+	@echo ''
+	@echo 'Usage: make [target]'
+	@echo ''
+	@echo 'Targets:'
 	@echo ''
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z0-9._-]+:.*?## / {printf "  \033[36m%-25s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ''
