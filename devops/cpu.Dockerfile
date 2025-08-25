@@ -9,15 +9,16 @@ FROM rust:1.87.0-bookworm AS builder
 ARG BUILD_VARIANT=production
 ARG BODHI_VERSION
 ARG BODHI_COMMIT_SHA
-ARG CI_BUILD_TARGET=x86_64-unknown-linux-gnu
+ARG TARGETARCH
 ARG CI_DEFAULT_VARIANT=cpu
 ARG CI_BUILD_VARIANTS=cpu
 ARG CI_EXEC_NAME=llama-server
+
 ENV BUILD_VARIANT=${BUILD_VARIANT}
-ENV CI_BUILD_TARGET=${CI_BUILD_TARGET}
 ENV CI_DEFAULT_VARIANT=${CI_DEFAULT_VARIANT}
 ENV CI_BUILD_VARIANTS=${CI_BUILD_VARIANTS}
 ENV CI_EXEC_NAME=${CI_EXEC_NAME}
+ENV TARGETARCH=${TARGETARCH}
 
 # Enable Rust build optimizations
 ENV CARGO_INCREMENTAL=1
@@ -78,7 +79,12 @@ RUN cargo generate-lockfile
 
 # Build bodhi binary with consistent optimization level
 # Note: llama_server_proc will use CI_BUILD_TARGET configuration
-RUN if [ "$BUILD_VARIANT" = "production" ]; then \
+RUN export CI_BUILD_TARGET=$(case "$TARGETARCH" in \
+      "arm64") echo "aarch64-unknown-linux-gnu" ;; \
+      "amd64"|*) echo "x86_64-unknown-linux-gnu" ;; \
+    esac) && \
+    echo "Using CI_BUILD_TARGET=$CI_BUILD_TARGET for $TARGETARCH" && \
+    if [ "$BUILD_VARIANT" = "production" ]; then \
       echo "Building bodhi binary for production (release mode)..." && \
       cargo build --release --bin bodhi --no-default-features --features production; \
     else \
@@ -104,7 +110,13 @@ ARG BODHI_VERSION
 ARG BODHI_COMMIT_SHA
 
 # Create defaults.yaml with CPU-optimized configuration
-COPY <<EOF /app/defaults.yaml
+# Use TARGETARCH to set the correct target platform
+ARG TARGETARCH
+RUN case "$TARGETARCH" in \
+      "arm64") export EXEC_TARGET="aarch64-unknown-linux-gnu" ;; \
+      "amd64"|*) export EXEC_TARGET="x86_64-unknown-linux-gnu" ;; \
+    esac && \
+    cat > /app/defaults.yaml << EOF
 # BodhiApp Default Configuration for CPU
 # System paths and directories
 BODHI_HOME: /data/bodhi_home
@@ -120,7 +132,7 @@ BODHI_PORT: 8080
 
 # Build configuration - CPU variant
 BODHI_EXEC_LOOKUP_PATH: /app/bin
-BODHI_EXEC_TARGET: x86_64-unknown-linux-gnu
+BODHI_EXEC_TARGET: $EXEC_TARGET
 BODHI_EXEC_VARIANTS: cpu
 BODHI_EXEC_VARIANT: cpu
 BODHI_EXEC_NAME: llama-server

@@ -176,20 +176,23 @@ release-app-bindings: ## Create and push tag for app-bindings package release
 ui.test:
 	cd crates/bodhi && npm run test
 
-# Docker build targets - delegated to devops/Makefile
+# Docker build targets - delegated to devops/Makefile  
+docker.dev.cpu: ## Build CPU image for current platform (use PLATFORM to override)
+	@$(MAKE) -C devops dev.cpu BUILD_VARIANT=$${BUILD_VARIANT:-development} PLATFORM=$${PLATFORM}
+
 docker.dev.cpu.amd64: ## Build AMD64 CPU image for local testing
 	@$(MAKE) -C devops dev.cpu.amd64 BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.dev.cpu.arm64: ## Build ARM64 CPU image (requires GH_PAT)
-	@$(MAKE) -C devops dev.cpu.arm64 GH_PAT=$(GH_PAT) BUILD_VARIANT=$${BUILD_VARIANT:-development}
+docker.dev.cpu.arm64: ## Build ARM64 CPU image for local testing
+	@$(MAKE) -C devops dev.cpu.arm64 BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
 docker.dev.cuda: ## Build NVIDIA CUDA GPU image
 	@$(MAKE) -C devops dev.cuda BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.run: ## Run locally built Docker image
+docker.run.amd64: ## Run locally built linux/amd64 Docker image
 	@$(MAKE) -C devops run VARIANT=$${VARIANT:-cpu} ARCH=$${ARCH:-amd64} BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
-docker.run.arm64: ## Run locally built Docker image
+docker.run.arm64: ## Run locally built linux/arm64 Docker image
 	@$(MAKE) -C devops run VARIANT=$${VARIANT:-cpu} ARCH=$${ARCH:-arm64} BUILD_VARIANT=$${BUILD_VARIANT:-development}
 
 docker.list: ## List all locally built BodhiApp images
@@ -313,4 +316,4 @@ check-docker-versions: ## Check latest versions of both production and developme
 	fi
 	@echo "==============================="
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.build.cpu.amd64 docker.build.cpu.arm64 docker.build.cuda docker.build.rocm docker.build.vulkan docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions help
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions help
