@@ -1,4 +1,4 @@
-use crate::routes_setup::LOOPBACK_HOSTS;
+use crate::utils::extract_request_host;
 use crate::{LoginError, ENDPOINT_LOGOUT};
 use crate::{ENDPOINT_AUTH_CALLBACK, ENDPOINT_AUTH_INITIATE, ENDPOINT_AUTH_REQUEST_ACCESS};
 use auth_middleware::{
@@ -8,7 +8,7 @@ use auth_middleware::{
 use axum::{
   extract::State,
   http::{
-    header::{HeaderMap, CACHE_CONTROL, HOST},
+    header::{HeaderMap, CACHE_CONTROL},
     StatusCode,
   },
   Json,
@@ -76,29 +76,25 @@ pub async fn auth_initiate_handler(
   let app_reg_info = secret_service
     .app_reg_info()?
     .ok_or(LoginError::AppRegInfoNotFound)?;
-  // Determine callback URL - use request host if both public_host and request_host are loopback
-  let callback_url = if LOOPBACK_HOSTS.contains(&setting_service.public_host().as_str()) {
-    headers
-      .get(HOST)
-      .and_then(|host_header| host_header.to_str().ok())
-      .and_then(|host_str| {
-        // Extract host part from host:port string
-        let request_host = host_str.split(':').next().unwrap_or(host_str);
-        if LOOPBACK_HOSTS.contains(&request_host) {
-          Some(format!(
-            "{}://{}:{}{}",
-            setting_service.public_scheme(),
-            request_host,
-            setting_service.public_port(),
-            services::LOGIN_CALLBACK_PATH
-          ))
-        } else {
-          None
-        }
-      })
-      .unwrap_or_else(|| setting_service.login_callback_url())
-  } else {
+  // Determine callback URL based on whether public host is explicitly configured
+  let callback_url = if setting_service.get_public_host_explicit().is_some() {
+    // Explicit configuration (including RunPod) - use configured callback URL
     setting_service.login_callback_url()
+  } else {
+    // Local/network installation mode - use request host or fallback
+    if let Some(request_host) = extract_request_host(&headers) {
+      // Use the actual request host for the callback URL
+      format!(
+        "{}://{}:{}{}",
+        setting_service.public_scheme(),
+        request_host,
+        setting_service.public_port(),
+        services::LOGIN_CALLBACK_PATH
+      )
+    } else {
+      // Fallback to configured URL if host extraction fails
+      setting_service.login_callback_url()
+    }
   };
   let client_id = app_reg_info.client_id;
 
@@ -588,7 +584,7 @@ mod tests {
 
   #[rstest]
   #[tokio::test]
-  async fn test_auth_initiate_handler_non_loopback_fallback(
+  async fn test_auth_initiate_handler_network_host_usage(
     temp_bodhi_home: TempDir,
   ) -> anyhow::Result<()> {
     let secret_service = SecretServiceStub::new().with_app_reg_info(&AppRegInfo {
@@ -596,7 +592,7 @@ mod tests {
       client_secret: "test_client_secret".to_string(),
     });
 
-    // Configure with default 0.0.0.0 host (loopback)
+    // Configure with default settings (no explicit public host)
     let setting_service = SettingServiceStub::with_settings(HashMap::from([
       (BODHI_SCHEME.to_string(), "http".to_string()),
       (BODHI_HOST.to_string(), "0.0.0.0".to_string()),
@@ -625,11 +621,11 @@ mod tests {
       .layer(app_service.session_service().session_layer())
       .with_state(state);
 
-    // Request with non-loopback example.com Host header
+    // Request with network host header
     let resp = router
       .oneshot(
         Request::post("/auth/initiate")
-          .header("Host", "example.com:1135")
+          .header("Host", "192.168.1.100:1135")
           .json(json! {{}})?,
       )
       .await?;
@@ -641,9 +637,9 @@ mod tests {
     let url = Url::parse(&body.location)?;
     let query_params: HashMap<_, _> = url.query_pairs().into_owned().collect();
 
-    // Should fallback to configured callback URL since example.com is not loopback
+    // Should now use the request host for network installation support
     let callback_url = query_params.get("redirect_uri").unwrap();
-    assert_eq!("http://0.0.0.0:1135/ui/auth/callback", callback_url);
+    assert_eq!("http://192.168.1.100:1135/ui/auth/callback", callback_url);
 
     Ok(())
   }
