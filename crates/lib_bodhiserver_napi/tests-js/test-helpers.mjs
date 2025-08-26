@@ -1,5 +1,5 @@
 import { mkdtempSync } from 'fs';
-import { tmpdir } from 'os';
+import { tmpdir, networkInterfaces } from 'os';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -164,9 +164,27 @@ function getCurrentPath(page) {
   return new URL(page.url()).pathname;
 }
 
+/**
+ * Get the local network IP address using Node.js os.networkInterfaces()
+ * @returns {string|null} Local network IP or null if not found
+ */
+function getLocalNetworkIP() {
+  const interfaces = networkInterfaces();
+
+  for (const name in interfaces) {
+    for (const iface of interfaces[name]) {
+      // Skip loopback and non-IPv4 addresses
+      if (!iface.internal && iface.family === 'IPv4') {
+        return iface.address; // Return first non-loopback IPv4 address
+      }
+    }
+  }
+  return null;
+}
+
 export {
   createFullTestConfig, createTempDir,
-  createTestServer, getCurrentPath, loadBindings,
+  createTestServer, getCurrentPath, getLocalNetworkIP, loadBindings,
   randomPort, sleep, waitForRedirect, waitForServer,
   waitForSPAReady
 };

@@ -396,7 +396,14 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   fn get_public_host_explicit(&self) -> Option<String> {
     let (value, source) = self.get_setting_value_with_source(BODHI_PUBLIC_HOST);
     match source {
-      SettingSource::Default => None,
+      SettingSource::Default => {
+        // Check if RunPod is enabled - if so, treat as explicitly configured
+        if self.on_runpod_enabled() {
+          Some(self.public_host())
+        } else {
+          None
+        }
+      }
       _ => value.and_then(|v| match v {
         Value::String(s) => Some(s),
         _ => None,

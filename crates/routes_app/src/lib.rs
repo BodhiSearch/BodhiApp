@@ -15,6 +15,7 @@ mod routes_pull;
 mod routes_settings;
 mod routes_setup;
 mod routes_user;
+mod utils;
 
 pub use error::*;
 pub use objs::*;

@@ -1,3 +1,4 @@
+use crate::utils::extract_request_host;
 use crate::{ENDPOINT_APP_INFO, ENDPOINT_APP_SETUP, ENDPOINT_HEALTH, ENDPOINT_PING};
 use auth_middleware::app_status_or_default;
 use axum::{
@@ -14,7 +15,6 @@ use services::{
   AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt, LOGIN_CALLBACK_PATH,
 };
 use std::sync::Arc;
-
 use utoipa::ToSchema;
 
 pub const LOOPBACK_HOSTS: &[&str] = &["localhost", "127.0.0.1", "0.0.0.0"];
@@ -118,6 +118,7 @@ impl IntoResponse for SetupResponse {
     )
 )]
 pub async fn setup_handler(
+  headers: axum::http::HeaderMap,
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(request), _): WithRejection<Json<SetupRequest>, ApiError>,
 ) -> Result<SetupResponse, ApiError> {
@@ -136,16 +137,43 @@ pub async fn setup_handler(
     ))?;
   }
   let setting_service = &state.app_service().setting_service();
-  let redirect_uris = if LOOPBACK_HOSTS.contains(&setting_service.public_host().as_str()) {
+  let redirect_uris = if setting_service.get_public_host_explicit().is_some() {
+    // Explicit configuration (including RunPod) - use only configured callback URL
+    vec![setting_service.login_callback_url()]
+  } else {
+    // Local/network installation mode - build comprehensive redirect URI list
     let scheme = setting_service.public_scheme();
     let port = setting_service.public_port();
-    // loopback urls
-    LOOPBACK_HOSTS
-      .iter()
-      .map(|host| format!("{}://{}:{}{}", scheme, host, port, LOGIN_CALLBACK_PATH))
-      .collect()
-  } else {
-    vec![setting_service.login_callback_url()]
+    let mut redirect_uris = Vec::new();
+
+    // Always add all loopback hosts for local development
+    for host in LOOPBACK_HOSTS {
+      redirect_uris.push(format!(
+        "{}://{}:{}{}",
+        scheme, host, port, LOGIN_CALLBACK_PATH
+      ));
+    }
+
+    // Add request host if it's not a loopback host (for network access)
+    if let Some(request_host) = extract_request_host(&headers) {
+      if !LOOPBACK_HOSTS.contains(&request_host.as_str()) {
+        redirect_uris.push(format!(
+          "{}://{}:{}{}",
+          scheme, request_host, port, LOGIN_CALLBACK_PATH
+        ));
+      }
+    }
+
+    // Add server IP for future-proofing (even if current request is from loopback)
+    if let Some(server_ip) = get_server_ip() {
+      let server_uri = format!("{}://{}:{}{}", scheme, server_ip, port, LOGIN_CALLBACK_PATH);
+      // Only add if not already present
+      if !redirect_uris.contains(&server_uri) {
+        redirect_uris.push(server_uri);
+      }
+    }
+
+    redirect_uris
   };
   let app_reg_info = auth_service
     .register_client(
@@ -210,6 +238,27 @@ pub async fn health_handler() -> Json<PingResponse> {
   Json(PingResponse {
     message: "pong".to_string(),
   })
+}
+
+/// Get the server's local IP address for future-proofing redirect URIs
+fn get_server_ip() -> Option<String> {
+  use std::net::UdpSocket;
+
+  // Try to get local IP by connecting to a remote address
+  // This doesn't actually send data, just determines which local interface would be used
+  if let Ok(socket) = UdpSocket::bind("0.0.0.0:0") {
+    if let Ok(_) = socket.connect("8.8.8.8:80") {
+      if let Ok(local_addr) = socket.local_addr() {
+        let ip = local_addr.ip();
+        // Only return if it's not a loopback address
+        if !ip.is_loopback() {
+          return Some(ip.to_string());
+        }
+      }
+    }
+  }
+
+  None
 }
 
 #[cfg(test)]
@@ -406,7 +455,8 @@ mod tests {
       .times(1)
       .withf(|_name, _description, redirect_uris| {
         // Verify that all loopback redirect URIs are registered
-        redirect_uris.len() == 3
+        // Now there might be additional URIs (request host, server IP) so check >= 3
+        redirect_uris.len() >= 3
           && redirect_uris.contains(&"http://localhost:1135/ui/auth/callback".to_string())
           && redirect_uris.contains(&"http://127.0.0.1:1135/ui/auth/callback".to_string())
           && redirect_uris.contains(&"http://0.0.0.0:1135/ui/auth/callback".to_string())
@@ -418,7 +468,7 @@ mod tests {
         })
       });
 
-    // Configure with 0.0.0.0 as public host (default)
+    // Configure with default settings (no explicit public host)
     let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
       (services::BODHI_SCHEME.to_string(), "http".to_string()),
       (services::BODHI_HOST.to_string(), "0.0.0.0".to_string()),
@@ -450,6 +500,155 @@ mod tests {
       .oneshot(
         Request::post("/setup")
           .header("Content-Type", "application/json")
+          .header("Host", "localhost:1135") // Add Host header
+          .body(Body::from(serde_json::to_string(&request)?))?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let secret_service = app_service.secret_service();
+    assert_eq!(
+      AppStatus::ResourceAdmin,
+      secret_service.app_status().unwrap()
+    );
+    let app_reg_info = secret_service.app_reg_info().unwrap();
+    assert!(app_reg_info.is_some());
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_setup_handler_network_ip_redirect_uris() -> anyhow::Result<()> {
+    let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
+
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service
+      .expect_register_client()
+      .times(1)
+      .withf(|_name, _description, redirect_uris| {
+        // Verify that all loopback hosts AND the network IP are registered
+        redirect_uris.len() >= 4  // 3 loopback + 1 network IP (+ optional server IP)
+          && redirect_uris.contains(&"http://localhost:1135/ui/auth/callback".to_string())
+          && redirect_uris.contains(&"http://127.0.0.1:1135/ui/auth/callback".to_string())
+          && redirect_uris.contains(&"http://0.0.0.0:1135/ui/auth/callback".to_string())
+          && redirect_uris.contains(&"http://192.168.1.100:1135/ui/auth/callback".to_string())
+      })
+      .return_once(|_name, _description, _redirect_uris| {
+        Ok(AppRegInfo {
+          client_id: "client_id".to_string(),
+          client_secret: "client_secret".to_string(),
+        })
+      });
+
+    // Configure with default settings (no explicit public host)
+    let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
+      (services::BODHI_SCHEME.to_string(), "http".to_string()),
+      (services::BODHI_HOST.to_string(), "0.0.0.0".to_string()),
+      (services::BODHI_PORT.to_string(), "1135".to_string()),
+    ]));
+
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .secret_service(Arc::new(secret_service))
+        .auth_service(Arc::new(mock_auth_service))
+        .setting_service(Arc::new(setting_service))
+        .build()?,
+    );
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/setup", post(setup_handler))
+      .with_state(state);
+
+    let request = SetupRequest {
+      name: "Test Server Name".to_string(),
+      description: Some("Test description".to_string()),
+    };
+
+    let response = router
+      .oneshot(
+        Request::post("/setup")
+          .header("Content-Type", "application/json")
+          .header("Host", "192.168.1.100:1135") // Network IP Host header
+          .body(Body::from(serde_json::to_string(&request)?))?,
+      )
+      .await?;
+
+    assert_eq!(StatusCode::OK, response.status());
+    let secret_service = app_service.secret_service();
+    assert_eq!(
+      AppStatus::ResourceAdmin,
+      secret_service.app_status().unwrap()
+    );
+    let app_reg_info = secret_service.app_reg_info().unwrap();
+    assert!(app_reg_info.is_some());
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  async fn test_setup_handler_explicit_public_host_single_redirect_uri() -> anyhow::Result<()> {
+    let secret_service = SecretServiceStub::new().with_app_status(&AppStatus::Setup);
+
+    let mut mock_auth_service = MockAuthService::default();
+    mock_auth_service
+      .expect_register_client()
+      .times(1)
+      .withf(|_name, _description, redirect_uris| {
+        // When public host is explicitly set, should only register that one
+        redirect_uris.len() == 1
+          && redirect_uris
+            .contains(&"https://my-bodhi.example.com:8443/ui/auth/callback".to_string())
+      })
+      .return_once(|_name, _description, _redirect_uris| {
+        Ok(AppRegInfo {
+          client_id: "client_id".to_string(),
+          client_secret: "client_secret".to_string(),
+        })
+      });
+
+    // Configure with explicit public host
+    let setting_service = SettingServiceStub::default().append_settings(HashMap::from([
+      (
+        services::BODHI_PUBLIC_SCHEME.to_string(),
+        "https".to_string(),
+      ),
+      (
+        services::BODHI_PUBLIC_HOST.to_string(),
+        "my-bodhi.example.com".to_string(),
+      ),
+      (services::BODHI_PUBLIC_PORT.to_string(), "8443".to_string()),
+    ]));
+
+    let app_service = Arc::new(
+      AppServiceStubBuilder::default()
+        .secret_service(Arc::new(secret_service))
+        .auth_service(Arc::new(mock_auth_service))
+        .setting_service(Arc::new(setting_service))
+        .build()?,
+    );
+    let state = Arc::new(DefaultRouterState::new(
+      Arc::new(MockSharedContext::default()),
+      app_service.clone(),
+    ));
+
+    let router = Router::new()
+      .route("/setup", post(setup_handler))
+      .with_state(state);
+
+    let request = SetupRequest {
+      name: "Test Server Name".to_string(),
+      description: Some("Test description".to_string()),
+    };
+
+    let response = router
+      .oneshot(
+        Request::post("/setup")
+          .header("Content-Type", "application/json")
+          .header("Host", "192.168.1.100:1135") // This should be ignored due to explicit config
           .body(Body::from(serde_json::to_string(&request)?))?,
       )
       .await?;
