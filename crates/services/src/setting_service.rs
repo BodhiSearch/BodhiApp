@@ -75,7 +75,7 @@ pub const BODHI_DEV_PROXY_UI: &str = "BODHI_DEV_PROXY_UI";
 
 // RunPod settings
 pub const BODHI_ON_RUNPOD: &str = "BODHI_ON_RUNPOD";
-pub const RUNPOD_POD_HOSTNAME: &str = "RUNPOD_POD_HOSTNAME";
+pub const RUNPOD_POD_ID: &str = "RUNPOD_POD_ID";
 
 pub const SETTING_VARS: &[&str] = &[
   HF_HOME,
@@ -380,9 +380,13 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
   fn public_host(&self) -> String {
     let (value, source) = self.get_setting_value_with_source(BODHI_PUBLIC_HOST);
     match source {
-      SettingSource::Default if self.on_runpod_enabled() => self
-        .get_setting(RUNPOD_POD_HOSTNAME)
-        .unwrap_or_else(|| self.host()),
+      SettingSource::Default if self.on_runpod_enabled() => {
+        let pod_id = self
+          .get_setting(RUNPOD_POD_ID)
+          .unwrap_or_else(|| "unknown".to_string());
+        let port = self.port();
+        format!("{}-{}.proxy.runpod.net", pod_id, port)
+      }
       _ => value
         .and_then(|v| v.as_str().map(|s| s.to_string()))
         .unwrap_or_else(|| self.host()),
@@ -503,12 +507,12 @@ pub trait SettingService: std::fmt::Debug + Send + Sync {
       .and_then(|val| val.parse::<bool>().ok())
       .unwrap_or(false);
 
-    let runpod_hostname_available = self
-      .get_setting(RUNPOD_POD_HOSTNAME)
-      .filter(|hostname| !hostname.is_empty())
+    let runpod_pod_id_available = self
+      .get_setting(RUNPOD_POD_ID)
+      .filter(|pod_id| !pod_id.is_empty())
       .is_some();
 
-    runpod_flag && runpod_hostname_available
+    runpod_flag && runpod_pod_id_available
   }
 }
 
@@ -912,7 +916,7 @@ mod tests {
     BODHI_HOME, BODHI_HOST, BODHI_LOGS, BODHI_LOG_LEVEL, BODHI_LOG_STDOUT, BODHI_ON_RUNPOD,
     BODHI_PORT, BODHI_PUBLIC_HOST, BODHI_PUBLIC_PORT, BODHI_PUBLIC_SCHEME, BODHI_SCHEME,
     DEFAULT_HOST, DEFAULT_LOG_LEVEL, DEFAULT_LOG_STDOUT, DEFAULT_PORT, DEFAULT_SCHEME, HF_HOME,
-    RUNPOD_POD_HOSTNAME,
+    RUNPOD_POD_ID,
   };
   use anyhow_trace::anyhow_trace;
   use mockall::predicate::eq;
@@ -1795,17 +1799,17 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
   #[case::runpod_disabled_no_env(Some("false"), None, "http://0.0.0.0:1135")]
   #[case::runpod_disabled_unparseable(Some("invalid"), None, "http://0.0.0.0:1135")]
   #[case::runpod_disabled_not_set(None, None, "http://0.0.0.0:1135")]
-  #[case::runpod_enabled_no_hostname(Some("true"), None, "http://0.0.0.0:1135")]
-  #[case::runpod_enabled_with_hostname(
+  #[case::runpod_enabled_no_pod_id(Some("true"), None, "http://0.0.0.0:1135")]
+  #[case::runpod_enabled_with_pod_id(
     Some("true"),
-    Some("my-pod-123.runpod.net"),
-    "https://my-pod-123.runpod.net"
+    Some("abc123def456"),
+    "https://abc123def456-1135.proxy.runpod.net"
   )]
-  #[case::runpod_enabled_empty_hostname(Some("true"), Some(""), "http://0.0.0.0:1135")]
+  #[case::runpod_enabled_empty_pod_id(Some("true"), Some(""), "http://0.0.0.0:1135")]
   fn test_runpod_feature_behavior(
     temp_dir: TempDir,
     #[case] runpod_flag: Option<&str>,
-    #[case] runpod_hostname: Option<&str>,
+    #[case] runpod_pod_id: Option<&str>,
     #[case] expected_url: &str,
   ) -> anyhow::Result<()> {
     let path = temp_dir.path().join("settings.yaml");
@@ -1818,8 +1822,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     );
 
     runpod_flag.map(|flag| env_vars.insert(BODHI_ON_RUNPOD.to_string(), flag.to_string()));
-    runpod_hostname
-      .map(|hostname| env_vars.insert(RUNPOD_POD_HOSTNAME.to_string(), hostname.to_string()));
+    runpod_pod_id.map(|hostname| env_vars.insert(RUNPOD_POD_ID.to_string(), hostname.to_string()));
 
     let env_wrapper = EnvWrapperStub::new(env_vars);
     let service = DefaultSettingService::new_with_defaults(
@@ -1837,7 +1840,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
   #[rstest]
   #[case::explicit_overrides_runpod(
     "true",
-    Some("runpod-host.runpod.net"),
+    Some("abc123def456"),
     Some("https"),
     Some("explicit.example.com"),
     Some("8443"),
@@ -1845,24 +1848,24 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
   )]
   #[case::partial_override_scheme(
     "true",
-    Some("runpod-host.runpod.net"),
+    Some("abc123def456"),
     Some("http"),
     None,
     None,
-    "http://runpod-host.runpod.net:443"
+    "http://abc123def456-1135.proxy.runpod.net:443"
   )]
   #[case::partial_override_port(
     "true",
-    Some("runpod-host.runpod.net"),
+    Some("abc123def456"),
     None,
     None,
     Some("8080"),
-    "https://runpod-host.runpod.net:8080"
+    "https://abc123def456-1135.proxy.runpod.net:8080"
   )]
   fn test_runpod_with_explicit_overrides(
     temp_dir: TempDir,
     #[case] runpod_flag: &str,
-    #[case] runpod_hostname: Option<&str>,
+    #[case] runpod_pod_id: Option<&str>,
     #[case] public_scheme: Option<&str>,
     #[case] public_host: Option<&str>,
     #[case] public_port: Option<&str>,
@@ -1878,8 +1881,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     );
     env_vars.insert(BODHI_ON_RUNPOD.to_string(), runpod_flag.to_string());
 
-    runpod_hostname
-      .map(|hostname| env_vars.insert(RUNPOD_POD_HOSTNAME.to_string(), hostname.to_string()));
+    runpod_pod_id.map(|hostname| env_vars.insert(RUNPOD_POD_ID.to_string(), hostname.to_string()));
 
     let env_wrapper = EnvWrapperStub::new(env_vars);
     let service = DefaultSettingService::new_with_defaults(
@@ -1900,17 +1902,17 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
   }
 
   #[rstest]
-  #[case::runpod_disabled_no_hostname(Some("false"), None, false)]
-  #[case::runpod_enabled_no_hostname(Some("true"), None, false)]
-  #[case::runpod_enabled_with_hostname(Some("true"), Some("test.runpod.net"), true)]
-  #[case::runpod_unparseable_with_hostname(Some("invalid"), Some("test.runpod.net"), false)]
-  #[case::runpod_empty_flag_with_hostname(Some(""), Some("test.runpod.net"), false)]
-  #[case::runpod_not_set(None, Some("test.runpod.net"), false)]
-  #[case::runpod_enabled_empty_hostname(Some("true"), Some(""), false)]
+  #[case::runpod_disabled_no_pod_id(Some("false"), None, false)]
+  #[case::runpod_enabled_no_pod_id(Some("true"), None, false)]
+  #[case::runpod_enabled_with_pod_id(Some("true"), Some("abc123def456"), true)]
+  #[case::runpod_unparseable_with_pod_id(Some("invalid"), Some("abc123def456"), false)]
+  #[case::runpod_empty_flag_with_pod_id(Some(""), Some("abc123def456"), false)]
+  #[case::runpod_not_set(None, Some("abc123def456"), false)]
+  #[case::runpod_enabled_empty_pod_id(Some("true"), Some(""), false)]
   fn test_on_runpod_enabled_parsing(
     temp_dir: TempDir,
     #[case] runpod_flag: Option<&str>,
-    #[case] runpod_hostname: Option<&str>,
+    #[case] runpod_pod_id: Option<&str>,
     #[case] expected: bool,
   ) -> anyhow::Result<()> {
     let path = temp_dir.path().join("settings.yaml");
@@ -1923,8 +1925,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     );
 
     runpod_flag.map(|flag| env_vars.insert(BODHI_ON_RUNPOD.to_string(), flag.to_string()));
-    runpod_hostname
-      .map(|hostname| env_vars.insert(RUNPOD_POD_HOSTNAME.to_string(), hostname.to_string()));
+    runpod_pod_id.map(|hostname| env_vars.insert(RUNPOD_POD_ID.to_string(), hostname.to_string()));
 
     let env_wrapper = EnvWrapperStub::new(env_vars);
     let service = DefaultSettingService::new_with_defaults(
@@ -1944,7 +1945,7 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
     let path = temp_dir.path().join("settings.yaml");
     let env_vars = maplit::hashmap! {
       BODHI_ON_RUNPOD.to_string() => "true".to_string(),
-      RUNPOD_POD_HOSTNAME.to_string() => "test-pod.runpod.net".to_string(),
+      RUNPOD_POD_ID.to_string() => "abc123def456".to_string(),
       BODHI_HOME.to_string() => temp_dir.path().display().to_string()
     };
 
@@ -1963,19 +1964,22 @@ BODHI_EXEC_LOOKUP_PATH: /test/exec/lookup
       service.get_setting(BODHI_ON_RUNPOD)
     );
     println!(
-      "RUNPOD_POD_HOSTNAME setting: {:?}",
-      service.get_setting(RUNPOD_POD_HOSTNAME)
+      "RUNPOD_POD_ID setting: {:?}",
+      service.get_setting(RUNPOD_POD_ID)
     );
     println!("on_runpod_enabled(): {}", service.on_runpod_enabled());
     println!("public_host(): {}", service.public_host());
 
     assert_eq!(service.on_runpod_enabled(), true);
-    assert_eq!(service.public_host(), "test-pod.runpod.net");
+    assert_eq!(service.public_host(), "abc123def456-1135.proxy.runpod.net");
     assert_eq!(service.public_scheme(), "https");
     assert_eq!(service.public_port(), 443);
 
     // Test that public_server_url combines them correctly
-    assert_eq!(service.public_server_url(), "https://test-pod.runpod.net");
+    assert_eq!(
+      service.public_server_url(),
+      "https://abc123def456-1135.proxy.runpod.net"
+    );
 
     Ok(())
   }
