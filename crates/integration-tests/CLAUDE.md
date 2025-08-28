@@ -1,478 +1,403 @@
 # CLAUDE.md - integration-tests
 
-This file provides guidance to Claude Code when working with the `integration-tests` crate, which provides end-to-end testing for BodhiApp.
+This file provides guidance to Claude Code when working with the `integration-tests` crate, which provides end-to-end testing infrastructure for BodhiApp.
 
 ## Purpose
 
-The `integration-tests` crate provides comprehensive end-to-end testing:
+The `integration-tests` crate provides comprehensive end-to-end testing infrastructure that validates complete application workflows in production-like environments:
 
-- **Live Server Testing**: Real server startup and shutdown testing with actual models
-- **API Integration Testing**: Complete HTTP API testing with authentication flows
-- **Chat Completion Testing**: Streaming and non-streaming chat completion validation
-- **Model Management Testing**: End-to-end model loading and management workflows
-- **Cross-Component Testing**: Integration testing across all application components
+- **Live Server Testing**: Real server startup and shutdown testing with actual llama.cpp integration and model loading
+- **OAuth2 Authentication Testing**: Complete authentication flows using real OAuth2 tokens and session management
+- **API Integration Testing**: Full HTTP API testing with streaming and non-streaming chat completions
+- **Cross-Component Integration**: End-to-end validation of service coordination across all application layers
+- **Test Data Management**: Structured test data with HuggingFace cache simulation and model file management
 
-## Key Components
+## Key Domain Architecture
 
-### Live Server Tests
-- Complete server lifecycle testing with real llama.cpp integration
-- Model loading and server startup validation
-- Shared context and server factory testing
-- Resource cleanup and proper shutdown testing
+### Live Server Testing Infrastructure
 
-### API Integration Tests
-- HTTP endpoint testing with real authentication
-- Chat completion API validation (streaming and non-streaming)
-- API ping and health check validation
-- Error handling and edge case testing
+The crate provides sophisticated live server testing that validates complete application lifecycle:
 
-### Test Utilities
-- Live server setup and teardown utilities
-- Test data management and fixture setup
-- Authentication token generation for testing
-- Model file management for test scenarios
+- **Real Server Startup**: Full server initialization with actual llama.cpp process management and model loading
+- **OAuth2 Integration**: Complete authentication flows using real OAuth2 tokens, session creation, and cookie management
+- **Resource Management**: Proper cleanup of temporary directories, server processes, and authentication resources
+- **Concurrent Testing**: Serial test execution with resource isolation to prevent conflicts
 
-### Test Data
-- Sample model files for testing (Llama-68M variants)
-- HuggingFace hub cache simulation
-- Configuration files and test aliases
-- Mock data for offline testing scenarios
+### Test Data Management System
+
+Comprehensive test data infrastructure that simulates production environments:
+
+- **HuggingFace Cache Simulation**: Complete hub cache structure with model blobs, snapshots, and metadata
+- **Model File Management**: Small test models (Llama-68M variants) for fast test execution
+- **Configuration Management**: Test-specific Bodhi configuration with aliases and model definitions
+- **Environment Isolation**: Temporary directory management with proper cleanup
+
+### Authentication Testing Architecture
+
+Production-like authentication testing using real OAuth2 flows:
+
+- **OAuth2 Token Management**: Real token acquisition using client credentials and password flows
+- **Session Management**: Database-backed session creation with proper token storage
+- **Cookie Handling**: Secure session cookie creation and management for API testing
+- **Multi-Client Testing**: Support for creating test clients and resource management
+
+### Cross-Component Integration Validation
+
+End-to-end testing that validates service coordination across all application layers:
+
+- **Service Dependency Testing**: Validation of service injection and coordination patterns
+- **Shared Context Testing**: Server factory and shared context lifecycle management
+- **API Endpoint Testing**: Complete HTTP request/response cycles with authentication
+- **Streaming Protocol Testing**: Server-sent events and streaming response validation
 
 ## Dependencies
 
-### Core Components (dev-dependencies)
-- `server_app` - Complete server application for integration testing
-- `lib_bodhiserver` - Embeddable server library testing
-- `services` - Business logic service testing
-- `routes_app` - Application API endpoint testing
-- `server_core` - HTTP server infrastructure testing
-- `auth_middleware` - Authentication middleware testing
-- `llama_server_proc` - LLM process management testing
-- `objs` - Domain objects validation
+### Core Application Components (dev-dependencies with test-utils)
 
-### Testing Framework
-- `rstest` - Parameterized testing framework
-- `tokio` - Async runtime for async test execution
-- `anyhow` - Error handling in tests
-- `reqwest` - HTTP client for API testing
-- `serial_test` - Sequential test execution for resource conflicts
+- `server_app` - Complete server application with test utilities for integration testing
+- `lib_bodhiserver` - Embeddable server library with test fixtures
+- `services` - Business logic services with mock implementations and test utilities
+- `routes_app` - Application API endpoints with test routing configurations
+- `server_core` - HTTP server infrastructure with test context management
+- `auth_middleware` - Authentication middleware with test client and session utilities
+- `llama_server_proc` - LLM process management with test server lifecycle utilities
+- `objs` - Domain objects with test fixtures and localization setup
 
-### Test Support
-- `tempfile` - Temporary file management for tests
-- `pretty_assertions` - Enhanced assertion output
-- `maplit` - HashMap literal macros for test data
-- `fs_extra` - Extended file system operations
+### Testing Infrastructure
+
+- `rstest` - Parameterized testing with fixture management for complex test setups
+- `tokio` - Async runtime with full feature set for async test execution
+- `serial_test` - Sequential test execution to prevent resource conflicts in live server tests
+- `reqwest` - HTTP client for API integration testing with streaming support
+- `anyhow` - Error handling with anyhow_trace for detailed error context in tests
+
+### Test Data and Environment Management
+
+- `tempfile` - Temporary directory management for isolated test environments
+- `fs_extra` - Extended file system operations for test data copying and management
+- `sqlx` - Database operations with SQLite support for session and authentication testing
+- `tower-sessions` - Session management testing with database-backed session stores
+- `jsonwebtoken` - JWT token validation and testing utilities
+- `cookie` - HTTP cookie creation and management for authentication testing
+- `maplit` - HashMap literal macros for test data creation and session management
 
 ## Architecture Position
 
-The `integration-tests` crate sits at the testing validation layer:
-- **Validates**: Complete application functionality end-to-end
-- **Tests**: Cross-component integration and workflows
-- **Ensures**: Real-world usage scenarios work correctly
-- **Verifies**: Production-like deployment scenarios
+The `integration-tests` crate operates at the highest testing layer, providing end-to-end validation of the complete BodhiApp system:
 
-## Usage Patterns
+- **System Integration Validation**: Tests the complete application stack from HTTP requests through service coordination to llama.cpp process management
+- **Production Environment Simulation**: Uses real OAuth2 authentication, actual model files, and complete server lifecycle management
+- **Cross-Crate Coordination Testing**: Validates service dependencies and integration patterns across all application crates
+- **Quality Gate Enforcement**: Ensures that changes to any component don't break end-to-end functionality and user workflows
 
-### Live Server Integration Testing
+## Important Constraints
+
+### Test Environment Requirements
+
+- **OAuth2 Server Access**: Tests require access to a live OAuth2 server with configured test clients and users
+- **Model File Dependencies**: Tests depend on specific small model files (Llama-68M variants) for fast execution
+- **Serial Execution**: Live server tests must run serially due to resource conflicts and port binding
+- **Environment Configuration**: Tests require specific environment variables for OAuth2 configuration and test credentials
+
+### Resource Management Constraints
+
+- **Temporary Directory Cleanup**: All tests must properly clean up temporary directories and test data
+- **Server Process Lifecycle**: Live server tests must ensure proper server shutdown to prevent resource leaks
+- **Authentication Session Management**: Tests must properly manage OAuth2 tokens and session cleanup
+- **Port Allocation**: Live server tests use random port allocation to prevent conflicts
+
+### Test Data Management Constraints
+
+- **HuggingFace Cache Structure**: Test data must maintain proper HuggingFace hub cache structure with blobs and snapshots
+- **Model File Integrity**: Test model files must be valid GGUF format files for successful llama.cpp integration
+- **Configuration Consistency**: Test configuration files must match production structure for accurate testing
+
+## Cross-Crate Integration Patterns
+
+### Live Server Testing with OAuth2 Authentication
+
+The integration tests demonstrate complete authentication flows using real OAuth2 tokens and session management:
+
+- **OAuth2 Token Acquisition**: Tests acquire real access and refresh tokens using client credentials flow
+- **Session Creation**: Tests create database-backed sessions with proper token storage using tower-sessions
+- **Cookie-Based Authentication**: Tests use secure HTTP cookies for session-based authentication rather than Bearer tokens
+- **Multi-Service Coordination**: Tests validate coordination between auth_middleware, services, and server_core components
+
+### Test Data Management and Environment Isolation
+
+The crate implements sophisticated test data management that simulates production environments:
+
+- **HuggingFace Cache Simulation**: Complete hub cache structure with model blobs, snapshots, and metadata files
+- **Temporary Environment Setup**: Each test creates isolated temporary directories with proper Bodhi configuration
+- **Model File Management**: Small test models (Llama-68M variants) enable fast test execution while maintaining realism
+- **Configuration Copying**: Test configuration files are copied from version-controlled test data to temporary environments
+
+### Service Integration and Dependency Injection
+
+Integration tests validate complex service coordination patterns across the application:
+
+- **Mock Service Integration**: Tests use OfflineHubService and MockSettingService for controlled testing environments
+- **Service Builder Patterns**: Tests demonstrate proper service construction using AppServiceBuilder with custom implementations
+- **Shared Context Management**: Tests validate DefaultSharedContext lifecycle with server factory coordination
+- **Cross-Service Communication**: Tests ensure proper data flow between services, middleware, and route handlers
+
+### Live Server Testing Infrastructure Implementation
+
+The crate provides comprehensive live server testing utilities that manage complete server lifecycle:
+
+**TestServerHandle Structure** (see `tests/utils/live_server_utils.rs`):
+
+- **Temporary Environment Management**: Each test gets isolated temporary directories with proper cleanup
+- **Random Port Allocation**: Tests use random ports to prevent conflicts during parallel test execution
+- **Server Lifecycle Management**: Proper server startup, operation, and shutdown with resource cleanup
+- **Service Integration**: Complete service dependency injection with test-specific configurations
+
+**Authentication Testing Utilities**:
+
+- **OAuth2 Token Management**: Real token acquisition using environment-configured OAuth2 servers
+- **Session Management**: Database-backed session creation with proper token storage and expiration
+- **Cookie Handling**: Secure session cookie creation for HTTP-based authentication testing
+- **Multi-Client Support**: Support for creating test OAuth2 clients and resource management
+
+**Test Data Management Patterns**:
+
+- **HuggingFace Cache Structure**: Complete simulation of HuggingFace hub cache with proper blob and snapshot organization
+- **Model File Management**: Small but realistic GGUF model files for fast test execution
+- **Configuration Management**: Test-specific Bodhi configuration with aliases and model definitions
+- **Environment Variable Handling**: Proper loading of test environment configuration from `.env.test` files
+
+### Test Execution Patterns and Resource Management
+
+**Serial Test Execution** (using `#[serial_test::serial(live)]`):
+
+- All live server tests run serially to prevent resource conflicts
+- Tests use the `serial(live)` attribute to ensure proper resource isolation
+- Each test gets exclusive access to server ports and authentication resources
+
+**Timeout Management** (using `#[timeout(Duration::from_secs(5 * 60))]`):
+
+- Tests have 5-minute timeouts to prevent hanging in CI environments
+- Timeout handling ensures proper resource cleanup even on test failures
+
+**Fixture-Based Test Setup** (using `rstest` fixtures):
+
+- `llama2_7b_setup` fixture provides complete application service setup with OAuth2 configuration
+- `live_server` fixture builds on the setup to provide running server instances
+- Fixtures handle complex dependency injection and service coordination
+
+**Error Handling and Cleanup**:
+
+- Tests use `anyhow::Result` for comprehensive error handling
+- Proper cleanup of temporary directories, server processes, and authentication sessions
+- Resource cleanup occurs even when tests fail or timeout
+
+## Test Infrastructure Implementation
+
+### TestServerHandle Structure
+
+The actual test infrastructure uses `TestServerHandle` (see `tests/utils/live_server_utils.rs:139-145`):
+
 ```rust
-use llama_server_proc::{LlamaServer, LlamaServerArgsBuilder};
-use rstest::{fixture, rstest};
-
-#[fixture]
-fn test_model_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/data/live/huggingface/hub")
-        .join("models--afrideva--Llama-68M-Chat-v1-GGUF")
-        .join("snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61")
-        .join("llama-68m-chat-v1.q8_0.gguf")
-}
-
-#[rstest]
-#[tokio::test]
-async fn test_server_startup_with_model(
-    test_model_path: PathBuf,
-    lookup_path: PathBuf,
-) -> anyhow::Result<()> {
-    let exec_path = exec_path_from(&lookup_path, DEFAULT_VARIANT);
-    let server = LlamaServer::new(
-        &exec_path,
-        LlamaServerArgsBuilder::default()
-            .alias("test-model")
-            .model(test_model_path)
-            .build()?,
-    )?;
-
-    let result = server.start().await;
-    server.stop_unboxed().await?;
-    
-    assert!(result.is_ok(), "Server startup failed: {:?}", result);
-    Ok(())
+pub struct TestServerHandle {
+  pub temp_cache_dir: TempDir,
+  pub host: String,
+  pub port: u16,
+  pub handle: ServerShutdownHandle,
+  pub app_service: Arc<dyn AppService>,
 }
 ```
 
-### HTTP API Integration Testing
-```rust
-use reqwest::Client;
-use serde_json::json;
+**Key Infrastructure Components**:
 
-#[rstest]
-#[tokio::test]
-async fn test_chat_completion_non_streamed(
-    live_server: LiveServer,
-) -> anyhow::Result<()> {
-    let client = Client::new();
-    
-    let request = json!({
-        "model": "test-model",
-        "messages": [
-            {"role": "user", "content": "Hello, how are you?"}
-        ],
-        "stream": false,
-        "max_tokens": 50
-    });
+- **Temporary Directory Management**: Each test gets isolated temporary cache directories with proper cleanup
+- **Random Port Allocation**: Tests use random ports (2000-60000 range) to prevent conflicts
+- **Server Lifecycle Management**: Uses `ServerShutdownHandle` from server_app for proper shutdown coordination
+- **Service Access**: Provides access to the complete `AppService` for authentication and testing utilities
 
-    let response = client
-        .post(&format!("{}/v1/chat/completions", live_server.base_url()))
-        .header("Authorization", format!("Bearer {}", live_server.token()))
-        .json(&request)
-        .send()
-        .await?;
+### Authentication Testing Infrastructure
 
-    assert_eq!(response.status(), 200);
-    
-    let chat_response: serde_json::Value = response.json().await?;
-    assert!(chat_response["choices"].is_array());
-    assert!(!chat_response["choices"].as_array().unwrap().is_empty());
-    
-    Ok(())
-}
+**OAuth2 Token Management** (see `get_oauth_tokens` function):
+
+- Real OAuth2 token acquisition using client credentials and password flows
+- Environment-based configuration for test OAuth2 servers and credentials
+- Support for access token and refresh token management
+
+**Session Management** (see `create_authenticated_session` function):
+
+- Database-backed session creation using tower-sessions
+- Proper token storage in session data with expiration management
+- Session cookie creation for HTTP-based authentication testing
+
+### Test Data Structure and Management
+
+**HuggingFace Cache Simulation**:
+
+```
+tests/data/live/huggingface/hub/
+├── models--afrideva--Llama-68M-Chat-v1-GGUF/
+│   ├── blobs/cdd6bad08258f53c637c233309c3b41ccd91907359364aaa02e18df54c34b836
+│   ├── refs/main
+│   └── snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61/
+│       └── llama-68m-chat-v1.q8_0.gguf
+└── models--TheBloke--TinyLlama-1.1B-Chat-v1.0-GGUF/
+    └── blobs/da3087fb14aede55fde6eb81a0e55e886810e43509ec82ecdc7aa5d62a03b556
 ```
 
-### Streaming API Testing
-```rust
-use futures::StreamExt;
+**Bodhi Configuration Structure**:
 
-#[rstest]
-#[tokio::test]
-async fn test_chat_completion_streamed(
-    live_server: LiveServer,
-) -> anyhow::Result<()> {
-    let client = Client::new();
-    
-    let request = json!({
-        "model": "test-model",
-        "messages": [
-            {"role": "user", "content": "Count to 5"}
-        ],
-        "stream": true,
-        "max_tokens": 30
-    });
-
-    let mut stream = client
-        .post(&format!("{}/v1/chat/completions", live_server.base_url()))
-        .header("Authorization", format!("Bearer {}", live_server.token()))
-        .json(&request)
-        .send()
-        .await?
-        .bytes_stream();
-
-    let mut received_chunks = 0;
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        let text = String::from_utf8_lossy(&chunk);
-        
-        if text.starts_with("data: ") && !text.contains("[DONE]") {
-            received_chunks += 1;
-        }
-    }
-
-    assert!(received_chunks > 0, "No streaming chunks received");
-    Ok(())
-}
+```
+tests/data/live/bodhi/
+├── aliases/phi4--mini-instruct.yaml
+├── logs/
+└── models.yaml
 ```
 
-### Shared Context Testing
-```rust
-use server_core::{DefaultSharedContext, SharedContext};
-use services::test_utils::OfflineHubService;
+### Environment Configuration and Test Setup
 
-#[rstest]
-#[tokio::test]
-async fn test_shared_context_reload(
-    lookup_path: PathBuf,
-    tests_data: PathBuf,
-) -> anyhow::Result<()> {
-    let hub_service = OfflineHubService::new(HfHubService::new(
-        tests_data.join("live/huggingface/hub"),
-        false,
-        None,
-    ));
-    
-    let shared_context = DefaultSharedContext::with_args(
-        Arc::new(hub_service),
-        Box::new(DefaultServerFactory),
-        &lookup_path,
-        DEFAULT_VARIANT,
-    );
+**Environment Variable Management** (see `tests/resources/.env.test`):
 
-    // Test initial load
-    let result = shared_context.reload(None).await;
-    assert!(result.is_ok(), "Initial reload failed: {:?}", result);
+- OAuth2 server configuration with realm and client credentials
+- Test user credentials for authentication flows
+- Environment isolation using temporary directories and custom paths
 
-    // Test reload with specific model
-    let server_args = LlamaServerArgsBuilder::default()
-        .alias("test-alias")
-        .model(test_model_path)
-        .build()?;
-    
-    let result = shared_context.reload(Some(server_args)).await;
-    assert!(result.is_ok(), "Model reload failed: {:?}", result);
+**Test Fixture Patterns** (see `tests/utils/live_server_utils.rs`):
 
-    shared_context.stop().await?;
-    Ok(())
-}
-```
+- `llama2_7b_setup` fixture provides complete application service setup
+- `live_server` fixture builds running server instances with authentication
+- Fixtures handle complex dependency injection and service coordination
 
-## Test Infrastructure
+**Test Data Copying and Management** (see `copy_test_dir` function):
 
-### LiveServer Test Utility
-```rust
-pub struct LiveServer {
-    server_handle: JoinHandle<()>,
-    base_url: String,
-    auth_token: String,
-    shutdown_sender: tokio::sync::oneshot::Sender<()>,
-}
+- Efficient copying of test data to temporary directories using `fs_extra`
+- Proper HuggingFace cache structure maintenance
+- Configuration file management for test-specific settings
 
-impl LiveServer {
-    pub async fn start() -> anyhow::Result<Self> {
-        // Initialize test database and services
-        let app_service = setup_test_app_service().await?;
-        
-        // Create router with test configuration
-        let router = create_test_router(app_service).await?;
-        
-        // Start server on random port
-        let listener = TcpListener::bind("127.0.0.1:0").await?;
-        let addr = listener.local_addr()?;
-        
-        // Generate test authentication token
-        let auth_token = generate_test_token().await?;
-        
-        let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel();
-        
-        let server_handle = tokio::spawn(async move {
-            axum::serve(listener, router)
-                .with_graceful_shutdown(async {
-                    shutdown_rx.await.ok();
-                })
-                .await
-                .unwrap();
-        });
+## Testing Categories and Implementation
 
-        Ok(Self {
-            server_handle,
-            base_url: format!("http://{}", addr),
-            auth_token,
-            shutdown_sender: shutdown_tx,
-        })
-    }
+### Live Server Integration Tests
 
-    pub fn base_url(&self) -> &str {
-        &self.base_url
-    }
+**API Ping Testing** (see `test_live_api_ping.rs`):
 
-    pub fn token(&self) -> &str {
-        &self.auth_token
-    }
+- Basic server connectivity and health check validation
+- Server startup and shutdown lifecycle testing
+- HTTP status code validation for basic endpoints
 
-    pub async fn shutdown(self) -> anyhow::Result<()> {
-        self.shutdown_sender.send(()).ok();
-        self.server_handle.await?;
-        Ok(())
-    }
-}
-```
+**Chat Completion Testing** (see `test_live_chat_completions_*.rs`):
 
-### Test Data Management
-```rust
-// Test model files and HuggingFace cache structure
-tests/
-├── data/
-│   └── live/
-│       ├── bodhi/
-│       │   ├── aliases/
-│       │   │   └── phi4--mini-instruct.yaml
-│       │   ├── logs/
-│       │   └── models.yaml
-│       └── huggingface/
-│           └── hub/
-│               ├── models--afrideva--Llama-68M-Chat-v1-GGUF/
-│               │   ├── blobs/
-│               │   │   └── cdd6bad08258f53c637c233309c3b41ccd91907359364aaa02e18df54c34b836
-│               │   ├── refs/
-│               │   │   └── main
-│               │   └── snapshots/
-│               │       └── 4bcbc666d2f0d2b04d06f046d6baccdab79eac61/
-│               │           └── llama-68m-chat-v1.q8_0.gguf
-│               └── models--TheBloke--TinyLlama-1.1B-Chat-v1.0-GGUF/
-│                   └── blobs/
-│                       └── da3087fb14aede55fde6eb81a0e55e886810e43509ec82ecdc7aa5d62a03b556
-```
+- Non-streaming chat completion API validation with content verification
+- Streaming chat completion testing with server-sent events parsing
+- OAuth2 authentication integration with session-based authentication
+- Model-specific testing using phi4:mini-instruct alias
 
-### Test Configuration
-```rust
-// Test fixtures for consistent setup
-#[fixture]
-fn lookup_path() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../llama_server_proc/bin")
-}
+### Library Integration Tests
 
-#[fixture]
-fn tests_data() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/data")
-}
+**LLM Server Process Testing** (see `test_live_lib.rs`):
 
-#[fixture]
-fn test_model_68m(tests_data: PathBuf) -> PathBuf {
-    tests_data
-        .join("live/huggingface/hub")
-        .join("models--afrideva--Llama-68M-Chat-v1-GGUF")
-        .join("snapshots/4bcbc666d2f0d2b04d06f046d6baccdab79eac61")
-        .join("llama-68m-chat-v1.q8_0.gguf")
-}
-```
+- Direct llama.cpp server startup and shutdown testing
+- Model loading with various file formats (symlinks, direct files, blobs)
+- Shared context testing with server factory coordination
+- Resource cleanup and proper shutdown validation
 
-## Testing Categories
+### Authentication and Session Management Tests
 
-### Component Integration Tests
-- Server startup and shutdown lifecycle
-- Database integration and migration testing
-- Authentication flow validation
-- Service dependency injection testing
+**OAuth2 Integration Testing**:
 
-### API Endpoint Tests
-- HTTP request/response validation
-- Authentication and authorization testing
-- Error handling and status code validation
-- Content type and header validation
+- Real OAuth2 token acquisition using client credentials flow
+- Session creation and management with database-backed storage
+- Cookie-based authentication for HTTP API testing
+- Multi-client resource management and cleanup
 
-### Model Management Tests
-- Model loading and unloading
-- Alias creation and management
-- HuggingFace integration testing
-- File system operations testing
+### Cross-Component Integration Validation
 
-### Chat Completion Tests
-- OpenAI API compatibility validation
-- Streaming response testing
-- Token counting and usage reporting
-- Error handling for invalid requests
+**Service Coordination Testing**:
 
-### Performance Tests
-- Concurrent request handling
-- Memory usage validation
-- Response time benchmarking
-- Resource cleanup verification
+- Service dependency injection with mock and real implementations
+- Cross-service communication validation
+- Shared context lifecycle management
+- Error propagation across service boundaries
 
 ## Development Guidelines
 
 ### Adding New Integration Tests
-1. Identify the integration scenario to test
-2. Create appropriate test fixtures and data
-3. Use `LiveServer` utility for full server testing
-4. Include proper cleanup in test teardown
-5. Add both positive and negative test cases
 
-### Test Data Management
-- Use realistic but small model files for testing
-- Maintain test data in version control
-- Document test data requirements and setup
-- Clean up temporary files and resources
+1. **Use Serial Execution**: Add `#[serial_test::serial(live)]` for tests that use live servers or shared resources
+2. **Implement Proper Timeouts**: Use `#[timeout(Duration::from_secs(5 * 60))]` for tests that may hang
+3. **Leverage Existing Fixtures**: Use `live_server` fixture for full server testing with authentication
+4. **Follow Authentication Patterns**: Use `get_oauth_tokens` and `create_authenticated_session` for authenticated API testing
+5. **Ensure Resource Cleanup**: Tests must properly clean up temporary directories, server processes, and authentication sessions
 
-### Error Handling in Tests
-- Test both success and failure scenarios
-- Validate error messages and status codes
-- Ensure proper resource cleanup on failures
-- Use descriptive assertion messages
+### Test Data Management Best Practices
 
-### Test Performance
-- Keep integration tests focused and fast
-- Use `serial_test` for tests that conflict
-- Mock external dependencies when possible
-- Profile test execution times
+- **Use Small Model Files**: Tests use Llama-68M variants for fast execution while maintaining realism
+- **Maintain HuggingFace Structure**: Test data must follow proper hub cache structure with blobs and snapshots
+- **Version Control Test Data**: All test data is maintained in version control for consistency
+- **Environment Isolation**: Each test gets isolated temporary directories with proper cleanup
 
-## Testing Strategy
+### Error Handling and Debugging
 
-### Test Execution
+- **Use anyhow_trace**: Add `#[anyhow_trace::anyhow_trace]` for detailed error context in test failures
+- **Descriptive Assertions**: Use `pretty_assertions::assert_eq` for better test failure output
+- **Proper Error Propagation**: Tests use `anyhow::Result` for comprehensive error handling
+- **Resource Cleanup on Failure**: Ensure cleanup occurs even when tests fail or timeout
+
+### Performance and Resource Management
+
+- **Serial Test Execution**: Live server tests run serially to prevent resource conflicts
+- **Random Port Allocation**: Tests use random ports to prevent conflicts during test execution
+- **Efficient Test Data**: Small model files and efficient copying reduce test execution time
+- **Proper Resource Isolation**: Each test gets isolated environments to prevent interference
+
+## Testing Strategy and Execution
+
+### Test Execution Commands
+
 ```bash
-# Run all integration tests
+# Run all integration tests (note: requires OAuth2 server access and environment configuration)
 cargo test --package integration-tests
 
-# Run specific test category
-cargo test --package integration-tests test_live_api
+# Run specific test files
+cargo test --package integration-tests test_live_api_ping
+cargo test --package integration-tests test_live_chat_completions_non_streamed
 
-# Run tests with output
+# Run tests with output (useful for debugging authentication issues)
 cargo test --package integration-tests -- --nocapture
 
-# Run tests serially (for resource conflicts)
-cargo test --package integration-tests -- --test-threads=1
+# Tests automatically run serially due to #[serial_test::serial(live)] attributes
 ```
 
-### Continuous Integration
-- Integration tests run in CI pipeline
-- Use cached test data for faster execution
-- Parallel execution where safe
-- Proper resource isolation between tests
+### Environment Setup Requirements
 
-### Test Environment
-- Isolated test database for each test
-- Temporary directories for file operations
-- Clean state before each test execution
-- Proper cleanup after test completion
+- **OAuth2 Server Configuration**: Tests require access to a live OAuth2 server with proper client and user setup
+- **Environment Variables**: Must configure `.env.test` file with OAuth2 server details and test credentials
+- **Model Files**: Tests depend on specific model files in the test data structure
+- **Temporary Directory Access**: Tests need write access for temporary directory creation and cleanup
 
-## Error Scenarios Tested
+### Test Environment Characteristics
 
-### Server Startup Failures
-- Invalid model file paths
-- Missing executable dependencies
-- Port binding conflicts
-- Database connection failures
+- **Isolated Temporary Environments**: Each test creates isolated temporary directories with proper cleanup
+- **Real Authentication**: Tests use actual OAuth2 flows rather than mocked authentication
+- **Live Server Testing**: Tests start real server instances with actual llama.cpp integration
+- **Database-Backed Sessions**: Tests use real session storage with proper cleanup
 
-### API Request Failures
-- Invalid authentication tokens
-- Malformed request payloads
-- Unsupported model requests
-- Network connectivity issues
+## Current Test Coverage
 
-### Model Management Failures
-- Corrupted model files
-- Insufficient disk space
-- Permission denied errors
-- Invalid model formats
+### API Integration Coverage
 
-## Security Testing
+- **Basic Connectivity**: API ping endpoint testing with server lifecycle validation
+- **Chat Completions**: Both streaming and non-streaming chat completion testing with content validation
+- **Authentication Integration**: Complete OAuth2 flow testing with session management
+- **Error Handling**: Proper error response validation and resource cleanup
 
-### Authentication Testing
-- Valid and invalid token validation
-- Session management testing
-- Authorization level verification
-- Token expiration handling
+### Library Integration Coverage
 
-### Input Validation Testing
-- SQL injection prevention
-- Path traversal protection
-- Request size limits
-- Content type validation
+- **LLM Server Process**: Direct llama.cpp server testing with various model file formats
+- **Shared Context Management**: Server factory and shared context lifecycle testing
+- **Service Coordination**: Cross-service integration with mock and real service implementations
+- **Resource Management**: Proper cleanup and shutdown testing across all components
 
-## Future Extensions
+### Authentication and Security Coverage
 
-The integration-tests crate can be extended with:
-- Load testing with realistic traffic patterns
-- Cross-platform testing automation
-- Performance regression testing
-- Security vulnerability scanning
-- End-to-end UI testing with browser automation
-- Multi-tenant testing scenarios
+- **OAuth2 Token Management**: Real token acquisition and validation testing
+- **Session Management**: Database-backed session creation and cleanup testing
+- **Cookie-Based Authentication**: Secure session cookie handling for HTTP API testing
+- **Multi-Client Support**: OAuth2 client creation and resource management testing

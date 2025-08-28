@@ -1,293 +1,180 @@
-# CLAUDE.md - auth_middleware
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `auth_middleware` crate, which provides authentication and authorization middleware for BodhiApp's HTTP server.
+This file provides guidance to Claude Code when working with the `auth_middleware` crate.
+
+*For detailed implementation examples and technical depth, see [crates/auth_middleware/PACKAGE.md](crates/auth_middleware/PACKAGE.md)*
 
 ## Purpose
 
-The `auth_middleware` crate implements comprehensive authentication and authorization:
+The `auth_middleware` crate serves as BodhiApp's **HTTP authentication and authorization middleware layer**, implementing sophisticated JWT token validation, session management, and multi-layered security controls with comprehensive OAuth2 integration and role-based access control.
 
-- **JWT Token Validation**: Bearer token authentication with proper validation
-- **Session Management**: HTTP session handling with secure storage
-- **Role-Based Access Control**: Fine-grained authorization with roles and scopes
-- **API Authentication**: Middleware for protecting API endpoints
-- **Token Services**: JWT token creation, validation, and refresh
-- **Security Headers**: Same-origin validation and security controls
+## Key Domain Architecture
 
-## Key Components
+### Multi-Layer Authentication System
+Sophisticated authentication architecture supporting multiple authentication flows:
+- **Session-Based Authentication**: HTTP session management with Tower Sessions integration and secure cookie handling
+- **Bearer Token Authentication**: JWT token validation with OAuth2 compliance and external client token exchange
+- **Dual Authentication Support**: Seamless handling of both session tokens and API bearer tokens with precedence rules
+- **Token Exchange Protocol**: RFC 8693 token exchange for external client integration and service-to-service authentication
+- **Same-Origin Validation**: Security header validation for CSRF protection and request origin verification
 
-### Authentication Middleware (`src/auth_middleware.rs`)
-- `auth_middleware` - Main authentication middleware for session-based auth
-- Session token validation and refresh token handling
-- Same-origin request validation using Sec-Fetch-Site header
-- Integration with Tower Sessions for secure session management
+### JWT Token Management Architecture
+Comprehensive token lifecycle management with sophisticated validation:
+- **Token Service Coordination**: Centralized token validation, refresh, and exchange operations through `DefaultTokenService`
+- **Multi-Token Type Support**: Offline tokens, access tokens, and external client tokens with different validation rules
+- **Cache-Based Performance**: Token validation caching with expiration handling and automatic cache invalidation
+- **Database Token Tracking**: API token status management with active/inactive state tracking and digest-based lookup
+- **Claims Validation**: Comprehensive JWT claims validation with leeway handling, issuer verification, and audience validation
 
-### API Authentication Middleware (`src/api_auth_middleware.rs`)
-- `api_auth_middleware` - Bearer token authentication for API endpoints
-- JWT token extraction and validation from Authorization header
-- Resource scope and role-based authorization
-- Cache-based token validation for performance
+### Role-Based Authorization System
+Fine-grained access control with hierarchical role management:
+- **Role Hierarchy Enforcement**: Admin > Manager > PowerUser > User ordering with `has_access_to()` validation
+- **Resource Scope Authorization**: Token-based and user-based scope validation with `ResourceScope` union type
+- **API Authorization Middleware**: Route-level authorization with configurable role and scope requirements
+- **Authorization Precedence**: Role-based authorization takes precedence over scope-based when both are present
+- **Cross-Service Authorization**: Integration with objs crate role and scope types for consistent authorization
 
-### Token Service (`src/token_service.rs`)
-- `DefaultTokenService` - Comprehensive token management service
-- JWT token creation, validation, and refresh operations
-- Token digest generation for secure storage and lookup
-- Integration with database for token status tracking
-- Claims extraction and validation with proper leeway handling
-
-### Authentication Utilities (`src/utils.rs`)
-- Helper functions for token processing and validation
-- Security utilities for request validation
-- Error handling and response formatting
-
-## Dependencies
-
-### Core Infrastructure
-- `objs` - Domain objects, error types, and validation
-- `services` - Business logic services and authentication
-- `server_core` - HTTP server infrastructure and routing
-
-### Authentication & Security
-- `jsonwebtoken` - JWT token creation and validation
-- `sha2` - SHA-256 hashing for token digests
-- `base64` - Base64 encoding/decoding for tokens
-- `tower-sessions` - HTTP session management with secure storage
-
-### HTTP Framework
-- `axum` - Web framework integration with extractors and middleware
-- `time` - Time handling for token expiration
-- `chrono` - Date/time operations for claims validation
-
-### Development & Testing
-- `rstest` - Parameterized testing framework
-- `mockall` - Mock service generation for testing
+### Security Infrastructure Architecture
+Multi-layered security controls with comprehensive threat protection:
+- **Canonical URL Middleware**: Automatic redirection to canonical URLs with SEO optimization and security benefits
+- **Request Origin Validation**: Same-origin request validation using Sec-Fetch-Site headers for CSRF protection
+- **Token Digest Security**: SHA-256 token digests for secure database storage and lookup without exposing tokens
+- **External Client Security**: Secure external client token validation with issuer and audience verification
+- **Security Header Management**: Automatic injection and removal of internal security headers for request processing
 
 ## Architecture Position
 
-The `auth_middleware` crate sits at the HTTP middleware layer:
-- **Above**: Server core infrastructure and routing
-- **Below**: Route handlers and business logic
-- **Integrates**: Authentication services, session management, and security controls
-- **Provides**: Security boundaries for all HTTP endpoints
+The `auth_middleware` crate serves as BodhiApp's **HTTP security orchestration layer**:
+- **Above server_core and services**: Coordinates HTTP infrastructure and business services for authentication operations
+- **Below route implementations**: Provides authentication and authorization foundation for routes_oai and routes_app
+- **Integration with objs**: Uses domain objects for role, scope, and error handling with consistent validation
+- **Cross-cutting security**: Implements security boundaries across all HTTP endpoints with comprehensive middleware integration
 
-## Usage Patterns
+## Cross-Crate Integration Patterns
 
-### Session-Based Authentication Middleware
-```rust
-use auth_middleware::{auth_middleware, AuthError};
-use axum::{routing::get, Router};
-use tower_sessions::{SessionManagerLayer, MemoryStore};
+### Service Layer Authentication Coordination
+Complex authentication flows coordinated across BodhiApp's service layer:
+- **AuthService Integration**: OAuth2 flows, token exchange, and refresh operations with comprehensive error handling
+- **SecretService Coordination**: JWT signing key management, app registration info, and credential encryption
+- **DbService Token Management**: API token storage, status tracking, and digest-based lookup with transaction support
+- **CacheService Performance**: Token validation caching, exchange result caching, and automatic invalidation strategies
+- **SessionService Integration**: HTTP session management with SQLite backend and secure cookie configuration
 
-let session_layer = SessionManagerLayer::new(MemoryStore::default());
+### HTTP Infrastructure Integration
+Authentication middleware coordinates with HTTP infrastructure for request processing:
+- **RouterState Integration**: Dependency injection providing access to AppService registry for authentication operations
+- **Request Header Management**: Automatic injection and removal of internal authentication headers for security
+- **Error Translation**: Service errors converted to appropriate HTTP status codes with localized messages
+- **Middleware Composition**: Layered middleware architecture with auth_middleware, inject_session_auth_info, and canonical_url_middleware
+- **OpenAI API Security**: Bearer token authentication for OpenAI-compatible endpoints through routes_oai integration
+- **Application API Security**: Session-based and bearer token authentication for application endpoints through routes_app integration
+- **API Token Management**: Database-backed API token validation for external client access to OpenAI endpoints
+- **Route Composition Integration**: Coordinated with routes_all for comprehensive middleware orchestration with hierarchical authorization and multi-layer security
 
-let app = Router::new()
-    .route("/protected", get(protected_handler))
-    .route_layer(axum::middleware::from_fn_with_state(
-        app_state.clone(),
-        auth_middleware,
-    ))
-    .layer(session_layer);
-```
+### Domain Object Integration
+Extensive use of objs crate for authentication and authorization:
+- **Role and Scope Types**: Hierarchical role validation and resource scope authorization with consistent domain logic
+- **Error System Integration**: Authentication errors implement AppError trait for consistent HTTP response generation
+- **ResourceScope Union**: Seamless handling of both TokenScope and UserScope authorization contexts
+- **Validation Consistency**: Domain object validation rules applied consistently across authentication flows
 
-### API Bearer Token Authentication
-```rust
-use auth_middleware::{api_auth_middleware, DefaultTokenService};
+## Authentication Flow Orchestration
 
-let app = Router::new()
-    .route("/api/chat", post(chat_handler))
-    .route_layer(axum::middleware::from_fn_with_state(
-        app_state.clone(),
-        api_auth_middleware,
-    ));
-```
+### Multi-Flow Authentication Architecture
+Sophisticated authentication coordination supporting multiple authentication patterns:
 
-### Token Validation
-```rust
-use auth_middleware::{DefaultTokenService, AuthError};
+**Session-Based Authentication Flow**:
+1. **Same-Origin Validation**: Sec-Fetch-Site header validation for CSRF protection and request origin verification
+2. **Session Token Retrieval**: Access token extraction from HTTP session storage with Tower Sessions integration
+3. **Token Validation**: JWT token validation with claims verification and expiration checking
+4. **Automatic Token Refresh**: Expired token refresh using refresh tokens with seamless session updates
+5. **Role Extraction**: Role extraction from JWT claims with hierarchical authorization validation
 
-let token_service = DefaultTokenService::new(
-    auth_service,
-    secret_service,
-    cache_service,
-    db_service,
-    setting_service,
-);
+**Bearer Token Authentication Flow**:
+1. **Token Extraction**: Bearer token extraction from Authorization header with format validation
+2. **Database Token Lookup**: API token status verification with digest-based lookup and active/inactive checking
+3. **External Client Handling**: External client token validation with issuer and audience verification
+4. **Token Exchange**: RFC 8693 token exchange for external clients with scope validation and caching
+5. **Resource Scope Authorization**: Token-based or user-based scope validation with ResourceScope union type
 
-// Validate bearer token from Authorization header
-let (token_digest, resource_scope) = token_service
-    .validate_bearer_token(&auth_header)
-    .await?;
+**Dual Authentication Support**:
+- **Precedence Rules**: Bearer token authentication takes precedence over session-based authentication
+- **Header Management**: Automatic injection of X-Resource-Token, X-Resource-Role, and X-Resource-Scope headers
+- **Security Isolation**: Removal of user-provided internal headers to prevent header injection attacks
+- **Error Coordination**: Consistent error handling across both authentication flows with localized messages
 
-// Check token status in database
-let is_active = token_service.is_token_active(&token_digest).await?;
-```
+### Token Service Orchestration Workflows
+Complex token management workflows coordinated across multiple services:
 
-### Role and Scope Validation
-```rust
-use objs::{Role, ResourceScope, TokenScope, UserScope};
+**Token Validation Workflow**:
+1. **Cache Check**: Token validation result lookup in cache for performance optimization
+2. **Database Verification**: API token status verification with digest-based lookup
+3. **JWT Validation**: Comprehensive JWT claims validation with leeway handling and signature verification
+4. **Service Coordination**: AuthService token refresh or exchange operations with error handling
+5. **Cache Update**: Validation result caching with appropriate TTL and invalidation strategies
 
-// Extract and validate roles from token claims
-let roles = extract_roles_from_claims(&claims)?;
-if !roles.contains(&Role::User) {
-    return Err(AuthError::MissingRoles);
-}
+**External Client Token Exchange**:
+1. **Issuer Validation**: External token issuer verification against configured auth issuer
+2. **Audience Verification**: Token audience validation to ensure it targets the current client
+3. **Scope Extraction**: User scope extraction from external token for exchange operation
+4. **Token Exchange**: AuthService token exchange with proper scope mapping and error handling
+5. **Result Caching**: Exchange result caching with token digest-based keys for performance
 
-// Validate resource scopes
-let resource_scope = ResourceScope::new(
-    TokenScope::Read,
-    UserScope::Own,
-);
-```
+## Important Constraints
 
-### Session Token Management
-```rust
-use tower_sessions::Session;
-use auth_middleware::{SESSION_KEY_ACCESS_TOKEN, SESSION_KEY_REFRESH_TOKEN};
+### Authentication Security Requirements
+- All authentication operations must validate JWT signatures and claims with proper leeway handling for clock skew
+- Session-based authentication requires same-origin validation using Sec-Fetch-Site headers for CSRF protection
+- Bearer token authentication must support both internal API tokens and external client tokens with different validation rules
+- Token refresh operations must be atomic with proper session updates and error recovery mechanisms
+- External client token exchange must validate issuer and audience claims to prevent token substitution attacks
 
-// Store tokens in session
-session.insert(SESSION_KEY_ACCESS_TOKEN, access_token).await?;
-session.insert(SESSION_KEY_REFRESH_TOKEN, refresh_token).await?;
+### Authorization Consistency Standards
+- Role-based authorization must follow hierarchical ordering (Admin > Manager > PowerUser > User) consistently
+- Resource scope authorization must support both TokenScope and UserScope with proper precedence rules
+- Authorization middleware must handle missing authentication gracefully with appropriate HTTP status codes
+- Cross-service authorization decisions must use consistent domain objects from objs crate for validation
+- API authorization middleware must support configurable role and scope requirements for different endpoints
 
-// Retrieve tokens from session
-let access_token: String = session
-    .get(SESSION_KEY_ACCESS_TOKEN)
-    .await?
-    .ok_or(AuthError::TokenNotFound)?;
-```
+### Token Management Security Rules
+- Token digests must use SHA-256 hashing for secure database storage without exposing actual tokens
+- Token validation results must be cached with appropriate TTL and automatic invalidation on token changes
+- Database token status must be checked for all API tokens to support token revocation and lifecycle management
+- External client tokens must be validated against configured issuer and audience to prevent cross-client attacks
+- Token exchange operations must follow RFC 8693 standards with proper scope mapping and validation
 
-## Integration Points
+### HTTP Security Integration Requirements
+- Internal authentication headers (X-Resource-*) must be automatically removed from incoming requests to prevent injection
+- Authentication middleware must inject appropriate headers for downstream route handlers with validated information
+- Canonical URL middleware must redirect to configured canonical URLs for SEO and security benefits
+- Error responses must not leak sensitive authentication information while providing actionable error messages
+- Session management must use secure cookie configuration with SameSite::Strict and appropriate security flags
 
-### With HTTP Routes
-- Middleware applied to route layers for authentication
-- Request extension with authenticated user information
-- Error handling with appropriate HTTP status codes
+## Authentication Extension Patterns
 
-### With Services Layer
-- Authentication service for OAuth flows and token exchange
-- Secret service for JWT signing key management
-- Database service for token status tracking
-- Cache service for performance optimization
+### Adding New Authentication Middleware
+When creating new authentication middleware for specific use cases:
 
-### With Session Management
-- Tower Sessions integration for secure session storage
-- Session-based authentication for web interfaces
-- Secure cookie handling with appropriate flags
+1. **Service Coordination Design**: Use RouterState dependency injection for consistent AppService access
+2. **Error Handling Integration**: Create middleware-specific errors that implement AppError trait for consistent HTTP responses
+3. **Header Management**: Follow established patterns for internal header injection and removal for security
+4. **Token Validation**: Leverage DefaultTokenService for consistent token validation and caching strategies
+5. **Testing Infrastructure**: Use comprehensive service mocking for isolated middleware testing scenarios
 
-## Authentication Flows
+### Extending Authorization Patterns
+For new authorization requirements and access control patterns:
 
-### Session-Based Flow
-1. **Request Validation**: Check Sec-Fetch-Site for same-origin requests
-2. **Session Lookup**: Retrieve access token from session storage
-3. **Token Validation**: Validate JWT token with proper claims checking
-4. **Token Refresh**: Automatically refresh expired tokens using refresh token
-5. **User Context**: Inject authenticated user information into request
+1. **Role Hierarchy Integration**: Ensure new authorization logic follows established role hierarchy with has_access_to() validation
+2. **Resource Scope Extensions**: Extend ResourceScope union type for new authorization contexts while maintaining precedence rules
+3. **Cross-Service Consistency**: Coordinate with objs crate for new role and scope types to maintain domain consistency
+4. **API Middleware Integration**: Design configurable authorization middleware that supports different role and scope requirements
+5. **Authorization Testing**: Create comprehensive authorization testing scenarios with different role and scope combinations
 
-### API Bearer Token Flow
-1. **Header Extraction**: Extract bearer token from Authorization header
-2. **Token Validation**: Validate JWT signature and claims
-3. **Database Check**: Verify token status in database (active/revoked)
-4. **Scope Validation**: Check resource scopes and user permissions
-5. **Request Processing**: Allow authenticated request to proceed
+### Token Service Extensions
+For new token management capabilities and validation patterns:
 
-## Security Features
-
-### Token Security
-- JWT tokens with proper signing and validation
-- Token digest generation for secure database storage
-- Automatic token refresh with secure refresh tokens
-- Token revocation support through database status
-
-### Request Validation
-- Same-origin request validation using security headers
-- Bearer token format validation and sanitization
-- Proper error handling without information disclosure
-
-### Session Security
-- Secure session management with Tower Sessions
-- HTTP-only and secure cookie flags
-- Session timeout and cleanup mechanisms
-
-## Error Handling
-
-### Authentication Errors
-- `TokenNotFound` - Missing or invalid authentication token
-- `TokenInactive` - Token has been revoked or deactivated
-- `InvalidToken` - Malformed or invalid JWT token
-- `MissingRoles` - Insufficient permissions for resource access
-
-### Authorization Errors
-- `InvalidAccess` - Access denied for requested resource
-- `RoleError` - Role validation failures
-- `TokenScopeError` - Token scope validation failures
-- `UserScopeError` - User scope validation failures
-
-### Service Integration Errors
-- `AuthServiceError` - Authentication service communication failures
-- `SecretServiceError` - JWT signing key retrieval failures
-- `TowerSession` - Session management errors
-
-## Performance Considerations
-
-### Caching Strategy
-- Token validation results cached for performance
-- Database lookups minimized through intelligent caching
-- JWT validation with configurable leeway for clock skew
-
-### Database Optimization
-- Token status queries optimized with proper indexing
-- Batch operations for token management
-- Connection pooling for database access
-
-### Memory Management
-- Efficient session storage with appropriate cleanup
-- JWT claims processing with minimal allocations
-- Token digest computation with secure hashing
-
-## Development Guidelines
-
-### Adding New Authentication Methods
-1. Implement authentication logic in appropriate middleware
-2. Add error types with proper `AppError` integration
-3. Include comprehensive validation and security checks
-4. Add unit tests with mock services
-5. Update integration tests for new flows
-
-### Security Best Practices
-- Always validate token signatures and claims
-- Use secure random generation for token secrets
-- Implement proper token expiration and refresh
-- Log security events for monitoring and analysis
-- Validate all input and sanitize error messages
-
-### Testing Strategy
-- Unit tests for token validation logic
-- Integration tests for complete authentication flows
-- Security tests for edge cases and attack scenarios
-- Performance tests for high-load scenarios
-
-## Monitoring and Logging
-
-### Security Events
-- Failed authentication attempts with context
-- Token validation failures and reasons
-- Suspicious request patterns and anomalies
-- Session management events and errors
-
-### Performance Metrics
-- Authentication middleware response times
-- Token validation cache hit rates
-- Database query performance for token operations
-- Session storage utilization and cleanup
-
-## Configuration
-
-### JWT Configuration
-- Configurable token expiration times
-- JWT signing algorithm and key rotation
-- Claims validation rules and requirements
-- Token refresh policies and intervals
-
-### Security Settings
-- Same-origin validation enforcement
-- Session timeout and cleanup intervals
-- Rate limiting for authentication attempts
-- Security header validation rules
+1. **Token Type Support**: Extend token validation for new JWT token types while maintaining security standards
+2. **Cache Strategy**: Design appropriate caching strategies for new token validation patterns with proper TTL and invalidation
+3. **Database Integration**: Coordinate with DbService for new token storage and status tracking requirements
+4. **External Integration**: Support new external client token patterns while maintaining issuer and audience validation
+5. **Performance Optimization**: Implement efficient token validation patterns that minimize database and service calls

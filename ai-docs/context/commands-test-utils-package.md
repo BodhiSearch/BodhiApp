@@ -1,0 +1,1 @@
+../../crates/commands/src/test_utils/PACKAGE.md

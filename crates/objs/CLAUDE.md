@@ -1,209 +1,134 @@
-# CLAUDE.md - objs
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `objs` crate, which contains domain objects, error handling infrastructure, and shared types for BodhiApp.
+This file provides guidance to Claude Code when working with the `objs` crate.
+
+*For detailed implementation examples and technical depth, see [crates/objs/PACKAGE.md](crates/objs/PACKAGE.md)*
 
 ## Purpose
 
-The `objs` crate is the foundational layer providing:
+The `objs` crate serves as BodhiApp's **universal foundation layer**, providing domain objects, centralized error handling with localization, and shared types that enable consistent behavior across the entire application ecosystem including services, routes, CLI, and desktop components.
 
-- **Domain Objects**: Core business entities like models, repositories, and contexts
-- **Error Handling**: Centralized error system with localization support
-- **OpenAI Compatibility**: Request/response types for OpenAI API compatibility
-- **Configuration**: Parameter validation and CLI argument parsing
-- **Utilities**: Common functionality used across the application
-- **Localization**: Multi-language error message support
+## Key Domain Architecture
 
-## Key Components
+### Centralized Error System
+BodhiApp's error system provides application-wide consistency:
+- **ErrorType enum**: Universal HTTP status code mapping used by all routes and services
+- **AppError trait**: Standardized error metadata interface implemented across all crates
+- **ApiError envelope**: Converts service layer errors to OpenAI-compatible JSON responses
+- **Localized messaging**: Multi-language error support consumed by web UI, CLI, and desktop clients
+- **Cross-crate error propagation**: Seamless error flow from services through routes to clients
 
-### Error Handling System (`src/error/`)
-- `ErrorType` enum for HTTP status code mapping and error categorization
-- `AppError` trait providing consistent error metadata interface
-- `ErrorMessage` struct for JSON error responses
-- Specialized error types for validation, authentication, and service errors
-- Integration with `errmeta_derive` for automatic error metadata generation
+### GGUF Model File System
+Specialized binary format handling for local AI model management:
+- **Magic number validation**: Supports GGUF v2-v3 with endian autodetection
+- **Metadata extraction**: Key-value parsing for chat templates, tokenization parameters, and model configuration
+- **Memory-mapped access**: Safe bounds checking prevents crashes on corrupted files
+- **Service integration**: Used by HubService for model validation and DataService for local file management
 
-### Domain Objects
-- `GptContextParams` - LLM context configuration (threads, context size, prediction tokens)
-- `OAIRequestParams` - OpenAI API request parameters with validation
-- `Alias`, `Repo`, `HubFile` - Model management and repository types
-- Scope types (`UserScope`, `TokenScope`, `ResourceScope`) for authorization
+### Model Ecosystem Architecture
+Comprehensive model management spanning Hub integration to local storage:
+- **Repo**: Canonical "user/name" format enforced across HubService and DataService interactions
+- **HubFile**: Represents cached models with validation against actual Hugging Face cache structure
+- **Alias**: YAML configuration system linking user-friendly names to specific model snapshots
+- **RemoteModel**: Downloadable model specifications coordinated between services and routes
 
-### Localization Service (`src/localization_service.rs`)
-- `FluentLocalizationService` - Thread-safe localization with Fluent templates
-- Support for multiple locales (en-US, fr-FR) with fallback mechanisms
-- Dynamic resource loading from embedded directories
-- Singleton pattern for global access
+### OAuth2-Based Access Control
+Role and scope system integrated with authentication services:
+- **Role hierarchy**: Admin > Manager > PowerUser > User ordering used throughout route authorization
+- **TokenScope/UserScope**: OAuth2-style scope parsing coordinated with AuthService and middleware
+- **ResourceScope**: Union type enabling flexible authorization across different service contexts
+- **Cross-service coordination**: Access control decisions flow from AuthService through middleware to routes
 
-### OpenAI Compatibility (`src/oai.rs`)
-- Parameter validation with range checking (-2.0 to 2.0, 0.0 to 1.0, etc.)
-- Integration with `async-openai` types for request transformation
-- CLI argument parsing for OpenAI-compatible parameters
-
-### Utilities (`src/utils.rs`)
-- Safe filename generation with illegal character replacement
-- Default value checking for serialization optimization
-- Regular expressions for input sanitization
-
-## Dependencies
-
-### Core Infrastructure
-- `errmeta_derive` - Procedural macros for error metadata
-- `thiserror` - Error trait derivation  
-- `serde` - Serialization/deserialization
-- `validator` - Data validation with custom error messages
-
-### CLI and Configuration
-- `clap` - Command-line argument parsing with derive macros
-- `derive_builder` - Builder pattern generation
-- `strum` - Enum string conversions and display
-
-### Localization  
-- `fluent` - Localization message formatting
-- `unic-langid` - Language identifier parsing
-- `include_dir` - Embedded resource directories
-
-### OpenAI Integration
-- `async-openai` - OpenAI API types and client integration
-- `utoipa` - OpenAPI schema generation
-
-### HTTP and API
-- `axum` - HTTP server framework integration
-- `reqwest` - HTTP client capabilities
+### OpenAI API Compatibility Framework
+Complete parameter system for OpenAI API emulation:
+- **OAIRequestParams**: Validation ranges enforced consistently across OAI routes and service calls
+- **GptContextParams**: llama.cpp configuration coordinated between CLI, services, and llama_server_proc
+- **Non-destructive parameter overlay**: Precedence system (request > alias > defaults) used throughout request processing
+- **Service coordination**: Parameters flow from routes through services to actual model execution
 
 ## Architecture Position
 
-The `objs` crate sits at the foundation of BodhiApp:
-- **Foundation Layer**: Provides core types and error handling used by all other crates
-- **Domain Model**: Defines business entities and their relationships
-- **Integration Point**: Bridges external APIs (OpenAI) with internal representations
-- **Configuration Hub**: Centralizes parameter validation and CLI parsing
+The `objs` crate serves as BodhiApp's **architectural keystone**:
+- **Universal Foundation**: All other crates depend on objs for core types and error handling
+- **Cross-Crate Consistency**: Ensures unified behavior across services, routes, CLI, and desktop components
+- **Integration Coordinator**: Bridges external APIs (OpenAI, Hugging Face, OAuth2) with internal representations
+- **Localization Hub**: Provides centralized multi-language support consumed by all user-facing components
+- **Domain Authority**: Defines canonical business entities used throughout the application ecosystem
 
-## Usage Patterns
+## Cross-Crate Integration Patterns
 
-### Error Handling
-```rust
-use objs::{AppError, ErrorType, ObjValidationError};
+### Service Layer Integration
+The objs crate enables sophisticated service coordination through comprehensive domain object usage:
+- **Error Propagation**: Service errors implement AppError via errmeta_derive for consistent HTTP response generation with localized messages
+- **Domain Validation**: Services use objs validation for request parameters, business rules, and cross-service data consistency
+- **Model Coordination**: HubService and DataService coordinate via shared Repo, HubFile, and Alias types with atomic file operations
+- **Authentication Integration**: AuthService uses Role and Scope types for authorization decisions with hierarchical access control
+- **Database Integration**: DbService uses objs error types for transaction management and migration support
+- **Secret Management**: SecretService integrates with objs error system for encryption/decryption error handling
+- **Session Coordination**: SessionService uses objs types for HTTP session management with secure cookie configuration
 
-#[derive(Debug, thiserror::Error, errmeta_derive::ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-pub enum MyServiceError {
-    #[error("invalid_model")]
-    #[error_meta(error_type = ErrorType::BadRequest)]
-    InvalidModel(String),
-    
-    #[error(transparent)]
-    ValidationError(#[from] ObjValidationError),
-}
-```
+### Route Layer Integration  
+Routes depend on objs for request/response handling:
+- **Parameter Validation**: OAIRequestParams used across OpenAI-compatible endpoints with alias.request_params.update() pattern
+- **Error Response Generation**: ApiError converts service errors to OpenAI-compatible JSON via RouterStateError translation
+- **Authentication Middleware**: Role and Scope types enable fine-grained access control through auth_middleware with hierarchical authorization
+- **Authorization Headers**: ResourceScope union type supports both TokenScope and UserScope authorization contexts in HTTP middleware
+- **Localized Error Messages**: Multi-language error support for web UI and API clients through HTTP error responses with auth_middleware integration
+- **OpenAI API Compatibility**: Complete parameter system enables OpenAI API emulation through routes_oai with non-destructive parameter overlay
+- **Application API Integration**: routes_app uses domain objects for model management, authentication, and configuration with comprehensive validation
+- **API Error Translation**: Service errors converted to OpenAI-compatible error responses with proper error types and HTTP status codes
 
-### Configuration Building
-```rust
-use objs::{GptContextParams, OAIRequestParams};
+### HTTP Infrastructure Integration
+Domain objects flow through HTTP infrastructure with server_core coordination:
+- **Alias Resolution**: DataService.find_alias() provides Alias objects for HTTP chat completion requests
+- **Model File Discovery**: HubService.find_local_file() returns HubFile objects for SharedContext LLM server coordination
+- **Error Translation**: All domain errors implement AppError trait for consistent HTTP status code mapping via RouterStateError
+- **Parameter Application**: Alias.request_params.update() applies domain parameters to HTTP requests in SharedContext
 
-let gpt_params = GptContextParams {
-    n_ctx: Some(2048),
-    n_predict: Some(100),
-    n_parallel: Some(4),
-    ..Default::default()
-};
+### Cross-Component Data Flow
+Domain objects flow throughout the application with comprehensive service integration:
 
-let mut oai_request = CreateChatCompletionRequest::default();
-let oai_params = OAIRequestParams {
-    temperature: Some(0.7),
-    max_tokens: Some(150),
-    ..Default::default()
-};
-oai_params.update(&mut oai_request);
-```
+- **CLI → Services**: Command parameters validated and converted via objs types with comprehensive error handling and CLI-specific error translation
+- **Services → Routes**: Business logic results converted to API responses via objs with localized error messages
+- **Routes → Frontend**: Consistent error format and localized messages via ApiError with OpenAI compatibility
+- **Application API → Services**: routes_app coordinates model management, authentication, and configuration through objs domain objects
+- **Desktop ↔ Services**: Shared domain objects ensure consistency between web and desktop clients
+- **Service ↔ Service**: Cross-service coordination via shared domain objects (Repo, HubFile, Alias, Role, Scope)
+- **Database ↔ Services**: Domain objects provide consistent data validation and error handling across persistence boundaries
+- **Authentication Flow**: OAuth2 types flow from AuthService through SecretService to SessionService with comprehensive error propagation
+- **Model Management**: Model domain objects coordinate between HubService, DataService, and CacheService with validation and error recovery
 
-### Localization
-```rust
-use objs::{FluentLocalizationService, LocalizationService};
-use std::collections::HashMap;
+### Deployment Context Integration
+Domain objects maintain consistency across multiple deployment contexts:
 
-let service = FluentLocalizationService::get_instance();
-let args = HashMap::from([("name".to_string(), "Alice".to_string())]);
-let message = service.get_message(&locale, "welcome_message", Some(args))?;
-```
+- **Dual-Mode Application Support**: Domain objects provide consistent validation and behavior across desktop and server deployment modes without architectural changes
+- **Embedded Application Integration**: Domain objects designed for safe usage across embedded application boundaries including desktop applications and library integrations
+- **Context-Agnostic Design**: All domain objects implement deployment-neutral interfaces enabling flexible application composition and embedding scenarios
+- **Cross-Deployment Consistency**: Error handling, validation, and serialization behavior remains consistent across different deployment contexts (standalone, embedded, desktop, container)
 
-## Integration Points
+## Critical System Constraints
 
-### With Higher-Level Crates
-- **Services Layer**: Uses domain objects and error types for business logic
-- **Server Layer**: Integrates error handling with HTTP responses  
-- **CLI Layer**: Uses parameter structs for command-line interfaces
-- **API Routes**: Leverages OpenAI compatibility types for endpoint implementations
+### Application-Wide Error Handling
+- **Universal Implementation**: All crates must implement AppError for error types to ensure consistent behavior
+- **Localization Requirement**: All user-facing errors must have Fluent message templates in en-US and fr-FR
+- **Cross-Crate Propagation**: Errors must flow cleanly from services through routes to clients
+- **Fallback Safety**: ApiError provides graceful degradation when localization fails
 
-### With External Systems
-- **OpenAI API**: Direct compatibility with `async-openai` request/response types
-- **llama.cpp**: Parameter translation for local LLM inference
-- **HTTP Clients**: Error handling for external API communications
+### Model Management Consistency
+- **Canonical Format**: Repo "user/name" format enforced across all model-handling components
+- **File System Safety**: Alias filename sanitization prevents path traversal and file system issues
+- **Cache Validation**: HubFile validation ensures integrity of Hugging Face cache structure
+- **Binary Safety**: GGUF parsing bounds checking prevents crashes across service and CLI usage
 
-## Error System Design
+### Authentication System Integration
+- **Role Hierarchy Consistency**: Ordering must be maintained across all authorization contexts with auth_middleware enforcing hierarchical access control
+- **Scope Standard Compliance**: OAuth2-style scope parsing ensures compatibility with external identity providers and auth_middleware token exchange
+- **Cross-Service Authorization**: TokenScope and ResourceScope enable authorization decisions across service boundaries with middleware precedence rules
+- **Security Enforcement**: Case-sensitive parsing and "offline_access" requirements maintain security standards for JWT token validation
+- **Middleware Integration**: Role and scope types flow through auth_middleware for HTTP request authorization with consistent domain validation
 
-### Error Categories
-- **Validation Errors**: Input validation failures with structured field information
-- **Authentication Errors**: User identity and authorization failures
-- **Service Errors**: External service communication failures
-- **Internal Errors**: Application logic and system errors
-
-### Localization Support
-- Error codes map to Fluent message templates
-- Arguments extracted from error data for message formatting
-- Multi-language support with fallback to English
-- Thread-safe concurrent access to localization resources
-
-## Configuration Validation
-
-### Parameter Ranges
-- `temperature`: 0.0 to 2.0 for output randomness control
-- `frequency_penalty`: -2.0 to 2.0 for repetition control
-- `presence_penalty`: -2.0 to 2.0 for topic diversity
-- `top_p`: 0.0 to 1.0 for nucleus sampling
-
-### CLI Integration
-- Automatic help text generation from parameter descriptions
-- Type-safe argument parsing with custom validators
-- Optional parameter handling with sensible defaults
-
-## Development Guidelines
-
-### Adding New Domain Objects
-1. Implement `Serialize`, `Deserialize`, and `Debug` traits
-2. Add `Builder` derive for complex configuration types  
-3. Include `ToSchema` for OpenAPI documentation
-4. Add validation constraints where appropriate
-
-### Error Handling Best Practices
-- Use `ErrorType` enum for consistent HTTP status mapping
-- Implement `AppError` trait for all error types via `errmeta_derive`
-- Provide localized error messages with argument extraction
-- Group related errors into focused enums
-
-### Testing Patterns
-- Use `rstest` for parameterized test cases
-- Test validation ranges thoroughly with boundary conditions
-- Verify localization with multiple languages and argument combinations
-- Test error serialization and deserialization
-
-## File Structure
-
-```
-src/
-├── error/           # Error handling infrastructure
-│   ├── common.rs    # Common error types (EntityError, ValidationError)
-│   ├── l10n.rs      # Localization-specific errors
-│   └── objs.rs      # Object validation and service errors
-├── gguf/           # GGUF model file handling
-├── log.rs          # Logging configuration
-├── oai.rs          # OpenAI compatibility types
-├── gpt_params.rs   # LLM context parameters
-└── utils.rs        # Utility functions
-```
-
-## Localization Resources
-
-- Embedded via `include_dir!` macro for zero-dependency deployment
-- Fluent template files (`.ftl`) organized by language identifier
-- Automatic resource discovery and loading
-- Thread-safe concurrent access with `RwLock` protection
+### API Compatibility Guarantees
+- **Parameter Range Enforcement**: OpenAI parameter validation ensures API compatibility across all endpoints
+- **Non-Destructive Layering**: Parameter precedence system maintained consistently across request processing
+- **CLI Integration**: clap integration ensures command-line interface consistency with API parameters, with CLI-specific builder patterns and error translation
+- **Serialization Optimization**: Default value handling maintains performance across JSON serialization boundaries
