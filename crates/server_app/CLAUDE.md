@@ -1,298 +1,199 @@
-# CLAUDE.md - server_app
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `server_app` crate, which provides the main HTTP server executable for BodhiApp.
+This file provides guidance to Claude Code when working with the `server_app` crate.
+
+*For detailed implementation examples and technical depth, see [crates/server_app/PACKAGE.md](crates/server_app/PACKAGE.md)*
 
 ## Purpose
 
-The `server_app` crate implements the standalone HTTP server application:
+The `server_app` crate serves as BodhiApp's **main HTTP server executable orchestration layer**, implementing sophisticated server lifecycle management, graceful shutdown coordination, and comprehensive service bootstrap with advanced listener patterns and resource management.
 
-- **HTTP Server**: Complete HTTP server implementation with Axum
-- **Service Initialization**: Bootstrap all application services and dependencies
-- **Configuration Management**: Load and validate application configuration
-- **Graceful Shutdown**: Proper resource cleanup and shutdown handling
-- **Production Deployment**: Optimized server setup for production environments
+## Key Domain Architecture
 
-## Key Components
+### HTTP Server Lifecycle Management System
+Advanced server orchestration with comprehensive lifecycle coordination:
+- **Server Handle Architecture**: Sophisticated server startup/shutdown coordination with ready notification and graceful shutdown channels
+- **Graceful Shutdown Integration**: Signal handling (Ctrl+C, SIGTERM) with proper resource cleanup and context shutdown callbacks
+- **Service Bootstrap Orchestration**: Complete application service initialization with dependency injection and configuration validation
+- **Static Asset Serving**: Dynamic UI serving with environment-specific configuration (development proxy vs production embedded assets)
+- **Port Binding Management**: TCP listener coordination with error handling for port conflicts and binding failures
 
-### Server Application
-- Main server entry point with complete service initialization
-- HTTP server configuration with proper middleware stack
-- Database connection management and migrations
-- Session storage setup and configuration
+### Advanced Listener Pattern Architecture
+Sophisticated event-driven coordination with cross-service integration:
+- **ServerKeepAlive Listener**: Intelligent server lifecycle management with configurable keep-alive timers and automatic shutdown coordination
+- **VariantChangeListener**: Dynamic execution variant switching with SharedContext coordination for CPU/CUDA/ROCm configurations
+- **Settings Change Integration**: Real-time configuration updates with listener pattern coordination across service boundaries
+- **State Change Broadcasting**: Observer pattern implementation for server state notifications with async event handling
 
-### Service Bootstrap
-- Dependency injection container setup
-- Service registration and configuration
-- Database initialization and migration management
-- Authentication and security service setup
-
-### Configuration
-- Environment-based configuration loading
-- Database connection string management
-- Authentication provider configuration
-- Logging and tracing setup
-
-## Dependencies
-
-### Route Composition
-- `routes_all` - Complete HTTP routing and middleware stack
-- `auth_middleware` - Authentication and authorization
-- `server_core` - HTTP server infrastructure
-
-### Business Logic
-- `services` - All application services and business logic
-- `objs` - Domain objects and error handling
-
-### Infrastructure
-- `axum` - HTTP web framework
-- `tokio` - Async runtime
-- `tower-sessions` - Session management
-- `sqlx` - Database connectivity
+### Service Orchestration and Bootstrap System
+Comprehensive service initialization with sophisticated dependency management:
+- **AppService Registry Bootstrap**: Complete service composition with DefaultAppService initialization and dependency injection
+- **SharedContext Integration**: LLM server context management with DefaultSharedContext initialization and listener registration
+- **Route Composition Coordination**: Integration with routes_all for complete HTTP route and middleware stack composition
+- **Resource Validation**: Executable path validation, database connectivity checks, and service health verification
 
 ## Architecture Position
 
-The `server_app` crate sits at the application entry point:
-- **Coordinates**: Complete application bootstrap and initialization
-- **Manages**: HTTP server lifecycle and resource management
-- **Provides**: Production-ready server executable
-- **Integrates**: All application components into cohesive service
+The `server_app` crate serves as BodhiApp's **main HTTP server executable orchestration layer**:
+- **Above all other crates**: Coordinates complete application bootstrap including services, routes, server_core, and infrastructure
+- **Below deployment infrastructure**: Provides production-ready server executable for Docker, systemd, and cloud deployments
+- **Integration with llama_server_proc**: Manages LLM server process lifecycle through SharedContext coordination
+- **Cross-cutting with all layers**: Implements application-wide concerns like graceful shutdown, configuration management, and service health monitoring
 
-## Usage Patterns
+## Cross-Crate Integration Patterns
 
-### Server Startup
-```rust
-use server_app::ServerApp;
+### Service Layer Bootstrap Coordination
+Complex service initialization coordinated across BodhiApp's entire architecture:
+- **AppService Registry Initialization**: Complete service composition with all 10 business services including authentication, model management, and configuration
+- **SharedContext Bootstrap**: LLM server context initialization with HubService and SettingService coordination for model management
+- **Route Integration**: routes_all coordination for complete HTTP route composition with middleware stack and static asset serving
+- **Error Translation**: Service errors converted to appropriate HTTP responses with comprehensive error handling and graceful degradation
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let server_app = ServerApp::new().await?;
-    server_app.run().await?;
-    Ok(())
-}
-```
+### Infrastructure Integration Architecture
+Server executable coordinates with infrastructure and deployment layers:
+- **Signal Handling Integration**: Cross-platform signal handling (Unix SIGTERM, Windows Ctrl+Break) with graceful shutdown coordination
+- **Resource Management**: TCP listener management, database connection validation, and file system permission checking
+- **Configuration Validation**: Environment variable validation, executable path verification, and service health checking
+- **Static Asset Coordination**: Dynamic UI serving with development proxy support and production embedded asset serving
 
-### Service Configuration
-```rust
-let app_service = DefaultAppService::new(
-    setting_service,
-    hub_service,
-    data_service,
-    auth_service,
-    db_service,
-    session_service,
-    secret_service,
-    cache_service,
-    localization_service,
-    time_service,
-);
-```
+### Listener Pattern Integration
+Advanced event-driven coordination across service boundaries:
+- **Settings Change Propagation**: Real-time configuration updates with SettingsChangeListener pattern across service boundaries
+- **Server State Coordination**: ServerStateListener pattern for LLM server lifecycle events with keep-alive timer management
+- **Context State Management**: SharedContext state change notifications with observer pattern implementation
+- **Service Health Monitoring**: Cross-service health checking with automatic recovery and error reporting
 
-### Server Setup
-```rust
-let router_state = DefaultRouterState::new(shared_context, app_service);
-let app = create_router(router_state).await?;
-let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await?;
-axum::serve(listener, app).await?;
-```
+## Server Orchestration Workflows
 
-## Service Initialization
+### Multi-Service Bootstrap Coordination
+Complex application initialization with comprehensive service orchestration:
 
-### Database Setup
-1. Load database configuration from environment
-2. Create connection pool with appropriate settings
-3. Run database migrations to latest schema
-4. Verify database connectivity and schema version
+1. **Service Registry Initialization**: AppService registry bootstrap with all 10 business services including dependency injection and configuration validation
+2. **SharedContext Bootstrap**: LLM server context initialization with HubService and SettingService coordination for model management capabilities
+3. **Listener Registration**: Advanced listener pattern setup with ServerKeepAlive and VariantChangeListener for real-time configuration management
+4. **Route Composition**: routes_all integration for complete HTTP route and middleware stack with static asset serving configuration
+5. **Server Lifecycle Management**: TCP listener binding, ready notification, and graceful shutdown coordination with signal handling
 
-### Session Management
-1. Initialize session storage backend (SQLite)
-2. Configure session layer with security settings
-3. Set up session cleanup and maintenance tasks
+### Advanced Listener Orchestration Workflows
+Sophisticated event-driven coordination across service boundaries:
 
-### Authentication Services
-1. Load OAuth provider configuration
-2. Initialize JWT signing keys and validation
-3. Set up keyring service for secure credential storage
-4. Configure authentication middleware
+**ServerKeepAlive Workflow**:
+1. **Timer Management**: Configurable keep-alive timer with automatic server shutdown coordination based on inactivity
+2. **Settings Integration**: Real-time keep-alive configuration updates with timer reset and cancellation logic
+3. **State Coordination**: Server state change notifications with timer reset on chat completions and cancellation on server stop
+4. **Resource Cleanup**: Automatic LLM server shutdown coordination when keep-alive timer expires
 
-### Business Services
-1. Initialize data service with proper paths
-2. Set up hub service for model management
-3. Configure cache service with appropriate limits
-4. Initialize secret service with encryption keys
+**VariantChangeListener Workflow**:
+1. **Configuration Monitoring**: Real-time BODHI_EXEC_VARIANT setting changes with validation and error handling
+2. **Context Coordination**: SharedContext execution variant updates for CPU/CUDA/ROCm configuration switching
+3. **Async Processing**: Non-blocking variant updates with proper error logging and recovery
+4. **Service Integration**: Seamless integration with SettingService for configuration management
 
-## Configuration Management
+### Graceful Shutdown Orchestration
+Comprehensive shutdown coordination with resource cleanup:
+1. **Signal Reception**: Cross-platform signal handling (Ctrl+C, SIGTERM, Ctrl+Break) with proper signal registration
+2. **Shutdown Propagation**: Graceful shutdown signal propagation through server handle architecture
+3. **Context Cleanup**: SharedContext shutdown coordination with LLM server process termination
+4. **Resource Cleanup**: TCP listener cleanup, service shutdown, and resource deallocation with error handling
 
-### Environment Variables
-- `DATABASE_URL` - Database connection string
-- `OAUTH_CLIENT_ID`, `OAUTH_CLIENT_SECRET` - OAuth provider credentials
-- `JWT_SECRET` - JWT signing key
-- `LOG_LEVEL` - Logging configuration
-- `BIND_ADDRESS`, `PORT` - Server binding configuration
+## Important Constraints
 
-### Configuration Loading
-```rust
-let config = ServerConfig::from_env()?;
-let database_url = config.database_url();
-let bind_address = config.bind_address();
-```
+### Server Lifecycle Management Requirements
+- All server operations must use Server handle architecture for consistent lifecycle management with ready notification and graceful shutdown
+- Signal handling must support cross-platform operation (Unix SIGTERM, Windows Ctrl+Break) with proper signal registration and cleanup
+- Graceful shutdown must coordinate across all services with proper resource cleanup and error handling
+- TCP listener binding must handle port conflicts with appropriate error reporting and recovery mechanisms
 
-### Validation
-- Validate all required configuration is present
-- Test database connectivity during startup
-- Verify authentication provider configuration
-- Validate file system permissions and paths
+### Service Bootstrap Coordination Standards
+- All services must be initialized through AppService registry pattern for consistent dependency injection and configuration management
+- SharedContext initialization must coordinate with HubService and SettingService for proper LLM server management capabilities
+- Listener registration must follow observer pattern with proper error handling and async coordination
+- Route composition must integrate with routes_all for complete HTTP stack with middleware and static asset serving
 
-## Production Considerations
+### Listener Pattern Integration Rules
+- ServerKeepAlive must coordinate with both SettingsChangeListener and ServerStateListener for comprehensive timer management
+- VariantChangeListener must handle async SharedContext updates with proper error logging and recovery
+- All listeners must support real-time configuration updates without service interruption
+- Listener error handling must not interrupt server operation with proper error isolation and logging
 
-### Performance Optimization
-- Connection pooling for database and HTTP clients
-- Efficient session storage with cleanup
-- Proper async runtime configuration
-- Memory usage optimization
+### Resource Management and Validation Requirements
+- Executable path validation must occur during startup with clear error reporting for missing LLM server binaries
+- Static asset serving must support both development proxy mode and production embedded assets with environment detection
+- Service health validation must occur during bootstrap with comprehensive connectivity and permission checking
+- Error handling must provide actionable guidance for common deployment and configuration issues
 
-### Security Configuration
-- Secure session configuration with appropriate flags
-- JWT token security with proper signing
-- Database connection security
-- File system permission validation
+## Server Extension Patterns
 
-### Monitoring Setup
-- Health check endpoint configuration
-- Metrics collection and reporting
-- Structured logging with correlation IDs
-- Error tracking and alerting
+### Adding New Server Lifecycle Components
+When creating new server lifecycle management features:
 
-## Error Handling
+1. **Listener Pattern Integration**: Implement SettingsChangeListener or ServerStateListener for real-time configuration and state management
+2. **Service Bootstrap Extensions**: Coordinate with AppService registry for new service initialization and dependency injection
+3. **Shutdown Callback Integration**: Implement ShutdownCallback trait for proper resource cleanup during graceful shutdown
+4. **Error Handling**: Create server-specific errors that implement AppError trait for consistent error reporting and recovery
+5. **Testing Infrastructure**: Use comprehensive service mocking for isolated server lifecycle testing scenarios
 
-### Startup Errors
-- Configuration validation failures
-- Database connection errors
-- Service initialization failures
-- Port binding conflicts
+### Extending Configuration Management
+For new configuration and settings management patterns:
 
-### Runtime Errors
-- Database connectivity issues
-- Authentication service failures
-- File system permission errors
-- Memory or resource exhaustion
+1. **Settings Listener Integration**: Implement SettingsChangeListener for real-time configuration updates without service restart
+2. **Environment Validation**: Add configuration validation during server bootstrap with clear error reporting
+3. **Service Coordination**: Coordinate configuration changes across service boundaries with proper error handling
+4. **Dynamic Updates**: Support runtime configuration updates through listener pattern with validation and rollback
+5. **Configuration Testing**: Test configuration management with different environment scenarios and validation failures
 
-### Graceful Degradation
-- Fallback for non-critical service failures
-- Proper error responses for client requests
-- Service health monitoring and recovery
+### Server Orchestration Extensions
+For new server orchestration and coordination patterns:
 
-## Deployment
+1. **Service Integration**: Coordinate with AppService registry for consistent business logic access and service composition
+2. **Context Management**: Integrate with SharedContext for LLM server lifecycle coordination and state management
+3. **Route Composition**: Coordinate with routes_all for HTTP route and middleware integration with proper error boundaries
+4. **Resource Management**: Implement proper resource lifecycle management with cleanup and error recovery
+5. **Integration Testing**: Support comprehensive server orchestration testing with realistic service interactions
 
-### Docker Deployment
-```dockerfile
-FROM rust:1.75 as builder
-WORKDIR /app
-COPY . .
-RUN cargo build --release --bin server_app
+## Server Lifecycle Error Coordination
 
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates
-COPY --from=builder /app/target/release/server_app /usr/local/bin/
-EXPOSE 8080
-CMD ["server_app"]
-```
+### Service Bootstrap Error Handling
+Comprehensive error management during server initialization:
+- **Service Initialization Failures**: AppService registry initialization errors with detailed service-specific error reporting
+- **SharedContext Bootstrap Errors**: LLM server context initialization failures with executable path validation and resource checking
+- **Listener Registration Failures**: Observer pattern setup errors with proper error isolation and service degradation
+- **Route Composition Errors**: routes_all integration failures with middleware and static asset serving error handling
 
-### Environment Configuration
-```bash
-export DATABASE_URL="sqlite:///data/bodhi.db"
-export OAUTH_CLIENT_ID="your-oauth-client-id"
-export OAUTH_CLIENT_SECRET="your-oauth-client-secret"
-export JWT_SECRET="your-jwt-signing-secret"
-export LOG_LEVEL="info"
-export BIND_ADDRESS="0.0.0.0:8080"
-```
+### Runtime Error Management
+Advanced error handling during server operation:
+- **Listener Error Isolation**: ServerKeepAlive and VariantChangeListener errors isolated from server operation with proper logging
+- **Configuration Update Failures**: Settings change errors handled gracefully without service interruption
+- **Context State Errors**: SharedContext state change errors with proper recovery and error reporting
+- **Signal Handling Errors**: Graceful shutdown signal processing errors with fallback mechanisms
 
-### Health Checks
-- `/health` endpoint for load balancer health checks
-- Database connectivity validation
-- Critical service availability checks
-- Resource usage monitoring
+### Resource Management Error Recovery
+Sophisticated error recovery for resource management:
+- **TCP Listener Binding Failures**: Port conflict detection with clear error reporting and alternative port suggestions
+- **Static Asset Serving Errors**: Development proxy and production asset serving errors with graceful fallback
+- **Service Health Check Failures**: Comprehensive service health validation with detailed error reporting and recovery guidance
+- **Shutdown Coordination Errors**: Graceful shutdown error handling with resource cleanup and error isolation
 
-## Development Guidelines
+## Server Testing Architecture
 
-### Adding New Services
-1. Define service trait and implementation
-2. Add service to dependency injection container
-3. Update service initialization in bootstrap code
-4. Add configuration parameters as needed
-5. Include health check validation
+### Server Lifecycle Testing
+Comprehensive testing of server orchestration and lifecycle management:
+- **Bootstrap Testing**: Complete service initialization testing with AppService registry and SharedContext coordination
+- **Listener Integration Testing**: ServerKeepAlive and VariantChangeListener testing with mock service coordination
+- **Graceful Shutdown Testing**: Signal handling and shutdown coordination testing with resource cleanup validation
+- **Error Scenario Testing**: Server startup and runtime error handling with comprehensive error recovery validation
 
-### Configuration Changes
-1. Add new environment variables with defaults
-2. Update configuration validation logic
-3. Document configuration requirements
-4. Test configuration loading and validation
+### Service Integration Testing
+Server-level integration testing with service mock coordination:
+- **Service Registry Testing**: AppService registry initialization with comprehensive service mocking
+- **Context Management Testing**: SharedContext integration testing with LLM server lifecycle coordination
+- **Route Composition Testing**: routes_all integration testing with HTTP stack and middleware validation
+- **Configuration Testing**: Settings management and listener pattern testing with real-time configuration updates
 
-### Error Handling
-- Use structured error types with context
-- Provide clear error messages for common issues
-- Log errors appropriately for debugging
-- Handle startup failures gracefully
+### Resource Management Testing
+Server resource management and validation testing:
+- **TCP Listener Testing**: Port binding, conflict detection, and error handling with realistic network scenarios
+- **Static Asset Testing**: Development proxy and production asset serving with environment-specific configuration
+- **Service Health Testing**: Comprehensive service health validation with connectivity and permission checking
+- **Performance Testing**: Server performance under load with resource usage monitoring and optimization
 
-## Testing Strategy
-
-### Integration Testing
-- Complete server startup and shutdown
-- Database migration and connectivity
-- Authentication flow end-to-end
-- Health check endpoint validation
-
-### Load Testing
-- Server performance under concurrent load
-- Database connection pool behavior
-- Memory usage patterns
-- Error handling under stress
-
-## Monitoring and Observability
-
-### Metrics Collection
-- HTTP request metrics (count, latency, errors)
-- Database connection pool metrics
-- Authentication success/failure rates
-- Resource usage (CPU, memory, disk)
-
-### Logging
-- Structured logging with JSON format
-- Request correlation IDs
-- Error stack traces with context
-- Performance profiling data
-
-### Health Monitoring
-- Application health status
-- Database connectivity
-- External service dependencies
-- Resource utilization thresholds
-
-## Security Considerations
-
-### Server Security
-- Secure default configuration
-- Input validation on all endpoints
-- Rate limiting for API endpoints
-- Security headers for web responses
-
-### Data Protection
-- Encrypted database connections
-- Secure session management
-- Proper secret handling and rotation
-- Audit logging for sensitive operations
-
-### Network Security
-- TLS configuration for HTTPS
-- CORS policy configuration
-- Request size limits
-- DDoS protection considerations
-
-## Future Extensions
-
-The server_app crate can be extended with:
-- Clustering and load balancing support
-- Advanced monitoring and metrics
-- Configuration hot reloading
-- Plugin system for extensions
-- Multi-tenancy support

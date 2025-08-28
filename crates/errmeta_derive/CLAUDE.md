@@ -1,217 +1,128 @@
-# CLAUDE.md - errmeta_derive
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `errmeta_derive` crate, which provides procedural macros for adding metadata to error types in BodhiApp.
+This file provides guidance to Claude Code when working with the errmeta_derive crate.
 
 ## Purpose
 
-The `errmeta_derive` crate is a procedural macro library that automatically implements error metadata functionality for Rust enums and structs. It provides:
+The `errmeta_derive` crate is a procedural macro library that automatically implements error metadata functionality for Rust enums and structs in BodhiApp. It provides the foundation for structured error handling across all service layers by generating consistent metadata extraction methods.
 
+Key capabilities:
 - The `#[derive(ErrorMeta)]` macro for automatic metadata generation
-- Support for custom error codes, types, and localization arguments
+- Support for custom error codes, types, and localization arguments  
 - Integration with transparent error wrapping via `#[error(transparent)]`
 - Compile-time validation of error metadata attributes
 - Flexible trait implementation via `trait_to_impl` parameter
 
-## Key Components
+## Key Domain Architecture
 
-### Main Derive Macro (`#[derive(ErrorMeta)]`)
-- Generates `error_type()`, `code()`, and `args()` methods for error types
-- Supports both enums and structs with different field patterns
-- Integrates with existing error handling patterns like `thiserror`
-- Provides automatic snake_case code generation from type/variant names
+### Error Metadata Generation System
+The macro generates three core methods that provide structured error information:
+- `error_type()` - Returns categorized error type for service-level error handling
+- `code()` - Provides localization keys for user-facing error messages  
+- `args()` - Extracts structured data from error fields for message templating
 
-### Attribute Parsing
-- `#[error_meta(...)]` attributes for customizing error metadata
-- Support for expressions, string literals, and enum values
-- Optional trait implementation via `trait_to_impl`
-- Transparent error delegation with `args_delegate` control
+### Attribute Processing Architecture
+- `#[error_meta(...)]` attributes for customizing error metadata behavior
+- Expression evaluation system supporting string literals, function calls, and enum variants
+- Transparent error delegation system with configurable argument handling
+- Compile-time validation ensuring required attributes are present
 
-### Code Generation
-- Pattern matching for enum variants with named, unnamed, and unit fields
-- Automatic field extraction for error arguments
-- Integration with transparent errors via delegation
-- Compile-time error reporting for missing required attributes
-
-## Dependencies
-
-### Procedural Macro Infrastructure
-- `proc-macro2` - TokenStream manipulation and code generation
-- `quote` - Rust code generation with proper escaping
-- `syn` - Rust syntax tree parsing with full feature support
-- `convert_case` - String case conversion for snake_case codes
-
-### Development Dependencies
-- `rstest` - Parameterized testing for macro validation
-- `trybuild` - Compile-time macro error testing
-- `pretty_assertions` - Enhanced assertion formatting
-- `thiserror` and `strum` - Integration testing with common error libraries
+### Code Generation Patterns
+- Pattern matching generation for all Rust field types (named, unnamed, unit)
+- Automatic snake_case conversion for default error codes
+- Integration with `#[error(transparent)]` for error wrapping scenarios
+- Trait implementation flexibility via `trait_to_impl` parameter
 
 ## Architecture Position
 
-The `errmeta_derive` crate sits at the foundation layer:
-- **Foundation**: Provides core macro infrastructure for error handling
-- **Code Generation**: Compile-time code generation with zero runtime overhead
-- **Integration**: Works with existing error libraries like `thiserror`
-- **Localization**: Enables structured error messages with argument extraction
+The `errmeta_derive` crate operates at the foundational macro layer of BodhiApp's error handling architecture:
 
-## Usage Patterns
+- **Foundation Layer**: Provides compile-time code generation for error metadata extraction
+- **Zero Runtime Cost**: All processing occurs at compile time with no runtime overhead
+- **Cross-Crate Integration**: Used by `objs` crate and service layers for consistent error handling
+- **Localization Foundation**: Generates structured data required for error message localization
 
-### Basic Enum with Custom Metadata
-```rust
-use errmeta_derive::ErrorMeta;
+## Cross-Crate Integration Patterns
 
-#[derive(Debug, ErrorMeta)]
-enum MyError {
-    #[error_meta(error_type = "ValidationError", code = "invalid_input")]
-    InvalidInput { field: String, value: String },
-    
-    #[error_meta(error_type = "NetworkError")]  
-    NetworkTimeout,  // Uses default code: "my_error-network_timeout"
-}
-```
+### Integration with Object Layer (`objs`)
+- Error enums in the `objs` crate derive `ErrorMeta` for centralized error handling
+- Provides structured error data for HTTP status code mapping and API responses
+- Integrates with localization service for user-facing error message formatting
 
-### Transparent Error Wrapping
-```rust
-#[derive(Debug, ErrorMeta)]
-enum ServiceError {
-    #[error(transparent)]
-    DatabaseError(DatabaseError),  // Delegates error_type(), code(), args()
-    
-    #[error(transparent)]
-    #[error_meta(args_delegate = false)]
-    IoError(std::io::Error),  // Custom args() with error string
-}
-```
-
-### Struct Error Types
-```rust
-#[derive(Debug, ErrorMeta)]
-#[error_meta(error_type = "BusinessLogicError", code = "insufficient_funds")]
-struct InsufficientFundsError {
-    account_id: String,
-    requested_amount: i64,
-    available_amount: i64,
-}
-```
-
-### Trait Implementation
-```rust
-trait AppError {
-    fn error_type(&self) -> String;
-    fn code(&self) -> String;
-    fn args(&self) -> std::collections::HashMap<String, String>;
-}
-
-#[derive(Debug, ErrorMeta)]
-#[error_meta(trait_to_impl = AppError)]
-enum MyError {
-    #[error_meta(error_type = "UserError")]
-    InvalidInput,
-}
-```
-
-## Integration Points
-
-### With Object Layer (`objs`)
-- Used by error enums in the `objs` crate for centralized error handling
-- Integrates with localization service for error message formatting
-- Provides structured error data for HTTP status code mapping
-
-### With Service Layer
-- Service-specific error types derive `ErrorMeta` for consistent error reporting
-- Business logic errors include relevant context via args extraction
+### Service Layer Coordination
+- Service-specific error types derive `ErrorMeta` for consistent error reporting across business logic
+- Business logic errors include relevant context via automatic args extraction
 - Integration with tracing and logging systems via structured metadata
 
-### With Localization System
-- Generated `code()` method provides localization keys
-- `args()` method extracts structured data for message templating
-- Support for complex expressions in error_type and code attributes
+### Transparent Error Wrapping System
+- Supports `#[error(transparent)]` for delegating error metadata to wrapped errors
+- Configurable argument delegation via `args_delegate` attribute
+- Enables clean error propagation across service boundaries while maintaining metadata
 
-## Supported Attributes
+## Important Constraints
 
-### Enum-Level Attributes
-- `#[error_meta(trait_to_impl = TraitName)]` - Implement specified trait instead of inherent methods
+### Compile-Time Validation Requirements
+- Enum variants without `#[error(transparent)]` must specify `error_type` attribute
+- Struct types must include `error_type` in their `#[error_meta(...)]` attribute
+- Union types are not supported and will cause compilation failure
+- Invalid expressions in attributes trigger compile-time errors
 
-### Variant-Level Attributes
-- `#[error_meta(error_type = "ErrorType")]` - Custom error type (string literal or expression)
-- `#[error_meta(code = "error_code")]` - Custom error code (string literal or expression)
-- `#[error_meta(args_delegate = false)]` - Disable argument delegation for transparent errors
+### Attribute Expression Support
+- Supports string literals: `error_type = "ValidationError"`
+- Supports function calls: `error_type = get_error_type()`
+- Supports enum variants: `error_type = ErrorType::Validation`
+- Supports complex expressions: `code = self.generate_code()`
 
-### Struct-Level Attributes
-- `#[error_meta(trait_to_impl = TraitName)]` - Implement specified trait
-- `#[error_meta(error_type = "ErrorType")]` - Required error type specification
-- `#[error_meta(code = "error_code")]` - Optional error code (defaults to snake_case struct name)
+### Transparent Error Delegation Rules
+- `#[error(transparent)]` variants automatically delegate to wrapped error's metadata methods
+- `args_delegate = false` overrides delegation for args(), using error string instead
+- Transparent variants can override `error_type` and `code` while maintaining args delegation
+- Mixed transparent and non-transparent variants are supported in the same enum
 
-## Field Pattern Support
 
-### Named Fields
-```rust
-#[error_meta(error_type = "ValidationError")]
-ValidationFailed { field_name: String, expected: String }
-// Generates: args["field_name"] = field_name.to_string()
-//           args["expected"] = expected.to_string()
-```
+## Macro Testing Architecture
 
-### Unnamed Fields  
-```rust
-#[error_meta(error_type = "ParseError")]
-ParseFailed(String, usize)
-// Generates: args["var_0"] = var_0.to_string()
-//           args["var_1"] = var_1.to_string()
-```
+### Compile-Time Validation Testing
+The crate uses `trybuild` for compile-time error validation, ensuring that invalid macro usage produces appropriate compiler errors:
+- Missing `error_type` attributes on enum variants trigger compilation failures
+- Union types are rejected with clear error messages  
+- Invalid attribute expressions are caught during macro expansion
 
-### Unit Variants
-```rust
-#[error_meta(error_type = "SystemError")]
-OutOfMemory
-// Generates: empty HashMap
-```
+### Runtime Behavior Testing
+Comprehensive test suite using `rstest` for parameterized testing of generated code:
+- Tests all field patterns (named, unnamed, unit) for both enums and structs
+- Validates transparent error delegation with and without `args_delegate`
+- Integration testing with `thiserror` and `strum` for real-world usage patterns
+- Verification of automatic snake_case code generation
 
-## Code Generation Features
+### Test Data Structures
+The test suite includes a mock `ErrorMetas` struct that mirrors the expected interface for integration with the `objs` crate, enabling validation of the complete error metadata extraction workflow.
 
-### Automatic Code Generation
-- Snake_case conversion: `MyError::InvalidInput` → `"my_error-invalid_input"`
-- Type name conversion: `ValidationError` → `"validation_error"`
-- Preserves custom codes when specified
+## Procedural Macro Implementation Patterns
 
-### Expression Support
-- Function calls: `#[error_meta(error_type = get_error_type())]`
-- Enum variants: `#[error_meta(error_type = ErrorType::Validation)]`
-- Complex expressions: `#[error_meta(code = self.generate_code())]`
+### Token Stream Processing
+- Uses `syn` with full feature support for comprehensive Rust syntax parsing
+- `quote!` macro for generating clean, properly escaped Rust code
+- `proc-macro2::TokenStream` for internal token manipulation
 
-### Transparent Error Handling
-- Automatic delegation to wrapped error's metadata methods
-- Optional argument delegation control via `args_delegate`
-- Support for mixed transparent and non-transparent variants
+### Pattern Matching Code Generation
+- Generates match arms for all enum variants with appropriate field destructuring
+- Handles named fields with `{ field1, field2 }` patterns
+- Handles unnamed fields with `(var_0, var_1)` patterns  
+- Handles unit variants with empty patterns
 
-## Testing and Validation
+### Expression Evaluation System
+- Supports arbitrary Rust expressions in `error_type` and `code` attributes
+- Uses `syn::Expr` parsing for flexible attribute value handling
+- Generates code that evaluates expressions at runtime while maintaining compile-time validation
 
-### Compile-Time Validation
-- Missing required attributes trigger compile errors
-- Invalid attribute syntax caught during macro expansion
-- Type checking for expressions in error_meta attributes
+## Integration with BodhiApp Error Handling
 
-### Runtime Testing
-- Comprehensive test suite with `rstest` parameterized tests
-- Integration tests with `thiserror` and other error libraries
-- Trybuild tests for compile-time error validation
+### Foundation for Structured Errors
+The macro provides the foundation for BodhiApp's structured error handling by ensuring all error types can provide:
+- Categorized error types for service-level error routing
+- Localization keys for user-facing error messages
+- Structured arguments for error message templating
 
-## Development Guidelines
-
-### Adding New Attributes
-1. Extend relevant `Parse` implementations for new attribute syntax
-2. Update parsing functions to handle new attribute types
-3. Modify code generation to incorporate new functionality
-4. Add comprehensive tests for new features
-
-### Error Handling Best Practices
-- Use meaningful error codes for localization keys
-- Include relevant context in error arguments
-- Prefer transparent wrapping for external errors
-- Test both compilation and runtime behavior
-
-### Macro Development
-- Use `cargo expand` to debug generated code
-- Test edge cases with different field patterns
-- Validate integration with existing error handling patterns
-- Ensure generated code follows Rust conventions
+### Service Boundary Error Propagation
+Transparent error support enables clean error propagation across service boundaries while maintaining error metadata, crucial for BodhiApp's multi-service architecture.

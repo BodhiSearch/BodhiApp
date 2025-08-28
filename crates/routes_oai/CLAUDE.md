@@ -1,266 +1,154 @@
-# CLAUDE.md - routes_oai
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `routes_oai` crate, which implements OpenAI-compatible API endpoints for BodhiApp.
+This file provides guidance to Claude Code when working with the `routes_oai` crate.
+
+*For detailed implementation examples and technical depth, see [crates/routes_oai/PACKAGE.md](crates/routes_oai/PACKAGE.md)*
 
 ## Purpose
 
-The `routes_oai` crate provides OpenAI API compatibility for BodhiApp:
+The `routes_oai` crate serves as BodhiApp's **OpenAI API compatibility layer**, implementing comprehensive OpenAI-compatible endpoints with sophisticated streaming capabilities, Ollama ecosystem integration, and multi-format API support for broad ecosystem compatibility.
 
-- **OpenAI Chat Completions**: `/v1/chat/completions` endpoint with streaming support
-- **Model Listing**: `/v1/models` endpoint for listing available models
-- **Ollama Compatibility**: Ollama API endpoints for broader ecosystem compatibility
-- **Request Validation**: Comprehensive request validation and error handling
-- **Response Streaming**: Server-Sent Events for real-time chat completions
-- **API Documentation**: OpenAPI specifications with Utoipa integration
+## Key Domain Architecture
 
-## Key Components
+### OpenAI API Compatibility System
+Comprehensive OpenAI API implementation with full ecosystem compatibility:
+- **Chat Completions Endpoint**: `/v1/chat/completions` with streaming and non-streaming support
+- **Models API**: `/v1/models` and `/v1/models/{id}` for model discovery and metadata
+- **Request Validation**: Complete OpenAI parameter validation with range checking and format compliance
+- **Response Streaming**: Server-sent events with proper SSE formatting and connection management
+- **Error Handling**: OpenAI-compatible error responses with proper HTTP status codes and error types
 
-### Chat Completions (`src/routes_chat.rs`)
-- `create_chat_completion` - Main chat completion endpoint handler
-- OpenAI API compatibility with `CreateChatCompletionRequest`
-- Streaming and non-streaming response support
-- Model alias resolution and request forwarding
-- Comprehensive error handling with proper HTTP status codes
+### Ollama Ecosystem Integration
+Dual API compatibility for broader ecosystem support:
+- **Ollama Models API**: `/api/tags` and `/api/show` endpoints with Ollama-specific response formats
+- **Ollama Chat Interface**: `/api/chat` endpoint with request/response format translation
+- **Cross-Format Translation**: Seamless conversion between OpenAI and Ollama request/response formats
+- **Parameter Mapping**: Intelligent parameter translation between different API specifications
+- **Ecosystem Compatibility**: Support for Ollama CLI tools and ecosystem integrations
 
-### Models API (`src/routes_oai_models.rs`)
-- `list_models` - Lists all available model aliases
-- OpenAI-compatible model objects with metadata
-- Model filtering and presentation logic
-- Integration with data service for model discovery
-
-### Ollama Compatibility (`src/routes_ollama.rs`)
-- `/api/tags` - Ollama-style model listing
-- `/api/show` - Model information endpoint
-- `/api/chat` - Ollama-style chat interface
-- Cross-compatibility with Ollama ecosystem tools
-
-## Dependencies
-
-### Core Infrastructure
-- `objs` - Domain objects, validation, and error handling
-- `server_core` - HTTP server infrastructure and router state
-- `services` - Business logic and data access services
-
-### HTTP Framework
-- `axum` - Web framework with extractors and handlers
-- `axum-extra` - Additional extractors and utilities
-- `http` - HTTP types and utilities
-
-### OpenAI Integration
-- `async-openai` - OpenAI API types and client integration
-- `serde_json` - JSON serialization for request/response handling
-
-### API Documentation
-- `utoipa` - OpenAPI specification generation
-- API documentation with examples and schemas
+### HTTP Route Orchestration Architecture
+Sophisticated HTTP request processing with service coordination:
+- **RouterState Integration**: Dependency injection providing access to AppService registry and SharedContext
+- **Model Alias Resolution**: DataService coordination for model alias lookup and validation
+- **Request Forwarding**: Intelligent request routing through SharedContext to LLM server instances
+- **Response Transformation**: Format-specific response processing for OpenAI and Ollama compatibility
+- **Error Translation**: Service errors converted to appropriate API-specific error responses with localization
 
 ## Architecture Position
 
-The `routes_oai` crate sits at the HTTP API layer:
-- **Above**: Server core infrastructure and middleware
-- **Below**: Client applications and OpenAI-compatible tools
-- **Implements**: OpenAI API specification for broad compatibility
-- **Coordinates**: Request validation, model resolution, and response formatting
+The `routes_oai` crate serves as BodhiApp's **OpenAI API compatibility orchestration layer**:
+- **Above server_core and services**: Coordinates HTTP infrastructure and business services for API operations
+- **Below client applications**: Provides OpenAI-compatible API surface for external tools and SDKs
+- **Parallel to routes_app**: Similar HTTP orchestration role but focused on OpenAI/Ollama compatibility instead of application management
+- **Integration with auth_middleware**: Leverages authentication middleware for API security and authorization
 
-## Usage Patterns
+## Cross-Crate Integration Patterns
 
-### Route Registration
-```rust
-use routes_oai::{create_chat_completion, list_models};
-use axum::{routing::{get, post}, Router};
+### Service Layer API Coordination
+Complex API operations coordinated across BodhiApp's service layer:
+- **RouterState Integration**: HTTP handlers access AppService registry for business logic operations
+- **DataService Coordination**: Model alias resolution, listing, and validation for API endpoints
+- **SharedContext Integration**: LLM server request routing and response streaming coordination
+- **Error Service Translation**: Service errors converted to OpenAI/Ollama-compatible API responses with localization
+- **Authentication Integration**: API security coordinated through auth_middleware with bearer token and session support
 
-let app = Router::new()
-    .route("/v1/chat/completions", post(create_chat_completion))
-    .route("/v1/models", get(list_models))
-    .with_state(router_state);
-```
+### HTTP Infrastructure Integration
+API routes coordinate with HTTP infrastructure for request processing:
+- **Request Validation**: Comprehensive OpenAI parameter validation using async-openai types
+- **Response Streaming**: Server-sent events coordinated with server_core streaming infrastructure
+- **Error Handling**: HTTP error responses with proper status codes and API-specific error formats
+- **Content Negotiation**: Multi-format response handling for OpenAI and Ollama compatibility
+- **Route Composition Integration**: Coordinated with routes_all for unified route composition with hierarchical authorization and middleware orchestration
 
-### Chat Completion Request Handling
-```rust
-use async_openai::types::CreateChatCompletionRequest;
-use routes_oai::create_chat_completion;
+### Domain Object Integration
+Extensive use of objs crate for API operations:
+- **Alias Resolution**: Model alias lookup and validation using objs domain objects
+- **Error System Integration**: API errors implement AppError trait for consistent HTTP response generation
+- **Parameter Validation**: OpenAI parameter validation using objs validation rules and error handling
+- **Localization Support**: Multi-language error messages via objs LocalizationService integration
 
-// Handler automatically validates request and forwards to LLM server
-let response = create_chat_completion(
-    State(router_state),
-    WithRejection(Json(request), ApiError),
-).await?;
-```
+## API Orchestration Workflows
 
-### Model Listing
-```rust
-use routes_oai::list_models;
+### Multi-Service Chat Completion Coordination
+Complex request processing with service orchestration:
 
-// Returns OpenAI-compatible model list
-let models_response = list_models(State(router_state)).await?;
-```
+1. **Request Reception**: HTTP routes receive OpenAI-compatible requests with comprehensive validation
+2. **Model Alias Resolution**: DataService resolves model aliases for chat completion requests
+3. **Context Coordination**: SharedContext manages LLM server instances for request processing
+4. **Response Streaming**: Server-sent events handle real-time streaming responses with proper formatting
+5. **Error Translation**: Service errors converted to OpenAI-compatible HTTP responses with localization
 
-### Ollama Compatibility
-```rust
-use routes_oai::{ollama_tags, ollama_show, ollama_chat};
+### Dual-Format API Support Orchestration
+Sophisticated API compatibility coordination:
 
-let app = Router::new()
-    .route("/api/tags", get(ollama_tags))
-    .route("/api/show", post(ollama_show))
-    .route("/api/chat", post(ollama_chat));
-```
+**OpenAI API Workflow**:
+1. **Parameter Validation**: Complete OpenAI parameter validation using async-openai types
+2. **Request Processing**: Standard OpenAI request processing with model alias resolution
+3. **Response Formatting**: OpenAI-compatible response formatting with proper JSON structure
+4. **Streaming Support**: SSE streaming with OpenAI chunk format and connection management
 
-## Integration Points
+**Ollama API Workflow**:
+1. **Format Translation**: Ollama request format converted to OpenAI internal format
+2. **Parameter Mapping**: Ollama-specific parameters mapped to OpenAI equivalents
+3. **Response Conversion**: OpenAI responses converted to Ollama-compatible format
+4. **Ecosystem Integration**: Support for Ollama CLI tools and ecosystem compatibility
 
-### With Server Core
-- Router state provides access to application services
-- Shared context for managing LLM server connections
-- Error handling integration with HTTP response mapping
+### Cross-Format Error Coordination
+Error handling across different API formats:
+- **OpenAI Error Format**: Standard OpenAI error responses with proper error types and codes
+- **Ollama Error Format**: Ollama-compatible error responses with simplified error structure
+- **Service Error Translation**: Service errors converted to appropriate API-specific formats
+- **Localization Support**: Multi-language error messages coordinated with objs error system
 
-### With Services Layer
-- Data service for model alias resolution and listing
-- Hub service for model metadata and availability
-- Authentication via middleware integration
+## Important Constraints
 
-### With OpenAI Ecosystem
-- Full compatibility with OpenAI Python SDK
-- Support for popular AI tools and frameworks
-- Standard request/response format adherence
+### OpenAI API Compatibility Requirements
+- All endpoints must maintain strict OpenAI API specification compliance for ecosystem compatibility
+- Request validation must use async-openai types for parameter validation and format consistency
+- Response formats must match OpenAI specification exactly for SDK and tool compatibility
+- Error responses must follow OpenAI error format with proper error types and HTTP status codes
+- Streaming responses must use proper SSE formatting with OpenAI chunk structure
 
-## API Endpoints
+### Ollama Ecosystem Integration Standards
+- Ollama endpoints must support Ollama CLI tools and ecosystem integrations
+- Request/response format translation must be bidirectional and lossless where possible
+- Parameter mapping between Ollama and OpenAI formats must preserve semantic meaning
+- Error handling must provide Ollama-compatible error responses while maintaining internal consistency
+- Model metadata must be compatible with Ollama model discovery and management tools
 
-### OpenAI Compatibility
+### HTTP Infrastructure Coordination Rules
+- All routes must use RouterState dependency injection for consistent service access
+- Model alias resolution must coordinate with DataService for consistent model discovery
+- Response streaming must integrate with server_core streaming infrastructure for performance
+- Error handling must translate service errors to appropriate API-specific formats with localization
+- Authentication must integrate with auth_middleware for consistent API security across endpoints
 
-#### POST `/v1/chat/completions`
-- Creates chat completions with streaming support
-- Validates request against OpenAI specification
-- Supports all standard OpenAI parameters
-- Returns OpenAI-compatible response format
+## API Extension Patterns
 
-#### GET `/v1/models`
-- Lists all available model aliases
-- Returns OpenAI-compatible model objects
-- Includes model metadata and capabilities
+### Adding New OpenAI Endpoints
+When implementing additional OpenAI API endpoints:
 
-### Ollama Compatibility
+1. **Specification Compliance**: Follow OpenAI API specification exactly for parameter validation and response formats
+2. **Service Coordination**: Use RouterState for consistent AppService access and business logic coordination
+3. **Error Handling**: Implement API-specific errors that convert to OpenAI-compatible responses
+4. **Documentation**: Add comprehensive OpenAPI documentation with examples and proper schemas
+5. **Testing Infrastructure**: Create comprehensive API compatibility tests with OpenAI SDK validation
 
-#### GET `/api/tags`
-- Lists models in Ollama format
-- Provides model size and modification timestamps
-- Compatible with Ollama CLI tools
+### Extending Ollama Compatibility
+For new Ollama API endpoints and features:
 
-#### POST `/api/show`
-- Shows detailed model information
-- Includes model parameters and configuration
-- Ollama-compatible response format
+1. **Format Translation**: Design bidirectional translation between Ollama and OpenAI formats
+2. **Parameter Mapping**: Create semantic parameter mapping that preserves functionality
+3. **Ecosystem Testing**: Validate compatibility with Ollama CLI tools and ecosystem integrations
+4. **Error Consistency**: Provide Ollama-compatible error responses while maintaining internal error handling
+5. **Documentation**: Document Ollama-specific behavior and compatibility considerations
 
-#### POST `/api/chat`
-- Chat completion in Ollama format
-- Alternative interface for Ollama ecosystem integration
+### Cross-Format Integration Patterns
+For features that span both API formats:
 
-## Request Validation
+1. **Unified Processing**: Design internal processing that supports both API formats efficiently
+2. **Format Abstraction**: Create abstraction layers that handle format-specific concerns
+3. **Response Transformation**: Implement efficient response transformation for different API formats
+4. **Error Coordination**: Ensure consistent error handling across different API format requirements
+5. **Performance Optimization**: Optimize for minimal overhead in format translation and processing
 
-### Chat Completion Validation
-- Required fields: `model`, `messages`
-- Optional parameters with proper defaults
-- Parameter range validation (temperature, top_p, etc.)
-- Message format and role validation
-
-### Error Handling
-- Comprehensive validation with detailed error messages
-- HTTP status code mapping for different error types
-- OpenAI-compatible error response format
-
-### Model Resolution
-- Alias lookup and validation
-- Model availability checking
-- Graceful handling of missing models
-
-## Response Streaming
-
-### Server-Sent Events
-- Real-time streaming for chat completions
-- Proper SSE formatting with event data
-- Connection management and cleanup
-
-### Non-Streaming Responses
-- Standard JSON responses for non-streaming requests
-- Proper content-type headers and formatting
-- Complete response buffering and formatting
-
-## Performance Considerations
-
-### Request Processing
-- Efficient request validation and parsing
-- Minimal overhead for request forwarding
-- Asynchronous processing for all operations
-
-### Streaming Optimization
-- Memory-efficient streaming with proper buffering
-- Connection pooling for upstream services
-- Proper error propagation in streaming context
-
-### Caching
-- Model list caching for performance
-- Request validation result caching where appropriate
-
-## Development Guidelines
-
-### Adding New Endpoints
-1. Define endpoint handler with proper OpenAI compatibility
-2. Add comprehensive request validation
-3. Implement proper error handling with HTTP status mapping
-4. Add OpenAPI documentation with examples
-5. Include unit tests and integration tests
-
-### Maintaining OpenAI Compatibility
-- Follow OpenAI API specification exactly
-- Test with OpenAI Python SDK and popular tools
-- Validate response formats against official examples
-- Handle edge cases and error conditions properly
-
-### Error Handling Best Practices
-- Use appropriate HTTP status codes
-- Provide clear, actionable error messages
-- Include request context in error responses
-- Log errors appropriately for debugging
-
-## Testing Strategy
-
-### Unit Tests
-- Request validation logic
-- Response formatting and serialization
-- Error handling and edge cases
-- Model resolution and filtering
-
-### Integration Tests
-- End-to-end API compatibility testing
-- Streaming response validation
-- Error propagation through middleware stack
-- Performance testing under load
-
-### Compatibility Testing
-- OpenAI Python SDK integration tests
-- Popular tool compatibility validation
-- Ollama ecosystem compatibility testing
-
-## Monitoring and Observability
-
-### Request Metrics
-- Request count and response time per endpoint
-- Success/failure rates and error types
-- Model usage statistics and patterns
-
-### Streaming Metrics
-- Connection duration and stability
-- Streaming throughput and latency
-- Client disconnect patterns
-
-### Error Tracking
-- Validation failure patterns
-- Upstream service errors
-- Client compatibility issues
-
-## Future Extensions
-
-The routes_oai crate is designed for extensibility:
-- Additional OpenAI API endpoints (embeddings, fine-tuning)
-- Enhanced streaming capabilities (WebSocket support)
-- Advanced model routing and load balancing
-- Metrics and analytics endpoints
-- Rate limiting and quota management

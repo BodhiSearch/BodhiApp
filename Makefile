@@ -323,4 +323,12 @@ check-docker-versions: ## Check latest versions of both production and developme
 	fi
 	@echo "==============================="
 
-.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions help
+update-context-symlinks: ## Update symlinks in ai-docs/context for CLAUDE.md and PACKAGE.md files
+	@echo "Updating AI context symlinks..."
+	@python3 scripts/update_context_symlinks.py
+
+update-context-symlinks-dry-run: ## Preview changes that would be made to AI context symlinks
+	@echo "Previewing AI context symlinks changes..."
+	@python3 scripts/update_context_symlinks.py --dry-run --verbose
+
+.PHONY: test format coverage ci.clean ci.coverage ci.update-version ci.build ci.app-npm ci.ui ci.ts-client-check ci.ts-client-test ts-client release-app-bindings ui.test docker.dev.cpu docker.dev.cpu.amd64 docker.dev.cpu.arm64 docker.dev.cuda docker.run docker.list docker.clean release-docker release-docker-dev check-docker-versions update-context-symlinks update-context-symlinks-dry-run help

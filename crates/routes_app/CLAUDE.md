@@ -1,317 +1,155 @@
-# CLAUDE.md - routes_app
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `routes_app` crate, which implements application-specific API endpoints for BodhiApp.
+This file provides guidance to Claude Code when working with the `routes_app` crate.
+
+*For detailed implementation examples and technical depth, see [crates/routes_app/PACKAGE.md](crates/routes_app/PACKAGE.md)*
 
 ## Purpose
 
-The `routes_app` crate provides application-specific HTTP endpoints:
+The `routes_app` crate serves as BodhiApp's **application API orchestration layer**, implementing comprehensive HTTP endpoints for model management, authentication, API token management, and application configuration with sophisticated OpenAPI documentation generation and multi-service coordination.
 
-- **Model Management**: Create, pull, and manage model aliases
-- **Authentication**: OAuth login, token exchange, and user management
-- **API Token Management**: Generate and manage API tokens for programmatic access
-- **Application Settings**: Configuration management and system settings
-- **Development Endpoints**: Developer tools and debugging interfaces
-- **Setup and Onboarding**: Application initialization and configuration
-- **OpenAPI Documentation**: Comprehensive API documentation with Utoipa
+## Key Domain Architecture
 
-## Key Components
+### Application API Orchestration System
+Comprehensive HTTP endpoint implementation with sophisticated service coordination:
+- **Model Management API**: Create, pull, and manage model aliases with command orchestration
+- **Authentication API**: OAuth2 flows, session management, and user profile operations
+- **API Token Management**: JWT token generation, validation, and lifecycle management
+- **Application Configuration**: Settings management, setup flows, and system configuration
+- **OpenAPI Documentation**: Comprehensive API specification generation with Utoipa integration
+- **Development Tools**: Debug endpoints and developer utilities for system introspection
 
-### Model Management Routes
-- `routes_create.rs` - Model alias creation with configuration
-- `routes_pull.rs` - Model download and alias management
-- `routes_models.rs` - Model listing and metadata endpoints
+### Multi-Service HTTP Coordination Architecture
+Sophisticated HTTP request processing with cross-service orchestration:
+- **RouterState Integration**: Dependency injection providing access to AppService registry and SharedContext
+- **Command Layer Integration**: Direct integration with commands crate for CLI operation orchestration
+- **Service Layer Coordination**: Complex service interactions for authentication, model management, and configuration
+- **Error Translation**: Service errors converted to appropriate HTTP responses with OpenAI-compatible error formats
+- **Request Validation**: Comprehensive input validation using validator crate and custom validation rules
 
-### Authentication Routes
-- `routes_login.rs` - OAuth login flow and session management
-- `routes_api_token.rs` - API token generation and management
-- `routes_user.rs` - User profile and account management
-
-### Application Routes
-- `routes_settings.rs` - Application configuration and preferences
-- `routes_setup.rs` - Initial setup and onboarding flows
-- `routes_dev.rs` - Development tools and debugging endpoints
-- `routes_ui.rs` - UI-specific endpoints and static content
-
-### Infrastructure
-- `error.rs` - Application-specific error types
-- `objs.rs` - Request/response objects and validation
-- `openapi.rs` - OpenAPI specification generation
-
-## Dependencies
-
-### Core Infrastructure
-- `objs` - Domain objects and validation
-- `services` - Business logic services
-- `commands` - CLI command implementations
-- `server_core` - HTTP server infrastructure
-- `auth_middleware` - Authentication and authorization
-
-### HTTP Framework
-- `axum` - Web framework with routing and extractors
-- `axum-extra` - Additional extractors and utilities
-- `tower-sessions` - Session management
-
-### Authentication
-- `oauth2` - OAuth2 client implementation
-- `jsonwebtoken` - JWT token handling
-- `base64` - Encoding/decoding utilities
-
-### API Documentation
-- `utoipa` - OpenAPI specification generation
-- Comprehensive API documentation with examples
+### OpenAPI Documentation Generation System
+Advanced API documentation with comprehensive specification generation:
+- **Utoipa Integration**: Automatic OpenAPI 3.0 specification generation with schema validation
+- **Environment-Specific Configuration**: Dynamic server URL and security scheme configuration
+- **Comprehensive Schema Coverage**: Complete request/response object documentation with examples
+- **Interactive Documentation**: API exploration interface with authentication flow documentation
+- **Multi-Format Support**: JSON schema generation with validation and example generation
 
 ## Architecture Position
 
-The `routes_app` crate sits at the application API layer:
-- **Above**: Server core and middleware infrastructure
-- **Below**: Frontend applications and API clients
-- **Coordinates**: Authentication, model management, and application configuration
-- **Integrates**: All major application services and business logic
+The `routes_app` crate serves as BodhiApp's **application API orchestration layer**:
+- **Above server_core and services**: Coordinates HTTP infrastructure and business services for application API operations
+- **Below client applications**: Provides comprehensive API surface for web UI, mobile apps, and external integrations
+- **Parallel to routes_oai**: Similar HTTP orchestration role but focused on application management instead of OpenAI compatibility
+- **Integration with auth_middleware**: Leverages authentication middleware for comprehensive API security and authorization
 
-## Usage Patterns
+## Cross-Crate Integration Patterns
 
-### Route Registration
-```rust
-use routes_app::*;
-use axum::{routing::{get, post}, Router};
+### Service Layer API Coordination
+Complex API operations coordinated across BodhiApp's service layer:
+- **RouterState Integration**: HTTP handlers access AppService registry for comprehensive business logic operations
+- **Command Layer Orchestration**: Direct integration with commands crate for CLI operation execution through HTTP endpoints
+- **Authentication Service Coordination**: OAuth2 flows, token management, and user profile operations with comprehensive error handling
+- **Model Management Integration**: DataService and HubService coordination for model alias management and file operations
+- **Configuration Management**: SettingService integration for application configuration and system setup workflows
 
-let app = Router::new()
-    .route("/app/models", get(list_models))
-    .route("/app/models/create", post(create_model))
-    .route("/app/auth/login", get(login))
-    .route("/app/auth/token", post(create_token))
-    .with_state(router_state);
-```
+### HTTP Infrastructure Integration
+Application API routes coordinate with HTTP infrastructure for request processing:
+- **Request Validation**: Comprehensive input validation using validator crate with custom validation rules
+- **Response Formatting**: Consistent API response formats with pagination, error handling, and OpenAI compatibility
+- **Error Handling**: Service errors converted to appropriate HTTP status codes with localized messages
+- **Authentication Integration**: Seamless integration with auth_middleware for API security and authorization
+- **Route Composition Integration**: Coordinated with routes_all for unified route composition with session-based authentication and role-based authorization
 
-### Model Management
-```rust
-use routes_app::{create_model, CreateModelRequest};
+### Domain Object Integration
+Extensive use of objs crate for API operations:
+- **Request/Response Objects**: Comprehensive API object definitions with validation and serialization
+- **Error System Integration**: API errors implement AppError trait for consistent HTTP response generation
+- **Parameter Validation**: Domain object validation rules applied consistently across API endpoints
+- **Localization Support**: Multi-language error messages via objs LocalizationService integration
 
-// Create new model alias
-let request = CreateModelRequest {
-    alias: "my-model".to_string(),
-    repo: "microsoft/DialoGPT-medium".to_string(),
-    filename: "pytorch_model.bin".to_string(),
-    auto_download: true,
-    // ... other fields
-};
+## API Orchestration Workflows
 
-let response = create_model(State(router_state), Json(request)).await?;
-```
+### Multi-Service Model Management Coordination
+Complex model management operations with service orchestration:
 
-### Authentication Flow
-```rust
-use routes_app::{login, oauth_callback};
+1. **Model Alias Creation**: HTTP endpoints coordinate with commands crate for CreateCommand execution
+2. **Model Pull Operations**: PullCommand orchestration through HTTP with progress tracking and error handling
+3. **Model Discovery**: DataService and HubService coordination for model listing and metadata retrieval
+4. **Alias Management**: CRUD operations for model aliases with validation and conflict resolution
+5. **File Management**: Local model file operations coordinated with HubService and file system management
 
-// Start OAuth login
-let auth_url = login(State(router_state)).await?;
+### Authentication Flow Orchestration
+Sophisticated authentication coordination across multiple services:
 
-// Handle OAuth callback
-let tokens = oauth_callback(
-    State(router_state),
-    Query(callback_params),
-    session,
-).await?;
-```
+**OAuth2 Authentication Workflow**:
+1. **Login Initiation**: OAuth2 authorization URL generation with PKCE challenge and state validation
+2. **Callback Processing**: Authorization code exchange with token validation and session creation
+3. **Session Management**: HTTP session coordination with Tower Sessions and secure cookie handling
+4. **Token Refresh**: Automatic token refresh with session updates and error recovery
+5. **User Profile**: User information retrieval and profile management through authentication services
 
-### API Token Management
-```rust
-use routes_app::{create_token, TokenRequest};
+**API Token Management Workflow**:
+1. **Token Creation**: JWT token generation with scope validation and database storage
+2. **Token Validation**: Bearer token authentication with database lookup and status checking
+3. **Token Lifecycle**: Token activation, deactivation, and expiration management
+4. **Authorization**: Role-based and scope-based authorization for API endpoints
 
-let token_request = TokenRequest {
-    name: "My API Token".to_string(),
-    scopes: vec!["read".to_string(), "write".to_string()],
-    expires_in: Some(3600), // 1 hour
-};
+### Application Configuration Orchestration
+Comprehensive application setup and configuration management:
+1. **Initial Setup**: Application registration and configuration with OAuth provider integration
+2. **Settings Management**: Configuration CRUD operations with validation and persistence
+3. **System Status**: Application health and status monitoring with comprehensive diagnostics
+4. **Development Tools**: Debug endpoints for system introspection and troubleshooting
 
-let token_response = create_token(
-    State(router_state),
-    Json(token_request),
-).await?;
-```
+## Important Constraints
 
-## Integration Points
+### API Compatibility Requirements
+- All endpoints must maintain consistent request/response formats for client application compatibility
+- Request validation must use validator crate with comprehensive validation rules and error reporting
+- Response formats must support pagination, sorting, and filtering for large data sets
+- Error responses must follow OpenAI-compatible error format for ecosystem integration
+- API versioning must be maintained through URL paths with backward compatibility considerations
 
-### With Commands Layer
-- Model creation and pulling use command implementations
-- Direct integration with `CreateCommand` and `PullCommand`
-- Async execution of CLI operations through HTTP endpoints
+### Authentication and Authorization Standards
+- All protected endpoints must integrate with auth_middleware for consistent security
+- OAuth2 flows must follow PKCE standards with proper state validation and CSRF protection
+- API token management must support role-based and scope-based authorization with hierarchical access control
+- Session management must use secure cookie configuration with SameSite and secure flags
+- Authentication errors must provide actionable guidance without leaking sensitive information
 
-### With Services Layer
-- Authentication service for OAuth flows
-- Data service for model management
-- Hub service for model discovery and download
-- Settings service for configuration management
+### Service Coordination Rules
+- All routes must use RouterState dependency injection for consistent service access
+- Command orchestration must handle async operations with proper error propagation and recovery
+- Service errors must be translated to appropriate HTTP status codes with localized messages
+- Long-running operations must provide progress feedback and cancellation support
+- Database operations must maintain transactional consistency across service boundaries
 
-### With Auth Middleware
-- Protected endpoints use authentication middleware
-- Session management for web interface
-- API token validation for programmatic access
+## Application API Extension Patterns
 
-## API Endpoints
+### Adding New Application Endpoints
+When implementing additional application API endpoints:
 
-### Model Management
-- `GET /app/models` - List available models
-- `POST /app/models/create` - Create new model alias
-- `POST /app/models/pull` - Pull model from repository
-- `DELETE /app/models/{alias}` - Delete model alias
+1. **Service Coordination Design**: Use RouterState for consistent AppService access and business logic coordination
+2. **Request/Response Objects**: Define comprehensive API objects with validation using validator crate and ToSchema for OpenAPI
+3. **Command Integration**: Leverage commands crate for complex operations that require multi-service coordination
+4. **Error Handling**: Implement API-specific errors that convert to appropriate HTTP responses with localization
+5. **OpenAPI Documentation**: Add comprehensive Utoipa annotations with examples and proper schema definitions
 
-### Authentication
-- `GET /app/auth/login` - Initiate OAuth login
-- `GET /app/auth/callback` - OAuth callback handler
-- `POST /app/auth/logout` - End user session
-- `GET /app/auth/user` - Get current user info
+### Extending Authentication Flows
+For new authentication and authorization patterns:
 
-### API Tokens
-- `GET /app/tokens` - List user's API tokens
-- `POST /app/tokens` - Create new API token
-- `DELETE /app/tokens/{id}` - Revoke API token
+1. **OAuth2 Integration**: Follow established PKCE patterns with proper state validation and CSRF protection
+2. **Session Management**: Integrate with Tower Sessions for consistent session handling and secure cookie configuration
+3. **API Token Extensions**: Extend JWT token management with new scopes and authorization patterns
+4. **Authorization Middleware**: Coordinate with auth_middleware for consistent security across endpoints
+5. **User Management**: Design user profile and account management features with proper privacy controls
 
-### Settings
-- `GET /app/settings` - Get application settings
-- `POST /app/settings` - Update application settings
-- `GET /app/setup` - Check setup status
-- `POST /app/setup` - Complete initial setup
+### Cross-Service Integration Patterns
+For features that require coordination across multiple services:
 
-## Request/Response Objects
-
-### Model Management
-- `CreateModelRequest` - Model creation parameters
-- `PullModelRequest` - Model pull parameters
-- `ModelResponse` - Model information and status
-
-### Authentication
-- `LoginResponse` - OAuth authorization URL
-- `TokenRequest` - API token creation parameters
-- `TokenResponse` - Created token information
-- `UserResponse` - User profile information
-
-### Settings
-- `SettingsRequest` - Configuration updates
-- `SettingsResponse` - Current application settings
-- `SetupRequest` - Initial setup parameters
-
-## Error Handling
-
-### Application Errors
-- Model not found errors
-- Authentication failures
-- Permission denied errors
-- Validation failures
-
-### HTTP Status Mapping
-- 200 OK - Successful operations
-- 201 Created - Resource creation
-- 400 Bad Request - Validation errors
-- 401 Unauthorized - Authentication required
-- 403 Forbidden - Insufficient permissions
-- 404 Not Found - Resource not found
-- 500 Internal Server Error - System errors
-
-## Authentication Flow
-
-### OAuth2 Flow
-1. User initiates login via `/app/auth/login`
-2. Redirect to OAuth provider with PKCE challenge
-3. Provider redirects to `/app/auth/callback` with code
-4. Exchange code for tokens and create session
-5. Store tokens securely in session storage
-
-### API Token Flow
-1. User requests token via `/app/tokens` endpoint
-2. Generate JWT with specified scopes and expiration
-3. Store token hash in database for revocation
-4. Return token to user for API access
-
-## Performance Considerations
-
-### Async Operations
-- All model operations are asynchronous
-- Long-running operations provide progress feedback
-- Non-blocking request processing
-
-### Caching
-- Model list caching for performance
-- Settings caching with appropriate invalidation
-- Token validation caching
-
-### Database Operations
-- Efficient queries with proper indexing
-- Transaction management for data consistency
-- Connection pooling for scalability
-
-## Development Guidelines
-
-### Adding New Endpoints
-1. Define request/response objects with validation
-2. Implement handler with proper error handling
-3. Add authentication/authorization as needed
-4. Include OpenAPI documentation
-5. Add comprehensive tests
-
-### Error Handling Best Practices
-- Use appropriate HTTP status codes
-- Provide clear error messages with context
-- Log errors appropriately for debugging
-- Handle edge cases and validation failures
-
-### Testing Strategy
-- Unit tests for individual handlers
-- Integration tests for complete flows
-- Authentication and authorization testing
-- Error condition validation
-
-## Security Considerations
-
-### Input Validation
-- Comprehensive validation of all inputs
-- Sanitization of file paths and names
-- Parameter validation against allowed ranges
-
-### Authentication Security
-- Secure OAuth2 implementation with PKCE
-- JWT tokens with proper expiration
-- Session security with appropriate flags
-- API token revocation capabilities
-
-### Data Protection
-- Secure handling of sensitive information
-- Proper error messages without information leakage
-- Audit logging for security events
-
-## OpenAPI Documentation
-
-### Specification Generation
-- Automatic OpenAPI 3.0 specification generation
-- Comprehensive endpoint documentation
-- Request/response schema definitions
-- Example requests and responses
-
-### Documentation Features
-- Interactive API documentation
-- Schema validation and examples
-- Authentication flow documentation
-- Error response documentation
-
-## Monitoring and Observability
-
-### Request Metrics
-- Endpoint usage statistics
-- Response time and error rates
-- Authentication success/failure rates
-- Model operation metrics
-
-### Business Metrics
-- Model creation and usage patterns
-- User authentication patterns
-- API token usage statistics
-- System configuration changes
-
-## Future Extensions
-
-The routes_app crate is designed for extensibility:
-- Additional model management operations
-- Enhanced user management features
-- Advanced settings and configuration options
-- Webhook and notification endpoints
-- Batch operations and bulk management
+1. **Command Orchestration**: Use commands crate for complex multi-service workflows with proper error boundaries
+2. **Service Registry**: Coordinate through AppService registry for consistent business logic access
+3. **Error Translation**: Convert service errors to appropriate HTTP responses with OpenAI-compatible error formats
+4. **Progress Tracking**: Implement progress feedback for long-running operations with cancellation support
+5. **Transaction Management**: Ensure data consistency across service boundaries with proper rollback capabilities

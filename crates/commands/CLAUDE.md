@@ -1,242 +1,173 @@
-# CLAUDE.md - commands
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `commands` crate, which implements CLI command logic for BodhiApp.
+This file provides guidance to Claude Code when working with the `commands` crate.
+
+*For detailed implementation examples and technical depth, see [crates/commands/PACKAGE.md](crates/commands/PACKAGE.md)*
 
 ## Purpose
 
-The `commands` crate provides high-level command implementations for the BodhiApp CLI:
+The `commands` crate serves as BodhiApp's **CLI command orchestration layer**, coordinating multiple services to implement sophisticated user workflows with comprehensive error handling and CLI-optimized user experience.
 
-- **Model Management Commands**: Create and pull model aliases with automatic download
-- **Command Orchestration**: Coordinate multiple services to execute complex operations
-- **User Interface**: Provide clear feedback and error messages during command execution
-- **Parameter Validation**: Validate and process command-line arguments before execution
-- **Business Logic**: Implement command-specific workflows and decision logic
+## Key Domain Architecture
 
-## Key Components
+### CLI Command Orchestration System
+Multi-service coordination for complex CLI operations:
+- **CreateCommand**: Orchestrates alias creation with automatic model downloading and validation
+- **PullCommand**: Coordinates model discovery and download with conflict resolution  
+- **Service Registry Integration**: Uses `AppService` trait to coordinate `HubService`, `DataService`, and other services
+- **Workflow Management**: Implements multi-step operations with rollback capabilities and progress feedback
+- **Error Orchestration**: Translates service errors into actionable CLI messages with context
 
-### Create Command (`src/cmd_create.rs`)
-- `CreateCommand` - Creates model aliases with download and configuration
-- Supports manual and automatic model download from Hugging Face Hub
-- Handles alias updates and conflict resolution
-- Configures OpenAI request parameters and GPU context settings
-- Validates file existence and downloads missing files when needed
+### Cross-Service Coordination Architecture
+Complex service interactions orchestrated through CLI commands:
+- **HubService ↔ DataService**: Model download coordination with alias creation and file system management
+- **DataService ↔ SettingService**: Configuration validation and storage path coordination
+- **AuthService Integration**: Credential management for gated repository access
+- **Error Service Coordination**: Cross-service error propagation with CLI-specific error translation
+- **Transaction Boundaries**: Multi-service operation coordination with rollback capabilities
 
-### Pull Command (`src/cmd_pull.rs`)
-- `PullCommand` - Downloads models by alias or repository specification
-- Two execution modes:
-  - `ByAlias` - Downloads pre-configured models from remote registry
-  - `ByRepoFile` - Direct download from Hugging Face repository
-- Prevents duplicate downloads and alias conflicts
-- Provides clear status feedback during download operations
+### CLI-Specific Domain Extensions
+Domain object extensions optimized for command-line interface:
+- **IntoRow Trait**: Pretty table formatting for `Alias`, `HubFile`, and `RemoteModel` objects with human-readable values
+- **Command Builder Patterns**: Complex command construction with validation and CLI-optimized defaults
+- **Output Formatting**: Human-readable file sizes (GB conversion), truncated snapshot hashes (8 chars), and consistent table layouts
+- **User Experience Optimization**: CLI-specific error messages with actionable guidance and progress feedback
 
-### Object Extensions (`src/objs_ext.rs`)
-- Extension traits and utilities for domain objects
-- Helper methods for command-specific object manipulation
-- Enhanced functionality for working with aliases and models
-
-## Dependencies
-
-### Core Infrastructure
-- `objs` - Domain objects, validation, and error handling
-- `services` - Business logic services for data and hub operations
-- `errmeta_derive` - Error metadata generation for localized messages
-
-### Command Interface
-- `derive_builder` - Builder pattern for command construction
-- `prettytable` - Formatted table output for command results
-- `thiserror` - Error type derivation for command-specific errors
-
-### Development
-- `rstest` - Parameterized testing for command validation
-- `mockall` - Service mocking for isolated command testing
+### Model Management Command Pipeline
+Sophisticated workflows combining multiple service operations:
+- **Create Command Pipeline**: Alias conflict detection → local file existence check → auto-download coordination → alias creation with metadata
+- **Pull Command Orchestration**: Dual-mode operation (ByAlias/ByRepoFile) → conflict resolution → download management → alias generation
+- **Parameter Management**: OpenAI compatibility settings with CLI-specific parameter handling and context parameter coordination
+- **Progress Coordination**: Multi-stage operation feedback with optional progress reporting and debug logging
 
 ## Architecture Position
 
-The `commands` crate sits at the application logic layer:
-- **Above**: Services layer providing business logic and external integrations
-- **Below**: CLI interface and application entry points
-- **Coordinates**: Multiple services to implement complete user workflows
-- **Translates**: User intentions into service operations with proper error handling
+The `commands` crate serves as BodhiApp's **CLI orchestration layer**:
+- **Above objs and services**: Coordinates domain objects and business logic services for CLI workflows
+- **Below CLI applications**: Provides high-level command implementations for CLI binaries
+- **Parallel to routes**: Similar orchestration role but optimized for command-line interface instead of HTTP
+- **Cross-cutting with auth_middleware**: Integrates authentication flows for CLI-specific credential management
 
-## Usage Patterns
+## Cross-Crate Integration Patterns
 
-### Create Command Execution
-```rust
-use commands::{CreateCommand, CreateCommandBuilder};
-use objs::{Repo, GptContextParams, OAIRequestParams};
+### Service Orchestration Dependencies
+Complex coordination across BodhiApp's service layer:
+- **AppService Registry**: Central coordination point for accessing all business services
+- **HubService Integration**: Model discovery, download, and repository authentication
+- **DataService Coordination**: Alias management, file system operations, and configuration storage
+- **AuthService Integration**: Credential management for gated repository access
+- **Error Propagation**: Service errors translated to CLI-specific user messages with localization
 
-let command = CreateCommandBuilder::default()
-    .alias("my-model".to_string())
-    .repo(Repo::from("microsoft/DialoGPT-medium"))
-    .filename("pytorch_model.bin".to_string())
-    .snapshot(Some("main".to_string()))
-    .auto_download(true)
-    .update(false)
-    .oai_request_params(OAIRequestParams::default())
-    .context_params(GptContextParams::default())
-    .build()?;
+### Domain Object Integration
+Extensive use of objs crate for CLI operations:
+- **Repo, Alias, HubFile**: Core entities for model management command workflows
+- **OAIRequestParams**: OpenAI compatibility parameter handling for CLI configuration
+- **Error System Integration**: Commands implement `AppError` trait for consistent error handling
+- **Builder Patterns**: Commands use objs builder patterns with CLI-specific extensions
 
-command.execute(app_service).await?;
-```
+### CLI-Specific Extensions
+Command layer adds CLI-optimized functionality to domain objects:
+- **IntoRow Trait**: Pretty table formatting for terminal output of domain objects
+- **Progress Feedback**: CLI-specific progress indicators during long-running service operations
+- **User Experience**: Human-readable error messages with actionable guidance and context
 
-### Pull Command Execution
-```rust
-use commands::PullCommand;
+## Command Orchestration Workflows
 
-// Pull by alias from remote registry
-let pull_alias = PullCommand::ByAlias {
-    alias: "gpt-3.5-turbo".to_string(),
-};
-pull_alias.execute(app_service).await?;
+### Multi-Service Create Command Flow
+Complex service coordination for alias creation:
 
-// Pull by direct repository specification
-let pull_repo = PullCommand::ByRepoFile {
-    repo: Repo::from("microsoft/DialoGPT-medium"),
-    filename: "config.json".to_string(),
-    snapshot: Some("v1.0".to_string()),
-};
-pull_repo.execute(app_service).await?;
-```
+1. **Alias Conflict Detection**: `DataService.find_alias()` checks existing alias conflicts with update mode handling
+2. **Local File Discovery**: `HubService.local_file_exists()` checks HF cache for existing model files
+3. **Auto-Download Coordination**: `HubService.download()` manages model download when files don't exist locally
+4. **Alias Construction**: `AliasBuilder` creates alias with repo, filename, snapshot, and OpenAI parameters
+5. **Alias Persistence**: `DataService.save_alias()` saves alias configuration to BODHI_HOME/aliases
+6. **Debug Logging**: Comprehensive logging throughout the workflow for CLI user feedback
 
-### Error Handling
-```rust
-use commands::{CreateCommandError, PullCommandError};
+### Pull Command Service Orchestration
+Two-mode operation with service coordination:
 
-match create_command.execute(app_service).await {
-    Err(CreateCommandError::AliasExists(alias_name)) => {
-        println!("Alias '{}' already exists. Use --update to modify.", alias_name);
-    }
-    Err(CreateCommandError::HubServiceError(hub_err)) => {
-        println!("Failed to access model repository: {}", hub_err);
-    }
-    Ok(()) => println!("Model alias created successfully"),
-}
-```
+**ByAlias Mode**:
+1. **Alias Conflict Prevention**: `DataService.find_alias()` prevents local alias conflicts
+2. **Remote Model Lookup**: `DataService.find_remote_model()` retrieves model metadata from remote registry
+3. **Model Download**: `HubService.download()` coordinates model file downloads with optional progress reporting
+4. **Local Alias Creation**: `AliasBuilder` creates local alias from remote model metadata with AliasSource::User
 
-## Integration Points
+**ByRepoFile Mode**:
+1. **Local File Check**: `HubService.local_file_exists()` verifies if model already exists in HF cache
+2. **Direct Download**: `HubService.download()` downloads model file directly without alias creation
+3. **No Alias Creation**: Files downloaded to HF cache without local alias registration
 
-### With Services Layer
-- `AppService` - Central service registry for accessing business logic
-- `DataService` - Model alias management and local storage
-- `HubService` - Hugging Face Hub integration for model discovery and download
-- Error propagation from service layer to command layer
+### Cross-Service Error Coordination
+Error handling across service boundaries:
+- **Service Error Translation**: Hub and data service errors converted to CLI-specific messages
+- **Context Preservation**: Original error context maintained through transparent wrapping
+- **User Guidance**: CLI-specific error messages provide actionable resolution steps
+- **Rollback Coordination**: Failed operations properly clean up partial state across services
 
-### With CLI Layer
-- Commands receive validated parameters from CLI argument parsing
-- Command results and errors are formatted for terminal display
-- Progress feedback provided during long-running operations
+## Important Constraints
 
-### With Domain Objects
-- Uses `Alias`, `Repo`, `HubFile` for model representation
-- Leverages `GptContextParams` and `OAIRequestParams` for configuration
-- Builder patterns for constructing complex command objects
+### Service Coordination Requirements
+- Commands must use `AppService` registry for all service access to maintain proper dependency injection
+- Multi-service operations require proper error handling and rollback coordination
+- Service errors must be transparently wrapped to preserve context while providing CLI-specific user messages
+- Authentication state must be coordinated across services for gated repository access
 
-## Command Logic
+### CLI User Experience Standards
+- All long-running operations must provide progress feedback with cancellation support
+- Error messages must be actionable with specific guidance for resolution
+- Command output must be consistent with CLI conventions and support quiet modes for automation
+- Domain object formatting must be optimized for terminal display with human-readable values
 
-### Create Command Workflow
-1. **Validation**: Check if alias already exists and handle update scenarios
-2. **File Discovery**: Determine if model files exist locally in HF_HOME
-3. **Download Decision**: Automatically download missing files if enabled
-4. **Alias Construction**: Build alias object with all configuration parameters
-5. **Persistence**: Save alias to local storage for future use
-6. **Feedback**: Provide clear status messages throughout the process
+### Domain Object Integration Rules
+- Commands must use objs domain builders with CLI-specific extensions
+- All domain object validation must occur before service operations begin
+- Domain objects must support CLI-specific serialization formats (pretty tables, JSON output)
+- Builder patterns must provide sensible defaults optimized for CLI usage
 
-### Pull Command Workflow
+## CLI Domain Extensions
 
-#### By Alias Mode
-1. **Conflict Check**: Ensure alias doesn't already exist locally
-2. **Registry Lookup**: Find model in remote registry by alias
-3. **Download**: Pull model files from Hugging Face Hub
-4. **Alias Creation**: Generate local alias from remote model metadata
-5. **Storage**: Save new alias to local alias registry
+### Pretty Table Integration
+CLI-optimized display formatting for domain objects:
+- **IntoRow Trait**: Converts `Alias`, `HubFile`, and `RemoteModel` to formatted table rows
+- **Human-Readable Values**: File sizes in GB, snapshot hashes truncated to 8 characters
+- **Consistent Column Layout**: Standardized table structure across all CLI output
+- **Terminal Optimization**: Column sizing and formatting optimized for terminal display
 
-#### By Repository Mode
-1. **Existence Check**: Verify if files already exist locally
-2. **Direct Download**: Pull specified files from repository
-3. **Status Feedback**: Report download completion without creating alias
+### Command Builder Architecture
+Sophisticated command construction with CLI-specific validation:
+- **Builder Pattern Extensions**: CLI-specific defaults and validation rules
+- **Parameter Coordination**: OpenAI compatibility parameters with CLI argument integration
+- **Validation Pipeline**: Pre-execution validation with detailed error reporting
+- **Test Integration**: Builder patterns designed for comprehensive CLI testing scenarios
 
-## Error Handling
+### User Experience Orchestration
+CLI-specific user interaction patterns:
+- **Progress Feedback Systems**: Multi-stage operation progress with service coordination
+- **Interactive Confirmation**: User prompts for potentially destructive operations
+- **Error Recovery Guidance**: Context-aware suggestions for resolving command failures
+- **Output Format Options**: Support for JSON, table, and quiet output modes
 
-### Command-Specific Errors
-- `CreateCommandError` - Alias conflicts, file not found, validation failures
-- `PullCommandError` - Remote model not found, download failures, alias conflicts
+## Command Extension Patterns
 
-### Error Propagation
-- Service errors bubble up through transparent error wrapping
-- Command errors include context about the failed operation
-- Localized error messages provided via `errmeta_derive`
+### Adding New CLI Commands
+When creating new commands that coordinate multiple services:
 
-### User-Friendly Messages
-- Clear descriptions of what went wrong and potential solutions
-- Contextual information about affected resources (aliases, repositories, files)
-- Guidance on how to resolve common issues (use --update, check network, etc.)
+1. **Service Coordination Design**: Plan multi-service interactions with proper error boundaries
+2. **CLI-Specific Error Types**: Create command errors that wrap service errors with CLI context
+3. **Builder Pattern Implementation**: Provide CLI-optimized builders with sensible defaults
+4. **Progress Feedback Integration**: Design user feedback for long-running service operations
+5. **Testing Infrastructure**: Use service mocking for isolated command testing
 
-## Configuration Management
+### Cross-Command Patterns
+Consistent patterns across all CLI commands:
+- **AppService Dependency**: All commands take `Arc<dyn AppService>` for service coordination
+- **Transparent Error Wrapping**: Service errors wrapped with CLI-specific context
+- **Domain Object Extensions**: CLI-specific formatting and display extensions
+- **Progress Coordination**: Consistent progress feedback patterns across all commands
 
-### Model Parameters
-- OpenAI API compatibility parameters (temperature, max_tokens, etc.)
-- GPU context configuration (context size, parallel processing)
-- Model-specific settings preserved in alias definitions
-
-### Download Behavior
-- `auto_download` flag controls automatic file acquisition
-- Update mode allows overwriting existing aliases
-- Snapshot specification for version control
-
-## Development Guidelines
-
-### Adding New Commands
-1. Create command struct with builder pattern
-2. Implement error enum with `AppError` trait
-3. Add async execute method taking `Arc<dyn AppService>`
-4. Include comprehensive error handling and user feedback
-5. Write unit tests with service mocking
-
-### Error Handling Best Practices
-- Use transparent error wrapping for service errors
-- Provide specific error types for command-level failures
-- Include contextual information in error messages
-- Map errors to appropriate user actions
-
-### Testing Strategy
-- Unit tests with mocked services for isolation
-- Test both success and failure scenarios
-- Validate error message quality and actionability
-- Test builder pattern validation and parameter handling
-
-## User Experience
-
-### Progress Feedback
-- Status messages during file discovery and download
-- Clear indication of update vs. create operations
-- File size and progress information for large downloads
-
-### Error Messages
-- Specific, actionable error descriptions
-- Context about what the user was trying to accomplish
-- Suggestions for resolving common issues
-
-### Command Output
-- Consistent formatting across all commands
-- Machine-readable output options where appropriate
-- Quiet modes for scripting and automation
-
-## Performance Considerations
-
-### Async Operations
-- All network operations are asynchronous
-- Concurrent downloads when appropriate
-- Non-blocking file system operations
-
-### Resource Management
-- Efficient memory usage during large file operations
-- Proper cleanup of temporary resources
-- Connection pooling for HTTP operations inherited from services
-
-## Future Extensions
-
-The commands crate is designed to be extensible for additional CLI functionality:
-- Model list and search commands
-- Alias management operations (delete, rename, copy)
-- Configuration and settings management
-- System status and health check commands
+### Testing Command Orchestration
+CLI command testing with service mock coordination:
+- **Service Mock Composition**: Coordinate multiple service mocks for complex command workflows
+- **Error Scenario Testing**: Test error propagation and recovery across service boundaries
+- **Output Validation**: Test CLI-specific formatting and user experience patterns
+- **Integration Testing**: Validate complete command workflows with realistic service interactions

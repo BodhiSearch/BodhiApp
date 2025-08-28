@@ -1,174 +1,82 @@
-# CLAUDE.md - llama_server_proc
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `llama_server_proc` crate, which manages llama.cpp server processes for local LLM inference in BodhiApp.
+This file provides guidance to Claude Code when working with the llama_server_proc crate.
 
 ## Purpose
 
-The `llama_server_proc` crate provides process management and HTTP client functionality for interacting with llama.cpp server processes. It handles:
+The `llama_server_proc` crate provides comprehensive process management and HTTP client functionality for interacting with llama.cpp server processes in BodhiApp's local LLM inference infrastructure. It serves as the foundational layer for managing external llama.cpp server processes with sophisticated lifecycle management, health monitoring, and cross-platform binary distribution.
 
-- Starting and stopping llama.cpp server processes with configurable parameters
-- Proxying HTTP requests to the local LLM server 
-- Building and downloading platform-specific llama-server executables
-- Process lifecycle management with health checks and monitoring
-- Error handling with localized error messages
+## Key Domain Architecture
 
-## Key Components
+### Process Management System
 
-### Server Interface (`src/server.rs`)
-- `Server` trait - Async interface for LLM server operations
-- `LlamaServer` - Concrete implementation managing llama.cpp server processes
-- `LlamaServerArgs` - Configuration builder for server parameters
-- Process lifecycle management with health checks and output monitoring
+The crate implements a sophisticated process lifecycle management system that handles llama.cpp server processes with comprehensive monitoring and health checking. The architecture provides async trait-based abstraction (`Server` trait) enabling dependency injection and testing through mockall integration, while the concrete `LlamaServer` implementation manages actual process spawning, monitoring, and cleanup with automatic resource management through Drop trait implementation.
 
-### Server Configuration
-- `LlamaServerArgs` - Builder pattern for server configuration including:
-  - Model path, alias, and API key
-  - Network settings (host, port)
-  - LLM parameters (context size, prediction length, parallel processing)
-  - Feature flags (embeddings, verbose logging, web UI)
+### Cross-Platform Binary Distribution Architecture
 
-### Error Handling (`src/error.rs`)
-- `ServerError` enum with localized error messages
-- Integration with the `objs` crate error system
-- Comprehensive error types for process management, networking, and health checks
+A comprehensive build system architecture handles platform-specific llama-server executable management through automated GitHub release downloading and local build orchestration. The system supports multiple acceleration variants (CPU, Metal, CUDA) with platform-specific executable naming and file locking for concurrent build safety, enabling seamless deployment across macOS (aarch64), Linux (x86_64), and Windows (x86_64) platforms.
 
-### Build System (`src/build_envs.rs` & `build.rs`)
-- Cross-platform build configuration for llama-server executables
-- Automated downloading of pre-built binaries from GitHub releases
-- Support for multiple variants (CPU, CUDA, Metal acceleration)
-- Platform-specific executable paths and extensions
+### HTTP Proxy and Health Monitoring System
 
-## Dependencies
+The architecture implements a sophisticated HTTP client system with connection pooling, TCP optimizations, and localhost security binding for proxying requests to llama.cpp server endpoints. Health monitoring uses exponential backoff polling with 300-second timeout and structured logging integration for process output monitoring, ensuring reliable server readiness detection and operational visibility.
 
-### Core Dependencies
-- `objs` - Domain objects and error handling infrastructure
-- `errmeta_derive` - Procedural macros for error metadata
-- `tokio` - Async runtime for process and network operations
-- `reqwest` - HTTP client for API communication and binary downloads
+### Configuration Builder Architecture
 
-### Process Management
-- `derive_builder` - Builder pattern generation for configuration
-- `portpicker` - Automatic port selection for server instances
-- `tracing` - Structured logging with process output monitoring
-
-### Build System Dependencies
-- `anyhow` - Error handling in build scripts
-- `serde_json` - JSON parsing for GitHub API responses
-- `fs2` - File locking for concurrent builds
-- `tempfile` - Temporary file management during downloads
+A builder pattern-based configuration system (`LlamaServerArgs`) provides flexible server parameter management with automatic port selection, optional API key authentication, and extensible server argument handling. The configuration system integrates with the objs crate's builder error handling and supports both programmatic construction and command-line argument serialization.
 
 ## Architecture Position
 
-The `llama_server_proc` crate sits at the infrastructure layer:
-- **Foundation**: Minimal dependencies, used by higher-level services
-- **Process Management**: Abstracts llama.cpp server lifecycle
-- **Platform Abstraction**: Handles cross-platform executable management
-- **Error Reporting**: Integrates with centralized error handling
+The `llama_server_proc` crate occupies a foundational infrastructure position in BodhiApp's architecture, serving as the lowest-level abstraction for external process management. It sits below the services layer and provides essential process management capabilities that higher-level services depend on for local LLM inference operations.
 
-## Usage Patterns
+### Dependency Architecture
 
-### Starting a Server
-```rust
-use llama_server_proc::{LlamaServer, LlamaServerArgsBuilder};
+- **Foundation Layer**: Depends only on `objs` for domain objects and error handling infrastructure, plus `errmeta_derive` for error metadata generation
+- **Process Management**: Integrates tokio async runtime with system process spawning and monitoring capabilities
+- **HTTP Client Layer**: Uses reqwest for both API proxying to llama.cpp servers and GitHub release binary downloading
+- **Build System Integration**: Sophisticated build-time binary management with cross-platform executable downloading and local build orchestration
 
-let args = LlamaServerArgsBuilder::default()
-    .model("/path/to/model.gguf")
-    .alias("my-model")
-    .n_ctx(2048)
-    .build()?;
+## Cross-Crate Integration Patterns
 
-let server = LlamaServer::new(&executable_path, args)?;
-server.start().await?;
-```
+### Integration with objs Crate
 
-### Making API Requests
-```rust
-use serde_json::json;
+The crate deeply integrates with the objs crate's error handling infrastructure through `ServerError` enum implementation of the `AppError` trait, enabling localized error messages and consistent error propagation across BodhiApp. The integration includes automatic error conversion from standard library and reqwest errors using the `impl_error_from!` macro pattern, ensuring seamless error handling coordination.
 
-let request = json!({
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "max_tokens": 100
-});
+### Service Layer Integration Points
 
-let response = server.chat_completions(&request).await?;
-```
+Higher-level services integrate with this crate through the `Server` trait abstraction, enabling dependency injection patterns and comprehensive testing through mockall-generated mocks. The trait design supports both boxed trait objects for dynamic dispatch and direct implementation usage, providing flexibility for different service coordination patterns.
 
-### Server Shutdown
-```rust
-// Automatic cleanup on drop, or explicit shutdown
-let boxed_server: Box<dyn Server> = Box::new(server);
-boxed_server.stop().await?;
-```
+### Build System Coordination
 
-## Integration Points
+The build system coordinates with BodhiApp's overall build infrastructure through environment variable configuration and Makefile integration, supporting both CI/CD automated binary downloading and local development build workflows. The system uses file locking to coordinate concurrent builds and integrates with the project's cross-platform build strategy.
 
-### With Services Layer
-- Provides `Server` trait for dependency injection in business logic
-- Integrates with model management and inference services
-- Supports mocking via `mockall` for unit testing
+## Important Constraints
 
-### With Object Layer (`objs`)
-- Uses `GptContextParams` for LLM configuration
-- Integrates with centralized error handling and localization
-- Shares builder patterns and validation logic
+### Process Lifecycle Management Constraints
 
-### With Build System
-- `build.rs` automatically downloads platform-specific binaries
-- Makefile integration for cross-platform compilation
-- CI/CD integration with variant selection and caching
+The crate enforces strict process lifecycle management with automatic cleanup through Drop trait implementation, ensuring no orphaned processes remain after server instances are dropped. Health checking uses a fixed 300-second timeout with 1-second polling intervals, requiring llama.cpp servers to respond to `/health` endpoint within this timeframe for successful startup validation.
 
-## Development Guidelines
+### Platform and Acceleration Constraints
 
-### Adding New Server Features
-1. Extend `LlamaServerArgs` with new configuration options
-2. Update `to_args()` method to include new command-line flags
-3. Add corresponding fields to the builder pattern
-4. Update tests to verify new functionality
+Platform support is limited to specific target architectures with corresponding acceleration variants: macOS aarch64 supports Metal and CPU, Linux x86_64 supports CPU and CUDA, and Windows x86_64 supports CPU only. The build system requires specific binary naming conventions and GitHub release asset availability for automated downloading in CI/CD environments.
 
-### Error Handling
-- Use `ServerError` enum for all crate-specific errors
-- Include localized error messages via `errmeta_derive`
-- Provide context with error details for debugging
-- Convert external errors using `impl_error_from!` macro
+### Network and Security Constraints
 
-### Testing
-- Use `test-utils` feature for mock implementations
-- Test server lifecycle with health checks
-- Verify argument serialization and process communication
-- Mock HTTP responses for unit testing
+All HTTP communication is constrained to localhost binding for security, with automatic port selection to avoid conflicts and TCP optimizations for connection pooling. The HTTP client uses fixed timeout and keepalive settings optimized for local llama.cpp server communication patterns.
 
-## Platform Support
+### Build System Constraints
 
-### Supported Platforms
-- **macOS (aarch64)**: Metal and CPU acceleration
-- **Linux (x86_64)**: CPU and CUDA 12.6 acceleration  
-- **Windows (x86_64)**: CPU acceleration only
+The build system uses file locking (`bodhi-build.lock`) to coordinate concurrent builds and requires specific environment variables for CI/CD configuration. Binary downloading depends on GitHub API availability and requires proper authentication tokens for release access, with fallback to local Makefile-based builds for development environments.
 
-### Build Variants
-- **CPU**: Standard CPU-only inference
-- **Metal**: Apple Silicon GPU acceleration (macOS only)
-- **CUDA**: NVIDIA GPU acceleration (Linux only)
+## Test Utils Architecture
 
-## Process Management
+### Model Fixture Management
 
-### Health Checks
-- Polls `/health` endpoint with 300-second timeout
-- Exponential backoff with 1-second intervals
-- Automatic process cleanup on drop or explicit shutdown
+The test_utils module provides sophisticated model fixture management through rstest fixtures that handle Hugging Face model cache integration. The `llama2_7b` fixture provides automatic model path resolution and validation, ensuring test models exist before test execution, while the `llama2_7b_str` fixture provides string path conversion for tests requiring string-based model paths.
 
-### Output Monitoring
-- Captures stdout/stderr in separate threads
-- Routes output to structured logging system
-- Warns on process errors and startup issues
+### HTTP Response Mocking Patterns
 
-### Networking
-- HTTP/1.1 client with connection pooling
-- TCP keepalive and nodelay optimizations
-- Localhost binding for security
-- Automatic port selection to avoid conflicts
+The `mock_response` function enables comprehensive HTTP response mocking for unit tests by creating reqwest Response objects from hyper response builders. This pattern allows tests to simulate llama.cpp server responses without requiring actual server processes, enabling fast and reliable unit testing of HTTP client functionality.
 
-## File Outputs
+### Integration Test Patterns
 
-- `bin/{target}/{variant}/llama-server[.exe]` - Platform-specific executables
-- `bodhi-build.lock` - Build process synchronization
-- Process output routed to tracing system
+Integration tests demonstrate sophisticated server lifecycle testing using real llama.cpp executables and models, with rstest fixtures managing server startup and cleanup. The tests validate both streaming and non-streaming chat completions, demonstrating proper request/response handling and server process management in realistic scenarios using actual Phi-4 Mini Instruct models from Hugging Face cache.

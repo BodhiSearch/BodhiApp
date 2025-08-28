@@ -62,19 +62,50 @@ The `bodhi/src` directory contains the Next.js 14 frontend application:
 - `react-hook-form` (^7.57.0) - Form state management
 - `zod` (^3.23.8) - Schema validation
 
+### TypeScript Client Generation
+
+- `@bodhiapp/ts-client` (file:../../ts-client) - Generated TypeScript types from OpenAPI specifications
+- `@hey-api/openapi-ts` (^0.64.15) - OpenAPI to TypeScript type generation tool
+
 ### Content & Documentation
 
 - `@next/mdx` (^15.3.3) - MDX support for documentation
+- `@mdx-js/loader` (^3.1.0) - MDX webpack loader
+- `@mdx-js/react` (^3.1.0) - MDX React integration
 - `react-markdown` (^9.1.0) - Markdown rendering
 - `react-syntax-highlighter` (^15.6.1) - Code syntax highlighting
 - `prismjs` (^1.29.0) - Additional syntax highlighting
+- `gray-matter` (^4.0.3) - Front matter parsing for markdown
+- `unified` (^11.0.5) - Text processing pipeline
+- `remark-gfm` (^4.0.0) - GitHub Flavored Markdown support
+- `rehype-autolink-headings` (^7.1.0) - Automatic heading links
+- `rehype-slug` (^6.0.0) - Heading slug generation
+
+### Animation & UI Enhancement
+
+- `framer-motion` (^11.18.2) - Animation library for React
+- `vaul` (^1.1.2) - Drawer component library
+- `cmdk` (^1.0.0) - Command palette component
+- `simple-icons` (^15.1.0) - Icon library for brands and services
+
+### Utilities
+
+- `nanoid` (^5.0.9) - Unique ID generation
+- `clsx` (^2.1.1) - Conditional className utility
 
 ### Development Tools
 
 - `vitest` (^2.1.9) - Testing framework
 - `@testing-library/react` (^16.0.0) - React testing utilities
+- `@testing-library/dom` (^10.4.0) - DOM testing utilities
+- `@testing-library/jest-dom` (^6.5.0) - Jest DOM matchers
+- `@testing-library/user-event` (^14.5.2) - User interaction testing
+- `happy-dom` (^15.11.7) - DOM environment for testing
+- `msw` (^1.3.5) - Mock Service Worker for API mocking
 - `eslint` (^8.57.1) - Code linting
 - `prettier` (^3.3.3) - Code formatting
+- `husky` (^9.1.5) - Git hooks for quality gates
+- `lint-staged` (^15.5.2) - Run linters on staged files
 
 ## Architecture Position
 
@@ -84,6 +115,34 @@ The frontend application sits at the user interface layer:
 - **Communicates**: With BodhiApp HTTP API endpoints for all functionality
 - **Manages**: Client-side state, authentication, and user experience
 - **Renders**: Static export compatible with desktop embedding
+
+## TypeScript Client Integration
+
+### OpenAPI Type Generation Workflow
+
+The frontend maintains type safety through automated TypeScript type generation from OpenAPI specifications:
+
+1. **OpenAPI Generation**: The `xtask` crate generates `openapi.json` from Rust backend using utoipa
+2. **Type Generation**: The `ts-client` package uses `@hey-api/openapi-ts` to generate TypeScript types
+3. **Frontend Integration**: Generated types are imported and used throughout the frontend application
+
+### ts-client Package Structure
+
+The `@bodhiapp/ts-client` package provides:
+
+- **Generated Types**: TypeScript interfaces matching backend API contracts
+- **Request/Response Types**: Complete type coverage for all API endpoints
+- **Error Types**: Structured error handling with `OpenAiApiError` type
+- **Build Pipeline**: Automated generation and bundling of types
+
+### Type Integration Patterns
+
+Frontend components use generated types for:
+
+- **API Responses**: `AliasResponse`, `SettingInfo`, `AppInfo`, `UserInfo`
+- **Request Payloads**: `CreateAliasRequest`, `UpdateAliasRequest`, `SetupRequest`
+- **Error Handling**: `OpenAiApiError` for consistent error processing
+- **Pagination**: `PaginatedAliasResponse`, `PaginatedLocalModelResponse`
 
 ## Usage Patterns
 
@@ -179,119 +238,146 @@ export function useChat() {
 ### API Client Configuration
 
 ```tsx
-// src/lib/apiClient.ts
-import axios, { AxiosInstance } from 'axios';
+// src/lib/apiClient.ts - Simplified axios client for BodhiApp API
+import axios from 'axios';
 
-class ApiClient {
-  private client: AxiosInstance;
+const isTest = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+const apiClient = axios.create({
+  baseURL: isTest ? 'http://localhost:3000' : '',
+  maxRedirects: 0,
+});
 
-  constructor(baseURL: string = '/api') {
-    this.client = axios.create({
-      baseURL,
-      timeout: 30000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    // Request interceptor for authentication
-    this.client.interceptors.request.use(
-      (config) => {
-        const token = localStorage.getItem('auth_token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-      },
-      (error) => Promise.reject(error)
-    );
-
-    // Response interceptor for error handling
-    this.client.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          // Handle authentication errors
-          localStorage.removeItem('auth_token');
-          window.location.href = '/ui/login';
-        }
-        return Promise.reject(error);
-      }
-    );
+// Request/response interceptors for debugging and error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('Error:', error.response?.status, error.config?.url);
+    return Promise.reject(error);
   }
+);
 
-  // Chat completions with streaming support
-  async chatCompletion(request: ChatCompletionRequest): Promise<Response> {
-    return fetch(`${this.client.defaults.baseURL}/v1/chat/completions`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
-      },
-      body: JSON.stringify(request),
-    });
-  }
-
-  // Model management
-  async listModels(): Promise<Model[]> {
-    const response = await this.client.get('/v1/models');
-    return response.data.data;
-  }
-
-  async createModel(request: CreateModelRequest): Promise<void> {
-    await this.client.post('/v1/models', request);
-  }
-}
-
-export const apiClient = new ApiClient();
+export default apiClient;
 ```
 
-### Component Development with Shadcn/ui
+### Type-Safe API Integration
 
 ```tsx
-// src/components/ui/button.tsx
-import { Slot } from '@radix-ui/react-slot';
-import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@/lib/utils';
+// src/hooks/useQuery.ts - Generic hooks with ts-client types
+import { AliasResponse, AppInfo, SettingInfo, OpenAiApiError } from '@bodhiapp/ts-client';
+import { AxiosError, AxiosResponse } from 'axios';
+import { useQuery as useReactQuery, useMutation } from 'react-query';
 
-const buttonVariants = cva(
-  'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
-  {
-    variants: {
-      variant: {
-        default: 'bg-primary text-primary-foreground shadow hover:bg-primary/90',
-        destructive: 'bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90',
-        outline: 'border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground',
-        secondary: 'bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80',
-        ghost: 'hover:bg-accent hover:text-accent-foreground',
-        link: 'text-primary underline-offset-4 hover:underline',
-      },
-      size: {
-        default: 'h-9 px-4 py-2',
-        sm: 'h-8 rounded-md px-3 text-xs',
-        lg: 'h-10 rounded-md px-8',
-        icon: 'h-9 w-9',
-      },
-    },
-    defaultVariants: {
-      variant: 'default',
-      size: 'default',
-    },
-  }
-);
+// Type alias for consistent error handling
+type ErrorResponse = OpenAiApiError;
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
+// Generic query hook with generated types
+export function useQuery<T>(
+  key: string | string[],
+  endpoint: string,
+  params?: Record<string, any>,
+  options?: UseQueryOptions<T, AxiosError<ErrorResponse>>
+): UseQueryResult<T, AxiosError<ErrorResponse>> {
+  return useReactQuery<T, AxiosError<ErrorResponse>>(
+    key,
+    async () => {
+      const { data } = await apiClient.get<T>(endpoint, { params });
+      return data;
+    },
+    options
+  );
 }
 
-const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : 'button';
-    return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
-  }
-);
+// Specific hooks using generated types
+export function useAppInfo() {
+  return useQuery<AppInfo>('appInfo', '/bodhi/v1/info');
+}
+
+export function useModels(page: number, pageSize: number, sort: string, sortOrder: string) {
+  return useQuery<PaginatedAliasResponse>(
+    ['models', page.toString(), pageSize.toString(), sort, sortOrder],
+    '/bodhi/v1/models',
+    { page, page_size: pageSize, sort, sort_order: sortOrder }
+  );
+}
+```
+
+### Schema Integration with Generated Types
+
+```tsx
+// src/schemas/alias.ts - Zod schemas with ts-client type integration
+import * as z from 'zod';
+import type { AliasResponse, CreateAliasRequest, UpdateAliasRequest } from '@bodhiapp/ts-client';
+
+// Re-export generated types for use throughout the app
+export type { AliasResponse, CreateAliasRequest, UpdateAliasRequest };
+
+// Zod schema for form validation
+export const createAliasFormSchema = z.object({
+  alias: z.string().min(1, 'Alias is required'),
+  repo: z.string().min(1, 'Repo is required'),
+  filename: z.string().min(1, 'Filename is required'),
+  request_params: requestParamsSchema,
+  context_params: z.string().optional(),
+});
+
+export type AliasFormData = z.infer<typeof createAliasFormSchema>;
+
+// Conversion functions between form and API formats
+export const convertFormToApi = (formData: AliasFormData): CreateAliasRequest => ({
+  alias: formData.alias,
+  repo: formData.repo,
+  filename: formData.filename,
+  request_params: formData.request_params,
+  context_params: formData.context_params
+    ? formData.context_params
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+    : undefined,
+});
+
+export const convertApiToForm = (apiData: AliasResponse): AliasFormData => ({
+  alias: apiData.alias,
+  repo: apiData.repo,
+  filename: apiData.filename,
+  request_params: apiData.request_params || {},
+  context_params: Array.isArray(apiData.context_params) ? apiData.context_params.join('\n') : '',
+});
+```
+
+### Component Development with Generated Types
+
+```tsx
+// src/app/ui/models/page.tsx - Using generated types in components
+import { AliasResponse } from '@bodhiapp/ts-client';
+import { useModels } from '@/hooks/useQuery';
+
+export default function ModelsPage() {
+  const { data: modelsData, isLoading, error } = useModels(page, pageSize, sort, sortOrder);
+
+  const handleEditModel = (model: AliasResponse) => {
+    // Type-safe model editing with generated types
+    router.push(`/ui/models/edit?alias=${encodeURIComponent(model.alias)}`);
+  };
+
+  return (
+    <DataTable
+      data={modelsData?.data || []}
+      columns={[
+        {
+          key: 'alias',
+          header: 'Alias',
+          render: (model: AliasResponse) => model.alias,
+        },
+        {
+          key: 'repo',
+          header: 'Repository',
+          render: (model: AliasResponse) => model.repo,
+        },
+      ]}
+    />
+  );
+}
 ```
 
 ### Chat UI Implementation
@@ -615,6 +701,83 @@ describe('useChat', () => {
 });
 ```
 
+## TypeScript Client Generation Workflow
+
+### OpenAPI to TypeScript Pipeline
+
+The frontend maintains type safety through a multi-step generation process:
+
+1. **Backend OpenAPI Generation**:
+
+   ```bash
+   # Generate OpenAPI spec from Rust backend
+   cargo run --package xtask openapi
+   ```
+
+   - Uses `utoipa` annotations in Rust code
+   - Generates `openapi.json` at project root
+   - Includes all API endpoints, request/response schemas, and error types
+
+2. **TypeScript Type Generation**:
+
+   ```bash
+   # In ts-client directory
+   npm run generate:types
+   ```
+
+   - Uses `@hey-api/openapi-ts` with configuration from `openapi-ts.config.ts`
+   - Reads `../openapi.json` as input
+   - Generates TypeScript types in `src/types/` directory
+
+3. **Client Package Building**:
+
+   ```bash
+   # Build and bundle the ts-client package
+   npm run build
+   ```
+
+   - Bundles types into ESM and CommonJS formats
+   - Creates distribution files in `dist/` directory
+   - Generates type declarations for consumption
+
+4. **Frontend Integration**:
+   - Frontend imports types from `@bodhiapp/ts-client` package
+   - Uses file-based dependency: `"@bodhiapp/ts-client": "file:../../ts-client"`
+   - Provides compile-time type safety for all API interactions
+
+### openapi-ts Configuration
+
+```typescript
+// ts-client/openapi-ts.config.ts
+import { defineConfig } from '@hey-api/openapi-ts';
+
+export default defineConfig({
+  input: '../openapi.json',
+  output: 'src/types',
+  plugins: ['@hey-api/typescript'],
+});
+```
+
+### Generated Type Usage Patterns
+
+The generated types provide comprehensive coverage:
+
+- **Request Types**: `CreateAliasRequest`, `UpdateAliasRequest`, `SetupRequest`
+- **Response Types**: `AliasResponse`, `AppInfo`, `UserInfo`, `SettingInfo`
+- **Paginated Responses**: `PaginatedAliasResponse`, `PaginatedLocalModelResponse`
+- **Error Types**: `OpenAiApiError` with structured error information
+- **Enum Types**: Status codes, model types, and configuration options
+
+### Contract Binding Benefits
+
+This approach ensures:
+
+- **Compile-Time Safety**: TypeScript catches API contract violations at build time
+- **Automatic Updates**: Type changes in backend automatically propagate to frontend
+- **IDE Support**: Full IntelliSense and autocomplete for API interactions
+- **Refactoring Safety**: Breaking changes in API surface immediately in frontend code
+- **Documentation**: Generated types serve as living API documentation
+
 ## Build and Deployment
 
 ### Next.js Configuration
@@ -647,10 +810,21 @@ const nextConfig = {
     "start": "next start",
     "test": "vitest run",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "prepare": "husky"
   }
 }
 ```
+
+### Development Workflow Integration
+
+The frontend development workflow integrates with the type generation pipeline:
+
+1. **Backend Changes**: When backend API changes, run `cargo run --package xtask openapi`
+2. **Type Updates**: In `ts-client/`, run `npm run build` to regenerate and bundle types
+3. **Frontend Development**: Types are automatically available in frontend through file dependency
+4. **Testing**: Run `npm run test` to verify type safety and functionality
+5. **Linting**: `npm run lint` and `npm run format` maintain code quality
 
 ### Production Build Process
 
@@ -669,13 +843,29 @@ const nextConfig = {
 4. Include comprehensive tests for all components
 5. Use proper error boundaries for error handling
 
+### Type-Safe API Integration
+
+1. **Always use generated types** from `@bodhiapp/ts-client` for API interactions
+2. **Re-export types** in schema files for consistent usage patterns
+3. **Combine with Zod schemas** for form validation while maintaining type safety
+4. **Use conversion functions** between form data and API request formats
+5. **Handle errors consistently** using `OpenAiApiError` type
+
 ### State Management Best Practices
 
-1. Use React Query for server state management
+1. Use React Query for server state management with generated types
 2. Local storage for persistent client state
 3. Context providers for global application state
 4. Custom hooks for reusable state logic
 5. Proper cleanup in useEffect hooks
+
+### API Development Workflow
+
+1. **Backend First**: Make API changes in Rust backend with utoipa annotations
+2. **Generate OpenAPI**: Run `cargo run --package xtask openapi` to update spec
+3. **Update Types**: Run `npm run build` in `ts-client/` to regenerate TypeScript types
+4. **Frontend Integration**: Import and use updated types in frontend components
+5. **Test Integration**: Verify type safety and API contracts with comprehensive tests
 
 ### Performance Optimization
 
@@ -692,6 +882,7 @@ const nextConfig = {
 - Prettier for consistent code formatting
 - Husky pre-commit hooks for quality gates
 - Comprehensive testing with Vitest
+- Type safety enforced through generated API contracts
 
 ## Security Considerations
 
@@ -714,9 +905,31 @@ const nextConfig = {
 
 The frontend application can be extended with:
 
-- WebSocket integration for real-time updates
-- Progressive Web App (PWA) capabilities
-- Advanced chat features (file uploads, voice input)
-- Enhanced accessibility features
-- Internationalization (i18n) support
-- Advanced analytics and user tracking
+- **WebSocket Integration**: Real-time updates for chat completions and model status
+- **Progressive Web App (PWA)**: Offline capabilities and app-like experience
+- **Advanced Chat Features**: File uploads, voice input, conversation branching
+- **Enhanced Accessibility**: Screen reader optimization, keyboard navigation improvements
+- **Internationalization (i18n)**: Multi-language support with react-i18next
+- **Advanced Analytics**: User interaction tracking and performance monitoring
+- **Plugin System**: Extensible architecture for third-party integrations
+- **Collaborative Features**: Shared conversations and team workspaces
+
+## Type Safety Maintenance
+
+### Keeping Types in Sync
+
+To maintain type safety across the application:
+
+1. **Regular Regeneration**: Run type generation after backend changes
+2. **CI/CD Integration**: Automate type generation in build pipelines
+3. **Version Pinning**: Keep `@bodhiapp/ts-client` version aligned with backend
+4. **Breaking Change Detection**: Use TypeScript compiler to catch API contract violations
+5. **Documentation Updates**: Update component documentation when types change
+
+### Best Practices for Type Usage
+
+- **Import from ts-client**: Always import types from the generated package
+- **Avoid Type Assertions**: Use proper type guards and validation instead
+- **Schema Validation**: Combine generated types with Zod for runtime validation
+- **Error Handling**: Use structured error types for consistent error processing
+- **Testing**: Include type checking in test suites to catch regressions

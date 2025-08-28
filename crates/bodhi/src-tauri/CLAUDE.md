@@ -1,594 +1,208 @@
-# CLAUDE.md - bodhi/src-tauri
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the Tauri desktop application for BodhiApp.
+This file provides guidance to Claude Code when working with the bodhi/src-tauri crate.
+
+_For detailed implementation examples and technical depth, see [crates/bodhi/src-tauri/PACKAGE.md](crates/bodhi/src-tauri/PACKAGE.md)_
 
 ## Purpose
 
-The `bodhi/src-tauri` crate implements the Tauri desktop application:
+The `bodhi/src-tauri` crate serves as BodhiApp's **dual-mode application entry point**, providing both native desktop application functionality and container/server deployment capabilities through sophisticated conditional compilation and feature-based architecture switching. It coordinates complete application embedding with lib_bodhiserver while supporting cross-platform desktop deployment and headless server operation.
 
-- **Desktop Application**: Cross-platform desktop app using Tauri framework
-- **Native Integration**: System integration with file system, notifications, and platform APIs
-- **Embedded Server**: Integrated BodhiServer for local LLM inference
-- **Web UI Integration**: Hosts the Next.js frontend in a native webview
-- **System Tray**: Background operation with system tray integration
-- **Auto-Updates**: Automatic application updates and distribution
+## Key Domain Architecture
 
-## Key Components
+### Dual-Mode Application System
 
-### Tauri Application
+Advanced conditional compilation architecture enabling multiple deployment modes:
 
-- Main application entry point with window management
-- Tauri commands for frontend-to-backend communication
-- Native menu system and keyboard shortcuts
-- Window state management and persistence
+- **Native Desktop Mode**: Tauri-based desktop application with system tray, menu integration, and embedded web UI serving
+- **Container/Server Mode**: Headless server deployment with HTTP API serving and file-based logging for containerized environments
+- **Feature-Based Switching**: Conditional compilation using `native` feature flag to select appropriate initialization and execution paths
+- **Unified CLI Interface**: Single clap-based command-line interface that adapts behavior based on compilation features and runtime context
+- **Shared Application Logic**: Common application setup, configuration management, and service integration across both deployment modes
 
-### Embedded Server Integration
+### Native Desktop Integration Architecture
 
-- BodhiServer integration using `lib_bodhiserver`
-- Local database and file management
-- Authentication service for desktop environment
-- Model management and chat functionality
+Sophisticated desktop application functionality with system-level integration:
 
-### System Integration
+- **Tauri Framework Integration**: Cross-platform desktop application with webview-based UI hosting and native system API access
+- **System Tray Management**: Background operation with menu-driven controls for homepage access and graceful application shutdown
+- **Embedded Server Orchestration**: Complete lib_bodhiserver integration with automatic startup, configuration, and lifecycle management
+- **Web Browser Integration**: Automatic browser launching for UI access with fallback handling for browser launch failures
+- **Application Lifecycle Management**: Window hide-on-close behavior, server shutdown coordination, and proper resource cleanup
 
-- File system access for model storage and configuration
-- System notifications for background operations
-- Platform-specific features (Windows, macOS, Linux)
-- Deep linking and protocol handlers
+### Container Deployment Architecture
 
-### IPC Commands
+Headless server deployment optimized for containerized and production environments:
 
-- Tauri commands for chat completions
-- Model management operations
-- Settings and configuration management
-- File operations and system integration
+- **HTTP Server Mode**: Direct lib_bodhiserver integration with ServeCommand orchestration for API serving
+- **File-Based Logging**: Comprehensive logging system with daily rotation, configurable output targets, and structured log management
+- **Configuration Override System**: Command-line parameter support for host/port configuration with settings service integration
+- **Production Environment Support**: Feature-based configuration switching between development and production authentication endpoints
 
-## Dependencies
+### CLI Command Architecture
 
-### Tauri Framework
+Sophisticated command-line interface with feature-based behavior switching:
 
-- `tauri` - Main Tauri framework for desktop applications
-- `tauri-build` - Build-time dependencies and configuration
+- **Clap Integration**: Comprehensive CLI parsing with subcommand support and feature-conditional command availability
+- **AppCommand Enum**: Unified command representation supporting both server deployment and native desktop modes
+- **Feature-Based CLI**: Conditional compilation enables different CLI interfaces based on `native` feature flag
+- **Error Handling**: CLI-specific error translation with actionable user guidance and comprehensive validation
 
-### Server Integration
+### Application Configuration Management
 
-- `lib_bodhiserver` - Embedded BodhiApp server
-- `services` - Business logic services
-- `objs` - Domain objects and validation
+Environment-specific configuration coordination across deployment modes:
 
-### System Integration
-
-- `dirs` - Platform-specific directory access
-- `keyring` - Secure credential storage
-- `notify` - File system change monitoring
+- **Environment Detection**: Development vs production mode switching with appropriate authentication endpoints and resource paths
+- **Configuration Builder**: AppOptions pattern with environment variables, OAuth credentials, and system settings coordination
+- **Settings Integration**: SettingService coordination for configuration management with file-based and environment variable overrides
+- **Resource Path Management**: BODHI_EXEC_LOOKUP_PATH configuration for LLM server binary discovery and execution variant management
 
 ## Architecture Position
 
-The Tauri application sits at the desktop platform layer:
-
-- **Integrates**: Web UI with native desktop functionality
-- **Manages**: System resources and native platform features
-- **Embeds**: Complete BodhiApp server functionality
-- **Provides**: Desktop-specific features and system integration
-
-## Usage Patterns
-
-### Application Initialization
-
-```rust
-use tauri::{App, Manager, State};
-use lib_bodhiserver::BodhiServer;
-
-#[derive(Clone)]
-struct AppState {
-    server: Arc<Mutex<Option<BodhiServer>>>,
-}
-
-fn main() {
-    tauri::Builder::default()
-        .manage(AppState {
-            server: Arc::new(Mutex::new(None)),
-        })
-        .invoke_handler(tauri::generate_handler![
-            initialize_server,
-            chat_completion,
-            list_models,
-            create_model,
-            get_settings,
-            save_settings,
-        ])
-        .setup(setup_app)
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
-```
-
-### Server Integration
-
-```rust
-#[tauri::command]
-async fn initialize_server(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    let app_data_dir = app.path_resolver()
-        .app_data_dir()
-        .ok_or("Failed to get app data directory")?;
-
-    let server = BodhiServer::builder()
-        .database_url(&format!("sqlite:///{}/bodhi.db", app_data_dir.display()))
-        .data_dir(&app_data_dir.join("data"))
-        .enable_http(false)
-        .build()
-        .await
-        .map_err(|e| e.to_string())?;
-
-    server.start().await.map_err(|e| e.to_string())?;
-
-    *state.server.lock().unwrap() = Some(server);
-    Ok(())
-}
-```
-
-### IPC Commands
-
-```rust
-#[tauri::command]
-async fn chat_completion(
-    request: ChatCompletionRequest,
-    state: State<'_, AppState>,
-) -> Result<ChatCompletionResponse, String> {
-    let server = state.server.lock().unwrap();
-    let server = server.as_ref().ok_or("Server not initialized")?;
-
-    server.chat_completion(request)
-        .await
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-async fn list_models(
-    state: State<'_, AppState>,
-) -> Result<Vec<Model>, String> {
-    let server = state.server.lock().unwrap();
-    let server = server.as_ref().ok_or("Server not initialized")?;
-
-    server.list_models()
-        .await
-        .map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-async fn create_model(
-    request: CreateModelRequest,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    let server = state.server.lock().unwrap();
-    let server = server.as_ref().ok_or("Server not initialized")?;
-
-    server.create_model(request)
-        .await
-        .map_err(|e| e.to_string())
-}
-```
-
-### Frontend Integration
-
-```typescript
-// In the Next.js frontend
-import { invoke } from '@tauri-apps/api/tauri';
-
-interface ChatCompletionRequest {
-  model: string;
-  messages: Message[];
-  temperature?: number;
-  maxTokens?: number;
-}
-
-export async function chatCompletion(request: ChatCompletionRequest) {
-  return await invoke<ChatCompletionResponse>('chat_completion', { request });
-}
-
-export async function listModels() {
-  return await invoke<Model[]>('list_models');
-}
-
-export async function createModel(request: CreateModelRequest) {
-  return await invoke('create_model', { request });
-}
-
-// Usage in React components
-function ChatInterface() {
-  const [models, setModels] = useState<Model[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    listModels().then(setModels).catch(console.error);
-  }, []);
-
-  const handleSendMessage = async (message: string) => {
-    setLoading(true);
-    try {
-      const response = await chatCompletion({
-        model: selectedModel,
-        messages: [...messages, { role: 'user', content: message }],
-        temperature: 0.7,
-      });
-      setMessages(prev => [...prev, response.choices[0].message]);
-    } catch (error) {
-      console.error('Chat completion failed:', error);
-    }
-    setLoading(false);
-  };
-
-  return (
-    // ... React component JSX
-  );
-}
-```
-
-## System Integration
-
-### File System Access
-
-```rust
-#[tauri::command]
-async fn select_model_file() -> Result<String, String> {
-    use tauri::api::dialog::FileDialogBuilder;
-
-    let file_path = FileDialogBuilder::new()
-        .add_filter("GGUF Models", &["gguf"])
-        .add_filter("All Files", &["*"])
-        .pick_file()
-        .await
-        .ok_or("No file selected")?;
-
-    Ok(file_path.to_string_lossy().to_string())
-}
-
-#[tauri::command]
-async fn open_data_directory(app: tauri::AppHandle) -> Result<(), String> {
-    use tauri::api::shell;
-
-    let data_dir = app.path_resolver()
-        .app_data_dir()
-        .ok_or("Failed to get data directory")?;
-
-    shell::open(&app.shell_scope(), data_dir.to_string_lossy(), None)
-        .map_err(|e| e.to_string())
-}
-```
-
-### System Notifications
-
-```rust
-use tauri::api::notification::Notification;
-
-#[tauri::command]
-async fn notify_model_download_complete(
-    app: tauri::AppHandle,
-    model_name: String,
-) -> Result<(), String> {
-    Notification::new(&app.config().tauri.bundle.identifier)
-        .title("Model Download Complete")
-        .body(&format!("Model '{}' has been downloaded successfully", model_name))
-        .show()
-        .map_err(|e| e.to_string())
-}
-```
-
-### System Tray Integration
-
-```rust
-use tauri::{CustomMenuItem, Menu, MenuItem, SystemTray, SystemTrayMenu, SystemTrayEvent};
-
-fn create_system_tray() -> SystemTray {
-    let show = CustomMenuItem::new("show".to_string(), "Show");
-    let hide = CustomMenuItem::new("hide".to_string(), "Hide");
-    let quit = CustomMenuItem::new("quit".to_string(), "Quit");
-
-    let tray_menu = SystemTrayMenu::new()
-        .add_item(show)
-        .add_item(hide)
-        .add_native_item(MenuItem::Separator)
-        .add_item(quit);
-
-    SystemTray::new().with_menu(tray_menu)
-}
-
-fn handle_system_tray_event(app: &tauri::AppHandle, event: SystemTrayEvent) {
-    match event {
-        SystemTrayEvent::LeftClick { .. } => {
-            let window = app.get_window("main").unwrap();
-            window.show().unwrap();
-            window.set_focus().unwrap();
-        }
-        SystemTrayEvent::MenuItemClick { id, .. } => {
-            match id.as_str() {
-                "show" => {
-                    let window = app.get_window("main").unwrap();
-                    window.show().unwrap();
-                }
-                "hide" => {
-                    let window = app.get_window("main").unwrap();
-                    window.hide().unwrap();
-                }
-                "quit" => {
-                    std::process::exit(0);
-                }
-                _ => {}
-            }
-        }
-        _ => {}
-    }
-}
-```
-
-## Configuration and Settings
-
-### Tauri Configuration
-
-```json
-// tauri.conf.json
-{
-  "build": {
-    "beforeDevCommand": "cd ../.. && npm run dev",
-    "beforeBuildCommand": "cd ../.. && npm run build",
-    "devPath": "http://localhost:3000",
-    "distDir": "../../out"
-  },
-  "package": {
-    "productName": "Bodhi",
-    "version": "1.0.0"
-  },
-  "tauri": {
-    "allowlist": {
-      "all": false,
-      "fs": {
-        "all": true,
-        "scope": ["$APPDATA/bodhi/**", "$HOME/.cache/huggingface/**"]
-      },
-      "dialog": {
-        "all": true
-      },
-      "notification": {
-        "all": true
-      },
-      "shell": {
-        "all": false,
-        "open": true
-      }
-    },
-    "bundle": {
-      "active": true,
-      "identifier": "com.bodhi.app",
-      "icon": ["icons/icon.png"],
-      "targets": ["dmg", "msi", "appimage"]
-    },
-    "security": {
-      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost"
-    },
-    "systemTray": {
-      "iconPath": "icons/tray-icon.png"
-    },
-    "windows": [
-      {
-        "title": "Bodhi",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
-        "resizable": true
-      }
-    ]
-  }
-}
-```
-
-### Application Settings
-
-```rust
-#[derive(Serialize, Deserialize)]
-struct AppSettings {
-    theme: String,
-    default_model: String,
-    auto_update: bool,
-    start_minimized: bool,
-    cache_size: usize,
-}
-
-#[tauri::command]
-async fn load_settings(app: tauri::AppHandle) -> Result<AppSettings, String> {
-    let settings_path = app.path_resolver()
-        .app_config_dir()
-        .ok_or("Failed to get config directory")?
-        .join("settings.json");
-
-    if settings_path.exists() {
-        let content = fs::read_to_string(settings_path)
-            .map_err(|e| e.to_string())?;
-        serde_json::from_str(&content)
-            .map_err(|e| e.to_string())
-    } else {
-        Ok(AppSettings::default())
-    }
-}
-
-#[tauri::command]
-async fn save_settings(
-    app: tauri::AppHandle,
-    settings: AppSettings,
-) -> Result<(), String> {
-    let config_dir = app.path_resolver()
-        .app_config_dir()
-        .ok_or("Failed to get config directory")?;
-
-    fs::create_dir_all(&config_dir)
-        .map_err(|e| e.to_string())?;
-
-    let settings_path = config_dir.join("settings.json");
-    let content = serde_json::to_string_pretty(&settings)
-        .map_err(|e| e.to_string())?;
-
-    fs::write(settings_path, content)
-        .map_err(|e| e.to_string())
-}
-```
-
-## Auto-Updates
-
-### Update Configuration
-
-```rust
-use tauri::updater;
-
-async fn check_for_updates(app: tauri::AppHandle) -> Result<(), String> {
-    let update = app.updater().check().await.map_err(|e| e.to_string())?;
-
-    if update.is_update_available() {
-        update.download_and_install().await.map_err(|e| e.to_string())?;
-        app.restart();
-    }
-
-    Ok(())
-}
-
-#[tauri::command]
-async fn manual_update_check(app: tauri::AppHandle) -> Result<bool, String> {
-    let update = app.updater().check().await.map_err(|e| e.to_string())?;
-    Ok(update.is_update_available())
-}
-```
-
-## Platform-Specific Features
-
-### macOS Integration
-
-```rust
-#[cfg(target_os = "macos")]
-use tauri::api::process::Command;
-
-#[tauri::command]
-#[cfg(target_os = "macos")]
-async fn set_as_login_item(enable: bool) -> Result<(), String> {
-    if enable {
-        Command::new("osascript")
-            .args(["-e", "tell application \"System Events\" to make login item at end with properties {path:\"/Applications/Bodhi.app\", hidden:false}"])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
-    } else {
-        Command::new("osascript")
-            .args(["-e", "tell application \"System Events\" to delete login item \"Bodhi\""])
-            .output()
-            .await
-            .map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-```
-
-### Windows Integration
-
-```rust
-#[cfg(target_os = "windows")]
-use winreg::{enums::HKEY_CURRENT_USER, RegKey};
-
-#[tauri::command]
-#[cfg(target_os = "windows")]
-async fn set_startup(enable: bool) -> Result<(), String> {
-    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-    let path = Path::new("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run");
-    let key = hkcu.open_subkey_with_flags(&path, KEY_WRITE)
-        .map_err(|e| e.to_string())?;
-
-    if enable {
-        let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
-        key.set_value("Bodhi", &exe_path.to_string_lossy().as_ref())
-            .map_err(|e| e.to_string())?;
-    } else {
-        key.delete_value("Bodhi").map_err(|e| e.to_string())?;
-    }
-
-    Ok(())
-}
-```
-
-## Development Guidelines
-
-### Adding New Commands
-
-1. Define Rust function with `#[tauri::command]` attribute
-2. Add proper error handling and type conversion
-3. Register command in `invoke_handler`
-4. Add TypeScript bindings in frontend
-5. Include comprehensive error handling
-
-### State Management
-
-- Use thread-safe state containers (Arc, Mutex)
-- Initialize state in setup function
-- Handle state access errors gracefully
-- Clean up resources on application exit
-
-### Security Considerations
-
-- Validate all inputs from frontend
-- Use Tauri's allowlist for restricting capabilities
-- Implement proper CSP (Content Security Policy)
-- Handle file system access securely
-
-## Testing Strategy
-
-### Unit Testing
-
-- Test individual Tauri commands
-- Mock server interactions
-- Validate error handling
-- Test state management
-
-### Integration Testing
-
-- End-to-end application testing
-- Frontend-backend communication
-- File system operations
-- System integration features
-
-### Platform Testing
-
-- Test on Windows, macOS, and Linux
-- Validate platform-specific features
-- Test installer and update mechanisms
-- Performance testing on different hardware
-
-## Distribution
-
-### Building for Release
-
-```bash
-# Build for current platform
-npm run tauri build
-
-# Build for specific platform
-npm run tauri build -- --target x86_64-pc-windows-msvc
-npm run tauri build -- --target x86_64-apple-darwin
-npm run tauri build -- --target x86_64-unknown-linux-gnu
-```
-
-### Distribution Channels
-
-- Direct download from GitHub releases
-- Platform-specific stores (Microsoft Store, Mac App Store)
-- Package managers (Homebrew, Chocolatey, Snap)
-- Auto-update mechanism for seamless updates
-
-## Future Extensions
-
-The Tauri application can be extended with:
-
-- Plugin system for community extensions
-- Advanced system integration features
-- Enhanced offline capabilities
-- Multi-window support for complex workflows
-- Custom protocol handlers for deep linking
-- Advanced security features and sandboxing
+The `bodhi/src-tauri` crate serves as BodhiApp's **application entry point orchestration layer**:
+
+- **Above lib_bodhiserver**: Coordinates complete application embedding with service composition and configuration management
+- **Below deployment infrastructure**: Provides executable entry points for both native desktop and container deployment scenarios
+- **Integration with objs**: Uses domain objects for error handling, configuration validation, and CLI parameter management
+- **Cross-cutting with all layers**: Implements application-wide concerns like logging configuration, environment management, and resource lifecycle
+
+## Cross-Crate Integration Patterns
+
+### Service Layer Integration Coordination
+
+Application entry point coordinates with BodhiApp's complete service architecture:
+
+- **lib_bodhiserver Integration**: Complete application embedding with AppService registry composition and configuration management
+- **Service Orchestration**: Coordinates all 10 business services through lib_bodhiserver's AppServiceBuilder pattern with dependency injection
+- **Configuration Coordination**: Environment-specific configuration with development/production mode switching and OAuth endpoint management
+- **Error Translation**: Service errors converted to appropriate application-level error messages with localized user guidance
+
+### Deployment Mode Integration Architecture
+
+Sophisticated deployment coordination across different execution environments:
+
+- **Native Desktop Integration**: Tauri framework coordination with system tray, menu management, and embedded web UI serving
+- **Container Deployment Integration**: Headless server deployment with HTTP API serving and file-based logging for containerized environments
+- **CLI Integration**: Command-line interface coordination with clap parsing and feature-conditional command availability
+- **Resource Management**: Application directory setup, logging configuration, and service lifecycle management across deployment modes
+
+## Application Orchestration Workflows
+
+### Dual-Mode Application Initialization
+
+Complex application bootstrap with feature-based execution path selection:
+
+1. **CLI Parsing**: Clap-based command parsing with feature-conditional subcommand availability and comprehensive validation
+2. **Command Resolution**: AppCommand enum construction with deployment mode detection and parameter extraction
+3. **Feature-Based Dispatch**: Conditional compilation routing to appropriate initialization module (native_init vs server_init)
+4. **Configuration Bootstrap**: AppOptions construction with environment detection and OAuth endpoint configuration
+5. **Service Composition**: lib_bodhiserver integration with complete AppService registry initialization and dependency injection
+
+### Native Desktop Application Orchestration
+
+Sophisticated desktop application coordination with system integration:
+
+**Native Mode Workflow**:
+
+1. **Tauri Framework Bootstrap**: Application builder configuration with plugin integration and logging setup
+2. **System Integration Setup**: System tray creation, menu configuration, and platform-specific activation policy
+3. **Embedded Server Coordination**: lib_bodhiserver integration with ServeCommand orchestration and automatic startup
+4. **UI Integration**: Web browser launching for UI access with embedded asset serving and error handling
+5. **Lifecycle Management**: Window hide-on-close behavior, server shutdown coordination, and graceful application exit
+
+### Container Deployment Orchestration
+
+Headless server deployment with comprehensive logging and configuration management:
+
+**Container Mode Workflow**:
+
+1. **Configuration Override**: Command-line parameter processing with settings service integration and environment variable coordination
+2. **Logging Infrastructure**: File-based logging setup with daily rotation, configurable output targets, and structured log management
+3. **Service Bootstrap**: lib_bodhiserver integration with ServeCommand execution and HTTP server coordination
+4. **Resource Management**: Proper resource lifecycle management with cleanup coordination and error handling
+5. **Graceful Shutdown**: Signal handling and resource cleanup with comprehensive error recovery
+
+## Important Constraints
+
+### Dual-Mode Architecture Requirements
+
+- All application logic must support both native desktop and container deployment modes through feature-based conditional compilation
+- CLI interface must adapt behavior based on compilation features with appropriate subcommand availability and validation
+- Configuration management must coordinate environment-specific settings with development/production mode switching
+- Error handling must provide appropriate user guidance for both desktop and server deployment scenarios
+
+### Service Integration Standards
+
+- All service access must coordinate through lib_bodhiserver's AppServiceBuilder pattern for consistent dependency injection
+- Application bootstrap must handle complete service composition with all 10 business services and comprehensive error recovery
+- Configuration validation must occur during application startup with clear error reporting and recovery guidance
+- Resource lifecycle management must coordinate across deployment modes with proper cleanup and error handling
+
+### Native Desktop Integration Rules
+
+- Tauri framework integration must support system tray functionality with menu-driven controls and proper event handling
+- Desktop application must coordinate embedded server lifecycle with automatic startup, configuration, and graceful shutdown
+- Web browser integration must handle launch failures gracefully with fallback error reporting and user guidance
+- Platform-specific features must be properly abstracted with conditional compilation for cross-platform compatibility
+
+### Container Deployment Standards
+
+- Headless server mode must support comprehensive file-based logging with daily rotation and configurable output targets
+- Command-line parameter processing must integrate with settings service for configuration override and validation
+- HTTP server coordination must leverage lib_bodhiserver's ServeCommand pattern with proper error handling and resource management
+- Signal handling must support graceful shutdown with comprehensive resource cleanup and error recovery
+
+## Application Extension Patterns
+
+### Adding New Deployment Modes
+
+When creating new deployment scenarios for the dual-mode application:
+
+1. **Feature Flag Design**: Create new feature flags with appropriate conditional compilation for deployment-specific functionality
+2. **CLI Integration**: Extend clap command structure with new subcommands and parameter validation for deployment scenarios
+3. **Configuration Extensions**: Add new AppOptions configuration with environment-specific settings and validation rules
+4. **Service Coordination**: Coordinate with lib_bodhiserver for new service composition patterns and resource management
+5. **Error Handling**: Implement deployment-specific errors that provide actionable guidance for configuration and setup issues
+
+### Extending Native Desktop Features
+
+For new native desktop functionality and system integration:
+
+1. **Tauri Integration**: Leverage Tauri framework capabilities with proper plugin integration and system API access
+2. **System Integration**: Design system-level features with cross-platform compatibility and proper error handling
+3. **UI Coordination**: Coordinate embedded web UI with native desktop features through proper event handling and state management
+4. **Resource Management**: Implement proper resource lifecycle management with cleanup coordination and error recovery
+5. **Platform Testing**: Test desktop features across different operating systems with platform-specific validation
+
+### Container Deployment Extensions
+
+For new container and server deployment capabilities:
+
+1. **Configuration Management**: Extend command-line parameter processing with settings service integration and validation
+2. **Logging Infrastructure**: Design comprehensive logging strategies with file-based output and structured log management
+3. **Service Orchestration**: Coordinate with lib_bodhiserver for new HTTP server patterns and service composition
+4. **Resource Optimization**: Optimize resource usage for containerized environments with proper cleanup and error handling
+5. **Deployment Testing**: Test container deployment scenarios with realistic infrastructure and configuration validation
+
+## Critical System Constraints
+
+### Application Architecture Requirements
+
+- Dual-mode architecture must maintain clean separation between native desktop and container deployment with feature-based conditional compilation
+- CLI interface must provide consistent user experience across deployment modes with appropriate command availability and validation
+- Configuration management must support environment-specific settings with proper validation and error recovery mechanisms
+- Service integration must coordinate through lib_bodhiserver for consistent application composition and dependency injection
+
+### Error Handling and Recovery Standards
+
+- All application errors must implement AppError trait for consistent error reporting and localization support
+- Error messages must provide actionable guidance appropriate for the deployment mode and user context
+- Error recovery must coordinate across service boundaries with proper resource cleanup and state management
+- Application startup errors must provide clear diagnostic information for configuration and deployment issues
+
+### Resource Management and Lifecycle Rules
+
+- Application lifecycle must coordinate resource management across deployment modes with proper initialization and cleanup
+- Service composition must handle dependency injection and error recovery through lib_bodhiserver coordination
+- Configuration validation must occur during application startup with comprehensive error reporting and recovery guidance
+- Resource cleanup must coordinate across all application components with proper error handling and graceful degradation

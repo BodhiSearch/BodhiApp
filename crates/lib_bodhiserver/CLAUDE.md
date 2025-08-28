@@ -1,337 +1,150 @@
-# CLAUDE.md - lib_bodhiserver
+# CLAUDE.md
 
-This file provides guidance to Claude Code when working with the `lib_bodhiserver` crate, which provides an embeddable server library for BodhiApp.
+This file provides guidance to Claude Code when working with the `lib_bodhiserver` crate.
+
+*For detailed implementation examples and technical depth, see [crates/lib_bodhiserver/PACKAGE.md](crates/lib_bodhiserver/PACKAGE.md)*
 
 ## Purpose
 
-The `lib_bodhiserver` crate provides a library interface for embedding BodhiApp server functionality:
+The `lib_bodhiserver` crate serves as BodhiApp's **embeddable server library orchestration layer**, providing sophisticated service composition, application directory management, and comprehensive configuration systems for embedding BodhiApp functionality into external applications.
 
-- **Embeddable Server**: Library API for integrating BodhiApp into other applications
-- **Programmatic Control**: Start, stop, and manage server instances programmatically
-- **Custom Configuration**: Flexible configuration options for embedded scenarios
-- **Resource Management**: Proper lifecycle management for embedded deployments
-- **API Access**: Direct access to server functionality without HTTP overhead
+## Key Domain Architecture
 
-## Key Components
+### Embeddable Server Library System
+Advanced library interface for embedding BodhiApp functionality:
+- **AppServiceBuilder Architecture**: Sophisticated dependency injection with automatic service resolution and comprehensive error handling
+- **Application Directory Management**: Complete filesystem setup with BODHI_HOME, HF_HOME, and configuration directory orchestration
+- **Configuration System Integration**: Flexible configuration with environment variables, settings files, and system defaults coordination
+- **Service Composition Orchestration**: Complete service registry initialization with all 10 business services and dependency management
+- **Resource Lifecycle Management**: Proper initialization, configuration, and cleanup coordination for embedded deployments
 
-### Server Library Interface
-- `BodhiServer` - Main server instance with lifecycle management
-- Configuration builders for customizing server behavior
-- Service access methods for direct API interaction
-- Resource management and cleanup handling
+### Cross-Crate Service Integration Architecture
+Comprehensive service orchestration for embeddable library functionality:
+- **Service Registry Composition**: Complete AppService registry with HubService, DataService, AuthService, DbService, SessionService, SecretService, CacheService, LocalizationService, and TimeService
+- **Configuration Management**: Environment-specific configuration with development/production modes and flexible settings management
+- **Database Integration**: SQLite database setup with migration management and connection pooling for embedded scenarios
+- **Authentication Coordination**: OAuth2 integration with session management and API token support for embedded authentication
+- **Localization Resource Management**: Multi-language support with resource loading from all workspace crates
 
-### Service Exposure
-- Direct access to application services without HTTP layer
-- Programmatic model management and configuration
-- Authentication service integration
-- Database and storage management
-
-### Lifecycle Management
-- Server initialization with custom configuration
-- Graceful startup and shutdown procedures
-- Resource cleanup and memory management
-- Error handling and recovery
-
-## Dependencies
-
-### Core Server Components
-- `server_app` - Main server implementation
-- `services` - Business logic services
-- `routes_all` - HTTP routing (optional for HTTP mode)
-- `auth_middleware` - Authentication services
-
-### Infrastructure
-- `tokio` - Async runtime management
-- `axum` - HTTP server (when HTTP interface is enabled)
-- Database and storage backends
+### Application Bootstrap and Configuration System
+Sophisticated application initialization with comprehensive configuration management:
+- **AppOptions Builder Pattern**: Flexible configuration with environment variables, app settings, and OAuth credentials management
+- **Directory Setup Orchestration**: Automatic creation of BODHI_HOME, aliases, databases, logs, and HuggingFace cache directories
+- **Settings Service Integration**: Complete settings management with file-based configuration, environment variable overrides, and system defaults
+- **Error Handling Architecture**: Comprehensive error types with localized messages and recovery strategies for configuration failures
+- **UI Asset Management**: Embedded static asset serving with Next.js frontend integration for complete application embedding
 
 ## Architecture Position
 
-The `lib_bodhiserver` crate sits at the library interface layer:
-- **Abstracts**: Complex server initialization and management
-- **Provides**: Clean programmatic API for embedding
-- **Manages**: Server lifecycle and resource allocation
-- **Exposes**: Core functionality without HTTP overhead
+The `lib_bodhiserver` crate serves as BodhiApp's **embeddable server library orchestration layer**:
+- **Above all other crates**: Coordinates complete application composition including services, routes, server_core, and infrastructure for embedding
+- **Below external applications**: Provides clean library interface for Tauri desktop apps, NAPI Node.js bindings, and other embedding scenarios
+- **Integration with server_app**: Leverages server application orchestration for complete HTTP server functionality when needed
+- **Cross-cutting with all layers**: Implements application-wide concerns like configuration management, service composition, and resource lifecycle
 
-## Usage Patterns
+## Cross-Crate Integration Patterns
 
-### Basic Server Embedding
-```rust
-use lib_bodhiserver::{BodhiServer, BodhiServerBuilder};
+### Service Layer Composition Coordination
+Complex service orchestration for embeddable library functionality:
+- **AppServiceBuilder Integration**: Sophisticated dependency injection with automatic service resolution and comprehensive error handling
+- **Service Registry Composition**: Complete AppService registry initialization with all 10 business services including authentication, model management, and configuration
+- **Database Service Coordination**: SQLite database setup with migration management, connection pooling, and transaction support for embedded scenarios
+- **Authentication Service Integration**: OAuth2 flows, session management, and API token support coordinated through SecretService and KeyringService
+- **Configuration Service Management**: SettingService integration with environment variables, settings files, and system defaults coordination
 
-let server = BodhiServerBuilder::new()
-    .database_url("sqlite:///path/to/db.sqlite")
-    .data_dir("/path/to/data")
-    .build()
-    .await?;
+### Application Directory Management Integration
+Comprehensive filesystem setup coordinated across BodhiApp's architecture:
+- **BODHI_HOME Management**: Automatic directory creation with environment-specific paths (development vs production) and configuration validation
+- **HuggingFace Cache Integration**: HF_HOME setup with hub directory creation and model cache management coordination
+- **Database Directory Setup**: Application and session database creation with proper file permissions and migration support
+- **Logs Directory Management**: Centralized logging directory setup with proper permissions and cleanup coordination
+- **UI Asset Integration**: Embedded Next.js frontend assets with static file serving for complete application embedding
 
-// Start the server
-server.start().await?;
+### Configuration System Integration
+Advanced configuration management coordinated across all application layers:
+- **AppOptions Builder Pattern**: Flexible configuration with environment variables, app settings, OAuth credentials, and system settings management
+- **Settings Service Integration**: Complete settings management with file-based configuration, environment variable overrides, and system defaults coordination
+- **Environment Type Management**: Development/production mode coordination with environment-specific configuration and resource management
+- **Localization Resource Loading**: Multi-language support with resource loading from all workspace crates and comprehensive error handling
 
-// Use server functionality
-let models = server.list_models().await?;
-let response = server.chat_completion(request).await?;
+## Embeddable Library Orchestration Workflows
 
-// Shutdown when done
-server.shutdown().await?;
-```
+### Multi-Service Application Bootstrap Coordination
+Complex application initialization with comprehensive service orchestration:
 
-### Custom Configuration
-```rust
-let config = BodhiServerConfig {
-    database_url: "sqlite:memory:".to_string(),
-    enable_http: false,  // Disable HTTP interface
-    log_level: "debug".to_string(),
-    cache_size: 1000,
-    // ... other configuration
-};
+1. **Configuration Validation**: AppOptions validation with environment variables, system settings, and application configuration verification
+2. **Directory Setup**: BODHI_HOME, HF_HOME, aliases, databases, and logs directory creation with proper permissions and error handling
+3. **Service Composition**: AppServiceBuilder orchestration with all 10 business services including dependency injection and error recovery
+4. **Database Migration**: SQLite database setup with schema migration, connection pooling, and transaction support for embedded scenarios
+5. **Localization Loading**: Multi-language resource loading from all workspace crates with comprehensive error handling and fallback support
 
-let server = BodhiServer::with_config(config).await?;
-```
+### Configuration Management Orchestration
+Sophisticated configuration coordination across application boundaries:
 
-### Service Access
-```rust
-// Direct service access without HTTP overhead
-let data_service = server.data_service();
-let auth_service = server.auth_service();
-let hub_service = server.hub_service();
+**Environment-Specific Configuration**:
+1. **Environment Detection**: Development vs production mode detection with appropriate configuration defaults and resource paths
+2. **Settings File Management**: YAML configuration file loading with environment variable overrides and system defaults coordination
+3. **OAuth Configuration**: Application registration information and authentication provider configuration with secure credential storage
+4. **Resource Path Configuration**: BODHI_HOME, HF_HOME, and other resource path configuration with automatic directory creation
 
-// Use services directly
-let alias = data_service.find_alias("my-model")?;
-let models = hub_service.list_models().await?;
-```
+**Service Configuration Coordination**:
+1. **Database Configuration**: SQLite connection strings, migration management, and connection pooling configuration for embedded scenarios
+2. **Authentication Configuration**: OAuth2 provider settings, JWT configuration, and session management setup with secure credential handling
+3. **Cache Configuration**: In-memory cache settings, TTL configuration, and eviction policy management for performance optimization
+4. **Logging Configuration**: Log level management, output configuration, and resource cleanup for embedded application integration
 
-### HTTP Mode (Optional)
-```rust
-let server = BodhiServerBuilder::new()
-    .enable_http(true)
-    .bind_address("127.0.0.1:8080")
-    .build()
-    .await?;
+### Error Handling and Recovery Orchestration
+Comprehensive error management across embeddable library boundaries:
+1. **Configuration Error Recovery**: Validation failures, missing directories, and permission issues with actionable error messages
+2. **Service Initialization Errors**: Database connection failures, authentication setup errors, and service dependency resolution with recovery strategies
+3. **Resource Management Errors**: Directory creation failures, file permission issues, and cleanup coordination with proper error isolation
+4. **Integration Error Handling**: External application integration errors with graceful degradation and comprehensive error reporting
 
-server.start().await?;
-// Server now accepts HTTP requests on specified address
-```
+## Important Constraints
 
-## Configuration Options
+### Embeddable Library Requirements
+- All library operations must use AppServiceBuilder pattern for consistent service composition and dependency injection
+- Configuration management must support both programmatic and file-based configuration with environment variable overrides
+- Service initialization must handle embedded scenarios with proper resource cleanup and error recovery mechanisms
+- Directory management must support different deployment scenarios (Tauri, NAPI, standalone) with appropriate permissions
 
-### Database Configuration
-- SQLite database path or in-memory database
-- Connection pool settings
-- Migration management options
+### Service Composition Standards
+- AppServiceBuilder must resolve all service dependencies automatically with comprehensive error handling and validation
+- Service registry must provide access to all 10 business services with proper lifecycle management and cleanup coordination
+- Database services must support embedded SQLite with migration management and connection pooling for performance
+- Authentication services must integrate with platform-specific credential storage and OAuth2 flows for embedded scenarios
 
-### Storage Configuration  
-- Data directory for models and files
-- Cache directory and size limits
-- Temporary file handling
+### Configuration Management Rules
+- AppOptions must validate all required configuration with clear error messages and recovery guidance
+- Settings service must support environment-specific configuration with development/production mode coordination
+- Directory setup must handle filesystem permissions and creation failures with proper error reporting and recovery
+- Localization resources must load from all workspace crates with fallback support and comprehensive error handling
 
-### Authentication Configuration
-- OAuth provider settings (optional)
-- JWT signing configuration
-- Session management options
+## Embeddable Library Extension Patterns
 
-### Performance Settings
-- Cache size and eviction policies
-- Connection pool limits
-- Async runtime configuration
+### Adding New Service Integration
+When creating new service integration for embeddable library:
 
-## Service Interface
+1. **AppServiceBuilder Extensions**: Add new service methods with dependency injection and automatic resolution patterns
+2. **Configuration Integration**: Extend AppOptions with new configuration options and validation rules for service setup
+3. **Error Handling**: Create service-specific errors that implement AppError trait for consistent error reporting and recovery
+4. **Resource Management**: Implement proper resource lifecycle management with cleanup and error recovery mechanisms
+5. **Testing Infrastructure**: Use comprehensive service mocking for isolated library integration testing scenarios
 
-### Model Management
-```rust
-// List available models
-let models = server.list_models().await?;
+### Extending Configuration Management
+For new configuration capabilities and embedded scenarios:
 
-// Create new model alias
-let create_request = CreateModelRequest { /* ... */ };
-server.create_model(create_request).await?;
+1. **AppOptions Extensions**: Add new configuration options with builder pattern and validation support for embedded scenarios
+2. **Settings Integration**: Coordinate with SettingService for new configuration management and environment variable support
+3. **Directory Management**: Extend directory setup for new resource types with proper permissions and error handling
+4. **Environment Support**: Support new deployment environments with appropriate configuration defaults and resource management
+5. **Configuration Testing**: Test configuration management with different embedded scenarios and validation failures
 
-// Pull model from repository
-let pull_request = PullModelRequest { /* ... */ };
-server.pull_model(pull_request).await?;
-```
+### Cross-Application Integration Patterns
+For new embedding scenarios and external application integration:
 
-### Chat Interface
-```rust
-use async_openai::types::CreateChatCompletionRequest;
-
-let request = CreateChatCompletionRequest {
-    model: "my-model".to_string(),
-    messages: vec![/* ... */],
-    // ... other parameters
-};
-
-let response = server.chat_completion(request).await?;
-```
-
-### Authentication (when enabled)
-```rust
-// User authentication
-let login_url = server.initiate_login().await?;
-let tokens = server.complete_login(callback_params).await?;
-
-// Token management
-let api_token = server.create_api_token(token_request).await?;
-```
-
-## Integration Scenarios
-
-### Desktop Application Integration
-```rust
-// Embedded in Tauri or similar desktop framework
-let server = BodhiServer::new()
-    .database_url(&app_data_dir.join("bodhi.db").to_string_lossy())
-    .data_dir(&app_data_dir)
-    .enable_http(false)  // Use direct API
-    .build()
-    .await?;
-```
-
-### Web Application Backend
-```rust
-// Embedded as backend service
-let server = BodhiServer::new()
-    .enable_http(true)
-    .bind_address("0.0.0.0:8080")
-    .build()
-    .await?;
-
-// Expose HTTP API to frontend
-server.start().await?;
-```
-
-### Plugin or Extension
-```rust
-// Embedded in larger application as plugin
-pub struct BodhiPlugin {
-    server: BodhiServer,
-}
-
-impl Plugin for BodhiPlugin {
-    async fn initialize(&mut self) -> Result<()> {
-        self.server.start().await
-    }
-    
-    async fn shutdown(&mut self) -> Result<()> {
-        self.server.shutdown().await
-    }
-}
-```
-
-## Error Handling
-
-### Initialization Errors
-- Configuration validation failures
-- Database connection errors
-- File system permission issues
-- Port binding conflicts (HTTP mode)
-
-### Runtime Errors
-- Service operation failures
-- Resource exhaustion
-- Network connectivity issues
-- Authentication failures
-
-### Graceful Error Recovery
-- Automatic retry for transient failures
-- Graceful degradation for non-critical errors
-- Proper error propagation to embedding application
-
-## Resource Management
-
-### Memory Management
-- Efficient resource allocation and cleanup
-- Cache size management with bounds
-- Connection pool limits and cleanup
-
-### File System Management
-- Temporary file cleanup
-- Database file management
-- Model file organization
-
-### Network Resources (HTTP mode)
-- Port binding and release
-- Connection management
-- Request/response resource cleanup
-
-## Performance Considerations
-
-### Async Runtime
-- Efficient task scheduling
-- Non-blocking I/O operations
-- Proper resource sharing
-
-### Caching Strategy
-- In-memory caching with LRU eviction
-- Persistent caching for model metadata
-- Query result caching
-
-### Database Optimization
-- Connection pooling
-- Prepared statement caching
-- Index optimization
-
-## Development Guidelines
-
-### Adding New Library Features
-1. Define public API with appropriate error handling
-2. Implement feature with proper resource management
-3. Add configuration options as needed
-4. Include comprehensive documentation and examples
-5. Add unit and integration tests
-
-### Configuration Management
-- Use builder pattern for complex configuration
-- Provide sensible defaults for all options
-- Validate configuration during construction
-- Support both programmatic and file-based configuration
-
-### Error Handling Best Practices
-- Use typed errors with clear descriptions
-- Provide context for debugging
-- Handle resource cleanup in error paths
-- Document error conditions and recovery strategies
-
-## Testing Strategy
-
-### Unit Testing
-- Individual service functionality
-- Configuration validation
-- Error handling paths
-- Resource management
-
-### Integration Testing
-- Complete server lifecycle
-- Service interaction testing
-- Database integration
-- Error recovery scenarios
-
-### Embedding Testing
-- Test integration in various scenarios
-- Memory leak detection
-- Performance benchmarking
-- Concurrent usage testing
-
-## Security Considerations
-
-### Embedded Security
-- Secure default configuration
-- Input validation for all APIs
-- Resource access controls
-- Audit logging capabilities
-
-### Data Protection
-- Secure database connections
-- Encrypted storage options
-- Memory-safe operations
-- Secret management
-
-## Future Extensions
-
-The lib_bodhiserver crate can be extended with:
-- Plugin system for extensibility
-- Event system for notifications
-- Streaming API for real-time updates
-- Multi-tenancy support
-- Advanced monitoring and metrics
-- Configuration hot-reloading
+1. **Service Composition**: Design service composition patterns that support different embedding scenarios (Tauri, NAPI, standalone)
+2. **Resource Management**: Implement resource lifecycle management that coordinates with external application lifecycle and cleanup
+3. **Error Boundaries**: Provide comprehensive error handling with proper isolation and recovery for embedded application integration
+4. **Performance Optimization**: Optimize service composition and resource management for embedded scenarios with minimal overhead
+5. **Integration Testing**: Support comprehensive embedding testing with realistic external application integration scenarios
