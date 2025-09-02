@@ -17,6 +17,7 @@ This feature enables users to configure remote AI API services (such as OpenAI, 
 3. WHEN configuring a remote API alias THEN the system SHALL require API endpoint URL and authentication credentials
 4. WHEN configuring a remote API alias THEN the system SHALL allow specifying the remote model name/ID
 5. WHEN storing remote API aliases THEN the system SHALL encrypt sensitive credentials before persistence
+6. WHEN listing available models THEN the system SHALL include both local and remote API aliases in the response
 
 ### Requirement 2: API Key and Authentication Management
 
@@ -41,6 +42,7 @@ This feature enables users to configure remote AI API services (such as OpenAI, 
 3. WHEN routing requests THEN the system SHALL use the appropriate HTTP client configuration for each provider
 4. WHEN handling authentication THEN the system SHALL include proper credentials in the outbound request
 5. WHEN request translation fails THEN the system SHALL return clear error messages
+6. WHEN handling timeouts THEN the system SHALL apply provider-specific timeout configurations
 
 ### Requirement 4: Response Normalization
 
@@ -77,6 +79,7 @@ This feature enables users to configure remote AI API services (such as OpenAI, 
 3. WHEN entering API credentials THEN the UI SHALL provide secure input fields with masking
 4. WHEN testing configurations THEN the UI SHALL provide a "test connection" feature
 5. WHEN managing existing remote aliases THEN the UI SHALL allow editing without exposing credentials
+6. WHEN displaying remote aliases THEN the UI SHALL show connection status and last successful request timestamp
 
 ### Requirement 7: Health Monitoring and Error Handling
 
@@ -101,3 +104,15 @@ This feature enables users to configure remote AI API services (such as OpenAI, 
 3. WHEN logging requests THEN the system SHALL not log sensitive information
 4. WHEN handling user data THEN the system SHALL respect provider privacy policies
 5. WHEN credentials are compromised THEN the system SHALL provide mechanisms to rotate them quickly
+### Requ
+irement 9: Integration with Existing Model Management
+
+**User Story:** As a user, I want remote API aliases to integrate seamlessly with the existing model management system, so that I can use them interchangeably with local models.
+
+#### Acceptance Criteria
+
+1. WHEN listing models THEN the system SHALL include remote API aliases alongside local llama-server models
+2. WHEN selecting models in chat interface THEN remote API aliases SHALL appear in the model dropdown
+3. WHEN using remote API aliases THEN the system SHALL maintain the same request/response patterns as local models
+4. WHEN switching between local and remote models THEN the system SHALL preserve conversation context
+5. WHEN remote API aliases are unavailable THEN the system SHALL gracefully fallback or show appropriate status
