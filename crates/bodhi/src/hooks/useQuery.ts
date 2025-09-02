@@ -9,6 +9,7 @@ import {
   PaginatedAliasResponse,
   PaginatedDownloadResponse,
   PaginatedLocalModelResponse,
+  PaginatedUnifiedModelResponse,
   SettingInfo,
   SetupRequest,
   SetupResponse,
@@ -145,7 +146,7 @@ export function useModelFiles(page?: number, pageSize?: number, sort: string = '
 }
 
 export function useModels(page: number, pageSize: number, sort: string, sortOrder: string) {
-  return useQuery<PaginatedAliasResponse>(
+  return useQuery<PaginatedUnifiedModelResponse>(
     ['models', page.toString(), pageSize.toString(), sort, sortOrder],
     ENDPOINT_MODELS,
     { page, page_size: pageSize, sort, sort_order: sortOrder }

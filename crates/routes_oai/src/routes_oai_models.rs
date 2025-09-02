@@ -4,8 +4,8 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{Alias, ApiError, OpenAIApiError, API_TAG_OPENAI};
-use server_core::RouterState;
+use objs::{Alias, ApiError, ApiModelAlias, OpenAIApiError, API_TAG_OPENAI};
+use server_core::{ModelRouterError, RouterState};
 use services::AliasNotFoundError;
 use std::sync::Arc;
 use utoipa::openapi::ObjectBuilder;
@@ -125,16 +125,34 @@ impl utoipa::ToSchema for ListModelResponse {}
 pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<OAIModelListResponse>, ApiError> {
-  let models = state
+  // Get local aliases from DataService
+  let local_models = state
     .app_service()
     .data_service()
     .list_aliases()?
     .into_iter()
     .map(|alias| to_oai_model(state.clone(), alias))
     .collect::<Vec<_>>();
+
+  // Get API models from DbService
+  // If database operations fail (e.g., not initialized), just use empty list
+  let api_models = state
+    .app_service()
+    .db_service()
+    .list_api_model_aliases()
+    .await
+    .unwrap_or_else(|_| vec![])
+    .into_iter()
+    .map(|api_alias| api_model_to_oai_model(api_alias))
+    .collect::<Vec<_>>();
+
+  // Combine both lists
+  let mut all_models = local_models;
+  all_models.extend(api_models);
+
   Ok(Json(OAIModelListResponse {
     object: "list".to_string(),
-    data: models,
+    data: all_models,
   }))
 }
 
@@ -182,13 +200,29 @@ pub async fn oai_model_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<OAIModel>, ApiError> {
-  let alias = state
+  // Try to find local alias first
+  if let Some(alias) = state.app_service().data_service().find_alias(&id) {
+    let model = to_oai_model(state, alias);
+    return Ok(Json(model));
+  }
+
+  // If not found, try to find API model from DbService
+  match state
     .app_service()
-    .data_service()
-    .find_alias(&id)
-    .ok_or(AliasNotFoundError(id))?;
-  let model = to_oai_model(state, alias);
-  Ok(Json(model))
+    .db_service()
+    .get_api_model_alias(&id)
+    .await
+  {
+    Ok(Some(api_alias)) => {
+      let model = api_model_to_oai_model(api_alias);
+      Ok(Json(model))
+    }
+    Ok(None) => Err(ApiError::from(ModelRouterError::ApiModelNotFound(id))),
+    Err(_) => {
+      // Database error (e.g., not initialized), treat as not found
+      Err(ApiError::from(AliasNotFoundError(id)))
+    }
+  }
 }
 
 fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> OAIModel {
@@ -200,6 +234,20 @@ fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> OAIModel {
     object: "model".to_string(),
     created,
     owned_by: "system".to_string(),
+  }
+}
+
+fn api_model_to_oai_model(api_alias: ApiModelAlias) -> OAIModel {
+  // Use the created_at timestamp from the ApiModelAlias
+  // Convert i64 timestamp to u32 for OAIModel
+  let created = api_alias.created_at.timestamp() as u32;
+
+  OAIModel {
+    id: api_alias.id,
+    object: "model".to_string(),
+    created,
+    // Use the provider name for owned_by field
+    owned_by: api_alias.provider,
   }
 }
 
@@ -224,6 +272,8 @@ mod tests {
   async fn app() -> Router {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
+      .with_db_service()
+      .await
       .build()
       .unwrap();
     let router_state =

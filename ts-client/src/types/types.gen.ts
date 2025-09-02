@@ -11,6 +11,19 @@ export type AliasResponse = {
     source: string;
 };
 
+/**
+ * Response containing API model configuration
+ */
+export type ApiModelResponse = {
+    api_key_masked: string;
+    base_url: string;
+    created_at: string;
+    id: string;
+    models: Array<string>;
+    provider: string;
+    updated_at: string;
+};
+
 export type ApiToken = {
     created_at: string;
     id: string;
@@ -84,6 +97,32 @@ export type CreateAliasRequest = {
 };
 
 /**
+ * Request to create a new API model configuration
+ */
+export type CreateApiModelRequest = {
+    /**
+     * API key for authentication
+     */
+    api_key: string;
+    /**
+     * API base URL
+     */
+    base_url: string;
+    /**
+     * Unique identifier for this API configuration
+     */
+    id: string;
+    /**
+     * List of available models
+     */
+    models: Array<string>;
+    /**
+     * Provider name (e.g., "openai", "anthropic")
+     */
+    provider: string;
+};
+
+/**
  * Request to create a new API token
  */
 export type CreateApiTokenRequest = {
@@ -115,6 +154,27 @@ export type ErrorBody = {
     message: string;
     param?: string | null;
     type: string;
+};
+
+/**
+ * Request to fetch available models from provider
+ */
+export type FetchModelsRequest = {
+    /**
+     * API key for authentication
+     */
+    api_key: string;
+    /**
+     * API base URL
+     */
+    base_url: string;
+};
+
+/**
+ * Response containing available models from provider
+ */
+export type FetchModelsResponse = {
+    models: Array<string>;
 };
 
 export type ListModelResponse = {
@@ -268,6 +328,16 @@ export type PaginatedAliasResponse = {
     total: number;
 };
 
+/**
+ * Paginated response for API model listings
+ */
+export type PaginatedApiModelResponse = {
+    data: Array<ApiModelResponse>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
 export type PaginatedApiTokenResponse = {
     data: Array<ApiToken>;
     page: number;
@@ -284,6 +354,13 @@ export type PaginatedDownloadResponse = {
 
 export type PaginatedLocalModelResponse = {
     data: Array<LocalModelResponse>;
+    page: number;
+    page_size: number;
+    total: number;
+};
+
+export type PaginatedUnifiedModelResponse = {
+    data: Array<UnifiedModelResponse>;
     page: number;
     page_size: number;
     total: number;
@@ -379,6 +456,37 @@ export type ShowResponse = {
     template: string;
 };
 
+/**
+ * Request to test API connectivity with a prompt
+ */
+export type TestPromptRequest = {
+    /**
+     * API key for authentication
+     */
+    api_key: string;
+    /**
+     * API base URL
+     */
+    base_url: string;
+    /**
+     * Model to use for testing
+     */
+    model: string;
+    /**
+     * Test prompt (max 30 characters for cost control)
+     */
+    prompt: string;
+};
+
+/**
+ * Response from testing API connectivity
+ */
+export type TestPromptResponse = {
+    error?: string | null;
+    response?: string | null;
+    success: boolean;
+};
+
 export type TokenStatus = 'active' | 'inactive';
 
 /**
@@ -388,12 +496,58 @@ export type TokenStatus = 'active' | 'inactive';
  */
 export type TokenType = 'session' | 'bearer';
 
+/**
+ * Unified model response that can represent both local aliases and API models
+ */
+export type UnifiedModelResponse = {
+    alias: string;
+    context_params: Array<string>;
+    filename: string;
+    model_params: {};
+    model_type: 'local';
+    repo: string;
+    request_params: OaiRequestParams;
+    snapshot: string;
+    source: string;
+} | {
+    api_key_masked: string;
+    base_url: string;
+    created_at: string;
+    id: string;
+    model_type: 'api';
+    models: Array<string>;
+    provider: string;
+    updated_at: string;
+};
+
 export type UpdateAliasRequest = {
     context_params?: Array<string> | null;
     filename: string;
     repo: string;
     request_params?: null | OaiRequestParams;
     snapshot?: string | null;
+};
+
+/**
+ * Request to update an existing API model configuration
+ */
+export type UpdateApiModelRequest = {
+    /**
+     * API key for authentication (optional, only update if provided)
+     */
+    api_key?: string | null;
+    /**
+     * API base URL (optional)
+     */
+    base_url?: string | null;
+    /**
+     * List of available models (optional)
+     */
+    models?: Array<string> | null;
+    /**
+     * Provider name (optional)
+     */
+    provider?: string | null;
 };
 
 /**
@@ -527,6 +681,245 @@ export type ListOllamaModelsResponses = {
 };
 
 export type ListOllamaModelsResponse = ListOllamaModelsResponses[keyof ListOllamaModelsResponses];
+
+export type ListApiModelsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page number (1-based)
+         */
+        page?: number;
+        /**
+         * Number of items per page (max 100)
+         */
+        page_size?: number;
+        /**
+         * Field to sort by (repo, filename, size, updated_at, snapshot)
+         */
+        sort?: string | null;
+        /**
+         * Sort order (asc or desc)
+         */
+        sort_order?: string;
+    };
+    url: '/bodhi/v1/api-models';
+};
+
+export type ListApiModelsErrors = {
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type ListApiModelsError = ListApiModelsErrors[keyof ListApiModelsErrors];
+
+export type ListApiModelsResponses = {
+    /**
+     * List of API models
+     */
+    200: PaginatedApiModelResponse;
+};
+
+export type ListApiModelsResponse = ListApiModelsResponses[keyof ListApiModelsResponses];
+
+export type CreateApiModelData = {
+    body: CreateApiModelRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/api-models';
+};
+
+export type CreateApiModelErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * Alias already exists
+     */
+    409: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type CreateApiModelError = CreateApiModelErrors[keyof CreateApiModelErrors];
+
+export type CreateApiModelResponses = {
+    /**
+     * API model created
+     */
+    201: ApiModelResponse;
+};
+
+export type CreateApiModelResponse = CreateApiModelResponses[keyof CreateApiModelResponses];
+
+export type FetchApiModelsData = {
+    body: FetchModelsRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/api-models/fetch-models';
+};
+
+export type FetchApiModelsErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type FetchApiModelsError = FetchApiModelsErrors[keyof FetchApiModelsErrors];
+
+export type FetchApiModelsResponses = {
+    /**
+     * Available models
+     */
+    200: FetchModelsResponse;
+};
+
+export type FetchApiModelsResponse = FetchApiModelsResponses[keyof FetchApiModelsResponses];
+
+export type TestApiModelData = {
+    body: TestPromptRequest;
+    path?: never;
+    query?: never;
+    url: '/bodhi/v1/api-models/test';
+};
+
+export type TestApiModelErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type TestApiModelError = TestApiModelErrors[keyof TestApiModelErrors];
+
+export type TestApiModelResponses = {
+    /**
+     * Test result
+     */
+    200: TestPromptResponse;
+};
+
+export type TestApiModelResponse = TestApiModelResponses[keyof TestApiModelResponses];
+
+export type DeleteApiModelData = {
+    body?: never;
+    path: {
+        /**
+         * API model alias
+         */
+        alias: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/api-models/{alias}';
+};
+
+export type DeleteApiModelErrors = {
+    /**
+     * API model not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type DeleteApiModelError = DeleteApiModelErrors[keyof DeleteApiModelErrors];
+
+export type DeleteApiModelResponses = {
+    /**
+     * API model deleted
+     */
+    204: void;
+};
+
+export type DeleteApiModelResponse = DeleteApiModelResponses[keyof DeleteApiModelResponses];
+
+export type UpdateApiModelData = {
+    body: UpdateApiModelRequest;
+    path: {
+        /**
+         * API model alias
+         */
+        alias: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/api-models/{alias}';
+};
+
+export type UpdateApiModelErrors = {
+    /**
+     * Invalid request
+     */
+    400: OpenAiApiError;
+    /**
+     * API model not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type UpdateApiModelError = UpdateApiModelErrors[keyof UpdateApiModelErrors];
+
+export type UpdateApiModelResponses = {
+    /**
+     * API model updated
+     */
+    200: ApiModelResponse;
+};
+
+export type UpdateApiModelResponse = UpdateApiModelResponses[keyof UpdateApiModelResponses];
+
+export type GetApiModelData = {
+    body?: never;
+    path: {
+        /**
+         * API model ID
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/bodhi/v1/api-models/{id}';
+};
+
+export type GetApiModelErrors = {
+    /**
+     * API model not found
+     */
+    404: OpenAiApiError;
+    /**
+     * Internal server error
+     */
+    500: OpenAiApiError;
+};
+
+export type GetApiModelError = GetApiModelErrors[keyof GetApiModelErrors];
+
+export type GetApiModelResponses = {
+    /**
+     * API model configuration
+     */
+    200: ApiModelResponse;
+};
+
+export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
 
 export type CompleteOAuthFlowData = {
     body: AuthCallbackRequest;
@@ -871,7 +1264,7 @@ export type GetDownloadStatusResponses = {
 
 export type GetDownloadStatusResponse = GetDownloadStatusResponses[keyof GetDownloadStatusResponses];
 
-export type ListModelAliasesData = {
+export type ListAllModelsData = {
     body?: never;
     path?: never;
     query?: {
@@ -895,23 +1288,23 @@ export type ListModelAliasesData = {
     url: '/bodhi/v1/models';
 };
 
-export type ListModelAliasesErrors = {
+export type ListAllModelsErrors = {
     /**
      * Internal server error
      */
     500: OpenAiApiError;
 };
 
-export type ListModelAliasesError = ListModelAliasesErrors[keyof ListModelAliasesErrors];
+export type ListAllModelsError = ListAllModelsErrors[keyof ListAllModelsErrors];
 
-export type ListModelAliasesResponses = {
+export type ListAllModelsResponses = {
     /**
-     * List of configured model aliases
+     * List of all configured models (local aliases and API models)
      */
-    200: PaginatedAliasResponse;
+    200: PaginatedUnifiedModelResponse;
 };
 
-export type ListModelAliasesResponse = ListModelAliasesResponses[keyof ListModelAliasesResponses];
+export type ListAllModelsResponse = ListAllModelsResponses[keyof ListAllModelsResponses];
 
 export type CreateAliasData = {
     body: CreateAliasRequest;

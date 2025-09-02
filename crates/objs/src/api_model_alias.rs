@@ -1,27 +1,45 @@
 use crate::AliasSource;
 use chrono::{DateTime, Utc};
-use derive_new::new;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, new)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApiModelAlias {
-  #[new(into)]
-  pub alias: String,
+  pub id: String,
   pub source: AliasSource,
-  #[new(into)]
   pub provider: String,
-  #[new(into)]
   pub base_url: String,
   pub models: Vec<String>,
   pub created_at: DateTime<Utc>,
+  pub updated_at: DateTime<Utc>,
+}
+
+impl ApiModelAlias {
+  pub fn new(
+    id: impl Into<String>,
+    source: AliasSource,
+    provider: impl Into<String>,
+    base_url: impl Into<String>,
+    models: Vec<String>,
+    created_at: DateTime<Utc>,
+  ) -> Self {
+    Self {
+      id: id.into(),
+      source,
+      provider: provider.into(),
+      base_url: base_url.into(),
+      models,
+      created_at,
+      updated_at: created_at,
+    }
+  }
 }
 
 impl std::fmt::Display for ApiModelAlias {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
-      "ApiModelAlias {{ alias: {}, provider: {}, models: {:?} }}",
-      self.alias, self.provider, self.models
+      "ApiModelAlias {{ id: {}, provider: {}, models: {:?} }}",
+      self.id, self.provider, self.models
     )
   }
 }
@@ -45,12 +63,13 @@ mod test {
     );
 
     let expected = ApiModelAlias {
-      alias: "openai".to_string(),
+      id: "openai".to_string(),
       source: AliasSource::RemoteApi,
       provider: "openai".to_string(),
       base_url: "https://api.openai.com/v1".to_string(),
       models: vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
       created_at,
+      updated_at: created_at,
     };
 
     assert_eq!(alias, expected);

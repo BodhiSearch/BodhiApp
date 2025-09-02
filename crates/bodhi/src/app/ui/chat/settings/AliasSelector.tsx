@@ -8,7 +8,7 @@ import { useChatSettings } from '@/hooks/use-chat-settings';
 import { HelpCircle } from 'lucide-react';
 
 interface AliasSelectorProps {
-  models: Array<{ alias: string }>;
+  models: Array<{ alias?: string; id?: string; model_type?: string; provider?: string; models?: string[] }>;
   isLoading?: boolean;
   tooltip: string;
 }
@@ -17,13 +17,26 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
   const { model, setModel } = useChatSettings();
 
   // Transform models array to match ComboBoxResponsive's Status type
-  const modelStatuses = models.map((m) => ({
-    value: m.alias,
-    label: m.alias,
-  }));
+  const modelStatuses = models.flatMap((m) => {
+    if (m.model_type === 'api') {
+      // For API models, create entries for each individual model
+      return (m.models || []).map((modelName) => ({
+        value: modelName,
+        label: `${modelName} (${m.provider || 'API'})`,
+      }));
+    } else {
+      // For local models, use the alias
+      return [
+        {
+          value: m.alias || '',
+          label: m.alias || '',
+        },
+      ];
+    }
+  });
 
   // Find the currently selected model
-  const selectedStatus = model ? { value: model, label: model } : null;
+  const selectedStatus = model ? modelStatuses.find((s) => s.value === model) || { value: model, label: model } : null;
 
   return (
     <div className="space-y-4" data-testid="model-selector-loaded">

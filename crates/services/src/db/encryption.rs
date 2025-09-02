@@ -93,20 +93,20 @@ pub fn decrypt_api_key(
     .map_err(|_| EncryptionError::InvalidFormat("Invalid UTF-8 in decrypted data".into()))
 }
 
-pub fn mask_api_key(api_key: &str) -> String {
-  if api_key.len() <= 4 {
-    "*".repeat(api_key.len())
-  } else {
-    let prefix = &api_key[..4];
-    let suffix = "*".repeat(api_key.len() - 4);
-    format!("{}{}", prefix, suffix)
-  }
-}
-
 #[cfg(test)]
 mod tests {
-  use crate::db::encryption::{decrypt_api_key, encrypt_api_key, mask_api_key};
+  use crate::db::encryption::{decrypt_api_key, encrypt_api_key};
   use rstest::rstest;
+
+  pub fn mask_api_key(api_key: &str) -> String {
+    if api_key.len() <= 4 {
+      "*".repeat(api_key.len())
+    } else {
+      let prefix = &api_key[..4];
+      let suffix = "*".repeat(api_key.len() - 4);
+      format!("{}{}", prefix, suffix)
+    }
+  }
 
   #[rstest]
   fn test_encryption_decryption_round_trip() -> anyhow::Result<()> {

@@ -209,7 +209,7 @@ mod tests {
 
     match result {
       RouteDestination::Remote(alias) => {
-        assert_eq!(alias.alias, "test-api");
+        assert_eq!(alias.id, "test-api");
         assert_eq!(alias.provider, "openai");
       }
       _ => panic!("Expected Remote destination with API alias"),

@@ -124,20 +124,20 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     api_key: &str,
   ) -> Result<(), DbError>;
 
-  async fn get_api_model_alias(&self, alias: &str) -> Result<Option<ApiModelAlias>, DbError>;
+  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiModelAlias>, DbError>;
 
   async fn update_api_model_alias(
     &self,
-    alias: &str,
+    id: &str,
     model: &ApiModelAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError>;
 
-  async fn delete_api_model_alias(&self, alias: &str) -> Result<(), DbError>;
+  async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError>;
 
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError>;
 
-  async fn get_api_key_for_alias(&self, alias: &str) -> Result<Option<String>, DbError>;
+  async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError>;
 
   fn now(&self) -> DateTime<Utc>;
 }
@@ -737,11 +737,11 @@ impl DbService for SqliteDbService {
 
     sqlx::query(
       r#"
-      INSERT INTO api_model_aliases (alias, provider, base_url, models_json, encrypted_api_key, salt, nonce, created_at, updated_at)
+      INSERT INTO api_model_aliases (id, provider, base_url, models_json, encrypted_api_key, salt, nonce, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       "#
     )
-    .bind(&alias.alias)
+    .bind(&alias.id)
     .bind(&alias.provider)
     .bind(&alias.base_url)
     .bind(&models_json)
@@ -756,28 +756,29 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
-  async fn get_api_model_alias(&self, alias: &str) -> Result<Option<ApiModelAlias>, DbError> {
+  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiModelAlias>, DbError> {
     let result = query_as::<_, (String, String, String, String, i64)>(
-      "SELECT alias, provider, base_url, models_json, created_at FROM api_model_aliases WHERE alias = ?"
+      "SELECT id, provider, base_url, models_json, created_at FROM api_model_aliases WHERE id = ?",
     )
-    .bind(alias)
+    .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
     match result {
-      Some((alias, provider, base_url, models_json, created_at)) => {
+      Some((id, provider, base_url, models_json, created_at)) => {
         let models: Vec<String> = serde_json::from_str(&models_json)
           .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
         let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
 
         Ok(Some(ApiModelAlias {
-          alias,
+          id,
           source: AliasSource::RemoteApi,
           provider,
           base_url,
           models,
           created_at,
+          updated_at: created_at,
         }))
       }
       None => Ok(None),
@@ -786,7 +787,7 @@ impl DbService for SqliteDbService {
 
   async fn update_api_model_alias(
     &self,
-    alias: &str,
+    id: &str,
     model: &ApiModelAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError> {
@@ -804,7 +805,7 @@ impl DbService for SqliteDbService {
         r#"
         UPDATE api_model_aliases 
         SET provider = ?, base_url = ?, models_json = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
-        WHERE alias = ?
+        WHERE id = ?
         "#
       )
       .bind(&model.provider)
@@ -814,7 +815,7 @@ impl DbService for SqliteDbService {
       .bind(&salt)
       .bind(&nonce)
       .bind(now.timestamp())
-      .bind(alias)
+      .bind(id)
       .execute(&self.pool)
       .await?;
     } else {
@@ -823,14 +824,14 @@ impl DbService for SqliteDbService {
         r#"
         UPDATE api_model_aliases 
         SET provider = ?, base_url = ?, models_json = ?, updated_at = ?
-        WHERE alias = ?
+        WHERE id = ?
         "#,
       )
       .bind(&model.provider)
       .bind(&model.base_url)
       .bind(&models_json)
       .bind(now.timestamp())
-      .bind(alias)
+      .bind(id)
       .execute(&self.pool)
       .await?;
     }
@@ -838,9 +839,9 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
-  async fn delete_api_model_alias(&self, alias: &str) -> Result<(), DbError> {
-    sqlx::query("DELETE FROM api_model_aliases WHERE alias = ?")
-      .bind(alias)
+  async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM api_model_aliases WHERE id = ?")
+      .bind(id)
       .execute(&self.pool)
       .await?;
 
@@ -849,36 +850,37 @@ impl DbService for SqliteDbService {
 
   async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError> {
     let results = query_as::<_, (String, String, String, String, i64)>(
-      "SELECT alias, provider, base_url, models_json, created_at FROM api_model_aliases ORDER BY alias"
+      "SELECT id, provider, base_url, models_json, created_at FROM api_model_aliases ORDER BY created_at DESC"
     )
     .fetch_all(&self.pool)
     .await?;
 
     let mut aliases = Vec::new();
-    for (alias, provider, base_url, models_json, created_at) in results {
+    for (id, provider, base_url, models_json, created_at) in results {
       let models: Vec<String> = serde_json::from_str(&models_json)
         .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
 
       let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
 
       aliases.push(ApiModelAlias {
-        alias,
+        id,
         source: AliasSource::RemoteApi,
         provider,
         base_url,
         models,
         created_at,
+        updated_at: created_at,
       });
     }
 
     Ok(aliases)
   }
 
-  async fn get_api_key_for_alias(&self, alias: &str) -> Result<Option<String>, DbError> {
+  async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError> {
     let result = query_as::<_, (String, String, String)>(
-      "SELECT encrypted_api_key, salt, nonce FROM api_model_aliases WHERE alias = ?",
+      "SELECT encrypted_api_key, salt, nonce FROM api_model_aliases WHERE id = ?",
     )
-    .bind(alias)
+    .bind(id)
     .fetch_optional(&self.pool)
     .await?;
 
@@ -1445,21 +1447,31 @@ mod test {
   ) -> anyhow::Result<()> {
     let now = service.now();
 
-    // Create multiple aliases
+    // Create multiple aliases with different timestamps for proper sorting test
     let aliases = vec![
-      ("alias1", "provider1", "key1"),
-      ("alias2", "provider2", "key2"),
-      ("alias3", "provider3", "key3"),
+      (
+        "alias1",
+        "provider1",
+        "key1",
+        now - chrono::Duration::seconds(20),
+      ),
+      (
+        "alias2",
+        "provider2",
+        "key2",
+        now - chrono::Duration::seconds(10),
+      ),
+      ("alias3", "provider3", "key3", now),
     ];
 
-    for (alias, provider, key) in &aliases {
+    for (alias, provider, key, created_at) in &aliases {
       let alias_obj = ApiModelAlias::new(
         *alias,
         AliasSource::RemoteApi,
         *provider,
         "https://api.example.com/v1",
         vec!["model1".to_string()],
-        now,
+        *created_at,
       );
       service.create_api_model_alias(&alias_obj, key).await?;
     }
@@ -1468,9 +1480,9 @@ mod test {
     let listed = service.list_api_model_aliases().await?;
     assert_eq!(3, listed.len());
 
-    // Verify sorted by alias
-    let sorted_aliases: Vec<_> = listed.iter().map(|a| a.alias.as_str()).collect();
-    assert_eq!(vec!["alias1", "alias2", "alias3"], sorted_aliases);
+    // Verify sorted by created_at DESC (newest first: alias3 -> alias2 -> alias1)
+    let sorted_aliases: Vec<_> = listed.iter().map(|a| a.id.as_str()).collect();
+    assert_eq!(vec!["alias3", "alias2", "alias1"], sorted_aliases);
 
     Ok(())
   }

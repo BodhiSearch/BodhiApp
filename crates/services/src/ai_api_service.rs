@@ -1,3 +1,4 @@
+use crate::db::DbService;
 use async_openai::types::CreateChatCompletionRequest;
 use async_trait::async_trait;
 use axum::response::Response;
@@ -6,8 +7,6 @@ use objs::{impl_error_from, ApiModelAlias, AppError, ErrorType, ReqwestError};
 use reqwest::Client;
 use std::sync::Arc;
 use std::time::Duration;
-
-use crate::db::DbService;
 
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const TEST_PROMPT_MAX_LENGTH: usize = 30;
@@ -76,7 +75,7 @@ pub trait AiApiService: Send + Sync + std::fmt::Debug {
   /// Forward chat completion request to remote API
   async fn forward_chat_completion(
     &self,
-    alias: &str,
+    id: &str,
     request: CreateChatCompletionRequest,
   ) -> Result<Response>;
 }
@@ -98,23 +97,23 @@ impl DefaultAiApiService {
     Self::new(client, db_service)
   }
 
-  /// Get API configuration for an alias
-  async fn get_api_config(&self, alias: &str) -> Result<(ApiModelAlias, String)> {
+  /// Get API configuration for an id
+  async fn get_api_config(&self, id: &str) -> Result<(ApiModelAlias, String)> {
     // Get the API model alias configuration
     let api_alias = self
       .db_service
-      .get_api_model_alias(alias)
+      .get_api_model_alias(id)
       .await
       .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?
-      .ok_or_else(|| AiApiServiceError::ModelNotFound(alias.to_string()))?;
+      .ok_or_else(|| AiApiServiceError::ModelNotFound(id.to_string()))?;
 
     // Get the decrypted API key
     let api_key = self
       .db_service
-      .get_api_key_for_alias(alias)
+      .get_api_key_for_alias(id)
       .await
       .map_err(|e| AiApiServiceError::ApiError(e.to_string()))?
-      .ok_or_else(|| AiApiServiceError::ApiKeyNotFound(alias.to_string()))?;
+      .ok_or_else(|| AiApiServiceError::ApiKeyNotFound(id.to_string()))?;
 
     Ok((api_alias, api_key))
   }
@@ -223,10 +222,10 @@ impl AiApiService for DefaultAiApiService {
 
   async fn forward_chat_completion(
     &self,
-    alias: &str,
+    id: &str,
     request: CreateChatCompletionRequest,
   ) -> Result<Response> {
-    let (api_config, api_key) = self.get_api_config(alias).await?;
+    let (api_config, api_key) = self.get_api_config(id).await?;
 
     let url = format!("{}/chat/completions", api_config.base_url);
 
@@ -307,7 +306,7 @@ mod tests {
   #[rstest]
   #[tokio::test]
   async fn test_test_prompt_too_long() -> anyhow::Result<()> {
-    let mut server = Server::new_async().await;
+    let server = Server::new_async().await;
     let url = server.url();
     let mock_db = MockDbService::new();
     let service = DefaultAiApiService::with_db_service(Arc::new(mock_db));

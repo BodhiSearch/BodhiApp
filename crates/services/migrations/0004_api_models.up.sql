@@ -2,7 +2,7 @@
 
 -- Create the api_model_aliases table for storing remote API configuration
 CREATE TABLE api_model_aliases (
-    alias TEXT PRIMARY KEY NOT NULL,
+    id TEXT PRIMARY KEY NOT NULL,
     provider TEXT NOT NULL,
     base_url TEXT NOT NULL,
     models_json TEXT NOT NULL,
