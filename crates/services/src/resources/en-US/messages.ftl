@@ -56,3 +56,6 @@ token_error-invalid_audience = token audience is invalid: {$var_0}
 token_error-scope_empty = user does not have any privileges on this system
 token_error-expired = token has expired
 setting_service_error-invalid_source = cannot set setting for environment as source
+encryption_error-encryption_failed = encryption failed
+encryption_error-decryption_failed = decryption failed
+encryption_error-invalid_format = invalid format: {$var_0}

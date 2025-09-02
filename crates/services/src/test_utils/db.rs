@@ -4,6 +4,7 @@ use crate::db::{
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
+use objs::ApiModelAlias;
 use rstest::fixture;
 use sqlx::SqlitePool;
 use std::{fs::File, path::Path, sync::Arc};
@@ -22,7 +23,8 @@ pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
     .unwrap();
   let time_service = FrozenTimeService::default();
   let now = time_service.utc_now();
-  let db_service = SqliteDbService::new(pool, Arc::new(time_service));
+  let encryption_key = b"test_encryption_key_1234567890123456".to_vec();
+  let db_service = SqliteDbService::new(pool, Arc::new(time_service), encryption_key);
   db_service.migrate().await.unwrap();
   TestDbService::new(temp_dir, db_service, now)
 }
@@ -223,6 +225,63 @@ impl DbService for TestDbService {
       .find_download_request_by_repo_filename(repo, filename)
       .await
       .tap(|_| self.notify("find_download_request_by_repo_filename"))
+  }
+
+  async fn create_api_model_alias(
+    &self,
+    alias: &ApiModelAlias,
+    api_key: &str,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .create_api_model_alias(alias, api_key)
+      .await
+      .tap(|_| self.notify("create_api_model_alias"))
+  }
+
+  async fn get_api_model_alias(&self, alias: &str) -> Result<Option<ApiModelAlias>, DbError> {
+    self
+      .inner
+      .get_api_model_alias(alias)
+      .await
+      .tap(|_| self.notify("get_api_model_alias"))
+  }
+
+  async fn update_api_model_alias(
+    &self,
+    alias: &str,
+    model: &ApiModelAlias,
+    api_key: Option<String>,
+  ) -> Result<(), DbError> {
+    self
+      .inner
+      .update_api_model_alias(alias, model, api_key)
+      .await
+      .tap(|_| self.notify("update_api_model_alias"))
+  }
+
+  async fn delete_api_model_alias(&self, alias: &str) -> Result<(), DbError> {
+    self
+      .inner
+      .delete_api_model_alias(alias)
+      .await
+      .tap(|_| self.notify("delete_api_model_alias"))
+  }
+
+  async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError> {
+    self
+      .inner
+      .list_api_model_aliases()
+      .await
+      .tap(|_| self.notify("list_api_model_aliases"))
+  }
+
+  async fn get_api_key_for_alias(&self, alias: &str) -> Result<Option<String>, DbError> {
+    self
+      .inner
+      .get_api_key_for_alias(alias)
+      .await
+      .tap(|_| self.notify("get_api_key_for_alias"))
   }
 
   fn now(&self) -> DateTime<Utc> {

@@ -1,5 +1,6 @@
 use crate::{
   db::{
+    encryption::{decrypt_api_key, encrypt_api_key},
     AccessRequest, ApiToken, DownloadRequest, DownloadStatus, RequestStatus, SqlxError,
     SqlxMigrateError, TokenStatus,
   },
@@ -8,6 +9,7 @@ use crate::{
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
 use objs::{impl_error_from, AppError, ErrorType};
+use objs::{AliasSource, ApiModelAlias};
 use sqlx::{query_as, SqlitePool};
 use std::{fs, path::Path, str::FromStr, sync::Arc, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -51,6 +53,9 @@ pub enum DbError {
   #[error("token_validation")]
   #[error_meta(error_type = ErrorType::BadRequest)]
   TokenValidation(String),
+  #[error("encryption_error")]
+  #[error_meta(error_type = ErrorType::InternalServer)]
+  EncryptionError(String),
 }
 
 impl_error_from!(::sqlx::Error, DbError::SqlxError, crate::db::SqlxError);
@@ -113,6 +118,27 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     filename: &str,
   ) -> Result<Vec<DownloadRequest>, DbError>;
 
+  async fn create_api_model_alias(
+    &self,
+    alias: &ApiModelAlias,
+    api_key: &str,
+  ) -> Result<(), DbError>;
+
+  async fn get_api_model_alias(&self, alias: &str) -> Result<Option<ApiModelAlias>, DbError>;
+
+  async fn update_api_model_alias(
+    &self,
+    alias: &str,
+    model: &ApiModelAlias,
+    api_key: Option<String>,
+  ) -> Result<(), DbError>;
+
+  async fn delete_api_model_alias(&self, alias: &str) -> Result<(), DbError>;
+
+  async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError>;
+
+  async fn get_api_key_for_alias(&self, alias: &str) -> Result<Option<String>, DbError>;
+
   fn now(&self) -> DateTime<Utc>;
 }
 
@@ -120,6 +146,7 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 pub struct SqliteDbService {
   pool: SqlitePool,
   time_service: Arc<dyn TimeService>,
+  encryption_key: Vec<u8>,
 }
 
 impl SqliteDbService {
@@ -697,6 +724,174 @@ impl DbService for SqliteDbService {
     Ok(items)
   }
 
+  async fn create_api_model_alias(
+    &self,
+    alias: &ApiModelAlias,
+    api_key: &str,
+  ) -> Result<(), DbError> {
+    let (encrypted_api_key, salt, nonce) = encrypt_api_key(&self.encryption_key, api_key)
+      .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+
+    let models_json = serde_json::to_string(&alias.models)
+      .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models: {}", e)))?;
+
+    sqlx::query(
+      r#"
+      INSERT INTO api_model_aliases (alias, provider, base_url, models_json, encrypted_api_key, salt, nonce, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      "#
+    )
+    .bind(&alias.alias)
+    .bind(&alias.provider)
+    .bind(&alias.base_url)
+    .bind(&models_json)
+    .bind(&encrypted_api_key)
+    .bind(&salt)
+    .bind(&nonce)
+    .bind(alias.created_at.timestamp())
+    .bind(alias.created_at.timestamp()) // updated_at = created_at initially
+    .execute(&self.pool)
+    .await?;
+
+    Ok(())
+  }
+
+  async fn get_api_model_alias(&self, alias: &str) -> Result<Option<ApiModelAlias>, DbError> {
+    let result = query_as::<_, (String, String, String, String, i64)>(
+      "SELECT alias, provider, base_url, models_json, created_at FROM api_model_aliases WHERE alias = ?"
+    )
+    .bind(alias)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    match result {
+      Some((alias, provider, base_url, models_json, created_at)) => {
+        let models: Vec<String> = serde_json::from_str(&models_json)
+          .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
+
+        let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
+
+        Ok(Some(ApiModelAlias {
+          alias,
+          source: AliasSource::RemoteApi,
+          provider,
+          base_url,
+          models,
+          created_at,
+        }))
+      }
+      None => Ok(None),
+    }
+  }
+
+  async fn update_api_model_alias(
+    &self,
+    alias: &str,
+    model: &ApiModelAlias,
+    api_key: Option<String>,
+  ) -> Result<(), DbError> {
+    let models_json = serde_json::to_string(&model.models)
+      .map_err(|e| DbError::EncryptionError(format!("Failed to serialize models: {}", e)))?;
+
+    let now = self.time_service.utc_now();
+
+    if let Some(api_key) = api_key {
+      // Update with new API key
+      let (encrypted_api_key, salt, nonce) = encrypt_api_key(&self.encryption_key, &api_key)
+        .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+
+      sqlx::query(
+        r#"
+        UPDATE api_model_aliases 
+        SET provider = ?, base_url = ?, models_json = ?, encrypted_api_key = ?, salt = ?, nonce = ?, updated_at = ?
+        WHERE alias = ?
+        "#
+      )
+      .bind(&model.provider)
+      .bind(&model.base_url)
+      .bind(&models_json)
+      .bind(&encrypted_api_key)
+      .bind(&salt)
+      .bind(&nonce)
+      .bind(now.timestamp())
+      .bind(alias)
+      .execute(&self.pool)
+      .await?;
+    } else {
+      // Update without changing API key
+      sqlx::query(
+        r#"
+        UPDATE api_model_aliases 
+        SET provider = ?, base_url = ?, models_json = ?, updated_at = ?
+        WHERE alias = ?
+        "#,
+      )
+      .bind(&model.provider)
+      .bind(&model.base_url)
+      .bind(&models_json)
+      .bind(now.timestamp())
+      .bind(alias)
+      .execute(&self.pool)
+      .await?;
+    }
+
+    Ok(())
+  }
+
+  async fn delete_api_model_alias(&self, alias: &str) -> Result<(), DbError> {
+    sqlx::query("DELETE FROM api_model_aliases WHERE alias = ?")
+      .bind(alias)
+      .execute(&self.pool)
+      .await?;
+
+    Ok(())
+  }
+
+  async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError> {
+    let results = query_as::<_, (String, String, String, String, i64)>(
+      "SELECT alias, provider, base_url, models_json, created_at FROM api_model_aliases ORDER BY alias"
+    )
+    .fetch_all(&self.pool)
+    .await?;
+
+    let mut aliases = Vec::new();
+    for (alias, provider, base_url, models_json, created_at) in results {
+      let models: Vec<String> = serde_json::from_str(&models_json)
+        .map_err(|e| DbError::EncryptionError(format!("Failed to deserialize models: {}", e)))?;
+
+      let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
+
+      aliases.push(ApiModelAlias {
+        alias,
+        source: AliasSource::RemoteApi,
+        provider,
+        base_url,
+        models,
+        created_at,
+      });
+    }
+
+    Ok(aliases)
+  }
+
+  async fn get_api_key_for_alias(&self, alias: &str) -> Result<Option<String>, DbError> {
+    let result = query_as::<_, (String, String, String)>(
+      "SELECT encrypted_api_key, salt, nonce FROM api_model_aliases WHERE alias = ?",
+    )
+    .bind(alias)
+    .fetch_optional(&self.pool)
+    .await?;
+
+    match result {
+      Some((encrypted_api_key, salt, nonce)) => {
+        let api_key = decrypt_api_key(&self.encryption_key, &encrypted_api_key, &salt, &nonce)
+          .map_err(|e| DbError::EncryptionError(e.to_string()))?;
+        Ok(Some(api_key))
+      }
+      None => Ok(None),
+    }
+  }
+
   fn now(&self) -> DateTime<Utc> {
     self.time_service.utc_now()
   }
@@ -712,6 +907,7 @@ mod test {
     test_utils::{build_token, test_db_service, TestDbService},
   };
   use chrono::Utc;
+  use objs::{AliasSource, ApiModelAlias};
   use rstest::rstest;
   use uuid::Uuid;
 
@@ -1118,6 +1314,267 @@ mod test {
       .unwrap();
     assert_eq!(updated.name, "Updated Name");
     assert_eq!(updated.user_id, user1_id);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_create_and_get_api_model_alias(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let alias_obj = ApiModelAlias::new(
+      "openai",
+      AliasSource::RemoteApi,
+      "openai",
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      now,
+    );
+    let api_key = "sk-test123456789";
+
+    // Create API model alias
+    service.create_api_model_alias(&alias_obj, api_key).await?;
+
+    // Retrieve and verify
+    let retrieved = service.get_api_model_alias("openai").await?.unwrap();
+    assert_eq!(alias_obj, retrieved);
+
+    // Verify API key is stored encrypted and retrievable
+    let decrypted_key = service.get_api_key_for_alias("openai").await?.unwrap();
+    assert_eq!(api_key, decrypted_key);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_api_model_alias_with_new_key(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let mut alias_obj = ApiModelAlias::new(
+      "claude",
+      AliasSource::RemoteApi,
+      "anthropic",
+      "https://api.anthropic.com/v1",
+      vec!["claude-3".to_string()],
+      now,
+    );
+    let original_api_key = "sk-original123";
+    let new_api_key = "sk-updated456";
+
+    // Create initial alias
+    service
+      .create_api_model_alias(&alias_obj, original_api_key)
+      .await?;
+
+    // Update with new API key and additional model
+    alias_obj.models.push("claude-3.5".to_string());
+    service
+      .update_api_model_alias("claude", &alias_obj, Some(new_api_key.to_string()))
+      .await?;
+
+    // Verify updated data
+    let updated = service.get_api_model_alias("claude").await?.unwrap();
+    assert_eq!(alias_obj, updated);
+
+    // Verify new API key
+    let updated_key = service.get_api_key_for_alias("claude").await?.unwrap();
+    assert_eq!(new_api_key, updated_key);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_update_api_model_alias_without_key_change(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let mut alias_obj = ApiModelAlias::new(
+      "gemini",
+      AliasSource::RemoteApi,
+      "google",
+      "https://generativelanguage.googleapis.com/v1",
+      vec!["gemini-pro".to_string()],
+      now,
+    );
+    let api_key = "AIzaSy-test123";
+
+    // Create initial alias
+    service.create_api_model_alias(&alias_obj, api_key).await?;
+
+    // Update without changing API key
+    alias_obj.base_url = "https://generativelanguage.googleapis.com/v1beta".to_string();
+    service
+      .update_api_model_alias("gemini", &alias_obj, None)
+      .await?;
+
+    // Verify API key unchanged
+    let retrieved_key = service.get_api_key_for_alias("gemini").await?.unwrap();
+    assert_eq!(api_key, retrieved_key);
+
+    // Verify other fields updated
+    let updated = service.get_api_model_alias("gemini").await?.unwrap();
+    assert_eq!(
+      "https://generativelanguage.googleapis.com/v1beta",
+      updated.base_url
+    );
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_list_api_model_aliases(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+
+    // Create multiple aliases
+    let aliases = vec![
+      ("alias1", "provider1", "key1"),
+      ("alias2", "provider2", "key2"),
+      ("alias3", "provider3", "key3"),
+    ];
+
+    for (alias, provider, key) in &aliases {
+      let alias_obj = ApiModelAlias::new(
+        *alias,
+        AliasSource::RemoteApi,
+        *provider,
+        "https://api.example.com/v1",
+        vec!["model1".to_string()],
+        now,
+      );
+      service.create_api_model_alias(&alias_obj, key).await?;
+    }
+
+    // List and verify
+    let listed = service.list_api_model_aliases().await?;
+    assert_eq!(3, listed.len());
+
+    // Verify sorted by alias
+    let sorted_aliases: Vec<_> = listed.iter().map(|a| a.alias.as_str()).collect();
+    assert_eq!(vec!["alias1", "alias2", "alias3"], sorted_aliases);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_delete_api_model_alias(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let alias_obj = ApiModelAlias::new(
+      "to-delete",
+      AliasSource::RemoteApi,
+      "test-provider",
+      "https://api.test.com/v1",
+      vec!["test-model".to_string()],
+      now,
+    );
+
+    // Create and verify exists
+    service
+      .create_api_model_alias(&alias_obj, "test-key")
+      .await?;
+    assert!(service.get_api_model_alias("to-delete").await?.is_some());
+
+    // Delete and verify gone
+    service.delete_api_model_alias("to-delete").await?;
+    assert!(service.get_api_model_alias("to-delete").await?.is_none());
+    assert!(service.get_api_key_for_alias("to-delete").await?.is_none());
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_api_key_encryption_security(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let now = service.now();
+    let alias_obj = ApiModelAlias::new(
+      "security-test",
+      AliasSource::RemoteApi,
+      "secure-provider",
+      "https://api.secure.com/v1",
+      vec!["secure-model".to_string()],
+      now,
+    );
+    let sensitive_key = "sk-very-secret-key-12345";
+
+    // Store API key
+    service
+      .create_api_model_alias(&alias_obj, sensitive_key)
+      .await?;
+
+    // Verify different encryptions produce different results
+    let alias_obj2 = ApiModelAlias::new(
+      "security-test2",
+      AliasSource::RemoteApi,
+      "secure-provider",
+      "https://api.secure.com/v1",
+      vec!["secure-model".to_string()],
+      now,
+    );
+    service
+      .create_api_model_alias(&alias_obj2, sensitive_key)
+      .await?;
+
+    // Both should decrypt to same key but have different encrypted values in DB
+    let key1 = service
+      .get_api_key_for_alias("security-test")
+      .await?
+      .unwrap();
+    let key2 = service
+      .get_api_key_for_alias("security-test2")
+      .await?
+      .unwrap();
+
+    assert_eq!(sensitive_key, key1);
+    assert_eq!(sensitive_key, key2);
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[awt]
+  #[tokio::test]
+  async fn test_get_nonexistent_api_model_alias(
+    #[future]
+    #[from(test_db_service)]
+    service: TestDbService,
+  ) -> anyhow::Result<()> {
+    // Test getting non-existent alias
+    let result = service.get_api_model_alias("nonexistent").await?;
+    assert!(result.is_none());
+
+    // Test getting API key for non-existent alias
+    let key = service.get_api_key_for_alias("nonexistent").await?;
+    assert!(key.is_none());
 
     Ok(())
   }
