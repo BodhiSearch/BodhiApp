@@ -1,8 +1,12 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasBuilder, AliasSource, HubFile, HubFileBuilder,
-  OAIRequestParams, OAIRequestParamsBuilder, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
+  test_utils::SNAPSHOT, Alias, AliasSource, HubFile, HubFileBuilder, OAIRequestParams,
+  OAIRequestParamsBuilder, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
+use derive_builder::Builder;
 use std::{path::PathBuf, str::FromStr};
+
+// Type alias for backward compatibility
+pub type AliasBuilder = crate::AliasBuilder;
 
 // Chat template related code removed since llama.cpp now handles this
 

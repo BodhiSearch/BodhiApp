@@ -3,13 +3,13 @@
 ## Layer 1: Domain Objects Foundation
 **Goal: Establish core data structures**
 
-### Task 1.1: Restructure Alias System
-- Rename `Alias` to `LocalModelAlias` in `crates/objs/src/alias.rs`
-- Create new `Alias` enum with variants `User`, `Model`, `Api`
+### Task 1.1: Create ModelAlias System
+- Keep existing `Alias` struct unchanged in `crates/objs/src/alias.rs`
+- Create new `ModelAlias` enum in `crates/objs/src/model_alias.rs` with flat variants `User`, `Model`, `Api`
 - Add `RemoteApi` variant to `AliasSource` enum
-- Implement `can_serve(&self, model: &str) -> bool` method
-- Update all serialization/deserialization
-- **Test:** Unit tests for enum variants and serialization
+- Implement `can_serve(&self, model: &str) -> bool` method on `ModelAlias`
+- Update serialization/deserialization for new enum
+- **Test:** Unit tests for all three variants and serialization
 
 ### Task 1.2: Create ApiModelAlias
 - Create `crates/objs/src/api_model_alias.rs`

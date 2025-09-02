@@ -9,6 +9,7 @@ errmeta_derive = { workspace = true }
 axum = { workspace = true, features = ["json"] }
 async-openai = { workspace = true }
 byteorder = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["derive"] }
 derive_builder = { workspace = true }
 dircpy = { workspace = true, optional = true }
