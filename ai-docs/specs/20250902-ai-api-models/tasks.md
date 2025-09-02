@@ -1,60 +1,60 @@
 # Remote AI API Integration - Task Breakdown
 
-## Layer 1: Domain Objects Foundation
+## Layer 1: Domain Objects Foundation ✅ **COMPLETED**
 **Goal: Establish core data structures**
 
-### Task 1.1: Create ModelAlias System
-- Keep existing `Alias` struct unchanged in `crates/objs/src/alias.rs`
-- Create new `ModelAlias` enum in `crates/objs/src/model_alias.rs` with flat variants `User`, `Model`, `Api`
-- Add `RemoteApi` variant to `AliasSource` enum
-- Implement `can_serve(&self, model: &str) -> bool` method on `ModelAlias`
-- Update serialization/deserialization for new enum
-- **Test:** Unit tests for all three variants and serialization
+### Task 1.1: Create ModelAlias System ✅ **COMPLETED**
+- ✅ Keep existing `Alias` struct unchanged in `crates/objs/src/alias.rs`
+- ✅ Create new `ModelAlias` enum in `crates/objs/src/model_alias.rs` with flat variants `User`, `Model`, `Api`
+- ✅ Add `RemoteApi` variant to `AliasSource` enum
+- ✅ Implement `can_serve(&self, model: &str) -> bool` method on `ModelAlias`
+- ✅ Update serialization/deserialization for new enum
+- ✅ **Test:** Unit tests for all three variants and serialization
 
-### Task 1.2: Create ApiModelAlias
-- Create `crates/objs/src/api_model_alias.rs`
-- Define `ApiModelAlias` struct with all fields
-- Implement required traits (Debug, Clone, Serialize, Deserialize)
-- **Test:** Unit tests for struct creation and serialization
+### Task 1.2: Create ApiModelAlias ✅ **COMPLETED**
+- ✅ Create `crates/objs/src/api_model_alias.rs`
+- ✅ Define `ApiModelAlias` struct with all fields
+- ✅ Implement required traits (Debug, Clone, Serialize, Deserialize)
+- ✅ **Test:** Unit tests for struct creation and serialization
 
-## Layer 2: Database Layer
+## Layer 2: Database Layer ✅ **COMPLETED**
 **Goal: Persistent storage with encryption**
 
-### Task 2.1: Database Migration
-- Create migration `0004_api_models.up.sql` and `.down.sql`
-- Define table schema with `alias` as primary key
-- Add indexes for performance
-- **Test:** Migration up/down testing
+### Task 2.1: Database Migration ✅ **COMPLETED**
+- ✅ Create migration `0004_api_models.up.sql` and `.down.sql`
+- ✅ Define table schema with `alias` as primary key
+- ✅ Add indexes for performance
+- ✅ **Test:** Migration up/down testing
 
-### Task 2.2: Database Encryption Service
-- Create `crates/services/src/db/encryption.rs` as private module
-- Implement AES-GCM encryption with PBKDF2 key derivation
-- Add salt generation and key masking utilities
-- **Test:** Encryption/decryption round-trip tests with different salts
+### Task 2.2: Database Encryption Service ✅ **COMPLETED**
+- ✅ Create `crates/services/src/db/encryption.rs` as private module
+- ✅ Implement AES-GCM encryption with PBKDF2 key derivation
+- ✅ Add salt generation and key masking utilities
+- ✅ **Test:** Encryption/decryption round-trip tests with different salts
 
-### Task 2.3: Database Service Extension
-- Extend `DbService` with API model methods
-- Integrate private encryption service
-- Implement CRUD operations for API models
-- **Test:** Database operations with mock encryption service
+### Task 2.3: Database Service Extension ✅ **COMPLETED**
+- ✅ Extend `DbService` with API model methods
+- ✅ Integrate private encryption service
+- ✅ Implement CRUD operations for API models
+- ✅ **Test:** Database operations with mock encryption service
 
-## Layer 3: Business Services
+## Layer 3: Business Services 
 **Goal: External API integration**
 
-### Task 3.1: AI API Service
-- Create `crates/services/src/ai_api_service.rs`
-- Implement OpenAI API client with reqwest
-- Add test prompt functionality (30 char limit)
-- Add model fetching from OpenAI API
-- Add chat completion forwarding
-- **Test:** Mock HTTP client tests for all operations
+### Task 3.1: AI API Service ✅ **COMPLETED**
+- ✅ Create `crates/services/src/ai_api_service.rs`
+- ✅ Implement OpenAI API client with reqwest
+- ✅ Add test prompt functionality (30 char limit)
+- ✅ Add model fetching from OpenAI API
+- ✅ Add chat completion forwarding
+- ✅ **Test:** Mock HTTP client tests for all operations
 
-### Task 3.2: Routing Service
-- Create `crates/server_core/src/model_router.rs`
-- Implement model resolution logic
-- Handle conflict resolution (API models first, then local)
-- Coordinate with DataService and DbService
-- **Test:** Router decision logic with various scenarios
+### Task 3.2: Model Router Service 🔄 **IN PROGRESS**
+- 🔄 Create `crates/server_core/src/model_router.rs`
+- 🔄 Implement model resolution logic
+- **⚠️ UPDATED REQUIREMENT**: Handle conflict resolution with **CORRECTED ORDER**: user alias → model → api models (NOT api models first)
+- 🔄 Coordinate with DataService and DbService
+- 🔄 **Test:** Router decision logic with various scenarios
 
 ## Layer 4: HTTP Routes
 **Goal: API endpoints for management**

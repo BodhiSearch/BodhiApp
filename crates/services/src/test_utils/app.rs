@@ -1,9 +1,9 @@
 use crate::{
   db::{DbService, TimeService},
   test_utils::{test_db_service, SecretServiceStub, SettingServiceStub, TestDbService},
-  AppRegInfoBuilder, AppService, AuthService, CacheService, DataService, HfHubService, HubService,
-  LocalDataService, MockAuthService, MockHubService, MokaCacheService, SecretService,
-  SessionService, SettingService, SqliteSessionService,
+  AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, DataService,
+  HfHubService, HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService,
+  SecretService, SessionService, SettingService, SqliteSessionService,
 };
 use derive_builder::Builder;
 use objs::test_utils::{build_temp_dir, copy_test_dir, temp_dir};
@@ -242,5 +242,9 @@ impl AppService for AppServiceStub {
 
   fn time_service(&self) -> Arc<dyn TimeService> {
     self.time_service.clone().unwrap()
+  }
+
+  fn ai_api_service(&self) -> Arc<dyn AiApiService> {
+    panic!("ai_api_service not implemented in test stub")
   }
 }

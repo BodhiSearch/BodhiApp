@@ -13,6 +13,8 @@ errmeta_derive = { workspace = true }
 llama_server_proc = { workspace = true }
 
 aes-gcm = { workspace = true }
+async-openai = { workspace = true }
+axum = { workspace = true }
 anyhow = { workspace = true, optional = true }
 base64 = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
