@@ -27,7 +27,7 @@ impl ModelAlias {
   pub fn alias_name(&self) -> &str {
     match self {
       ModelAlias::User(alias) | ModelAlias::Model(alias) => &alias.alias,
-      ModelAlias::Api(api_alias) => &api_alias.alias,
+      ModelAlias::Api(api_alias) => &api_alias.id,
     }
   }
 }

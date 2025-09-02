@@ -268,6 +268,464 @@
         ]
       }
     },
+    "/bodhi/v1/api-models": {
+      "get": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "List all API model configurations",
+        "operationId": "listApiModels",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number (1-based)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "description": "Number of items per page (max 100)",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "required": false,
+            "schema": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          {
+            "name": "sort_order",
+            "in": "query",
+            "description": "Sort order (asc or desc)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of API models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedApiModelResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Create a new API model configuration",
+        "operationId": "createApiModel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateApiModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "API model created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiModelResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Alias already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/api-models/fetch-models": {
+      "post": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Fetch available models from the API provider",
+        "operationId": "fetchApiModels",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FetchModelsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Available models",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FetchModelsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/api-models/test": {
+      "post": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Test API connectivity with a prompt",
+        "operationId": "testApiModel",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TestPromptRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Test result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestPromptResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/api-models/{alias}": {
+      "put": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Update an existing API model configuration",
+        "operationId": "updateApiModel",
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "description": "API model alias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateApiModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "API model updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiModelResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Delete an API model configuration",
+        "operationId": "deleteApiModel",
+        "parameters": [
+          {
+            "name": "alias",
+            "in": "path",
+            "description": "API model alias",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "API model deleted"
+          },
+          "404": {
+            "description": "API model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
+    "/bodhi/v1/api-models/{id}": {
+      "get": {
+        "tags": [
+          "api-models"
+        ],
+        "summary": "Get a specific API model configuration",
+        "operationId": "getApiModel",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "API model ID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "API model configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiModelResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "API model not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIApiError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer_auth": []
+          },
+          {
+            "session_auth": []
+          }
+        ]
+      }
+    },
     "/bodhi/v1/auth/callback": {
       "post": {
         "tags": [
@@ -968,8 +1426,8 @@
         "tags": [
           "models"
         ],
-        "summary": "List configured model aliases",
-        "operationId": "listModelAliases",
+        "summary": "List all model aliases (both local aliases and API models)",
+        "operationId": "listAllModels",
         "parameters": [
           {
             "name": "page",
@@ -1015,33 +1473,48 @@
         ],
         "responses": {
           "200": {
-            "description": "List of configured model aliases",
+            "description": "List of all configured models (local aliases and API models)",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedAliasResponse"
+                  "$ref": "#/components/schemas/PaginatedUnifiedModelResponse"
                 },
                 "example": {
                   "data": [
                     {
                       "alias": "llama2:chat",
-                      "chat_template": "llama2",
-                      "context_params": {
-                        "max_tokens": 4096
-                      },
+                      "context_params": [
+                        "--ctx_size",
+                        "4096"
+                      ],
                       "filename": "llama-2-7b-chat.Q4_K_M.gguf",
                       "model_params": {},
+                      "model_type": "local",
                       "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
                       "request_params": {
                         "temperature": 0.7,
                         "top_p": 0.95
                       },
-                      "source": "huggingface"
+                      "snapshot": "abc123",
+                      "source": "user"
+                    },
+                    {
+                      "alias": "openai-gpt4",
+                      "api_key_masked": "sk-...abc123",
+                      "base_url": "https://api.openai.com/v1",
+                      "created_at": "2024-01-01T00:00:00Z",
+                      "model_type": "api",
+                      "models": [
+                        "gpt-4",
+                        "gpt-3.5-turbo"
+                      ],
+                      "provider": "openai",
+                      "updated_at": "2024-01-01T00:00:00Z"
                     }
                   ],
                   "page": 1,
                   "page_size": 10,
-                  "total": 1
+                  "total": 2
                 }
               }
             }
@@ -2324,6 +2797,59 @@
           }
         }
       },
+      "ApiModelResponse": {
+        "type": "object",
+        "description": "Response containing API model configuration",
+        "required": [
+          "id",
+          "provider",
+          "base_url",
+          "api_key_masked",
+          "models",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "api_key_masked": {
+            "type": "string"
+          },
+          "base_url": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provider": {
+            "type": "string"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "example": {
+          "api_key_masked": "sk-...abc123",
+          "base_url": "https://api.openai.com/v1",
+          "created_at": "2024-01-01T00:00:00Z",
+          "id": "openai-gpt4",
+          "models": [
+            "gpt-4",
+            "gpt-3.5-turbo"
+          ],
+          "provider": "openai",
+          "updated_at": "2024-01-01T00:00:00Z"
+        }
+      },
       "ApiToken": {
         "type": "object",
         "required": [
@@ -2542,6 +3068,52 @@
           }
         }
       },
+      "CreateApiModelRequest": {
+        "type": "object",
+        "description": "Request to create a new API model configuration",
+        "required": [
+          "id",
+          "provider",
+          "base_url",
+          "api_key",
+          "models"
+        ],
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "description": "API key for authentication"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "API base URL"
+          },
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this API configuration"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of available models"
+          },
+          "provider": {
+            "type": "string",
+            "description": "Provider name (e.g., \"openai\", \"anthropic\")"
+          }
+        },
+        "example": {
+          "api_key": "sk-...",
+          "base_url": "https://api.openai.com/v1",
+          "id": "openai-gpt4",
+          "models": [
+            "gpt-4",
+            "gpt-3.5-turbo"
+          ],
+          "provider": "openai"
+        }
+      },
       "CreateApiTokenRequest": {
         "type": "object",
         "description": "Request to create a new API token",
@@ -2654,6 +3226,50 @@
           "type": {
             "type": "string"
           }
+        }
+      },
+      "FetchModelsRequest": {
+        "type": "object",
+        "description": "Request to fetch available models from provider",
+        "required": [
+          "api_key",
+          "base_url"
+        ],
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "description": "API key for authentication"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "API base URL"
+          }
+        },
+        "example": {
+          "api_key": "sk-...",
+          "base_url": "https://api.openai.com/v1"
+        }
+      },
+      "FetchModelsResponse": {
+        "type": "object",
+        "description": "Response containing available models from provider",
+        "required": [
+          "models"
+        ],
+        "properties": {
+          "models": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "example": {
+          "models": [
+            "gpt-4",
+            "gpt-3.5-turbo",
+            "gpt-4-turbo"
+          ]
         }
       },
       "ListModelResponse": {
@@ -3208,6 +3824,36 @@
           }
         }
       },
+      "PaginatedApiModelResponse": {
+        "type": "object",
+        "description": "Paginated response for API model listings",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiModelResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
       "PaginatedApiTokenResponse": {
         "type": "object",
         "required": [
@@ -3279,6 +3925,35 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/LocalModelResponse"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "PaginatedUnifiedModelResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "total",
+          "page",
+          "page_size"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UnifiedModelResponse"
             }
           },
           "page": {
@@ -3557,6 +4232,69 @@
           }
         }
       },
+      "TestPromptRequest": {
+        "type": "object",
+        "description": "Request to test API connectivity with a prompt",
+        "required": [
+          "api_key",
+          "base_url",
+          "model",
+          "prompt"
+        ],
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "description": "API key for authentication"
+          },
+          "base_url": {
+            "type": "string",
+            "description": "API base URL"
+          },
+          "model": {
+            "type": "string",
+            "description": "Model to use for testing"
+          },
+          "prompt": {
+            "type": "string",
+            "description": "Test prompt (max 30 characters for cost control)"
+          }
+        },
+        "example": {
+          "api_key": "sk-...",
+          "base_url": "https://api.openai.com/v1",
+          "model": "gpt-4",
+          "prompt": "Hello, how are you?"
+        }
+      },
+      "TestPromptResponse": {
+        "type": "object",
+        "description": "Response from testing API connectivity",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "response": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "example": {
+          "error": null,
+          "response": "Hello! I'm doing well, thank you.",
+          "success": true
+        }
+      },
       "TokenStatus": {
         "type": "string",
         "enum": [
@@ -3571,6 +4309,111 @@
           "session",
           "bearer"
         ]
+      },
+      "UnifiedModelResponse": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "alias",
+              "repo",
+              "filename",
+              "snapshot",
+              "source",
+              "model_params",
+              "request_params",
+              "context_params",
+              "model_type"
+            ],
+            "properties": {
+              "alias": {
+                "type": "string"
+              },
+              "context_params": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "filename": {
+                "type": "string"
+              },
+              "model_params": {
+                "type": "object",
+                "additionalProperties": {},
+                "propertyNames": {
+                  "type": "string"
+                }
+              },
+              "model_type": {
+                "type": "string",
+                "enum": [
+                  "local"
+                ]
+              },
+              "repo": {
+                "type": "string"
+              },
+              "request_params": {
+                "$ref": "#/components/schemas/OAIRequestParams"
+              },
+              "snapshot": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "provider",
+              "base_url",
+              "api_key_masked",
+              "models",
+              "created_at",
+              "updated_at",
+              "model_type"
+            ],
+            "properties": {
+              "api_key_masked": {
+                "type": "string"
+              },
+              "base_url": {
+                "type": "string"
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "id": {
+                "type": "string"
+              },
+              "model_type": {
+                "type": "string",
+                "enum": [
+                  "api"
+                ]
+              },
+              "models": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "provider": {
+                "type": "string"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        ],
+        "description": "Unified model response that can represent both local aliases and API models"
       },
       "UpdateAliasRequest": {
         "type": "object",
@@ -3610,6 +4453,52 @@
               "null"
             ]
           }
+        }
+      },
+      "UpdateApiModelRequest": {
+        "type": "object",
+        "description": "Request to update an existing API model configuration",
+        "properties": {
+          "api_key": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "API key for authentication (optional, only update if provided)"
+          },
+          "base_url": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "API base URL (optional)"
+          },
+          "models": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "List of available models (optional)"
+          },
+          "provider": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Provider name (optional)"
+          }
+        },
+        "example": {
+          "api_key": "sk-new-key",
+          "base_url": "https://api.openai.com/v1",
+          "models": [
+            "gpt-4-turbo",
+            "gpt-3.5-turbo"
+          ],
+          "provider": "openai"
         }
       },
       "UpdateApiTokenRequest": {
@@ -3726,6 +4615,10 @@
     {
       "name": "models",
       "description": "Model files and aliases"
+    },
+    {
+      "name": "api-models",
+      "description": "Remote AI API model configuration"
     },
     {
       "name": "openai",

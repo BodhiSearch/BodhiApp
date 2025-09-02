@@ -1,3 +1,4 @@
+use crate::api_models_dto::ApiModelResponse;
 use objs::{Alias, HubFile, OAIRequestParams};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -174,6 +175,83 @@ impl From<Alias> for AliasResponse {
       model_params: HashMap::new(),
       request_params: alias.request_params,
       context_params: alias.context_params,
+    }
+  }
+}
+
+/// Unified model response that can represent both local aliases and API models
+#[derive(Serialize, Deserialize, Debug, PartialEq, ToSchema)]
+#[serde(tag = "model_type")]
+pub enum UnifiedModelResponse {
+  #[serde(rename = "local")]
+  Local {
+    alias: String,
+    repo: String,
+    filename: String,
+    snapshot: String,
+    source: String,
+    model_params: HashMap<String, Value>,
+    request_params: OAIRequestParams,
+    context_params: Vec<String>,
+  },
+  #[serde(rename = "api")]
+  Api {
+    id: String,
+    provider: String,
+    base_url: String,
+    api_key_masked: String,
+    models: Vec<String>,
+    #[schema(value_type = String, format = "date-time")]
+    created_at: chrono::DateTime<chrono::Utc>,
+    #[schema(value_type = String, format = "date-time")]
+    updated_at: chrono::DateTime<chrono::Utc>,
+  },
+}
+
+impl From<AliasResponse> for UnifiedModelResponse {
+  fn from(alias: AliasResponse) -> Self {
+    UnifiedModelResponse::Local {
+      alias: alias.alias,
+      repo: alias.repo,
+      filename: alias.filename,
+      snapshot: alias.snapshot,
+      source: alias.source,
+      model_params: alias.model_params,
+      request_params: alias.request_params,
+      context_params: alias.context_params,
+    }
+  }
+}
+
+impl From<ApiModelResponse> for UnifiedModelResponse {
+  fn from(api_model: ApiModelResponse) -> Self {
+    UnifiedModelResponse::Api {
+      id: api_model.id,
+      provider: api_model.provider,
+      base_url: api_model.base_url,
+      api_key_masked: api_model.api_key_masked,
+      models: api_model.models,
+      created_at: api_model.created_at,
+      updated_at: api_model.updated_at,
+    }
+  }
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
+pub struct PaginatedUnifiedModelResponse {
+  pub data: Vec<UnifiedModelResponse>,
+  pub total: usize,
+  pub page: usize,
+  pub page_size: usize,
+}
+
+impl From<PaginatedResponse<UnifiedModelResponse>> for PaginatedUnifiedModelResponse {
+  fn from(paginated: PaginatedResponse<UnifiedModelResponse>) -> Self {
+    PaginatedUnifiedModelResponse {
+      data: paginated.data,
+      total: paginated.total,
+      page: paginated.page,
+      page_size: paginated.page_size,
     }
   }
 }

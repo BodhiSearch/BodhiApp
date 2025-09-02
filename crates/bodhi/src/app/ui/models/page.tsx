@@ -1,13 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
-import { AliasResponse } from '@bodhiapp/ts-client';
+import {
+  AliasResponse,
+  ApiModelResponse,
+  UnifiedModelResponse,
+  PaginatedUnifiedModelResponse,
+} from '@bodhiapp/ts-client';
 import { SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
-import { Pencil, MessageSquare, ExternalLink, FilePlus2, Plus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Pencil, MessageSquare, ExternalLink, FilePlus2, Plus, Cloud, Globe } from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
@@ -24,7 +30,7 @@ const columns = [
   },
   {
     id: 'repo_filename',
-    name: 'Repository',
+    name: 'Provider/Repository',
     sorted: true,
     className: 'hidden sm:table-cell lg:hidden',
   },
@@ -34,25 +40,34 @@ const columns = [
     sorted: true,
     className: 'hidden lg:table-cell',
   },
-  { id: 'repo', name: 'Repo', sorted: true, className: 'hidden lg:table-cell' },
+  { id: 'repo', name: 'Provider/Repo', sorted: true, className: 'hidden lg:table-cell' },
   {
     id: 'filename',
-    name: 'Filename',
+    name: 'File/Endpoint',
     sorted: true,
     className: 'hidden lg:table-cell',
   },
   {
     id: 'source',
-    name: 'Source',
+    name: 'Type',
     sorted: true,
     className: 'hidden lg:table-cell',
   },
   { id: 'actions', name: '', sorted: false, className: 'hidden sm:table-cell' },
 ];
 
-const SourceBadge = ({ source }: { source: string | undefined }) => {
-  const colorClass = source === 'model' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500';
+const SourceBadge = ({ model }: { model: UnifiedModelResponse }) => {
+  if (model.model_type === 'api') {
+    return (
+      <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-200">
+        <Cloud className="h-3 w-3 mr-1" />
+        API
+      </Badge>
+    );
+  }
 
+  const source = model.source;
+  const colorClass = source === 'model' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500';
   return (
     <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium w-fit ${colorClass}`}>
       {source || ''}
@@ -69,6 +84,7 @@ function ModelsPageContent() {
     direction: 'asc',
   });
 
+  // Backend will provide combined data including API models, User aliases, and Model File aliases
   const { data, isLoading, error } = useModels(page, pageSize, sort.column, sort.direction);
 
   const toggleSort = (column: string) => {
@@ -79,88 +95,187 @@ function ModelsPageContent() {
     setPage(1); // Reset to first page when sorting
   };
 
-  const getItemId = (model: AliasResponse) => model.alias;
+  const getItemId = (model: UnifiedModelResponse) => {
+    return model.model_type === 'api' ? `api_${model.id}` : model.alias;
+  };
 
-  const handleEdit = (alias: string) => {
-    router.push(`/ui/models/edit?alias=${alias}`);
+  const handleEdit = (model: UnifiedModelResponse) => {
+    if (model.model_type === 'api') {
+      router.push(`/ui/api-models/edit?id=${model.id}`);
+    } else {
+      router.push(`/ui/models/edit?alias=${model.alias}`);
+    }
   };
-  const handleNew = (model: AliasResponse) => {
-    router.push(`/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
+
+  const handleNew = (model: UnifiedModelResponse) => {
+    if (model.model_type === 'local') {
+      router.push(`/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
+    }
   };
-  const handleChat = (model: AliasResponse) => {
-    router.push(`/ui/chat?alias=${model.alias}`);
+
+  const handleChat = (model: UnifiedModelResponse) => {
+    const modelIdentifier = model.model_type === 'api' ? model.id : model.alias;
+    router.push(`/ui/chat?model=${modelIdentifier}`);
   };
+
   const getHuggingFaceFileUrl = (repo: string, filename: string) => {
     return `https://huggingface.co/${repo}/blob/main/${filename}`;
   };
-  const actionUi = (model: AliasResponse) => {
-    const actions =
-      model.source === 'model' ? (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleNew(model)}
-          title={`Create new model alias using this modelfile`}
-          className="h-8 w-8 p-0"
-        >
-          <FilePlus2 className="h-4 w-4" />
-        </Button>
-      ) : (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleEdit(model.alias)}
-          title={`Edit ${model.alias}`}
-          className="h-8 w-8 p-0"
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
+
+  const getExternalUrl = (model: UnifiedModelResponse) => {
+    if (model.model_type === 'api') {
+      return model.base_url;
+    } else {
+      return getHuggingFaceFileUrl(model.repo, model.filename);
+    }
+  };
+
+  const actionUi = (model: UnifiedModelResponse) => {
+    if (model.model_type === 'api') {
+      // API model actions
+      return (
+        <div className="flex flex-nowrap items-center gap-1 md:gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(model)}
+            title={`Edit API model ${model.id}`}
+            className="h-8 w-8 p-0"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleChat(model)}
+            title={`Chat with the model in playground`}
+            className="h-8 w-8 p-0"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </Button>
+          {/* Models as clickable links are now in the models column */}
+          {model.models
+            .map((modelName, index) => (
+              <Button
+                key={`${model.id}-${modelName}`}
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => window.open(getExternalUrl(model), '_blank')}
+                title={`Open ${modelName} in ${model.provider}`}
+              >
+                {modelName}
+              </Button>
+            ))
+            .slice(0, 2)}{' '}
+          {/* Show only first 2 models */}
+          {model.models.length > 2 && (
+            <span className="text-xs text-muted-foreground">+{model.models.length - 2} more</span>
+          )}
+        </div>
       );
-    return (
-      <div className="flex flex-nowrap items-center gap-1 md:gap-2">
-        {actions}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleChat(model)}
-          title={`Chat with the model in playground`}
-          className="h-8 w-8 p-0"
-        >
-          <MessageSquare className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-8 w-8 p-0"
-          onClick={() => window.open(getHuggingFaceFileUrl(model.repo, model.filename), '_blank')}
-          title="Open in HuggingFace"
-        >
-          <ExternalLink className="h-4 w-4" />
-        </Button>
-      </div>
-    );
+    } else {
+      // Regular model actions
+      const actions =
+        model.source === 'model' ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNew(model)}
+            title={`Create new model alias using this modelfile`}
+            className="h-8 w-8 p-0"
+          >
+            <FilePlus2 className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(model)}
+            title={`Edit ${model.alias}`}
+            className="h-8 w-8 p-0"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        );
+      return (
+        <div className="flex flex-nowrap items-center gap-1 md:gap-2">
+          {actions}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleChat(model)}
+            title={`Chat with the model in playground`}
+            className="h-8 w-8 p-0"
+          >
+            <MessageSquare className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => window.open(getExternalUrl(model), '_blank')}
+            title="Open in HuggingFace"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </div>
+      );
+    }
   };
 
   const handleNewAlias = () => {
     router.push('/ui/models/new');
   };
 
-  const renderRow = (model: AliasResponse) => [
+  const handleNewApiModel = () => {
+    router.push('/ui/api-models/new');
+  };
+
+  // Helper functions to get display values for different model types
+  const getModelDisplayName = (model: UnifiedModelResponse): string => {
+    if (model.model_type === 'api') {
+      return model.models.join(', ');
+    } else {
+      return model.alias;
+    }
+  };
+
+  const getModelDisplayRepo = (model: UnifiedModelResponse): string => {
+    if (model.model_type === 'api') {
+      return model.provider;
+    } else {
+      return model.repo;
+    }
+  };
+
+  const getModelDisplayFilename = (model: UnifiedModelResponse): string => {
+    if (model.model_type === 'api') {
+      return model.base_url;
+    } else {
+      return model.filename;
+    }
+  };
+
+  const renderRow = (model: UnifiedModelResponse) => [
     // Mobile view (single column with all items stacked)
     <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
       <div className="flex flex-col gap-2">
-        {/* Name */}
-        <CopyableContent text={model.alias} className="font-medium" />
+        {/* Name - for API models, show list of models */}
+        <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} className="font-medium" />
+        {model.model_type === 'api' && (
+          <div className="text-xs text-muted-foreground">Models: {model.models.join(', ')}</div>
+        )}
 
-        {/* Repo */}
-        <CopyableContent text={model.repo} className="text-sm" />
+        {/* Repo/Provider */}
+        <CopyableContent text={getModelDisplayRepo(model)} className="text-sm" />
 
-        {/* Filename */}
-        <CopyableContent text={model.filename} className="text-xs text-muted-foreground" />
+        {/* Filename/Base URL */}
+        <CopyableContent text={getModelDisplayFilename(model)} className="text-xs text-muted-foreground" />
 
-        {/* Source */}
+        {/* Source/Type */}
         <div className="w-fit">
-          <SourceBadge source={model.source} />
+          <SourceBadge model={model} />
         </div>
 
         {/* Actions */}
@@ -174,9 +289,15 @@ function ModelsPageContent() {
       data-testid="name-source-cell"
     >
       <div className="flex flex-col gap-1">
-        <CopyableContent text={model.alias} className="font-medium" />
+        <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} className="font-medium" />
+        {model.model_type === 'api' && (
+          <div className="text-xs text-muted-foreground truncate">
+            {model.models.slice(0, 2).join(', ')}
+            {model.models.length > 2 ? '...' : ''}
+          </div>
+        )}
         <div className="w-fit">
-          <SourceBadge source={model.source} />
+          <SourceBadge model={model} />
         </div>
       </div>
     </TableCell>,
@@ -187,23 +308,31 @@ function ModelsPageContent() {
       data-testid="repo-filename-cell"
     >
       <div className="flex flex-col gap-1">
-        <CopyableContent text={model.repo} className="text-sm" />
-        <CopyableContent text={model.filename} className="text-xs text-muted-foreground" />
+        <CopyableContent text={getModelDisplayRepo(model)} className="text-sm" />
+        <CopyableContent text={getModelDisplayFilename(model)} className="text-xs text-muted-foreground truncate" />
       </div>
     </TableCell>,
     // Desktop view (separate columns)
-    <TableCell key="alias" className="max-w-[250px] truncate hidden lg:table-cell" data-testid="alias-cell">
-      <CopyableContent text={model.alias} />
+    <TableCell key="alias" className="max-w-[250px] hidden lg:table-cell" data-testid="alias-cell">
+      <div className="flex flex-col gap-1">
+        <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} />
+        {model.model_type === 'api' && (
+          <div className="text-xs text-muted-foreground">
+            {model.models.slice(0, 3).join(', ')}
+            {model.models.length > 3 ? '...' : ''}
+          </div>
+        )}
+      </div>
     </TableCell>,
     <TableCell key="repo" className="max-w-[200px] truncate hidden lg:table-cell" data-testid="repo-cell">
-      <CopyableContent text={model.repo} />
+      <CopyableContent text={getModelDisplayRepo(model)} />
     </TableCell>,
-    <TableCell key="filename" className="max-w-[200px] truncate hidden lg:table-cell" data-testid="filename-cell">
-      <CopyableContent text={model.filename} />
+    <TableCell key="filename" className="max-w-[200px] hidden lg:table-cell" data-testid="filename-cell">
+      <CopyableContent text={getModelDisplayFilename(model)} className="truncate" />
     </TableCell>,
     <TableCell key="source" className="max-w-[100px] hidden lg:table-cell" data-testid="source-cell">
       <div className="w-fit">
-        <SourceBadge source={model.source} />
+        <SourceBadge model={model} />
       </div>
     </TableCell>,
     <TableCell key="actions" className="w-[140px] whitespace-nowrap hidden sm:table-cell">
@@ -219,11 +348,15 @@ function ModelsPageContent() {
   return (
     <div data-testid="models-content" className="container mx-auto p-4">
       <UserOnboarding storageKey="models-banner-dismissed">
-        Welcome to Models! Here you can manage your model aliases and access their configurations. Create new aliases or
-        edit existing ones to customize your model settings.
+        Welcome to Models! Here you can manage your model aliases and API models. Create new aliases for local models or
+        configure external AI APIs to expand your available models.
       </UserOnboarding>
 
-      <div className="flex justify-end m2-4">
+      <div className="flex justify-end gap-2 m2-4">
+        <Button onClick={handleNewApiModel} size="sm" variant="outline">
+          <Globe className="h-4 w-4 mr-2" />
+          New API Model
+        </Button>
         <Button onClick={handleNewAlias} size="sm">
           <Plus className="h-4 w-4 mr-2" />
           New Model Alias

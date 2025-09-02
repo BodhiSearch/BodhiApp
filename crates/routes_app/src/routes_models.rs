@@ -1,44 +1,53 @@
 use crate::{
-  AliasResponse, LocalModelResponse, PaginatedAliasResponse, PaginatedLocalModelResponse,
-  PaginatedResponse, PaginationSortParams, ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  api_models_dto::ApiModelResponse, AliasResponse, LocalModelResponse, PaginatedLocalModelResponse,
+  PaginatedResponse, PaginatedUnifiedModelResponse, PaginationSortParams, UnifiedModelResponse,
+  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Query, State},
   Json,
 };
-use objs::{Alias, ApiError, HubFile, OpenAIApiError, API_TAG_MODELS};
+use objs::{ApiError, HubFile, OpenAIApiError, API_TAG_MODELS};
 use server_core::RouterState;
 use services::AliasNotFoundError;
 use std::sync::Arc;
 
-/// List configured model aliases
+/// List all model aliases (both local aliases and API models)
 #[utoipa::path(
     get,
     path = ENDPOINT_MODELS,
     tag = API_TAG_MODELS,
-    operation_id = "listModelAliases",
+    operation_id = "listAllModels",
     params(
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of configured model aliases", body = PaginatedAliasResponse,
+        (status = 200, description = "List of all configured models (local aliases and API models)", body = PaginatedUnifiedModelResponse,
          example = json!({
              "data": [{
+                 "model_type": "local",
                  "alias": "llama2:chat",
                  "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
                  "filename": "llama-2-7b-chat.Q4_K_M.gguf",
-                 "source": "huggingface",
-                 "chat_template": "llama2",
+                 "snapshot": "abc123",
+                 "source": "user",
                  "model_params": {},
                  "request_params": {
                      "temperature": 0.7,
                      "top_p": 0.95
                  },
-                 "context_params": {
-                     "max_tokens": 4096
-                 }
+                 "context_params": ["--ctx_size", "4096"]
+             }, {
+                 "model_type": "api",
+                 "alias": "openai-gpt4",
+                 "provider": "openai",
+                 "base_url": "https://api.openai.com/v1",
+                 "api_key_masked": "sk-...abc123",
+                 "models": ["gpt-4", "gpt-3.5-turbo"],
+                 "created_at": "2024-01-01T00:00:00Z",
+                 "updated_at": "2024-01-01T00:00:00Z"
              }],
-             "total": 1,
+             "total": 2,
              "page": 1,
              "page_size": 10
          })
@@ -52,18 +61,44 @@ use std::sync::Arc;
 pub async fn list_local_aliases_handler(
   State(state): State<Arc<dyn RouterState>>,
   Query(params): Query<PaginationSortParams>,
-) -> Result<Json<PaginatedAliasResponse>, ApiError> {
+) -> Result<Json<PaginatedUnifiedModelResponse>, ApiError> {
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
-  let mut aliases = state.app_service().data_service().list_aliases()?;
-  sort_aliases(&mut aliases, &sort, &sort_order);
-  let total = aliases.len();
+
+  // Fetch local aliases
+  let aliases = state.app_service().data_service().list_aliases()?;
+  let local_models: Vec<UnifiedModelResponse> = aliases
+    .into_iter()
+    .map(|alias| UnifiedModelResponse::from(AliasResponse::from(alias)))
+    .collect();
+
+  // Fetch API model aliases
+  let db_service = state.app_service().db_service();
+  let api_aliases = db_service.list_api_model_aliases().await?;
+  let api_models: Vec<UnifiedModelResponse> = api_aliases
+    .into_iter()
+    .map(|alias| {
+      // For list view, we don't show the actual API key, just masked version
+      let api_response = ApiModelResponse::from_alias(alias, None);
+      UnifiedModelResponse::from(api_response)
+    })
+    .collect();
+
+  // Combine both types
+  let mut all_models = Vec::new();
+  all_models.extend(local_models);
+  all_models.extend(api_models);
+
+  // Sort combined list
+  sort_unified_models(&mut all_models, &sort, &sort_order);
+
+  let total = all_models.len();
   let (start, end) = calculate_pagination(page, page_size, total);
-  let data: Vec<AliasResponse> = aliases
+  let data: Vec<UnifiedModelResponse> = all_models
     .into_iter()
     .skip(start)
     .take(end - start)
-    .map(AliasResponse::from)
     .collect();
+
   let paginated = PaginatedResponse {
     data,
     total,
@@ -142,23 +177,6 @@ fn calculate_pagination(page: usize, page_size: usize, total: usize) -> (usize, 
   (start, end)
 }
 
-fn sort_aliases(aliases: &mut [Alias], sort: &str, sort_order: &str) {
-  aliases.sort_by(|a, b| {
-    let cmp = match sort {
-      "name" => a.alias.cmp(&b.alias),
-      "repo" => a.repo.cmp(&b.repo),
-      "filename" => a.filename.cmp(&b.filename),
-      "source" => a.source.cmp(&b.source),
-      _ => a.alias.cmp(&b.alias),
-    };
-    if sort_order.to_lowercase() == "desc" {
-      cmp.reverse()
-    } else {
-      cmp
-    }
-  });
-}
-
 fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
   models.sort_by(|a, b| {
     let cmp = match sort {
@@ -174,6 +192,51 @@ fn sort_models(models: &mut [HubFile], sort: &str, sort_order: &str) {
       cmp
     }
   });
+}
+
+fn sort_unified_models(models: &mut [UnifiedModelResponse], sort: &str, sort_order: &str) {
+  models.sort_by(|a, b| {
+    let cmp = match sort {
+      "alias" | "name" => get_model_alias(a).cmp(&get_model_alias(b)),
+      "repo" => get_model_repo_or_provider(a).cmp(&get_model_repo_or_provider(b)),
+      "filename" => get_model_filename_or_base_url(a).cmp(&get_model_filename_or_base_url(b)),
+      "source" => get_model_source_or_type(a).cmp(&get_model_source_or_type(b)),
+      _ => get_model_alias(a).cmp(&get_model_alias(b)),
+    };
+    if sort_order.to_lowercase() == "desc" {
+      cmp.reverse()
+    } else {
+      cmp
+    }
+  });
+}
+
+fn get_model_alias(model: &UnifiedModelResponse) -> &str {
+  match model {
+    UnifiedModelResponse::Local { alias, .. } => alias,
+    UnifiedModelResponse::Api { id, .. } => id,
+  }
+}
+
+fn get_model_repo_or_provider(model: &UnifiedModelResponse) -> &str {
+  match model {
+    UnifiedModelResponse::Local { repo, .. } => repo,
+    UnifiedModelResponse::Api { provider, .. } => provider,
+  }
+}
+
+fn get_model_filename_or_base_url(model: &UnifiedModelResponse) -> &str {
+  match model {
+    UnifiedModelResponse::Local { filename, .. } => filename,
+    UnifiedModelResponse::Api { base_url, .. } => base_url,
+  }
+}
+
+fn get_model_source_or_type(model: &UnifiedModelResponse) -> &str {
+  match model {
+    UnifiedModelResponse::Local { source, .. } => source,
+    UnifiedModelResponse::Api { .. } => "api",
+  }
 }
 
 /// Get details for a specific model alias
