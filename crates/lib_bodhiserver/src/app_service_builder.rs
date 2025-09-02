@@ -2,10 +2,10 @@ use crate::{AppServiceBuilderError, AppStateOption};
 use objs::{ApiError, ErrorMessage, FluentLocalizationService, LocalizationService};
 use services::{
   db::{DbPool, DbService, DefaultTimeService, SqliteDbService, TimeService},
-  hash_key, AppService, AuthService, CacheService, DataService, DefaultAppService,
-  DefaultSecretService, HfHubService, HubService, KeycloakAuthService, KeyringStore,
-  LocalDataService, MokaCacheService, SecretService, SecretServiceExt, SessionService,
-  SettingService, SqliteSessionService, SystemKeyringStore, HF_TOKEN,
+  hash_key, AiApiService, AppService, AuthService, CacheService, DataService, DefaultAiApiService,
+  DefaultAppService, DefaultSecretService, HfHubService, HubService, KeycloakAuthService,
+  KeyringStore, LocalDataService, MokaCacheService, SecretService, SecretServiceExt,
+  SessionService, SettingService, SqliteSessionService, SystemKeyringStore, HF_TOKEN,
 };
 use std::sync::Arc;
 
@@ -32,6 +32,8 @@ pub struct AppServiceBuilder {
   cache_service: Option<Arc<dyn CacheService>>,
   auth_service: Option<Arc<dyn AuthService>>,
   localization_service: Option<Arc<dyn LocalizationService>>,
+  ai_api_service: Option<Arc<dyn AiApiService>>,
+  encryption_key: Option<Vec<u8>>,
 }
 
 impl AppServiceBuilder {
@@ -48,6 +50,8 @@ impl AppServiceBuilder {
       cache_service: None,
       auth_service: None,
       localization_service: None,
+      ai_api_service: None,
+      encryption_key: None,
     }
   }
 
@@ -175,6 +179,20 @@ impl AppServiceBuilder {
     Ok(self)
   }
 
+  /// Sets the AI API service.
+  pub fn ai_api_service(
+    mut self,
+    service: Arc<dyn AiApiService>,
+  ) -> Result<Self, AppServiceBuilderError> {
+    if self.ai_api_service.is_some() {
+      return Err(AppServiceBuilderError::ServiceAlreadySet(
+        "ai_api_service".to_string(),
+      ));
+    }
+    self.ai_api_service = Some(service);
+    Ok(self)
+  }
+
   /// Builds the complete DefaultAppService, resolving all dependencies automatically.
   pub async fn build(mut self) -> Result<DefaultAppService, ErrorMessage> {
     // Build services in dependency order
@@ -182,11 +200,15 @@ impl AppServiceBuilder {
     let hub_service = self.get_or_build_hub_service();
     let data_service = self.get_or_build_data_service(hub_service.clone());
     let time_service = self.get_or_build_time_service();
-    let db_service = self.get_or_build_db_service(time_service.clone()).await?;
+    let encryption_key = self.get_or_build_encryption_key()?;
+    let secret_service = self.get_or_build_secret_service(encryption_key.clone())?;
+    let db_service = self
+      .get_or_build_db_service(time_service.clone(), encryption_key)
+      .await?;
     let session_service = self.get_or_build_session_service().await?;
-    let secret_service = self.get_or_build_secret_service()?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = self.get_or_build_auth_service();
+    let ai_api_service = self.get_or_build_ai_api_service(db_service.clone());
 
     // Build and return the complete app service
     let app_service = DefaultAppService::new(
@@ -200,6 +222,7 @@ impl AppServiceBuilder {
       cache_service,
       localization_service,
       time_service,
+      ai_api_service,
     );
     Ok(app_service)
   }
@@ -241,6 +264,7 @@ impl AppServiceBuilder {
   async fn get_or_build_db_service(
     &mut self,
     time_service: Arc<dyn TimeService>,
+    encryption_key: Vec<u8>,
   ) -> Result<Arc<dyn DbService>, ApiError> {
     if let Some(service) = self.db_service.take() {
       return Ok(service);
@@ -251,7 +275,7 @@ impl AppServiceBuilder {
       self.setting_service.app_db_path().display()
     ))
     .await?;
-    let db_service = SqliteDbService::new(app_db_pool, time_service);
+    let db_service = SqliteDbService::new(app_db_pool, time_service, encryption_key);
     db_service.migrate().await?;
     Ok(Arc::new(db_service))
   }
@@ -274,25 +298,41 @@ impl AppServiceBuilder {
 
   /// Gets or builds the secret service.
   #[allow(clippy::result_large_err)]
-  fn get_or_build_secret_service(&mut self) -> Result<Arc<dyn SecretService>, ApiError> {
+  fn get_or_build_secret_service(
+    &mut self,
+    encryption_key: Vec<u8>,
+  ) -> Result<Arc<dyn SecretService>, ApiError> {
     if let Some(service) = self.secret_service.take() {
       return Ok(service);
     }
+    let secrets_path = self.setting_service.secrets_path();
+    let secret_service = DefaultSecretService::new(encryption_key, &secrets_path)?;
+    Ok(Arc::new(secret_service))
+  }
 
+  fn get_app_name(&mut self) -> String {
     let app_suffix = if self.setting_service.is_production() {
       ""
     } else {
       " - Dev"
     };
     let app_name = format!("Bodhi App{app_suffix}");
-    let secrets_path = self.setting_service.secrets_path();
-    let encryption_key = self.setting_service.encryption_key();
-    let encryption_key = encryption_key
-      .map(|key| Ok(hash_key(&key)))
-      .unwrap_or_else(|| SystemKeyringStore::new(&app_name).get_or_generate(SECRET_KEY))?;
+    app_name
+  }
 
-    let secret_service = DefaultSecretService::new(encryption_key, &secrets_path)?;
-    Ok(Arc::new(secret_service))
+  fn get_or_build_encryption_key(&mut self) -> Result<Vec<u8>, ApiError> {
+    match self.encryption_key.as_ref() {
+      Some(encryption_key) => return Ok(encryption_key.clone()),
+      None => {
+        let app_name = self.get_app_name();
+        let encryption_key = self.setting_service.encryption_key();
+        let encryption_key = encryption_key
+          .map(|key| Ok(hash_key(&key)))
+          .unwrap_or_else(|| SystemKeyringStore::new(&app_name).get_or_generate(SECRET_KEY))?;
+        self.encryption_key = Some(encryption_key);
+        Ok(self.encryption_key.as_ref().unwrap().clone())
+      }
+    }
   }
 
   /// Gets or builds the cache service.
@@ -330,6 +370,18 @@ impl AppServiceBuilder {
     let localization_service = FluentLocalizationService::get_instance();
     load_all_localization_resources(&localization_service)?;
     Ok(localization_service)
+  }
+
+  /// Gets or builds the AI API service.
+  fn get_or_build_ai_api_service(
+    &mut self,
+    db_service: Arc<dyn DbService>,
+  ) -> Arc<dyn AiApiService> {
+    if let Some(service) = self.ai_api_service.take() {
+      return service;
+    }
+
+    Arc::new(DefaultAiApiService::with_db_service(db_service))
   }
 }
 
