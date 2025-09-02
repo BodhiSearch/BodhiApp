@@ -11,6 +11,7 @@ pub enum AliasSource {
   #[default]
   User,
   Model,
+  RemoteApi,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder, new)]
@@ -54,7 +55,8 @@ impl std::fmt::Display for Alias {
 
 #[cfg(test)]
 mod test {
-  use crate::{Alias, AliasBuilder, OAIRequestParamsBuilder, Repo};
+  use crate::test_utils::AliasBuilder;
+  use crate::{Alias, OAIRequestParamsBuilder, Repo};
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
 

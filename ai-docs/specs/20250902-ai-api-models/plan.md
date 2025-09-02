@@ -5,20 +5,21 @@ Implement OpenAI API provider support with fundamental domain model restructurin
 
 ## Phase 1: Domain Model Restructuring
 
-### 1.1 Rename and Restructure Alias System
-**File: `crates/objs/src/alias.rs`**
-- Rename existing `Alias` struct to `LocalModelAlias`
-- Create new enum:
+### 1.1 Create ModelAlias Enum System
+**File: `crates/objs/src/model_alias.rs`**
+- Keep existing `Alias` struct unchanged for backward compatibility
+- Create new flat enum with three variants:
 ```rust
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum Alias {
-  User(LocalModelAlias),
-  Model(LocalModelAlias),
-  Api(ApiModelAlias),
+pub enum ModelAlias {
+  User(Alias),    // User-defined local model (source: AliasSource::User)
+  Model(Alias),   // Auto-discovered local model (source: AliasSource::Model)
+  Api(ApiModelAlias),  // Remote API model (source: AliasSource::RemoteApi)
 }
 ```
 - Implement `can_serve(&self, model: &str) -> bool` method for model matching
+- Each variant already contains its source field, maintaining single source of truth
 
 ### 1.2 Create ApiModelAlias Structure
 **File: `crates/objs/src/api_model_alias.rs`**
@@ -143,7 +144,7 @@ pub trait ModelRouter: Debug + Send + Sync {
 }
 
 pub enum RouteDestination {
-  Local(LocalModelAlias),
+  Local(Alias),  // Existing Alias struct
   Remote(ApiModelAlias),
 }
 
