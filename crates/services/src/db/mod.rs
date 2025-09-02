@@ -1,3 +1,4 @@
+mod encryption;
 mod error;
 mod objs;
 mod service;
