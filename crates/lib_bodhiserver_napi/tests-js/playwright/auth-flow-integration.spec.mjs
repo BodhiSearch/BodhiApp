@@ -21,6 +21,7 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
 
     authClient = createAuthServerTestClient(authServerConfig);
     resourceClient = await authClient.createResourceClient(serverUrl);
+    await authClient.makeResourceAdmin(resourceClient.clientId, resourceClient.clientSecret, testCredentials.username);
     serverManager = createServerManager({
       appStatus: 'ready',
       authUrl: authServerConfig.authUrl,
@@ -29,6 +30,7 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
       clientSecret: resourceClient.clientSecret,
       port,
       host: 'localhost',
+      envVars: {},
     });
     baseUrl = await serverManager.startServer();
   });
@@ -92,7 +94,8 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
     await submitButton.click();
 
     // Should redirect back to app and land on chat page
-    await page.waitForURL((url) => url.pathname === '/ui/chat/');
+    await page.waitForURL((url) => url.origin === baseUrl && url.pathname === '/ui/chat/');
+    await waitForSPAReady(page);
     const finalPath = getCurrentPath(page);
     expect(finalPath).toBe('/ui/chat/');
   });

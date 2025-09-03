@@ -1,7 +1,7 @@
 use crate::{app_status_or_default, DefaultTokenService};
 use axum::{
   extract::{Request, State},
-  http::HeaderMap,
+  http::{header::HOST, HeaderMap},
   middleware::Next,
   response::Response,
 };
@@ -13,7 +13,7 @@ use server_core::RouterState;
 use services::{AppStatus, AuthServiceError, SecretServiceError, TokenError};
 use std::sync::Arc;
 use tower_sessions::Session;
-use tracing::instrument;
+use tracing::debug;
 
 pub const SESSION_KEY_ACCESS_TOKEN: &str = "access_token";
 pub const SESSION_KEY_REFRESH_TOKEN: &str = "refresh_token";
@@ -26,24 +26,24 @@ const SEC_FETCH_SITE_HEADER: &str = "sec-fetch-site";
 
 /// Returns true if the request originates from the same site ("same-origin").
 fn is_same_origin(headers: &HeaderMap) -> bool {
-  let host = headers
-    .get(axum::http::header::HOST)
-    .and_then(|v| v.to_str().ok());
+  let host = headers.get(HOST).and_then(|v| v.to_str().ok());
   let sec_fetch_site = headers
     .get(SEC_FETCH_SITE_HEADER)
     .and_then(|v| v.to_str().ok());
   evaluate_same_origin(host, sec_fetch_site)
 }
 
-#[instrument(level = "debug", ret)]
 fn evaluate_same_origin(host: Option<&str>, sec_fetch_site: Option<&str>) -> bool {
   if let Some(host) = host {
     if host.starts_with("localhost:") {
       let result = matches!(sec_fetch_site, Some("same-origin"));
-      tracing::debug!("is_same_origin: result: {}", result);
+      debug!("is_same_origin: result: {}", result);
       return result;
+    } else {
+      debug!("is_same_origin: host is not localhost: {}", host);
     }
   }
+  debug!("is_same_origin: host is None");
   true
 }
 
@@ -99,7 +99,6 @@ pub enum AuthError {
   AppStatusInvalid(AppStatus),
 }
 
-#[instrument(skip_all, level = "debug")]
 pub async fn auth_middleware(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -156,6 +155,7 @@ pub async fn auth_middleware(
       req
         .headers_mut()
         .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+      debug!("auth_middleware: session token validated");
       Ok(next.run(req).await)
     } else {
       Err(AuthError::InvalidAccess)?
@@ -165,7 +165,6 @@ pub async fn auth_middleware(
   }
 }
 
-#[instrument(skip_all, level = "debug")]
 pub async fn inject_session_auth_info(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -205,18 +204,31 @@ pub async fn inject_session_auth_info(
   } else if is_same_origin(req.headers()) {
     // Check for token in session
     if let Ok(Some(access_token)) = session.get::<String>(SESSION_KEY_ACCESS_TOKEN).await {
-      if let Ok((validated_token, role)) = token_service
+      match token_service
         .get_valid_session_token(session, access_token)
         .await
       {
-        req
-          .headers_mut()
-          .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
-        req
-          .headers_mut()
-          .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+        Ok((validated_token, role)) => {
+          debug!("inject_session_auth_info: session token injected");
+          req
+            .headers_mut()
+            .insert(KEY_RESOURCE_TOKEN, validated_token.parse().unwrap());
+          req
+            .headers_mut()
+            .insert(KEY_RESOURCE_ROLE, role.to_string().parse().unwrap());
+        }
+        Err(err) => {
+          debug!(
+            ?err,
+            "inject_session_auth_info: session token validation failed"
+          );
+        }
       }
+    } else {
+      debug!("inject_session_auth_info: session token not found");
     }
+  } else {
+    debug!("inject_session_auth_info: is_same_origin is false");
   }
   // Continue with the request
   Ok(next.run(req).await)

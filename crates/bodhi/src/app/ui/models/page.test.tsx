@@ -90,10 +90,10 @@ describe('ModelsPage', () => {
     const { unmount } = render(<ModelsPage />, { wrapper: createWrapper() });
 
     // Wait for data to load
-    await screen.findByTestId('combined-cell');
+    await screen.findByTestId('combined-cell-test-model');
 
     // Mobile view should show combined cell
-    expect(screen.getAllByTestId('combined-cell')[0]).toBeVisible();
+    expect(screen.getByTestId('combined-cell-test-model')).toBeVisible();
 
     unmount();
 
@@ -110,11 +110,11 @@ describe('ModelsPage', () => {
     }));
 
     render(<ModelsPage />, { wrapper: createWrapper() });
-    await screen.findByTestId('name-source-cell');
+    await screen.findByTestId('name-source-cell-test-model');
 
     // Tablet view should show combined name+source and repo+filename columns
-    expect(screen.getAllByTestId('name-source-cell')[0]).toBeVisible();
-    expect(screen.getAllByTestId('repo-filename-cell')[0]).toBeVisible();
+    expect(screen.getByTestId('name-source-cell-test-model')).toBeVisible();
+    expect(screen.getByTestId('repo-filename-cell-test-model')).toBeVisible();
 
     unmount();
 
@@ -122,13 +122,13 @@ describe('ModelsPage', () => {
     mockMatchMedia(true);
 
     render(<ModelsPage />, { wrapper: createWrapper() });
-    await screen.findByTestId('alias-cell');
+    await screen.findByTestId('alias-cell-test-model');
 
     // Desktop view should show separate columns
-    expect(screen.getAllByTestId('alias-cell')[0]).toBeVisible();
-    expect(screen.getAllByTestId('repo-cell')[0]).toBeVisible();
-    expect(screen.getAllByTestId('filename-cell')[0]).toBeVisible();
-    expect(screen.getAllByTestId('source-cell')[0]).toBeVisible();
+    expect(screen.getByTestId('alias-cell-test-model')).toBeVisible();
+    expect(screen.getByTestId('repo-cell-test-model')).toBeVisible();
+    expect(screen.getByTestId('filename-cell-test-model')).toBeVisible();
+    expect(screen.getByTestId('source-cell-test-model')).toBeVisible();
   });
 
   it('handles API error', async () => {
@@ -370,11 +370,14 @@ describe('ModelsPage', () => {
         render(<ModelsPage />, { wrapper: createWrapper() });
       });
 
-      const chatButton = screen.getAllByTitle('Chat with the model in playground')[0];
+      // Find the API model row and then look for the chat button within it
+      const apiModelRow = screen.getByTestId('actions-api_test-api-model');
+      const chatButton = apiModelRow.querySelector('[data-testid="chat-button-test-api-model"]');
       expect(chatButton).toBeInTheDocument();
+      expect(chatButton).toHaveAttribute('title', 'Chat with the model in playground');
 
       await act(async () => {
-        chatButton.click();
+        chatButton?.click();
       });
 
       expect(pushMock).toHaveBeenCalledWith('/ui/chat?model=test-api-model');
@@ -498,12 +501,14 @@ describe('ModelsPage', () => {
       // Wait for data to load (use findAllByText for responsive layouts)
       await screen.findAllByText('my-openai');
 
-      // Find and click the chat button
-      const chatButton = screen.getAllByTitle('Chat with the model in playground')[0];
+      // Find the API model row and then look for the chat button within it
+      const apiModelRow = screen.getByTestId('actions-api_my-openai');
+      const chatButton = apiModelRow.querySelector('[data-testid="chat-button-my-openai"]');
       expect(chatButton).toBeInTheDocument();
+      expect(chatButton).toHaveAttribute('title', 'Chat with the model in playground');
 
       await act(async () => {
-        chatButton.click();
+        chatButton?.click();
       });
 
       // Verify navigation to chat page with the API model ID

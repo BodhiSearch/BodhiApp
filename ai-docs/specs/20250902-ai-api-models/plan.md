@@ -535,3 +535,125 @@ From the existing implementation analysis:
 - The `get_api_key_for_alias` function correctly decrypts and returns original API keys
 - No changes needed to the encryption/storage mechanism
 - The system already supports secure retrieval of stored API keys
+
+## Phase 10: Playwright Integration Tests & Feature Completion ⏳ **IN PROGRESS**
+
+### 10.1 Delete Functionality Implementation
+**Goal**: Add complete delete functionality for API models with confirmation dialog
+
+**Files Modified:**
+- `crates/bodhi/src/app/ui/models/page.tsx` - Add delete button for API models
+- `crates/bodhi/src/components/DeleteConfirmDialog.tsx` - New confirmation dialog component
+- `crates/bodhi/src/hooks/useApiModels.ts` - Add delete mutation hook
+
+**Implementation Details:**
+- Add delete button alongside edit button in models table
+- Create reusable confirmation dialog with proper accessibility
+- Implement delete API call with optimistic updates
+- Handle error states and user feedback
+- Ensure proper cleanup and state management
+
+### 10.2 Responsive Design Bug Fix
+**Goal**: Fix mobile layout bug where API model individual models should display as "first 2 + more..." pattern
+
+**File: `crates/bodhi/src/app/ui/models/page.tsx`**
+- **Bug**: Currently showing all models in mobile view causing layout issues
+- **Fix**: Show only first 2 models with "more..." link for additional models
+- **Enhancement**: Implement modal to show remaining models when "more..." is clicked
+- **Testing**: Responsive testing across multiple viewport sizes
+
+**Implementation Pattern:**
+```tsx
+// Mobile view for API models
+{model.models.length > 2 ? (
+  <div className="sm:hidden">
+    {model.models.slice(0, 2).map(modelName => (
+      <ModelButton key={modelName} onClick={() => navigateToChat(modelName)}>
+        {modelName}
+      </ModelButton>
+    ))}
+    <button onClick={() => showMoreModal(model.models.slice(2))}>
+      +{model.models.length - 2} more...
+    </button>
+  </div>
+) : (
+  // Show all models if 2 or fewer
+)}
+```
+
+### 10.3 Playwright Integration Testing
+**Goal**: Create comprehensive end-to-end tests that focus on real-world scenarios not covered by unit tests
+
+**New File: `crates/lib_bodhiserver_napi/tests-js/playwright/api-models-integration.spec.mjs`**
+
+**Test Suite Architecture:**
+1. **Complete Lifecycle Test**: CRUD operations with real OpenAI API
+2. **Chat Integration Test**: Full chat completion flow (may fail if not implemented)
+3. **Responsive Design Tests**: Mobile, tablet, desktop viewport testing
+
+**Real API Integration:**
+- Uses `INTEG_TEST_OPENAI_API_KEY` environment variable
+- Makes actual calls to OpenAI API endpoints
+- Tests real model fetching and connection validation
+- Validates AI responses with generic assertions
+
+**Key Testing Scenarios:**
+```javascript
+// Example test structure
+test('complete API model lifecycle with real OpenAI', async ({ page }) => {
+  const apiKey = process.env.INTEG_TEST_OPENAI_API_KEY;
+  
+  // 1. Create API model with real credentials
+  await createAPIModel(page, { id: 'test-openai', apiKey });
+  
+  // 2. Verify model appears in unified models list
+  await verifyModelInList(page, 'test-openai', 'OpenAI');
+  
+  // 3. Test edit functionality with pre-filled values
+  await testEditWithStoredCredentials(page, 'test-openai');
+  
+  // 4. Test delete functionality
+  await testDeleteModel(page, 'test-openai');
+});
+```
+
+### 10.4 Integration Test Helpers
+**Focused Helper Functions for Real E2E Testing:**
+
+```javascript
+// Real OpenAI integration helpers
+async function createRealAPIModel(page, config) {
+  // Navigate to creation form
+  // Fill with real API key
+  // Fetch actual models from OpenAI
+  // Select models and save
+}
+
+async function testRealChatCompletion(page, modelId) {
+  // Navigate to chat with API model
+  // Send test prompt: "Answer in one word, what day comes after Monday?"
+  // Verify response contains "Tuesday" (case insensitive)
+}
+
+async function testResponsiveLayouts(page, modelsData) {
+  // Test mobile (375x667)
+  // Test tablet (768x1024) 
+  // Test desktop (1920x1080)
+  // Verify proper display in each viewport
+}
+```
+
+### 10.5 Quality Assurance Focus
+**Integration Testing Priorities:**
+1. **Real API Connectivity**: Actual OpenAI API calls and responses
+2. **Cross-Browser Compatibility**: Chrome, Firefox, Safari testing
+3. **Responsive Behavior**: Layout correctness across device sizes
+4. **Complete User Flows**: Multi-page navigation and state persistence
+5. **Error Handling**: Network failures, API errors, validation issues
+6. **Security Verification**: API key masking, secure storage, encryption
+
+**Maintenance Optimization:**
+- Consolidate related test scenarios into single test cases
+- Focus on scenarios that require real browser environment
+- Avoid duplicating unit test coverage
+- Use generic assertions for AI responses to reduce flakiness

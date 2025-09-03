@@ -4,7 +4,7 @@ use axum::{http::header::HeaderMap, Json};
 use objs::{ApiError, BadRequestError, OpenAIApiError, ResourceScope, Role, API_TAG_AUTH};
 use serde::{Deserialize, Serialize};
 use services::{extract_claims, Claims};
-use tracing::instrument;
+use tracing::debug;
 use utoipa::ToSchema;
 
 /// Token Type
@@ -68,16 +68,17 @@ pub struct UserInfo {
         )
     )
 )]
-#[instrument(skip_all, level = "debug")]
 pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, ApiError> {
   let not_loggedin = UserInfo::default();
   let Some(token) = headers.get(KEY_RESOURCE_TOKEN) else {
+    debug!("no token header");
     return Ok(Json(not_loggedin));
   };
   let token = token
     .to_str()
     .map_err(|err| BadRequestError::new(err.to_string()))?;
   if token.is_empty() {
+    debug!("injected token is empty");
     return Err(BadRequestError::new("injected token is empty".to_string()))?;
   }
   let claims: Claims = extract_claims::<Claims>(token)?;
@@ -85,6 +86,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
   let token_header = headers.get(KEY_RESOURCE_SCOPE);
   match (role_header, token_header) {
     (Some(role_header), _) => {
+      debug!("role header present");
       let role = role_header
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
@@ -98,6 +100,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
       }));
     }
     (None, Some(token_header)) => {
+      debug!("token header present");
       let token = token_header
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
@@ -115,6 +118,7 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
       }));
     }
     (None, None) => {
+      debug!("no role or token header");
       return Err(BadRequestError::new(
         "missing resource role header".to_string(),
       ))?;

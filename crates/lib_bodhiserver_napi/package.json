@@ -24,7 +24,6 @@
     "build:release:win": "napi build --platform --release --target x86_64-pc-windows-msvc",
     "update-optional-dependencies": "node scripts/update-optional-dependencies.js",
     "verify-packages": "node scripts/verify-npm-packages.js",
-    "test": "npm run test:run && npm run test:playwright",
     "test:run": "vitest run",
     "test:playwright": "playwright test --config=playwright.config.mjs --reporter=list",
     "test:playwright:ci": "playwright test --config=playwright.config.mjs",
