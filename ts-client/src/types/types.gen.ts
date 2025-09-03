@@ -161,13 +161,17 @@ export type ErrorBody = {
  */
 export type FetchModelsRequest = {
     /**
-     * API key for authentication
+     * API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
      */
-    api_key: string;
+    api_key?: string;
     /**
-     * API base URL
+     * API base URL (optional when using id)
      */
     base_url: string;
+    /**
+     * API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
+     */
+    id?: string;
 };
 
 /**
@@ -461,13 +465,17 @@ export type ShowResponse = {
  */
 export type TestPromptRequest = {
     /**
-     * API key for authentication
+     * API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
      */
-    api_key: string;
+    api_key?: string;
     /**
-     * API base URL
+     * API base URL (optional when using id)
      */
     base_url: string;
+    /**
+     * API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
+     */
+    id?: string;
     /**
      * Model to use for testing
      */
@@ -499,26 +507,11 @@ export type TokenType = 'session' | 'bearer';
 /**
  * Unified model response that can represent both local aliases and API models
  */
-export type UnifiedModelResponse = {
-    alias: string;
-    context_params: Array<string>;
-    filename: string;
-    model_params: {};
+export type UnifiedModelResponse = (AliasResponse & {
     model_type: 'local';
-    repo: string;
-    request_params: OaiRequestParams;
-    snapshot: string;
-    source: string;
-} | {
-    api_key_masked: string;
-    base_url: string;
-    created_at: string;
-    id: string;
+}) | (ApiModelResponse & {
     model_type: 'api';
-    models: Array<string>;
-    provider: string;
-    updated_at: string;
-};
+});
 
 export type UpdateAliasRequest = {
     context_params?: Array<string> | null;

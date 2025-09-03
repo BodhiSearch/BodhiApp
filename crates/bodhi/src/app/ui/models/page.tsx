@@ -1,15 +1,10 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DataTable, Pagination } from '@/components/DataTable';
 import { TableCell } from '@/components/ui/table';
-import {
-  AliasResponse,
-  ApiModelResponse,
-  UnifiedModelResponse,
-  PaginatedUnifiedModelResponse,
-} from '@bodhiapp/ts-client';
+import { UnifiedModelResponse } from '@bodhiapp/ts-client';
 import { SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -144,25 +139,15 @@ function ModelsPageContent() {
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleChat(model)}
-            title={`Chat with the model in playground`}
-            className="h-8 w-8 p-0"
-          >
-            <MessageSquare className="h-4 w-4" />
-          </Button>
-          {/* Models as clickable links are now in the models column */}
           {model.models
-            .map((modelName, index) => (
+            .map((modelName) => (
               <Button
                 key={`${model.id}-${modelName}`}
                 variant="ghost"
                 size="sm"
                 className="h-8 px-2 text-xs"
-                onClick={() => window.open(getExternalUrl(model), '_blank')}
-                title={`Open ${modelName} in ${model.provider}`}
+                onClick={() => router.push(`/ui/chat?model=${modelName}`)}
+                title={`Chat with ${modelName}`}
               >
                 {modelName}
               </Button>
@@ -230,15 +215,6 @@ function ModelsPageContent() {
 
   const handleNewApiModel = () => {
     router.push('/ui/api-models/new');
-  };
-
-  // Helper functions to get display values for different model types
-  const getModelDisplayName = (model: UnifiedModelResponse): string => {
-    if (model.model_type === 'api') {
-      return model.models.join(', ');
-    } else {
-      return model.alias;
-    }
   };
 
   const getModelDisplayRepo = (model: UnifiedModelResponse): string => {
@@ -316,12 +292,6 @@ function ModelsPageContent() {
     <TableCell key="alias" className="max-w-[250px] hidden lg:table-cell" data-testid="alias-cell">
       <div className="flex flex-col gap-1">
         <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} />
-        {model.model_type === 'api' && (
-          <div className="text-xs text-muted-foreground">
-            {model.models.slice(0, 3).join(', ')}
-            {model.models.length > 3 ? '...' : ''}
-          </div>
-        )}
       </div>
     </TableCell>,
     <TableCell key="repo" className="max-w-[200px] truncate hidden lg:table-cell" data-testid="repo-cell">

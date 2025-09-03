@@ -29,20 +29,20 @@ export const ENDPOINT_API_MODELS_TEST = '/bodhi/v1/api-models/test';
 export const ENDPOINT_API_MODELS_FETCH = '/bodhi/v1/api-models/fetch-models';
 
 /**
- * Hook to fetch a single API model by alias
+ * Hook to fetch a single API model by id
  */
 export function useApiModel(
-  alias: string,
+  id: string,
   options?: UseQueryOptions<ApiModelResponse, AxiosError<ErrorResponse>>
 ): UseQueryResult<ApiModelResponse, AxiosError<ErrorResponse>> {
   return useReactQuery<ApiModelResponse, AxiosError<ErrorResponse>>(
-    ['api-models', alias],
+    ['api-models', id],
     async () => {
-      const { data } = await apiClient.get<ApiModelResponse>(`${ENDPOINT_API_MODELS}/${alias}`);
+      const { data } = await apiClient.get<ApiModelResponse>(`${ENDPOINT_API_MODELS}/${id}`);
       return data;
     },
     {
-      enabled: !!alias,
+      enabled: !!id,
       refetchOnWindowFocus: false,
       staleTime: 5 * 60 * 1000,
       ...options,
@@ -83,22 +83,22 @@ export function useUpdateApiModel(
   options?: UseMutationOptions<
     AxiosResponse<ApiModelResponse>,
     AxiosError<ErrorResponse>,
-    { alias: string; data: UpdateApiModelRequest }
+    { id: string; data: UpdateApiModelRequest }
   >
 ): UseMutationResult<
   AxiosResponse<ApiModelResponse>,
   AxiosError<ErrorResponse>,
-  { alias: string; data: UpdateApiModelRequest }
+  { id: string; data: UpdateApiModelRequest }
 > {
   const queryClient = useQueryClient();
 
   return useMutation<
     AxiosResponse<ApiModelResponse>,
     AxiosError<ErrorResponse>,
-    { alias: string; data: UpdateApiModelRequest }
+    { id: string; data: UpdateApiModelRequest }
   >(
-    async ({ alias, data }) => {
-      const response = await apiClient.put<ApiModelResponse>(`${ENDPOINT_API_MODELS}/${alias}`, data);
+    async ({ id, data }) => {
+      const response = await apiClient.put<ApiModelResponse>(`${ENDPOINT_API_MODELS}/${id}`, data);
       return response;
     },
     {
@@ -107,7 +107,7 @@ export function useUpdateApiModel(
         // Invalidate and refetch API models list
         queryClient.invalidateQueries(['api-models']);
         // Invalidate specific API model
-        queryClient.invalidateQueries(['api-models', variables.alias]);
+        queryClient.invalidateQueries(['api-models', variables.id]);
         // Also invalidate models list
         queryClient.invalidateQueries(['models']);
         options?.onSuccess?.(data, variables, context);
@@ -125,8 +125,8 @@ export function useDeleteApiModel(
   const queryClient = useQueryClient();
 
   return useMutation<AxiosResponse<void>, AxiosError<ErrorResponse>, string>(
-    async (alias) => {
-      const response = await apiClient.delete<void>(`${ENDPOINT_API_MODELS}/${alias}`);
+    async (id) => {
+      const response = await apiClient.delete<void>(`${ENDPOINT_API_MODELS}/${id}`);
       return response;
     },
     {

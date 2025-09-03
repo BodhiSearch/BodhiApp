@@ -104,3 +104,4 @@ Located in `crates/bodhi/`, this is a Next.js 14 application using:
 - Desktop app development requires Tauri CLI
 - for getting the current time Utc::now we have TimeService in @crates/services/src/db/service.rs, for objects, do not use Utc::now internally to get time for created_at etc. instead have it passed via constructor
 - write test that provides value for the maintainance we have to do, for e.g. do not write test to test the new constructor, or macro implemented PartialEq, or serialization/deserialization by serde, unless we are using customization like untagged, or changing case etc.
+- For a React project, for integration/ui test, it is better to have the data-testid and do select by getByTestId rather than by selectors that can change over time.

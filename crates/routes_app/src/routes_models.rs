@@ -213,29 +213,29 @@ fn sort_unified_models(models: &mut [UnifiedModelResponse], sort: &str, sort_ord
 
 fn get_model_alias(model: &UnifiedModelResponse) -> &str {
   match model {
-    UnifiedModelResponse::Local { alias, .. } => alias,
-    UnifiedModelResponse::Api { id, .. } => id,
+    UnifiedModelResponse::Local(alias_response) => &alias_response.alias,
+    UnifiedModelResponse::Api(api_model) => &api_model.id,
   }
 }
 
 fn get_model_repo_or_provider(model: &UnifiedModelResponse) -> &str {
   match model {
-    UnifiedModelResponse::Local { repo, .. } => repo,
-    UnifiedModelResponse::Api { provider, .. } => provider,
+    UnifiedModelResponse::Local(alias_response) => &alias_response.repo,
+    UnifiedModelResponse::Api(api_model) => &api_model.provider,
   }
 }
 
 fn get_model_filename_or_base_url(model: &UnifiedModelResponse) -> &str {
   match model {
-    UnifiedModelResponse::Local { filename, .. } => filename,
-    UnifiedModelResponse::Api { base_url, .. } => base_url,
+    UnifiedModelResponse::Local(alias_response) => &alias_response.filename,
+    UnifiedModelResponse::Api(api_model) => &api_model.base_url,
   }
 }
 
 fn get_model_source_or_type(model: &UnifiedModelResponse) -> &str {
   match model {
-    UnifiedModelResponse::Local { source, .. } => source,
-    UnifiedModelResponse::Api { .. } => "api",
+    UnifiedModelResponse::Local(alias_response) => &alias_response.source,
+    UnifiedModelResponse::Api(_) => "api",
   }
 }
 

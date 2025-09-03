@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
-import ApiModelForm from '../ApiModelForm';
+import ApiModelForm from '@/app/ui/api-models/ApiModelForm';
 import AppInitializer from '@/components/AppInitializer';
 import { useApiModel } from '@/hooks/useApiModels';
 import { ErrorPage } from '@/components/ui/ErrorPage';

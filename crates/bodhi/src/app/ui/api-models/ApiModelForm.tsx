@@ -114,7 +114,12 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
 
   const handleTestConnection = async () => {
     const testData: TestPromptRequest = {
-      api_key: watchedValues.api_key || '',
+      // In edit mode, use stored model ID if no API key provided
+      ...(watchedValues.api_key
+        ? { api_key: watchedValues.api_key }
+        : isEditMode && initialData?.id
+          ? { id: initialData.id }
+          : { api_key: watchedValues.api_key || '' }),
       base_url: watchedValues.base_url || '',
       model: watchedValues.models[0], // First selected model
       prompt: 'Hello, how are you?', // Default prompt
@@ -137,7 +142,12 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
 
   const handleFetchModels = async () => {
     const fetchData: FetchModelsRequest = {
-      api_key: watchedValues.api_key || '',
+      // In edit mode, use stored model ID if no API key provided
+      ...(watchedValues.api_key
+        ? { api_key: watchedValues.api_key }
+        : isEditMode && initialData?.id
+          ? { id: initialData.id }
+          : { api_key: watchedValues.api_key || '' }),
       base_url: watchedValues.base_url || '',
     };
 
@@ -163,19 +173,19 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
       if (isEditMode && initialData) {
         const updateData = convertFormToUpdateRequest(data as UpdateApiModelFormData);
         await updateMutation.mutateAsync({
-          alias: initialData.alias,
+          id: initialData.id,
           data: updateData,
         });
         toast({
           title: 'API Model Updated',
-          description: `Successfully updated ${initialData.alias}`,
+          description: `Successfully updated ${initialData.id}`,
         });
       } else {
         const createData = convertFormToCreateRequest(data as ApiModelFormData);
         await createMutation.mutateAsync(createData);
         toast({
           title: 'API Model Created',
-          description: `Successfully created ${createData.alias}`,
+          description: `Successfully created ${createData.id}`,
         });
       }
       router.push('/ui/models');
@@ -188,14 +198,20 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
     }
   };
 
-  const canTest = Boolean(watchedValues.base_url && watchedValues.api_key && watchedValues.models?.length > 0);
-  const canFetch = Boolean(watchedValues.base_url && watchedValues.api_key);
+  const canTest = Boolean(
+    watchedValues.base_url &&
+      (watchedValues.api_key || (isEditMode && initialData?.id)) &&
+      watchedValues.models?.length > 0
+  );
+  const canFetch = Boolean(watchedValues.base_url && (watchedValues.api_key || (isEditMode && initialData?.id)));
 
   // Get missing requirements for tooltip
   const getMissingRequirements = () => {
     const missing = [];
     if (!watchedValues.base_url) missing.push('base URL');
-    if (!watchedValues.api_key) missing.push('API key');
+    if (!watchedValues.api_key && !(isEditMode && initialData?.id)) {
+      missing.push(isEditMode ? 'API key (or use stored credentials)' : 'API key');
+    }
     if (!watchedValues.models?.length) missing.push('at least one model');
     return `You need to add ${missing.join(', ')} to test connection`;
   };
@@ -203,7 +219,9 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
   const getFetchDisabledReason = () => {
     const missing = [];
     if (!watchedValues.base_url) missing.push('base URL');
-    if (!watchedValues.api_key) missing.push('API key');
+    if (!watchedValues.api_key && !(isEditMode && initialData?.id)) {
+      missing.push(isEditMode ? 'API key (or use stored credentials)' : 'API key');
+    }
     return missing.length > 0 ? `You need to add ${missing.join(', ')} to fetch models` : '';
   };
 
@@ -218,18 +236,21 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {!isEditMode && (
-              <div className="space-y-2">
-                <Label htmlFor="id">ID</Label>
-                <Input id="id" {...register('id')} placeholder="my-gpt-4" />
-                {errors.id && <p className="text-sm text-destructive">{errors.id.message}</p>}
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label htmlFor="id">ID</Label>
+              <Input
+                id="id"
+                data-testid="api-model-id"
+                {...(isEditMode ? { value: initialData?.id || '', disabled: true } : register('id'))}
+                placeholder="my-gpt-4"
+              />
+              {errors.id && <p className="text-sm text-destructive">{errors.id.message}</p>}
+            </div>
 
             <div className="space-y-2">
               <Label htmlFor="provider-preset">Provider Type</Label>
               <Select value={selectedProvider} onValueChange={handleProviderChange}>
-                <SelectTrigger>
+                <SelectTrigger id="provider-preset" data-testid="api-model-provider">
                   <SelectValue placeholder="Select a provider type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -244,7 +265,12 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
 
             <div className="space-y-2">
               <Label htmlFor="base_url">Base URL</Label>
-              <Input id="base_url" {...register('base_url')} placeholder="https://api.openai.com/v1" />
+              <Input
+                id="base_url"
+                data-testid="api-model-base-url"
+                {...register('base_url')}
+                placeholder="https://api.openai.com/v1"
+              />
               {errors.base_url && <p className="text-sm text-destructive">{errors.base_url.message}</p>}
             </div>
 
@@ -253,6 +279,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
               <div className="relative">
                 <Input
                   id="api_key"
+                  data-testid="api-model-api-key"
                   type={showApiKey ? 'text' : 'password'}
                   {...register('api_key')}
                   placeholder={isEditMode ? 'Leave empty to keep existing key' : 'Enter your API key'}
@@ -262,6 +289,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
                   variant="ghost"
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3"
+                  data-testid="toggle-api-key-visibility"
                   onClick={() => setShowApiKey(!showApiKey)}
                 >
                   {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -291,6 +319,7 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
                       <Button
                         type="button"
                         variant="outline"
+                        data-testid="test-connection-button"
                         onClick={handleTestConnection}
                         disabled={!canTest || testMutation.isLoading}
                       >
@@ -308,10 +337,19 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
               </TooltipProvider>
 
               <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => router.push('/ui/models')}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  data-testid="cancel-button"
+                  onClick={() => router.push('/ui/models')}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isSubmitting || createMutation.isLoading || updateMutation.isLoading}>
+                <Button
+                  type="submit"
+                  data-testid={isEditMode ? 'update-api-model-button' : 'create-api-model-button'}
+                  disabled={isSubmitting || createMutation.isLoading || updateMutation.isLoading}
+                >
                   {isSubmitting || createMutation.isLoading || updateMutation.isLoading
                     ? isEditMode
                       ? 'Updating...'
