@@ -28,11 +28,13 @@ pub async fn canonical_url_middleware(
 ) -> Response {
   // Skip redirect if canonical redirect is disabled
   if !setting_service.canonical_redirect_enabled() {
+    debug!("Canonical redirect is disabled, skipping redirect");
     return next.run(request).await;
   }
 
   // Skip redirect if public_host is not explicitly set
   if setting_service.get_public_host_explicit().is_none() {
+    debug!("Public host is not explicitly set, skipping redirect");
     return next.run(request).await;
   }
   let method = request.method();
@@ -40,11 +42,13 @@ pub async fn canonical_url_middleware(
   let path = uri.path();
   // Only redirect GET and HEAD requests to avoid breaking forms and APIs
   if !matches!(method.as_str(), "GET" | "HEAD") {
+    debug!("Not a GET or HEAD request, skipping redirect");
     return next.run(request).await;
   }
 
   // Skip redirects for health check and special endpoints
   if is_exempt_path(path) {
+    debug!("Exempt path, skipping redirect");
     return next.run(request).await;
   }
 
@@ -54,12 +58,12 @@ pub async fn canonical_url_middleware(
     Some(host_header) => match host_header.to_str() {
       Ok(host) => host,
       Err(_) => {
-        debug!("Invalid host header, proceeding without redirect");
+        debug!("Invalid host header, skipping redirect");
         return next.run(request).await;
       }
     },
     None => {
-      debug!("No host header found, proceeding without redirect");
+      debug!("No host header found, skipping redirect");
       return next.run(request).await;
     }
   };
