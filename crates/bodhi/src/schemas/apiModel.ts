@@ -52,7 +52,11 @@ export const createApiModelSchema = z.object({
 export const updateApiModelSchema = z.object({
   provider: z.string().min(1, 'Provider is required').max(20, 'Provider must be less than 20 characters').optional(),
   base_url: z.string().url('Base URL must be a valid URL').min(1, 'Base URL is required').optional(),
-  api_key: z.string().min(10, 'API key must be at least 10 characters long').max(200, 'API key is too long').optional(),
+  api_key: z
+    .string()
+    .max(200, 'API key is too long')
+    .refine((val) => val === '' || val.length >= 1, 'API key must be at least 1 characters long when provided')
+    .optional(),
   models: z
     .array(z.string().min(1, 'Model name cannot be empty'))
     .min(1, 'At least one model must be selected')

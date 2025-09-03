@@ -3232,17 +3232,20 @@
         "type": "object",
         "description": "Request to fetch available models from provider",
         "required": [
-          "api_key",
           "base_url"
         ],
         "properties": {
           "api_key": {
             "type": "string",
-            "description": "API key for authentication"
+            "description": "API key for authentication (provide either api_key OR id, api_key takes preference if both provided)"
           },
           "base_url": {
             "type": "string",
-            "description": "API base URL"
+            "description": "API base URL (optional when using id)"
+          },
+          "id": {
+            "type": "string",
+            "description": "API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)"
           }
         },
         "example": {
@@ -4236,7 +4239,6 @@
         "type": "object",
         "description": "Request to test API connectivity with a prompt",
         "required": [
-          "api_key",
           "base_url",
           "model",
           "prompt"
@@ -4244,11 +4246,15 @@
         "properties": {
           "api_key": {
             "type": "string",
-            "description": "API key for authentication"
+            "description": "API key for authentication (provide either api_key OR id, api_key takes preference if both provided)"
           },
           "base_url": {
             "type": "string",
-            "description": "API base URL"
+            "description": "API base URL (optional when using id)"
+          },
+          "id": {
+            "type": "string",
+            "description": "API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)"
           },
           "model": {
             "type": "string",
@@ -4313,104 +4319,46 @@
       "UnifiedModelResponse": {
         "oneOf": [
           {
-            "type": "object",
-            "required": [
-              "alias",
-              "repo",
-              "filename",
-              "snapshot",
-              "source",
-              "model_params",
-              "request_params",
-              "context_params",
-              "model_type"
-            ],
-            "properties": {
-              "alias": {
-                "type": "string"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AliasResponse"
               },
-              "context_params": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "filename": {
-                "type": "string"
-              },
-              "model_params": {
+              {
                 "type": "object",
-                "additionalProperties": {},
-                "propertyNames": {
-                  "type": "string"
+                "required": [
+                  "model_type"
+                ],
+                "properties": {
+                  "model_type": {
+                    "type": "string",
+                    "enum": [
+                      "local"
+                    ]
+                  }
                 }
-              },
-              "model_type": {
-                "type": "string",
-                "enum": [
-                  "local"
-                ]
-              },
-              "repo": {
-                "type": "string"
-              },
-              "request_params": {
-                "$ref": "#/components/schemas/OAIRequestParams"
-              },
-              "snapshot": {
-                "type": "string"
-              },
-              "source": {
-                "type": "string"
               }
-            }
+            ]
           },
           {
-            "type": "object",
-            "required": [
-              "id",
-              "provider",
-              "base_url",
-              "api_key_masked",
-              "models",
-              "created_at",
-              "updated_at",
-              "model_type"
-            ],
-            "properties": {
-              "api_key_masked": {
-                "type": "string"
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiModelResponse"
               },
-              "base_url": {
-                "type": "string"
-              },
-              "created_at": {
-                "type": "string",
-                "format": "date-time"
-              },
-              "id": {
-                "type": "string"
-              },
-              "model_type": {
-                "type": "string",
-                "enum": [
-                  "api"
-                ]
-              },
-              "models": {
-                "type": "array",
-                "items": {
-                  "type": "string"
+              {
+                "type": "object",
+                "required": [
+                  "model_type"
+                ],
+                "properties": {
+                  "model_type": {
+                    "type": "string",
+                    "enum": [
+                      "api"
+                    ]
+                  }
                 }
-              },
-              "provider": {
-                "type": "string"
-              },
-              "updated_at": {
-                "type": "string",
-                "format": "date-time"
               }
-            }
+            ]
           }
         ],
         "description": "Unified model response that can represent both local aliases and API models"

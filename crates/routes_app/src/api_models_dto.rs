@@ -75,6 +75,7 @@ pub struct UpdateApiModelRequest {
 
 /// Request to test API connectivity with a prompt
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[validate(schema(function = "validate_test_prompt_credentials"))]
 #[schema(example = json!({
     "api_key": "sk-...",
     "base_url": "https://api.openai.com/v1",
@@ -82,11 +83,19 @@ pub struct UpdateApiModelRequest {
     "prompt": "Hello, how are you?"
 }))]
 pub struct TestPromptRequest {
-  /// API key for authentication
+  /// API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
   #[validate(length(min = 1))]
-  pub api_key: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[schema(required = false, nullable = false)]
+  pub api_key: Option<String>,
 
-  /// API base URL
+  /// API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
+  #[validate(length(min = 1))]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[schema(required = false, nullable = false)]
+  pub id: Option<String>,
+
+  /// API base URL (optional when using id)
   #[validate(url)]
   pub base_url: String,
 
@@ -101,16 +110,25 @@ pub struct TestPromptRequest {
 
 /// Request to fetch available models from provider
 #[derive(Debug, Clone, Serialize, Deserialize, Validate, ToSchema)]
+#[validate(schema(function = "validate_fetch_models_credentials"))]
 #[schema(example = json!({
     "api_key": "sk-...",
     "base_url": "https://api.openai.com/v1"
 }))]
 pub struct FetchModelsRequest {
-  /// API key for authentication
+  /// API key for authentication (provide either api_key OR id, api_key takes preference if both provided)
   #[validate(length(min = 1))]
-  pub api_key: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[schema(required = false, nullable = false)]
+  pub api_key: Option<String>,
 
-  /// API base URL
+  /// API model ID to look up stored credentials (provide either api_key OR id, api_key takes preference if both provided)
+  #[validate(length(min = 1))]
+  #[serde(skip_serializing_if = "Option::is_none")]
+  #[schema(required = false, nullable = false)]
+  pub id: Option<String>,
+
+  /// API base URL (optional when using id)
   #[validate(url)]
   pub base_url: String,
 }
@@ -217,6 +235,36 @@ pub fn mask_api_key(api_key: &str) -> String {
   format!("{}...{}", first_3, last_6)
 }
 
+/// Validate that at least one of api_key or id is provided for TestPromptRequest
+/// If both are provided, api_key takes preference
+fn validate_test_prompt_credentials(
+  request: &TestPromptRequest,
+) -> Result<(), validator::ValidationError> {
+  match (&request.api_key, &request.id) {
+    (None, None) => {
+      let mut error = validator::ValidationError::new("credentials_missing");
+      error.message = Some("Either api_key or id must be provided".into());
+      Err(error)
+    }
+    _ => Ok(()), // Both provided (api_key preferred) or one provided - all valid
+  }
+}
+
+/// Validate that at least one of api_key or id is provided for FetchModelsRequest
+/// If both are provided, api_key takes preference
+fn validate_fetch_models_credentials(
+  request: &FetchModelsRequest,
+) -> Result<(), validator::ValidationError> {
+  match (&request.api_key, &request.id) {
+    (None, None) => {
+      let mut error = validator::ValidationError::new("credentials_missing");
+      error.message = Some("Either api_key or id must be provided".into());
+      Err(error)
+    }
+    _ => Ok(()), // Both provided (api_key preferred) or one provided - all valid
+  }
+}
+
 #[cfg(test)]
 mod tests {
   use super::{
@@ -258,7 +306,8 @@ mod tests {
   #[test]
   fn test_prompt_request_validation() {
     let too_long = TestPromptRequest {
-      api_key: "sk-test".to_string(),
+      api_key: Some("sk-test".to_string()),
+      id: None,
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "This prompt is way too long and exceeds the 30 character limit".to_string(),
@@ -266,7 +315,8 @@ mod tests {
     assert!(too_long.validate().is_err());
 
     let valid = TestPromptRequest {
-      api_key: "sk-test".to_string(),
+      api_key: Some("sk-test".to_string()),
+      id: None,
       base_url: "https://api.openai.com/v1".to_string(),
       model: "gpt-4".to_string(),
       prompt: "Hello, how are you?".to_string(),
@@ -277,13 +327,15 @@ mod tests {
   #[test]
   fn test_fetch_models_request_validation() {
     let invalid = FetchModelsRequest {
-      api_key: "".to_string(),
+      api_key: Some("".to_string()),
+      id: None,
       base_url: "not-a-url".to_string(),
     };
     assert!(invalid.validate().is_err());
 
     let valid = FetchModelsRequest {
-      api_key: "sk-test".to_string(),
+      api_key: Some("sk-test".to_string()),
+      id: None,
       base_url: "https://api.openai.com/v1".to_string(),
     };
     assert!(valid.validate().is_ok());
@@ -300,5 +352,83 @@ mod tests {
     assert!(!failure.success);
     assert!(failure.response.is_none());
     assert_eq!(failure.error, Some("API error".to_string()));
+  }
+
+  #[test]
+  fn test_test_prompt_request_credentials_validation() {
+    // Both api_key and id provided - should pass (api_key takes preference)
+    let both_provided = TestPromptRequest {
+      api_key: Some("sk-test".to_string()),
+      id: Some("openai-model".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+    };
+    assert!(both_provided.validate().is_ok());
+
+    // Neither provided - should fail
+    let neither_provided = TestPromptRequest {
+      api_key: None,
+      id: None,
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+    };
+    assert!(neither_provided.validate().is_err());
+
+    // Only api_key provided - should pass
+    let api_key_only = TestPromptRequest {
+      api_key: Some("sk-test".to_string()),
+      id: None,
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+    };
+    assert!(api_key_only.validate().is_ok());
+
+    // Only id provided - should pass
+    let id_only = TestPromptRequest {
+      api_key: None,
+      id: Some("openai-model".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+    };
+    assert!(id_only.validate().is_ok());
+  }
+
+  #[test]
+  fn test_fetch_models_request_credentials_validation() {
+    // Both api_key and id provided - should pass (api_key takes preference)
+    let both_provided = FetchModelsRequest {
+      api_key: Some("sk-test".to_string()),
+      id: Some("openai-model".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+    };
+    assert!(both_provided.validate().is_ok());
+
+    // Neither provided - should fail
+    let neither_provided = FetchModelsRequest {
+      api_key: None,
+      id: None,
+      base_url: "https://api.openai.com/v1".to_string(),
+    };
+    assert!(neither_provided.validate().is_err());
+
+    // Only api_key provided - should pass
+    let api_key_only = FetchModelsRequest {
+      api_key: Some("sk-test".to_string()),
+      id: None,
+      base_url: "https://api.openai.com/v1".to_string(),
+    };
+    assert!(api_key_only.validate().is_ok());
+
+    // Only id provided - should pass
+    let id_only = FetchModelsRequest {
+      api_key: None,
+      id: Some("openai-model".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+    };
+    assert!(id_only.validate().is_ok());
   }
 }

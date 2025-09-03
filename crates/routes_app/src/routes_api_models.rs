@@ -292,15 +292,43 @@ pub async fn test_api_model_handler(
     .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
 
   let ai_api_service = state.app_service().ai_api_service();
+  let db_service = state.app_service().db_service();
 
-  // Test the API connection with provided parameters
+  // Resolve API key and base URL - api_key takes preference if both are provided
+  let (api_key, base_url) = match (&payload.api_key, &payload.id) {
+    (Some(key), _) => {
+      // Use provided API key directly (takes preference over id)
+      (key.clone(), payload.base_url.clone())
+    }
+    (None, Some(id)) => {
+      // Look up stored API key and use stored base URL
+      let stored_key = db_service.get_api_key_for_alias(id).await?.ok_or_else(|| {
+        ApiError::from(objs::EntityError::NotFound(format!(
+          "API model '{}' not found",
+          id
+        )))
+      })?;
+
+      let api_model = db_service.get_api_model_alias(id).await?.ok_or_else(|| {
+        ApiError::from(objs::EntityError::NotFound(format!(
+          "API model '{}' not found",
+          id
+        )))
+      })?;
+
+      (stored_key, api_model.base_url)
+    }
+    (None, None) => {
+      // This should not happen due to validation, but handle gracefully
+      return Err(ApiError::from(BadRequestError::new(
+        "Either api_key or id must be provided".to_string(),
+      )));
+    }
+  };
+
+  // Test the API connection with resolved parameters
   match ai_api_service
-    .test_prompt(
-      &payload.api_key,
-      &payload.base_url,
-      &payload.model,
-      &payload.prompt,
-    )
+    .test_prompt(&api_key, &base_url, &payload.model, &payload.prompt)
     .await
   {
     Ok(response) => Ok(Json(TestPromptResponse::success(response))),
@@ -335,11 +363,42 @@ pub async fn fetch_models_handler(
     .map_err(|e| ApiError::from(ObjValidationError::ValidationErrors(e)))?;
 
   let ai_api_service = state.app_service().ai_api_service();
+  let db_service = state.app_service().db_service();
 
-  // Fetch models from the API with provided parameters
-  let models = ai_api_service
-    .fetch_models(&payload.api_key, &payload.base_url)
-    .await?;
+  // Resolve API key and base URL - api_key takes preference if both are provided
+  let (api_key, base_url) = match (&payload.api_key, &payload.id) {
+    (Some(key), _) => {
+      // Use provided API key directly (takes preference over id)
+      (key.clone(), payload.base_url.clone())
+    }
+    (None, Some(id)) => {
+      // Look up stored API key and use stored base URL
+      let stored_key = db_service.get_api_key_for_alias(id).await?.ok_or_else(|| {
+        ApiError::from(objs::EntityError::NotFound(format!(
+          "API model '{}' not found",
+          id
+        )))
+      })?;
+
+      let api_model = db_service.get_api_model_alias(id).await?.ok_or_else(|| {
+        ApiError::from(objs::EntityError::NotFound(format!(
+          "API model '{}' not found",
+          id
+        )))
+      })?;
+
+      (stored_key, api_model.base_url)
+    }
+    (None, None) => {
+      // This should not happen due to validation, but handle gracefully
+      return Err(ApiError::from(BadRequestError::new(
+        "Either api_key or id must be provided".to_string(),
+      )));
+    }
+  };
+
+  // Fetch models from the API with resolved parameters
+  let models = ai_api_service.fetch_models(&api_key, &base_url).await?;
 
   Ok(Json(FetchModelsResponse { models }))
 }
@@ -352,7 +411,10 @@ mod tests {
     update_api_model_handler,
   };
   use crate::{
-    api_models_dto::{ApiModelResponse, CreateApiModelRequest, UpdateApiModelRequest},
+    api_models_dto::{
+      ApiModelResponse, CreateApiModelRequest, FetchModelsRequest, TestPromptRequest,
+      UpdateApiModelRequest,
+    },
     PaginatedApiModelResponse, ENDPOINT_API_MODELS,
   };
   use axum::{
@@ -365,7 +427,6 @@ mod tests {
   use objs::{test_utils::setup_l10n, AliasSource, ApiModelAlias, FluentLocalizationService};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
-
   use server_core::{
     test_utils::{RequestTestExt, ResponseTestExt},
     DefaultRouterState, MockSharedContext,
@@ -376,6 +437,7 @@ mod tests {
   };
   use std::sync::Arc;
   use tower::ServiceExt;
+  use validator::Validate;
 
   /// Create expected ApiModelResponse for testing
   fn create_expected_response(
@@ -1114,5 +1176,29 @@ mod tests {
 
     assert_eq!(mask_api_key("sk-1234567890abcdef"), "sk-...abcdef");
     assert_eq!(mask_api_key("short"), "***");
+  }
+
+  #[test]
+  fn test_api_key_preference_over_id() {
+    // Test that when both api_key and id are provided, api_key is preferred
+    let test_request = TestPromptRequest {
+      api_key: Some("sk-direct-key".to_string()),
+      id: Some("stored-model-id".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+      model: "gpt-4".to_string(),
+      prompt: "Hello".to_string(),
+    };
+
+    // Validation should pass (both are provided, api_key takes preference)
+    assert!(test_request.validate().is_ok());
+
+    let fetch_request = FetchModelsRequest {
+      api_key: Some("sk-direct-key".to_string()),
+      id: Some("stored-model-id".to_string()),
+      base_url: "https://api.openai.com/v1".to_string(),
+    };
+
+    // Validation should pass (both are provided, api_key takes preference)
+    assert!(fetch_request.validate().is_ok());
   }
 }
