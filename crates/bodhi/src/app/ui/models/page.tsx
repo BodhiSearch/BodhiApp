@@ -8,12 +8,32 @@ import { UnifiedModelResponse } from '@bodhiapp/ts-client';
 import { SortState } from '@/types/models';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Pencil, MessageSquare, ExternalLink, FilePlus2, Plus, Cloud, Globe } from 'lucide-react';
+import {
+  Pencil,
+  MessageSquare,
+  ExternalLink,
+  FilePlus2,
+  Plus,
+  Cloud,
+  Globe,
+  Trash2,
+  MoreHorizontal,
+} from 'lucide-react';
 import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
 import { ErrorPage } from '@/components/ui/ErrorPage';
 import { UserOnboarding } from '@/components/UserOnboarding';
 import { CopyableContent } from '@/components/CopyableContent';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import { useDeleteApiModel } from '@/hooks/useApiModels';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const columns = [
   { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
@@ -78,6 +98,11 @@ function ModelsPageContent() {
     column: 'alias',
     direction: 'asc',
   });
+  const [deleteModel, setDeleteModel] = useState<{ id: string; name: string } | null>(null);
+  const [moreModelsModal, setMoreModelsModal] = useState<{ models: string[]; modelId: string } | null>(null);
+
+  const { toast } = useToast();
+  const deleteApiModel = useDeleteApiModel();
 
   // Backend will provide combined data including API models, User aliases, and Model File aliases
   const { data, isLoading, error } = useModels(page, pageSize, sort.column, sort.direction);
@@ -113,6 +138,35 @@ function ModelsPageContent() {
     router.push(`/ui/chat?model=${modelIdentifier}`);
   };
 
+  const handleDelete = (model: UnifiedModelResponse) => {
+    if (model.model_type === 'api') {
+      setDeleteModel({ id: model.id, name: model.id });
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteModel) return;
+
+    try {
+      await deleteApiModel.mutateAsync(deleteModel.id);
+      toast({
+        title: 'Success',
+        description: `API model ${deleteModel.name} deleted successfully`,
+      });
+      setDeleteModel(null);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to delete API model',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleShowMoreModels = (models: string[], modelId: string) => {
+    setMoreModelsModal({ models: models.slice(2), modelId });
+  };
+
   const getHuggingFaceFileUrl = (repo: string, filename: string) => {
     return `https://huggingface.co/${repo}/blob/main/${filename}`;
   };
@@ -136,27 +190,83 @@ function ModelsPageContent() {
             onClick={() => handleEdit(model)}
             title={`Edit API model ${model.id}`}
             className="h-8 w-8 p-0"
+            data-testid={`edit-button-${model.id}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
-          {model.models
-            .map((modelName) => (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleDelete(model)}
+            title={`Delete API model ${model.id}`}
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            data-testid={`delete-button-${model.id}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleChat(model)}
+            title="Chat with the model in playground"
+            className="h-8 w-8 p-0"
+            data-testid={`chat-button-${model.id}`}
+          >
+            <MessageSquare className="h-4 w-4" />
+          </Button>
+          {/* Desktop view - show first 2 models directly */}
+          <div className="hidden sm:flex items-center gap-1">
+            {model.models
+              .map((modelName) => (
+                <Button
+                  key={`${model.id}-${modelName}`}
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs"
+                  onClick={() => router.push(`/ui/chat?model=${modelName}`)}
+                  title={`Chat with ${modelName}`}
+                  data-testid={`model-chat-button-${modelName}`}
+                >
+                  {modelName}
+                </Button>
+              ))
+              .slice(0, 2)}
+            {model.models.length > 2 && (
               <Button
-                key={`${model.id}-${modelName}`}
                 variant="ghost"
                 size="sm"
-                className="h-8 px-2 text-xs"
-                onClick={() => router.push(`/ui/chat?model=${modelName}`)}
-                title={`Chat with ${modelName}`}
+                className="h-8 px-2 text-xs text-muted-foreground"
+                onClick={() => handleShowMoreModels(model.models, model.id)}
+                title="Show more models"
+                data-testid={`more-models-button-${model.id}`}
               >
-                {modelName}
+                +{model.models.length - 2} more...
               </Button>
-            ))
-            .slice(0, 2)}{' '}
-          {/* Show only first 2 models */}
-          {model.models.length > 2 && (
-            <span className="text-xs text-muted-foreground">+{model.models.length - 2} more</span>
-          )}
+            )}
+          </div>
+          {/* Mobile view - dropdown for models */}
+          <div className="sm:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="Chat with models"
+                  data-testid={`models-dropdown-${model.id}`}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {model.models.map((modelName) => (
+                  <DropdownMenuItem key={modelName} onClick={() => router.push(`/ui/chat?model=${modelName}`)}>
+                    {modelName}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       );
     } else {
@@ -169,6 +279,7 @@ function ModelsPageContent() {
             onClick={() => handleNew(model)}
             title={`Create new model alias using this modelfile`}
             className="h-8 w-8 p-0"
+            data-testid={`new-button-${model.alias}`}
           >
             <FilePlus2 className="h-4 w-4" />
           </Button>
@@ -179,6 +290,7 @@ function ModelsPageContent() {
             onClick={() => handleEdit(model)}
             title={`Edit ${model.alias}`}
             className="h-8 w-8 p-0"
+            data-testid={`edit-button-${model.alias}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -192,6 +304,7 @@ function ModelsPageContent() {
             onClick={() => handleChat(model)}
             title={`Chat with the model in playground`}
             className="h-8 w-8 p-0"
+            data-testid={`chat-button-${model.alias}`}
           >
             <MessageSquare className="h-4 w-4" />
           </Button>
@@ -201,6 +314,7 @@ function ModelsPageContent() {
             className="h-8 w-8 p-0"
             onClick={() => window.open(getExternalUrl(model), '_blank')}
             title="Open in HuggingFace"
+            data-testid={`external-button-${model.alias}`}
           >
             <ExternalLink className="h-4 w-4" />
           </Button>
@@ -235,7 +349,7 @@ function ModelsPageContent() {
 
   const renderRow = (model: UnifiedModelResponse) => [
     // Mobile view (single column with all items stacked)
-    <TableCell key="combined" className="sm:hidden" data-testid="combined-cell">
+    <TableCell key="combined" className="sm:hidden" data-testid={`combined-cell-${getItemId(model)}`}>
       <div className="flex flex-col gap-2">
         {/* Name - for API models, show list of models */}
         <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} className="font-medium" />
@@ -255,14 +369,16 @@ function ModelsPageContent() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 pt-2 border-t">{actionUi(model)}</div>
+        <div className="flex items-center gap-1 pt-2 border-t" data-testid={`actions-${getItemId(model)}`}>
+          {actionUi(model)}
+        </div>
       </div>
     </TableCell>,
     // Tablet view (name+source column)
     <TableCell
       key="name_source"
       className="max-w-[250px] hidden sm:table-cell lg:hidden"
-      data-testid="name-source-cell"
+      data-testid={`name-source-cell-${getItemId(model)}`}
     >
       <div className="flex flex-col gap-1">
         <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} className="font-medium" />
@@ -281,7 +397,7 @@ function ModelsPageContent() {
     <TableCell
       key="repo_filename"
       className="max-w-[300px] hidden sm:table-cell lg:hidden"
-      data-testid="repo-filename-cell"
+      data-testid={`repo-filename-cell-${getItemId(model)}`}
     >
       <div className="flex flex-col gap-1">
         <CopyableContent text={getModelDisplayRepo(model)} className="text-sm" />
@@ -289,23 +405,43 @@ function ModelsPageContent() {
       </div>
     </TableCell>,
     // Desktop view (separate columns)
-    <TableCell key="alias" className="max-w-[250px] hidden lg:table-cell" data-testid="alias-cell">
+    <TableCell
+      key="alias"
+      className="max-w-[250px] hidden lg:table-cell"
+      data-testid={`alias-cell-${getItemId(model)}`}
+    >
       <div className="flex flex-col gap-1">
         <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} />
       </div>
     </TableCell>,
-    <TableCell key="repo" className="max-w-[200px] truncate hidden lg:table-cell" data-testid="repo-cell">
+    <TableCell
+      key="repo"
+      className="max-w-[200px] truncate hidden lg:table-cell"
+      data-testid={`repo-cell-${getItemId(model)}`}
+    >
       <CopyableContent text={getModelDisplayRepo(model)} />
     </TableCell>,
-    <TableCell key="filename" className="max-w-[200px] hidden lg:table-cell" data-testid="filename-cell">
+    <TableCell
+      key="filename"
+      className="max-w-[200px] hidden lg:table-cell"
+      data-testid={`filename-cell-${getItemId(model)}`}
+    >
       <CopyableContent text={getModelDisplayFilename(model)} className="truncate" />
     </TableCell>,
-    <TableCell key="source" className="max-w-[100px] hidden lg:table-cell" data-testid="source-cell">
+    <TableCell
+      key="source"
+      className="max-w-[100px] hidden lg:table-cell"
+      data-testid={`source-cell-${getItemId(model)}`}
+    >
       <div className="w-fit">
         <SourceBadge model={model} />
       </div>
     </TableCell>,
-    <TableCell key="actions" className="w-[140px] whitespace-nowrap hidden sm:table-cell">
+    <TableCell
+      key="actions"
+      className="w-[140px] whitespace-nowrap hidden sm:table-cell"
+      data-testid={`actions-cell-${getItemId(model)}`}
+    >
       {actionUi(model)}
     </TableCell>,
   ];
@@ -333,7 +469,7 @@ function ModelsPageContent() {
         </Button>
       </div>
 
-      <div className="overflow-x-auto my-4">
+      <div className="overflow-x-auto my-4" data-testid="table-list-models">
         <DataTable
           data={data?.data || []}
           columns={columns}
@@ -351,6 +487,40 @@ function ModelsPageContent() {
           onPageChange={setPage}
         />
       </div>
+      {/* Delete Confirmation Dialog */}
+      <DeleteConfirmDialog
+        open={!!deleteModel}
+        onOpenChange={(open) => !open && setDeleteModel(null)}
+        title="Delete API Model"
+        description={`Are you sure you want to delete the API model "${deleteModel?.name}"? This action cannot be undone.`}
+        onConfirm={confirmDelete}
+        loading={deleteApiModel.isLoading}
+      />
+
+      {/* More Models Modal */}
+      <Dialog open={!!moreModelsModal} onOpenChange={(open) => !open && setMoreModelsModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Additional Models</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-2">
+            {moreModelsModal?.models.map((modelName) => (
+              <Button
+                key={modelName}
+                variant="outline"
+                className="justify-start"
+                onClick={() => {
+                  router.push(`/ui/chat?model=${modelName}`);
+                  setMoreModelsModal(null);
+                }}
+              >
+                <MessageSquare className="h-4 w-4 mr-2" />
+                {modelName}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

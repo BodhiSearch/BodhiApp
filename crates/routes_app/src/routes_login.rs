@@ -26,7 +26,6 @@ use services::{
 use sha2::{Digest, Sha256};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
-use tracing::instrument;
 use utoipa::ToSchema;
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, ToSchema)]
@@ -51,7 +50,6 @@ pub struct RedirectResponse {
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
 )]
-#[instrument(skip_all, level = "debug")]
 pub async fn auth_initiate_handler(
   headers: HeaderMap,
   session: Session,
@@ -146,7 +144,6 @@ pub async fn auth_initiate_handler(
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
 )]
-#[instrument(skip_all, level = "debug")]
 pub async fn auth_callback_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -336,7 +333,6 @@ pub enum LogoutError {
         (status = 500, description = "Session deletion failed", body = OpenAIApiError)
     )
 )]
-#[instrument(skip_all, level = "debug")]
 pub async fn logout_handler(
   session: Session,
   State(state): State<Arc<dyn RouterState>>,
@@ -359,7 +355,6 @@ pub async fn logout_handler(
         (status = 500, description = "Internal server error", body = OpenAIApiError)
     )
 )]
-#[instrument(skip_all, level = "debug")]
 pub async fn request_access_handler(
   State(state): State<Arc<dyn RouterState>>,
   Json(request): Json<RequestAccessRequest>,
