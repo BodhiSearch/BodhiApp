@@ -1,11 +1,11 @@
-use objs::{Alias, HubFile, RemoteModel};
+use objs::{UserAlias, HubFile, RemoteModel};
 use prettytable::{Cell, Row};
 
 pub trait IntoRow {
   fn into_row(self) -> Row;
 }
 
-impl IntoRow for Alias {
+impl IntoRow for UserAlias {
   fn into_row(self) -> Row {
     Row::from(vec![
       Cell::new(&self.alias),
@@ -52,7 +52,7 @@ impl IntoRow for RemoteModel {
 #[cfg(test)]
 mod test {
   use crate::objs_ext::IntoRow;
-  use objs::{Alias, HubFile, RemoteModel, Repo};
+  use objs::{UserAlias, HubFile, RemoteModel, Repo};
   use pretty_assertions::assert_eq;
   use prettytable::{Cell, Row};
   use rstest::rstest;
@@ -60,7 +60,7 @@ mod test {
 
   #[test]
   fn test_alias_to_row() -> anyhow::Result<()> {
-    let alias = Alias::testalias();
+    let alias = UserAlias::testalias();
     let row = alias.into_row();
     assert_eq!(
       Row::from(vec![

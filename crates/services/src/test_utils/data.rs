@@ -2,7 +2,7 @@ use crate::{
   test_utils::{test_hf_service, TestHfService},
   DataService, DataServiceError, LocalDataService,
 };
-use objs::{test_utils::temp_bodhi_home, Alias, RemoteModel};
+use objs::{test_utils::temp_bodhi_home, UserAlias, RemoteModel};
 use rstest::fixture;
 use std::{path::PathBuf, sync::Arc};
 use tempfile::TempDir;
@@ -37,15 +37,15 @@ impl TestDataService {
 type Result<T> = std::result::Result<T, DataServiceError>;
 
 impl DataService for TestDataService {
-  fn list_aliases(&self) -> Result<Vec<Alias>> {
+  fn list_aliases(&self) -> Result<Vec<UserAlias>> {
     self.inner.list_aliases()
   }
 
-  fn save_alias(&self, alias: &Alias) -> Result<PathBuf> {
+  fn save_alias(&self, alias: &UserAlias) -> Result<PathBuf> {
     self.inner.save_alias(alias)
   }
 
-  fn find_alias(&self, alias: &str) -> Option<Alias> {
+  fn find_alias(&self, alias: &str) -> Option<UserAlias> {
     self.inner.find_alias(alias)
   }
 

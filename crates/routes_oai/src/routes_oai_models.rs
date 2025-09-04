@@ -4,7 +4,7 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{Alias, ApiError, ApiModelAlias, OpenAIApiError, API_TAG_OPENAI};
+use objs::{UserAlias, ApiError, ApiModelAlias, OpenAIApiError, API_TAG_OPENAI};
 use server_core::{ModelRouterError, RouterState};
 use services::AliasNotFoundError;
 use std::sync::Arc;
@@ -225,7 +225,7 @@ pub async fn oai_model_handler(
   }
 }
 
-fn to_oai_model(state: Arc<dyn RouterState>, alias: Alias) -> OAIModel {
+fn to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> OAIModel {
   let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = state.app_service().time_service().created_at(&path);

@@ -1,4 +1,4 @@
-use objs::{Alias, HubFile, OAIRequestParams};
+use objs::{UserAlias, HubFile, OAIRequestParams};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::db::{ApiToken, DownloadRequest};
@@ -162,8 +162,8 @@ pub struct AliasResponse {
   pub context_params: Vec<String>,
 }
 
-impl From<Alias> for AliasResponse {
-  fn from(alias: Alias) -> Self {
+impl From<UserAlias> for AliasResponse {
+  fn from(alias: UserAlias) -> Self {
     AliasResponse {
       repo: alias.repo.to_string(),
       filename: alias.filename,

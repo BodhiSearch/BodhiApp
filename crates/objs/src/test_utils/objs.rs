@@ -1,12 +1,12 @@
 use crate::{
-  test_utils::SNAPSHOT, Alias, AliasSource, HubFile, HubFileBuilder, OAIRequestParams,
+  test_utils::SNAPSHOT, UserAlias, AliasSource, HubFile, HubFileBuilder, OAIRequestParams,
   OAIRequestParamsBuilder, RemoteModel, Repo, TOKENIZER_CONFIG_JSON,
 };
 use derive_builder::Builder;
 use std::{path::PathBuf, str::FromStr};
 
 // Type alias for backward compatibility
-pub type AliasBuilder = crate::AliasBuilder;
+pub type AliasBuilder = crate::UserAliasBuilder;
 
 // Chat template related code removed since llama.cpp now handles this
 
@@ -264,28 +264,28 @@ impl AliasBuilder {
   }
 }
 
-impl Alias {
-  pub fn testalias() -> Alias {
+impl UserAlias {
+  pub fn testalias() -> UserAlias {
     AliasBuilder::testalias().build().unwrap()
   }
 
-  pub fn testalias_q4() -> Alias {
+  pub fn testalias_q4() -> UserAlias {
     AliasBuilder::testalias_q4().build().unwrap()
   }
 
-  pub fn testalias_exists() -> Alias {
+  pub fn testalias_exists() -> UserAlias {
     AliasBuilder::testalias_exists().build().unwrap()
   }
 
-  pub fn llama3() -> Alias {
+  pub fn llama3() -> UserAlias {
     AliasBuilder::llama3().build().unwrap()
   }
 
-  pub fn tinyllama() -> Alias {
+  pub fn tinyllama() -> UserAlias {
     AliasBuilder::tinyllama().build().unwrap()
   }
 
-  pub fn tinyllama_model() -> Alias {
+  pub fn tinyllama_model() -> UserAlias {
     AliasBuilder::default()
       .alias("TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF:Q2_K")
       .repo(Repo::tinyllama())
@@ -298,7 +298,7 @@ impl Alias {
       .unwrap()
   }
 
-  pub fn llama2_model() -> Alias {
+  pub fn llama2_model() -> UserAlias {
     AliasBuilder::default()
       .alias("TheBloke/Llama-2-7B-Chat-GGUF:Q8_0")
       .repo(Repo::llama2())
@@ -311,7 +311,7 @@ impl Alias {
       .unwrap()
   }
 
-  pub fn fakefactory_model() -> Alias {
+  pub fn fakefactory_model() -> UserAlias {
     AliasBuilder::default()
       .alias("FakeFactory/fakemodel-gguf:Q4_0")
       .repo(Repo::fakemodel())

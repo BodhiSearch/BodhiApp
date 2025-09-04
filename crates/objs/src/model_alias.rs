@@ -1,4 +1,4 @@
-use crate::{Alias, ApiModelAlias};
+use crate::{UserAlias, ApiModelAlias};
 use serde::{Deserialize, Serialize};
 
 /// Flat enum representing all types of model aliases
@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 #[serde(untagged)]
 pub enum ModelAlias {
   /// User-defined local model (source: AliasSource::User)
-  User(Alias),
+  User(UserAlias),
   /// Auto-discovered local model (source: AliasSource::Model)  
-  Model(Alias),
+  Model(UserAlias),
   /// Remote API model (source: AliasSource::RemoteApi)
   Api(ApiModelAlias),
 }
@@ -35,14 +35,14 @@ impl ModelAlias {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{AliasBuilder, AliasSource, Repo};
+  use crate::{UserAliasBuilder, AliasSource, Repo};
   use anyhow::Result;
   use chrono::Utc;
   use std::str::FromStr;
 
   #[test]
   fn test_model_alias_user_can_serve() {
-    let alias = AliasBuilder::default()
+    let alias = UserAliasBuilder::default()
       .alias("llama3:instruct")
       .repo(Repo::from_str("test/llama3").unwrap())
       .filename("llama3.gguf")
@@ -60,7 +60,7 @@ mod tests {
 
   #[test]
   fn test_model_alias_model_can_serve() {
-    let alias = AliasBuilder::default()
+    let alias = UserAliasBuilder::default()
       .alias("testalias:instruct")
       .repo(Repo::from_str("test/testalias").unwrap())
       .filename("testalias.gguf")
@@ -98,7 +98,7 @@ mod tests {
   #[test]
   fn test_model_alias_serialization() -> Result<()> {
     // Test User variant
-    let user_alias = AliasBuilder::default()
+    let user_alias = UserAliasBuilder::default()
       .alias("llama3:instruct")
       .repo(Repo::from_str("test/llama3").unwrap())
       .filename("llama3.gguf")
@@ -116,7 +116,7 @@ mod tests {
     // Note: Due to serde(untagged), Model and User variants with identical Alias structures
     // will deserialize to the first matching variant (User). This is expected behavior.
     // The important thing is that the data is preserved and can_serve works correctly.
-    let model_alias = AliasBuilder::default()
+    let model_alias = UserAliasBuilder::default()
       .alias("auto:model")
       .repo(Repo::from_str("test/auto").unwrap())
       .filename("auto.gguf")
