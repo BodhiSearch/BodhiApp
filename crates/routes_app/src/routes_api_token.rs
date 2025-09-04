@@ -22,11 +22,12 @@ use utoipa::ToSchema;
 /// Request to create a new API token
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 #[schema(example = json!({
-    "name": "My API Token"
+    "name": "My Integration Token"
 }))]
 pub struct CreateApiTokenRequest {
-  /// Optional name for the API token
+  /// Descriptive name for the API token (minimum 3 characters)
   #[serde(default)]
+  #[schema(min_length = 3, max_length = 100, example = "My Integration Token")]
   pub name: Option<String>,
 }
 
@@ -47,9 +48,11 @@ pub struct ApiTokenResponse {
     "status": "inactive"
 }))]
 pub struct UpdateApiTokenRequest {
-  /// New name for the token
+  /// New descriptive name for the token (minimum 3 characters)
+  #[schema(min_length = 3, max_length = 100, example = "Updated Token Name")]
   pub name: String,
   /// New status for the token (active/inactive)
+  #[schema(example = "inactive")]
   pub status: TokenStatus,
 }
 
@@ -77,11 +80,37 @@ pub enum ApiTokenError {
     path = ENDPOINT_TOKENS,
     tag = API_TAG_API_KEYS,
     operation_id = "createApiToken",
-    request_body = CreateApiTokenRequest,
+    summary = "Create API Token",
+    description = "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. This feature is currently not available.",
+    request_body(
+        content = CreateApiTokenRequest,
+        description = "API token creation parameters",
+        example = json!({
+            "name": "My Integration Token",
+            "scopes": ["scope_token_user"]
+        })
+    ),
     responses(
-        (status = 201, description = "API token created successfully", body = ApiTokenResponse),
-        (status = 400, description = "Invalid request", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 201, description = "API token created successfully", body = ApiTokenResponse,
+         example = json!({
+             "offline_token": "bapp_1234567890abcdef"
+         })),
+        (status = 400, description = "Invalid request parameters or token name already exists", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Token name must be at least 3 characters long",
+                 "type": "invalid_request_error",
+                 "code": "validation_error"
+             }
+         })),
+        (status = 500, description = "Internal server error during token creation", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Failed to generate secure token",
+                 "type": "internal_server_error",
+                 "code": "token_generation_error"
+             }
+         }))
     ),
     security(
         ("session_auth" = [])
@@ -103,8 +132,11 @@ pub async fn create_token_handler(
     path = ENDPOINT_TOKENS.to_owned() + "/{id}",
     tag = API_TAG_API_KEYS,
     operation_id = "updateApiToken",
+    summary = "Update API Token",
+    description = "Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.",
     params(
-        ("id" = String, Path, description = "Token identifier",
+        ("id" = String, Path, 
+         description = "Unique identifier of the API token to update",
          example = "550e8400-e29b-41d4-a716-446655440000")
     ),
     request_body(
@@ -189,6 +221,8 @@ pub async fn update_token_handler(
     path = ENDPOINT_TOKENS,
     tag = API_TAG_API_KEYS,
     operation_id = "listApiTokens",
+    summary = "List API Tokens",
+    description = "Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.",
     params(
         PaginationSortParams
     ),
@@ -198,7 +232,7 @@ pub async fn update_token_handler(
              "data": [
                  {
                      "id": "550e8400-e29b-41d4-a716-446655440000",
-                     "user_id": "auth0|123456789",
+                     "user_id": "user@email.com",
                      "name": "Development Token",
                      "token_id": "jwt-token-id-1",
                      "status": "active",
@@ -207,7 +241,7 @@ pub async fn update_token_handler(
                  },
                  {
                      "id": "660e8400-e29b-41d4-a716-446655440000",
-                     "user_id": "auth0|123456789",
+                     "user_id": "user@email.com",
                      "name": "Test Token",
                      "token_id": "jwt-token-id-2",
                      "status": "inactive",

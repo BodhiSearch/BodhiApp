@@ -34,6 +34,8 @@ pub enum SettingsError {
     "value": "debug"
 }))]
 pub struct UpdateSettingRequest {
+  /// New value for the setting (type depends on setting metadata)
+  #[schema(example = "debug")]
   pub value: serde_json::Value,
 }
 
@@ -43,8 +45,10 @@ pub struct UpdateSettingRequest {
     path = ENDPOINT_SETTINGS,
     tag = API_TAG_SETTINGS,
     operation_id = "listSettings",
+    summary = "List Application Settings",
+    description = "Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.",
     responses(
-        (status = 200, description = "List of application settings", body = Vec<SettingInfo>,
+        (status = 200, description = "Application settings retrieved successfully", body = Vec<SettingInfo>,
          example = json!([
              {
                  "key": "BODHI_LOG_LEVEL",
@@ -96,8 +100,12 @@ pub async fn list_settings_handler(
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
     tag = API_TAG_SETTINGS,
     operation_id = "updateSetting",
+    summary = "Update Application Setting",
+    description = "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.",
     params(
-        ("key" = String, Path, description = "Setting key to update")
+        ("key" = String, Path, 
+         description = "Setting key identifier (e.g., BODHI_LOG_LEVEL, BODHI_PORT)",
+         example = "BODHI_LOG_LEVEL")
     ),
     request_body(content = inline(UpdateSettingRequest), description = "New setting value",
         example = json!({
@@ -177,8 +185,12 @@ pub async fn update_setting_handler(
     path = ENDPOINT_SETTINGS.to_owned() + "/{key}",
     tag = API_TAG_SETTINGS,
     operation_id = "deleteSetting",
+    summary = "Reset Setting to Default",
+    description = "Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.",
     params(
-        ("key" = String, Path, description = "Setting key to reset")
+        ("key" = String, Path, 
+         description = "Setting key identifier to reset to default value",
+         example = "BODHI_LOG_LEVEL")
     ),
     responses(
         (status = 200, description = "Setting reset to default successfully", body = SettingInfo,

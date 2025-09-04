@@ -29,9 +29,17 @@ use utoipa::ToSchema;
     "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
 }))]
 pub struct NewDownloadRequest {
-  /// HuggingFace repository name
+  /// HuggingFace repository name in format 'username/repository-name'
+  #[schema(
+    pattern = "^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$",
+    example = "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
+  )]
   pub repo: String,
-  /// Model file name to pull
+  /// Model file name to download (typically .gguf format)
+  #[schema(
+    pattern = ".*\\.(gguf|bin|safetensors)$",
+    example = "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
+  )]
   pub filename: String,
 }
 
@@ -57,22 +65,36 @@ pub enum PullError {
     path = ENDPOINT_MODEL_PULL,
     tag = API_TAG_MODELS,
     operation_id = "listDownloads",
+    summary = "List Model Download Requests",
+    description = "Retrieves paginated list of all model download requests with their current status, progress, and metadata. Includes both active downloads and completed/failed requests.",
     params(
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of download requests", body = PaginatedDownloadResponse,
+        (status = 200, description = "Model download requests retrieved successfully", body = PaginatedDownloadResponse,
          example = json!({
              "data": [{
+                 "id": "download_123",
                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
-                 "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf"
+                 "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+                 "status": "downloading",
+                 "progress": 45.5,
+                 "created_at": "2024-01-15T10:30:00Z",
+                 "updated_at": "2024-01-15T10:35:00Z"
              }],
              "total": 1,
              "page": 1,
              "page_size": 10
          })
         ),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 500, description = "Internal server error during download list retrieval", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Database connection failed",
+                 "type": "internal_server_error",
+                 "code": "database_error"
+             }
+         }))
     ),
     security(
       ("bearer_auth" = []),
@@ -103,9 +125,11 @@ pub async fn list_downloads_handler(
     path = ENDPOINT_MODEL_PULL,
     tag = API_TAG_MODELS,
     operation_id = "pullModelFile",
+    summary = "Start Model File Download",
+    description = "Initiates a new model file download from HuggingFace repository. Creates a download request that can be tracked for progress. Returns existing request if download is already in progress.",
     request_body(
         content = NewDownloadRequest,
-        description = "Model file download request",
+        description = "Model file download specification with repository and filename",
         example = json!({
             "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
             "filename": "mistral-7b-instruct-v0.1.Q8_0.gguf"
@@ -228,19 +252,11 @@ pub async fn create_pull_request_handler(
     path = ENDPOINT_MODEL_PULL.to_owned() + "/{alias}",
     tag = API_TAG_MODELS,
     operation_id = "pullModelByAlias",
+    summary = "Download Model by Alias",
+    description = "Initiates a model download using a predefined alias that maps to specific repository and file combinations. This provides a convenient way to download popular models without specifying exact repository details.",
     params(
         ("alias" = String, Path,
-         description = "Available model aliases:
-- llama3:instruct - Meta Llama 3 8B Instruct
-- llama3:70b-instruct - Meta Llama 3 70B Instruct
-- llama2:chat - Llama 2 7B Chat
-- llama2:13b-chat - Llama 2 13B Chat
-- llama2:70b-chat - Llama 2 70B Chat
-- phi3:mini - Phi 3 Mini
-- mistral:instruct - Mistral 7B Instruct
-- mixtral:instruct - Mixtral 8x7B Instruct
-- gemma:instruct - Gemma 7B Instruct
-- gemma:7b-instruct-v1.1-q8_0 - Gemma 1.1 7B Instruct",
+         description = "Predefined model alias. Available aliases include popular models like llama2:chat, mistral:instruct, phi3:mini, etc. Use the /models endpoint to see all available aliases.",
          example = "llama2:chat")
     ),
     responses(
@@ -367,8 +383,11 @@ pub async fn pull_by_alias_handler(
     path = ENDPOINT_MODEL_PULL.to_owned() + "/{id}",
     tag = API_TAG_MODELS,
     operation_id = "getDownloadStatus",
+    summary = "Get Download Request Status",
+    description = "Retrieves the current status and progress information for a specific model download request. Includes download progress, error details, and completion status.",
     params(
-        ("id" = String, Path, description = "Download request identifier",
+        ("id" = String, Path, 
+         description = "Unique identifier of the download request (UUID format)",
          example = "550e8400-e29b-41d4-a716-446655440000")
     ),
     responses(

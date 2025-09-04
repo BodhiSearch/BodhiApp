@@ -1159,7 +1159,8 @@
         "tags": [
           "models"
         ],
-        "summary": "List all model download requests",
+        "summary": "List Model Download Requests",
+        "description": "Retrieves paginated list of all model download requests with their current status, progress, and metadata. Includes both active downloads and completed/failed requests.",
         "operationId": "listDownloads",
         "parameters": [
           {
@@ -1203,7 +1204,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of download requests",
+            "description": "Model download requests retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -1212,8 +1213,13 @@
                 "example": {
                   "data": [
                     {
+                      "created_at": "2024-01-15T10:30:00Z",
                       "filename": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
-                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF"
+                      "id": "download_123",
+                      "progress": 45.5,
+                      "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+                      "status": "downloading",
+                      "updated_at": "2024-01-15T10:35:00Z"
                     }
                   ],
                   "page": 1,
@@ -1224,11 +1230,18 @@
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during download list retrieval",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "database_error",
+                    "message": "Database connection failed",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -1244,10 +1257,11 @@
         "tags": [
           "models"
         ],
-        "summary": "Start a new model file download",
+        "summary": "Start Model File Download",
+        "description": "Initiates a new model file download from HuggingFace repository. Creates a download request that can be tracked for progress. Returns existing request if download is already in progress.",
         "operationId": "pullModelFile",
         "requestBody": {
-          "description": "Model file download request",
+          "description": "Model file download specification with repository and filename",
           "content": {
             "application/json": {
               "schema": {
@@ -1347,13 +1361,14 @@
         "tags": [
           "models"
         ],
-        "summary": "Start a model file download using a predefined alias",
+        "summary": "Download Model by Alias",
+        "description": "Initiates a model download using a predefined alias that maps to specific repository and file combinations. This provides a convenient way to download popular models without specifying exact repository details.",
         "operationId": "pullModelByAlias",
         "parameters": [
           {
             "name": "alias",
             "in": "path",
-            "description": "Available model aliases:\n- llama3:instruct - Meta Llama 3 8B Instruct\n- llama3:70b-instruct - Meta Llama 3 70B Instruct\n- llama2:chat - Llama 2 7B Chat\n- llama2:13b-chat - Llama 2 13B Chat\n- llama2:70b-chat - Llama 2 70B Chat\n- phi3:mini - Phi 3 Mini\n- mistral:instruct - Mistral 7B Instruct\n- mixtral:instruct - Mixtral 8x7B Instruct\n- gemma:instruct - Gemma 7B Instruct\n- gemma:7b-instruct-v1.1-q8_0 - Gemma 1.1 7B Instruct",
+            "description": "Predefined model alias. Available aliases include popular models like llama2:chat, mistral:instruct, phi3:mini, etc. Use the /models endpoint to see all available aliases.",
             "required": true,
             "schema": {
               "type": "string"
@@ -1464,13 +1479,14 @@
         "tags": [
           "models"
         ],
-        "summary": "Get the status of a specific download request",
+        "summary": "Get Download Request Status",
+        "description": "Retrieves the current status and progress information for a specific model download request. Includes download progress, error details, and completion status.",
         "operationId": "getDownloadStatus",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Download request identifier",
+            "description": "Unique identifier of the download request (UUID format)",
             "required": true,
             "schema": {
               "type": "string"
@@ -1870,11 +1886,12 @@
         "tags": [
           "settings"
         ],
-        "summary": "List all application settings",
+        "summary": "List Application Settings",
+        "description": "Retrieves all configurable application settings with their current values, default values, sources, and metadata including validation constraints.",
         "operationId": "listSettings",
         "responses": {
           "200": {
-            "description": "List of application settings",
+            "description": "Application settings retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -1955,17 +1972,19 @@
         "tags": [
           "settings"
         ],
-        "summary": "Update a specific setting",
+        "summary": "Update Application Setting",
+        "description": "Updates the value of a specific application setting. The new value is validated against the setting's constraints and persisted to the settings file.",
         "operationId": "updateSetting",
         "parameters": [
           {
             "name": "key",
             "in": "path",
-            "description": "Setting key to update",
+            "description": "Setting key identifier (e.g., BODHI_LOG_LEVEL, BODHI_PORT)",
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "BODHI_LOG_LEVEL"
           }
         ],
         "requestBody": {
@@ -1979,7 +1998,9 @@
                   "value"
                 ],
                 "properties": {
-                  "value": {}
+                  "value": {
+                    "description": "New value for the setting (type depends on setting metadata)"
+                  }
                 },
                 "example": {
                   "value": "debug"
@@ -2064,17 +2085,19 @@
         "tags": [
           "settings"
         ],
-        "summary": "Reset a setting to its default value",
+        "summary": "Reset Setting to Default",
+        "description": "Resets a specific application setting to its default value by removing any custom overrides. Some critical settings like BODHI_HOME cannot be reset.",
         "operationId": "deleteSetting",
         "parameters": [
           {
             "name": "key",
             "in": "path",
-            "description": "Setting key to reset",
+            "description": "Setting key identifier to reset to default value",
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "BODHI_LOG_LEVEL"
           }
         ],
         "responses": {
@@ -2208,7 +2231,8 @@
         "tags": [
           "api-keys"
         ],
-        "summary": "List all API tokens for the current user",
+        "summary": "List API Tokens",
+        "description": "Retrieves paginated list of API tokens owned by the current user. Includes token metadata but not the actual token values for security.",
         "operationId": "listApiTokens",
         "parameters": [
           {
@@ -2267,7 +2291,7 @@
                       "status": "active",
                       "token_id": "jwt-token-id-1",
                       "updated_at": "2024-11-10T04:52:06.786Z",
-                      "user_id": "auth0|123456789"
+                      "user_id": "user@email.com"
                     },
                     {
                       "created_at": "2024-11-10T04:52:06.786Z",
@@ -2276,7 +2300,7 @@
                       "status": "inactive",
                       "token_id": "jwt-token-id-2",
                       "updated_at": "2024-11-10T04:52:06.786Z",
-                      "user_id": "auth0|123456789"
+                      "user_id": "user@email.com"
                     }
                   ],
                   "page": 1,
@@ -2331,13 +2355,21 @@
         "tags": [
           "api-keys"
         ],
-        "summary": "Create a new API token",
+        "summary": "Create API Token",
+        "description": "Creates a new API token for programmatic access to the API. The token can be used for bearer authentication in API requests. This feature is currently not available.",
         "operationId": "createApiToken",
         "requestBody": {
+          "description": "API token creation parameters",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/CreateApiTokenRequest"
+              },
+              "example": {
+                "name": "My Integration Token",
+                "scopes": [
+                  "scope_token_user"
+                ]
               }
             }
           },
@@ -2350,26 +2382,43 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiTokenResponse"
+                },
+                "example": {
+                  "offline_token": "bapp_1234567890abcdef"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request",
+            "description": "Invalid request parameters or token name already exists",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "Token name must be at least 3 characters long",
+                    "type": "invalid_request_error"
+                  }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during token creation",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "token_generation_error",
+                    "message": "Failed to generate secure token",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -2387,13 +2436,14 @@
         "tags": [
           "api-keys"
         ],
-        "summary": "Update an existing API token",
+        "summary": "Update API Token",
+        "description": "Updates the name and status of an existing API token. Only the token owner can update their tokens. Token values cannot be changed after creation.",
         "operationId": "updateApiToken",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Token identifier",
+            "description": "Unique identifier of the API token to update",
             "required": true,
             "schema": {
               "type": "string"
@@ -3345,11 +3395,14 @@
               "string",
               "null"
             ],
-            "description": "Optional name for the API token"
+            "description": "Descriptive name for the API token (minimum 3 characters)",
+            "example": "My Integration Token",
+            "maxLength": 100,
+            "minLength": 3
           }
         },
         "example": {
-          "name": "My API Token"
+          "name": "My Integration Token"
         }
       },
       "DownloadRequest": {
@@ -3761,11 +3814,15 @@
         "properties": {
           "filename": {
             "type": "string",
-            "description": "Model file name to pull"
+            "description": "Model file name to download (typically .gguf format)",
+            "example": "mistral-7b-instruct-v0.1.Q4_K_M.gguf",
+            "pattern": ".*\\.(gguf|bin|safetensors)$"
           },
           "repo": {
             "type": "string",
-            "description": "HuggingFace repository name"
+            "description": "HuggingFace repository name in format 'username/repository-name'",
+            "example": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
+            "pattern": "^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$"
           }
         },
         "example": {
@@ -4723,7 +4780,10 @@
         "properties": {
           "name": {
             "type": "string",
-            "description": "New name for the token"
+            "description": "New descriptive name for the token (minimum 3 characters)",
+            "example": "Updated Token Name",
+            "maxLength": 100,
+            "minLength": 3
           },
           "status": {
             "$ref": "#/components/schemas/TokenStatus",
@@ -4742,7 +4802,9 @@
           "value"
         ],
         "properties": {
-          "value": {}
+          "value": {
+            "description": "New value for the setting (type depends on setting metadata)"
+          }
         },
         "example": {
           "value": "debug"
