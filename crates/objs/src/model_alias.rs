@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 /// Each variant contains its own source field, maintaining single source of truth
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
-pub enum ModelAlias {
+pub enum Alias {
   /// User-defined local model (source: AliasSource::User)
   User(UserAlias),
   /// Auto-discovered local model (source: AliasSource::Model)  
@@ -14,20 +14,20 @@ pub enum ModelAlias {
   Api(ApiAlias),
 }
 
-impl ModelAlias {
+impl Alias {
   /// Check if this alias can serve the requested model
   pub fn can_serve(&self, model: &str) -> bool {
     match self {
-      ModelAlias::User(alias) | ModelAlias::Model(alias) => alias.alias == model,
-      ModelAlias::Api(api_alias) => api_alias.models.contains(&model.to_string()),
+      Alias::User(alias) | Alias::Model(alias) => alias.alias == model,
+      Alias::Api(api_alias) => api_alias.models.contains(&model.to_string()),
     }
   }
 
   /// Get the alias name for this model
   pub fn alias_name(&self) -> &str {
     match self {
-      ModelAlias::User(alias) | ModelAlias::Model(alias) => &alias.alias,
-      ModelAlias::Api(api_alias) => &api_alias.id,
+      Alias::User(alias) | Alias::Model(alias) => &alias.alias,
+      Alias::Api(api_alias) => &api_alias.id,
     }
   }
 }
@@ -51,7 +51,7 @@ mod tests {
       .build()
       .unwrap();
 
-    let model_alias = ModelAlias::User(alias);
+    let model_alias = Alias::User(alias);
 
     assert!(model_alias.can_serve("llama3:instruct"));
     assert!(!model_alias.can_serve("other:model"));
@@ -69,7 +69,7 @@ mod tests {
       .build()
       .unwrap();
 
-    let model_alias = ModelAlias::Model(alias);
+    let model_alias = Alias::Model(alias);
 
     assert!(model_alias.can_serve("testalias:instruct"));
     assert!(!model_alias.can_serve("llama3:instruct"));
@@ -87,7 +87,7 @@ mod tests {
       Utc::now(),
     );
 
-    let model_alias = ModelAlias::Api(api_alias);
+    let model_alias = Alias::Api(api_alias);
 
     assert!(model_alias.can_serve("gpt-4"));
     assert!(model_alias.can_serve("gpt-3.5-turbo"));
@@ -106,10 +106,10 @@ mod tests {
       .source(AliasSource::User)
       .build()
       .unwrap();
-    let user_model = ModelAlias::User(user_alias);
+    let user_model = Alias::User(user_alias);
 
     let user_json = serde_json::to_string(&user_model)?;
-    let user_deserialized: ModelAlias = serde_json::from_str(&user_json)?;
+    let user_deserialized: Alias = serde_json::from_str(&user_json)?;
     assert_eq!(user_model, user_deserialized);
 
     // Test Model variant
@@ -124,10 +124,10 @@ mod tests {
       .source(AliasSource::Model)
       .build()
       .unwrap();
-    let model_model = ModelAlias::Model(model_alias);
+    let model_model = Alias::Model(model_alias);
 
     let model_json = serde_json::to_string(&model_model)?;
-    let model_deserialized: ModelAlias = serde_json::from_str(&model_json)?;
+    let model_deserialized: Alias = serde_json::from_str(&model_json)?;
 
     // Due to untagged deserialization, this will deserialize as User variant
     // but the functionality (can_serve) should still work correctly
@@ -143,10 +143,10 @@ mod tests {
       vec!["gpt-4".to_string()],
       Utc::now(),
     );
-    let api_model = ModelAlias::Api(api_alias);
+    let api_model = Alias::Api(api_alias);
 
     let api_json = serde_json::to_string(&api_model)?;
-    let api_deserialized: ModelAlias = serde_json::from_str(&api_json)?;
+    let api_deserialized: Alias = serde_json::from_str(&api_json)?;
     assert_eq!(api_model, api_deserialized);
 
     Ok(())
@@ -163,7 +163,7 @@ mod tests {
       vec!["gpt-4".to_string()],
       Utc::now(),
     );
-    let api_model = ModelAlias::Api(api_alias.clone());
+    let api_model = Alias::Api(api_alias.clone());
 
     // The JSON should be the same as serializing ApiModelAlias directly
     let model_json = serde_json::to_string(&api_model)?;
