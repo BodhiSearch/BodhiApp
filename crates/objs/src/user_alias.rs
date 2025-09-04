@@ -11,7 +11,9 @@ pub enum AliasSource {
   #[default]
   User,
   Model,
-  RemoteApi,
+  #[serde(rename = "api")]
+  #[strum(serialize = "api")]
+  Api,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder, new)]
@@ -24,9 +26,6 @@ pub struct UserAlias {
   pub repo: Repo,
   pub filename: String,
   pub snapshot: String,
-  #[serde(default, skip_serializing_if = "is_default")]
-  #[builder(default)]
-  pub source: AliasSource,
   #[serde(default, skip_serializing_if = "is_default")]
   #[builder(default)]
   pub request_params: OAIRequestParams,

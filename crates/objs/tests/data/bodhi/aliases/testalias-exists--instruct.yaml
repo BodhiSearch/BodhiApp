@@ -1,3 +1,4 @@
+source: user
 alias: testalias-exists:instruct
 repo: MyFactory/testalias-gguf
 filename: testalias.Q8_0.gguf

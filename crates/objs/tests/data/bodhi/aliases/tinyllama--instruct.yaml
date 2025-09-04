@@ -1,3 +1,4 @@
+source: user
 alias: tinyllama:instruct
 repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
