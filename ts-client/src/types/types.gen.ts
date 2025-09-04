@@ -1841,7 +1841,7 @@ export type GetModelData = {
     body?: never;
     path: {
         /**
-         * Model ID to get details for
+         * Model identifier - can be user alias (e.g., 'llama2:chat'), model alias, or API provider alias
          */
         id: string;
     };

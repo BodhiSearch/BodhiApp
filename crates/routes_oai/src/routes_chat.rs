@@ -20,6 +20,8 @@ pub enum HttpError {
     path = ENDPOINT_OAI_CHAT_COMPLETIONS,
     tag = API_TAG_OPENAI,
     operation_id = "createChatCompletion",
+    summary = "Create Chat Completion (OpenAI Compatible)",
+    description = "Creates a chat completion response using the specified model. Supports both streaming and non-streaming responses. Fully compatible with OpenAI's chat completions API format.",
     request_body(
         content = serde_json::Value,
         example = json!({

@@ -25,7 +25,8 @@
         "tags": [
           "ollama"
         ],
-        "summary": "Chat with a model using Ollama format",
+        "summary": "Chat with Model (Ollama Compatible)",
+        "description": "Creates a chat completion using Ollama API format. Supports both streaming and non-streaming responses with Ollama-specific options and response format.",
         "operationId": "chatOllamaModel",
         "requestBody": {
           "description": "Chat request in Ollama format",
@@ -134,7 +135,8 @@
         "tags": [
           "ollama"
         ],
-        "summary": "Get detailed information about a model in Ollama format",
+        "summary": "Show Model Details (Ollama Compatible)",
+        "description": "Retrieves detailed information about a specific model in Ollama API compatible format. Includes model parameters, template, license, and configuration details.",
         "operationId": "showOllamaModel",
         "requestBody": {
           "description": "Model name to get details for",
@@ -216,7 +218,8 @@
         "tags": [
           "ollama"
         ],
-        "summary": "List available models in Ollama format",
+        "summary": "List Available Models (Ollama Compatible)",
+        "description": "Returns a list of all available models in Ollama API compatible format. Includes model metadata such as size, modification time, and format details.",
         "operationId": "listOllamaModels",
         "responses": {
           "200": {
@@ -2646,7 +2649,8 @@
         "tags": [
           "openai"
         ],
-        "summary": "Create a chat completion",
+        "summary": "Create Chat Completion (OpenAI Compatible)",
+        "description": "Creates a chat completion response using the specified model. Supports both streaming and non-streaming responses. Fully compatible with OpenAI's chat completions API format.",
         "operationId": "createChatCompletion",
         "requestBody": {
           "content": {
@@ -2790,7 +2794,8 @@
         "tags": [
           "openai"
         ],
-        "summary": "List available models",
+        "summary": "List Available Models (OpenAI Compatible)",
+        "description": "Returns a list of all available models in OpenAI API compatible format. Includes user aliases, model aliases, and API provider aliases that can be used with the chat completions endpoint.",
         "operationId": "listModels",
         "responses": {
           "200": {
@@ -2860,13 +2865,14 @@
         "tags": [
           "openai"
         ],
-        "summary": "Get details for a specific model",
+        "summary": "Get Model Details (OpenAI Compatible)",
+        "description": "Retrieves details for a specific model by ID in OpenAI API compatible format. The model ID can be a user alias, model alias, or API provider alias.",
         "operationId": "getModel",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "Model ID to get details for",
+            "description": "Model identifier - can be user alias (e.g., 'llama2:chat'), model alias, or API provider alias",
             "required": true,
             "schema": {
               "type": "string"
