@@ -1,6 +1,6 @@
 use crate::{HfHubService, HubService, HubServiceError, MockHubService, Progress};
 use derive_new::new;
-use objs::{test_utils::temp_hf_home, HubFile, Repo, UserAlias};
+use objs::{test_utils::temp_hf_home, HubFile, ModelAlias, Repo};
 use rstest::fixture;
 use std::path::PathBuf;
 use tempfile::TempDir;
@@ -104,7 +104,7 @@ impl HubService for TestHfService {
 
   // model_chat_template method removed since llama.cpp now handles chat templates
 
-  fn list_model_aliases(&self) -> Result<Vec<UserAlias>> {
+  fn list_model_aliases(&self) -> Result<Vec<ModelAlias>> {
     self.inner.list_model_aliases()
   }
 }
@@ -163,7 +163,7 @@ impl HubService for OfflineHubService {
 
   // model_chat_template method removed since llama.cpp now handles chat templates
 
-  fn list_model_aliases(&self) -> Result<Vec<UserAlias>> {
+  fn list_model_aliases(&self) -> Result<Vec<ModelAlias>> {
     self.inner.list_model_aliases()
   }
 }

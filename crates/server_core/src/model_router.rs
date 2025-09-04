@@ -185,7 +185,7 @@ mod tests {
 
     let api_alias = ApiAlias::new(
       "test-api",
-      AliasSource::RemoteApi,
+      AliasSource::Api,
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-3.5-turbo".to_string()],

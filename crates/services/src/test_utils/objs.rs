@@ -1,6 +1,6 @@
 use crate::AppRegInfo;
 use chrono::{DateTime, Utc};
-use objs::{AliasSource, ApiAlias};
+use objs::ApiAlias;
 use rstest::fixture;
 
 #[fixture]
@@ -19,7 +19,6 @@ pub fn create_test_api_model_alias(
 ) -> ApiAlias {
   ApiAlias::new(
     alias,
-    AliasSource::RemoteApi,
     "openai",
     "https://api.openai.com/v1",
     models,

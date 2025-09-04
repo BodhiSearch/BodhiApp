@@ -1,6 +1,6 @@
 use crate::{HubService, HubServiceError, ALIASES_DIR, MODELS_YAML};
 use objs::{
-  impl_error_from, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
+  impl_error_from, Alias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
   IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
   UserAlias,
 };
@@ -65,11 +65,11 @@ type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait DataService: Send + Sync + std::fmt::Debug {
-  fn list_aliases(&self) -> Result<Vec<UserAlias>>;
+  fn list_aliases(&self) -> Result<Vec<Alias>>;
 
   fn save_alias(&self, alias: &UserAlias) -> Result<PathBuf>;
 
-  fn find_alias(&self, alias: &str) -> Option<UserAlias>;
+  fn find_alias(&self, alias: &str) -> Option<Alias>;
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
 
@@ -135,19 +135,47 @@ impl DataService for LocalDataService {
     Ok(filename)
   }
 
-  fn list_aliases(&self) -> Result<Vec<UserAlias>> {
+  fn list_aliases(&self) -> Result<Vec<Alias>> {
     let user_aliases = self._list_aliases()?;
-    let mut result = user_aliases.into_values().collect::<Vec<_>>();
-    result.sort_by(|a, b| a.alias.cmp(&b.alias));
+    let mut result: Vec<Alias> = user_aliases
+      .into_values()
+      .map(|alias| Alias::User(alias))
+      .collect();
+
     let model_aliases = self.hub_service.list_model_aliases()?;
-    result.extend(model_aliases);
+    let model_alias_variants: Vec<Alias> = model_aliases
+      .into_iter()
+      .map(|alias| Alias::Model(alias))
+      .collect();
+
+    result.extend(model_alias_variants);
+    result.sort_by(|a, b| {
+      let alias_a = match a {
+        Alias::User(user) => &user.alias,
+        Alias::Model(model) => &model.alias,
+        Alias::Api(api) => &api.id,
+      };
+      let alias_b = match b {
+        Alias::User(user) => &user.alias,
+        Alias::Model(model) => &model.alias,
+        Alias::Api(api) => &api.id,
+      };
+      alias_a.cmp(alias_b)
+    });
     Ok(result)
   }
 
-  fn find_alias(&self, alias: &str) -> Option<UserAlias> {
+  fn find_alias(&self, alias: &str) -> Option<Alias> {
     let aliases = self.list_aliases();
     let aliases = aliases.unwrap_or_default();
-    aliases.into_iter().find(|obj| obj.alias.eq(&alias))
+    aliases.into_iter().find(|obj| {
+      let obj_alias = match obj {
+        Alias::User(user) => &user.alias,
+        Alias::Model(model) => &model.alias,
+        Alias::Api(api) => &api.id,
+      };
+      obj_alias.eq(&alias)
+    })
   }
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
@@ -163,14 +191,21 @@ impl DataService for LocalDataService {
   }
 
   fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
-    let mut alias = self
+    let found_alias = self
       .find_alias(alias)
       .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
+
+    // Only user aliases can be copied
+    let mut user_alias = match found_alias {
+      Alias::User(user) => user,
+      _ => return Err(AliasNotFoundError(format!("Cannot copy non-user alias: {}", alias)).into()),
+    };
+
     match self.find_alias(new_alias) {
       Some(_) => Err(AliasExistsError(new_alias.to_string()))?,
       None => {
-        alias.alias = new_alias.to_string();
-        self.save_alias(&alias)?;
+        user_alias.alias = new_alias.to_string();
+        self.save_alias(&user_alias)?;
         Ok(())
       }
     }
@@ -279,8 +314,7 @@ mod test {
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::{assert_error_message, setup_l10n},
-    AppError, FluentLocalizationService, RemoteModel, UserAlias,
+    test_utils::{assert_error_message, setup_l10n}, Alias, AppError, FluentLocalizationService, RemoteModel, UserAlias
   };
   use rstest::rstest;
   use std::fs;
@@ -372,7 +406,7 @@ chat_template: llama3
     #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
     let alias = service.find_alias("testalias-exists:instruct");
-    let expected = UserAlias::testalias_exists();
+    let expected = Alias::User(UserAlias::testalias_exists());
     assert_eq!(Some(expected), alias);
     Ok(())
   }
@@ -385,8 +419,8 @@ chat_template: llama3
     // Since llama.cpp now handles chat templates, we may have more aliases
     // The exact count may vary, but we should have at least the core aliases
     assert!(result.len() >= 6);
-    assert!(result.contains(&UserAlias::llama3()));
-    assert!(result.contains(&UserAlias::testalias_exists()));
+    assert!(result.contains(&Alias::User(UserAlias::llama3())));
+    assert!(result.contains(&Alias::User(UserAlias::testalias_exists())));
     Ok(())
   }
 
@@ -432,7 +466,7 @@ chat_template: llama3
       .expect("should have created new_alias");
     let mut expected = UserAlias::tinyllama();
     expected.alias = "tinyllama:mymodel".to_string();
-    assert_eq!(expected, new_alias);
+    assert_eq!(Alias::User(expected), new_alias);
     Ok(())
   }
 
