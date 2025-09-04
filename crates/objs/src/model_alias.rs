@@ -1,14 +1,18 @@
 use crate::Repo;
 use derive_new::new;
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, derive_builder::Builder, new)]
+#[derive(
+  Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq, derive_builder::Builder, new,
+)]
 #[builder(
   setter(into, strip_option),
   build_fn(error = crate::BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
 pub struct ModelAlias {
   pub alias: String,
+  #[schema(value_type = String, format = "string")]
   pub repo: Repo,
   pub filename: String,
   pub snapshot: String,

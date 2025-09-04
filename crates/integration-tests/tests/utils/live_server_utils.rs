@@ -14,9 +14,8 @@ use server_app::{ServeCommand, ServerShutdownHandle};
 use services::{
   hash_key,
   test_utils::{test_auth_service, OfflineHubService},
-  AppRegInfoBuilder, AppService, AppStatus, DefaultSecretService, HfHubService, LocalDataService,
-  SecretServiceExt, SettingService, BODHI_ENCRYPTION_KEY, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME,
-  BODHI_LOGS, HF_HOME,
+  AppRegInfoBuilder, AppService, AppStatus, DefaultSecretService, HfHubService, SecretServiceExt,
+  SettingService, BODHI_ENCRYPTION_KEY, BODHI_EXEC_LOOKUP_PATH, BODHI_HOME, BODHI_LOGS, HF_HOME,
 };
 use std::{path::Path, sync::Arc};
 use tempfile::TempDir;

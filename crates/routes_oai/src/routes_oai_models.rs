@@ -131,7 +131,7 @@ pub async fn oai_models_handler(
     .data_service()
     .list_aliases()
     .await
-    .map_err(|e| ApiError::from(e))?;
+    .map_err(ApiError::from)?;
 
   // Use HashSet to track model IDs and prevent duplicates
   let mut seen_models = HashSet::new();

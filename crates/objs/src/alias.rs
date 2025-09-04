@@ -1,9 +1,10 @@
 use crate::{AliasSource, ApiAlias, ModelAlias, UserAlias};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 /// Flat enum representing all types of model aliases
 /// Each variant is identified by the source field
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 #[serde(tag = "source", rename_all = "kebab-case")]
 pub enum Alias {
   /// User-defined local model (source: "user")

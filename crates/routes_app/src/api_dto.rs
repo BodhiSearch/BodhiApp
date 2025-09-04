@@ -54,8 +54,16 @@ pub struct PaginatedApiTokenResponse {
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
+pub struct PaginatedUserAliasResponse {
+  pub data: Vec<UserAliasResponse>,
+  pub total: usize,
+  pub page: usize,
+  pub page_size: usize,
+}
+
+#[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedAliasResponse {
-  pub data: Vec<AliasResponse>,
+  pub data: Vec<Alias>,
   pub total: usize,
   pub page: usize,
   pub page_size: usize,
@@ -98,7 +106,7 @@ impl From<HubFile> for LocalModelResponse {
   builder(
     setter(into),
     build_fn(error = objs::BuilderError)))]
-pub struct AliasResponse {
+pub struct UserAliasResponse {
   pub alias: String,
   pub repo: String,
   pub filename: String,
@@ -110,9 +118,9 @@ pub struct AliasResponse {
   pub context_params: Vec<String>,
 }
 
-impl From<UserAlias> for AliasResponse {
+impl From<UserAlias> for UserAliasResponse {
   fn from(alias: UserAlias) -> Self {
-    AliasResponse {
+    UserAliasResponse {
       repo: alias.repo.to_string(),
       filename: alias.filename,
       snapshot: alias.snapshot,
@@ -124,64 +132,4 @@ impl From<UserAlias> for AliasResponse {
       context_params: alias.context_params,
     }
   }
-}
-
-impl From<Alias> for AliasResponse {
-  fn from(alias: Alias) -> Self {
-    match alias {
-      Alias::User(user_alias) => AliasResponse::from(user_alias),
-      Alias::Model(model_alias) => AliasResponse {
-        repo: model_alias.repo.to_string(),
-        filename: model_alias.filename,
-        snapshot: model_alias.snapshot,
-        alias: model_alias.alias,
-        source: "model".to_string(), // ModelAlias has source "model"
-
-        model_params: HashMap::new(),
-        request_params: Default::default(), // ModelAlias doesn't have request params
-        context_params: Vec::new(),         // ModelAlias doesn't have context params
-      },
-      Alias::Api(api_alias) => AliasResponse {
-        repo: "".to_string(),     // API aliases don't have repos
-        filename: "".to_string(), // API aliases don't have filenames
-        snapshot: "".to_string(), // API aliases don't have snapshots
-        alias: api_alias.id,
-        source: "api".to_string(), // ApiAlias has source "api"
-
-        model_params: HashMap::new(),
-        request_params: Default::default(), // API aliases don't have request params
-        context_params: Vec::new(),         // API aliases don't have context params
-      },
-    }
-  }
-}
-
-/// Unified model response that can represent both local aliases and API models
-#[derive(Serialize, Deserialize, Debug, PartialEq, ToSchema)]
-#[serde(tag = "model_type")]
-pub enum UnifiedModelResponse {
-  #[serde(rename = "local")]
-  Local(AliasResponse),
-  #[serde(rename = "api")]
-  Api(crate::api_models_dto::ApiModelResponse),
-}
-
-impl From<AliasResponse> for UnifiedModelResponse {
-  fn from(alias: AliasResponse) -> Self {
-    UnifiedModelResponse::Local(alias)
-  }
-}
-
-impl From<crate::api_models_dto::ApiModelResponse> for UnifiedModelResponse {
-  fn from(api_model: crate::api_models_dto::ApiModelResponse) -> Self {
-    UnifiedModelResponse::Api(api_model)
-  }
-}
-
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct PaginatedUnifiedModelResponse {
-  pub data: Vec<UnifiedModelResponse>,
-  pub total: usize,
-  pub page: usize,
-  pub page_size: usize,
 }

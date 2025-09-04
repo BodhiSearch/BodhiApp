@@ -1,4 +1,4 @@
-use crate::{AliasResponse, ENDPOINT_MODELS};
+use crate::{UserAliasResponse, ENDPOINT_MODELS};
 use axum::{extract::State, http::StatusCode, Json};
 use axum_extra::extract::WithRejection;
 use commands::{CreateCommand, CreateCommandError};
@@ -54,7 +54,7 @@ pub enum CreateAliasError {
     operation_id = "createAlias",
     request_body = CreateAliasRequest,
     responses(
-      (status = 201, description = "Alias created succesfully", body = AliasResponse),
+      (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
       (status = 400, description = "Invalid request", body = OpenAIApiError),
       (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
@@ -65,7 +65,7 @@ pub enum CreateAliasError {
 pub async fn create_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   WithRejection(Json(payload), _): WithRejection<Json<CreateAliasRequest>, ApiError>,
-) -> Result<(StatusCode, Json<AliasResponse>), ApiError> {
+) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
   let command = CreateCommand::new(
     &payload.alias,
     Repo::try_from(payload.repo)?,
@@ -82,7 +82,7 @@ pub async fn create_alias_handler(
     .data_service()
     .find_user_alias(&payload.alias)
     .ok_or(AliasNotFoundError(payload.alias))?;
-  Ok((StatusCode::CREATED, Json(AliasResponse::from(alias))))
+  Ok((StatusCode::CREATED, Json(UserAliasResponse::from(alias))))
 }
 
 /// Update Alias
@@ -97,7 +97,7 @@ pub async fn create_alias_handler(
     operation_id = "updateAlias",
     request_body = UpdateAliasRequest,
     responses(
-      (status = 201, description = "Alias created succesfully", body = AliasResponse),
+      (status = 201, description = "Alias created succesfully", body = UserAliasResponse),
       (status = 400, description = "Invalid request", body = OpenAIApiError),
       (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
@@ -109,7 +109,7 @@ pub async fn update_alias_handler(
   State(state): State<Arc<dyn RouterState>>,
   axum::extract::Path(id): axum::extract::Path<String>,
   WithRejection(Json(payload), _): WithRejection<Json<UpdateAliasRequest>, ApiError>,
-) -> Result<(StatusCode, Json<AliasResponse>), ApiError> {
+) -> Result<(StatusCode, Json<UserAliasResponse>), ApiError> {
   let command = CreateCommand::new(
     &id,
     Repo::try_from(payload.repo)?,
@@ -126,12 +126,14 @@ pub async fn update_alias_handler(
     .data_service()
     .find_user_alias(&id)
     .ok_or(AliasNotFoundError(id))?;
-  Ok((StatusCode::OK, Json(AliasResponse::from(alias))))
+  Ok((StatusCode::OK, Json(UserAliasResponse::from(alias))))
 }
 
 #[cfg(test)]
 mod tests {
-  use crate::{create_alias_handler, update_alias_handler, AliasResponse, AliasResponseBuilder};
+  use crate::{
+    create_alias_handler, update_alias_handler, UserAliasResponse, UserAliasResponseBuilder,
+  };
   use axum::{
     body::Body,
     http::{status::StatusCode, Method, Request},
@@ -177,8 +179,8 @@ mod tests {
     })
   }
 
-  fn expected() -> AliasResponse {
-    AliasResponseBuilder::default()
+  fn expected() -> UserAliasResponse {
+    UserAliasResponseBuilder::default()
       .alias("testalias:instruct".to_string())
       .repo("MyFactory/testalias-gguf")
       .filename("testalias.Q8_0.gguf")
@@ -213,8 +215,8 @@ mod tests {
     })
   }
 
-  fn expected_with_snapshot() -> AliasResponse {
-    AliasResponseBuilder::default()
+  fn expected_with_snapshot() -> UserAliasResponse {
+    UserAliasResponseBuilder::default()
       .alias("testalias:instruct".to_string())
       .repo("MyFactory/testalias-gguf")
       .filename("testalias.Q8_0.gguf")
@@ -240,7 +242,7 @@ mod tests {
   async fn test_create_alias_handler(
     #[future] app: Router,
     #[case] payload: Value,
-    #[case] expected: AliasResponse,
+    #[case] expected: UserAliasResponse,
   ) -> anyhow::Result<()> {
     let response = app
       .oneshot(
@@ -251,7 +253,7 @@ mod tests {
       )
       .await?;
     assert_eq!(StatusCode::CREATED, response.status());
-    let response = response.json::<AliasResponse>().await?;
+    let response = response.json::<UserAliasResponse>().await?;
     assert_eq!(expected, response);
     Ok(())
   }
@@ -330,8 +332,8 @@ mod tests {
       .await?;
 
     assert_eq!(StatusCode::OK, response.status());
-    let updated_alias: AliasResponse = response.json::<AliasResponse>().await?;
-    let expected = AliasResponseBuilder::tinyllama_builder()
+    let updated_alias: UserAliasResponse = response.json::<UserAliasResponse>().await?;
+    let expected = UserAliasResponseBuilder::tinyllama_builder()
       .request_params(
         OAIRequestParamsBuilder::default()
           .temperature(0.8)

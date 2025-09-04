@@ -1426,7 +1426,7 @@
         "tags": [
           "models"
         ],
-        "summary": "List all model aliases (both local aliases and API models)",
+        "summary": "List all model aliases as discriminated union (user, model, and API aliases)",
         "operationId": "listAllModels",
         "parameters": [
           {
@@ -1473,43 +1473,42 @@
         ],
         "responses": {
           "200": {
-            "description": "List of all configured models (local aliases and API models)",
+            "description": "List of all configured aliases as discriminated union",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaginatedUnifiedModelResponse"
+                  "$ref": "#/components/schemas/PaginatedAliasResponse"
                 },
                 "example": {
                   "data": [
                     {
-                      "alias": "llama2:chat",
-                      "context_params": [
-                        "--ctx_size",
-                        "4096"
-                      ],
-                      "filename": "llama-2-7b-chat.Q4_K_M.gguf",
-                      "model_params": {},
-                      "model_type": "local",
-                      "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                      "request_params": {
-                        "temperature": 0.7,
-                        "top_p": 0.95
-                      },
-                      "snapshot": "abc123",
-                      "source": "user"
+                      "User": {
+                        "alias": "llama2:chat",
+                        "context_params": [
+                          "--ctx_size",
+                          "4096"
+                        ],
+                        "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                        "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                        "request_params": {
+                          "temperature": 0.7,
+                          "top_p": 0.95
+                        },
+                        "snapshot": "abc123"
+                      }
                     },
                     {
-                      "alias": "openai-gpt4",
-                      "api_key_masked": "sk-...abc123",
-                      "base_url": "https://api.openai.com/v1",
-                      "created_at": "2024-01-01T00:00:00Z",
-                      "model_type": "api",
-                      "models": [
-                        "gpt-4",
-                        "gpt-3.5-turbo"
-                      ],
-                      "provider": "openai",
-                      "updated_at": "2024-01-01T00:00:00Z"
+                      "Api": {
+                        "base_url": "https://api.openai.com/v1",
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "id": "openai-gpt4",
+                        "models": [
+                          "gpt-4",
+                          "gpt-3.5-turbo"
+                        ],
+                        "provider": "openai",
+                        "updated_at": "2024-01-01T00:00:00Z"
+                      }
                     }
                   ],
                   "page": 1,
@@ -1558,7 +1557,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AliasResponse"
+                  "$ref": "#/components/schemas/UserAliasResponse"
                 }
               }
             }
@@ -1615,7 +1614,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AliasResponse"
+                  "$ref": "#/components/schemas/UserAliasResponse"
                 },
                 "example": {
                   "alias": "llama2:chat",
@@ -1711,7 +1710,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AliasResponse"
+                  "$ref": "#/components/schemas/UserAliasResponse"
                 }
               }
             }
@@ -2751,49 +2750,113 @@
   },
   "components": {
     "schemas": {
-      "AliasResponse": {
+      "Alias": {
+        "oneOf": [
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/UserAlias",
+                "description": "User-defined local model (source: \"user\")"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "user"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "User-defined local model (source: \"user\")"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ModelAlias",
+                "description": "Auto-discovered local model (source: \"model\")"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "model"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "Auto-discovered local model (source: \"model\")"
+          },
+          {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ApiAlias",
+                "description": "Remote API model (source: \"api\")"
+              },
+              {
+                "type": "object",
+                "required": [
+                  "source"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "api"
+                    ]
+                  }
+                }
+              }
+            ],
+            "description": "Remote API model (source: \"api\")"
+          }
+        ],
+        "description": "Flat enum representing all types of model aliases\nEach variant is identified by the source field"
+      },
+      "ApiAlias": {
         "type": "object",
         "required": [
-          "alias",
-          "repo",
-          "filename",
-          "snapshot",
-          "source",
-          "model_params",
-          "request_params",
-          "context_params"
+          "id",
+          "provider",
+          "base_url",
+          "models",
+          "created_at",
+          "updated_at"
         ],
         "properties": {
-          "alias": {
+          "base_url": {
             "type": "string"
           },
-          "context_params": {
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "id": {
+            "type": "string"
+          },
+          "models": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "filename": {
+          "provider": {
             "type": "string"
           },
-          "model_params": {
-            "type": "object",
-            "additionalProperties": {},
-            "propertyNames": {
-              "type": "string"
-            }
-          },
-          "repo": {
-            "type": "string"
-          },
-          "request_params": {
-            "$ref": "#/components/schemas/OAIRequestParams"
-          },
-          "snapshot": {
-            "type": "string"
-          },
-          "source": {
-            "type": "string"
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -3409,6 +3472,30 @@
           }
         }
       },
+      "ModelAlias": {
+        "type": "object",
+        "required": [
+          "alias",
+          "repo",
+          "filename",
+          "snapshot"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "filename": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string",
+            "format": "string"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        }
+      },
       "ModelDetails": {
         "type": "object",
         "required": [
@@ -3810,7 +3897,7 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/AliasResponse"
+              "$ref": "#/components/schemas/Alias"
             }
           },
           "page": {
@@ -3944,7 +4031,7 @@
           }
         }
       },
-      "PaginatedUnifiedModelResponse": {
+      "PaginatedUserAliasResponse": {
         "type": "object",
         "required": [
           "data",
@@ -3956,7 +4043,7 @@
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/UnifiedModelResponse"
+              "$ref": "#/components/schemas/UserAliasResponse"
             }
           },
           "page": {
@@ -4316,53 +4403,6 @@
           "bearer"
         ]
       },
-      "UnifiedModelResponse": {
-        "oneOf": [
-          {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/AliasResponse"
-              },
-              {
-                "type": "object",
-                "required": [
-                  "model_type"
-                ],
-                "properties": {
-                  "model_type": {
-                    "type": "string",
-                    "enum": [
-                      "local"
-                    ]
-                  }
-                }
-              }
-            ]
-          },
-          {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/ApiModelResponse"
-              },
-              {
-                "type": "object",
-                "required": [
-                  "model_type"
-                ],
-                "properties": {
-                  "model_type": {
-                    "type": "string",
-                    "enum": [
-                      "api"
-                    ]
-                  }
-                }
-              }
-            ]
-          }
-        ],
-        "description": "Unified model response that can represent both local aliases and API models"
-      },
       "UpdateAliasRequest": {
         "type": "object",
         "required": [
@@ -4482,6 +4522,85 @@
         },
         "example": {
           "value": "debug"
+        }
+      },
+      "UserAlias": {
+        "type": "object",
+        "required": [
+          "alias",
+          "repo",
+          "filename",
+          "snapshot"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "context_params": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filename": {
+            "type": "string"
+          },
+          "repo": {
+            "type": "string",
+            "format": "string"
+          },
+          "request_params": {
+            "$ref": "#/components/schemas/OAIRequestParams"
+          },
+          "snapshot": {
+            "type": "string"
+          }
+        }
+      },
+      "UserAliasResponse": {
+        "type": "object",
+        "required": [
+          "alias",
+          "repo",
+          "filename",
+          "snapshot",
+          "source",
+          "model_params",
+          "request_params",
+          "context_params"
+        ],
+        "properties": {
+          "alias": {
+            "type": "string"
+          },
+          "context_params": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "filename": {
+            "type": "string"
+          },
+          "model_params": {
+            "type": "object",
+            "additionalProperties": {},
+            "propertyNames": {
+              "type": "string"
+            }
+          },
+          "repo": {
+            "type": "string"
+          },
+          "request_params": {
+            "$ref": "#/components/schemas/OAIRequestParams"
+          },
+          "snapshot": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
         }
       },
       "UserInfo": {
