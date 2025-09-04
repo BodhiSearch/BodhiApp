@@ -1,10 +1,10 @@
-use crate::{AliasResponse, AliasResponseBuilder};
+use crate::{UserAliasResponse, UserAliasResponseBuilder};
 use objs::{OAIRequestParamsBuilder, Repo};
 use std::collections::HashMap;
 
-impl AliasResponse {
+impl UserAliasResponse {
   pub fn llama3() -> Self {
-    AliasResponseBuilder::default()
+    UserAliasResponseBuilder::default()
       .alias("llama3:instruct")
       .repo(Repo::LLAMA3)
       .filename(Repo::LLAMA3_Q8)
@@ -27,13 +27,15 @@ impl AliasResponse {
   }
 
   pub fn tinyllama() -> Self {
-    AliasResponseBuilder::tinyllama_builder().build().unwrap()
+    UserAliasResponseBuilder::tinyllama_builder()
+      .build()
+      .unwrap()
   }
 }
 
-impl AliasResponseBuilder {
+impl UserAliasResponseBuilder {
   pub fn tinyllama_builder() -> Self {
-    AliasResponseBuilder::default()
+    UserAliasResponseBuilder::default()
       .alias("tinyllama:instruct".to_string())
       .repo(Repo::TINYLLAMA)
       .filename(Repo::TINYLLAMA_FILENAME)

@@ -1,26 +1,26 @@
 use crate::{
-  AliasResponse, ApiTokenResponse, AppInfo, CreateAliasRequest, CreateApiTokenRequest,
-  NewDownloadRequest, PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
-  PaginatedLocalModelResponse, PaginatedUnifiedModelResponse, RedirectResponse, SetupRequest,
-  SetupResponse, UnifiedModelResponse, UpdateAliasRequest, UpdateSettingRequest, UserInfo,
+  ApiModelResponse, CreateApiModelRequest, FetchModelsRequest, FetchModelsResponse,
+  PaginatedApiModelResponse, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
+};
+use crate::{
+  ApiTokenResponse, AppInfo, CreateAliasRequest, CreateApiTokenRequest, NewDownloadRequest,
+  PaginatedAliasResponse, PaginatedApiTokenResponse, PaginatedDownloadResponse,
+  PaginatedLocalModelResponse, PaginatedUserAliasResponse, RedirectResponse, SetupRequest,
+  SetupResponse, UpdateAliasRequest, UpdateSettingRequest, UserAliasResponse, UserInfo,
   __path_app_info_handler, __path_auth_callback_handler, __path_auth_initiate_handler,
   __path_create_alias_handler, __path_create_api_model_handler, __path_create_pull_request_handler,
   __path_create_token_handler, __path_delete_api_model_handler, __path_delete_setting_handler,
-  __path_fetch_models_handler, __path_get_alias_handler, __path_get_api_model_handler,
-  __path_get_download_status_handler, __path_health_handler, __path_list_api_models_handler,
-  __path_list_downloads_handler, __path_list_local_aliases_handler,
+  __path_fetch_models_handler, __path_get_api_model_handler, __path_get_download_status_handler,
+  __path_get_user_alias_handler, __path_health_handler, __path_list_aliases_handler,
+  __path_list_api_models_handler, __path_list_downloads_handler,
   __path_list_local_modelfiles_handler, __path_list_settings_handler, __path_list_tokens_handler,
   __path_logout_handler, __path_ping_handler, __path_pull_by_alias_handler,
   __path_request_access_handler, __path_setup_handler, __path_test_api_model_handler,
   __path_update_alias_handler, __path_update_api_model_handler, __path_update_setting_handler,
   __path_update_token_handler, __path_user_info_handler,
 };
-use crate::{
-  ApiModelResponse, CreateApiModelRequest, FetchModelsRequest, FetchModelsResponse,
-  PaginatedApiModelResponse, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
-};
 use objs::{
-  OpenAIApiError, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS,
+  Alias, OpenAIApiError, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS,
   API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
   API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
@@ -129,7 +129,7 @@ For API keys, specify required scope when creating the token.
             UserInfo,
             RedirectResponse,
             PaginatedDownloadResponse,
-            PaginatedAliasResponse,
+            PaginatedUserAliasResponse,
             PaginatedApiTokenResponse,
             PaginatedLocalModelResponse,
             // setup
@@ -143,10 +143,10 @@ For API keys, specify required scope when creating the token.
             // create alias
             CreateAliasRequest,
             UpdateAliasRequest,
-            AliasResponse,
+            UserAliasResponse,
             // unified models
-            UnifiedModelResponse,
-            PaginatedUnifiedModelResponse,
+            Alias,
+            PaginatedAliasResponse,
             // token
             ApiTokenResponse,
             ApiToken,
@@ -202,9 +202,11 @@ For API keys, specify required scope when creating the token.
         // Models endpoints
         create_alias_handler,
         update_alias_handler,
-        list_local_aliases_handler,
-        get_alias_handler,
+        list_aliases_handler,
+        get_user_alias_handler,
         list_local_modelfiles_handler,
+
+        // Download endpoints
         list_downloads_handler,
         create_pull_request_handler,
         pull_by_alias_handler,
@@ -646,27 +648,6 @@ mod tests {
         assert!(example.get("total").is_some());
         assert!(example.get("page").is_some());
         assert!(example.get("page_size").is_some());
-
-        // Verify response structure
-        let data = example.get("data").unwrap().as_array().unwrap();
-        let first_model = &data[0];
-        // First model is local type
-        assert!(first_model.get("alias").is_some());
-        assert!(first_model.get("repo").is_some());
-        assert!(first_model.get("filename").is_some());
-        assert!(first_model.get("source").is_some());
-        assert!(first_model.get("model_params").is_some());
-        assert!(first_model.get("request_params").is_some());
-        assert!(first_model.get("context_params").is_some());
-
-        // Second model is API type (if exists)
-        if data.len() > 1 {
-          let second_model = &data[1];
-          assert!(second_model.get("alias").is_some());
-          assert!(second_model.get("provider").is_some());
-          assert!(second_model.get("base_url").is_some());
-          assert!(second_model.get("models").is_some());
-        }
       }
     }
   }

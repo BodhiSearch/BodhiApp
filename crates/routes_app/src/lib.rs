@@ -3,9 +3,9 @@ pub mod test_utils;
 #[cfg(all(not(feature = "test-utils"), test))]
 pub mod test_utils;
 
+mod api_dto;
 mod api_models_dto;
 mod error;
-mod api_dto;
 mod openapi;
 mod routes_api_models;
 mod routes_api_token;
@@ -19,9 +19,9 @@ mod routes_setup;
 mod routes_user;
 mod utils;
 
+pub use api_dto::*;
 pub use api_models_dto::*;
 pub use error::*;
-pub use api_dto::*;
 pub use openapi::*;
 pub use routes_api_models::*;
 pub use routes_api_token::*;

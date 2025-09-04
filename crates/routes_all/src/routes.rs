@@ -18,8 +18,8 @@ use routes_app::{
   app_info_handler, auth_callback_handler, auth_initiate_handler, create_alias_handler,
   create_api_model_handler, create_pull_request_handler, create_token_handler,
   delete_api_model_handler, delete_setting_handler, dev_secrets_handler, envs_handler,
-  fetch_models_handler, get_alias_handler, get_api_model_handler, get_download_status_handler,
-  health_handler, list_api_models_handler, list_downloads_handler, list_local_aliases_handler,
+  fetch_models_handler, get_api_model_handler, get_download_status_handler, get_user_alias_handler,
+  health_handler, list_aliases_handler, list_api_models_handler, list_downloads_handler,
   list_local_modelfiles_handler, list_settings_handler, list_tokens_handler, logout_handler,
   ping_handler, pull_by_alias_handler, request_access_handler, setup_handler,
   test_api_model_handler, update_alias_handler, update_api_model_handler, update_setting_handler,
@@ -93,8 +93,11 @@ pub fn build_routes(
     .route(ENDPOINT_OLLAMA_SHOW, post(ollama_model_show_handler))
     .route(ENDPOINT_OLLAMA_CHAT, post(ollama_model_chat_handler))
     // Basic Bodhi APIs
-    .route(ENDPOINT_MODELS, get(list_local_aliases_handler))
-    .route(&format!("{ENDPOINT_MODELS}/{{id}}"), get(get_alias_handler))
+    .route(ENDPOINT_MODELS, get(list_aliases_handler))
+    .route(
+      &format!("{ENDPOINT_MODELS}/{{id}}"),
+      get(get_user_alias_handler),
+    )
     .route(ENDPOINT_MODEL_FILES, get(list_local_modelfiles_handler))
     .route_layer(from_fn_with_state(
       state.clone(),

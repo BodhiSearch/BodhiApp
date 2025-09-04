@@ -1,13 +1,16 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema, PartialEq)]
 pub struct ApiAlias {
   pub id: String,
   pub provider: String,
   pub base_url: String,
   pub models: Vec<String>,
+  #[schema(value_type = String, format = "date-time")]
   pub created_at: DateTime<Utc>,
+  #[schema(value_type = String, format = "date-time")]
   pub updated_at: DateTime<Utc>,
 }
 
