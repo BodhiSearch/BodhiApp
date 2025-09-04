@@ -26,28 +26,28 @@ This document tracks the phase-by-phase implementation progress for the alias sy
 
 ---
 
-## 🔄 Phase 3: Services Crate Unified Architecture (IN PROGRESS)
+## ✅ Phase 3: Services Crate Unified Architecture (COMPLETED)
 
 ### Immediate Compilation Fixes
-- ⏳ Change `AliasSource::RemoteApi` → `AliasSource::Api` (6 locations)
+- ✅ Change `AliasSource::RemoteApi` → `AliasSource::Api` (6 locations)
   - `crates/services/src/db/service.rs:768, 859, 1326, 1359, 1401, 1462, 1493, 1525, 1541`
   - `crates/services/src/test_utils/objs.rs:22`
-- ⏳ Remove `source` parameter from `ApiAlias::new()` calls (9 locations)
-- ⏳ Remove direct `source` field assignments in ApiAlias struct creation
-- ⏳ Update HubService: `UserAliasBuilder` → `ModelAliasBuilder`
-- ⏳ Remove `.source()` calls from HubService implementation
+- ✅ Remove `source` parameter from `ApiAlias::new()` calls (9 locations)
+- ✅ Remove direct `source` field assignments in ApiAlias struct creation
+- ✅ Update HubService: `UserAliasBuilder` → `ModelAliasBuilder`
+- ✅ Remove `.source()` calls from HubService implementation
 
 ### Unified Data Service Architecture  
-- ⏳ Add `db_service: Arc<dyn DbService>` to `LocalDataService` struct
-- ⏳ Update `LocalDataService::new()` constructor signature
-- ⏳ Make `DataService` trait methods async:
+- ✅ Add `db_service: Arc<dyn DbService>` to `LocalDataService` struct
+- ✅ Update `LocalDataService::new()` constructor signature
+- ✅ Make `DataService` trait methods async:
   - `list_aliases(&self) -> Result<Vec<UserAlias>>` → `async fn list_aliases(&self) -> Result<Vec<Alias>>`
   - `find_alias(&self, alias: &str) -> Option<UserAlias>` → `async fn find_alias(&self, alias: &str) -> Option<Alias>`
-- ⏳ Implement unified internal logic:
+- ✅ Implement unified internal logic:
   - User aliases from YAML files → `Alias::User(...)`
   - Model aliases from HubService → `Alias::Model(...)`  
   - API aliases from DbService → `Alias::Api(...)`
-- ⏳ Update HubService trait: `list_model_aliases() -> Vec<UserAlias>` → `Vec<ModelAlias>`
+- ✅ Update HubService trait: `list_model_aliases() -> Vec<UserAlias>` → `Vec<ModelAlias>`
 
 ### Commands to Run
 ```bash
@@ -63,19 +63,37 @@ cargo fmt -p services
 
 ---
 
-## ⏳ Phase 4: Server Core Updates (PENDING)
+## ✅ Phase 4: Server Core Updates (COMPLETED)
 
 ### Model Router Simplification
-- ⏳ Replace multiple `find_alias()` calls with single lookup + pattern matching
-- ⏳ Update `RouteDestination` handling for all three alias types
-- ⏳ Add `.await` to async `DataService` calls
-- ⏳ Remove separate `db_service.get_api_model_alias()` calls
+- ✅ Replace multiple `find_alias()` calls with single lookup + pattern matching
+- ✅ Update `RouteDestination` handling for all three alias types
+- ✅ Add `.await` to async `DataService` calls
+- ✅ Remove separate `db_service.get_api_model_alias()` calls
+
+### SharedContext Interface Updates
+- ✅ Update `chat_completions` method to accept `Alias` enum instead of `UserAlias`
+- ✅ Add pattern matching to extract fields from User/Model aliases
+- ✅ Reject API aliases with appropriate error (they route to AiApiService)
+- ✅ Handle context_params differences between User and Model aliases
+
+### Router State Updates
+- ✅ Update DefaultModelRouter constructor to remove DbService dependency
+- ✅ Update chat_completions call to pass Alias enum to SharedContext
+
+### Test Updates
+- ✅ Fixed all model router tests to use new Alias enum structure
+- ✅ Removed outdated "priority" concept from test names and logic
+- ✅ Simplified mock setups to match unified architecture
 
 ### Commands to Run
 ```bash
-cargo check -p server_core  
-cargo test -p server_core
+cargo check -p server_core  # ✅ PASSED
+cargo test -p server_core   # ✅ PASSED (92/92 tests)
+cargo fmt -p server_core    # ✅ COMPLETED
 ```
+
+**Key Achievement**: Simplified routing from 3 separate service calls to 1 unified call with pattern matching. All 92 tests passing.
 
 ---
 

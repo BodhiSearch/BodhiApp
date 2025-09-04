@@ -1,20 +1,24 @@
 use crate::{
-  test_utils::{test_hf_service, TestHfService},
+  test_utils::{db::test_db_service, test_hf_service, TestDbService, TestHfService},
   DataService, DataServiceError, LocalDataService,
 };
+use async_trait::async_trait;
 use objs::{test_utils::temp_bodhi_home, Alias, RemoteModel, UserAlias};
 use rstest::fixture;
 use std::{path::PathBuf, sync::Arc};
 use tempfile::TempDir;
 
 #[fixture]
-pub fn test_data_service(
+#[awt]
+pub async fn test_data_service(
   temp_bodhi_home: TempDir,
   test_hf_service: TestHfService,
+  #[future] test_db_service: TestDbService,
 ) -> TestDataService {
   let inner = LocalDataService::new(
     temp_bodhi_home.path().join("bodhi"),
     Arc::new(test_hf_service),
+    Arc::new(test_db_service),
   );
   TestDataService {
     temp_bodhi_home,
@@ -36,17 +40,18 @@ impl TestDataService {
 
 type Result<T> = std::result::Result<T, DataServiceError>;
 
+#[async_trait]
 impl DataService for TestDataService {
-  fn list_aliases(&self) -> Result<Vec<Alias>> {
-    self.inner.list_aliases()
+  async fn list_aliases(&self) -> Result<Vec<Alias>> {
+    self.inner.list_aliases().await
   }
 
   fn save_alias(&self, alias: &UserAlias) -> Result<PathBuf> {
     self.inner.save_alias(alias)
   }
 
-  fn find_alias(&self, alias: &str) -> Option<Alias> {
-    self.inner.find_alias(alias)
+  async fn find_alias(&self, alias: &str) -> Option<Alias> {
+    self.inner.find_alias(alias).await
   }
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
@@ -57,12 +62,12 @@ impl DataService for TestDataService {
     self.inner.find_remote_model(alias)
   }
 
-  fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
-    self.inner.copy_alias(alias, new_alias)
+  async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
+    self.inner.copy_alias(alias, new_alias).await
   }
 
-  fn delete_alias(&self, alias: &str) -> Result<()> {
-    self.inner.delete_alias(alias)
+  async fn delete_alias(&self, alias: &str) -> Result<()> {
+    self.inner.delete_alias(alias).await
   }
 
   fn alias_filename(&self, alias: &str) -> Result<PathBuf> {
