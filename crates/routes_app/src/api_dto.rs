@@ -37,31 +37,12 @@ fn default_sort_order() -> String {
   "asc".to_string()
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct PaginatedResponse<T> {
-  pub data: Vec<T>,
-  pub total: usize,
-  pub page: usize,
-  pub page_size: usize,
-}
-
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedDownloadResponse {
   pub data: Vec<DownloadRequest>,
   pub total: usize,
   pub page: usize,
   pub page_size: usize,
-}
-
-impl From<PaginatedResponse<DownloadRequest>> for PaginatedDownloadResponse {
-  fn from(paginated: PaginatedResponse<DownloadRequest>) -> Self {
-    PaginatedDownloadResponse {
-      data: paginated.data,
-      total: paginated.total,
-      page: paginated.page,
-      page_size: paginated.page_size,
-    }
-  }
 }
 
 #[derive(Serialize, Deserialize, ToSchema)]
@@ -72,17 +53,6 @@ pub struct PaginatedApiTokenResponse {
   pub page_size: usize,
 }
 
-impl From<PaginatedResponse<ApiToken>> for PaginatedApiTokenResponse {
-  fn from(paginated: PaginatedResponse<ApiToken>) -> Self {
-    PaginatedApiTokenResponse {
-      data: paginated.data,
-      total: paginated.total,
-      page: paginated.page,
-      page_size: paginated.page_size,
-    }
-  }
-}
-
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedAliasResponse {
   pub data: Vec<AliasResponse>,
@@ -91,34 +61,12 @@ pub struct PaginatedAliasResponse {
   pub page_size: usize,
 }
 
-impl From<PaginatedResponse<AliasResponse>> for PaginatedAliasResponse {
-  fn from(paginated: PaginatedResponse<AliasResponse>) -> Self {
-    PaginatedAliasResponse {
-      data: paginated.data,
-      total: paginated.total,
-      page: paginated.page,
-      page_size: paginated.page_size,
-    }
-  }
-}
-
 #[derive(Serialize, Deserialize, ToSchema)]
 pub struct PaginatedLocalModelResponse {
   pub data: Vec<LocalModelResponse>,
   pub total: usize,
   pub page: usize,
   pub page_size: usize,
-}
-
-impl From<PaginatedResponse<LocalModelResponse>> for PaginatedLocalModelResponse {
-  fn from(paginated: PaginatedResponse<LocalModelResponse>) -> Self {
-    PaginatedLocalModelResponse {
-      data: paginated.data,
-      total: paginated.total,
-      page: paginated.page,
-      page_size: paginated.page_size,
-    }
-  }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, ToSchema)]
@@ -236,15 +184,4 @@ pub struct PaginatedUnifiedModelResponse {
   pub total: usize,
   pub page: usize,
   pub page_size: usize,
-}
-
-impl From<PaginatedResponse<UnifiedModelResponse>> for PaginatedUnifiedModelResponse {
-  fn from(paginated: PaginatedResponse<UnifiedModelResponse>) -> Self {
-    PaginatedUnifiedModelResponse {
-      data: paginated.data,
-      total: paginated.total,
-      page: paginated.page,
-      page_size: paginated.page_size,
-    }
-  }
 }

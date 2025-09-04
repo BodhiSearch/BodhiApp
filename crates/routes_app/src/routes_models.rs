@@ -1,7 +1,7 @@
 use crate::{
   api_models_dto::ApiModelResponse, AliasResponse, LocalModelResponse, PaginatedLocalModelResponse,
-  PaginatedResponse, PaginatedUnifiedModelResponse, PaginationSortParams, UnifiedModelResponse,
-  ENDPOINT_MODELS, ENDPOINT_MODEL_FILES,
+  PaginatedUnifiedModelResponse, PaginationSortParams, UnifiedModelResponse, ENDPOINT_MODELS,
+  ENDPOINT_MODEL_FILES,
 };
 use axum::{
   extract::{Query, State},
@@ -99,13 +99,13 @@ pub async fn list_local_aliases_handler(
     .take(end - start)
     .collect();
 
-  let paginated = PaginatedResponse {
+  let paginated = PaginatedUnifiedModelResponse {
     data,
     total,
     page,
     page_size,
   };
-  Ok(Json(paginated.into()))
+  Ok(Json(paginated))
 }
 
 /// List available model files in GGUF format from HuggingFace cache
@@ -154,13 +154,13 @@ pub async fn list_local_modelfiles_handler(
     .map(Into::into)
     .collect();
 
-  let paginated = PaginatedResponse {
+  let paginated = PaginatedLocalModelResponse {
     data,
     total,
     page,
     page_size,
   };
-  Ok(Json(paginated.into()))
+  Ok(Json(paginated))
 }
 
 fn extract_pagination_sort_params(params: PaginationSortParams) -> (usize, usize, String, String) {

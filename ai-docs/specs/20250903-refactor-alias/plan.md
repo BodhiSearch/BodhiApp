@@ -36,41 +36,19 @@ pub enum Alias {
 
 **Key Innovation**: Removed source fields from individual structs to eliminate duplicate field serialization. The enum tag serves as the single source of truth.
 
-## Current Architecture Issues (Phase 3+)
+## ✅ Implemented Unified Architecture (Phase 3-5 Complete)
 
-### Fragmented Data Access Pattern
-The services layer currently requires manual merging at call sites:
-
-```rust
-// Problem: routes_models.rs doing manual merge
-let aliases = data_service.list_aliases()?;           // User + Model aliases
-let api_aliases = db_service.list_api_model_aliases().await?; // API aliases  
-// Manual combine + sort at routes layer
-
-// Problem: model_router.rs doing multiple lookups
-data_service.find_alias().filter(User)   // Call 1
-data_service.find_alias().filter(Model)  // Call 2
-db_service.get_api_model_alias()          // Call 3
-```
-
-### Root Cause Analysis
-- **DataService** only knows about User and Model aliases (filesystem/HubService)
-- **DbService** only knows about API aliases (database storage)
-- **No unified interface** forces consumers to manually coordinate between services
-- **Performance impact** from multiple service calls and manual sorting
-- **Code duplication** across routes and model routing logic
-
-## Proposed Unified Architecture
-
-### Single Source of Truth Pattern
-Make DataService the unified provider for all alias types:
+### Resolved: Single Source of Truth Pattern
+DataService now serves as the unified provider for all alias types:
 
 ```rust
+// ✅ IMPLEMENTED: Unified interface
 trait DataService {
   async fn list_aliases(&self) -> Result<Vec<Alias>>;      // All types unified
   async fn find_alias(&self, alias: &str) -> Option<Alias>; // Single lookup
 }
 
+// ✅ IMPLEMENTED: Internal coordination
 struct LocalDataService {
   bodhi_home: PathBuf,
   hub_service: Arc<dyn HubService>,
@@ -78,20 +56,36 @@ struct LocalDataService {
 }
 ```
 
-### Internal Coordination Logic
+### Achieved Benefits
+- ✅ **Simplified Consumers**: Single service call replaces manual merging
+- ✅ **Better Performance**: One coordinated lookup vs multiple separate calls
+- ✅ **Proper Abstraction**: Data layer handles complexity, consumers focus on business logic
+- ✅ **Type Safety**: Enum pattern matching replaces source field filtering
+- ✅ **API Expansion**: API aliases expand models array into individual entries with deduplication
+
+## ✅ Remaining Architecture Optimization
+
+### Routes Layer Optimization (Phase 6)
+One remaining optimization in `routes_models.rs`:
+
+```rust
+// ⚠️ CURRENT: Still doing manual merge despite unified DataService
+let aliases = data_service.list_aliases().await?;           // Gets ALL aliases
+let api_aliases = db_service.list_api_model_aliases().await?; // Duplicate API fetch
+
+// ✅ SHOULD BE: Single unified call only  
+let aliases = data_service.list_aliases().await?;  // Already includes all types
+```
+
+**Issue**: `routes_models.rs` already uses unified DataService but still fetches API aliases separately, causing duplication.
+
+### Internal Coordination Logic (✅ Implemented)
 DataService internally coordinates across all data sources:
 
 1. **User Aliases**: YAML files from filesystem
-2. **Model Aliases**: Auto-discovered via HubService from Hugging Face cache
+2. **Model Aliases**: Auto-discovered via HubService from Hugging Face cache  
 3. **API Aliases**: Database records via DbService
-4. **Unified Response**: Combined, sorted Vec<Alias> with consistent interface
-
-### Benefits
-- **Simplified Consumers**: Single service call replaces manual merging
-- **Better Performance**: One coordinated lookup vs multiple separate calls
-- **Proper Abstraction**: Data layer handles complexity, consumers focus on business logic
-- **Extensibility**: New alias types added in one place
-- **Type Safety**: Enum pattern matching replaces source field filtering
+4. **Unified Response**: Combined, sorted Vec<Alias> with priority-based deduplication
 
 ## Architecture Decisions
 

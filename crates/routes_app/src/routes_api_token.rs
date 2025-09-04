@@ -1,4 +1,4 @@
-use crate::{PaginatedApiTokenResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_TOKENS};
+use crate::{PaginatedApiTokenResponse, PaginationSortParams, ENDPOINT_TOKENS};
 use auth_middleware::KEY_RESOURCE_TOKEN;
 use axum::{
   extract::{Path, Query, State},
@@ -254,13 +254,13 @@ pub async fn list_tokens_handler(
     .list_api_tokens(&user_id, query.page, per_page)
     .await?;
 
-  let paginated = PaginatedResponse {
+  let paginated = PaginatedApiTokenResponse {
     data: tokens,
     total,
     page: query.page,
     page_size: per_page,
   };
-  Ok(Json(paginated.into()))
+  Ok(Json(paginated))
 }
 
 #[cfg(test)]

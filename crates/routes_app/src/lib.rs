@@ -5,7 +5,7 @@ pub mod test_utils;
 
 mod api_models_dto;
 mod error;
-mod objs;
+mod api_dto;
 mod openapi;
 mod routes_api_models;
 mod routes_api_token;
@@ -21,7 +21,7 @@ mod utils;
 
 pub use api_models_dto::*;
 pub use error::*;
-pub use objs::*;
+pub use api_dto::*;
 pub use openapi::*;
 pub use routes_api_models::*;
 pub use routes_api_token::*;
