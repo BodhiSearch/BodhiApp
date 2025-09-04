@@ -1,7 +1,7 @@
 use crate::{merge_server_args, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
-use objs::UserAlias;
+use objs::Alias;
 use services::{HubService, SettingService};
 use std::fmt::Debug;
 use std::{path::Path, sync::Arc};
@@ -32,7 +32,7 @@ pub trait SharedContext: std::fmt::Debug + Send + Sync {
   async fn chat_completions(
     &self,
     mut request: CreateChatCompletionRequest,
-    alias: UserAlias,
+    alias: Alias,
   ) -> Result<reqwest::Response>;
 
   async fn add_state_listener(&self, listener: Arc<dyn ServerStateListener>);
@@ -176,19 +176,47 @@ impl SharedContext for DefaultSharedContext {
   async fn chat_completions(
     &self,
     mut request: CreateChatCompletionRequest,
-    alias: UserAlias,
+    alias: Alias,
   ) -> Result<reqwest::Response> {
+    // Pattern match to extract local alias information and reject API aliases
+    let (alias_name, repo, filename, snapshot, context_params) = match &alias {
+      Alias::User(user_alias) => (
+        &user_alias.alias,
+        &user_alias.repo,
+        &user_alias.filename,
+        &user_alias.snapshot,
+        &user_alias.context_params,
+      ),
+      Alias::Model(model_alias) => (
+        &model_alias.alias,
+        &model_alias.repo,
+        &model_alias.filename,
+        &model_alias.snapshot,
+        // Model aliases don't have context_params, use empty vector
+        &Vec::<String>::new(),
+      ),
+      Alias::Api(_) => {
+        return Err(ContextError::Unreachable(
+          "API aliases cannot be processed by SharedContext".to_string(),
+        ));
+      }
+    };
+
     let lock = self.server.read().await;
     let server = lock.as_ref();
     let loaded_alias = server.map(|server| server.get_server_args().alias);
-    let request_alias = &alias.alias;
+    let request_alias = alias_name;
     let model_file = self
       .hub_service
-      .find_local_file(&alias.repo, &alias.filename, Some(alias.snapshot.clone()))?
+      .find_local_file(repo, filename, Some(snapshot.clone()))?
       .path();
-    alias.request_params.update(&mut request);
+
+    // Apply request parameters if this is a user alias
+    if let Alias::User(user_alias) = &alias {
+      user_alias.request_params.update(&mut request);
+    }
+
     let input_value = serde_json::to_value(request)?;
-    let alias_name = alias.alias.clone();
     let setting_args = self.get_setting_args();
     let result = match ModelLoadStrategy::choose(loaded_alias, request_alias) {
       ModelLoadStrategy::Continue => {
@@ -202,10 +230,9 @@ impl SharedContext for DefaultSharedContext {
         drop(lock);
         let variant = self.exec_variant.get().await;
         let setting_variant_args = self.get_setting_variant_args(&variant);
-        let merged_args =
-          merge_server_args(&setting_args, &setting_variant_args, &alias.context_params);
+        let merged_args = merge_server_args(&setting_args, &setting_variant_args, context_params);
         let server_args = LlamaServerArgsBuilder::default()
-          .alias(alias.alias)
+          .alias(alias_name.clone())
           .model(model_file.to_string_lossy().to_string())
           .server_args(merged_args)
           .build()?;
@@ -221,10 +248,9 @@ impl SharedContext for DefaultSharedContext {
       ModelLoadStrategy::Load => {
         let variant = self.exec_variant.get().await;
         let setting_variant_args = self.get_setting_variant_args(&variant);
-        let merged_args =
-          merge_server_args(&setting_args, &setting_variant_args, &alias.context_params);
+        let merged_args = merge_server_args(&setting_args, &setting_variant_args, context_params);
         let server_args = LlamaServerArgsBuilder::default()
-          .alias(alias.alias)
+          .alias(alias_name.clone())
           .model(model_file.to_string_lossy().to_string())
           .server_args(merged_args)
           .build()?;
@@ -240,7 +266,9 @@ impl SharedContext for DefaultSharedContext {
       }
     };
     self
-      .notify_state_listeners(ServerState::ChatCompletions { alias: alias_name })
+      .notify_state_listeners(ServerState::ChatCompletions {
+        alias: alias_name.clone(),
+      })
       .await;
     result
   }
@@ -331,7 +359,7 @@ mod test {
     DEFAULT_VARIANT, EXEC_NAME,
   };
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_hf_home, HubFileBuilder, UserAlias};
+  use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder, UserAlias};
   use rstest::rstest;
   use serde_json::{json, Value};
   use serial_test::serial;
@@ -418,7 +446,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, UserAlias::testalias())
+      .chat_completions(request, Alias::User(UserAlias::testalias()))
       .await?;
     shared_ctx.stop().await?;
     Ok(())
@@ -469,7 +497,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, UserAlias::testalias())
+      .chat_completions(request, Alias::User(UserAlias::testalias()))
       .await?;
     Ok(())
   }
@@ -550,7 +578,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, UserAlias::testalias())
+      .chat_completions(request, Alias::User(UserAlias::testalias()))
       .await?;
     shared_ctx.stop().await?;
     Ok(())

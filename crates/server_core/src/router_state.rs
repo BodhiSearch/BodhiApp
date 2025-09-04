@@ -37,10 +37,7 @@ impl DefaultRouterState {
   }
 
   pub fn model_router(&self) -> Box<dyn ModelRouter + Send + Sync> {
-    Box::new(DefaultModelRouter::new(
-      self.app_service.data_service(),
-      self.app_service.db_service(),
-    ))
+    Box::new(DefaultModelRouter::new(self.app_service.data_service()))
   }
 
   pub fn ai_api_service(&self) -> Box<dyn AiApiService + Send + Sync> {
@@ -136,7 +133,7 @@ mod test {
   use async_openai::types::CreateChatCompletionRequest;
   use llama_server_proc::{test_utils::mock_response, ServerError};
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_dir, UserAlias};
+  use objs::{test_utils::temp_dir, Alias, UserAlias};
   use rstest::rstest;
   use serde_json::json;
   use services::test_utils::AppServiceStubBuilder;
@@ -148,7 +145,6 @@ mod test {
   async fn test_router_state_chat_completions_model_not_found() -> anyhow::Result<()> {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
-      .with_db_service()
       .await
       .build()?;
     let state = DefaultRouterState::new(Arc::new(MockSharedContext::default()), Arc::new(service));
@@ -187,14 +183,16 @@ mod test {
     }})?;
     mock_ctx
       .expect_chat_completions()
-      .with(eq(request.clone()), eq(UserAlias::testalias_exists()))
+      .with(
+        eq(request.clone()),
+        eq(Alias::User(UserAlias::testalias_exists())),
+      )
       .times(1)
       .return_once(|_, _| Ok(mock_response("")));
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
       .with_hub_service()
       .with_data_service()
-      .with_db_service()
       .await
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));
@@ -217,7 +215,7 @@ mod test {
     let alias = UserAlias::testalias_exists();
     mock_ctx
       .expect_chat_completions()
-      .with(eq(request.clone()), eq(alias))
+      .with(eq(request.clone()), eq(Alias::User(alias)))
       .times(1)
       .return_once(|_, _| {
         Err(ContextError::Server(ServerError::StartupError(
@@ -226,9 +224,8 @@ mod test {
       });
     let service = AppServiceStubBuilder::default()
       .with_temp_home_as(temp_dir)
-      .with_data_service()
       .with_hub_service()
-      .with_db_service()
+      .with_data_service()
       .await
       .build()?;
     let state = DefaultRouterState::new(Arc::new(mock_ctx), Arc::new(service));

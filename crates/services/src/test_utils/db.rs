@@ -15,7 +15,11 @@ use tokio::sync::broadcast::{channel, Receiver, Sender};
 #[fixture]
 #[awt]
 pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
-  let dbfile = temp_dir.path().join("testdb.sqlite");
+  test_db_service_with_temp_dir(Arc::new(temp_dir)).await
+}
+
+pub async fn test_db_service_with_temp_dir(shared_temp_dir: Arc<TempDir>) -> TestDbService {
+  let dbfile = shared_temp_dir.path().join("testdb.sqlite");
   File::create(&dbfile).unwrap();
   let dbpath = dbfile.to_str().unwrap();
   let pool = SqlitePool::connect(&format!("sqlite:{dbpath}"))
@@ -26,7 +30,7 @@ pub async fn test_db_service(temp_dir: TempDir) -> TestDbService {
   let encryption_key = b"test_encryption_key_1234567890123456".to_vec();
   let db_service = SqliteDbService::new(pool, Arc::new(time_service), encryption_key);
   db_service.migrate().await.unwrap();
-  TestDbService::new(temp_dir, db_service, now)
+  TestDbService::new(shared_temp_dir, db_service, now)
 }
 
 #[derive(Debug)]
@@ -50,14 +54,14 @@ impl TimeService for FrozenTimeService {
 
 #[derive(Debug)]
 pub struct TestDbService {
-  _temp_dir: TempDir,
+  _temp_dir: Arc<TempDir>,
   inner: SqliteDbService,
   event_sender: Sender<String>,
   now: DateTime<Utc>,
 }
 
 impl TestDbService {
-  pub fn new(_temp_dir: TempDir, inner: SqliteDbService, now: DateTime<Utc>) -> Self {
+  pub fn new(_temp_dir: Arc<TempDir>, inner: SqliteDbService, now: DateTime<Utc>) -> Self {
     let (event_sender, _) = channel(100);
     TestDbService {
       _temp_dir,

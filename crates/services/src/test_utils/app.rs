@@ -1,12 +1,15 @@
 use crate::{
   db::{DbService, TimeService},
-  test_utils::{test_db_service, SecretServiceStub, SettingServiceStub, TestDbService},
+  test_utils::{
+    test_db_service, test_db_service_with_temp_dir, SecretServiceStub, SettingServiceStub,
+    TestDbService,
+  },
   AiApiService, AppRegInfoBuilder, AppService, AuthService, CacheService, DataService,
   HfHubService, HubService, LocalDataService, MockAuthService, MockHubService, MokaCacheService,
   SecretService, SessionService, SettingService, SqliteSessionService,
 };
 use derive_builder::Builder;
-use objs::test_utils::{build_temp_dir, copy_test_dir, temp_dir};
+use objs::test_utils::{build_temp_dir, copy_test_dir};
 use objs::LocalizationService;
 use rstest::fixture;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
@@ -31,6 +34,7 @@ pub async fn app_service_stub_builder(
     // .with_temp_home()
     .with_hub_service()
     .with_data_service()
+    .await
     .db_service(Arc::new(test_db_service))
     .with_session_service()
     .await
@@ -136,32 +140,54 @@ impl AppServiceStubBuilder {
     self
   }
 
-  pub fn with_data_service(&mut self) -> &mut Self {
+  pub fn get_hub_service(&mut self) -> Arc<dyn HubService> {
+    if let Some(Some(hub_service)) = self.hub_service.as_ref() {
+      return hub_service.clone();
+    }
+    self.with_hub_service();
+    self.hub_service.clone().unwrap().unwrap()
+  }
+
+  pub async fn with_data_service(&mut self) -> &mut Self {
+    if let Some(Some(_)) = self.data_service.as_ref() {
+      return self;
+    }
     let temp_home = self.setup_temp_home();
-    let hub_service = self
-      .with_hub_service()
-      .hub_service
-      .clone()
-      .unwrap()
-      .unwrap()
-      .clone();
     let bodhi_home = temp_home.path().join("bodhi");
     copy_test_dir("tests/data/bodhi", &bodhi_home);
-    let data_service = LocalDataService::new(bodhi_home, hub_service);
+    let data_service = LocalDataService::new(
+      bodhi_home,
+      self.get_hub_service(),
+      self.get_db_service().await,
+    );
     self.data_service = Some(Some(Arc::new(data_service)));
     self
   }
 
   pub async fn with_session_service(&mut self) -> &mut Self {
     let temp_home = self.setup_temp_home();
-    let dbfile = temp_home.path().join("test.db");
+    let dbfile = temp_home.path().join("test-session.sqlite");
     self.build_session_service(dbfile).await;
     self
   }
 
   pub async fn with_db_service(&mut self) -> &mut Self {
-    self.db_service = Some(Some(Arc::new(test_db_service(temp_dir()).await)));
+    if let Some(Some(_)) = self.db_service.as_ref() {
+      return self;
+    }
+    let temp_home = self.setup_temp_home();
+    self.db_service = Some(Some(Arc::new(
+      test_db_service_with_temp_dir(temp_home).await,
+    )));
     self
+  }
+
+  pub async fn get_db_service(&mut self) -> Arc<dyn DbService> {
+    if let Some(Some(db_service)) = self.db_service.as_ref() {
+      return db_service.clone();
+    }
+    self.with_db_service().await;
+    self.db_service.clone().unwrap().unwrap()
   }
 
   pub async fn build_session_service(&mut self, dbfile: PathBuf) -> &mut Self {

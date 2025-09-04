@@ -1,4 +1,8 @@
-use crate::{HubService, HubServiceError, ALIASES_DIR, MODELS_YAML};
+use crate::{
+  db::{DbError, DbService},
+  HubService, HubServiceError, ALIASES_DIR, MODELS_YAML,
+};
+use async_trait::async_trait;
 use objs::{
   impl_error_from, Alias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
   IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
@@ -52,6 +56,8 @@ pub enum DataServiceError {
   SerdeYamlError(#[from] SerdeYamlError),
   #[error(transparent)]
   HubService(#[from] HubServiceError),
+  #[error(transparent)]
+  Db(#[from] DbError),
 }
 
 impl_error_from!(
@@ -64,20 +70,21 @@ impl_error_from!(::std::io::Error, DataServiceError::Io, ::objs::IoError);
 type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
+#[async_trait::async_trait]
 pub trait DataService: Send + Sync + std::fmt::Debug {
-  fn list_aliases(&self) -> Result<Vec<Alias>>;
+  async fn list_aliases(&self) -> Result<Vec<Alias>>;
 
   fn save_alias(&self, alias: &UserAlias) -> Result<PathBuf>;
 
-  fn find_alias(&self, alias: &str) -> Option<Alias>;
+  async fn find_alias(&self, alias: &str) -> Option<Alias>;
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
 
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>>;
 
-  fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()>;
+  async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()>;
 
-  fn delete_alias(&self, alias: &str) -> Result<()>;
+  async fn delete_alias(&self, alias: &str) -> Result<()>;
 
   fn alias_filename(&self, alias: &str) -> Result<PathBuf>;
 
@@ -92,13 +99,19 @@ pub trait DataService: Send + Sync + std::fmt::Debug {
 pub struct LocalDataService {
   bodhi_home: PathBuf,
   hub_service: Arc<dyn HubService>,
+  db_service: Arc<dyn DbService>,
 }
 
 impl LocalDataService {
-  pub fn new(bodhi_home: PathBuf, hub_service: Arc<dyn HubService>) -> Self {
+  pub fn new(
+    bodhi_home: PathBuf,
+    hub_service: Arc<dyn HubService>,
+    db_service: Arc<dyn DbService>,
+  ) -> Self {
     Self {
       bodhi_home,
       hub_service,
+      db_service,
     }
   }
 
@@ -121,6 +134,7 @@ impl LocalDataService {
   }
 }
 
+#[async_trait]
 impl DataService for LocalDataService {
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>> {
     let models = self.list_remote_models()?;
@@ -135,7 +149,7 @@ impl DataService for LocalDataService {
     Ok(filename)
   }
 
-  fn list_aliases(&self) -> Result<Vec<Alias>> {
+  async fn list_aliases(&self) -> Result<Vec<Alias>> {
     let user_aliases = self._list_aliases()?;
     let mut result: Vec<Alias> = user_aliases
       .into_values()
@@ -149,6 +163,22 @@ impl DataService for LocalDataService {
       .collect();
 
     result.extend(model_alias_variants);
+
+    // Add API aliases from database
+    match self.db_service.list_api_model_aliases().await {
+      Ok(api_aliases) => {
+        let api_alias_variants: Vec<Alias> = api_aliases
+          .into_iter()
+          .map(|alias| Alias::Api(alias))
+          .collect();
+        result.extend(api_alias_variants);
+      }
+      Err(_) => {
+        // Continue without API aliases if database is not available
+        // This provides graceful degradation
+      }
+    }
+
     result.sort_by(|a, b| {
       let alias_a = match a {
         Alias::User(user) => &user.alias,
@@ -165,8 +195,8 @@ impl DataService for LocalDataService {
     Ok(result)
   }
 
-  fn find_alias(&self, alias: &str) -> Option<Alias> {
-    let aliases = self.list_aliases();
+  async fn find_alias(&self, alias: &str) -> Option<Alias> {
+    let aliases = self.list_aliases().await;
     let aliases = aliases.unwrap_or_default();
     aliases.into_iter().find(|obj| {
       let obj_alias = match obj {
@@ -190,9 +220,10 @@ impl DataService for LocalDataService {
     Ok(models)
   }
 
-  fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
+  async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
     let found_alias = self
       .find_alias(alias)
+      .await
       .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
 
     // Only user aliases can be copied
@@ -201,7 +232,7 @@ impl DataService for LocalDataService {
       _ => return Err(AliasNotFoundError(format!("Cannot copy non-user alias: {}", alias)).into()),
     };
 
-    match self.find_alias(new_alias) {
+    match self.find_alias(new_alias).await {
       Some(_) => Err(AliasExistsError(new_alias.to_string()))?,
       None => {
         user_alias.alias = new_alias.to_string();
@@ -211,7 +242,7 @@ impl DataService for LocalDataService {
     }
   }
 
-  fn delete_alias(&self, alias: &str) -> Result<()> {
+  async fn delete_alias(&self, alias: &str) -> Result<()> {
     let (filename, _) = self
       ._list_aliases()?
       .into_iter()
@@ -314,7 +345,8 @@ mod test {
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::{assert_error_message, setup_l10n}, Alias, AppError, FluentLocalizationService, RemoteModel, UserAlias
+    test_utils::{assert_error_message, setup_l10n},
+    Alias, AppError, FluentLocalizationService, RemoteModel, UserAlias,
   };
   use rstest::rstest;
   use std::fs;
@@ -338,8 +370,12 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   }
 
   #[rstest]
-  fn test_local_data_service_models_file_missing(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_models_file_missing(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     fs::remove_file(service.bodhi_home().join("models.yaml"))?;
     let result = service.find_remote_model("testalias:instruct");
@@ -352,9 +388,13 @@ $BODHI_HOME might not have been initialized. Run `bodhi init` to setup $BODHI_HO
   }
 
   #[rstest]
+  #[tokio::test]
+  #[awt]
   #[anyhow_trace]
-  fn test_local_data_service_models_file_corrupt(
-    #[from(test_data_service)] service: TestDataService,
+  async fn test_local_data_service_models_file_corrupt(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     let models_file = service.bodhi_home().join("models.yaml");
     fs::write(
@@ -378,8 +418,12 @@ chat_template: llama3
   #[rstest]
   #[case("testalias:instruct", true)]
   #[case("testalias-notexists", false)]
-  fn test_local_data_service_find_remote_model(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_find_remote_model(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
     #[case] alias: String,
     #[case] found: bool,
   ) -> anyhow::Result<()> {
@@ -389,8 +433,12 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_list_remote_models(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_list_remote_models(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     let models = service.list_remote_models()?;
     let expected_1 = RemoteModel::llama3();
@@ -402,22 +450,28 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_find_alias(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_find_alias(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
-    let alias = service.find_alias("testalias-exists:instruct");
+    let alias = service.find_alias("testalias-exists:instruct").await;
     let expected = Alias::User(UserAlias::testalias_exists());
     assert_eq!(Some(expected), alias);
     Ok(())
   }
 
   #[rstest]
-  fn test_local_data_service_list_aliases(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_list_aliases(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
-    let result = service.list_aliases()?;
-    // Since llama.cpp now handles chat templates, we may have more aliases
-    // The exact count may vary, but we should have at least the core aliases
+    let result = service.list_aliases().await?;
     assert!(result.len() >= 6);
     assert!(result.contains(&Alias::User(UserAlias::llama3())));
     assert!(result.contains(&Alias::User(UserAlias::testalias_exists())));
@@ -425,8 +479,12 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_delete_alias(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_delete_alias(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     let exists = service
       .bodhi_home()
@@ -434,7 +492,7 @@ chat_template: llama3
       .join("tinyllama--instruct.yaml")
       .exists();
     assert!(exists);
-    service.delete_alias("tinyllama:instruct")?;
+    service.delete_alias("tinyllama:instruct").await?;
     let exists = service
       .bodhi_home()
       .join("aliases")
@@ -445,10 +503,14 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_delete_alias_not_found(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_delete_alias_not_found(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
-    let result = service.delete_alias("notexists--instruct.yaml");
+    let result = service.delete_alias("notexists--instruct.yaml").await;
     assert!(result.is_err());
     assert!(
       matches!(result.unwrap_err(), DataServiceError::AliasNotExists(alias) if alias == AliasNotFoundError("notexists--instruct.yaml".to_string()))
@@ -457,12 +519,19 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_copy_alias(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_copy_alias(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
-    service.copy_alias("tinyllama:instruct", "tinyllama:mymodel")?;
+    service
+      .copy_alias("tinyllama:instruct", "tinyllama:mymodel")
+      .await?;
     let new_alias = service
       .find_alias("tinyllama:mymodel")
+      .await
       .expect("should have created new_alias");
     let mut expected = UserAlias::tinyllama();
     expected.alias = "tinyllama:mymodel".to_string();
@@ -471,8 +540,12 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_read_file(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_read_file(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     let folder = Some("test_folder".to_string());
     let filename = "test_file.txt";
@@ -489,8 +562,12 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_write_file(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_write_file(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     let folder = Some("test_folder".to_string());
     let filename = "test_file.txt";
@@ -511,8 +588,12 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_write_file_create_folder(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_write_file_create_folder(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     let folder = Some("new_folder".to_string());
     let filename = "new_file.txt";
@@ -527,8 +608,12 @@ chat_template: llama3
   }
 
   #[rstest]
-  fn test_local_data_service_read_file_not_found(
-    #[from(test_data_service)] service: TestDataService,
+  #[tokio::test]
+  #[awt]
+  async fn test_local_data_service_read_file_not_found(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
   ) -> anyhow::Result<()> {
     let folder = Some("non_existent_folder".to_string());
     let filename = "non_existent_file.txt";
