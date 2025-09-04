@@ -9,7 +9,6 @@ import { motion } from 'framer-motion';
 import { BodhiLogo } from '@/app/ui/setup/BodhiLogo';
 import { handleSmartRedirect } from '@/lib/utils';
 import { useState } from 'react';
-import { redirect } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 
 // Animation variants

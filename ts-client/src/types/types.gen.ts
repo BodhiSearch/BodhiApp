@@ -388,6 +388,28 @@ export type PaginatedUserAliasResponse = {
 };
 
 /**
+ * Query parameters for pagination and sorting
+ */
+export type PaginationSortParams = {
+    /**
+     * Page number (1-based)
+     */
+    page?: number;
+    /**
+     * Number of items per page (max 100)
+     */
+    page_size?: number;
+    /**
+     * Field to sort by (repo, filename, size, updated_at, snapshot)
+     */
+    sort?: string | null;
+    /**
+     * Sort order (asc or desc)
+     */
+    sort_order?: string;
+};
+
+/**
  * Response to the ping endpoint
  */
 export type PingResponse = {

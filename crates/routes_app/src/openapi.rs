@@ -1,6 +1,8 @@
 use crate::{
-  ApiModelResponse, CreateApiModelRequest, FetchModelsRequest, FetchModelsResponse,
-  PaginatedApiModelResponse, TestPromptRequest, TestPromptResponse, UpdateApiModelRequest,
+  ApiModelResponse, AuthCallbackRequest, CreateApiModelRequest, FetchModelsRequest,
+  FetchModelsResponse, LocalModelResponse, PaginatedApiModelResponse, PaginationSortParams,
+  PingResponse, RoleSource, TestPromptRequest, TestPromptResponse, TokenType,
+  UpdateApiModelRequest, UpdateApiTokenRequest,
 };
 use crate::{
   ApiTokenResponse, AppInfo, CreateAliasRequest, CreateApiTokenRequest, NewDownloadRequest,
@@ -20,14 +22,16 @@ use crate::{
   __path_update_token_handler, __path_user_info_handler,
 };
 use objs::{
-  Alias, OpenAIApiError, SettingInfo, SettingMetadata, SettingSource, API_TAG_API_KEYS,
-  API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA, API_TAG_OPENAI,
-  API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
+  Alias, OAIRequestParams, OpenAIApiError, SettingInfo, SettingMetadata, SettingSource,
+  API_TAG_API_KEYS, API_TAG_API_MODELS, API_TAG_AUTH, API_TAG_MODELS, API_TAG_OLLAMA,
+  API_TAG_OPENAI, API_TAG_SETTINGS, API_TAG_SETUP, API_TAG_SYSTEM,
 };
 use routes_oai::{
-  __path_chat_completions_handler, __path_oai_model_handler, __path_oai_models_handler,
-  __path_ollama_model_chat_handler, __path_ollama_model_show_handler, __path_ollama_models_handler,
+  ListModelResponse, ModelResponse, __path_chat_completions_handler, __path_oai_model_handler,
+  __path_oai_models_handler, __path_ollama_model_chat_handler, __path_ollama_model_show_handler,
+  __path_ollama_models_handler,
 };
+use services::db::DownloadStatus;
 use services::{
   db::{ApiToken, DownloadRequest, TokenStatus},
   AppStatus, RequestAccessRequest, RequestAccessResponse, SettingService,
@@ -114,58 +118,70 @@ For API keys, specify required scope when creating the token.
         (name = API_TAG_SETUP, description = "Application setup and initialization"),
         (name = API_TAG_AUTH, description = "Authentication and session management"),
         (name = API_TAG_API_KEYS, description = "API keys management"),
-        (name = API_TAG_MODELS, description = "Model files and aliases"),
         (name = API_TAG_API_MODELS, description = "Remote AI API model configuration"),
-        (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
+        (name = API_TAG_MODELS, description = "Model files and aliases"),
         (name = API_TAG_SETTINGS, description = "Application settings management"),
+        (name = API_TAG_OPENAI, description = "OpenAI-compatible API endpoints"),
         (name = API_TAG_OLLAMA, description = "Ollama-compatible API endpoints"),
     ),
     components(
         schemas(
             // common
             OpenAIApiError,
-            AppInfo,
             AppStatus,
-            UserInfo,
             RedirectResponse,
-            PaginatedDownloadResponse,
-            PaginatedUserAliasResponse,
-            PaginatedApiTokenResponse,
-            PaginatedLocalModelResponse,
+            // system
+            AppInfo,
+            PingResponse,
             // setup
             SetupRequest,
             SetupResponse,
+            // auth
+            AuthCallbackRequest,
             RequestAccessRequest,
             RequestAccessResponse,
-            // pull
-            NewDownloadRequest,
-            DownloadRequest,
-            // create alias
-            CreateAliasRequest,
-            UpdateAliasRequest,
-            UserAliasResponse,
-            // unified models
-            Alias,
-            PaginatedAliasResponse,
-            // token
-            ApiTokenResponse,
-            ApiToken,
+            UserInfo,
+            TokenType,
+            RoleSource,
+            // api keys/token
             CreateApiTokenRequest,
+            ApiTokenResponse,
+            UpdateApiTokenRequest,
             TokenStatus,
+            PaginatedApiTokenResponse,
+            ApiToken,
             // api models
+            PaginatedApiModelResponse,
+            ApiModelResponse,
             CreateApiModelRequest,
             UpdateApiModelRequest,
-            ApiModelResponse,
             TestPromptRequest,
             TestPromptResponse,
             FetchModelsRequest,
             FetchModelsResponse,
-            PaginatedApiModelResponse,
+            // models
+            CreateAliasRequest,
+            OAIRequestParams,
+            PaginatedUserAliasResponse,
+            UserAliasResponse,
+            UpdateAliasRequest,
+            PaginationSortParams,
+            PaginatedAliasResponse,
+            Alias,
+            PaginatedLocalModelResponse,
+            LocalModelResponse,
+            PaginatedDownloadResponse,
+            DownloadRequest,
+            DownloadStatus,
+            NewDownloadRequest,
             // settings
             SettingInfo,
             SettingMetadata,
             SettingSource,
-            UpdateSettingRequest
+            UpdateSettingRequest,
+            // openai
+            ListModelResponse,
+            ModelResponse,
         ),
         responses( ),
     ),
@@ -181,14 +197,14 @@ For API keys, specify required scope when creating the token.
         // Authentication endpoints
         auth_initiate_handler,
         auth_callback_handler,
-        request_access_handler,
         logout_handler,
+        request_access_handler,
         user_info_handler,
 
         // API Keys endpoints
         create_token_handler,
-        list_tokens_handler,
         update_token_handler,
+        list_tokens_handler,
 
         // API Models endpoints
         list_api_models_handler,
@@ -203,10 +219,8 @@ For API keys, specify required scope when creating the token.
         create_alias_handler,
         update_alias_handler,
         list_aliases_handler,
-        get_user_alias_handler,
         list_local_modelfiles_handler,
-
-        // Download endpoints
+        get_user_alias_handler,
         list_downloads_handler,
         create_pull_request_handler,
         pull_by_alias_handler,

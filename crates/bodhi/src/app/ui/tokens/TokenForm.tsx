@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToastMessages } from '@/hooks/use-toast-messages';
-import { TokenResponse, useCreateToken } from '@/hooks/useApiTokens';
+import { useCreateToken } from '@/hooks/useApiTokens';
+import { ApiTokenResponse } from '@bodhiapp/ts-client';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -17,7 +18,7 @@ export const createTokenSchema = z.object({
 export type TokenFormData = z.infer<typeof createTokenSchema>;
 
 interface TokenFormProps {
-  onTokenCreated: (token: TokenResponse) => void;
+  onTokenCreated: (token: ApiTokenResponse) => void;
 }
 
 export function TokenForm({ onTokenCreated }: TokenFormProps) {

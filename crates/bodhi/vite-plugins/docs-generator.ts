@@ -10,7 +10,7 @@ const DEFAULT_ORDER = 999;
 interface DocsData {
   allSlugs: string[];
   docGroups: Record<string, DocGroup[]>;
-  docContents: Record<string, { content: string; data: any }>;
+  docContents: Record<string, { content: string; data: any }>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 function getDocsDirectory(): string[] {
@@ -157,7 +157,7 @@ function generateDocsData(): DocsData {
   const allSlugs = getAllDocSlugs(docsDirectory);
 
   const docGroups: Record<string, DocGroup[]> = {};
-  const docContents: Record<string, { content: string; data: any }> = {};
+  const docContents: Record<string, { content: string; data: any }> = {}; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   // Generate doc groups for different base paths
   docGroups[''] = groupDocs(allSlugs, docsDirectory);

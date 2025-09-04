@@ -10,7 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { TableCell } from '@/components/ui/table';
-import { ApiToken, TokenResponse, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
+import { useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
+import { ApiToken, ApiTokenResponse } from '@bodhiapp/ts-client';
 import { useAppInfo } from '@/hooks/useQuery';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 import { Shield } from 'lucide-react';
@@ -39,8 +40,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function TokenPageContent() {
-  const [token, setToken] = useState<TokenResponse | null>(null);
-  const { data: appInfo, isLoading: appLoading } = useAppInfo();
+  const [token, setToken] = useState<ApiTokenResponse | null>(null);
+  const { isLoading: appLoading } = useAppInfo();
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [sort] = useState<SortState>({
@@ -70,7 +71,7 @@ export function TokenPageContent() {
     });
   };
 
-  const handleTokenCreated = (newToken: TokenResponse) => {
+  const handleTokenCreated = (newToken: ApiTokenResponse) => {
     setToken(newToken);
   };
 

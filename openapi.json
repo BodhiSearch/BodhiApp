@@ -1482,38 +1482,43 @@
                 "example": {
                   "data": [
                     {
-                      "User": {
-                        "alias": "llama2:chat",
-                        "context_params": [
-                          "--ctx_size",
-                          "4096"
-                        ],
-                        "filename": "llama-2-7b-chat.Q4_K_M.gguf",
-                        "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
-                        "request_params": {
-                          "temperature": 0.7,
-                          "top_p": 0.95
-                        },
-                        "snapshot": "abc123"
-                      }
+                      "alias": "llama2:chat",
+                      "context_params": [
+                        "--ctx_size",
+                        "4096"
+                      ],
+                      "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                      "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                      "request_params": {
+                        "temperature": 0.7,
+                        "top_p": 0.95
+                      },
+                      "snapshot": "abc123",
+                      "source": "user"
                     },
                     {
-                      "Api": {
-                        "base_url": "https://api.openai.com/v1",
-                        "created_at": "2024-01-01T00:00:00Z",
-                        "id": "openai-gpt4",
-                        "models": [
-                          "gpt-4",
-                          "gpt-3.5-turbo"
-                        ],
-                        "provider": "openai",
-                        "updated_at": "2024-01-01T00:00:00Z"
-                      }
+                      "alias": "TheBloke/Llama-2-7B-Chat-GGUF:Q4_K_M",
+                      "filename": "llama-2-7b-chat.Q4_K_M.gguf",
+                      "repo": "TheBloke/Llama-2-7B-Chat-GGUF",
+                      "snapshot": "abc123",
+                      "source": "model"
+                    },
+                    {
+                      "base_url": "https://api.openai.com/v1",
+                      "created_at": "2024-01-01T00:00:00Z",
+                      "id": "openai-gpt4",
+                      "models": [
+                        "gpt-4",
+                        "gpt-3.5-turbo"
+                      ],
+                      "provider": "openai",
+                      "source": "api",
+                      "updated_at": "2024-01-01T00:00:00Z"
                     }
                   ],
                   "page": 1,
                   "page_size": 10,
-                  "total": 2
+                  "total": 3
                 }
               }
             }
@@ -4060,6 +4065,33 @@
           }
         }
       },
+      "PaginationSortParams": {
+        "type": "object",
+        "description": "Query parameters for pagination and sorting",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "description": "Page number (1-based)",
+            "minimum": 0
+          },
+          "page_size": {
+            "type": "integer",
+            "description": "Number of items per page (max 100)",
+            "minimum": 0
+          },
+          "sort": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)"
+          },
+          "sort_order": {
+            "type": "string",
+            "description": "Sort order (asc or desc)"
+          }
+        }
+      },
       "PingResponse": {
         "type": "object",
         "description": "Response to the ping endpoint",
@@ -4680,20 +4712,20 @@
       "description": "API keys management"
     },
     {
-      "name": "models",
-      "description": "Model files and aliases"
-    },
-    {
       "name": "api-models",
       "description": "Remote AI API model configuration"
     },
     {
-      "name": "openai",
-      "description": "OpenAI-compatible API endpoints"
+      "name": "models",
+      "description": "Model files and aliases"
     },
     {
       "name": "settings",
       "description": "Application settings management"
+    },
+    {
+      "name": "openai",
+      "description": "OpenAI-compatible API endpoints"
     },
     {
       "name": "ollama",

@@ -1,5 +1,5 @@
 import { TokenForm } from '@/app/ui/tokens/TokenForm';
-import { TokenResponse } from '@/hooks/useApiTokens';
+import { ApiTokenResponse } from '@bodhiapp/ts-client';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { showSuccessParams } from '@/lib/utils.test';
 import { createWrapper } from '@/tests/wrapper';
@@ -9,7 +9,7 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { describe, expect, it, vi } from 'vitest';
 
-const mockToken: TokenResponse = {
+const mockToken: ApiTokenResponse = {
   offline_token: 'test-token-123',
 };
 

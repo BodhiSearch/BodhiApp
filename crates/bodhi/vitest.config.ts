@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
-// @ts-ignore
+// @ts-expect-error path is not typed in vitest config
 import path from 'path';
 
 export default defineConfig({

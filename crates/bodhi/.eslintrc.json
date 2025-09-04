@@ -13,5 +13,21 @@
       }
     ]
   },
-  "ignorePatterns": ["src/**/*.test.tsx", "tests/**/*.test.tsx", "src/components/ui/**/*", "src/hooks/use-toast.ts"]
+  "ignorePatterns": [
+    "node_modules/**",
+    "out/**",
+    ".next/**",
+    "src/**/*.test.tsx",
+    "tests/**/*.test.tsx",
+    "src/components/ui/**/*",
+    "src/hooks/use-toast.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["src/tests/**/*", "**/*.test.ts", "**/*.test.tsx"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
+      }
+    }
+  ]
 }

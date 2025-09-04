@@ -35,7 +35,7 @@ export const mockWindowLocation = (href: string) => {
       },
       protocol: url.protocol,
       host: url.host,
-    } as any,
+    } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
     writable: true,
     configurable: true,
   });

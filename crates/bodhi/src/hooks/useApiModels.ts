@@ -174,8 +174,14 @@ export function useFetchApiModels(
 /**
  * Helper function to check if a model is an API model
  */
-export function isApiModel(model: any): model is ApiModelResponse {
-  return model && 'api_key_masked' in model && 'base_url' in model && 'provider' in model;
+export function isApiModel(model: unknown): model is ApiModelResponse {
+  return (
+    typeof model === 'object' &&
+    model !== null &&
+    'api_key_masked' in model &&
+    'base_url' in model &&
+    'provider' in model
+  );
 }
 
 /**

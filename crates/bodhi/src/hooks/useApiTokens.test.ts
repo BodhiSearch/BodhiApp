@@ -1,7 +1,7 @@
-import { ListTokensResponse, TokenResponse, useCreateToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
+import { useCreateToken, useListTokens, useUpdateToken } from '@/hooks/useApiTokens';
 import { API_TOKENS_ENDPOINT } from '@/hooks/useQuery';
 import { createWrapper } from '@/tests/wrapper';
-import { ErrorBody } from '@bodhiapp/ts-client';
+import { ApiTokenResponse, PaginatedApiTokenResponse, ErrorBody } from '@bodhiapp/ts-client';
 
 // Type alias for compatibility
 type ApiError = ErrorBody;
@@ -11,11 +11,11 @@ import { rest } from 'msw';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
-const mockTokenResponse: TokenResponse = {
+const mockTokenResponse: ApiTokenResponse = {
   offline_token: 'test-token-123',
 };
 
-const mockListResponse: ListTokensResponse = {
+const mockListResponse: PaginatedApiTokenResponse = {
   data: [
     {
       id: 'token-1',

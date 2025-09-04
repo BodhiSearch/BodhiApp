@@ -12,13 +12,14 @@ import { useToastMessages } from '@/hooks/use-toast-messages';
 import { useCreateModel, useModelFiles, useUpdateModel } from '@/hooks/useQuery';
 import {
   AliasFormData,
-  AliasResponse,
   createAliasFormSchema,
   requestParamsSchema,
   convertFormToApi,
   convertFormToUpdateApi,
   convertApiToForm,
 } from '@/schemas/alias';
+import { Alias } from '@bodhiapp/ts-client';
+import { hasLocalFileProperties, isUserAlias } from '@/lib/utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -28,7 +29,7 @@ import { z } from 'zod';
 
 interface AliasFormProps {
   isEditMode: boolean;
-  initialData?: AliasResponse;
+  initialData?: Alias;
 }
 
 function FormFieldWithTooltip({
@@ -71,12 +72,14 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const router = useRouter();
   const { showSuccess, showError } = useToastMessages();
   const [isRequestExpanded, setIsRequestExpanded] = useState(
-    isEditMode && Object.keys(initialData?.request_params || {}).length > 0
+    isEditMode && initialData && isUserAlias(initialData) && Object.keys(initialData.request_params || {}).length > 0
   );
 
   const { data: modelsData } = useModelFiles(1, 100, 'alias', 'asc');
 
-  const [currentRepo, setCurrentRepo] = useState(initialData?.repo || '');
+  const [currentRepo, setCurrentRepo] = useState(
+    initialData && hasLocalFileProperties(initialData) ? initialData.repo : ''
+  );
 
   const repoOptions = useMemo(() => {
     if (!modelsData) return [];
@@ -105,20 +108,22 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasFormSchema),
     mode: 'onSubmit',
-    defaultValues: initialData
-      ? convertApiToForm(initialData)
-      : {
-          alias: '',
-          repo: '',
-          filename: '',
-          request_params: {},
-          context_params: '',
-        },
+    defaultValues:
+      initialData && hasLocalFileProperties(initialData)
+        ? convertApiToForm(initialData)
+        : {
+            alias: '',
+            repo: '',
+            filename: '',
+            request_params: {},
+            context_params: '',
+          },
   });
 
   const createModel = useCreateModel({
     onSuccess: (model) => {
-      showSuccess('Success', `Alias ${model.alias} successfully created`);
+      const identifier = model.source === 'api' ? model.id : model.alias;
+      showSuccess('Success', `Alias ${identifier} successfully created`);
       router.push('/ui/models');
     },
     onError: (message) => {
@@ -126,9 +131,10 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     },
   });
 
-  const updateModel = useUpdateModel(initialData?.alias || '', {
+  const updateModel = useUpdateModel(initialData?.source === 'api' ? initialData.id : initialData?.alias || '', {
     onSuccess: (model) => {
-      showSuccess('Success', `Alias ${model.alias} successfully updated`);
+      const identifier = model.source === 'api' ? model.id : model.alias;
+      showSuccess('Success', `Alias ${identifier} successfully updated`);
       router.push('/ui/models');
     },
     onError: (message) => {

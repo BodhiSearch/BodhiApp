@@ -10,7 +10,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 
 interface DeleteConfirmDialogProps {
@@ -20,7 +19,6 @@ interface DeleteConfirmDialogProps {
   description: string;
   onConfirm: () => void;
   loading?: boolean;
-  itemName?: string;
 }
 
 export function DeleteConfirmDialog({
@@ -30,7 +28,6 @@ export function DeleteConfirmDialog({
   description,
   onConfirm,
   loading = false,
-  itemName,
 }: DeleteConfirmDialogProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>

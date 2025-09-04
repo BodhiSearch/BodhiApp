@@ -1,12 +1,12 @@
 import { TokenDialog } from '@/app/ui/tokens/TokenDialog';
-import { TokenResponse } from '@/hooks/useApiTokens';
+import { ApiTokenResponse } from '@bodhiapp/ts-client';
 import { createWrapper } from '@/tests/wrapper';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('TokenDialog', () => {
-  const mockToken: TokenResponse = {
+  const mockToken: ApiTokenResponse = {
     offline_token: 'test-token-123',
   };
 

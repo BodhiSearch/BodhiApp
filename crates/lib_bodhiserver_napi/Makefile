@@ -27,6 +27,9 @@ build-release: install-js ## Build Node.js bindings (release/optimized)
 
 test: test-rust test-js test-playwright ## Run all tests (Rust, JS, Playwright)
 
+test.ui: build-debug install-js
+	npm run test:all 
+
 test-rust: ## Run Rust unit tests
 	cargo test
 

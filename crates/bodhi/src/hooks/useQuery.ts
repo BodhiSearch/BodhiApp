@@ -1,18 +1,19 @@
 import apiClient from '@/lib/apiClient';
-import { CreateAliasRequest, UpdateAliasRequest } from '@/schemas/alias';
 import {
-  AliasResponse,
+  Alias,
   AppInfo,
+  CreateAliasRequest,
   DownloadRequest,
   NewDownloadRequest,
   OpenAiApiError,
   PaginatedAliasResponse,
   PaginatedDownloadResponse,
   PaginatedLocalModelResponse,
-  PaginatedUnifiedModelResponse,
+  RedirectResponse,
   SettingInfo,
   SetupRequest,
   SetupResponse,
+  UpdateAliasRequest,
   UserInfo,
 } from '@bodhiapp/ts-client';
 import { AxiosError, AxiosResponse } from 'axios';
@@ -146,7 +147,7 @@ export function useModelFiles(page?: number, pageSize?: number, sort: string = '
 }
 
 export function useModels(page: number, pageSize: number, sort: string, sortOrder: string) {
-  return useQuery<PaginatedUnifiedModelResponse>(
+  return useQuery<PaginatedAliasResponse>(
     ['models', page.toString(), pageSize.toString(), sort, sortOrder],
     ENDPOINT_MODELS,
     { page, page_size: pageSize, sort, sort_order: sortOrder }
@@ -154,19 +155,19 @@ export function useModels(page: number, pageSize: number, sort: string, sortOrde
 }
 
 export function useModel(alias: string) {
-  return useQuery<AliasResponse>(['model', alias], `${ENDPOINT_MODELS}/${alias}`, undefined, {
+  return useQuery<Alias>(['model', alias], `${ENDPOINT_MODELS}/${alias}`, undefined, {
     enabled: !!alias,
   });
 }
 
 export function useCreateModel(options?: {
-  onSuccess?: (model: AliasResponse) => void;
+  onSuccess?: (model: Alias) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, CreateAliasRequest> {
+}): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, CreateAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutation<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, CreateAliasRequest>(
+  return useMutation<AxiosResponse<Alias>, AxiosError<ErrorResponse>, CreateAliasRequest>(
     async (apiData) => {
-      const response = await apiClient.post<AliasResponse>(ENDPOINT_MODELS, apiData, {
+      const response = await apiClient.post<Alias>(ENDPOINT_MODELS, apiData, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -189,14 +190,14 @@ export function useCreateModel(options?: {
 export function useUpdateModel(
   alias: string,
   options?: {
-    onSuccess?: (model: AliasResponse) => void;
+    onSuccess?: (model: Alias) => void;
     onError?: (message: string) => void;
   }
-): UseMutationResult<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, UpdateAliasRequest> {
+): UseMutationResult<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UpdateAliasRequest> {
   const queryClient = useQueryClient();
-  return useMutation<AxiosResponse<AliasResponse>, AxiosError<ErrorResponse>, UpdateAliasRequest>(
+  return useMutation<AxiosResponse<Alias>, AxiosError<ErrorResponse>, UpdateAliasRequest>(
     async (apiData) => {
-      const response = await apiClient.put<AliasResponse>(`${ENDPOINT_MODELS}/${alias}`, apiData, {
+      const response = await apiClient.put<Alias>(`${ENDPOINT_MODELS}/${alias}`, apiData, {
         headers: {
           'Content-Type': 'application/json',
         },
@@ -217,10 +218,10 @@ export function useUpdateModel(
 }
 
 export function useLogout(
-  options?: UseMutationOptions<AxiosResponse<void>, AxiosError<ErrorResponse>, void, unknown>
-): UseMutationResult<AxiosResponse<void>, AxiosError<ErrorResponse>, void, unknown> {
+  options?: UseMutationOptions<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void, unknown>
+): UseMutationResult<AxiosResponse<RedirectResponse>, AxiosError<ErrorResponse>, void, unknown> {
   const queryClient = useQueryClient();
-  return useMutationQuery<void, void>(ENDPOINT_LOGOUT, 'post', {
+  return useMutationQuery<RedirectResponse, void>(ENDPOINT_LOGOUT, 'post', {
     ...options,
     onSuccess: (data, variables, context) => {
       queryClient.invalidateQueries();

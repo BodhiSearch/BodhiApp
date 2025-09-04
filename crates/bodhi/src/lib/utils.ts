@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from 'clsx';
 import { customAlphabet } from 'nanoid';
 import { twMerge } from 'tailwind-merge';
+import { Alias } from '@bodhiapp/ts-client';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -34,3 +35,21 @@ export function handleSmartRedirect(location: string, router: { push: (href: str
     window.location.href = location;
   }
 }
+
+/**
+ * Type guard helper functions for Alias discriminated union
+ */
+export const isApiAlias = (model: Alias): model is Alias & { source: 'api' } => model.source === 'api';
+
+export const isUserAlias = (model: Alias): model is Alias & { source: 'user' } => model.source === 'user';
+
+export const isModelAlias = (model: Alias): model is Alias & { source: 'model' } => model.source === 'model';
+
+export const isLocalAlias = (model: Alias): model is (Alias & { source: 'user' }) | (Alias & { source: 'model' }) =>
+  model.source === 'user' || model.source === 'model';
+
+// Helper type for local aliases that have repo, filename, snapshot properties
+export type LocalAlias = (Alias & { source: 'user' }) | (Alias & { source: 'model' });
+
+// Type guard that ensures the model has local file properties
+export const hasLocalFileProperties = (model: Alias): model is LocalAlias => isLocalAlias(model);
