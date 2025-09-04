@@ -127,17 +127,12 @@ pub async fn llama2_7b_setup(
     hf_cache, false, None,
   )));
 
-  // Create data service with mock hub service
-  let bodhi_home = setting_service.bodhi_home();
-  let data_service = Arc::new(LocalDataService::new(bodhi_home, hub_service.clone()));
-
   // Create mock auth service for testing
   let auth_service = test_auth_service(&auth_server_url);
 
   // Build app service with custom services for testing
   let service = AppServiceBuilder::new(setting_service)
     .hub_service(hub_service)?
-    .data_service(data_service)?
     .auth_service(Arc::new(auth_service))?
     .secret_service(Arc::new(secret_service))?
     .localization_service(localization_service.clone())?
