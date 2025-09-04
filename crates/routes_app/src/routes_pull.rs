@@ -1,6 +1,4 @@
-use crate::{
-  PaginatedDownloadResponse, PaginatedResponse, PaginationSortParams, ENDPOINT_MODEL_PULL,
-};
+use crate::{PaginatedDownloadResponse, PaginationSortParams, ENDPOINT_MODEL_PULL};
 use axum::http::StatusCode;
 use axum::{
   extract::{Path, Query, State},
@@ -90,13 +88,13 @@ pub async fn list_downloads_handler(
     .list_download_requests(query.page, query.page_size)
     .await?;
 
-  let paginated = PaginatedResponse {
+  let paginated = PaginatedDownloadResponse {
     data: downloads.0,
     total: downloads.1 as usize,
     page: query.page,
     page_size: query.page_size,
   };
-  Ok(Json(paginated.into()))
+  Ok(Json(paginated))
 }
 
 /// Start a new model file download
