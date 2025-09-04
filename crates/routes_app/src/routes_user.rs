@@ -55,17 +55,25 @@ pub struct UserInfo {
     path = ENDPOINT_USER_INFO,
     tag = API_TAG_AUTH,
     operation_id = "getCurrentUser",
+    summary = "Get Current User Information",
+    description = "Retrieves information about the currently authenticated user including email, roles, token type, and authentication source.",
     responses(
-        (status = 200, description = "Returns current user information", body = UserInfo),
-        (status = 500, description = "Error in extracting user info from token", body = OpenAIApiError,
+        (status = 200, description = "Current user information retrieved successfully", body = UserInfo,
+         example = json!({
+             "logged_in": true,
+             "email": "user@example.com",
+             "role": "admin",
+             "token_type": "bearer",
+             "role_source": "role"
+         })),
+        (status = 500, description = "Authentication error or invalid token", body = OpenAIApiError,
          example = json!({
              "error": {
                  "message": "token is invalid",
                  "type": "authentication_error",
                  "code": "token_error-invalid_token"
              }
-         })
-        )
+         }))
     )
 )]
 pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, ApiError> {
@@ -91,13 +99,13 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
         .to_str()
         .map_err(|err| BadRequestError::new(err.to_string()))?;
       let role = role.parse::<Role>()?;
-      return Ok(Json(UserInfo {
+      Ok(Json(UserInfo {
         logged_in: true,
         email: Some(claims.email),
         role: Some(role.to_string()),
         token_type: Some(TokenType::Session),
         role_source: Some(RoleSource::Role),
-      }));
+      }))
     }
     (None, Some(token_header)) => {
       debug!("token header present");
@@ -109,19 +117,19 @@ pub async fn user_info_handler(headers: HeaderMap) -> Result<Json<UserInfo>, Api
         ResourceScope::Token(token_scope) => (RoleSource::ScopeToken, token_scope.to_string()),
         ResourceScope::User(user_scope) => (RoleSource::ScopeUser, user_scope.to_string()),
       };
-      return Ok(Json(UserInfo {
+      Ok(Json(UserInfo {
         logged_in: true,
         email: Some(claims.email),
         role: Some(role),
         token_type: Some(TokenType::Bearer),
         role_source: Some(role_source),
-      }));
+      }))
     }
     (None, None) => {
       debug!("no role or token header");
-      return Err(BadRequestError::new(
+      Err(BadRequestError::new(
         "missing resource role header".to_string(),
-      ))?;
+      ))?
     }
   }
 }

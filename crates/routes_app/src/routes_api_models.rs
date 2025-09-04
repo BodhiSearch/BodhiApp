@@ -24,10 +24,30 @@ use validator::Validate;
     path = ENDPOINT_API_MODELS,
     tag = API_TAG_API_MODELS,
     operation_id = "listApiModels",
+    summary = "List API Model Configurations",
+    description = "Retrieves paginated list of all configured API model aliases including external providers like OpenAI, Anthropic, etc. API keys are masked in list view for security.",
     params(PaginationSortParams),
     responses(
-        (status = 200, description = "List of API models", body = PaginatedApiModelResponse),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 200, description = "API model configurations retrieved successfully", body = PaginatedApiModelResponse,
+         example = json!({
+             "data": [{
+                 "id": "openai-gpt4",
+                 "provider": "openai", 
+                 "base_url": "https://api.openai.com/v1",
+                 "api_key": "sk-****"
+             }],
+             "total": 1,
+             "page": 1,
+             "page_size": 10
+         })),
+        (status = 500, description = "Internal server error during API model retrieval", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Database connection failed",
+                 "type": "internal_server_error",
+                 "code": "database_error"
+             }
+         }))
     ),
     security(
         ("bearer_auth" = []),
@@ -70,13 +90,36 @@ pub async fn list_api_models_handler(
     path = ENDPOINT_API_MODELS.to_owned() + "/{id}",
     tag = API_TAG_API_MODELS,
     operation_id = "getApiModel",
+    summary = "Get API Model Configuration",
+    description = "Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.",
     params(
-        ("id" = String, Path, description = "API model ID")
+        ("id" = String, Path, description = "Unique identifier for the API model alias", example = "openai-gpt4")
     ),
     responses(
-        (status = 200, description = "API model configuration", body = ApiModelResponse),
-        (status = 404, description = "API model not found", body = objs::OpenAIApiError),
-        (status = 500, description = "Internal server error", body = objs::OpenAIApiError)
+        (status = 200, description = "API model configuration retrieved successfully", body = ApiModelResponse,
+         example = json!({
+             "id": "openai-gpt4",
+             "provider": "openai",
+             "base_url": "https://api.openai.com/v1",
+             "api_key": "sk-****",
+             "model": "gpt-4"
+         })),
+        (status = 404, description = "API model with specified ID not found", body = objs::OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "API model 'invalid-model' not found",
+                 "type": "not_found_error",
+                 "code": "entity_not_found"
+             }
+         })),
+        (status = 500, description = "Internal server error during model retrieval", body = objs::OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Database query failed",
+                 "type": "internal_server_error",
+                 "code": "database_error"
+             }
+         }))
     ),
     security(
         ("bearer_auth" = []),

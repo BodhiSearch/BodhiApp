@@ -10,7 +10,6 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_SETUP, API_TAG_SYSTEM};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use server_core::RouterState;
 use services::{
   AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt, LOGIN_CALLBACK_PATH,
