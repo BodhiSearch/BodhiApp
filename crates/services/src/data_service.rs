@@ -1,6 +1,6 @@
 use crate::{HubService, HubServiceError, ALIASES_DIR, MODELS_YAML};
 use objs::{
-  impl_error_from, Alias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
+  impl_error_from, UserAlias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
   IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
 };
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
@@ -64,11 +64,11 @@ type Result<T> = std::result::Result<T, DataServiceError>;
 
 #[cfg_attr(any(test, feature = "test-utils"), mockall::automock)]
 pub trait DataService: Send + Sync + std::fmt::Debug {
-  fn list_aliases(&self) -> Result<Vec<Alias>>;
+  fn list_aliases(&self) -> Result<Vec<UserAlias>>;
 
-  fn save_alias(&self, alias: &Alias) -> Result<PathBuf>;
+  fn save_alias(&self, alias: &UserAlias) -> Result<PathBuf>;
 
-  fn find_alias(&self, alias: &str) -> Option<Alias>;
+  fn find_alias(&self, alias: &str) -> Option<UserAlias>;
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
 
@@ -126,7 +126,7 @@ impl DataService for LocalDataService {
     Ok(models.into_iter().find(|model| model.alias.eq(alias)))
   }
 
-  fn save_alias(&self, alias: &Alias) -> Result<PathBuf> {
+  fn save_alias(&self, alias: &UserAlias) -> Result<PathBuf> {
     let contents = serde_yaml::to_string(alias)?;
     let filename = self.aliases_dir().join(alias.config_filename());
     fs::write(filename.clone(), contents)
@@ -134,7 +134,7 @@ impl DataService for LocalDataService {
     Ok(filename)
   }
 
-  fn list_aliases(&self) -> Result<Vec<Alias>> {
+  fn list_aliases(&self) -> Result<Vec<UserAlias>> {
     let user_aliases = self._list_aliases()?;
     let mut result = user_aliases.into_values().collect::<Vec<_>>();
     result.sort_by(|a, b| a.alias.cmp(&b.alias));
@@ -143,7 +143,7 @@ impl DataService for LocalDataService {
     Ok(result)
   }
 
-  fn find_alias(&self, alias: &str) -> Option<Alias> {
+  fn find_alias(&self, alias: &str) -> Option<UserAlias> {
     let aliases = self.list_aliases();
     let aliases = aliases.unwrap_or_default();
     aliases.into_iter().find(|obj| obj.alias.eq(&alias))
@@ -226,7 +226,7 @@ impl DataService for LocalDataService {
 }
 
 impl LocalDataService {
-  fn _list_aliases(&self) -> Result<HashMap<String, Alias>> {
+  fn _list_aliases(&self) -> Result<HashMap<String, UserAlias>> {
     {
       let aliases_dir = self.aliases_dir();
       let yaml_files = fs::read_dir(&aliases_dir)?;
@@ -249,7 +249,7 @@ impl LocalDataService {
         .filter_map(|yaml_file| {
           let filename = yaml_file.clone().display().to_string();
           match fs::read_to_string(yaml_file) {
-            Ok(content) => match serde_yaml::from_str::<Alias>(&content) {
+            Ok(content) => match serde_yaml::from_str::<UserAlias>(&content) {
               Ok(alias) => Some((filename, alias)),
               Err(err) => {
                 let err = SerdeYamlWithPathError::new(err, filename);
@@ -279,7 +279,7 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
-    Alias, AppError, FluentLocalizationService, RemoteModel,
+    UserAlias, AppError, FluentLocalizationService, RemoteModel,
   };
   use rstest::rstest;
   use std::fs;
@@ -371,7 +371,7 @@ chat_template: llama3
     #[from(test_data_service)] service: TestDataService,
   ) -> anyhow::Result<()> {
     let alias = service.find_alias("testalias-exists:instruct");
-    let expected = Alias::testalias_exists();
+    let expected = UserAlias::testalias_exists();
     assert_eq!(Some(expected), alias);
     Ok(())
   }
@@ -384,8 +384,8 @@ chat_template: llama3
     // Since llama.cpp now handles chat templates, we may have more aliases
     // The exact count may vary, but we should have at least the core aliases
     assert!(result.len() >= 6);
-    assert!(result.contains(&Alias::llama3()));
-    assert!(result.contains(&Alias::testalias_exists()));
+    assert!(result.contains(&UserAlias::llama3()));
+    assert!(result.contains(&UserAlias::testalias_exists()));
     Ok(())
   }
 
@@ -429,7 +429,7 @@ chat_template: llama3
     let new_alias = service
       .find_alias("tinyllama:mymodel")
       .expect("should have created new_alias");
-    let mut expected = Alias::tinyllama();
+    let mut expected = UserAlias::tinyllama();
     expected.alias = "tinyllama:mymodel".to_string();
     assert_eq!(expected, new_alias);
     Ok(())

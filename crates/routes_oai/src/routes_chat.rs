@@ -131,7 +131,7 @@ mod test {
   use futures_util::StreamExt;
   use llama_server_proc::test_utils::mock_response;
   use mockall::predicate::eq;
-  use objs::Alias;
+  use objs::UserAlias;
   use reqwest::StatusCode;
   use rstest::rstest;
   use serde_json::json;
@@ -176,7 +176,7 @@ mod test {
           .build()?,
       )])
       .build()?;
-    let alias = Alias::testalias_exists();
+    let alias = UserAlias::testalias_exists();
     let mut ctx = MockSharedContext::default();
     ctx
       .expect_chat_completions()
@@ -263,7 +263,7 @@ mod test {
           .build()?,
       )])
       .build()?;
-    let alias = Alias::testalias_exists();
+    let alias = UserAlias::testalias_exists();
     let mut ctx = MockSharedContext::default();
     ctx
       .expect_chat_completions()

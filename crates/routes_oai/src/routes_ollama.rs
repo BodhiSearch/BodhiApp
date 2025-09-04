@@ -16,7 +16,7 @@ use axum::{
 };
 use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
-use objs::{Alias, API_TAG_OLLAMA, GGUF};
+use objs::{UserAlias, API_TAG_OLLAMA, GGUF};
 use serde::{Deserialize, Serialize, Serializer};
 use server_core::RouterState;
 use std::{collections::HashMap, fs, sync::Arc, time::UNIX_EPOCH};
@@ -107,7 +107,7 @@ pub async fn ollama_models_handler(
   Ok(Json(ModelsResponse { models }))
 }
 
-fn to_ollama_model(state: Arc<dyn RouterState>, alias: Alias) -> Model {
+fn to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
   let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = fs::metadata(path)
@@ -222,7 +222,7 @@ pub async fn ollama_model_show_handler(
   Ok(Json(model))
 }
 
-fn to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowResponse {
+fn to_ollama_model_show(state: Arc<dyn RouterState>, alias: UserAlias) -> ShowResponse {
   let request_params = serde_yaml::to_string(&alias.request_params).unwrap_or_default();
   let context_params = serde_yaml::to_string(&alias.context_params).unwrap_or_default();
   let parameters = format!("{context_params}{request_params}");

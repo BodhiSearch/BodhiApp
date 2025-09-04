@@ -19,7 +19,7 @@ pub enum AliasSource {
   setter(into, strip_option),
   build_fn(error = crate::BuilderError))]
 #[cfg_attr(any(test, feature = "test-utils"), derive(Default))]
-pub struct Alias {
+pub struct UserAlias {
   pub alias: String,
   pub repo: Repo,
   pub filename: String,
@@ -35,7 +35,7 @@ pub struct Alias {
   pub context_params: Vec<String>,
 }
 
-impl Alias {
+impl UserAlias {
   pub fn config_filename(&self) -> String {
     let filename = self.alias.replace(':', "--");
     let filename = to_safe_filename(&filename);
@@ -43,7 +43,7 @@ impl Alias {
   }
 }
 
-impl std::fmt::Display for Alias {
+impl std::fmt::Display for UserAlias {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
@@ -56,7 +56,7 @@ impl std::fmt::Display for Alias {
 #[cfg(test)]
 mod test {
   use crate::test_utils::AliasBuilder;
-  use crate::{Alias, OAIRequestParamsBuilder, Repo};
+  use crate::{UserAlias, OAIRequestParamsBuilder, Repo};
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
 
@@ -64,7 +64,7 @@ mod test {
   #[case("llama3:instruct", "llama3--instruct.yaml")]
   #[case("llama3/instruct", "llama3--instruct.yaml")]
   fn test_alias_config_filename(#[case] input: String, #[case] expected: String) {
-    let alias = Alias {
+    let alias = UserAlias {
       alias: input,
       ..Default::default()
     };
@@ -109,7 +109,7 @@ repo: TheBloke/TinyLlama-1.1B-Chat-v0.3-GGUF
 filename: tinyllama-1.1b-chat-v0.3.Q2_K.gguf
 snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 "#)]
-  fn test_alias_serialize(#[case] alias: Alias, #[case] expected: &str) -> anyhow::Result<()> {
+  fn test_alias_serialize(#[case] alias: UserAlias, #[case] expected: &str) -> anyhow::Result<()> {
     let actual = serde_yaml::to_string(&alias)?;
     assert_eq!(expected, actual);
     Ok(())
@@ -152,7 +152,7 @@ snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 .unwrap())]
   fn test_alias_deserialized(
     #[case] serialized: &str,
-    #[case] expected: Alias,
+    #[case] expected: UserAlias,
   ) -> anyhow::Result<()> {
     let actual = serde_yaml::from_str(serialized)?;
     assert_eq!(expected, actual);
@@ -161,7 +161,7 @@ snapshot: b32046744d93031a26c8e925de2c8932c305f7b9
 
   #[test]
   fn test_alias_display() {
-    let alias = Alias {
+    let alias = UserAlias {
       alias: "test:alias".to_string(),
       repo: Repo::try_from("test/repo").unwrap(),
       filename: "test.gguf".to_string(),

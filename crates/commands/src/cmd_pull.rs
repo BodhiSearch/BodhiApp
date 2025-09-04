@@ -1,4 +1,4 @@
-use objs::{AliasBuilder, AliasSource, AppError, BuilderError, ObjValidationError, Repo};
+use objs::{UserAliasBuilder, AliasSource, AppError, BuilderError, ObjValidationError, Repo};
 use services::{
   AliasExistsError, AppService, DataServiceError, HubServiceError, RemoteModelNotFoundError,
 };
@@ -58,7 +58,7 @@ impl PullCommand {
           .download(&model.repo, &model.filename, None, progress)
           .await?;
         // Chat template download removed since llama.cpp now handles chat templates
-        let alias = AliasBuilder::default()
+        let alias = UserAliasBuilder::default()
           .alias(model.alias)
           .repo(model.repo)
           .filename(model.filename)
@@ -103,7 +103,7 @@ impl PullCommand {
 mod test {
   use crate::{PullCommand, PullCommandError};
   use mockall::predicate::{always, eq};
-  use objs::{Alias, HubFile, RemoteModel, Repo};
+  use objs::{UserAlias, HubFile, RemoteModel, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -161,7 +161,7 @@ mod test {
       .data_service()
       .find_alias("testalias:instruct")
       .ok_or(anyhow::anyhow!("alias not found"))?;
-    assert_eq!(Alias::testalias(), created_alias);
+    assert_eq!(UserAlias::testalias(), created_alias);
     Ok(())
   }
 

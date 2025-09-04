@@ -136,7 +136,7 @@ mod test {
   use async_openai::types::CreateChatCompletionRequest;
   use llama_server_proc::{test_utils::mock_response, ServerError};
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_dir, Alias};
+  use objs::{test_utils::temp_dir, UserAlias};
   use rstest::rstest;
   use serde_json::json;
   use services::test_utils::AppServiceStubBuilder;
@@ -187,7 +187,7 @@ mod test {
     }})?;
     mock_ctx
       .expect_chat_completions()
-      .with(eq(request.clone()), eq(Alias::testalias_exists()))
+      .with(eq(request.clone()), eq(UserAlias::testalias_exists()))
       .times(1)
       .return_once(|_, _| Ok(mock_response("")));
     let service = AppServiceStubBuilder::default()
@@ -214,7 +214,7 @@ mod test {
         {"role": "user", "content": "What day comes after Monday?"}
       ]
     }})?;
-    let alias = Alias::testalias_exists();
+    let alias = UserAlias::testalias_exists();
     mock_ctx
       .expect_chat_completions()
       .with(eq(request.clone()), eq(alias))

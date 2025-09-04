@@ -1,5 +1,5 @@
 use objs::{
-  AliasBuilder, AliasSource, AppError, BuilderError, OAIRequestParams, ObjValidationError, Repo,
+  UserAliasBuilder, AliasSource, AppError, BuilderError, OAIRequestParams, ObjValidationError, Repo,
 };
 use services::{
   AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,
@@ -92,7 +92,7 @@ impl CreateCommand {
       }
     };
     // Chat template download removed since llama.cpp now handles chat templates
-    let alias = AliasBuilder::default()
+    let alias = UserAliasBuilder::default()
       .alias(self.alias)
       .repo(self.repo)
       .filename(self.filename)
@@ -114,7 +114,7 @@ impl CreateCommand {
 mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
-  use objs::{Alias, AliasBuilder, HubFile, OAIRequestParamsBuilder, Repo};
+  use objs::{UserAlias, UserAliasBuilder, HubFile, OAIRequestParamsBuilder, Repo};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -164,7 +164,7 @@ mod test {
       .find_alias("tinyllama:instruct")
       .unwrap();
     assert_ne!(repo_alias, updated_alias);
-    let expected = AliasBuilder::tinyllama()
+    let expected = UserAliasBuilder::tinyllama()
       .request_params(
         OAIRequestParamsBuilder::default()
           .frequency_penalty(1.0)
@@ -220,7 +220,7 @@ mod test {
       .data_service()
       .find_alias("testalias:instruct")
       .unwrap();
-    assert_eq!(Alias::testalias(), created);
+    assert_eq!(UserAlias::testalias(), created);
     Ok(())
   }
 

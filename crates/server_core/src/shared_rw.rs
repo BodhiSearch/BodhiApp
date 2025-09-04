@@ -1,7 +1,7 @@
 use crate::{merge_server_args, ContextError};
 use async_openai::types::CreateChatCompletionRequest;
 use llama_server_proc::{LlamaServer, LlamaServerArgs, LlamaServerArgsBuilder, Server};
-use objs::Alias;
+use objs::UserAlias;
 use services::{HubService, SettingService};
 use std::fmt::Debug;
 use std::{path::Path, sync::Arc};
@@ -32,7 +32,7 @@ pub trait SharedContext: std::fmt::Debug + Send + Sync {
   async fn chat_completions(
     &self,
     mut request: CreateChatCompletionRequest,
-    alias: Alias,
+    alias: UserAlias,
   ) -> Result<reqwest::Response>;
 
   async fn add_state_listener(&self, listener: Arc<dyn ServerStateListener>);
@@ -176,7 +176,7 @@ impl SharedContext for DefaultSharedContext {
   async fn chat_completions(
     &self,
     mut request: CreateChatCompletionRequest,
-    alias: Alias,
+    alias: UserAlias,
   ) -> Result<reqwest::Response> {
     let lock = self.server.read().await;
     let server = lock.as_ref();
@@ -331,7 +331,7 @@ mod test {
     DEFAULT_VARIANT, EXEC_NAME,
   };
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_hf_home, Alias, HubFileBuilder};
+  use objs::{test_utils::temp_hf_home, UserAlias, HubFileBuilder};
   use rstest::rstest;
   use serde_json::{json, Value};
   use serial_test::serial;
@@ -418,7 +418,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, Alias::testalias())
+      .chat_completions(request, UserAlias::testalias())
       .await?;
     shared_ctx.stop().await?;
     Ok(())
@@ -469,7 +469,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, Alias::testalias())
+      .chat_completions(request, UserAlias::testalias())
       .await?;
     Ok(())
   }
@@ -550,7 +550,7 @@ mod test {
       "messages": [{"role": "user", "content": "What day comes after Monday?"}]
     }})?;
     shared_ctx
-      .chat_completions(request, Alias::testalias())
+      .chat_completions(request, UserAlias::testalias())
       .await?;
     shared_ctx.stop().await?;
     Ok(())

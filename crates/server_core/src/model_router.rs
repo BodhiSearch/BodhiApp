@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use objs::{Alias, AliasSource, ApiModelAlias, AppError, ErrorType};
+use objs::{UserAlias, AliasSource, ApiModelAlias, AppError, ErrorType};
 use services::{
   db::{DbError, DbService},
   AliasNotFoundError, DataService,
@@ -26,7 +26,7 @@ type Result<T> = std::result::Result<T, ModelRouterError>;
 #[derive(Debug, Clone)]
 pub enum RouteDestination {
   /// Route to local model via existing SharedContext
-  Local(Alias),
+  Local(UserAlias),
   /// Route to remote API via AiApiService
   Remote(ApiModelAlias),
 }
@@ -106,7 +106,7 @@ mod tests {
     let mut mock_data = MockDataService::new();
     let mock_db = MockDbService::new();
 
-    let user_alias = objs::Alias {
+    let user_alias = objs::UserAlias {
       alias: "test-model".to_string(),
       source: AliasSource::User,
       ..Default::default()
@@ -138,7 +138,7 @@ mod tests {
     let mut mock_data = MockDataService::new();
     let mock_db = MockDbService::new();
 
-    let model_alias = objs::Alias {
+    let model_alias = objs::UserAlias {
       alias: "test-model".to_string(),
       source: AliasSource::Model,
       ..Default::default()
@@ -224,7 +224,7 @@ mod tests {
     let mut mock_data = MockDataService::new();
     let mock_db = MockDbService::new();
 
-    let user_alias = objs::Alias {
+    let user_alias = objs::UserAlias {
       alias: "test-model".to_string(),
       source: AliasSource::User,
       repo: "user/repo".parse().unwrap(),
