@@ -201,7 +201,7 @@ pub async fn oai_model_handler(
   Path(id): Path<String>,
 ) -> Result<Json<OAIModel>, ApiError> {
   // Try to find local alias first
-  if let Some(alias) = state.app_service().data_service().find_alias(&id) {
+  if let Some(alias) = state.app_service().data_service().find_alias(&id).await {
     let model = to_oai_model(state, alias);
     return Ok(Json(model));
   }

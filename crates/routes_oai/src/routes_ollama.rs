@@ -213,6 +213,7 @@ pub async fn ollama_model_show_handler(
     .app_service()
     .data_service()
     .find_alias(&request.name)
+    .await
     .ok_or_else(|| {
       Json(OllamaError {
         error: "model not found".to_string(),

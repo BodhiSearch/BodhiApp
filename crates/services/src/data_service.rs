@@ -78,6 +78,8 @@ pub trait DataService: Send + Sync + std::fmt::Debug {
 
   async fn find_alias(&self, alias: &str) -> Option<Alias>;
 
+  fn find_user_alias(&self, alias: &str) -> Option<UserAlias>;
+
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>>;
 
   fn find_remote_model(&self, alias: &str) -> Result<Option<RemoteModel>>;
@@ -150,7 +152,7 @@ impl DataService for LocalDataService {
   }
 
   async fn list_aliases(&self) -> Result<Vec<Alias>> {
-    let user_aliases = self._list_aliases()?;
+    let user_aliases = self.list_user_aliases()?;
     let mut result: Vec<Alias> = user_aliases
       .into_values()
       .map(|alias| Alias::User(alias))
@@ -196,16 +198,36 @@ impl DataService for LocalDataService {
   }
 
   async fn find_alias(&self, alias: &str) -> Option<Alias> {
-    let aliases = self.list_aliases().await;
-    let aliases = aliases.unwrap_or_default();
-    aliases.into_iter().find(|obj| {
-      let obj_alias = match obj {
-        Alias::User(user) => &user.alias,
-        Alias::Model(model) => &model.alias,
-        Alias::Api(api) => &api.id,
-      };
-      obj_alias.eq(&alias)
-    })
+    // Priority 1: Check user aliases (from YAML files)
+    if let Some(user_alias) = self.find_user_alias(alias) {
+      return Some(Alias::User(user_alias));
+    }
+
+    // Priority 2: Check model aliases (auto-discovered GGUF files)
+    if let Ok(model_aliases) = self.hub_service.list_model_aliases() {
+      if let Some(model) = model_aliases.into_iter().find(|m| m.alias == alias) {
+        return Some(Alias::Model(model));
+      }
+    }
+
+    // Priority 3: Check API aliases (from database) - search in models array
+    if let Ok(api_aliases) = self.db_service.list_api_model_aliases().await {
+      if let Some(api) = api_aliases
+        .into_iter()
+        .find(|api| api.models.contains(&alias.to_string()))
+      {
+        return Some(Alias::Api(api));
+      }
+    }
+    None
+  }
+
+  fn find_user_alias(&self, alias: &str) -> Option<UserAlias> {
+    if let Ok(user_aliases) = self.list_user_aliases() {
+      user_aliases.into_values().find(|user| user.alias == alias)
+    } else {
+      None
+    }
   }
 
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
@@ -221,18 +243,11 @@ impl DataService for LocalDataService {
   }
 
   async fn copy_alias(&self, alias: &str, new_alias: &str) -> Result<()> {
-    let found_alias = self
-      .find_alias(alias)
-      .await
+    let mut user_alias = self
+      .find_user_alias(alias)
       .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
 
-    // Only user aliases can be copied
-    let mut user_alias = match found_alias {
-      Alias::User(user) => user,
-      _ => return Err(AliasNotFoundError(format!("Cannot copy non-user alias: {}", alias)).into()),
-    };
-
-    match self.find_alias(new_alias).await {
+    match self.find_user_alias(new_alias) {
       Some(_) => Err(AliasExistsError(new_alias.to_string()))?,
       None => {
         user_alias.alias = new_alias.to_string();
@@ -244,7 +259,7 @@ impl DataService for LocalDataService {
 
   async fn delete_alias(&self, alias: &str) -> Result<()> {
     let (filename, _) = self
-      ._list_aliases()?
+      .list_user_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
       .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
@@ -254,7 +269,7 @@ impl DataService for LocalDataService {
 
   fn alias_filename(&self, alias: &str) -> Result<PathBuf> {
     let (filename, _) = self
-      ._list_aliases()?
+      .list_user_aliases()?
       .into_iter()
       .find(|(_, item)| item.alias.eq(alias))
       .ok_or_else(|| AliasNotFoundError(alias.to_string()))?;
@@ -293,7 +308,7 @@ impl DataService for LocalDataService {
 }
 
 impl LocalDataService {
-  fn _list_aliases(&self) -> Result<HashMap<String, UserAlias>> {
+  fn list_user_aliases(&self) -> Result<HashMap<String, UserAlias>> {
     {
       let aliases_dir = self.aliases_dir();
       let yaml_files = fs::read_dir(&aliases_dir)?;
@@ -340,17 +355,22 @@ impl LocalDataService {
 #[cfg(test)]
 mod test {
   use crate::{
-    test_utils::{test_data_service, TestDataService},
+    db::DbService,
+    test_utils::{
+      test_data_service, test_db_service, test_hf_service, TestDataService, TestDbService,
+      TestHfService,
+    },
     AliasExistsError, AliasNotFoundError, DataFileNotFoundError, DataService, DataServiceError,
+    LocalDataService,
   };
   use anyhow_trace::anyhow_trace;
   use objs::{
-    test_utils::{assert_error_message, setup_l10n},
+    test_utils::{assert_error_message, setup_l10n, temp_bodhi_home},
     Alias, AppError, FluentLocalizationService, RemoteModel, UserAlias,
   };
   use rstest::rstest;
-  use std::fs;
-  use std::sync::Arc;
+  use std::{fs, sync::Arc};
+  use tempfile::TempDir;
 
   #[rstest]
   #[case::dir_missing(&DataServiceError::DirMissing { dirname: "test".to_string() },
@@ -466,6 +486,140 @@ chat_template: llama3
   #[rstest]
   #[tokio::test]
   #[awt]
+  async fn test_find_alias_not_found(
+    #[future]
+    #[from(test_data_service)]
+    service: TestDataService,
+  ) -> anyhow::Result<()> {
+    let alias = service.find_alias("nonexistent-alias").await;
+    assert_eq!(None, alias);
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[awt]
+  async fn test_find_alias_api_by_model_name(
+    temp_bodhi_home: TempDir,
+    test_hf_service: TestHfService,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(test_db_service);
+    let data_service = LocalDataService::new(
+      temp_bodhi_home.path().join("bodhi"),
+      Arc::new(test_hf_service),
+      db_service.clone(),
+    );
+
+    // Insert API alias with multiple models
+    let api_alias = objs::ApiAlias::new(
+      "openai-api",
+      "openai",
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
+      db_service.now(),
+    );
+    db_service
+      .create_api_model_alias(&api_alias, "test-key")
+      .await?;
+
+    // Test finding by model name
+    let found = data_service.find_alias("gpt-4").await;
+    assert!(matches!(found, Some(Alias::Api(api)) if api.id == "openai-api"));
+
+    let found = data_service.find_alias("gpt-3.5-turbo").await;
+    assert!(matches!(found, Some(Alias::Api(api)) if api.id == "openai-api"));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[case("testalias-exists:instruct", true, "user")] // User alias exists
+  #[case("gpt-4", true, "api")] // API model will be inserted
+  #[case("nonexistent-model", false, "none")] // Should not exist
+  #[tokio::test]
+  #[awt]
+  async fn test_find_alias_priority_cases(
+    temp_bodhi_home: TempDir,
+    test_hf_service: TestHfService,
+    #[future] test_db_service: TestDbService,
+    #[case] search_alias: &str,
+    #[case] should_find: bool,
+    #[case] expected_type: &str,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(test_db_service);
+    let data_service = LocalDataService::new(
+      temp_bodhi_home.path().join("bodhi"),
+      Arc::new(test_hf_service),
+      db_service.clone(),
+    );
+
+    // Insert API alias with gpt-4 model
+    let api_alias = objs::ApiAlias::new(
+      "test-api",
+      "openai",
+      "https://api.openai.com/v1",
+      vec!["gpt-4".to_string()],
+      db_service.now(),
+    );
+    db_service
+      .create_api_model_alias(&api_alias, "test-key")
+      .await?;
+
+    let found = data_service.find_alias(search_alias).await;
+
+    if should_find {
+      let alias = found.expect("Expected to find alias");
+      match expected_type {
+        "user" => assert!(matches!(alias, Alias::User(_))),
+        "model" => assert!(matches!(alias, Alias::Model(_))),
+        "api" => assert!(matches!(alias, Alias::Api(_))),
+        _ => panic!("Invalid expected_type: {}", expected_type),
+      }
+    } else {
+      assert!(found.is_none());
+    }
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[awt]
+  async fn test_find_alias_user_priority_over_api(
+    temp_bodhi_home: TempDir,
+    test_hf_service: TestHfService,
+    #[future] test_db_service: TestDbService,
+  ) -> anyhow::Result<()> {
+    let db_service = Arc::new(test_db_service);
+    let data_service = LocalDataService::new(
+      temp_bodhi_home.path().join("bodhi"),
+      Arc::new(test_hf_service),
+      db_service.clone(),
+    );
+
+    // Insert API alias with model name that matches existing user alias
+    let api_alias = objs::ApiAlias::new(
+      "conflicting-api",
+      "openai",
+      "https://api.openai.com/v1",
+      vec!["testalias-exists:instruct".to_string()], // Same name as user alias
+      db_service.now(),
+    );
+    db_service
+      .create_api_model_alias(&api_alias, "test-key")
+      .await?;
+
+    // Should find user alias, not API alias (user has priority)
+    let found = data_service.find_alias("testalias-exists:instruct").await;
+    assert!(matches!(found, Some(Alias::User(_))));
+
+    Ok(())
+  }
+
+  #[rstest]
+  #[tokio::test]
+  #[awt]
   async fn test_local_data_service_list_aliases(
     #[future]
     #[from(test_data_service)]
@@ -530,12 +684,11 @@ chat_template: llama3
       .copy_alias("tinyllama:instruct", "tinyllama:mymodel")
       .await?;
     let new_alias = service
-      .find_alias("tinyllama:mymodel")
-      .await
+      .find_user_alias("tinyllama:mymodel")
       .expect("should have created new_alias");
     let mut expected = UserAlias::tinyllama();
     expected.alias = "tinyllama:mymodel".to_string();
-    assert_eq!(Alias::User(expected), new_alias);
+    assert_eq!(expected, new_alias);
     Ok(())
   }
 
