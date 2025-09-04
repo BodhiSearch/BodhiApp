@@ -11,7 +11,7 @@ test.backend:
 
 test.ui:
 	cd crates/bodhi && npm install && npm test
-	cd crates/lib_bodhiserver_napi && npm run build	&& npm run test 
+	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
 
 test.napi:
 	cd crates/lib_bodhiserver_napi && npm install && npm run test

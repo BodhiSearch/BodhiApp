@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, Suspense } from 'react';
 import { useOAuthCallback } from '@/hooks/useOAuth';
+import { AuthCallbackRequest } from '@bodhiapp/ts-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BodhiLogoImage } from '@/app/ui/setup/BodhiLogo';
@@ -42,9 +43,10 @@ function AuthCallbackContent() {
 
     hasProcessedRef.current = true;
 
-    // Extract all query parameters using Next.js useSearchParams
-    const params: Record<string, string> = {};
+    // Extract all OAuth query parameters using Next.js useSearchParams
+    const params: AuthCallbackRequest = {};
     searchParams?.forEach((value, key) => {
+      // All parameters are flattened in the generated type
       params[key] = value;
     });
 

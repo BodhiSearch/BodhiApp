@@ -11,12 +11,11 @@ function NewModelContent() {
   const initialData =
     searchParams?.get('repo') || searchParams?.get('filename')
       ? {
+          source: 'user' as const,
           alias: '',
           repo: searchParams?.get('repo') || '',
           filename: searchParams?.get('filename') || '',
           snapshot: searchParams?.get('snapshot') || '',
-          source: 'user',
-          model_params: {},
           request_params: {},
           context_params: [],
         }

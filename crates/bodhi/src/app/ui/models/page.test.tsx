@@ -29,12 +29,11 @@ vi.mock('next/navigation', () => ({
 const mockModelsResponse = {
   data: [
     {
-      model_type: 'local',
+      source: 'user' as const,
       alias: 'test-model',
       repo: 'test-repo',
       filename: 'test-file.bin',
       snapshot: 'abc123',
-      source: 'alias',
       request_params: {},
       context_params: {},
     },
@@ -150,9 +149,8 @@ describe('ModelsPage', () => {
         ...mockModelsResponse,
         data: [
           {
-            model_type: 'local',
+            source: 'model' as const,
             alias: 'test-model',
-            source: 'model',
             repo: 'test-repo',
             filename: 'test-file.bin',
             snapshot: 'abc123',
@@ -185,9 +183,8 @@ describe('ModelsPage', () => {
         ...mockModelsResponse,
         data: [
           {
-            model_type: 'local',
+            source: 'user' as const,
             alias: 'test-alias',
-            source: 'alias',
             repo: 'test-repo',
             filename: 'test-file.bin',
             snapshot: 'abc123',
@@ -270,7 +267,7 @@ describe('ModelsPage', () => {
       const apiModelData = {
         data: [
           {
-            model_type: 'api',
+            source: 'api' as const,
             id: 'test-api-model',
             provider: 'OpenAI',
             base_url: 'https://api.openai.com/v1',
@@ -306,7 +303,7 @@ describe('ModelsPage', () => {
       const apiModelData = {
         data: [
           {
-            model_type: 'api',
+            source: 'api' as const,
             id: 'test-api-model',
             provider: 'OpenAI',
             base_url: 'https://api.openai.com/v1',
@@ -345,7 +342,7 @@ describe('ModelsPage', () => {
       const apiModelData = {
         data: [
           {
-            model_type: 'api',
+            source: 'api' as const,
             id: 'test-api-model',
             provider: 'OpenAI',
             base_url: 'https://api.openai.com/v1',
@@ -387,7 +384,7 @@ describe('ModelsPage', () => {
       const apiModelData = {
         data: [
           {
-            model_type: 'api',
+            source: 'api' as const,
             id: 'test-api-model',
             provider: 'OpenAI',
             base_url: 'https://api.openai.com/v1',
@@ -421,7 +418,7 @@ describe('ModelsPage', () => {
       const apiModelData = {
         data: [
           {
-            model_type: 'api',
+            source: 'api' as const,
             id: 'openai-config',
             provider: 'OpenAI',
             base_url: 'https://api.openai.com/v1',
@@ -473,7 +470,7 @@ describe('ModelsPage', () => {
       const apiModelData = {
         data: [
           {
-            model_type: 'api',
+            source: 'api' as const,
             id: 'my-openai',
             provider: 'OpenAI',
             base_url: 'https://api.openai.com/v1',

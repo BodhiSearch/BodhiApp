@@ -1,39 +1,40 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { DataTable, Pagination } from '@/components/DataTable';
-import { TableCell } from '@/components/ui/table';
-import { UnifiedModelResponse } from '@bodhiapp/ts-client';
-import { SortState } from '@/types/models';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Pencil,
-  MessageSquare,
-  ExternalLink,
-  FilePlus2,
-  Plus,
-  Cloud,
-  Globe,
-  Trash2,
-  MoreHorizontal,
-} from 'lucide-react';
-import { useModels } from '@/hooks/useQuery';
 import AppInitializer from '@/components/AppInitializer';
-import { ErrorPage } from '@/components/ui/ErrorPage';
-import { UserOnboarding } from '@/components/UserOnboarding';
 import { CopyableContent } from '@/components/CopyableContent';
+import { DataTable, Pagination } from '@/components/DataTable';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
-import { useDeleteApiModel } from '@/hooks/useApiModels';
-import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ErrorPage } from '@/components/ui/ErrorPage';
+import { TableCell } from '@/components/ui/table';
+import { UserOnboarding } from '@/components/UserOnboarding';
+import { useToast } from '@/hooks/use-toast';
+import { useDeleteApiModel } from '@/hooks/useApiModels';
+import { useModels } from '@/hooks/useQuery';
+import { hasLocalFileProperties, isApiAlias } from '@/lib/utils';
+import { SortState } from '@/types/models';
+import { Alias } from '@bodhiapp/ts-client';
+import {
+  Cloud,
+  ExternalLink,
+  FilePlus2,
+  Globe,
+  MessageSquare,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const columns = [
   { id: 'combined', name: 'Models', sorted: true, className: 'sm:hidden' },
@@ -71,8 +72,8 @@ const columns = [
   { id: 'actions', name: '', sorted: false, className: 'hidden sm:table-cell' },
 ];
 
-const SourceBadge = ({ model }: { model: UnifiedModelResponse }) => {
-  if (model.model_type === 'api') {
+const SourceBadge = ({ model }: { model: Alias }) => {
+  if (isApiAlias(model)) {
     return (
       <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-200">
         <Cloud className="h-3 w-3 mr-1" />
@@ -115,31 +116,31 @@ function ModelsPageContent() {
     setPage(1); // Reset to first page when sorting
   };
 
-  const getItemId = (model: UnifiedModelResponse) => {
-    return model.model_type === 'api' ? `api_${model.id}` : model.alias;
+  const getItemId = (model: Alias) => {
+    return isApiAlias(model) ? `api_${model.id}` : model.alias;
   };
 
-  const handleEdit = (model: UnifiedModelResponse) => {
-    if (model.model_type === 'api') {
+  const handleEdit = (model: Alias) => {
+    if (isApiAlias(model)) {
       router.push(`/ui/api-models/edit?id=${model.id}`);
     } else {
       router.push(`/ui/models/edit?alias=${model.alias}`);
     }
   };
 
-  const handleNew = (model: UnifiedModelResponse) => {
-    if (model.model_type === 'local') {
+  const handleNew = (model: Alias) => {
+    if (hasLocalFileProperties(model)) {
       router.push(`/ui/models/new?repo=${model.repo}&filename=${model.filename}&snapshot=${model.snapshot}`);
     }
   };
 
-  const handleChat = (model: UnifiedModelResponse) => {
-    const modelIdentifier = model.model_type === 'api' ? model.id : model.alias;
+  const handleChat = (model: Alias) => {
+    const modelIdentifier = isApiAlias(model) ? model.id : model.alias;
     router.push(`/ui/chat?model=${modelIdentifier}`);
   };
 
-  const handleDelete = (model: UnifiedModelResponse) => {
-    if (model.model_type === 'api') {
+  const handleDelete = (model: Alias) => {
+    if (isApiAlias(model)) {
       setDeleteModel({ id: model.id, name: model.id });
     }
   };
@@ -171,16 +172,16 @@ function ModelsPageContent() {
     return `https://huggingface.co/${repo}/blob/main/${filename}`;
   };
 
-  const getExternalUrl = (model: UnifiedModelResponse) => {
-    if (model.model_type === 'api') {
+  const getExternalUrl = (model: Alias) => {
+    if (isApiAlias(model)) {
       return model.base_url;
     } else {
       return getHuggingFaceFileUrl(model.repo, model.filename);
     }
   };
 
-  const actionUi = (model: UnifiedModelResponse) => {
-    if (model.model_type === 'api') {
+  const actionUi = (model: Alias) => {
+    if (isApiAlias(model)) {
       // API model actions
       return (
         <div className="flex flex-nowrap items-center gap-1 md:gap-2">
@@ -331,31 +332,29 @@ function ModelsPageContent() {
     router.push('/ui/api-models/new');
   };
 
-  const getModelDisplayRepo = (model: UnifiedModelResponse): string => {
-    if (model.model_type === 'api') {
+  const getModelDisplayRepo = (model: Alias): string => {
+    if (isApiAlias(model)) {
       return model.provider;
     } else {
       return model.repo;
     }
   };
 
-  const getModelDisplayFilename = (model: UnifiedModelResponse): string => {
-    if (model.model_type === 'api') {
+  const getModelDisplayFilename = (model: Alias): string => {
+    if (isApiAlias(model)) {
       return model.base_url;
     } else {
       return model.filename;
     }
   };
 
-  const renderRow = (model: UnifiedModelResponse) => [
+  const renderRow = (model: Alias) => [
     // Mobile view (single column with all items stacked)
     <TableCell key="combined" className="sm:hidden" data-testid={`combined-cell-${getItemId(model)}`}>
       <div className="flex flex-col gap-2">
         {/* Name - for API models, show list of models */}
-        <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} className="font-medium" />
-        {model.model_type === 'api' && (
-          <div className="text-xs text-muted-foreground">Models: {model.models.join(', ')}</div>
-        )}
+        <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
+        {isApiAlias(model) && <div className="text-xs text-muted-foreground">Models: {model.models.join(', ')}</div>}
 
         {/* Repo/Provider */}
         <CopyableContent text={getModelDisplayRepo(model)} className="text-sm" />
@@ -381,8 +380,8 @@ function ModelsPageContent() {
       data-testid={`name-source-cell-${getItemId(model)}`}
     >
       <div className="flex flex-col gap-1">
-        <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} className="font-medium" />
-        {model.model_type === 'api' && (
+        <CopyableContent text={isApiAlias(model) ? model.id : model.alias} className="font-medium" />
+        {isApiAlias(model) && (
           <div className="text-xs text-muted-foreground truncate">
             {model.models.slice(0, 2).join(', ')}
             {model.models.length > 2 ? '...' : ''}
@@ -411,7 +410,7 @@ function ModelsPageContent() {
       data-testid={`alias-cell-${getItemId(model)}`}
     >
       <div className="flex flex-col gap-1">
-        <CopyableContent text={model.model_type === 'api' ? model.id : model.alias} />
+        <CopyableContent text={isApiAlias(model) ? model.id : model.alias} />
       </div>
     </TableCell>,
     <TableCell

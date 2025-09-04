@@ -11,7 +11,9 @@ use axum::{
   Json,
 };
 use axum_extra::extract::WithRejection;
-use objs::{ApiAlias, ApiError, BadRequestError, ObjValidationError, API_TAG_API_MODELS};
+use objs::{
+  ApiAlias, ApiError, BadRequestError, ObjValidationError, OpenAIApiError, API_TAG_API_MODELS,
+};
 use server_core::RouterState;
 use std::sync::Arc;
 use validator::Validate;
@@ -25,7 +27,7 @@ use validator::Validate;
     params(PaginationSortParams),
     responses(
         (status = 200, description = "List of API models", body = PaginatedApiModelResponse),
-        (status = 500, description = "Internal server error", body = objs::OpenAIApiError)
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -168,9 +170,9 @@ pub async fn create_api_model_handler(
     request_body = UpdateApiModelRequest,
     responses(
         (status = 200, description = "API model updated", body = ApiModelResponse),
-        (status = 400, description = "Invalid request", body = objs::OpenAIApiError),
-        (status = 404, description = "API model not found", body = objs::OpenAIApiError),
-        (status = 500, description = "Internal server error", body = objs::OpenAIApiError)
+        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 404, description = "API model not found", body = OpenAIApiError),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -234,8 +236,8 @@ pub async fn update_api_model_handler(
     ),
     responses(
         (status = 204, description = "API model deleted"),
-        (status = 404, description = "API model not found", body = objs::OpenAIApiError),
-        (status = 500, description = "Internal server error", body = objs::OpenAIApiError)
+        (status = 404, description = "API model not found", body = OpenAIApiError),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -271,8 +273,8 @@ pub async fn delete_api_model_handler(
     request_body = TestPromptRequest,
     responses(
         (status = 200, description = "Test result", body = TestPromptResponse),
-        (status = 400, description = "Invalid request", body = objs::OpenAIApiError),
-        (status = 500, description = "Internal server error", body = objs::OpenAIApiError)
+        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),
@@ -342,8 +344,8 @@ pub async fn test_api_model_handler(
     request_body = FetchModelsRequest,
     responses(
         (status = 200, description = "Available models", body = FetchModelsResponse),
-        (status = 400, description = "Invalid request", body = objs::OpenAIApiError),
-        (status = 500, description = "Internal server error", body = objs::OpenAIApiError)
+        (status = 400, description = "Invalid request", body = OpenAIApiError),
+        (status = 500, description = "Internal server error", body = OpenAIApiError)
     ),
     security(
         ("bearer_auth" = []),

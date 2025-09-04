@@ -1,8 +1,6 @@
 import * as z from 'zod';
-import type { AliasResponse, CreateAliasRequest, UpdateAliasRequest, OaiRequestParams } from '@bodhiapp/ts-client';
-
-// Re-export the generated types for use throughout the app
-export type { AliasResponse, CreateAliasRequest, UpdateAliasRequest, OaiRequestParams };
+import type { CreateAliasRequest, UpdateAliasRequest } from '@bodhiapp/ts-client';
+import { type LocalAlias } from '@/lib/utils';
 
 const preprocessStop = (value: unknown) => {
   if (typeof value === 'string') {
@@ -64,21 +62,23 @@ export const convertFormToUpdateApi = (formData: AliasFormData): UpdateAliasRequ
     : undefined,
 });
 
-export const convertApiToForm = (apiData: AliasResponse): AliasFormData => ({
+export const convertApiToForm = (apiData: LocalAlias): AliasFormData => ({
   alias: apiData.alias,
   repo: apiData.repo,
   filename: apiData.filename,
-  request_params: apiData.request_params
-    ? {
-        frequency_penalty: apiData.request_params.frequency_penalty ?? undefined,
-        max_tokens: apiData.request_params.max_tokens ?? undefined,
-        presence_penalty: apiData.request_params.presence_penalty ?? undefined,
-        seed: apiData.request_params.seed ?? undefined,
-        stop: apiData.request_params.stop,
-        temperature: apiData.request_params.temperature ?? undefined,
-        top_p: apiData.request_params.top_p ?? undefined,
-        user: apiData.request_params.user ?? undefined,
-      }
-    : {},
-  context_params: Array.isArray(apiData.context_params) ? apiData.context_params.join('\n') : '',
+  request_params:
+    apiData.source === 'user' && apiData.request_params
+      ? {
+          frequency_penalty: apiData.request_params.frequency_penalty ?? undefined,
+          max_tokens: apiData.request_params.max_tokens ?? undefined,
+          presence_penalty: apiData.request_params.presence_penalty ?? undefined,
+          seed: apiData.request_params.seed ?? undefined,
+          stop: apiData.request_params.stop,
+          temperature: apiData.request_params.temperature ?? undefined,
+          top_p: apiData.request_params.top_p ?? undefined,
+          user: apiData.request_params.user ?? undefined,
+        }
+      : {},
+  context_params:
+    apiData.source === 'user' && Array.isArray(apiData.context_params) ? apiData.context_params.join('\n') : '',
 });

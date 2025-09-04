@@ -48,25 +48,25 @@ const mockModels = [
 
 const mockUnifiedModels = [
   {
-    model_type: 'local',
+    source: 'user' as const,
     alias: 'local-model-1',
     repo: 'user/repo1',
     filename: 'model1.gguf',
   },
   {
-    model_type: 'local',
+    source: 'model' as const,
     alias: 'local-model-2',
     repo: 'user/repo2',
     filename: 'model2.gguf',
   },
   {
-    model_type: 'api',
+    source: 'api' as const,
     id: 'openai-api',
     provider: 'OpenAI',
     models: ['gpt-4', 'gpt-3.5-turbo'],
   },
   {
-    model_type: 'api',
+    source: 'api' as const,
     id: 'anthropic-api',
     provider: 'Anthropic',
     models: ['claude-3-opus', 'claude-3-sonnet'],
@@ -83,7 +83,7 @@ describe('AliasSelector', () => {
   });
 
   it('renders in disabled state when loading', () => {
-    render(<AliasSelector models={mockModels} isLoading={true} />, {
+    render(<AliasSelector models={mockModels} isLoading={true} tooltip="Select a model" />, {
       wrapper: createWrapper(),
     });
 
@@ -92,7 +92,7 @@ describe('AliasSelector', () => {
   });
 
   it('renders in enabled state when not loading', () => {
-    render(<AliasSelector models={mockModels} isLoading={false} />, {
+    render(<AliasSelector models={mockModels} isLoading={false} tooltip="Select a model" />, {
       wrapper: createWrapper(),
     });
 
@@ -101,7 +101,7 @@ describe('AliasSelector', () => {
   });
 
   it('shows placeholder text when no model is selected', () => {
-    render(<AliasSelector models={mockModels} />, {
+    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
       wrapper: createWrapper(),
     });
 
@@ -114,7 +114,7 @@ describe('AliasSelector', () => {
       setModel: vi.fn(),
     } as any);
 
-    render(<AliasSelector models={mockModels} />, {
+    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
       wrapper: createWrapper(),
     });
 
@@ -128,7 +128,7 @@ describe('AliasSelector', () => {
       setModel: mockSetModel,
     } as any);
 
-    render(<AliasSelector models={mockModels} />, {
+    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
       wrapper: createWrapper(),
     });
 
@@ -142,7 +142,7 @@ describe('AliasSelector', () => {
   });
 
   it('renders all provided model options', () => {
-    render(<AliasSelector models={mockModels} />, {
+    render(<AliasSelector models={mockModels} tooltip="Select a model" />, {
       wrapper: createWrapper(),
     });
 
@@ -157,9 +157,9 @@ describe('AliasSelector', () => {
   // New tests for unified model support (local + API models)
   describe('Unified Model Support', () => {
     it('expands API models to show individual model names with provider labels', () => {
-      const apiOnlyModels = mockUnifiedModels.filter((m) => m.model_type === 'api');
+      const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
 
-      render(<AliasSelector models={apiOnlyModels} />, {
+      render(<AliasSelector models={apiOnlyModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -174,9 +174,9 @@ describe('AliasSelector', () => {
     });
 
     it('shows local models as individual entries with their alias names', () => {
-      const localOnlyModels = mockUnifiedModels.filter((m) => m.model_type === 'local');
+      const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
 
-      render(<AliasSelector models={localOnlyModels} />, {
+      render(<AliasSelector models={localOnlyModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -189,7 +189,7 @@ describe('AliasSelector', () => {
     });
 
     it('handles mixed local and API models correctly', () => {
-      render(<AliasSelector models={mockUnifiedModels} />, {
+      render(<AliasSelector models={mockUnifiedModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -214,9 +214,9 @@ describe('AliasSelector', () => {
         setModel: mockSetModel,
       } as any);
 
-      const localOnlyModels = mockUnifiedModels.filter((m) => m.model_type === 'local');
+      const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
 
-      render(<AliasSelector models={localOnlyModels} />, {
+      render(<AliasSelector models={localOnlyModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -237,9 +237,9 @@ describe('AliasSelector', () => {
         setModel: mockSetModel,
       } as any);
 
-      const apiOnlyModels = mockUnifiedModels.filter((m) => m.model_type === 'api');
+      const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
 
-      render(<AliasSelector models={apiOnlyModels} />, {
+      render(<AliasSelector models={apiOnlyModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -259,9 +259,9 @@ describe('AliasSelector', () => {
         setModel: vi.fn(),
       } as any);
 
-      const apiOnlyModels = mockUnifiedModels.filter((m) => m.model_type === 'api');
+      const apiOnlyModels = mockUnifiedModels.filter((m) => m.source === 'api');
 
-      render(<AliasSelector models={apiOnlyModels} />, {
+      render(<AliasSelector models={apiOnlyModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -275,9 +275,9 @@ describe('AliasSelector', () => {
         setModel: vi.fn(),
       } as any);
 
-      const localOnlyModels = mockUnifiedModels.filter((m) => m.model_type === 'local');
+      const localOnlyModels = mockUnifiedModels.filter((m) => m.source === 'user' || m.source === 'model');
 
-      render(<AliasSelector models={localOnlyModels} />, {
+      render(<AliasSelector models={localOnlyModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -288,14 +288,14 @@ describe('AliasSelector', () => {
     it('handles API models with empty models array', () => {
       const apiModelWithoutModels = [
         {
-          model_type: 'api',
+          source: 'api' as const,
           id: 'empty-api',
           provider: 'Empty Provider',
           models: [],
         },
       ];
 
-      render(<AliasSelector models={apiModelWithoutModels} />, {
+      render(<AliasSelector models={apiModelWithoutModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 
@@ -312,7 +312,7 @@ describe('AliasSelector', () => {
         setModel: vi.fn(),
       } as any);
 
-      render(<AliasSelector models={mockUnifiedModels} />, {
+      render(<AliasSelector models={mockUnifiedModels} tooltip="Select a model" />, {
         wrapper: createWrapper(),
       });
 

@@ -131,10 +131,15 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
         title: response.data.success ? 'Connection Test Successful' : 'Connection Test Failed',
         description: response.data.response || response.data.error || 'Test completed',
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
+          ?.message ||
+        (error as { message?: string }).message ||
+        'Failed to test connection';
       toast({
         title: 'Connection Test Failed',
-        description: error.response?.data?.error?.message || error.message || 'Failed to test connection',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -159,10 +164,15 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
         title: 'Models Fetched Successfully',
         description: `Found ${models.length} available models`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
+          ?.message ||
+        (error as { message?: string }).message ||
+        'Failed to fetch models';
       toast({
         title: 'Failed to Fetch Models',
-        description: error.response?.data?.error?.message || error.message || 'Failed to fetch models',
+        description: errorMessage,
         variant: 'destructive',
       });
     }
@@ -189,10 +199,15 @@ export default function ApiModelForm({ isEditMode, initialData }: ApiModelFormPr
         });
       }
       router.push('/ui/models');
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage =
+        (error as { response?: { data?: { error?: { message?: string } } }; message?: string }).response?.data?.error
+          ?.message ||
+        (error as { message?: string }).message ||
+        'An unexpected error occurred';
       toast({
         title: isEditMode ? 'Failed to Update API Model' : 'Failed to Create API Model',
-        description: error.response?.data?.error?.message || error.message || 'An unexpected error occurred',
+        description: errorMessage,
         variant: 'destructive',
       });
     }

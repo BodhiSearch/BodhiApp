@@ -255,10 +255,11 @@ test.describe('AI API Models Integration Tests', () => {
 
       // Verify edit and delete buttons are visible
       const firstRow = page.locator('[data-testid="table-list-models"] tbody tr').first();
-      const editBtn = firstRow.locator(`[data-testid="edit-button-${modelId}"]`);
-      const deleteBtn = firstRow.locator(`[data-testid="delete-button-${modelId}"]`);
-      await expect(editBtn).toBeVisible();
-      await expect(deleteBtn).toBeVisible();
+      expect(firstRow).toBeVisible();
+      const editBtn = firstRow.locator(`[data-testid="edit-button-${modelId}"]:visible`);
+      const deleteBtn = firstRow.locator(`[data-testid="delete-button-${modelId}"]:visible`);
+      expect(editBtn).toBeVisible();
+      expect(deleteBtn).toBeVisible();
 
       // Clean up
       await deleteBtn.click();

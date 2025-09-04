@@ -1,44 +1,23 @@
 import { API_TOKENS_ENDPOINT, useMutationQuery, useQuery } from '@/hooks/useQuery';
-import { useQueryClient } from 'react-query';
+import { useQueryClient, useMutation } from 'react-query';
 import { AxiosResponse, AxiosError } from 'axios';
 import { UseMutationResult } from 'react-query';
-import { OpenAiApiError } from '@bodhiapp/ts-client';
+import apiClient from '@/lib/apiClient';
+import {
+  ApiToken,
+  ApiTokenResponse,
+  CreateApiTokenRequest,
+  PaginatedApiTokenResponse,
+  UpdateApiTokenRequest,
+  OpenAiApiError,
+} from '@bodhiapp/ts-client';
 
 // Type alias for compatibility
 type ErrorResponse = OpenAiApiError;
 
-export interface CreateTokenRequest {
-  name?: string;
-}
-
-export interface TokenResponse {
-  offline_token: string;
-}
-
-export interface ApiToken {
-  id: string;
-  name: string;
-  status: 'active' | 'inactive';
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ListTokensResponse {
-  data: ApiToken[];
-  total: number;
-  page: number;
-  page_size: number;
-}
-
-export interface UpdateTokenRequest {
-  id: string;
-  name?: string;
-  status: 'active' | 'inactive';
-}
-
 // Hooks
 export function useListTokens(page: number = 1, pageSize: number = 10, options?: { enabled?: boolean }) {
-  return useQuery<ListTokensResponse>(
+  return useQuery<PaginatedApiTokenResponse>(
     ['tokens', page.toString(), pageSize.toString()],
     API_TOKENS_ENDPOINT,
     { page, page_size: pageSize },
@@ -47,12 +26,12 @@ export function useListTokens(page: number = 1, pageSize: number = 10, options?:
 }
 
 export function useCreateToken(options?: {
-  onSuccess?: (response: TokenResponse) => void;
+  onSuccess?: (response: ApiTokenResponse) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<TokenResponse>, AxiosError<ErrorResponse>, CreateTokenRequest> {
+}): UseMutationResult<AxiosResponse<ApiTokenResponse>, AxiosError<ErrorResponse>, CreateApiTokenRequest> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<TokenResponse, CreateTokenRequest>(API_TOKENS_ENDPOINT, 'post', {
+  return useMutationQuery<ApiTokenResponse, CreateApiTokenRequest>(API_TOKENS_ENDPOINT, 'post', {
     onSuccess: (response) => {
       queryClient.invalidateQueries(['tokens']);
       options?.onSuccess?.(response.data);
@@ -64,20 +43,37 @@ export function useCreateToken(options?: {
   });
 }
 
+// Interface for update token request that includes the ID for URL construction
+interface UpdateTokenRequestWithId extends UpdateApiTokenRequest {
+  id: string;
+}
+
 export function useUpdateToken(options?: {
   onSuccess?: (token: ApiToken) => void;
   onError?: (message: string) => void;
-}): UseMutationResult<AxiosResponse<ApiToken>, AxiosError<ErrorResponse>, UpdateTokenRequest> {
+}): UseMutationResult<AxiosResponse<ApiToken>, AxiosError<ErrorResponse>, UpdateTokenRequestWithId> {
   const queryClient = useQueryClient();
 
-  return useMutationQuery<ApiToken, UpdateTokenRequest>((params) => `${API_TOKENS_ENDPOINT}/${params.id}`, 'put', {
-    onSuccess: (response) => {
-      queryClient.invalidateQueries(['tokens']);
-      options?.onSuccess?.(response.data);
+  return useMutation<AxiosResponse<ApiToken>, AxiosError<ErrorResponse>, UpdateTokenRequestWithId>(
+    async (variables) => {
+      // Extract id from variables and create request body without id
+      const { id, ...requestBody } = variables;
+      const response = await apiClient.put<ApiToken>(`${API_TOKENS_ENDPOINT}/${id}`, requestBody, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      return response;
     },
-    onError: (error: AxiosError<ErrorResponse>) => {
-      const message = error?.response?.data?.error?.message || 'Failed to update token';
-      options?.onError?.(message);
-    },
-  });
+    {
+      onSuccess: (response) => {
+        queryClient.invalidateQueries(['tokens']);
+        options?.onSuccess?.(response.data);
+      },
+      onError: (error: AxiosError<ErrorResponse>) => {
+        const message = error?.response?.data?.error?.message || 'Failed to update token';
+        options?.onError?.(message);
+      },
+    }
+  );
 }

@@ -1,22 +1,5 @@
 import * as z from 'zod';
-import type {
-  ApiModelResponse,
-  CreateApiModelRequest,
-  UpdateApiModelRequest,
-  TestPromptRequest,
-  FetchModelsRequest,
-  FetchModelsResponse,
-} from '@bodhiapp/ts-client';
-
-// Re-export generated types for use throughout the app
-export type {
-  ApiModelResponse,
-  CreateApiModelRequest,
-  UpdateApiModelRequest,
-  TestPromptRequest,
-  FetchModelsRequest,
-  FetchModelsResponse,
-};
+import type { ApiModelResponse, CreateApiModelRequest, UpdateApiModelRequest } from '@bodhiapp/ts-client';
 
 // Provider presets for AI APIs
 export const PROVIDER_PRESETS = {

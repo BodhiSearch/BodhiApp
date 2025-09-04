@@ -12,12 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { TokenResponse } from '@/hooks/useApiTokens';
+import { ApiTokenResponse } from '@bodhiapp/ts-client';
 import { Shield } from 'lucide-react';
 import { useState } from 'react';
 
 interface TokenDialogProps {
-  token: TokenResponse;
+  token: ApiTokenResponse;
   open: boolean;
   onClose: () => void;
 }

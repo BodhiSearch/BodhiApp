@@ -5,10 +5,11 @@ import { CopyButton } from '@/components/CopyButton';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChatSettings } from '@/hooks/use-chat-settings';
+import { Alias } from '@bodhiapp/ts-client';
 import { HelpCircle } from 'lucide-react';
 
 interface AliasSelectorProps {
-  models: Array<{ alias?: string; id?: string; model_type?: string; provider?: string; models?: string[] }>;
+  models: Alias[];
   isLoading?: boolean;
   tooltip: string;
 }
@@ -18,7 +19,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
 
   // Transform models array to match ComboBoxResponsive's Status type
   const modelStatuses = models.flatMap((m) => {
-    if (m.model_type === 'api') {
+    if (m.source === 'api') {
       // For API models, create entries for each individual model
       return (m.models || []).map((modelName) => ({
         value: modelName,

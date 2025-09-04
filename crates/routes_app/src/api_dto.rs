@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use utoipa::{IntoParams, ToSchema};
 
 /// Query parameters for pagination and sorting
-#[derive(Debug, Deserialize, IntoParams)]
+#[derive(Debug, Deserialize, IntoParams, ToSchema)]
 pub struct PaginationSortParams {
   /// Page number (1-based)
   #[serde(default = "default_page")]

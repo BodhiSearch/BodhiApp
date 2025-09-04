@@ -41,18 +41,9 @@ test.describe('Debug Authentication Flow', () => {
 
   test('debug authentication and navigation flow', async ({ page }) => {
     // Step 1: Go to login page
-    console.log('Step 1: Navigating to login page');
     await page.goto(`${baseUrl}/ui/login`);
     await waitForSPAReady(page);
     
-    console.log('Current URL after login page:', page.url());
-    console.log('Page title:', await page.title());
-    
-    // Take a screenshot
-    await page.screenshot({ path: 'debug-step1-login.png' });
-
-    // Step 2: Click login button
-    console.log('Step 2: Clicking login button');
     const loginButton = page.locator('button:has-text("Login")');
     await expect(loginButton).toBeVisible();
     await loginButton.first().click();
@@ -78,9 +69,6 @@ test.describe('Debug Authentication Flow', () => {
     console.log('Redirected back to app:', page.url());
     await waitForSPAReady(page);
     
-    // Take a screenshot after login
-    await page.screenshot({ path: 'debug-step5-after-login.png' });
-
     // Step 6: Check user info API
     console.log('Step 6: Checking user info');
     const userInfoResponse = await page.request.get(`${baseUrl}/api/user/info`);
@@ -100,9 +88,6 @@ test.describe('Debug Authentication Flow', () => {
     
     console.log('Current URL after models navigation:', page.url());
     
-    // Take a screenshot of models page
-    await page.screenshot({ path: 'debug-step7-models-page.png' });
-
     // Step 8: Check if we can see the page content
     console.log('Step 8: Checking page content');
     const pageContent = await page.textContent('body');
