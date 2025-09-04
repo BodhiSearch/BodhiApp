@@ -137,7 +137,7 @@ export type CreateApiModelRequest = {
  */
 export type CreateApiTokenRequest = {
     /**
-     * Optional name for the API token
+     * Descriptive name for the API token (minimum 3 characters)
      */
     name?: string | null;
 };
@@ -294,11 +294,11 @@ export type ModelsResponse = {
  */
 export type NewDownloadRequest = {
     /**
-     * Model file name to pull
+     * Model file name to download (typically .gguf format)
      */
     filename: string;
     /**
-     * HuggingFace repository name
+     * HuggingFace repository name in format 'username/repository-name'
      */
     repo: string;
 };
@@ -597,7 +597,7 @@ export type UpdateApiModelRequest = {
  */
 export type UpdateApiTokenRequest = {
     /**
-     * New name for the token
+     * New descriptive name for the token (minimum 3 characters)
      */
     name: string;
     /**
@@ -610,6 +610,9 @@ export type UpdateApiTokenRequest = {
  * Request to update a setting value
  */
 export type UpdateSettingRequest = {
+    /**
+     * New value for the setting (type depends on setting metadata)
+     */
     value: unknown;
 };
 
@@ -1194,7 +1197,7 @@ export type ListDownloadsData = {
 
 export type ListDownloadsErrors = {
     /**
-     * Internal server error
+     * Internal server error during download list retrieval
      */
     500: OpenAiApiError;
 };
@@ -1203,7 +1206,7 @@ export type ListDownloadsError = ListDownloadsErrors[keyof ListDownloadsErrors];
 
 export type ListDownloadsResponses = {
     /**
-     * List of download requests
+     * Model download requests retrieved successfully
      */
     200: PaginatedDownloadResponse;
 };
@@ -1212,7 +1215,7 @@ export type ListDownloadsResponse = ListDownloadsResponses[keyof ListDownloadsRe
 
 export type PullModelFileData = {
     /**
-     * Model file download request
+     * Model file download specification with repository and filename
      */
     body: NewDownloadRequest;
     path?: never;
@@ -1250,17 +1253,7 @@ export type PullModelByAliasData = {
     body?: never;
     path: {
         /**
-         * Available model aliases:
-         * - llama3:instruct - Meta Llama 3 8B Instruct
-         * - llama3:70b-instruct - Meta Llama 3 70B Instruct
-         * - llama2:chat - Llama 2 7B Chat
-         * - llama2:13b-chat - Llama 2 13B Chat
-         * - llama2:70b-chat - Llama 2 70B Chat
-         * - phi3:mini - Phi 3 Mini
-         * - mistral:instruct - Mistral 7B Instruct
-         * - mixtral:instruct - Mixtral 8x7B Instruct
-         * - gemma:instruct - Gemma 7B Instruct
-         * - gemma:7b-instruct-v1.1-q8_0 - Gemma 1.1 7B Instruct
+         * Predefined model alias. Available aliases include popular models like llama2:chat, mistral:instruct, phi3:mini, etc. Use the /models endpoint to see all available aliases.
          */
         alias: string;
     };
@@ -1302,7 +1295,7 @@ export type GetDownloadStatusData = {
     body?: never;
     path: {
         /**
-         * Download request identifier
+         * Unique identifier of the download request (UUID format)
          */
         id: string;
     };
@@ -1493,7 +1486,7 @@ export type ListSettingsError = ListSettingsErrors[keyof ListSettingsErrors];
 
 export type ListSettingsResponses = {
     /**
-     * List of application settings
+     * Application settings retrieved successfully
      */
     200: Array<SettingInfo>;
 };
@@ -1504,7 +1497,7 @@ export type DeleteSettingData = {
     body?: never;
     path: {
         /**
-         * Setting key to reset
+         * Setting key identifier to reset to default value
          */
         key: string;
     };
@@ -1535,11 +1528,14 @@ export type UpdateSettingData = {
      * Request to update a setting value
      */
     body: {
+        /**
+         * New value for the setting (type depends on setting metadata)
+         */
         value: unknown;
     };
     path: {
         /**
-         * Setting key to update
+         * Setting key identifier (e.g., BODHI_LOG_LEVEL, BODHI_PORT)
          */
         key: string;
     };
@@ -1648,6 +1644,9 @@ export type ListApiTokensResponses = {
 export type ListApiTokensResponse = ListApiTokensResponses[keyof ListApiTokensResponses];
 
 export type CreateApiTokenData = {
+    /**
+     * API token creation parameters
+     */
     body: CreateApiTokenRequest;
     path?: never;
     query?: never;
@@ -1656,11 +1655,11 @@ export type CreateApiTokenData = {
 
 export type CreateApiTokenErrors = {
     /**
-     * Invalid request
+     * Invalid request parameters or token name already exists
      */
     400: OpenAiApiError;
     /**
-     * Internal server error
+     * Internal server error during token creation
      */
     500: OpenAiApiError;
 };
@@ -1683,7 +1682,7 @@ export type UpdateApiTokenData = {
     body: UpdateApiTokenRequest;
     path: {
         /**
-         * Token identifier
+         * Unique identifier of the API token to update
          */
         id: string;
     };
