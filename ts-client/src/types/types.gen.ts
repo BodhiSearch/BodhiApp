@@ -70,19 +70,19 @@ export type AppStatus = 'setup' | 'ready' | 'resource-admin';
 
 export type AuthCallbackRequest = {
     /**
-     * OAuth authorization code from successful authentication
+     * OAuth authorization code from successful authentication (required for success flow)
      */
     code?: string | null;
     /**
-     * OAuth error code if authentication failed
+     * OAuth error code if authentication failed (e.g., "access_denied")
      */
     error?: string | null;
     /**
-     * OAuth error description if authentication failed
+     * Human-readable OAuth error description if authentication failed
      */
     error_description?: string | null;
     /**
-     * OAuth state parameter for CSRF protection
+     * OAuth state parameter for CSRF protection (must match initiated request)
      */
     state?: string | null;
     [key: string]: string | (string | null) | (string | null) | (string | null) | (string | null) | undefined;
@@ -429,14 +429,14 @@ export type PaginationSortParams = {
  */
 export type PingResponse = {
     /**
-     * always returns "pong"
+     * Simple ping response message
      */
     message: string;
 };
 
 export type RedirectResponse = {
     /**
-     * The URL to redirect to for OAuth authentication
+     * The URL to redirect to (OAuth authorization URL or application home page)
      */
     location: string;
 };
@@ -484,7 +484,13 @@ export type SettingSource = 'system' | 'command_line' | 'environment' | 'setting
  * Request to setup the application in authenticated mode
  */
 export type SetupRequest = {
+    /**
+     * Optional description of the server's purpose
+     */
     description?: string | null;
+    /**
+     * Server name for identification (minimum 10 characters)
+     */
     name: string;
 };
 
@@ -493,9 +499,7 @@ export type SetupRequest = {
  */
 export type SetupResponse = {
     /**
-     * New application status after setup
-     * - resource-admin: When setup in authenticated mode
-     * - ready: When setup in non-authenticated mode
+     * New application status after successful setup
      */
     status: AppStatus;
 };
@@ -766,7 +770,7 @@ export type ListApiModelsData = {
 
 export type ListApiModelsErrors = {
     /**
-     * Internal server error
+     * Internal server error during API model retrieval
      */
     500: OpenAiApiError;
 };
@@ -775,7 +779,7 @@ export type ListApiModelsError = ListApiModelsErrors[keyof ListApiModelsErrors];
 
 export type ListApiModelsResponses = {
     /**
-     * List of API models
+     * API model configurations retrieved successfully
      */
     200: PaginatedApiModelResponse;
 };
@@ -949,7 +953,7 @@ export type GetApiModelData = {
     body?: never;
     path: {
         /**
-         * API model ID
+         * Unique identifier for the API model alias
          */
         id: string;
     };
@@ -959,11 +963,11 @@ export type GetApiModelData = {
 
 export type GetApiModelErrors = {
     /**
-     * API model not found
+     * API model with specified ID not found
      */
     404: OpenAiApiError;
     /**
-     * Internal server error
+     * Internal server error during model retrieval
      */
     500: OpenAiApiError;
 };
@@ -972,7 +976,7 @@ export type GetApiModelError = GetApiModelErrors[keyof GetApiModelErrors];
 
 export type GetApiModelResponses = {
     /**
-     * API model configuration
+     * API model configuration retrieved successfully
      */
     200: ApiModelResponse;
 };
@@ -980,6 +984,9 @@ export type GetApiModelResponses = {
 export type GetApiModelResponse = GetApiModelResponses[keyof GetApiModelResponses];
 
 export type CompleteOAuthFlowData = {
+    /**
+     * OAuth callback parameters from authorization server
+     */
     body: AuthCallbackRequest;
     path?: never;
     query?: never;
@@ -988,11 +995,11 @@ export type CompleteOAuthFlowData = {
 
 export type CompleteOAuthFlowErrors = {
     /**
-     * OAuth error or invalid request
+     * OAuth error, invalid request parameters, or state mismatch
      */
     422: OpenAiApiError;
     /**
-     * Internal server error
+     * Internal server error during token exchange
      */
     500: OpenAiApiError;
 };
@@ -1001,7 +1008,7 @@ export type CompleteOAuthFlowError = CompleteOAuthFlowErrors[keyof CompleteOAuth
 
 export type CompleteOAuthFlowResponses = {
     /**
-     * OAuth flow completed successfully, return redirect URL
+     * OAuth flow completed successfully, user authenticated
      */
     200: RedirectResponse;
 };
@@ -1017,7 +1024,7 @@ export type InitiateOAuthFlowData = {
 
 export type InitiateOAuthFlowErrors = {
     /**
-     * Internal server error
+     * Internal server error during OAuth initialization
      */
     500: OpenAiApiError;
 };
@@ -1026,11 +1033,11 @@ export type InitiateOAuthFlowError = InitiateOAuthFlowErrors[keyof InitiateOAuth
 
 export type InitiateOAuthFlowResponses = {
     /**
-     * User already authenticated, return home page URL
+     * User already authenticated, home page URL provided
      */
     200: RedirectResponse;
     /**
-     * User not authenticated, return OAuth authorization URL
+     * User not authenticated, OAuth authorization URL provided
      */
     201: RedirectResponse;
 };
@@ -1038,6 +1045,9 @@ export type InitiateOAuthFlowResponses = {
 export type InitiateOAuthFlowResponse = InitiateOAuthFlowResponses[keyof InitiateOAuthFlowResponses];
 
 export type RequestAccessData = {
+    /**
+     * Application client requesting access
+     */
     body: RequestAccessRequest;
     path?: never;
     query?: never;
@@ -1046,11 +1056,11 @@ export type RequestAccessData = {
 
 export type RequestAccessErrors = {
     /**
-     * Invalid request or app status
+     * Invalid request, application not registered, or incorrect app status
      */
     400: OpenAiApiError;
     /**
-     * Internal server error
+     * Internal server error during access request
      */
     500: OpenAiApiError;
 };
@@ -1059,7 +1069,7 @@ export type RequestAccessError = RequestAccessErrors[keyof RequestAccessErrors];
 
 export type RequestAccessResponses = {
     /**
-     * Access granted, returns resource scope
+     * Access granted successfully
      */
     200: RequestAccessResponse;
 };
@@ -1109,7 +1119,7 @@ export type LogoutUserError = LogoutUserErrors[keyof LogoutUserErrors];
 
 export type LogoutUserResponses = {
     /**
-     * Logout successful, return redirect URL
+     * User logged out successfully
      */
     200: RedirectResponse;
 };
@@ -1151,7 +1161,7 @@ export type ListModelFilesError = ListModelFilesErrors[keyof ListModelFilesError
 
 export type ListModelFilesResponses = {
     /**
-     * List of supported model files from local HuggingFace cache folder
+     * Local model files retrieved successfully from cache
      */
     200: PaginatedLocalModelResponse;
 };
@@ -1357,7 +1367,7 @@ export type ListAllModelsError = ListAllModelsErrors[keyof ListAllModelsErrors];
 
 export type ListAllModelsResponses = {
     /**
-     * List of all configured aliases as discriminated union
+     * Paginated list of model aliases retrieved successfully
      */
     200: PaginatedAliasResponse;
 };
@@ -1560,6 +1570,9 @@ export type UpdateSettingResponses = {
 export type UpdateSettingResponse = UpdateSettingResponses[keyof UpdateSettingResponses];
 
 export type SetupAppData = {
+    /**
+     * Application setup configuration
+     */
     body: SetupRequest;
     path?: never;
     query?: never;
@@ -1568,11 +1581,11 @@ export type SetupAppData = {
 
 export type SetupAppErrors = {
     /**
-     * Application is already setup
+     * Invalid request or application already setup
      */
     400: OpenAiApiError;
     /**
-     * Internal server error
+     * Internal server error during setup
      */
     500: OpenAiApiError;
 };
@@ -1581,7 +1594,7 @@ export type SetupAppError = SetupAppErrors[keyof SetupAppErrors];
 
 export type SetupAppResponses = {
     /**
-     * Application setup successful
+     * Application setup completed successfully
      */
     200: SetupResponse;
 };
@@ -1713,7 +1726,7 @@ export type GetCurrentUserData = {
 
 export type GetCurrentUserErrors = {
     /**
-     * Error in extracting user info from token
+     * Authentication error or invalid token
      */
     500: OpenAiApiError;
 };
@@ -1722,7 +1735,7 @@ export type GetCurrentUserError = GetCurrentUserErrors[keyof GetCurrentUserError
 
 export type GetCurrentUserResponses = {
     /**
-     * Returns current user information
+     * Current user information retrieved successfully
      */
     200: UserInfo;
 };
@@ -1738,7 +1751,7 @@ export type HealthCheckData = {
 
 export type HealthCheckResponses = {
     /**
-     * Server is healthy
+     * Application is healthy and fully operational
      */
     200: PingResponse;
 };
@@ -1754,7 +1767,7 @@ export type PingServerData = {
 
 export type PingServerResponses = {
     /**
-     * Server is healthy
+     * Server is responding normally
      */
     200: PingResponse;
 };

@@ -33,7 +33,8 @@ use utoipa::ToSchema;
     "location": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
 }))]
 pub struct RedirectResponse {
-  /// The URL to redirect to for OAuth authentication
+  /// The URL to redirect to (OAuth authorization URL or application home page)
+  #[schema(example = "https://oauth.example.com/auth?client_id=test&redirect_uri=...")]
   pub location: String,
 }
 
@@ -152,11 +153,37 @@ pub async fn auth_initiate_handler(
     path = ENDPOINT_AUTH_CALLBACK,
     tag = API_TAG_AUTH,
     operation_id = "completeOAuthFlow",
-    request_body = AuthCallbackRequest,
+    summary = "Complete OAuth Authentication",
+    description = "Completes the OAuth authentication flow by exchanging authorization code for tokens and establishing user session.",
+    request_body(
+        content = AuthCallbackRequest,
+        description = "OAuth callback parameters from authorization server",
+        example = json!({
+            "code": "auth_code_123",
+            "state": "random_state_456"
+        })
+    ),
     responses(
-        (status = 200, description = "OAuth flow completed successfully, return redirect URL", body = RedirectResponse),
-        (status = 422, description = "OAuth error or invalid request", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 200, description = "OAuth flow completed successfully, user authenticated", body = RedirectResponse,
+         example = json!({
+             "location": "https://app.example.com/dashboard"
+         })),
+        (status = 422, description = "OAuth error, invalid request parameters, or state mismatch", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "State parameter mismatch",
+                 "type": "invalid_request_error",
+                 "code": "oauth_state_mismatch"
+             }
+         })),
+        (status = 500, description = "Internal server error during token exchange", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Failed to exchange authorization code for tokens",
+                 "type": "internal_server_error",
+                 "code": "oauth_token_exchange_error"
+             }
+         }))
     )
 )]
 pub async fn auth_callback_handler(
@@ -343,9 +370,21 @@ pub enum LogoutError {
     path = ENDPOINT_LOGOUT,
     tag = API_TAG_AUTH,
     operation_id = "logoutUser",
+    summary = "Logout User",
+    description = "Logs out the current user by destroying their session and returns redirect URL to login page",
     responses(
-        (status = 200, description = "Logout successful, return redirect URL", body = RedirectResponse),
-        (status = 500, description = "Session deletion failed", body = OpenAIApiError)
+        (status = 200, description = "User logged out successfully", body = RedirectResponse,
+         example = json!({
+             "location": "https://app.example.com/login"
+         })),
+        (status = 500, description = "Session deletion failed", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Failed to delete user session",
+                 "type": "internal_server_error",
+                 "code": "session_delete_error"
+             }
+         }))
     )
 )]
 pub async fn logout_handler(
@@ -363,11 +402,36 @@ pub async fn logout_handler(
     path = ENDPOINT_AUTH_REQUEST_ACCESS,
     tag = API_TAG_AUTH,
     operation_id = "requestAccess",
-    request_body = RequestAccessRequest,
+    summary = "Request Resource Access",
+    description = "Requests access permissions for an application client to access this resource server's protected resources.",
+    request_body(
+        content = RequestAccessRequest,
+        description = "Application client requesting access",
+        example = json!({
+            "app_client_id": "my_app_client_123"
+        })
+    ),
     responses(
-        (status = 200, description = "Access granted, returns resource scope", body = RequestAccessResponse),
-        (status = 400, description = "Invalid request or app status", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 200, description = "Access granted successfully", body = RequestAccessResponse,
+         example = json!({
+             "scope": "scope_resource_bodhi-server"
+         })),
+        (status = 400, description = "Invalid request, application not registered, or incorrect app status", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Application registration information not found",
+                 "type": "invalid_app_state",
+                 "code": "app_reg_info_not_found"
+             }
+         })),
+        (status = 500, description = "Internal server error during access request", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Failed to communicate with authorization server",
+                 "type": "internal_server_error",
+                 "code": "auth_service_error"
+             }
+         }))
     )
 )]
 pub async fn request_access_handler(
@@ -396,14 +460,22 @@ pub async fn request_access_handler(
 }
 
 #[derive(Debug, Deserialize, Serialize, ToSchema)]
+#[schema(example = json!({
+    "code": "auth_code_123",
+    "state": "random_state_456"
+}))]
 pub struct AuthCallbackRequest {
-  /// OAuth authorization code from successful authentication
+  /// OAuth authorization code from successful authentication (required for success flow)
+  #[schema(example = "auth_code_123")]
   pub code: Option<String>,
-  /// OAuth state parameter for CSRF protection
+  /// OAuth state parameter for CSRF protection (must match initiated request)
+  #[schema(example = "random_state_456")]
   pub state: Option<String>,
-  /// OAuth error code if authentication failed
+  /// OAuth error code if authentication failed (e.g., "access_denied")
+  #[schema(example = "access_denied")]
   pub error: Option<String>,
-  /// OAuth error description if authentication failed
+  /// Human-readable OAuth error description if authentication failed
+  #[schema(example = "The user denied the request")]
   pub error_description: Option<String>,
   /// Additional OAuth 2.1 parameters sent by the authorization server
   #[serde(flatten)]

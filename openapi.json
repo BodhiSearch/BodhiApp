@@ -273,7 +273,8 @@
         "tags": [
           "api-models"
         ],
-        "summary": "List all API model configurations",
+        "summary": "List API Model Configurations",
+        "description": "Retrieves paginated list of all configured API model aliases including external providers like OpenAI, Anthropic, etc. API keys are masked in list view for security.",
         "operationId": "listApiModels",
         "parameters": [
           {
@@ -317,21 +318,41 @@
         ],
         "responses": {
           "200": {
-            "description": "List of API models",
+            "description": "API model configurations retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedApiModelResponse"
+                },
+                "example": {
+                  "data": [
+                    {
+                      "api_key": "sk-****",
+                      "base_url": "https://api.openai.com/v1",
+                      "id": "openai-gpt4",
+                      "provider": "openai"
+                    }
+                  ],
+                  "page": 1,
+                  "page_size": 10,
+                  "total": 1
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during API model retrieval",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "database_error",
+                    "message": "Database connection failed",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -668,46 +689,69 @@
         "tags": [
           "api-models"
         ],
-        "summary": "Get a specific API model configuration",
+        "summary": "Get API Model Configuration",
+        "description": "Retrieves detailed configuration for a specific API model alias by ID. API keys are masked for security unless explicitly requested.",
         "operationId": "getApiModel",
         "parameters": [
           {
             "name": "id",
             "in": "path",
-            "description": "API model ID",
+            "description": "Unique identifier for the API model alias",
             "required": true,
             "schema": {
               "type": "string"
-            }
+            },
+            "example": "openai-gpt4"
           }
         ],
         "responses": {
           "200": {
-            "description": "API model configuration",
+            "description": "API model configuration retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiModelResponse"
+                },
+                "example": {
+                  "api_key": "sk-****",
+                  "base_url": "https://api.openai.com/v1",
+                  "id": "openai-gpt4",
+                  "model": "gpt-4",
+                  "provider": "openai"
                 }
               }
             }
           },
           "404": {
-            "description": "API model not found",
+            "description": "API model with specified ID not found",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "entity_not_found",
+                    "message": "API model 'invalid-model' not found",
+                    "type": "not_found_error"
+                  }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during model retrieval",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "database_error",
+                    "message": "Database query failed",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -728,13 +772,19 @@
         "tags": [
           "auth"
         ],
-        "summary": "Complete OAuth flow with authorization code",
+        "summary": "Complete OAuth Authentication",
+        "description": "Completes the OAuth authentication flow by exchanging authorization code for tokens and establishing user session.",
         "operationId": "completeOAuthFlow",
         "requestBody": {
+          "description": "OAuth callback parameters from authorization server",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/AuthCallbackRequest"
+              },
+              "example": {
+                "code": "auth_code_123",
+                "state": "random_state_456"
               }
             }
           },
@@ -742,31 +792,48 @@
         },
         "responses": {
           "200": {
-            "description": "OAuth flow completed successfully, return redirect URL",
+            "description": "OAuth flow completed successfully, user authenticated",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RedirectResponse"
+                },
+                "example": {
+                  "location": "https://app.example.com/dashboard"
                 }
               }
             }
           },
           "422": {
-            "description": "OAuth error or invalid request",
+            "description": "OAuth error, invalid request parameters, or state mismatch",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "oauth_state_mismatch",
+                    "message": "State parameter mismatch",
+                    "type": "invalid_request_error"
+                  }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during token exchange",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "oauth_token_exchange_error",
+                    "message": "Failed to exchange authorization code for tokens",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -779,7 +846,8 @@
         "tags": [
           "auth"
         ],
-        "summary": "Start OAuth flow - returns location for OAuth provider or home",
+        "summary": "Initiate OAuth Authentication",
+        "description": "Initiates OAuth authentication flow. Returns OAuth authorization URL for unauthenticated users or home page URL for already authenticated users.",
         "operationId": "initiateOAuthFlow",
         "requestBody": {
           "content": {
@@ -793,31 +861,44 @@
         },
         "responses": {
           "200": {
-            "description": "User already authenticated, return home page URL",
+            "description": "User already authenticated, home page URL provided",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RedirectResponse"
+                },
+                "example": {
+                  "location": "https://app.example.com/dashboard"
                 }
               }
             }
           },
           "201": {
-            "description": "User not authenticated, return OAuth authorization URL",
+            "description": "User not authenticated, OAuth authorization URL provided",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RedirectResponse"
+                },
+                "example": {
+                  "location": "https://auth.example.com/auth?client_id=bodhi&redirect_uri=..."
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during OAuth initialization",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "app_reg_info_missing",
+                    "message": "Application not registered with auth server",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -830,13 +911,18 @@
         "tags": [
           "auth"
         ],
-        "summary": "Request access for an app client to this resource server",
+        "summary": "Request Resource Access",
+        "description": "Requests access permissions for an application client to access this resource server's protected resources.",
         "operationId": "requestAccess",
         "requestBody": {
+          "description": "Application client requesting access",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/RequestAccessRequest"
+              },
+              "example": {
+                "app_client_id": "my_app_client_123"
               }
             }
           },
@@ -844,31 +930,48 @@
         },
         "responses": {
           "200": {
-            "description": "Access granted, returns resource scope",
+            "description": "Access granted successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RequestAccessResponse"
+                },
+                "example": {
+                  "scope": "scope_resource_bodhi-server"
                 }
               }
             }
           },
           "400": {
-            "description": "Invalid request or app status",
+            "description": "Invalid request, application not registered, or incorrect app status",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "app_reg_info_not_found",
+                    "message": "Application registration information not found",
+                    "type": "invalid_app_state"
+                  }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during access request",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "auth_service_error",
+                    "message": "Failed to communicate with authorization server",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -924,15 +1027,19 @@
         "tags": [
           "auth"
         ],
-        "summary": "Logout the current user by destroying their session",
+        "summary": "Logout User",
+        "description": "Logs out the current user by destroying their session and returns redirect URL to login page",
         "operationId": "logoutUser",
         "responses": {
           "200": {
-            "description": "Logout successful, return redirect URL",
+            "description": "User logged out successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/RedirectResponse"
+                },
+                "example": {
+                  "location": "https://app.example.com/login"
                 }
               }
             }
@@ -943,6 +1050,13 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "session_delete_error",
+                    "message": "Failed to delete user session",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -955,7 +1069,8 @@
         "tags": [
           "models"
         ],
-        "summary": "List available model files in GGUF format from HuggingFace cache",
+        "summary": "List Local Model Files",
+        "description": "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size.",
         "operationId": "listModelFiles",
         "parameters": [
           {
@@ -999,7 +1114,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of supported model files from local HuggingFace cache folder",
+            "description": "Local model files retrieved successfully from cache",
             "content": {
               "application/json": {
                 "schema": {
@@ -1430,7 +1545,8 @@
         "tags": [
           "models"
         ],
-        "summary": "List all model aliases as discriminated union (user, model, and API aliases)",
+        "summary": "List All Model Aliases",
+        "description": "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options.",
         "operationId": "listAllModels",
         "parameters": [
           {
@@ -1474,7 +1590,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of all configured aliases as discriminated union",
+            "description": "Paginated list of model aliases retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
@@ -2018,12 +2134,19 @@
         "tags": [
           "setup"
         ],
+        "summary": "Setup Application",
+        "description": "Initializes the application with authentication configuration and registers with the auth server",
         "operationId": "setupApp",
         "requestBody": {
+          "description": "Application setup configuration",
           "content": {
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/SetupRequest"
+              },
+              "example": {
+                "description": "My personal AI server",
+                "name": "My Bodhi Server"
               }
             }
           },
@@ -2031,27 +2154,37 @@
         },
         "responses": {
           "200": {
-            "description": "Application setup successful",
+            "description": "Application setup completed successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SetupResponse"
+                },
+                "example": {
+                  "status": "resource-admin"
                 }
               }
             }
           },
           "400": {
-            "description": "Application is already setup",
+            "description": "Invalid request or application already setup",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "validation_error",
+                    "message": "Server name must be at least 10 characters long",
+                    "type": "invalid_request_error"
+                  }
                 }
               }
             }
           },
           "500": {
-            "description": "Internal server error",
+            "description": "Internal server error during setup",
             "content": {
               "application/json": {
                 "schema": {
@@ -2367,21 +2500,29 @@
         "tags": [
           "auth"
         ],
-        "summary": "Get information about the currently logged in user",
+        "summary": "Get Current User Information",
+        "description": "Retrieves information about the currently authenticated user including email, roles, token type, and authentication source.",
         "operationId": "getCurrentUser",
         "responses": {
           "200": {
-            "description": "Returns current user information",
+            "description": "Current user information retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/UserInfo"
+                },
+                "example": {
+                  "email": "user@example.com",
+                  "logged_in": true,
+                  "role": "admin",
+                  "role_source": "role",
+                  "token_type": "bearer"
                 }
               }
             }
           },
           "500": {
-            "description": "Error in extracting user info from token",
+            "description": "Authentication error or invalid token",
             "content": {
               "application/json": {
                 "schema": {
@@ -2405,11 +2546,12 @@
         "tags": [
           "system"
         ],
-        "summary": "Simple health check endpoint",
+        "summary": "Health Check",
+        "description": "Comprehensive health check to verify all application components are operational",
         "operationId": "healthCheck",
         "responses": {
           "200": {
-            "description": "Server is healthy",
+            "description": "Application is healthy and fully operational",
             "content": {
               "application/json": {
                 "schema": {
@@ -2429,11 +2571,12 @@
         "tags": [
           "system"
         ],
-        "summary": "Simple health check endpoint",
+        "summary": "Ping Server",
+        "description": "Simple connectivity check to verify the server is responding",
         "operationId": "pingServer",
         "responses": {
           "200": {
-            "description": "Server is healthy",
+            "description": "Server is responding normally",
             "content": {
               "application/json": {
                 "schema": {
@@ -3015,34 +3158,42 @@
               "string",
               "null"
             ],
-            "description": "OAuth authorization code from successful authentication"
+            "description": "OAuth authorization code from successful authentication (required for success flow)",
+            "example": "auth_code_123"
           },
           "error": {
             "type": [
               "string",
               "null"
             ],
-            "description": "OAuth error code if authentication failed"
+            "description": "OAuth error code if authentication failed (e.g., \"access_denied\")",
+            "example": "access_denied"
           },
           "error_description": {
             "type": [
               "string",
               "null"
             ],
-            "description": "OAuth error description if authentication failed"
+            "description": "Human-readable OAuth error description if authentication failed",
+            "example": "The user denied the request"
           },
           "state": {
             "type": [
               "string",
               "null"
             ],
-            "description": "OAuth state parameter for CSRF protection"
+            "description": "OAuth state parameter for CSRF protection (must match initiated request)",
+            "example": "random_state_456"
           }
         },
         "additionalProperties": {
           "type": "string",
           "description": "Additional OAuth 2.1 parameters sent by the authorization server",
           "additionalProperties": true
+        },
+        "example": {
+          "code": "auth_code_123",
+          "state": "random_state_456"
         }
       },
       "ChatRequest": {
@@ -4133,8 +4284,12 @@
         "properties": {
           "message": {
             "type": "string",
-            "description": "always returns \"pong\""
+            "description": "Simple ping response message",
+            "example": "pong"
           }
+        },
+        "example": {
+          "message": "pong"
         }
       },
       "RedirectResponse": {
@@ -4145,7 +4300,8 @@
         "properties": {
           "location": {
             "type": "string",
-            "description": "The URL to redirect to for OAuth authentication"
+            "description": "The URL to redirect to (OAuth authorization URL or application home page)",
+            "example": "https://oauth.example.com/auth?client_id=test&redirect_uri=..."
           }
         },
         "example": {
@@ -4305,11 +4461,15 @@
               "string",
               "null"
             ],
-            "example": "My personal AI server"
+            "description": "Optional description of the server's purpose",
+            "example": "My personal AI server",
+            "maxLength": 500
           },
           "name": {
             "type": "string",
+            "description": "Server name for identification (minimum 10 characters)",
             "example": "My Bodhi Server",
+            "maxLength": 100,
             "minLength": 10
           }
         },
@@ -4327,7 +4487,7 @@
         "properties": {
           "status": {
             "$ref": "#/components/schemas/AppStatus",
-            "description": "New application status after setup\n- resource-admin: When setup in authenticated mode\n- ready: When setup in non-authenticated mode"
+            "description": "New application status after successful setup"
           }
         },
         "example": {

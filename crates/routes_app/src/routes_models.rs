@@ -17,11 +17,13 @@ use std::sync::Arc;
     path = ENDPOINT_MODELS,
     tag = API_TAG_MODELS,
     operation_id = "listAllModels",
+    summary = "List All Model Aliases",
+    description = "Retrieves paginated list of all configured model aliases including user-defined aliases, model aliases, and API provider aliases with filtering and sorting options.",
     params(
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of all configured aliases as discriminated union", body = PaginatedAliasResponse,
+        (status = 200, description = "Paginated list of model aliases retrieved successfully", body = PaginatedAliasResponse,
          example = json!({
              "data": [
               {
@@ -94,11 +96,13 @@ pub async fn list_aliases_handler(
     path = ENDPOINT_MODEL_FILES,
     tag = API_TAG_MODELS,
     operation_id = "listModelFiles",
+    summary = "List Local Model Files",
+    description = "Retrieves paginated list of GGUF model files available in the local HuggingFace cache directory with metadata including repository, filename, snapshot ID, and file size.",
     params(
         PaginationSortParams
     ),
     responses(
-        (status = 200, description = "List of supported model files from local HuggingFace cache folder", body = PaginatedLocalModelResponse,
+        (status = 200, description = "Local model files retrieved successfully from cache", body = PaginatedLocalModelResponse,
          example = json!({
              "data": [{
                  "repo": "TheBloke/Mistral-7B-Instruct-v0.1-GGUF",
