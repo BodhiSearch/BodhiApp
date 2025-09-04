@@ -1,6 +1,6 @@
 use crate::{
-  test_utils::SNAPSHOT, AliasSource, HubFile, HubFileBuilder, OAIRequestParams,
-  OAIRequestParamsBuilder, RemoteModel, Repo, UserAlias, TOKENIZER_CONFIG_JSON,
+  test_utils::SNAPSHOT, HubFile, HubFileBuilder, OAIRequestParams, OAIRequestParamsBuilder,
+  RemoteModel, Repo, UserAlias, TOKENIZER_CONFIG_JSON,
 };
 use derive_builder::Builder;
 use std::{path::PathBuf, str::FromStr};
@@ -211,7 +211,6 @@ impl AliasBuilder {
       .repo(Repo::testalias())
       .filename(Repo::testalias_model_q8())
       .snapshot(SNAPSHOT)
-      .source(AliasSource::User)
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
       .to_owned()
@@ -245,7 +244,6 @@ impl AliasBuilder {
       .repo(Repo::llama3())
       .filename(Repo::LLAMA3_Q8.to_string())
       .snapshot(SNAPSHOT.to_string())
-      .source(AliasSource::User)
       .request_params(request_params)
       .context_params(gpt_params)
       .to_owned()
@@ -257,7 +255,6 @@ impl AliasBuilder {
       .repo(Repo::tinyllama())
       .filename(Repo::TINYLLAMA_FILENAME)
       .snapshot(Repo::SNAPSHOT_LATEST)
-      .source(AliasSource::User)
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
       .to_owned()
@@ -291,7 +288,6 @@ impl UserAlias {
       .repo(Repo::tinyllama())
       .filename(Repo::TINYLLAMA_FILENAME)
       .snapshot(Repo::SNAPSHOT_LATEST)
-      .source(AliasSource::Model)
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
       .build()
@@ -304,7 +300,6 @@ impl UserAlias {
       .repo(Repo::llama2())
       .filename(Repo::LLAMA2_Q8)
       .snapshot("191239b3e26b2882fb562ffccdd1cf0f65402adb")
-      .source(AliasSource::Model)
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
       .build()
@@ -317,7 +312,6 @@ impl UserAlias {
       .repo(Repo::fakemodel())
       .filename("fakemodel.Q4_0.gguf")
       .snapshot("9ca625120374ddaae21f067cb006517d14dc91a6")
-      .source(AliasSource::Model)
       .request_params(OAIRequestParams::default())
       .context_params(Vec::default())
       .build()

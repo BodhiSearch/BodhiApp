@@ -1,3 +1,4 @@
+source: user
 alias: llama3:instruct
 repo: QuantFactory/Meta-Llama-3-8B-Instruct-GGUF
 filename: Meta-Llama-3-8B-Instruct.Q8_0.gguf
