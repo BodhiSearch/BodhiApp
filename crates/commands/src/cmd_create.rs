@@ -46,7 +46,11 @@ type Result<T> = std::result::Result<T, CreateCommandError>;
 impl CreateCommand {
   #[allow(clippy::result_large_err)]
   pub async fn execute(self, service: Arc<dyn AppService>) -> Result<()> {
-    if service.data_service().find_alias(&self.alias).is_some() {
+    if service
+      .data_service()
+      .find_user_alias(&self.alias)
+      .is_some()
+    {
       if !self.update {
         return Err(AliasExistsError(self.alias.clone()).into());
       }
@@ -111,7 +115,7 @@ impl CreateCommand {
 mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
-  use objs::{Alias, HubFile, OAIRequestParamsBuilder, Repo, UserAlias, UserAliasBuilder};
+  use objs::{HubFile, OAIRequestParamsBuilder, Repo, UserAlias, UserAliasBuilder};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -148,17 +152,18 @@ mod test {
       AppServiceStubBuilder::default()
         .with_hub_service()
         .with_data_service()
+        .await
         .build()?,
     );
     let repo_alias = service
       .data_service()
-      .find_alias("tinyllama:instruct")
+      .find_user_alias("tinyllama:instruct")
       .unwrap();
     let result = create_cmd.execute(service.clone()).await;
     assert!(result.is_ok());
     let updated_alias = service
       .data_service()
-      .find_alias("tinyllama:instruct")
+      .find_user_alias("tinyllama:instruct")
       .unwrap();
     assert_ne!(repo_alias, updated_alias);
     let expected = UserAliasBuilder::tinyllama()
@@ -178,7 +183,7 @@ mod test {
       ])
       .build()
       .unwrap();
-    assert_eq!(Alias::User(expected), updated_alias);
+    assert_eq!(expected, updated_alias);
     Ok(())
   }
 
@@ -212,12 +217,14 @@ mod test {
       AppServiceStubBuilder::default()
         .hub_service(Arc::new(test_hf_service))
         .with_data_service()
+        .await
         .build()?,
     );
     create.execute(service.clone()).await?;
     let created = service
       .data_service()
       .find_alias("testalias:instruct")
+      .await
       .unwrap();
     assert_eq!(Alias::User(UserAlias::testalias()), created);
     Ok(())

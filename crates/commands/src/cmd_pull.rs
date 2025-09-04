@@ -47,7 +47,7 @@ impl PullCommand {
   ) -> Result<()> {
     match self {
       PullCommand::ByAlias { alias } => {
-        if service.data_service().find_alias(&alias).is_some() {
+        if service.data_service().find_user_alias(&alias).is_some() {
           return Err(AliasExistsError(alias.clone()).into());
         }
         let Some(model) = service.data_service().find_remote_model(&alias)? else {
@@ -102,7 +102,7 @@ impl PullCommand {
 mod test {
   use crate::{PullCommand, PullCommandError};
   use mockall::predicate::{always, eq};
-  use objs::{Alias, HubFile, RemoteModel, Repo, UserAlias};
+  use objs::{HubFile, RemoteModel, Repo, UserAlias};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -116,6 +116,7 @@ mod test {
   async fn test_pull_by_alias_fails_if_alias_exists() -> anyhow::Result<()> {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
+      .await
       .build()?;
     let alias = "testalias-exists:instruct";
     let pull = PullCommand::ByAlias {
@@ -150,6 +151,7 @@ mod test {
     let service = AppServiceStubBuilder::default()
       .hub_service(Arc::new(test_hf_service))
       .with_data_service()
+      .await
       .build()?;
     let pull = PullCommand::ByAlias {
       alias: remote_model.alias,
@@ -158,9 +160,9 @@ mod test {
     pull.execute(service.clone(), None).await?;
     let created_alias = service
       .data_service()
-      .find_alias("testalias:instruct")
+      .find_user_alias("testalias:instruct")
       .ok_or(anyhow::anyhow!("alias not found"))?;
-    assert_eq!(Alias::User(UserAlias::testalias()), created_alias);
+    assert_eq!(UserAlias::testalias(), created_alias);
     Ok(())
   }
 
@@ -201,6 +203,7 @@ mod test {
     let service = AppServiceStubBuilder::default()
       .with_hub_service()
       .with_data_service()
+      .await
       .build()?;
     let service = Arc::new(service);
     let command = PullCommand::ByAlias {

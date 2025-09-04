@@ -54,6 +54,10 @@ impl DataService for TestDataService {
     self.inner.find_alias(alias).await
   }
 
+  fn find_user_alias(&self, alias: &str) -> Option<UserAlias> {
+    self.inner.find_user_alias(alias)
+  }
+
   fn list_remote_models(&self) -> Result<Vec<RemoteModel>> {
     self.inner.list_remote_models()
   }

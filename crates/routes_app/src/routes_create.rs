@@ -80,7 +80,7 @@ pub async fn create_alias_handler(
   let alias = state
     .app_service()
     .data_service()
-    .find_alias(&payload.alias)
+    .find_user_alias(&payload.alias)
     .ok_or(AliasNotFoundError(payload.alias))?;
   Ok((StatusCode::CREATED, Json(AliasResponse::from(alias))))
 }
@@ -124,7 +124,7 @@ pub async fn update_alias_handler(
   let alias = state
     .app_service()
     .data_service()
-    .find_alias(&id)
+    .find_user_alias(&id)
     .ok_or(AliasNotFoundError(id))?;
   Ok((StatusCode::OK, Json(AliasResponse::from(alias))))
 }
