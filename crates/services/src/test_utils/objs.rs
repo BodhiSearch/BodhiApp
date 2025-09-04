@@ -1,6 +1,6 @@
 use crate::AppRegInfo;
 use chrono::{DateTime, Utc};
-use objs::{AliasSource, ApiModelAlias};
+use objs::{AliasSource, ApiAlias};
 use rstest::fixture;
 
 #[fixture]
@@ -16,8 +16,8 @@ pub fn create_test_api_model_alias(
   alias: &str,
   models: Vec<String>,
   created_at: DateTime<Utc>,
-) -> ApiModelAlias {
-  ApiModelAlias::new(
+) -> ApiAlias {
+  ApiAlias::new(
     alias,
     AliasSource::RemoteApi,
     "openai",
@@ -31,7 +31,7 @@ pub fn create_test_api_model_alias(
 pub async fn seed_test_api_models(
   db_service: &dyn crate::db::DbService,
   base_time: DateTime<Utc>,
-) -> anyhow::Result<Vec<ApiModelAlias>> {
+) -> anyhow::Result<Vec<ApiAlias>> {
   let aliases = vec![
     create_test_api_model_alias("openai-gpt4", vec!["gpt-4".to_string()], base_time),
     create_test_api_model_alias(

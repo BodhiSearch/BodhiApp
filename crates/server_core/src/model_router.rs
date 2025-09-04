@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use objs::{UserAlias, AliasSource, ApiModelAlias, AppError, ErrorType};
+use objs::{UserAlias, AliasSource, ApiAlias, AppError, ErrorType};
 use services::{
   db::{DbError, DbService},
   AliasNotFoundError, DataService,
@@ -28,7 +28,7 @@ pub enum RouteDestination {
   /// Route to local model via existing SharedContext
   Local(UserAlias),
   /// Route to remote API via AiApiService
-  Remote(ApiModelAlias),
+  Remote(ApiAlias),
 }
 
 /// Service for routing model requests to appropriate destinations
@@ -94,7 +94,7 @@ impl ModelRouter for DefaultModelRouter {
 #[cfg(test)]
 mod tests {
   use crate::model_router::{DefaultModelRouter, ModelRouter, ModelRouterError, RouteDestination};
-  use objs::{AliasSource, ApiModelAlias};
+  use objs::{AliasSource, ApiAlias};
   use rstest::rstest;
   use services::db::MockDbService;
   use services::MockDataService;
@@ -183,7 +183,7 @@ mod tests {
     let mut mock_data = MockDataService::new();
     let mut mock_db = MockDbService::new();
 
-    let api_alias = ApiModelAlias::new(
+    let api_alias = ApiAlias::new(
       "test-api",
       AliasSource::RemoteApi,
       "openai",

@@ -1,4 +1,4 @@
-use crate::{UserAlias, ApiModelAlias};
+use crate::{UserAlias, ApiAlias};
 use serde::{Deserialize, Serialize};
 
 /// Flat enum representing all types of model aliases
@@ -11,7 +11,7 @@ pub enum ModelAlias {
   /// Auto-discovered local model (source: AliasSource::Model)  
   Model(UserAlias),
   /// Remote API model (source: AliasSource::RemoteApi)
-  Api(ApiModelAlias),
+  Api(ApiAlias),
 }
 
 impl ModelAlias {
@@ -78,7 +78,7 @@ mod tests {
 
   #[test]
   fn test_model_alias_api_can_serve() {
-    let api_alias = ApiModelAlias::new(
+    let api_alias = ApiAlias::new(
       "openai",
       AliasSource::RemoteApi,
       "openai",
@@ -135,7 +135,7 @@ mod tests {
     assert_eq!(model_deserialized.alias_name(), "auto:model");
 
     // Test Api variant
-    let api_alias = ApiModelAlias::new(
+    let api_alias = ApiAlias::new(
       "openai",
       AliasSource::RemoteApi,
       "openai",
@@ -155,7 +155,7 @@ mod tests {
   #[test]
   fn test_model_alias_serde_untagged() -> Result<()> {
     // Since we're using serde(untagged), the JSON should be clean without variant tags
-    let api_alias = ApiModelAlias::new(
+    let api_alias = ApiAlias::new(
       "openai",
       AliasSource::RemoteApi,
       "openai",

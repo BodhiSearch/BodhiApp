@@ -9,7 +9,7 @@ use crate::{
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
 use objs::{impl_error_from, AppError, ErrorType};
-use objs::{AliasSource, ApiModelAlias};
+use objs::{AliasSource, ApiAlias};
 use sqlx::{query_as, SqlitePool};
 use std::{fs, path::Path, str::FromStr, sync::Arc, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -120,22 +120,22 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
 
   async fn create_api_model_alias(
     &self,
-    alias: &ApiModelAlias,
+    alias: &ApiAlias,
     api_key: &str,
   ) -> Result<(), DbError>;
 
-  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiModelAlias>, DbError>;
+  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError>;
 
   async fn update_api_model_alias(
     &self,
     id: &str,
-    model: &ApiModelAlias,
+    model: &ApiAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError>;
 
   async fn delete_api_model_alias(&self, id: &str) -> Result<(), DbError>;
 
-  async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError>;
+  async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError>;
 
   async fn get_api_key_for_alias(&self, id: &str) -> Result<Option<String>, DbError>;
 
@@ -726,7 +726,7 @@ impl DbService for SqliteDbService {
 
   async fn create_api_model_alias(
     &self,
-    alias: &ApiModelAlias,
+    alias: &ApiAlias,
     api_key: &str,
   ) -> Result<(), DbError> {
     let (encrypted_api_key, salt, nonce) = encrypt_api_key(&self.encryption_key, api_key)
@@ -756,7 +756,7 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
-  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiModelAlias>, DbError> {
+  async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError> {
     let result = query_as::<_, (String, String, String, String, i64)>(
       "SELECT id, provider, base_url, models_json, created_at FROM api_model_aliases WHERE id = ?",
     )
@@ -771,7 +771,7 @@ impl DbService for SqliteDbService {
 
         let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
 
-        Ok(Some(ApiModelAlias {
+        Ok(Some(ApiAlias {
           id,
           source: AliasSource::RemoteApi,
           provider,
@@ -788,7 +788,7 @@ impl DbService for SqliteDbService {
   async fn update_api_model_alias(
     &self,
     id: &str,
-    model: &ApiModelAlias,
+    model: &ApiAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError> {
     let models_json = serde_json::to_string(&model.models)
@@ -848,7 +848,7 @@ impl DbService for SqliteDbService {
     Ok(())
   }
 
-  async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError> {
+  async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError> {
     let results = query_as::<_, (String, String, String, String, i64)>(
       "SELECT id, provider, base_url, models_json, created_at FROM api_model_aliases ORDER BY created_at DESC"
     )
@@ -862,7 +862,7 @@ impl DbService for SqliteDbService {
 
       let created_at = chrono::DateTime::<Utc>::from_timestamp(created_at, 0).unwrap_or_default();
 
-      aliases.push(ApiModelAlias {
+      aliases.push(ApiAlias {
         id,
         source: AliasSource::RemoteApi,
         provider,
@@ -909,7 +909,7 @@ mod test {
     test_utils::{build_token, test_db_service, TestDbService},
   };
   use chrono::Utc;
-  use objs::{AliasSource, ApiModelAlias};
+  use objs::{AliasSource, ApiAlias};
   use rstest::rstest;
   use uuid::Uuid;
 
@@ -1329,7 +1329,7 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let alias_obj = ApiModelAlias::new(
+    let alias_obj = ApiAlias::new(
       "openai",
       AliasSource::RemoteApi,
       "openai",
@@ -1362,7 +1362,7 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let mut alias_obj = ApiModelAlias::new(
+    let mut alias_obj = ApiAlias::new(
       "claude",
       AliasSource::RemoteApi,
       "anthropic",
@@ -1404,7 +1404,7 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let mut alias_obj = ApiModelAlias::new(
+    let mut alias_obj = ApiAlias::new(
       "gemini",
       AliasSource::RemoteApi,
       "google",
@@ -1465,7 +1465,7 @@ mod test {
     ];
 
     for (alias, provider, key, created_at) in &aliases {
-      let alias_obj = ApiModelAlias::new(
+      let alias_obj = ApiAlias::new(
         *alias,
         AliasSource::RemoteApi,
         *provider,
@@ -1496,7 +1496,7 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let alias_obj = ApiModelAlias::new(
+    let alias_obj = ApiAlias::new(
       "to-delete",
       AliasSource::RemoteApi,
       "test-provider",
@@ -1528,7 +1528,7 @@ mod test {
     service: TestDbService,
   ) -> anyhow::Result<()> {
     let now = service.now();
-    let alias_obj = ApiModelAlias::new(
+    let alias_obj = ApiAlias::new(
       "security-test",
       AliasSource::RemoteApi,
       "secure-provider",
@@ -1544,7 +1544,7 @@ mod test {
       .await?;
 
     // Verify different encryptions produce different results
-    let alias_obj2 = ApiModelAlias::new(
+    let alias_obj2 = ApiAlias::new(
       "security-test2",
       AliasSource::RemoteApi,
       "secure-provider",
