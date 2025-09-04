@@ -43,11 +43,26 @@ pub struct RedirectResponse {
     path = ENDPOINT_AUTH_INITIATE,
     tag = API_TAG_AUTH,
     operation_id = "initiateOAuthFlow",
+    summary = "Initiate OAuth Authentication",
+    description = "Initiates OAuth authentication flow. Returns OAuth authorization URL for unauthenticated users or home page URL for already authenticated users.",
     request_body = (),
     responses(
-        (status = 201, description = "User not authenticated, return OAuth authorization URL", body = RedirectResponse),
-        (status = 200, description = "User already authenticated, return home page URL", body = RedirectResponse),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 201, description = "User not authenticated, OAuth authorization URL provided", body = RedirectResponse,
+         example = json!({
+             "location": "https://auth.example.com/auth?client_id=bodhi&redirect_uri=..."
+         })),
+        (status = 200, description = "User already authenticated, home page URL provided", body = RedirectResponse,
+         example = json!({
+             "location": "https://app.example.com/dashboard"
+         })),
+        (status = 500, description = "Internal server error during OAuth initialization", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Application not registered with auth server",
+                 "type": "internal_server_error",
+                 "code": "app_reg_info_missing"
+             }
+         }))
     )
 )]
 pub async fn auth_initiate_handler(
