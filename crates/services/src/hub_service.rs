@@ -1,7 +1,7 @@
 use hf_hub::Cache;
 use objs::{
-  impl_error_from, UserAlias, UserAliasBuilder, AliasSource, AppError, ErrorType, HubFile, IoError,
-  ObjValidationError, Repo,
+  impl_error_from, AliasSource, AppError, ErrorType, HubFile, IoError, ObjValidationError, Repo,
+  UserAlias, UserAliasBuilder,
 };
 use std::{
   collections::HashSet,

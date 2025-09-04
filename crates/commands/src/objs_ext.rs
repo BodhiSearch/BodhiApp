@@ -1,4 +1,4 @@
-use objs::{UserAlias, HubFile, RemoteModel};
+use objs::{HubFile, RemoteModel, UserAlias};
 use prettytable::{Cell, Row};
 
 pub trait IntoRow {
@@ -52,7 +52,7 @@ impl IntoRow for RemoteModel {
 #[cfg(test)]
 mod test {
   use crate::objs_ext::IntoRow;
-  use objs::{UserAlias, HubFile, RemoteModel, Repo};
+  use objs::{HubFile, RemoteModel, Repo, UserAlias};
   use pretty_assertions::assert_eq;
   use prettytable::{Cell, Row};
   use rstest::rstest;

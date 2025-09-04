@@ -118,11 +118,7 @@ pub trait DbService: std::fmt::Debug + Send + Sync {
     filename: &str,
   ) -> Result<Vec<DownloadRequest>, DbError>;
 
-  async fn create_api_model_alias(
-    &self,
-    alias: &ApiAlias,
-    api_key: &str,
-  ) -> Result<(), DbError>;
+  async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: &str) -> Result<(), DbError>;
 
   async fn get_api_model_alias(&self, id: &str) -> Result<Option<ApiAlias>, DbError>;
 
@@ -724,11 +720,7 @@ impl DbService for SqliteDbService {
     Ok(items)
   }
 
-  async fn create_api_model_alias(
-    &self,
-    alias: &ApiAlias,
-    api_key: &str,
-  ) -> Result<(), DbError> {
+  async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: &str) -> Result<(), DbError> {
     let (encrypted_api_key, salt, nonce) = encrypt_api_key(&self.encryption_key, api_key)
       .map_err(|e| DbError::EncryptionError(e.to_string()))?;
 

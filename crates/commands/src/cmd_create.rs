@@ -1,5 +1,5 @@
 use objs::{
-  UserAliasBuilder, AliasSource, AppError, BuilderError, OAIRequestParams, ObjValidationError, Repo,
+  AliasSource, AppError, BuilderError, OAIRequestParams, ObjValidationError, Repo, UserAliasBuilder,
 };
 use services::{
   AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,
@@ -114,7 +114,7 @@ impl CreateCommand {
 mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
-  use objs::{UserAlias, UserAliasBuilder, HubFile, OAIRequestParamsBuilder, Repo};
+  use objs::{HubFile, OAIRequestParamsBuilder, Repo, UserAlias, UserAliasBuilder};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{

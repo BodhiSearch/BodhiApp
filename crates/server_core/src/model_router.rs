@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use objs::{UserAlias, AliasSource, ApiAlias, AppError, ErrorType};
+use objs::{AliasSource, ApiAlias, AppError, ErrorType, UserAlias};
 use services::{
   db::{DbError, DbService},
   AliasNotFoundError, DataService,

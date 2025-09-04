@@ -1,4 +1,4 @@
-use objs::{UserAliasBuilder, AliasSource, AppError, BuilderError, ObjValidationError, Repo};
+use objs::{AliasSource, AppError, BuilderError, ObjValidationError, Repo, UserAliasBuilder};
 use services::{
   AliasExistsError, AppService, DataServiceError, HubServiceError, RemoteModelNotFoundError,
 };
@@ -103,7 +103,7 @@ impl PullCommand {
 mod test {
   use crate::{PullCommand, PullCommandError};
   use mockall::predicate::{always, eq};
-  use objs::{UserAlias, HubFile, RemoteModel, Repo};
+  use objs::{HubFile, RemoteModel, Repo, UserAlias};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{

@@ -1,6 +1,6 @@
 use crate::{HfHubService, HubService, HubServiceError, MockHubService, Progress};
 use derive_new::new;
-use objs::{test_utils::temp_hf_home, UserAlias, HubFile, Repo};
+use objs::{test_utils::temp_hf_home, HubFile, Repo, UserAlias};
 use rstest::fixture;
 use std::path::PathBuf;
 use tempfile::TempDir;
