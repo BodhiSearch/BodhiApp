@@ -1,4 +1,4 @@
-use crate::{UserAlias, ApiAlias};
+use crate::{ApiAlias, UserAlias};
 use serde::{Deserialize, Serialize};
 
 /// Flat enum representing all types of model aliases
@@ -35,7 +35,7 @@ impl Alias {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use crate::{UserAliasBuilder, AliasSource, Repo};
+  use crate::{AliasSource, Repo, UserAliasBuilder};
   use anyhow::Result;
   use chrono::Utc;
   use std::str::FromStr;

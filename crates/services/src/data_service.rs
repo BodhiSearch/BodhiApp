@@ -1,7 +1,8 @@
 use crate::{HubService, HubServiceError, ALIASES_DIR, MODELS_YAML};
 use objs::{
-  impl_error_from, UserAlias, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
+  impl_error_from, AppError, ErrorType, IoDirCreateError, IoError, IoFileDeleteError,
   IoFileReadError, IoFileWriteError, RemoteModel, SerdeYamlError, SerdeYamlWithPathError,
+  UserAlias,
 };
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 
@@ -279,7 +280,7 @@ mod test {
   use anyhow_trace::anyhow_trace;
   use objs::{
     test_utils::{assert_error_message, setup_l10n},
-    UserAlias, AppError, FluentLocalizationService, RemoteModel,
+    AppError, FluentLocalizationService, RemoteModel, UserAlias,
   };
   use rstest::rstest;
   use std::fs;

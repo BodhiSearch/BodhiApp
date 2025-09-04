@@ -331,7 +331,7 @@ mod test {
     DEFAULT_VARIANT, EXEC_NAME,
   };
   use mockall::predicate::eq;
-  use objs::{test_utils::temp_hf_home, UserAlias, HubFileBuilder};
+  use objs::{test_utils::temp_hf_home, HubFileBuilder, UserAlias};
   use rstest::rstest;
   use serde_json::{json, Value};
   use serial_test::serial;

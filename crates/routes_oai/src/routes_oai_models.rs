@@ -4,7 +4,7 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{UserAlias, ApiError, ApiAlias, OpenAIApiError, API_TAG_OPENAI};
+use objs::{ApiAlias, ApiError, OpenAIApiError, UserAlias, API_TAG_OPENAI};
 use server_core::{ModelRouterError, RouterState};
 use services::AliasNotFoundError;
 use std::sync::Arc;

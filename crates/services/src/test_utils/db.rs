@@ -227,11 +227,7 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("find_download_request_by_repo_filename"))
   }
 
-  async fn create_api_model_alias(
-    &self,
-    alias: &ApiAlias,
-    api_key: &str,
-  ) -> Result<(), DbError> {
+  async fn create_api_model_alias(&self, alias: &ApiAlias, api_key: &str) -> Result<(), DbError> {
     self
       .inner
       .create_api_model_alias(alias, api_key)

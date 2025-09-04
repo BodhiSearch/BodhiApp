@@ -56,7 +56,7 @@ impl std::fmt::Display for UserAlias {
 #[cfg(test)]
 mod test {
   use crate::test_utils::AliasBuilder;
-  use crate::{UserAlias, OAIRequestParamsBuilder, Repo};
+  use crate::{OAIRequestParamsBuilder, Repo, UserAlias};
   use anyhow_trace::anyhow_trace;
   use rstest::rstest;
 

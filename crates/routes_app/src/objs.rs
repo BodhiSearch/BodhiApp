@@ -1,4 +1,4 @@
-use objs::{UserAlias, HubFile, OAIRequestParams};
+use objs::{HubFile, OAIRequestParams, UserAlias};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::db::{ApiToken, DownloadRequest};
