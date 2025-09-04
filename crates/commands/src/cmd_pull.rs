@@ -1,4 +1,4 @@
-use objs::{AliasSource, AppError, BuilderError, ObjValidationError, Repo, UserAliasBuilder};
+use objs::{AppError, BuilderError, ObjValidationError, Repo, UserAliasBuilder};
 use services::{
   AliasExistsError, AppService, DataServiceError, HubServiceError, RemoteModelNotFoundError,
 };
@@ -63,7 +63,6 @@ impl PullCommand {
           .repo(model.repo)
           .filename(model.filename)
           .snapshot(local_model_file.snapshot)
-          .source(AliasSource::User)
           .request_params(model.request_params)
           .context_params(model.context_params)
           .build()?;
@@ -103,7 +102,7 @@ impl PullCommand {
 mod test {
   use crate::{PullCommand, PullCommandError};
   use mockall::predicate::{always, eq};
-  use objs::{HubFile, RemoteModel, Repo, UserAlias};
+  use objs::{Alias, HubFile, RemoteModel, Repo, UserAlias};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -161,7 +160,7 @@ mod test {
       .data_service()
       .find_alias("testalias:instruct")
       .ok_or(anyhow::anyhow!("alias not found"))?;
-    assert_eq!(UserAlias::testalias(), created_alias);
+    assert_eq!(Alias::User(UserAlias::testalias()), created_alias);
     Ok(())
   }
 
