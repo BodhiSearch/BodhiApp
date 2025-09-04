@@ -9,7 +9,7 @@ mod api_tags;
 mod envs;
 mod error;
 pub mod gguf;
-mod model_alias;
+mod alias;
 
 mod hub_file;
 mod localization_service;
@@ -28,7 +28,7 @@ pub use api_model_alias::*;
 pub use api_tags::*;
 pub use envs::*;
 pub use error::*;
-pub use model_alias::*;
+pub use alias::*;
 
 pub use hub_file::*;
 pub use localization_service::*;
