@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use objs::ApiModelAlias;
+use objs::ApiAlias;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use validator::Validate;
@@ -158,7 +158,7 @@ pub struct ApiModelResponse {
 
 impl ApiModelResponse {
   /// Create a response from an ApiModelAlias with masked API key
-  pub fn from_alias(alias: ApiModelAlias, api_key: Option<String>) -> Self {
+  pub fn from_alias(alias: ApiAlias, api_key: Option<String>) -> Self {
     Self {
       id: alias.id,
       provider: alias.provider,

@@ -4,7 +4,7 @@ use crate::db::{
 };
 use chrono::{DateTime, Timelike, Utc};
 use objs::test_utils::temp_dir;
-use objs::ApiModelAlias;
+use objs::ApiAlias;
 use rstest::fixture;
 use sqlx::SqlitePool;
 use std::{fs::File, path::Path, sync::Arc};
@@ -229,7 +229,7 @@ impl DbService for TestDbService {
 
   async fn create_api_model_alias(
     &self,
-    alias: &ApiModelAlias,
+    alias: &ApiAlias,
     api_key: &str,
   ) -> Result<(), DbError> {
     self
@@ -239,7 +239,7 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("create_api_model_alias"))
   }
 
-  async fn get_api_model_alias(&self, alias: &str) -> Result<Option<ApiModelAlias>, DbError> {
+  async fn get_api_model_alias(&self, alias: &str) -> Result<Option<ApiAlias>, DbError> {
     self
       .inner
       .get_api_model_alias(alias)
@@ -250,7 +250,7 @@ impl DbService for TestDbService {
   async fn update_api_model_alias(
     &self,
     alias: &str,
-    model: &ApiModelAlias,
+    model: &ApiAlias,
     api_key: Option<String>,
   ) -> Result<(), DbError> {
     self
@@ -268,7 +268,7 @@ impl DbService for TestDbService {
       .tap(|_| self.notify("delete_api_model_alias"))
   }
 
-  async fn list_api_model_aliases(&self) -> Result<Vec<ApiModelAlias>, DbError> {
+  async fn list_api_model_aliases(&self) -> Result<Vec<ApiAlias>, DbError> {
     self
       .inner
       .list_api_model_aliases()

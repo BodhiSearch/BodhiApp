@@ -4,7 +4,7 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{UserAlias, ApiError, ApiModelAlias, OpenAIApiError, API_TAG_OPENAI};
+use objs::{UserAlias, ApiError, ApiAlias, OpenAIApiError, API_TAG_OPENAI};
 use server_core::{ModelRouterError, RouterState};
 use services::AliasNotFoundError;
 use std::sync::Arc;
@@ -237,7 +237,7 @@ fn to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> OAIModel {
   }
 }
 
-fn api_model_to_oai_model(api_alias: ApiModelAlias) -> OAIModel {
+fn api_model_to_oai_model(api_alias: ApiAlias) -> OAIModel {
   // Use the created_at timestamp from the ApiModelAlias
   // Convert i64 timestamp to u32 for OAIModel
   let created = api_alias.created_at.timestamp() as u32;

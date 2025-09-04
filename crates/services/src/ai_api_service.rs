@@ -3,7 +3,7 @@ use async_openai::types::CreateChatCompletionRequest;
 use async_trait::async_trait;
 use axum::response::Response;
 use derive_new::new;
-use objs::{impl_error_from, ApiModelAlias, AppError, ErrorType, ReqwestError};
+use objs::{impl_error_from, ApiAlias, AppError, ErrorType, ReqwestError};
 use reqwest::Client;
 use std::sync::Arc;
 use std::time::Duration;
@@ -98,7 +98,7 @@ impl DefaultAiApiService {
   }
 
   /// Get API configuration for an id
-  async fn get_api_config(&self, id: &str) -> Result<(ApiModelAlias, String)> {
+  async fn get_api_config(&self, id: &str) -> Result<(ApiAlias, String)> {
     // Get the API model alias configuration
     let api_alias = self
       .db_service

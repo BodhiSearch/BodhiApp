@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ApiModelAlias {
+pub struct ApiAlias {
   pub id: String,
   pub source: AliasSource,
   pub provider: String,
@@ -13,7 +13,7 @@ pub struct ApiModelAlias {
   pub updated_at: DateTime<Utc>,
 }
 
-impl ApiModelAlias {
+impl ApiAlias {
   pub fn new(
     id: impl Into<String>,
     source: AliasSource,
@@ -34,7 +34,7 @@ impl ApiModelAlias {
   }
 }
 
-impl std::fmt::Display for ApiModelAlias {
+impl std::fmt::Display for ApiAlias {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     write!(
       f,
@@ -46,14 +46,14 @@ impl std::fmt::Display for ApiModelAlias {
 
 #[cfg(test)]
 mod test {
-  use super::ApiModelAlias;
+  use super::ApiAlias;
   use crate::AliasSource;
   use chrono::Utc;
 
   #[test]
   fn test_api_model_alias_creation() {
     let created_at = Utc::now();
-    let alias = ApiModelAlias::new(
+    let alias = ApiAlias::new(
       "openai",
       AliasSource::RemoteApi,
       "openai",
@@ -62,7 +62,7 @@ mod test {
       created_at,
     );
 
-    let expected = ApiModelAlias {
+    let expected = ApiAlias {
       id: "openai".to_string(),
       source: AliasSource::RemoteApi,
       provider: "openai".to_string(),
@@ -77,7 +77,7 @@ mod test {
 
   #[test]
   fn test_api_model_alias_display() {
-    let alias = ApiModelAlias::new(
+    let alias = ApiAlias::new(
       "test-api",
       AliasSource::RemoteApi,
       "openai",
@@ -94,7 +94,7 @@ mod test {
 
   #[test]
   fn test_api_model_alias_serialization() -> anyhow::Result<()> {
-    let alias = ApiModelAlias::new(
+    let alias = ApiAlias::new(
       "test",
       AliasSource::RemoteApi,
       "openai",
@@ -104,7 +104,7 @@ mod test {
     );
 
     let serialized = serde_json::to_string(&alias)?;
-    let deserialized: ApiModelAlias = serde_json::from_str(&serialized)?;
+    let deserialized: ApiAlias = serde_json::from_str(&serialized)?;
 
     assert_eq!(alias, deserialized);
     Ok(())
