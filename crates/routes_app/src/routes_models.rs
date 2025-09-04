@@ -65,7 +65,7 @@ pub async fn list_local_aliases_handler(
   let (page, page_size, sort, sort_order) = extract_pagination_sort_params(params);
 
   // Fetch local aliases
-  let aliases = state.app_service().data_service().list_aliases()?;
+  let aliases = state.app_service().data_service().list_aliases().await?;
   let local_models: Vec<UnifiedModelResponse> = aliases
     .into_iter()
     .map(|alias| UnifiedModelResponse::from(AliasResponse::from(alias)))
@@ -293,6 +293,7 @@ pub async fn get_alias_handler(
     .app_service()
     .data_service()
     .find_alias(&id)
+    .await
     .ok_or(AliasNotFoundError(id))?;
   Ok(Json(AliasResponse::from(alias)))
 }

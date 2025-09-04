@@ -16,7 +16,7 @@ use axum::{
 };
 use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
-use objs::{UserAlias, API_TAG_OLLAMA, GGUF};
+use objs::{Alias, ModelAlias, UserAlias, API_TAG_OLLAMA, GGUF};
 use serde::{Deserialize, Serialize, Serializer};
 use server_core::RouterState;
 use std::{collections::HashMap, fs, sync::Arc, time::UNIX_EPOCH};
@@ -92,24 +92,65 @@ pub struct OllamaError {
 pub async fn ollama_models_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<ModelsResponse>, Json<OllamaError>> {
-  let models = state
+  let aliases = state
     .app_service()
     .data_service()
     .list_aliases()
+    .await
     .map_err(|err| {
       Json(OllamaError {
         error: err.to_string(),
       })
-    })?
+    })?;
+
+  let models = aliases
     .into_iter()
-    .map(|alias| to_ollama_model(state.clone(), alias))
+    .filter_map(|alias| {
+      // Only include User and Model aliases for Ollama
+      match alias {
+        Alias::User(user) => Some(user_alias_to_ollama_model(state.clone(), user)),
+        Alias::Model(model) => Some(model_alias_to_ollama_model(state.clone(), model)),
+        Alias::Api(_) => None, // Skip API aliases for Ollama
+      }
+    })
     .collect::<Vec<_>>();
+
   Ok(Json(ModelsResponse { models }))
 }
 
-fn to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
+fn user_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: UserAlias) -> Model {
   let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
+  let created = fs::metadata(path)
+    .map_err(|e| e.to_string())
+    .and_then(|m| m.created().map_err(|e| e.to_string()))
+    .and_then(|t| t.duration_since(UNIX_EPOCH).map_err(|e| e.to_string()))
+    .unwrap_or_default()
+    .as_secs() as u32;
+  Model {
+    model: alias.alias,
+    modified_at: created,
+    size: 0,
+    digest: alias.snapshot,
+    details: ModelDetails {
+      parent_model: None,
+      format: GGUF.to_string(),
+      family: "unknown".to_string(),
+      families: None,
+      parameter_size: "".to_string(),
+      quantization_level: "".to_string(),
+    },
+  }
+}
+
+fn model_alias_to_ollama_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> Model {
+  // Construct path from HF cache structure
+  let hf_cache = state.app_service().setting_service().hf_cache();
+  let path = hf_cache
+    .join(alias.repo.path())
+    .join("snapshots")
+    .join(&alias.snapshot)
+    .join(&alias.filename);
   let created = fs::metadata(path)
     .map_err(|e| e.to_string())
     .and_then(|m| m.created().map_err(|e| e.to_string()))
@@ -219,25 +260,62 @@ pub async fn ollama_model_show_handler(
         error: "model not found".to_string(),
       })
     })?;
-  let model = to_ollama_model_show(state, alias);
+  let model = alias_to_ollama_model_show(state, alias);
   Ok(Json(model))
 }
 
-fn to_ollama_model_show(state: Arc<dyn RouterState>, alias: UserAlias) -> ShowResponse {
-  let request_params = serde_yaml::to_string(&alias.request_params).unwrap_or_default();
-  let context_params = serde_yaml::to_string(&alias.context_params).unwrap_or_default();
-  let parameters = format!("{context_params}{request_params}");
-  let template = "".to_string(); // Chat template removed since llama.cpp now handles this
-  let model = to_ollama_model(state, alias);
+fn alias_to_ollama_model_show(state: Arc<dyn RouterState>, alias: Alias) -> ShowResponse {
+  match alias {
+    Alias::User(user_alias) => {
+      let request_params = serde_yaml::to_string(&user_alias.request_params).unwrap_or_default();
+      let context_params = serde_yaml::to_string(&user_alias.context_params).unwrap_or_default();
+      let parameters = format!("{context_params}{request_params}");
+      let template = "".to_string(); // Chat template removed since llama.cpp now handles this
+      let model = user_alias_to_ollama_model(state, user_alias);
 
-  ShowResponse {
-    details: model.details,
-    license: "".to_string(),
-    model_info: HashMap::new(),
-    modelfile: "".to_string(),
-    modified_at: model.modified_at,
-    parameters,
-    template,
+      ShowResponse {
+        details: model.details,
+        license: "".to_string(),
+        model_info: HashMap::new(),
+        modelfile: "".to_string(),
+        modified_at: model.modified_at,
+        parameters,
+        template,
+      }
+    }
+    Alias::Model(model_alias) => {
+      // Create a minimal ShowResponse for auto-discovered models
+      let model = model_alias_to_ollama_model(state, model_alias.clone());
+      ShowResponse {
+        details: model.details,
+        license: "".to_string(),
+        model_info: HashMap::new(),
+        modelfile: "".to_string(),
+        modified_at: model.modified_at,
+        parameters: "".to_string(),
+        template: "".to_string(), // ModelAlias doesn't have chat_template
+      }
+    }
+    Alias::Api(_) => {
+      // API aliases don't have Ollama-style details, this shouldn't happen
+      // since we filter them out in the find_alias call, but handle it anyway
+      ShowResponse {
+        details: ModelDetails {
+          parent_model: None,
+          format: GGUF.to_string(),
+          family: "unknown".to_string(),
+          families: None,
+          parameter_size: "".to_string(),
+          quantization_level: "".to_string(),
+        },
+        license: "".to_string(),
+        model_info: HashMap::new(),
+        modelfile: "".to_string(),
+        modified_at: 0,
+        parameters: "".to_string(),
+        template: "".to_string(),
+      }
+    }
   }
 }
 

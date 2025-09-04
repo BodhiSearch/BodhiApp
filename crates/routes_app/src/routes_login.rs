@@ -681,6 +681,7 @@ mod tests {
     let session_service = SqliteSessionService::build_session_service(dbfile).await;
     let record = set_token_in_session(&session_service, &token).await?;
     let app_service = AppServiceStubBuilder::default()
+      .with_temp_home_as(temp_bodhi_home)
       .setting_service(Arc::new(SettingServiceStub::default().append_settings(
         HashMap::from([
           (BODHI_SCHEME.to_string(), "http".to_string()),

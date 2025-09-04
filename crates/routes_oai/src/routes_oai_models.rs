@@ -4,10 +4,10 @@ use axum::{
   extract::{Path, State},
   Json,
 };
-use objs::{ApiAlias, ApiError, OpenAIApiError, UserAlias, API_TAG_OPENAI};
-use server_core::{ModelRouterError, RouterState};
+use objs::{Alias, ApiAlias, ApiError, ModelAlias, OpenAIApiError, UserAlias, API_TAG_OPENAI};
+use server_core::RouterState;
 use services::AliasNotFoundError;
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 use utoipa::openapi::ObjectBuilder;
 
 pub struct ModelResponse;
@@ -125,34 +125,45 @@ impl utoipa::ToSchema for ListModelResponse {}
 pub async fn oai_models_handler(
   State(state): State<Arc<dyn RouterState>>,
 ) -> Result<Json<OAIModelListResponse>, ApiError> {
-  // Get local aliases from DataService
-  let local_models = state
+  // Get all aliases from unified DataService
+  let aliases = state
     .app_service()
     .data_service()
-    .list_aliases()?
-    .into_iter()
-    .map(|alias| to_oai_model(state.clone(), alias))
-    .collect::<Vec<_>>();
-
-  // Get API models from DbService
-  // If database operations fail (e.g., not initialized), just use empty list
-  let api_models = state
-    .app_service()
-    .db_service()
-    .list_api_model_aliases()
+    .list_aliases()
     .await
-    .unwrap_or_else(|_| vec![])
-    .into_iter()
-    .map(|api_alias| api_model_to_oai_model(api_alias))
-    .collect::<Vec<_>>();
+    .map_err(|e| ApiError::from(e))?;
 
-  // Combine both lists
-  let mut all_models = local_models;
-  all_models.extend(api_models);
+  // Use HashSet to track model IDs and prevent duplicates
+  let mut seen_models = HashSet::new();
+  let mut models = Vec::new();
+
+  // Process aliases in priority order: User > Model > API
+  for alias in aliases {
+    match alias {
+      Alias::User(user_alias) => {
+        if seen_models.insert(user_alias.alias.clone()) {
+          models.push(user_alias_to_oai_model(state.clone(), user_alias));
+        }
+      }
+      Alias::Model(model_alias) => {
+        if seen_models.insert(model_alias.alias.clone()) {
+          models.push(model_alias_to_oai_model(state.clone(), model_alias));
+        }
+      }
+      Alias::Api(api_alias) => {
+        // EXPAND API alias - each model in models array becomes separate entry
+        for model_name in &api_alias.models {
+          if seen_models.insert(model_name.clone()) {
+            models.push(api_model_to_oai_model(model_name.clone(), &api_alias));
+          }
+        }
+      }
+    }
+  }
 
   Ok(Json(OAIModelListResponse {
     object: "list".to_string(),
-    data: all_models,
+    data: models,
   }))
 }
 
@@ -200,32 +211,26 @@ pub async fn oai_model_handler(
   State(state): State<Arc<dyn RouterState>>,
   Path(id): Path<String>,
 ) -> Result<Json<OAIModel>, ApiError> {
-  // Try to find local alias first
+  // Use unified DataService.find_alias
   if let Some(alias) = state.app_service().data_service().find_alias(&id).await {
-    let model = to_oai_model(state, alias);
-    return Ok(Json(model));
-  }
-
-  // If not found, try to find API model from DbService
-  match state
-    .app_service()
-    .db_service()
-    .get_api_model_alias(&id)
-    .await
-  {
-    Ok(Some(api_alias)) => {
-      let model = api_model_to_oai_model(api_alias);
-      Ok(Json(model))
+    match alias {
+      Alias::User(user_alias) => Ok(Json(user_alias_to_oai_model(state, user_alias))),
+      Alias::Model(model_alias) => Ok(Json(model_alias_to_oai_model(state, model_alias))),
+      Alias::Api(api_alias) => {
+        // For API alias, return the model if it exists in the models array
+        if api_alias.models.contains(&id) {
+          Ok(Json(api_model_to_oai_model(id, &api_alias)))
+        } else {
+          Err(ApiError::from(AliasNotFoundError(id)))
+        }
+      }
     }
-    Ok(None) => Err(ApiError::from(ModelRouterError::ApiModelNotFound(id))),
-    Err(_) => {
-      // Database error (e.g., not initialized), treat as not found
-      Err(ApiError::from(AliasNotFoundError(id)))
-    }
+  } else {
+    Err(ApiError::from(AliasNotFoundError(id)))
   }
 }
 
-fn to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> OAIModel {
+fn user_alias_to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> OAIModel {
   let bodhi_home = &state.app_service().setting_service().bodhi_home();
   let path = bodhi_home.join("aliases").join(alias.config_filename());
   let created = state.app_service().time_service().created_at(&path);
@@ -237,17 +242,31 @@ fn to_oai_model(state: Arc<dyn RouterState>, alias: UserAlias) -> OAIModel {
   }
 }
 
-fn api_model_to_oai_model(api_alias: ApiAlias) -> OAIModel {
-  // Use the created_at timestamp from the ApiModelAlias
-  // Convert i64 timestamp to u32 for OAIModel
-  let created = api_alias.created_at.timestamp() as u32;
-
+fn model_alias_to_oai_model(state: Arc<dyn RouterState>, alias: ModelAlias) -> OAIModel {
+  // For auto-discovered models, construct path from HF cache structure
+  // Path structure: hf_cache/models--owner--repo/snapshots/snapshot/filename
+  let hf_cache = state.app_service().setting_service().hf_cache();
+  let path = hf_cache
+    .join(alias.repo.path())
+    .join("snapshots")
+    .join(&alias.snapshot)
+    .join(&alias.filename);
+  let created = state.app_service().time_service().created_at(&path);
   OAIModel {
-    id: api_alias.id,
+    id: alias.alias,
     object: "model".to_string(),
     created,
-    // Use the provider name for owned_by field
-    owned_by: api_alias.provider,
+    owned_by: "system".to_string(),
+  }
+}
+
+fn api_model_to_oai_model(model_name: String, api_alias: &ApiAlias) -> OAIModel {
+  let created = api_alias.created_at.timestamp() as u32;
+  OAIModel {
+    id: model_name, // Use the individual model name, not api_alias.id
+    object: "model".to_string(),
+    created,
+    owned_by: api_alias.provider.clone(),
   }
 }
 
@@ -272,6 +291,7 @@ mod tests {
   async fn app() -> Router {
     let service = AppServiceStubBuilder::default()
       .with_data_service()
+      .await
       .with_db_service()
       .await
       .build()
@@ -299,24 +319,6 @@ mod tests {
         "object": "list",
         "data": [
           {
-            "id": "llama3:instruct",
-            "object": "model",
-            "created": 0,
-            "owned_by": "system"
-          },
-          {
-            "id": "testalias-exists:instruct",
-            "object": "model",
-            "created": 0,
-            "owned_by": "system"
-          },
-          {
-            "id": "tinyllama:instruct",
-            "object": "model",
-            "created": 0,
-            "owned_by": "system"
-          },
-          {
             "id": "FakeFactory/fakemodel-gguf:Q4_0",
             "object": "model",
             "created": 0,
@@ -342,6 +344,24 @@ mod tests {
           },
           {
             "id": "google/gemma-1.1-2b-it-GGUF:2b_it_v1p1",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
+          {
+            "id": "llama3:instruct",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
+          {
+            "id": "testalias-exists:instruct",
+            "object": "model",
+            "created": 0,
+            "owned_by": "system"
+          },
+          {
+            "id": "tinyllama:instruct",
             "object": "model",
             "created": 0,
             "owned_by": "system"

@@ -198,13 +198,13 @@ impl AppServiceBuilder {
     // Build services in dependency order
     let localization_service = self.get_or_build_localization_service()?;
     let hub_service = self.get_or_build_hub_service();
-    let data_service = self.get_or_build_data_service(hub_service.clone());
     let time_service = self.get_or_build_time_service();
     let encryption_key = self.get_or_build_encryption_key()?;
     let secret_service = self.get_or_build_secret_service(encryption_key.clone())?;
     let db_service = self
       .get_or_build_db_service(time_service.clone(), encryption_key)
       .await?;
+    let data_service = self.get_or_build_data_service(hub_service.clone(), db_service.clone());
     let session_service = self.get_or_build_session_service().await?;
     let cache_service = self.get_or_build_cache_service();
     let auth_service = self.get_or_build_auth_service();
@@ -238,17 +238,18 @@ impl AppServiceBuilder {
     Arc::new(HfHubService::new_from_hf_cache(hf_cache, hf_token, true))
   }
 
-  /// Gets or builds the data service, ensuring hub service dependency is resolved.
+  /// Gets or builds the data service, ensuring hub service and db service dependencies are resolved.
   fn get_or_build_data_service(
     &mut self,
     hub_service: Arc<dyn HubService>,
+    db_service: Arc<dyn DbService>,
   ) -> Arc<dyn DataService> {
     if let Some(service) = self.data_service.take() {
       return service;
     }
 
     let bodhi_home = self.setting_service.bodhi_home();
-    Arc::new(LocalDataService::new(bodhi_home, hub_service))
+    Arc::new(LocalDataService::new(bodhi_home, hub_service, db_service))
   }
 
   /// Gets or builds the time service.
