@@ -60,6 +60,8 @@ pub struct OllamaError {
     path = ENDPOINT_OLLAMA_TAGS,
     tag = API_TAG_OLLAMA,
     operation_id = "listOllamaModels",
+    summary = "List Available Models (Ollama Compatible)",
+    description = "Returns a list of all available models in Ollama API compatible format. Includes model metadata such as size, modification time, and format details.",
     responses(
         (status = 200, description = "List of available models", body = ModelsResponse,
          example = json!({
@@ -208,6 +210,8 @@ pub struct ShowResponse {
     path = ENDPOINT_OLLAMA_SHOW,
     tag = API_TAG_OLLAMA,
     operation_id = "showOllamaModel",
+    summary = "Show Model Details (Ollama Compatible)",
+    description = "Retrieves detailed information about a specific model in Ollama API compatible format. Includes model parameters, template, license, and configuration details.",
     request_body(
         content = ShowRequest,
         description = "Model name to get details for",
@@ -538,6 +542,8 @@ pub struct Options {
     path = ENDPOINT_OLLAMA_CHAT,
     tag = API_TAG_OLLAMA,
     operation_id = "chatOllamaModel",
+    summary = "Chat with Model (Ollama Compatible)",
+    description = "Creates a chat completion using Ollama API format. Supports both streaming and non-streaming responses with Ollama-specific options and response format.",
     request_body(
         content = ChatRequest,
         description = "Chat request in Ollama format",

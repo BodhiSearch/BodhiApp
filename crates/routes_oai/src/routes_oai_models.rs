@@ -88,6 +88,8 @@ impl utoipa::ToSchema for ListModelResponse {}
     path = ENDPOINT_OAI_MODELS,
     tag = API_TAG_OPENAI,
     operation_id = "listModels",
+    summary = "List Available Models (OpenAI Compatible)",
+    description = "Returns a list of all available models in OpenAI API compatible format. Includes user aliases, model aliases, and API provider aliases that can be used with the chat completions endpoint.",
     responses(
         (status = 200, description = "List of available models", 
          body = ListModelResponse,
@@ -173,8 +175,12 @@ pub async fn oai_models_handler(
     path = "/v1/models/{id}",
     tag = API_TAG_OPENAI,
     operation_id = "getModel",
+    summary = "Get Model Details (OpenAI Compatible)",
+    description = "Retrieves details for a specific model by ID in OpenAI API compatible format. The model ID can be a user alias, model alias, or API provider alias.",
     params(
-        ("id" = String, Path, description = "Model ID to get details for", example = "llama2:chat")
+        ("id" = String, Path,
+         description = "Model identifier - can be user alias (e.g., 'llama2:chat'), model alias, or API provider alias",
+         example = "llama2:chat")
     ),
     responses(
         (status = 200, description = "Model details",
