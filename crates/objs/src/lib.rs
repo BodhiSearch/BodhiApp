@@ -3,7 +3,7 @@ pub mod test_utils;
 #[cfg(all(not(feature = "test-utils"), test))]
 pub mod test_utils;
 
-mod alias;
+mod user_alias;
 mod api_model_alias;
 mod api_tags;
 mod envs;
@@ -23,7 +23,7 @@ mod token_scope;
 mod user_scope;
 mod utils;
 
-pub use alias::*;
+pub use user_alias::*;
 pub use api_model_alias::*;
 pub use api_tags::*;
 pub use envs::*;
