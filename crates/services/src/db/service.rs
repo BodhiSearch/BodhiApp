@@ -8,8 +8,8 @@ use crate::{
 };
 use chrono::{DateTime, Timelike, Utc};
 use derive_new::new;
+use objs::ApiAlias;
 use objs::{impl_error_from, AppError, ErrorType};
-use objs::{AliasSource, ApiAlias};
 use sqlx::{query_as, SqlitePool};
 use std::{fs, path::Path, str::FromStr, sync::Arc, time::UNIX_EPOCH};
 use uuid::Uuid;
@@ -765,7 +765,6 @@ impl DbService for SqliteDbService {
 
         Ok(Some(ApiAlias {
           id,
-          source: AliasSource::RemoteApi,
           provider,
           base_url,
           models,
@@ -856,7 +855,6 @@ impl DbService for SqliteDbService {
 
       aliases.push(ApiAlias {
         id,
-        source: AliasSource::RemoteApi,
         provider,
         base_url,
         models,
@@ -901,7 +899,7 @@ mod test {
     test_utils::{build_token, test_db_service, TestDbService},
   };
   use chrono::Utc;
-  use objs::{AliasSource, ApiAlias};
+  use objs::ApiAlias;
   use rstest::rstest;
   use uuid::Uuid;
 
@@ -1323,7 +1321,6 @@ mod test {
     let now = service.now();
     let alias_obj = ApiAlias::new(
       "openai",
-      AliasSource::RemoteApi,
       "openai",
       "https://api.openai.com/v1",
       vec!["gpt-4".to_string(), "gpt-3.5-turbo".to_string()],
@@ -1356,7 +1353,6 @@ mod test {
     let now = service.now();
     let mut alias_obj = ApiAlias::new(
       "claude",
-      AliasSource::RemoteApi,
       "anthropic",
       "https://api.anthropic.com/v1",
       vec!["claude-3".to_string()],
@@ -1398,7 +1394,6 @@ mod test {
     let now = service.now();
     let mut alias_obj = ApiAlias::new(
       "gemini",
-      AliasSource::RemoteApi,
       "google",
       "https://generativelanguage.googleapis.com/v1",
       vec!["gemini-pro".to_string()],
@@ -1459,7 +1454,6 @@ mod test {
     for (alias, provider, key, created_at) in &aliases {
       let alias_obj = ApiAlias::new(
         *alias,
-        AliasSource::RemoteApi,
         *provider,
         "https://api.example.com/v1",
         vec!["model1".to_string()],
@@ -1490,7 +1484,6 @@ mod test {
     let now = service.now();
     let alias_obj = ApiAlias::new(
       "to-delete",
-      AliasSource::RemoteApi,
       "test-provider",
       "https://api.test.com/v1",
       vec!["test-model".to_string()],
@@ -1522,7 +1515,6 @@ mod test {
     let now = service.now();
     let alias_obj = ApiAlias::new(
       "security-test",
-      AliasSource::RemoteApi,
       "secure-provider",
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],
@@ -1538,7 +1530,6 @@ mod test {
     // Verify different encryptions produce different results
     let alias_obj2 = ApiAlias::new(
       "security-test2",
-      AliasSource::RemoteApi,
       "secure-provider",
       "https://api.secure.com/v1",
       vec!["secure-model".to_string()],

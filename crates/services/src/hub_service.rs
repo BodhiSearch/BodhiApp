@@ -1,7 +1,7 @@
 use hf_hub::Cache;
 use objs::{
-  impl_error_from, AliasSource, AppError, ErrorType, HubFile, IoError, ObjValidationError, Repo,
-  UserAlias, UserAliasBuilder,
+  impl_error_from, AppError, ErrorType, HubFile, IoError, ModelAlias, ModelAliasBuilder,
+  ObjValidationError, Repo,
 };
 use std::{
   collections::HashSet,
@@ -113,7 +113,7 @@ pub trait HubService: std::fmt::Debug + Send + Sync {
 
   fn list_local_tokenizer_configs(&self) -> Vec<Repo>;
 
-  fn list_model_aliases(&self) -> Result<Vec<UserAlias>>;
+  fn list_model_aliases(&self) -> Result<Vec<ModelAlias>>;
 }
 
 impl HfHubService {
@@ -314,7 +314,7 @@ impl HubService for HfHubService {
 
   // model_chat_template method removed since llama.cpp now handles chat templates
 
-  fn list_model_aliases(&self) -> Result<Vec<UserAlias>> {
+  fn list_model_aliases(&self) -> Result<Vec<ModelAlias>> {
     let cache = self.hf_cache();
     let mut aliases = WalkDir::new(&cache)
       .follow_links(true)
@@ -355,12 +355,11 @@ impl HubService for HfHubService {
           .nth_back(1)
           .and_then(|s| s.split('-').nth_back(0))
           .unwrap_or_else(|| &hub_file.filename);
-        let alias = UserAliasBuilder::default()
+        let alias = ModelAliasBuilder::default()
           .alias(format!("{}:{}", hub_file.repo, qualifier))
           .repo(hub_file.repo)
           .filename(hub_file.filename)
           .snapshot(hub_file.snapshot)
-          .source(AliasSource::Model)
           .build()
           .ok()?;
         Some(alias)

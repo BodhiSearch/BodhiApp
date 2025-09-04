@@ -141,7 +141,7 @@ pub async fn create_api_model_handler(
   let now = time_service.utc_now();
   let api_alias = ApiAlias::new(
     payload.id,
-    AliasSource::RemoteApi,
+    AliasSource::Api,
     payload.provider,
     payload.base_url,
     payload.models,
@@ -1066,7 +1066,7 @@ mod tests {
     // Create API model via database
     let api_alias = ApiAlias::new(
       request.id.clone(),
-      AliasSource::RemoteApi,
+      AliasSource::Api,
       request.provider.clone(),
       request.base_url.clone(),
       request.models.clone(),
@@ -1102,7 +1102,7 @@ mod tests {
     // Create initial API model
     let api_alias = ApiAlias::new(
       "test-alias".to_string(),
-      AliasSource::RemoteApi,
+      AliasSource::Api,
       "openai".to_string(),
       "https://api.openai.com/v1".to_string(),
       vec!["gpt-3.5-turbo".to_string()],
@@ -1147,7 +1147,7 @@ mod tests {
     // Create API model
     let api_alias = ApiAlias::new(
       "to-delete".to_string(),
-      AliasSource::RemoteApi,
+      AliasSource::Api,
       "openai".to_string(),
       "https://api.openai.com/v1".to_string(),
       vec!["gpt-4".to_string()],
