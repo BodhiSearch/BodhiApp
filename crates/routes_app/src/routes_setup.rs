@@ -10,6 +10,7 @@ use axum::{
 use axum_extra::extract::WithRejection;
 use objs::{ApiError, AppError, ErrorType, OpenAIApiError, API_TAG_SETUP, API_TAG_SYSTEM};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use server_core::RouterState;
 use services::{
   AppStatus, AuthServiceError, SecretServiceError, SecretServiceExt, LOGIN_CALLBACK_PATH,
@@ -38,9 +39,11 @@ pub enum AppServiceError {
     "status": "ready"
 }))]
 pub struct AppInfo {
-  /// Application version
+  /// Application version number (semantic versioning)
+  #[schema(example = "0.1.0")]
   pub version: String,
-  /// Current application status
+  /// Current application setup and operational status
+  #[schema(example = "ready")]
   pub status: AppStatus,
 }
 
@@ -49,9 +52,22 @@ pub struct AppInfo {
     path = ENDPOINT_APP_INFO,
     tag = API_TAG_SYSTEM,
     operation_id = "getAppInfo",
+    summary = "Get Application Information",
+    description = "Retrieves current application version and status information including setup state",
     responses(
-        (status = 200, description = "Returns the status information about the Application", body = AppInfo),
-        (status = 500, description = "Internal server error", body = OpenAIApiError)
+        (status = 200, description = "Application information retrieved successfully", body = AppInfo,
+         example = json!({
+             "version": "0.1.0",
+             "status": "ready"
+         })),
+        (status = 500, description = "Internal server error", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Failed to retrieve application status",
+                 "type": "internal_server_error",
+                 "code": "system_error"
+             }
+         }))
     )
 )]
 pub async fn app_info_handler(
@@ -73,9 +89,11 @@ pub async fn app_info_handler(
   "description": "My personal AI server"
 }))]
 pub struct SetupRequest {
-  #[schema(min_length = 10, example = "My Bodhi Server")]
+  /// Server name for identification (minimum 10 characters)
+  #[schema(min_length = 10, max_length = 100, example = "My Bodhi Server")]
   pub name: String,
-  #[schema(example = "My personal AI server")]
+  /// Optional description of the server's purpose
+  #[schema(max_length = 500, example = "My personal AI server")]
   pub description: Option<String>,
 }
 
@@ -85,9 +103,8 @@ pub struct SetupRequest {
     "status": "resource-admin"
 }))]
 pub struct SetupResponse {
-  /// New application status after setup
-  /// - resource-admin: When setup in authenticated mode
-  /// - ready: When setup in non-authenticated mode
+  /// New application status after successful setup
+  #[schema(example = "resource-admin")]
   pub status: AppStatus,
 }
 
@@ -102,19 +119,37 @@ impl IntoResponse for SetupResponse {
     path = ENDPOINT_APP_SETUP,
     tag = API_TAG_SETUP,
     operation_id = "setupApp",
-    request_body = SetupRequest,
+    summary = "Setup Application",
+    description = "Initializes the application with authentication configuration and registers with the auth server",
+    request_body(
+        content = SetupRequest,
+        description = "Application setup configuration",
+        example = json!({
+            "name": "My Bodhi Server",
+            "description": "My personal AI server"
+        })
+    ),
     responses(
-        (status = 200, description = "Application setup successful", body = SetupResponse),
-        (status = 400, description = "Application is already setup", body = OpenAIApiError),
-        (status = 500, description = "Internal server error", body = OpenAIApiError,
+        (status = 200, description = "Application setup completed successfully", body = SetupResponse,
+         example = json!({
+             "status": "resource-admin"
+         })),
+        (status = 400, description = "Invalid request or application already setup", body = OpenAIApiError,
+         example = json!({
+             "error": {
+                 "message": "Server name must be at least 10 characters long",
+                 "type": "invalid_request_error",
+                 "code": "validation_error"
+             }
+         })),
+        (status = 500, description = "Internal server error during setup", body = OpenAIApiError,
          example = json!({
              "error": {
                  "message": "Failed to register with auth server",
                  "type": "internal_server_error",
                  "code": "auth_service_error"
              }
-         })
-        )
+         }))
     )
 )]
 pub async fn setup_handler(
@@ -191,19 +226,25 @@ pub async fn setup_handler(
 
 /// Response to the ping endpoint
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "message": "pong"
+}))]
 pub struct PingResponse {
-  /// always returns "pong"
+  /// Simple ping response message
+  #[schema(example = "pong")]
   pub message: String,
 }
 
-/// Simple health check endpoint
+/// Simple connectivity check endpoint
 #[utoipa::path(
     get,
     path = ENDPOINT_PING,
     tag = API_TAG_SYSTEM,
     operation_id = "pingServer",
+    summary = "Ping Server",
+    description = "Simple connectivity check to verify the server is responding",
     responses(
-        (status = 200, description = "Server is healthy", 
+        (status = 200, description = "Server is responding normally", 
          body = PingResponse,
          content_type = "application/json",
          example = json!({"message": "pong"})
@@ -218,14 +259,16 @@ pub async fn ping_handler() -> Json<PingResponse> {
   })
 }
 
-/// Simple health check endpoint
+/// Application health check endpoint
 #[utoipa::path(
   get,
   path = ENDPOINT_HEALTH,
   tag = API_TAG_SYSTEM,
   operation_id = "healthCheck",
+  summary = "Health Check",
+  description = "Comprehensive health check to verify all application components are operational",
   responses(
-      (status = 200, description = "Server is healthy",
+      (status = 200, description = "Application is healthy and fully operational",
        body = PingResponse,
        content_type = "application/json",
        example = json!({"message": "pong"})

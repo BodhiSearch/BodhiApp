@@ -264,15 +264,30 @@ impl Modify for OpenAPIEnvModifier {
       .description(Some(format!("Bodhi App {}", desc)))
       .build();
     openapi.servers = Some(vec![server]);
+
     if let Some(components) = &mut openapi.components {
+      // Enhanced Bearer Token Authentication
       components.security_schemes.insert(
         "bearer_auth".to_string(),
         SecurityScheme::Http(
           HttpBuilder::default()
             .scheme(HttpAuthScheme::Bearer)
-            .bearer_format("JWT")
+            .bearer_format("API Token")
             .description(Some(
-              "Enter the API token obtained from /bodhi/v1/tokens endpoint".to_string(),
+              "API token for programmatic access. Tokens are randomly generated with 'bapp_' prefix (e.g., bapp_1234567890abcdef). Obtain tokens from /bodhi/v1/tokens endpoint. Include as: Authorization: Bearer <token>. Required scopes: scope_token_user (basic access) or scope_token_power_user (admin access).".to_string(),
+            ))
+            .build(),
+        ),
+      );
+
+      // Enhanced Session Authentication
+      components.security_schemes.insert(
+        "session_auth".to_string(),
+        SecurityScheme::Http(
+          HttpBuilder::default()
+            .scheme(HttpAuthScheme::Bearer)
+            .description(Some(
+              "Session-based authentication using browser cookies. Authenticate via /bodhi/v1/auth/initiate endpoint. Session cookies are automatically included in browser requests. Required roles: resource_user (basic access) or resource_power_user (admin access).".to_string(),
             ))
             .build(),
         ),

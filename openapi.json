@@ -279,7 +279,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number (1-based)",
+            "description": "Page number (1-based indexing)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -289,7 +289,7 @@
           {
             "name": "page_size",
             "in": "query",
-            "description": "Number of items per page (max 100)",
+            "description": "Number of items to return per page (maximum 100)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -299,19 +299,16 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
             "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           },
           {
             "name": "sort_order",
             "in": "query",
-            "description": "Sort order (asc or desc)",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
             "required": false,
             "schema": {
               "type": "string"
@@ -884,14 +881,20 @@
         "tags": [
           "system"
         ],
+        "summary": "Get Application Information",
+        "description": "Retrieves current application version and status information including setup state",
         "operationId": "getAppInfo",
         "responses": {
           "200": {
-            "description": "Returns the status information about the Application",
+            "description": "Application information retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/AppInfo"
+                },
+                "example": {
+                  "status": "ready",
+                  "version": "0.1.0"
                 }
               }
             }
@@ -902,6 +905,13 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIApiError"
+                },
+                "example": {
+                  "error": {
+                    "code": "system_error",
+                    "message": "Failed to retrieve application status",
+                    "type": "internal_server_error"
+                  }
                 }
               }
             }
@@ -951,7 +961,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number (1-based)",
+            "description": "Page number (1-based indexing)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -961,7 +971,7 @@
           {
             "name": "page_size",
             "in": "query",
-            "description": "Number of items per page (max 100)",
+            "description": "Number of items to return per page (maximum 100)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -971,19 +981,16 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
             "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           },
           {
             "name": "sort_order",
             "in": "query",
-            "description": "Sort order (asc or desc)",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
             "required": false,
             "schema": {
               "type": "string"
@@ -1043,7 +1050,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number (1-based)",
+            "description": "Page number (1-based indexing)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1053,7 +1060,7 @@
           {
             "name": "page_size",
             "in": "query",
-            "description": "Number of items per page (max 100)",
+            "description": "Number of items to return per page (maximum 100)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1063,19 +1070,16 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
             "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           },
           {
             "name": "sort_order",
             "in": "query",
-            "description": "Sort order (asc or desc)",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
             "required": false,
             "schema": {
               "type": "string"
@@ -1432,7 +1436,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number (1-based)",
+            "description": "Page number (1-based indexing)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1442,7 +1446,7 @@
           {
             "name": "page_size",
             "in": "query",
-            "description": "Number of items per page (max 100)",
+            "description": "Number of items to return per page (maximum 100)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -1452,19 +1456,16 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
             "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           },
           {
             "name": "sort_order",
             "in": "query",
-            "description": "Sort order (asc or desc)",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
             "required": false,
             "schema": {
               "type": "string"
@@ -2080,7 +2081,7 @@
           {
             "name": "page",
             "in": "query",
-            "description": "Page number (1-based)",
+            "description": "Page number (1-based indexing)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2090,7 +2091,7 @@
           {
             "name": "page_size",
             "in": "query",
-            "description": "Number of items per page (max 100)",
+            "description": "Number of items to return per page (maximum 100)",
             "required": false,
             "schema": {
               "type": "integer",
@@ -2100,19 +2101,16 @@
           {
             "name": "sort",
             "in": "query",
-            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)",
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
             "required": false,
             "schema": {
-              "type": [
-                "string",
-                "null"
-              ]
+              "type": "string"
             }
           },
           {
             "name": "sort_order",
             "in": "query",
-            "description": "Sort order (asc or desc)",
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
             "required": false,
             "schema": {
               "type": "string"
@@ -2969,8 +2967,12 @@
         "properties": {
           "offline_token": {
             "type": "string",
-            "description": "Offline token that can be used as API Token"
+            "description": "API token with bapp_ prefix for programmatic access",
+            "example": "bapp_1234567890abcdef"
           }
+        },
+        "example": {
+          "offline_token": "bapp_1234567890abcdef"
         }
       },
       "AppInfo": {
@@ -2983,11 +2985,12 @@
         "properties": {
           "status": {
             "$ref": "#/components/schemas/AppStatus",
-            "description": "Current application status"
+            "description": "Current application setup and operational status"
           },
           "version": {
             "type": "string",
-            "description": "Application version"
+            "description": "Application version number (semantic versioning)",
+            "example": "0.1.0"
           }
         },
         "example": {
@@ -3280,20 +3283,34 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Specific error code for programmatic error handling",
+            "example": "validation_error"
           },
           "message": {
-            "type": "string"
+            "type": "string",
+            "description": "Human-readable error message describing what went wrong",
+            "example": "Validation failed: name is required"
           },
           "param": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Parameter name that caused the error (for validation errors)",
+            "example": "name"
           },
           "type": {
-            "type": "string"
+            "type": "string",
+            "description": "Error type categorizing the kind of error that occurred",
+            "example": "invalid_request_error"
           }
+        },
+        "example": {
+          "code": "validation_error",
+          "message": "Validation failed: name is required",
+          "param": "name",
+          "type": "invalid_request_error"
         }
       },
       "FetchModelsRequest": {
@@ -3683,7 +3700,16 @@
         ],
         "properties": {
           "error": {
-            "$ref": "#/components/schemas/ErrorBody"
+            "$ref": "#/components/schemas/ErrorBody",
+            "description": "Error details following OpenAI API error format"
+          }
+        },
+        "example": {
+          "error": {
+            "code": "validation_error",
+            "message": "Validation failed: name is required",
+            "param": "name",
+            "type": "invalid_request_error"
           }
         }
       },
@@ -4071,24 +4097,30 @@
         "properties": {
           "page": {
             "type": "integer",
-            "description": "Page number (1-based)",
-            "minimum": 0
+            "description": "Page number (1-based indexing)",
+            "example": 1,
+            "minimum": 1
           },
           "page_size": {
             "type": "integer",
-            "description": "Number of items per page (max 100)",
-            "minimum": 0
+            "description": "Number of items to return per page (maximum 100)",
+            "example": 30,
+            "maximum": 100,
+            "minimum": 1
           },
           "sort": {
             "type": [
               "string",
               "null"
             ],
-            "description": "Field to sort by (repo, filename, size, updated_at, snapshot)"
+            "description": "Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at",
+            "example": "updated_at"
           },
           "sort_order": {
             "type": "string",
-            "description": "Sort order (asc or desc)"
+            "description": "Sort order: 'asc' for ascending, 'desc' for descending",
+            "example": "desc",
+            "pattern": "^(asc|desc)$"
           }
         }
       },

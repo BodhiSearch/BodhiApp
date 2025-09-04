@@ -4,6 +4,7 @@ use crate::{
   ContextError,
 };
 use async_openai::types::CreateChatCompletionRequest;
+use futures::StreamExt;
 use objs::ObjValidationError;
 use services::{
   AiApiService, AiApiServiceError, AliasNotFoundError, AppService, DefaultAiApiService,
@@ -94,14 +95,15 @@ impl RouterState for DefaultRouterState {
             .forward_chat_completion(&api_alias.id, request)
             .await?;
 
-          // Convert axum::Response to reqwest::Response
+          // Convert axum::Response to reqwest::Response while preserving streaming
           // Extract parts and body from axum response
           let (parts, body) = axum_response.into_parts();
 
-          // Convert body to bytes for reqwest
-          let body_bytes = axum::body::to_bytes(body, usize::MAX).await.map_err(|e| {
-            AiApiServiceError::ApiError(format!("Failed to read response body: {}", e))
-          })?;
+          // Convert axum body to bytes stream for reqwest
+          let body_stream = body
+            .into_data_stream()
+            .map(|result| result.map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)));
+          let reqwest_body = reqwest::Body::wrap_stream(body_stream);
 
           // Build a response that can be converted to reqwest::Response
           // Use axum's re-exported http types
@@ -112,7 +114,7 @@ impl RouterState for DefaultRouterState {
             }
           }
           let http_response = builder
-            .body(body_bytes.to_vec())
+            .body(reqwest_body)
             .map_err(|e| AiApiServiceError::ApiError(format!("Failed to build response: {}", e)))?;
 
           // Convert to reqwest::Response

@@ -31,8 +31,12 @@ pub struct CreateApiTokenRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "offline_token": "bapp_1234567890abcdef"
+}))]
 pub struct ApiTokenResponse {
-  /// Offline token that can be used as API Token
+  /// API token with bapp_ prefix for programmatic access
+  #[schema(example = "bapp_1234567890abcdef")]
   offline_token: String,
 }
 

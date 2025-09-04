@@ -47,7 +47,7 @@ export type ApiToken = {
 
 export type ApiTokenResponse = {
     /**
-     * Offline token that can be used as API Token
+     * API token with bapp_ prefix for programmatic access
      */
     offline_token: string;
 };
@@ -57,11 +57,11 @@ export type ApiTokenResponse = {
  */
 export type AppInfo = {
     /**
-     * Current application status
+     * Current application setup and operational status
      */
     status: AppStatus;
     /**
-     * Application version
+     * Application version number (semantic versioning)
      */
     version: string;
 };
@@ -160,9 +160,21 @@ export type DownloadStatus = 'pending' | 'completed' | 'error';
 export type Duration = string;
 
 export type ErrorBody = {
+    /**
+     * Specific error code for programmatic error handling
+     */
     code?: string | null;
+    /**
+     * Human-readable error message describing what went wrong
+     */
     message: string;
+    /**
+     * Parameter name that caused the error (for validation errors)
+     */
     param?: string | null;
+    /**
+     * Error type categorizing the kind of error that occurred
+     */
     type: string;
 };
 
@@ -307,6 +319,9 @@ export type OllamaError = {
 };
 
 export type OpenAiApiError = {
+    /**
+     * Error details following OpenAI API error format
+     */
     error: ErrorBody;
 };
 
@@ -392,19 +407,19 @@ export type PaginatedUserAliasResponse = {
  */
 export type PaginationSortParams = {
     /**
-     * Page number (1-based)
+     * Page number (1-based indexing)
      */
     page?: number;
     /**
-     * Number of items per page (max 100)
+     * Number of items to return per page (maximum 100)
      */
     page_size?: number;
     /**
-     * Field to sort by (repo, filename, size, updated_at, snapshot)
+     * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
      */
     sort?: string | null;
     /**
-     * Sort order (asc or desc)
+     * Sort order: 'asc' for ascending, 'desc' for descending
      */
     sort_order?: string;
 };
@@ -730,19 +745,19 @@ export type ListApiModelsData = {
     path?: never;
     query?: {
         /**
-         * Page number (1-based)
+         * Page number (1-based indexing)
          */
         page?: number;
         /**
-         * Number of items per page (max 100)
+         * Number of items to return per page (maximum 100)
          */
         page_size?: number;
         /**
-         * Field to sort by (repo, filename, size, updated_at, snapshot)
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
          */
-        sort?: string | null;
+        sort?: string;
         /**
-         * Sort order (asc or desc)
+         * Sort order: 'asc' for ascending, 'desc' for descending
          */
         sort_order?: string;
     };
@@ -1069,7 +1084,7 @@ export type GetAppInfoError = GetAppInfoErrors[keyof GetAppInfoErrors];
 
 export type GetAppInfoResponses = {
     /**
-     * Returns the status information about the Application
+     * Application information retrieved successfully
      */
     200: AppInfo;
 };
@@ -1106,19 +1121,19 @@ export type ListModelFilesData = {
     path?: never;
     query?: {
         /**
-         * Page number (1-based)
+         * Page number (1-based indexing)
          */
         page?: number;
         /**
-         * Number of items per page (max 100)
+         * Number of items to return per page (maximum 100)
          */
         page_size?: number;
         /**
-         * Field to sort by (repo, filename, size, updated_at, snapshot)
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
          */
-        sort?: string | null;
+        sort?: string;
         /**
-         * Sort order (asc or desc)
+         * Sort order: 'asc' for ascending, 'desc' for descending
          */
         sort_order?: string;
     };
@@ -1148,19 +1163,19 @@ export type ListDownloadsData = {
     path?: never;
     query?: {
         /**
-         * Page number (1-based)
+         * Page number (1-based indexing)
          */
         page?: number;
         /**
-         * Number of items per page (max 100)
+         * Number of items to return per page (maximum 100)
          */
         page_size?: number;
         /**
-         * Field to sort by (repo, filename, size, updated_at, snapshot)
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
          */
-        sort?: string | null;
+        sort?: string;
         /**
-         * Sort order (asc or desc)
+         * Sort order: 'asc' for ascending, 'desc' for descending
          */
         sort_order?: string;
     };
@@ -1312,19 +1327,19 @@ export type ListAllModelsData = {
     path?: never;
     query?: {
         /**
-         * Page number (1-based)
+         * Page number (1-based indexing)
          */
         page?: number;
         /**
-         * Number of items per page (max 100)
+         * Number of items to return per page (maximum 100)
          */
         page_size?: number;
         /**
-         * Field to sort by (repo, filename, size, updated_at, snapshot)
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
          */
-        sort?: string | null;
+        sort?: string;
         /**
-         * Sort order (asc or desc)
+         * Sort order: 'asc' for ascending, 'desc' for descending
          */
         sort_order?: string;
     };
@@ -1578,19 +1593,19 @@ export type ListApiTokensData = {
     path?: never;
     query?: {
         /**
-         * Page number (1-based)
+         * Page number (1-based indexing)
          */
         page?: number;
         /**
-         * Number of items per page (max 100)
+         * Number of items to return per page (maximum 100)
          */
         page_size?: number;
         /**
-         * Field to sort by (repo, filename, size, updated_at, snapshot)
+         * Field to sort by. Common values: repo, filename, size, updated_at, snapshot, created_at
          */
-        sort?: string | null;
+        sort?: string;
         /**
-         * Sort order (asc or desc)
+         * Sort order: 'asc' for ascending, 'desc' for descending
          */
         sort_order?: string;
     };
