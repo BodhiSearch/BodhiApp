@@ -1,6 +1,4 @@
-use objs::{
-  AliasSource, AppError, BuilderError, OAIRequestParams, ObjValidationError, Repo, UserAliasBuilder,
-};
+use objs::{AppError, BuilderError, OAIRequestParams, ObjValidationError, Repo, UserAliasBuilder};
 use services::{
   AliasExistsError, AppService, DataServiceError, HubFileNotFoundError, HubServiceError,
   SNAPSHOT_MAIN,
@@ -97,7 +95,6 @@ impl CreateCommand {
       .repo(self.repo)
       .filename(self.filename)
       .snapshot(local_model_file.snapshot)
-      .source(AliasSource::User)
       .request_params(self.oai_request_params)
       .context_params(self.context_params)
       .build()?;
@@ -114,7 +111,7 @@ impl CreateCommand {
 mod test {
   use crate::{CreateCommand, CreateCommandBuilder};
   use mockall::predicate::*;
-  use objs::{HubFile, OAIRequestParamsBuilder, Repo, UserAlias, UserAliasBuilder};
+  use objs::{Alias, HubFile, OAIRequestParamsBuilder, Repo, UserAlias, UserAliasBuilder};
   use pretty_assertions::assert_eq;
   use rstest::rstest;
   use services::{
@@ -181,7 +178,7 @@ mod test {
       ])
       .build()
       .unwrap();
-    assert_eq!(expected, updated_alias);
+    assert_eq!(Alias::User(expected), updated_alias);
     Ok(())
   }
 
@@ -194,6 +191,8 @@ mod test {
     #[case] snapshot: Option<String>,
     mut test_hf_service: TestHfService,
   ) -> anyhow::Result<()> {
+    use objs::Alias;
+
     let create = CreateCommandBuilder::testalias()
       .snapshot(snapshot.clone())
       .build()
@@ -220,7 +219,7 @@ mod test {
       .data_service()
       .find_alias("testalias:instruct")
       .unwrap();
-    assert_eq!(UserAlias::testalias(), created);
+    assert_eq!(Alias::User(UserAlias::testalias()), created);
     Ok(())
   }
 
