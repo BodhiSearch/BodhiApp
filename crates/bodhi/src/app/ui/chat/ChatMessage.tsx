@@ -16,7 +16,10 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
   const formatNumber = (num: number) => num.toFixed(2);
 
   return (
-    <div className={cn('group relative flex items-start gap-3 p-3', isUser ? 'bg-background' : 'bg-muted/30')}>
+    <div 
+      data-testid={isUser ? 'user-message' : 'assistant-message'}
+      className={cn('group relative flex items-start gap-3 p-3', isUser ? 'bg-background' : 'bg-muted/30')}
+    >
       <div
         className={cn(
           'flex h-7 w-7 shrink-0 items-center justify-center rounded-md border shadow mt-1',
@@ -29,7 +32,9 @@ export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) 
       <div className="flex-1 min-w-0">
         <div className="text-xs font-medium mb-1.5">{isUser ? 'You' : 'Assistant'}</div>
 
-        <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>
+        <div data-testid={`${isUser ? 'user' : 'assistant'}-message-content`}>
+          <MemoizedReactMarkdown>{message.content}</MemoizedReactMarkdown>
+        </div>
 
         {!isUser && !isStreaming && (
           <div className="flex justify-between items-center mt-2 text-xs text-muted-foreground">

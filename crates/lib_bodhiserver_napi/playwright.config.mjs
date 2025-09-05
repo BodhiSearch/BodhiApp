@@ -16,7 +16,7 @@ const actionTimeout = 30000;
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
-  testDir: './tests-js/playwright',
+  testDir: './tests-js',
   testMatch: '**/*.spec.mjs',
   /* Run tests in files in parallel */
   fullyParallel: false, // Sequential execution for server tests
