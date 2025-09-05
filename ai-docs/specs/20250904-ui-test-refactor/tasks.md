@@ -490,374 +490,712 @@ test.describe('API Models Integration', () => {
 - **Error Resilience**: Graceful handling of authentication failures
 - **Test Data Management**: Flexible setup scenarios with unique server names
 
-## Phase 1: Test Infrastructure Foundation
-**Goal: Establish Page Object Model and test organization structure**
+## Phase 1: Vertical Migration - Chat Integration ✅ **NEXT PRIORITY**
+**Goal: Complete chat functionality end-to-end migration using established patterns**
 
-**Target Completion: Week 1**
+**Target Completion: 3-4 days**
 
-### Task 1.1: Create Directory Structure
-**Files to Create:**
-- `crates/lib_bodhiserver_napi/tests-js/specs/` - Main specs directory
-- `crates/lib_bodhiserver_napi/tests-js/pages/` - Page objects directory
-- `crates/lib_bodhiserver_napi/tests-js/fixtures/` - Test data directory
-- `crates/lib_bodhiserver_napi/tests-js/helpers/` - Enhanced utilities directory
+### Migration Target: Chat Feature Test Suite
+**Covers: Message sending, streaming responses, model selection, chat history, conversation management**
+
+Based on existing test files:
+- Current tests: None found - greenfield development opportunity
+- New structure: `crates/lib_bodhiserver_napi/tests-js/specs/core/chat/chat.spec.mjs`
+
+### Task 1.1: Create Chat Page Objects (Vertical Pattern)
+**Files to Create using battle-tested patterns:**
+
+**File: `pages/ChatPage.mjs`** - Main chat interface
+```javascript
+export class ChatPage extends BasePage {
+  selectors = {
+    chatContainer: '[data-testid="chat-container"]',
+    messageInput: '[data-testid="message-input"]', 
+    sendButton: '[data-testid="send-button"]',
+    modelSelector: '[data-testid="model-selector"]',
+    messageHistory: '[data-testid="message-history"]',
+    newChatButton: '[data-testid="new-chat-button"]',
+    streamingResponse: '[data-testid="streaming-response"]'
+  };
+  
+  async sendMessage(message) {
+    await this.fillTestId('message-input', message);
+    await this.clickTestId('send-button');
+  }
+  
+  async waitForResponse(expectedContent) {
+    await expect(this.page.locator(this.selectors.messageHistory).last())
+      .toContainText(expectedContent);
+  }
+  
+  async selectModel(modelName) {
+    await this.clickTestId('model-selector');
+    const visibleOption = this.page.locator(`[data-testid="model-option-${modelName}"]`).locator('visible=true').first();
+    await expect(visibleOption).toBeVisible();
+    await visibleOption.click();
+  }
+}
+```
+
+**File: `fixtures/ChatFixtures.mjs`** - Chat test data
+```javascript
+export class ChatFixtures {
+  static createChatScenarios() {
+    return {
+      basicQuestions: [
+        { input: 'What day comes after Monday?', expectedContains: 'Tuesday' },
+        { input: 'What is 2+2?', expectedContains: '4' },
+        { input: 'What color is the sky?', expectedContains: 'blue' }
+      ],
+      conversationFlow: [
+        { message: 'Hello, what can you help me with?', expectResponse: true },
+        { message: 'Can you explain what an API is?', expectResponse: true }
+      ]
+    };
+  }
+}
+```
+
+### Task 1.2: Complete Chat Integration Test Suite
+**File: `specs/core/chat/chat.spec.mjs`**
+
+**Implementation using proven consolidation approach:**
+```javascript
+test('complete chat functionality with model integration and conversation flow', async ({ page }) => {
+  // Step 1: Login and navigation
+  await loginPage.performOAuthLogin();
+  
+  // Step 2: Navigate from models to chat (proven integration pattern)
+  await modelsPage.navigateToModels();
+  await modelsPage.clickChatWithModel('gpt-4');
+  
+  // Step 3: Chat functionality testing
+  await chatPage.sendMessage('What day comes after Monday?');
+  await chatPage.waitForResponse('Tuesday');
+  
+  // Step 4: Model switching test
+  await chatPage.selectModel('gpt-3.5-turbo');
+  await chatPage.sendMessage('What is 2+2?');
+  await chatPage.waitForResponse('4');
+  
+  // Step 5: New conversation test
+  await chatPage.startNewConversation();
+  await chatPage.verifyEmptyChat();
+  
+  // Step 6: Streaming response test (if applicable)
+  await chatPage.sendMessage('Explain what an API is');
+  await chatPage.waitForStreamingComplete();
+});
+
+test('chat error handling and edge cases', async ({ page }) => {
+  await loginPage.performOAuthLogin();
+  await chatPage.navigateToChat();
+  
+  // Test empty message handling
+  await chatPage.verifySendButtonDisabledForEmptyMessage();
+  
+  // Test maximum message length
+  await chatPage.sendMessage('x'.repeat(10000));
+  await chatPage.expectValidationError();
+  
+  // Test network disconnection recovery
+  await chatPage.simulateNetworkError();
+  await chatPage.sendMessage('Test message');
+  await chatPage.expectNetworkErrorHandling();
+});
+```
+
+### Task 1.3: Add Required data-testid Attributes
+**Add missing data-testid attributes to chat components (learned pattern):**
+- Chat container, message input, send button
+- Model selector dropdown and options
+- Message history container and individual messages
+- Streaming response indicators
+- New chat/clear conversation buttons
+
+### Task 1.4: Integration with Existing Infrastructure
+**Leverage established patterns:**
+- Use existing `LoginPage` and `ModelsListPage` from Phase 0
+- Extend `BasePage` with chat-specific common methods
+- Use established visible button selection pattern for responsive layouts
+- Apply proven exact text matching for model selection
+- Follow deterministic testing principles with clear assertions
+
+### Success Criteria for Phase 1
+- ✅ **Complete Feature Coverage**: Chat sending, receiving, model switching, conversation management
+- ✅ **Integration Tested**: Navigation from models page to chat with pre-selected model
+- ✅ **Error Handling**: Network errors, validation errors, edge cases covered
+- ✅ **Pattern Consistency**: Page Object Model, fixtures, consolidated tests
+- ✅ **Reliability**: Tests pass consistently with no flakiness
+- ✅ **Maintainability**: Clear, well-structured test code following established conventions
+
+## Phase 2: Vertical Migration - Local Models Management
+**Goal: Complete local models functionality end-to-end migration**
+
+**Target Completion: 3-4 days** 
+
+### Migration Target: Local Models Test Suite
+**Covers: Model aliases, local model configuration, HuggingFace integration, model downloading**
+
+Based on existing infrastructure:
+- Leverage existing `ModelsListPage` and `ApiModelFormPage` from Phase 0
+- Extend with local model-specific functionality
+- New structure: `specs/core/local-models/local-models.spec.mjs`
+
+### Task 2.1: Extend Page Objects for Local Models (Vertical Pattern)
+**Files to Extend using proven patterns:**
+
+**File: `pages/LocalModelFormPage.mjs`** - Local model configuration
+```javascript
+export class LocalModelFormPage extends BasePage {
+  selectors = {
+    modelAliasInput: '[data-testid="local-model-alias"]',
+    huggingFaceRepoInput: '[data-testid="huggingface-repo"]', 
+    filenameInput: '[data-testid="model-filename"]',
+    downloadButton: '[data-testid="download-model-button"]',
+    createAliasButton: '[data-testid="create-alias-button"]',
+    downloadProgress: '[data-testid="download-progress"]'
+  };
+  
+  async fillLocalModelInfo(alias, repo, filename) {
+    await this.fillTestId('local-model-alias', alias);
+    await this.fillTestId('huggingface-repo', repo);
+    await this.fillTestId('model-filename', filename);
+  }
+  
+  async downloadModel() {
+    await this.clickTestId('download-model-button');
+    await this.waitForDownloadComplete();
+  }
+  
+  async createAlias() {
+    await this.clickTestId('create-alias-button');
+    await this.page.waitForURL(url => url.pathname === '/ui/models/');
+  }
+}
+```
+
+**File: `fixtures/LocalModelFixtures.mjs`** - Local model test data
+```javascript
+export class LocalModelFixtures {
+  static createLocalModelData(overrides = {}) {
+    const timestamp = Date.now();
+    return {
+      alias: `test-local-${timestamp}`,
+      repo: 'microsoft/DialoGPT-small',
+      filename: 'pytorch_model.bin',
+      provider: 'HuggingFace',
+      ...overrides
+    };
+  }
+  
+  static getTestModels() {
+    return [
+      { repo: 'microsoft/DialoGPT-small', filename: 'pytorch_model.bin' },
+      { repo: 'gpt2', filename: 'pytorch_model.bin' }
+    ];
+  }
+}
+```
+
+### Task 2.2: Complete Local Models Integration Test Suite
+**File: `specs/core/local-models/local-models.spec.mjs`**
+
+```javascript
+test('complete local model lifecycle with download and chat integration', async ({ page }) => {
+  const modelData = LocalModelFixtures.createLocalModelData();
+  
+  // Step 1: Login and navigation
+  await loginPage.performOAuthLogin();
+  await modelsPage.navigateToModels();
+  
+  // Step 2: Create new local model alias
+  await modelsPage.clickNewLocalModel();
+  await localModelFormPage.fillLocalModelInfo(modelData.alias, modelData.repo, modelData.filename);
+  
+  // Step 3: Download model (if needed)
+  await localModelFormPage.downloadModel();
+  await localModelFormPage.waitForDownloadComplete();
+  
+  // Step 4: Create alias and verify in list
+  await localModelFormPage.createAlias();
+  await modelsPage.verifyLocalModelInList(modelData.alias, modelData.repo);
+  
+  // Step 5: Test chat integration with local model
+  await modelsPage.clickChatWithModel(modelData.alias);
+  await chatPage.sendMessage('Hello');
+  await chatPage.waitForResponse();
+  
+  // Step 6: Edit and delete model
+  await modelsPage.navigateToModels();
+  await modelsPage.editModel(modelData.alias);
+  await localModelFormPage.verifyFormPreFilled(modelData.alias, modelData.repo);
+  await localModelFormPage.updateModel();
+  
+  await modelsPage.deleteModel(modelData.alias);
+});
+
+test('local model error handling and validation', async ({ page }) => {
+  await loginPage.performOAuthLogin();
+  await modelsPage.navigateToModels();
+  await modelsPage.clickNewLocalModel();
+  
+  // Test validation errors
+  await localModelFormPage.createAlias(); // Empty form
+  await localModelFormPage.expectValidationErrors(['Alias required', 'Repository required']);
+  
+  // Test invalid repository
+  await localModelFormPage.fillLocalModelInfo('test', 'invalid-repo', 'model.bin');
+  await localModelFormPage.downloadModel();
+  await localModelFormPage.expectDownloadError('Repository not found');
+  
+  // Test duplicate alias
+  const existingAlias = 'existing-model';
+  await localModelFormPage.fillLocalModelInfo(existingAlias, 'microsoft/DialoGPT-small', 'model.bin');
+  await localModelFormPage.expectAliasValidationError('Alias already exists');
+});
+```
+
+## Phase 3: Vertical Migration - Settings Management
+**Goal: Complete settings functionality end-to-end migration**
+
+**Target Completion: 3-4 days**
+
+### Migration Target: Settings Test Suite
+**Covers: Application settings, user preferences, system configuration, OAuth settings**
+
+Based on existing patterns:
+- Create new `SettingsPage` using established Page Object Model
+- New structure: `specs/core/settings/settings.spec.mjs`
+- Follow consolidation pattern from Phase 0 learnings
+
+### Task 3.1: Create Settings Page Objects (Vertical Pattern)
+**Files to Create using battle-tested patterns:**
+
+**File: `pages/SettingsPage.mjs`** - Settings management interface
+```javascript
+export class SettingsPage extends BasePage {
+  selectors = {
+    settingsContainer: '[data-testid="settings-container"]',
+    generalTab: '[data-testid="settings-tab-general"]',
+    authTab: '[data-testid="settings-tab-auth"]',
+    systemTab: '[data-testid="settings-tab-system"]',
+    saveButton: '[data-testid="save-settings-button"]',
+    resetButton: '[data-testid="reset-settings-button"]',
+    exportButton: '[data-testid="export-settings-button"]'
+  };
+  
+  async navigateToSettings() {
+    await this.navigate('/ui/settings/');
+    await this.expectVisible(this.selectors.settingsContainer);
+  }
+  
+  async switchToTab(tabName) {
+    await this.clickTestId(`settings-tab-${tabName}`);
+    await this.page.waitForTimeout(300); // Tab transition
+  }
+  
+  async updateSetting(settingId, value) {
+    await this.fillTestId(`setting-${settingId}`, value);
+  }
+  
+  async saveSettings() {
+    await this.clickTestId('save-settings-button');
+    await this.waitForToast('Settings saved successfully');
+  }
+}
+```
+
+**File: `fixtures/SettingsFixtures.mjs`** - Settings test data
+```javascript
+export class SettingsFixtures {
+  static createSettingsData() {
+    return {
+      general: {
+        theme: 'dark',
+        language: 'en',
+        autoSave: true
+      },
+      auth: {
+        sessionTimeout: 3600,
+        requireReauth: false
+      },
+      system: {
+        maxConcurrentChats: 3,
+        logLevel: 'info'
+      }
+    };
+  }
+  
+  static getValidationScenarios() {
+    return [
+      { field: 'sessionTimeout', invalid: -1, error: 'Must be positive number' },
+      { field: 'maxConcurrentChats', invalid: 0, error: 'Must be at least 1' }
+    ];
+  }
+}
+```
+
+### Task 3.2: Complete Settings Integration Test Suite
+**File: `specs/core/settings/settings.spec.mjs`**
+
+```javascript
+test('complete settings management lifecycle with persistence and validation', async ({ page }) => {
+  const settingsData = SettingsFixtures.createSettingsData();
+  
+  // Step 1: Login and navigation
+  await loginPage.performOAuthLogin();
+  await settingsPage.navigateToSettings();
+  
+  // Step 2: Update general settings
+  await settingsPage.switchToTab('general');
+  await settingsPage.updateSetting('theme', settingsData.general.theme);
+  await settingsPage.updateSetting('language', settingsData.general.language);
+  await settingsPage.saveSettings();
+  
+  // Step 3: Update auth settings
+  await settingsPage.switchToTab('auth');
+  await settingsPage.updateSetting('session-timeout', settingsData.auth.sessionTimeout);
+  await settingsPage.saveSettings();
+  
+  // Step 4: Verify settings persistence
+  await page.reload();
+  await settingsPage.navigateToSettings();
+  await settingsPage.verifySettingValue('theme', settingsData.general.theme);
+  
+  // Step 5: Export/import settings
+  await settingsPage.exportSettings();
+  await settingsPage.verifyExportFile();
+  
+  // Step 6: Reset settings
+  await settingsPage.resetSettings();
+  await settingsPage.verifyDefaultSettings();
+});
+
+test('settings validation and error handling', async ({ page }) => {
+  await loginPage.performOAuthLogin();
+  await settingsPage.navigateToSettings();
+  
+  const validationScenarios = SettingsFixtures.getValidationScenarios();
+  
+  for (const scenario of validationScenarios) {
+    await settingsPage.updateSetting(scenario.field, scenario.invalid);
+    await settingsPage.saveSettings();
+    await settingsPage.expectValidationError(scenario.error);
+  }
+  
+  // Test connection settings validation
+  await settingsPage.switchToTab('auth');
+  await settingsPage.updateSetting('oauth-url', 'invalid-url');
+  await settingsPage.testConnection();
+  await settingsPage.expectConnectionError('Invalid OAuth URL');
+});
+```
+
+## Phase 4: Vertical Migration - Complete User Journeys
+**Goal: End-to-end user journey testing using established feature components**
+
+**Target Completion: 4-5 days**
+
+### Migration Target: User Journey Test Suite
+**Covers: First-time setup to productive usage, power user workflows, error recovery journeys**
+
+Based on Phase 0-3 components:
+- Leverage all existing page objects (Login, Models, Chat, Settings, Setup)
+- Create comprehensive journey flows
+- New structure: `specs/journeys/user-journeys.spec.mjs`
+
+### Task 4.1: Complete User Journey Test Suite
+**File: `specs/journeys/user-journeys.spec.mjs`**
+
+```javascript
+test('complete first-time user journey: setup to productive chat', async ({ page }) => {
+  // Step 1: First-time setup flow (using Phase 0.1 components)
+  const setupData = SetupFixtures.createSetupScenario();
+  await setupPage.completeFirstTimeSetup(setupData);
+  
+  // Step 2: Create first API model (using Phase 0 components)
+  const apiModelData = ApiModelFixtures.createModelData();
+  await modelsPage.navigateToModels();
+  await modelsPage.clickNewApiModel();
+  await apiModelFormPage.fillBasicInfo(apiModelData.modelId, process.env.INTEG_TEST_OPENAI_API_KEY);
+  await apiModelFormPage.fetchAndSelectModels(['gpt-4']);
+  await apiModelFormPage.testConnection();
+  await apiModelFormPage.createModel();
+  
+  // Step 3: First chat experience (using Phase 1 components)
+  await modelsPage.clickChatWithModel(apiModelData.modelId);
+  await chatPage.sendMessage('Hello! What can you help me with?');
+  await chatPage.waitForResponse();
+  
+  // Step 4: Explore settings (using Phase 3 components)
+  await settingsPage.navigateToSettings();
+  await settingsPage.switchToTab('general');
+  await settingsPage.updateSetting('theme', 'dark');
+  await settingsPage.saveSettings();
+  
+  // Step 5: Create local model (using Phase 2 components)
+  const localModelData = LocalModelFixtures.createLocalModelData();
+  await modelsPage.navigateToModels();
+  await modelsPage.clickNewLocalModel();
+  await localModelFormPage.fillLocalModelInfo(localModelData.alias, localModelData.repo, localModelData.filename);
+  await localModelFormPage.createAlias();
+  
+  // Step 6: Multi-model conversation
+  await modelsPage.clickChatWithModel(localModelData.alias);
+  await chatPage.sendMessage('What kind of model are you?');
+  await chatPage.waitForResponse();
+  
+  await chatPage.selectModel(apiModelData.modelId);
+  await chatPage.sendMessage('And what about you?');
+  await chatPage.waitForResponse();
+});
+
+test('power user workflow: rapid model management and advanced chat', async ({ page }) => {
+  await loginPage.performOAuthLogin();
+  
+  // Rapid model creation workflow
+  const models = [
+    ApiModelFixtures.createModelData({ modelId: 'gpt-4-power' }),
+    ApiModelFixtures.createModelData({ modelId: 'gpt-3.5-power' }),
+    LocalModelFixtures.createLocalModelData({ alias: 'local-power' })
+  ];
+  
+  // Batch create models
+  for (const model of models.slice(0, 2)) {
+    await modelsPage.createApiModelQuick(model);
+  }
+  await modelsPage.createLocalModelQuick(models[2]);
+  
+  // Rapid model switching in chat
+  await chatPage.navigateToChat();
+  for (const model of models) {
+    await chatPage.selectModel(model.modelId || model.alias);
+    await chatPage.sendMessage(`Testing ${model.modelId || model.alias}`);
+    await chatPage.waitForResponse();
+  }
+  
+  // Bulk model operations
+  await modelsPage.navigateToModels();
+  await modelsPage.selectMultipleModels(models.map(m => m.modelId || m.alias));
+  await modelsPage.bulkDelete();
+  await modelsPage.confirmBulkOperation();
+});
+
+test('error recovery journey: network failures to successful completion', async ({ page }) => {
+  await loginPage.performOAuthLogin();
+  
+  // Simulate network issues during model creation
+  await modelsPage.navigateToModels();
+  await modelsPage.clickNewApiModel();
+  
+  const modelData = ApiModelFixtures.createModelData();
+  await apiModelFormPage.fillBasicInfo(modelData.modelId, 'invalid-api-key');
+  
+  // Test connection failure and recovery
+  await apiModelFormPage.testConnection();
+  await apiModelFormPage.expectConnectionError('Invalid API key');
+  
+  await apiModelFormPage.fillBasicInfo(modelData.modelId, process.env.INTEG_TEST_OPENAI_API_KEY);
+  await apiModelFormPage.testConnection();
+  await apiModelFormPage.createModel();
+  
+  // Network failure during chat and recovery
+  await modelsPage.clickChatWithModel(modelData.modelId);
+  await chatPage.simulateNetworkFailure();
+  await chatPage.sendMessage('This should fail initially');
+  await chatPage.expectNetworkError();
+  
+  await chatPage.restoreNetworkConnection();
+  await chatPage.retryLastMessage();
+  await chatPage.waitForResponse();
+  
+  // Session timeout and reauth
+  await chatPage.simulateSessionTimeout();
+  await chatPage.sendMessage('This should trigger reauth');
+  await loginPage.expectLoginRedirect();
+  await loginPage.performOAuthLogin('/ui/chat/');
+  await chatPage.verifyReturnedToChat();
+});
+```
+
+### Task 4.2: Integration Quality Tests
+**File: `specs/quality/integration-quality.spec.mjs`**
+
+```javascript
+test('responsive design integration across all features', async ({ page }) => {
+  const viewports = [{ width: 375, height: 667 }, { width: 768, height: 1024 }, { width: 1920, height: 1080 }];
+  
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    
+    // Test responsive behavior across all migrated features
+    await loginPage.performOAuthLogin();
+    await modelsPage.verifyResponsiveLayout(viewport.width);
+    await chatPage.verifyResponsiveLayout(viewport.width);
+    await settingsPage.verifyResponsiveLayout(viewport.width);
+    
+    // Test responsive interactions
+    await modelsPage.testResponsiveModelCreation(viewport.width);
+    await chatPage.testResponsiveChatting(viewport.width);
+  }
+});
+
+test('performance integration with realistic data volumes', async ({ page }) => {
+  await loginPage.performOAuthLogin();
+  
+  // Create realistic test data
+  const manyModels = Array.from({length: 20}, (_, i) => 
+    ApiModelFixtures.createModelData({modelId: `perf-test-${i}`})
+  );
+  
+  // Performance test model list with many items
+  for (const model of manyModels.slice(0, 5)) {
+    await modelsPage.createApiModelQuick(model);
+  }
+  
+  await modelsPage.navigateToModels();
+  await modelsPage.measurePageLoadTime(); // Should be < 2s
+  await modelsPage.testPaginationPerformance();
+  
+  // Performance test chat with long conversations
+  await chatPage.navigateToChat();
+  await chatPage.simulateLongConversation(50); // 50 messages
+  await chatPage.measureResponseTime(); // Should be < 5s for new messages
+  
+  // Cleanup
+  await modelsPage.bulkDeleteAllTestModels();
+});
+```
+
+## Phase 5: Test Infrastructure & Documentation
+**Goal: Finalize test infrastructure and create comprehensive documentation**
+
+**Target Completion: 2-3 days**
+
+### Task 5.1: Test Suite Organization & Configuration
+**Based on proven patterns from Phases 0-4**
 
 **Actions:**
-- [ ] Create `specs/auth/` directory for authentication tests
-- [ ] Create `specs/core/chat/` directory for chat tests
-- [ ] Create `specs/core/models/` directory for model tests
-- [ ] Create `specs/core/settings/` directory for settings tests
-- [ ] Create `specs/admin/` directory for admin features
-- [ ] Create `specs/setup/` directory for onboarding tests
-- [ ] Create `specs/regression/` directory for edge cases
-- [ ] **Test:** Verify directory structure is created and accessible
+- ✅ Directory structure established and proven
+- ✅ Page Object Model battle-tested across all features
+- ✅ Test data fixtures validated in production use
+- [ ] Configure test suite categories (smoke, integration, full)
+- [ ] Optimize parallel execution using lessons learned
+- [ ] Establish test tagging for selective execution
+- [ ] Document test isolation patterns that work
 
-### Task 1.2: Implement Base Page Object Model
-**File: `crates/lib_bodhiserver_napi/tests-js/pages/BasePage.mjs`**
+**File: Enhanced `playwright.config.mjs`**
+```javascript
+export default {
+  testDir: './tests-js',
+  projects: [
+    {
+      name: 'smoke',
+      grep: /@smoke/,
+      testMatch: '**/specs/**/*.spec.mjs'
+    },
+    {
+      name: 'integration', 
+      grep: /@integration/,
+      testMatch: '**/specs/core/**/*.spec.mjs'
+    },
+    {
+      name: 'journeys',
+      grep: /@journey/,
+      testMatch: '**/specs/journeys/**/*.spec.mjs'
+    }
+  ]
+};
+```
 
+### Task 5.2: Comprehensive Test Documentation
+**Capture all lessons learned from vertical migration approach**
+
+**File: `tests-js/README.md`** - Complete implementation guide
+```markdown
+# BodhiApp UI Test Suite
+
+## Proven Architecture (Battle-Tested)
+
+### Page Object Model Structure
+- `pages/BasePage.mjs` - Common functionality across all pages
+- `pages/LoginPage.mjs` - OAuth authentication flow (proven reliable)
+- `pages/ModelsListPage.mjs` - Model CRUD operations with responsive layout handling
+- `pages/ApiModelFormPage.mjs` - API model configuration with exact text matching
+- `pages/ChatPage.mjs` - Chat functionality with streaming support
+- `fixtures/` - Test data factories with cleanup patterns
+
+### Proven Patterns
+1. **Vertical Migration**: Complete feature migration vs partial infrastructure
+2. **Test Consolidation**: Fewer comprehensive tests vs many small tests
+3. **Visible Element Selection**: Handle responsive layouts with duplicate elements
+4. **Exact Text Matching**: Prevent selector ambiguity issues
+5. **Deterministic Testing**: Clear assertions, no try-catch patterns
+```
+
+**File: `tests-js/PATTERNS.md`** - Implementation patterns
+```markdown
+# Battle-Tested Test Patterns
+
+## Selector Strategy (Learned from Production Issues)
+
+### data-testid Usage
+- Use `[data-testid="element-name"]` for reliable element selection
+- Add data-testid to all interactive elements during implementation
+
+### Responsive Layout Handling
+Problem: Responsive layouts create duplicate elements
+Solution: Select visible elements
+
+```javascript
+// ❌ Fails with duplicate elements
+const button = this.page.locator('[data-testid="chat-button"]');
+
+// ✅ Works with responsive layouts  
+const visibleButton = this.page.locator('[data-testid="chat-button"]').locator('visible=true').first();
+```
+
+### Exact Text Matching
+Problem: Partial text matches cause ambiguity
+Solution: Use exact text selectors
+
+```javascript
+// ❌ "gpt-4" matches "gpt-4-0613" 
+has-text("${model}")
+
+// ✅ Exact match only
+>> text="${model}"
+```
+```
+
+### Task 5.3: CI/CD Integration Templates
+**File: Scripts for different test execution modes**
+
+```bash
+# scripts/test-smoke.sh
+npm run test -- --grep="@smoke"
+
+# scripts/test-integration.sh  
+npm run test -- --grep="@integration"
+
+# scripts/test-full.sh
+npm run test
+```
+
+### Task 5.4: Final Migration Cleanup
 **Actions:**
-- [ ] Create `BasePage` class with constructor accepting Playwright page
-- [ ] Implement `navigate(path)` method with SPA ready wait
-- [ ] Implement `waitForSelector(selector)` with timeout handling
-- [ ] Implement `clickTestId(testId)` using data-testid attributes
-- [ ] Implement `fillTestId(testId, value)` for form inputs
-- [ ] Implement `getTextContent(selector)` for assertions
-- [ ] Implement `isVisible(selector)` for visibility checks
-- [ ] Implement `takeScreenshot(name)` for visual debugging
-- [ ] **Test:** Create unit test for BasePage methods
+- [ ] Remove old test files from `tests-js/playwright/` directory
+- [ ] Update package.json test scripts to use new structure
+- [ ] Verify all environment variables documented
+- [ ] Create troubleshooting guide for common issues
 
-### Task 1.3: Create Page Objects for Core Pages
-**Files to Create:**
-- `pages/LoginPage.mjs`
-- `pages/ChatPage.mjs`
-- `pages/ModelsPage.mjs`
-- `pages/SettingsPage.mjs`
-- `pages/SetupPage.mjs`
-
-**Actions:**
-- [ ] LoginPage: Implement login form interaction methods
-- [ ] LoginPage: Add OAuth flow handling methods
-- [ ] ChatPage: Implement message sending methods
-- [ ] ChatPage: Add model selection methods
-- [ ] ChatPage: Add message history navigation
-- [ ] ModelsPage: Implement model CRUD operations
-- [ ] ModelsPage: Add filtering and sorting methods
-- [ ] SettingsPage: Implement settings update methods
-- [ ] SetupPage: Add setup flow navigation
-- [ ] **Test:** Create example test using each page object
-
-### Task 1.4: Test Data Factories
-**File: `crates/lib_bodhiserver_napi/tests-js/fixtures/testData.mjs`**
-
-**Actions:**
-- [ ] Create `UserFactory` for test user generation
-- [ ] Create `ModelFactory` for local and API models
-- [ ] Create `MessageFactory` for chat messages
-- [ ] Create `SettingsFactory` for configuration
-- [ ] Create `TokenFactory` for API tokens
-- [ ] Implement `cleanup()` methods for each factory
-- [ ] Add randomization utilities for unique data
-- [ ] **Test:** Unit tests for data factory methods
-
-### Task 1.5: Enhanced Test Helpers
-**File: `crates/lib_bodhiserver_napi/tests-js/helpers/enhanced-helpers.mjs`**
-
-**Actions:**
-- [ ] Create `waitForStreamingResponse()` for chat streaming
-- [ ] Create `mockLLMResponse()` for testing without real LLM
-- [ ] Create `interceptAPICall()` for API mocking
-- [ ] Create `uploadFile()` helper for file operations
-- [ ] Create `clearLocalStorage()` for test isolation
-- [ ] Create `setAuthToken()` for authenticated requests
-- [ ] Create `captureNetworkLogs()` for debugging
-- [ ] **Test:** Integration test for helper functions
-
-## Phase 2: Core Feature Tests
-**Goal: Implement comprehensive tests for core functionality**
-
-**Target Completion: Week 2**
-
-### Task 2.1: Chat Interface Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/core/chat/chat-basic.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Send simple message and receive response
-- [ ] Test: Select different models
-- [ ] Test: Clear chat history
-- [ ] Test: Start new chat conversation
-- [ ] Test: Navigate between multiple chats
-- [ ] Test: Search in chat history
-- [ ] Test: Copy message content
-- [ ] Test: Delete individual messages
-- [ ] **Verification:** All tests pass with real backend
-
-### Task 2.2: Chat Streaming Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/core/chat/chat-streaming.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Streaming response visualization
-- [ ] Test: Stop streaming mid-response
-- [ ] Test: Resume after stream interruption
-- [ ] Test: Handle network disconnection during stream
-- [ ] Test: Multiple concurrent streaming sessions
-- [ ] Test: Stream timeout handling
-- [ ] Test: Large response streaming
-- [ ] **Verification:** Streaming behavior correct
-
-### Task 2.3: Chat Settings Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/core/chat/chat-settings.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Adjust temperature setting
-- [ ] Test: Modify max tokens
-- [ ] Test: Set system prompt
-- [ ] Test: Configure stop words
-- [ ] Test: Toggle streaming on/off
-- [ ] Test: Save and load chat preferences
-- [ ] Test: Reset to default settings
-- [ ] **Verification:** Settings persist correctly
-
-### Task 2.4: Model Management Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/core/models/model-crud.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Create new local model alias
-- [ ] Test: Edit existing model configuration
-- [ ] Test: Delete model with confirmation
-- [ ] Test: Duplicate model configuration
-- [ ] Test: Search and filter models
-- [ ] Test: Sort models by different criteria
-- [ ] Test: Pagination with many models
-- [ ] **Verification:** CRUD operations work correctly
-
-### Task 2.5: API Model Configuration Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/core/models/api-models.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Add OpenAI API configuration
-- [ ] Test: Test API connection
-- [ ] Test: Select API models to enable
-- [ ] Test: Update API key
-- [ ] Test: Handle invalid API key
-- [ ] Test: Switch between API providers
-- [ ] Test: Delete API configuration
-- [ ] **Verification:** API models integrate correctly
-
-### Task 2.6: Settings Management Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/core/settings/settings.spec.mjs`**
-
-**Actions:**
-- [ ] Test: View all settings
-- [ ] Test: Update individual setting
-- [ ] Test: Validate setting constraints
-- [ ] Test: Reset setting to default
-- [ ] Test: Export settings configuration
-- [ ] Test: Import settings from file
-- [ ] Test: Handle invalid setting values
-- [ ] **Verification:** Settings management robust
-
-## Phase 3: User Journey Tests
-**Goal: Test complete user workflows end-to-end**
-
-**Target Completion: Week 3**
-
-### Task 3.1: First-Time User Journey
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/journeys/first-time-user.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Complete setup wizard
-- [ ] Test: Configure first model
-- [ ] Test: Send first chat message
-- [ ] Test: Explore UI features
-- [ ] Test: Access help documentation
-- [ ] Test: Configure preferences
-- [ ] Test: Complete onboarding
-- [ ] **Verification:** Smooth first-time experience
-
-### Task 3.2: Power User Workflow
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/journeys/power-user.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Manage multiple model configurations
-- [ ] Test: Switch between models rapidly
-- [ ] Test: Use keyboard shortcuts
-- [ ] Test: Bulk operations on models
-- [ ] Test: Advanced chat features
-- [ ] Test: Custom system prompts
-- [ ] Test: Performance with many chats
-- [ ] **Verification:** Efficient power user features
-
-### Task 3.3: API Developer Journey
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/journeys/api-developer.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Generate API token
-- [ ] Test: Test API endpoints
-- [ ] Test: Revoke and regenerate tokens
-- [ ] Test: Monitor API usage
-- [ ] Test: Configure rate limits
-- [ ] Test: Access API documentation
-- [ ] Test: Handle API errors
-- [ ] **Verification:** Complete API workflow
-
-### Task 3.4: Admin User Journey
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/journeys/admin-user.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Manage user accounts
-- [ ] Test: View system statistics
-- [ ] Test: Configure global settings
-- [ ] Test: Monitor system health
-- [ ] Test: Manage permissions
-- [ ] Test: Audit user actions
-- [ ] Test: System maintenance tasks
-- [ ] **Verification:** Admin capabilities complete
-
-## Phase 4: Quality Assurance Tests
-**Goal: Ensure accessibility, performance, and visual quality**
-
-**Target Completion: Week 4**
-
-### Task 4.1: Accessibility Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/quality/accessibility.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Keyboard navigation throughout app
-- [ ] Test: Screen reader compatibility
-- [ ] Test: ARIA labels and roles
-- [ ] Test: Color contrast compliance
-- [ ] Test: Focus management
-- [ ] Test: Skip navigation links
-- [ ] Test: Form field labels
-- [ ] **Verification:** WCAG 2.1 AA compliance
-
-### Task 4.2: Responsive Design Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/quality/responsive.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Mobile viewport (360px)
-- [ ] Test: Tablet viewport (768px)
-- [ ] Test: Desktop viewport (1920px)
-- [ ] Test: Portrait/landscape orientation
-- [ ] Test: Touch interactions on mobile
-- [ ] Test: Responsive navigation menu
-- [ ] Test: Adaptive layouts
-- [ ] **Verification:** Responsive on all devices
-
-### Task 4.3: Performance Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/quality/performance.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Page load time metrics
-- [ ] Test: Time to interactive (TTI)
-- [ ] Test: First contentful paint (FCP)
-- [ ] Test: Memory usage over time
-- [ ] Test: Performance with 100+ models
-- [ ] Test: Performance with 1000+ messages
-- [ ] Test: Concurrent user simulation
-- [ ] **Verification:** Performance within targets
-
-### Task 4.4: Visual Regression Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/quality/visual.spec.mjs`**
-
-**Actions:**
-- [ ] Setup: Configure screenshot comparison
-- [ ] Test: Capture baseline screenshots
-- [ ] Test: Compare layout changes
-- [ ] Test: Dark/light theme consistency
-- [ ] Test: Component visual states
-- [ ] Test: Error state appearances
-- [ ] Test: Loading state animations
-- [ ] **Verification:** Visual consistency maintained
-
-### Task 4.5: Error Handling Tests
-**File: `crates/lib_bodhiserver_napi/tests-js/specs/quality/error-handling.spec.mjs`**
-
-**Actions:**
-- [ ] Test: Network failure recovery
-- [ ] Test: Invalid input handling
-- [ ] Test: Session timeout handling
-- [ ] Test: Rate limit exceeded
-- [ ] Test: Server error responses
-- [ ] Test: Malformed data handling
-- [ ] Test: Graceful degradation
-- [ ] **Verification:** All errors handled gracefully
-
-## Phase 5: Test Infrastructure Enhancement
-**Goal: Optimize test execution and maintenance**
-
-**Target Completion: Week 5**
-
-### Task 5.1: Parallel Execution Setup
-**File: `playwright.config.mjs` (modifications)**
-
-**Actions:**
-- [ ] Configure dynamic port allocation
-- [ ] Enable parallel test execution
-- [ ] Set up test sharding
-- [ ] Configure worker allocation
-- [ ] Implement test isolation
-- [ ] Add retry mechanisms
-- [ ] Configure test timeouts
-- [ ] **Verification:** Tests run in parallel successfully
-
-### Task 5.2: CI/CD Integration
-**Files to Create:**
-- `.github/workflows/ui-tests.yml`
-- `scripts/run-test-suite.sh`
-
-**Actions:**
-- [ ] Create smoke test suite configuration
-- [ ] Create regression test suite
-- [ ] Create full test suite
-- [ ] Configure test result reporting
-- [ ] Set up artifact collection
-- [ ] Configure failure notifications
-- [ ] Add performance tracking
-- [ ] **Verification:** CI/CD pipeline functional
-
-### Task 5.3: Test Documentation
-**Files to Create:**
-- `tests-js/README.md`
-- `tests-js/CONTRIBUTING.md`
-- `tests-js/PATTERNS.md`
-
-**Actions:**
-- [ ] Document test structure
-- [ ] Document page object patterns
-- [ ] Document test data management
-- [ ] Document debugging procedures
-- [ ] Create troubleshooting guide
-- [ ] Add example test templates
-- [ ] Document best practices
-- [ ] **Verification:** Documentation complete and clear
-
-### Task 5.4: Migration of Existing Tests
-**Files to Migrate:**
-- All files in `tests-js/playwright/*.spec.mjs`
-
-**Actions:**
-- [ ] Migrate auth-flow-integration tests
-- [ ] Migrate api-models-integration tests
-- [ ] Migrate setup flow tests
-- [ ] Refactor to use Page Objects
-- [ ] Remove duplicate code
-- [ ] Update test configurations
-- [ ] Verify migrated tests pass
-- [ ] **Verification:** All tests migrated successfully
-
-### Task 5.5: Cross-Browser Testing
-**File: `playwright.config.mjs` (enhancements)**
-
-**Actions:**
-- [ ] Enable Firefox testing
-- [ ] Enable WebKit testing (fix bus errors)
-- [ ] Configure browser-specific settings
-- [ ] Handle browser-specific behaviors
-- [ ] Test browser compatibility
-- [ ] Document browser issues
-- [ ] Create browser matrix
-- [ ] **Verification:** Tests pass on all browsers
+### Success Criteria for Phase 5
+- ✅ **Documentation Complete**: All patterns and lessons learned documented
+- ✅ **Test Organization**: Clear categorization and execution modes
+- ✅ **Migration Complete**: All old test files removed, new structure validated
+- ✅ **Knowledge Transfer**: Future developers can extend tests using established patterns
+- ✅ **CI/CD Ready**: Test suite ready for automated execution
 
 ## Phase 6: Continuous Improvement
 **Goal: Establish patterns for ongoing test development**
