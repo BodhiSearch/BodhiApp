@@ -3053,6 +3053,12 @@
               "type": "string"
             }
           },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "provider": {
             "type": "string"
           },
@@ -3094,6 +3100,12 @@
               "type": "string"
             }
           },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "provider": {
             "type": "string"
           },
@@ -3111,6 +3123,7 @@
             "gpt-4",
             "gpt-3.5-turbo"
           ],
+          "prefix": "openai",
           "provider": "openai",
           "updated_at": "2024-01-01T00:00:00Z"
         }
@@ -3376,6 +3389,13 @@
             },
             "description": "List of available models"
           },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional prefix for model namespacing (e.g., \"azure\" for \"azure/gpt-4\")"
+          },
           "provider": {
             "type": "string",
             "description": "Provider name (e.g., \"openai\", \"anthropic\")"
@@ -3389,6 +3409,7 @@
             "gpt-4",
             "gpt-3.5-turbo"
           ],
+          "prefix": "openai",
           "provider": "openai"
         }
       },
@@ -4758,6 +4779,13 @@
             },
             "description": "List of available models (optional)"
           },
+          "prefix": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional prefix for model namespacing"
+          },
           "provider": {
             "type": [
               "string",
@@ -4773,6 +4801,7 @@
             "gpt-4-turbo",
             "gpt-3.5-turbo"
           ],
+          "prefix": "openai",
           "provider": "openai"
         }
       },
