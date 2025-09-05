@@ -55,9 +55,9 @@ vi.mock('@/components/ui/toaster', () => ({
 
 const mockModelsResponse = {
   data: [
-    { repo: 'owner1/repo1', filename: 'file1.gguf' },
-    { repo: 'owner1/repo1', filename: 'file2.gguf' },
-    { repo: 'owner2/repo2', filename: 'file3.gguf' },
+    { repo: 'owner1/repo1', filename: 'file1.gguf', snapshot: 'main' },
+    { repo: 'owner1/repo1', filename: 'file2.gguf', snapshot: 'main' },
+    { repo: 'owner2/repo2', filename: 'file3.gguf', snapshot: 'main' },
   ],
 };
 
@@ -77,6 +77,27 @@ afterEach(() => {
 beforeEach(() => {
   pushMock.mockClear();
 });
+
+// Helper function to select an option from a ComboBoxResponsive component
+const selectFromComboBox = async (
+  user: ReturnType<typeof userEvent.setup>,
+  comboboxName: RegExp,
+  optionText: string
+) => {
+  // Click to open the combobox
+  await user.click(screen.getByRole('combobox', { name: comboboxName }));
+
+  // Find the dialog (mobile view) and select the option
+  const dialog = screen.getByRole('dialog');
+  const options = within(dialog).getAllByRole('option');
+  const targetOption = options.find((option) => option.textContent?.includes(optionText));
+
+  if (!targetOption) {
+    throw new Error(`Option "${optionText}" not found in combobox`);
+  }
+
+  await user.click(targetOption);
+};
 
 describe('CreateAliasPage', () => {
   beforeEach(() => {
@@ -115,16 +136,18 @@ describe('CreateAliasPage', () => {
     expect(screen.getByLabelText(/alias/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/repo/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/filename/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/snapshot/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/context parameters/i)).toBeInTheDocument();
 
     expect(screen.getByRole('combobox', { name: /repo/i })).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: /filename/i })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: /snapshot/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /context parameters/i })).toBeInTheDocument();
 
     expect(screen.getByRole('button', { name: /create model alias/i })).toBeInTheDocument();
   });
 
-  it('submits the form with correct data', async () => {
+  it('submits the form with correct data and auto-selects first snapshot', async () => {
     const user = userEvent.setup();
 
     await act(async () => {
@@ -135,17 +158,15 @@ describe('CreateAliasPage', () => {
 
     await user.type(screen.getByLabelText(/alias/i), 'test-alias');
 
-    // Open combobox
-    await user.click(screen.getByRole('combobox', { name: /repo/i }));
+    // Select from comboboxes using helper function
+    await selectFromComboBox(user, /repo/i, 'owner1/repo1');
+    await selectFromComboBox(user, /filename/i, 'file1.gguf');
 
-    // Wait for and find the dialog
-    const dialog = screen.getByRole('dialog');
-
-    // Find and click option within dialog
-    const options = within(dialog).getAllByRole('option');
-    await user.click(options[0]); // owner1/repo1 should be the first option
-
-    await user.type(screen.getByRole('combobox', { name: /filename/i }), 'file1.gguf');
+    // Verify that snapshot is auto-selected to 'main' (first option)
+    await waitFor(() => {
+      const snapshotCombobox = screen.getByRole('combobox', { name: /snapshot/i });
+      expect(snapshotCombobox).toHaveTextContent('main');
+    });
 
     await user.click(screen.getByRole('button', { name: /create model alias/i }));
 
@@ -171,13 +192,9 @@ describe('CreateAliasPage', () => {
     // Fill required fields
     await user.type(screen.getByLabelText(/alias/i), 'test-context-alias');
 
-    // Open repo combobox
-    await user.click(screen.getByRole('combobox', { name: /repo/i }));
-    const dialog = screen.getByRole('dialog');
-    const options = within(dialog).getAllByRole('option');
-    await user.click(options[0]);
-
-    await user.type(screen.getByRole('combobox', { name: /filename/i }), 'file1.gguf');
+    // Select from comboboxes using helper function (snapshot will be auto-selected)
+    await selectFromComboBox(user, /repo/i, 'owner1/repo1');
+    await selectFromComboBox(user, /filename/i, 'file1.gguf');
 
     await user.click(screen.getByRole('button', { name: /create model alias/i }));
 

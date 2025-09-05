@@ -19,7 +19,7 @@ type Status = {
   label: string;
 };
 
-interface ComboBoxResponsiveProps {
+interface ComboBoxResponsiveProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'id'> {
   selectedStatus: Status | null;
   setSelectedStatus: (status: Status | null) => void;
   statuses: Status[];
@@ -35,6 +35,7 @@ export function ComboBoxResponsive({
   placeholder = '+ Set status',
   id,
   loading = false,
+  ...buttonProps
 }: ComboBoxResponsiveProps) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
@@ -54,6 +55,7 @@ export function ComboBoxResponsive({
             type="button"
             disabled={loading}
             data-testid="combobox-trigger"
+            {...buttonProps}
           >
             <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
           </Button>
@@ -81,6 +83,7 @@ export function ComboBoxResponsive({
           type="button"
           disabled={loading}
           data-testid={testId}
+          {...buttonProps}
         >
           <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
         </Button>

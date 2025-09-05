@@ -74,11 +74,16 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
   const [isRequestExpanded, setIsRequestExpanded] = useState(
     isEditMode && initialData && isUserAlias(initialData) && Object.keys(initialData.request_params || {}).length > 0
   );
+  const formTestId = isEditMode ? 'form-edit-alias' : 'form-create-alias';
 
   const { data: modelsData } = useModelFiles(1, 100, 'alias', 'asc');
 
   const [currentRepo, setCurrentRepo] = useState(
     initialData && hasLocalFileProperties(initialData) ? initialData.repo : ''
+  );
+
+  const [currentFilename, setCurrentFilename] = useState(
+    initialData && hasLocalFileProperties(initialData) ? initialData.filename : ''
   );
 
   const repoOptions = useMemo(() => {
@@ -105,6 +110,28 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
       }));
   }, [modelsData, currentRepo]);
 
+  const snapshotOptions = useMemo(() => {
+    if (!modelsData || !currentRepo || !currentFilename) return [];
+
+    const snapshots = modelsData.data
+      .filter((model) => model.repo === currentRepo && model.filename === currentFilename)
+      .map((model) => model.snapshot);
+
+    const uniqueSnapshots = Array.from(new Set(snapshots));
+
+    // Sort with 'main' first, then alphabetically
+    return uniqueSnapshots
+      .sort((a, b) => {
+        if (a === 'main') return -1;
+        if (b === 'main') return 1;
+        return a.localeCompare(b);
+      })
+      .map((snapshot) => ({
+        value: snapshot,
+        label: snapshot,
+      }));
+  }, [modelsData, currentRepo, currentFilename]);
+
   const form = useForm<AliasFormData>({
     resolver: zodResolver(createAliasFormSchema),
     mode: 'onSubmit',
@@ -115,6 +142,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
             alias: '',
             repo: '',
             filename: '',
+            snapshot: '',
             request_params: {},
             context_params: '',
           },
@@ -146,10 +174,26 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'repo') {
         setCurrentRepo(value.repo || '');
+        // Reset filename and snapshot when repo changes
+        form.setValue('filename', '');
+        form.setValue('snapshot', '');
+        setCurrentFilename('');
+      }
+      if (name === 'filename') {
+        setCurrentFilename(value.filename || '');
+        // Reset snapshot when filename changes
+        form.setValue('snapshot', '');
       }
     });
     return () => subscription.unsubscribe();
   }, [form]);
+
+  // Auto-select first snapshot when options become available
+  useEffect(() => {
+    if (snapshotOptions.length > 0 && !form.getValues('snapshot')) {
+      form.setValue('snapshot', snapshotOptions[0].value);
+    }
+  }, [snapshotOptions, form]);
 
   const onSubmit = (data: AliasFormData) => {
     if (isEditMode) {
@@ -198,6 +242,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                     <Input
                       {...formField}
                       id={fieldId}
+                      data-testid={`request-param-${key}`}
                       value={
                         formField.value
                           ? Array.isArray(formField.value)
@@ -216,6 +261,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                     <Input
                       {...formField}
                       id={fieldId}
+                      data-testid={`request-param-${key}`}
                       type={field instanceof z.ZodNumber ? 'number' : 'text'}
                       min={field instanceof z.ZodNumber ? (field.minValue ?? undefined) : undefined}
                       max={field instanceof z.ZodNumber ? (field.maxValue ?? undefined) : undefined}
@@ -246,7 +292,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
 
   return (
     <Form {...form}>
-      <form onSubmit={handleSubmit} className="space-y-8 mx-4 my-6">
+      <form onSubmit={handleSubmit} className="space-y-8 mx-4 my-6" data-testid={formTestId}>
         <Card>
           <CardHeader>
             <CardTitle>{isEditMode ? 'Edit' : 'New'} Model Alias</CardTitle>
@@ -260,7 +306,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                 <FormItem>
                   <FormFieldWithTooltip label="Alias" tooltip={ALIAS_FORM_TOOLTIPS.alias} htmlFor="alias">
                     <FormControl>
-                      <Input {...field} id="alias" disabled={isEditMode} />
+                      <Input {...field} id="alias" data-testid="alias-input" disabled={isEditMode} />
                     </FormControl>
                   </FormFieldWithTooltip>
                   <FormMessage />
@@ -282,6 +328,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                         statuses={repoOptions}
                         placeholder="Select repo"
                         id="repo-select"
+                        data-testid="repo-select"
                       />
                     </FormControl>
                   </FormFieldWithTooltip>
@@ -308,6 +355,35 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                         statuses={filenameOptions}
                         placeholder="Select filename"
                         id="filename-select"
+                        data-testid="filename-select"
+                      />
+                    </FormControl>
+                  </FormFieldWithTooltip>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Snapshot field */}
+            <FormField
+              control={form.control}
+              name="snapshot"
+              render={({ field }) => (
+                <FormItem>
+                  <FormFieldWithTooltip
+                    label="Snapshot"
+                    tooltip="Git reference or commit SHA for the model version"
+                    htmlFor="snapshot-select"
+                  >
+                    <FormControl>
+                      <ComboBoxResponsive
+                        selectedStatus={field.value ? { value: field.value, label: field.value } : null}
+                        setSelectedStatus={(selected) => field.onChange(selected?.value || '')}
+                        statuses={snapshotOptions}
+                        placeholder={snapshotOptions.length > 0 ? 'Select snapshot' : 'Select repo and filename first'}
+                        id="snapshot-select"
+                        data-testid="snapshot-select"
+                        disabled={snapshotOptions.length === 0}
                       />
                     </FormControl>
                   </FormFieldWithTooltip>
@@ -331,6 +407,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
                       <Textarea
                         {...field}
                         id="context_params"
+                        data-testid="context-params"
                         value={field.value || ''}
                         onChange={(e) => field.onChange(e.target.value)}
                         placeholder="Enter llama-server parameters, one per line:&#10;--ctx-size 2048&#10;--parallel 4"
@@ -351,6 +428,7 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
           <CardHeader
             className="cursor-pointer flex flex-row items-center justify-between"
             onClick={() => setIsRequestExpanded(!isRequestExpanded)}
+            data-testid="request-params-toggle"
           >
             <CardTitle>Request Parameters</CardTitle>
             {isRequestExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -363,7 +441,9 @@ const AliasForm: React.FC<AliasFormProps> = ({ isEditMode, initialData }) => {
         </Card>
 
         <div className="flex justify-center mt-8">
-          <Button type="submit">{isEditMode ? 'Update' : 'Create'} Model Alias</Button>
+          <Button type="submit" data-testid="submit-alias-form">
+            {isEditMode ? 'Update' : 'Create'} Model Alias
+          </Button>
         </div>
       </form>
     </Form>

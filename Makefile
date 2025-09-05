@@ -66,7 +66,7 @@ ci.app-npm: ## Install npm dependencies for the app
 
 ci.ui: ## Run UI tests with coverage
 	cd crates/bodhi && npm run test
-	cd crates/lib	_bodhiserver_napi && npm run test
+	$(MAKE) -C crates/lib_bodhiserver_napi test.ui
 
 release-ts-client: ## Release TypeScript client package
 	@echo "Preparing to release ts-client package..."

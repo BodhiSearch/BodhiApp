@@ -4,6 +4,7 @@ examples/napi-test/node_modules
 artifacts
 docker-data/
 hf-home/
+.playwright-mcp/
 
 **/.vscode/**/*
 !/.vscode/keybindings-mac.json
