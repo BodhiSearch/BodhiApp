@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
 import { useToastMessages } from '@/hooks/use-toast-messages';
 
 const EmptyState = () => (
-  <div className="flex h-full items-center justify-center">
+  <div className="flex h-full items-center justify-center" data-testid="empty-chat-state">
     <div className="text-center space-y-3">
       <h3 className="text-lg font-semibold">Welcome to Chat</h3>
       <p className="text-muted-foreground">Start a conversation by typing a message below.</p>
@@ -45,7 +45,14 @@ const ChatInput = memo(function ChatInput({
     <div className="sticky bottom-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto max-w-3xl px-4 py-2">
         <div className="relative flex items-center rounded-lg border bg-background shadow-sm">
-          <Button type="button" variant="ghost" size="icon" className="absolute left-2 h-8 w-8" onClick={createNewChat}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute left-2 h-8 w-8"
+            onClick={createNewChat}
+            data-testid="new-chat-inline-button"
+          >
             <Plus className="h-5 w-5" />
             <span className="sr-only">New chat</span>
           </Button>
@@ -103,17 +110,50 @@ interface MessageListProps {
   messages: Message[];
   userMessage: Message;
   assistantMessage: Message;
+  isStreaming: boolean;
 }
 
-const MessageList = memo(function MessageList({ messages, userMessage, assistantMessage }: MessageListProps) {
+const MessageList = memo(function MessageList({
+  messages,
+  userMessage,
+  assistantMessage,
+  isStreaming,
+}: MessageListProps) {
+  const hasCurrentUserMessage = userMessage.content.length > 0;
+  const hasCurrentAssistantMessage = assistantMessage.content.length > 0;
+
   return (
-    <div className="space-y-2 py-2">
-      {messages.map((message, i) => (
-        <ChatMessage key={`history-${i}`} message={message} />
-      ))}
-      {userMessage.content && <ChatMessage key="user-current" message={userMessage} />}
+    <div className="space-y-2 py-2" data-testid="message-list">
+      {messages.map((message, i) => {
+        const isLastMessage = i === messages.length - 1;
+        const isUser = message.role === 'user';
+
+        // Determine if this message should be marked as archived
+        // User messages become archived when there's a current user message or streaming assistant message
+        // Assistant messages become archived when there's a current user message
+        const isArchived = isUser
+          ? hasCurrentUserMessage || (hasCurrentAssistantMessage && isStreaming)
+          : hasCurrentUserMessage;
+
+        // Latest message logic: only applies to the last message of each type if no current messages
+        const isLatest = isLastMessage && !hasCurrentUserMessage && !hasCurrentAssistantMessage;
+
+        return <ChatMessage key={`history-${i}`} message={message} isLatest={isLatest} isArchived={isArchived} />;
+      })}
+
+      {userMessage.content && (
+        <ChatMessage key="user-current" message={userMessage} isLatest={true} isArchived={false} />
+      )}
+
       {assistantMessage.content && (
-        <ChatMessage key="assistant-current" message={assistantMessage} isStreaming={true} />
+        <ChatMessage
+          key="assistant-current"
+          message={assistantMessage}
+          isStreaming={isStreaming}
+          isLatest={!isStreaming}
+          isArchived={false}
+          data-testid="streaming-message"
+        />
       )}
       <ScrollAnchor />
     </div>
@@ -165,6 +205,7 @@ export function ChatUI() {
                 messages={currentChat?.messages || []}
                 userMessage={userMessage}
                 assistantMessage={assistantMessage}
+                isStreaming={streamLoading}
               />
             )}
           </div>

@@ -57,6 +57,7 @@ function ChatWithSettings() {
           !open && 'md:right-4'
         )}
         aria-label="Toggle settings"
+        data-testid="settings-toggle-button"
       >
         {showSettingsPanel ? <X className="h-5 w-5" /> : <Settings2 className="h-5 w-5" />}
       </SidebarTrigger>
@@ -93,6 +94,7 @@ function ChatWithHistory() {
               !open && 'md:left-5'
             )}
             aria-label="Toggle history"
+            data-testid="chat-history-toggle"
           >
             {showHistoryPanel ? <PanelLeftClose className="h-5 w-5" /> : <PanelLeftOpen className="h-5 w-5" />}
           </SidebarTrigger>

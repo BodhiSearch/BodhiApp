@@ -15,7 +15,7 @@ export class SetupWelcomePage extends SetupBasePage {
     completePrivacyBenefit: 'text=Complete Privacy',
     alwaysFreeBenefit: 'text=Always Free',
     fullControlBenefit: 'text=Full Control',
-    localPerformanceBenefit: 'text=Local Performance'
+    localPerformanceBenefit: 'text=Local Performance',
   };
 
   async navigateToSetup() {

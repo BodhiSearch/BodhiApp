@@ -33,12 +33,13 @@ export function ChatHistory() {
   const previousChats = nonEmptyChats.filter((chat) => chat.createdAt < new Date().setDate(new Date().getDate() - 2));
 
   const renderChat = (chat: Chat, selected: boolean) => (
-    <SidebarMenuItem key={chat.id}>
+    <SidebarMenuItem key={chat.id} data-testid={`chat-history-item-${chat.id}`}>
       <SidebarMenuButton
         onClick={() => setCurrentChatId(chat.id)}
         isActive={chat.id === currentChatId}
         className={cn('w-full justify-start truncate text-sm', 'hover:bg-muted/50', selected && 'bg-muted')}
         tooltip={chat.title || 'Untitled Chat'}
+        data-testid={`chat-history-button-${chat.id}`}
       >
         {chat.title || 'Untitled Chat'}
       </SidebarMenuButton>
@@ -56,7 +57,7 @@ export function ChatHistory() {
   );
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col" data-testid="chat-history-container">
       <ScrollArea className="flex-1">
         <SidebarMenu>
           <div className="space-y-4 p-2">

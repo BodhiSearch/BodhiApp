@@ -41,6 +41,8 @@ build.ui:
 	cd crates/bodhi && npm run build
 	cd crates/lib_bodhiserver_napi && npm run build
 
+rebuild.ui: clean.ui build.ui
+
 coverage: ## Generate code coverage report
 	cargo build -p llama_server_proc; \
 	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \

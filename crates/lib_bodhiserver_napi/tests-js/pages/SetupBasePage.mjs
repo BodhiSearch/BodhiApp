@@ -12,7 +12,7 @@ export class SetupBasePage extends BasePage {
     bodhiLogo: '[data-testid="bodhi-logo"]',
     continueButton: 'button:has-text("Continue")',
     backButton: 'button:has-text("Back")',
-    skipButton: 'button:has-text("Skip")'
+    skipButton: 'button:has-text("Skip")',
   };
 
   async waitForSetupPage() {
@@ -27,7 +27,7 @@ export class SetupBasePage extends BasePage {
     // Logo might not have data-testid, so check for common logo patterns
     const logoSelectors = ['[data-testid="bodhi-logo"]', 'img[alt*="Bodhi"]', 'svg[role="img"]'];
     let logoFound = false;
-    
+
     for (const selector of logoSelectors) {
       try {
         await expect(this.page.locator(selector)).toBeVisible({ timeout: 2000 });
@@ -37,7 +37,7 @@ export class SetupBasePage extends BasePage {
         continue;
       }
     }
-    
+
     if (!logoFound) {
       // Fallback to checking for any logo-like element
       await expect(this.page.locator('text=Bodhi').first()).toBeVisible();

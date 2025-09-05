@@ -15,7 +15,7 @@ export class SetupCompletePage extends SetupBasePage {
     socialLinks: '[data-testid="social-links"]',
     githubLink: 'a[href*="github"]',
     discordLink: 'a[href*="discord"]',
-    documentationLink: 'text=Documentation'
+    documentationLink: 'text=Documentation',
   };
 
   async navigateToComplete() {
@@ -38,8 +38,8 @@ export class SetupCompletePage extends SetupBasePage {
     const completionMessages = [
       this.selectors.congratulationsMessage,
       this.selectors.readyMessage,
-      'text=You\'re all set',
-      'text=Setup is complete'
+      "text=You're all set",
+      'text=Setup is complete',
     ];
 
     let messageFound = false;

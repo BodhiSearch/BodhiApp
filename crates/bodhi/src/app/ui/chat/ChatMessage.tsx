@@ -7,18 +7,40 @@ import { CopyButton } from '@/components/CopyButton';
 interface ChatMessageProps {
   message: Message;
   isStreaming?: boolean;
+  isLatest?: boolean;
+  isArchived?: boolean;
 }
 
-export function ChatMessage({ message, isStreaming = false }: ChatMessageProps) {
+export function ChatMessage({ message, isStreaming = false, isLatest = false, isArchived = false }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const metadata = message.metadata;
 
   const formatNumber = (num: number) => num.toFixed(2);
 
+  // Determine CSS classes based on message state
+  const getMessageClasses = () => {
+    if (isUser) {
+      if (isLatest) return 'chat-user-message';
+      if (isArchived) return 'chat-user-message-archive';
+      return '';
+    } else {
+      if (isStreaming) return 'chat-ai-streaming';
+      if (isLatest) return 'chat-ai-message';
+      if (isArchived) return 'chat-ai-archive';
+      return '';
+    }
+  };
+
   return (
-    <div 
+    <div
       data-testid={isUser ? 'user-message' : 'assistant-message'}
-      className={cn('group relative flex items-start gap-3 p-3', isUser ? 'bg-background' : 'bg-muted/30')}
+      className={cn(
+        'group relative flex items-start gap-3 p-3',
+        isUser ? 'bg-background' : 'bg-muted/30',
+        !isUser && isStreaming && 'message-streaming',
+        !isUser && !isStreaming && 'message-completed',
+        getMessageClasses()
+      )}
     >
       <div
         className={cn(

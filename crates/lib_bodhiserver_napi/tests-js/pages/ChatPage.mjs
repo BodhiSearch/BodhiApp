@@ -1,103 +1,429 @@
 import { expect } from '@playwright/test';
 import { BasePage } from './BasePage.mjs';
+import { getCurrentPath } from '../test-helpers.mjs';
 
 export class ChatPage extends BasePage {
-  constructor(page, baseUrl) {
-    super(page, baseUrl);
-  }
-
   selectors = {
-    ...this.selectors,
-    chatUI: '[data-testid="chat-ui"]',
-    chatInput: '[data-testid="chat-input"]',
+    // Core elements
+    chatContainer: '[data-testid="chat-ui"]',
+    messageInput: '[data-testid="chat-input"]',
     sendButton: '[data-testid="send-button"]',
-    messageContainer: '.space-y-2',
+
+    // Messages
+    messageList: '[data-testid="message-list"]',
     userMessage: '[data-testid="user-message"]',
     assistantMessage: '[data-testid="assistant-message"]',
-    assistantMessageContent: '[data-testid="assistant-message-content"]',
+    messageContent: (role) => `[data-testid="${role}-message-content"]`,
+    streamingMessage: '[data-testid="streaming-message"]',
+
+    // Message state classes
+    latestUserMessage: '.chat-user-message',
+    archivedUserMessage: '.chat-user-message-archive',
+    latestAiMessage: '.chat-ai-message',
+    archivedAiMessage: '.chat-ai-archive',
+    streamingAiMessage: '.chat-ai-streaming',
+
+    // Chat management
+    newChatButton: '[data-testid="new-chat-button"]',
+    newChatInlineButton: '[data-testid="new-chat-inline-button"]',
+    emptyState: '[data-testid="empty-chat-state"]',
+
+    // Model selection (in settings panel)
     modelSelectorLoaded: '[data-testid="model-selector-loaded"]',
-    modelSelectorCombo: '#model-selector',
-    newChatButton: 'button:has-text("New chat")',
-    settingsButton: 'button[aria-label="Toggle settings"]',
-    welcomeMessage: 'text=Welcome to Chat',
-    emptyState: '.text-center'
+    comboboxTrigger: '[data-testid="combobox-trigger"]',
+    comboboxOption: (modelName) => `[data-testid="combobox-option-${modelName}"]`,
+
+    // Settings
+    settingsSidebar: '[data-testid="settings-sidebar"]',
+    settingsToggle: '[data-testid="settings-toggle-button"]',
+    chatHistoryToggle: '[data-testid="chat-history-toggle"]',
   };
 
+  /**
+   * Navigate to chat page
+   */
   async navigateToChat() {
     await this.navigate('/ui/chat/');
+    await this.page.waitForSelector(this.selectors.chatContainer);
     await this.waitForSPAReady();
   }
 
-  async expectChatPageReady() {
-    // Wait for page to load
-    await this.page.waitForLoadState('networkidle');
-    
-    // Check if we're redirected somewhere unexpected
-    const currentUrl = this.page.url();
-    if (!currentUrl.includes('/ui/chat')) {
-      throw new Error(`Expected to be on chat page but got: ${currentUrl}`);
-    }
-    
-    await this.expectVisible(this.selectors.chatUI);
-    await this.expectVisible(this.selectors.chatInput);
-    await this.expectVisible(this.selectors.sendButton);
+  /**
+   * Wait for chat page to load completely
+   */
+  async waitForChatPageLoad() {
+    await this.page.waitForSelector(this.selectors.chatContainer);
+    await this.waitForSPAReady();
+
+    // Wait for model selector to be available
+    await this.page.waitForSelector(this.selectors.modelSelectorLoaded);
   }
 
-  async expectChatPageWithModel(modelName) {
-    await this.expectChatPageReady();
-    // Verify the URL contains the model parameter
-    const url = new URL(this.page.url());
-    expect(url.searchParams.get('model')).toBe(modelName);
-    // The model should be automatically selected in the chat settings
-  }
+  // Core message operations
 
-  async openSettings() {
-    await this.expectVisible(this.selectors.settingsButton);
-    await this.page.click(this.selectors.settingsButton);
-    await this.page.waitForTimeout(500); // Wait for sidebar animation
-  }
-
-  async selectModel(modelName) {
-    // First open settings panel
-    await this.openSettings();
-    
-    // Wait for model selector to load
-    await this.expectVisible(this.selectors.modelSelectorLoaded);
-    
-    // Click on the combo box
-    await this.page.click(this.selectors.modelSelectorCombo);
-    
-    // Wait for dropdown and select the model
-    await this.page.waitForSelector(`text=${modelName}`, { timeout: 5000 });
-    await this.page.click(`text=${modelName}`);
-    
-    // Close settings panel
-    await this.page.click(this.selectors.settingsButton);
-    await this.page.waitForTimeout(500);
-  }
-
+  /**
+   * Send a message in the chat
+   */
   async sendMessage(message) {
-    await this.expectVisible(this.selectors.chatInput);
-    await this.page.fill(this.selectors.chatInput, message);
-    
+    await this.page.fill(this.selectors.messageInput, message);
+
+    // Wait for the send button to be enabled before clicking
     const sendButton = this.page.locator(this.selectors.sendButton);
-    await expect(sendButton).toBeVisible();
     await expect(sendButton).toBeEnabled();
     await sendButton.click();
+    await expect(sendButton).toBeDisabled();
+
+    // Wait for the user message to appear as latest
+    await this.waitForLatestUserMessage();
   }
 
-  async waitForAssistantResponse(timeout = 30000) {
+  /**
+   * Wait for a response containing expected content
+   */
+  async waitForResponse(expectedContent) {
+    if (expectedContent) {
+      // Wait for assistant message with specific content
+      await expect(this.page.locator(this.selectors.assistantMessage).last()).toContainText(
+        expectedContent
+      );
+    } else {
+      // Wait for any assistant message
+      await expect(this.page.locator(this.selectors.assistantMessage).last()).toBeVisible();
+    }
+  }
+
+  /**
+   * Wait for streaming to complete (streaming indicator disappears)
+   */
+  async waitForStreamingComplete() {
+    // Wait for streaming message to appear
+    await expect(this.page.locator(this.selectors.streamingMessage)).toBeVisible();
+
+    // Wait for streaming to complete (streaming message disappears)
+    await expect(this.page.locator(this.selectors.streamingMessage)).not.toBeVisible();
+
+    // Wait for the last assistant message to be marked as completed
+    const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
+    await expect(lastAssistantMessage).toHaveClass(/message-completed/);
+  }
+
+  /**
+   * Wait for non-streaming response (when streaming is disabled)
+   */
+  async waitForNonStreamingResponse() {
+    const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
+    await expect(lastAssistantMessage).toBeVisible();
+
+    // Wait for this specific message to be marked as completed
+    await expect(lastAssistantMessage).toHaveClass(/message-completed/);
+  }
+
+  /**
+   * Wait for any response to complete (streaming or non-streaming)
+   */
+  async waitForResponseComplete() {
     // Wait for assistant message to appear
-    await expect(this.page.locator(this.selectors.assistantMessage).last()).toBeVisible({ timeout });
-    
-    // Wait for streaming to complete - give some time for response to stabilize
-    await this.page.waitForTimeout(2000);
+    const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
+    await expect(lastAssistantMessage).toBeVisible();
+
+    // Wait for this specific message to have the message-completed class (legacy)
+    await expect(lastAssistantMessage).toHaveClass(/message-completed/);
+
+    // Also wait for the latest AI message class to appear
+    await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible();
   }
 
-  async getLastAssistantMessage() {
-    const assistantMessageContent = this.page.locator(this.selectors.assistantMessageContent);
-    const lastMessage = assistantMessageContent.last();
-    await expect(lastMessage).toBeVisible();
-    return await lastMessage.textContent();
+  /**
+   * Wait for latest user message to appear
+   */
+  async waitForLatestUserMessage() {
+    await expect(this.page.locator(this.selectors.latestUserMessage)).toBeVisible();
+  }
+
+  /**
+   * Wait for latest AI message to appear (completed response)
+   */
+  async waitForLatestAiMessage() {
+    await expect(this.page.locator(this.selectors.latestAiMessage)).toBeVisible();
+  }
+
+  /**
+   * Wait for AI message to start streaming
+   */
+  async waitForStreamingAiMessage() {
+    await expect(this.page.locator(this.selectors.streamingAiMessage)).toBeVisible();
+  }
+
+  /**
+   * Wait for streaming to complete and message to become latest
+   */
+  async waitForStreamingToComplete() {
+    // First, wait for streaming to start
+    await this.waitForStreamingAiMessage();
+
+    // Then wait for streaming to complete and become latest
+    await this.waitForLatestAiMessage();
+
+    // Ensure streaming message is no longer present
+    await expect(this.page.locator(this.selectors.streamingAiMessage)).not.toBeVisible();
+  }
+
+  // Model operations
+
+  /**
+   * Select a model from the settings panel
+   */
+  async selectModel(modelName) {
+    // Open settings if not already open
+    await this.openSettingsPanel();
+
+    // Click the combobox trigger
+    const trigger = this.page.locator(this.selectors.comboboxTrigger);
+    await expect(trigger).toBeVisible();
+    await trigger.click();
+
+    // Select the model option (using visible element pattern from Phase 0)
+    const modelOption = this.page.locator(this.selectors.comboboxOption(modelName));
+    const visibleOption = modelOption.locator('visible=true').first();
+    await expect(visibleOption).toBeVisible();
+    await visibleOption.click();
+  }
+
+  /**
+   * Verify that a model is selected
+   */
+  async verifyModelSelected(modelName) {
+    await this.openSettingsPanel();
+
+    // Check that the combobox shows the selected model
+    const trigger = this.page.locator(this.selectors.comboboxTrigger);
+    await expect(trigger).toContainText(modelName);
+  }
+
+  // Chat management
+
+  /**
+   * Start a new chat conversation
+   */
+  async startNewChat() {
+    await this.page.click(this.selectors.newChatButton);
+    await this.waitForSPAReady();
+  }
+
+  /**
+   * Start a new chat using the inline button (+ button in chat input)
+   */
+  async startNewChatInline() {
+    await this.page.click(this.selectors.newChatInlineButton);
+    await this.waitForSPAReady();
+  }
+
+  /**
+   * Verify that chat is empty (shows empty state)
+   */
+  async verifyChatEmpty() {
+    // Wait for the chat page to fully load and stabilize
+    await this.page.waitForSelector(this.selectors.chatContainer);
+    await this.waitForSPAReady();
+
+    // Wait a bit more for any async state to settle
+    await this.page.waitForTimeout(1000);
+
+    // Check for "Welcome to Chat" heading as the empty state indicator
+    const welcomeHeading = this.page.locator('h3:has-text("Welcome to Chat")');
+    await expect(welcomeHeading).toBeVisible();
+
+    // Also verify no messages are present
+    const userMessages = await this.page.locator(this.selectors.userMessage).count();
+    const assistantMessages = await this.page.locator(this.selectors.assistantMessage).count();
+    expect(userMessages).toBe(0);
+    expect(assistantMessages).toBe(0);
+  }
+
+  /**
+   * Verify that a message exists in chat history
+   */
+  async verifyMessageInHistory(role, expectedContent) {
+    const messages = this.page.locator(`[data-testid="${role}-message"]`);
+    let found = false;
+
+    const count = await messages.count();
+    for (let i = 0; i < count; i++) {
+      const messageContent = await messages
+        .nth(i)
+        .locator(`[data-testid="${role}-message-content"]`)
+        .textContent();
+      if (messageContent && messageContent.includes(expectedContent)) {
+        found = true;
+        break;
+      }
+    }
+
+    expect(found).toBe(true);
+  }
+
+  // Validation and error handling
+
+  /**
+   * Verify that send button is disabled when input is empty
+   */
+  async verifySendButtonDisabled() {
+    await expect(this.page.locator(this.selectors.sendButton)).toBeDisabled();
+  }
+
+  /**
+   * Verify that send button is disabled for empty messages
+   */
+  async verifySendButtonDisabledForEmpty() {
+    // Clear input and verify button is disabled
+    await this.page.fill(this.selectors.messageInput, '');
+    await expect(this.page.locator(this.selectors.sendButton)).toBeDisabled();
+  }
+
+  /**
+   * Expect error when no model is selected
+   */
+  async expectModelNotSelectedError() {
+    // Look for error toast or message about model selection
+    await expect(this.page.locator('[data-state="open"]')).toContainText('No Model Selected');
+  }
+
+  /**
+   * Expect validation error message
+   */
+  async expectValidationError(errorMessage) {
+    await expect(this.page.locator('[data-state="open"]')).toContainText(errorMessage);
+  }
+
+  /**
+   * Expect network error
+   */
+  async expectNetworkError() {
+    await expect(this.page.locator('[data-state="open"]')).toContainText(/error|failed|network/i);
+  }
+
+  // Settings panel operations
+
+  /**
+   * Open settings panel
+   */
+  async openSettingsPanel() {
+    const settingsPanel = this.page.locator(this.selectors.settingsSidebar);
+    const isVisible = await settingsPanel.isVisible();
+
+    if (!isVisible) {
+      await this.page.click(this.selectors.settingsToggle);
+      await expect(settingsPanel).toBeVisible();
+    }
+  }
+
+  /**
+   * Close settings panel
+   */
+  async closeSettingsPanel() {
+    const settingsPanel = this.page.locator(this.selectors.settingsSidebar);
+    const isVisible = await settingsPanel.isVisible();
+
+    if (isVisible) {
+      await this.page.click(this.selectors.settingsToggle);
+      await expect(settingsPanel).not.toBeVisible();
+    }
+  }
+
+  // Streaming operations
+
+  /**
+   * Verify streaming has started
+   */
+  async verifyStreamingStarted() {
+    await expect(this.page.locator(this.selectors.streamingMessage)).toBeVisible();
+  }
+
+  /**
+   * Stop streaming (if there's a stop button - this might need adjustment based on UI)
+   */
+  async stopStreaming() {
+    // This may need to be implemented based on actual streaming UI
+    // For now, we'll assume there's a stop button or we can interrupt by clicking send again
+    const stopButton = this.page.locator('[data-testid="stop-streaming-button"]');
+    if (await stopButton.isVisible()) {
+      await stopButton.click();
+    }
+  }
+
+  /**
+   * Verify streaming has stopped
+   */
+  async verifyStreamingStopped() {
+    await expect(this.page.locator(this.selectors.streamingMessage)).not.toBeVisible();
+  }
+
+  /**
+   * Verify partial response is saved in history
+   */
+  async verifyPartialResponseInHistory() {
+    await expect(this.page.locator(this.selectors.assistantMessage)).toBeVisible();
+  }
+
+  // Network simulation helpers
+
+  /**
+   * Simulate network failure
+   */
+  async simulateNetworkFailure() {
+    await this.page.route('**/v1/chat/completions', (route) => route.abort());
+  }
+
+  /**
+   * Restore network connection
+   */
+  async restoreNetworkConnection() {
+    await this.page.unroute('**/v1/chat/completions');
+  }
+
+  /**
+   * Retry last message (this might need UI implementation)
+   */
+  async retryLastMessage() {
+    // This would depend on UI having a retry mechanism
+    // For now, we'll assume we can click the send button again
+    const lastInput = await this.page.locator(this.selectors.messageInput).inputValue();
+    if (lastInput) {
+      await this.page.click(this.selectors.sendButton);
+    }
+  }
+
+  // Responsive layout helpers
+
+  /**
+   * Verify responsive layout for given viewport width
+   */
+  async verifyResponsiveLayout(viewportWidth) {
+    if (viewportWidth < 768) {
+      // Mobile: verify mobile-specific elements are visible
+      await expect(this.page.locator(this.selectors.chatHistoryToggle)).toBeVisible();
+      await expect(this.page.locator(this.selectors.settingsToggle)).toBeVisible();
+    } else {
+      // Desktop: verify desktop layout
+      // Settings and history panels might be visible by default
+    }
+  }
+
+  /**
+   * Test responsive chatting functionality
+   */
+  async testResponsiveChatting(viewportWidth) {
+    if (viewportWidth < 768) {
+      // Mobile: settings should be in drawer/modal
+      await this.openSettingsPanel();
+      await this.selectModel('gpt-4');
+      await this.closeSettingsPanel();
+    } else {
+      // Desktop: settings in sidebar
+      await this.selectModel('gpt-4');
+    }
+
+    await this.sendMessage('Test responsive message');
+    await this.waitForResponse();
   }
 }

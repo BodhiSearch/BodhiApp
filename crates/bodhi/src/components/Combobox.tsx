@@ -38,6 +38,7 @@ export function ComboBoxResponsive({
 }: ComboBoxResponsiveProps) {
   const [open, setOpen] = useState(false);
   const isDesktop = useMediaQuery('(min-width: 768px)');
+  const isTablet = useMediaQuery('(min-width: 640px) and (max-width: 767px)');
 
   if (isDesktop) {
     return (
@@ -52,6 +53,7 @@ export function ComboBoxResponsive({
             aria-haspopup="listbox"
             type="button"
             disabled={loading}
+            data-testid="combobox-trigger"
           >
             <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
           </Button>
@@ -62,6 +64,9 @@ export function ComboBoxResponsive({
       </Popover>
     );
   }
+
+  // Mobile and Tablet both use Drawer, but with different testids
+  const testId = isTablet ? 'tab-combobox-trigger' : 'm-combobox-trigger';
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -75,6 +80,7 @@ export function ComboBoxResponsive({
           aria-haspopup="listbox"
           type="button"
           disabled={loading}
+          data-testid={testId}
         >
           <span className="truncate">{selectedStatus ? selectedStatus.label : placeholder}</span>
         </Button>
@@ -117,6 +123,7 @@ function StatusList({
                 setSelectedStatus(statuses.find((priority) => priority.value === value) || null);
                 setOpen(false);
               }}
+              data-testid={`combobox-option-${status.value}`}
             >
               {status.label}
             </CommandItem>
