@@ -105,3 +105,18 @@ Located in `crates/bodhi/`, this is a Next.js 14 application using:
 - for getting the current time Utc::now we have TimeService in @crates/services/src/db/service.rs, for objects, do not use Utc::now internally to get time for created_at etc. instead have it passed via constructor
 - write test that provides value for the maintainance we have to do, for e.g. do not write test to test the new constructor, or macro implemented PartialEq, or serialization/deserialization by serde, unless we are using customization like untagged, or changing case etc.
 - For a React project, for integration/ui test, it is better to have the data-testid and do select by getByTestId rather than by selectors that can change over time.
+
+## Critical UI Development Workflow
+
+**IMPORTANT: After making changes to UI components, you MUST rebuild the embedded UI:**
+
+1. `make clean.ui` - Clean the embedded UI build (removes crates/bodhi/out)
+2. `make build.ui` - Build the embedded UI with changes (builds Next.js and NAPI bindings)
+
+The application embeds the UI build, so changes to React components won't be visible until rebuilt. This is required for:
+- Adding/modifying data-testid attributes
+- Any component changes in crates/bodhi/src/
+- UI styling or functionality updates
+- Testing UI changes in integration tests
+
+**Development Mode**: For active development, use `cd crates/bodhi && npm run dev` to run Next.js dev server with hot reload.
