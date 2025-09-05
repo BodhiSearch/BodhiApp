@@ -1,9 +1,5 @@
 import { expect } from '@playwright/test';
-import {
-  createTestServer,
-  loadBindings,
-  waitForServer,
-} from '../test-helpers.mjs';
+import { createTestServer, loadBindings, waitForServer } from '../test-helpers.mjs';
 
 /**
  * Server manager for Playwright tests

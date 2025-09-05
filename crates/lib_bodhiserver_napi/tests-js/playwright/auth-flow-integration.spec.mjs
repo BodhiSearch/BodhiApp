@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { getCurrentPath, randomPort, waitForSPAReady } from '../test-helpers.mjs';
-import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from './auth-server-client.mjs';
+import {
+  createAuthServerTestClient,
+  getAuthServerConfig,
+  getTestCredentials,
+} from './auth-server-client.mjs';
 import { createServerManager } from './bodhi-app-server.mjs';
 
 test.describe('OAuth Authentication Flow Integration Tests', () => {
@@ -21,7 +25,11 @@ test.describe('OAuth Authentication Flow Integration Tests', () => {
 
     authClient = createAuthServerTestClient(authServerConfig);
     resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(resourceClient.clientId, resourceClient.clientSecret, testCredentials.username);
+    await authClient.makeResourceAdmin(
+      resourceClient.clientId,
+      resourceClient.clientSecret,
+      testCredentials.username
+    );
     serverManager = createServerManager({
       appStatus: 'ready',
       authUrl: authServerConfig.authUrl,

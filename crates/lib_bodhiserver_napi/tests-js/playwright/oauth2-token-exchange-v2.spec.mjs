@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { getCurrentPath, randomPort, waitForSPAReady } from '../test-helpers.mjs';
-import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from './auth-server-client.mjs';
+import {
+  createAuthServerTestClient,
+  getAuthServerConfig,
+  getTestCredentials,
+} from './auth-server-client.mjs';
 import { createServerManager } from './bodhi-app-server.mjs';
 import { createStaticServer } from './static-server.mjs';
 
@@ -17,7 +21,10 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
     authClient = createAuthServerTestClient(authServerConfig);
   });
 
-  test('complete OAuth2 Token Exchange v2 flow with dynamic audience', async ({ page, context }) => {
+  test('complete OAuth2 Token Exchange v2 flow with dynamic audience', async ({
+    page,
+    context,
+  }) => {
     console.log('=== Starting OAuth2 Token Exchange v2 Flow Test ===');
 
     // Step 1: Setup server in 'setup' mode and complete resource admin setup
@@ -50,7 +57,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       await setupSubmitButton.click();
 
       // Wait for redirect to resource admin setup
-      await page.waitForURL((url) => url.toString().includes('/ui/setup/resource-admin'), );
+      await page.waitForURL((url) => url.toString().includes('/ui/setup/resource-admin'));
       await waitForSPAReady(page);
       console.log('✅ Redirected to resource admin setup');
 
@@ -102,7 +109,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
         port,
         'OAuth2 Test App Client',
         'Test app client for OAuth2 Token Exchange v2 testing',
-        [redirectUri]  // Use test app as redirect URI
+        [redirectUri] // Use test app as redirect URI
       );
       console.log(`✅ App client created: ${appClient.clientId}`);
 
@@ -114,7 +121,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          app_client_id: appClient.clientId
+          app_client_id: appClient.clientId,
         }),
       });
 
@@ -166,7 +173,7 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       console.log('Step 7: Testing API access with OAuth token...');
       const userResponse = await fetch(`${baseUrl}/bodhi/v1/user`, {
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
         },
       });
@@ -178,10 +185,10 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       // For now, verify that we got a response and the token was processed
       expect(userInfo).toBeDefined();
       expect(userInfo.logged_in).toBe(true);
-      expect(userInfo.email).toBe("user@email.com");
-      expect(userInfo.role).toBe("scope_user_user");
-      expect(userInfo.token_type).toBe("bearer");
-      expect(userInfo.role_source).toBe("scope_user");
+      expect(userInfo.email).toBe('user@email.com');
+      expect(userInfo.role).toBe('scope_user_user');
+      expect(userInfo.token_type).toBe('bearer');
+      expect(userInfo.role_source).toBe('scope_user');
       console.log(`✅ OAuth token flow completed - token validation behavior documented`);
 
       await staticServer.stopServer();
@@ -221,9 +228,8 @@ test.describe('OAuth2 Token Exchange v2 Integration Tests', () => {
       expect(userInfo.logged_in).toBe(false);
       expect(userInfo.email).toBeNull();
       console.log(`✅ Error handling verified: Unauthenticated user gets logged_in: false`);
-
     } finally {
       await serverManager.stopServer();
     }
   });
-}); 
+});

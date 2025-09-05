@@ -19,16 +19,16 @@ test.describe('Canonical URL Redirect Tests - enabled', () => {
       appStatus: 'ready',
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
-      clientId: "dummy-client-id",
-      clientSecret: "dummy-client-secret",
+      clientId: 'dummy-client-id',
+      clientSecret: 'dummy-client-secret',
       port: port.toString(),
       host: '0.0.0.0',
       envVars: {
-        'BODHI_PUBLIC_HOST': 'localhost',
-        'BODHI_PUBLIC_SCHEME': 'http',
-        'BODHI_PUBLIC_PORT': port.toString(),
-        'BODHI_CANONICAL_REDIRECT': 'true',
-      }
+        BODHI_PUBLIC_HOST: 'localhost',
+        BODHI_PUBLIC_SCHEME: 'http',
+        BODHI_PUBLIC_PORT: port.toString(),
+        BODHI_CANONICAL_REDIRECT: 'true',
+      },
     });
     baseUrl = await serverManager.startServer();
   });
@@ -63,16 +63,16 @@ test.describe('Canonical URL Redirect Tests - disabled', () => {
       appStatus: 'ready',
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
-      clientId: "dummy-client-id",
-      clientSecret: "dummy-client-secret",
+      clientId: 'dummy-client-id',
+      clientSecret: 'dummy-client-secret',
       port: port.toString(),
       host: '0.0.0.0',
       envVars: {
-        'BODHI_PUBLIC_HOST': 'localhost',
-        'BODHI_PUBLIC_SCHEME': 'http',
-        'BODHI_PUBLIC_PORT': port.toString(),
-        'BODHI_CANONICAL_REDIRECT': 'false',
-      }
+        BODHI_PUBLIC_HOST: 'localhost',
+        BODHI_PUBLIC_SCHEME: 'http',
+        BODHI_PUBLIC_PORT: port.toString(),
+        BODHI_CANONICAL_REDIRECT: 'false',
+      },
     });
     baseUrl = await serverManager.startServer();
   });

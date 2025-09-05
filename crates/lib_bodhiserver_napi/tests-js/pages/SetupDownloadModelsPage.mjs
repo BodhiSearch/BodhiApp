@@ -17,7 +17,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
     // Model cards typically contain model names
     llamaModel: 'text=Llama',
     mistralModel: 'text=Mistral',
-    gemmaModel: 'text=Gemma'
+    gemmaModel: 'text=Gemma',
   };
 
   async navigateToDownloadModels() {
@@ -33,13 +33,15 @@ export class SetupDownloadModelsPage extends SetupBasePage {
   async expectRecommendedModelsDisplayed() {
     // Check that model cards are visible
     try {
-      await expect(this.page.locator(this.selectors.modelCard).first()).toBeVisible({ timeout: 5000 });
+      await expect(this.page.locator(this.selectors.modelCard).first()).toBeVisible({
+        timeout: 5000,
+      });
     } catch {
       // Fallback: look for model names or download buttons
       const hasModels = await Promise.race([
         this.page.locator(this.selectors.downloadButton).first().isVisible(),
         this.page.locator(this.selectors.llamaModel).first().isVisible(),
-        this.page.locator(this.selectors.mistralModel).first().isVisible()
+        this.page.locator(this.selectors.mistralModel).first().isVisible(),
       ]);
       expect(hasModels).toBeTruthy();
     }
@@ -47,7 +49,7 @@ export class SetupDownloadModelsPage extends SetupBasePage {
 
   async downloadModel(modelName = null) {
     let downloadButton;
-    
+
     if (modelName) {
       // Find download button for specific model
       const modelCard = this.page.locator(`text=${modelName}`).locator('..').locator('..'); // Navigate up to card
@@ -56,16 +58,20 @@ export class SetupDownloadModelsPage extends SetupBasePage {
       // Download first available model
       downloadButton = this.page.locator(this.selectors.downloadButton).first();
     }
-    
+
     await downloadButton.click();
-    
+
     // Wait for download to start (button changes to "Downloading")
-    await expect(this.page.locator(this.selectors.downloadingButton).first()).toBeVisible({ timeout: 10000 });
+    await expect(this.page.locator(this.selectors.downloadingButton).first()).toBeVisible({
+      timeout: 10000,
+    });
   }
 
   async waitForDownloadComplete(timeout = 30000) {
     // Wait for at least one download to complete
-    await expect(this.page.locator(this.selectors.downloadedButton).first()).toBeVisible({ timeout });
+    await expect(this.page.locator(this.selectors.downloadedButton).first()).toBeVisible({
+      timeout,
+    });
   }
 
   async skipDownloads() {

@@ -183,9 +183,15 @@ function getLocalNetworkIP() {
 }
 
 export {
-  createFullTestConfig, createTempDir,
-  createTestServer, getCurrentPath, getLocalNetworkIP, loadBindings,
-  randomPort, sleep, waitForRedirect, waitForServer,
-  waitForSPAReady
+  createFullTestConfig,
+  createTempDir,
+  createTestServer,
+  getCurrentPath,
+  getLocalNetworkIP,
+  loadBindings,
+  randomPort,
+  sleep,
+  waitForRedirect,
+  waitForServer,
+  waitForSPAReady,
 };
-

@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from '../../../playwright/auth-server-client.mjs';
+import {
+  createAuthServerTestClient,
+  getAuthServerConfig,
+  getTestCredentials,
+} from '../../../playwright/auth-server-client.mjs';
 import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
 import { randomPort, getCurrentPath, waitForSPAReady } from '../../../test-helpers.mjs';
 import { LoginPage } from '../../../pages/LoginPage.mjs';
@@ -29,7 +33,7 @@ test.describe('App Initializer Integration', () => {
 
       try {
         const testPaths = ['/', '/ui/chat', '/ui/models', '/ui/settings', '/ui/login'];
-        
+
         // Test redirect behavior for all routes when app is in setup mode
         for (const path of testPaths) {
           await page.goto(`${baseUrl}${path}`);
@@ -43,7 +47,9 @@ test.describe('App Initializer Integration', () => {
       }
     });
 
-    test('should redirect unauthenticated users to login when app status is ready', async ({ page }) => {
+    test('should redirect unauthenticated users to login when app status is ready', async ({
+      page,
+    }) => {
       const serverManager = createServerManager({
         appStatus: 'ready',
         authUrl: authServerConfig.authUrl,
@@ -93,8 +99,12 @@ test.describe('App Initializer Integration', () => {
 
       authClient = createAuthServerTestClient(authServerConfig);
       resourceClient = await authClient.createResourceClient(serverUrl);
-      await authClient.makeResourceAdmin(resourceClient.clientId, resourceClient.clientSecret, testCredentials.username);
-      
+      await authClient.makeResourceAdmin(
+        resourceClient.clientId,
+        resourceClient.clientSecret,
+        testCredentials.username
+      );
+
       serverManager = createServerManager({
         appStatus: 'ready',
         authUrl: authServerConfig.authUrl,
@@ -104,7 +114,7 @@ test.describe('App Initializer Integration', () => {
         port,
         host: 'localhost',
       });
-      
+
       baseUrl = await serverManager.startServer();
     });
 
@@ -118,11 +128,13 @@ test.describe('App Initializer Integration', () => {
       }
     });
 
-    test('should complete full OAuth authentication flow from app initializer intercept', async ({ page }) => {
+    test('should complete full OAuth authentication flow from app initializer intercept', async ({
+      page,
+    }) => {
       // Test that protected routes redirect to login
       await page.goto(`${baseUrl}/ui/chat`);
       await waitForSPAReady(page);
-      
+
       const currentPath = getCurrentPath(page);
       expect(currentPath).toBe('/ui/login/');
 
@@ -134,21 +146,23 @@ test.describe('App Initializer Integration', () => {
       expect(finalUrl).toContain('/ui/chat');
     });
 
-    test('should redirect protected routes to login and complete authentication flow', async ({ page }) => {
+    test('should redirect protected routes to login and complete authentication flow', async ({
+      page,
+    }) => {
       // Test that trying to access a protected route while unauthenticated redirects to login
       await page.goto(`${baseUrl}/ui/models`);
       await waitForSPAReady(page);
-      
+
       const loginPath = getCurrentPath(page);
       expect(loginPath).toBe('/ui/login/');
 
       // Perform OAuth login flow - should succeed and redirect to an authenticated page
       await loginPage.performOAuthLogin(null);
-      
+
       const finalUrl = page.url();
       expect(finalUrl).toContain(baseUrl);
       expect(finalUrl).toContain('/ui/');
-      
+
       // Verify we're authenticated by checking the page content is not the login page
       const finalPath = getCurrentPath(page);
       expect(finalPath).not.toBe('/ui/login/');

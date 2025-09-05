@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { getCurrentPath, randomPort, waitForSPAReady } from '../test-helpers.mjs';
-import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from './auth-server-client.mjs';
+import {
+  createAuthServerTestClient,
+  getAuthServerConfig,
+  getTestCredentials,
+} from './auth-server-client.mjs';
 import { createServerManager } from './bodhi-app-server.mjs';
 
 test.describe('Debug Authentication Flow', () => {
@@ -43,7 +47,7 @@ test.describe('Debug Authentication Flow', () => {
     // Step 1: Go to login page
     await page.goto(`${baseUrl}/ui/login`);
     await waitForSPAReady(page);
-    
+
     const loginButton = page.locator('button:has-text("Login")');
     await expect(loginButton).toBeVisible();
     await loginButton.first().click();
@@ -59,7 +63,7 @@ test.describe('Debug Authentication Flow', () => {
     const passwordField = page.locator('#password');
     await usernameField.fill(testCredentials.username);
     await passwordField.fill(testCredentials.password);
-    
+
     const submitButton = page.locator('button:has-text("Sign In")');
     await submitButton.click();
 
@@ -68,7 +72,7 @@ test.describe('Debug Authentication Flow', () => {
     await page.waitForURL((url) => url.origin === baseUrl);
     console.log('Redirected back to app:', page.url());
     await waitForSPAReady(page);
-    
+
     // Step 6: Check user info API
     console.log('Step 6: Checking user info');
     const userInfoResponse = await page.request.get(`${baseUrl}/api/user/info`);
@@ -85,20 +89,20 @@ test.describe('Debug Authentication Flow', () => {
     console.log('Step 7: Navigating to models page');
     await page.goto(`${baseUrl}/ui/models`);
     await waitForSPAReady(page);
-    
+
     console.log('Current URL after models navigation:', page.url());
-    
+
     // Step 8: Check if we can see the page content
     console.log('Step 8: Checking page content');
     const pageContent = await page.textContent('body');
     console.log('Page contains "New API Model":', pageContent.includes('New API Model'));
     console.log('Page contains "Login":', pageContent.includes('Login'));
-    
+
     // Try to find the button
     const newApiModelButton = page.locator('button:has-text("New API Model")');
     const buttonCount = await newApiModelButton.count();
     console.log('Number of "New API Model" buttons found:', buttonCount);
-    
+
     if (buttonCount === 0) {
       // Debug what buttons are available
       const allButtons = page.locator('button');

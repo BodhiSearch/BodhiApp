@@ -16,7 +16,7 @@ export class SetupResourceAdminPage extends SetupBasePage {
     signInTitle: 'text=Sign in to your account',
     usernameInput: 'input[name="username"]',
     passwordInput: 'input[name="password"]',
-    submitButton: 'button[type="submit"]'
+    submitButton: 'button[type="submit"]',
   };
 
   async navigateToResourceAdmin() {
@@ -47,7 +47,7 @@ export class SetupResourceAdminPage extends SetupBasePage {
   async fillAuthCredentials(username = null, password = null) {
     const user = username || this.testCredentials.username;
     const pass = password || this.testCredentials.password;
-    
+
     await this.page.fill(this.selectors.usernameInput, user);
     await this.page.fill(this.selectors.passwordInput, pass);
   }

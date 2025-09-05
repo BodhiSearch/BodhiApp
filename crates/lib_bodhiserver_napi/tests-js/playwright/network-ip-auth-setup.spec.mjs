@@ -4,12 +4,14 @@ import {
   getLocalNetworkIP,
   randomPort,
   waitForRedirect,
-  waitForSPAReady
+  waitForSPAReady,
 } from '../test-helpers.mjs';
-import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from './auth-server-client.mjs';
 import {
-  createServerManager,
-} from './bodhi-app-server.mjs';
+  createAuthServerTestClient,
+  getAuthServerConfig,
+  getTestCredentials,
+} from './auth-server-client.mjs';
+import { createServerManager } from './bodhi-app-server.mjs';
 
 test.describe('Network IP Authentication Setup Flow', () => {
   let authServerConfig;
@@ -22,13 +24,17 @@ test.describe('Network IP Authentication Setup Flow', () => {
     authClient = createAuthServerTestClient(authServerConfig);
   });
 
-  test('should complete setup flow and handle login when accessed via local network IP', async ({ page }) => {
+  test('should complete setup flow and handle login when accessed via local network IP', async ({
+    page,
+  }) => {
     // Get actual local network IP
     const localIP = getLocalNetworkIP();
 
     // Fail test with clear message if no network IP available
     if (!localIP) {
-      throw new Error('No local network IP available for testing. This test requires a network interface with a non-loopback IPv4 address.');
+      throw new Error(
+        'No local network IP available for testing. This test requires a network interface with a non-loopback IPv4 address.'
+      );
     }
 
     const port = randomPort();
@@ -160,19 +166,22 @@ test.describe('Network IP Authentication Setup Flow', () => {
       await waitForRedirect(page, '/ui/chat/');
       const loggedInUrl = getCurrentPath(page);
       expect(loggedInUrl).toBe('/ui/chat/');
-
     } finally {
       await serverManager.stopServer();
     }
   });
 
-  test('should complete setup flow via localhost and handle login via network IP', async ({ page }) => {
+  test('should complete setup flow via localhost and handle login via network IP', async ({
+    page,
+  }) => {
     // Get actual local network IP for cross-compatibility test
     const localIP = getLocalNetworkIP();
 
     // Fail test with clear message if no network IP available
     if (!localIP) {
-      throw new Error('No local network IP available for testing. This test requires a network interface with a non-loopback IPv4 address.');
+      throw new Error(
+        'No local network IP available for testing. This test requires a network interface with a non-loopback IPv4 address.'
+      );
     }
 
     const port = randomPort();
@@ -182,7 +191,7 @@ test.describe('Network IP Authentication Setup Flow', () => {
       appStatus: 'setup',
       authUrl: authServerConfig.authUrl,
       authRealm: authServerConfig.authRealm,
-      host: '0.0.0.0',  // Bind to all interfaces
+      host: '0.0.0.0', // Bind to all interfaces
       port,
       logLevel: 'debug',
     });
@@ -274,10 +283,8 @@ test.describe('Network IP Authentication Setup Flow', () => {
       await waitForRedirect(page, '/ui/chat/');
       const loggedInUrl = getCurrentPath(page);
       expect(loggedInUrl).toBe('/ui/chat/');
-
     } finally {
       await serverManager.stopServer();
     }
   });
-
 });

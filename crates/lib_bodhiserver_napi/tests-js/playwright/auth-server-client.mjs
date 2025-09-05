@@ -65,7 +65,7 @@ export class AuthServerTestClient {
       client_secret: this.devConsoleClientSecret,
       username: username,
       password: password,
-      scope: 'openid email profile roles'
+      scope: 'openid email profile roles',
     });
 
     const response = await fetch(tokenUrl, {
@@ -80,7 +80,9 @@ export class AuthServerTestClient {
       const errorText = await response.text();
       console.log('Token request failed:', response.status, response.statusText);
       console.log('Error response body:', errorText);
-      throw new Error(`Failed to get dev console token: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `Failed to get dev console token: ${response.status} ${response.statusText} - ${errorText}`
+      );
     }
 
     const data = await response.json();
@@ -96,7 +98,13 @@ export class AuthServerTestClient {
    * @param {string[]} customRedirectUris - Custom redirect URIs (optional)
    * @returns {Promise<Object>} Created app client info
    */
-  async createAppClient(devConsoleToken, appUrl, name = 'Test App Client', description = 'Test app client for Playwright tests', customRedirectUris = null) {
+  async createAppClient(
+    devConsoleToken,
+    appUrl,
+    name = 'Test App Client',
+    description = 'Test app client for Playwright tests',
+    customRedirectUris = null
+  ) {
     const appsUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/apps`;
 
     // Use custom redirect URIs if provided, otherwise use default ones
@@ -105,13 +113,13 @@ export class AuthServerTestClient {
     const response = await fetch(appsUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${devConsoleToken}`,
+        Authorization: `Bearer ${devConsoleToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         name,
         description,
-        redirect_uris: redirectUris
+        redirect_uris: redirectUris,
       }),
     });
 
@@ -135,7 +143,11 @@ export class AuthServerTestClient {
    * @param {string} description - Client description
    * @returns {Promise<Object>} Created resource client info
    */
-  async createResourceClient(serverUrl, name = 'Test Resource Client', description = 'Test resource client for Playwright tests') {
+  async createResourceClient(
+    serverUrl,
+    name = 'Test Resource Client',
+    description = 'Test resource client for Playwright tests'
+  ) {
     const resourcesUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources`;
     const response = await fetch(resourcesUrl, {
       method: 'POST',
@@ -145,7 +157,7 @@ export class AuthServerTestClient {
       body: JSON.stringify({
         name,
         description,
-        redirect_uris: [`${serverUrl}/ui/auth/callback`]
+        redirect_uris: [`${serverUrl}/ui/auth/callback`],
       }),
     });
 
@@ -153,14 +165,16 @@ export class AuthServerTestClient {
       const errorText = await response.text();
       console.log('Create resource client failed:', response.status, response.statusText);
       console.log('Error response body:', errorText);
-      throw new Error(`Failed to create resource client: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to create resource client: ${response.status} ${response.statusText}`
+      );
     }
 
     const data = await response.json();
     return {
       clientId: data.client_id,
       clientSecret: data.client_secret,
-      scope: data.scope
+      scope: data.scope,
     };
   }
 
@@ -175,7 +189,7 @@ export class AuthServerTestClient {
 
     const params = new URLSearchParams({
       grant_type: 'client_credentials',
-      scope: 'service_account'
+      scope: 'service_account',
     });
 
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -183,7 +197,7 @@ export class AuthServerTestClient {
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${credentials}`,
+        Authorization: `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: params.toString(),
@@ -193,7 +207,9 @@ export class AuthServerTestClient {
       const errorText = await response.text();
       console.log('Get service account token failed:', response.status, response.statusText);
       console.log('Error response body:', errorText);
-      throw new Error(`Failed to get service account token: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to get service account token: ${response.status} ${response.statusText}`
+      );
     }
 
     const data = await response.json();
@@ -212,11 +228,11 @@ export class AuthServerTestClient {
     const response = await fetch(requestAccessUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${resourceToken}`,
+        Authorization: `Bearer ${resourceToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        app_client_id: appClientId
+        app_client_id: appClientId,
       }),
     });
 
@@ -224,7 +240,9 @@ export class AuthServerTestClient {
       const errorText = await response.text();
       console.log('Request audience access failed:', response.status, response.statusText);
       console.log('Error response body:', errorText);
-      throw new Error(`Failed to request audience access: ${response.status} ${response.statusText}`);
+      throw new Error(
+        `Failed to request audience access: ${response.status} ${response.statusText}`
+      );
     }
 
     const data = await response.json();
@@ -233,15 +251,18 @@ export class AuthServerTestClient {
 
   async makeResourceAdmin(resourceClientId, resourceClientSecret, username) {
     const resourceAdminUrl = `${this.authUrl}/realms/${this.authRealm}/bodhi/resources/make-resource-admin`;
-    const resourceToken = await this.getResourceServiceAccountToken(resourceClientId, resourceClientSecret);
+    const resourceToken = await this.getResourceServiceAccountToken(
+      resourceClientId,
+      resourceClientSecret
+    );
     const response = await fetch(resourceAdminUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${resourceToken}`,
+        Authorization: `Bearer ${resourceToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        username: username
+        username: username,
       }),
     });
 
@@ -268,15 +289,17 @@ export class AuthServerTestClient {
       scope: 'openid email profile roles scope_user_user',
       grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
       subject_token_type: 'urn:ietf:params:oauth:token-type:access_token',
-      requested_token_type: 'urn:ietf:params:oauth:token-type:access_token'
+      requested_token_type: 'urn:ietf:params:oauth:token-type:access_token',
     });
 
-    const credentials = Buffer.from(`${resourceClientId}:${resourceClientSecret}`).toString('base64');
+    const credentials = Buffer.from(`${resourceClientId}:${resourceClientSecret}`).toString(
+      'base64'
+    );
 
     const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${credentials}`,
+        Authorization: `Basic ${credentials}`,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: params.toString(),
@@ -301,4 +324,4 @@ export class AuthServerTestClient {
  */
 export function createAuthServerTestClient(config) {
   return new AuthServerTestClient(config);
-} 
+}

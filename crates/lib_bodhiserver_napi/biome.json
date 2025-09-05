@@ -4,7 +4,14 @@
     "enabled": true
   },
   "files": {
-    "include": ["src/**/*.js", "src/**/*.ts", "*.js", "*.ts"],
+    "include": [
+      "src/**/*.js",
+      "src/**/*.ts",
+      "*.js",
+      "*.ts",
+      "tests-js/**/*.js",
+      "tests-js/**/*.mjs"
+    ],
     "ignore": ["node_modules/**", "dist/**", "build/**", "index.d.ts", "index.js"]
   },
   "formatter": {

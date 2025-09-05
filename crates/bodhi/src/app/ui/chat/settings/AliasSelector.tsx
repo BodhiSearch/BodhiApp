@@ -68,6 +68,7 @@ export function AliasSelector({ models, isLoading = false, tooltip }: AliasSelec
           statuses={modelStatuses}
           placeholder="Select alias"
           id="model-selector"
+          data-testid="model-selector-trigger"
           loading={isLoading}
         />
       </div>
