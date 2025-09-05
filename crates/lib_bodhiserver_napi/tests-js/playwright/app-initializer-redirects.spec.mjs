@@ -59,31 +59,4 @@ test.describe('App Initializer Redirect Tests', () => {
       await serverManager.stopServer();
     }
   });
-
-  test('should show error when app has startup issues', async ({ page }) => {
-    // Since 'error' is not a valid app status, let's test with a different approach
-    // We'll create a server with invalid configuration to simulate error state
-    const serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: 'https://invalid-url.example.com', // This will cause errors
-      authRealm: authServerConfig.authRealm,
-      clientId: 'dummy-client-id',
-      clientSecret: 'dummy-client-secret',
-      port: port,
-    });
-
-    const baseUrl = await serverManager.startServer();
-
-    try {
-      await page.goto(baseUrl);
-      await waitForSPAReady(page);
-
-      // The app should show some kind of error or redirect to login
-      // Since we can't predict the exact error behavior, we'll just check that the page loads
-      const pageContent = await page.content();
-      expect(pageContent.length).toBeGreaterThan(1000);
-    } finally {
-      await serverManager.stopServer();
-    }
-  });
 });

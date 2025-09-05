@@ -53,6 +53,7 @@ const ChatInput = memo(function ChatInput({
           <form onSubmit={handleSubmit} className="flex w-full items-center">
             <textarea
               ref={inputRef}
+              data-testid="chat-input"
               className={cn(
                 'flex-1 resize-none bg-transparent px-12 py-3 text-sm outline-none disabled:opacity-50',
                 !isModelSelected && 'ring-2 ring-destructive'
@@ -71,6 +72,7 @@ const ChatInput = memo(function ChatInput({
             <Button
               type="submit"
               size="icon"
+              data-testid="send-button"
               disabled={!input.trim() || streamLoading || !isModelSelected}
               className="absolute right-2 h-8 w-8"
             >

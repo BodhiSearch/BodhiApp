@@ -37,6 +37,10 @@ clean.ui: ## Clean UI
 	rm -rf crates/bodhi/out
 	cargo clean -p lib_bodhiserver -p bodhi && rm -rf crates/lib_bodhiserver_napi/app-bindings.*.node
 
+build.ui:
+	cd crates/bodhi && npm run build
+	cd crates/lib_bodhiserver_napi && npm run build
+
 coverage: ## Generate code coverage report
 	cargo build -p llama_server_proc; \
 	PACKAGES=$$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[].name' | sed 's/^/-p /'); \
