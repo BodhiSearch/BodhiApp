@@ -30,7 +30,7 @@ export class ChatPage extends BasePage {
 
     // Model selection (in settings panel)
     modelSelectorLoaded: '[data-testid="model-selector-loaded"]',
-    comboboxTrigger: '[data-testid="combobox-trigger"]',
+    comboboxTrigger: '[data-testid="model-selector-trigger"]',
     comboboxOption: (modelName) => `[data-testid="combobox-option-${modelName}"]`,
 
     // Settings
@@ -425,5 +425,32 @@ export class ChatPage extends BasePage {
 
     await this.sendMessage('Test responsive message');
     await this.waitForResponse();
+  }
+
+  /**
+   * Verify we're on chat page with specific model pre-selected
+   * @param {string} modelName - The expected model name
+   */
+  async expectChatPageWithModel(modelName) {
+    // Wait for chat page to load
+    await this.waitForChatPageLoad();
+
+    // Check that we're on the chat page
+    await expect(this.page).toHaveURL(/\/ui\/chat\//);
+
+    // Wait for model selector to be loaded and check if the model is selected
+    await this.page.waitForSelector(this.selectors.modelSelectorLoaded);
+
+    // Check the selected model in the combobox
+    const modelSelector = this.page.locator(this.selectors.comboboxTrigger);
+    await expect(modelSelector).toBeVisible();
+
+    // The model selector should contain the expected model name
+    await expect(modelSelector).toContainText(modelName);
+
+    // Verify the message input is enabled (not showing "Please select a model first")
+    const messageInput = this.page.locator(this.selectors.messageInput);
+    await expect(messageInput).toBeVisible();
+    await expect(messageInput).not.toHaveAttribute('placeholder', 'Please select a model first');
   }
 }

@@ -72,10 +72,16 @@ const columns = [
   { id: 'actions', name: '', sorted: false, className: 'hidden sm:table-cell' },
 ];
 
-const SourceBadge = ({ model }: { model: Alias }) => {
+const SourceBadge = ({ model, testIdPrefix = '' }: { model: Alias; testIdPrefix?: string }) => {
+  const prefix = testIdPrefix ? `${testIdPrefix}` : '';
+
   if (isApiAlias(model)) {
     return (
-      <Badge variant="outline" className="bg-purple-500/10 text-purple-600 border-purple-200">
+      <Badge
+        variant="outline"
+        className="bg-purple-500/10 text-purple-600 border-purple-200"
+        data-testid={`${prefix}source-badge-api_${model.id}`}
+      >
         <Cloud className="h-3 w-3 mr-1" />
         API
       </Badge>
@@ -85,7 +91,10 @@ const SourceBadge = ({ model }: { model: Alias }) => {
   const source = model.source;
   const colorClass = source === 'model' ? 'bg-green-500/10 text-green-500' : 'bg-blue-500/10 text-blue-500';
   return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium w-fit ${colorClass}`}>
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium w-fit ${colorClass}`}
+      data-testid={`${prefix}source-badge-${model.alias}`}
+    >
       {source || ''}
     </span>
   );
@@ -180,7 +189,7 @@ function ModelsPageContent() {
     }
   };
 
-  const actionUi = (model: Alias) => {
+  const actionUi = (model: Alias, testIdPrefix = '') => {
     if (isApiAlias(model)) {
       // API model actions
       return (
@@ -191,7 +200,7 @@ function ModelsPageContent() {
             onClick={() => handleEdit(model)}
             title={`Edit API model ${model.id}`}
             className="h-8 w-8 p-0"
-            data-testid={`edit-button-${model.id}`}
+            data-testid={`${testIdPrefix}edit-button-${model.id}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -201,7 +210,7 @@ function ModelsPageContent() {
             onClick={() => handleDelete(model)}
             title={`Delete API model ${model.id}`}
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            data-testid={`delete-button-${model.id}`}
+            data-testid={`${testIdPrefix}delete-button-${model.id}`}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -211,7 +220,7 @@ function ModelsPageContent() {
             onClick={() => handleChat(model)}
             title="Chat with the model in playground"
             className="h-8 w-8 p-0"
-            data-testid={`chat-button-${model.id}`}
+            data-testid={`${testIdPrefix}chat-button-${model.id}`}
           >
             <MessageSquare className="h-4 w-4" />
           </Button>
@@ -226,7 +235,7 @@ function ModelsPageContent() {
                   className="h-8 px-2 text-xs"
                   onClick={() => router.push(`/ui/chat?model=${modelName}`)}
                   title={`Chat with ${modelName}`}
-                  data-testid={`model-chat-button-${modelName}`}
+                  data-testid={`${testIdPrefix}model-chat-button-${modelName}`}
                 >
                   {modelName}
                 </Button>
@@ -239,7 +248,7 @@ function ModelsPageContent() {
                 className="h-8 px-2 text-xs text-muted-foreground"
                 onClick={() => handleShowMoreModels(model.models, model.id)}
                 title="Show more models"
-                data-testid={`more-models-button-${model.id}`}
+                data-testid={`${testIdPrefix}more-models-button-${model.id}`}
               >
                 +{model.models.length - 2} more...
               </Button>
@@ -254,7 +263,7 @@ function ModelsPageContent() {
                   size="sm"
                   className="h-8 w-8 p-0"
                   title="Chat with models"
-                  data-testid={`models-dropdown-${model.id}`}
+                  data-testid={`${testIdPrefix}models-dropdown-${model.id}`}
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
@@ -280,7 +289,7 @@ function ModelsPageContent() {
             onClick={() => handleNew(model)}
             title={`Create new model alias using this modelfile`}
             className="h-8 w-8 p-0"
-            data-testid={`new-button-${model.alias}`}
+            data-testid={`${testIdPrefix}create-alias-from-model-${model.alias}`}
           >
             <FilePlus2 className="h-4 w-4" />
           </Button>
@@ -291,7 +300,7 @@ function ModelsPageContent() {
             onClick={() => handleEdit(model)}
             title={`Edit ${model.alias}`}
             className="h-8 w-8 p-0"
-            data-testid={`edit-button-${model.alias}`}
+            data-testid={`${testIdPrefix}edit-button-${model.alias}`}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -305,7 +314,7 @@ function ModelsPageContent() {
             onClick={() => handleChat(model)}
             title={`Chat with the model in playground`}
             className="h-8 w-8 p-0"
-            data-testid={`chat-button-${model.alias}`}
+            data-testid={`${testIdPrefix}chat-button-${model.alias}`}
           >
             <MessageSquare className="h-4 w-4" />
           </Button>
@@ -315,7 +324,7 @@ function ModelsPageContent() {
             className="h-8 w-8 p-0"
             onClick={() => window.open(getExternalUrl(model), '_blank')}
             title="Open in HuggingFace"
-            data-testid={`external-button-${model.alias}`}
+            data-testid={`${testIdPrefix}external-button-${model.alias}`}
           >
             <ExternalLink className="h-4 w-4" />
           </Button>
@@ -364,12 +373,12 @@ function ModelsPageContent() {
 
         {/* Source/Type */}
         <div className="w-fit">
-          <SourceBadge model={model} />
+          <SourceBadge model={model} testIdPrefix="m-" />
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-1 pt-2 border-t" data-testid={`actions-${getItemId(model)}`}>
-          {actionUi(model)}
+          {actionUi(model, 'm-')}
         </div>
       </div>
     </TableCell>,
@@ -388,7 +397,7 @@ function ModelsPageContent() {
           </div>
         )}
         <div className="w-fit">
-          <SourceBadge model={model} />
+          <SourceBadge model={model} testIdPrefix="tab-" />
         </div>
       </div>
     </TableCell>,
@@ -462,7 +471,7 @@ function ModelsPageContent() {
           <Globe className="h-4 w-4 mr-2" />
           New API Model
         </Button>
-        <Button onClick={handleNewAlias} size="sm">
+        <Button onClick={handleNewAlias} size="sm" data-testid="new-model-alias-button">
           <Plus className="h-4 w-4 mr-2" />
           New Model Alias
         </Button>

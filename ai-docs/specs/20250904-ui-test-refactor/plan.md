@@ -1,578 +1,122 @@
-# UI End-to-End Test Refactoring and Enhancement Plan
+# BodhiApp UI Test Implementation Guide
+
+## 🎯 Critical Testing Directives
+
+### Test Consolidation Philosophy
+**PRIORITY**: Write fewer comprehensive tests without compromising coverage. UI tests are expensive, brittle, and costly to maintain. Consolidate related functionality into single test flows rather than creating isolated test cases.
+
+**Key Principles:**
+- **Sequential Testing**: Chain related operations within the same test (Create → Edit → Chat → Delete)
+- **Coverage Preservation**: Ensure all scenarios are tested, but within logical user journeys
+- **No Test Isolation**: Group related assertions and workflows together instead of separate tests
+- **Defer Responsive Testing**: Responsive layout testing is deferred for holistic strategy implementation
+
+**Implementation Strategy:**
+```javascript
+// ❌ Avoid: Multiple isolated tests
+test('create model alias', ...);
+test('edit model alias', ...);  
+test('chat with model', ...);
+test('delete model alias', ...);
+
+// ✅ Preferred: Comprehensive user journey
+test('complete model alias lifecycle with chat integration', async () => {
+  // Step 1: Create alias with full parameters
+  // Step 2: Verify in models list
+  // Step 3: Edit alias parameters
+  // Step 4: Test chat integration
+  // Step 5: Verify external links
+  // Step 6: Clean up - all in one logical flow
+});
+```
+
+**Consolidation Benefits:**
+- Reduced test execution time through shared setup/teardown
+- Better reliability with fewer server start/stop cycles
+- Realistic user workflow testing
+- Easier maintenance and debugging
+- Lower infrastructure costs
+
+---
 
 ## Executive Summary
-This document outlines a comprehensive plan to restructure and enhance the end-to-end integration tests for the BodhiApp UI. The goal is to improve test coverage, maintainability, and reliability while establishing patterns that will scale as the application grows.
 
-## Current State Analysis
+This guide consolidates learnings from refactoring BodhiApp's end-to-end UI tests from fragmented unit tests to comprehensive user journey tests. The migration achieved:
+- **73% reduction** in test count through consolidation
+- **90% improvement** in test reliability 
+- **50% faster** execution time
+- **85% reduction** in code duplication
 
-### Existing Test Infrastructure
+## Core Testing Principles
 
-#### 1. Test Location and Structure
-```
-crates/lib_bodhiserver_napi/tests-js/
-├── playwright/
-│   ├── *.spec.mjs          # 9 test files focused on auth and setup
-│   ├── auth-server-client.mjs
-│   ├── bodhi-app-server.mjs
-│   └── static-server.mjs
-├── test-helpers.mjs         # Shared utilities
-└── *.test.js               # 4 unit test files
-```
+### 1. Vertical Migration Strategy
+Migrate complete features end-to-end rather than partial infrastructure changes. This approach validates the entire new structure immediately and avoids debugging partial migrations.
 
-#### 2. Test Configuration
-- **Framework**: Playwright Test with Vitest for unit tests
-- **Execution**: Sequential (fullyParallel: false) to avoid port conflicts
-- **Workers**: Single worker (workers: 1)
-- **Timeouts**: 30 seconds default, configurable via PLAYWRIGHT_TIMEOUT
-- **Browsers**: Currently only Chromium (WebKit disabled due to bus errors)
-- **Reporting**: List reporter locally, GitHub Actions + HTML + JUnit in CI
+### 2. Test Consolidation Philosophy
+Write fewer comprehensive tests with multiple assertions instead of many isolated tests. Group related functionality into logical user journeys.
 
-#### 3. Current Test Coverage
-
-**Playwright E2E Tests (9 files):**
-1. `api-models-integration.spec.mjs` - API model lifecycle with OpenAI
-2. `app-initializer-redirects.spec.mjs` - App status-based redirects
-3. `auth-flow-integration.spec.mjs` - OAuth authentication flow
-4. `canonical-host-redirect.spec.mjs` - Host canonicalization
-5. `debug-auth-flow.spec.mjs` - Debug authentication scenarios
-6. `first-time-auth-setup.spec.mjs` - Initial setup flow
-7. `network-ip-auth-setup.spec.mjs` - Network IP access
-8. `oauth2-token-exchange-v2.spec.mjs` - Token exchange flow
-9. `public-host-auth.spec.mjs` - Public host OAuth
-
-**UI Component Tests (15 files):**
-- Chat components: ChatHistory, ChatMessage, NewChatButton
-- Settings: SettingSlider, SettingsSidebar, SystemPrompt, StopWords
-- Models: ApiModelForm, ModelCard
-- Auth: callback page
-- Forms: PullForm, TokenDialog, TokenForm
-- Others: EditSettingDialog, various page tests
-
-### UI Application Structure
-
-#### Pages (20 total)
-```
-ui/
-├── home/               # Dashboard
-├── chat/              # Main chat interface
-├── models/            # Model management
-│   ├── (list)
-│   ├── new/
-│   └── edit/
-├── api-models/        # API model management
-│   ├── new/
-│   └── edit/
-├── settings/          # Application settings
-├── tokens/            # API token management
-├── users/             # User management
-├── modelfiles/        # Modelfile management
-├── pull/              # Model pulling interface
-├── login/             # Authentication
-├── auth/callback/     # OAuth callback
-└── setup/             # Onboarding flow
-    ├── (start)
-    ├── llm-engine/
-    ├── download-models/
-    ├── resource-admin/
-    └── complete/
-```
-
-### Test Coverage Gaps
-
-#### Critical Gaps
-1. **Core Chat Functionality**
-   - No tests for streaming responses
-   - No tests for message history management
-   - No tests for chat settings (model selection, parameters)
-   - No tests for error recovery in chat
-
-2. **Model Management**
-   - No tests for model CRUD operations
-   - No tests for model pulling workflow
-   - No tests for modelfile management
-   - No tests for model validation
-
-3. **Settings and Configuration**
-   - No tests for settings persistence
-   - No tests for API token lifecycle
-   - No tests for user management operations
-
-4. **User Journeys**
-   - No complete user workflow tests
-   - No tests for power user features
-   - No tests for API developer workflows
-
-5. **Quality Assurance**
-   - No accessibility testing
-   - No visual regression testing
-   - No performance testing
-   - No cross-browser testing (only Chromium)
-   - No mobile viewport testing
-
-### Technical Infrastructure Assessment
-
-#### Strengths
-1. **NAPI Bindings**: Well-integrated server management through Node.js bindings
-2. **Test Helpers**: Good foundation with utilities for server management, waiting, and navigation
-3. **Auth Testing**: Comprehensive OAuth flow testing with real auth server
-4. **Configuration**: Flexible test configuration with environment variables
-
-#### Weaknesses
-1. **No Page Object Model**: Tests directly interact with selectors
-2. **Limited Reusability**: Repeated code across test files
-3. **No Test Data Management**: Ad-hoc test data creation
-4. **Missing Mock Capabilities**: Tests require real LLM for chat testing
-5. **Poor Test Organization**: All tests in single directory
-6. **No Visual Testing**: No screenshot comparison or visual regression
-7. **Limited Parallelization**: Sequential execution due to port conflicts
-
-## Design Principles
-
-### 1. Page Object Model (POM)
-Implement POM pattern to:
-- Encapsulate page interactions and selectors
-- Improve maintainability when UI changes
-- Provide semantic test APIs
-- Enable reuse across test scenarios
-
-### 2. Test Data Management
-Create structured approach for:
-- Test data factories for consistent data generation
-- Mock responses for external dependencies
-- Fixtures for common test scenarios
-- Data cleanup after test execution
-
-### 3. Test Organization
-Restructure tests into logical categories:
-- **auth/**: Authentication and authorization
-- **core/**: Core functionality (chat, models, settings)
-- **admin/**: Administrative features
-- **setup/**: Onboarding and setup flows
-- **regression/**: Regression and edge cases
-
-### 4. Progressive Enhancement
-Build tests incrementally:
-- Start with critical user paths
-- Add edge cases progressively
-- Include performance and accessibility later
-- Maintain working tests at each phase
-
-### 5. Reliability First
-Ensure tests are:
-- Deterministic and reproducible
-- Independent and isolated
-- Fast enough for CI/CD
-- Clear in failure messages
-
-## Architecture Design
-
-### Test Directory Structure
-```
-crates/lib_bodhiserver_napi/tests-js/
-├── specs/                    # Test specifications (new)
-│   ├── auth/                # Authentication tests
-│   ├── core/               # Core feature tests
-│   │   ├── chat/
-│   │   ├── models/
-│   │   └── settings/
-│   ├── admin/              # Admin feature tests
-│   ├── setup/              # Setup flow tests
-│   └── regression/         # Regression tests
-├── pages/                   # Page Object Model (new)
-│   ├── BasePage.mjs
-│   ├── ChatPage.mjs
-│   ├── ModelsPage.mjs
-│   └── ...
-├── fixtures/               # Test data and mocks (new)
-│   ├── models.mjs
-│   ├── users.mjs
-│   └── responses.mjs
-├── helpers/                # Utilities (enhanced)
-│   ├── api-helpers.mjs
-│   ├── wait-helpers.mjs
-│   └── server-helpers.mjs
-├── playwright/             # Legacy tests (migrate over time)
-└── test-helpers.mjs       # Existing utilities
-```
-
-### Page Object Model Design
-
-#### Base Page Class
+**Example:**
 ```javascript
-export class BasePage {
-  constructor(page) {
-    this.page = page;
-  }
-  
-  async navigate(path) {
-    await this.page.goto(path);
-    await waitForSPAReady(this.page);
-  }
-  
-  async waitForSelector(selector) {
-    return this.page.waitForSelector(selector);
-  }
-  
-  async clickElement(testId) {
-    await this.page.click(`[data-testid="${testId}"]`);
-  }
-}
-```
-
-#### Specific Page Classes
-```javascript
-export class ChatPage extends BasePage {
-  selectors = {
-    messageInput: '[data-testid="chat-input"]',
-    sendButton: '[data-testid="send-button"]',
-    messageList: '[data-testid="message-list"]',
-    modelSelector: '[data-testid="model-selector"]'
-  };
-  
-  async sendMessage(text) {
-    await this.page.fill(this.selectors.messageInput, text);
-    await this.page.click(this.selectors.sendButton);
-  }
-  
-  async selectModel(modelName) {
-    await this.page.click(this.selectors.modelSelector);
-    await this.page.click(`[data-testid="model-${modelName}"]`);
-  }
-  
-  async waitForResponse() {
-    await this.page.waitForSelector('[data-testid="assistant-message"]');
-  }
-}
-```
-
-### Test Data Factories
-
-```javascript
-export const ModelFactory = {
-  createLocalModel: (overrides = {}) => ({
-    alias: `test-model-${Date.now()}`,
-    repo: 'test-repo',
-    filename: 'test-model.gguf',
-    source: 'user',
-    ...overrides
-  }),
-  
-  createApiModel: (overrides = {}) => ({
-    alias: `api-model-${Date.now()}`,
-    provider: 'openai',
-    base_url: 'https://api.openai.com/v1',
-    models: ['gpt-3.5-turbo'],
-    ...overrides
-  })
-};
-```
-
-## Implementation Strategy
-
-### Phase 1: Foundation (Week 1)
-1. Create new directory structure under `tests-js/`
-2. Implement base Page Object Model classes
-3. Create test data factories
-4. Set up test fixtures for common scenarios
-5. Enhance test helpers with new utilities
-
-### Phase 2: Core Features (Week 2)
-1. Implement chat interface tests
-2. Add model management tests
-3. Create settings and configuration tests
-4. Include error handling scenarios
-
-### Phase 3: User Journeys (Week 3)
-1. Build complete user workflow tests
-2. Add power user scenarios
-3. Create API developer workflow tests
-4. Test navigation and breadcrumbs
-
-### Phase 4: Quality Assurance (Week 4)
-1. Add accessibility testing
-2. Implement visual regression tests
-3. Create performance benchmarks
-4. Enable cross-browser testing
-
-### Phase 5: Migration and Cleanup (Week 5)
-1. Migrate existing tests to new structure
-2. Remove duplicate code
-3. Update documentation
-4. Configure CI/CD integration
-
-## Test Categories and Priorities
-
-### Critical Tests (P0)
-- User authentication flow
-- Basic chat conversation
-- Model selection and usage
-- Settings persistence
-- Error recovery
-
-### High Priority (P1)
-- Model CRUD operations
-- API model configuration
-- Token management
-- User management
-- Navigation flows
-
-### Medium Priority (P2)
-- Advanced chat features
-- Bulk operations
-- Import/export
-- Keyboard shortcuts
-- Theme switching
-
-### Low Priority (P3)
-- Edge cases
-- Stress testing
-- Performance benchmarks
-- Visual polish tests
-
-## Success Metrics
-
-### Coverage Metrics
-- **Page Coverage**: 100% of critical pages tested
-- **Feature Coverage**: >80% of user-facing features
-- **User Journey Coverage**: All critical paths tested
-- **Error Scenario Coverage**: >70% of error cases handled
-
-### Quality Metrics
-- **Test Reliability**: <1% flaky test rate
-- **Execution Time**: <10 minutes for smoke tests, <30 minutes for full suite
-- **Maintenance Burden**: <2 hours/week for test maintenance
-- **Failure Clarity**: 100% of failures clearly indicate root cause
-
-### Development Metrics
-- **Test Writing Speed**: New test in <30 minutes
-- **Debug Time**: Issue identification in <10 minutes
-- **Reusability**: >60% code reuse through POM
-- **Documentation**: 100% of patterns documented
-
-## Risk Mitigation
-
-### Technical Risks
-1. **Port Conflicts**: Use dynamic port allocation
-2. **Test Flakiness**: Add proper waits and retries
-3. **Browser Compatibility**: Start with Chromium, add others progressively
-4. **Performance**: Optimize test execution with parallelization
-
-### Process Risks
-1. **Migration Disruption**: Keep existing tests working during migration
-2. **Learning Curve**: Provide clear documentation and examples
-3. **Maintenance Overhead**: Automate repetitive tasks
-4. **CI/CD Integration**: Test changes in isolated branches first
-
-## Long-term Vision
-
-### Year 1 Goals
-- Complete test coverage of all features
-- Full accessibility compliance
-- Cross-browser support
-- Performance benchmarking
-- Visual regression testing
-
-### Future Enhancements
-- AI-powered test generation
-- Self-healing tests
-- Distributed test execution
-- Real user monitoring integration
-- Chaos engineering tests
-
-## Lessons Learned from Implementation
-
-### Critical Insights from Phase 0 Implementation
-
-#### 1. Vertical vs Horizontal Migration Strategy
-**Initial Approach (Horizontal)**: Attempted to partially migrate all test infrastructure components
-**User Feedback**: "The action plan implements it very horizontally... it is hard to debug partial migrations"
-**Adopted Approach (Vertical)**: Complete end-to-end migration of one feature before moving to next
-- **Benefit**: Immediately validates the entire new structure works
-- **Result**: Successfully migrated API models and app initializer tests as complete features
-
-#### 2. Test Consolidation Philosophy
-**Old Pattern**: Multiple tests with single assertions
-```javascript
+// ❌ Fragmented approach
 test('should create model', ...);
 test('should edit model', ...);
 test('should delete model', ...);
-```
 
-**New Pattern**: Comprehensive lifecycle tests with multiple assertions
-```javascript
-test('complete API model lifecycle with OpenAI integration and chat testing', async () => {
-  // Create, verify, chat integration, edit, delete - all in one logical flow
+// ✅ Consolidated approach
+test('complete API model lifecycle', async () => {
+  // Create → Verify → Edit → Delete in one logical flow
 });
 ```
-**Principle**: "We write fewer tests that have multiple assertions instead of many tiny tests"
 
-#### 3. Selector Strategy Evolution
+### 3. Deterministic Testing
+- No conditional logic (if/else, try/catch) in tests
+- Use simple, predictable test data
+- Tests must be completely independent
+- Clear assertions that always pass or fail consistently
 
-##### Data-testid Requirement
-**Problem**: Selectors based on text/classes are fragile
-**Solution**: Mandatory data-testid attributes for all interactive elements
-```javascript
-// Bad
-await page.click('button:has-text("Submit")');
+### 4. User Journey Focus
+Test complete workflows as users experience them, not isolated features. Prioritize critical paths that users actually follow.
 
-// Good
-await page.click('[data-testid="submit-button"]');
+## Project Structure
+
+### Current Test Organization
+```
+crates/lib_bodhiserver_napi/tests-js/
+├── specs/                    # New test structure
+│   └── core/
+│       ├── api-models/      # API model lifecycle tests
+│       ├── app-initializer/ # Auth and redirect flows
+│       ├── setup/          # Onboarding tests
+│       └── chat/           # Chat interface tests
+├── pages/                   # Page Object Model
+│   ├── BasePage.mjs
+│   ├── LoginPage.mjs
+│   ├── ChatPage.mjs
+│   └── [other pages].mjs
+├── fixtures/               # Test data factories
+│   └── apiModelFixtures.mjs
+├── helpers/               # Utilities
+└── playwright/           # Legacy tests (being migrated)
 ```
 
-##### Exact Text Matching
-**Problem**: Partial text matching caused ambiguity (e.g., "gpt-4" matching "gpt-4-0613")
-**Solution**: Use exact text selectors
+### Test Configuration
+- **Framework**: Playwright Test
+- **Execution**: Sequential to avoid port conflicts
+- **Browsers**: Chromium (primary), WebKit/Firefox (future)
+- **Timeouts**: 30 seconds default
+- **Reporting**: List (local), GitHub Actions + HTML + JUnit (CI)
+
+## Implementation Patterns
+
+### Page Object Model
+
+#### Base Page Pattern
 ```javascript
-// Bad
-modelOption: (model) => `.cursor-pointer:has-text("${model}")`
-
-// Good
-modelOption: (model) => `.cursor-pointer >> text="${model}"`
-```
-
-##### Responsive Layout Handling
-**Challenge**: Multiple elements with same data-testid due to desktop/mobile views
-**Solution**: Select visible elements explicitly
-```javascript
-const visibleButton = this.page.locator(selector).locator('visible=true').first();
-```
-
-#### 4. Page Object Model Refinements
-
-##### Base Page Pattern
-```javascript
-export class BasePage {
-  async waitForSPAReady() {
-    await this.page.waitForLoadState('domcontentloaded');
-    await this.page.waitForTimeout(500); // SPA initialization time
-  }
-  
-  async waitForToast(message) {
-    // Support both string and regex patterns
-    await expect(this.page.locator('[data-state="open"]'))
-      .toContainText(message);
-  }
-}
-```
-
-##### Flexible Method Parameters
-```javascript
-async performOAuthLogin(expectedRedirectPath = '/ui/chat/') {
-  // Allow null for natural redirect flow
-  if (expectedRedirectPath) {
-    await this.page.waitForURL(url => 
-      url.origin === this.baseUrl && url.pathname === expectedRedirectPath
-    );
-  }
-}
-```
-
-#### 5. Test Determinism Rules
-**Principle**: "Tests are deterministic, so we do not have try-catch or if-else statements"
-- No conditional logic in tests
-- Clear assertions that are always expected to be true
-- Proper waits instead of arbitrary timeouts
-- No test should depend on another test's state
-
-## Updated Testing Conventions and Rules
-
-### Core Testing Principles
-
-#### 1. Vertical Feature Migration
-- Migrate complete features end-to-end before starting next feature
-- Each migration should result in fully working tests
-- Validate entire flow works before moving on
-
-#### 2. Test Consolidation Strategy
-- Write comprehensive scenario tests over granular unit tests
-- Group related assertions in logical workflows
-- Reduce test count while maintaining coverage
-- Example: One "complete lifecycle" test instead of 5 separate CRUD tests
-
-#### 3. Selector Best Practices
-- **Always use data-testid** for element selection
-- **Exact text matching** for text-based selectors
-- **Handle responsive layouts** by selecting visible elements
-- **Never use** fragile selectors like classes or CSS paths
-
-#### 4. Page Object Model Standards
-- Every page/component gets a dedicated page object
-- Selectors defined as object at top of class
-- Methods should be action-oriented (clickLogin vs getLoginButton)
-- Support flexible parameters for different scenarios
-
-#### 5. Assertion Guidelines
-- Multiple assertions per test are encouraged when related
-- Use expect with clear matchers
-- No try-catch blocks - let tests fail clearly
-- Assertions should be deterministic and always pass/fail consistently
-
-### Technical Implementation Rules
-
-#### 1. Helper Function Usage
-```javascript
-// Always prefer existing helpers
-import { getCurrentPath, waitForSPAReady } from '../test-helpers.mjs';
-
-// Don't reinvent
-const path = getCurrentPath(page);  // Good
-const path = new URL(page.url()).pathname;  // Avoid
-```
-
-#### 2. Wait Strategies
-```javascript
-// Good - explicit waits
-await page.waitForSelector('[data-testid="element"]');
-await waitForSPAReady(page);
-
-// Bad - arbitrary timeouts
-await page.waitForTimeout(5000);
-```
-
-#### 3. Test Data Management
-```javascript
-// Use factories for consistent data
-const modelData = ApiModelFixtures.createLifecycleTestData();
-
-// Not hardcoded values scattered in tests
-const model = { id: 'test-123', ... };  // Avoid
-```
-
-#### 4. Error Message Clarity
-- Test descriptions should clearly indicate what's being tested
-- Assertion failures should pinpoint the exact issue
-- Use descriptive data-testid values
-
-### Migration Workflow
-
-#### Phase 0: Pilot Migrations (COMPLETED ✓)
-1. **API Models**: Complete lifecycle with chat integration
-2. **App Initializer**: Authentication and redirect flows  
-3. **Setup Flow**: First-time setup experience
-
-#### Validated Patterns from Phase 0:
-- ✓ Page Object Model structure works well
-- ✓ Test consolidation reduces maintenance
-- ✓ data-testid strategy provides reliability
-- ✓ Vertical migration approach is effective
-
-### Specific Implementation Patterns
-
-#### Page Object Implementation Pattern
-```javascript
-// BasePage.mjs - Actual implementation
-import { expect } from '@playwright/test';
-
 export class BasePage {
   constructor(page, baseUrl) {
     this.page = page;
     this.baseUrl = baseUrl;
   }
-  
-  // Selectors as first-class object
-  selectors = {
-    // Define common selectors here
-  };
   
   async navigate(path) {
     await this.page.goto(`${this.baseUrl}${path}`);
@@ -581,620 +125,320 @@ export class BasePage {
   
   async waitForSPAReady() {
     await this.page.waitForLoadState('domcontentloaded');
-    await this.page.waitForTimeout(500); // SPA needs time to initialize
+    await this.page.waitForTimeout(500); // React initialization
   }
   
   async waitForToast(message) {
-    // Support both string and RegExp
-    if (message instanceof RegExp) {
-      await expect(this.page.locator('[data-state="open"]')).toContainText(message);
-    } else {
-      await expect(this.page.locator('[data-state="open"]')).toContainText(message);
-    }
-  }
-  
-  async getCurrentPath() {
-    return new URL(this.page.url()).pathname;
-  }
-  
-  async waitForUrl(pathOrPredicate) {
-    if (typeof pathOrPredicate === 'string') {
-      await this.page.waitForURL((url) => url.pathname === pathOrPredicate);
-    } else {
-      await this.page.waitForURL(pathOrPredicate);
-    }
-  }
-  
-  async waitForSelector(selector) {
-    return this.page.waitForSelector(selector, { timeout: 10000 });
-  }
-  
-  async expectVisible(selector) {
-    await expect(this.page.locator(selector)).toBeVisible();
-  }
-  
-  async clickTestId(testId) {
-    await this.page.click(`[data-testid="${testId}"]`);
-  }
-  
-  async fillTestId(testId, value) {
-    await this.page.fill(`[data-testid="${testId}"]`, value);
+    const toastSelector = '[data-state="open"]';
+    await expect(this.page.locator(toastSelector)).toContainText(message);
   }
 }
 ```
 
-#### Specialized Page Object Pattern
+#### Specialized Page Object
 ```javascript
-// ApiModelFormPage.mjs - Actual pattern
-export class ApiModelFormPage extends BasePage {
+export class ChatPage extends BasePage {
   selectors = {
-    ...this.selectors,
-    // All selectors defined upfront for maintainability
-    modelIdInput: '[data-testid="model-id-input"]',
-    apiKeyInput: '[data-testid="api-key-input"]',
-    baseUrlInput: '[data-testid="base-url-input"]',
-    providerSelect: '[data-testid="provider-select"]',
-    fetchModelsButton: '[data-testid="fetch-models-button"]',
-    modelsList: '[data-testid="models-list"]',
-    modelOption: (model) => `.cursor-pointer >> text="${model}"`, // Exact match
-    testConnectionButton: '[data-testid="test-connection-button"]',
-    createButton: '[data-testid="create-button"]',
-    updateButton: '[data-testid="update-button"]',
+    messageInput: '[data-testid="chat-input"]',
+    sendButton: '[data-testid="send-button"]',
+    assistantMessage: '[data-testid="assistant-message"]',
+    userMessage: '[data-testid="user-message"]'
   };
-
-  async fillBasicInfo(modelId, apiKey, baseUrl = 'https://api.openai.com/v1') {
-    await this.fillTestId('model-id-input', modelId);
-    await this.fillTestId('api-key-input', apiKey);
+  
+  async sendMessage(message) {
+    await this.page.fill(this.selectors.messageInput, message);
     
-    // Clear and fill to handle pre-filled values
-    await this.page.fill(this.selectors.baseUrlInput, '');
-    await this.page.fill(this.selectors.baseUrlInput, baseUrl);
+    // Wait for React state synchronization
+    const sendButton = this.page.locator(this.selectors.sendButton);
+    await expect(sendButton).toBeEnabled({ timeout: 10000 });
+    await sendButton.click();
+    await expect(sendButton).toBeDisabled();
   }
-
-  async fetchAndSelectModels(modelNames) {
-    await this.clickTestId('fetch-models-button');
-    await this.waitForSelector(this.selectors.modelsList);
-    
-    for (const model of modelNames) {
-      await this.page.click(this.selectors.modelOption(model));
-    }
-  }
-
-  async testConnection() {
-    // Wait for button to be enabled (happens after API key is filled)
-    const testButton = this.page.locator(this.selectors.testConnectionButton);
-    await expect(testButton).toBeEnabled({ timeout: 10000 });
-    await testButton.click();
-    await this.waitForToast(/Connection successful|Connected successfully/);
+  
+  async waitForResponseComplete() {
+    const lastMessage = this.page.locator(this.selectors.assistantMessage).last();
+    await expect(lastMessage).toBeVisible();
+    await expect(lastMessage).toHaveClass(/chat-ai-message/);
+    await expect(lastMessage).not.toHaveClass(/chat-ai-streaming/);
   }
 }
 ```
 
-#### Test Data Factory Pattern
-```javascript
-// apiModelFixtures.mjs - Actual implementation
-export const ApiModelFixtures = {
-  getRequiredEnvVars() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is required');
-    }
-    return { apiKey };
-  },
+### Selector Strategy
 
+#### Required Patterns
+1. **Always use data-testid** for element selection
+2. **Exact text matching** with `text="exact"` syntax
+3. **Handle responsive layouts** with prefixed testids:
+   ```javascript
+   // Desktop: data-testid="button"
+   // Mobile:  data-testid="m-button"
+   // Tablet:  data-testid="tab-button"
+   ```
+
+#### Selector Examples
+```javascript
+// ✅ Good selectors
+'[data-testid="specific-element"]'     // Direct testid
+'.cursor-pointer >> text="gpt-4"'      // Exact text match
+'[data-testid="list"] >> visible=true' // Visible element
+
+// ❌ Bad selectors
+'button:has-text("Submit")'            // Partial text match
+'.btn-primary.mt-4'                    // CSS classes
+'div > span > button'                  // DOM traversal
+```
+
+### Test Data Management
+
+```javascript
+export const ApiModelFixtures = {
   createLifecycleTestData() {
     const timestamp = Date.now();
     return {
-      modelId: `lifecycle-test-openai-${timestamp}`,
+      modelId: `test-model-${timestamp}`,
       provider: 'OpenAI',
       baseUrl: 'https://api.openai.com/v1',
-      models: ['gpt-4', 'gpt-3.5-turbo'],
+      models: ['gpt-4', 'gpt-3.5-turbo']
     };
-  },
-
-  scenarios: {
-    BASIC_OPENAI: () => ({
-      modelId: `basic-openai-${Date.now()}`,
-      provider: 'OpenAI',
-      baseUrl: 'https://api.openai.com/v1',
-    }),
-    
-    CUSTOM_ENDPOINT: () => ({
-      modelId: `custom-endpoint-${Date.now()}`,
-      provider: 'Custom',
-      baseUrl: 'https://custom.api.com/v1',
-    }),
-  },
+  }
 };
 ```
 
-#### Test Structure Pattern
-```javascript
-// api-models.spec.mjs - Actual test structure
-import { test, expect } from '@playwright/test';
-import { createAuthServerTestClient, getAuthServerConfig, getTestCredentials } from '../../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
-import { randomPort } from '../../../test-helpers.mjs';
-// Import all page objects
-import { LoginPage } from '../../../pages/LoginPage.mjs';
-import { ModelsListPage } from '../../../pages/ModelsListPage.mjs';
-import { ApiModelFormPage } from '../../../pages/ApiModelFormPage.mjs';
-import { ChatPage } from '../../../pages/ChatPage.mjs';
-import { ApiModelFixtures } from '../../../fixtures/apiModelFixtures.mjs';
+### Wait Strategies
 
-test.describe('Feature Area Integration', () => {
-  // Shared setup for all tests
+```javascript
+// ✅ Correct waiting patterns
+await page.waitForSelector('[data-testid="element"]');
+await expect(element).toBeEnabled({ timeout: 10000 });
+await page.waitForURL(url => url.pathname === '/expected-path');
+
+// ❌ Avoid arbitrary timeouts
+await page.waitForTimeout(5000); // Don't use unless absolutely necessary
+```
+
+### LLM Testing Patterns
+
+Use simple, deterministic questions for LLM response testing:
+
+```javascript
+// ✅ Predictable responses
+await chatPage.sendMessage('What is 2+2?');
+const response = await chatPage.getLastAssistantMessage();
+expect(response.toLowerCase()).toMatch(/four|4/);
+
+// ❌ Unpredictable responses
+await chatPage.sendMessage('Write an essay about AI');
+// Response varies significantly - brittle test
+```
+
+## Common Issues & Solutions
+
+### 1. React State Synchronization
+**Problem**: UI updates lag behind test actions  
+**Solution**: Wait for specific state changes
+```javascript
+const button = this.page.locator('[data-testid="button"]');
+await expect(button).toBeEnabled({ timeout: 10000 });
+await button.click();
+```
+
+### 2. Responsive Layout Conflicts
+**Problem**: Multiple elements with same testid  
+**Solution**: Select visible elements explicitly
+```javascript
+const visibleButton = page.locator('[data-testid="button"]')
+  .locator('visible=true')
+  .first();
+```
+
+### 3. Dynamic Port Allocation
+**Problem**: Port conflicts in parallel execution  
+**Solution**: Use random ports
+```javascript
+import { randomPort } from '../test-helpers.mjs';
+const port = randomPort(); // 20000-30000 range
+```
+
+### 4. Frontend Build Requirement
+**Critical**: After UI changes, rebuild the embedded UI:
+```bash
+make rebuild.ui  # Required for changes to take effect
+npm run test:playwright
+```
+
+### 5. Message State Tracking
+Use CSS classes to track message lifecycle:
+```javascript
+// ChatMessage.tsx
+className={cn(
+  isStreaming && 'chat-ai-streaming',
+  !isStreaming && 'chat-ai-message'
+)}
+```
+
+### 6. Snapshot Selection in Form Fields
+**Problem**: Model aliases require snapshot/revision selection but UI wasn't sending it  
+**Solution**: Implement cascading dropdown with automatic loading
+```javascript
+// LocalModelFormPage.mjs
+async fillBasicInfo(alias, repo, filename, snapshot = null) {
+  await this.fillTestId('alias-input', alias);
+  
+  if (repo) {
+    await this.selectFromCombobox('repo-select', repo);
+  }
+  
+  if (filename) {
+    await this.selectFromCombobox('filename-select', filename);
+  }
+  
+  // Wait for snapshot options to load after repo and filename selection
+  if (repo && filename) {
+    await this.waitForSnapshotToLoad();
+    
+    // Select specific snapshot if provided, otherwise auto-selected snapshot will be used
+    if (snapshot) {
+      await this.selectFromCombobox('snapshot-select', snapshot);
+    }
+  }
+}
+
+async waitForSnapshotToLoad() {
+  const snapshotSelect = this.page.locator(this.selectors.snapshotSelect);
+  await expect(snapshotSelect).toBeVisible();
+  
+  // Wait for it to not be disabled (snapshot options should load after repo/filename selection)
+  await this.page.waitForFunction(() => {
+    const snapshotElement = document.querySelector('[data-testid="snapshot-select"]');
+    return snapshotElement && !snapshotElement.disabled;
+  });
+  
+  await this.page.waitForTimeout(500); // Ensure options are fully loaded
+}
+```
+
+**UI Implementation Pattern**:
+```typescript
+// Cascade field resets when parent changes
+useEffect(() => {
+  const subscription = form.watch((value, { name }) => {
+    if (name === 'repo') {
+      form.setValue('filename', '');
+      form.setValue('snapshot', '');
+    }
+    if (name === 'filename') {
+      form.setValue('snapshot', '');
+    }
+  });
+  return () => subscription.unsubscribe();
+}, [form]);
+
+// Auto-select first snapshot when available
+useEffect(() => {
+  if (snapshotOptions.length > 0 && !form.getValues('snapshot')) {
+    form.setValue('snapshot', snapshotOptions[0].value);
+  }
+}, [snapshotOptions, form]);
+```
+
+## Test Structure Pattern
+
+```javascript
+import { test, expect } from '@playwright/test';
+import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
+import { LoginPage } from '../../../pages/LoginPage.mjs';
+import { ChatPage } from '../../../pages/ChatPage.mjs';
+
+test.describe('Feature Area', () => {
   let serverManager;
   let baseUrl;
   let loginPage;
-  let modelsPage;
-  let formPage;
   let chatPage;
-  let testData;
 
   test.beforeAll(async () => {
-    // Server and auth setup
-    const authServerConfig = getAuthServerConfig();
-    const testCredentials = getTestCredentials();
+    // Server setup
     const port = randomPort();
-    const serverUrl = `http://localhost:${port}`;
-
-    const authClient = createAuthServerTestClient(authServerConfig);
-    const resourceClient = await authClient.createResourceClient(serverUrl);
-    await authClient.makeResourceAdmin(resourceClient.clientId, resourceClient.clientSecret, testCredentials.username);
-    
-    serverManager = createServerManager({
-      appStatus: 'ready',
-      authUrl: authServerConfig.authUrl,
-      authRealm: authServerConfig.authRealm,
-      clientId: resourceClient.clientId,
-      clientSecret: resourceClient.clientSecret,
-      port,
-      host: 'localhost',
-    });
-    
+    serverManager = createServerManager({ port });
     baseUrl = await serverManager.startServer();
-    testData = { apiKey: process.env.OPENAI_API_KEY, authServerConfig, testCredentials };
   });
 
   test.beforeEach(async ({ page }) => {
-    // Initialize page objects for each test
-    loginPage = new LoginPage(page, baseUrl, testData.authServerConfig, testData.testCredentials);
-    modelsPage = new ModelsListPage(page, baseUrl);
-    formPage = new ApiModelFormPage(page, baseUrl);
+    // Initialize page objects
+    loginPage = new LoginPage(page, baseUrl);
     chatPage = new ChatPage(page, baseUrl);
   });
 
   test.afterAll(async () => {
-    if (serverManager) {
-      await serverManager.stopServer();
-    }
+    await serverManager?.stopServer();
   });
 
-  test('complete feature lifecycle test', async ({ page }) => {
-    // Comprehensive test with multiple steps and assertions
-    // Step 1: Setup
-    // Step 2: Main action
-    // Step 3: Verification
-    // Step 4: Additional interactions
-    // Step 5: Cleanup
+  test('user journey test', async ({ page }) => {
+    // Complete workflow with multiple assertions
+    await loginPage.performOAuthLogin();
+    await chatPage.sendMessage('Test message');
+    await chatPage.waitForResponseComplete();
+    // More assertions...
   });
 });
 ```
 
-### Updated Directory Structure (As Implemented)
-```
-tests-js/
-├── specs/
-│   └── core/
-│       ├── api-models/
-│       │   └── api-models.spec.mjs  # Consolidated lifecycle test
-│       ├── app-initializer/
-│       │   └── app-initializer.spec.mjs  # Merged auth flows
-│       └── setup/
-│           └── setup-flow.spec.mjs  # Consolidated setup test
-├── pages/
-│   ├── BasePage.mjs         # Common functionality
-│   ├── LoginPage.mjs        # OAuth flow handling
-│   ├── ModelsListPage.mjs   # Model management
-│   ├── ApiModelFormPage.mjs # API model forms
-│   ├── ChatPage.mjs         # Chat interactions
-│   └── SetupPage.mjs        # Setup flow pages
-├── fixtures/
-│   └── apiModelFixtures.mjs # Test data factories
-└── playwright/              # Legacy tests (being migrated)
-```
+## Migration Strategy
 
-### Server Management Pattern
-```javascript
-// bodhi-app-server.mjs - Server lifecycle management
-export function createServerManager(config) {
-  let server = null;
-  let process = null;
+### Completed Migrations (Phase 0)
+- ✅ API Models: Complete lifecycle with chat integration
+- ✅ App Initializer: Authentication and redirect flows
+- ✅ Setup Flow: First-time setup experience
+- ✅ Chat Interface: Consolidated from 11 to 4 tests
 
-  return {
-    async startServer() {
-      const appOptions = new NapiAppOptions();
-      
-      // Configure server with test-specific settings
-      if (config.appStatus) {
-        appOptions.setAppSetting('appStatus', config.appStatus);
-      }
-      if (config.authUrl && config.authRealm) {
-        appOptions.setAppSetting('authUrl', config.authUrl);
-        appOptions.setAppSetting('authRealm', config.authRealm);
-      }
-      if (config.clientId && config.clientSecret) {
-        appOptions.setSystemSetting('clientId', config.clientId);
-        appOptions.setSystemSetting('clientSecret', config.clientSecret);
-      }
-      
-      // Dynamic port allocation to avoid conflicts
-      appOptions.setAppSetting('port', config.port);
-      appOptions.setAppSetting('host', config.host);
-      
-      server = new BodhiServer(appOptions);
-      await server.start();
-      
-      const baseUrl = `http://${config.host}:${config.port}`;
-      
-      // Verify server is ready
-      await waitForServer(baseUrl);
-      
-      return baseUrl;
-    },
-    
-    async stopServer() {
-      if (server) {
-        await server.stop();
-        server = null;
-      }
-    }
-  };
-}
-```
+### Next Priority Features
+1. Model management (CRUD operations)
+2. Settings and configuration
+3. User management
+4. Advanced chat features
 
-### OAuth Authentication Testing Pattern
-```javascript
-// LoginPage.mjs - OAuth flow handling
-export class LoginPage extends BasePage {
-  constructor(page, baseUrl, authServerConfig, testCredentials) {
-    super(page, baseUrl);
-    this.authServerConfig = authServerConfig;
-    this.testCredentials = testCredentials;
-  }
-  
-  selectors = {
-    loginButton: 'button:has-text("Login")',
-    usernameField: '#username',
-    passwordField: '#password',
-    signInButton: 'button:has-text("Sign In")'
-  };
-  
-  async performOAuthLogin(expectedRedirectPath = '/ui/chat/') {
-    // Handle case where already on login page
-    if (!this.page.url().includes('/ui/login')) {
-      await this.navigate('/ui/login');
-    }
-    
-    // Initiate OAuth flow
-    const loginButton = this.page.locator(this.selectors.loginButton);
-    await loginButton.first().click();
-    
-    // Wait for auth server redirect
-    await this.page.waitForURL((url) => url.origin === this.authServerConfig.authUrl);
-    
-    // Complete auth server login
-    await this.page.fill(this.selectors.usernameField, this.testCredentials.username);
-    await this.page.fill(this.selectors.passwordField, this.testCredentials.password);
-    await this.page.click(this.selectors.signInButton);
-    
-    // Handle flexible redirect back
-    if (expectedRedirectPath) {
-      await this.page.waitForURL((url) => 
-        url.origin === this.baseUrl && url.pathname === expectedRedirectPath
-      );
-    } else {
-      // Natural redirect flow
-      await this.page.waitForURL((url) => url.origin === this.baseUrl);
-    }
-    
-    await this.waitForSPAReady();
-  }
-}
-```
+### Migration Steps
+1. **Identify feature boundary** - Group related functionality
+2. **Create page objects** - Build reusable interaction layer
+3. **Write comprehensive test** - Cover complete user journey
+4. **Validate thoroughly** - Ensure deterministic execution
+5. **Remove legacy tests** - Clean up after validation
 
-### Common Pitfalls and Solutions
+## Best Practices Checklist
 
-#### 1. Timing Issues
-**Problem**: Tests fail due to elements not ready
-**Solution**: Proper wait strategies
-```javascript
-// Bad - arbitrary timeout
-await page.waitForTimeout(5000);
+### Do's
+- ✅ Use data-testid attributes exclusively
+- ✅ Write comprehensive journey tests
+- ✅ Wait for specific conditions, not timeouts
+- ✅ Use exact text matching for selections
+- ✅ Keep tests independent and deterministic
+- ✅ Consolidate related assertions
+- ✅ Use factories for test data
+- ✅ Handle React state synchronization
 
-// Good - wait for specific conditions
-await page.waitForSelector('[data-testid="element"]');
-await expect(element).toBeEnabled({ timeout: 10000 });
-```
+### Don'ts
+- ❌ Use CSS class selectors
+- ❌ Write many small isolated tests
+- ❌ Use arbitrary wait timeouts
+- ❌ Include conditional logic in tests
+- ❌ Test complex LLM responses
+- ❌ Create test dependencies
+- ❌ Fix symptoms instead of root causes
+- ❌ Skip frontend rebuild after UI changes
 
-#### 2. Selector Ambiguity
-**Problem**: Multiple elements match selector
-**Solution**: Be specific and use visibility
-```javascript
-// Bad - might match hidden elements
-await page.click('[data-testid="button"]');
+## Debugging Guide
 
-// Good - only click visible element
-const button = page.locator('[data-testid="button"]').locator('visible=true').first();
-await button.click();
-```
-
-#### 3. Pre-filled Form Values
-**Problem**: Form fields have existing values
-**Solution**: Clear before filling
-```javascript
-// Bad - appends to existing value
-await page.fill(selector, newValue);
-
-// Good - replaces value completely
-await page.fill(selector, '');  // Clear first
-await page.fill(selector, newValue);
-```
-
-#### 4. Dynamic Port Allocation
-**Problem**: Port conflicts when running tests
-**Solution**: Random port selection
-```javascript
-import { randomPort } from '../test-helpers.mjs';
-
-const port = randomPort(); // Gets available port between 20000-30000
-```
-
-#### 5. Test Independence
-**Problem**: Tests affect each other's state
-**Solution**: Fresh server instance per test suite
-```javascript
-test.beforeAll(async () => {
-  serverManager = createServerManager(config);
-  baseUrl = await serverManager.startServer();
-});
-
-test.afterAll(async () => {
-  if (serverManager) {
-    await serverManager.stopServer();
-  }
-});
-```
-
-### File Organization and Naming Conventions
-
-#### File Extensions
-- Use `.mjs` for all test files (ES modules)
-- Use `.mjs` for all helper and page object files
-- Consistency is key for import resolution
-
-#### Import Organization
-```javascript
-// 1. External dependencies first
-import { test, expect } from '@playwright/test';
-
-// 2. Test infrastructure
-import { createAuthServerTestClient, getAuthServerConfig } from '../../../playwright/auth-server-client.mjs';
-import { createServerManager } from '../../../playwright/bodhi-app-server.mjs';
-
-// 3. Helpers and utilities
-import { randomPort, getCurrentPath, waitForSPAReady } from '../../../test-helpers.mjs';
-
-// 4. Page objects in logical order
-import { LoginPage } from '../../../pages/LoginPage.mjs';
-import { ModelsListPage } from '../../../pages/ModelsListPage.mjs';
-import { ApiModelFormPage } from '../../../pages/ApiModelFormPage.mjs';
-
-// 5. Test data and fixtures
-import { ApiModelFixtures } from '../../../fixtures/apiModelFixtures.mjs';
-```
-
-#### Naming Patterns
-- **Test files**: `feature-area.spec.mjs` (e.g., `api-models.spec.mjs`)
-- **Page objects**: `FeatureNamePage.mjs` (e.g., `ModelsListPage.mjs`)
-- **Fixtures**: `featureNameFixtures.mjs` (e.g., `apiModelFixtures.mjs`)
-- **Helpers**: `function-name-helpers.mjs` (e.g., `auth-helpers.mjs`)
-
-### Test Synchronization Patterns
-
-#### SPA Ready Detection
-```javascript
-async waitForSPAReady() {
-  // Wait for initial DOM load
-  await this.page.waitForLoadState('domcontentloaded');
-  
-  // Give React time to initialize
-  await this.page.waitForTimeout(500);
-  
-  // Optional: wait for specific app indicator
-  // await this.page.waitForSelector('[data-app-ready="true"]');
-}
-```
-
-#### Toast Message Verification
-```javascript
-async waitForToast(message) {
-  const toastSelector = '[data-state="open"]';
-  
-  // Support both string and regex patterns
-  if (message instanceof RegExp) {
-    await expect(this.page.locator(toastSelector)).toContainText(message);
-  } else {
-    await expect(this.page.locator(toastSelector)).toContainText(message);
-  }
-  
-  // Optional: wait for toast to disappear
-  // await this.page.waitForSelector(toastSelector, { state: 'hidden' });
-}
-```
-
-#### Dynamic Content Loading
-```javascript
-async waitForModelsToLoad() {
-  // Wait for container
-  await this.waitForSelector('[data-testid="models-list"]');
-  
-  // Wait for at least one item
-  await this.page.waitForSelector('[data-testid^="model-item-"]');
-  
-  // Give time for all items to render
-  await this.page.waitForTimeout(500);
-}
-```
-
-### Test Data Cleanup Patterns
-
-#### Automatic Cleanup in Tests
-```javascript
-test('feature test with cleanup', async ({ page }) => {
-  const modelData = ApiModelFixtures.createTestData();
-  
-  try {
-    // Test implementation
-    await formPage.createModel(modelData);
-    // ... test logic ...
-  } finally {
-    // Always cleanup even if test fails
-    try {
-      await modelsPage.deleteModel(modelData.id);
-    } catch (e) {
-      // Ignore cleanup errors
-    }
-  }
-});
-```
-
-#### Using Timestamps for Uniqueness
-```javascript
-createTestData() {
-  const timestamp = Date.now();
-  return {
-    id: `test-model-${timestamp}`,
-    name: `Test Model ${timestamp}`,
-    // Ensures no conflicts between test runs
-  };
-}
-```
-
-## Key Discoveries and Solutions
-
-### 1. Chat Integration Testing
-**Challenge**: Testing chat with real LLM responses
-**Solution**: Simple deterministic prompts
-```javascript
-const testMessage = 'What day comes after Monday?';
-await chatPage.sendMessage(testMessage);
-await chatPage.waitForAssistantResponse();
-const response = await chatPage.getLastAssistantMessage();
-expect(response.toLowerCase()).toContain('tuesday');
-```
-
-### 2. OAuth Flow Testing
-**Challenge**: Redirect behavior varies by context
-**Solution**: Flexible redirect expectations
-```javascript
-await loginPage.performOAuthLogin(null); // Let it redirect naturally
-```
-
-### 3. Responsive Layout Testing
-**Challenge**: Desktop/mobile views with duplicate elements
-**Solution**: Explicitly select visible elements
-```javascript
-const visibleButton = buttons.locator('visible=true').first();
-```
-
-### 4. Model Selection Precision
-**Challenge**: Similar model names causing wrong selection
-**Solution**: Exact text matching
-```javascript
-// Select exactly "gpt-4" not "gpt-4-0613"
-await page.click('.model-option >> text="gpt-4"');
-```
-
-## Testing Philosophy
-
-### What We Test
-1. **User journeys** over isolated features
-2. **Critical paths** that users actually follow
-3. **Integration points** between components
-4. **Error recovery** and edge cases
-5. **Data persistence** across sessions
-
-### What We Don't Test
-1. **Implementation details** that users don't see
-2. **Intermediate states** that are transient
-3. **UI polish** that doesn't affect functionality
-4. **Every permutation** when a few representative cases suffice
-
-### Test Quality Standards
-- **Readable**: Test tells a story of user interaction
-- **Reliable**: No flaky tests tolerated
-- **Fast**: Optimize for quick feedback
-- **Maintainable**: Changes should be easy to implement
-- **Valuable**: Each test must justify its existence
-
-## Test Writing Guidelines
-
-### Step-by-Step Test Development Process
-
-1. **Start with User Story**
-   ```javascript
-   test('user can create and use an API model for chat', async ({ page }) => {
-     // Think: What would a real user do?
-   });
-   ```
-
-2. **Setup Test Infrastructure**
-   ```javascript
-   // Initialize all needed page objects
-   const loginPage = new LoginPage(page, baseUrl, authConfig, credentials);
-   const modelsPage = new ModelsListPage(page, baseUrl);
-   const formPage = new ApiModelFormPage(page, baseUrl);
-   const chatPage = new ChatPage(page, baseUrl);
-   ```
-
-3. **Write Test Steps Sequentially**
-   ```javascript
-   // Step 1: Login
-   await loginPage.performOAuthLogin();
-   
-   // Step 2: Navigate to feature
-   await modelsPage.navigateToModels();
-   
-   // Step 3: Perform action
-   await modelsPage.clickNewApiModel();
-   await formPage.fillBasicInfo(modelData.id, apiKey);
-   
-   // Step 4: Verify results
-   await expect(page.locator('[data-testid="success-message"]')).toBeVisible();
-   
-   // Step 5: Test integration
-   await modelsPage.clickChatWithModel(modelData.id);
-   await chatPage.sendMessage('Test message');
-   
-   // Step 6: Cleanup if needed
-   await modelsPage.deleteModel(modelData.id);
-   ```
-
-### Test Debugging Strategies
-
-#### 1. Use Headed Mode for Visual Debugging
+### Visual Debugging
 ```bash
 npm run test:playwright -- --headed tests-js/specs/core/feature.spec.mjs
 ```
 
-#### 2. Add Debug Breakpoints
+### Debug Breakpoints
 ```javascript
-await page.pause(); // Pauses test execution for debugging
+await page.pause(); // Pauses execution for debugging
 ```
 
-#### 3. Take Screenshots on Failure
+### Screenshot on Failure
 ```javascript
 test.afterEach(async ({ page }, testInfo) => {
   if (testInfo.status !== 'passed') {
@@ -1203,644 +447,29 @@ test.afterEach(async ({ page }, testInfo) => {
 });
 ```
 
-#### 4. Use Verbose Selectors for Debugging
-```javascript
-// Temporarily use more verbose selectors to debug
-const element = page.locator('text="Submit"').first();
-console.log(await element.count()); // Check how many match
-console.log(await element.isVisible()); // Check visibility
-```
-
-### Test Maintenance Best Practices
-
-#### 1. Regular Test Audits
-- Run tests weekly to catch failures early
-- Remove obsolete tests promptly
-- Update selectors when UI changes
-
-#### 2. Centralize Common Patterns
-```javascript
-// helpers/common-flows.mjs
-export async function loginAndNavigateToModels(page, loginPage, modelsPage) {
-  await loginPage.performOAuthLogin();
-  await modelsPage.navigateToModels();
-}
-```
-
-#### 3. Document Non-Obvious Logic
-```javascript
-// Wait for animation to complete before clicking
-await page.waitForTimeout(300); // Drawer animation duration
-await page.click('[data-testid="confirm-button"]');
-```
-
-#### 4. Version-Specific Handling
-```javascript
-if (process.env.APP_VERSION === 'legacy') {
-  await page.click('.old-selector');
-} else {
-  await page.click('[data-testid="new-selector"]');
-}
-```
-
-## Anti-Patterns to Avoid
-
-### 1. ❌ Don't Use Implementation Details
-```javascript
-// Bad - testing internal state
-expect(component.state.isLoading).toBe(false);
-
-// Good - testing user-visible behavior
-await expect(page.locator('[data-testid="loading-spinner"]')).not.toBeVisible();
-```
-
-### 2. ❌ Don't Create Test Dependencies
-```javascript
-// Bad - test depends on another test's output
-test('edit model created in previous test', ...);
-
-// Good - each test is self-contained
-test('edit model', async () => {
-  const model = await createTestModel();
-  // ... edit logic ...
-});
-```
-
-### 3. ❌ Don't Use Brittle Selectors
-```javascript
-// Bad - CSS classes can change
-await page.click('.btn-primary.mt-4.mx-auto');
-
-// Good - semantic selectors
-await page.click('[data-testid="submit-button"]');
-```
-
-### 4. ❌ Don't Skip Error Cases
-```javascript
-// Bad - only testing happy path
-test('create model', async () => {
-  // Only tests successful creation
-});
-
-// Good - test error scenarios too
-test('shows error when API key is invalid', async () => {
-  await formPage.fillBasicInfo(modelId, 'invalid-key');
-  await formPage.testConnection();
-  await expect(page.locator('[data-testid="error-message"]')).toBeVisible();
-});
-```
-
-### 5. ❌ Don't Hardcode Wait Times
-```javascript
-// Bad - arbitrary wait
-await page.waitForTimeout(10000);
-
-// Good - wait for specific condition
-await page.waitForSelector('[data-testid="content-loaded"]', { timeout: 10000 });
-```
-
-## Test Metrics and Monitoring
-
-### Key Metrics to Track
-1. **Test Execution Time**: Should stay under 30 minutes for full suite
-2. **Flakiness Rate**: Target < 1% flaky tests
-3. **Coverage**: Aim for 100% of critical user paths
-4. **Maintenance Time**: Track hours spent fixing tests weekly
-
-### Monitoring Setup
-```javascript
-// playwright.config.mjs
-export default defineConfig({
-  reporter: [
-    ['list'],
-    ['json', { outputFile: 'test-results.json' }],
-    ['html', { open: 'never' }],
-    ['junit', { outputFile: 'junit.xml' }]
-  ],
-  use: {
-    trace: 'on-first-retry',
-    video: 'retain-on-failure',
-    screenshot: 'only-on-failure'
-  }
-});
-```
-
-## Future Improvements
-
-### Short-term (Next Sprint)
-1. Add remaining core features (chat, settings, models)
-2. Implement visual regression testing
-3. Add accessibility testing with axe-core
-4. Create test data seed scripts
-
-### Medium-term (Next Quarter)
-1. Parallel test execution with worker pools
-2. Cross-browser testing (Safari, Firefox)
-3. Mobile viewport testing
-4. Performance testing integration
-5. API contract testing
-
-### Long-term (Next Year)
-1. AI-powered test generation
-2. Self-healing selectors
-3. Production monitoring integration
-4. Chaos engineering tests
-5. Load testing integration
-
-## Conclusion
-
-This comprehensive plan, enriched with real implementation experience and detailed patterns, provides a battle-tested approach to improving the BodhiApp UI test suite. The lessons learned from Phase 0 implementation validate our architectural decisions while highlighting important refinements:
-
-1. **Vertical migration** proved superior to horizontal approach
-2. **Test consolidation** reduced maintenance burden by 60%
-3. **data-testid strategy** eliminated selector fragility issues
-4. **Page Object Model** provided excellent maintainability and 70% code reuse
-5. **Deterministic testing** principles ensured 99% test reliability
-
-The comprehensive patterns, anti-patterns, and guidelines documented here serve as a complete reference for:
-- Writing new tests following established patterns
-- Debugging failing tests efficiently  
-- Maintaining existing test suites
-- Avoiding common pitfalls
-- Measuring test effectiveness
-
-The phased implementation approach has already delivered value in Phase 0, with successful migrations demonstrating:
-- 50% reduction in test code through consolidation
-- 90% reduction in test flakiness
-- 80% faster test development with Page Object Model
-- Clear separation of concerns and maintainability
-
-These initial successes, combined with the comprehensive documentation of patterns and practices, provide confidence that the remaining phases will similarly improve test quality and coverage while maintaining the principles and patterns we've validated through real-world implementation.
-
-## Critical Insights from Chat Interface Testing Implementation
-
-### Test Consolidation and Stability Principles
-
-#### 1. Comprehensive Test Consolidation Strategy
-**Discovery**: Initial chat spec had 11 individual tests with significant duplication and brittleness.
-**Solution**: Consolidated to 4 focused tests covering complete user journeys.
-**Key Insight**: "Write fewer tests that have multiple assertions instead of many tiny tests"
-
-**Before**: Fragmented approach
-```javascript
-test('should send message', ...);
-test('should receive response', ...);
-test('should handle new chat', ...);
-test('should display history', ...);
-// ... 7 more isolated tests
-```
-
-**After**: Comprehensive workflow tests
-```javascript
-test('basic chat conversation with simple Q&A', async ({ page }) => {
-  // Complete flow: login → select model → chat → verify response
-});
-
-test('multi-chat management and error handling', async ({ page }) => {
-  // Complete flow: create multiple chats → verify history → navigation
-});
-```
-
-**Benefits Realized**:
-- 73% reduction in test count (11 → 4 tests)
-- 85% reduction in setup code duplication
-- 90% improvement in test reliability
-- 60% faster test execution
-
-#### 2. LLM Testing Stability Patterns
-**Challenge**: Complex LLM prompts create brittle tests due to unpredictable responses.
-**Discovery**: "Do not test LLM for complex question answering as this will make the test a little more brittle"
-
-**Anti-Pattern**: Complex prompts
-```javascript
-// Brittle - response varies significantly
-await chatPage.sendMessage('Write a 200 word essay about artificial intelligence');
-expect(response).toContain('artificial intelligence');
-```
-
-**Proven Pattern**: Simple, deterministic questions
-```javascript
-// Stable - predictable responses
-await chatPage.sendMessage('What is 2+2?');
-await chatPage.waitForResponseComplete();
-const response = await chatPage.getLastAssistantMessage();
-expect(response.toLowerCase()).toMatch(/four|4/);
-
-await chatPage.sendMessage('What day comes after Monday?');
-await chatPage.waitForResponseComplete();
-const response2 = await chatPage.getLastAssistantMessage();
-expect(response2.toLowerCase()).toContain('tuesday');
-```
-
-### Responsive Layout and Selector Strategy
-
-#### 3. Responsive Layout Testing Solution
-**Problem Discovered**: Tests failing due to responsive layout rendering different elements at different viewport sizes.
-**Root Cause**: Same `data-testid` used for both desktop and mobile versions of components.
-
-**Solution Implemented**: Prefixed testid strategy
-```javascript
-// ChatMessage.tsx - Responsive testid pattern
-className={cn(
-  'group relative flex items-start gap-3 p-3', 
-  isUser ? 'bg-background' : 'bg-muted/30',
-  // Desktop version (no prefix)
-  !isUser && isStreaming && 'message-streaming',
-  !isUser && !isStreaming && 'message-completed'
-)}
-data-testid={isUser ? 'user-message' : 'assistant-message'}
-
-// ComboBox.tsx - Responsive layout handling
-// Desktop version (≥768px)
-data-testid="combobox-trigger"
-
-// Mobile version (<768px) 
-data-testid="m-combobox-trigger"
-
-// Tablet version (if needed)
-data-testid="tab-combobox-trigger"
-```
-
-**Test Selector Strategy**:
-```javascript
-// ChatSettingsPage.mjs
-selectors = {
-  comboboxTrigger: '[data-testid="combobox-trigger"]', // Desktop (no prefix)
-  mobileComboboxTrigger: '[data-testid="m-combobox-trigger"]', // Mobile
-  tabletComboboxTrigger: '[data-testid="tab-combobox-trigger"]', // Tablet
-};
-```
-
-**Key Rule**: "We are not doing any responsive tests, so we do not need to select those selectors right now"
-- Focus on desktop selectors for core functionality
-- Add mobile/tablet testing as separate test suite later
-
-#### 4. Frontend Build Integration Requirement
-**Critical Discovery**: Frontend changes don't take effect in tests until rebuilt.
-**Memory Added**: "When making changes to the frontend code in crates/bodhi/src, you must run `make rebuild.ui` from the project root for the changes to take effect in the running application."
-
-**Workflow Pattern**:
-```bash
-# After any frontend changes
-make rebuild.ui
-
-# Then run tests
-npm run test:playwright -- --grep "test-name"
-```
-
-### Message State Tracking and Synchronization
-
-#### 5. Advanced Message State CSS Classes
-**Challenge**: Tests need to wait for specific message states (streaming vs completed).
-**Solution**: Comprehensive CSS class system for message lifecycle tracking.
-
-**Implementation Pattern**:
-```javascript
-// ChatMessage.tsx - State-based CSS classes
-const getMessageClasses = () => {
-  if (isUser) {
-    return cn(
-      'chat-user-message': isLatest && !isArchived,
-      'chat-user-message-archive': isArchived
-    );
-  } else {
-    return cn(
-      'chat-ai-streaming': isStreaming,
-      'chat-ai-message': !isStreaming && isLatest && !isArchived,
-      'chat-ai-archive': isArchived
-    );
-  }
-};
-```
-
-**Test Synchronization Strategy**:
-```javascript
-// ChatPage.mjs - Reliable waiting patterns
-async waitForResponseComplete() {
-  // Wait for assistant message to appear
-  const lastAssistantMessage = this.page.locator(this.selectors.assistantMessage).last();
-  await expect(lastAssistantMessage).toBeVisible();
-  
-  // Wait for THIS SPECIFIC message to complete streaming
-  await expect(lastAssistantMessage).toHaveClass(/chat-ai-message/);
-  
-  // Ensure it's no longer streaming
-  await expect(lastAssistantMessage).not.toHaveClass(/chat-ai-streaming/);
-}
-
-async waitForUserMessageLatest() {
-  // Wait for latest user message to be marked correctly
-  await expect(this.page.locator('.chat-user-message')).toBeVisible();
-}
-```
-
-#### 6. Timing and Synchronization Anti-Patterns
-**Problem Identified**: Send button timing issues causing test failures.
-**Root Cause**: React state updates need time to propagate to UI elements.
-
-**Anti-Pattern**: Immediate interaction after input
-```javascript
-// WRONG - causes "send button disabled" failures
-async sendMessage(message) {
-  await this.page.fill(this.selectors.messageInput, message);
-  await this.page.click(this.selectors.sendButton); // Too fast!
-}
-```
-
-**Correct Pattern**: Wait for UI state synchronization
-```javascript
-// CORRECT - wait for React to process input change
-async sendMessage(message) {
-  await this.page.fill(this.selectors.messageInput, message);
-  
-  // Wait for the send button to be enabled before clicking
-  const sendButton = this.page.locator(this.selectors.sendButton);
-  await expect(sendButton).toBeEnabled({ timeout: 10000 });
-  await sendButton.click();
-  await expect(sendButton).toBeDisabled(); // Verify click registered
-  
-  // Wait for user message to appear with correct state
-  await this.waitForUserMessageLatest();
-}
-```
-
-### Test Debugging and Troubleshooting Methodology
-
-#### 7. Systematic Debug Approach for UI Test Failures
-**Process Developed**: Manual reproduction using Playwright MCP tools for debugging.
-
-**Debug Workflow**:
-```javascript
-// 1. Use MCP Playwright tools to reproduce manually
-await mcp_playwright_browser_navigate({ url: "http://localhost:1135" });
-await mcp_playwright_browser_click({ element: "Login button", ref: "e41" });
-
-// 2. Follow exact test sequence step by step
-// 3. Identify where behavior diverges from test expectations
-// 4. Fix root cause in code, not test workarounds
-```
-
-**Key Insight**: "Manual testing revealed the exact issue - model selection works, but UI state synchronization was the problem"
-
-#### 8. Root Cause Analysis Over Symptom Fixing
-**Example**: Send button disabled error
-- **Symptom**: "send button remains disabled"  
-- **Initial Hypothesis**: Model selection failing
-- **Actual Root Cause**: React state update timing between input fill and button enable
-- **Solution**: Proper wait for button enabled state, not workarounds
-
-**Principle**: Always debug by reproducing the exact user interaction, not by guessing test fixes.
-
-### Chat History and Navigation Testing
-
-#### 9. Chat History Verification Patterns
-**Challenge**: Chat history entries not appearing due to test speed.
-**Problem**: "By that time, the hello third is not shown on the chat history"
-
-**Solution**: Wait-based verification instead of immediate assertion
-```javascript
-// WRONG - immediate check fails
-async verifyChatsInHistory(chatTitles) {
-  const buttons = this.page.locator('[data-testid^="chat-history-button-"]');
-  const count = await buttons.count();
-  // Immediate check - often fails due to timing
-}
-
-// CORRECT - wait for elements with text
-async verifyChatExistsInHistory(chatTitle) {
-  await this.openHistorySidebar();
-  
-  // Wait for the chat button with specific text to appear
-  const chatButton = this.page.locator(`[data-testid^="chat-history-button-"]:has-text("${chatTitle}")`);
-  await expect(chatButton).toBeVisible({ timeout: 10000 });
-}
-```
-
-**Pattern**: Use `has-text` selectors with wait timeouts instead of text extraction and comparison.
-
-### Test Architecture and Organization Insights
-
-#### 10. Page Object Method Naming and Structure
-**Discovered Pattern**: Action-oriented method names with clear responsibilities
-```javascript
-// ChatPage.mjs - Clear method responsibilities
-async sendMessage(message) { /* Input and send */ }
-async waitForResponseComplete() { /* Wait for AI response */ }
-async startNewChat() { /* Navigation action */ }
-async waitForUserMessageLatest() { /* State verification */ }
-
-// ChatHistoryPage.mjs - Navigation and verification
-async openHistorySidebar() { /* UI interaction */ }
-async verifyChatExistsInHistory(title) { /* Assertion helper */ }
-async navigateToChat(chatId) { /* Navigation action */ }
-```
-
-**Principle**: Separate interaction methods from verification methods for clarity.
-
-#### 11. Test Data and Fixture Strategy
-**Pattern Validated**: Simple, predictable test data over complex scenarios
-```javascript
-// ChatFixtures.mjs - Simple, reliable test data
-const testMessages = [
-  'Hello first chat',
-  'Hello second chat', 
-  'Hello third chat'
-];
-
-// Not complex scenarios that can fail unpredictably
-const complexScenarios = [
-  'Analyze this complex business scenario...',
-  'Generate a detailed technical specification...'
-];
-```
-
-### Error Handling and Recovery Testing
-
-#### 12. Error Recovery Testing Patterns
-**Approach**: Test error scenarios as part of comprehensive workflows, not isolated edge cases.
-
-```javascript
-test('multi-chat management and error handling', async ({ page }) => {
-  // Happy path first
-  await chatPage.sendMessage('Hello first chat');
-  await chatPage.waitForResponseComplete();
-  
-  // Error scenarios integrated
-  await chatPage.simulateNetworkError();
-  await chatPage.sendMessage('This should fail');
-  await chatPage.verifyErrorHandling();
-  
-  // Recovery testing
-  await chatPage.restoreNetworkConnection();
-  await chatPage.sendMessage('Recovery test');
-  await chatPage.waitForResponseComplete();
-});
-```
-
-**Insight**: Error handling tests are more valuable when they test recovery within user workflows, not just error states in isolation.
-
-### Performance and Optimization Insights
-
-#### 13. Test Execution Speed Optimization
-**Before**: 11 individual tests with repeated setup = ~45 seconds
-**After**: 4 consolidated tests with shared setup = ~22 seconds
-
-**Optimization Techniques Applied**:
-- Shared authentication across test steps
-- Reuse of model selection state
-- Consolidated assertions reducing wait times
-- Elimination of redundant navigation steps
-
-#### 14. Selector Performance Patterns
-**Fast Selectors** (preferred):
-```javascript
-'[data-testid="specific-element"]'  // Direct attribute match
-'.chat-ai-message'                   // Single class
-'#unique-id'                        // ID selector
-```
-
-**Slow Selectors** (avoid):
-```javascript
-'div.complex > .nested .selectors'  // Complex traversal
-'text="partial match"'              // Text searching
-':has-text("content")'              // Has-text queries
-```
-
-### Integration Testing Insights
-
-#### 15. End-to-End Integration Validation
-**Discovery**: Chat interface tests must validate the complete pipeline:
-1. **Frontend**: React component state management
-2. **Backend**: API request handling  
-3. **LLM Server**: Model loading and response generation
-4. **State Persistence**: Chat history storage
-5. **UI Updates**: Real-time message display
-
-**Test Pattern**: Single test validates entire pipeline
-```javascript
-test('complete chat pipeline integration', async ({ page }) => {
-  // 1. Authentication (session management)
-  await loginPage.performOAuthLogin();
-  
-  // 2. Model selection (API integration)
-  await chatSettingsPage.selectModel('model-name');
-  
-  // 3. Chat interaction (LLM integration) 
-  await chatPage.sendMessage('Simple question');
-  await chatPage.waitForResponseComplete();
-  
-  // 4. State persistence (database integration)
-  await chatPage.startNewChat();
-  await chatHistoryPage.verifyChatExistsInHistory('Simple question');
-  
-  // 5. Navigation (SPA routing)
-  await chatHistoryPage.navigateToChat(previousChatId);
-  await chatPage.verifyMessageHistory(['Simple question']);
-});
-```
-
-### Memory and Knowledge Management
-
-#### 16. Critical Project Memory Patterns
-**Insight**: Certain discoveries are critical enough to persist as project memory to avoid rediscovery.
-
-**Example Memory Created**:
-```
-"When making changes to the frontend code in crates/bodhi/src, you must run `make rebuild.ui` from the project root for the changes to take effect in the running application."
-```
-
-**Pattern**: Create memory for:
-- Build/deployment requirements
-- Framework-specific gotchas  
-- Environment-specific behaviors
-- Non-obvious dependency relationships
-
-### Test Maintenance and Evolution
-
-#### 17. Test Evolution Strategy
-**Principle**: "Consolidate to few but valuable and stable tests"
-
-**Evolution Process Observed**:
-1. **Phase 1**: Write comprehensive individual tests (high coverage, high maintenance)
-2. **Phase 2**: Identify duplication and brittleness points  
-3. **Phase 3**: Consolidate related tests into workflows (maintained coverage, lower maintenance)
-4. **Phase 4**: Optimize for reliability over granularity
-
-**Maintenance Benefits**:
-- Fewer tests to update when UI changes
-- Clearer test failure diagnosis (workflow context)
-- Reduced CI/CD execution time
-- Lower cognitive load for developers
-
-### Technology-Specific Insights
-
-#### 18. React + Playwright Integration Patterns
-**Challenge**: React's virtual DOM updates don't always synchronize with Playwright's expectations.
-
-**Solutions Discovered**:
-```javascript
-// 1. Always wait for React state propagation
-await expect(element).toBeEnabled(); // Not just visible
-
-// 2. Use React-friendly selectors
-'[data-testid="react-component"]' // Better than CSS classes that may change
-
-// 3. Handle React component lifecycle
-await this.waitForSPAReady(); // Let React initialize
-await this.page.waitForTimeout(500); // Component mounting time
-
-// 4. Respect React rendering cycles
-await expect(this.page.locator('.chat-ai-message')).toBeVisible();
-// Don't immediately check for next state change
-```
-
-#### 19. Playwright-Specific Optimization Patterns
-**Discoveries**:
-```javascript
-// Use .last() for dynamic lists
-const lastMessage = this.page.locator('[data-testid="assistant-message"]').last();
-
-// Use .first() for multiple matches
-const visibleButton = this.page.locator('[data-testid="button"]').first();
-
-// Combine selectors for precision
-const specificElement = this.page.locator('[data-testid="container"]')
-  .locator('.specific-class')
-  .locator('visible=true');
-
-// Use expect() with timeouts for reliability
-await expect(element).toBeVisible({ timeout: 10000 });
-await expect(element).toHaveClass(/expected-class/);
-```
-
-## Summary of Key Testing Insights
-
-### Core Principles Validated
-1. **Consolidation Over Granularity**: Fewer comprehensive tests beat many small tests
-2. **User Journey Focus**: Test complete workflows, not isolated features  
-3. **Deterministic Simplicity**: Simple, predictable test data over complex scenarios
-4. **State Synchronization**: Always wait for UI state changes, never assume immediate updates
-5. **Root Cause Debugging**: Reproduce manually to understand real issues vs test artifacts
-
-### Technical Patterns Proven
-1. **Responsive Layout Handling**: Prefixed data-testid strategy for different viewport sizes
-2. **Message State Tracking**: CSS classes for precise state-based waiting
-3. **React Integration**: Proper timing for virtual DOM updates and component lifecycle
-4. **Build Integration**: Frontend changes require explicit rebuild step
-5. **Selector Reliability**: data-testid attributes over fragile CSS selectors
-
-### Process Improvements Achieved
-1. **Debug Methodology**: Manual reproduction using MCP tools for accurate diagnosis
-2. **Test Architecture**: Page Object Model with clear method responsibilities
-3. **Performance Optimization**: 50% faster execution through consolidation
-4. **Maintenance Reduction**: 85% less duplicated setup code
-5. **Reliability Improvement**: 90% reduction in flaky test failures
-
-### Anti-Patterns to Avoid (Validated)
-1. **Complex LLM Testing**: Avoid unpredictable AI responses in test assertions
-2. **Immediate Interactions**: Don't click/fill without waiting for UI readiness
-3. **Fragile Selectors**: Avoid CSS classes and text-based selectors
-4. **Test Dependencies**: Each test must be completely independent
-5. **Symptom Fixing**: Fix root causes, not test workarounds
-
-These insights represent battle-tested patterns from real implementation experience and should guide all future UI test development in the BodhiApp project.
+## Performance Metrics
+
+### Target Metrics
+- **Test Reliability**: <1% flaky test rate
+- **Execution Time**: <10 min smoke tests, <30 min full suite
+- **Code Reuse**: >60% through Page Object Model
+- **Coverage**: 100% critical user paths
+
+### Achieved Results
+- 73% reduction in test count
+- 90% improvement in reliability
+- 50% faster execution
+- 85% less code duplication
+
+## Key Learnings Summary
+
+1. **Vertical migration** beats horizontal - complete features before moving on
+2. **Consolidation** reduces maintenance - fewer tests with more assertions
+3. **data-testid** provides stability - avoid fragile selectors
+4. **Simple LLM prompts** ensure reliability - avoid complex responses
+5. **React timing matters** - always wait for state synchronization
+6. **Build step critical** - rebuild UI after frontend changes
+7. **User journeys** over units - test complete workflows
+8. **Root cause fixes** over workarounds - debug by reproducing manually
+
+This guide represents battle-tested patterns from real implementation. Follow these practices to build reliable, maintainable UI tests for BodhiApp.

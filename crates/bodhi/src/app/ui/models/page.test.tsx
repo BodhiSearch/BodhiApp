@@ -368,7 +368,7 @@ describe('ModelsPage', () => {
       });
 
       // Find the API model row and then look for the chat button within it
-      const apiModelRow = screen.getByTestId('actions-api_test-api-model');
+      const apiModelRow = screen.getByTestId('actions-cell-api_test-api-model');
       const chatButton = apiModelRow.querySelector('[data-testid="chat-button-test-api-model"]');
       expect(chatButton).toBeInTheDocument();
       expect(chatButton).toHaveAttribute('title', 'Chat with the model in playground');
@@ -499,7 +499,7 @@ describe('ModelsPage', () => {
       await screen.findAllByText('my-openai');
 
       // Find the API model row and then look for the chat button within it
-      const apiModelRow = screen.getByTestId('actions-api_my-openai');
+      const apiModelRow = screen.getByTestId('actions-cell-api_my-openai');
       const chatButton = apiModelRow.querySelector('[data-testid="chat-button-my-openai"]');
       expect(chatButton).toBeInTheDocument();
       expect(chatButton).toHaveAttribute('title', 'Chat with the model in playground');
